@@ -69,7 +69,7 @@ TEST(CodeGenC, module) {
   ast_gen_ius::TensorGroup tensor_group({A, B, C});
   auto func = lang::LowerToAst("add1", {A, B, C}, &tensor_group);
 
-  LOG(INFO) << "Huihuang debug: " << func << std::endl;
+  LOG(INFO) << "Func to codegen: " << func << std::endl;
 
   builder.AddFunction(func);
 

@@ -108,7 +108,7 @@ class Optimizer:
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
-            :ref:`api_base_regularizer_L1Decay`, :ref:`api_base_regularizer_L2Decay`.
+            :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
@@ -312,11 +312,11 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
-                import paddle
-                emb = paddle.nn.Embedding(10, 10)
+                >>> import paddle
+                >>> emb = paddle.nn.Embedding(10, 10)
 
-                adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
-                state_dict = adam.state_dict()
+                >>> adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
+                >>> state_dict = adam.state_dict()
 
         '''
         state_dict = {}
@@ -747,25 +747,28 @@ class Optimizer:
             var = self._master_weights[param.name]
         else:
             assert isinstance(self.helper, LayerHelper)
-
             var_name = self._gen_master_weight_var_name(param)
-            var = paddle.static.create_global_var(
-                name=var_name,
-                shape=param.shape,
-                value=0,
-                dtype='float32',
-                persistable=True,
-            )
-            block = self.helper.startup_program.global_block()
-            block.append_op(
-                type="cast",
-                inputs={"X": [param]},
-                outputs={"Out": [var]},
-                attrs={
-                    "in_dtype": param.dtype,
-                    "out_dtype": core.VarDesc.VarType.FP32,
-                },
-            )
+            if framework.in_dygraph_mode():
+                var = paddle.cast(param, 'float32')
+                var.name = var_name
+            else:
+                var = paddle.static.create_global_var(
+                    name=var_name,
+                    shape=param.shape,
+                    value=0,
+                    dtype='float32',
+                    persistable=True,
+                )
+                block = self.helper.startup_program.global_block()
+                block.append_op(
+                    type="cast",
+                    inputs={"X": [param]},
+                    outputs={"Out": [var]},
+                    attrs={
+                        "in_dtype": param.dtype,
+                        "out_dtype": core.VarDesc.VarType.FP32,
+                    },
+                )
             self._master_weights[param.name] = var
         return var
 
@@ -846,50 +849,61 @@ class Optimizer:
             )
         if shape is None:
             shape = param.shape
-        assert isinstance(self.helper, LayerHelper)
 
         var_name = param.name + "_" + name
         var_name = unique_name.generate(var_name)
         self._opti_name_list.append(var_name)
 
-        var = self.helper.create_global_variable(
-            name=var_name,
-            persistable=True,
-            dtype=dtype or param.dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            shape=shape,
-            belong_to_optimizer=True,
-        )
         if device is None:
             device = self._get_device_for_param(param.name)
 
-        if (
-            in_dygraph_mode()
-            and (device == 'cpu' or isinstance(device, core.CPUPlace))
-            and (not core.is_compiled_with_xpu())
-        ):
-            _C_ops.full_(
-                var,
-                var.shape,
-                str(float(fill_value)),
-                var.dtype,
-                core.CPUPlace(),
+        if in_pir_mode():
+            var = paddle.pir.core.create_parameter(
+                dtype or param.dtype,
+                shape,
+                var_name,
+                initializer=paddle.nn.initializer.Constant(
+                    value=float(fill_value)
+                ),
             )
         else:
-            with device_guard(device):
-                self.helper.set_variable_initializer(
-                    var,
-                    initializer=paddle.nn.initializer.Constant(
-                        value=float(fill_value)
-                    ),
-                )
+            assert isinstance(self.helper, LayerHelper)
+            var = self.helper.create_global_variable(
+                name=var_name,
+                persistable=True,
+                dtype=dtype or param.dtype,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                shape=shape,
+                belong_to_optimizer=True,
+            )
 
-        if framework.in_dygraph_mode():
-            if len(self._accumulators_holder) > 0:
-                assert (
-                    var_name in self._accumulators_holder
-                ), f"Optimizer set error, {var_name} should in state dict"
-                var.set_value(self._accumulators_holder.pop(var_name))
+            if (
+                in_dygraph_mode()
+                and (device == 'cpu' or isinstance(device, core.CPUPlace))
+                and (not core.is_compiled_with_xpu())
+            ):
+                _C_ops.full_(
+                    var,
+                    var.shape,
+                    str(float(fill_value)),
+                    var.dtype,
+                    core.CPUPlace(),
+                )
+            else:
+                with device_guard(device):
+                    self.helper.set_variable_initializer(
+                        var,
+                        initializer=paddle.nn.initializer.Constant(
+                            value=float(fill_value)
+                        ),
+                    )
+
+            if framework.in_dygraph_mode():
+                if len(self._accumulators_holder) > 0:
+                    assert (
+                        var_name in self._accumulators_holder
+                    ), f"Optimizer set error, {var_name} should in state dict"
+                    var.set_value(self._accumulators_holder.pop(var_name))
 
         self._accumulators[name][param.name] = var
         return var
@@ -1154,7 +1168,7 @@ class Optimizer:
         end = len(target_block.ops)
         return target_block._slice_ops(start, end)
 
-    def _new_ir_create_optimization_pass(
+    def _pir_create_optimization_pass(
         self, parameters_and_grads, param_group_idx=0
     ):
         """Add optimization operators to update gradients to tensors.
@@ -1243,7 +1257,7 @@ class Optimizer:
             loss (Tensor): ``loss`` tensor to run optimizations.
             startup_program (Program, optional): :ref:`api_paddle_static_Program` for
                 initializing parameters in ``parameters``. The default value
-                is None, at this time :ref:`api_base_default_startup_program` will be used.
+                is None, at this time :ref:`api_paddle_static_default_startup_program` will be used.
             parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
@@ -1306,6 +1320,16 @@ class Optimizer:
             parameter_list = parameters if parameters else self._parameter_list
             with paddle.static.program_guard(program, startup_program):
                 if in_pir_mode():
+                    if parameter_list is None:
+                        # all parameters will be updated.
+                        program_all_params = (
+                            program.global_block().all_parameters()
+                        )
+                        parameter_list = [
+                            param
+                            for param in program_all_params
+                            if param.stop_gradient is False
+                        ]
                     params_grads = []
                     grads = paddle.autograd.ir_backward.grad(
                         loss, parameter_list, no_grad_vars=act_no_grad_set
@@ -1406,7 +1430,7 @@ class Optimizer:
                         params_grads['params'], self.regularization
                     )
                 if in_pir_mode():
-                    optimize_ops = self._new_ir_create_optimization_pass(
+                    optimize_ops = self._pir_create_optimization_pass(
                         params_grads, param_group_idx=param_group_idx
                     )
                 else:
@@ -1604,7 +1628,7 @@ class Optimizer:
             loss (Tensor): A ``Tensor`` containing the value to minimize.
             startup_program (Program, optional): :ref:`api_paddle_static_Program` for
                 initializing parameters in ``parameters``. The default value
-                is None, at this time :ref:`api_base_default_startup_program` will be used.
+                is None, at this time :ref:`api_paddle_static_default_startup_program` will be used.
             parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.

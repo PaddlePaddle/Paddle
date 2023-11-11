@@ -110,12 +110,13 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
     os << "(Int32)" << i.data();
   } else if (auto i = attr.dyn_cast<Int64Attribute>()) {
     os << "(Int64)" << i.data();
+  } else if (auto i = attr.dyn_cast<IndexAttribute>()) {
+    os << "(Index)" << i.data();
   } else if (auto p = attr.dyn_cast<PointerAttribute>()) {
     os << "(Pointer)" << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
     const auto& vec = arr.AsVector();
-    os << "(Array)"
-       << "[";
+    os << "[";
     PrintInterleave(
         vec.begin(),
         vec.end(),
@@ -199,17 +200,23 @@ void IrPrinter::PrintValue(Value v) {
     os << "<<NULL VALUE>>";
     return;
   }
-  const void* key = static_cast<const void*>(v.impl());
+  const void* key = v.impl();
   auto ret = aliases_.find(key);
   if (ret != aliases_.end()) {
     os << ret->second;
     return;
   }
-
-  std::string new_name = "%" + std::to_string(cur_var_number_);
-  cur_var_number_++;
-  aliases_[key] = new_name;
-  os << new_name;
+  if (v.isa<OpResult>()) {
+    std::string new_name = "%" + std::to_string(cur_result_number_);
+    cur_result_number_++;
+    aliases_[key] = new_name;
+    os << new_name;
+  } else {
+    std::string new_name = "%arg" + std::to_string(cur_block_argument_number_);
+    cur_block_argument_number_++;
+    aliases_[key] = new_name;
+    os << new_name;
+  }
 }
 
 void IrPrinter::PrintOpResult(Operation* op) {
@@ -303,6 +310,11 @@ void IrPrinter::PrintOpReturnType(Operation* op) {
       [this]() { this->os << ", "; });
 }
 
+void IrPrinter::AddValueAlias(Value v, const std::string& alias) {
+  const void* key = v.impl();
+  IR_ENFORCE(aliases_.find(key) == aliases_.end(), "Value already has alias");
+  aliases_[key] = alias;
+}
 void Dialect::PrintOperation(Operation* op, IrPrinter& printer) const {
   printer.PrintGeneralOperation(op);
 }

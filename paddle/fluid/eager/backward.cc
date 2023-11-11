@@ -15,6 +15,7 @@
 #include "paddle/fluid/eager/backward.h"
 
 #include "paddle/fluid/eager/general_grad.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 namespace egr {
@@ -85,7 +86,7 @@ void EnforceGradNodeHasInput(GradNodeBase* node) {
 void DuplicateCheck(const std::vector<paddle::Tensor>& inputs, bool is_input) {
   std::unordered_set<AutogradMeta*> visisted_ins;
   std::string msg = is_input ? "inputs" : "outputs";
-  for (auto in : inputs) {
+  for (auto const& in : inputs) {
     AutogradMeta* auto_grad_meta = EagerUtils::unsafe_autograd_meta(in);
     PADDLE_ENFORCE_EQ(
         visisted_ins.count(auto_grad_meta),
@@ -110,6 +111,8 @@ std::vector<paddle::Tensor> RunBackward(
     bool allow_unused = false,
     const std::vector<paddle::Tensor>& no_grad_vars = {}) {
   VLOG(3) << "Start Backward";
+
+  auto place = egr::Controller::Instance().GetExpectedPlace();
 
   std::queue<GradNodeBase*> force_sequential_nodes_forward_queue =
       egr::Controller::Instance().GetForceSequentialNodes();
@@ -378,9 +381,9 @@ std::vector<paddle::Tensor> RunBackward(
         auto add_next_node_func = [&node_in_degree_map,
                                    &queue](GradNodeBase* next_node) {
           if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
-            queue.push_front(std::move(next_node));
+            queue.push_front(next_node);
           } else {
-            queue.push_back(std::move(next_node));
+            queue.push_back(next_node);
           }
         };
         if (node_in_degree_map[next_node] == 0) {
@@ -405,6 +408,7 @@ std::vector<paddle::Tensor> RunBackward(
         }
       }
     }
+    paddle::memory::LogDeviceMemoryStats(place, std::string((*node).name()));
   }
 
   VLOG(7) << "Run Backward Final hook size: "

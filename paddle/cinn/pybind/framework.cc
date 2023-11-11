@@ -20,6 +20,7 @@
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/frontend/interpreter.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -211,5 +212,23 @@ void BindFramework(pybind11::module *m) {
               CINN_NOT_IMPLEMENTED
             }
           });
+
+  py::class_<Instruction> instruction(*m, "Instruction");
+  instruction
+      .def(py::init<const Target &,
+                    Scope *,
+                    const std::vector<std::string> &,
+                    const std::vector<std::string> &,
+                    const std::string &>())
+      .def("run",
+           [](Instruction &self,
+              backends::Compiler &compiler,
+              const std::string fn_name,
+              std::map<std::string, cinn_pod_value_t> &name_to_pod) {
+             auto fn_ptr = compiler.Lookup(fn_name);
+             self.Finalize();
+             self.SetLoweredFunc(fn_ptr);
+             self.Run(&name_to_pod);
+           });
 }
 }  // namespace cinn::pybind

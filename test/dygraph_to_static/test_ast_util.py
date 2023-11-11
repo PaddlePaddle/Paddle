@@ -17,7 +17,11 @@ import textwrap
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pir,
+)
 from ifelse_simple_func import (
     dyfunc_with_if_else,
     dyfunc_with_if_else2,
@@ -31,7 +35,7 @@ from paddle.jit.dy2static.utils import ast_to_func
 from paddle.utils import gast
 
 
-class TestAST2Func(unittest.TestCase):
+class TestAST2Func(Dy2StTestBase):
     """
     TestCase for the transformation from ast.AST into python callable function.
     """
@@ -43,6 +47,7 @@ class TestAST2Func(unittest.TestCase):
         transformed_func, _ = ast_to_func(ast_root, func)
         return transformed_func
 
+    @test_ast_only
     def test_ast2func(self):
         def func(x, y):
             return x + y
@@ -50,6 +55,7 @@ class TestAST2Func(unittest.TestCase):
         x, y = 10, 20
         self.assertEqual(func(x, y), self._ast2func(func)(x, y))
 
+    @test_ast_only
     def test_ast2func_dygraph(self):
         paddle.disable_static()
         funcs = [dyfunc_with_if_else, dyfunc_with_if_else2, nested_if_else]
@@ -61,7 +67,8 @@ class TestAST2Func(unittest.TestCase):
                 test_ret = self._ast2func(func)(x_v).numpy()
                 self.assertTrue((true_ret == test_ret).all())
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
+    @test_ast_only
     def test_ast2func_static(self):
         paddle.enable_static()
 
@@ -80,6 +87,7 @@ class TestAST2Func(unittest.TestCase):
             ret = exe.run(main_program, fetch_list=[true_ret, test_ret])
             self.assertTrue((ret[0] == ret[1]).all())
 
+    @test_ast_only
     def test_ast2func_error(self):
         with self.assertRaises(Exception) as e:
             self.assertRaises(TypeError, ast_to_func("x = a + b", 'foo'))

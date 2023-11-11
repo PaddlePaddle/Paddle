@@ -410,7 +410,7 @@ def interpolate(
             'The x and size should satisfy rank(x) - 2 == len(size).'
         )
 
-    if isinstance(size, Variable):
+    if isinstance(size, (Variable, paddle.pir.OpResult)):
         size = size.cast("int32")  # static mode only support int32
         if size.ndim != 1:
             raise ValueError(
@@ -432,7 +432,7 @@ def interpolate(
         )
 
     if resample == 'AREA':
-        if isinstance(size, (list, tuple, Variable)):
+        if isinstance(size, (list, tuple, Variable, paddle.pir.OpResult)):
             if len(size) == 0:
                 raise ValueError("output size can not be empty")
         if size is None:
@@ -491,7 +491,10 @@ def interpolate(
     if out_shape is not None and scale is not None:
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
-        if isinstance(out_shape, Variable) and not in_dynamic_mode():
+        if (
+            isinstance(out_shape, (Variable, paddle.pir.OpResult))
+            and not in_dynamic_mode()
+        ):
             out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
         else:
@@ -509,7 +512,7 @@ def interpolate(
             # Validate the shape
             contain_var = False
             for dim_idx, dim_size in enumerate(out_shape):
-                if isinstance(dim_size, Variable):
+                if isinstance(dim_size, (Variable, paddle.pir.OpResult)):
                     contain_var = True
                     continue
                 assert (
@@ -520,18 +523,25 @@ def interpolate(
                 new_size_tensor = []
                 size_list = []
                 for dim in out_shape:
-                    if isinstance(dim, Variable):
+                    if isinstance(dim, (Variable, paddle.pir.OpResult)):
                         dim.stop_gradient = True
                         new_size_tensor.append(dim)
                         size_list.append(-1)
                     else:
                         assert isinstance(dim, int)
-                        temp_out = helper.create_variable_for_type_inference(
-                            'int32'
-                        )
-                        paddle.tensor.fill_constant(
-                            [1], 'int32', dim, force_cpu=True, out=temp_out
-                        )
+                        if in_pir_mode():
+                            temp_out = paddle.tensor.fill_constant(
+                                [1], 'int32', dim, force_cpu=True
+                            )
+                        else:
+                            temp_out = (
+                                helper.create_variable_for_type_inference(
+                                    'int32'
+                                )
+                            )
+                            paddle.tensor.fill_constant(
+                                [1], 'int32', dim, force_cpu=True, out=temp_out
+                            )
                         new_size_tensor.append(temp_out)
                         size_list.append(dim)
                 inputs['SizeTensor'] = new_size_tensor
@@ -579,7 +589,7 @@ def interpolate(
                 scale = float(scale)
             else:
                 scale = list(scale.numpy())
-        if isinstance(scale, Variable):
+        if isinstance(scale, (Variable, paddle.pir.OpResult)):
             scale.stop_gradient = True
             inputs["Scale"] = scale
         elif isinstance(scale, (float, int, numpy.ndarray)):
@@ -604,7 +614,7 @@ def interpolate(
                 "Attr(scale)'s type should be float, int, list, tuple, or Tensor."
             )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         attr_list = []
         for k, v in attrs.items():
             attr_list.append(k)
@@ -903,7 +913,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     """
 
     This layer performs bilinear on two inputs.
-    See :ref:`api_nn_Bilinear` for details and output shape.
+    See :ref:`api_paddle_nn_Bilinear` for details and output shape.
 
     Parameters:
         x1 (Tensor): the first input tensor, it's data type should be float32, float64.
@@ -1155,9 +1165,7 @@ def dropout(
                     dropout_prob, Variable
                 ) and not dropout_prob.shape != [1]:
                     raise TypeError(
-                        "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
-                            p.shape
-                        )
+                        f"Required p.shape == [1] if type(p) is Variable, but received p.shape = {p.shape}"
                     )
                 attrs = {
                     'dropout_prob': dropout_prob,
@@ -1196,7 +1204,7 @@ def dropout(
 
             # get mask shape
             input_shape = x.shape
-            if not in_dynamic_or_pir_mode():
+            if not in_dynamic_mode():
                 input_shape_tensor = paddle.shape(x)
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
@@ -1212,7 +1220,7 @@ def dropout(
                     )
                 )
             mask_shape = [1] * len(input_shape)
-            if not in_dynamic_or_pir_mode():
+            if not in_dynamic_mode():
                 for i in drop_axes:
                     mask_shape[i] = input_shape_tensor[i]
             else:
@@ -1658,9 +1666,15 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         paddings = pad
         pad_value = value
 
-        if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
             out = _C_ops.pad(x, paddings, float(pad_value))
             return out
+
+        if in_pir_mode():
+            if isinstance(pad_value, paddle.pir.OpResult):
+                return _C_ops.pad(x, paddings, pad_value)
+            else:
+                return _C_ops.pad(x, paddings, float(pad_value))
 
         check_variable_and_dtype(
             x,
@@ -2044,7 +2058,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     if epsilon > 1.0 or epsilon < 0.0:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.label_smooth(label, prior_dist, float(epsilon))
 
     check_variable_and_dtype(
@@ -2222,7 +2236,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
         seed = default_main_program().random_seed
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.class_center_sample(
             label,
             num_classes,

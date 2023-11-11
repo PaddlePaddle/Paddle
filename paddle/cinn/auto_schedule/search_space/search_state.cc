@@ -20,9 +20,9 @@
 #include <vector>
 
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/utils/functional.h"
 #include "paddle/cinn/utils/string.h"
 

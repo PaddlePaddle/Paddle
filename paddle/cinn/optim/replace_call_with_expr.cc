@@ -14,9 +14,9 @@
 
 #include "paddle/cinn/optim/replace_call_with_expr.h"
 
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 
 namespace cinn {

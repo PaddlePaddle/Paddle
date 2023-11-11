@@ -437,5 +437,5 @@ inline T GetValue(const phi::DenseTensor* x) {
 }  // namespace paddle
 
 namespace phi {
-std::ostream& operator<<(std::ostream& os, const DenseTensor& t);
+TEST_API std::ostream& operator<<(std::ostream& os, const DenseTensor& t);
 }

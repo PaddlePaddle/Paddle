@@ -24,6 +24,7 @@ from .creation import create_tensor  # noqa: F401
 from .creation import to_tensor  # noqa: F401
 from .creation import diag  # noqa: F401
 from .creation import diagflat  # noqa: F401
+from .creation import diag_embed  # noqa: F401
 from .creation import eye  # noqa: F401
 from .creation import linspace  # noqa: F401
 from .creation import fill_constant  # noqa: F401
@@ -165,6 +166,10 @@ from .manipulation import as_strided  # noqa: F401
 from .manipulation import view  # noqa: F401
 from .manipulation import view_as  # noqa: F401
 from .manipulation import unfold  # noqa: F401
+from .manipulation import masked_fill  # noqa: F401
+from .manipulation import masked_fill_  # noqa: F401
+from .manipulation import index_fill  # noqa: F401
+from .manipulation import index_fill_  # noqa: F401
 from .math import abs  # noqa: F401
 from .math import abs_  # noqa: F401
 from .math import acos  # noqa: F401
@@ -327,6 +332,10 @@ from .math import i1  # noqa: F401
 from .math import i1e  # noqa: F401
 from .math import polygamma  # noqa: F401
 from .math import polygamma_  # noqa: F401
+from .math import renorm  # noqa: F401
+from .math import renorm_  # noqa: F401
+from .math import hypot  # noqa: F401
+from .math import hypot_  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -356,6 +365,7 @@ from .search import index_sample  # noqa: F401
 from .search import masked_select  # noqa: F401
 from .search import kthvalue  # noqa: F401
 from .search import mode  # noqa: F401
+from .search import top_p_sampling
 
 from .stat import mean  # noqa: F401
 from .stat import std  # noqa: F401
@@ -375,8 +385,11 @@ from .array import create_array  # noqa: F401
 
 from .einsum import einsum  # noqa: F401
 
+from ..signal import istft  # noqa: F401
+from ..signal import stft  # noqa: F401
+
 # this list used in math_op_patch.py for _binary_creator_
-tensor_method_func = [  # noqa
+tensor_method_func = [
     'create_parameter',
     'create_tensor',
     'matmul',
@@ -408,6 +421,7 @@ tensor_method_func = [  # noqa
     'all',
     'any',
     'asin',
+    'asin_',
     'atan',
     'ceil',
     'ceil_',
@@ -458,6 +472,8 @@ tensor_method_func = [  # noqa
     'sum',
     'nan_to_num',
     'nan_to_num_',
+    'hypot',
+    'hypot_',
     'nansum',
     'nanmean',
     'count_nonzero',
@@ -491,8 +507,6 @@ tensor_method_func = [  # noqa
     'add_',
     'subtract',
     'subtract_',
-    'atan',
-    'logsumexp',
     'inverse',
     'log1p',
     'log1p_',
@@ -585,6 +599,7 @@ tensor_method_func = [  # noqa
     'argsort',
     'masked_select',
     'topk',
+    'top_p_sampling',
     'where',
     'where_',
     'index_select',
@@ -630,6 +645,7 @@ tensor_method_func = [  # noqa
     'triangular_solve',
     'asinh',
     'atanh',
+    'atanh_',
     'acosh',
     'lu',
     'lu_unpack',
@@ -685,7 +701,36 @@ tensor_method_func = [  # noqa
     'i1e',
     'polygamma',
     'polygamma_',
+    'masked_fill',
+    'masked_fill_',
+    'diag_embed',
+    'atan2',
+    'diagflat',
+    'multinomial',
+    'pinv',
+    'renorm',
+    'renorm_',
+    'tan',
+    'tan_',
+    'tril',
+    'tril_',
+    'triu',
+    'triu_',
+    'stft',
+    'istft',
+    'abs_',
+    'acos_',
+    'atan_',
+    'cos_',
+    'cosh_',
+    'sin_',
+    'sinh_',
+    'acosh_',
+    'asinh_',
+    'diag',
     'normal_',
+    'index_fill',
+    'index_fill_',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

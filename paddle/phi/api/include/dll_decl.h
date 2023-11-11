@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(STATIC_PADDLE)
 #ifndef PADDLE_API
 #ifdef PADDLE_DLL_EXPORT
 #define PADDLE_API __declspec(dllexport)

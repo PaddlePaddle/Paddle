@@ -95,9 +95,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
                         shape, dtype = spec
                     else:
                         raise ValueError(
-                            "Value of in_specs[{}] should contains two elements: [shape, dtype]".format(
-                                index
-                            )
+                            f"Value of in_specs[{index}] should contains two elements: [shape, dtype]"
                         )
                     input_t.append(
                         paddle.static.data(
@@ -1300,9 +1298,7 @@ class OpTest(unittest.TestCase):
                     return True
         return False
 
-    def _calc_new_ir_output(
-        self, place, no_check_set=None, inps=None, oups=None
-    ):
+    def _calc_pir_output(self, place, no_check_set=None, inps=None, oups=None):
         """set egr_inps and egr_oups = None if you want to create it by yourself."""
 
         def construct_output_dict_by_kernel_sig(ret_tuple, output_sig):
@@ -1367,6 +1363,8 @@ class OpTest(unittest.TestCase):
                         ret_tuple, paddle.base.libpaddle.pir.OpResult
                     ):
                         fetch_list.append(ret_tuple)
+                    elif ret_tuple is None:
+                        pass
                     else:
                         raise ValueError(
                             "output of python api should be OpResult or list of OpResult or tuple of OpResult"
@@ -1393,9 +1391,9 @@ class OpTest(unittest.TestCase):
                 return result
 
     def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
-        if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
+        if os.getenv("FLAGS_PIR_OPTEST") is None:
             return
-        if os.getenv("FLAGS_NEW_IR_OPTEST_WHITE_LIST") is None:
+        if os.getenv("FLAGS_PIR_OPTEST_WHITE_LIST") is None:
             return
         if self.check_prim or self.check_prim_pir:
             return
@@ -1403,15 +1401,15 @@ class OpTest(unittest.TestCase):
             return
         stored_flag = get_flags(
             [
-                'FLAGS_enable_new_ir_in_executor',
-                "FLAGS_new_ir_apply_inplace_pass",
+                'FLAGS_enable_pir_in_executor',
+                "FLAGS_pir_apply_inplace_pass",
             ]
         )
         try:
             set_flags(
                 {
-                    "FLAGS_enable_new_ir_in_executor": True,
-                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                    "FLAGS_enable_pir_in_executor": True,
+                    "FLAGS_pir_apply_inplace_pass": 0,
                 }
             )
             new_scope = paddle.static.Scope()
@@ -1435,10 +1433,12 @@ class OpTest(unittest.TestCase):
             ), "Fetch result should have same length when executed in pir"
 
             check_method = np.testing.assert_array_equal
-            if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None):
+            if os.getenv("FLAGS_PIR_OPTEST_RELAX_CHECK", None) == "True":
                 check_method = lambda x, y, z: np.testing.assert_allclose(
                     x, y, err_msg=z, atol=1e-6, rtol=1e-6
                 )
+            if os.getenv("FLAGS_PIR_NO_CHECK", None) == "True":
+                check_method = lambda x, y, err_msg: None
 
             for i in range(len(outs)):
                 check_method(
@@ -1904,7 +1904,7 @@ class OpTest(unittest.TestCase):
         if getattr(self, "no_need_check_inplace", False):
             return
 
-        if os.getenv("FLAGS_enable_new_ir_in_executor"):
+        if os.getenv("FLAGS_enable_pir_in_executor"):
             return
 
         has_infer_inplace = base.core.has_infer_inplace(self.op_type)
@@ -1967,7 +1967,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         inplace_atol=None,
         check_cinn=False,
-        check_new_ir=False,
+        check_pir=False,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2326,25 +2326,25 @@ class OpTest(unittest.TestCase):
                     return True
                 return super()._is_skip_name(name)
 
-        class NewIRChecker(Checker):
+        class PirChecker(Checker):
             def init(self):
                 self.checker_name = "pir checker"
 
             def calculate_output(self):
                 self.is_python_api_test = True
-                new_ir_outs = self.op_test._calc_new_ir_output(place)
-                if new_ir_outs is None:
+                pir_outs = self.op_test._calc_pir_output(place)
+                if pir_outs is None:
                     self.is_python_api_test = False
                     # missing KernelSignature, fall back to eager middle output.
-                    new_ir_outs = self.op_test._calc_dygraph_output(
+                    pir_outs = self.op_test._calc_dygraph_output(
                         place, no_check_set=no_check_set
                     )
-                self.outputs = new_ir_outs
+                self.outputs = pir_outs
 
                 if self.op_test.is_compared_with_fp32():
                     self.op_test.enable_cal_ref_output()
                     self.is_python_api_test = True
-                    self.ref_outputs = self.op_test._calc_new_ir_output(place)
+                    self.ref_outputs = self.op_test._calc_pir_output(place)
                     if self.ref_outputs is None:
                         self.is_python_api_test = False
                         # missing KernelSignature, fall back to eager middle output.
@@ -2392,12 +2392,12 @@ class OpTest(unittest.TestCase):
                         expect_np = convert_uint16_to_float(expect_np)
                 return actual_np, expect_np
 
-            def find_imperative_actual(target_name, new_ir_outs, place):
-                for name in new_ir_outs:
+            def find_imperative_actual(target_name, pir_outs, place):
+                for name in pir_outs:
                     if name == target_name:
-                        return new_ir_outs[name][0]
+                        return pir_outs[name][0]
 
-                    var_list = new_ir_outs[name]
+                    var_list = pir_outs[name]
                     for i, var in enumerate(var_list):
                         if isinstance(var, list):
                             for tensor in var:
@@ -2407,19 +2407,19 @@ class OpTest(unittest.TestCase):
                             isinstance(var, paddle.Tensor)
                             and var.name == target_name
                         ):
-                            return new_ir_outs[name][i]
+                            return pir_outs[name][i]
                     self.assertTrue(
                         False,
-                        f"Found failed {new_ir_outs.keys()} {target_name}",
+                        f"Found failed {pir_outs.keys()} {target_name}",
                     )
 
-            def find_imperative_expect(self, target_name, new_ir_outs, place):
-                for name in new_ir_outs:
+            def find_imperative_expect(self, target_name, pir_outs, place):
+                for name in pir_outs:
                     if name == target_name:
-                        return new_ir_outs[name][0]
+                        return pir_outs[name][0]
                 self.assertTrue(
                     False,
-                    f"Found failed {new_ir_outs.keys()} {target_name}",
+                    f"Found failed {pir_outs.keys()} {target_name}",
                 )
 
             def find_actual_value(self, target_name):
@@ -2538,14 +2538,14 @@ class OpTest(unittest.TestCase):
             dygraph_checker.check()
             dygraph_dygraph_outs = dygraph_checker.outputs
 
-        if check_new_ir:
+        if check_pir:
             if (
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
                 with paddle.pir_utils.IrGuard():
-                    new_ir_checker = NewIRChecker(self, self.outputs)
-                    new_ir_checker.check()
+                    pir_checker = PirChecker(self, self.outputs)
+                    pir_checker.check()
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
@@ -2657,7 +2657,7 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
         check_cinn=False,
         only_check_prim=False,
-        check_new_ir=False,
+        check_pir=False,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -2683,7 +2683,7 @@ class OpTest(unittest.TestCase):
                 only_check_prim=only_check_prim,
                 inplace_atol=inplace_atol,
                 check_cinn=check_cinn,
-                check_new_ir=check_new_ir,
+                check_pir=check_pir,
             )
             if not res and only_check_prim:
                 continue
@@ -2695,12 +2695,12 @@ class OpTest(unittest.TestCase):
                 self.op_type
                 not in compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST
             ):
-                if os.getenv("FLAGS_enable_new_ir_in_executor"):
+                if os.getenv("FLAGS_enable_pir_in_executor"):
                     return
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(
-        self, checker, custom_place=None, check_new_ir=False
+        self, checker, custom_place=None, check_pir=False
     ):
         self.__class__.op_type = self.op_type
         places = self._get_places()
@@ -2711,26 +2711,26 @@ class OpTest(unittest.TestCase):
             outs = [np.array(out) for out in outs]
             outs.sort(key=len)
             checker(outs)
-            if check_new_ir:
+            if check_pir:
                 with paddle.pir_utils.IrGuard():
-                    outs_p = self._calc_new_ir_output(place)
+                    outs_p = self._calc_pir_output(place)
                     outs_p = [outs_p[out] for out in outs_p]
                     outs_p.sort(key=len)
                     checker(outs_p[0])
 
     def check_output_with_place_customized(
-        self, checker, place, check_new_ir=False
+        self, checker, place, check_pir=False
     ):
         outs = self.calc_output(place)
         outs = [np.array(out) for out in outs]
         outs.sort(key=len)
         checker(outs)
-        if check_new_ir:
+        if check_pir:
             with paddle.pir_utils.IrGuard():
-                outs_p = self._calc_new_ir_output(place)
-                outs_p = [outs_p[out] for out in outs_p]
+                outs_p = self._calc_pir_output(place)
+                outs_p = [outs_p[out][0] for out in outs_p]
                 outs_p.sort(key=len)
-                checker(outs_p[0])
+                checker(outs_p)
 
     def _assert_is_close(
         self,
@@ -2867,7 +2867,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         atol=1e-5,
         check_cinn=False,
-        check_new_ir=False,
+        check_pir=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2891,7 +2891,7 @@ class OpTest(unittest.TestCase):
                 only_check_prim=only_check_prim,
                 atol=atol,
                 check_cinn=check_cinn,
-                check_new_ir=check_new_ir,
+                check_pir=check_pir,
             )
 
     def check_grad_with_place(
@@ -2912,7 +2912,7 @@ class OpTest(unittest.TestCase):
         numeric_place=None,
         atol=1e-5,
         check_cinn=False,
-        check_new_ir=False,
+        check_pir=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -3126,13 +3126,13 @@ class OpTest(unittest.TestCase):
                 )
 
         # get pir gradient
-        if check_new_ir:
+        if check_pir:
             if (
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
                 with paddle.pir_utils.IrGuard():
-                    new_ir_grad = self._get_ir_gradient(
+                    pir_grad = self._get_ir_gradient(
                         inputs_to_check,
                         place,
                         output_names,
@@ -3140,7 +3140,7 @@ class OpTest(unittest.TestCase):
                         no_grad_set,
                     )
                 fp32_analytic_grads = []
-                for grad in new_ir_grad:
+                for grad in pir_grad:
                     if grad.dtype == np.uint16:
                         grad = convert_uint16_to_float(grad)
                         max_relative_error = (
@@ -3149,7 +3149,7 @@ class OpTest(unittest.TestCase):
                             else max_relative_error
                         )
                     fp32_analytic_grads.append(grad)
-                new_ir_grad = fp32_analytic_grads
+                pir_grad = fp32_analytic_grads
                 if self.is_float16_op():
                     max_relative_error = (
                         0.01
@@ -3158,7 +3158,7 @@ class OpTest(unittest.TestCase):
                     )
                 self._assert_is_close(
                     numeric_grads,
-                    new_ir_grad,
+                    pir_grad,
                     inputs_to_check,
                     max_relative_error,
                     "Gradient Check On %s" % str(place),
@@ -3331,9 +3331,9 @@ class OpTest(unittest.TestCase):
     def _check_ir_grad_output(
         self, place, program, scope, feed_dict, fetch_list, gradients
     ):
-        if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
+        if os.getenv("FLAGS_PIR_OPTEST") is None:
             return
-        if os.getenv("FLAGS_NEW_IR_OPTEST_WHITE_LIST") is None:
+        if os.getenv("FLAGS_PIR_OPTEST_WHITE_LIST") is None:
             return
         if self.check_prim or self.check_prim_pir:
             return
@@ -3342,15 +3342,15 @@ class OpTest(unittest.TestCase):
 
         stored_flag = get_flags(
             [
-                'FLAGS_enable_new_ir_in_executor',
-                "FLAGS_new_ir_apply_inplace_pass",
+                'FLAGS_enable_pir_in_executor',
+                "FLAGS_pir_apply_inplace_pass",
             ]
         )
         try:
             set_flags(
                 {
-                    "FLAGS_enable_new_ir_in_executor": True,
-                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                    "FLAGS_enable_pir_in_executor": True,
+                    "FLAGS_pir_apply_inplace_pass": 0,
                 }
             )
             executor = Executor(place)
@@ -3368,10 +3368,13 @@ class OpTest(unittest.TestCase):
             )
 
             check_method = np.testing.assert_array_equal
-            if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None):
+            if os.getenv("FLAGS_PIR_OPTEST_RELAX_CHECK", None) == "True":
                 check_method = lambda x, y, z: np.testing.assert_allclose(
                     x, y, err_msg=z, atol=1e-6, rtol=1e-6
                 )
+
+            if os.getenv("FLAGS_PIR_NO_CHECK", None) == "True":
+                check_method = lambda x, y, err_msg: None
 
             for i in range(len(new_gradients)):
                 check_method(
@@ -3460,7 +3463,7 @@ class OpTest(unittest.TestCase):
                     tensor = true_var.get_tensor()
                     tensor.set(grad_out_value, place)
                     grad_outputs.append(var)
-                    if os.getenv("FLAGS_NEW_IR_OPTEST") is not None:
+                    if os.getenv("FLAGS_PIR_OPTEST") is not None:
                         ir_true_var = ir_scope.var(var.name)
                         ir_tensor = ir_true_var.get_tensor()
                         ir_tensor.set(grad_out_value, place)

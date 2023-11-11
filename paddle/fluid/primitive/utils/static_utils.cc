@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
 
@@ -19,6 +20,14 @@ namespace primitive {
 template <>
 void set_output<LazyTensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
   x->set_impl(x_tmp.impl());
+}
+
+template <>
+void by_pass<LazyTensor>(const paddle::Tensor& x, paddle::Tensor* real_out) {
+  pir::Value x_res = std::static_pointer_cast<LazyTensor>(x.impl())->value();
+  auto op_res = paddle::dialect::assign(x_res);
+  Tensor out(std::make_shared<LazyTensor>(op_res));
+  set_output<LazyTensor>(out, real_out);
 }
 
 /**

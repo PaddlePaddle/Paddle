@@ -193,7 +193,7 @@ def generate_layer_fn(op_type):
                     dtype = each.dtype
                 elif dtype != each.dtype:
                     raise ValueError(
-                        "operator {0} must input same dtype. {1} vs {2}".format(
+                        "operator {} must input same dtype. {} vs {}".format(
                             op_type, dtype, each.dtype
                         )
                     )
@@ -214,7 +214,7 @@ def generate_layer_fn(op_type):
 
         dtype = infer_and_check_dtype(op_proto, *args, **kwargs)
 
-        inputs = dict()
+        inputs = {}
         for ipt in op_proto.inputs:
             name = _convert_(ipt.name)
             val = kwargs.pop(name, [])
@@ -225,7 +225,7 @@ def generate_layer_fn(op_type):
                 args = args[1:]
             inputs[ipt.name] = val
 
-        outputs = dict()
+        outputs = {}
         out = kwargs.pop(_convert_(o_name), [])
         if out:
             out_var = out[0] if (isinstance(out, (list, tuple))) else out
@@ -337,8 +337,8 @@ def generate_inplace_fn(inplace_op_type):
 
     func.__name__ = inplace_op_type
     func.__doc__ = """
-Inplace version of ``{0}`` API, the output Tensor will be inplaced with input ``x``.
-Please refer to :ref:`api_base_layers_{1}`.
+Inplace version of ``{}`` API, the output Tensor will be inplaced with input ``x``.
+Please refer to :ref:`api_paddle_base_layers_{}`.
 """.format(
         origin_op_type, origin_op_type
     )

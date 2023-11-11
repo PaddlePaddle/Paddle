@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/cinn/pybind/bind.h"
+#include "paddle/cinn/utils/error.h"
 #include "paddle/cinn/utils/profiler.h"
+#include "paddle/cinn/utils/random_engine.h"
 
 namespace py = pybind11;
 
@@ -69,6 +71,9 @@ void BindUtils(py::module *m) {
           "type",
           [](HostEvent &self) -> const EventType & { return self.type_; },
           [](HostEvent &self, const EventType &v) { self.type_ = v; });
+
+  py::class_<utils::LinearRandomEngine>(*m, "LinearRandomEngine");
+  py::class_<utils::ErrorMessageLevel>(*m, "ErrorMessageLevel");
 }
 
 }  // namespace pybind
