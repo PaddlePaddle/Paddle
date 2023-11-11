@@ -800,7 +800,7 @@ def binary_cross_entropy_with_logits(
         one = _C_ops.full(
             [1],
             1.0,
-            logit.dtype,
+            logit.dtype if in_pir_mode() else logit._dtype,
             _current_expected_place(),
         )
 
@@ -1197,7 +1197,7 @@ def margin_ranking_loss(
         out = _C_ops.subtract(other, input)
         out = _C_ops.multiply(out, label)
         if margin != 0.0:
-            margin = base.dygraph.base.to_variable([margin], dtype=out.dtype)
+            margin = paddle.to_tensor([margin], dtype=out.dtype)
             out = _C_ops.add(out, margin)
         out = _C_ops.relu(out)
         if reduction == 'sum':
