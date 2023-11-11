@@ -107,10 +107,9 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
       rewriter.EraseOp(full_op);
     } else {
       // using mul op
-      std::cerr << "not full op\n";
       auto bias =
           op->attributes().at("bias").dyn_cast<pir::FloatAttribute>().data();
-      std::cerr << "bias " << bias << std::endl;
+
       auto mul_in = op.operand_source(0);
       if (bias != 0.0f) {
         auto full_op = rewriter.Build<paddle::dialect::FullOp>(
