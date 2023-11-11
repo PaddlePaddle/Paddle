@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -78,7 +79,10 @@ class TestFunctionalL1Loss(unittest.TestCase):
             expected = np.abs(self.input_np - self.label_np)
             np.testing.assert_allclose(static_result[2], expected, rtol=1e-05)
 
-            self.assertTrue('aaa' in y.name)
+            if in_pir_mode():
+                self.assertTrue('aaa' in y)
+            else:
+                self.assertTrue('aaa' in y.name)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.base.CPUPlace())
@@ -173,7 +177,11 @@ class TestClassL1Loss(unittest.TestCase):
             np.testing.assert_allclose(static_result[1], expected, rtol=1e-05)
             expected = np.abs(self.input_np - self.label_np)
             np.testing.assert_allclose(static_result[2], expected, rtol=1e-05)
-            self.assertTrue('aaa' in result3.name)
+
+            if in_pir_mode():
+                self.assertTrue('aaa' in result3)
+            else:
+                self.assertTrue('aaa' in result3.name)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.base.CPUPlace())
