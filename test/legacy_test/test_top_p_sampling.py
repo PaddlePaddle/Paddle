@@ -145,5 +145,6 @@ class TestTopPAPI(unittest.TestCase):
                 self.run_dygraph(place)
                 self.run_static(place)
 
+
 if __name__ == "__main__":
     unittest.main()
