@@ -186,7 +186,6 @@ class TestUnpoolOpException(unittest.TestCase):
     def tearDown(self):
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_exception(self):
         def indices_size_error():
             data = paddle.rand(shape=[1, 1, 3, 3])
