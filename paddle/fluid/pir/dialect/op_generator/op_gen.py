@@ -1036,7 +1036,10 @@ def OpGenerator(
 
     op_info_items = {}
     for op in op_yaml_items:
-        op_compat_item = op_compat_parser.get_compat(op['name'])
+        op_compat_item = None
+        if dialect_name == "pd_op":
+            op_compat_item = op_compat_parser.get_compat(op['name'])
+
         if (
             op_compat_item is None
             and op['name'].endswith(('_grad', '_grad_'))
