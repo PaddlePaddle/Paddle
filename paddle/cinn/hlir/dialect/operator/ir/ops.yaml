@@ -24,7 +24,7 @@
   kernel :
     func : frobenius_norm
 
-- op : reshape_c
+- op : reshape
   args : (Tensor x, int[] shape)
   output : Tensor(out)
   infer_meta :

@@ -162,7 +162,7 @@ class ReshapeOpPattern
         }
       }
 
-      auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeCOp>(
+      auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
           op->operand_source(0).dyn_cast<pir::OpResult>(), vec_out_shape);
       rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
       rewriter.EraseOp(op);

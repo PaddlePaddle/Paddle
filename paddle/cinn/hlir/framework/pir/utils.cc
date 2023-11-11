@@ -40,7 +40,7 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.divide", "divide"},
     {"pd_op.elementwise_pow", "pow"},
     {"pd_op.multiply", "elementwise_mul"},
-    {"cinn_op.reshape_c", "reshape"},
+    {"cinn_op.reshape", "reshape"},
     {"cinn_op.scale", "scale"},
     {"cinn_op.broadcast", "broadcast_to"}};
 
@@ -52,7 +52,7 @@ const std::unordered_set<std::string> CompatibleInfo::CINN_WHITE_OPS = {
     "multiply",
     "scale",
     "elementwise_pow",
-    "reshape_c"};
+    "reshape"};
 
 bool CompatibleInfo::IsSupportCinn(const ::pir::Operation& op) {
   return CINN_WHITE_OPS.find(CompatibleInfo::OpName(op)) !=
