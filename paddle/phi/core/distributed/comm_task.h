@@ -136,7 +136,7 @@ class CommTask {
   virtual void SetUpdated(bool updated) {
     PADDLE_THROW(
         phi::errors::Unimplemented("%s is not implemented.", __func__));
-    return ;
+    return;
   }
   virtual bool IsUpdated() {
     PADDLE_THROW(
@@ -163,7 +163,6 @@ class CommTask {
   gpuStream_t nccl_stream_;
   CommType comm_type_;
   bool start_trace_updated_{false};
-
 
   // task status
   bool started_ = false;

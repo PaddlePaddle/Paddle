@@ -868,9 +868,9 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   CUDA_CHECK(cudaMalloc(&gpu_global_rank, gpu_global_rank_size));
 
   CUDA_CHECK(cudaMemcpy(gpu_global_rank,
-             &global_rank_,
-             gpu_global_rank_size,
-             cudaMemcpyHostToDevice));
+                        &global_rank_,
+                        gpu_global_rank_size,
+                        cudaMemcpyHostToDevice));
 
   int* gpu_global_ranks = nullptr;
   size_t gpu_global_ranks_size = num_ranks * sizeof(int);
@@ -885,9 +885,9 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   std::vector<int> global_ranks(num_ranks);
   CUDA_CHECK(cudaMemcpy(global_ranks.data(),
-             gpu_global_ranks,
-             gpu_global_ranks_size,
-             cudaMemcpyDeviceToHost));
+                        gpu_global_ranks,
+                        gpu_global_ranks_size,
+                        cudaMemcpyDeviceToHost));
   CUDA_CHECK(cudaFree(gpu_global_rank));
   CUDA_CHECK(cudaFree(gpu_global_ranks));
 
@@ -1037,7 +1037,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
     CreateNCCLEnvCache(place, key, comm_type, p2p_rank);
   }
   if (p2p_comm_seq_.find(key) == p2p_comm_seq_.end()) {
-      p2p_comm_seq_[key] = 0;
+    p2p_comm_seq_[key] = 0;
   }
   p2p_comm_seq_[key]++;
 
