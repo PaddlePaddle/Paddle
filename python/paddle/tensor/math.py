@@ -2473,7 +2473,7 @@ def inner(x, y, name=None):
 
 
     """
-    if x.size == 1 or y.size == 1:
+    if (len(x.shape) == 0) or (len(y.shape) == 0):
         return multiply(x, y)
     else:
         xshape = x.shape
@@ -2483,32 +2483,31 @@ def inner(x, y, name=None):
         nx = x.reshape((-1, xshape[-1]))
         ny = y.reshape((-1, yshape[-1]))
 
-        if in_dynamic_mode():
-            return _C_ops.matmul(nx, ny.T, False, False).reshape(dstshape)
-        else:
+        def __check_input(x, y):
+            var_names = {'x': x, 'y': y}
+            for name, val in var_names.items():
+                check_variable_and_dtype(
+                    val, name, ['float16', 'float32', 'float64'], 'inner'
+                )
+            x_shape = list(xshape)
+            y_shape = list(yshape)
 
-            def __check_input(x, y):
-                var_names = {'x': x, 'y': y}
-                for name, val in var_names.items():
-                    check_variable_and_dtype(
-                        val, name, ['float16', 'float32', 'float64'], 'inner'
-                    )
-                x_shape = list(xshape)
-                y_shape = list(yshape)
-
-                # check the inner 2 dimensions
-                if x_shape[-1] != y_shape[-1]:
-                    if not ((x_shape[-1] == -1) or (y_shape[-1] == -1)):
-                        raise ValueError(
-                            "After performing an optional transpose, Input X's last dim should be "
-                            "equal to Y's last dim for multiplication "
-                            "prerequisites. But received X's shape: {}, Y's shape: {}\n".format(
-                                x_shape, y_shape
-                            )
+            # check the inner 2 dimensions
+            if x_shape[-1] != y_shape[-1]:
+                if not ((x_shape[-1] == -1) or (y_shape[-1] == -1)):
+                    raise ValueError(
+                        "After performing an optional transpose, Input X's last dim should be "
+                        "equal to Y's last dim for multiplication "
+                        "prerequisites. But received X's shape: {}, Y's shape: {}\n".format(
+                            x_shape, y_shape
                         )
+                    )
 
-            __check_input(nx, ny)
+        __check_input(nx, ny)
 
+        if in_dynamic_or_pir_mode():
+            return _C_ops.matmul(nx, paddle.transpose(ny, [1, 0]), False, False).reshape(dstshape)
+        else:
             helper = LayerHelper('inner', **locals())
             out = helper.create_variable_for_type_inference(dtype=nx.dtype)
             helper.append_op(
