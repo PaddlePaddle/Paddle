@@ -269,6 +269,11 @@ def test_pir_only(fn):
     return fn
 
 
+def test_pir_api_only(fn):
+    fn = set_ir_mode(IrMode.PIR_API)(fn)
+    return fn
+
+
 def test_legacy_and_pir(fn):
     fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_EXE)(fn)
     return fn

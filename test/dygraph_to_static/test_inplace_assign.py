@@ -15,12 +15,17 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir,
+    test_legacy_and_pir_exe_and_pir_api,
+)
 
 import paddle
 
 
 class TestInplaceAssign(Dy2StTestBase):
+    @test_legacy_and_pir_exe_and_pir_api
     def test_case0(self):
         a = paddle.ones((1024, 2)) * 1
         b = paddle.ones((1024, 3)) * 2
@@ -30,6 +35,7 @@ class TestInplaceAssign(Dy2StTestBase):
         b._inplace_assign(c)
         np.testing.assert_array_equal(b.numpy(), c.numpy())
 
+    @test_legacy_and_pir_exe_and_pir_api
     def test_case1(self):
         def func(x):
             a = 1 * x
@@ -47,13 +53,12 @@ class TestInplaceAssign(Dy2StTestBase):
 
     @test_legacy_and_pir
     def test_case2(self):
-        @paddle.jit.to_static
         def func(a, x):
             x[:] = a * 2.0
             return x
 
         def forward(a, x):
-            output = func(a, x)
+            output = paddle.jit.to_static(func)(a, x)
             x._inplace_assign(output)
             return x
 
