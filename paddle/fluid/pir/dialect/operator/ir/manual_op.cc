@@ -1424,7 +1424,7 @@ OpInfoTuple ArrayWrite_Op::GetOpInfo() {
                     {"array", "x", "i"},
                     {"x"},
                     {},
-                    {{"array", "out"}},
+                    {{"out", "array"}},
                     {});
 
   return std::make_tuple(
