@@ -65,6 +65,7 @@ void OperatorDialect::initialize() {
               paddle::dialect::ExpandOp,
               paddle::dialect::CreateArrayOp,
               paddle::dialect::ArrayLengthOp,
+              paddle::dialect::ArrayReadOp,
               paddle::dialect::ArrayWrite_Op>();
 
   RegisterInterfaces<ParameterConvertInterface>();

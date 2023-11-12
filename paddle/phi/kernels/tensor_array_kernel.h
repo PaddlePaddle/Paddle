@@ -30,6 +30,12 @@ void ArrayLengthKernel(const Context& dev_ctx,
                        DenseTensor* out);
 
 template <typename T, typename Context>
+void ArrayReadKernel(const Context& dev_ctx,
+                     const TensorArray& array,
+                     const Scalar& i,
+                     DenseTensor* out);
+
+template <typename T, typename Context>
 void ArrayWriteKernel(const Context& dev_ctx,
                       const TensorArray& array,
                       const DenseTensor& x,

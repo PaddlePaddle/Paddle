@@ -135,6 +135,15 @@ def array_read(array, i):
         ], "The shape of index 'i' should be [1] in dygraph mode"
         i = i.item(0)
         return array[i]
+    elif in_pir_mode():
+        if (
+            not isinstance(array, paddle.pir.OpResult)
+            or not array.is_dense_tensor_array_type()
+        ):
+            raise TypeError(
+                "array should be tensor array vairable in array_length Op"
+            )
+        return paddle._pir_ops.array_read(array, i)
     else:
         check_variable_and_dtype(i, 'i', ['int64'], 'array_read')
         helper = LayerHelper('array_read', **locals())

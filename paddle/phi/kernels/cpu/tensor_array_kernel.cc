@@ -33,27 +33,19 @@ void ArrayLengthKernel(const Context& dev_ctx,
   *out->data<int64_t>() = static_cast<int64_t>(x.size());
 }
 
-size_t GetOffset(const DenseTensor& i, const phi::DeviceContext& dev_ctx) {
+template <typename T, typename Context>
+void ArrayReadKernel(const Context& dev_ctx,
+                     const TensorArray& array,
+                     const Scalar& i,
+                     DenseTensor* out) {
+  size_t offset = i.to<int64_t>();
   PADDLE_ENFORCE_EQ(
-      i.numel(),
-      1,
-      errors::InvalidArgument("Input(I) must have numel 1. "
-                              "But received %d, and it's shape is [%s].",
-                              i.numel(),
-                              i.dims()));
-  size_t offset;
-  if (i.place().GetType() == phi::AllocationType::GPU ||
-      i.place().GetType() == phi::AllocationType::XPU ||
-      i.place().GetType() == phi::AllocationType::CUSTOM) {
-    // FIXME: Avoid copy from GPU to CPU
-    phi::DenseTensor t;
-    phi::Copy(dev_ctx, i, phi::CPUPlace(), false, &t);
-    dev_ctx.Wait();
-    offset = static_cast<size_t>(*t.data<int64_t>());
-  } else {
-    offset = static_cast<size_t>(*i.data<int64_t>());
-  }
-  return offset;
+      offset < array.size(),
+      true,
+      errors::InvalidArgument(
+          "index %d exceed array size %d.", offset, array.size()));
+  phi::Copy(dev_ctx, array[offset], dev_ctx.GetPlace(), false, out);
+  out->set_lod(array[offset].lod());
 }
 
 template <typename T, typename Context>
@@ -62,8 +54,7 @@ void ArrayWriteKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& i,
                       TensorArray* out) {
-  size_t offset = GetOffset(i, dev_ctx);
-  if (offset >= out->size()) {
+  size_t offset = i.to<int64_t>() if (offset >= out->size()) {
     out->resize(offset + 1);
   }
   auto* out_tensor = &out->at(offset);
@@ -89,6 +80,9 @@ PD_REGISTER_KERNEL(array_length,
                    float,
                    double,
                    bool) {}
+
+PD_REGISTER_KERNEL(
+    array_read, CPU, ALL_LAYOUT, phi::ArrayReadKernel, float, double, bool) {}
 
 PD_REGISTER_KERNEL(
     array_write, CPU, ALL_LAYOUT, phi::ArrayWriteKernel, float, double, bool) {}

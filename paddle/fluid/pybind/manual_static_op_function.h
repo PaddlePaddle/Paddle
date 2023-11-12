@@ -168,6 +168,39 @@ static PyObject *static_api_array_length(PyObject *self,
   }
 }
 
+static PyObject *static_api_array_read(PyObject *self,
+                                       PyObject *args,
+                                       PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add array_read op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *array_obj = PyTuple_GET_ITEM(args, 0);
+    auto array = CastPyArg2Value(array_obj, "array_read", 0);
+
+    PyObject *i_obj = PyTuple_GET_ITEM(args, 1);
+    pir::Value i;
+    if (PyObject_CheckIROpResult(i_obj)) {
+      i = CastPyArg2Value(i_obj, "array_read", 1);
+    } else {
+      int64_t i_tmp = CastPyArg2Int(i_obj, "array_read", 1);
+      i = paddle::dialect::full(std::vector<int64_t>{1},
+                                i_tmp,
+                                phi::DataType::INT64,
+                                phi::CPUPlace());
+    }
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::array_read(array, i);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyObject *static_api_array_write_(PyObject *self,
                                          PyObject *args,
                                          PyObject *kwargs) {
@@ -181,7 +214,16 @@ static PyObject *static_api_array_write_(PyObject *self,
     PyObject *x_obj = PyTuple_GET_ITEM(args, 1);
     auto x = CastPyArg2Value(x_obj, "array_write_", 1);
     PyObject *i_obj = PyTuple_GET_ITEM(args, 2);
-    auto i = CastPyArg2Value(i_obj, "array_write_", 2);
+    pir::Value i;
+    if (PyObject_CheckIROpResult(i_obj)) {
+      i = CastPyArg2Value(i_obj, "array_write_", 2);
+    } else {
+      int64_t i_tmp = CastPyArg2Int(i_obj, "array_write_", 2);
+      i = paddle::dialect::full(std::vector<int64_t>{1},
+                                i_tmp,
+                                phi::DataType::INT64,
+                                phi::CPUPlace());
+    }
 
     // Call ir static api
     auto static_api_out = paddle::dialect::array_write_(array, x, i);
