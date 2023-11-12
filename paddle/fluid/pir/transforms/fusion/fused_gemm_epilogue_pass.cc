@@ -160,7 +160,7 @@ class FusedLinearReluPattern
     const auto &relu = pat.Op(paddle::dialect::ReluOp::name());
     fused_gemm_epilogue(
         {&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("bias")},
-        {&pat.Tensor("fuse_out"), &pat.Tensor("reserve_space")});
+        {&pat.Tensor("fuse_out")});
     pat.Tensor("out") = relu(pat.Tensor("fuse_out"));
 
     // Constrains the activation is none
@@ -276,7 +276,8 @@ class FusedLinearReluGradPattern
     fused_gemm_epilogue(
         {&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("bias")},
         {&pat.Tensor("fuse_out"), &pat.Tensor("reserve_space")});
-    pat.Tensor("out") = pat.Op("pd_op.relu")(pat.Tensor("fuse_out"));
+    pat.Tensor("out") =
+        pat.Op(paddle::dialect::ReluOp::name())(pat.Tensor("fuse_out"));
 
     fused_gemm_epilogue_grad1({&pat.Tensor("x1"),
                                &pat.Tensor("w1"),
@@ -285,8 +286,8 @@ class FusedLinearReluGradPattern
                               {&pat.Tensor("x1_grad"),
                                &pat.Tensor("w1_grad"),
                                &pat.Tensor("bias1_grad")});
-    pat.Tensor("relu_dx") =
-        pat.Op("pd_op.relu_grad")(pat.Tensor("x1"), pat.Tensor("x1_grad"));
+    pat.Tensor("relu_dx") = pat.Op(paddle::dialect::ReluGradOp::name())(
+        pat.Tensor("x1"), pat.Tensor("x1_grad"));
     fused_gemm_epilogue_grad({&pat.Tensor("x"),
                               &pat.Tensor("w"),
                               &pat.Tensor("reserve_space1"),

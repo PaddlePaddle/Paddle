@@ -140,5 +140,5 @@ TEST(DrrTest, FusedLinear) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 23u);
+  EXPECT_EQ(program.block()->size(), 22u);
 }
