@@ -48,7 +48,6 @@ void AppendAttrForUniformOp(const ::pir::Operation& op,
     shape.push_back(vec_element.dyn_cast<::pir::Int64Attribute>().data());
   }
 
-  std::cerr << "append dim" << std::endl;
   attrs["shape"] = shape;
   attrs["dtype"] = "float32";
 }

@@ -112,7 +112,6 @@ std::vector<pir::Operation*> GetOpListNotIncludeYield(
 
 std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  std::cerr << "in cinn goup lowering\n";
   ctx->GetOrRegisterDialect<cinn::dialect::RuntimeDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::KernelDialect>();

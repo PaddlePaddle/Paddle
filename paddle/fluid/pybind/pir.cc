@@ -762,16 +762,16 @@ void BindOpResult(py::module *m) {
                                 /*default_value=*/true);
           })
       .def_property(
-          "is_persistable",
+          "persistable",
           [](OpResult &self) {
             return GetOpResultBoolAttr(self, kAttrIsPersisable);
           },
-          [](OpResult &self, bool is_persistable) {
+          [](OpResult &self, bool persistable) {
             // NOTE(Aurelius84): For other OpResult, set theirs
-            // is_persistable default value as false.
+            // persistable default value as false.
             SetOpResultBoolAttr(self,
                                 kAttrIsPersisable,
-                                is_persistable,
+                                persistable,
                                 /*default_value=*/false);
           })
       .def_property(
@@ -1477,6 +1477,7 @@ std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
   pass_manager.Run(&forward_program);
   std::cerr << "after build cinn pass\n";
   forward_program.Print(std::cout);
+
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
   std::unique_ptr<pir::Program> new_program =
       cinn::dialect::ir::CINNGroupLoweringPass(&forward_program);
