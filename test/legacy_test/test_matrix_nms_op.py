@@ -331,7 +331,7 @@ class TestMatrixNMSError(unittest.TestCase):
 
         with paddle.static.program_guard(paddle.static.Program(), paddle.static.Program()):
             boxes_data = paddle.static.data(
-                name='bboxes', shape=[M, C, BOX_SIZE], dtype='float32'
+                name='bboxes', shape=[M, M, BOX_SIZE], dtype='float32'
             )
             scores_data = paddle.static.data(
                 name='scores', shape=[N, C, M], dtype='float32'
