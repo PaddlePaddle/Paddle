@@ -565,6 +565,10 @@ class PartialProgramLayer:
                 bwd, _ = paddle.base.libpaddle.pir.clone_program(
                     backward_program
                 )
+
+                print("!!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@!!")
+                bwd = paddle.base.libpaddle.pir.apply_pir_pass(bwd)
+                print("!!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@!!")
                 return fwd, bwd
 
             train_program.apply_pir_program_pass(pass_fn)
