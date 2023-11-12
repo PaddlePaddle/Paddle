@@ -142,7 +142,7 @@ inline void LogLongStr(const std::string prefix, const std::string& log) {
     LOG(INFO) << prefix << "part:" << part << "/" << log_count << ","
               << log.substr(index) << std::endl;
   } else {
-    LOG(INFO) << prefix << "part:1/1," << log << std::endl;
+    LOG(INFO) << prefix << "part:0/1," << log << std::endl;
   }
 }
 
