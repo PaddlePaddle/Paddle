@@ -52,9 +52,10 @@ template <typename T, typename Context>
 void ArrayWriteKernel(const Context& dev_ctx,
                       const TensorArray& array,
                       const DenseTensor& x,
-                      const DenseTensor& i,
+                      const Scalar& i,
                       TensorArray* out) {
-  size_t offset = i.to<int64_t>() if (offset >= out->size()) {
+  size_t offset = i.to<int64_t>();
+  if (offset >= out->size()) {
     out->resize(offset + 1);
   }
   auto* out_tensor = &out->at(offset);
