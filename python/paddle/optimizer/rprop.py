@@ -31,23 +31,22 @@ class Rprop(Optimizer):
 
     def __init__(
         self,
-        initial_lr=0.001,
-        lower_lr=1e-6,
-        upper_lr=50,
+        delta=0.01,
+        delta_min=1e-6,
+        delta_max=50,
         parameters=None,
-        weight_decay=None,
-        eta_divide=0.5,
-        eta_multiply=1.2,
+        eta_negative=0.5,
+        eta_positive=1.2,
         grad_clip=None,
         multi_precision=False,
         name=None,
     ):
-        if initial_lr is None:
+        if delta is None:
             raise ValueError("learning_rate is not set")
         super().__init__(
-            learning_rate=initial_lr,
+            learning_rate=delta,
             parameters=parameters,
-            weight_decay=weight_decay,
+            weight_decay=0.0,
             grad_clip=grad_clip,
             name=name,
         )
@@ -56,14 +55,14 @@ class Rprop(Optimizer):
         self._master_weights = {}
         self._prevs = []
         self._lrs = []
-        self._lower_lr = lower_lr
-        self._upper_lr = upper_lr
-        self._eta_divide = eta_divide
-        self._eta_multiply = eta_multiply
+        self._delta_min = delta_min
+        self._delta_max = delta_max
+        self._eta_negative = eta_negative
+        self._eta_positive = eta_positive
         for p in parameters:
             prev = zeros_like(p)
             self._prevs.append(prev)
-            lr = p.new().resize_as_(p).fill_(initial_lr)
+            lr = p.new().resize_as_(p).fill_(delta)
             self._lrs.append(lr)
 
     def _create_accumulators(self, block, parameters):
@@ -97,10 +96,10 @@ class Rprop(Optimizer):
         grads = param_and_grad[1]
         prevs = self._prevs
         lrs = self._lrs
-        lower_lr = self._lower_lr
-        upper_lr = self._upper_lr
-        eta_divide = self._eta_divide
-        eta_multiply = self._eta_multiply
+        delta_min = self._delta_min
+        delta_max = self._delta_max
+        eta_negative = self._eta_negative
+        eta_positive = self._eta_positive
         find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
             params.dtype
         )
@@ -114,14 +113,14 @@ class Rprop(Optimizer):
                 prev = prevs[i]
                 lr = lrs[i]
                 sign = grad.mul(prev).sign()
-                sign[sign.gt(0)] = eta_multiply
-                sign[sign.lt(0)] = eta_divide
+                sign[sign.gt(0)] = eta_positive
+                sign[sign.lt(0)] = eta_negative
                 sign[sign.eq(0)] = 1
 
-                lr.mul_(sign).clamp_(lower_lr, upper_lr)
+                lr.mul_(sign).clamp_(delta_min, delta_max)
 
                 grad = grad.clone()
-                grad[sign.eq(eta_divide)] = 0
+                grad[sign.eq(eta_negative)] = 0
 
                 param.addcmul_(grad.sign(), lr, value=-1)
                 prev.copy_(grad)
