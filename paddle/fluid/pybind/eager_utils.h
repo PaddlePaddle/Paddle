@@ -321,6 +321,12 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
 phi::distributed::TensorDistAttr CastPyArg2DistAttr(PyObject* obj,
                                                     ssize_t arg_pos);
 
+phi::distributed::ProcessMesh CastPyArg2ProcessMesh(PyObject* obj,
+                                                    ssize_t arg_pos);
+
+phi::distributed::Placements CastPyArg2VectorOfPlacement(PyObject* obj,
+                                                         ssize_t arg_pos);
+
 paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     const std::string& op_type,
     const std::string& arg_name,

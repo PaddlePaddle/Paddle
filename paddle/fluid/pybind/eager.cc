@@ -42,8 +42,14 @@ limitations under the License. */
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/string_tensor.h"
+
 using phi::distributed::DistTensor;
+using phi::distributed::Placement;
+using phi::distributed::Placements;
+using phi::distributed::ProcessMesh;
 using phi::distributed::TensorDistAttr;
 
 namespace paddle {
@@ -208,6 +214,84 @@ void CreateDistTensorWithNumpyValue(TensorObject* self,
 #endif
 }
 
+void CreateDistTensorWithNumpyValue(TensorObject* self,
+                                    const std::string& name,
+                                    const paddle::platform::Place& place,
+                                    // const TensorDistAttr& dist_attr,
+                                    const ProcessMesh& process_mesh,
+                                    const Placements& placements,
+                                    const py::object& array,
+                                    bool persistable = false,
+                                    int stop_gradient = -1,
+                                    bool zero_copy = false,
+                                    framework::proto::VarType::Type dtype =
+                                        paddle::framework::proto::VarType::FP32,
+                                    const std::vector<int>& dims = {0}) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  auto ddims = phi::make_ddim(dims);
+  self->tensor.set_name(name);
+  auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
+  autograd_meta->SetPersistable(persistable);
+  if (stop_gradient != -1) {
+    autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
+  }
+
+  phi::DenseTensor dense_tensor;
+  if (dims.size() == 1 && dims[0] == 0) {
+    std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
+    dense_tensor = phi::DenseTensor(
+        nullptr,
+        phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
+                             ddims));
+  } else {
+    dense_tensor = phi::DenseTensor(
+        std::make_shared<phi::Allocation>(),
+        phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
+                             ddims));
+  }
+
+  if (platform::is_cpu_place(place)) {
+    SetTensorFromPyArray<platform::CPUPlace>(
+        &dense_tensor, array, place, zero_copy);
+  } else if (platform::is_xpu_place(place)) {
+    SetTensorFromPyArray<platform::XPUPlace>(
+        &dense_tensor, array, place, zero_copy);
+  } else if (platform::is_gpu_place(place)) {
+    SetTensorFromPyArray<platform::CUDAPlace>(
+        &dense_tensor, array, place, zero_copy);
+  } else if (platform::is_cuda_pinned_place(place)) {
+    SetTensorFromPyArray<platform::CUDAPinnedPlace>(
+        &dense_tensor, array, place, zero_copy);
+  } else if (platform::is_custom_place(place)) {
+    SetTensorFromPyArray<platform::CustomPlace>(
+        &dense_tensor, array, place, zero_copy);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Place should be one of "
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/CustomPlace"));
+  }
+
+  auto dist_tensor = std::make_shared<phi::distributed::DistTensor>(
+      std::make_shared<phi::DenseTensor>(dense_tensor),
+      process_mesh,
+      placements);
+  self->tensor.set_impl(dist_tensor);
+
+  if (!autograd_meta->GetMutableGradNode()) {
+    autograd_meta->SetGradNode(
+        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+    VLOG(3) << "Tensor(" << name
+            << ") have not GradNode, add GradNodeAccumulation"
+            << autograd_meta->GradNode() << " for it.";
+  }
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "The numpy value-based initialization of (Dist)Tensor is not supported "
+      "in the current PaddlePaddle, please recompile and install PaddlePaddle "
+      "with the option of `WITH_DISTRIBUTE=ON`."));
+#endif
+}
+
 void InitTensorWithNumpyValue(TensorObject* self,
                               const py::object& array,
                               const paddle::platform::Place& place,
@@ -313,6 +397,47 @@ void InitDistTensorWithTensor(TensorObject* self,
         std::static_pointer_cast<phi::DenseTensor>(
             src.copy_to(place, true).impl());
     self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
+    VLOG(4) << "Different place, do TensorCopy for DistTensor.";
+  }
+  if (src.get_autograd_meta()) {
+    egr::EagerUtils::autograd_meta(&(self->tensor))
+        ->SetPersistable(
+            egr::EagerUtils::unsafe_autograd_meta(src)->Persistable());
+  } else {
+    egr::EagerUtils::autograd_meta(&(self->tensor))->SetPersistable(false);
+  }
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "The tensor-based initialization of (Dist)Tensor is not supported "
+      "in the current PaddlePaddle, please recompile and install PaddlePaddle "
+      "with the option of `WITH_DISTRIBUTE=ON`."));
+#endif
+}
+
+void InitDistTensorWithTensor(TensorObject* self,
+                              const paddle::Tensor& src,
+                              const paddle::platform::Place& place,
+                              const std::string& name,
+                              const ProcessMesh& process_mesh,
+                              const Placements& placements) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  PADDLE_ENFORCE(src.is_dense_tensor(),
+                 paddle::platform::errors::InvalidArgument(
+                     "DistTensor can only initialize by DenseTensor"));
+  self->tensor.set_name(name);
+  VLOG(4) << "Do TensorCopy from DenseTensor to DistTensor.";
+  if (place == src.place()) {
+    std::shared_ptr<phi::DenseTensor> tensor =
+        std::static_pointer_cast<phi::DenseTensor>(src.impl());
+    self->tensor.set_impl(
+        std::make_shared<DistTensor>(tensor, process_mesh, placements));
+    VLOG(4) << "Same place, do ShareDataWith for DistTensor.";
+  } else {
+    std::shared_ptr<phi::DenseTensor> tensor =
+        std::static_pointer_cast<phi::DenseTensor>(
+            src.copy_to(place, true).impl());
+    self->tensor.set_impl(
+        std::make_shared<DistTensor>(tensor, process_mesh, placements));
     VLOG(4) << "Different place, do TensorCopy for DistTensor.";
   }
   if (src.get_autograd_meta()) {
@@ -444,6 +569,60 @@ TensorDistAttr ParseDistAttrArgs(
   return dist_attr;
 }
 
+ProcessMesh ParseProcessMeshArgs(
+    std::unordered_map<std::string, PyObject*> kws_map,
+    std::unordered_map<std::string, Py_ssize_t> kw_order_map,
+    PyObject* args,
+    bool flag_kwargs,
+    Py_ssize_t args_num) {
+  ProcessMesh process_mesh;
+  for (const auto& pair : kw_order_map) {
+    VLOG(0) << pair.first << std::endl;
+    VLOG(0) << pair.second << std::endl;
+  }
+
+  VLOG(0) << "Ending..";
+  if (kw_order_map["process_mesh"] <= args_num) {
+    VLOG(0) << "Get from args";
+    process_mesh = CastPyArg2ProcessMesh(
+        PyTuple_GET_ITEM(args, kw_order_map["process_mesh"] - 1),
+        kw_order_map["process_mesh"] - 1);
+  } else if (flag_kwargs && kws_map["process_mesh"] != nullptr) {
+    VLOG(0) << "Get form kws_map";
+    process_mesh = CastPyArg2ProcessMesh(kws_map["process_mesh"], 0);
+  }
+  return process_mesh;
+}
+
+Placements ParsePlacementsArgs(
+    std::unordered_map<std::string, PyObject*> kws_map,
+    std::unordered_map<std::string, Py_ssize_t> kw_order_map,
+    PyObject* args,
+    bool flag_kwargs,
+    Py_ssize_t args_num) {
+  // Placements placements;
+  // if (kw_order_map["placements"] <= args_num) {
+  //   placements = CastPyArg2VectorOfPlacement(
+  //     PyTuple_GET_ITEM(args, kw_order_map["placements"] - 1),
+  //     kw_order_map["placements"] - 1);
+  // } else if (flag_kwargs && kws_map["placements"] != nullptr) {
+  //   placements = CastPyArg2VectorOfPlacement(kws_map["placements"], 0);
+  // }
+  // return placements;
+  Placements placements;
+  const std::string& placements_key = "placements";
+
+  if (kw_order_map[placements_key] <= args_num) {
+    placements = CastPyArg2VectorOfPlacement(
+        PyTuple_GET_ITEM(args, kw_order_map[placements_key] - 1),
+        kw_order_map[placements_key] - 1);
+  } else if (flag_kwargs && kws_map[placements_key] != nullptr) {
+    placements = CastPyArg2VectorOfPlacement(kws_map[placements_key], 0);
+  }
+
+  return placements;
+}
+
 // boolean arguments: zero_copy, stop_gradient, persistable
 int ParseBooleanArgs(std::string key,
                      std::unordered_map<std::string, PyObject*> kws_map,
@@ -503,7 +682,7 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
                              bool flag_kwargs,
                              Py_ssize_t args_num) {
   // The first argument of the Tensor constructor is PyArray,
-  // there are 6 arguments to construct the new Tensor,
+  // there are 8 arguments to construct the new Tensor,
   // kw_order_map's key is every arguments of the constructor,
   // kw_order_map's value is the position of the arguments respectively.
   // If u want to update this constructor with new arguments,
@@ -514,7 +693,9 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
                                                            {"zero_copy", 4},
                                                            {"name", 5},
                                                            {"stop_gradient", 6},
-                                                           {"dist_attr", 7}};
+                                                           {"dist_attr", 7},
+                                                           {"process_mesh", 8},
+                                                           {"placements", 9}};
 
   py::object numpy_value = py::object();
   paddle::platform::Place place =
@@ -542,11 +723,30 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
   TensorDistAttr dist_attr =
       ParseDistAttrArgs(kws_map, kw_order_map, args, flag_kwargs, args_num);
 
+  ProcessMesh process_mesh =
+      ParseProcessMeshArgs(kws_map, kw_order_map, args, flag_kwargs, args_num);
+
+  VLOG(0) << "Debug: process_mesh: " << process_mesh;
   if (!dist_attr.empty()) {
+    VLOG(0) << "Get dist_attr from kwargs";
     CreateDistTensorWithNumpyValue(py_tensor_ptr,
                                    act_name,
                                    place,
                                    dist_attr,
+                                   numpy_value,
+                                   persistable,
+                                   stop_gradient,
+                                   zero_copy);
+    return;
+  } else if (!process_mesh.empty()) {
+    VLOG(0) << "ProcessMesh is not empty, but dist_attr is empty";
+    auto placements =
+        ParsePlacementsArgs(kws_map, kw_order_map, args, flag_kwargs, args_num);
+    CreateDistTensorWithNumpyValue(py_tensor_ptr,
+                                   act_name,
+                                   place,
+                                   process_mesh,
+                                   placements,
                                    numpy_value,
                                    persistable,
                                    stop_gradient,
@@ -574,8 +774,12 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
   // kw_order_map's value is the position of the arguments respectively.
   // If u want to update this constructor with new arguments,
   // need to update this map and to add or change related code.
-  std::unordered_map<std::string, Py_ssize_t> kw_order_map{
-      {"value", 1}, {"place", 2}, {"name", 3}, {"dist_attr", 4}};
+  std::unordered_map<std::string, Py_ssize_t> kw_order_map{{"value", 1},
+                                                           {"place", 2},
+                                                           {"name", 3},
+                                                           {"dist_attr", 4},
+                                                           {"process_mesh", 5},
+                                                           {"placements", 6}};
 
   paddle::platform::Place place =
       egr::Controller::Instance().GetExpectedPlace();
@@ -606,9 +810,25 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
       }
     }
 
+    ProcessMesh process_mesh = ParseProcessMeshArgs(
+        kws_map, kw_order_map, args, flag_kwargs, args_num);
+    VLOG(0) << "Debug: process_mesh: " << process_mesh;
+
     if (!dist_attr.empty()) {
       InitDistTensorWithTensor(
           py_tensor_ptr, src_tensor, place, act_name, dist_attr);
+    } else if (!process_mesh.empty()) {
+      auto placements = ParsePlacementsArgs(
+          kws_map, kw_order_map, args, flag_kwargs, args_num);
+
+      for (auto& p : placements) {
+        VLOG(0) << "Debug: placement: " << p->is_shard();
+        VLOG(0) << *p;
+      }
+
+      InitDistTensorWithTensor(
+          py_tensor_ptr, src_tensor, place, act_name, process_mesh, placements);
+
     } else {
       InitTensorWithTensor(py_tensor_ptr, src_tensor, place, act_name);
     }
@@ -785,6 +1005,8 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   PyObject* kw_dtype = nullptr;
   PyObject* kw_type = nullptr;
   PyObject* kw_dist_attr = nullptr;
+  PyObject* kw_process_mesh = nullptr;
+  PyObject* kw_placements = nullptr;
 
   // the keywords argument
   static char* kwlist[] = {const_cast<char*>("value"),  // NOLINT
@@ -797,6 +1019,8 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
                            const_cast<char*>("dtype"),
                            const_cast<char*>("type"),
                            const_cast<char*>("dist_attr"),
+                           const_cast<char*>("process_mesh"),
+                           const_cast<char*>("placements"),
                            nullptr};
 
   // 'O' Store a Python object (without any conversion) in a C object pointer,
@@ -807,7 +1031,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   // which enhance case2, case3, case4, case5, case6, case7.
   bool flag_ = PyArg_ParseTupleAndKeywords(args,
                                            kwargs,
-                                           "|OOOOOOOOOO",
+                                           "|OOOOOOOOOOOO",
                                            kwlist,
                                            &kw_value,
                                            &kw_place,
@@ -818,7 +1042,9 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
                                            &kw_dims,
                                            &kw_dtype,
                                            &kw_type,
-                                           &kw_dist_attr);
+                                           &kw_dist_attr,
+                                           &kw_process_mesh,
+                                           &kw_placements);
 
   // helper map
   std::unordered_map<std::string, PyObject*> kws_map{
@@ -831,7 +1057,9 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       {"dims", kw_dims},
       {"dtype", kw_dtype},
       {"type", kw_type},
-      {"dist_attr", kw_dist_attr}};
+      {"dist_attr", kw_dist_attr},
+      {"process_mesh", kw_process_mesh},
+      {"placements", kw_placements}};
 
   PADDLE_ENFORCE_EQ(flag_,
                     true,

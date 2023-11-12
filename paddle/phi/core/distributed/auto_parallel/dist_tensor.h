@@ -45,7 +45,7 @@ class DistTensor final
   /// \param placements The distributed placements of the current tensor.
   DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
              const ProcessMesh& process_mesh,
-             const std::vector<Placement>& placements);
+             const Placements& placements);
 
   /// \brief Construct a empty dist tensor (for infer spmd)
   /// \param dims The global dimension of the currnet Tensor.
@@ -136,9 +136,8 @@ class DistTensor final
   TensorDistAttr dist_attr_;
   // The local DenseTensor value
   std::shared_ptr<DenseTensor> value_;
-
   // DistTensorMeta spec_;
-  std::shared_ptr<DistTensorMeta> spec_;
+  DistTensorMeta dist_tensor_meta_;
 };
 
 }  // namespace distributed

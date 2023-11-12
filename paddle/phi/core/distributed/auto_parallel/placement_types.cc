@@ -19,10 +19,10 @@ namespace distributed {
 
 int64_t DistTensorMeta::num_shard() const {
   int64_t num_shard = 1;
-  const auto& placements = *placements_;
+  // const auto& placements = *placements_;
   const auto& mesh_shape = process_mesh_->shape();
-  for (size_t i = 0; i < placements.size(); i++) {
-    if (placements[i].is_shard()) {
+  for (size_t i = 0; i < placements_.size(); i++) {
+    if (placements_[i]->is_shard()) {
       num_shard *= mesh_shape[i];
     }
   }
@@ -32,12 +32,11 @@ int64_t DistTensorMeta::num_shard() const {
 std::vector<int64_t> DistTensorMeta::dim_mapping() const {
   int64_t ndim = dims().size();
   std::vector<int64_t> dim_map(ndim, -1);
-  const auto& placements = *placements_;
-  for (size_t i = 0; i < placements.size(); i++) {
-    auto& placement = placements[i];
-    if (placement.is_shard()) {
-      auto shard_dim = dynamic_cast<const Shard&>(placement).get_dim();
-      PADDLE_ENFORCE_GT(
+  for (size_t i = 0; i < placements_.size(); i++) {
+    auto& placement = placements_[i];
+    if (placement->is_shard()) {
+      auto shard_dim = dynamic_cast<const Shard&>(*placement).get_dim();
+      PADDLE_ENFORCE_EQ(
           dim_map[shard_dim],
           -1,
           phi::errors::InvalidArgument(
@@ -54,10 +53,10 @@ std::vector<int64_t> DistTensorMeta::dim_mapping() const {
 }
 
 bool DistTensorMeta::is_replicated() const {
-  const auto& placements = *placements_;
-  return std::all_of(placements.begin(), placements.end(), [](const auto& p) {
-    return p.is_replicated();
-  });
+  // const auto& placements = *placements_;
+  return std::all_of(placements_.cbegin(),
+                     placements_.cend(),
+                     [](const auto& p) { return p->is_replicated(); });
 }
 
 }  // namespace distributed

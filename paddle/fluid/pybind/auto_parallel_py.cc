@@ -89,7 +89,12 @@ using phi::distributed::auto_parallel::Machine;
 
 PyTypeObject *g_tensor_dist_attr_pytype = nullptr;
 PyTypeObject *g_dist_tensor_spec_pytype = nullptr;
-PyTypeObject *g_placement_pytype = nullptr;
+PyTypeObject *g_placement_base_pytype = nullptr;
+PyTypeObject *g_process_mesh_pytype = nullptr;
+PyTypeObject *g_placement_shard_pytype = nullptr;
+PyTypeObject *g_placement_replicated_pytype = nullptr;
+PyTypeObject *g_placement_partial_pytype = nullptr;
+
 constexpr const char *infer_spmd_string = "infer_spmd";
 
 static inline const ProcessMesh *get_tensor_process_mesh(
@@ -222,36 +227,41 @@ void BindAutoParallel(py::module *m) {
       *m, "SameStatusReshardFunction", ReshardFunction)
       .def(py::init<>());
 
-  py::class_<ProcessMesh>(*m, "ProcessMesh")
-      .def(py::init<>())
-      .def(py::init<const std::vector<int64_t> &,
-                    const std::vector<int64_t> &,
-                    const std::vector<std::string> &>(),
-           py::arg("shape"),
-           py::arg("process_ids"),
-           py::arg("dim_names"))
-      .def_property_readonly("shape", &ProcessMesh::shape)
-      .def_property_readonly("process_ids", &ProcessMesh::process_ids)
-      .def_property_readonly("dim_names", &ProcessMesh::dim_names)
-      .def_property_readonly("size", &ProcessMesh::size)
-      .def_property_readonly("ndim", &ProcessMesh::ndim)
-      .def("dim_size",
-           static_cast<int64_t (ProcessMesh::*)(int64_t) const>(
-               &ProcessMesh::dim_size))
-      .def("dim_size",
-           static_cast<int64_t (ProcessMesh::*)(const std::string &) const>(
-               &ProcessMesh::dim_size))
-      .def("empty", &ProcessMesh::empty)
-      .def("contains", &ProcessMesh::contains)
-      .def(py::self == py::self)
-      .def(py::self != py::self)
-      .def("__copy__",
-           [](const ProcessMesh &self) { return ProcessMesh(self); })
-      .def(
-          "__deepcopy__",
-          [](const ProcessMesh &self, py::dict) { return ProcessMesh(self); },
-          py::arg("memo"))
-      .def("__str__", &ProcessMesh::to_string);
+  auto process_mesh =
+      py::class_<ProcessMesh>(*m, "ProcessMesh")
+          .def(py::init<>())
+          .def(py::init<const std::vector<int64_t> &,
+                        const std::vector<int64_t> &,
+                        const std::vector<std::string> &>(),
+               py::arg("shape"),
+               py::arg("process_ids"),
+               py::arg("dim_names"))
+          .def_property_readonly("shape", &ProcessMesh::shape)
+          .def_property_readonly("process_ids", &ProcessMesh::process_ids)
+          .def_property_readonly("dim_names", &ProcessMesh::dim_names)
+          .def_property_readonly("size", &ProcessMesh::size)
+          .def_property_readonly("ndim", &ProcessMesh::ndim)
+          .def("dim_size",
+               static_cast<int64_t (ProcessMesh::*)(int64_t) const>(
+                   &ProcessMesh::dim_size))
+          .def("dim_size",
+               static_cast<int64_t (ProcessMesh::*)(const std::string &) const>(
+                   &ProcessMesh::dim_size))
+          .def("empty", &ProcessMesh::empty)
+          .def("contains", &ProcessMesh::contains)
+          .def(py::self == py::self)
+          .def(py::self != py::self)
+          .def("__copy__",
+               [](const ProcessMesh &self) { return ProcessMesh(self); })
+          .def(
+              "__deepcopy__",
+              [](const ProcessMesh &self, py::dict) {
+                return ProcessMesh(self);
+              },
+              py::arg("memo"))
+          .def("__str__", &ProcessMesh::to_string);
+
+  g_process_mesh_pytype = reinterpret_cast<PyTypeObject *>(process_mesh.ptr());
 
   py::class_<DeviceCapability>(*m, "DeviceCapability")
       .def(py::init<>())
@@ -352,31 +362,38 @@ void BindAutoParallel(py::module *m) {
       py::class_<phi::distributed::Placement,
                  std::shared_ptr<phi::distributed::Placement>>(*m, "Placement")
           .def(py::init<>())
-          .def("is_shard", &phi::distributed::Placement::is_shard)
+          .def("is_shard",
+               &phi::distributed::Placement::is_shard,
+               py::arg("dim") = std::nullopt)
           .def("is_replicated", &phi::distributed::Placement::is_replicated)
           .def("is_partial", &phi::distributed::Placement::is_partial)
           .def("__hash__", &phi::distributed::Placement::hash)
           .def("__str__", &phi::distributed::Placement::to_string)
-          .def("__eq__", &phi::distributed::Placement::operator==)
-              g_placement_pytype =
-          reinterpret_cast<PyTypeObject *>(Placement.ptr());
+          .def("__eq__", &phi::distributed::Placement::operator==);
 
-  py::class_<phi::distributed::Shard, std::shared_ptr<phi::distributed::Shard>>(
-      *m, "Shard", Placement)
-      .def(py::init([](int64_t dim) {
-        return std::make_shared<phi::distributed::Shard>(dim);
-      }))
-      .def("get_dim", &phi::distributed::Shard::get_dim);
+  auto Shard = py::class_<phi::distributed::Shard,
+                          std::shared_ptr<phi::distributed::Shard>>(
+                   *m, "Shard", Placement)
+                   .def(py::init([](int64_t dim) {
+                     return std::make_shared<phi::distributed::Shard>(dim);
+                   }))
+                   .def("get_dim", &phi::distributed::Shard::get_dim);
 
-  py::class_<phi::distributed::Replicated,
-             std::shared_ptr<phi::distributed::Replicated>>(
-      *m, "Replicated", Placement)
-      .def(py::init<>());
+  auto Replicated = py::class_<phi::distributed::Replicated,
+                               std::shared_ptr<phi::distributed::Replicated>>(
+                        *m, "Replicated", Placement)
+                        .def(py::init<>());
 
-  py::class_<phi::distributed::Partial,
-             std::shared_ptr<phi::distributed::Partial>>(
-      *m, "Partial", Placement)
-      .def(py::init<>());
+  auto Partial = py::class_<phi::distributed::Partial,
+                            std::shared_ptr<phi::distributed::Partial>>(
+                     *m, "Partial", Placement)
+                     .def(py::init<>());
+
+  g_placement_base_pytype = reinterpret_cast<PyTypeObject *>(Placement.ptr());
+  g_placement_shard_pytype = reinterpret_cast<PyTypeObject *>(Shard.ptr());
+  g_placement_replicated_pytype =
+      reinterpret_cast<PyTypeObject *>(Replicated.ptr());
+  g_placement_partial_pytype = reinterpret_cast<PyTypeObject *>(Partial.ptr());
 
   py::class_<TensorDistAttr> py_dist_attr(*m, "TensorDistAttr");
   g_tensor_dist_attr_pytype =

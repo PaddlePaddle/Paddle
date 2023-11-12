@@ -38,6 +38,7 @@ class Placement {
   virtual ~Placement() = default;
 
   virtual bool is_shard(std::optional<int> dim = std::nullopt) const {
+    std::cerr << "Placement::is_shard: not implemented yet." << std::endl;
     return false;
   }
 
@@ -56,6 +57,11 @@ class Placement {
   virtual bool operator!=(const Placement& other) const {
     PADDLE_THROW(phi::errors::Unimplemented("Not implemented yet."));
   }
+
+  friend std::ostream& operator<<(std::ostream& os, const Placement& p) {
+    os << p.to_string();
+    return os;
+  }
 };
 
 class Shard : public Placement {
@@ -66,6 +72,8 @@ class Shard : public Placement {
     if (dim && *dim == this->dim_) {
       return true;
     } else {
+      std::cerr << "Shard::is_shard: dim is not equal to this->dim_: "
+                << this->dim_ << std::endl;
       return !dim.has_value();
     }
   }
@@ -114,6 +122,7 @@ class Replicated : public Placement {
     os << p.to_string();
     return os;
   }
+
   std::string to_string() const override { return "Replicated()"; }
 };
 
@@ -150,13 +159,14 @@ class Partial : public Placement {
   ReduceType reduce_type_;
 };
 
+using Placements = std::vector<std::shared_ptr<Placement>>;
 class DistTensorMeta : public std::enable_shared_from_this<DistTensorMeta> {
  public:
   DistTensorMeta(const ProcessMesh& process_mesh,
-                 const std::vector<Placement>& placements,
+                 const Placements& placements,
                  const DenseTensorMeta& tensor_meta)
       : process_mesh_(std::make_shared<const ProcessMesh>(process_mesh)),
-        placements_(std::make_shared<const std::vector<Placement>>(placements)),
+        placements_(placements),
         tensor_meta_(std::make_shared<const DenseTensorMeta>(tensor_meta)) {}
 
   DistTensorMeta() = default;
@@ -173,7 +183,7 @@ class DistTensorMeta : public std::enable_shared_from_this<DistTensorMeta> {
 
  private:
   std::shared_ptr<const ProcessMesh> process_mesh_;
-  std::shared_ptr<const std::vector<Placement>> placements_;
+  Placements placements_;
   std::shared_ptr<const DenseTensorMeta> tensor_meta_;
   // ProcessMesh process_mesh_;
   // std::vector<Placement> placements_;
