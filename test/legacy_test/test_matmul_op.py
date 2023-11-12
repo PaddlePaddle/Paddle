@@ -19,7 +19,7 @@ from op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle import base
-
+from paddle.pir_utils import test_with_pir_api
 
 def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
     BATCH_SIZE = 2
@@ -94,11 +94,13 @@ class Generator:
         self.outputs = {'Out': Out}
 
     def test_check_output(self):
+        # self.check_output(check_cinn=True, check_pir=True)
         self.check_output(check_cinn=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=1e-3, check_cinn=True
+            # ['X', 'Y'], 'Out', max_relative_error=1e-3, check_cinn=True, check_pir=True,
+            ['X', 'Y'], 'Out', max_relative_error=1e-3, check_cinn=True,
         )
 
     def test_check_grad_ignore_x(self):
@@ -108,6 +110,7 @@ class Generator:
             max_relative_error=1e-3,
             no_grad_set=set("X"),
             check_cinn=True,
+            # check_pir=True,
         )
 
     def test_check_grad_ignore_y(self):
@@ -117,6 +120,7 @@ class Generator:
             max_relative_error=1e-3,
             no_grad_set=set('Y'),
             check_cinn=True,
+            # check_pir=True,
         )
 
 
@@ -166,9 +170,10 @@ for dim in [4]:
 
 
 class API_TestMm(unittest.TestCase):
+    @test_with_pir_api
     def test_out(self):
         with paddle_static_guard():
-            with base.program_guard(base.Program()):
+            with paddle.base.program_guard(paddle.base.Program()):
                 x = paddle.static.data(name="x", shape=[2], dtype="float64")
                 y = paddle.static.data(name='y', shape=[2], dtype='float64')
                 result = paddle.mm(x, y)
@@ -218,9 +223,9 @@ class Test_API_Matmul(unittest.TestCase):
 class API_TestMmError(unittest.TestCase):
     def test_errors(self):
         with paddle_static_guard():
-
+            @test_with_pir_api
             def test_error1():
-                with base.program_guard(base.Program(), base.Program()):
+                with paddle.base.program_guard(paddle.base.Program(), paddle.base.Program()):
                     data1 = paddle.static.data(
                         name="data1", shape=[10, 2], dtype="float32"
                     )
@@ -231,8 +236,9 @@ class API_TestMmError(unittest.TestCase):
 
             self.assertRaises(ValueError, test_error1)
 
+            @test_with_pir_api
             def test_error2():
-                with base.program_guard(base.Program(), base.Program()):
+                with paddle.base.program_guard(paddle.base.Program(), paddle.base.Program()):
                     data1 = paddle.static.data(
                         name="data1", shape=[-1, 10, 2], dtype="float32"
                     )
