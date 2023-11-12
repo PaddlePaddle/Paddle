@@ -238,12 +238,11 @@ def base_softmax_with_cross_entropy(
                               is the rank of input :attr:`logits`. Default: -1.
 
     Returns:
-        ``Tensor`` or Tuple of two ``Tensor`` : Return the cross entropy loss if \
-                                                    `return_softmax` is False, otherwise the tuple \
-                                                    (loss, softmax), softmax is in the same shape \
-                                                    with input logits and cross entropy loss is in \
-                                                    the same shape with input logits except shape \
-                                                    in dimension :attr:`axis` as 1.
+        - If `return_softmax` is False, return the cross entropy loss as a ``Tensor``. 
+          The dtype is the same as the input ``logits``. The shape is consistent with ``logits`` except in dimension :attr:`axis` as 1.
+        - If `return_softmax` is True, return a tuple of two ``Tensor``: the cross entropy loss and the softmax result. 
+          The dtype of the cross entropy loss is the same as the input ``logits``, and the shape is consistent with ``logits``
+          except in dimension :attr:`axis` as 1. The dtype and shape of the softmax result are the same as the input ``logits``.
 
     Examples:
         .. code-block:: python
@@ -2458,12 +2457,11 @@ def softmax_with_cross_entropy(
                               is the rank of input :attr:`logits`. Default: -1.
 
     Returns:
-        ``Tensor`` or Tuple of two ``Tensor`` : Return the cross entropy loss if \
-                                                    `return_softmax` is False, otherwise the tuple \
-                                                    (loss, softmax), softmax is in the same shape \
-                                                    with input logits and cross entropy loss is in \
-                                                    the same shape with input logits except shape \
-                                                    in dimension :attr:`axis` as 1.
+        - If `return_softmax` is False, return the cross entropy loss as a ``Tensor``. 
+          The dtype is the same as the input ``logits``. The shape is consistent with ``logits`` except in dimension :attr:`axis` as 1.
+        - If `return_softmax` is True, return a tuple of two ``Tensor``: the cross entropy loss and the softmax result. 
+          The dtype of the cross entropy loss is the same as the input ``logits``, and the shape is consistent with ``logits``
+          except in dimension :attr:`axis` as 1. The dtype and shape of the softmax result are the same as the input ``logits``.
 
     Examples:
         .. code-block:: python
