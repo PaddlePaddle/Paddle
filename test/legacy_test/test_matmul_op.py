@@ -21,6 +21,7 @@ import paddle
 from paddle import base
 from paddle.pir_utils import test_with_pir_api
 
+
 def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
     BATCH_SIZE = 2
     M = 3
@@ -100,7 +101,10 @@ class Generator:
     def test_check_grad_normal(self):
         self.check_grad(
             # ['X', 'Y'], 'Out', max_relative_error=1e-3, check_cinn=True, check_pir=True,
-            ['X', 'Y'], 'Out', max_relative_error=1e-3, check_cinn=True,
+            ['X', 'Y'],
+            'Out',
+            max_relative_error=1e-3,
+            check_cinn=True,
         )
 
     def test_check_grad_ignore_x(self):
@@ -223,9 +227,12 @@ class Test_API_Matmul(unittest.TestCase):
 class API_TestMmError(unittest.TestCase):
     def test_errors(self):
         with paddle_static_guard():
+
             @test_with_pir_api
             def test_error1():
-                with paddle.base.program_guard(paddle.base.Program(), paddle.base.Program()):
+                with paddle.base.program_guard(
+                    paddle.base.Program(), paddle.base.Program()
+                ):
                     data1 = paddle.static.data(
                         name="data1", shape=[10, 2], dtype="float32"
                     )
@@ -238,7 +245,9 @@ class API_TestMmError(unittest.TestCase):
 
             @test_with_pir_api
             def test_error2():
-                with paddle.base.program_guard(paddle.base.Program(), paddle.base.Program()):
+                with paddle.base.program_guard(
+                    paddle.base.Program(), paddle.base.Program()
+                ):
                     data1 = paddle.static.data(
                         name="data1", shape=[-1, 10, 2], dtype="float32"
                     )
