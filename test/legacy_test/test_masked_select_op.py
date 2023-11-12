@@ -16,10 +16,10 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
-from paddle.pir_utils import test_with_pir_api
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def np_masked_select(x, mask):
@@ -118,7 +118,9 @@ class TestMaskedSelectBF16Op(OpTest):
         self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Y', check_pir=True)
+        self.check_grad_with_place(
+            core.CUDAPlace(0), ['X'], 'Y', check_pir=True
+        )
 
     def init(self):
         self.shape = (50, 3)
