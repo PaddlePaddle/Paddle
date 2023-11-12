@@ -301,7 +301,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
         r, "scale before convert to fp16, for moment2_output_for_xdnn");
     // write to moment2_out
     std::unique_ptr<phi::StorageProperties> moment2_out_sp =
-        std::make_unique<phi::XPUStorageProperties>(moment1_scale_value);
+        std::make_unique<phi::XPUStorageProperties>(moment2_scale_value);
     moment2_out->set_storage_properties(std::move(moment2_out_sp));
 
     // cast moment1 and moment2 output, from fp32 to fp16
