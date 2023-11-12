@@ -122,6 +122,8 @@ void MetaTensor::set_dtype(DataType dtype) {
         ->dtype = dtype;
   } else if (paddle::dialect::IrMetaTensor::classof(tensor_)) {
     static_cast<paddle::dialect::IrMetaTensor*>(tensor_)->SetDtype(dtype);
+  } else if (phi::TensorArray::classof(tensor_)) {
+    static_cast<phi::TensorArray*>(tensor_)->set_type(dtype);
   } else if (phi::StringTensor::classof(tensor_)) {
     // No need to set dtype
   } else if (phi::SelectedRows::classof(tensor_)) {
@@ -159,6 +161,8 @@ void MetaTensor::set_layout(DataLayout layout) {
     }
   } else if (paddle::dialect::IrMetaTensor::classof(tensor_)) {
     static_cast<paddle::dialect::IrMetaTensor*>(tensor_)->SetLayout(layout);
+  } else if (phi::TensorArray::classof(tensor_)) {
+    static_cast<phi::TensorArray*>(tensor_)->set_layout(layout);
   } else if (phi::StringTensor::classof(tensor_)) {
     // No need to set layout
   } else if (phi::SelectedRows::classof(tensor_)) {
