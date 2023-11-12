@@ -1,0 +1,176 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import os
+
+import numpy as np
+
+import paddle
+import paddle.distributed as dist
+
+
+class TestSemiAutoParallelShardOptimizer:
+    def __init__(self):
+        self._backend = os.getenv("backend")
+        self._seed = eval(os.getenv("seed"))
+        self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+
+    def get_single_card_rst(self):
+        paddle.seed(self._seed)
+        linear = paddle.nn.Linear(10, 10)
+        batch = paddle.rand(shape=[10, 10])
+        opt = paddle.optimizer.AdamW(parameters=linear.parameters())
+        for _ in range(5):
+            loss = linear(batch)
+            loss.backward()
+            opt.step()
+            opt.clear_grad()
+        self.weight = linear.weight.numpy()
+        self.bias = linear.bias.numpy()
+
+    def test_adamw_dp(self):
+        paddle.seed(self._seed)
+        linear = paddle.nn.Linear(10, 10)
+        batch = paddle.rand(shape=[10, 10])
+        batch = dist.shard_tensor(
+            batch,
+            dist_attr=dist.DistAttr(
+                mesh=self._mesh, sharding_specs=["x", None]
+            ),
+        )
+        opt = paddle.optimizer.AdamW(parameters=linear.parameters())
+        for _ in range(5):
+            loss = linear(batch)
+            loss.backward()
+            opt.step()
+            opt.clear_grad()
+        assert linear.bias.is_dist()
+        assert linear.weight.is_dist()
+        np.testing.assert_allclose(self.weight, linear.weight.numpy())
+        np.testing.assert_allclose(self.bias, linear.bias.numpy())
+
+    def shard_fn(self, layer_name, layer, process_mesh):
+        layer.weight = dist.shard_tensor(
+            layer.weight,
+            dist_attr=dist.DistAttr(
+                mesh=process_mesh, sharding_specs=[None, 'x']
+            ),
+        )
+        layer.bias = dist.shard_tensor(
+            layer.bias,
+            dist_attr=dist.DistAttr(mesh=process_mesh, sharding_specs=['x']),
+        )
+
+    def test_adamw_mp(self):
+        paddle.seed(self._seed)
+        linear = paddle.nn.Linear(10, 10)
+        dist.shard_layer(linear, self._mesh, self.shard_fn)
+        batch = paddle.rand(shape=[10, 10])
+        opt = paddle.optimizer.AdamW(parameters=linear.parameters())
+        for _ in range(5):
+            loss = linear(batch)
+            loss.backward()
+            opt.step()
+            opt.clear_grad()
+        for key in opt._accumulators.keys():
+            for k, v in opt._accumulators[key].items():
+                if 'momentum' in key:
+                    assert opt._accumulators[key][k].is_dist()
+                    if 'w' in k:
+                        assert opt._accumulators[key][k].shape == [10, 10]
+                        assert opt._accumulators[key][k]._local_shape == [10, 5]
+                    else:
+                        assert opt._accumulators[key][k].shape == [10]
+                        assert opt._accumulators[key][k]._local_shape == [5]
+        np.testing.assert_allclose(self.weight, linear.weight.numpy())
+        np.testing.assert_allclose(self.bias, linear.bias.numpy())
+
+    def test_adamw_shard_optimizer(self, stage1=False):
+        paddle.seed(self._seed)
+        linear = paddle.nn.Linear(10, 10)
+        batch = paddle.rand(shape=[10, 10])
+        if stage1:
+            batch = dist.shard_tensor(
+                batch,
+                dist_attr=dist.DistAttr(
+                    mesh=self._mesh, sharding_specs=["x", None]
+                ),
+            )
+        opt = paddle.optimizer.AdamW(parameters=linear.parameters())
+        opt.helper = paddle.base.layer_helper.LayerHelper(
+            opt.__class__.__name__
+        )
+        opt._create_accumulators(
+            paddle.base.framework.default_main_program().global_block(),
+            [linear.weight, linear.bias],
+        )
+        for key in opt._accumulators.keys():
+            for k, v in opt._accumulators[key].items():
+                if 'beta' in key:
+                    opt._accumulators[key][k] = dist.shard_tensor(
+                        v,
+                        dist_attr=dist.DistAttr(
+                            mesh=self._mesh, sharding_specs=[None]
+                        ),
+                    )
+                else:
+                    if 'w' in k:
+                        opt._accumulators[key][k] = dist.shard_tensor(
+                            v,
+                            dist_attr=dist.DistAttr(
+                                mesh=self._mesh, sharding_specs=['x', None]
+                            ),
+                        )
+                    else:
+                        opt._accumulators[key][k] = dist.shard_tensor(
+                            v,
+                            dist_attr=dist.DistAttr(
+                                mesh=self._mesh, sharding_specs=['x']
+                            ),
+                        )
+        for _ in range(5):
+            loss = linear(batch)
+            loss.backward()
+            opt.step()
+            opt.clear_grad()
+        assert linear.bias.is_dist()
+        assert linear.weight.is_dist()
+        assert linear.bias.shape == [10]
+        assert linear.weight.shape == [10, 10]
+        assert linear.bias._local_shape == [5]
+        assert linear.weight._local_shape == [5, 10]
+        for k, v in opt._master_weights.items():
+            assert v.is_dist()
+        np.testing.assert_allclose(self.weight, linear.weight.numpy())
+        np.testing.assert_allclose(self.bias, linear.bias.numpy())
+
+    def run_test_case(self):
+        if self._backend == "cpu":
+            paddle.set_device("cpu")
+        elif self._backend == "gpu":
+            paddle.set_device("gpu:" + str(dist.get_rank()))
+        else:
+            raise ValueError("Only support cpu or gpu backend.")
+
+        self.get_single_card_rst()
+        self.test_adamw_dp()
+        if self._backend == "gpu":
+            self.test_adamw_mp()
+            self.test_adamw_shard_optimizer(stage1=True)
+            # A problem has to be addressed if not shard batch.
+            # self.test_adamw_shard_optimizer(stage1=False)
+
+
+if __name__ == '__main__':
+    TestSemiAutoParallelShardOptimizer().run_test_case()

@@ -138,6 +138,14 @@ VECTOR_INPLACE_OUT_DIST_ATTR = """
     std::vector<phi::distributed::TensorDistAttr> dist_out_attr;
     for (size_t i = 0; i < api_output.size(); ++i) {{
         dist_out_attr.push_back(static_cast<phi::distributed::DistTensor*>(api_output[i].impl().get())->dist_attr());
+"""
+MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
+    auto dist_out_{idx} = SetKernelDistOutput({out}, spmd_info.second[{idx}]);
+    auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
+    if (!rank_is_in_current_mesh) {{
+      *dense_out_{idx} = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+            phi::DenseTensorMeta());
     }}
 """
 VECTOR_OUT_CREATION_TEMPLATE = """
