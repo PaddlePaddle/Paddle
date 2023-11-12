@@ -249,6 +249,7 @@ class API_TestMmError(unittest.TestCase):
 
             test_error2()
 
+            @test_with_pir_api
             def test_error3():
                 with base.program_guard(base.Program(), base.Program()):
                     data1 = paddle.static.data(
