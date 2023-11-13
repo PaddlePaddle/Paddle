@@ -652,7 +652,6 @@ std::tuple<double, double> ProgramInterpreter::InterpreterRunTime() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   start_time = calculated_stream_timer_.StartTime();
   end_time = calculated_stream_timer_.EndTime();
-  calculated_stream_timer_.ResetTime();
 #endif
   return std::make_tuple(start_time, end_time);
 }
