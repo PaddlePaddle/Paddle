@@ -458,8 +458,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, x.shape)
         np.testing.assert_allclose(out[1, 1], np.ones((4, 5)) * 0.5)
         x_grad_expected = np.ones((2, 3, 4, 5))
-        print("x_grad_expected = ", x_grad_expected)
-        print("x.grad = ", x.grad)
+        x_grad_expected[1, 1] = 0
         np.testing.assert_allclose(x.grad, x_grad_expected)
 
         # case3：0-D Tensor indice in some axis, value is a Tensor
