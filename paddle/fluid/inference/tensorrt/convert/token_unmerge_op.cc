@@ -28,11 +28,12 @@ class TokenUnmergeOpConverter : public OpConverter {
     auto* merged_tensor = engine_->GetITensor(op_desc.Input("merged_tensor").front());
     auto* rand_select_arr = engine_->GetITensor(op_desc.Input("rand_select_arr").front());
     auto* whether_tobe_merge = engine_->GetITensor(op_desc.Input("whether_tobe_merge").front());
-    int token_number = PADDLE_GET_CONST(int, op_desc.GetAttr("token_number"));
   
     nvinfer1::Dims dims_x = merged_tensor->getDimensions();
+    nvinfer1::Dims dims_y = rand_select_arr->getDimensions();
 
     int bsz = dims_x.d[0];
+    int token_number = dims_y.d[1];
     int final_token_number = dims_x.d[1];
     int hid_dim = dims_x.d[2];
 
