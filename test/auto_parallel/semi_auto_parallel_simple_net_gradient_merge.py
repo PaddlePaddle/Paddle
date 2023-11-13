@@ -35,7 +35,6 @@ class TestSimpleNetWithGradientMergeForSemiAutoParallel(
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
         paddle.set_device(self._backend)
-        self.init_input_data()
         self.init_single_card_net_result()
 
     def run_dynamic_gradient_merge(self, layer, shard_input=False):
@@ -44,8 +43,11 @@ class TestSimpleNetWithGradientMergeForSemiAutoParallel(
 
         # create loss
         loss_fn = nn.MSELoss()
+        opt = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=layer.parameters()
+        )
         # run forward and backward
-        image = paddle.to_tensor(self.image)
+        image, label = self.init_input_data()
         if shard_input:
             image = dist.shard_tensor(
                 image,
@@ -56,19 +58,22 @@ class TestSimpleNetWithGradientMergeForSemiAutoParallel(
 
         for i in range(2):
             out = layer(image)
-            label = paddle.to_tensor(self.label)
             loss = loss_fn(out, label)
             loss.backward()
+            opt.step()
+            opt.clear_grad()
 
         return loss, layer.parameters()
 
     def init_single_card_net_result(self):
+        self.set_random_seed(self._seed)
         (
             self.base_loss,
             self.base_parameters,
         ) = self.run_dynamic_gradient_merge(DemoNet("gradient_merge_demo"))
 
     def test_dp_demo_net(self):
+        self.set_random_seed(self._seed)
         (
             self.dp_loss,
             self.dp_parameters,
@@ -83,6 +88,7 @@ class TestSimpleNetWithGradientMergeForSemiAutoParallel(
             self.check_tensor_eq(param.grad, param_base.grad)
 
     def test_mp_demo_net(self):
+        self.set_random_seed(self._seed)
         mp_layer = dist.shard_layer(
             DemoNet("gradient_merge_mp_demo"), self._mesh, self.shard_fn
         )

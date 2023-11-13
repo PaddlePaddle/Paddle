@@ -31,23 +31,6 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-// __device__ __forceinline__ dtype::float16 inline_pow(dtype::float16 base,
-//                                                      float exponent) {
-//   return static_cast<dtype::float16>(pow(static_cast<float>(base),
-//   exponent));
-// }
-// __device__ __forceinline__ dtype::bfloat16 inline_pow(dtype::bfloat16 base,
-//                                                       float exponent) {
-//   return static_cast<dtype::bfloat16>(pow(static_cast<float>(base),
-//   exponent));
-// }
-// __device__ __forceinline__ float inline_pow(float base, float exponent) {
-//   return pow(base, exponent);
-// }
-// __device__ __forceinline__ double inline_pow(double base, float exponent) {
-//   return pow(base, exponent);
-// }
-
 /*
  * \brief Extracting simple operations from pooling.
  *        Both MaxPool and AvgPool need "initial", "compute" and "finalize"

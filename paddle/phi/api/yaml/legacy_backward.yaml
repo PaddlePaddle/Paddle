@@ -379,7 +379,7 @@
     spmd_rule: ElementwiseBinaryGradInferSpmd
   kernel :
     func : maximum_grad
-  composite : maximum_grad(x, y, out_grad, axis, x_grad, y_grad)
+  composite : maximum_grad(x, y, out_grad, x_grad, y_grad)
 
 - backward_op : mean_double_grad
   forward: mean_grad (Tensor x, Tensor grad_out, IntArray axis={},  bool keepdim=false, bool reduce_all = false) -> Tensor(grad_x)

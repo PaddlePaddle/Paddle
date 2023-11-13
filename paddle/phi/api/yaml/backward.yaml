@@ -495,24 +495,26 @@
     data_type : out_grad
 
 - backward_op : cummax_grad
-  forward : cummax(Tensor x, int axis=-1, int dtype=3) -> Tensor(out), Tensor(indices)
-  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, int dtype)
+  forward : cummax(Tensor x, int axis=-1, DataType dtype = DataType::INT64) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, DataType dtype)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
   kernel :
     func : cummax_grad
+    data_type : out_grad
 
 - backward_op : cummin_grad
-  forward : cummin(Tensor x, int axis=-1, int dtype=3) -> Tensor(out), Tensor(indices)
-  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, int dtype)
+  forward : cummin(Tensor x, int axis=-1, DataType dtype = DataType::INT64) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, DataType dtype)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
   kernel :
     func : cummin_grad
+    data_type : out_grad
 
 - backward_op : cumprod_grad
   forward : cumprod (Tensor x, int dim) -> Tensor(out)
@@ -940,6 +942,8 @@
     func : gather_nd_grad
   composite : gather_nd_grad(x, index, out_grad, x_grad)
   no_need_buffer : x
+  data_transform :
+    skip_transform : index
 
 - backward_op : gaussian_inplace_grad
   forward : gaussian_inplace(Tensor x, float mean=0, float std=1.0, int seed=0) -> Tensor(out)
@@ -1121,6 +1125,8 @@
   kernel :
     func : index_put_grad
     data_type : out_grad
+  data_transform :
+    skip_transform : indices
 
 - backward_op : index_sample_grad
   forward : index_sample (Tensor x, Tensor index) -> Tensor(out)

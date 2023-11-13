@@ -22,7 +22,11 @@ from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 
 from ...base.data_feeder import check_variable_and_dtype
-from ...base.framework import _current_expected_place, in_pir_mode
+from ...base.framework import (
+    _current_expected_place,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...tensor.manipulation import reshape
@@ -420,7 +424,7 @@ def square_error_cost(input, label):
                     [0.01000000, 0.01000000])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         minus_out = _C_ops.subtract(input, label)
         square_out = _C_ops.square(minus_out)
         return square_out
@@ -3310,7 +3314,7 @@ def multi_label_soft_margin_loss(
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "'reduction' in 'multi_label_soft_margin_loss' should be 'sum', 'mean' or 'none', "
-            "but received {}.".format(reduction)
+            f"but received {reduction}."
         )
 
     if not (input.shape == label.shape):
