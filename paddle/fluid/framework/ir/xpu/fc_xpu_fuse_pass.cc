@@ -527,8 +527,6 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   Node* filter_intx = nullptr;
   Node* filter_max = nullptr;
   Node* scale_max = nullptr;
-  LOG(INFO) << "mul_w_replicated_node SHAPE:"
-            << Vec2Str(mul_w_replicated_node->Var()->GetShape());
   bool per_channel_quant =
       std::getenv("FLAGS_fc_gemm_use_per_channel") == nullptr ? false : true;
   if (op_weights_precision != "int8") {

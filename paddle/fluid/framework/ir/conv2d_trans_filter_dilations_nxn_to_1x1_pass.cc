@@ -128,10 +128,11 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
     auto* new_weights =
         scope->Var(new_weights_name)->GetMutable<phi::DenseTensor>();
     new_weights->Resize({weights_shape[0], weights_shape[1], new_kh, new_kw});
+    auto* cpu_ctx = static_cast<phi::CPUContext*>(
+        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     if (weights->dtype() == phi::DataType::FLOAT32) {
-      auto weights_data = weights->mutable_data<float>(platform::CPUPlace());
-      auto* new_weights_data =
-          new_weights->mutable_data<float>(platform::CPUPlace());
+      auto weights_data = weights->data<float>();
+      auto* new_weights_data = cpu_ctx->Alloc<float>(new_weights);
       memset(new_weights_data, 0, new_weights->numel() * sizeof(float));
       conv2d_dilation_trans_fn<float>(weights_data,
                                       new_weights_data,
@@ -144,10 +145,8 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
                                       dilations[0],
                                       dilations[1]);
     } else if (weights->dtype() == phi::DataType::FLOAT16) {
-      auto weights_data =
-          weights->mutable_data<phi::dtype::float16>(platform::CPUPlace());
-      auto* new_weights_data =
-          new_weights->mutable_data<phi::dtype::float16>(platform::CPUPlace());
+      auto weights_data = weights->data<phi::dtype::float16>();
+      auto* new_weights_data = cpu_ctx->Alloc<phi::dtype::float16>(new_weights);
       memset(new_weights_data,
              0,
              new_weights->numel() * sizeof(phi::dtype::float16));
@@ -163,9 +162,8 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
           dilations[0],
           dilations[1]);
     } else if (weights->dtype() == phi::DataType::INT8) {
-      auto weights_data = weights->mutable_data<int8_t>(platform::CPUPlace());
-      auto* new_weights_data =
-          new_weights->mutable_data<int8_t>(platform::CPUPlace());
+      auto weights_data = weights->data<int8_t>();
+      auto* new_weights_data = cpu_ctx->Alloc<int8_t>(new_weights);
       memset(new_weights_data, 0, new_weights->numel() * sizeof(int8_t));
       conv2d_dilation_trans_fn<int8_t>(weights_data,
                                        new_weights_data,
