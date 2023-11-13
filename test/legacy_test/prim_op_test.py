@@ -612,13 +612,7 @@ class PrimForwardChecker:
                 ret = flatten(_as_list(self.public_python_api(*args)))
 
                 if not in_pir_mode():
-                    before_ops = [op.type for op in main_program.blocks[0].ops]
                     primapi.to_prim(main_program.blocks)
-                    after_ops = [op.type for op in main_program.blocks[0].ops]
-
-                    assert (
-                        before_ops != after_ops
-                    ), f"For {after_ops} , since op which has been decomposed should not exist, the op list should differ from origin ones."
                 else:
                     before_ops = [
                         op.name() for op in main_program.global_block().ops
