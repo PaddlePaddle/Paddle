@@ -45,6 +45,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
+#include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/type.h"
@@ -236,6 +237,19 @@ void BindProgram(py::module *m) {
           });
 }
 
+void RefreshOpStopgradients(Operation *op){
+  if (op->num_operands() == 0 || op->isa<pir::GetParameterOp>() ){
+    return;
+  }
+  else if (op->isa<pir::SliceOp>()){
+    op->dyn_cast<pir::SliceOp>().RefreshStopGradients();
+  }else if(op->isa<pir::SplitOp>()){
+    op->dyn_cast<pir::SplitOp>().RefreshStopGradients();
+  }
+  else{RefreshStopGradientsDefaultly(op);}
+  
+}
+
 void BindBlock(py::module *m) {
   py::class_<Block> block(*m, "Block", R"DOC(
     In IR, a Block has a list of Operation and can represent a sub computational graph.
@@ -310,6 +324,11 @@ void BindBlock(py::module *m) {
           }
         }
         return param_list;
+      })
+      .def("refresh_stopgradient", [](Block &self){
+        for (auto iter = self.begin(); iter != self.end(); iter++) {
+              RefreshOpStopgradients(*iter);
+            }
       });
 }
 

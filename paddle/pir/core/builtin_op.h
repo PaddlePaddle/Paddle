@@ -144,6 +144,7 @@ class IR_API SliceOp : public pir::Op<SliceOp> {
 
   void VerifySig() const;
   pir::Value input() { return operand_source(0); }
+  void RefreshStopGradients();     
 
  private:
   static void PassStopGradients(OperationArgument &argument,  // NOLINT
@@ -176,7 +177,8 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
     }
     return res;
   }
-
+  void RefreshStopGradients();
+ 
  private:
   static void PassStopGradients(OperationArgument &argument);  // NOLINT
 };
@@ -209,7 +211,7 @@ class IR_API ConstantOp : public Op<ConstantOp, ConstantLikeTrait> {
 };
 
 void PassStopGradientsDefaultly(OperationArgument &argument);  // NOLINT
-
+void RefreshStopGradientsDefaultly(Operation *Op);
 }  // namespace pir
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ModuleOp)
