@@ -18,13 +18,18 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_pir_only
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    static_guard,
+    test_pir_only,
+)
 from predictor_utils import PredictorTools
 
 import paddle
 from paddle import base
 from paddle.base import ParamAttr
 from paddle.base.dygraph import to_variable
+from paddle.base.framework import unique_name
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2000
@@ -33,8 +38,8 @@ DATATYPE = 'float32'
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
 #        some algorithm results are non-deterministic, like convolution algorithms.
-if base.is_compiled_with_cuda():
-    base.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.is_compiled_with_cuda():
+    paddle.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 def get_interp1d_mask(
@@ -639,9 +644,9 @@ class TestTrain(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
         self.place = (
-            base.CPUPlace()
-            if not base.is_compiled_with_cuda()
-            else base.CUDAPlace(0)
+            paddle.CPUPlace()
+            if not paddle.is_compiled_with_cuda()
+            else paddle.CUDAPlace(0)
         )
 
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -656,92 +661,94 @@ class TestTrain(Dy2StTestBase):
 
     def train_bmn(self, args, to_static):
         paddle.jit.enable_to_static(to_static)
-        paddle.enable_static()
-        paddle.disable_static()
-        loss_data = []
 
-        paddle.seed(SEED)
-        paddle.framework.random._manual_program_seed(SEED)
-        global local_random
-        local_random = np.random.RandomState(SEED)
+        with unique_name.guard():
+            loss_data = []
 
-        bmn = paddle.jit.to_static(BMN(args))
-        adam = optimizer(args, parameter_list=bmn.parameters())
+            paddle.seed(SEED)
+            paddle.framework.random._manual_program_seed(SEED)
+            global local_random
+            local_random = np.random.RandomState(SEED)
 
-        train_reader = fake_data_reader(args, 'train')
+            bmn = paddle.jit.to_static(BMN(args))
+            adam = optimizer(args, parameter_list=bmn.parameters())
 
-        for epoch in range(args.epoch):
-            for batch_id, data in enumerate(train_reader()):
-                video_feat = np.array([item[0] for item in data]).astype(
-                    DATATYPE
-                )
-                gt_iou_map = np.array([item[1] for item in data]).astype(
-                    DATATYPE
-                )
-                gt_start = np.array([item[2] for item in data]).astype(DATATYPE)
-                gt_end = np.array([item[3] for item in data]).astype(DATATYPE)
+            train_reader = fake_data_reader(args, 'train')
 
-                x_data = to_variable(video_feat)
-                gt_iou_map = to_variable(gt_iou_map)
-                gt_start = to_variable(gt_start)
-                gt_end = to_variable(gt_end)
-                gt_iou_map.stop_gradient = True
-                gt_start.stop_gradient = True
-                gt_end.stop_gradient = True
-
-                pred_bm, pred_start, pred_end = bmn(x_data)
-
-                loss, tem_loss, pem_reg_loss, pem_cls_loss = bmn_loss_func(
-                    pred_bm,
-                    pred_start,
-                    pred_end,
-                    gt_iou_map,
-                    gt_start,
-                    gt_end,
-                    args,
-                )
-                avg_loss = paddle.mean(loss)
-
-                avg_loss.backward()
-                adam.minimize(avg_loss)
-                bmn.clear_gradients()
-                # log loss data to verify correctness
-                loss_data += [
-                    float(avg_loss),
-                    float(tem_loss),
-                    float(pem_reg_loss),
-                    float(pem_cls_loss),
-                ]
-
-                if args.log_interval > 0 and (
-                    batch_id % args.log_interval == 0
-                ):
-                    print(
-                        f'[TRAIN] Epoch {epoch}, iter {batch_id} '
-                        + '\tLoss = {}, \ttem_loss = {}, \tpem_reg_loss = {}, \tpem_cls_loss = {}'.format(
-                            '%f' % float(avg_loss),
-                            '%f' % float(tem_loss),
-                            '%f' % float(pem_reg_loss),
-                            '%f' % float(pem_cls_loss),
-                        )
+            for epoch in range(args.epoch):
+                for batch_id, data in enumerate(train_reader()):
+                    video_feat = np.array([item[0] for item in data]).astype(
+                        DATATYPE
+                    )
+                    gt_iou_map = np.array([item[1] for item in data]).astype(
+                        DATATYPE
+                    )
+                    gt_start = np.array([item[2] for item in data]).astype(
+                        DATATYPE
+                    )
+                    gt_end = np.array([item[3] for item in data]).astype(
+                        DATATYPE
                     )
 
-                # validation
-                if batch_id % args.valid_interval == 0 and batch_id > 0:
-                    bmn.eval()
-                    val_loss_data = val_bmn(bmn, args)
-                    bmn.train()
-                    loss_data += val_loss_data
+                    x_data = to_variable(video_feat)
+                    gt_iou_map = to_variable(gt_iou_map)
+                    gt_start = to_variable(gt_start)
+                    gt_end = to_variable(gt_end)
+                    gt_iou_map.stop_gradient = True
+                    gt_start.stop_gradient = True
+                    gt_end.stop_gradient = True
 
-                if batch_id == args.train_batch_num:
-                    if to_static:
-                        paddle.jit.save(bmn, self.model_save_prefix)
-                    else:
-                        paddle.save(
-                            bmn.state_dict(),
-                            self.dy_param_path + '.pdparams',
+                    pred_bm, pred_start, pred_end = bmn(x_data)
+
+                    loss, tem_loss, pem_reg_loss, pem_cls_loss = bmn_loss_func(
+                        pred_bm,
+                        pred_start,
+                        pred_end,
+                        gt_iou_map,
+                        gt_start,
+                        gt_end,
+                        args,
+                    )
+                    avg_loss = paddle.mean(loss)
+
+                    avg_loss.backward()
+                    adam.minimize(avg_loss)
+                    bmn.clear_gradients()
+                    # log loss data to verify correctness
+                    loss_data += [
+                        float(avg_loss),
+                        float(tem_loss),
+                        float(pem_reg_loss),
+                        float(pem_cls_loss),
+                    ]
+
+                    if args.log_interval > 0 and (
+                        batch_id % args.log_interval == 0
+                    ):
+                        print(
+                            f'[TRAIN] Epoch {epoch}, iter {batch_id} '
+                            + f'\tLoss = {float(avg_loss):f}, '
+                            + f'\ttem_loss = {float(tem_loss):f}, '
+                            + f'\tpem_reg_loss = {float(pem_reg_loss):f}, '
+                            + f'\tpem_cls_loss = {float(pem_cls_loss):f}'
                         )
-                    break
+
+                    # validation
+                    if batch_id % args.valid_interval == 0 and batch_id > 0:
+                        bmn.eval()
+                        val_loss_data = val_bmn(bmn, args)
+                        bmn.train()
+                        loss_data += val_loss_data
+
+                    if batch_id == args.train_batch_num:
+                        if to_static:
+                            paddle.jit.save(bmn, self.model_save_prefix)
+                        else:
+                            paddle.save(
+                                bmn.state_dict(),
+                                self.dy_param_path + '.pdparams',
+                            )
+                        break
         return np.array(loss_data)
 
     @test_pir_only
@@ -840,26 +847,24 @@ class TestTrain(Dy2StTestBase):
         return pred_res
 
     def predict_static(self, data):
-        paddle.enable_static()
-        exe = base.Executor(self.place)
-        # load inference model
-        [
-            inference_program,
-            feed_target_names,
-            fetch_targets,
-        ] = paddle.static.io.load_inference_model(
-            self.model_save_dir,
-            executor=exe,
-            model_filename=self.model_filename,
-            params_filename=self.params_filename,
-        )
-        pred_res = exe.run(
-            inference_program,
-            feed={feed_target_names[0]: data},
-            fetch_list=fetch_targets,
-        )
-
-        paddle.disable_static()
+        with static_guard():
+            exe = paddle.static.Executor(self.place)
+            # load inference model
+            [
+                inference_program,
+                feed_target_names,
+                fetch_targets,
+            ] = paddle.static.io.load_inference_model(
+                self.model_save_dir,
+                executor=exe,
+                model_filename=self.model_filename,
+                params_filename=self.params_filename,
+            )
+            pred_res = exe.run(
+                inference_program,
+                feed={feed_target_names[0]: data},
+                fetch_list=fetch_targets,
+            )
         return pred_res
 
     def predict_dygraph_jit(self, data):

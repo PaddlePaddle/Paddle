@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import inspect
 import logging
 import os
 import unittest
 from enum import Flag, auto
 from functools import wraps
+from pathlib import Path
 
 import numpy as np
 
@@ -315,3 +317,26 @@ def show_all_test_cases(test_class):
         if attr.startswith("test"):
             fn = getattr(test_class, attr)
             logger.info(f"{attr}: {fn}")
+
+
+# Other utilities
+def import_module_from_path(module_name, module_path):
+    """A better way to import module from other directory than using sys.path.append"""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def import_legacy_test_utils():
+    test_root = Path(__file__).parent.parent
+    legacy_test_utils_path = test_root / "legacy_test/utils.py"
+    legacy_test_utils = import_module_from_path(
+        "legacy_test_utils", legacy_test_utils_path
+    )
+    return legacy_test_utils
+
+
+legacy_test_utils = import_legacy_test_utils()
+dygraph_guard = legacy_test_utils.dygraph_guard
+static_guard = legacy_test_utils.static_guard
