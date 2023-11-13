@@ -607,7 +607,7 @@ def mode(x, axis=-1, keepdim=False, name=None):
              [2, 1]]))
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.mode(x, axis, keepdim)
     else:
         helper = LayerHelper("mode", **locals())
@@ -1210,7 +1210,7 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
              [1, 1]]))
             >>> # doctest: -SKIP
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if axis is not None:
             return _C_ops.kthvalue(x, k, axis, keepdim)
         else:
@@ -1232,3 +1232,70 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
     )
     indices.stop_gradient = True
     return values, indices
+
+
+def top_p_sampling(x, ps, threshold=None, seed=None, name=None):
+    """
+    Get the TopP scores and ids according to the cumulative threshold `ps`.
+
+    Args:
+        x(Tensor): A N-D Tensor with type float32, float16 and bfloat16.
+        ps(Tensor): A 1-D Tensor with type float32, float16 and bfloat16.
+            it is the cumulative probalitity threshold to limit low probality input.
+        threshold(Tensor): A 1-D Tensor with type float32, float16 and bfloat16.
+            it is the absolute probability threshold to limit input, it will take effect simultaneously with `ps`, if not set, the default value is 0.f.
+        seed(int, optional): the random seed,
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+
+            >>> paddle.device.set_device('gpu')
+            >>> paddle.seed(2023)
+            >>> x = paddle.randn([2,3])
+            >>> print(x)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+             [[-0.32012719, -0.07942779,  0.26011357],
+              [ 0.79003978, -0.39958701,  1.42184138]])
+            >>> paddle.seed(2023)
+            >>> ps = paddle.randn([2])
+            >>> print(ps)
+            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+             [-0.32012719, -0.07942779])
+            >>> value, index = paddle.tensor.top_p_sampling(x, ps)
+            >>> print(value)
+            Tensor(shape=[2, 1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+             [[0.26011357],
+              [1.42184138]])
+            >>> print(index)
+            Tensor(shape=[2, 1], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+             [[2],
+              [2]])
+    """
+
+    if seed is None:
+        seed = -1
+
+    if in_dynamic_mode():
+        return _C_ops.top_p_sampling(x, ps, threshold, seed)
+
+    inputs = {"x": x, "ps": ps, "threshold": threshold}
+    attrs = {"random_seed": seed}
+
+    helper = LayerHelper('top_p_sampling', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    ids = helper.create_variable_for_type_inference(dtype="int64")
+    helper.append_op(
+        type='top_p_sampling',
+        inputs=inputs,
+        outputs={'out': out, 'ids': ids},
+        attrs=attrs,
+    )
+    return out, ids
