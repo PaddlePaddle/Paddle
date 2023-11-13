@@ -503,6 +503,8 @@ ops_contain_none = {
     "unsqueeze2": ["XShape"],
 }
 
+pir_ops_contain_none = ["pd_op.squeeze", "pd_op.unsqueeze"]
+
 
 def _set_prim_forward_blacklist(*args):
     for item in args:
