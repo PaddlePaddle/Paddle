@@ -123,7 +123,7 @@ class Conv2dBnFusePattern
     std::string data_format =
         new_conv2d_op.attribute<pir::StrAttribute>("data_format").AsString();
     if (data_format != "NCHW") {
-      return;
+      return false;
     }
     new_bias_new_shape[1] = new_conv2d_out_shape[1];
     paddle::dialect::ReshapeOp reshape_bias_op =
