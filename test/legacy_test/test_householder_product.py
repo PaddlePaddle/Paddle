@@ -156,7 +156,7 @@ class TestHouseholderProductAPICase5(TestHouseholderProductAPI):
 
 
 class TestHouseholderProductAPI_batch_error(TestHouseholderProductAPI):
-    # shape "*" in x.shape:[*, m, n] and tau.shape:[*, k] must be the same
+    # shape "*" in x.shape:[*, m, n] and tau.shape:[*, k] must be the same, eg. * == [2, 2] in x, but * == [2, 3] in tau
     def test_error(self):
         with self.assertRaises(AssertionError):
             x = paddle.randn([2, 2, 5, 4])
@@ -179,7 +179,7 @@ class TestHouseholderProductAPI_dim_error(TestHouseholderProductAPI):
 
 
 class TestHouseholderProductAPI_type_error(TestHouseholderProductAPI):
-    # type of x and tau must be the same
+    # type of x and tau must be float32 or float64
     def test_error(self):
         with self.assertRaises(TypeError):
             x = paddle.randn([3, 2, 1], dtype=paddle.int32)
