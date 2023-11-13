@@ -64,7 +64,6 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     "builtin.slice",
     "builtin.split",
     "pd_op.feed",
-    "pd_op.fetch",
     "builtin.set_parameter",
     "builtin.get_parameter",
     "builtin.shadow_output",
