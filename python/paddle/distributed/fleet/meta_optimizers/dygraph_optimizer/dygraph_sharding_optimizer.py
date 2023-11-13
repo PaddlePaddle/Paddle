@@ -151,7 +151,7 @@ class DygraphShardingOptimizer:
             # won't change. To avoid failure on some other applications (such as some nvtx
             # operations), here we manulay let the allocator release the cached memory.
             paddle.device.cuda.empty_cache()
-        else: # self.comm_overlap
+        else:  # self.comm_overlap
             self._build_comm_buffers()
 
     def clear_grad(self, set_to_zero=True):

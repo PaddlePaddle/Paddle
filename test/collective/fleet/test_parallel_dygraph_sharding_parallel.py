@@ -43,12 +43,13 @@ class TestHybridParallel(TestMultipleGpus):
 
     def test_hybrid_parallel_sharding_tensor_fusion_amp(self):
         os.environ["FLAGS_shard_split_param"] = "0"
-        self.run_mnist_2gpu('hybrid_parallel_sharding_model_with_comm_overlap.py')
+        self.run_mnist_2gpu(
+            'hybrid_parallel_sharding_model_with_comm_overlap.py'
+        )
 
     def test_hybrid_parallel_sharding_comm_overlap(self):
         os.environ["FLAGS_shard_split_param"] = "0"
         self.run_mnist_2gpu('hybrid_parallel_sharding_model_with_fusion_amp.py')
-
 
     def test_hybrid_parallel_sharding_state_dict(self):
         os.environ["FLAGS_shard_split_param"] = "0"
