@@ -656,8 +656,8 @@ class TestTrain(Dy2StTestBase):
 
     def train_bmn(self, args, to_static):
         paddle.jit.enable_to_static(to_static)
-        base.dygraph.disable_dygraph()
-        base.dygraph.enable_dygraph()
+        paddle.enable_static()
+        paddle.disable_static()
         loss_data = []
 
         paddle.seed(SEED)
