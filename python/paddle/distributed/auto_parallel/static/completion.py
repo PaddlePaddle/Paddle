@@ -477,6 +477,7 @@ class Completer:
                     if is_fwd
                     else reversed(self._dist_context.serial_ordered_nodes)
                 )
+                print("is_fwd:", is_fwd)
                 for node in all_nodes:
                     if node.is_var() and node.var() is not None:
                         tensor_changed = self._update_tensor_node_dims_mapping(
@@ -484,12 +485,18 @@ class Completer:
                         )
                         if tensor_changed:
                             changed = True
+                        print("====node is var")
+                        print(node.var().name())
+                        print(self._dist_context.get_dist_attr_for_graph(node))
                     if node.is_op() and node.op() is not None:
                         op_changed = self._update_op_node_dims_mapping(
                             node, fwd=is_fwd
                         )
                         if op_changed:
                             changed = True
+                        print("====node is op")
+                        print(node.op().type())
+                        print(self._dist_context.get_dist_attr_for_graph(node))
                 graph_changed = self._update_dims_mapping_between_graphs()
                 if graph_changed:
                     changed = True
