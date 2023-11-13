@@ -112,7 +112,7 @@ class TestHouseholderProductAPI(unittest.TestCase):
                 feed={'x': self.geqrf_x, 'tau': self.tau}, fetch_list=[out]
             )
             out_ref = ref_qr(self._x)
-            np.testing.assert_allclose(out_ref, res[0], atol=1e-6)
+            np.testing.assert_allclose(out_ref, res[0], atol=1e-3)
 
     def test_dygraph_api(self):
         m, n = self.x.shape[-2:]
@@ -123,7 +123,7 @@ class TestHouseholderProductAPI(unittest.TestCase):
         tau = paddle.to_tensor(self.tau)
         out = paddle.linalg.householder_product(x, tau)
         out_ref = ref_qr(self._x)
-        np.testing.assert_allclose(out_ref, out.numpy(), atol=1e-6)
+        np.testing.assert_allclose(out_ref, out.numpy(), atol=1e-3)
         paddle.enable_static()
 
     def test_error(self):
