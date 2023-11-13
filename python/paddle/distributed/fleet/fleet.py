@@ -195,6 +195,7 @@ class Fleet:
             log_level (Integer, String, optional): A ``Integer`` or ``String`` Variable determining how hight
                 the logging level is. Default is "INFO".
 
+
         Returns:
             None
 
