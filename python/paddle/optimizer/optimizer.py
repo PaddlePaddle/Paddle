@@ -729,15 +729,17 @@ class Optimizer:
         param = param_and_grad[0]
         if hasattr(param, 'optimize_attr'):
             param_lr = param.optimize_attr['learning_rate']
-            if type(param_lr) == Variable:
+            if isinstance(param_lr, (Variable, paddle.pir.OpResult)):
                 return param_lr
             else:
                 if param_lr == 1.0:
                     return self._global_learning_rate()
                 else:
-                    with default_main_program()._lr_schedule_guard(
+                    with paddle.static.default_main_program()._lr_schedule_guard(
                         is_with_opt=True
-                    ), framework.name_scope('scale_with_param_lr'):
+                    ), framework.name_scope(
+                        'scale_with_param_lr'
+                    ):
                         return self._global_learning_rate() * param_lr
         else:
             return self._global_learning_rate()
@@ -748,7 +750,9 @@ class Optimizer:
         else:
             assert isinstance(self.helper, LayerHelper)
             var_name = self._gen_master_weight_var_name(param)
-            if framework.in_dygraph_mode():
+            if in_pir_mode():
+                var = paddle.cast(param, 'float32')
+            elif framework.in_dygraph_mode():
                 var = paddle.cast(param, 'float32')
                 var.name = var_name
             else:
@@ -1484,7 +1488,7 @@ class Optimizer:
 
         assert regularization_term is not None
 
-        if framework.in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.add_n([grad, regularization_term])
         else:
             new_grad = grad
