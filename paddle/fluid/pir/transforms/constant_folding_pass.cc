@@ -51,7 +51,6 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   ConstantFoldingPattern(
       pir::IrContext* context,
       size_t* suffix,
-      const phi::Place& place,
       paddle::framework::Scope* scope,
       paddle::framework::interpreter::ExecutionConfig* exe_config,
       std::vector<std::string>* deleted_vars)
@@ -60,7 +59,6 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                        context,
                        {} /*generated_names*/),
         counter_(suffix),
-        place_(place),
         scope_(scope),
         exe_config_(exe_config),
         deleted_vars_(deleted_vars) {
@@ -87,9 +85,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     // execute program
     exe_config_->skip_gc_vars.insert(output_var_name);
     auto kernel_program =
-        paddle::dialect::PdOpLowerToKernelPass(&new_program, place_);
+        paddle::dialect::PdOpLowerToKernelPass(&new_program, phi::CPUPlace{});
     paddle::framework::InterpreterCore core(
-        place_, {}, kernel_program->block(), scope_, *exe_config_);
+        phi::CPUPlace{}, {}, kernel_program->block(), scope_, *exe_config_);
 
     core.Run({});
 
@@ -158,7 +156,6 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     // TODO(liuyuanle): support multiple output
     // for (uint32_t i = 0; i < op->num_results(); i++) {
-
     std::stringstream ss;
     ss << std::chrono::high_resolution_clock::now().time_since_epoch().count();
     std::string output_var_name =
@@ -172,7 +169,6 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
  private:
   size_t* counter_{nullptr};
-  phi::Place place_;
   paddle::framework::Scope* scope_{nullptr};
   paddle::framework::interpreter::ExecutionConfig* exe_config_{nullptr};
   std::vector<std::string>* deleted_vars_{nullptr};
@@ -180,8 +176,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
 class ConstantFoldingPass : public pir::Pass {
  public:
-  ConstantFoldingPass(const phi::Place& place, paddle::framework::Scope* scope)
-      : pir::Pass("constant_folding_pass", 1), place_(place), scope_(scope) {
+  explicit ConstantFoldingPass(paddle::framework::Scope* scope)
+      : pir::Pass("constant_folding_pass", 1), scope_(scope) {
     PADDLE_ENFORCE_NOT_NULL(
         scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
   }
@@ -190,7 +186,7 @@ class ConstantFoldingPass : public pir::Pass {
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<ConstantFoldingPattern>(
-        context, &counter_, place_, scope_, &exe_config_, &deleted_vars_);
+        context, &counter_, scope_, &exe_config_, &deleted_vars_);
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
@@ -215,7 +211,6 @@ class ConstantFoldingPass : public pir::Pass {
 
  private:
   size_t counter_{0};
-  phi::Place place_;
   paddle::framework::Scope* scope_{nullptr};
   paddle::framework::interpreter::ExecutionConfig exe_config_{};
   std::vector<std::string> deleted_vars_;
@@ -228,8 +223,8 @@ class ConstantFoldingPass : public pir::Pass {
 namespace pir {
 
 std::unique_ptr<Pass> CreateConstantFoldingPass(
-    const phi::Place& place, paddle::framework::Scope* scope) {
-  return std::make_unique<ConstantFoldingPass>(place, scope);
+    paddle::framework::Scope* scope) {
+  return std::make_unique<ConstantFoldingPass>(scope);
 }
 
 }  // namespace pir
