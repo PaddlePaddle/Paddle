@@ -182,11 +182,7 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
   }
 #if IS_TRT_VERSION_GE(8500)
   for (size_t j = 0; j < buffers->size(); ++j) {
-    bool status =
-        context->setTensorAddress(m_IOTensorNames[j].c_str(), (*buffers)[j]);
-    if (!status) {
-      return false;
-    }
+    context->setTensorAddress(m_IOTensorNames[j].c_str(), (*buffers)[j]);
   }
 #endif
 
