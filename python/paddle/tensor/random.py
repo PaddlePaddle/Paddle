@@ -1172,6 +1172,10 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
         low = 0
     if dtype is None:
         dtype = x.dtype
+        if in_pir_mode():
+            from paddle.base.libpaddle import DataType
+
+            dtype = DataType.INT64
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
     shape = paddle.shape(x)
@@ -1182,20 +1186,27 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             f"high = {high}"
         )
 
-    if in_dynamic_mode():
-        shape = paddle.utils.convert_shape_to_list(shape)
-        out = _legacy_C_ops.randint(
-            'shape',
-            shape,
-            'low',
-            low,
-            'high',
-            high,
-            'seed',
-            0,
-            'dtype',
-            core.VarDesc.VarType.INT64,
-        )
+    if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
+            shape = paddle.utils.convert_shape_to_list(shape)
+            out = _legacy_C_ops.randint(
+                'shape',
+                shape,
+                'low',
+                low,
+                'high',
+                high,
+                'seed',
+                0,
+                'dtype',
+                core.VarDesc.VarType.INT64,
+            )
+        else:
+            shape = paddle.utils.convert_shape_to_list(shape)
+            place = _current_expected_place()
+            out = _C_ops.randint(
+                low, high, shape, core.VarDesc.VarType.INT64, place
+            )
         out = paddle.cast(out, dtype)
         return out
     else:
