@@ -19,14 +19,15 @@
 namespace paddle {
 namespace dialect {
 
-ApiBuilder::ApiBuilder() : builder_(std::make_shared<pir::Builder>(ctx_);) {
-  ctx_ = pir::IrContext::Instance();
+ApiBuilder::ApiBuilder()
+    : ctx_(pir::IrContext::Instance()),
+      builder_(std::make_shared<pir::Builder>(ctx_)) {
   IR_ENFORCE(builder_ != nullptr, "api builder construct error!");
 }
 
 void ApiBuilder::SetProgram(pir::Program* program) {
   IR_ENFORCE(program != nullptr, "argument of program is nullptr");
-  SetInsertionPointToBlockEnd(program->block());
+  builder_->SetInsertionPointToEnd(program->block());
 }
 
 void ApiBuilder::set_insertion_point(pir::Operation* op) {
