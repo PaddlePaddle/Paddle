@@ -70,9 +70,31 @@ PD_REGISTER_KERNEL(create_array,
                    CPU,
                    ALL_LAYOUT,
                    phi::CreateArrayKernel,
+                   bool,
+                   int,
+                   int64_t,
                    float,
                    double,
-                   bool) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(create_array,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CreateArrayKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#endif
 
 PD_REGISTER_KERNEL(array_length,
                    CPU,
@@ -82,8 +104,51 @@ PD_REGISTER_KERNEL(array_length,
                    double,
                    bool) {}
 
-PD_REGISTER_KERNEL(
-    array_read, CPU, ALL_LAYOUT, phi::ArrayReadKernel, float, double, bool) {}
+PD_REGISTER_KERNEL(array_read,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ArrayReadKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(array_read,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ArrayReadKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#endif
 
 PD_REGISTER_KERNEL(
     array_write, CPU, ALL_LAYOUT, phi::ArrayWriteKernel, float, double, bool) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(array_write,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ArrayWriteKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#endif

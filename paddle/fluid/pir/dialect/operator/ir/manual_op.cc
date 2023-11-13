@@ -1422,7 +1422,7 @@ OpInfoTuple ArrayWrite_Op::GetOpInfo() {
                     {"array", "x"},
                     "array_write",
                     {"array", "x", "i"},
-                    {"x"},
+                    {"array"},
                     {},
                     {{"out", "array"}},
                     {});
