@@ -26,6 +26,8 @@ exclude = [
     "./python/paddle/utils/gast/**",
 ]
 target-version = "py37"
+
+[tool.ruff.lint]
 select = [
     # Pyflakes
     "F",
@@ -90,7 +92,7 @@ ignore = [
     "UP038",
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 # Ignore unused imports in __init__.py
 "__init__.py" = ["F401"]
 # Ignore undefined variables in CMake config and some dygraph_to_static tests
