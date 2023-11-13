@@ -429,11 +429,12 @@ def has_fetch_operations(
                 mismatch_count += 1
                 continue
             fetch_count += 1
-    warnings.warn(
-        "There are {} fetch ops in Program which are not responsible for the fetch targets that you have passed in fetch_list".format(
-            mismatch_count
+    if mismatch_count > 0:
+        warnings.warn(
+            "There are {} fetch ops in Program which are not responsible for the fetch targets that you have passed in fetch_list".format(
+                mismatch_count
+            )
         )
-    )
     if fetch_count > 0 and fetch_count != len(fetch_targets):
         raise Exception(
             "Fetch operations in program do not match 'fetch_targets'"
