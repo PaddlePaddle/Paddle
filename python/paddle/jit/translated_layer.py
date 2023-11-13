@@ -929,6 +929,17 @@ def _run_dygraph(instance, input, program_holder):
                 % var_name
             )
 
+    output_vars = []
+    for var_desc in program_holder.output_descs:
+        var = core.eager.Tensor(
+            dtype=var_desc.dtype(),
+            dims=var_desc.shape(),
+            name=var_desc.name(),
+            type=var_desc.type(),
+            persistable=False,
+        )
+        output_vars.append(var)
+
     # hold forward variables
     tmp_scope_vec = [program_holder.scope]
 
@@ -988,10 +999,10 @@ def _run_dygraph(instance, input, program_holder):
                 )
             )
 
-    output_vars = _legacy_C_ops.run_program(
+    _legacy_C_ops.run_program(
         _valid_vars(input_vars),
         _valid_vars(persistable_vars),
-        _valid_vars(program_holder.output_descs),
+        _valid_vars(output_vars),
         tmp_scope_vec,
         None,
         *attrs,

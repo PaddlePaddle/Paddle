@@ -14,7 +14,6 @@
 #pragma once
 
 #include <iostream>
-#include <vector>
 
 #include "paddle/fluid/eager/to_static/run_program_op_func.h"
 #include "paddle/phi/core/enforce.h"
@@ -29,9 +28,7 @@ static PyObject *eager_api_run_program(PyObject *self,  // TOREMOVE
   try {
     auto X = GetTensorListFromArgs("run_program", "X", args, 0, true);
     auto Params = GetTensorListFromArgs("run_program", "Params", args, 1, true);
-    std::vector<paddle::Tensor *> Out =
-        GetTensorsWithVarDescInArgs("run_program", "Out", args, 2, true);
-
+    auto Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true);
     auto OutScope =
         GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
     framework::AttributeMap attrs;
@@ -43,8 +40,7 @@ static PyObject *eager_api_run_program(PyObject *self,  // TOREMOVE
     run_program_ad_func(X, Params, Out, OutScope, attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
-
-    return ToPyObject(Out);
+    Py_RETURN_NONE;
   } catch (paddle::platform::EnforceNotMet &exception) {
     if (tstate) {
       PyEval_RestoreThread(tstate);
@@ -71,9 +67,7 @@ static PyObject *pir_eager_api_run_program(PyObject *self,
   try {
     auto X = GetTensorListFromArgs("run_program", "X", args, 0, true);
     auto Params = GetTensorListFromArgs("run_program", "Params", args, 1, true);
-    std::vector<paddle::Tensor *> Out =
-        GetTensorsWithOpResultInArgs("run_program", "Out", args, 2, true);
-
+    auto Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true);
     auto OutScope =
         GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
     framework::AttributeMap attrs;
@@ -88,8 +82,7 @@ static PyObject *pir_eager_api_run_program(PyObject *self,
     pir_run_program_ad_func(X, Params, Out, OutScope, attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
-
-    return ToPyObject(Out);
+    Py_RETURN_NONE;
   } catch (paddle::platform::EnforceNotMet &exception) {
     if (tstate) {
       PyEval_RestoreThread(tstate);

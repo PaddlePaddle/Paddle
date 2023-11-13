@@ -332,19 +332,15 @@ class PartialProgramLayer:
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        in_vars = self._prepare(inputs)
+        in_vars, out_vars = self._prepare(inputs)
         attrs = self._prepare_attributes()
 
         # self._sync_lr_value_with_scheduler()
 
-        out_op_results = [
-            self._outputs[var_id] for var_id in self._outputs.var_ids
-        ]
-
-        out_vars = _legacy_C_ops.pir_run_program(
+        _legacy_C_ops.pir_run_program(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),
-            self._valid_vars(out_op_results),
+            self._valid_vars(out_vars),
             self._create_scope_vec(
                 program_id=self.program_id, use_scope_cache=True
             ),
@@ -698,7 +694,34 @@ class PartialProgramLayer:
                 continue
             input_vars.append(var)
 
-        return input_vars
+        # mapping from name(string) -> Tensor
+        out_tensor_map = {}
+
+        def create_out(var_id):
+            var = self._outputs[var_id]
+            assert isinstance(var, OpResult)
+
+            if id(var) in out_tensor_map:
+                return out_tensor_map[id(var)]
+
+            if var.is_dense_tensor_type():
+                tensor_type = paddle.dtype(7)  # LOD TENSOR
+            else:
+                tensor_type = paddle.dtype(8)  # SELECT ROW TENSOR
+            out = core.eager.Tensor(
+                framework.paddle_type_to_proto_type[var.dtype],
+                var.shape,
+                "",
+                tensor_type,
+                False,
+            )
+            out.stop_gradient = var.stop_gradient
+            out_tensor_map[id(var)] = out
+            return out
+
+        # Create Tensor to receive output data.
+        out_vars = list(map(create_out, self._outputs.var_ids))
+        return input_vars, out_vars
 
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
         inner_scope = self._get_scope(

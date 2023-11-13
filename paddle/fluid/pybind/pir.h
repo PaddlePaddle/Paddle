@@ -15,16 +15,8 @@
 #pragma once
 
 #include <pybind11/pybind11.h>
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/ddim.h"
-#include "paddle/pir/core/op_result.h"
-
 namespace paddle {
 namespace pybind {
-using pir::OpResult;
 void BindPir(pybind11::module *m);
-phi::DataType GetOpResultDtype(const OpResult &result);
-const phi::DDim &GetOpResultDims(const OpResult &result);
-bool GetOpResultBoolAttr(const OpResult &self, const std::string &attr_name);
 }  // namespace pybind
 }  // namespace paddle
