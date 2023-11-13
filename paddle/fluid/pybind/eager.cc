@@ -963,7 +963,16 @@ Tensor is the basic data structure in PaddlePaddle. There are some ways to creat
  * ** place: paddle::platform::Place,
  * ** name: std::string,
  * ** dist_attr: phi::distributed::TensorDistAttr)
- * 7. (multi-place) (should have at least one parameter, one parameter similar
+ * 7. (multi-place)
+ * (should have at least one parameter, one parameter equals to case 5, zero
+ * parameter equals to case 1.)
+ * def __init__ (
+ * ** tensor: Tensor,
+ * ** place: paddle::platform::Place,
+ * ** name: std::string,
+ * ** process_mesh: phi::distributed::ProcessMesh)
+ * ** placements: std::vector<Placement>)
+ * 8. (multi-place) (should have at least one parameter, one parameter similar
  * to case 5, zero parameter equals to case 1.)
  * def __init__ (
  * ** tensor: FrameworkTensor,
