@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 from typing import Any
 
 
@@ -98,18 +99,18 @@ class State:
         self.value_to_valuegrad = ValueDict(default_factory=list)
         self.value_to_sumvaluegrad = ValueDict(default_factory=list)
         # operation -> list(operation)
-        self.op_to_opgrad = ValueDict(default_factory=list)
+        self.op_to_opgrad = collections.defaultdict(list)
 
         # opresult -> list(opresult)
         self.valuegrad_to_value = ValueDict(default_factory=list)
         self.sumvaluegrad_to_value = ValueDict(default_factory=list)
         # operation -> list(operation)
-        self.opgrad_to_op = ValueDict(default_factory=list)
+        self.opgrad_to_op = collections.defaultdict(list)
 
     def turn_map(self) -> None:
         self.valuegrad_to_value = ValueDict(default_factory=list)
         self.sumvaluegrad_to_value = ValueDict(default_factory=list)
-        self.opgrad_to_op = ValueDict(default_factory=list)
+        self.opgrad_to_op = collections.defaultdict(list)
 
         for k, v in self.value_to_valuegrad.items():
             if v != []:
