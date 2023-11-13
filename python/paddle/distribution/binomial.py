@@ -31,7 +31,7 @@ class Binomial(distribution.Distribution):
 
     .. math::
 
-        pdf(x; n, p) = \frac{n!}{x!(n-x)!}p^{x}(1-p)^{n-x}$
+        pdf(x; n, p) = \frac{n!}{x!(n-x)!}p^{x}(1-p)^{n-x}
 
     In the above equation:
 
@@ -51,16 +51,20 @@ class Binomial(distribution.Distribution):
             >>> import paddle
             >>> from paddle.distribution import Binomial
             >>> rv = Binomial(100, paddle.to_tensor([0.3, 0.6, 0.9]))
+
+            >>> # doctest: +SKIP
             >>> print(rv.sample([2]))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[33., 56., 93.],
-                [32., 53., 91.]])
+            [[33., 56., 93.],
+            [32., 53., 91.]])
+
             >>> print(rv.mean)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [30.00000191, 60.00000381, 90.        ])
+            [30.00000191, 60.00000381, 90.        ])
+
             >>> print(rv.entropy())
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [2.94057941, 3.00785327, 2.51125669])
+            [2.94057941, 3.00785327, 2.51125669])
     """
 
     def __init__(self, total_count, probability):

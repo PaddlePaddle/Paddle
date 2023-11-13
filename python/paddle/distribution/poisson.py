@@ -31,7 +31,7 @@ class Poisson(distribution.Distribution):
 
     .. math::
 
-        pdf(x; \lambda) = \frac{e^{-\lambda} \cdot \lambda^x}{x!}$
+        pdf(x; \lambda) = \frac{e^{-\lambda} \cdot \lambda^x}{x!}
 
     In the above equation:
 
@@ -45,25 +45,30 @@ class Poisson(distribution.Distribution):
         .. code-block:: python
 
             >>> import paddle
-            >>> from paddle.distribution import Binomial
+            >>> from paddle.distribution import Poisson
             >>> rv = Poisson(paddle.to_tensor(30))
+
+            >>> # doctest: +SKIP
             >>> print(rv.sample([3, 4]))
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[28., 39., 22., 35.],
-                [36., 34., 47., 22.],
-                [28., 24., 33., 31.]])
+            [[28., 39., 22., 35.],
+            [36., 34., 47., 22.],
+            [28., 24., 33., 31.]])
+
             >>> print(rv.mean)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                30.)
+            30.)
+
             >>> print(rv.entropy())
             Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [3.11661315])
+            [3.11661315])
+
             >>> rv1 = Poisson(paddle.to_tensor([[30,40],[8,5]]))
             >>> rv2 = Poisson(paddle.to_tensor([[1000,40],[7,10]]))
             >>> print(rv1.kl_divergence(rv2))
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[864.80285645, 0.          ],
-                [0.06825157  , 1.53426421  ]])
+            [[864.80285645, 0.          ],
+            [0.06825157  , 1.53426421  ]])
     """
 
     def __init__(self, rate):
