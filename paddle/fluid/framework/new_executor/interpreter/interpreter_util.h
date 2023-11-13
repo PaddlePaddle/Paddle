@@ -110,7 +110,8 @@ void BuildVariableScope(const framework::BlockDesc& block,
 void BuildId2VarName(const std::map<std::string, int>& var_name_2_id,
                      std::unordered_map<int, std::string>* id_2_var_name);
 
-void LogDeviceMemoryStats(const platform::Place& place);
+void LogDeviceMemoryStats(const platform::Place& place,
+                          const std::string& op_name);
 
 void SetDeviceCommContext(framework::OperatorBase* operator_base,
                           platform::DeviceContext* dev_ctx);
@@ -125,9 +126,9 @@ const paddle::framework::Variable* GetVariableByName(
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name);
 
-std::vector<std::string> GetOriginInputNames(std::string op_name);
+std::vector<std::string> GetOriginInputNames(const std::string& op_name);
 
-std::vector<std::string> GetOriginOutputNames(std::string op_name);
+std::vector<std::string> GetOriginOutputNames(const std::string& op_name);
 
 void PrintValuesAndVariables(
     const pir::Block& block,

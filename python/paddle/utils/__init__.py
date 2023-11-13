@@ -37,7 +37,7 @@ from .layers_utils import copy_mutable_vars  # noqa: F401
 from .layers_utils import padding_to_same_structure  # noqa: F401
 from .layers_utils import assert_same_structure  # noqa: F401
 from .layers_utils import get_shape_tensor_inputs  # noqa: F401
-from .layers_utils import get_pir_shape_tensor  # noqa: F401
+from .layers_utils import get_int_tensor_list  # noqa: F401
 from .layers_utils import convert_shape_to_list  # noqa: F401
 from .layers_utils import check_shape  # noqa: F401
 from .layers_utils import try_set_static_shape_tensor  # noqa: F401

@@ -837,6 +837,13 @@ class Engine:
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
                 self._executor.run(prune_startup_prog)
+            if self._model and len(self._model.buffers()) > 0:
+                for buffer in self._model.buffers():
+                    scope_var = global_scope().find_var(buffer.name)
+                    buffer_tensor = global_scope().var(buffer.name).get_tensor()
+                    if scope_var and buffer_tensor._is_initialized():
+                        continue
+                    buffer_tensor.set(buffer.value().get_tensor(), self._place)
 
             if hasattr(self, "_state_dict") and hasattr(self, "_dist_attr"):
                 self._set_state_dict(
@@ -938,11 +945,10 @@ class Engine:
         """
         self._mode = 'train'
 
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            train_data, train_sample_split, batch_size
-        )
-
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                train_data, train_sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1123,11 +1129,11 @@ class Engine:
 
         """
         self._mode = 'eval'
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            valid_data, valid_sample_split, batch_size
-        )
 
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                valid_data, valid_sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1257,11 +1263,11 @@ class Engine:
                 >>> engine.predict(valid_dataset, batch_size=64)
         """
         self._mode = 'predict'
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            test_data, test_sample_split, batch_size
-        )
 
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                test_data, test_sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1346,11 +1352,10 @@ class Engine:
         if mode is not None:
             self.to_mode(mode)
 
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            dataset, sample_split, batch_size
-        )
-
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                dataset, sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1391,11 +1396,11 @@ class Engine:
     ):
         if mode is not None:
             self.to_mode(mode)
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            dataset, sample_split, batch_size
-        )
 
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                dataset, sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1679,9 +1684,7 @@ class Engine:
                     )
                 if spec.name is None:
                     raise ValueError(
-                        "Requires Input[{}].name != None, but receive `None` with {}.".format(
-                            i, spec
-                        )
+                        f"Requires Input[{i}].name != None, but receive `None` with {spec}."
                     )
                 if self._acc_steps > 1:
                     shape = list(spec.shape)

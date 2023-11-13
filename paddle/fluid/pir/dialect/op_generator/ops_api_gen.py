@@ -68,7 +68,28 @@ static PyObject *{name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
 OPS_API_TEMPLATE = """
 {{"{name}", (PyCFunction)(void (*)(void)){name}, METH_VARARGS | METH_KEYWORDS, "C++ interface function for {name}."}},"""
 
-NEED_GEN_STATIC_ONLY_APIS = ['fetch']
+NEED_GEN_STATIC_ONLY_APIS = [
+    'fetch',
+    'fused_embedding_eltwise_layernorm',
+    'fused_fc_elementwise_layernorm',
+    'fused_multi_transformer_xpu',
+    'fused_scale_bias_relu_conv_bnstats',
+    'fusion_transpose_flatten_concat',
+    'generate_sequence_xpu',
+    'layer_norm_act_xpu',
+    'multi_encoder_xpu',
+    'multihead_matmul',
+    'squeeze_excitation_block',
+    'yolo_box_xpu',
+    'fusion_gru',
+    'fusion_seqconv_eltadd_relu',
+    'fusion_seqexpand_concat_fc',
+    'fusion_repeated_fc_relu',
+    'fusion_squared_mat_sub',
+    'fused_attention',
+    'fused_feedforward',
+    'self_dp_attention',
+]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
@@ -83,11 +104,10 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_reduce_sum',
     'dpsgd',
     'embedding_grad_sparse',
-    'fused_attention',
     'fused_batch_norm_act_',
     'fused_bn_add_activation_',
-    'fused_feedforward',
     'fused_scale_bias_relu_conv_bnstats',
+    'memcpy',
     'print',
     'recv_v2',
     'rnn_',
@@ -98,6 +118,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'set_value_with_tensor',
     'set_value_with_tensor_',
     'shadow_feed',
+    'sparse_momentum',
 ]
 
 

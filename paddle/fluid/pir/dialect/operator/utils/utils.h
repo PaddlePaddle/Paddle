@@ -133,6 +133,8 @@ bool IsLegacyOp(const std::string& name);
 
 bool IsEmptyValue(const pir::Value& value);
 
+std::vector<int64_t> GetInt64Vector(const pir::Attribute& attr);
+
 void CheckValueDataType(const pir::Value& value,
                         const std::string& input_name,
                         const std::string& op_name);

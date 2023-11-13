@@ -26,7 +26,7 @@ class TestDefaultDataParallelSPMDRule(unittest.TestCase):
     def setUp(self):
         # After replaced all spmd rules by phi impl, we can recover the
         # api name to `get_spmd_rule`
-        self.rule = core.get_phi_spmd_rule("unsqueeze")
+        self.rule = core.get_phi_spmd_rule("default_data_parallel")
 
         x_shape = [10, 10, 32, 48]
         y_shape = [32, 48]

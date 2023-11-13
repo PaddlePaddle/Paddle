@@ -61,8 +61,8 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -893,10 +893,17 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
         selected_rows->mutable_rows()->clear();
         selected_rows->mutable_value()->clear();
       }
-    } else if (grad->is_dense_tensor()) {
+    } else if (grad->is_dense_tensor() || grad->is_dist_tensor()) {
       if (grad->initialized()) {
+        phi::DenseTensor* grad_t = nullptr;
+        if (grad->is_dense_tensor()) {
+          grad_t = static_cast<phi::DenseTensor*>(grad->impl().get());
+        } else {
+          grad_t =
+              static_cast<phi::distributed::DistTensor*>(grad->impl().get())
+                  ->unsafe_mutable_value();
+        }
         if (set_to_zero) {
-          auto* grad_t = static_cast<phi::DenseTensor*>(grad->impl().get());
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(grad_t->place());
           phi::funcs::set_constant(*dev_ctx, grad_t, 0.0);
@@ -908,9 +915,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
         } else {
           VLOG(4) << "Gradient of " << self->tensor.name()
                   << " is initialized, will be released.";
-          auto dense_tensor =
-              std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl());
-          dense_tensor->MoveMemoryHolder();
+          grad_t->MoveMemoryHolder();
         }
       }
     }
@@ -937,8 +942,14 @@ static PyObject* tensor__zero_grads(TensorObject* self,
                        "Please check if you have manually cleared"
                        "the grad inside autograd_meta"));
     if (grad->initialized()) {
-      if (grad->is_dense_tensor()) {
-        auto* t = static_cast<phi::DenseTensor*>(grad->impl().get());
+      if (grad->is_dense_tensor() || grad->is_dist_tensor()) {
+        phi::DenseTensor* t = nullptr;
+        if (grad->is_dense_tensor()) {
+          t = static_cast<phi::DenseTensor*>(grad->impl().get());
+        } else {
+          t = static_cast<phi::distributed::DistTensor*>(grad->impl().get())
+                  ->unsafe_mutable_value();
+        }
         auto* dev_ctx = platform::DeviceContextPool::Instance().Get(t->place());
         phi::funcs::set_constant(*dev_ctx, t, 0.0);
       } else {
@@ -949,9 +960,16 @@ static PyObject* tensor__zero_grads(TensorObject* self,
     eager_gil_scoped_release guard;
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
     if (meta->MutableGrad()->initialized()) {
-      if (meta->MutableGrad()->is_dense_tensor()) {
-        auto* t =
-            static_cast<phi::DenseTensor*>(meta->MutableGrad()->impl().get());
+      if (meta->MutableGrad()->is_dense_tensor() ||
+          meta->MutableGrad()->is_dist_tensor()) {
+        phi::DenseTensor* t = nullptr;
+        if (meta->MutableGrad()->is_dense_tensor()) {
+          t = static_cast<phi::DenseTensor*>(meta->MutableGrad()->impl().get());
+        } else {
+          t = static_cast<phi::distributed::DistTensor*>(
+                  meta->MutableGrad()->impl().get())
+                  ->unsafe_mutable_value();
+        }
         auto* dev_ctx = platform::DeviceContextPool::Instance().Get(t->place());
         phi::funcs::set_constant(*dev_ctx, t, 0.0);
       } else {
@@ -978,13 +996,28 @@ static PyObject* tensor__share_buffer_to(TensorObject* self,
                         "Tensor %s has not been initialized! please initialize "
                         "src tensor before share_buffer_with to other.",
                         self->tensor.name()));
-  auto* src_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-  if (!dst_ptr->defined()) {
-    dst_ptr->set_impl(std::make_shared<phi::DenseTensor>());
+  if (self->tensor.is_dist_tensor()) {
+    auto* src_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+    if (!dst_ptr->defined()) {
+      dst_ptr->set_impl(std::make_shared<phi::distributed::DistTensor>());
+    }
+    auto dst_tensor =
+        static_cast<phi::distributed::DistTensor*>(dst_ptr->impl().get())
+            ->unsafe_mutable_value();
+    dst_tensor->ShareBufferWith(*src_tensor);
+    dst_tensor->ShareDataTypeWith(*src_tensor);
+  } else {
+    auto* src_tensor =
+        static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+    if (!dst_ptr->defined()) {
+      dst_ptr->set_impl(std::make_shared<phi::DenseTensor>());
+    }
+    auto dst_tensor = static_cast<phi::DenseTensor*>(dst_ptr->impl().get());
+    dst_tensor->ShareBufferWith(*src_tensor);
+    dst_tensor->ShareDataTypeWith(*src_tensor);
   }
-  auto dst_tensor = static_cast<phi::DenseTensor*>(dst_ptr->impl().get());
-  dst_tensor->ShareBufferWith(*src_tensor);
-  dst_tensor->ShareDataTypeWith(*src_tensor);
   RETURN_PY_NONE
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1006,10 +1039,21 @@ static PyObject* tensor__is_shared_buffer_with(TensorObject* self,
   if (!self->tensor.defined() || !dst_ptr->defined()) {
     return ToPyObject(res);
   }
-  auto* self_ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-  auto dst_tensor = static_cast<phi::DenseTensor*>(dst_ptr->impl().get());
-  res = dst_tensor->IsSharedBufferWith(*self_ptr);
-  return ToPyObject(res);
+  if (self->tensor.is_dist_tensor()) {
+    auto* self_ptr =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+    auto dst_tensor =
+        static_cast<phi::distributed::DistTensor*>(dst_ptr->impl().get())
+            ->unsafe_mutable_value();
+    res = dst_tensor->IsSharedBufferWith(*self_ptr);
+    return ToPyObject(res);
+  } else {
+    auto* self_ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+    auto dst_tensor = static_cast<phi::DenseTensor*>(dst_ptr->impl().get());
+    res = dst_tensor->IsSharedBufferWith(*self_ptr);
+    return ToPyObject(res);
+  }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1275,8 +1319,8 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
           "tensor %s has not been initialized, we can only slice initialized "
           "tensor please init it first with numpy or other tensor.",
           self->tensor.name()));
-  auto tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-  ParseIndexingSlice(tensor,
+
+  ParseIndexingSlice(self->tensor.dims(),
                      _index,
                      &slice_axes,
                      &slice_starts,
@@ -1344,7 +1388,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     // NOTE(zoooo0820): When all axes are decreased, the output will be 1-D
     // with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
     // otherwise the output shape will be not correct.
-    if (static_cast<int>(decrease_axis.size()) == tensor->dims().size()) {
+    if (static_cast<int>(decrease_axis.size()) == self->tensor.dims().size()) {
       VLOG(1)
           << "Warning: In Tensor '__getitem__', if the number of scalar "
              "elements "
@@ -1398,6 +1442,10 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
           egr::Controller::Instance().GetExpectedPlace());
       paddle::framework::TensorFromVector(
           list_select_idxs, *dev_ctx, idx_tensor.get());
+      const phi::distributed::ProcessMesh* mesh = nullptr;
+      if (InputsContainDistTensor(&mesh, self->tensor, select_index)) {
+        ConvertAllInputsToDistTensor(mesh, self->tensor, select_index);
+      }
       out = index_select_ad_func(self->tensor, select_index, 0);
     }
   }
@@ -1526,8 +1574,6 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
   EAGER_TRY
   VLOG(4) << "Call __setitem_eager_tensor";
 
-  auto self_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-
   PyObject* _index = PyTuple_GET_ITEM(args, 0);
   PyObject* value_obj = PyTuple_GET_ITEM(args, 1);
   // NOTE(zhiqiu): PyTuple_Pack increases refcount while PyTuple_New
@@ -1565,7 +1611,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
     std::vector<int64_t> list_select_idxs;
     // if index is a list, list_select_flag will be true
     bool list_select_flag = false;
-    ParseIndexingSlice(self_tensor,
+    ParseIndexingSlice(self->tensor.dims(),
                        index_ptr,
                        &axes,
                        &starts,
@@ -1731,6 +1777,12 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       }
     }
   } else {
+    PADDLE_ENFORCE_EQ(self->tensor.is_dense_tensor(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "This setitem mode only support DenseTensor."));
+    auto self_tensor =
+        static_cast<phi::DenseTensor*>(self->tensor.impl().get());
     auto self_numpy = TensorToPyArray(*self_tensor, true);
     VLOG(4) << "parse_index is false";
     if (PyCheckTensor(_index)) {
@@ -1974,15 +2026,24 @@ static PyObject* tensor__use_gpudnn(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
   EAGER_TRY
-  PADDLE_ENFORCE(self->tensor.defined() && self->tensor.is_dense_tensor(),
-                 paddle::platform::errors::Fatal(
-                     "function _use_gpudnn is only effective for DenseTensor"));
+  PADDLE_ENFORCE(
+      self->tensor.defined() &&
+          (self->tensor.is_dense_tensor() || self->tensor.is_dist_tensor()),
+      paddle::platform::errors::Fatal("Function _use_gpudnn is only effective "
+                                      "for DenseTensor and DistTensor."));
 
   bool use_gpudnn = pybind::CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
 
   // Set the same use_gpudnn attribute, return directly
-  phi::DenseTensor* dense_tensor =
-      static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  phi::DenseTensor* dense_tensor = nullptr;
+  if (self->tensor.is_dist_tensor()) {
+    dense_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+  } else {
+    dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  }
+
   phi::DenseTensorMeta* dense_tensor_meta =
       phi::DenseTensorUtils::GetMutableMeta(dense_tensor);
   if (use_gpudnn == dense_tensor_meta->use_gpudnn) {
@@ -1996,10 +2057,20 @@ static PyObject* tensor__use_gpudnn(TensorObject* self,
   target_dense_tensor.ShareDataWith(*dense_tensor);
   target_dense_tensor.set_meta(target_dense_meta);
   // Construct returned tensor
-  paddle::Tensor target_tensor(
-      std::make_shared<phi::DenseTensor>(target_dense_tensor),
-      self->tensor.name());
+  paddle::Tensor target_tensor(self->tensor.name());
   target_tensor.set_autograd_meta(self->tensor.mutable_autograd_meta());
+  if (self->tensor.is_dist_tensor()) {
+    auto dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+    auto target_dist_tensor = std::make_shared<phi::distributed::DistTensor>(
+        dist_tensor->dims(), dist_tensor->dist_attr());
+    *(target_dist_tensor->unsafe_mutable_value()) = target_dense_tensor;
+    target_tensor.set_impl(target_dist_tensor);
+  } else {
+    target_tensor.set_impl(
+        std::make_shared<phi::DenseTensor>(target_dense_tensor));
+  }
+
   VLOG(4) << "Tensor: " << target_tensor.name()
           << " set use_gpudnn = " << use_gpudnn;
 
@@ -2652,8 +2723,8 @@ static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
   }
 
   paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
-  if (grad && grad->defined() && grad->is_dense_tensor() &&
-      grad->initialized()) {
+  if (grad && grad->defined() && grad->initialized() &&
+      (grad->is_dense_tensor() || grad->is_dist_tensor())) {
     grad->reset_inplace_version(set_to_zero);
   }
   RETURN_PY_NONE
@@ -2704,14 +2775,21 @@ static PyObject* tensor__offset(TensorObject* self,
                                 PyObject* args,
                                 PyObject* kwargs) {
   EAGER_TRY
-  auto t = std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+  phi::DenseTensor* dense_tensor = nullptr;
+  if (self->tensor.is_dist_tensor()) {
+    dense_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+  } else {
+    dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  }
   PADDLE_ENFORCE_EQ(
-      t->IsInitialized(),
+      dense_tensor->IsInitialized(),
       true,
       platform::errors::InvalidArgument("Tensor %s has not been initialized!",
                                         self->tensor.name()));
 
-  return ToPyObject(t->offset());
+  return ToPyObject(dense_tensor->offset());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -2748,9 +2826,14 @@ static PyObject* tensor__grad_value(TensorObject* self,
   if (grad->is_dense_tensor()) {
     auto* grad_tensor = static_cast<phi::DenseTensor*>(grad->impl().get());
     return ToPyObject(grad_tensor);
+  } else if (grad->is_dist_tensor()) {
+    auto* grad_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+    return ToPyObject(grad_tensor);
   } else {
     PADDLE_THROW(paddle::platform::errors::Fatal(
-        "this method is only supported for DenseTensor"));
+        "This method is only supported for DenseTensor and DistTensor."));
     RETURN_PY_NONE
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -2833,7 +2916,15 @@ static PyObject* tensor_data_ptr(TensorObject* self,
         (int64_t)std::dynamic_pointer_cast<phi::DenseTensor>(  // NOLINT
             self->tensor.impl())
             ->data());
+  } else if (self->tensor.initialized() && self->tensor.is_dist_tensor()) {
+    return ToPyObject(
+        (int64_t)
+            std::dynamic_pointer_cast<phi::distributed::DistTensor>(  // NOLINT
+                self->tensor.impl())
+                ->unsafe_mutable_value()
+                ->data());
   }
+
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -2879,7 +2970,8 @@ static PyObject* tensor_method_strides(TensorObject* self,
                                        PyObject* kwargs) {
   EAGER_TRY
   std::vector<int64_t> value;
-  if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
+  if (!self->tensor.defined() ||
+      (!self->tensor.is_dense_tensor() && !self->tensor.is_dist_tensor())) {
     return ToPyObject(value);
   }
   auto stride = self->tensor.strides();
@@ -2919,20 +3011,24 @@ static PyObject* tensor_contiguous(TensorObject* self,
                                    PyObject* args,
                                    PyObject* kwargs) {
   EAGER_TRY
-  if (self->tensor.is_dense_tensor()) {
-    auto dense_tensor =
-        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+  if (self->tensor.is_dense_tensor() || self->tensor.is_dist_tensor()) {
+    phi::DenseTensor* dense_tensor = nullptr;
+    if (self->tensor.is_dist_tensor()) {
+      dense_tensor =
+          static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+              ->unsafe_mutable_value();
+    } else {
+      dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+    }
     if (dense_tensor->meta().is_contiguous()) {
       Py_INCREF(self);
       return reinterpret_cast<PyObject*>(self);
     } else {
       eager_gil_scoped_release guard;
-      self->tensor.set_impl(std::make_shared<phi::DenseTensor>(std::move(
-          paddle::experimental::Trans2Contiguous(*(dense_tensor.get())))));
+      *dense_tensor = paddle::experimental::Trans2Contiguous(*dense_tensor);
       Py_INCREF(self);
       return reinterpret_cast<PyObject*>(self);
     }
-
   } else {
     Py_INCREF(self);
     return reinterpret_cast<PyObject*>(self);
@@ -2967,6 +3063,11 @@ static PyObject* tensor_is_contiguous(TensorObject* self,
     auto dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
     return ToPyObject(dense_tensor->meta().is_contiguous());
+  } else if (self->tensor.is_dist_tensor()) {
+    auto dense_tensor = std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                            self->tensor.impl())
+                            ->unsafe_mutable_value();
+    return ToPyObject(dense_tensor->meta().is_contiguous());
   } else {
     return ToPyObject(true);
   }
@@ -2991,19 +3092,27 @@ static PyObject* tensor_method__uva(TensorObject* self,
                                     PyObject* kwargs) {
   EAGER_TRY
   VLOG(4) << "Running in tensor_method__uva.";
-  PADDLE_ENFORCE_EQ(self->tensor.is_dense_tensor(),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Unified virtual addressing only support "
-                        "DenseTensor currently."));
+  PADDLE_ENFORCE_EQ(
+      self->tensor.is_dense_tensor() || self->tensor.is_dist_tensor(),
+      true,
+      platform::errors::InvalidArgument(
+          "Unified virtual addressing only support "
+          "DenseTensor and DistTensor currently."));
   PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.place()),
                     true,
                     platform::errors::InvalidArgument(
                         "Unified virtual addressing only support "
                         "CPU Tensor currently."));
   int device_id = pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
-  auto* self_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-  tensor_uva(self_tensor, device_id);
+  phi::DenseTensor* dense_tensor = nullptr;
+  if (self->tensor.is_dist_tensor()) {
+    dense_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+  } else {
+    dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  }
+  tensor_uva(dense_tensor, device_id);
 
   RETURN_PY_NONE
 

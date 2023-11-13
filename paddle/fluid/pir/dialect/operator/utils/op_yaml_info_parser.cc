@@ -17,8 +17,9 @@
 namespace paddle {
 namespace dialect {
 
-OpYamlInfoParser::OpYamlInfoParser(const OpInfoTuple& op_info_tuple)
-    : op_info_tuple_(op_info_tuple) {
+OpYamlInfoParser::OpYamlInfoParser(const OpInfoTuple& op_info_tuple,
+                                   bool is_legacy_op)
+    : op_info_tuple_(op_info_tuple), is_legacy_op_(is_legacy_op) {
   parse();
 }
 
@@ -210,7 +211,9 @@ void OpYamlInfoParser::parse() {
   }
 
   for (auto& name : runtime_info.kernel_param) {
-    if (input_name2id_.count(name) && !input_info_[name].is_mutable_attribute) {
+    if ((input_name2id_.count(name) &&
+         (!input_info_[name].is_mutable_attribute)) ||
+        (is_legacy_op_ && input_info_[name].is_mutable_attribute)) {
       kernel_fn_tensor_params_.push_back(name);
     } else {
       kernel_fn_attr_params_.push_back(name);
