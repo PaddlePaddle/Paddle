@@ -122,7 +122,7 @@ class Conv2dBnFusePattern
     std::vector<int64_t> new_bias_new_shape(new_conv2d_out_shape.size(), 1);
     std::string data_format =
         new_conv2d_op.attribute<pir::StrAttribute>("data_format").AsString();
-    if (data_format == "NCHW") {
+    if (data_format != "NCHW") {
       return;
     }
     new_bias_new_shape[1] = new_conv2d_out_shape[1];
