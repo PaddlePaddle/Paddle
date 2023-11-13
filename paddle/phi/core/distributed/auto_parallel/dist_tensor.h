@@ -71,10 +71,14 @@ class DistTensor final
   /// \return The TensorDistAttr's const reference
   const TensorDistAttr& dist_attr() const { return dist_attr_; }
 
+  /// \brief Returns the process_mesh of current dist tensor.
+  /// \return The ProcessMesh's const reference
   const ProcessMesh& process_mesh() const {
     return dist_tensor_meta_.process_mesh();
   }
 
+  /// \brief Returns the placements of current dist tensor.
+  /// \return The Placements's const reference
   const Placements& placements() const {
     return dist_tensor_meta_.placements();
   }

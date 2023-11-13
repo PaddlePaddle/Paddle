@@ -79,6 +79,8 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
   TensorDistAttr dist_attr(vectorize(dist_tensor_meta_.dims()));
   dist_attr.set_process_mesh(dist_tensor_meta_.process_mesh());
   dist_attr.set_dims_mapping(dist_tensor_meta_.dim_mapping());
+  dist_attr.mark_annotated("process_mesh");
+  dist_attr.mark_annotated("dims_mapping");
   dist_attr_ = dist_attr;
 
   // If the current rank doesn't in process_mesh, we should create an

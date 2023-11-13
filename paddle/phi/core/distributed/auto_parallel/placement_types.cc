@@ -48,13 +48,6 @@ std::vector<int64_t> DistTensorMeta::dim_mapping() const {
       dim_map[shard_dim] = i;
     }
   }
-
-  std::cerr << "dim_map: ";
-  for (auto& dim : dim_map) {
-    std::cerr << dim << " ";
-  }
-  std::cerr << std::endl;
-
   return dim_map;
 }
 

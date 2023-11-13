@@ -382,14 +382,13 @@ void BindAutoParallel(py::module *m) {
                    .def("__str__", &phi::distributed::Shard::to_string)
                    .def("__eq__", &phi::distributed::Shard::operator==);
 
-  auto Replicated =
-      py::class_<phi::distributed::Replicated,
-                 std::shared_ptr<phi::distributed::Replicated>>(
-          *m, "Replicated", Placement)
-          .def(py::init<>())
-          .def("__hash__", &phi::distributed::Replicated::hash)
-          .def("__str__", &phi::distributed::Replicated::to_string)
-          .def("__eq__", &phi::distributed::Replicated::operator==);
+  auto Replicate = py::class_<phi::distributed::Replicate,
+                              std::shared_ptr<phi::distributed::Replicate>>(
+                       *m, "Replicate", Placement)
+                       .def(py::init<>())
+                       .def("__hash__", &phi::distributed::Replicate::hash)
+                       .def("__str__", &phi::distributed::Replicate::to_string)
+                       .def("__eq__", &phi::distributed::Replicate::operator==);
 
   auto Partial = py::class_<phi::distributed::Partial,
                             std::shared_ptr<phi::distributed::Partial>>(
@@ -402,7 +401,7 @@ void BindAutoParallel(py::module *m) {
   g_placement_base_pytype = reinterpret_cast<PyTypeObject *>(Placement.ptr());
   g_placement_shard_pytype = reinterpret_cast<PyTypeObject *>(Shard.ptr());
   g_placement_replicated_pytype =
-      reinterpret_cast<PyTypeObject *>(Replicated.ptr());
+      reinterpret_cast<PyTypeObject *>(Replicate.ptr());
   g_placement_partial_pytype = reinterpret_cast<PyTypeObject *>(Partial.ptr());
 
   py::class_<TensorDistAttr> py_dist_attr(*m, "TensorDistAttr");

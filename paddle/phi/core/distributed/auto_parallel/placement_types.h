@@ -71,8 +71,6 @@ class Shard : public Placement {
     if (dim && *dim == this->dim_) {
       return true;
     } else {
-      std::cerr << "Shard::is_shard: dim is not equal to this->dim_: "
-                << this->dim_ << std::endl;
       return !dim.has_value();
     }
   }
@@ -86,7 +84,9 @@ class Shard : public Placement {
     return !(*this == other);
   }
 
-  std::size_t hash() const override { return std::hash<int>{}(dim_); }
+  std::size_t hash() const override {
+    return std::hash<std::string>{}(to_string());
+  }
 
   int get_dim() const { return dim_; }
 
@@ -103,26 +103,28 @@ class Shard : public Placement {
   int dim_;
 };
 
-class Replicated : public Placement {
+class Replicate : public Placement {
  public:
   bool is_replicated() const override { return true; }
 
   bool operator==(const Placement& other) const override {
-    return dynamic_cast<const Replicated*>(&other) != nullptr;
+    return dynamic_cast<const Replicate*>(&other) != nullptr;
   }
 
   bool operator!=(const Placement& other) const override {
     return !(*this == other);
   }
 
-  std::size_t hash() const override { return -1; }
+  std::size_t hash() const override {
+    return std::hash<std::string>{}(to_string());
+  }
 
-  friend std::ostream& operator<<(std::ostream& os, const Replicated& p) {
+  friend std::ostream& operator<<(std::ostream& os, const Replicate& p) {
     os << p.to_string();
     return os;
   }
 
-  std::string to_string() const override { return "Replicated()"; }
+  std::string to_string() const override { return "Replicate()"; }
 };
 
 class Partial : public Placement {
@@ -141,7 +143,7 @@ class Partial : public Placement {
   }
 
   std::size_t hash() const override {
-    return std::hash<ReduceType>{}(reduce_type_);
+    return std::hash<std::string>{}(to_string());
   }
 
   friend std::ostream& operator<<(std::ostream& os, const Partial& p) {
@@ -200,8 +202,8 @@ struct hash<phi::distributed::Shard> {
 };
 
 template <>
-struct hash<phi::distributed::Replicated> {
-  std::size_t operator()(const phi::distributed::Replicated& p) const {
+struct hash<phi::distributed::Replicate> {
+  std::size_t operator()(const phi::distributed::Replicate& p) const {
     return p.hash();
   }
 };

@@ -698,7 +698,7 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
 using phi::distributed::Partial;
 using phi::distributed::Placement;
 using phi::distributed::Placements;
-using phi::distributed::Replicated;
+using phi::distributed::Replicate;
 using phi::distributed::Shard;
 Placements CastPyArg2VectorOfPlacement(PyObject* obj, ssize_t arg_pos) {
   Placements result;
@@ -707,8 +707,8 @@ Placements CastPyArg2VectorOfPlacement(PyObject* obj, ssize_t arg_pos) {
       result.emplace_back(
           std::make_shared<Shard>(::pybind11::handle(item).cast<Shard>()));
     } else if (PyObject_TypeCheck(item, g_placement_replicated_pytype)) {
-      result.emplace_back(std::make_shared<Replicated>(
-          ::pybind11::handle(item).cast<Replicated>()));
+      result.emplace_back(std::make_shared<Replicate>(
+          ::pybind11::handle(item).cast<Replicate>()));
     } else if (PyObject_TypeCheck(item, g_placement_partial_pytype)) {
       result.emplace_back(
           std::make_shared<Partial>(::pybind11::handle(item).cast<Partial>()));
