@@ -68,7 +68,8 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     "builtin.set_parameter",
     "builtin.get_parameter",
     "builtin.shadow_output",
-    "cinn_runtime.jit_kernel"};
+    "cinn_runtime.jit_kernel",
+    "pd_op.array_length"};
 const std::unordered_set<std::string> SpecialLowerOps = {
     "builtin.combine",
     "builtin.slice",
@@ -648,7 +649,8 @@ phi::KernelKey GetKernelKey(
     const std::string& kernel_fn_str,
     const std::unordered_map<pir::Value, pir::Value>& map_value_pair,
     dialect::OpYamlInfoParser* op_info_parser = nullptr) {
-  if (op->isa<paddle::dialect::FeedOp>()) {
+  if (op->isa<paddle::dialect::FeedOp>() ||
+      op->isa<paddle::dialect::ArrayLengthOp>()) {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
     VLOG(6) << "FeedOp doesn't need a kernel. Backend: CPU, DataLayout: ANY";

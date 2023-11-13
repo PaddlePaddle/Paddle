@@ -1152,7 +1152,7 @@ OpInfoTuple ArrayLengthOp::GetOpInfo() {
       OpOutputInfo("out", "paddle::dialect::DenseTensorType", false, false)};
 
   paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo(
-      "ArrayLengthInferMeta", {"x"}, "array_length", {"x"}, {"x"}, {}, {}, {});
+      "ArrayLengthInferMeta", {"x"}, "array_length", {"x"}, {}, {}, {}, {});
 
   return std::make_tuple(
       inputs, attributes, outputs, run_time_info, "array_length");

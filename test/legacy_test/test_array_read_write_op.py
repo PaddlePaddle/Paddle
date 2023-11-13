@@ -174,7 +174,12 @@ class TestPirArrayOp(unittest.TestCase):
                 out0 = paddle.tensor.array_read(array, 0)
                 out1 = paddle.tensor.array_read(array, 1)
 
-            exe = paddle.base.Executor(paddle.base.CPUPlace())
+            place = (
+                paddle.base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else paddle.base.CUDAPlace(0)
+            )
+            exe = paddle.base.Executor(place)
             [fetched_out0, fetched_out1] = exe.run(
                 main_program, feed={}, fetch_list=[out0, out1]
             )
