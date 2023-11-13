@@ -192,7 +192,6 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
       LOG(WARNING) << "Pass in op compat failed.";
       return;
     }
-
     // Get input scale from tensor
     const phi::DenseTensor& input_scale_tensor =
         scope->GetVar(quantize_linear_op_scale->Name())
@@ -215,32 +214,13 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
       PADDLE_THROW(platform::errors::Unimplemented("%d is not supported.",
                                                    input_scale_tensor.dtype()));
     }
-
     // Get in_num_col_dims
     int in_num_col_dims = quantize_linear_op_x->Var()->GetShape().size() - 1;
 
-    // Get weight scale from tensor
-    const phi::DenseTensor& weight_scale_tensor =
-        scope->GetVar(weight_dequantize_linear_op_scale->Name())
-            ->Get<phi::DenseTensor>();
-    PADDLE_ENFORCE_EQ(
-        paddle::platform::is_cpu_place(weight_scale_tensor.place()),
-        true,
-        platform::errors::InvalidArgument(
-            "weight scale tensor's place should be CPU."));
-
-    float weight_scale = NAN;
-    if (weight_scale_tensor.dtype() == phi::DataType::FLOAT32) {
-      const float* weight_scale_data = weight_scale_tensor.data<float>();
-      weight_scale = weight_scale_data[0];
-    } else if (weight_scale_tensor.dtype() == phi::DataType::FLOAT16) {
-      const phi::dtype::float16* weight_scale_data =
-          weight_scale_tensor.data<phi::dtype::float16>();
-      weight_scale = static_cast<float>(weight_scale_data[0]);
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "%d is not supported.", weight_scale_tensor.dtype()));
-    }
+    // Get weight scale, because although the input weight is of type float,
+    // the value stored inside it is of type int8, so we do not need to
+    // quantize weight in quant linear kernel anymore.
+    float weight_scale = 1.0f;
 
     // because quant_linear kernel need weight's type be int8
     // convert weight fp32 --> int8
@@ -278,22 +258,28 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
 
     std::string activation_type = with_relu ? "relu" : "";
     desc.SetAttr("activation_type", activation_type);
+
+    // link input to quant_linear
+    desc.RenameInput(dequantize_linear_op_out->Var()->Name(),
+                     quantize_linear_op_x->Var()->Name());
+    desc.RenameInput(weight_dequantize_linear_op_out->Var()->Name(),
+                     weight_dequantize_linear_op_x->Var()->Name());
     desc.Flush();
 
     auto quant_linear_node = g->CreateOpNode(&desc);
-    std::unordered_set<const Node*> nodes2rm = {};
+    std::unordered_set<const Node*> nodes2rm = {
+        quantize_linear_op_scale,
+        quantize_linear_op,
+        quantize_linear_op_out,
+        dequantize_linear_op,
+        dequantize_linear_op_out,
+        weight_dequantize_linear_op_scale,
+        weight_dequantize_linear_op,
+        weight_dequantize_linear_op_out,
+        mul,
+        mul_out,
+        elementwise_add};
 
-    nodes2rm.insert(quantize_linear_op_scale);
-    nodes2rm.insert(quantize_linear_op);
-    nodes2rm.insert(quantize_linear_op_out);
-    nodes2rm.insert(dequantize_linear_op);
-    nodes2rm.insert(dequantize_linear_op_out);
-    nodes2rm.insert(weight_dequantize_linear_op_scale);
-    nodes2rm.insert(weight_dequantize_linear_op);
-    nodes2rm.insert(weight_dequantize_linear_op_out);
-    nodes2rm.insert(mul);
-    nodes2rm.insert(mul_out);
-    nodes2rm.insert(elementwise_add);
     if (with_relu) {
       nodes2rm.insert(relu);
       nodes2rm.insert(elementwise_add_out);
