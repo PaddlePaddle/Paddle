@@ -20,7 +20,7 @@ from dygraph_to_static_utils_new import (
     Dy2StTestBase,
     test_ast_only,
     test_legacy_and_pir,
-    test_legacy_and_pir_exe_and_pir_api,
+    test_legacy_and_pir_api,
 )
 
 import paddle
@@ -85,11 +85,6 @@ def dyfunc_with_staticmethod(x_v):
 class TestRecursiveCall1(Dy2StTestBase):
     def setUp(self):
         self.input = np.random.random([10, 16]).astype('float32')
-        self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
 
     def init_test_func(self):
         self.dyfunc = nested_func
@@ -104,7 +99,7 @@ class TestRecursiveCall1(Dy2StTestBase):
         res = self.dyfunc(self.input).numpy()
         return res
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pir_api
     def test_transformed_static_result(self):
         self.init_test_func()
         static_res = self.get_static_output()
@@ -175,11 +170,6 @@ class MyLayer(paddle.nn.Layer):
 class TestRecursiveCall2(Dy2StTestBase):
     def setUp(self):
         self.input = np.random.random((1, 3, 3, 5)).astype('float32')
-        self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
 
     def set_func(self):
         self.dygraph_func = MyLayer()
@@ -217,8 +207,6 @@ class TestStaticMethod(TestRecursiveCall2):
 
 
 # Situation 2 : test not_to_static
-
-
 class NotToStaticHelper(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
@@ -243,14 +231,14 @@ class TestNotToConvert(TestRecursiveCall2):
         paddle.jit.not_to_static(self.net.sum)
         self.dygraph_func = paddle.jit.to_static(self.net.outer)
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pir_api
     def test_conversion_options(self):
         self.set_func()
         options = getattr(self.net.sum, CONVERSION_OPTIONS, None)
         self.assertIsNotNone(options)
         self.assertTrue(options.not_convert)
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pir_api
     def test_code(self):
         self.set_func()
         # check 'if statement' is not converted
@@ -266,7 +254,7 @@ class TestNotToConvert2(TestRecursiveCall2):
         paddle.jit.not_to_static(self.net.sum)
         self.dygraph_func = paddle.jit.to_static(self.net.sum)
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pir_api
     def test_conversion_options(self):
         self.set_func()
         options = getattr(self.net.sum, CONVERSION_OPTIONS, None)
@@ -274,7 +262,7 @@ class TestNotToConvert2(TestRecursiveCall2):
         self.assertTrue(options.not_convert)
 
     @test_ast_only
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pir_api
     def test_code(self):
         self.set_func()
         self.dygraph_func = paddle.jit.to_static(self.net.sum)
@@ -292,7 +280,7 @@ def forward(self, x):
 
 class TestConvertPaddleAPI(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pir_api
     def test_functional_api(self):
         func = paddle.nn.functional.relu
         func = paddle.jit.to_static(func)
@@ -300,7 +288,7 @@ class TestConvertPaddleAPI(Dy2StTestBase):
         self.assertIn("if in_dynamic_or_pir_mode()", func.code)
 
     @test_ast_only
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pir_api
     def test_class_api(self):
         bn = paddle.nn.SyncBatchNorm(2)
         paddle.jit.to_static(bn)
@@ -308,7 +296,7 @@ class TestConvertPaddleAPI(Dy2StTestBase):
         self.assertIn("if in_dynamic_mode()", bn.forward.code)
 
     @test_ast_only
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pir_api
     def test_class_patch_api(self):
         paddle.nn.SyncBatchNorm.forward = forward
         bn = paddle.nn.SyncBatchNorm(2)
