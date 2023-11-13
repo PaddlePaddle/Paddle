@@ -50,7 +50,7 @@ class TestConv2dFusePass(PassTest):
 
     def test_check_output(self):
         place = paddle.base.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_pass_correct(place)
 
 
 if __name__ == "__main__":

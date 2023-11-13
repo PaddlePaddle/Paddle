@@ -35,19 +35,6 @@ class PassTest(unittest.TestCase):
         np.random.seed(123)
         random.seed(124)
 
-    # def run_program(self, executor, program):
-    #     outs = executor.run(
-    #         program=program,
-    #         feed=self.feeds,
-    #         fetch_list=self.fetch_list,
-    #         return_numpy=False,
-    #     )
-    #     outs_np = []
-    #     outs_lod = []
-    #     for out in outs:
-    #         outs_np.append(np.array(out))
-    #         outs_lod.append(out.lod())
-    #     return outs_np, outs_lod
     def run_pir_pass(self):
         if not isinstance(self.pass_list, list):
             self.pass_list = [self.pass_list]
@@ -60,7 +47,6 @@ class PassTest(unittest.TestCase):
 
     def check_fused_ops(self):
         '''
-        确认op是否正确融合
         Check whether the fused ops are correct.
         '''
         if self.fused_op_type is None or len(self.fused_ops) < 0:
@@ -71,16 +57,10 @@ class PassTest(unittest.TestCase):
         for fused_op in self.fused_ops:
             self.assertTrue(fused_op not in op_names, "error!")
 
-    def check_output_with_place(
-        self, place, need_translate_to_pir=False, atol=1e-5
-    ):
+    def check_pass_correct(self, place, need_translate_to_pir=False, atol=1e-5):
         '''
-        Check whether the fetched outputs of the origin program and the
-        optimized program are the same.
-
-        For inference model, the parameters are loaded to CPUPlace first,
-        after apply all specified passes, then copy the parameters to GPUPlace.
-        We can set startup_on_cpu to True to test inference pass.
+        1.Check whether the pass is effective
+        2.[todo]Check the accuracy before and after running the pass
         '''
         executor = paddle.static.Executor(place)
         # 转成新ir的 program
@@ -94,47 +74,5 @@ class PassTest(unittest.TestCase):
         if need_translate_to_pir and self.pir_program is None:
             self.pir_program = pir.translate_to_pir(self.main_program.desc)
 
-        # 获取baseline的输出
-        # baseline_outs, lods = self.run_program(executor, self.pir_program)
-        # self.assertTrue(
-        #     len(self.fetch_list) == len(baseline_outs),
-        #     "Checking the number of fetchs failed. Expected: {}, Received: {}".format(
-        #         len(self.fetch_list), len(baseline_outs)
-        #     ),
-        # )
-
-        # 跑pass
         self.run_pir_pass()
-        # 验证是否融合 1:op被融合某个op/被删除 2:融成新的op
         self.check_fused_ops()
-
-        # 跑经过pass以后的结果
-        # pass_outs, lods_opt = self.run_program(executor, self.pir_program)
-        # self.assertTrue(
-        #     len(self.fetch_list) == len(pass_outs),
-        #     "Checking the number of fetchs failed. Expected: {}, Received: {}".format(
-        #         len(self.fetch_list), len(pass_outs)
-        #     ),
-        # )
-        # for i in range(len(self.fetch_list)):
-        #     is_allclose = np.allclose(pass_outs[i], baseline_outs[i], atol=atol)
-        #     if not is_allclose:
-        #         a = pass_outs[i]
-        #         b = baseline_outs[i]
-        #         diff_mat = np.abs(a - b) / np.abs(a)
-        #         max_diff = np.max(diff_mat)
-        #         offset = np.argmax(diff_mat > atol)
-        #         self.assertTrue(
-        #             is_allclose,
-        #             "Output (name: %s, shape: %s, dtype: %s) has diff at %s. The maximum diff is %e, first error element is %d, expected %e, but got %e"
-        #             % (
-        #                 self.fetch_list[i].name,
-        #                 str(self.fetch_list[i].shape),
-        #                 self.fetch_list[i].dtype,
-        #                 str(place),
-        #                 max_diff,
-        #                 offset,
-        #                 a.flatten()[offset],
-        #                 b.flatten()[offset],
-        #             ),
-        #         )
