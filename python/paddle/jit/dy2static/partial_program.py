@@ -910,9 +910,6 @@ class PartialProgramLayer:
         input_var_names = []
         origin_var_names = []
         expected_place = framework._current_expected_place()
-        support_gpu = paddle.device.is_compiled_with_cuda()
-        if support_gpu:
-            cuda_pinned_place = paddle.CUDAPinnedPlace()
         for i, value in enumerate(flatten_inputs):
             if isinstance(value, np.ndarray):
                 var = None
@@ -924,15 +921,7 @@ class PartialProgramLayer:
                     zero_copy=True,
                 )
             elif isinstance(value, core.eager.Tensor):
-                if (
-                    support_gpu
-                    and value.place._equals(cuda_pinned_place)
-                    and not value.place._equals(expected_place)
-                ):
-                    var = value._copy_to(expected_place, False)
-                    var.stop_gradient = value.stop_gradient
-                else:
-                    var = value
+                var = value
             else:
                 continue
             origin_var_names.append(var.name)

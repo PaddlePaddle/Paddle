@@ -54,19 +54,6 @@ def _append_backward_desc(main_program, outs):
 #         param._set_grad_type(grad_var.type())
 
 
-def _create_out(var):
-    assert isinstance(var, Variable)
-    var_desc = var.desc
-    out = core.eager.Tensor(
-        var_desc.dtype(),
-        var_desc.shape(),
-        var_desc.name(),
-        var_desc.type(),
-        False,
-    )
-    return out
-
-
 @switch_to_static_graph
 def _add_build_strategy_for(input_program, start_op_index, end_op_index):
     compiled_program = paddle.static.CompiledProgram(
@@ -115,8 +102,6 @@ class TestRunProgram(unittest.TestCase):
         fake_var = paddle.zeros([1])
         fake_var.name = 'Fake_var'
 
-        out_t = _create_out(out)
-
         scope = core.Scope()
         attrs = [
             'global_block',
@@ -151,8 +136,8 @@ class TestRunProgram(unittest.TestCase):
                 )
             )
 
-        _legacy_C_ops.run_program(
-            [x_t, y_t], [fake_var], [out_t], [scope], None, *attrs
+        (out_t,) = _legacy_C_ops.run_program(
+            [x_t, y_t], [fake_var], [out.desc], [scope], None, *attrs
         )
 
         loss = paddle.mean(out_t)
