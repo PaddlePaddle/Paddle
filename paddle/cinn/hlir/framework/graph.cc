@@ -21,6 +21,7 @@
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 #endif
+#include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -476,7 +477,7 @@ std::vector<std::string> Graph::VisualizeGroups(
   return dot_vec;
 }
 
-std::unordered_set<NodeData*> Graph::Group::GetInputNodeDatas() {
+std::unordered_set<NodeData*> Graph::Group::GetInputNodeDatas() const {
   std::unordered_set<NodeData*> group_inputs;
 
   // count all node's input data
@@ -506,7 +507,7 @@ std::unordered_set<NodeData*> Graph::Group::GetInputNodeDatas() {
   return group_inputs;
 }
 
-std::unordered_set<NodeData*> Graph::Group::GetOutputNodeDatas() {
+std::unordered_set<NodeData*> Graph::Group::GetOutputNodeDatas() const {
   std::unordered_set<NodeData*> group_outputs;
 
   for (auto node : this->output_nodes) {
