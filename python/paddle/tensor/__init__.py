@@ -368,6 +368,7 @@ from .search import index_sample  # noqa: F401
 from .search import masked_select  # noqa: F401
 from .search import kthvalue  # noqa: F401
 from .search import mode  # noqa: F401
+from .search import top_p_sampling
 
 from .stat import mean  # noqa: F401
 from .stat import std  # noqa: F401
@@ -601,6 +602,7 @@ tensor_method_func = [
     'argsort',
     'masked_select',
     'topk',
+    'top_p_sampling',
     'where',
     'where_',
     'index_select',

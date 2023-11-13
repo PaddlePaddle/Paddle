@@ -3857,6 +3857,8 @@ def reshape(x, shape, name=None):
                 'int64',
                 'bool',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'reshape',
         )
@@ -3865,7 +3867,7 @@ def reshape(x, shape, name=None):
         )
         if isinstance(shape, (list, tuple)):
             if paddle.utils._contain_var(shape):
-                new_shape = paddle.utils._convert_to_tensor_list(shape)
+                new_shape = paddle.utils.get_int_tensor_list(shape)
             else:
                 new_shape = get_attr_shape(shape)
             out = _C_ops.reshape(x, new_shape)
