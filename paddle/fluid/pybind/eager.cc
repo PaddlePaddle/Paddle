@@ -592,15 +592,6 @@ Placements ParsePlacementsArgs(
     PyObject* args,
     bool flag_kwargs,
     Py_ssize_t args_num) {
-  // Placements placements;
-  // if (kw_order_map["placements"] <= args_num) {
-  //   placements = CastPyArg2VectorOfPlacement(
-  //     PyTuple_GET_ITEM(args, kw_order_map["placements"] - 1),
-  //     kw_order_map["placements"] - 1);
-  // } else if (flag_kwargs && kws_map["placements"] != nullptr) {
-  //   placements = CastPyArg2VectorOfPlacement(kws_map["placements"], 0);
-  // }
-  // return placements;
   Placements placements;
   const std::string& placements_key = "placements";
 
@@ -611,7 +602,6 @@ Placements ParsePlacementsArgs(
   } else if (flag_kwargs && kws_map[placements_key] != nullptr) {
     placements = CastPyArg2VectorOfPlacement(kws_map[placements_key], 0);
   }
-
   return placements;
 }
 
