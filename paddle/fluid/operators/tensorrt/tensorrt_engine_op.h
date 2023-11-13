@@ -613,8 +613,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #if IS_TRT_VERSION_GE(6000)
         bool useEngineV3 = !engine->engine()->hasImplicitBatchDimension();
         if (useEngineV3) {
-          trt_context->setInputShape(
-              x.c_str(), inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
+          if IS_TRT_VERSION_GE (8500)
+            trt_context->setInputShape(
+                x.c_str(), inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
+#endif
         } else {
           trt_context->setBindingDimensions(
               bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
@@ -649,7 +651,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                  nullptr);
           }
           if (useEngineV3) {
+#if IS_TRT_VERSION_GE(8500)
             trt_context->setTensorAddress(x.c_str(), shape_v.data());
+#endif
           } else {
             trt_context->setInputShapeBinding(bind_index, shape_v.data());
           }
@@ -731,16 +735,16 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #if IS_TRT_VERSION_GE(6000) && IS_TRT_VERSION_LT(8500)
         auto dims = trt_context->getBindingDimensions(bind_index);
 #else
-        auto x_name = engine->engine()->getBindingName(bind_index);
-        auto dims = trt_context->getTensorShape(x_name);
-        int nb_dims = dims.nbDims;
-        for (; nb_dims > 0; nb_dims--) {
-          // some 'x 1' of shape is normal, no need to remove it
-          if (dims.d[nb_dims - 1] != 1 ||
-              nb_dims == origin_output_rank[output_index])
-            break;
-        }
-        for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
+    auto x_name = engine->engine()->getBindingName(bind_index);
+    auto dims = trt_context->getTensorShape(x_name);
+    int nb_dims = dims.nbDims;
+    for (; nb_dims > 0; nb_dims--) {
+      // some 'x 1' of shape is normal, no need to remove it
+      if (dims.d[nb_dims - 1] != 1 ||
+          nb_dims == origin_output_rank[output_index])
+        break;
+    }
+    for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
 #endif
       }
       auto *fluid_v = scope.FindVar(y);
