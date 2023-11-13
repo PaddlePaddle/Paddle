@@ -424,7 +424,7 @@ def square_error_cost(input, label):
                     [0.01000000, 0.01000000])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         minus_out = _C_ops.subtract(input, label)
         square_out = _C_ops.square(minus_out)
         return square_out
