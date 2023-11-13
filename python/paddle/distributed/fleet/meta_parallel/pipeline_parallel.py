@@ -51,6 +51,14 @@ __all__ = []
 g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
 
 
+def get_action(is_dp, shard_split_param=False):
+    if is_dp or not g_shard_use_reduce:
+        return HOOK_ACTION.ALL_REDUCE
+    if shard_split_param:
+        return HOOK_ACTION.REDUCE_SCATTER
+    return HOOK_ACTION.REDUCE
+
+
 # assume only the first stage and last stage need data, and data consumption is ordred
 # to be replaced by real micro dataset from reader
 class FakeMicroDataset:
@@ -193,6 +201,16 @@ class PipelineParallel(MetaParallelBase):
             "pp_configs"
         ].enable_timer
 
+        self._sharding_split_param = self._strategy.hybrid_configs[
+            "sharding_configs"
+        ].split_param
+
+        logger.info(
+            f"dp_comm_overlap {self._dp_comm_overlap}; \
+            sharding_comm_overlap {self._sharding_comm_overlap}; \
+            sharding_split_param {self._sharding_split_param};"
+        )
+
         self._profiling = self._strategy.hybrid_configs["pp_configs"].profiling
         self._records = []
         self._record_format = (
@@ -314,16 +332,14 @@ class PipelineParallel(MetaParallelBase):
         else:
             models = [model]
 
-        if not dp:
+        act = get_action(dp, self._sharding_split_param)
+
+        if act == HOOK_ACTION.REDUCE:
             assert hasattr(self, "optimizer")
             assert hasattr(self.optimizer, "_param2rank")
             _param2rank = self.optimizer._param2rank
+
         # Note: after sharding change to reduce operation, here need to be cleared
-        act = (
-            HOOK_ACTION.ALL_REDUCE
-            if (dp or not g_shard_use_reduce)
-            else HOOK_ACTION.REDUCE
-        )
 
         for chunk_idx, model in enumerate(models):
             # For virtual pipeline. Will separate parameters in different chunk into
@@ -336,9 +352,7 @@ class PipelineParallel(MetaParallelBase):
             if len(parameter_list) < 1:
                 return
 
-            if dp:
-                fused_parameter_group[-1] = parameter_list
-            else:
+            if act == HOOK_ACTION.REDUCE:
                 # Sort parameters for sharding, since they have different dst rank
                 for p in parameter_list:
                     assert p.name in _param2rank
@@ -347,10 +361,12 @@ class PipelineParallel(MetaParallelBase):
                         fused_parameter_group[dst_rank].append(p)
                     else:
                         fused_parameter_group[dst_rank] = [p]
+            else:
+                fused_parameter_group[-1] = parameter_list
 
             for dst in fused_parameter_group:
                 parameter_list = fused_parameter_group[dst]
-                if act != HOOK_ACTION.ALL_REDUCE:
+                if act == HOOK_ACTION.REDUCE:
                     # parse the relative dst rank to absolute dst rank for sharding
                     dst = comm_group.ranks[dst]
                 else:
@@ -559,6 +575,17 @@ class PipelineParallel(MetaParallelBase):
         self.timer_printer()
         return train_loss
 
+    def register_sharding_comm_overlap_hook(self, optimizer):
+        """for delayed hook register until we get optimizer"""
+        assert isinstance(
+            optimizer, HybridParallelOptimizer
+        ), 'optimizer should be HybridParallelOptimizer subclass.'
+        self.optimizer = optimizer
+        if self._sharding_comm_overlap and len(self._chunk_2_comm_buffers) == 0:
+            self.register_allreduce_overlap_hook(
+                self._layers, self.sharding_group, self.accumulate_steps, False
+            )
+
     def _prepare_training(self, data, optimizer, lr_scheduler):
         # reset the virtual pp rank for each run
         self.set_virtual_pipeline_rank(0)
@@ -582,13 +609,8 @@ class PipelineParallel(MetaParallelBase):
 
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
-
         self._layers.train()
-
-        if self._sharding_comm_overlap and len(self._chunk_2_comm_buffers) == 0:
-            self.register_allreduce_overlap_hook(
-                self._layers, self.sharding_group, self.accumulate_steps, False
-            )
+        self.register_sharding_comm_overlap_hook(optimizer)
 
         return data
 
@@ -887,7 +909,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
     def _check_sanity(self):
         assert (
-            framework.in_dygraph_mode()
+            framework.in_dynamic_mode()
         ), "virtual pipeline stage with interleave only support eager dygraph mode"
 
         assert (
@@ -1040,6 +1062,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
     def bw_hook_func(self, buffer, param):
         # For pipeline with interleave, we need to add grad to buffer without communication.
         # Use communication where appropriate to avoid dp communication and pp scheduling conflicts.
+        # all reduce hook
         @paddle.autograd.no_grad()
         def fused_allreduce(*_):
             buffer.add_grad(param, use_comm=False)
@@ -1173,7 +1196,12 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if self.is_pipeline_last_stage():
                 output_tensor = None
 
-            if micro_step == (startup_steps - 1) and not forward_only:
+            # prepare for the first steady step
+            if (
+                micro_step == (startup_steps - 1)
+                and (not forward_only)
+                and steady_steps
+            ):
                 input_tensor_grad = None
                 recv_next = True
                 if self.is_pipeline_last_stage(ignore_virtual=True):
@@ -1327,6 +1355,14 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         # remaining backward steps
         if not forward_only:
+            # no steady steps, which only occurs when accumulate_step == num_stage
+            if not steady_steps:
+                output_tensor_grad = p2p.recv_backward(
+                    self.is_pipeline_last_stage()
+                )
+                self.output_tensor_grads[self.num_model_chunks - 1].append(
+                    output_tensor_grad
+                )
             for micro_step in range(steady_steps, num_steps):
                 if static_scheduler:
                     virtual_pp_rank = self._get_virtual_pp_rank(
@@ -1426,7 +1462,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
 
     def _check_sanity(self):
         assert (
-            framework.in_dygraph_mode()
+            framework.in_dynamic_mode()
         ), "virtual pipeline stage with interleave only support eager dygraph mode"
 
         assert (
