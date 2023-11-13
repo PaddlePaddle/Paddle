@@ -323,6 +323,11 @@ class Optimizer:
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
+                # save scale value for xpu
+                if core.is_compiled_with_xpu():
+                    state_dict[
+                        var_tmp.name + ".SCALE_VALUE"
+                    ] = var_tmp.get_tensor().get_xpu_scale_value()
         # if has master weight and then save master weight
         if hasattr(self, "_master_weights"):
             if len(self._master_weights) != 0:
@@ -382,8 +387,15 @@ class Optimizer:
                 assert (
                     var_tmp.name in state_dict
                 ), f"optimizer Tensor {var_tmp.name} not found"
+
                 var = var_tmp.value()
                 tensor = var.get_tensor()
+                # load scale value for xpu
+                if core.is_compiled_with_xpu():
+                    tensor.set_xpu_scale_value(
+                        state_dict.get(var_tmp.name + ".SCALE_VALUE", -1.0)
+                    )
+
                 model_np = np.array(tensor)
 
                 load_para = state_dict[var_tmp.name]
@@ -908,6 +920,14 @@ class Optimizer:
                         var_name in self._accumulators_holder
                     ), f"Optimizer set error, {var_name} should in state dict"
                     var.set_value(self._accumulators_holder.pop(var_name))
+
+                    # load scale value for xpu
+                    if core.is_compiled_with_xpu():
+                        var.get_tensor().set_xpu_scale_value(
+                            self._accumulators_holder.get(
+                                var_name + ".SCALE_VALUE", -1.0
+                            )
+                        )
 
         self._accumulators[name][param.name] = var
         return var
