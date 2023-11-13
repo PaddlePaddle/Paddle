@@ -41,7 +41,7 @@ class TestLayerNormSemiAutoParallel(SemiAutoParallelTestBase):
             inputs_specs=specs,
             op_func=layer_norm,
             with_backward=True,
-            normalized_shape=[16],
+            normalized_shape=[4, 4],
         )
         self.check_dim_mapping(outputs, [-1, -1, 0])
 
@@ -53,7 +53,7 @@ class TestLayerNormSemiAutoParallel(SemiAutoParallelTestBase):
             inputs_specs=specs,
             op_func=layer_norm,
             with_backward=True,
-            normalized_shape=[16],
+            normalized_shape=[4, 4],
         )
         self.check_dim_mapping(inputs, outputs, [-1, -1, 0])
 
