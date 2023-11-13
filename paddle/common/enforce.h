@@ -40,7 +40,6 @@ limitations under the License. */
 #include "paddle/utils/variant.h"
 
 namespace common {
-class ErrorSummary;
 class CommonNotMetException : public std::exception {
  public:
   explicit CommonNotMetException(const std::string& str) : err_str_(str) {}
@@ -51,7 +50,6 @@ class CommonNotMetException : public std::exception {
   std::string err_str_;
 };
 }  // namespace common
-
 namespace common {
 namespace enforce {
 
@@ -109,12 +107,14 @@ template <typename T1, typename T2>
 using CommonType2 = typename std::add_lvalue_reference<
     typename std::add_const<typename TypeConverter<T1, T2>::Type2>::type>::type;
 }  // namespace details
-#define COMMON_THROW(...)                                         \
-  do {                                                            \
-    HANDLE_THE_ERROR                                              \
-    throw common::CommonNotMetException(                          \
-        ::common::ErrorSummary(__VA_ARGS__), __FILE__, __LINE__); \
-    END_HANDLE_THE_ERROR                                          \
+#define COMMON_THROW(...)                                           \
+  do {                                                              \
+    HANDLE_THE_ERROR                                                \
+    throw common::CommonNotMetException(paddle::string::Sprintf(    \
+        "Error occured at: %s:%d :\n%s",                            \
+        __FILE__,                                                   \
+        __LINE__,                                                   \
+        paddle::string::Sprintf(__VA_ARGS__))) END_HANDLE_THE_ERROR \
   } while (0)
 
 #define __COMMON_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)         \
