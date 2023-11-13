@@ -1668,6 +1668,7 @@ void FusedElemwiseAddActivationInferMeta(
 
   auto out_dim = bcast_y ? x_dim : y_dim;
   auto out_lod = bcast_y ? x : y;
+  auto out_dtype = bcast_y ? x.dtype() : y.dtype();
 
   PADDLE_ENFORCE_NOT_NULL(
       intermediate_out,
@@ -1690,6 +1691,7 @@ void FusedElemwiseAddActivationInferMeta(
   }
   out->set_dims(out_dim);
   out->share_lod(out_lod);
+  out->set_dtype(out_dtype);
 
   bool elemntwise_add_detected = false;
   for (auto names : functor_list) {

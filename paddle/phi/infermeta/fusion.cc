@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/fusion.h"
+#include <unordered_set>
 #include <vector>
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
@@ -890,6 +891,117 @@ void FusedFeedForwardInferMeta(const MetaTensor& x,
     ln2_variance->set_dims(mean_dim);
   }
   out->share_lod(x);
+}
+
+static bool IsUnaryCompound(const std::vector<std::string>& functor_list) {
+  PADDLE_ENFORCE_EQ(
+      functor_list.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Invalid functor list size %d, which should be equal to %d.",
+          functor_list.size(),
+          2));
+  static std::unordered_set<std::string> binary_fun = {"elementwise_add",
+                                                       "elementwise_mul",
+                                                       "elementwise_add_grad",
+                                                       "elementwise_mul_grad"};
+  return binary_fun.count(functor_list[1]) != 0;
+}
+static bool InputXCanBeAbsent(const std::vector<std::string>& functor_list) {
+  PADDLE_ENFORCE_EQ(
+      functor_list.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Invalid functor list size %d, which should be equal to %d.",
+          functor_list.size(),
+          2));
+  static std::unordered_set<std::string> binary_fun = {"elementwise_add_grad"};
+  return binary_fun.count(functor_list[0]) != 0 ||
+         binary_fun.count(functor_list[1]) != 0;
+}
+
+void FusedElemwiseAddActivationGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const MetaTensor& out,
+    const MetaTensor& intermediate_out,
+    const MetaTensor& out_grad,
+    const std::vector<std::string>& functor_list,
+    float scale,
+    int axis,
+    bool save_intermediate_out,
+    MetaTensor* x_grad,
+    MetaTensor* y_grad) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out_grad,
+      phi::errors::InvalidArgument("Input(Out@Grad) should not be null."));
+
+  if (save_intermediate_out) {
+    PADDLE_ENFORCE_NOT_NULL(intermediate_out,
+                            phi::errors::InvalidArgument(
+                                "Input(IntermediateOut) should not be null."));
+  } else {
+    if (!InputXCanBeAbsent(functor_list)) {
+      PADDLE_ENFORCE_NOT_NULL(
+          x, phi::errors::InvalidArgument("Input(X) should not be null."));
+    }
+  }
+
+  if (x_grad) {
+    x_grad->set_dtype(x.dtype());
+    if (x) {
+      x_grad->set_dims(x.dims());
+      x_grad->share_lod(x);
+    } else {
+      // Currently, only when Binary is elementwise_add or elementwise_sub,
+      // the "X" could be absent.
+      PADDLE_ENFORCE_EQ(
+          InputXCanBeAbsent(functor_list),
+          true,
+          phi::errors::InvalidArgument(
+              "Only when BinaryFunctor is elementwise_add, the 'X' "
+              "could be absent."));
+
+      // Node: If "X" is absence, the shape of Y should be a continuous
+      // subsequence of X, otherwise, we could not infer the shape of dx.
+
+      x_grad->set_dims(out_grad.dims());
+      x_grad->share_lod(out_grad);
+    }
+  }
+
+  if (y_grad) {
+    PADDLE_ENFORCE_NOT_NULL(
+        y, phi::errors::InvalidArgument("Input(Y) should not be null."));
+    y_grad->set_dims(y.dims());
+    y_grad->share_lod(y);
+    y_grad->set_dtype(y.dtype());
+  }
+
+  // if (intermediate_out_grad) {
+  //   // For Unary(Binary(X, Y)), IntermediateOut should not be empty.
+  //   if (IsUnaryCompound(functor_list)) {
+  //     intermediate_out_grad->set_dims(out_grad.dims());
+  //     intermediate_out_grad->share_lod(out_grad);
+  //   } else {
+  //     intermediate_out_grad->set_dims(y.dims());
+  //     intermediate_out_grad->share_lod(y);
+  //   }
+  // }
+  bool elemntwise_add_grad_detected = false;
+  for (auto names : functor_list) {
+    if (names == "elementwise_add_grad") {
+      elemntwise_add_grad_detected = true;
+      break;
+    }
+  }
+  PADDLE_ENFORCE_EQ(
+      elemntwise_add_grad_detected,
+      true,
+      phi::errors::InvalidArgument(
+          "When the FusedElemwiseAddActivationOpGrad Is used in fused pass, "
+          "the elementwise_add_grad Op must be"
+          "detected and used, Please check the fuse pass pattern"));
 }
 
 void FusedFeedForwardGradInferMeta(const MetaTensor& out_grad,
