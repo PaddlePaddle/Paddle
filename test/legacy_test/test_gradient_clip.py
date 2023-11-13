@@ -208,20 +208,20 @@ class TestPirGradientClipByGlobalNorm(TestGradientClip):
             )
             avg_cost = paddle.mean(cost)
 
-            # p_g = base.backward.append_backward(loss=avg_cost)
-            p_g = paddle.autograd.ir_backward.grad(
+            grad_list = paddle.autograd.ir_backward.grad(
                 avg_cost, prog.global_block().all_parameters()
             )
 
-        grad_list = [elem[1] for elem in p_g]
-        train_reader = paddle.batch(paddle.dataset.mnist.train(), batch_size=3)
-        exe = base.Executor(place)
-        exe.run(startup_program)
-        data = next(train_reader())
-        a = np.array([i[0] for i in data])
-        b = np.array([i[1] for i in data]).reshape(3, 1)
-        out = exe.run(prog, feed={'a': a, 'b': b}, fetch_list=grad_list)
-        return out
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=3
+            )
+            exe = base.Executor(place)
+            exe.run(startup_program)
+            data = next(train_reader())
+            a = np.array([i[0] for i in data])
+            b = np.array([i[1] for i in data]).reshape(3, 1)
+            out = exe.run(prog, feed={'a': a, 'b': b}, fetch_list=grad_list)
+            return out
 
     def _run_clip(self, place, dtype='float32'):
         paddle.seed(2023)
@@ -249,24 +249,26 @@ class TestPirGradientClipByGlobalNorm(TestGradientClip):
             )
             avg_cost = paddle.mean(cost)
 
-            # p_g_clip = base.backward.append_backward(loss=avg_cost)
-            p_g_clip = paddle.autograd.ir_backward.grad(
-                avg_cost, prog.global_block().all_parameters()
+            params = prog.global_block().all_parameters()
+            grad_list = paddle.autograd.ir_backward.grad(avg_cost, params)
+
+            p_g_clip = self.clip_gradient(
+                [(a, b) for a, b in zip(params, grad_list)]
             )
 
-            p_g_clip = self.clip_gradient(p_g_clip)
-
-        grad_clip_list = [elem[1] for elem in p_g_clip]
-        train_reader = paddle.batch(paddle.dataset.mnist.train(), batch_size=3)
-        exe = base.Executor(place)
-        exe.run(startup_program)
-        data = next(train_reader())
-        a = np.array([i[0] for i in data])
-        b = np.array([i[1] for i in data]).reshape(3, 1)
-        out_clip = exe.run(
-            prog, feed={'a': a, 'b': b}, fetch_list=grad_clip_list
-        )
-        return out_clip
+            grad_clip_list = [elem[1] for elem in p_g_clip]
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=3
+            )
+            exe = base.Executor(place)
+            exe.run(startup_program)
+            data = next(train_reader())
+            a = np.array([i[0] for i in data])
+            b = np.array([i[1] for i in data]).reshape(3, 1)
+            out_clip = exe.run(
+                prog, feed={'a': a, 'b': b}, fetch_list=grad_clip_list
+            )
+            return out_clip
 
     def check_gradient_clip(self, place, dtype='float32'):
         out = self._run(place, dtype)

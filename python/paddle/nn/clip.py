@@ -225,7 +225,7 @@ def _cast_to_mp_type_if_enabled(x):
         return x.astype(core.VarDesc.VarType.FP32)
     elif (
         in_pir_mode()
-        and (x.dtype == DataType.FP16 or x.dtype == DataType.BF16)
+        and (x.dtype == DataType.FLOAT16 or x.dtype == DataType.BFLOAT16)
         and _clip_by_global_norm_using_mp_type()
     ):
         return x.astype(DataType.FP32)
@@ -790,11 +790,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
             sum_square = _squared_l2_norm(merge_grad)
             if (
-                sum_square.dtype == DataType.FP16
-                or sum_square.dtype == DataType.BF16
+                sum_square.dtype == DataType.FLOAT16
+                or sum_square.dtype == DataType.BFLOAT16
             ):
                 sum_square_list_fp16.append(sum_square)
-            elif sum_square.dtype == DataType.FP32:
+            elif sum_square.dtype == DataType.FLOAT32:
                 sum_square_list_fp32.append(sum_square)
             else:
                 sum_square_list.append(sum_square)
