@@ -134,20 +134,12 @@ struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
     // hash dtype
     hash_value =
         pir::hash_combine(hash_value, std::hash<pir::Type>()(std::get<0>(key)));
-    // // hash dims
-    // hash_value =
-    //     pir::hash_combine(hash_value,
-    //     std::hash<phi::DDim>()(std::get<1>(key)));
     // hash layout
     hash_value = pir::hash_combine(
         hash_value,
         std::hash<std::underlying_type<phi::DataLayout>::type>()(
             static_cast<std::underlying_type<phi::DataLayout>::type>(
                 std::get<1>(key))));
-    // // hash lod
-    // hash_value =
-    //     pir::hash_combine(hash_value,
-    //     std::hash<phi::LoD>()(std::get<3>(key)));
     return hash_value;
   }
 
@@ -164,9 +156,7 @@ struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
   /// \brief DenseTensorTypeStorage include five parameters: dtype, layout
   ///
   pir::Type dtype_;
-  // phi::DDim dims_;
   phi::DataLayout layout_;
-  // phi::LoD lod_;
 };
 
 }  // namespace dialect

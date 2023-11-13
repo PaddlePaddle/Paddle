@@ -32,14 +32,9 @@ const pir::Type& DenseTensorArrayType::dtype() const {
   return storage()->dtype_;
 }
 
-// const phi::DDim& DenseTensorArrayType::dims() const { return
-// storage()->dims_; }
-
 const phi::DataLayout& DenseTensorArrayType::data_layout() const {
   return storage()->layout_;
 }
-
-// const phi::LoD& DenseTensorArrayType::lod() const { return storage()->lod_; }
 
 }  // namespace dialect
 }  // namespace paddle
