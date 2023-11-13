@@ -57,14 +57,9 @@ def fused_matmul_bias(
     if bias is None:
         return matmul(x, y, transpose_x, transpose_y, name)
     if in_dynamic_or_pir_mode():
-        if in_dynamic_mode():
-            return _C_ops.fused_gemm_epilogue(
-                x, y, bias, 'trans_x', transpose_x, 'trans_y', transpose_y
-            )
-        else:
-            return _C_ops.fused_gemm_epilogue(
-                x, y, bias, transpose_x, transpose_y
-            )
+        return _C_ops.fused_gemm_epilogue(
+            x, y, bias, 'trans_x', transpose_x, 'trans_y', transpose_y
+        )
 
     helper = LayerHelper('fused_matmul_bias', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
