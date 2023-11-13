@@ -338,8 +338,8 @@ OpMetaInfo& OpMetaInfo::SetInferDtypeFn(InferDtypeFunc&& func) {
 }
 
 #ifdef PADDLE_WITH_TENSORRT
-OpMetaInfo& OpMetaInfo::SetTrtInferShapeFn(TrtInferShapeFunc&& func) {
-  trt_infer_shape_fn_ = std::forward<TrtInferShapeFunc>(func);
+OpMetaInfo& OpMetaInfo::SetTrtInferShapeFn(TrtGetOutputDims&& func) {
+  trt_infer_shape_fn_ = std::forward<TrtGetOutputDims>(func);
   return *this;
 }
 OpMetaInfo& OpMetaInfo::SetTrtSupportFormateFn(TrtSupportsFormateFunc&& func) {
@@ -386,7 +386,7 @@ const InferDtypeFunc& OpMetaInfoHelper::GetInferDtypeFn(
 }
 
 #ifdef PADDLE_WITH_TENSORRT
-const TrtInferShapeFunc& OpMetaInfoHelper::GetTrtInferShapeFn(
+const TrtGetOutputDims& OpMetaInfoHelper::GetTrtInferShapeFn(
     const paddle::OpMetaInfo& info) {
   return info.trt_infer_shape_fn_;
 }
@@ -534,8 +534,8 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
 
 #ifdef PADDLE_WITH_TENSORRT
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetTrtInferShapeFn(
-    TrtInferShapeFunc func) {
-  info_ptr_->SetTrtInferShapeFn(std::forward<TrtInferShapeFunc>(func));
+    TrtGetOutputDims func) {
+  info_ptr_->SetTrtInferShapeFn(std::forward<TrtGetOutputDims>(func));
   return *this;
 }
 

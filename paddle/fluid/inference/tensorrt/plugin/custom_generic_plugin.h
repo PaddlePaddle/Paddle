@@ -40,7 +40,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-enum class GenerateCustomPluginDataType {
+enum class GenerateCustomGenericPluginDataType {
   PLUGIN_BOOL,
   PLUGIN_UINT8,
   PLUGIN_INT8,
@@ -57,32 +57,33 @@ enum class GenerateCustomPluginDataType {
   PLUGIN_OPTIONAL,
 };
 
-GenerateCustomPluginDataType ProtoTypeToGenerateCustomPluginDataType(
+GenerateCustomGenericPluginDataType
+ProtoTypeToGenerateCustomGenericPluginDataType(
     framework::proto::VarType_Type proto_type);
 
-class CustomPlugin : public DynamicPluginTensorRT {
+class CustomGenericPlugin : public DynamicPluginTensorRT {
  public:
   struct InputOutPutVarInfo {
-    std::vector<GenerateCustomPluginDataType> inputs_data_type;
-    std::vector<GenerateCustomPluginDataType> outputs_data_type;
+    std::vector<GenerateCustomGenericPluginDataType> inputs_data_type;
+    std::vector<GenerateCustomGenericPluginDataType> outputs_data_type;
   };
 
  public:
-  CustomPlugin() = default;
+  CustomGenericPlugin() = default;
 
-  CustomPlugin(const paddle::framework::proto::OpDesc& proto_op_desc,
-               const InputOutPutVarInfo& in_out_info,
-               bool with_fp16_ = false);
+  CustomGenericPlugin(const paddle::framework::proto::OpDesc& proto_op_desc,
+                      const InputOutPutVarInfo& in_out_info,
+                      bool with_fp16_ = false);
 
-  CustomPlugin(
+  CustomGenericPlugin(
       const paddle::framework::proto::OpDesc& proto_op_desc,
-      const std::vector<GenerateCustomPluginDataType>& inputs_data_type,
-      const std::vector<GenerateCustomPluginDataType>& outputs_data_type,
+      const std::vector<GenerateCustomGenericPluginDataType>& inputs_data_type,
+      const std::vector<GenerateCustomGenericPluginDataType>& outputs_data_type,
       bool with_fp16_ = false);
 
   // It was used for tensorrt deserialization.
   // It should not be called by users.
-  CustomPlugin(void const* serialData, size_t serialLength);
+  CustomGenericPlugin(void const* serialData, size_t serialLength);
 
   // IPluginV2 method
   const char* getPluginType() const TRT_NOEXCEPT override {
@@ -157,11 +158,11 @@ class CustomPlugin : public DynamicPluginTensorRT {
   std::vector<paddle::Tensor>* tensor_outputs_{nullptr};
 
  private:
-  std::vector<GenerateCustomPluginDataType> inputs_data_type_;
-  std::vector<GenerateCustomPluginDataType> outputs_data_type_;
+  std::vector<GenerateCustomGenericPluginDataType> inputs_data_type_;
+  std::vector<GenerateCustomGenericPluginDataType> outputs_data_type_;
 };
 
-class CustomPluginCreator : public TensorRTPluginCreator {
+class CustomGenericPluginCreator : public TensorRTPluginCreator {
  public:
   const char* getPluginName() const TRT_NOEXCEPT override {
     return "custom_generic_plugin";
@@ -173,11 +174,11 @@ class CustomPluginCreator : public TensorRTPluginCreator {
                                                    const void* serial_data,
                                                    size_t serial_length)
       TRT_NOEXCEPT override {
-    return new CustomPlugin(serial_data, serial_length);
+    return new CustomGenericPlugin(serial_data, serial_length);
   }
 };
 
-REGISTER_TRT_PLUGIN_V2(CustomPluginCreator);
+REGISTER_TRT_PLUGIN_V2(CustomGenericPluginCreator);
 
 }  // namespace plugin
 }  // namespace tensorrt

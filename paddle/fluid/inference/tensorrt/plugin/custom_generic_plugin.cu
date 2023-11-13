@@ -16,7 +16,6 @@
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/phi_utils.h"
-#include "paddle/fluid/inference/tensorrt/custom_generic_plugin_fn_factory.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -30,43 +29,44 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-GenerateCustomPluginDataType ProtoTypeToGenerateCustomPluginDataType(
+GenerateCustomGenericPluginDataType
+ProtoTypeToGenerateCustomGenericPluginDataType(
     framework::proto::VarType_Type proto_type) {
   using framework::proto::VarType_Type;
   switch (proto_type) {
     case VarType_Type::VarType_Type_BOOL:
-      return GenerateCustomPluginDataType::PLUGIN_BOOL;
+      return GenerateCustomGenericPluginDataType::PLUGIN_BOOL;
     case VarType_Type::VarType_Type_UINT8:
-      return GenerateCustomPluginDataType::PLUGIN_UINT8;
+      return GenerateCustomGenericPluginDataType::PLUGIN_UINT8;
     case VarType_Type::VarType_Type_INT8:
-      return GenerateCustomPluginDataType::PLUGIN_INT8;
+      return GenerateCustomGenericPluginDataType::PLUGIN_INT8;
     case VarType_Type::VarType_Type_INT16:
-      return GenerateCustomPluginDataType::PLUGIN_INT16;
+      return GenerateCustomGenericPluginDataType::PLUGIN_INT16;
     case VarType_Type::VarType_Type_INT32:
-      return GenerateCustomPluginDataType::PLUGIN_INT32;
+      return GenerateCustomGenericPluginDataType::PLUGIN_INT32;
     case VarType_Type::VarType_Type_INT64:
-      return GenerateCustomPluginDataType::PLUGIN_INT64;
+      return GenerateCustomGenericPluginDataType::PLUGIN_INT64;
     case VarType_Type::VarType_Type_FP16:
-      return GenerateCustomPluginDataType::PLUGIN_FP16;
+      return GenerateCustomGenericPluginDataType::PLUGIN_FP16;
     case VarType_Type::VarType_Type_FP32:
-      return GenerateCustomPluginDataType::PLUGIN_FP32;
+      return GenerateCustomGenericPluginDataType::PLUGIN_FP32;
     case VarType_Type::VarType_Type_FP64:
-      return GenerateCustomPluginDataType::PLUGIN_FP64;
+      return GenerateCustomGenericPluginDataType::PLUGIN_FP64;
     case VarType_Type::VarType_Type_SIZE_T:
-      return GenerateCustomPluginDataType::PLUGIN_SIZE_T;
+      return GenerateCustomGenericPluginDataType::PLUGIN_SIZE_T;
     case VarType_Type::VarType_Type_BF16:
-      return GenerateCustomPluginDataType::PLUGIN_BF16;
+      return GenerateCustomGenericPluginDataType::PLUGIN_BF16;
     case VarType_Type::VarType_Type_COMPLEX64:
-      return GenerateCustomPluginDataType::PLUGIN_COMPLEX64;
+      return GenerateCustomGenericPluginDataType::PLUGIN_COMPLEX64;
     case VarType_Type::VarType_Type_COMPLEX128:
-      return GenerateCustomPluginDataType::PLUGIN_COMPLEX128;
+      return GenerateCustomGenericPluginDataType::PLUGIN_COMPLEX128;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "This data type is currently not supported"));
   }
 }
 
-CustomPlugin::CustomPlugin(
+CustomGenericPlugin::CustomGenericPlugin(
     const paddle::framework::proto::OpDesc& proto_op_desc,
     const InputOutPutVarInfo& in_out_info,
     bool with_fp16) {
@@ -78,10 +78,10 @@ CustomPlugin::CustomPlugin(
   with_fp16_ = with_fp16;
 }
 
-CustomPlugin::CustomPlugin(
+CustomGenericPlugin::CustomGenericPlugin(
     const paddle::framework::proto::OpDesc& proto_op_desc,
-    const std::vector<GenerateCustomPluginDataType>& inputs_data_type,
-    const std::vector<GenerateCustomPluginDataType>& outputs_data_type,
+    const std::vector<GenerateCustomGenericPluginDataType>& inputs_data_type,
+    const std::vector<GenerateCustomGenericPluginDataType>& outputs_data_type,
     bool with_fp16) {
   proto_op_desc_ = proto_op_desc;
   op_desc_ = framework::OpDesc(proto_op_desc_, nullptr);
@@ -91,7 +91,8 @@ CustomPlugin::CustomPlugin(
   with_fp16_ = with_fp16;
 }
 
-CustomPlugin::CustomPlugin(void const* serial_data, size_t serial_length) {
+CustomGenericPlugin::CustomGenericPlugin(void const* serial_data,
+                                         size_t serial_length) {
   DeserializeValue(&serial_data, &serial_length, &inputs_data_type_);
   DeserializeValue(&serial_data, &serial_length, &outputs_data_type_);
   DeserializeValue(&serial_data, &serial_length, &with_fp16_);
@@ -102,7 +103,7 @@ CustomPlugin::CustomPlugin(void const* serial_data, size_t serial_length) {
   op_desc_ = framework::OpDesc(proto_op_desc_, nullptr);
 }
 
-int CustomPlugin::getNbOutputs() const TRT_NOEXCEPT {
+int CustomGenericPlugin::getNbOutputs() const TRT_NOEXCEPT {
   int res = 0;
   for (auto& i : op_desc_.Outputs()) {
     if (!i.second.empty()) res += i.second.size();
@@ -110,7 +111,7 @@ int CustomPlugin::getNbOutputs() const TRT_NOEXCEPT {
   return res;
 }
 
-int CustomPlugin::getNbInputs() const TRT_NOEXCEPT {
+int CustomGenericPlugin::getNbInputs() const TRT_NOEXCEPT {
   int res = 0;
   for (auto& i : op_desc_.Inputs()) {
     if (!i.second.empty()) res += i.second.size();
@@ -118,14 +119,14 @@ int CustomPlugin::getNbInputs() const TRT_NOEXCEPT {
   return res;
 }
 
-nvinfer1::IPluginV2DynamicExt* CustomPlugin::clone() const TRT_NOEXCEPT {
-  nvinfer1::IPluginV2DynamicExt* plugin = new CustomPlugin(
+nvinfer1::IPluginV2DynamicExt* CustomGenericPlugin::clone() const TRT_NOEXCEPT {
+  nvinfer1::IPluginV2DynamicExt* plugin = new CustomGenericPlugin(
       proto_op_desc_, inputs_data_type_, outputs_data_type_, with_fp16_);
   plugin->initialize();
   return plugin;
 }
 
-void CustomPlugin::serialize(void* buffer) const TRT_NOEXCEPT {
+void CustomGenericPlugin::serialize(void* buffer) const TRT_NOEXCEPT {
   // inputs_data_type_
   SerializeValue(&buffer, inputs_data_type_);
   // outputs_data_type_
@@ -137,43 +138,69 @@ void CustomPlugin::serialize(void* buffer) const TRT_NOEXCEPT {
   reinterpret_cast<char*&>(buffer) += op_meta_data_.size();
 }
 
-bool CustomPlugin::supportsFormatCombination(
+bool CustomGenericPlugin::supportsFormatCombination(
     int pos,
     const nvinfer1::PluginTensorDesc* in_out,
     int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
-  auto& supports_formate_factory =
-      tensorrt::SupportsFormateFnFactory::Instance();
-  if (!supports_formate_factory.Contains(op_desc_.Type()) &&
-      FLAGS_enable_auto_generate_plugin_fn) {
-    PADDLE_ENFORCE_EQ(supports_formate_factory.ContainsAuto(op_desc_.Type()),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The %s op has no tensorrt plugin "
-                          "supportsFormatCombination function!"
-                          "Please use SetTrtSupportFormateFn to regiser.",
-                          op_desc_.Type().c_str()));
-    auto* supports_formate_fn =
-        supports_formate_factory.GetAuto(op_desc_.Type());
-    auto& op_meta_info_map = OpMetaInfoMap::Instance();
-    const auto& meta_info_map = op_meta_info_map.GetMap();
-    auto& op_info = meta_info_map.at(op_desc_.Type()).front();
-    return supports_formate_fn(
-        pos, in_out, nb_inputs, nb_outputs, op_info, op_desc_);
-  } else {
-    PADDLE_ENFORCE_EQ(supports_formate_factory.Contains(op_desc_.Type()),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The %s op has no tensorrt plugin "
-                          "supportsFormatCombination function!"
-                          "Please use SetTrtSupportFormateFn to regiser.",
-                          op_desc_.Type().c_str()));
-    auto* supports_formate_fn = supports_formate_factory.Get(op_desc_.Type());
-    return supports_formate_fn(pos, in_out, nb_inputs, nb_outputs);
+  auto& op_meta_info_map = OpMetaInfoMap::Instance();
+  const auto& meta_info_map = op_meta_info_map.GetMap();
+  auto& op_info = meta_info_map.at(op_desc_.Type()).front();
+  auto& supports_formate_fn =
+      OpMetaInfoHelper::GetTrtSupportsFormateFn(op_info);
+  PADDLE_ENFORCE_NE(supports_formate_fn,
+                    nullptr,
+                    platform::errors::InvalidArgument(
+                        "The %s op has no tensorrt plugin "
+                        "supportsFormatCombination function!"
+                        "Please use SetTrtSupportFormateFn to regiser.",
+                        op_desc_.Type().c_str()));
+  std::vector<paddle::any> custom_attrs;
+  auto& attrs = op_desc_.GetAttrMap();
+  auto& op_attrs_names = OpMetaInfoHelper::GetAttrs(op_info);
+  for (auto& op_attrs_name : op_attrs_names) {
+    auto attr_name_and_type = paddle::ParseAttrStr(op_attrs_name);
+    auto attr_name = attr_name_and_type[0];
+    auto attr_type_str = attr_name_and_type[1];
+    if (attr_type_str == "bool") {
+      custom_attrs.emplace_back(PADDLE_GET_CONST(bool, attrs.at(attr_name)));
+    } else if (attr_type_str == "int") {
+      custom_attrs.emplace_back(PADDLE_GET_CONST(int, attrs.at(attr_name)));
+    } else if (attr_type_str == "float") {
+      custom_attrs.emplace_back(PADDLE_GET_CONST(float, attrs.at(attr_name)));
+    } else if (attr_type_str == "int64_t") {
+      custom_attrs.emplace_back(PADDLE_GET_CONST(int64_t, attrs.at(attr_name)));
+    } else if (attr_type_str == "std::string") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::string, attrs.at(attr_name)));
+    } else if (attr_type_str == "std::vector<int>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<int>, attrs.at(attr_name)));
+    } else if (attr_type_str == "std::vector<float>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<float>, attrs.at(attr_name)));
+    } else if (attr_type_str == "std::vector<int64_t>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<int64_t>, attrs.at(attr_name)));
+    } else if (attr_type_str == "std::vector<std::string>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<std::string>, attrs.at(attr_name)));
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported `%s` type value as custom attribute now. "
+          "Supported data types include `bool`, `int`, `float`, "
+          "`int64_t`, `std::string`, `std::vector<int>`, "
+          "`std::vector<float>`, `std::vector<int64_t>`, "
+          "`std::vector<std::string>`, Please check whether "
+          "the attribute data type and data type string are matched.",
+          attr_type_str));
+    }
   }
+  return supports_formate_fn(
+      {pos, nb_inputs, nb_outputs}, in_out, custom_attrs);
 }
 
-nvinfer1::DataType CustomPlugin::getOutputDataType(
+nvinfer1::DataType CustomGenericPlugin::getOutputDataType(
     int index,
     const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
@@ -184,7 +211,7 @@ nvinfer1::DataType CustomPlugin::getOutputDataType(
   return input_types[0];
 }
 
-int CustomPlugin::initialize() TRT_NOEXCEPT {
+int CustomGenericPlugin::initialize() TRT_NOEXCEPT {
   if (!tensor_inputs_)
     tensor_inputs_ = new std::vector<paddle::Tensor>(getNbInputs());
   if (!tensor_outputs_)
@@ -192,79 +219,108 @@ int CustomPlugin::initialize() TRT_NOEXCEPT {
   return 0;
 }
 
-nvinfer1::DimsExprs CustomPlugin::getOutputDimensions(
+nvinfer1::DimsExprs CustomGenericPlugin::getOutputDimensions(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
     int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
   CHECK(output_index < getNbOutputs());
-  auto& get_output_dims_factory = tensorrt::GetOutputDimsFnFactory::Instance();
-  if (!get_output_dims_factory.Contains(op_desc_.Type()) &&
-      FLAGS_enable_auto_generate_plugin_fn) {
-    PADDLE_ENFORCE_EQ(get_output_dims_factory.ContainsAuto(op_desc_.Type()),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The %s op has no getOutputDimensions function!"
-                          "Please use SetTrtInferShapeFn to regiser.",
-                          op_desc_.Type().c_str()));
-
-    auto* infershape_func = get_output_dims_factory.GetAuto(op_desc_.Type());
-    auto& op_meta_info_map = OpMetaInfoMap::Instance();
-    const auto& meta_info_map = op_meta_info_map.GetMap();
-    auto& op_info = meta_info_map.at(op_desc_.Type()).front();
-    return infershape_func(
-        output_index, inputs, nb_inputs, expr_builder, op_info, op_desc_);
-  } else {
-    PADDLE_ENFORCE_EQ(get_output_dims_factory.Contains(op_desc_.Type()),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The %s op has no getOutputDimensions function!"
-                          "Please use SetTrtInferShapeFn to regiser.",
-                          op_desc_.Type().c_str()));
-
-    auto* infershape_func = get_output_dims_factory.Get(op_desc_.Type());
-    return infershape_func(output_index, inputs, nb_inputs, expr_builder);
+  auto& op_meta_info_map = OpMetaInfoMap::Instance();
+  const auto& meta_info_map = op_meta_info_map.GetMap();
+  auto& op_info = meta_info_map.at(op_desc_.Type()).front();
+  auto& infer_shape_fn = OpMetaInfoHelper::GetTrtInferShapeFn(op_info);
+  PADDLE_ENFORCE_NE(infer_shape_fn,
+                    nullptr,
+                    platform::errors::InvalidArgument(
+                        "The %s op has no getOutputDimensions function!"
+                        "Please use SetTrtInferShapeFn to regiser.",
+                        op_desc_.Type().c_str()));
+  std::vector<paddle::any> custom_attrs;
+  auto& attrs = op_desc_.GetAttrMap();
+  auto& op_attrs_names = OpMetaInfoHelper::GetAttrs(op_info);
+  for (auto& op_attrs_name : op_attrs_names) {
+    auto attr_name_and_type = paddle::ParseAttrStr(op_attrs_name);
+    auto attr_name = attr_name_and_type[0];
+    auto attr_type_str = attr_name_and_type[1];
+    if (attr_type_str == "bool") {
+      custom_attrs.emplace_back(PADDLE_GET_CONST(bool, attrs.at(attr_name)));
+    } else if (attr_type_str == "int") {
+      custom_attrs.emplace_back(PADDLE_GET_CONST(int, attrs.at(attr_name)));
+    } else if (attr_type_str == "float") {
+      custom_attrs.emplace_back(PADDLE_GET_CONST(float, attrs.at(attr_name)));
+    } else if (attr_type_str == "int64_t") {
+      custom_attrs.emplace_back(PADDLE_GET_CONST(int64_t, attrs.at(attr_name)));
+    } else if (attr_type_str == "std::string") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::string, attrs.at(attr_name)));
+    } else if (attr_type_str == "std::vector<int>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<int>, attrs.at(attr_name)));
+    } else if (attr_type_str == "std::vector<float>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<float>, attrs.at(attr_name)));
+    } else if (attr_type_str == "std::vector<int64_t>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<int64_t>, attrs.at(attr_name)));
+    } else if (attr_type_str == "std::vector<std::string>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<std::string>, attrs.at(attr_name)));
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported `%s` type value as custom attribute now. "
+          "Supported data types include `bool`, `int`, `float`, "
+          "`int64_t`, `std::string`, `std::vector<int>`, "
+          "`std::vector<float>`, `std::vector<int64_t>`, "
+          "`std::vector<std::string>`, Please check whether "
+          "the attribute data type and data type string are matched.",
+          attr_type_str));
+    }
   }
+  return infer_shape_fn(
+      {output_index, nb_inputs}, inputs, expr_builder, custom_attrs);
 }
 
-void CustomPlugin::configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
-                                   int nb_inputs,
-                                   const nvinfer1::DynamicPluginTensorDesc* out,
-                                   int nb_outputs) TRT_NOEXCEPT {
+void CustomGenericPlugin::configurePlugin(
+    const nvinfer1::DynamicPluginTensorDesc* in,
+    int nb_inputs,
+    const nvinfer1::DynamicPluginTensorDesc* out,
+    int nb_outputs) TRT_NOEXCEPT {
   CHECK(nb_inputs == getNbInputs());
   CHECK(nb_outputs == getNbOutputs());
 }
 
 // Shutdown the layer. This is called when the engine is destroyed
-void CustomPlugin::terminate() TRT_NOEXCEPT {
+void CustomGenericPlugin::terminate() TRT_NOEXCEPT {
   delete tensor_inputs_;
   delete tensor_outputs_;
 }
 
-int CustomPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
-                          const nvinfer1::PluginTensorDesc* output_desc,
-                          const void* const* inputs,
-                          void* const* outputs,
-                          void* workspace,
-                          cudaStream_t stream) TRT_NOEXCEPT {
+int CustomGenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
+                                 const nvinfer1::PluginTensorDesc* output_desc,
+                                 const void* const* inputs,
+                                 void* const* outputs,
+                                 void* workspace,
+                                 cudaStream_t stream) TRT_NOEXCEPT {
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
   // TODO(inference): generic plugin do not support INT8 precision now.
   auto protoType2PhiType =
-      [&](GenerateCustomPluginDataType proto_type,
+      [&](GenerateCustomGenericPluginDataType proto_type,
           nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
-    if (proto_type == GenerateCustomPluginDataType::PLUGIN_FP16) {
+    if (proto_type == GenerateCustomGenericPluginDataType::PLUGIN_FP16) {
       return {phi::DataType::FLOAT16, sizeof(half)};
-    } else if (proto_type == GenerateCustomPluginDataType::PLUGIN_FP32) {
+    } else if (proto_type == GenerateCustomGenericPluginDataType::PLUGIN_FP32) {
       if (isFp16Supported() && nv_dtype == nvinfer1::DataType::kHALF) {
         return {phi::DataType::FLOAT16, sizeof(half)};
       } else {
         return {phi::DataType::FLOAT32, sizeof(float)};
       }
-    } else if (proto_type == GenerateCustomPluginDataType::PLUGIN_INT64) {
+    } else if (proto_type ==
+               GenerateCustomGenericPluginDataType::PLUGIN_INT64) {
       return {phi::DataType::INT64, sizeof(int64_t)};
-    } else if (proto_type == GenerateCustomPluginDataType::PLUGIN_INT32) {
+    } else if (proto_type ==
+               GenerateCustomGenericPluginDataType::PLUGIN_INT32) {
       return {phi::DataType::INT32, sizeof(int32_t)};
-    } else if (proto_type == GenerateCustomPluginDataType::PLUGIN_BOOL) {
+    } else if (proto_type == GenerateCustomGenericPluginDataType::PLUGIN_BOOL) {
       return {phi::DataType::BOOL, sizeof(bool)};
     } else {
       CHECK(false) << "precision is not supported";
@@ -278,7 +334,8 @@ int CustomPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   paddle::CustomOpKernelContext kernel_ctx;
   // input
   for (int i = 0; i < getNbInputs(); i++) {
-    if (inputs_data_type_[i] == GenerateCustomPluginDataType::PLUGIN_OPTIONAL) {
+    if (inputs_data_type_[i] ==
+        GenerateCustomGenericPluginDataType::PLUGIN_OPTIONAL) {
       (*tensor_inputs_)[i] = paddle::Tensor();
       continue;
     }

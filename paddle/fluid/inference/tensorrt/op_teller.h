@@ -22,8 +22,6 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 
-PHI_DECLARE_bool(enable_auto_generate_plugin_fn);
-
 namespace paddle {
 namespace framework {
 class OpDesc;

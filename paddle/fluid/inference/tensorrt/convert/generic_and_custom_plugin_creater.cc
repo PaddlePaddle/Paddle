@@ -268,9 +268,9 @@ class CustomGenericPluginCreater : public OpConverter {
     const framework::BlockDesc block_desc(
         nullptr, const_cast<framework::proto::BlockDesc *>(block_));
 
-    plugin::CustomPlugin::InputOutPutVarInfo in_out_info;
+    plugin::CustomGenericPlugin::InputOutPutVarInfo in_out_info;
     using paddle::inference::tensorrt::plugin::
-        ProtoTypeToGenerateCustomPluginDataType;
+        ProtoTypeToGenerateCustomGenericPluginDataType;
 
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
@@ -280,7 +280,11 @@ class CustomGenericPluginCreater : public OpConverter {
 
     // set inputs
     auto &op_input_names = OpMetaInfoHelper::GetInputs(op_info);
-    for (auto &param_name : op_input_names) {
+    paddle::small_vector<const char *> input_names;
+    for (auto &input_name : op_input_names) {
+      input_names.emplace_back(input_name.c_str());
+    }
+    for (auto &param_name : input_names) {
       for (auto &arg_name : op_desc.Input(param_name)) {
         inputs.push_back(engine_->GetITensor(arg_name));
         auto *var = block_desc.FindVar(arg_name);
@@ -294,16 +298,20 @@ class CustomGenericPluginCreater : public OpConverter {
             platform::errors::InvalidArgument("TensorRT engine only takes "
                                               "LoDTensor as input"));
         in_out_info.inputs_data_type.push_back(
-            ProtoTypeToGenerateCustomPluginDataType(var->GetDataType()));
+            ProtoTypeToGenerateCustomGenericPluginDataType(var->GetDataType()));
       }
     }
 
     // set outputs
     auto &op_output_names = OpMetaInfoHelper::GetOutputs(op_info);
-    std::vector<std::string> output_names;
-    for (auto &param_name : op_output_names) {
+    paddle::small_vector<const char *> output_names;
+    for (auto &output_name : op_output_names) {
+      output_names.emplace_back(output_name.c_str());
+    }
+    std::vector<std::string> outputs;
+    for (auto &param_name : output_names) {
       for (auto &arg_name : op_desc.Output(param_name)) {
-        output_names.push_back(arg_name);
+        outputs.push_back(arg_name);
         auto *var = block_desc.FindVar(arg_name);
         PADDLE_ENFORCE_NOT_NULL(
             var,
@@ -315,18 +323,18 @@ class CustomGenericPluginCreater : public OpConverter {
             platform::errors::InvalidArgument("TensorRT engine only takes "
                                               "LoDTensor as input"));
         in_out_info.outputs_data_type.push_back(
-            ProtoTypeToGenerateCustomPluginDataType(var->GetDataType()));
+            ProtoTypeToGenerateCustomGenericPluginDataType(var->GetDataType()));
       }
     }
 
-    auto *plugin = new plugin::CustomPlugin(op, in_out_info, with_fp16);
+    auto *plugin = new plugin::CustomGenericPlugin(op, in_out_info, with_fp16);
     CHECK(plugin);
 
     layer = engine_->AddDynamicPlugin(
         inputs.data(), inputs.size(), (plugin::DynamicPluginTensorRT *)plugin);
     CHECK(layer);
 
-    RreplenishLayerAndOutput(layer, op_desc.Type(), output_names, test_mode);
+    RreplenishLayerAndOutput(layer, op_desc.Type(), outputs, test_mode);
   }
 };
 
@@ -334,7 +342,7 @@ class CustomGenericPluginCreater : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(custom_plugin_creater, CustomPluginCreater);
+REGISTER_TRT_OP_CONVERTER(custom_plugin_creater, CustomGenericPluginCreater);
 REGISTER_TRT_OP_CONVERTER(generic_plugin_creater, GenericPluginCreater);
 REGISTER_TRT_OP_CONVERTER(custom_generic_plugin_creater,
                           CustomGenericPluginCreater);

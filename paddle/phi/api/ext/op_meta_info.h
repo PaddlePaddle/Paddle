@@ -450,18 +450,6 @@ using InferShapeFunc = std::vector<std::vector<int64_t>> (*)(
     const std::vector<std::vector<std::vector<int64_t>>>& vec_input_shapes,
     const std::vector<paddle::any>& attrs);
 
-#ifdef PADDLE_WITH_TENSORRT
-using TrtInferShapeFunc =
-    nvinfer1::DimsExprs (*)(int32_t outputIndex,
-                            const nvinfer1::DimsExprs* inputs,
-                            int32_t nbInputs,
-                            nvinfer1::IExprBuilder& exprBuilder);  // NOLINT
-using TrtSupportsFormateFunc = bool (*)(int32_t pos,
-                                        const nvinfer1::PluginTensorDesc* inOut,
-                                        int32_t nbInputs,
-                                        int32_t nbOutputs);
-#endif
-
 #define PD_SPECIALIZE_InferShapeCallHelper_FOR_SHAPE(input_type)     \
   template <typename... Tail>                                        \
   struct InferShapeCallHelper<input_type, Tail...> {                 \
@@ -842,6 +830,296 @@ struct InferDtypeFuncImpl<Return (*)(Args...), impl_fn> {
 #define PD_INFER_DTYPE(...) \
   ::paddle::InferDtypeFuncImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::InferDtype
 
+#ifdef PADDLE_WITH_TENSORRT
+////////////////////// GetOutputDimensions Function (PD_TRT_INFER_SHAPE)
+///////////////////////////
+using TrtGetOutputDims = nvinfer1::DimsExprs (*)(
+    std::pair<int32_t, int32_t> output_index_and_nb_inputs,
+    const nvinfer1::DimsExprs* inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const std::vector<paddle::any>& attrs);
+
+#define PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(attr_type)          \
+  template <typename... Tail>                                                 \
+  struct TrtGetOutputDimsCallHelper<attr_type, Tail...> {                     \
+    template <int attr_idx, typename... PreviousArgs>                         \
+    static Return GetOutputDims(                                              \
+        std::pair<int32_t, int32_t> output_index_and_nb_inputs,               \
+        const nvinfer1::DimsExprs* inputs,                                    \
+        nvinfer1::IExprBuilder& expr_builder,                                 \
+        const std::vector<paddle::any>& attrs,                                \
+        PreviousArgs&... pargs) {                                             \
+      try {                                                                   \
+        attr_type arg = paddle::any_cast<attr_type>(attrs[attr_idx]);         \
+        return TrtGetOutputDimsCallHelper<Tail...>::template GetOutputDims<   \
+            attr_idx + 1>(output_index_and_nb_inputs,                         \
+                          inputs,                                             \
+                          expr_builder,                                       \
+                          attrs,                                              \
+                          pargs...,                                           \
+                          arg);                                               \
+      } catch (paddle::bad_any_cast&) {                                       \
+        PD_THROW(                                                             \
+            "Attribute cast error in custom operator TrtGetOutputDims "       \
+            "function. "                                                      \
+            "Expected " #attr_type                                            \
+            " value. TrtGetOutputDims's attribute list must be exactly same " \
+            "as "                                                             \
+            "Forward "                                                        \
+            "KernelFn's attribute list except std::vector<int64_t> "          \
+            "attribute.");                                                    \
+      }                                                                       \
+    }                                                                         \
+  }
+
+template <typename F, F f>
+struct TrtGetOutputDimsFuncImpl;
+
+template <typename Return, typename... Args, Return (*impl_fn)(Args...)>
+struct TrtGetOutputDimsFuncImpl<Return (*)(Args...), impl_fn> {
+  static Return GetOutputDims(
+      std::pair<int32_t, int32_t> output_index_and_nb_inputs,
+      const nvinfer1::DimsExprs* inputs,
+      nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+      const std::vector<paddle::any>& attrs) {
+    return TrtGetOutputDimsCallHelper<Args..., TypeTag<int>>::
+        template GetOutputDims<0>(
+            output_index_and_nb_inputs, inputs, expr_builder, attrs);
+  }
+
+ private:
+  template <typename... RemainingArgs>
+  struct TrtGetOutputDimsCallHelper;
+
+  template <typename... Tail>
+  struct TrtGetOutputDimsCallHelper<std::pair<int32_t, int32_t>, Tail...> {
+    template <int attr_idx, typename... PreviousArgs>
+    static Return GetOutputDims(
+        std::pair<int32_t, int32_t> output_index_and_nb_inputs,
+        const nvinfer1::DimsExprs* inputs,
+        nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+        const std::vector<paddle::any>& attrs,
+        PreviousArgs&... pargs) {
+      return TrtGetOutputDimsCallHelper<Tail...>::template GetOutputDims<
+          attr_idx>(output_index_and_nb_inputs,
+                    inputs,
+                    expr_builder,
+                    attrs,
+                    pargs...,
+                    output_index_and_nb_inputs);
+    }
+  };
+
+  template <typename... Tail>
+  struct TrtGetOutputDimsCallHelper<const nvinfer1::DimsExprs*, Tail...> {
+    template <int attr_idx, typename... PreviousArgs>
+    static Return GetOutputDims(
+        std::pair<int32_t, int32_t> output_index_and_nb_inputs,
+        const nvinfer1::DimsExprs* inputs,
+        nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+        const std::vector<paddle::any>& attrs,
+        PreviousArgs&... pargs) {
+      return TrtGetOutputDimsCallHelper<Tail...>::template GetOutputDims<
+          attr_idx>(output_index_and_nb_inputs,
+                    inputs,
+                    expr_builder,
+                    attrs,
+                    pargs...,
+                    inputs);
+    }
+  };
+
+  template <typename... Tail>
+  struct TrtGetOutputDimsCallHelper<nvinfer1::IExprBuilder&, Tail...> {
+    template <int attr_idx, typename... PreviousArgs>
+    static Return GetOutputDims(
+        std::pair<int32_t, int32_t> output_index_and_nb_inputs,
+        const nvinfer1::DimsExprs* inputs,
+        nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+        const std::vector<paddle::any>& attrs,
+        PreviousArgs&... pargs) {
+      return TrtGetOutputDimsCallHelper<Tail...>::template GetOutputDims<
+          attr_idx>(output_index_and_nb_inputs,
+                    inputs,
+                    expr_builder,
+                    attrs,
+                    pargs...,
+                    expr_builder);
+    }
+  };
+
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(bool);
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(int);
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(float);
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(int64_t);
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(const std::string&);
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(const std::vector<int>&);
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(const std::vector<float>&);
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(
+      const std::vector<std::string>&);
+
+  // NOTE(HongyuJia): Used to be compatible with the 2.0.1 released
+  // interface, and will be deprecated in the future
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(const bool&);
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(const int&);
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(const float&);
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(const int64_t&);
+
+  // NOTE(HongyuJia): Used to be compatible with the 2.1 released
+  // interface, but not recommended
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(std::string);
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(std::vector<int>);
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(std::vector<float>);
+  PD_SPECIALIZE_TrtGetOutputDimsCallHelper_FOR_ATTR(std::vector<std::string>);
+
+  // end: base template
+  template <typename T>
+  struct TrtGetOutputDimsCallHelper<TypeTag<T>> {
+    template <int attr_idx>
+    static Return GetOutputDims(
+        std::pair<int32_t, int32_t> output_index_and_nb_inputs,
+        const nvinfer1::DimsExprs* inputs,
+        nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+        const std::vector<paddle::any>& attrs,
+        const Args&... args) {
+      return impl_fn(args...);
+    }
+  };
+};
+
+#define PD_TRT_INFER_SHAPE(...)                              \
+  ::paddle::TrtGetOutputDimsFuncImpl<decltype(&__VA_ARGS__), \
+                                     &__VA_ARGS__>::GetOutputDims
+
+////////////////////// SupportsFormatCombination Function (PD_TRT_SUPPORTS_FC)
+///////////////////////////
+using TrtSupportsFormateFunc =
+    bool (*)(std::tuple<int32_t, int32_t, int32_t> pos_nbInputs_nbOutputs,
+             const nvinfer1::PluginTensorDesc* in_out,
+             const std::vector<paddle::any>& attrs);
+
+#define PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(attr_type)     \
+  template <typename... Tail>                                              \
+  struct TrtSupportsFormateCallHelper<attr_type, Tail...> {                \
+    template <int attr_idx, typename... PreviousArgs>                      \
+    static Return SupportsFormate(                                         \
+        std::tuple<int32_t, int32_t, int32_t> pos_nbInputs_nbOutputs,      \
+        const nvinfer1::DimsExprs* in_out,                                 \
+        const std::vector<paddle::any>& attrs,                             \
+        PreviousArgs&... pargs) {                                          \
+      try {                                                                \
+        attr_type arg = paddle::any_cast<attr_type>(attrs[attr_idx]);      \
+        return TrtSupportsFormateCallHelper<Tail...>::                     \
+            template SupportsFormate<attr_idx + 1>(                        \
+                pos_nbInputs_nbOutputs, in_out, attrs, pargs..., arg);     \
+      } catch (paddle::bad_any_cast&) {                                    \
+        PD_THROW(                                                          \
+            "Attribute cast error in custom operator TrtSupportsFormate "  \
+            "function. "                                                   \
+            "Expected " #attr_type                                         \
+            " value. TrtSupportsFormate's attribute list must be exactly " \
+            "same "                                                        \
+            "as "                                                          \
+            "Forward "                                                     \
+            "KernelFn's attribute list except std::vector<int64_t> "       \
+            "attribute.");                                                 \
+      }                                                                    \
+    }                                                                      \
+  }
+
+template <typename F, F f>
+struct TrtSupportsFormateFuncImpl;
+
+template <typename Return, typename... Args, Return (*impl_fn)(Args...)>
+struct TrtSupportsFormateFuncImpl<Return (*)(Args...), impl_fn> {
+  static Return SupportsFormate(
+      std::tuple<int32_t, int32_t, int32_t> pos_nbInputs_nbOutputs,
+      const nvinfer1::PluginTensorDesc* in_out,
+      const std::vector<paddle::any>& attrs) {
+    return TrtSupportsFormateCallHelper<Args..., TypeTag<int>>::
+        template SupportsFormate<0>(pos_nbInputs_nbOutputs, in_out, attrs);
+  }
+
+ private:
+  template <typename... RemainingArgs>
+  struct TrtSupportsFormateCallHelper;
+
+  template <typename... Tail>
+  struct TrtSupportsFormateCallHelper<std::tuple<int32_t, int32_t, int32_t>,
+                                      Tail...> {
+    template <int attr_idx, typename... PreviousArgs>
+    static Return SupportsFormate(
+        std::tuple<int32_t, int32_t, int32_t> pos_nbInputs_nbOutputs,
+        const nvinfer1::PluginTensorDesc* in_out,
+        const std::vector<paddle::any>& attrs,
+        PreviousArgs&... pargs) {
+      return TrtSupportsFormateCallHelper<Tail...>::template SupportsFormate<
+          attr_idx>(pos_nbInputs_nbOutputs,
+                    in_out,
+                    attrs,
+                    pargs...,
+                    pos_nbInputs_nbOutputs);
+    }
+  };
+
+  template <typename... Tail>
+  struct TrtSupportsFormateCallHelper<const nvinfer1::PluginTensorDesc*,
+                                      Tail...> {
+    template <int attr_idx, typename... PreviousArgs>
+    static Return SupportsFormate(
+        std::tuple<int32_t, int32_t, int32_t> pos_nbInputs_nbOutputs,
+        const nvinfer1::PluginTensorDesc* in_out,
+        const std::vector<paddle::any>& attrs,
+        PreviousArgs&... pargs) {
+      return TrtSupportsFormateCallHelper<Tail...>::template SupportsFormate<
+          attr_idx>(pos_nbInputs_nbOutputs, in_out, attrs, pargs..., in_out);
+    }
+  };
+
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(bool);
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(int);
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(float);
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(int64_t);
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(const std::string&);
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(const std::vector<int>&);
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(
+      const std::vector<float>&);
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(
+      const std::vector<std::string>&);
+
+  // NOTE(HongyuJia): Used to be compatible with the 2.0.1 released
+  // interface, and will be deprecated in the future
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(const bool&);
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(const int&);
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(const float&);
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(const int64_t&);
+
+  // NOTE(HongyuJia): Used to be compatible with the 2.1 released
+  // interface, but not recommended
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(std::string);
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(std::vector<int>);
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(std::vector<float>);
+  PD_SPECIALIZE_TrtSupportsFormateCallHelper_FOR_ATTR(std::vector<std::string>);
+
+  // end: base template
+  template <typename T>
+  struct TrtSupportsFormateCallHelper<TypeTag<T>> {
+    template <int attr_idx>
+    static Return SupportsFormate(
+        std::tuple<int32_t, int32_t, int32_t> pos_nbInputs_nbOutputs,
+        const nvinfer1::PluginTensorDesc* in_out,
+        const std::vector<paddle::any>& attrs,
+        const Args&... args) {
+      return impl_fn(args...);
+    }
+  };
+};
+
+#define PD_TRT_SUPPORTS_FC(...)                                \
+  ::paddle::TrtSupportsFormateFuncImpl<decltype(&__VA_ARGS__), \
+                                       &__VA_ARGS__>::SupportsFormate
+#endif
+
 ////////////////////// Op Meta Info //////////////////////
 
 class PADDLE_API OpMetaInfo {
@@ -872,7 +1150,9 @@ class PADDLE_API OpMetaInfo {
   OpMetaInfo& SetInferDtypeFn(InferDtypeFunc&& func);
 
 #ifdef PADDLE_WITH_TENSORRT
-  OpMetaInfo& SetTrtInferShapeFn(TrtInferShapeFunc&& func);
+  // format: PD_TRT_INFER_SHAPE(...)
+  OpMetaInfo& SetTrtInferShapeFn(TrtGetOutputDims&& func);
+  // format: PD_TRT_SUPPORTS_FC(...)
   OpMetaInfo& SetTrtSupportFormateFn(TrtSupportsFormateFunc&& func);
 #endif
 
@@ -891,7 +1171,7 @@ class PADDLE_API OpMetaInfo {
   InferShapeFunc infer_shape_fn_{nullptr};
   InferDtypeFunc infer_dtype_fn_{nullptr};
 #ifdef PADDLE_WITH_TENSORRT
-  TrtInferShapeFunc trt_infer_shape_fn_{nullptr};
+  TrtGetOutputDims trt_infer_shape_fn_{nullptr};
   TrtSupportsFormateFunc trt_supports_formate_fn_{nullptr};
 #endif
 };
@@ -915,7 +1195,7 @@ class OpMetaInfoHelper {
   static const InferDtypeFunc& GetInferDtypeFn(const paddle::OpMetaInfo& info);
 
 #ifdef PADDLE_WITH_TENSORRT
-  static const TrtInferShapeFunc& GetTrtInferShapeFn(
+  static const TrtGetOutputDims& GetTrtInferShapeFn(
       const paddle::OpMetaInfo& info);
   static const TrtSupportsFormateFunc& GetTrtSupportsFormateFn(
       const paddle::OpMetaInfo& info);
@@ -961,7 +1241,7 @@ class PADDLE_API OpMetaInfoBuilder {
   OpMetaInfoBuilder& SetInferDtypeFn(InferDtypeFunc func);
 
 #ifdef PADDLE_WITH_TENSORRT
-  OpMetaInfoBuilder& SetTrtInferShapeFn(TrtInferShapeFunc func);
+  OpMetaInfoBuilder& SetTrtInferShapeFn(TrtGetOutputDims func);
   OpMetaInfoBuilder& SetTrtSupportFormateFn(TrtSupportsFormateFunc func);
 #endif
 
