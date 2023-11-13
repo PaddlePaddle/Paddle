@@ -46,6 +46,7 @@ set(PYBIND_DEPS
     replace_fetch_with_shadow_output_pass
     dead_code_elimination_pass
     pir
+    common
     new_profiler
     jit_layer
     jit_property
