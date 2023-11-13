@@ -240,7 +240,8 @@ void BindProgram(py::module *m) {
 }
 
 void RefreshOpStopgradients(Operation *op) {
-  if (op->num_operands() == 0 || op->isa<pir::GetParameterOp>()) {
+  if (op->num_operands() == 0 || op->isa<pir::GetParameterOp>() ||
+      op->isa<paddle::dialect::UniformOp>()) {
     return;
   } else if (op->isa<pir::SliceOp>()) {
     op->dyn_cast<pir::SliceOp>().RefreshStopGradients();
