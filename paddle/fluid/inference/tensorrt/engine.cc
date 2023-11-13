@@ -175,72 +175,6 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
                              std::vector<void *> *buffers,
                              int batch_size,
                              cudaStream_t stream) {
-#if IS_TRT_VERSION_GE(8500)
-  int totalBindings = infer_engine_->getNbBindings();
-
-  int numInputs = 0;
-  for (int i = 0; i < totalBindings; i++) {
-    if (infer_engine_->bindingIsInput(i)) {
-      numInputs++;
-    }
-  }
-  if (with_dynamic_shape()) {
-    LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode and use enqueueV3";
-    for (int i = 0; i < max_profile_num_; i++) {
-      for (auto &input : min_input_shape()) {
-#if IS_TRT_VERSION_LT(7100)
-        if (!(std::all_of(input.second.begin(),
-                          input.second.end(),
-                          [](int x) { return x > 0; }) &&
-              std::all_of(max_input_shape()[input.first].begin(),
-                          max_input_shape()[input.first].end(),
-                          [](int x) { return x > 0; }) &&
-              std::all_of(optim_input_shape()[input.first].begin(),
-                          optim_input_shape()[input.first].end(),
-                          [](int x) { return x > 0; }))) {
-          continue;
-        }
-#endif
-        optim_profiles_[i]->setDimensions(
-            input.first.c_str(),
-            nvinfer1::OptProfileSelector::kMIN,
-            Vec2TRT_Dims(input.second, input.first, true));
-        optim_profiles_[i]->setDimensions(
-            input.first.c_str(),
-            nvinfer1::OptProfileSelector::kMAX,
-            Vec2TRT_Dims(max_input_shape()[input.first], input.first, true));
-        optim_profiles_[i]->setDimensions(
-            input.first.c_str(),
-            nvinfer1::OptProfileSelector::kOPT,
-            Vec2TRT_Dims(optim_input_shape()[input.first], input.first, true));
-      }
-      for (int i = 0; i < numInputs; ++i) {
-        if (optim_input_shape().count(m_IOTensorNames[i])) {
-          const auto &dims_vec = optim_input_shape().at(m_IOTensorNames[i]);
-          nvinfer1::Dims inputDims;
-          inputDims.nbDims = dims_vec.size();
-          inputDims.d[0] = batch_size;
-          for (auto j = 1u; j < dims_vec.size(); ++j) {
-            inputDims.d[j] = dims_vec[j];
-          }
-          context->setInputShape(m_IOTensorNames[i].c_str(), inputDims);
-        }
-      }
-    }
-  }
-
-  PADDLE_ENFORCE_EQ(context->allInputDimensionsSpecified(),
-                    true,
-                    platform::errors::PreconditionNotMet(
-                        "Error, not all required dimensions specified."));
-  for (size_t j = 0; j < buffers->size(); j++) {
-    bool status =
-        context->setTensorAddress(m_IOTensorNames[j].c_str(), (*buffers)[j]);
-    if (!status) {
-      return false;
-    }
-  }
-#endif
   if (cudagraph_inited_) {
     VLOG(1) << "cuda_graph init success, so we will use cuda graph launch the "
                "entire graph.";
@@ -251,11 +185,7 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
   if (!with_dynamic_shape()) {
     ret = context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
-#if IS_TRT_VERSION_GE(8500)
-    ret = context->enqueueV3(stream);
-#else
     ret = context->enqueueV2(buffers->data(), stream, nullptr);
-#endif
   }
   return ret;
 }
