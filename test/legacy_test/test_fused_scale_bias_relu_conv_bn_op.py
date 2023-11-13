@@ -39,9 +39,9 @@ skip_msg = (
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
-class TestFusedScaleBiasReluConvBnstatsOp(OpTest):
+class TestFusedScaleBiasReluConvBnOp(OpTest):
     def setUp(self):
-        self.__class__.op_type = "fused_scale_bias_relu_conv_bnstats"
+        self.__class__.op_type = "fused_scale_bias_relu_conv_bn"
         self.dtype = np.float16
         self.outputs = None
         self.padding_algorithm = "EXIPLICIT"
@@ -219,17 +219,13 @@ class TestFusedScaleBiasReluConvBnstatsOp(OpTest):
         self.exhaustive_search = False
 
 
-class TestFusedScaleBiasReluConvBnstatsOpNoPrologue(
-    TestFusedScaleBiasReluConvBnstatsOp
-):
+class TestFusedScaleBiasReluConvBnOpNoPrologue(TestFusedScaleBiasReluConvBnOp):
     def init_attr(self):
         self.fuse_prologue = False
         self.exhaustive_search = False
 
 
-class TestFusedScaleBiasReluConvBnstatsOpExhaustive(
-    TestFusedScaleBiasReluConvBnstatsOp
-):
+class TestFusedScaleBiasReluConvBnOpExhaustive(TestFusedScaleBiasReluConvBnOp):
     def init_attr(self):
         self.fuse_prologue = True
         self.exhaustive_search = True
