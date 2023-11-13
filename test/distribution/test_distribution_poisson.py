@@ -164,7 +164,6 @@ class TestPoissonProbs(unittest.TestCase):
 )
 class TestPoissonKL(unittest.TestCase):
     def setUp(self):
-        paddle.disable_static()
         self._dist1 = Poisson(rate=paddle.to_tensor(self.rate_1))
         self._dist2 = Poisson(rate=paddle.to_tensor(self.rate_2))
 

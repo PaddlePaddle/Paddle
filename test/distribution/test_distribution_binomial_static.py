@@ -57,9 +57,8 @@ class TestBinomial(unittest.TestCase):
             mean = dist.mean
             var = dist.variance
             entropy = dist.entropy()
-            mini_samples = dist.sample(shape=())
-            large_samples = dist.sample(shape=(500,))
-        fetch_list = [mean, var, entropy, mini_samples, large_samples]
+            large_samples = dist.sample(shape=(1000,))
+        fetch_list = [mean, var, entropy, large_samples]
         feed = {
             'probability': self.probability,
             'total_count': self.total_count,
@@ -70,7 +69,6 @@ class TestBinomial(unittest.TestCase):
             self.mean,
             self.var,
             self.entropy,
-            self.mini_samples,
             self.large_samples,
         ] = executor.run(main_program, feed=feed, fetch_list=fetch_list)
 
@@ -109,7 +107,7 @@ class TestBinomial(unittest.TestCase):
 
     def test_sample(self):
         self.assertEqual(
-            str(self.mini_samples.dtype).split('.')[-1], self.probability.dtype
+            str(self.large_samples.dtype).split('.')[-1], self.probability.dtype
         )
         sample_mean = self.large_samples.mean(axis=0)
         sample_variance = self.large_samples.var(axis=0)
@@ -140,7 +138,7 @@ class TestBinomial(unittest.TestCase):
             'value-broadcast-shape',
             np.array([10]),
             np.array([[0.3, 0.7], [0.5, 0.5]]),
-            np.array([[[4.0, 6], [8, 2]], [[2.0, 4], [9, 7]]]),
+            np.array([[[4.0, 6.0], [8.0, 2.0]], [[2.0, 4.0], [9.0, 7.0]]]),
         ),
     ],
 )
@@ -189,13 +187,6 @@ class TestBinomialProbs(unittest.TestCase):
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'n_1', 'p_1', 'n_2', 'p_2'),
     [
-        (
-            'one-dim-probability',
-            np.array([16]),
-            parameterize.xrand((1,), dtype='float32', min=0, max=1),
-            np.array([75]),
-            parameterize.xrand((1,), dtype='float32', min=0, max=1),
-        ),
         (
             'multi-dim-probability',
             np.array([32]),

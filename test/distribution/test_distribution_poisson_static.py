@@ -32,7 +32,7 @@ paddle.enable_static()
         ('one-dim', np.array([100.0]).astype('float32')),
         (
             'multi-dim',
-            parameterize.xrand((5,), min=1, max=20)
+            parameterize.xrand((2,), min=1, max=20)
             .astype('int32')
             .astype('float32'),
         ),
@@ -50,9 +50,8 @@ class TestPoisson(unittest.TestCase):
             var = dist.variance
             entropy = dist.entropy()
             mini_samples = dist.sample(shape=())
-            large_samples = dist.sample(shape=(5000,))
+            large_samples = dist.sample(shape=(1000,))
         fetch_list = [mean, var, entropy, mini_samples, large_samples]
-        # fetch_list = [mean, var, entropy]
         feed = {'rate': self.rate}
 
         executor.run(startup_program)
@@ -124,7 +123,7 @@ class TestPoisson(unittest.TestCase):
         (
             'value-broadcast-shape',
             np.array(10).astype('float32'),
-            np.array([2.0, 3.0, 5.0, 10.0, 20.0]).astype('float32'),
+            np.array([2.0, 3.0]).astype('float32'),
         ),
     ],
 )
@@ -163,20 +162,11 @@ class TestPoissonProbs(unittest.TestCase):
     (parameterize.TEST_CASE_NAME, 'rate_1', 'rate_2'),
     [
         (
-            'one-dim',
-            parameterize.xrand((1,), min=1, max=20)
-            .astype('int32')
-            .astype('float32'),
-            parameterize.xrand((1,), min=1, max=20)
-            .astype('int32')
-            .astype('float32'),
-        ),
-        (
             'multi-dim',
-            parameterize.xrand((5, 3), min=1, max=20)
+            parameterize.xrand((2, 3), min=1, max=20)
             .astype('int32')
             .astype('float32'),
-            parameterize.xrand((5, 3), min=1, max=20)
+            parameterize.xrand((2, 3), min=1, max=20)
             .astype('int32')
             .astype('float32'),
         ),

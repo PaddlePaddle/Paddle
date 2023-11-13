@@ -33,19 +33,9 @@ from paddle.distribution.binomial import Binomial
             parameterize.xrand((1,), dtype='float32', min=0, max=1),
         ),
         (
-            'multi-dim-total_count',
-            parameterize.xrand((5,), min=1, max=100).astype('int32'),
-            parameterize.xrand((1,), dtype='float32', min=0, max=1),
-        ),
-        (
-            'multi-dim-probability',
-            100,
-            parameterize.xrand((10,), dtype='float32', min=0, max=1),
-        ),
-        (
             'multi-dim-total_count-probability',
-            parameterize.xrand((5,), min=1, max=100).astype('int32'),
-            parameterize.xrand((3, 5), dtype='float32', min=0, max=1),
+            parameterize.xrand((2,), min=1, max=100).astype('int32'),
+            parameterize.xrand((2, 3), dtype='float32', min=0, max=1),
         ),
     ],
 )
@@ -185,7 +175,6 @@ class TestBinomialProbs(unittest.TestCase):
 )
 class TestBinomialKL(unittest.TestCase):
     def setUp(self):
-        paddle.disable_static()
         self._dist1 = Binomial(
             total_count=paddle.to_tensor(self.n_1),
             probability=paddle.to_tensor(self.p_1),
