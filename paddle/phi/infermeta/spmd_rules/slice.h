@@ -62,12 +62,12 @@ SpmdInfo StridedSliceInferSpmdDynamic(const DistMetaTensor& input,
                                       const IntArray& ends,
                                       const IntArray& strides);
 
-SpmdInfo StridedGradInferSpmdDynamic(const DistMetaTensor& input,
-                                     const DistMetaTensor& out_grad,
-                                     const std::vector<int>& axes,
-                                     const IntArray& starts,
-                                     const IntArray& ends,
-                                     const IntArray& strides);
+SpmdInfo StridedSliceGradInferSpmdDynamic(const DistMetaTensor& input,
+                                          const DistMetaTensor& out_grad,
+                                          const std::vector<int>& axes,
+                                          const IntArray& starts,
+                                          const IntArray& ends,
+                                          const IntArray& strides);
 
 }  // namespace distributed
 }  // namespace phi

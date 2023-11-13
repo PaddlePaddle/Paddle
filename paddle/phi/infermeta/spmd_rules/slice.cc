@@ -288,12 +288,12 @@ SpmdInfo StridedSliceInferSpmdDynamic(const DistMetaTensor& input,
   return SliceInferSpmdBase(input, axes_bridge);
 }
 
-SpmdInfo StridedGradInferSpmdDynamic(const DistMetaTensor& input,
-                                     const DistMetaTensor& out_grad,
-                                     const std::vector<int>& axes,
-                                     const IntArray& starts,
-                                     const IntArray& ends,
-                                     const IntArray& strides) {
+SpmdInfo StridedSliceGradInferSpmdDynamic(const DistMetaTensor& input,
+                                          const DistMetaTensor& out_grad,
+                                          const std::vector<int>& axes,
+                                          const IntArray& starts,
+                                          const IntArray& ends,
+                                          const IntArray& strides) {
   std::vector<int64_t> axes_bridge(axes.begin(), axes.end());
   return SliceGradInferBase(input, out_grad, axes_bridge);
 }
