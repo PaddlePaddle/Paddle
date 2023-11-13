@@ -637,7 +637,8 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
       phi::errors::PreconditionNotMet(
           "Arg must be a vector of  TensorDistAttr"));
   const std::vector<phi::distributed::TensorDistAttr>& dist_attrs =
-      paddle::get<1>(dist_attr);
+      PADDLE_GET_CONST(std::vector<phi::distributed::TensorDistAttr>,
+                       dist_attr);
   auto out_size = dist_attrs.size();
   out->reserve(out_size);
   std::vector<phi::distributed::DistTensor*> results(out_size);

@@ -164,7 +164,7 @@ VECTOR_OUT_CREATION_TEMPLATE = """
 """
 
 MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
-    auto dist_out_{out_name} = SetKernelDistOutput({size}, {in_name});
+    auto dist_out_{out_name} = SetKernelDistOutput({dist_output_arg}, {in_name});
     std::vector<phi::DenseTensor*> dense_out_{out_name}(dist_out_{out_name}.size());
     for (size_t i = 0; i < dist_out_{out_name}.size(); ++i) {{
         dense_out_{out_name}[i] = const_cast<phi::DenseTensor*>(&dist_out_{out_name}[i]->value());
@@ -905,7 +905,7 @@ class DistForwardAPI(ForwardAPI):
                         output_creation_code += (
                             MULTI_VECTOR_OUT_CREATION_TEMPLATE.format(
                                 out_name=i,
-                                size=dist_output_arg,
+                                dist_output_arg=dist_output_arg,
                                 in_name=get_out_code,
                             )
                         )
