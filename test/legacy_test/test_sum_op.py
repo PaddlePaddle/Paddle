@@ -668,13 +668,13 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
         out = paddle.add_n([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
-        # gradient_checker.double_grad_check(
-        #     [data1, data2],
-        #     out,
-        #     x_init=[data1_arr, data2_arr],
-        #     place=place,
-        #     eps=eps,
-        # )
+        gradient_checker.double_grad_check(
+            [data1, data2],
+            out,
+            x_init=[data1_arr, data2_arr],
+            place=place,
+            eps=eps,
+        )
         gradient_checker.double_grad_check_for_dygraph(
             self.add_n_wrapper,
             [data1, data2],
@@ -713,13 +713,13 @@ class TestAddNTripleGradCheck(unittest.TestCase):
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
 
-        # gradient_checker.triple_grad_check(
-        #     [data1, data2],
-        #     out,
-        #     x_init=[data1_arr, data2_arr],
-        #     place=place,
-        #     eps=eps,
-        # )
+        gradient_checker.triple_grad_check(
+            [data1, data2],
+            out,
+            x_init=[data1_arr, data2_arr],
+            place=place,
+            eps=eps,
+        )
         gradient_checker.triple_grad_check_for_dygraph(
             self.add_n_wrapper,
             [data1, data2],
@@ -741,6 +741,7 @@ class TestSumDoubleGradCheck(unittest.TestCase):
     def sum_wrapper(self, x):
         return paddle.sum(x[0], axis=1, keepdim=True)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -772,6 +773,7 @@ class TestSumTripleGradCheck(unittest.TestCase):
     def sum_wrapper(self, x):
         return paddle.sum(x[0], axis=1, keepdim=True)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
