@@ -846,7 +846,7 @@ class DistForwardAPI(ForwardAPI):
                 # SetKernelDistOutput arg
                 dist_output_arg = (
                     "spmd_info.second[0]"
-                    if self.generate_infer_spmd
+                    if self.infer_meta['spmd_rule'] is not None
                     else self.outputs['out_size_expr'][0]
                 )
                 output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
@@ -899,7 +899,7 @@ class DistForwardAPI(ForwardAPI):
                     else:
                         dist_output_arg = (
                             f"spmd_info.second[{i}]"
-                            if self.generate_infer_spmd
+                            if self.infer_meta['spmd_rule'] is not None
                             else self.outputs['out_size_expr'][i]
                         )
                         output_creation_code += (
