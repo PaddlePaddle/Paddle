@@ -41,7 +41,7 @@ class StandaloneExecutor {
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
 
-  void SetEnableAutoParallelProfiler(bool enable_auto_parallel_profiler);
+  void SetEnableAutoParallelProfiler(bool enable_job_schedule_profiler);
 
  private:
   bool is_interpretercore_build_result_shared_{false};
@@ -58,7 +58,7 @@ class StandaloneExecutor {
   std::vector<std::unordered_map<std::string, std::shared_ptr<EventInter>>>
       vec_force_events_to_wait_;
 
-  bool enable_auto_parallel_profiler_;
+  bool enable_job_schedule_profiler_;
 };
 
 }  // namespace framework

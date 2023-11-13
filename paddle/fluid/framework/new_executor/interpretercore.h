@@ -52,7 +52,7 @@ class InterpreterCore {
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true,
-                                   bool enable_auto_parallel_profiler = false);
+                                   bool enable_job_schedule_profiler = false);
 
   void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
 

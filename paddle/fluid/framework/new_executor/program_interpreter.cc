@@ -90,6 +90,10 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
   };
 
   PrepareForCUDAGraphCapture();
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  calculate_stream_timer_ = phi::CalculateStreamTimer(place_);
+#endif
 }
 
 ProgramInterpreter::~ProgramInterpreter() {
@@ -136,18 +140,8 @@ void ProgramInterpreter::RunImpl() {
 
 FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
                                   bool need_fetch,
-                                  bool enable_auto_parallel_profiler) {
-  enable_auto_parallel_profiler_ = enable_auto_parallel_profiler;
-
-  if (enable_auto_parallel_profiler_) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    gpuStream_t calculated_stream =
-        dynamic_cast<phi::GPUContext*>(
-            platform::DeviceContextPool::Instance().Get(place_))
-            ->stream();
-    calculated_stream_timer_.SetStream(calculated_stream);
-#endif
-  }
+                                  bool enable_job_schedule_profiler) {
+  enable_job_schedule_profiler_ = enable_job_schedule_profiler;
 
   std::vector<paddle::framework::OpFuncNode> op_func_nodes;
   Build(feed_names, &op_func_nodes);
@@ -650,8 +644,8 @@ void ProgramInterpreter::ClearLoDTensorArrayInLocalScope() {
 std::tuple<double, double> ProgramInterpreter::InterpreterRunTime() {
   double start_time, end_time;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  start_time = calculated_stream_timer_.StartTime();
-  end_time = calculated_stream_timer_.EndTime();
+  start_time = calculate_stream_timer_.StartTime();
+  end_time = calculate_stream_timer_.EndTime();
 #endif
   return std::make_tuple(start_time, end_time);
 }
@@ -1063,15 +1057,15 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
 
   try {
     instr_node.WaitEvent(place_);
-    if (enable_auto_parallel_profiler_) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      if (!interpreter::IsCommunicationOp(instr_node) &&
-          !calculated_stream_timer_.IsStarted()) {
+    if (enable_job_schedule_profiler_) {
+      if (!calculate_stream_timer_.IsStarted() &&
+          !interpreter::IsCommunicationOp(instr_node)) {
         VLOG(3) << "Start calculated stream timer from op: " << op->Type();
-        calculated_stream_timer_.Start();
+        calculate_stream_timer_.Start();
       }
-#endif
     }
+#endif
 
     if (!instr_node.IsArtificial()) {
       RunOperator(instr_node);
@@ -1126,12 +1120,12 @@ void ProgramInterpreter::ExecuteInstructionList(
 
   exception_holder_.Clear();
 
-  if (enable_auto_parallel_profiler_) {
+  if (enable_job_schedule_profiler_) {
     for (int i = vec_instr.size() - 1; i >= 0; --i) {
       auto& instr_node = vec_instr[i];
       if (!interpreter::IsCommunicationOp(instr_node)) {
         VLOG(3) << "Last calculated op type: " << instr_node.OpBase()->Type();
-        last_calculated_instr_id = i;
+        last_calculate_instr_id_ = i;
         break;
       }
     }
@@ -1248,16 +1242,16 @@ void ProgramInterpreter::RunInstructionAsync(size_t instr_id) {
 
     RunInstruction(instr_node);
 
-    if (enable_auto_parallel_profiler_) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      if (instr_id == last_calculated_instr_id &&
-          calculated_stream_timer_.IsStarted()) {
+    if (enable_job_schedule_profiler_) {
+      if (instr_id == last_calculate_instr_id_ &&
+          calculate_stream_timer_.IsStarted()) {
         VLOG(3) << "Stop calculated stream timer from op: "
                 << instr_node.OpBase()->Type();
-        calculated_stream_timer_.Stop();
+        calculate_stream_timer_.Stop();
       }
-#endif
     }
+#endif
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";

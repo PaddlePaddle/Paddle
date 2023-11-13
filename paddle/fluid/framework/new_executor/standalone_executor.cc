@@ -49,7 +49,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     ss << scope << ", ";
   }
   VLOG(6) << ss.str();
-  enable_auto_parallel_profiler_ = false;
+  enable_job_schedule_profiler_ = false;
 
   const auto& jobs = plan_.JobList();
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
@@ -217,20 +217,20 @@ paddle::framework::FetchList StandaloneExecutor::Run(
         const std::vector<std::string> tmp_feed_names = {};
         interpretercores_[job_idx]->Run(tmp_feed_names,
                                         /*need_fetch = */ false,
-                                        /*enable_auto_parallel_profiler = */
-                                        enable_auto_parallel_profiler_);
+                                        /*enable_job_schedule_profiler = */
+                                        enable_job_schedule_profiler_);
       } else {
         interpretercores_[job_idx]->Run(feed_names,
                                         /*need_fetch = */ false,
-                                        /*enable_auto_parallel_profiler = */
-                                        enable_auto_parallel_profiler_);
+                                        /*enable_job_schedule_profiler = */
+                                        enable_job_schedule_profiler_);
       }
     }
   }
 
   // record each job's run time
 #if defined(PADDLE_WITH_CUDA)
-  if (enable_auto_parallel_profiler_) {
+  if (enable_job_schedule_profiler_) {
     for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
       const auto& job = jobs[job_idx];
       const std::string& job_type = job->Type();
@@ -268,7 +268,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 }
 
 void StandaloneExecutor::SetEnableAutoParallelProfiler(
-    bool enable_auto_parallel_profiler) {
+    bool enable_job_schedule_profiler) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   gpuStream_t calculated_stream =
       dynamic_cast<phi::GPUContext*>(
@@ -279,7 +279,7 @@ void StandaloneExecutor::SetEnableAutoParallelProfiler(
 #elif defined(PADDLE_WITH_CUDA)
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(calculated_stream));
 #endif
-  enable_auto_parallel_profiler_ = enable_auto_parallel_profiler;
+  enable_job_schedule_profiler_ = enable_job_schedule_profiler;
 #endif
 }
 

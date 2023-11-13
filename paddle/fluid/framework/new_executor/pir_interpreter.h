@@ -57,7 +57,7 @@ class PirInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       bool need_fetch = true,
-      bool enable_auto_parallel_profiler = false) override;
+      bool enable_job_schedule_profiler = false) override;
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 

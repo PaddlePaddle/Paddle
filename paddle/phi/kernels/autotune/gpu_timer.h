@@ -14,7 +14,10 @@
 
 #pragma once
 
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -97,13 +100,24 @@ class GpuTimer {
   gpuEvent_t stop_;
 };
 
-class CalculatedStreamTimer {
+class CalculateStreamTimer {
  public:
-  CalculatedStreamTimer()
+  CalculateStreamTimer()
       : calculated_stream_(nullptr),
         start_time_(0),
         end_time_(0),
         is_started_(false) {}
+
+  explicit CalculateStreamTimer(const paddle::platform::Place place)
+      : calculated_stream_(nullptr),
+        start_time_(0),
+        end_time_(0),
+        is_started_(false) {
+    calculated_stream_ =
+        dynamic_cast<phi::GPUContext *>(
+            paddle::platform::DeviceContextPool::Instance().Get(place))
+            ->stream();
+  }
 
   void Start() {
     // Note(sonder): Since it is not possible to directly obtain the start time

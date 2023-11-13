@@ -34,10 +34,6 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
                             true,
                             "Use local_scope in new executor(especially used "
                             "in UT), can turn off for better performance");
-PADDLE_DEFINE_EXPORTED_bool(auto_parallel_profiler,
-                            false,
-                            "Enable auto parallel profiler, collecting the "
-                            "runtime of jobs in different devices");
 
 namespace paddle {
 namespace framework {
@@ -76,8 +72,8 @@ FetchList InterpreterCore::Run(
 
 FetchList InterpreterCore::Run(const std::vector<std::string>& feed_names,
                                bool need_fetch,
-                               bool enable_auto_parallel_profiler) {
-  return impl_->Run(feed_names, need_fetch, enable_auto_parallel_profiler);
+                               bool enable_job_schedule_profiler) {
+  return impl_->Run(feed_names, need_fetch, enable_job_schedule_profiler);
 }
 
 void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {

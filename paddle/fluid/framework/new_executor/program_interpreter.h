@@ -53,7 +53,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       bool need_fetch = true,
-      bool enable_auto_parallel_profiler = false) override;
+      bool enable_job_schedule_profiler = false) override;
 
   void Build(
       const std::vector<std::string>& feed_names,
@@ -221,10 +221,10 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   std::vector<HookFunc> hookfuncs_;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  phi::CalculatedStreamTimer calculated_stream_timer_;
+  phi::CalculateStreamTimer calculate_stream_timer_;
 #endif
-  size_t last_calculated_instr_id;
-  bool enable_auto_parallel_profiler_;
+  size_t last_calculate_instr_id_;
+  bool enable_job_schedule_profiler_;
 };
 
 }  // namespace framework

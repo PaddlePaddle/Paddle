@@ -2021,9 +2021,9 @@ All parameter, weight, gradient are variables in Paddle.
              return py::cast(std::move(ret));
            })
 
-      .def("set_enable_auto_parallel_profiler",
-           [](StandaloneExecutor &self, bool enable_auto_parallel_profiler) {
-             self.SetEnableAutoParallelProfiler(enable_auto_parallel_profiler);
+      .def("set_enable_job_schedule_profiler",
+           [](StandaloneExecutor &self, bool enable_job_schedule_profiler) {
+             self.SetEnableAutoParallelProfiler(enable_job_schedule_profiler);
            });
 
   py::class_<framework::interpreter::Job,

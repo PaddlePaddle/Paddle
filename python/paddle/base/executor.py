@@ -823,9 +823,9 @@ class _StandaloneExecutor:
                 )
             return tensors
 
-    def set_enable_auto_parallel_profiler(self, enable_auto_parallel_profiler):
-        self._new_exe.set_enable_auto_parallel_profiler(
-            enable_auto_parallel_profiler
+    def set_enable_job_schedule_profiler(self, enable_job_schedule_profiler):
+        self._new_exe.set_enable_job_schedule_profiler(
+            enable_job_schedule_profiler
         )
 
     def _create_new_executor(self):
@@ -1184,7 +1184,7 @@ class Executor:
 
         self.op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
-        self.enable_auto_parallel_profiler = None
+        self.enable_job_schedule_profiler = None
 
     def _is_optimizer_op(self, op):
         return self.op_role_key in op.attr_names and int(
@@ -1895,9 +1895,9 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            if self.enable_auto_parallel_profiler is not None:
-                new_exe.set_enable_auto_parallel_profiler(
-                    self.enable_auto_parallel_profiler
+            if self.enable_job_schedule_profiler is not None:
+                new_exe.set_enable_job_schedule_profiler(
+                    self.enable_job_schedule_profiler
                 )
 
             ret = new_exe.run(list(feed.keys()), return_numpy)

@@ -1188,7 +1188,7 @@ paddle::framework::FetchList PirInterpreter::Run(
 
 FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
                               bool need_fetch,
-                              bool enable_auto_parallel_profiler) {
+                              bool enable_job_schedule_profiler) {
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
