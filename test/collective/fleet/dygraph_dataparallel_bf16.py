@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+
 import numpy as np
 from dist_amp_base import MLP, RandomDataset, create_optimizer
 
@@ -20,11 +22,13 @@ from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     fused_allreduce_gradients,
 )
 
+logging.basicConfig(level="INFO", format="%(message)s")
+
 
 def train_mlp(
     model, train_loader, use_pure_bf16=False, use_main_grad=False, acc_steps=1
 ):
-    print(
+    logging.info(
         f"-- Train Info: use_pure_bf16={use_pure_bf16}, use_main_grad={use_main_grad}, acc_steps={acc_steps}"
     )
     optimizer = create_optimizer(
@@ -77,21 +81,21 @@ def train_mlp(
 
                 losses.append(loss.astype("float32").item())
                 loss.backward()
+                logging.info(
+                    f"-- [rank={local_rank}] epoch {eop}, batch {batch_id}, loss: {loss.astype(paddle.float32).numpy()}"
+                )
 
             if (batch_id + 1) % acc_steps == 0:
                 fused_allreduce_gradients(list(model.parameters()), None)
 
                 optimizer.step()
                 optimizer.clear_grad()
-                print(
-                    f"-- [rank={local_rank}] epoch {eop}, batch {batch_id}, loss: {loss.astype(paddle.float32).numpy()}"
-                )
     return losses
 
 
 def test_dp_bf16():
     if not paddle.amp.is_bfloat16_supported():
-        print("BFloat16 is not supported!")
+        logging.info("BFloat16 is not supported!")
         return
 
     paddle.distributed.init_parallel_env()
