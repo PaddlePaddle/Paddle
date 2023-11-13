@@ -17,10 +17,11 @@ exclude = [
 line-length = 80
 target-version = "py37"
 select = [
-    # Isort
-    "I",
     # Pyflakes
     "F",
+
+    # Isort
+    "I",
 
     # Comprehensions
     "C4",
@@ -88,7 +89,7 @@ known-first-party = ["paddle"]
 
 [tool.ruff.per-file-ignores]
 # Ignore unused imports in __init__.py
-"__init__.py" = ["F401","I001"]
+"__init__.py" = ["F401", "I001"]
 # Ignore undefined variables in CMake config and some dygraph_to_static tests
 ".cmake-format.py" = ["F821"]
 "test/dygraph_to_static/test_closure_analysis.py" = ["F821"]
