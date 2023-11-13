@@ -33,12 +33,14 @@ std::tuple<std::string, std::string> FillConcatNotation(int64_t n_axis,
       n_axis,
       concat_axis,
       phi::errors::InvalidArgument(
-          "n_axis [%d] and concat_axis[%d]", n_axis, concat_axis));
+          "n_axis [%d] and concat_axis[%d] not match", n_axis, concat_axis));
   static const std::string alphabet = "abcdefghijlopqrstuvwxyz";
-  PADDLE_ENFORCE_GT(
-      alphabet.size(),
-      static_cast<size_t>(n_axis),
-      phi::errors::InvalidArgument("n_axis [%d] is too large", n_axis));
+  PADDLE_ENFORCE_GT(alphabet.size(),
+                    static_cast<size_t>(n_axis),
+                    phi::errors::InvalidArgument(
+                        "alphabet.size() [%d]; n_axis [%d] is too large",
+                        alphabet.size(),
+                        n_axis));
   std::string all_axis = alphabet.substr(0, n_axis);
   std::string align_axis =
       std::string(all_axis.begin(), all_axis.begin() + concat_axis) +
