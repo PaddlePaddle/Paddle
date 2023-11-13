@@ -17,7 +17,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
 
 import paddle
 
@@ -318,6 +318,7 @@ def train_dygraph(place):
     return train(place)
 
 
+@compare_legacy_with_pir
 def train_static(place):
     paddle.jit.enable_to_static(True)
     return train(place)

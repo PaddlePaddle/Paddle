@@ -17,7 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 
 import paddle
 
@@ -105,6 +105,7 @@ class TestSequential(Dy2StTestBase):
 
         return out
 
+    @test_legacy_and_pir
     def test_train(self):
         paddle.jit.set_code_level(100)
         dy_out = self._run(to_static=False)

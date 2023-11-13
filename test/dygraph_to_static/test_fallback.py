@@ -16,7 +16,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_ast_only
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pir,
+)
 
 import paddle
 
@@ -58,10 +62,12 @@ class TestFallback(Dy2StTestBase):
     def tearDown(self):
         pass
 
+    @test_legacy_and_pir
     def test_case_support(self):
         output = paddle.jit.to_static(support_func)(self.x)
         np.testing.assert_allclose(output.numpy(), 4)
 
+    @test_legacy_and_pir
     def test_case_func_fallback(self):
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.build_cinn_pass = True
@@ -70,6 +76,7 @@ class TestFallback(Dy2StTestBase):
         )(self.x)
         np.testing.assert_allclose(output.numpy(), unsupport_func(self.x))
 
+    @test_legacy_and_pir
     def test_case_net_fallback(self):
         s_net = SuppportNet()
         u_net = UnsuppportNet()
@@ -86,6 +93,7 @@ class TestFallback(Dy2StTestBase):
         )
 
     @test_ast_only
+    @test_legacy_and_pir
     def test_case_net_error(self):
         s_net = SuppportNet()
         u_net = UnsuppportNet()
@@ -102,6 +110,7 @@ class TestFallback(Dy2StTestBase):
                 u_net(self.x).numpy(),
             )
 
+    @test_legacy_and_pir
     def test_case_training(self):
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.build_cinn_pass = True
@@ -112,6 +121,7 @@ class TestFallback(Dy2StTestBase):
         np.testing.assert_allclose(u_net(self.x).numpy(), [1, 1])
         assert u_net.training is False, "Training must be false."
 
+    @test_legacy_and_pir
     def test_case_save_error(self):
         """
         test the save will raise error.
@@ -123,6 +133,7 @@ class TestFallback(Dy2StTestBase):
         with self.assertRaises(TypeError):
             paddle.jit.save(u_net, path="model")
 
+    @test_legacy_and_pir
     def test_case_save_error_2(self):
         """
         test the save will raise error.

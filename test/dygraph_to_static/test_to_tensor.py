@@ -15,7 +15,7 @@
 import unittest
 
 import numpy
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 
 import paddle
 from paddle.base import core
@@ -101,6 +101,7 @@ def case_to_tensor_default_dtype():
 
 
 class TestToTensorReturnVal(Dy2StTestBase):
+    @test_legacy_and_pir
     def test_to_tensor_badreturn(self):
         paddle.disable_static()
         x = paddle.to_tensor([3])
@@ -153,6 +154,7 @@ class TestToTensorReturnVal(Dy2StTestBase):
         self.assertTrue(a.stop_gradient == b.stop_gradient)
         self.assertTrue(a.place._equals(b.place))
 
+    @test_legacy_and_pir
     def test_to_tensor_default_dtype(self):
         a = paddle.jit.to_static(case_to_tensor_default_dtype)()
         b = case_to_tensor_default_dtype()
@@ -160,6 +162,7 @@ class TestToTensorReturnVal(Dy2StTestBase):
         self.assertTrue(a.stop_gradient == b.stop_gradient)
         self.assertTrue(a.place._equals(b.place))
 
+    @test_legacy_and_pir
     def test_to_tensor_err_log(self):
         paddle.disable_static()
         x = paddle.to_tensor([3])
@@ -173,6 +176,7 @@ class TestToTensorReturnVal(Dy2StTestBase):
 
 
 class TestStatic(Dy2StTestBase):
+    @test_legacy_and_pir
     def test_static(self):
         paddle.enable_static()
         main_prog = Program()
@@ -201,6 +205,7 @@ class TestStatic(Dy2StTestBase):
 
 
 class TestInt16(unittest.TestCase):
+    @test_legacy_and_pir
     def test_static(self):
         import numpy as np
 

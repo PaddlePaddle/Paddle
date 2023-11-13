@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_ast_only
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pir,
+)
 from ifelse_simple_func import dyfunc_with_if_else
 
 import paddle
@@ -287,6 +291,7 @@ class TestReturnBase(Dy2StTestBase):
                 return res.numpy()
             return res
 
+    @test_legacy_and_pir
     def _test_value_impl(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)

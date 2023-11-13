@@ -17,7 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 
 import paddle
 from paddle import base
@@ -385,6 +385,7 @@ class TestTransformBase(Dy2StTestBase):
 
 
 class TestTransform(TestTransformBase):
+    @test_legacy_and_pir
     def transformed_result_compare(self):
         dy_outs = self.get_dygraph_output()
         if not isinstance(dy_outs, (tuple, list)):

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 
 import paddle
 import paddle.nn.functional as F
@@ -112,6 +112,7 @@ class TestLambda(Dy2StTestBase):
                 ret = func(x_v)
             return ret.numpy()
 
+    @test_legacy_and_pir
     def test_ast_to_func(self):
         for func in self.dyfuncs:
             self.assertTrue(
