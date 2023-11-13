@@ -611,7 +611,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
-        isShapeInferenceIO{false};
+        bool isShapeInferenceIO{false};
         isShapeInferenceIO = engine->engine()->isShapeBinding(bind_index);
         std::vector<int> shape_v(t.numel());
         if (t.dtype() == phi::DataType::INT32) {
