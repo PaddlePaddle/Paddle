@@ -1250,6 +1250,7 @@
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :
     func : LayerNormGradInferMeta
+    spmd_rule : LayerNormGradInferSpmd
     param : [x, scale, bias]
   kernel :
     func : layer_norm_grad

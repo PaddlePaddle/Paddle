@@ -18,31 +18,44 @@ import paddle
 import paddle.distributed as dist
 
 
-class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
+def layer_norm(input, weights, bias, normalized_shape):
+    return paddle.nn.functional.layer_norm(
+        input, normalized_shape, weight=weights, bias=bias
+    )
+
+
+class TestLayerNormSemiAutoParallel(SemiAutoParallelTestBase):
     def __init__(self):
         super().__init__()
 
-    def test_concat_forward(self):
-        shapes = [[16, 4, 4], [64, 4, 4]]
-        specs = [[None, None, 'x'], [None, None, 'x']]
-        inputs, outputs = self.runfunc_and_check(
-            inputs_shape=shapes,
-            inputs_specs=specs,
-            op_func=paddle.concat,
-            with_backward=False,
-            axis=0,
-        )
+    def check_dim_mapping(self, output, expected_dim_mapping):
+        assert (
+            output.dist_attr.dims_mapping == expected_dim_mapping
+        ), f"{output.dist_attr.dims_mapping}  vs {expected_dim_mapping}"
 
-    def test_concat_forward_reshard(self):
-        shapes = [[16, 4, 4], [64, 4, 4]]
-        specs = [['x', None, None], [None, None, 'x']]
+    def test_layernorm_forward(self):
+        shapes = [[16, 4, 4], [16]]
+        specs = [['x', None, None], [None]]
         inputs, outputs = self.runfunc_and_check(
             inputs_shape=shapes,
             inputs_specs=specs,
-            op_func=paddle.concat,
-            with_backward=False,
-            axis=0,
+            op_func=layer_norm,
+            with_backward=True,
+            normalized_shape=[16],
         )
+        self.check_dim_mapping(outputs, [-1, -1, 0])
+
+    def test_layernorm_reshard(self):
+        shapes = [[16, 4, 4], [16]]
+        specs = [[None, None, 'x'], [None]]
+        inputs, outputs = self.runfunc_and_check(
+            inputs_shape=shapes,
+            inputs_specs=specs,
+            op_func=layer_norm,
+            with_backward=True,
+            normalized_shape=[16],
+        )
+        self.check_dim_mapping(inputs, outputs, [-1, -1, 0])
 
     def run_test_case(self):
         if self._backend == "cpu":
@@ -52,11 +65,11 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
-        self.test_concat_forward()
+        self.test_layernorm_forward()
         # all to all is not supported yet for cpu
         if self._backend == "gpu":
-            self.test_concat_forward_reshard()
+            self.test_layernorm_forward_reshard()
 
 
 if __name__ == '__main__':
-    TestSplitAndConcatSemiAutoParallel().run_test_case()
+    TestLayerNormSemiAutoParallel().run_test_case()

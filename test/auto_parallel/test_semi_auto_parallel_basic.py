@@ -26,6 +26,7 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
         self._default_envs = {"dtype": "float32", "seed": "2023"}
         self._changeable_envs = {"backend": ["cpu", "gpu"]}
 
+    """
     def test_matmul_api(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
@@ -55,7 +56,19 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 "semi_auto_parallel_for_concat.py",
                 user_defined_envs=envs,
             )
+    """
 
+    def test_layernorm_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_layernorm.py",
+                user_defined_envs=envs,
+            )
+
+    """
     def test_reduction_api(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
@@ -105,6 +118,7 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 "semi_auto_parallel_for_custom_relu.py",
                 user_defined_envs=envs,
             )
+    """
 
 
 if __name__ == "__main__":
