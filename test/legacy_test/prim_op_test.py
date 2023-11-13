@@ -1130,13 +1130,13 @@ class PrimGradChecker(PrimForwardChecker):
                     assert backward_op_type not in ops, (
                         "%s shouldn't appear in program when check_prim is True"
                     ) % (backward_op_type)
-                else:
-                    grad_ops = [
-                        op.name() if op.name().endswith("_grad") else False
-                        for op in main_program.global_block().ops
-                    ]
-                    assert not any(
-                        grad_ops
+                elif self.prim_op_type == "prim":
+                    grad_ops = []
+                    for op in main_program.global_block().ops:
+                        if op.name().endswith("_grad"):
+                            grad_ops.append(op.name())
+                    assert (
+                        not grad_ops
                     ), f"For {grad_ops} , grad op shouldn't appear in program when check_prim is True"
                 exe = paddle.static.Executor(self.place)
                 exe.run(startup_program)
