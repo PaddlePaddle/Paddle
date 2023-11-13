@@ -348,10 +348,9 @@ class AdamW(Optimizer):
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
         if self._is_dtype_fp16_or_bf16(acc_dtype):
-            if in_pir_mode():
-                acc_dtype = DataType.FLOAT32
-            else:
-                acc_dtype = core.VarDesc.VarType.FP32
+            acc_dtype = (
+                DataType.FLOAT32 if in_pir_mode() else core.VarDesc.VarType.FP32
+            )
         if core.is_compiled_with_xpu():
             import os
 
