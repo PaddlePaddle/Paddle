@@ -17,7 +17,6 @@ from collections.abc import Sequence
 from itertools import product
 
 import numpy as np
-from utils import static_guard
 
 import paddle
 from paddle import base
@@ -253,7 +252,10 @@ def _compute_numerical_jacobian_pir(
     exe = paddle.static.Executor(place)
 
     def run():
-        y_res = exe.run(program, feeds, fetch_list=[y, filted_ddx])
+        res = exe.run(program, feeds, fetch_list=[filted_ddx, y])
+        y_res = []
+        for i in range(len(y)):
+            y_res.append(res[len(filted_ddx) + i])
         return [yi.flatten() for yi in y_res]
 
     x_name = x.get_defining_op().attrs()['name']
@@ -310,9 +312,9 @@ def _compute_analytical_jacobian_pir(
     if not isinstance(x, (list, paddle.pir.OpResult)):
         raise TypeError('x is not OpResult or list of OpResult')
 
-    np_type = dtype_to_np_dtype(y.dtype)
+    np_type = dtype_to_np_dtype(y[i].dtype)
     exe = paddle.static.Executor(place)
-    y_size = _product(y.shape)
+    y_size = _product(y[i].shape)
     x = _as_list(x)
     jacobian = make_jacobian(x, y_size, np_type)
 
@@ -325,16 +327,15 @@ def _compute_analytical_jacobian_pir(
     # get the name in feeds of dyi
     name = 'dys_%s' % i
     # set to zeros
-    feeds.update({name: np.zeros(y.shape, dtype=np_type)})
     np_t = np.array(feeds[name]).astype(np_type)
     shape = np_t.shape
     np_t = np_t.flatten()
-    for i in range(y_size):
+    for i in range(y_size):  # y_size
         np_t[i] = 1
         np_f = np_t.reshape(shape)
         feeds[name] = np_f
-        res = exe.run(program, feed=feeds, fetch_list=[y, filted_dx])
-        dx_res = [res[1]]
+        res = exe.run(program, feed=feeds, fetch_list=[filted_dx, y])
+        dx_res = res[: len(filted_dx)]
         for j in range(len(filted_dx)):
             dx_idx = filted_idx[j]
             if dx_res[j] is not None:
@@ -393,10 +394,18 @@ def grad_check(
     if in_pir_mode():
         analytical = []
         for i in range(len(y)):
-            yi = y[i]
+            name = 'dys_%s' % i
+            feeds.update(
+                {
+                    name: np.zeros(
+                        y[i].shape, dtype=dtype_to_np_dtype(y[i].dtype)
+                    )
+                }
+            )
+        for i in range(len(y)):
             analytical.append(
                 _compute_analytical_jacobian_pir(
-                    program, x, i, yi, x_init, feeds, place
+                    program, x, i, y, x_init, feeds, place
                 )
             )
         numerical = [
@@ -432,7 +441,6 @@ def grad_check(
                     prog, clone_x, clone_y, place, scope
                 )
             )
-
     for i, (x_idx, y_idx) in enumerate(
         product(*[range(len(x)), range(len(y))])
     ):
@@ -440,8 +448,8 @@ def grad_check(
         n = numerical[x_idx][y_idx]
         if not np.allclose(a, n, rtol, atol):
             msg = (
-                f'Jacobian mismatch for output {y[y_idx].name} '
-                f'with respect to input {x[x_idx].name} on {str(place)},\n'
+                f'Jacobian mismatch for output {y_idx} in y'
+                f'with respect to input {x_idx} in x on {str(place)},\n'
                 f'numerical:{n}\nanalytical:{a}\n'
             )
             return fail_test(msg)
@@ -824,16 +832,16 @@ def get_pir_static_double_grad(
     # append second order backward
     ddx = base.gradients(y, x, dys)
     exe = paddle.static.Executor()
-
     # filter None in dx for DX/DY may be None in kernel
     # only fetch not None dx in exe.run
     filted = [(i, dxi) for i, dxi in enumerate(ddx) if dxi is not None]
     filted_idx, filted_ddx = zip(*filted)
     ddx_res = exe.run(
-        program=program, feed=feeds, fetch_list=[filted_dx, filted_ddx]
+        program=program, feed=feeds, fetch_list=[filted_ddx, filted_dx]
     )
+    res = ddx_res[: len(filted_ddx)]
 
-    return [ddx_res[1]], x, y, ddx, feeds, program
+    return res, x, y, ddx, feeds, program
 
 
 def get_eager_double_grad(
@@ -970,13 +978,12 @@ def double_grad_check_for_dygraph(
             x, y, x_init, y_grads_init, place
         )
     else:
-        with static_guard():
-            (
-                static_double_grad,
-                _,
-                _,
-                _,
-            ) = get_static_double_grad(x, y, x_init, y_grads_init, place)
+        (
+            static_double_grad,
+            _,
+            _,
+            _,
+        ) = get_static_double_grad(x, y, x_init, y_grads_init, place)
 
     if len(static_double_grad) != len(eager_double_grad):
         msg = (
@@ -1231,13 +1238,12 @@ def triple_grad_check_for_dygraph(
             x, y, x_init, y_grads_init, place
         )
     else:
-        with static_guard():
-            (
-                static_triple_grad,
-                _,
-                _,
-                _,
-            ) = get_static_triple_grad(x, y, x_init, y_grads_init, place)
+        (
+            static_triple_grad,
+            _,
+            _,
+            _,
+        ) = get_static_triple_grad(x, y, x_init, y_grads_init, place)
 
     if len(static_triple_grad) != len(eager_triple_grad):
         msg = (
