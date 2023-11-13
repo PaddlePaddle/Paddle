@@ -434,6 +434,99 @@ PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_process_mesh__doc__,
+             R"DOC(process_mesh
+
+Get process_mesh property from shard tensor.
+
+Returns:
+    core.ProcessMesh: the process mesh of shard tensor
+
+Examples:
+    .. code-block:: python
+
+        >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+        >>> import paddle
+        >>> import paddle.distributed as dist
+
+        >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
+        >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+
+        >>> a = paddle.to_tensor([[1,2,3],
+        ...                       [5,6,7]])
+        >>> d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+
+        >>> print(d_tensor.process_mesh)
+
+)DOC");
+
+PyObject* tensor_properties_get_process_mesh(TensorObject* self,
+                                             void* closure) {
+  EAGER_TRY
+  if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+    return ToPyObject(&dist_tensor->process_mesh());
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `process_mesh()` property of (Dist)Tensor is not supported in the "
+        "current PaddlePaddle, please recompile and installPaddlePaddle with "
+        "the "
+        "option of `WITH_DISTRIBUTE=ON`."));
+#endif
+  } else {
+    RETURN_PY_NONE
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyDoc_STRVAR(tensor_placements__doc__,
+             R"DOC(process_mesh
+
+Get placements property from shard tensor.
+
+Returns:
+    List[core.Placement]: the process mesh of shard tensor
+
+Examples:
+    .. code-block:: python
+
+        >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+        >>> import paddle
+        >>> import paddle.distributed as dist
+
+        >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
+        >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+
+        >>> a = paddle.to_tensor([[1,2,3],
+        ...                       [5,6,7]])
+        >>> d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+
+        >>> print(d_tensor.placements)
+
+)DOC");
+
+PyObject* tensor_properties_get_placements(TensorObject* self, void* closure) {
+  EAGER_TRY
+  if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+    return ToPyObject(dist_tensor->placements());
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `placements()` property of (Dist)Tensor is not supported in the "
+        "current PaddlePaddle, please recompile and installPaddlePaddle with "
+        "the "
+        "option of `WITH_DISTRIBUTE=ON`."));
+#endif
+  } else {
+    RETURN_PY_NONE
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyObject* tensor_properties_get_local_shape(TensorObject* self, void* closure) {
   EAGER_TRY
   if (self->tensor.is_dist_tensor()) {
@@ -834,6 +927,16 @@ struct PyGetSetDef variable_properties[] = {  // NOLINT
      (getter)tensor_properties_get_dist_attr,
      nullptr,
      tensor_dist_attr__doc__,
+     nullptr},
+    {"process_mesh",
+     (getter)tensor_properties_get_process_mesh,
+     nullptr,
+     tensor_process_mesh__doc__,
+     nullptr},
+    {"placements",
+     (getter)tensor_properties_get_placements,
+     nullptr,
+     tensor_placements__doc__,
      nullptr},
     {"_place_str",
      (getter)tensor_properties_get_place_str,

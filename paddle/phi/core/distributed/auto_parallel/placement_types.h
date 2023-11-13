@@ -38,7 +38,6 @@ class Placement {
   virtual ~Placement() = default;
 
   virtual bool is_shard(std::optional<int> dim = std::nullopt) const {
-    std::cerr << "Placement::is_shard: not implemented yet." << std::endl;
     return false;
   }
 
@@ -175,6 +174,8 @@ class DistTensorMeta : public std::enable_shared_from_this<DistTensorMeta> {
 
   const ProcessMesh& process_mesh() const { return *process_mesh_; }
 
+  const Placements& placements() const { return placements_; }
+
   int64_t num_shard() const;
 
   std::vector<int64_t> dim_mapping() const;
@@ -185,9 +186,6 @@ class DistTensorMeta : public std::enable_shared_from_this<DistTensorMeta> {
   std::shared_ptr<const ProcessMesh> process_mesh_;
   Placements placements_;
   std::shared_ptr<const DenseTensorMeta> tensor_meta_;
-  // ProcessMesh process_mesh_;
-  // std::vector<Placement> placements_;
-  // DenseTensorMeta tensor_meta_;
 };
 
 }  // namespace distributed

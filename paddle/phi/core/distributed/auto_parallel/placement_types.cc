@@ -19,7 +19,6 @@ namespace distributed {
 
 int64_t DistTensorMeta::num_shard() const {
   int64_t num_shard = 1;
-  // const auto& placements = *placements_;
   const auto& mesh_shape = process_mesh_->shape();
   for (size_t i = 0; i < placements_.size(); i++) {
     if (placements_[i]->is_shard()) {
@@ -49,11 +48,17 @@ std::vector<int64_t> DistTensorMeta::dim_mapping() const {
       dim_map[shard_dim] = i;
     }
   }
+
+  std::cerr << "dim_map: ";
+  for (auto& dim : dim_map) {
+    std::cerr << dim << " ";
+  }
+  std::cerr << std::endl;
+
   return dim_map;
 }
 
 bool DistTensorMeta::is_replicated() const {
-  // const auto& placements = *placements_;
   return std::all_of(placements_.cbegin(),
                      placements_.cend(),
                      [](const auto& p) { return p->is_replicated(); });

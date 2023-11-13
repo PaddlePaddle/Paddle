@@ -377,17 +377,27 @@ void BindAutoParallel(py::module *m) {
                    .def(py::init([](int64_t dim) {
                      return std::make_shared<phi::distributed::Shard>(dim);
                    }))
-                   .def("get_dim", &phi::distributed::Shard::get_dim);
+                   .def("get_dim", &phi::distributed::Shard::get_dim)
+                   .def("__hash__", &phi::distributed::Shard::hash)
+                   .def("__str__", &phi::distributed::Shard::to_string)
+                   .def("__eq__", &phi::distributed::Shard::operator==);
 
-  auto Replicated = py::class_<phi::distributed::Replicated,
-                               std::shared_ptr<phi::distributed::Replicated>>(
-                        *m, "Replicated", Placement)
-                        .def(py::init<>());
+  auto Replicated =
+      py::class_<phi::distributed::Replicated,
+                 std::shared_ptr<phi::distributed::Replicated>>(
+          *m, "Replicated", Placement)
+          .def(py::init<>())
+          .def("__hash__", &phi::distributed::Replicated::hash)
+          .def("__str__", &phi::distributed::Replicated::to_string)
+          .def("__eq__", &phi::distributed::Replicated::operator==);
 
   auto Partial = py::class_<phi::distributed::Partial,
                             std::shared_ptr<phi::distributed::Partial>>(
                      *m, "Partial", Placement)
-                     .def(py::init<>());
+                     .def(py::init<>())
+                     .def("__hash__", &phi::distributed::Partial::hash)
+                     .def("__str__", &phi::distributed::Partial::to_string)
+                     .def("__eq__", &phi::distributed::Partial::operator==);
 
   g_placement_base_pytype = reinterpret_cast<PyTypeObject *>(Placement.ptr());
   g_placement_shard_pytype = reinterpret_cast<PyTypeObject *>(Shard.ptr());

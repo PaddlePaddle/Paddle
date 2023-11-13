@@ -80,7 +80,6 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
   dist_attr.set_process_mesh(dist_tensor_meta_.process_mesh());
   dist_attr.set_dims_mapping(dist_tensor_meta_.dim_mapping());
   dist_attr_ = dist_attr;
-  VLOG(0) << "Construct DistTensor with spec: " << dist_attr;
 
   // If the current rank doesn't in process_mesh, we should create an
   // uninitialized tensor only with dist_tensor_meta_.

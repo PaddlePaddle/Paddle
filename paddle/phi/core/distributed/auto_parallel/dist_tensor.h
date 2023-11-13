@@ -71,6 +71,14 @@ class DistTensor final
   /// \return The TensorDistAttr's const reference
   const TensorDistAttr& dist_attr() const { return dist_attr_; }
 
+  const ProcessMesh& process_mesh() const {
+    return dist_tensor_meta_.process_mesh();
+  }
+
+  const Placements& placements() const {
+    return dist_tensor_meta_.placements();
+  }
+
   /// \brief Set the dist attr of current dist tensor.
   /// \return void
   void unsafe_set_dist_attr(const TensorDistAttr& dist_attr);
@@ -130,13 +138,13 @@ class DistTensor final
  private:
   friend class ReshardFunction;
 
-  // The global dimensions(shape)
+  // The global dimensions(shape), will move to DistTensorMeta
   DDim dims_;
-  // The distributed attributes
+  // The distributed attributes, will remove in the future
   TensorDistAttr dist_attr_;
   // The local DenseTensor value
   std::shared_ptr<DenseTensor> value_;
-  // DistTensorMeta spec_;
+
   DistTensorMeta dist_tensor_meta_;
 };
 

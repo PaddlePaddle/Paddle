@@ -576,19 +576,11 @@ ProcessMesh ParseProcessMeshArgs(
     bool flag_kwargs,
     Py_ssize_t args_num) {
   ProcessMesh process_mesh;
-  for (const auto& pair : kw_order_map) {
-    VLOG(0) << pair.first << std::endl;
-    VLOG(0) << pair.second << std::endl;
-  }
-
-  VLOG(0) << "Ending..";
   if (kw_order_map["process_mesh"] <= args_num) {
-    VLOG(0) << "Get from args";
     process_mesh = CastPyArg2ProcessMesh(
         PyTuple_GET_ITEM(args, kw_order_map["process_mesh"] - 1),
         kw_order_map["process_mesh"] - 1);
   } else if (flag_kwargs && kws_map["process_mesh"] != nullptr) {
-    VLOG(0) << "Get form kws_map";
     process_mesh = CastPyArg2ProcessMesh(kws_map["process_mesh"], 0);
   }
   return process_mesh;
@@ -726,9 +718,7 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
   ProcessMesh process_mesh =
       ParseProcessMeshArgs(kws_map, kw_order_map, args, flag_kwargs, args_num);
 
-  VLOG(0) << "Debug: process_mesh: " << process_mesh;
   if (!dist_attr.empty()) {
-    VLOG(0) << "Get dist_attr from kwargs";
     CreateDistTensorWithNumpyValue(py_tensor_ptr,
                                    act_name,
                                    place,
@@ -739,7 +729,6 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
                                    zero_copy);
     return;
   } else if (!process_mesh.empty()) {
-    VLOG(0) << "ProcessMesh is not empty, but dist_attr is empty";
     auto placements =
         ParsePlacementsArgs(kws_map, kw_order_map, args, flag_kwargs, args_num);
     CreateDistTensorWithNumpyValue(py_tensor_ptr,
@@ -812,7 +801,6 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
 
     ProcessMesh process_mesh = ParseProcessMeshArgs(
         kws_map, kw_order_map, args, flag_kwargs, args_num);
-    VLOG(0) << "Debug: process_mesh: " << process_mesh;
 
     if (!dist_attr.empty()) {
       InitDistTensorWithTensor(
@@ -820,11 +808,6 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
     } else if (!process_mesh.empty()) {
       auto placements = ParsePlacementsArgs(
           kws_map, kw_order_map, args, flag_kwargs, args_num);
-
-      for (auto& p : placements) {
-        VLOG(0) << "Debug: placement: " << p->is_shard();
-        VLOG(0) << *p;
-      }
 
       InitDistTensorWithTensor(
           py_tensor_ptr, src_tensor, place, act_name, process_mesh, placements);

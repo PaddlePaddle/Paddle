@@ -1033,6 +1033,43 @@ PyObject* ToPyObject(const phi::distributed::TensorDistAttr* value) {
 #endif
 }
 
+PyObject* ToPyObject(const phi::distributed::ProcessMesh* value) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "ProcessMesh to PyObject is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
+#endif
+}
+
+PyObject* ToPyObject(const phi::distributed::Placement& value) {
+  auto obj = ::pybind11::cast(value);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
+PyObject* ToPyObject(const phi::distributed::Placements& values) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  PyObject* result = PyList_New((Py_ssize_t)values.size());
+
+  for (size_t i = 0; i < values.size(); i++) {
+    auto& value = values[i];
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(*value));
+  }
+
+  return result;
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "Placements to PyObject is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
+#endif
+}
+
 PyObject* ToPyObject(const phi::SelectedRows* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
