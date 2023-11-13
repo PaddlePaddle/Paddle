@@ -21,7 +21,6 @@ from dygraph_to_static_utils_new import (
 )
 
 import paddle
-from paddle import base
 
 SEED = 2020
 np.random.seed(SEED)
@@ -39,9 +38,9 @@ def function(x: A) -> A:
 class TestTypeHint(Dy2StTestBase):
     def setUp(self):
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
         self.x = np.zeros(shape=(1), dtype=np.int32)
         self._init_dyfunc()
@@ -57,7 +56,7 @@ class TestTypeHint(Dy2StTestBase):
 
     def _run(self, to_static):
         # Set the input of dyfunc to Tensor
-        tensor_x = base.dygraph.to_variable(self.x, zero_copy=False)
+        tensor_x = paddle.to_tensor(self.x)
         if to_static:
             ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
         else:

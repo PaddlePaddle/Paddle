@@ -749,7 +749,7 @@ class TestTrain(Dy2StTestBase):
                                 self.dy_param_path + '.pdparams',
                             )
                         break
-        return np.array(loss_data)
+            return np.array(loss_data)
 
     @test_pir_only
     def test_train_pir(self):
