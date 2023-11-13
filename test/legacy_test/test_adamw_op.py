@@ -797,7 +797,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             np.testing.assert_allclose(linear2.bias.numpy(), fc2_b, rtol=1e-6)
 
     # @test_with_pir_api
-    def test_pir_adamw_op(self):
+    def test_adamw_op(self):
         paddle.enable_static()
         place = base.CUDAPlace(0)
 
