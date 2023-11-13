@@ -35,10 +35,10 @@ void SetVariable(Scope* scope,
                  const std::string& var_name) {
   auto target_var = scope->Var(var_name);
   if (!target_var->IsType<phi::DenseTensor>()) {
-    std::string err_msg = "Variable \"";
-    err_msg += var_name +
-               "\" is not a phi::DenseTensor and other variable types are "
-               "currently not supported.";
+    std::string err_msg = std::string("Variable \"") + var_name +
+                          std::string(
+                              "\" is not a phi::DenseTensor and other variable "
+                              "types are currently not supported.");
     PADDLE_THROW(phi::errors::Unimplemented(err_msg));
   }
   bool is_new_var = (scope->FindVar(var_name) == nullptr);
