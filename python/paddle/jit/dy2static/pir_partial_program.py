@@ -691,60 +691,55 @@ class PartialProgramLayer:
         combined_inputs = list(itertools.chain(inputs, params))
         forward_end_idx = len(program.global_block().ops)
         grad_info_map = [None] * len(combined_inputs)
-        if targets:
-            with backend_guard(self._backend):
-                check_type(
-                    targets,
-                    'targets',
-                    (OpResult, list, tuple),
-                    'paddle.static.gradients',
+        with backend_guard(self._backend):
+            check_type(
+                targets,
+                'targets',
+                (OpResult, list, tuple),
+                'paddle.static.gradients',
+            )
+            with ir_static.program_guard(program, None):
+                # create outputs_grad for backward to avoid full and full_like op.
+                forward_outputs_grads = []
+                for out_op_result in targets:
+                    if out_op_result.stop_gradient is True:
+                        forward_outputs_grads.append(fake_op_result())
+                    else:
+                        value = paddle.full_like(
+                            out_op_result,
+                            fill_value=1.0,
+                            dtype=out_op_result.dtype,
+                        )
+                        forward_outputs_grads.append(value)
+                paddle.base.libpaddle.pir.append_set_parameters(
+                    program,
+                    forward_outputs_grads,
+                    len(program.global_block().ops),
+                    "grad_input_",
                 )
-                with ir_static.program_guard(program, None):
-                    # create outputs_grad for backward to avoid full and full_like op.
-                    forward_outputs_grads = []
-                    for out_op_result in targets:
-                        if out_op_result.stop_gradient is True:
-                            forward_outputs_grads.append(fake_op_result())
-                        else:
-                            value = paddle.full_like(
-                                out_op_result,
-                                fill_value=1.0,
-                                dtype=out_op_result.dtype,
-                            )
-                            forward_outputs_grads.append(value)
-                    paddle.base.libpaddle.pir.append_set_parameters(
-                        program,
-                        forward_outputs_grads,
-                        len(program.global_block().ops),
-                        "grad_input_",
-                    )
-                    backward_start_op_index = len(program.global_block().ops)
+                backward_start_op_index = len(program.global_block().ops)
 
-                    # call grad to get backward ops.
-                    if (
-                        len(
-                            list(
-                                filter(
-                                    lambda x: x.stop_gradient is False, targets
-                                )
+                # call grad to get backward ops.
+                if (
+                    len(
+                        list(
+                            filter(lambda x: x.stop_gradient is False, targets)
+                        )
+                    )
+                    > 0
+                ):
+                    grad_info_map = grad(
+                        inputs=combined_inputs,
+                        outputs=list(
+                            filter(lambda x: x.stop_gradient is False, targets)
+                        ),
+                        grad_outputs=list(
+                            filter(
+                                lambda x: not is_fake_op_result(x),
+                                forward_outputs_grads,
                             )
-                        )
-                        > 0
-                    ):
-                        grad_info_map = grad(
-                            inputs=combined_inputs,
-                            outputs=list(
-                                filter(
-                                    lambda x: x.stop_gradient is False, targets
-                                )
-                            ),
-                            grad_outputs=list(
-                                filter(
-                                    lambda x: not is_fake_op_result(x),
-                                    forward_outputs_grads,
-                                )
-                            ),
-                        )
+                        ),
+                    )
 
             if self._hooker:
                 (
