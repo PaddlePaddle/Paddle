@@ -486,8 +486,12 @@ class Completer:
                         if tensor_changed:
                             changed = True
                         print("====node is var")
-                        print(node.var().name())
-                        print(self._dist_context.get_dist_attr_for_graph(node))
+                        print("var name:", node.var().name())
+                        print("tensor_changed:", tensor_changed)
+                        print(
+                            "dist_attr:",
+                            self._dist_context.get_dist_attr_for_graph(node),
+                        )
                     if node.is_op() and node.op() is not None:
                         op_changed = self._update_op_node_dims_mapping(
                             node, fwd=is_fwd
@@ -495,8 +499,12 @@ class Completer:
                         if op_changed:
                             changed = True
                         print("====node is op")
-                        print(node.op().type())
-                        print(self._dist_context.get_dist_attr_for_graph(node))
+                        print("op type:", node.op().type())
+                        print("op_changed:", op_changed)
+                        print(
+                            "dist_attr:",
+                            self._dist_context.get_dist_attr_for_graph(node),
+                        )
                 graph_changed = self._update_dims_mapping_between_graphs()
                 if graph_changed:
                     changed = True
