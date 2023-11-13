@@ -50,19 +50,14 @@ std::vector<std::string> OperatorDistAttr::fields_{"process_mesh",
                                                    "stream_priority",
                                                    "scheduling_priority"};
 
-OperatorDistAttr::OperatorDistAttr(const OpDesc& op) {
-  VLOG(4) << "[OperatorDistAttr constructor] op type: " << op.Type();
-  initialize(&op);
-}
+OperatorDistAttr::OperatorDistAttr(const OpDesc& op) { initialize(&op); }
 
 OperatorDistAttr::OperatorDistAttr(const OperatorDistAttr& dist_attr) {
-  VLOG(4) << "[OperatorDistAttr copy constructor]";
   copy_from(dist_attr);
 }
 
 OperatorDistAttr& OperatorDistAttr::operator=(
     const OperatorDistAttr& dist_attr) {
-  VLOG(4) << "[OperatorDistAttr assign constructor]";
   if (this == &dist_attr) return *this;
   OperatorDistAttr tmp(dist_attr);
   std::swap(this->input_dist_attrs_, tmp.input_dist_attrs_);
@@ -76,6 +71,7 @@ OperatorDistAttr& OperatorDistAttr::operator=(
   std::swap(this->stream_priority_, tmp.stream_priority_);
   std::swap(this->scheduling_priority_, tmp.scheduling_priority_);
   std::swap(this->annotated_, tmp.annotated_);
+  std::swap(this->run_time_us_, tmp.run_time_us_);
   // Note: Make sure all tensor dist attr has the same process_mesh
   set_process_mesh(this->process_mesh_);
   return *this;
@@ -125,6 +121,7 @@ void OperatorDistAttr::copy_from(const OperatorDistAttr& dist_attr) {
   set_events_to_wait(dist_attr.events_to_wait());
   set_scheduling_priority(dist_attr.scheduling_priority());
   set_annotated(dist_attr.annotated());
+  set_run_time_us(dist_attr.run_time_us());
 }
 
 void OperatorDistAttr::set_input_dist_attrs(

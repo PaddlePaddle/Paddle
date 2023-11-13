@@ -179,6 +179,7 @@ void  {NAME}({CPP_CLASS} default_fmha, Params &params, const phi::GPUContext& ct
       problem_count,
       threadblock_count,
       params.num_heads,
+      params.kv_num_heads,
       const_cast<scalar_t*>(reinterpret_cast<const scalar_t*>(params.query_ptr)),
       const_cast<scalar_t*>(reinterpret_cast<const scalar_t*>(params.key_ptr)),
       params.mask_ptr
@@ -465,6 +466,7 @@ struct Params {{
   // Dimensions/strides
   int32_t num_batches;
   int32_t num_heads;
+  int32_t kv_num_heads;
   int32_t query_seq_len;
   int32_t key_value_seq_len;
   int32_t head_size;

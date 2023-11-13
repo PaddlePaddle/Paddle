@@ -39,12 +39,9 @@ set(PYBIND_DEPS
     phi_utils
     phi
     pir_adaptor
-    pd_op_dialect
+    op_dialect_vjp
     program_translator
-    pd_inplace_pass
-    fusion_passes
-    replace_fetch_with_shadow_output_pass
-    dead_code_elimination_pass
+    pir_transforms
     pir
     new_profiler
     jit_layer
@@ -55,7 +52,8 @@ set(PYBIND_DEPS
     auto_parallel)
 
 if(WITH_CINN)
-  set(PYBIND_DEPS ${PYBIND_DEPS} pd_build_cinn_pass op_with_group_merge_pass)
+  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass
+                  add_broadcast_to_elementwise_pass pd_to_cinn_pass)
 endif()
 
 if(WITH_PSCORE)

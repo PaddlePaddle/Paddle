@@ -747,25 +747,28 @@ class Optimizer:
             var = self._master_weights[param.name]
         else:
             assert isinstance(self.helper, LayerHelper)
-
             var_name = self._gen_master_weight_var_name(param)
-            var = paddle.static.create_global_var(
-                name=var_name,
-                shape=param.shape,
-                value=0,
-                dtype='float32',
-                persistable=True,
-            )
-            block = self.helper.startup_program.global_block()
-            block.append_op(
-                type="cast",
-                inputs={"X": [param]},
-                outputs={"Out": [var]},
-                attrs={
-                    "in_dtype": param.dtype,
-                    "out_dtype": core.VarDesc.VarType.FP32,
-                },
-            )
+            if framework.in_dygraph_mode():
+                var = paddle.cast(param, 'float32')
+                var.name = var_name
+            else:
+                var = paddle.static.create_global_var(
+                    name=var_name,
+                    shape=param.shape,
+                    value=0,
+                    dtype='float32',
+                    persistable=True,
+                )
+                block = self.helper.startup_program.global_block()
+                block.append_op(
+                    type="cast",
+                    inputs={"X": [param]},
+                    outputs={"Out": [var]},
+                    attrs={
+                        "in_dtype": param.dtype,
+                        "out_dtype": core.VarDesc.VarType.FP32,
+                    },
+                )
             self._master_weights[param.name] = var
         return var
 
@@ -846,50 +849,61 @@ class Optimizer:
             )
         if shape is None:
             shape = param.shape
-        assert isinstance(self.helper, LayerHelper)
 
         var_name = param.name + "_" + name
         var_name = unique_name.generate(var_name)
         self._opti_name_list.append(var_name)
 
-        var = self.helper.create_global_variable(
-            name=var_name,
-            persistable=True,
-            dtype=dtype or param.dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            shape=shape,
-            belong_to_optimizer=True,
-        )
         if device is None:
             device = self._get_device_for_param(param.name)
 
-        if (
-            in_dygraph_mode()
-            and (device == 'cpu' or isinstance(device, core.CPUPlace))
-            and (not core.is_compiled_with_xpu())
-        ):
-            _C_ops.full_(
-                var,
-                var.shape,
-                str(float(fill_value)),
-                var.dtype,
-                core.CPUPlace(),
+        if in_pir_mode():
+            var = paddle.pir.core.create_parameter(
+                dtype or param.dtype,
+                shape,
+                var_name,
+                initializer=paddle.nn.initializer.Constant(
+                    value=float(fill_value)
+                ),
             )
         else:
-            with device_guard(device):
-                self.helper.set_variable_initializer(
-                    var,
-                    initializer=paddle.nn.initializer.Constant(
-                        value=float(fill_value)
-                    ),
-                )
+            assert isinstance(self.helper, LayerHelper)
+            var = self.helper.create_global_variable(
+                name=var_name,
+                persistable=True,
+                dtype=dtype or param.dtype,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                shape=shape,
+                belong_to_optimizer=True,
+            )
 
-        if framework.in_dygraph_mode():
-            if len(self._accumulators_holder) > 0:
-                assert (
-                    var_name in self._accumulators_holder
-                ), f"Optimizer set error, {var_name} should in state dict"
-                var.set_value(self._accumulators_holder.pop(var_name))
+            if (
+                in_dygraph_mode()
+                and (device == 'cpu' or isinstance(device, core.CPUPlace))
+                and (not core.is_compiled_with_xpu())
+            ):
+                _C_ops.full_(
+                    var,
+                    var.shape,
+                    str(float(fill_value)),
+                    var.dtype,
+                    core.CPUPlace(),
+                )
+            else:
+                with device_guard(device):
+                    self.helper.set_variable_initializer(
+                        var,
+                        initializer=paddle.nn.initializer.Constant(
+                            value=float(fill_value)
+                        ),
+                    )
+
+            if framework.in_dygraph_mode():
+                if len(self._accumulators_holder) > 0:
+                    assert (
+                        var_name in self._accumulators_holder
+                    ), f"Optimizer set error, {var_name} should in state dict"
+                    var.set_value(self._accumulators_holder.pop(var_name))
 
         self._accumulators[name][param.name] = var
         return var

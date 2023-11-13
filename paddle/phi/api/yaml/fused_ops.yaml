@@ -227,6 +227,16 @@
   optional : h0, bias
   intermediate : reordered_h0, xx, batched_input, batched_out
 
+- op : fusion_repeated_fc_relu
+  args : (Tensor x, Tensor[] w, Tensor[] bias)
+  output : Tensor[](relu_out){w.size()-1}, Tensor(out)
+  infer_meta :
+    func : FusionRepeatedFCReluInferMeta
+  kernel :
+    func : fusion_repeated_fc_relu
+    data_type: x
+  intermediate : relu_out
+
 - op : fusion_seqconv_eltadd_relu
   args : (Tensor x, Tensor filter, Tensor bias, int context_length, int context_start = 0, int context_stride = 1)
   output : Tensor(out), Tensor(col_mat)
@@ -247,6 +257,16 @@
     data_type : x
   optional : fc_bias
   intermediate : fc_out
+
+- op : fusion_squared_mat_sub
+  args : (Tensor x, Tensor y, float scalar = 1.0f)
+  output : Tensor(squared_x), Tensor(squared_y), Tensor(squared_xy), Tensor(out)
+  infer_meta :
+    func : FusionSquaredMatSubInferMeta
+  kernel :
+    func : fusion_squared_mat_sub
+    data_type : x
+  intermediate : squared_x, squared_y, squared_xy
 
 - op : fusion_transpose_flatten_concat
   args : (Tensor[] x, int[] trans_axis, int flatten_axis, int concat_axis)
@@ -302,6 +322,15 @@
     func : QuantizeXPUInferMeta
   kernel :
     func : quantize_xpu
+    data_type : x
+
+- op : self_dp_attention
+  args : (Tensor x, float alpha = 1.0f, int head_number = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : SelfDPAttenInferMeta
+  kernel :
+    func : self_dp_attention
     data_type : x
 
 - op : squeeze_excitation_block
