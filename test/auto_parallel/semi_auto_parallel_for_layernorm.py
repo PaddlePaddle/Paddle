@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 from semi_auto_parallel_util import SemiAutoParallelTestBase
 
 import paddle
@@ -28,6 +29,11 @@ class TestLayerNormSemiAutoParallel(SemiAutoParallelTestBase):
     def __init__(self):
         super().__init__()
 
+    def check_tensor_eq(self, a, b):
+        np1 = a.numpy()
+        np2 = b.numpy()
+        np.testing.assert_allclose(np1, np2, rtol=1e-04, verbose=True)
+
     def check_dim_mapping(self, output, expected_dim_mapping):
         assert (
             output.dist_attr.dims_mapping == expected_dim_mapping
@@ -43,7 +49,7 @@ class TestLayerNormSemiAutoParallel(SemiAutoParallelTestBase):
             with_backward=True,
             normalized_shape=[4, 4],
         )
-        self.check_dim_mapping(outputs, [-1, -1, 0])
+        self.check_dim_mapping(outputs, [0, -1, -1])
 
     def test_layernorm_reshard(self):
         shapes = ([16, 4, 4], [16], [16])
@@ -55,7 +61,7 @@ class TestLayerNormSemiAutoParallel(SemiAutoParallelTestBase):
             with_backward=True,
             normalized_shape=[4, 4],
         )
-        self.check_dim_mapping(inputs, outputs, [-1, -1, 0])
+        self.check_dim_mapping(outputs, [-1, -1, -1])
 
     def run_test_case(self):
         if self._backend == "cpu":
@@ -68,7 +74,7 @@ class TestLayerNormSemiAutoParallel(SemiAutoParallelTestBase):
         self.test_layernorm_forward()
         # all to all is not supported yet for cpu
         if self._backend == "gpu":
-            self.test_layernorm_forward_reshard()
+            self.test_layernorm_reshard()
 
 
 if __name__ == '__main__':
