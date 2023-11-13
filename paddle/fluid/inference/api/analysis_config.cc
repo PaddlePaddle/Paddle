@@ -881,34 +881,6 @@ void AnalysisConfig::Update() {
   auto &&info = SerializeInfoCache();
   if (info == serialized_info_cache_) return;
 
-#ifdef PADDLE_WITH_DNNL
-  // Since EnableMKLDNN is default, the pass_builder has created in the first
-  // time.
-  // Case1: User manually disable mkldnn after pass_builder
-  // create.(config.disable_mkldnn())
-  // Case2: User device is gpu/ipu/xpu, use
-  // EnableXpu(), EnableCUDNN(), we need Disable MKLDNN and clear mkldnn pass
-  // before transfer pass_builder to GPU/XPU
-  // Case3: pass_builder_ has been created and belongs to
-  // GpuPassStrategy(or IpuPassStrategy), neither enable mkldnn and
-  // disable mkldnn will be executed
-  if (pass_builder_) {
-    if (!use_gpu() && !use_xpu() && !use_ipu() && !use_custom_device() &&
-        !use_mkldnn_) {
-      // User manually disable mkldnn
-      pass_builder()->DisableMKLDNN();
-    } else if ((use_gpu() && !pass_builder_->use_gpu()) ||
-               (use_xpu() && !pass_builder_->use_xpu()) ||
-               (use_ipu() && !pass_builder_->use_ipu()) ||
-               (use_custom_device() && !pass_builder_->use_custom_device())) {
-      // The current pass_builder is still CpuPassStrategy
-      // But user use other device, auto disable mkldnn before transfer other
-      // pass_builder
-      pass_builder()->DisableMKLDNN();
-    }
-  }
-#endif
-
   // Transfer pass_builder and copy the existing compatible passes.
   if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
       ((use_xpu() ^ pass_builder_->use_xpu())) ||
@@ -966,6 +938,24 @@ void AnalysisConfig::Update() {
     }
   }
 
+#ifdef PADDLE_WITH_DNNL
+  // Since EnableMKLDNN is default, the pass_builder has created in the first
+  // time.
+  // Case1: User manually disable mkldnn after pass_builder
+  // create.(config.disable_mkldnn())
+  // Case2: User device is gpu/ipu/xpu, use
+  // EnableXpu(), EnableCUDNN(), PassStrategy has been reset in the above code
+  // block
+  //  Case3: pass_builder_ has been created and belongs to
+  // GpuPassStrategy(or IpuPassStrategy), neither enable mkldnn and
+  // disable mkldnn will be executed
+  if (!use_gpu() && !use_xpu() && !use_ipu() && !use_custom_device() &&
+      !use_mkldnn_) {
+    // User manually disable mkldnn
+    pass_builder()->DisableMKLDNN();
+  }
+#endif
+
   if (use_tensorrt_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kTRTSubgraphPasses) {
@@ -1013,7 +1003,6 @@ void AnalysisConfig::Update() {
     if (use_mkldnn_ && enable_ir_optim_) {
 #ifdef PADDLE_WITH_DNNL
       // default enable mkldnn when device is cpu and enable_ir_optim
-      LOG(INFO) << "pass_builder()->EnableMKLDNN();";
       pass_builder()->EnableMKLDNN();
 #endif
     }
