@@ -774,12 +774,14 @@ TEST(ConcatRule, Ctor) {
     return phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
   };
 
-  auto output_dist_attr = paddle::get<0>(infered_dist_attrs.second[0]);
+  auto& output_dist_attr =
+      PADDLE_GET_CONST(TensorDistAttr, infered_dist_attrs.second[0]);
   auto output = build_output(output_dist_attr, {22, 16, 16});
   // test reverse
   auto infered_reverse_attrs =
       phi::distributed::ConcatInferSpmdReverse(inputs, output, 0);
-  auto& inputs_infer1_reverse = paddle::get<1>(infered_reverse_attrs.first[0]);
+  auto& inputs_infer1_reverse = PADDLE_GET_CONST(
+      std::vector<TensorDistAttr>, infered_reverse_attrs.first[0]);
   for (auto e : inputs_infer1_reverse) {
     check_dim_mapping(e, {-1, 1, 0});
     check_partial_dims(e, {});
@@ -789,14 +791,16 @@ TEST(ConcatRule, Ctor) {
   // test grad
   auto infered_grad_attrs =
       phi::distributed::ConcatGradInferSpmdDynamic(inputs, output, 0);
-  auto& inputs_infer1_grad = paddle::get<1>(infered_grad_attrs.first[0]);
+  auto& inputs_infer1_grad = PADDLE_GET_CONST(std::vector<TensorDistAttr>,
+                                              infered_grad_attrs.first[0]);
   for (auto e : inputs_infer1_grad) {
     check_dim_mapping(e, {-1, 1, 0});
     check_partial_dims(e, {});
   }
   check_dim_mapping(infered_grad_attrs.first[1],
                     output_dist_attr.dims_mapping());
-  auto& infered_grad = paddle::get<1>(infered_grad_attrs.second[0]);
+  auto& infered_grad = PADDLE_GET_CONST(std::vector<TensorDistAttr>,
+                                        infered_grad_attrs.second[0]);
   for (auto e : infered_grad) {
     check_dim_mapping(e, {-1, 1, 0});
     check_partial_dims(e, {});
@@ -874,7 +878,8 @@ TEST(StackRule, Ctor) {
           infered_dist_attrs.first[0]));
   EXPECT_TRUE(paddle::holds_alternative<phi::distributed::TensorDistAttr>(
       infered_dist_attrs.second[0]));
-  auto& inputs_infer1 = paddle::get<1>(infered_dist_attrs.first[0]);
+  auto& inputs_infer1 = PADDLE_GET_CONST(std::vector<TensorDistAttr>,
+                                         infered_dist_attrs.first[0]);
   for (auto e : inputs_infer1) {
     check_dim_mapping(e, {-1, 1, 0});
     check_partial_dims(e, {});
@@ -882,12 +887,14 @@ TEST(StackRule, Ctor) {
   check_dim_mapping(infered_dist_attrs.second[0], {-1, -1, 1, 0});
   check_partial_dims(infered_dist_attrs.second[0], {});
 
-  auto output_dist_attr = paddle::get<0>(infered_dist_attrs.second[0]);
+  auto output_dist_attr =
+      PADDLE_GET_CONST(TensorDistAttr, infered_dist_attrs.second[0]);
   auto output = build_output(output_dist_attr, 0);
   // test reverse
   auto infered_reverse_attrs =
       phi::distributed::StackInferSpmdReverse(inputs, output, 0);
-  auto& inputs_infer1_reverse = paddle::get<1>(infered_reverse_attrs.first[0]);
+  auto& inputs_infer1_reverse = PADDLE_GET_CONST(
+      std::vector<TensorDistAttr>, infered_reverse_attrs.first[0]);
   for (auto e : inputs_infer1_reverse) {
     check_dim_mapping(e, {-1, 1, 0});
     check_partial_dims(e, {});
@@ -898,7 +905,8 @@ TEST(StackRule, Ctor) {
   auto infered_grad_attrs = phi::distributed::StackGradInferSpmd(output, 0);
   check_dim_mapping(infered_grad_attrs.first[0],
                     output_dist_attr.dims_mapping());
-  auto& infered_grad = paddle::get<1>(infered_grad_attrs.second[0]);
+  auto& infered_grad = PADDLE_GET_CONST(std::vector<TensorDistAttr>,
+                                        infered_grad_attrs.second[0]);
   for (auto e : infered_grad) {
     check_dim_mapping(e, {-1, 1, 0});
     check_partial_dims(e, {});
@@ -915,7 +923,8 @@ TEST(StackRule, Ctor) {
           infered_dist_attrs.first[0]));
   EXPECT_TRUE(paddle::holds_alternative<phi::distributed::TensorDistAttr>(
       infered_dist_attrs.second[0]));
-  auto& inputs_infer2 = paddle::get<1>(infered_dist_attrs.first[0]);
+  auto& inputs_infer2 = PADDLE_GET_CONST(std::vector<TensorDistAttr>,
+                                         infered_dist_attrs.first[0]);
   for (auto e : inputs_infer2) {
     check_dim_mapping(e, {-1, 1, 0});
     check_partial_dims(e, {});

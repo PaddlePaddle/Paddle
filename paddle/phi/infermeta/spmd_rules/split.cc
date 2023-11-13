@@ -225,7 +225,7 @@ SpmdInfo SplitWithNumInferSpmdDynamic(const DistMetaTensor& x,
   ret.first = tmp.first;
   std::vector<TensorDistAttr> out_dist_attrs;
   for (const auto& out : tmp.second) {
-    out_dist_attrs.push_back(paddle::get<0>(out));
+    out_dist_attrs.push_back(PADDLE_GET_CONST(TensorDistAttr, out));
   }
   ret.second = {out_dist_attrs};
   return ret;

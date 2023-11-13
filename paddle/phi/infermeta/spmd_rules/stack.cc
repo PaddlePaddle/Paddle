@@ -25,9 +25,10 @@ namespace distributed {
 
 std::string FillStackNotation(int64_t n_axis) {
   static const std::string alphabet = "abcdefghijlopqrstuvwxyz";
-  PADDLE_ENFORCE_EQ(alphabet.size() > static_cast<size_t>(n_axis),
-                    true,
-                    phi::errors::InvalidArgument("n_axis %d", n_axis));
+  PADDLE_ENFORCE_GT(
+      alphabet.size(),
+      static_cast<size_t>(n_axis),
+      phi::errors::InvalidArgument("n_axis [%d] is too large", n_axis));
   std::string all_axis = alphabet.substr(0, n_axis);
   return all_axis;
 }
@@ -100,9 +101,12 @@ SpmdInfo StackInferSpmdReverse(const std::vector<DistMetaTensor>& x,
 std::tuple<std::string, std::string> FillStackGradNotation(int64_t n_axis,
                                                            int64_t stack_dim) {
   static const std::string alphabet = "abcdefghijlopqrstuvwxyz";
-  PADDLE_ENFORCE_EQ(alphabet.size() > static_cast<size_t>(n_axis + 1),
-                    true,
-                    phi::errors::InvalidArgument("n_axis %d", n_axis));
+
+  PADDLE_ENFORCE_GT(
+      alphabet.size(),
+      static_cast<size_t>(n_axis),
+      phi::errors::InvalidArgument("n_axis [%d] is too large", n_axis));
+
   std::string input_axis = alphabet.substr(0, n_axis);
   std::string output_axis = input_axis.substr(0, stack_dim) +
                             alphabet[stack_dim] + input_axis.substr(stack_dim);
