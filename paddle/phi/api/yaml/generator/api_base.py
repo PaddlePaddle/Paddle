@@ -1250,6 +1250,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             "reshape",
             "flatten",
             "transpose",
+            "set_value",
         ]:
             i = 0
             for kernel_out in outputs_args:
