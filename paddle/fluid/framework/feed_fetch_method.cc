@@ -43,7 +43,7 @@ void SetVariable(Scope* scope,
   }
   bool is_new_var = (scope->FindVar(var_name) == nullptr);
   if (is_new_var) {
-    // old var don't need to alloc new space, only new var needs to
+    // old var doesn't need to alloc new space, only new var needs to
     auto val = target_var->GetMutable<phi::DenseTensor>();
     val->ShareDataWith(input);
     val->set_lod(input.lod());
