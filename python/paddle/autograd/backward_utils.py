@@ -17,59 +17,65 @@ import collections
 from typing import Any
 
 
+class ValueInDict:
+    def __init__(self, value) -> None:
+        self.value = value
+
+    def __hash__(self) -> int:
+        return hash(self.value)
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, ValueInDict):
+            other = other.value
+        return self.value.is_same(other)
+
+
 class ValueDict:
-    def __init__(self, iter=None, *, default_factory=None):
-        self._items: list[tuple[Any, Any]] = []
+    def __init__(
+        self,
+        iter: dict[ValueInDict, Any] | None = None,
+        *,
+        default_factory=None,
+    ):
+        self._items: dict[ValueInDict, Any] = {}
         self._default_factory = default_factory
         if iter is not None:
-            for key, val in iter:
+            for key, val in iter.items():
                 self[key] = val
 
     def update(self, other_dict):
         for key, val in other_dict:
-            self[key] = val
+            self[ValueInDict(key)] = val
 
     def keys(self):
-        for key, _ in self._items:
-            yield key
+        return self._items.keys()
 
     def values(self):
-        for _, val in self._items:
-            yield val
+        return self._items.values()
 
     def items(self):
-        yield from self._items
+        return self._items.items()
 
     def __setitem__(self, other_key, other_val: Any):
-        if self.__contains__(other_key):
-            for i, (key, val) in enumerate(self._items):
-                if hash(key) == hash(other_key) and key.is_same(other_key):
-                    self._items[i] = (other_key, other_val)
-                    break
-        else:
-            self._items.append((other_key, other_val))
+        self._items[other_key] = other_val
 
     def __getitem__(self, other_key):
-        for key, val in self._items:
-            if hash(key) == hash(other_key) and key.is_same(other_key):
-                return val
-
-        if self._default_factory is not None:
-            val = self._default_factory()
-            self._items.append((other_key, val))
-            return val
-        else:
-            return None
+        if not self.__contains__(other_key):
+            if self._default_factory is not None:
+                self[other_key] = self._default_factory()
+            else:
+                self[other_key] = None
+        return self._items[other_key]
 
     def __and__(self, other_dict: ValueDict):
         ret = ValueDict()
-        for key, val in self._items:
+        for key, val in self._items.items():
             if key in other_dict:
                 ret[key] = val
         return ret
 
     def __or__(self, other_dict: ValueDict):
-        return ValueDict(self._items + other_dict._items)
+        return ValueDict(self._items | other_dict._items)
 
     def __bool__(self):
         return bool(self._items)
@@ -81,8 +87,8 @@ class ValueDict:
         return self.keys()
 
     def __contains__(self, other_key):
-        for key, _ in self._items:
-            if hash(key) == hash(other_key) and key.is_same(other_key):
+        for key in self._items.keys():
+            if hash(key) == hash(other_key) and key == other_key:
                 return True
         return False
 

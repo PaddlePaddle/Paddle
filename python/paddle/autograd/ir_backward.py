@@ -80,7 +80,6 @@ class ValueSet:
         return iter(self._values)
 
     def __contains__(self, other_val):
-        other_val = ValueInSet(other_val)
         for value in self._values:
             if hash(value) == hash(other_val) and value == other_val:
                 return True
