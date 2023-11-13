@@ -206,33 +206,6 @@ def silu(x):
     return res if not is_amp else cast(res, dtype)
 
 
-@register_decomp('pd_op.softmax')
-def softmax(x, axis):
-    """define composite rule of op softmax"""
-    is_amp = False
-    from paddle.base.data_feeder import convert_dtype
-
-    # Softmax need fp32 compute since it has sum op in
-    dtype = convert_dtype(x.dtype)
-    if dtype in ["float16", "uint16"]:
-        is_amp = True
-        x = cast(x, "float32")
-    if not x.shape:
-        # do not return 1, to ensure gradients
-        res = exp(x - x)
-        if is_amp:
-            res = cast(res, "float16")
-        return res
-    max_temp = max(x, axis, keepdim=True)
-    max_temp.stop_gradient = True
-    molecular = exp(x - max_temp)
-    denominator = sum(molecular, axis=axis, keepdim=True)
-    res = divide(molecular, denominator)
-    if is_amp:
-        res = cast(res, dtype)
-    return res
-
-
 @register_decomp('pd_op.full_like')
 def full_like(x, fill_value, dtype, place=None):
     """define composite rule of op full_like."""
