@@ -20,7 +20,12 @@ from paddle.utils import convert_to_list
 
 from ..base import core
 from ..base.data_feeder import check_type, check_variable_and_dtype
-from ..base.framework import Variable, in_dygraph_mode
+from ..base.framework import (
+    Variable,
+    in_dygraph_mode,
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+)
 from ..base.layer_helper import LayerHelper
 from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
@@ -1318,8 +1323,11 @@ def read_file(filename, name=None):
             [142773]
     """
 
-    if in_dygraph_mode():
-        return _legacy_C_ops.read_file('filename', filename)
+    if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
+            return _legacy_C_ops.read_file('filename', filename)
+        else:
+            return _C_ops.read_file(filename)
     else:
         inputs = {}
         attrs = {'filename': filename}
