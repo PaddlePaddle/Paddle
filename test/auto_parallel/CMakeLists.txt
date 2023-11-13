@@ -142,6 +142,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_dygraph_inplace)
   set_tests_properties(test_semi_auto_parallel_dygraph_inplace
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+  py_test_modules(test_dist_tensor_api MODULES test_dist_tensor_api)
+  set_tests_properties(test_dist_tensor_api
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_gpt_with_pir MODULES test_gpt_with_pir)
   set_tests_properties(test_gpt_with_pir PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                     TIMEOUT 100)
@@ -234,7 +237,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api)
   py_test_modules(test_shard_layer_api MODULES test_shard_layer_api)
   py_test_modules(test_cost_interface MODULES test_cost_interface)
-  py_test_modules(test_placements MODULES test_placements)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

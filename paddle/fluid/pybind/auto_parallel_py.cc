@@ -369,7 +369,8 @@ void BindAutoParallel(py::module *m) {
           .def("is_partial", &phi::distributed::Placement::is_partial)
           .def("__hash__", &phi::distributed::Placement::hash)
           .def("__str__", &phi::distributed::Placement::to_string)
-          .def("__eq__", &phi::distributed::Placement::operator==);
+          .def(py::self == py::self)
+          .def(py::self != py::self);
 
   auto Shard = py::class_<phi::distributed::Shard,
                           std::shared_ptr<phi::distributed::Shard>>(
@@ -380,7 +381,8 @@ void BindAutoParallel(py::module *m) {
                    .def("get_dim", &phi::distributed::Shard::get_dim)
                    .def("__hash__", &phi::distributed::Shard::hash)
                    .def("__str__", &phi::distributed::Shard::to_string)
-                   .def("__eq__", &phi::distributed::Shard::operator==);
+                   .def(py::self == py::self)
+                   .def(py::self != py::self);
 
   auto Replicate = py::class_<phi::distributed::Replicate,
                               std::shared_ptr<phi::distributed::Replicate>>(
@@ -388,7 +390,8 @@ void BindAutoParallel(py::module *m) {
                        .def(py::init<>())
                        .def("__hash__", &phi::distributed::Replicate::hash)
                        .def("__str__", &phi::distributed::Replicate::to_string)
-                       .def("__eq__", &phi::distributed::Replicate::operator==);
+                       .def(py::self == py::self)
+                       .def(py::self != py::self);
 
   auto Partial = py::class_<phi::distributed::Partial,
                             std::shared_ptr<phi::distributed::Partial>>(
@@ -396,7 +399,8 @@ void BindAutoParallel(py::module *m) {
                      .def(py::init<>())
                      .def("__hash__", &phi::distributed::Partial::hash)
                      .def("__str__", &phi::distributed::Partial::to_string)
-                     .def("__eq__", &phi::distributed::Partial::operator==);
+                     .def(py::self == py::self)
+                     .def(py::self != py::self);
 
   g_placement_base_pytype = reinterpret_cast<PyTypeObject *>(Placement.ptr());
   g_placement_shard_pytype = reinterpret_cast<PyTypeObject *>(Shard.ptr());

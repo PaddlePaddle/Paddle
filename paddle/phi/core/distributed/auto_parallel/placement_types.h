@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This design is inspired by:
+// This API design is inspired by:
 // https://github.com/pytorch/pytorch/blob/main/torch/distributed/_tensor/placement_types.py
 // Git commit hash: 52e2b87d00ed527dc7f990d1a7a4c5498f99c513
 

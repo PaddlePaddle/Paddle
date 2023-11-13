@@ -1065,7 +1065,7 @@ PyObject* ToPyObject(const phi::distributed::Placements& values) {
 #else
   PADDLE_THROW(platform::errors::Unavailable(
       "Placements to PyObject is not supported in the current "
-      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "PaddlePaddle, please recompile and install PaddlePaddle with the option "
       "of `WITH_DISTRIBUTE=ON`."));
 #endif
 }

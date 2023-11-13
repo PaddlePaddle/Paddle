@@ -83,6 +83,10 @@ class DistTensor final
     return dist_tensor_meta_.placements();
   }
 
+  /// \brief Returns the num_shard of current dist tensor.
+  /// \return int64_t
+  int64_t num_shard() const { return dist_tensor_meta_.num_shard(); }
+
   /// \brief Set the dist attr of current dist tensor.
   /// \return void
   void unsafe_set_dist_attr(const TensorDistAttr& dist_attr);
