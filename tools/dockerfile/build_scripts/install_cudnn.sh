@@ -70,11 +70,19 @@ elif [[ "$1" == "cudnn860" && "$VERSION" == "11.8" ]]; then
   rm -f cudnn-linux-x86_64-8.6.0.163_cuda11-archive.tar.xz
   rm -rf cudnn-linux-x86_64-8.6.0.163_cuda11-archive
 elif [[ "$1" == "cudnn891" && "$VERSION" == "12.0" ]]; then
-  wget  https://paddle-ci.gz.bcebos.com/cudnn/cudnn-linux-x86_64-8.9.1.23_cuda12-archive.tar.xz --no-check-certificate
-  tar xJvf cudnn-linux-x86_64-8.9.1.23_cuda12-archive.tar.xz
-  cd cudnn-linux-x86_64-8.9.1.23_cuda12-archive
-  cp -r include /usr
-  cp -r lib /usr && cd ../
-  rm -f cudnn-linux-x86_64-8.9.1.23_cuda12-archive.tar.xz
+  wget -q https://paddle-ci.gz.bcebos.com/cudnn/cudnn-linux-x86_64-8.9.1.23_cuda12-archive.tar.xz --no-check-certificate
+  tar xJvf cudnn-linux-x86_64-8.9.1.23_cuda12-archive.tar.xz && \
+  cd cudnn-linux-x86_64-8.9.1.23_cuda12-archive && \
+  cp -r include /usr && \
+  cp -r lib /usr && cd ../ && \
+  rm -f cudnn-linux-x86_64-8.9.1.23_cuda12-archive.tar.xz && \
   rm -rf cudnn-linux-x86_64-8.9.1.23_cuda12-archive
+elif [[ "$1" == "cudnn896" && "$VERSION" == "12.0" ]]; then
+  wget -q https://paddle-ci.gz.bcebos.com/cudnn/cudnn-linux-x86_64-8.9.6.50_cuda12-archive.tar.xz --no-check-certificate
+  tar xJvf cudnn-linux-x86_64-8.9.6.50_cuda12-archive.tar.xz && \
+  cd cudnn-linux-x86_64-8.9.6.50_cuda12-archive && \
+  cp -r include /usr && \
+  cp -r lib /usr && cd ../ && \
+  rm -f cudnn-linux-x86_64-8.9.6.50_cuda12-archive.tar.xz && \
+  rm -rf cudnn-linux-x86_64-8.9.6.50_cuda12-archive
 fi
