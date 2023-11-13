@@ -946,18 +946,18 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
       builder.Build<paddle::dialect::Conv2dOp>(full_input_op.out(),
                                                full_filter_op.out());
 
-  paddle::dialect::BatchNormOp batch_norm_op =
-      builder.Build<paddle::dialect::BatchNormOp>(conv2d_op.out(),
-                                                  full_mean_op.out(),
-                                                  full_variance_op.out(),
-                                                  full_scale_op.out(),
-                                                  full_bias_op.out(),
-                                                  true,
-                                                  0.9,
-                                                  1e-6,
-                                                  "NCHW",
-                                                  false,
-                                                  false);
+  paddle::dialect::BatchNorm_Op batch_norm_op =
+      builder.Build<paddle::dialect::BatchNorm_Op>(conv2d_op.out(),
+                                                   full_mean_op.out(),
+                                                   full_variance_op.out(),
+                                                   full_scale_op.out(),
+                                                   full_bias_op.out(),
+                                                   true,
+                                                   0.9,
+                                                   1e-6,
+                                                   "NCHW",
+                                                   false,
+                                                   false);
 
   auto transpose1_op = builder.Build<paddle::dialect::TransposeOp>(
       batch_norm_op.out(), std::vector<int>{0, 2, 3, 1});

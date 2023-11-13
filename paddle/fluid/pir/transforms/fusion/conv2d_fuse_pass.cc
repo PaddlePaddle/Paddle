@@ -122,7 +122,9 @@ class Conv2dBnFusePattern
     std::vector<int64_t> new_bias_new_shape(new_conv2d_out_shape.size(), 1);
     std::string data_format =
         new_conv2d_op.attribute<pir::StrAttribute>("data_format").AsString();
-    IR_ENFORCE(data_format == "NCHW", "Only support NCHW now.");
+    if (data_format == "NCHW") {
+      return;
+    }
     new_bias_new_shape[1] = new_conv2d_out_shape[1];
     paddle::dialect::ReshapeOp reshape_bias_op =
         rewriter.Build<paddle::dialect::ReshapeOp>(sub_op.out(),
@@ -140,7 +142,7 @@ class Conv2dBnFusePattern
 
 class Conv2dFusePass : public pir::Pass {
  public:
-  Conv2dFusePass() : pir::Pass("Conv2dFusePass", 2) {}
+  Conv2dFusePass() : pir::Pass("conv2d_fuse_pass", 2) {}
 
   bool Initialize(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
