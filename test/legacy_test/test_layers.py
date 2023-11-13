@@ -66,9 +66,9 @@ class LayerTest(unittest.TestCase):
         self, feed, fetch_list, with_lod=False, force_to_use_cpu=False
     ):
         exe = base.Executor(self._get_place(force_to_use_cpu))
-        exe.run(base.default_startup_program())
+        exe.run(paddle.static.default_startup_program())
         return exe.run(
-            base.default_main_program(),
+            paddle.static.default_main_program(),
             feed=feed,
             fetch_list=fetch_list,
             return_numpy=(not with_lod),
@@ -795,61 +795,82 @@ class TestLayer(LayerTest):
 
         shape = (2, 4, 3, 3)
 
+        def _test_static_specific(input):
+            with self.static_graph():
+                X = paddle.static.data(
+                    name='X', shape=shape, dtype='float32', lod_level=1
+                )
+                ret = paddle.static.nn.group_norm(
+                    input=X,
+                    groups=2,
+                    param_attr=paddle.nn.initializer.Uniform(
+                        low=-0.5, high=0.5
+                    ),
+                    bias_attr=paddle.nn.initializer.Constant(value=1),
+                )
+                static_ret = self.get_static_graph_result(
+                    feed={
+                        'X': base.create_lod_tensor(
+                            data=input, recursive_seq_lens=[[1, 1]], place=place
+                        )
+                    },
+                    fetch_list=[ret],
+                    with_lod=True,
+                )[0]
+
+            return static_ret
+
+        def _test_static(input):
+            with self.static_graph():
+                X = paddle.static.data(
+                    name='X', shape=shape, dtype='float32', lod_level=1
+                )
+                groupNorm = paddle.nn.GroupNorm(
+                    num_channels=shape[1],
+                    num_groups=2,
+                    weight_attr=paddle.nn.initializer.Uniform(
+                        low=-0.5, high=0.5
+                    ),
+                    bias_attr=paddle.nn.initializer.Constant(value=1),
+                )
+                ret = groupNorm(X)
+                static_ret2 = self.get_static_graph_result(
+                    feed={
+                        'X': base.create_lod_tensor(
+                            data=input, recursive_seq_lens=[[1, 1]], place=place
+                        )
+                    },
+                    fetch_list=[ret, groupNorm.weight],
+                    with_lod=True,
+                )[0]
+
+            return static_ret2
+
+        def _test_dygraph(input):
+            with self.dynamic_graph():
+                groupNorm = paddle.nn.GroupNorm(
+                    num_channels=shape[1],
+                    num_groups=2,
+                    weight_attr=paddle.nn.initializer.Uniform(
+                        low=-0.5, high=0.5
+                    ),
+                    bias_attr=paddle.nn.initializer.Constant(value=1),
+                )
+                dy_ret = groupNorm(to_variable(input))
+                dy_rlt_value = dy_ret.numpy()
+            return dy_rlt_value
+
         input = np.random.random(shape).astype('float32')
-
-        with self.static_graph():
-            X = paddle.static.data(
-                name='X', shape=shape, dtype='float32', lod_level=1
-            )
-            ret = paddle.static.nn.group_norm(
-                input=X,
-                groups=2,
-                param_attr=paddle.nn.initializer.Uniform(low=-0.5, high=0.5),
-                bias_attr=paddle.nn.initializer.Constant(value=1),
-            )
-            static_ret = self.get_static_graph_result(
-                feed={
-                    'X': base.create_lod_tensor(
-                        data=input, recursive_seq_lens=[[1, 1]], place=place
-                    )
-                },
-                fetch_list=[ret],
-                with_lod=True,
-            )[0]
-
-        with self.static_graph():
-            X = paddle.static.data(
-                name='X', shape=shape, dtype='float32', lod_level=1
-            )
-            groupNorm = paddle.nn.GroupNorm(
-                num_channels=shape[1],
-                num_groups=2,
-                weight_attr=paddle.nn.initializer.Uniform(low=-0.5, high=0.5),
-                bias_attr=paddle.nn.initializer.Constant(value=1),
-            )
-            ret = groupNorm(X)
-            static_ret2 = self.get_static_graph_result(
-                feed={
-                    'X': base.create_lod_tensor(
-                        data=input, recursive_seq_lens=[[1, 1]], place=place
-                    )
-                },
-                fetch_list=[ret],
-                with_lod=True,
-            )[0]
-
-        with self.dynamic_graph():
-            groupNorm = paddle.nn.GroupNorm(
-                num_channels=shape[1],
-                num_groups=2,
-                weight_attr=paddle.nn.initializer.Uniform(low=-0.5, high=0.5),
-                bias_attr=paddle.nn.initializer.Constant(value=1),
-            )
-            dy_ret = groupNorm(to_variable(input))
-            dy_rlt_value = dy_ret.numpy()
-
+        static_ret = _test_static_specific(input)
+        static_ret2 = _test_static(input)
+        dy_rlt_value = _test_dygraph(input)
         np.testing.assert_allclose(static_ret, dy_rlt_value, rtol=1e-05)
         np.testing.assert_allclose(static_ret, static_ret2, rtol=1e-05)
+
+        with paddle.pir_utils.IrGuard():
+            static_ret_pir = _test_static(input)
+
+        np.testing.assert_allclose(static_ret2, static_ret_pir, rtol=1e-05)
 
     def test_instance_norm(self):
         if core.is_compiled_with_cuda():
