@@ -2284,13 +2284,6 @@ def matrix_nms(
             ...                         score_threshold=0.5, post_threshold=0.1,
             ...                         nms_top_k=400, keep_top_k=200, normalized=False)
     """
-    check_variable_and_dtype(
-        bboxes, 'BBoxes', ['float32', 'float64'], 'matrix_nms'
-    )
-    check_variable_and_dtype(
-        scores, 'Scores', ['float32', 'float64'], 'matrix_nms'
-    )
-
     if in_dynamic_or_pir_mode():
         out, index, rois_num = _C_ops.matrix_nms(
             bboxes,
@@ -2310,6 +2303,12 @@ def matrix_nms(
             rois_num = None
         return out, rois_num, index
     else:
+        check_variable_and_dtype(
+            bboxes, 'BBoxes', ['float32', 'float64'], 'matrix_nms'
+        )
+        check_variable_and_dtype(
+            scores, 'Scores', ['float32', 'float64'], 'matrix_nms'
+        )
         check_type(score_threshold, 'score_threshold', float, 'matrix_nms')
         check_type(post_threshold, 'post_threshold', float, 'matrix_nms')
         check_type(nms_top_k, 'nums_top_k', int, 'matrix_nms')

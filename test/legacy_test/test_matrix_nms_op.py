@@ -19,8 +19,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.base import Program, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 
 def python_matrix_nms(
@@ -312,7 +310,6 @@ class TestMatrixNMSOpGaussian(TestMatrixNMSOp):
 
 
 class TestMatrixNMSError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         M = 1200
         N = 7
@@ -329,7 +326,9 @@ class TestMatrixNMSError(unittest.TestCase):
         scores = np.reshape(scores, (N, M, C))
         scores_np = np.transpose(scores, (0, 2, 1))
 
-        with paddle.static.program_guard(paddle.static.Program(), paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             boxes_data = paddle.static.data(
                 name='bboxes', shape=[M, M, BOX_SIZE], dtype='float32'
             )
