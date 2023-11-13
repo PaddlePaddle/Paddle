@@ -40,4 +40,4 @@ decomp_interface_implementation_gen_op_list = [
 
 
 # xshape output will no longer used after decomp, but return none to keep output num the same as origin op
-decomp_output_unused_op = ["squeeze", "unsqueeze"]
+decomp_ops_contain_unused_output = ["squeeze", "unsqueeze"]

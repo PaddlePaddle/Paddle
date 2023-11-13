@@ -503,7 +503,8 @@ ops_contain_none = {
     "unsqueeze2": ["XShape"],
 }
 
-pir_ops_contain_none = ["pd_op.squeeze", "pd_op.unsqueeze"]
+# some intermediate outputs like xshape will no longer used after decomp, but return none to keep output num the same as origin op
+decomp_ops_list_contain_unused_output = ["pd_op.squeeze", "pd_op.unsqueeze"]
 
 
 def _set_prim_forward_blacklist(*args):

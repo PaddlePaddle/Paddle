@@ -130,7 +130,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
   std::tuple<{{common.sequence('', '', ', ', output_types)}}> op_res = paddle::primitive::details::{{fwd_name}}_decomp<primitive::LazyTensor>(
           {{common.args(input_names, attr_names)}});
   {% for k in range(outputs|length) %}
-    {% if outputs[k].intermediate and fwd_name in decomp_output_unused_op_list %}
+    {% if outputs[k].intermediate and fwd_name in decomp_ops_list_contain_unused_output %}
   pir::OpResult {{outputs[k].name}};
   res[{{k}}].push_back({{outputs[k].name}});
     {% else %}

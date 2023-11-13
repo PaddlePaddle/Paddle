@@ -38,7 +38,7 @@ sys.path.append(
 
 from decomp_interface_gen_op_list import (
     decomp_interface_implementation_gen_op_list,
-    decomp_output_unused_op,
+    decomp_ops_contain_unused_output,
 )
 from op_gen import attr_types_map, to_pascal_case
 
@@ -215,7 +215,7 @@ def gen(
         destination_dir,
         apis=apis,
         decomp_white_list=decomp_interface_implementation_gen_op_list,
-        decomp_output_unused_op_list=decomp_output_unused_op,
+        decomp_ops_list_contain_unused_output=decomp_ops_contain_unused_output,
     )
 
 
