@@ -453,6 +453,7 @@ class TestReshapeAPI(unittest.TestCase):
         np.testing.assert_array_equal(res_3, input.reshape([5, 10]))
         np.testing.assert_array_equal(res_4, input.reshape(shape))
 
+    @test_with_pir_api
     def _test_static_dtype(self):
         places = [paddle.CPUPlace()] + (
             [paddle.CUDAPlace(0)] if base.core.is_compiled_with_cuda() else []
