@@ -144,7 +144,7 @@ class IR_API SliceOp : public pir::Op<SliceOp> {
 
   void VerifySig() const;
   pir::Value input() { return operand_source(0); }
-  void RefreshStopGradients();     
+  void RefreshStopGradients();
 
  private:
   static void PassStopGradients(OperationArgument &argument,  // NOLINT
@@ -178,7 +178,7 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
     return res;
   }
   void RefreshStopGradients();
- 
+
  private:
   static void PassStopGradients(OperationArgument &argument);  // NOLINT
 };

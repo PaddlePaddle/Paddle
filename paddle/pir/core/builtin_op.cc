@@ -50,7 +50,7 @@ void PassStopGradientsDefaultly(OperationArgument &argument) {  // NOLINT
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
-void RefreshStopGradientsDefaultly(Operation *op){
+void RefreshStopGradientsDefaultly(Operation *op) {
   bool stop_gradient = true;
   for (auto value : op->operands_source()) {
     auto input = value.dyn_cast<OpResult>();
@@ -71,7 +71,7 @@ void RefreshStopGradientsDefaultly(Operation *op){
   }
   std::vector<pir::Attribute> outs_stop_gradient(
       op->results().size(),
-  pir::BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
+      pir::BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
   op->set_attribute(
       kStopGradientAttrName,
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
@@ -299,7 +299,7 @@ void SliceOp::RefreshStopGradients() {
       auto attrs = defining_op->attribute(kStopGradientAttrName)
                        .dyn_cast<pir::ArrayAttribute>()
                        .AsVector();
-      outs_stop_gradient[0] = attrs[int(index)];
+      outs_stop_gradient[0] = attrs[static_cast<int>(index)];
     }
   }
   (*this)->set_attribute(
@@ -431,8 +431,8 @@ void SplitOp::RefreshStopGradients() {
                            .dyn_cast<pir::ArrayAttribute>()
                            .AsVector();
           default_stop_gradients[i] = attrs[value.dyn_cast<OpResult>().index()]
-                                         .dyn_cast<pir::BoolAttribute>()
-                                         .data();
+                                          .dyn_cast<pir::BoolAttribute>()
+                                          .data();
         }
       }
     } else if (defining_op &&
@@ -442,7 +442,8 @@ void SplitOp::RefreshStopGradients() {
                                .AsVector()[0]
                                .dyn_cast<pir::BoolAttribute>()
                                .data();
-      default_stop_gradients.assign(default_stop_gradients.size(), stop_gradient);
+      default_stop_gradients.assign(default_stop_gradients.size(),
+                                    stop_gradient);
     }
   }
 
@@ -456,7 +457,6 @@ void SplitOp::RefreshStopGradients() {
       kStopGradientAttrName,
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
-
 
 void SplitOp::VerifySig() const {
   // inputs.size() == 1
