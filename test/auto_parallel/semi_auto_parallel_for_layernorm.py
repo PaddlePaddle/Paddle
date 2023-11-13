@@ -34,8 +34,8 @@ class TestLayerNormSemiAutoParallel(SemiAutoParallelTestBase):
         ), f"{output.dist_attr.dims_mapping}  vs {expected_dim_mapping}"
 
     def test_layernorm_forward(self):
-        shapes = [[16, 4, 4], [16]]
-        specs = [['x', None, None], [None]]
+        shapes = ([16, 4, 4], [16], [16])
+        specs = (['x', None, None], [None], [None])
         inputs, outputs = self.runfunc_and_check(
             inputs_shape=shapes,
             inputs_specs=specs,
@@ -46,8 +46,8 @@ class TestLayerNormSemiAutoParallel(SemiAutoParallelTestBase):
         self.check_dim_mapping(outputs, [-1, -1, 0])
 
     def test_layernorm_reshard(self):
-        shapes = [[16, 4, 4], [16]]
-        specs = [[None, None, 'x'], [None]]
+        shapes = ([16, 4, 4], [16], [16])
+        specs = ([None, None, 'x'], [None], [None])
         inputs, outputs = self.runfunc_and_check(
             inputs_shape=shapes,
             inputs_specs=specs,
