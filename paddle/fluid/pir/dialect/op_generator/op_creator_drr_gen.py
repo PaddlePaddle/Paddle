@@ -123,7 +123,10 @@ class OpCreatorCodeGen:
                 if len(op_info_item.attribute_name_list) > 0:
                     params_no_mutable_attr.append("attrs")
 
-                if len(op_info_item.mutable_attribute_name_list) == 0:
+                if (
+                    self.dialect_name != "pd_op"
+                    or len(op_info_item.mutable_attribute_name_list) == 0
+                ):
                     body_code += NORMAL_FUNCTION_TEMPLATE.format(
                         op_name=ir_op_name,
                         namespace=Dialect2NameSpaceMap[self.dialect_name],
