@@ -151,6 +151,9 @@ bool AddBroadcastToElementwisePass::Initialize(pir::IrContext* context) {
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::SubtractOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MultiplyOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::DivideOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::ElementwisePowOp>>(
+      context);
+
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::LessThanOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::LessEqualOp>>(
       context);
