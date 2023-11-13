@@ -1555,7 +1555,7 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         assert (
             boxes_num is not None
         ), "boxes_num should not be None in dygraph mode."
@@ -1715,7 +1715,7 @@ def roi_align(
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         assert (
             boxes_num is not None
         ), "boxes_num should not be None in dygraph mode."
