@@ -398,12 +398,12 @@ def get_int_tensor_list(ele_list, place=None, default_dtype='int64'):
             ele.stop_gradient = True
             if convert_dtype(ele.dtype) != default_dtype:
                 ele = paddle.cast(x=ele, dtype=default_dtype)
-            if ele.shape == []:
-                ele = paddle.reshape(ele, [-1])
+            if ele.shape != []:
+                ele = paddle.reshape(ele, [])
             int_tensor_list.append(ele)
         else:
             temp_out = paddle.full(
-                [1],
+                [],
                 ele,
                 convert_np_dtype_to_dtype_(np.dtype(default_dtype)),
                 place,

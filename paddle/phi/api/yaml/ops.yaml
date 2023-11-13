@@ -2317,6 +2317,7 @@
   kernel:
     func : shadow_output
     param : [x]
+  traits : pir::SideEffectTrait
 
 - op : shape
   args : (Tensor input)
@@ -2601,6 +2602,16 @@
   inplace: (x -> out)
   backward : thresholded_relu_grad
 
+- op : top_p_sampling
+  args : (Tensor x, Tensor ps, Tensor threshold, int seed=-1)
+  output : Tensor (out), Tensor(ids)
+  infer_meta :
+    func : TopPSamplingInferMeta
+  kernel :
+    func : top_p_sampling
+    data_type : x
+  optional : threshold
+
 - op : topk
   args : (Tensor x, Scalar(int) k = 1, int axis = -1, bool largest = true, bool sorted = true)
   output : Tensor(out), Tensor(indices)
@@ -2683,7 +2694,7 @@
   backward: uniform_inplace_grad
 
 - op : unique_consecutive
-  args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, int dtype = 5)
+  args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, DataType dtype = DataType::FLOAT32)
   output : Tensor(out), Tensor(index), Tensor(counts)
   infer_meta :
       func : UniqueConsecutiveInferMeta

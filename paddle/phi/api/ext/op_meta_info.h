@@ -120,15 +120,15 @@ class PADDLE_API CustomOpKernelContext {
   std::vector<Tensor> InputsBetween(size_t start, size_t end) const;
   Tensor& MutableInputAt(size_t idx);
   std::vector<Tensor>* AllMutableInput();
-  paddle::optional<Tensor> OptionalInputAt(size_t idx);
+  paddle::optional<Tensor> OptionalInputAt(size_t idx) const;
   paddle::optional<std::vector<Tensor>> OptionalInputsBetween(size_t start,
-                                                              size_t end);
+                                                              size_t end) const;
   const std::vector<paddle::any>& Attrs() const;
-  const std::vector<std::pair<size_t, size_t>>& InputRange();
-  const std::vector<std::pair<size_t, size_t>>& OutputRange();
+  const std::vector<std::pair<size_t, size_t>>& InputRange() const;
+  const std::vector<std::pair<size_t, size_t>>& OutputRange() const;
   Tensor* MutableOutputAt(size_t idx);
   std::vector<Tensor*> MutableOutputBetween(size_t start, size_t end);
-  std::vector<Tensor> OutputsBetween(size_t start, size_t end);
+  std::vector<Tensor> OutputsBetween(size_t start, size_t end) const;
   std::vector<Tensor>* AllMutableOutput();
 
   template <typename AttrType>
@@ -151,8 +151,8 @@ class PADDLE_API CustomOpKernelContext {
       const std::unordered_map<std::string, std::string>& inplace_map);
   void AssignInplaceOutputs();
   std::vector<Tensor*>* AllMutablePlainOutput();
-  std::unordered_map<size_t, size_t> GetInplaceIndexMap();
-  std::unordered_map<size_t, size_t> GetInplaceReverseIndexMap();
+  std::unordered_map<size_t, size_t> GetInplaceIndexMap() const;
+  std::unordered_map<size_t, size_t> GetInplaceReverseIndexMap() const;
 
  private:
   // TODO(chenweihang): replaced be SmallVector

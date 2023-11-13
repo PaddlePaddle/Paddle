@@ -110,7 +110,7 @@ class TestPrimMode(unittest.TestCase):
                 self.assertEqual(core.has_decomp(op), True)
 
 
-class TestGeluSink(unittest.TestCase):
+class TestReluSink(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
         self.shape_x = [8, 16, 32, 64]
@@ -124,7 +124,46 @@ class TestGeluSink(unittest.TestCase):
         with paddle.static.program_guard(main_program):
             x = paddle.static.data('x', self.shape_x, dtype='float32')
             x.stop_gradient = False
-            sum_out = F.gelu(x, approximate=True)
+            sum_out = F.relu(x)
+            [new_out] = decompose(main_program, [sum_out])
+            gradients = grad(new_out, x)
+
+            exe = paddle.static.Executor()
+            [fwd, dx] = exe.run(
+                feed={'x': self.x}, fetch_list=[new_out, gradients]
+            )
+
+        whole_ops = [op.name() for op in main_program.global_block().ops]
+        self.prog = main_program
+        if flag == "forward":
+            core._set_prim_forward_enabled(False)
+            assert 'pd_op.relu' not in whole_ops
+        else:
+            assert 'pd_op.relu' in whole_ops
+        return fwd, dx
+
+    def test_relu_forward(self):
+        res_ref = self.base_net()
+        res = self.base_net("forward")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_equal(ref, actual)
+
+
+class TestGeluSink(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [8, 16, 32, 64]
+        self.x = np.random.random(self.shape_x).astype("float32")
+        self.prog = None
+
+    def base_net(self, approximate=True, flag=None):
+        if flag == "forward":
+            core._set_prim_forward_enabled(True)
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.static.data('x', self.shape_x, dtype='float32')
+            x.stop_gradient = False
+            sum_out = F.gelu(x, approximate=approximate)
             [new_out] = decompose(main_program, [sum_out])
             gradients = grad(new_out, x)
 
@@ -142,53 +181,20 @@ class TestGeluSink(unittest.TestCase):
             assert 'pd_op.gelu' in whole_ops
         return fwd, dx
 
-    def test_relu_forward(self):
-        res_ref = self.base_net()
-        res = self.base_net("forward")
+    def test_gelu_forward_true(self):
+        res_ref = self.base_net(approximate=True)
+        res = self.base_net(approximate=True, flag="forward")
+        print("---------------gelu_true-----------------")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_equal(ref, actual)
+
+    def test_gelu_approximate_false(self):
+        res_ref = self.base_net(approximate=False)
+        res = self.base_net(approximate=False, flag="forward")
+        print("---------------gelu_false-----------------")
         for ref, actual in zip(res_ref, res):
             np.testing.assert_equal(ref, actual)
 
 
-class TestSumMax:
-    def setUp(self):
-        np.random.seed(2023)
-        self.shape_x = [8, 16, 32, 64]
-        self.shape_y = [8, 16, 32, 64]
-        self.x = np.random.random(self.shape_x).astype("float32")
-        self.y = np.random.random(self.shape_y).astype("float32")
-        self.prog = None
-
-    def base_net(self, flag=None):
-        main_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program):
-            x = paddle.static.data('x', self.shape_x, dtype='float32')
-            y = paddle.static.data('y', self.shape_y, dtype='float32')
-            x.stop_gradient = False
-            y.stop_gradient = False
-            sum_out = paddle.sum(x, y)  # 静态图下 测试输出, 含有axis的算子  max()
-            [new_out] = decompose(main_program, [sum_out])
-            gradients = grad(new_out, (x, y))
-
-            exe = paddle.static.Executor()
-            [fwd, dx, dy] = exe.run(
-                feed={'x': self.x, 'y': self.y}, fetch_list=[new_out, gradients]
-            )
-
-        return fwd, dx, dy
-
-    def test_relu_forward(self):
-        res_ref = self.base_net()
-        # res = self.base_net("forward")
-        print(res_ref)
-        print("-----------------------------------")
-        # print(res)
-        # for ref, actual in zip(res_ref, res):
-        #     np.testing.assert_equal(ref, actual)
-
-
 if __name__ == "__main__":
     unittest.main()
-
-    # summax = TestSumMax()
-    # summax.setUp()
-    # summax.test_relu_forward()

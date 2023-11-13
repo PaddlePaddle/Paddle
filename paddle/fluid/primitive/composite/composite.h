@@ -63,6 +63,11 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
 }
 
 template <typename T>
+Tensor relu_decomp(const Tensor& x) {
+  return maximum<T>(x, full<T>(phi::vectorize(x.dims()), 0.0, x.dtype()));
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
                                           const IntArray& axis) {
   auto axis_ = process_dims(x, axis.GetData());
@@ -99,17 +104,16 @@ Tensor gelu_decomp(const Tensor& x, bool approximate) {
     auto GELU_CONSTANT = full<T>(phi::vectorize(x.dims()), 0.044715, org_dtype);
     auto x_pow3 =
         elementwise_pow<T>(x, full<T>(phi::vectorize(x.dims()), 3, org_dtype));
-    auto multi_out = multiply<T>(x_pow3, GELU_CONSTANT);
-    auto tanh_out = tanh<T>(multiply<T>(kAlpha, x + multi_out));
+    auto tanh_out = tanh<T>(kAlpha * (x + x * x * x * GELU_CONSTANT));
 
-    auto res = multiply<T>(multiply<T>(x, half), one + tanh_out);
+    auto res = x * half * (one + tanh_out);
     return res;
   } else {
     // gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
     auto M_SQRT1_2T = full<T>(phi::vectorize(x.dims()), M_SQRT1_2, org_dtype);
-    auto erf_out = add<T>(one, erf<T>(multiply<T>(x, M_SQRT1_2T)));
+    auto erf_out = one + erf<T>(x * M_SQRT1_2T);
 
-    auto res = multiply<T>(multiply<T>(x, half), erf_out);
+    auto res = x * half * erf_out;
     return res;
   }
 }
