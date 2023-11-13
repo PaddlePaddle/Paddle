@@ -37,6 +37,7 @@ void MultiHeadAttentionVariableForwardKernel(
 
   params.num_batches = query.dims()[0];
   params.num_heads = query.dims()[1];
+  params.kv_num_heads = key.dims()[1];
   params.query_seq_len = query.dims()[2];
   params.head_size = query.dims()[3];
   params.key_value_seq_len = key.dims()[2];

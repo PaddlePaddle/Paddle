@@ -101,6 +101,25 @@ class TensorWrapper {
         auto pack_hook = egr::SavedTensorsHooks::GetInstance().GetPackHook();
         unpack_hook_ = egr::SavedTensorsHooks::GetInstance().GetUnPackHook();
         packed_value_ = (*pack_hook)(tensor);
+      } else if (egr::SavedTensorsHooks::GetInstance().IsEnable() &&
+                 tensor.is_dist_tensor() && tensor.initialized()) {
+        intermidiate_tensor_.set_impl(
+            std::make_shared<phi::distributed::DistTensor>(
+                tensor.dims(),
+                static_cast<phi::distributed::DistTensor*>(tensor.impl().get())
+                    ->dist_attr()));
+        auto dense_tensor =
+            static_cast<phi::distributed::DistTensor*>(tensor.impl().get())
+                ->value();
+        phi::DenseTensor tmp(
+            std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
+            dense_tensor.meta());
+        *(static_cast<phi::distributed::DistTensor*>(
+              intermidiate_tensor_.impl().get())
+              ->unsafe_mutable_value()) = tmp;
+        auto pack_hook = egr::SavedTensorsHooks::GetInstance().GetPackHook();
+        unpack_hook_ = egr::SavedTensorsHooks::GetInstance().GetUnPackHook();
+        packed_value_ = (*pack_hook)(tensor);
       } else {
 #endif
         intermidiate_tensor_.set_impl(tensor.impl());
@@ -162,8 +181,15 @@ class TensorWrapper {
       auto tensor_unpacked = (*unpack_hook_)(packed_value_);
       auto src_dense_tensor =
           static_cast<phi::DenseTensor*>(tensor_unpacked.impl().get());
-      static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get())
-          ->ResetHolder(src_dense_tensor->MoveMemoryHolder());
+      if (intermidiate_tensor_.is_dense_tensor()) {
+        static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get())
+            ->ResetHolder(src_dense_tensor->MoveMemoryHolder());
+      } else if (intermidiate_tensor_.is_dist_tensor()) {
+        static_cast<phi::distributed::DistTensor*>(
+            intermidiate_tensor_.impl().get())
+            ->unsafe_mutable_value()
+            ->ResetHolder(src_dense_tensor->MoveMemoryHolder());
+      }
     } else {
 #endif
       check_inplace_version();
