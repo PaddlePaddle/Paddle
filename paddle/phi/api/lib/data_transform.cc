@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -676,9 +676,10 @@ ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
         auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
                                                                    dist_attr);
         out.push_back(func->Eval(dev_ctx, *dist_tensor, dist_attr));
+      } else {
+        out.push_back(
+            std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in));
       }
-      out.push_back(
-          std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in));
     } else {
       out.push_back(nullptr);
     }

@@ -81,6 +81,19 @@ bool IsSameDim(const phi::DDim& first, const std::vector<int64_t>& second) {
   return false;
 }
 
+std::vector<int64_t> GetBroadcastAxis(const phi::DDim& in_shape,
+                                      const std::vector<int64_t>& out_shape) {
+  std::vector<int64_t> broadcast_axes(in_shape.size(), 0);
+  auto in_shape_size = in_shape.size();
+  if (in_shape_size >= 1) {
+    for (int i = 1; i <= in_shape_size; ++i) {
+      broadcast_axes[in_shape_size - i] = out_shape.size() - i;
+    }
+  }
+
+  return broadcast_axes;
+}
+
 bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   auto x_dims = op->operand_source(0)
                     .type()
@@ -93,21 +106,21 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
 
   if (x_dims != y_dims) {
     auto output_shape = GetOutputShape(x_dims, y_dims);
-    std::vector<int64_t> vec_dims;
-    for (int64_t i = 0; i < output_shape.size(); ++i) {
-      vec_dims.push_back(i);
-    }
     if (!IsSameDim(x_dims, output_shape)) {
       // add broadcast to input 0
       auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
-          op->operand_source(0), vec_dims, output_shape);
+          op->operand_source(0),
+          GetBroadcastAxis(x_dims, output_shape),
+          output_shape);
 
       op->operand(0).set_source(new_transpose_op->result(0));
     }
 
     if (!IsSameDim(y_dims, output_shape)) {
       auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
-          op->operand_source(1), vec_dims, output_shape);
+          op->operand_source(1),
+          GetBroadcastAxis(y_dims, output_shape),
+          output_shape);
 
       op->operand(1).set_source(new_transpose_op->result(0));
     }
@@ -139,6 +152,8 @@ pir::RewritePatternSet AddBroadcastToElementwisePass::InitializePatterns(
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::SubtractOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MultiplyOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::DivideOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::ElementwisePowOp>>(
+      context);
 
   return ps;
 }

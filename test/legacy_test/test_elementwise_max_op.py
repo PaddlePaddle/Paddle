@@ -52,12 +52,18 @@ class TestElementwiseOp(OpTest):
         if hasattr(self, 'attrs'):
             if self.attrs['axis'] == -1:
                 self.check_grad(
-                    ['X', 'Y'], 'Out', check_dygraph=False, check_prim=True
+                    ['X', 'Y'],
+                    'Out',
+                    check_dygraph=False,
+                    check_prim=True,
+                    check_prim_pir=True,
                 )
             else:
                 self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_prim=True)
+            self.check_grad(
+                ['X', 'Y'], 'Out', check_prim=True, check_prim_pir=True
+            )
 
     def test_check_grad_ingore_x(self):
         if hasattr(self, 'attrs') and self.attrs['axis'] != -1:
@@ -75,6 +81,7 @@ class TestElementwiseOp(OpTest):
                 max_relative_error=0.005,
                 no_grad_set=set("X"),
                 check_prim=True,
+                check_prim_pir=True,
             )
 
     def test_check_grad_ingore_y(self):
@@ -93,6 +100,7 @@ class TestElementwiseOp(OpTest):
                 max_relative_error=0.005,
                 no_grad_set=set('Y'),
                 check_prim=True,
+                check_prim_pir=True,
             )
 
     def if_enbale_cinn(self):
@@ -207,7 +215,11 @@ class TestElementwiseBF16Op(OpTest):
             )
         else:
             self.check_grad(
-                ['X', 'Y'], 'Out', numeric_grad_delta=0.05, check_prim=True
+                ['X', 'Y'],
+                'Out',
+                numeric_grad_delta=0.05,
+                check_prim=True,
+                check_prim_pir=True,
             )
 
     def test_check_grad_ingore_x(self):
@@ -217,6 +229,7 @@ class TestElementwiseBF16Op(OpTest):
             numeric_grad_delta=0.05,
             no_grad_set=set("X"),
             check_prim=True,
+            check_prim_pir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -226,6 +239,7 @@ class TestElementwiseBF16Op(OpTest):
             numeric_grad_delta=0.05,
             no_grad_set=set('Y'),
             check_prim=True,
+            check_prim_pir=True,
         )
 
 
