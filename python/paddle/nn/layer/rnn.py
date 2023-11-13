@@ -29,7 +29,10 @@ from paddle.base.framework import (
 )
 from paddle.common_ops_import import Variable
 from paddle.framework import core
-from paddle.nn import functional as F, initializer as I
+from paddle.nn import (
+    functional as F,
+    initializer as I,
+)
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 from .container import LayerList

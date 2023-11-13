@@ -23,7 +23,12 @@ import numpy as np
 
 from paddle import pir
 
-from ..pir import OpResult, Program as PirProgram, Value, translate_to_pir
+from ..pir import (
+    OpResult,
+    Program as PirProgram,
+    Value,
+    translate_to_pir,
+)
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
 from .framework import (

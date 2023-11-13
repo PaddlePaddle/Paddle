@@ -18,7 +18,10 @@ import paddle
 from paddle import base
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.param_attr import ParamAttr
-from paddle.nn import Layer, initializer as I
+from paddle.nn import (
+    Layer,
+    initializer as I,
+)
 
 
 def resnet_unit(

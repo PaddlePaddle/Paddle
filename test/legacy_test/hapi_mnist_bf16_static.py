@@ -21,7 +21,10 @@ import numpy as np
 import paddle
 from paddle import Model, set_device
 from paddle.metric import Accuracy
-from paddle.static import InputSpec as Input, amp
+from paddle.static import (
+    InputSpec as Input,
+    amp,
+)
 from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
 
