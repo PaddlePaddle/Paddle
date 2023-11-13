@@ -3430,6 +3430,42 @@ void RnnInferMeta(const MetaTensor& x,
   }
 }
 
+void RpropInferMeta(const MetaTensor& param,
+                    const MetaTensor& grad,
+                    const MetaTensor& prev,
+                    const MetaTensor& learning_rate,
+                    const MetaTensor& master_param,
+                    float delta_min,
+                    float delta_max,
+                    float eta_negative,
+                    float eta_positive,
+                    bool multi_precision,
+                    MetaTensor* param_out,
+                    MetaTensor* prev_out,
+                    MetaTensor* learning_rate_out,
+                    MetaTensor* master_param_out) {
+  PADDLE_ENFORCE_NOT_NULL(
+      param_out,
+      phi::errors::InvalidArgument(
+          "Output(ParamOut) of RpropOp should not be null."));
+
+  param_out->set_dims(param.dims());
+  param_out->set_dtype(param.dtype());
+  prev_out->set_dims(prev.dims());
+  prev_out->set_dtype(prev.dtype());
+  learning_rate_out->set_dims(learning_rate.dims());
+  learning_rate_out->set_dtype(learning_rate.dtype());
+  if (multi_precision) {
+    master_param_out->set_dims(master_param.dims());
+    if (DataType::FLOAT16 == master_param.dtype() ||
+        DataType::BFLOAT16 == master_param.dtype()) {
+      master_param_out->set_dtype(DataType::FLOAT32);
+    } else {
+      master_param_out->set_dtype(master_param.dtype());
+    }
+  }
+}
+
 void SgdInferMeta(const MetaTensor& param,
                   const MetaTensor& learning_rate,
                   const MetaTensor& grad,

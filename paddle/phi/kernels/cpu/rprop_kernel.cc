@@ -95,7 +95,17 @@ void RpropKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(param_out);
   dev_ctx.template Alloc<T>(prev_out);
   dev_ctx.template Alloc<T>(learning_rate_out);
-  RpropKernelCPUImpl<T>(param, learning_rate, grad, param_out);
+  RpropKernelCPUImpl<T>(param,
+                        grad,
+                        prev,
+                        learning_rate,
+                        delta_min,
+                        delta_max,
+                        eta_negative,
+                        eta_positive,
+                        param_out,
+                        prev_out,
+                        learning_rate_out);
 }
 
 }  // namespace phi

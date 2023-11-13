@@ -14,7 +14,7 @@
 
 import warnings
 
-from paddle import zeros_like
+from paddle import _C_ops, zeros_like
 
 from ..base import framework
 from ..base.dygraph import no_grad
@@ -92,52 +92,54 @@ class Rprop(Optimizer):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        params = param_and_grad[0]
-        grads = param_and_grad[1]
-        prevs = self._prevs
-        lrs = self._lrs
-        delta_min = self._delta_min
-        delta_max = self._delta_max
-        eta_negative = self._eta_negative
-        eta_positive = self._eta_positive
         find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
-            params.dtype
+            param_and_grad[0].dtype
         )
         master_weight = (
-            self._master_weights[params.name] if find_master else None
+            self._master_weights[param_and_grad[0].name]
+            if find_master
+            else None
         )
 
         if in_dynamic_or_pir_mode():
-            for i, param in enumerate(params):
-                grad = grads[i]
-                prev = prevs[i]
-                lr = lrs[i]
-                sign = grad.mul(prev).sign()
-                sign[sign.gt(0)] = eta_positive
-                sign[sign.lt(0)] = eta_negative
-                sign[sign.eq(0)] = 1
-
-                lr.mul_(sign).clamp_(delta_min, delta_max)
-
-                grad = grad.clone()
-                grad[sign.eq(eta_negative)] = 0
-
-                param.addcmul_(grad.sign(), lr, value=-1)
-                prev.copy_(grad)
+            _C_ops.rprop_(
+                param_and_grad[0],
+                param_and_grad[1],
+                self._prevs,
+                self._lrs,
+                master_weight,
+                self._delta_min,
+                self._delta_max,
+                self._eta_negative,
+                self._eta_positive,
+                find_master,
+            )
 
             return None
         else:
             assert isinstance(block, framework.Block)
             # create the optimize op
+
             inputs = {
-                "Param": params,
-                "Grad": grads,
-                "LearningRate": lrs,
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                'Prev': self._prevs,
+                "LearningRate": self._lrs,
             }
 
-            outputs = {"ParamOut": params}
+            outputs = {
+                "ParamOut": param_and_grad[0],
+                "PrevOut": self._prevs,
+                "LearningRateOut": self._lrs,
+            }
 
-            attrs = {"multi_precision": find_master}
+            attrs = {
+                'delta_min': self._delta_min,
+                'delta_max': self._delta_max,
+                'eta_negative': self._eta_negative,
+                'eta_positive': self._eta_positive,
+                "multi_precision": find_master,
+            }
 
             if find_master:
                 inputs["MasterParam"] = master_weight

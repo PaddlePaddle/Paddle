@@ -638,6 +638,21 @@ void RnnInferMeta(const MetaTensor& x,
                   std::vector<MetaTensor*> state,
                   MetaTensor* reserve);
 
+void RpropInferMeta(const MetaTensor& param,
+                    const MetaTensor& grad,
+                    const MetaTensor& prev,
+                    const MetaTensor& learning_rate,
+                    const MetaTensor& master_param,
+                    float delta_min,
+                    float delta_max,
+                    float eta_negative,
+                    float eta_positive,
+                    bool multi_precision,
+                    MetaTensor* param_out,
+                    MetaTensor* prev_out,
+                    MetaTensor* learning_rate_out,
+                    MetaTensor* master_param_out);
+
 void SendUERecvInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          const MetaTensor& src_index,
