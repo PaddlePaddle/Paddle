@@ -3786,8 +3786,9 @@ def householder_product(A, tau, name=None):
         A.dtype == tau.dtype
     ), "The input A must have the same dtype with input tau.\n"
     assert (
-        len(A.shape) >= 2 and len(tau.shape) >= 1
-    ), "The input A must have more than 2 dimensions, and input tau must have more than 1 dimension.\n"
+        len(A.shape) >= 2 and len(tau.shape) >= 1 and len(A.shape) == len(tau.shape) + 1
+    ), "The input A must have more than 2 dimensions, and input tau must have more than 1 dimension,"\
+        "and the dimension of A is 1 larger than the dimension of tau\n"
     assert (
         A.shape[-2] >= A.shape[-1]
     ), "The rows of input A must be greater than or equal to the columns of input A.\n"

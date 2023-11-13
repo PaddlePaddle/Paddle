@@ -41,7 +41,7 @@ def geqrf(A):
             A[i:, i + 1 :] = A[i:, i + 1 :] - (tau[i] * w) @ (
                 w.T @ A[i:, i + 1 :]
             )
-        return A, tau[: min(m, n)]
+        return A, tau[: min(m, n)].reshape(-1)
 
     if len(A.shape) == 2:
         return _geqrf(A)
@@ -156,42 +156,47 @@ class TestHouseholderProductAPICase5(TestHouseholderProductAPI):
 
 
 class TestHouseholderProductAPI_batch_error(TestHouseholderProductAPI):
+    # shape "*" in x.shape:[*, m, n] and tau.shape:[*, k] must be the same
     def test_error(self):
         with self.assertRaises(AssertionError):
-            x = paddle.randn([2, 3, 4])
-            tau = paddle.randn([3, 3, 4])
+            x = paddle.randn([2, 2, 5, 4])
+            tau = paddle.randn([2, 3, 4])
             out = paddle.linalg.householder_product(x, tau)
 
 
 class TestHouseholderProductAPI_dim_error(TestHouseholderProductAPI):
+    # len(x.shape) must be greater(equal) than 2, len(tau.shape) must be greater(equal) than 1
     def test_error(self):
         with self.assertRaises(AssertionError):
-            x = paddle.to_tensor([3, 2, 1], dtype=paddle.float32)
-            tau = paddle.to_tensor([6, 5, 4], dtype=paddle.float32)
+            x = paddle.to_tensor([3, ], dtype=paddle.float32)
+            tau = paddle.to_tensor([], dtype=paddle.float32)
             out = paddle.linalg.householder_product(x, tau)
 
 
 class TestHouseholderProductAPI_type_error(TestHouseholderProductAPI):
+    # type of x and tau must be the same
     def test_error(self):
         with self.assertRaises(TypeError):
             x = paddle.randn([3, 2, 1], dtype=paddle.int32)
-            tau = paddle.randn([6, 5, 4], dtype=paddle.int32)
+            tau = paddle.randn([3, 4], dtype=paddle.int32)
             out = paddle.linalg.householder_product(x, tau)
 
 
 class TestHouseholderProductAPI_shape_dismatch_error(TestHouseholderProductAPI):
+    # len(x.shape) and len(tau.shape) + 1 must be equal
     def test_error(self):
         with self.assertRaises(AssertionError):
             x = paddle.randn([3, 2, 1], dtype=paddle.float32)
-            tau = paddle.randn([6, 5, 4], dtype=paddle.float64)
+            tau = paddle.randn([6, 2, 4], dtype=paddle.float32)
             out = paddle.linalg.householder_product(x, tau)
 
 
 class TestHouseholderProductAPI_col_row_error(TestHouseholderProductAPI):
+    # row must be bigger than col in x
     def test_error(self):
         with self.assertRaises(AssertionError):
             x = paddle.randn([3, 6], dtype=paddle.float32)
-            tau = paddle.randn([6], dtype=paddle.float64)
+            tau = paddle.randn([6], dtype=paddle.float32)
             out = paddle.linalg.householder_product(x, tau)
 
 
