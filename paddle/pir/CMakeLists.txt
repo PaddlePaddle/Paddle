@@ -46,7 +46,7 @@ else()
   cc_library(
     pir
     SRCS ${PIR_CPP_SOURCES}
-    DEPS commod)
+    DEPS common)
   get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
   set(ir_targets pir)
   set_property(GLOBAL PROPERTY IR_TARGETS "${ir_targets}")
