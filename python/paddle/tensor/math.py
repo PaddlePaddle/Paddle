@@ -19,7 +19,7 @@ math functions
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -2626,7 +2626,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     """
     reduce_all, axis = _get_reduce_axis(axis, x)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     else:
         check_variable_and_dtype(
@@ -3287,7 +3287,7 @@ def log1p(x, name=None):
              [0.69314718]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.log1p(x)
     else:
         check_variable_and_dtype(
@@ -3758,7 +3758,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
              [0.97020894, 0.97786582]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.diagonal(x, offset, axis1, axis2)
     else:
 
@@ -3860,8 +3860,8 @@ def kron(x, y, name=None):
              [12, 15, 18, 16, 20, 24],
              [21, 24, 27, 28, 32, 36]])
     """
-    if in_dynamic_mode():
-        return _legacy_C_ops.kron(x, y)
+    if in_dynamic_or_pir_mode():
+        return _C_ops.kron(x, y)
     else:
         helper = LayerHelper('kron', **locals())
         check_variable_and_dtype(
@@ -4203,7 +4203,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast(x, dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if axis is None:
             axis = -1
         return _C_ops.logcumsumexp(x, axis, flatten, False, False)
@@ -5042,7 +5042,7 @@ def lgamma(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.31452453, 1.76149762, 2.25271273, 1.09579790])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.lgamma(x)
     else:
         check_variable_and_dtype(
@@ -5149,7 +5149,7 @@ def atan2(x, y, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.atan2(x, y)
     else:
         check_variable_and_dtype(
@@ -5279,7 +5279,7 @@ def lerp(x, y, weight, name=None):
     if isinstance(weight, float):
         weight = paddle.full(shape=[], fill_value=weight, dtype=x.dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.lerp(x, y, weight)
     else:
         check_variable_and_dtype(
@@ -5478,7 +5478,7 @@ def deg2rad(x, name=None):
             3.14159274)
     """
     deg2rad_scale = np.pi / 180.0
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.scale(x, deg2rad_scale, 0.0, True)
@@ -6026,7 +6026,7 @@ def heaviside(x, y, name=None):
             [[0.        , 0.20000000, 1.        ],
              [0.        , 1.        , 0.30000001]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.heaviside(x, y)
     else:
         op_type = 'elementwise_heaviside'
