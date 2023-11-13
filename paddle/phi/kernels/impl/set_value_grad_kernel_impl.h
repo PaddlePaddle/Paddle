@@ -73,7 +73,6 @@ void SetValueGradImpl(const Context& dev_ctx,
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
-
   funcs::StridedSliceOutDims(starts_local,
                              ends_local,
                              steps_local,
