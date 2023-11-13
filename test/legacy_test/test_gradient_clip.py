@@ -218,8 +218,8 @@ class TestPirGradientClipByGlobalNorm(TestGradientClip):
             exe = base.Executor(place)
             exe.run(startup_program)
             data = next(train_reader())
-            a = np.array([i[0] for i in data])
-            b = np.array([i[1] for i in data]).reshape(3, 1)
+            a = np.array([i[0] for i in data]).astype('float32')
+            b = np.array([i[1] for i in data]).reshape(3, 1).astype('int64')
             out = exe.run(prog, feed={'a': a, 'b': b}, fetch_list=grad_list)
             return out
 
@@ -263,8 +263,8 @@ class TestPirGradientClipByGlobalNorm(TestGradientClip):
             exe = base.Executor(place)
             exe.run(startup_program)
             data = next(train_reader())
-            a = np.array([i[0] for i in data])
-            b = np.array([i[1] for i in data]).reshape(3, 1)
+            a = np.array([i[0] for i in data]).astype('float32')
+            b = np.array([i[1] for i in data]).reshape(3, 1).astype('int64')
             out_clip = exe.run(
                 prog, feed={'a': a, 'b': b}, fetch_list=grad_clip_list
             )
