@@ -168,7 +168,12 @@ class TestHouseholderProductAPI_dim_error(TestHouseholderProductAPI):
     # len(x.shape) must be greater(equal) than 2, len(tau.shape) must be greater(equal) than 1
     def test_error(self):
         with self.assertRaises(AssertionError):
-            x = paddle.to_tensor([3, ], dtype=paddle.float32)
+            x = paddle.to_tensor(
+                [
+                    3,
+                ],
+                dtype=paddle.float32,
+            )
             tau = paddle.to_tensor([], dtype=paddle.float32)
             out = paddle.linalg.householder_product(x, tau)
 
