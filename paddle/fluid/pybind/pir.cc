@@ -1015,10 +1015,10 @@ void AppendSetParameter(Program *forward_program,
   }
 }
 
-void AppendSetParameters(Program *forward_program,
-                         const std::vector<pir::OpResult> &outputs_op_result,
-                         int start_point,
-                         std::string name_prefix) {
+int AppendSetParameters(Program *forward_program,
+                        const std::vector<pir::OpResult> &outputs_op_result,
+                        int start_point,
+                        std::string name_prefix) {
   int counter = 0;
   std::unordered_set<pir::OpResult> added_op_result;
 
@@ -1032,6 +1032,8 @@ void AppendSetParameters(Program *forward_program,
       added_op_result.insert(result);
     }
   }
+  // return the inserted op.
+  return counter;
 }
 
 SplitedResult SplitForwardBackward(
