@@ -20,7 +20,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/hooks.h"
