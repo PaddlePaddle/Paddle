@@ -340,7 +340,14 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     ssize_t arg_idx,
     bool dispensable = false);
 
-std::vector<paddle::Tensor*> GetTensorsWithVarDescFromArgs(
+std::vector<paddle::Tensor*> GetTensorsWithVarDescInArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable);
+
+std::vector<paddle::Tensor*> GetTensorsWithOpResultInArgs(
     const std::string& op_type,
     const std::string& arg_name,
     PyObject* args,

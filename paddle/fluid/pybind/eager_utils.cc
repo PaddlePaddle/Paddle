@@ -32,15 +32,19 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/op_function_common.h"
+#include "paddle/fluid/pybind/pir.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/pir/core/attribute.h"
 
 PHI_DECLARE_bool(check_nan_inf);
 PHI_DECLARE_int32(check_nan_inf_level);
@@ -1389,15 +1393,12 @@ paddle::Tensor* CreateTensorFromVarDesc(
   if (!autograd_meta->GetMutableGradNode()) {
     autograd_meta->SetGradNode(
         std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
-    VLOG(3) << "Tensor(" << var_desc.Name()
-            << ") have not GradNode, add GradNodeAccumulation"
-            << autograd_meta->GradNode() << " for it.";
   }
 
   return tensor;
 }
 
-std::vector<paddle::Tensor*> GetTensorsWithVarDescFromArgs(
+std::vector<paddle::Tensor*> GetTensorsWithVarDescInArgs(
     const std::string& op_type,
     const std::string& arg_name,
     PyObject* args,
@@ -1469,6 +1470,125 @@ std::vector<paddle::Tensor*> GetTensorsWithVarDescFromArgs(
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument '%s' (position %d) must be list of VarDesc, but got "
+        "%s",
+        op_type,
+        arg_name,
+        arg_idx,
+        (reinterpret_cast<PyTypeObject*>(list->ob_type))->tp_name));
+  }
+
+  return result;
+}
+
+paddle::Tensor* CreateTensorFromOpResult(const pir::OpResult& op_result) {
+  auto tensor = new paddle::Tensor();
+
+  auto dims = phi::vectorize(GetOpResultDims(op_result));
+  auto ddims = phi::make_ddim(dims);
+  auto autograd_meta = egr::EagerUtils::autograd_meta(tensor);
+  autograd_meta->SetPersistable(false);
+  autograd_meta->SetStopGradient(
+      GetOpResultBoolAttr(op_result, kAttrStopGradients));
+
+  if (op_result.type().isa<paddle::dialect::DenseTensorType>()) {
+    // TODO(jiabin): Maybe support LOD later
+    std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
+    auto dtype = paddle::dialect::TransToPhiDataType(
+        op_result.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype());
+
+    if (dims.size() == 1 && dims[0] == 0) {
+      std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
+      dense_tensor = std::make_shared<phi::DenseTensor>(
+          allocation_ptr, phi::DenseTensorMeta(dtype, ddims));
+    } else {
+      // TODO(dev): we need enhance check for ddims.
+      dense_tensor = std::make_shared<phi::DenseTensor>(
+          std::make_shared<phi::Allocation>(),
+          phi::DenseTensorMeta(dtype, ddims));
+    }
+    tensor->set_impl(dense_tensor);
+  } else if (op_result.type().isa<paddle::dialect::SelectedRowsType>()) {
+    std::shared_ptr<phi::SelectedRows> selected_rows_tensor =
+        std::make_shared<phi::SelectedRows>();
+    tensor->set_impl(selected_rows_tensor);
+  }
+
+  if (!autograd_meta->GetMutableGradNode()) {
+    autograd_meta->SetGradNode(
+        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+  }
+
+  return tensor;
+}
+
+std::vector<paddle::Tensor*> GetTensorsWithOpResultInArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable) {
+  PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
+
+  if (list == nullptr) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of VarDesc, but got "
+          "None",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+    return {};
+  }
+
+  std::vector<paddle::Tensor*> result;
+  std::unordered_map<pir::OpResult, paddle::Tensor*> out_tensor_map;
+
+  if (PyList_Check(list)) {
+    Py_ssize_t len = PyList_Size(list);
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of OpResult, but got "
+          "empty list",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      auto op_result = PyObjectCast<pir::OpResult>(PyList_GetItem(list, i));
+      if (out_tensor_map.find(op_result) == out_tensor_map.end()) {
+        paddle::Tensor* tensor = CreateTensorFromOpResult(op_result);
+        out_tensor_map[op_result] = tensor;
+        result.emplace_back(tensor);
+      } else {
+        result.emplace_back(out_tensor_map[op_result]);
+      }
+    }
+  } else if (PyTuple_Check(list)) {
+    Py_ssize_t len = PyTuple_Size(list);
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of OpResult, but got "
+          "empty list",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      auto op_result = PyObjectCast<pir::OpResult>(PyTuple_GetItem(list, i));
+      if (out_tensor_map.find(op_result) == out_tensor_map.end()) {
+        paddle::Tensor* tensor = CreateTensorFromOpResult(op_result);
+        out_tensor_map[op_result] = tensor;
+        result.emplace_back(tensor);
+      } else {
+        result.emplace_back(out_tensor_map[op_result]);
+      }
+    }
+  } else if (list == Py_None) {
+    return {};
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be list of OpResult, but got "
         "%s",
         op_type,
         arg_name,

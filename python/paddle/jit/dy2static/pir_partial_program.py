@@ -25,7 +25,6 @@ from paddle.base import core, framework
 from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.framework import use_pir_api
 from paddle.optimizer.lr import LRScheduler
 from paddle.pir import OpResult, fake_op_result, is_fake_op_result
 
@@ -333,29 +332,27 @@ class PartialProgramLayer:
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        in_vars, out_vars = self._prepare(inputs)
+        in_vars = self._prepare(inputs)
         attrs = self._prepare_attributes()
 
         # self._sync_lr_value_with_scheduler()
 
-        c_run_program_fn = None
-        if use_pir_api():
-            c_run_program_fn = _legacy_C_ops.pir_run_program
-        else:
-            c_run_program_fn = _legacy_C_ops.run_program
-        c_run_program_fn(
+        out_op_results = [
+            self._outputs[var_id] for var_id in self._outputs.var_ids
+        ]
+
+        out_vars = _legacy_C_ops.pir_run_program(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),
-            self._valid_vars(out_vars),
+            self._valid_vars(out_op_results),
             self._create_scope_vec(
                 program_id=self.program_id, use_scope_cache=True
             ),
             self._cuda_graph_vec,
             *attrs,
         )
-        self._update_stop_gradient(out_vars)
         restored_nest_out = self._restore_out(out_vars)
-        return self._remove_no_value(restored_nest_out)
+        return restored_nest_out
 
     @cached_property
     def origin_runable_program(self):
@@ -696,48 +693,12 @@ class PartialProgramLayer:
                     zero_copy=True,
                 )
             elif isinstance(value, core.eager.Tensor):
-                # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
-                # into CUDAPlace when it's as input of multi Ops. so we move it in advance
-                # to avoid this problem.
-                if value.stop_gradient and not value.place._equals(
-                    expected_place
-                ):
-                    var = value._copy_to(expected_place, False)
-                    var.stop_gradient = True
-                else:
-                    var = value
+                var = value
             else:
                 continue
             input_vars.append(var)
 
-        # mapping from name(string) -> Tensor
-        out_tensor_map = {}
-
-        def create_out(var_id):
-            var = self._outputs[var_id]
-            assert isinstance(var, OpResult)
-
-            if id(var) in out_tensor_map:
-                return out_tensor_map[id(var)]
-
-            if var.is_dense_tensor_type():
-                tensor_type = paddle.dtype(7)  # LOD TENSOR
-            else:
-                tensor_type = paddle.dtype(8)  # SELECT ROW TENSOR
-            out = core.eager.Tensor(
-                framework.paddle_type_to_proto_type[var.dtype],
-                var.shape,
-                "",
-                tensor_type,
-                False,
-            )
-            out.stop_gradient = var.stop_gradient
-            out_tensor_map[id(var)] = out
-            return out
-
-        # Create Tensor to receive output data.
-        out_vars = list(map(create_out, self._outputs.var_ids))
-        return input_vars, out_vars
+        return input_vars
 
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
         inner_scope = self._get_scope(
