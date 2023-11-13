@@ -1095,13 +1095,6 @@ void ReduceKernel(const KPDevice& dev_ctx,
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
   constexpr bool kIsTxBF16 = std::is_same<Tx, phi::dtype::bfloat16>::value;
   bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16 && !kIsTxBF16;
-#ifndef PADDLE_WITH_XPU_KP
-  if (use_cub_reduce) {
-    CubTensorReduce<Tx, Ty, ReduceOp, TransformOp, IsMean>::apply(
-        x_data, y_data, transform, config.reduce_num, dev_ctx, stream);
-    return;
-  }
-#endif
 
   // NOTE(YuanRisheng): hot fix
   // cuda 12.0 + cub got wrong result in some shapes when build phi with shared
@@ -1109,6 +1102,14 @@ void ReduceKernel(const KPDevice& dev_ctx,
   // dtype=paddle.float32)) is expected to 102400, but got 0.
 #ifdef PHI_SHARED&& CUDA_VERSION >= 12000
   use_cub_reduce = false;
+#endif
+
+#ifndef PADDLE_WITH_XPU_KP
+  if (use_cub_reduce) {
+    CubTensorReduce<Tx, Ty, ReduceOp, TransformOp, IsMean>::apply(
+        x_data, y_data, transform, config.reduce_num, dev_ctx, stream);
+    return;
+  }
 #endif
 
   auto reducer = ReduceOp<MPType>();
