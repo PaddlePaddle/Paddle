@@ -160,6 +160,8 @@ class TestCrossAPI(unittest.TestCase):
         )
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
         # case 2:
         with paddle.static.program_guard(main, startup):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype="float32")
