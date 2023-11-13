@@ -28,14 +28,14 @@ void LapackSvd(
   char jobz = full ? 'A' : 'S';
   int mx = std::max(rows, cols);
   int mn = std::min(rows, cols);
-  T* a = const_cast<T*>(X);
+  T* a = const_cast<T*>(X);  // NOLINT
   int lda = rows;
   int ldu = rows;
   int ldvt = full ? cols : mn;
   int lwork = full ? (4 * mn * mn + 6 * mn + mx) : (4 * mn * mn + 7 * mn);
   std::vector<T> work(lwork);
   std::vector<int> iwork(8 * mn);
-  int info;
+  int info = 0;
   phi::funcs::lapackSvd<T>(jobz,
                            rows,
                            cols,

@@ -50,6 +50,7 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
     "create_py_reader",
     "depend",
     "fetch_v2",
+    "print",
     "send_v2",
     "nop"};
 
@@ -170,10 +171,10 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     std::stringstream ss;
     ss << "The following OPs are unable to static build:\n";
     for (auto& item : invalid_ops) {
-      ss << item.first << " [in_black_list = " << (item.second >> 6 & 1)
-         << ", is_operator_base = " << (item.second >> 5 & 1)
-         << ", is_custom_op = " << (item.second >> 4 & 1)
-         << ", use_mkldnn = " << (item.second >> 3 & 1)
+      ss << item.first << " [in_black_list = " << (item.second >> 5 & 1)
+         << ", is_operator_base = " << (item.second >> 4 & 1)
+         << ", is_custom_op = " << (item.second >> 3 & 1)
+         << ", use_mkldnn = " << (item.second >> 2 & 1)
          << ", sub_block_can_not_static_build = " << (item.second >> 1 & 1)
          << "]\n";
     }
@@ -330,7 +331,7 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
 
   // set place
   if (tensor->initialized()) {  // avoid overwriting valid data
-    platform::DeviceContext* dev_ctx_for_copy;
+    platform::DeviceContext* dev_ctx_for_copy = nullptr;
     if (place.GetType() != AllocationType::CPU) {
       dev_ctx_for_copy = platform::DeviceContextPool::Instance().Get(place);
     } else {

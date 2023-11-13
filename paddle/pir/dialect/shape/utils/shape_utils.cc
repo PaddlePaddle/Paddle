@@ -25,7 +25,12 @@ bool ShapeAnalysis::IsSameNumElements(Value lhs, Value rhs) {
   if (!lhs_type || !rhs_type || !lhs_type.HasRank() || !rhs_type.HasRank())
     return false;
 
-  return IsProductEqual(lhs, 0, lhs_type.GetRank(), rhs, 0, rhs_type.GetRank());
+  return IsProductEqual(lhs,
+                        0,
+                        static_cast<int>(lhs_type.GetRank()),
+                        rhs,
+                        0,
+                        static_cast<int>(rhs_type.GetRank()));
 }
 
 bool ShapeAnalysis::IsProductEqual(
@@ -45,16 +50,16 @@ ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m)
     : m_(m), mgr_(m) {
   mgr_.Load();
   for (auto op : *(m_.block())) {
-    auto tie_shape_op = op->dyn_cast<dialect::TieShapeOp>();
+    auto tie_shape_op = op->dyn_cast<shape::TieShapeOp>();
     if (!tie_shape_op) continue;
-    Value result = tie_shape_op.value();
+    Value result = tie_shape_op.input();
     auto& symbols = value_to_sym_dims_[result];
     auto attrs =
         tie_shape_op
-            .attribute<ArrayAttribute>(SymbolicDim::GetSymbolicDimAttrName())
+            .attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName())
             .AsVector();
     for (const auto& attr : attrs) {
-      auto sym_op = mgr_.symbolTable().Lookup<SymbolicDim>(
+      auto sym_op = mgr_.symbolTable().Lookup<SymbolicDimOp>(
           attr.dyn_cast<StrAttribute>().AsString());
       if (!sym_op) continue;
       symbols.push_back(sym_op);
@@ -85,8 +90,8 @@ bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
       lhs_it->second.size() != rhs_it->second.size())
     return false;
 
-  std::vector<SymbolicDim> lhs_syms;
-  std::vector<SymbolicDim> rhs_syms;
+  std::vector<SymbolicDimOp> lhs_syms;
+  std::vector<SymbolicDimOp> rhs_syms;
   for (auto sym : lhs_it->second) {
     lhs_syms.push_back(mgr_.GetRootSymbolicDim(sym));
   }

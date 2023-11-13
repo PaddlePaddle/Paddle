@@ -17,8 +17,9 @@
 namespace paddle {
 namespace dialect {
 
-OpYamlInfoParser::OpYamlInfoParser(const OpInfoTuple& op_info_tuple)
-    : op_info_tuple_(op_info_tuple) {
+OpYamlInfoParser::OpYamlInfoParser(const OpInfoTuple& op_info_tuple,
+                                   bool is_legacy_op)
+    : op_info_tuple_(op_info_tuple), is_legacy_op_(is_legacy_op) {
   parse();
 }
 
@@ -210,7 +211,9 @@ void OpYamlInfoParser::parse() {
   }
 
   for (auto& name : runtime_info.kernel_param) {
-    if (input_name2id_.count(name) && !input_info_[name].is_mutable_attribute) {
+    if ((input_name2id_.count(name) &&
+         (!input_info_[name].is_mutable_attribute)) ||
+        (is_legacy_op_ && input_info_[name].is_mutable_attribute)) {
       kernel_fn_tensor_params_.push_back(name);
     } else {
       kernel_fn_attr_params_.push_back(name);
@@ -220,6 +223,18 @@ void OpYamlInfoParser::parse() {
 
 const std::string& OpYamlInfoParser::GetOriginOpName() const {
   return std::get<4>(op_info_tuple_);
+}
+
+int OpYamlInfoParser::GetTensorParamIndexByArgsName(
+    const std::string& args_name) const {
+  const auto& iter = std::find(kernel_fn_tensor_params_.begin(),
+                               kernel_fn_tensor_params_.end(),
+                               args_name);
+  if (iter != kernel_fn_tensor_params_.end()) {
+    return std::distance(kernel_fn_tensor_params_.begin(), iter);
+  } else {
+    return -1;
+  }
 }
 
 }  // namespace dialect

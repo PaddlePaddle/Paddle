@@ -59,7 +59,7 @@ class TestMultinomialOp(OpTest):
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output, check_new_ir=True)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def sample_output(self, out):
         return sample_output_one_dimension(out, 4)
@@ -122,7 +122,7 @@ class TestMultinomialFP16Op(OpTest):
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output, check_new_ir=True)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def sample_output(self, out):
         return sample_output_one_dimension(out, 4)
@@ -178,6 +178,7 @@ class TestMultinomialBF16OP(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "multinomial"
+        self.python_api = paddle.multinomial
         self.dtype = np.uint16
         self.init_data()
         self.inputs = {"X": convert_float_to_uint16(self.input_np)}
@@ -190,7 +191,9 @@ class TestMultinomialBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place_customized(self.verify_output, place)
+        self.check_output_with_place_customized(
+            self.verify_output, place, check_pir=True
+        )
 
     def sample_output(self, out):
         return sample_output_one_dimension(out, 4)

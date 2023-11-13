@@ -18,10 +18,8 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/pass/analysis_manager.h"
-#include "paddle/pir/pass/pass_registry.h"
 
 namespace pir {
 
@@ -85,7 +83,7 @@ class IR_API Pass {
  protected:
   virtual void Run(Operation* op) = 0;
 
-  virtual inline bool CanApplyOn(Operation* op) const;
+  virtual bool CanApplyOn(Operation* op) const;
 
   virtual bool Initialize(IrContext* context) { return true; }
 

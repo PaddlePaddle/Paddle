@@ -86,7 +86,7 @@
   kernel :
     func : batch_norm_double_grad
     data_type : x
-  optional : out_mean, out_variance, grad_x_grad, grad_scale_grad, grad_bias_grad
+  optional : scale, out_mean, out_variance, grad_x_grad, grad_scale_grad, grad_bias_grad
   inplace : (grad_out -> grad_out_grad)
 
 - backward_op : batch_norm_grad
@@ -99,7 +99,7 @@
   kernel :
     func : batch_norm_grad
     data_type : out_grad
-  optional : mean_out, variance_out, reserve_space
+  optional : scale, bias, mean_out, variance_out, reserve_space
   composite: batch_norm_grad(x, scale, bias, mean_out, variance_out, saved_mean, saved_variance, reserve_space, out_grad, momentum, epsilon, data_layout, is_test, use_global_stats, trainable_statistics)
   backward : batch_norm_double_grad
 
@@ -193,6 +193,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   kernel :
     func : divide_grad
   composite : divide_grad(x, y, out, out_grad, axis, x_grad, y_grad)
@@ -226,6 +227,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param: [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   composite : elementwise_pow_grad(x, y, out_grad, x_grad, y_grad)
   kernel :
     func : elementwise_pow_grad
@@ -246,8 +248,8 @@
   invoke : zeros_like(out_grad)
 
 - backward_op : frobenius_norm_grad
-  forward : frobenius_norm(Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] axis,  bool keep_dim,  bool reduce_all)
+  forward : frobenius_norm(Tensor x, IntArray axis,  bool keep_dim,  bool reduce_all) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis,  bool keep_dim,  bool reduce_all)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -363,9 +365,10 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param: [x, y]
+    spmd_rule: ElementwiseBinaryGradInferSpmd
   kernel :
     func : maximum_grad
-  composite : maximum_grad(x, y, out_grad, axis, x_grad, y_grad)
+  composite : maximum_grad(x, y, out_grad, x_grad, y_grad)
 
 - backward_op : mean_double_grad
   forward: mean_grad (Tensor x, Tensor grad_out, IntArray axis={},  bool keepdim=false, bool reduce_all = false) -> Tensor(grad_x)
@@ -380,6 +383,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : ReductionGradInferSpmd
   kernel :
     func : mean_grad
   backward : mean_double_grad
@@ -407,8 +411,8 @@
   composite : minimum_grad(x, y, out_grad, axis, x_grad, y_grad)
 
 - backward_op : mish_grad
-  forward : mish (Tensor x, float threshold) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float threshold)
+  forward : mish (Tensor x, float lambda) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float lambda)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -438,6 +442,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   kernel :
     func : multiply_grad
   composite: multiply_grad(x, y, out_grad, axis, x_grad, y_grad)
@@ -702,6 +707,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ReductionGradInferSpmd
   kernel :
     func : sum_grad
   composite : sum_grad(x, out_grad, axis, keepdim, reduce_all, x_grad)
@@ -747,7 +753,7 @@
   kernel :
     func : tile_grad
   no_need_buffer : x
-  composite : tile_grad(x, outgrad, repeat_times, x_grad)
+  composite : tile_grad(x, out_grad, repeat_times, x_grad)
   backward : tile_double_grad
 
 - backward_op : trans_layout_grad

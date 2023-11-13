@@ -21,7 +21,11 @@ from functools import lru_cache
 
 import numpy as np
 
+from paddle import pir
+
 from ..pir import OpResult
+from ..pir import Program as PirProgram
+from ..pir import Value, translate_to_pir
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
@@ -58,11 +62,11 @@ def global_scope():
     Examples:
         .. code-block:: python
 
-          import paddle
-          import numpy
+            >>> import paddle
+            >>> import numpy
 
-          paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
-          numpy.array(paddle.static.global_scope().find_var("data").get_tensor())
+            >>> paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
+            >>> numpy.array(paddle.static.global_scope().find_var("data").get_tensor())
     """
     return g_scope
 
@@ -98,14 +102,16 @@ def scope_guard(scope):
 
         .. code-block:: python
 
-            import paddle
-            import numpy
-            paddle.enable_static()
+            >>> import paddle
+            >>> import numpy
+            >>> paddle.enable_static()
 
-            new_scope = paddle.static.Scope()
-            with paddle.static.scope_guard(new_scope):
-                 paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
-            numpy.array(new_scope.find_var("data").get_tensor())
+            >>> new_scope = paddle.static.Scope()
+            >>> with paddle.static.scope_guard(new_scope):
+            ...         paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
+            >>> numpy.array(new_scope.find_var("data").get_tensor())
+            array([[1., 1.],
+                   [1., 1.]])
     """
 
     ex = _switch_scope(scope)
@@ -123,14 +129,14 @@ def as_numpy(tensor, copy=False):
     Examples:
         .. code-block:: python
 
-          import paddle.base as base
-          import numpy
+            >>> import paddle.base as base
+            >>> import numpy
 
-          new_scope = base.Scope()
-          with base.scope_guard(new_scope):
-              base.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), base.CPUPlace())
-          tensor = new_scope.find_var("data").get_tensor()
-          base.executor.as_numpy(tensor) # or numpy.array(new_scope.find_var("data").get_tensor())
+            >>> new_scope = base.Scope()
+            >>> with base.scope_guard(new_scope):
+            ...     base.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), base.CPUPlace())
+            >>> tensor = new_scope.find_var("data").get_tensor()
+            >>> base.executor.as_numpy(tensor) # or numpy.array(new_scope.find_var("data").get_tensor())
 
     Args:
        tensor(Variable): a instance of Tensor
@@ -511,7 +517,7 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
         with paddle.static.program_guard(program):
             for i, fetch_input in enumerate(fetch_list):
                 assert isinstance(
-                    fetch_input, OpResult
+                    fetch_input, (OpResult, Value)
                 ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
                 paddle._pir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
 
@@ -592,6 +598,10 @@ def _to_name_str(var):
             return str(var)
         elif isinstance(var, Operator):
             return str(id(var))
+        elif isinstance(var, OpResult):
+            return str(var)
+        elif isinstance(var, Value):
+            return str(var)
         else:
             raise TypeError(str(var) + " should be Variable, Operator or str")
 
@@ -626,11 +636,18 @@ def _prepare_fleet_executor():
 
 
 def _get_strong_program_cache_key_for_new_exe(program, scope, feed, fetch_list):
-    return (
-        program.desc.cached_hash_str()
-        + str(scope.raw_address())
-        + _get_program_cache_key(feed, fetch_list)
-    )
+    if isinstance(program, PirProgram):
+        return (
+            str(program)
+            + str(scope.raw_address())
+            + _get_program_cache_key(feed, fetch_list)
+        )
+    else:
+        return (
+            program.desc.cached_hash_str()
+            + str(scope.raw_address())
+            + _get_program_cache_key(feed, fetch_list)
+        )
 
 
 def _get_strong_program_cache_key(program, feed, fetch_list):
@@ -670,12 +687,15 @@ def _as_lodtensor(data, place, dtype=None):
     For higher dimensional sequence data, please use LoDTensor directly.
 
     Examples:
-        >>> import paddle.base as base
-        >>> place = base.CPUPlace()
-        >>> exe = base.executor(place)
-        >>> data = np.array(size=(100, 200, 300))
-        >>> np_outs = map(lambda x: base.executor._as_lodtensor(x, place), data)
-        >>>     ...
+
+        .. code-block:: python
+
+            >>> import numpy as np
+            >>> import paddle.base as base
+            >>> place = base.CPUPlace()
+            >>> exe = base.Executor(place)
+            >>> data = np.array((100, 200, 300))
+            >>> np_outs = map(lambda x: base.executor._as_lodtensor(x, place), data)
 
     Args:
         data(numpy.ndarray|list|tuple|scalar): a instance of array, scalar, list or tuple
@@ -739,6 +759,11 @@ def _can_use_interpreter_core(program, place):
     return True
 
 
+@lru_cache()
+def _warning_once(msg):
+    logging.warning(msg)
+
+
 class FetchHandler:
     def __init__(self, var_dict=None, period_secs=60):
         assert var_dict is not None
@@ -788,7 +813,11 @@ class _StandaloneExecutor:
         tensors = self._new_exe.run(feed_names)._move_to_list()
         if return_numpy:
             tensors = as_numpy(tensors, copy=True)
-            return _merge_tensors(tensors, self._plan.micro_batch_num())
+            if not get_flags("FLAGS_enable_pir_in_executor")[
+                'FLAGS_enable_pir_in_executor'
+            ]:
+                return _merge_tensors(tensors, self._plan.micro_batch_num())
+            return tensors
         else:
             if self._plan.micro_batch_num() > 1:
                 raise RuntimeError(
@@ -861,6 +890,9 @@ class _ExecutorCache:
         # the Executor instance deleted
         self._get_cached_program_and_executor = lru_cache(maxsize=8)(
             self._get_program_and_executor
+        )
+        self._get_cached_program_and_executor_pir_mode = lru_cache(maxsize=8)(
+            self._get_pir_program_and_executor
         )
 
     def clear(self):
@@ -966,7 +998,9 @@ class _ExecutorCache:
             else False
         )
 
-        if os.getenv("FLAGS_enable_new_ir_in_executor"):
+        if get_flags('FLAGS_enable_pir_in_executor')[
+            'FLAGS_enable_pir_in_executor'
+        ]:
             # todo(phlrain), skip inplace add addto pass in new IR
             enable_inplace = False
             enable_addto = False
@@ -994,8 +1028,27 @@ class _ExecutorCache:
             )
         else:
             default_job = core.Job("default")
-            type_to_program = {"default": new_program.desc}
+            if get_flags("FLAGS_enable_pir_in_executor")[
+                'FLAGS_enable_pir_in_executor'
+            ]:
+                type_to_program = {
+                    "default": translate_to_pir(new_program.desc)
+                }
+            else:
+                type_to_program = {"default": new_program.desc}
             plan = core.Plan([default_job], type_to_program)
+
+        if (
+            new_program._pass_opt
+            and "pass_list" in new_program._pass_opt
+            and len(new_program._pass_opt['pass_list']) > 0
+        ):
+            pm = pir.PassManager()
+            for p in new_program._pass_opt['pass_list']:
+                pm.add_pass(p)
+            for job_type in plan.job_types():
+                ir_program = plan.ir_program(job_type)
+                pm.run(ir_program)
 
         new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
@@ -1010,6 +1063,27 @@ class _ExecutorCache:
         place,
         scope,
     ):
+        return self._get_cached_program_and_executor_pir_mode(
+            self._CachedData(
+                program,
+                feed,
+                fetch_list,
+                feed_var_name,
+                fetch_var_name,
+                place,
+                scope,
+            )
+        )
+
+    def _get_pir_program_and_executor(self, cached_data):
+        program = cached_data.program
+        feed = cached_data.feed
+        fetch_list = cached_data.fetch_list
+        feed_var_name = cached_data.feed_var_name
+        fetch_var_name = cached_data.fetch_var_name
+        place = cached_data.place
+        scope = cached_data.scope
+
         _add_pir_fetch_ops(
             program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
         )
@@ -1044,44 +1118,45 @@ class Executor:
         Executor
 
     Examples:
+
         .. code-block:: python
 
-            import paddle
-            import numpy
-            import os
+            >>> import paddle
+            >>> import numpy
+            >>> import os
 
-            # Executor is only used in static graph mode
-            paddle.enable_static()
+            >>> # Executor is only used in static graph mode
+            >>> paddle.enable_static()
 
-            # Set place explicitly.
-            # use_cuda = True
-            # place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
-            # exe = paddle.static.Executor(place)
+            >>> # Set place explicitly.
+            >>> # use_cuda = True
+            >>> # place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            >>> # exe = paddle.static.Executor(place)
 
-            # If you don't set place, PaddlePaddle sets the default device.
-            exe = paddle.static.Executor()
+            >>> # If you don't set place, PaddlePaddle sets the default device.
+            >>> exe = paddle.static.Executor()
 
-            train_program = paddle.static.Program()
-            startup_program = paddle.static.Program()
-            with paddle.static.program_guard(train_program, startup_program):
-                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
-                hidden = paddle.static.nn.fc(data, 10)
-                loss = paddle.mean(hidden)
-                paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
+            >>> train_program = paddle.static.Program()
+            >>> startup_program = paddle.static.Program()
+            >>> with paddle.static.program_guard(train_program, startup_program):
+            ...     data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+            ...     hidden = paddle.static.nn.fc(data, 10)
+            ...     loss = paddle.mean(hidden)
+            ...     paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
+            ...
+            >>> # Run the startup program once and only once.
+            >>> # Not need to optimize/compile the startup program.
+            >>> exe.run(startup_program)
 
-            # Run the startup program once and only once.
-            # Not need to optimize/compile the startup program.
-            exe.run(startup_program)
+            >>> # Run the main program directly without compile.
+            >>> x = numpy.random.random(size=(10, 1)).astype('float32')
+            >>> loss_data, = exe.run(train_program, feed={"X": x}, fetch_list=[loss.name])
 
-            # Run the main program directly without compile.
-            x = numpy.random.random(size=(10, 1)).astype('float32')
-            loss_data, = exe.run(train_program, feed={"X": x}, fetch_list=[loss.name])
-
-            # Or, compiled the program and run. See `CompiledProgram`
-            # for more details.
-            compiled_prog = paddle.static.CompiledProgram(
-                train_program)
-            loss_data, = exe.run(compiled_prog, feed={"X": x}, fetch_list=[loss.name])
+            >>> # Or, compiled the program and run. See `CompiledProgram`
+            >>> # for more details.
+            >>> compiled_prog = paddle.static.CompiledProgram(
+            ...     train_program)
+            >>> loss_data, = exe.run(compiled_prog, feed={"X": x}, fetch_list=[loss.name])
 
     """
 
@@ -1171,10 +1246,8 @@ class Executor:
     def _get_micro_scopes_cache(self, program_cache_key):
         return self.micro_scope_cache.get(program_cache_key, None)
 
-    # just for testing, will be removed later
-    @lru_cache()
     def _log_force_set_program_cache(self, use_program_cache):
-        logging.warning(
+        _warning_once(
             f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE"
         )
 
@@ -1193,7 +1266,7 @@ class Executor:
                         )
                     check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
-                pir_flag_name = 'FLAGS_enable_new_ir_in_executor'
+                pir_flag_name = 'FLAGS_enable_pir_in_executor'
                 if get_flags(pir_flag_name)[pir_flag_name]:
                     core.set_feed_variable(
                         scope, cur_feed, feed_target_name, idx
@@ -1440,14 +1513,15 @@ class Executor:
             None
 
         Examples:
+
             .. code-block:: python
 
-              import paddle
+                >>> import paddle
 
-              cpu = paddle.CPUPlace()
-              exe = paddle.static.Executor(cpu)
-              # execute training or testing
-              exe.close()
+                >>> cpu = paddle.CPUPlace()
+                >>> exe = paddle.static.Executor(cpu)
+                >>> # execute training or testing
+                >>> exe.close()
         """
         if not self._closed:
             self._closed = True
@@ -1519,78 +1593,82 @@ class Executor:
             List: The fetched result list.
 
         Examples:
+
             .. code-block:: python
                 :name: code-example-1
 
-                import paddle
-                import numpy
+                >>> import paddle
+                >>> import numpy
 
-                # First create the Executor.
-                paddle.enable_static()
-                place = paddle.CPUPlace()  # paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
+                >>> # First create the Executor.
+                >>> paddle.enable_static()
+                >>> place = paddle.CPUPlace()  # paddle.CUDAPlace(0)
+                >>> exe = paddle.static.Executor(place)
 
-                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
-                hidden = paddle.static.nn.fc(data, 10)
-                loss = paddle.mean(hidden)
-                adam = paddle.optimizer.Adam()
-                adam.minimize(loss)
-                i = paddle.zeros(shape=[1], dtype='int64')
-                array = paddle.tensor.array_write(x=loss, i=i)
+                >>> data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+                >>> hidden = paddle.static.nn.fc(data, 10)
+                >>> loss = paddle.mean(hidden)
+                >>> adam = paddle.optimizer.Adam()
+                >>> adam.minimize(loss)
+                >>> i = paddle.zeros(shape=[1], dtype='int64')
+                >>> array = paddle.tensor.array_write(x=loss, i=i)
 
-                # Run the startup program once and only once.
-                exe.run(paddle.static.default_startup_program())
+                >>> # Run the startup program once and only once.
+                >>> exe.run(paddle.static.default_startup_program())
 
-                x = numpy.random.random(size=(10, 1)).astype('float32')
-                loss_val, array_val = exe.run(feed={'X': x},
-                                              fetch_list=[loss.name, array.name])
-                print(array_val)
-                # [array([0.02153828], dtype=float32)]
+                >>> x = numpy.random.random(size=(10, 1)).astype('float32')
+                >>> loss_val, array_val = exe.run(feed={'X': x},
+                ...                                 fetch_list=[loss.name, array.name])
+                >>> print(array_val)
+                >>> # doctest: +SKIP("Random output")
+                [array(0.16870381, dtype=float32)]
+                >>> # doctest: -SKIP
 
             .. code-block:: python
                 :name: code-example-2
 
-                # required: gpu
-                import paddle
-                import numpy as np
+                >>> # doctest: +REQUIRES(env:GPU)
+                >>> import paddle
+                >>> import numpy as np
 
-                # First create the Executor.
-                paddle.enable_static()
-                place = paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
+                >>> # First create the Executor.
+                >>> paddle.enable_static()
+                >>> place = paddle.CUDAPlace(0)
+                >>> exe = paddle.static.Executor(place)
 
-                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
-                class_dim = 2
-                prediction = paddle.static.nn.fc(data, class_dim)
-                loss = paddle.mean(prediction)
-                adam = paddle.optimizer.Adam()
-                adam.minimize(loss)
+                >>> data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+                >>> class_dim = 2
+                >>> prediction = paddle.static.nn.fc(data, class_dim)
+                >>> loss = paddle.mean(prediction)
+                >>> adam = paddle.optimizer.Adam()
+                >>> adam.minimize(loss)
 
-                # Run the startup program once and only once.
-                exe.run(paddle.static.default_startup_program())
-                build_strategy = paddle.static.BuildStrategy()
-                binary = paddle.static.CompiledProgram(
-                    paddle.static.default_main_program(), build_strategy=build_strategy)
-                batch_size = 6
-                x = np.random.random(size=(batch_size, 1)).astype('float32')
+                >>> # Run the startup program once and only once.
+                >>> exe.run(paddle.static.default_startup_program())
+                >>> build_strategy = paddle.static.BuildStrategy()
+                >>> binary = paddle.static.CompiledProgram(
+                ...     paddle.static.default_main_program(), build_strategy=build_strategy)
+                >>> batch_size = 6
+                >>> x = np.random.random(size=(batch_size, 1)).astype('float32')
 
-                prediction, = exe.run(binary,
-                                      feed={'X': x},
-                                    fetch_list=[prediction.name])
-                # If the user uses two GPU cards to run this python code, the printed result will be
-                # (6, class_dim). The first dimension value of the printed result is the batch_size.
-                print("The prediction shape: {}".format(
-                    np.array(prediction).shape))
-                print(prediction)
+                >>> prediction, = exe.run(binary,
+                ...                         feed={'X': x},
+                ...                     fetch_list=[prediction.name])
+                >>> # If the user uses two GPU cards to run this python code, the printed result will be
+                >>> # (6, class_dim). The first dimension value of the printed result is the batch_size.
+                >>> print("The prediction shape: {}".format(
+                ...     np.array(prediction).shape))
+                The prediction shape: (6, 2)
 
-                # Out:
-                # The prediction shape: (6, 2)
-                # [[-0.37789783 -0.19921964]
-                #  [-0.3577645  -0.18863106]
-                #  [-0.24274671 -0.12814042]
-                #  [-0.24635398 -0.13003758]
-                #  [-0.49232286 -0.25939852]
-                #  [-0.44514108 -0.2345845 ]]
+                >>> print(prediction)
+                >>> # doctest: +SKIP("Random output")
+                [[-0.37789783 -0.19921964]
+                 [-0.3577645  -0.18863106]
+                 [-0.24274671 -0.12814042]
+                 [-0.24635398 -0.13003758]
+                 [-0.49232286 -0.25939852]
+                 [-0.44514108 -0.2345845 ]]
+                >>> # doctest: -SKIP
 
         """
         # Temporary FLAGS, just for testing the performance of program cache
@@ -1684,7 +1762,7 @@ class Executor:
         if isinstance(program, Program) and program._heter_pipeline_opt:
             # print("program._heter_pipeline_opt: {}".format(
             #    program._heter_pipeline_opt))
-            ## change default executor
+            # change default executor
             heter_place = program._heter_pipeline_opt["heter_place"]
             heter_place = framework._get_paddle_place(heter_place)
             p = core.Place()
@@ -1841,12 +1919,12 @@ class Executor:
                 varobj = global_block.vars[varname]
 
                 if (
-                    vardesc.persistable() == False
+                    vardesc.persistable() is False
                     and vardesc.type() == core.VarDesc.VarType.LOD_TENSOR
-                    and vardesc.need_check_feed() == True
-                    and varobj.stop_gradient == True
-                    and varobj.is_data == True
-                    and varobj.belong_to_optimizer == False
+                    and vardesc.need_check_feed() is True
+                    and varobj.stop_gradient is True
+                    and varobj.is_data is True
+                    and varobj.belong_to_optimizer is False
                     and varname not in feed
                 ):
                     raise ValueError('Need feed data for variable %s' % varname)
@@ -1929,7 +2007,9 @@ class Executor:
         return exe.run(feed)
 
     def _check_fetch_list(self, fetch_list):
-        is_fetch_var = lambda var: isinstance(var, (Variable, str, OpResult))
+        is_fetch_var = lambda var: isinstance(
+            var, (Variable, str, OpResult, Value)
+        )
         is_tuple_list = lambda var: isinstance(var, (tuple, list))
 
         if fetch_list is None:
@@ -1955,7 +2035,7 @@ class Executor:
                     res.append(var)
             else:
                 raise TypeError(
-                    "Require fetch_list[{}] 's type shall be one of (Variable, str), but received {}.".format(
+                    "Require fetch_list[{}] 's type shall be one of (OpResult, str), but received {}.".format(
                         i, type(var).__name__
                     )
                 )
@@ -2132,7 +2212,7 @@ class Executor:
     ):
         is_heter = 0
         use_ps_gpu = 0
-        if not program._fleet_opt is None:
+        if program._fleet_opt is not None:
             if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
                 is_heter = 1
             if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
@@ -2258,7 +2338,7 @@ class Executor:
                     raise RuntimeError(
                         "dataset is need and should be initialized"
                     )
-            ## change default executor
+            # change default executor
             heter_place = framework._get_paddle_place(heter_place)
             p = core.Place()
             p.set_place(heter_place)
@@ -2711,7 +2791,7 @@ class Executor:
                         if return_numpy:
                             tensor = as_numpy(tensor)
                         else:
-                            tensor = [t for t in tensor]
+                            tensor = list(tensor)
 
                     if tensor:
                         scope_result_list.append(tensor)
@@ -2909,23 +2989,22 @@ class Executor:
 
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                paddle.enable_static()
-                place = paddle.CPUPlace()  # you can set place = paddle.CUDAPlace(0) to use gpu
-                exe = paddle.static.Executor(place)
-                x = paddle.static.data(name="x", shape=[None, 10, 10], dtype="int64")
-                y = paddle.static.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
-                dataset = paddle.base.DatasetFactory().create_dataset()
-                dataset.set_use_var([x, y])
-                dataset.set_thread(1)
-                # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-                filelist = []
-                dataset.set_filelist(filelist)
-                exe.run(paddle.static.default_startup_program())
-                exe.infer_from_dataset(program=paddle.static.default_main_program(),
-                                       dataset=dataset)
-
+                >>> paddle.enable_static()
+                >>> place = paddle.CPUPlace()  # you can set place = paddle.CUDAPlace(0) to use gpu
+                >>> exe = paddle.static.Executor(place)
+                >>> x = paddle.static.data(name="x", shape=[None, 10, 10], dtype="int64")
+                >>> y = paddle.static.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
+                >>> dataset = paddle.base.DatasetFactory().create_dataset()
+                >>> dataset.set_use_var([x, y])
+                >>> dataset.set_thread(1)
+                >>> # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+                >>> filelist = []
+                >>> dataset.set_filelist(filelist)
+                >>> exe.run(paddle.static.default_startup_program())
+                >>> exe.infer_from_dataset(program=paddle.static.default_main_program(),
+                ...                         dataset=dataset)
         """
         return self._run_from_dataset(
             program,
@@ -3032,23 +3111,22 @@ class Executor:
 
             .. code-block:: python
 
-              import paddle
+                >>> import paddle
 
-              paddle.enable_static()
-              place = paddle.CPUPlace() # you can set place = paddle.CUDAPlace(0) to use gpu
-              exe = paddle.static.Executor(place)
-              x = paddle.static.data(name="x", shape=[None, 10, 10], dtype="int64")
-              y = paddle.static.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
-              dataset = paddle.base.DatasetFactory().create_dataset()
-              dataset.set_use_var([x, y])
-              dataset.set_thread(1)
-              # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-              filelist = []
-              dataset.set_filelist(filelist)
-              exe.run(paddle.static.default_startup_program())
-              exe.train_from_dataset(program=paddle.static.default_main_program(),
-                                     dataset=dataset)
-
+                >>> paddle.enable_static()
+                >>> place = paddle.CPUPlace() # you can set place = paddle.CUDAPlace(0) to use gpu
+                >>> exe = paddle.static.Executor(place)
+                >>> x = paddle.static.data(name="x", shape=[None, 10, 10], dtype="int64")
+                >>> y = paddle.static.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
+                >>> dataset = paddle.base.DatasetFactory().create_dataset()
+                >>> dataset.set_use_var([x, y])
+                >>> dataset.set_thread(1)
+                >>> # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+                >>> filelist = []
+                >>> dataset.set_filelist(filelist)
+                >>> exe.run(paddle.static.default_startup_program())
+                >>> exe.train_from_dataset(program=paddle.static.default_main_program(),
+                ...                         dataset=dataset)
         """
         return self._run_from_dataset(
             program,

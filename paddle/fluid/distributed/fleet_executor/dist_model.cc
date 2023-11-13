@@ -47,7 +47,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                                  const platform::Place &place) {
   VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
   framework::DDim dims = phi::make_ddim(input_data.shape);
-  void *input_tensor_ptr;
+  void *input_tensor_ptr = nullptr;
   if (input_data.dtype == DistModelDataType::INT64) {
     input_tensor_ptr = input_tensor->mutable_data<int64_t>(dims, place);
   } else if (input_data.dtype == DistModelDataType::FLOAT32) {
@@ -295,7 +295,7 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
      << ". The ring id is: " << ring_id << ". The group has: " << nranks
      << " ranks. Current rank in the group is: " << rank
      << ". The endpoint is: " << endpoint << ". Peer endpoints are: ";
-  for (auto ep : peer_endpoints) {
+  for (const auto &ep : peer_endpoints) {
     ss << ep << ", ";
   }
   VLOG(3) << ss.str();

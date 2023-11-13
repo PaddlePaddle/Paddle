@@ -38,10 +38,7 @@ from paddle.distributed.auto_parallel.static.process_group import (
     new_process_group,
 )
 from paddle.distributed.auto_parallel.static.reshard import Resharder
-from paddle.distributed.auto_parallel.static.utils import (
-    debug_program,
-    set_grad_var_shape,
-)
+from paddle.distributed.auto_parallel.static.utils import debug_program
 from paddle.distributed.passes import PassContext, new_pass
 from paddle.static import append_backward, program_guard
 from paddle.utils import unique_name
@@ -353,8 +350,6 @@ class OptimizationTuner:
                 )
         completer.complete_update_annotation(dist_main_prog)
 
-        # Do reshard process
-        set_grad_var_shape(dist_main_prog, dist_context)
         resharder = Resharder(
             dist_main_prog,
             dist_startup_prog,

@@ -777,28 +777,65 @@ class SimpleRNNCell(RNNCellBase):
                 )
             )
         std = 1.0 / math.sqrt(hidden_size)
-        self.weight_ih = self.create_parameter(
-            (hidden_size, input_size),
-            weight_ih_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.weight_hh = self.create_parameter(
-            (hidden_size, hidden_size),
-            weight_hh_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_ih = self.create_parameter(
-            (hidden_size,),
-            bias_ih_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_hh = self.create_parameter(
-            (hidden_size,),
-            bias_hh_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
+        if weight_ih_attr is not False:
+            self.weight_ih = self.create_parameter(
+                (hidden_size, input_size),
+                weight_ih_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_ih = self.create_parameter(
+                (hidden_size, input_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_ih.stop_gradient = True
+
+        if weight_hh_attr is not False:
+            self.weight_hh = self.create_parameter(
+                (hidden_size, hidden_size),
+                weight_hh_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_hh = self.create_parameter(
+                (hidden_size, hidden_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_hh.stop_gradient = True
+
+        if bias_ih_attr is not False:
+            self.bias_ih = self.create_parameter(
+                (hidden_size,),
+                bias_ih_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_ih = self.create_parameter(
+                (hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_ih.stop_gradient = True
+
+        if bias_hh_attr is not False:
+            self.bias_hh = self.create_parameter(
+                (hidden_size,),
+                bias_hh_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_hh = self.create_parameter(
+                (hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_hh.stop_gradient = True
 
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -935,28 +972,62 @@ class LSTMCell(RNNCellBase):
                 )
             )
         std = 1.0 / math.sqrt(hidden_size)
-        self.weight_ih = self.create_parameter(
-            (4 * hidden_size, input_size),
-            weight_ih_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.weight_hh = self.create_parameter(
-            (4 * hidden_size, hidden_size),
-            weight_hh_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_ih = self.create_parameter(
-            (4 * hidden_size,),
-            bias_ih_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_hh = self.create_parameter(
-            (4 * hidden_size,),
-            bias_hh_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
+        if weight_ih_attr is not False:
+            self.weight_ih = self.create_parameter(
+                (4 * hidden_size, input_size),
+                weight_ih_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_ih = self.create_parameter(
+                (4 * hidden_size, input_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_ih.stop_gradient = True
+        if weight_hh_attr is not False:
+            self.weight_hh = self.create_parameter(
+                (4 * hidden_size, hidden_size),
+                weight_hh_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_hh = self.create_parameter(
+                (4 * hidden_size, hidden_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_hh.stop_gradient = True
+        if bias_ih_attr is not False:
+            self.bias_ih = self.create_parameter(
+                (4 * hidden_size,),
+                bias_ih_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_ih = self.create_parameter(
+                (4 * hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_ih.stop_gradient = True
+        if bias_hh_attr is not False:
+            self.bias_hh = self.create_parameter(
+                (4 * hidden_size,),
+                bias_hh_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_hh = self.create_parameter(
+                (4 * hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_hh.stop_gradient = True
 
         self.hidden_size = hidden_size
         self.input_size = input_size
@@ -1094,28 +1165,64 @@ class GRUCell(RNNCellBase):
                 )
             )
         std = 1.0 / math.sqrt(hidden_size)
-        self.weight_ih = self.create_parameter(
-            (3 * hidden_size, input_size),
-            weight_ih_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.weight_hh = self.create_parameter(
-            (3 * hidden_size, hidden_size),
-            weight_hh_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_ih = self.create_parameter(
-            (3 * hidden_size,),
-            bias_ih_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_hh = self.create_parameter(
-            (3 * hidden_size,),
-            bias_hh_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
+        if weight_ih_attr is not False:
+            self.weight_ih = self.create_parameter(
+                (3 * hidden_size, input_size),
+                weight_ih_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_ih = self.create_parameter(
+                (3 * hidden_size, input_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_ih.stop_gradient = True
+        if weight_hh_attr is not False:
+            self.weight_hh = self.create_parameter(
+                (3 * hidden_size, hidden_size),
+                weight_hh_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_hh = self.create_parameter(
+                (3 * hidden_size, hidden_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_hh.stop_gradient = True
+
+        if bias_ih_attr is not False:
+            self.bias_ih = self.create_parameter(
+                (3 * hidden_size,),
+                bias_ih_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_ih = self.create_parameter(
+                (3 * hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_ih.stop_gradient = True
+
+        if bias_hh_attr is not False:
+            self.bias_hh = self.create_parameter(
+                (3 * hidden_size,),
+                bias_hh_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_hh = self.create_parameter(
+                (3 * hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_hh.stop_gradient = True
 
         self.hidden_size = hidden_size
         self.input_size = input_size

@@ -345,9 +345,7 @@ class Partitioner:
                 )
             else:
                 raise NotImplementedError(
-                    "partitioner only support forward and backward, optimize ops, but got {}".format(
-                        str(op)
-                    )
+                    f"partitioner only support forward and backward, optimize ops, but got {str(op)}"
                 )
 
     def _is_valid_annotated_program(self, program):

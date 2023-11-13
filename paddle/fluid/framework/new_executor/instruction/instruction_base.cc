@@ -217,8 +217,11 @@ void InstructionBase::SetOutputs(
 void InstructionBase::InitInputsOutputsIds(
     ::pir::Operation* op, const ValueExecutionInfo& value_exec_info) {
   auto op_attributes = op->attributes();
-  auto op_name =
-      op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  std::string op_name;
+  if (op_attributes.count("op_name ")) {
+    op_name =
+        op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  }
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   for (size_t i = 0; i < op->num_operands(); i++) {
     pir::Value value = op->operand_source(i);
@@ -257,8 +260,7 @@ void InstructionBase::InitInputsOutputsIds(
 
 std::string InstructionBase::DebugStringEx(
     const paddle::framework::Scope* scope,
-    const std::unordered_map<::pir::Value, std::string>& value_2_var_name)
-    const {
+    ValueExecutionInfo* value_exe_info) const {
   std::stringstream ss;
   ss << "Op(" << Name() << "), inputs:{";
 
@@ -268,7 +270,7 @@ std::string InstructionBase::DebugStringEx(
     auto& input = *it;
     bool is_no_need_buffer_var = (!no_need_buffer_vars.empty() &&
                                   no_need_buffer_vars.count(input.first) > 0);
-    auto var_name = value_2_var_name.at(input.first);
+    auto var_name = value_exe_info->GetVarName(input.first);
     ss << var_name;
     if (scope) {
       if (!VarInited(*scope, var_name)) {
@@ -296,7 +298,7 @@ std::string InstructionBase::DebugStringEx(
   ss << "}, outputs:{";
   for (auto it = Outputs().begin(); it != Outputs().end();) {
     auto& output = *it;
-    auto var_name = value_2_var_name.at(output.first);
+    auto var_name = value_exe_info->GetVarName(output.first);
     ss << var_name;
     if (scope) {
       if (!VarInited(*scope, var_name)) {

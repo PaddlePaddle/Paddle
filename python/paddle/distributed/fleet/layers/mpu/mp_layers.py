@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import paddle
 from paddle.autograd import PyLayer
 from paddle.base import core
@@ -20,6 +22,7 @@ from paddle.nn import functional as F
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
 from ...base import topology as tp
+from ...utils.log_util import logger
 from . import mp_ops
 from .random import get_rng_state_tracker
 
@@ -49,7 +52,7 @@ class VocabParallelEmbedding(paddle.nn.Layer):
         num_embeddings(int): One element which indicate the size of the dictionary of embeddings.
         embedding_dim(int): One element which indicate the size of each embedding vector respectively.
         weight_attr(ParamAttr|None): To specify the weight parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_ParamAttr` . In addition,
+            default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` . In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
             The local word vector needs to be transformed into numpy format, and the shape of local word
             vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_paddle_nn_initializer_Assign`
@@ -177,6 +180,9 @@ class VocabParallelEmbedding(paddle.nn.Layer):
         return output
 
 
+_raise_cuda_env_unset_warning = True
+
+
 class InnerOverlapLinear(paddle.autograd.PyLayer):
     @staticmethod
     def forward(
@@ -216,8 +222,17 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
         task = ctx.model_parallel_group.process_group.all_reduce(
             dx, op_type, sync_op=False
         )
-        # TODO(GhostScreaming): remove it in future.
-        tmp = paddle.ones([512])
+        # Using small operation to preempt GPU SMs for all_reduce to achieve overlap.
+        if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
+            global _raise_cuda_env_unset_warning
+            if _raise_cuda_env_unset_warning:
+                logger.warning(
+                    "You set mp_async_allreduce=True, but you forget to set environment "
+                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+                )
+            _raise_cuda_env_unset_warning = False
+            tmp = paddle.ones([512])
 
         if ctx.mp_fused_linear_param_grad_add:
             if not is_fused_linear_param_grad_add_supported():
@@ -263,7 +278,7 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     weight.main_grad,
                     bias.main_grad,
                 ) = paddle._C_ops.fused_linear_param_grad_add(
-                    input,
+                    x,
                     dy,
                     weight.main_grad,
                     bias.main_grad,
@@ -293,9 +308,10 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     task.wait()
                     return dx, dw, dbias
         else:
+            dy = dy.reshape([-1, dy.shape[-1]])
             dw = paddle.matmul(
                 x.reshape([-1, x.shape[-1]]),
-                dy.reshape([-1, dy.shape[-1]]),
+                dy,
                 transpose_x=True,
             )
             if bias is None:
