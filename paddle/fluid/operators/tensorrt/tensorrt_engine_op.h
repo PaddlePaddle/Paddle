@@ -611,40 +611,48 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
-        bool isShapeInferenceIO{false};
-        isShapeInferenceIO = engine->engine()->isShapeBinding(bind_index);
-        std::vector<int> shape_v(t.numel());
-        if (t.dtype() == phi::DataType::INT32) {
-          paddle::memory::Copy(platform::CPUPlace(),
-                               shape_v.data(),
-                               t.place(),
-                               t.data<int32_t>(),
-                               t.numel() * sizeof(int),
-                               nullptr);
-        } else if (t.dtype() == phi::DataType::INT64) {
-          std::string x_t = x + "_cast_to_INT32";
-          if (scope.FindVar(x_t) == nullptr) {
-            const_cast<framework::Scope *>(&scope)->Var(x_t);
-          }
-          auto int32_tensor =
-              scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
-          *int32_tensor = phi::Cast<int64_t>(
-              reinterpret_cast<const phi::GPUContext &>(dev_ctx),
-              t,
-              phi::DataType::INT32);
-          paddle::memory::Copy(platform::CPUPlace(),
-                               shape_v.data(),
-                               int32_tensor->place(),
-                               int32_tensor->data<int32_t>(),
-                               int32_tensor->numel() * sizeof(int),
-                               nullptr);
-        }
-        if (isShapeInferenceIO &&
-            engine->engine()->bindingIsInput(bind_index)) {
-          trt_context->setInputShapeBinding(bind_index, shape_v.data());
+        bool useEngineV3 = !engine->engine()->hasImplicitBatchDimension();
+        if (useEngineV3) {
+          trt_context->setInputShape(
+              x.c_str(), inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
         } else {
           trt_context->setBindingDimensions(
               bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
+        }
+        // If this x is a shape tensor, we need call setInputShapeBinding
+        if (engine->engine()->isShapeBinding(bind_index) &&
+            engine->engine()->bindingIsInput(bind_index)) {
+          std::vector<int> shape_v(t.numel());
+          if (t.dtype() == phi::DataType::INT32) {
+            paddle::memory::Copy(platform::CPUPlace(),
+                                 shape_v.data(),
+                                 t.place(),
+                                 t.data<int32_t>(),
+                                 t.numel() * sizeof(int),
+                                 nullptr);
+          } else if (t.dtype() == phi::DataType::INT64) {
+            std::string x_t = x + "_cast_to_INT32";
+            if (scope.FindVar(x_t) == nullptr) {
+              const_cast<framework::Scope *>(&scope)->Var(x_t);
+            }
+            auto int32_tensor =
+                scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
+            *int32_tensor = phi::Cast<int64_t>(
+                reinterpret_cast<const phi::GPUContext &>(dev_ctx),
+                t,
+                phi::DataType::INT32);
+            paddle::memory::Copy(platform::CPUPlace(),
+                                 shape_v.data(),
+                                 int32_tensor->place(),
+                                 int32_tensor->data<int32_t>(),
+                                 int32_tensor->numel() * sizeof(int),
+                                 nullptr);
+          }
+          if (useEngineV3) {
+            trt_context->setTensorAddress(x.c_str(), shape_v.data());
+          } else {
+            trt_context->setInputShapeBinding(bind_index, shape_v.data());
+          }
         }
 #endif
       }
@@ -720,8 +728,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
           ddim.push_back(dims.d[i]);
         }
       } else {
-#if IS_TRT_VERSION_GE(6000)
+#if IS_TRT_VERSION_GE(6000) && IS_TRT_VERSION_LT(8500)
         auto dims = trt_context->getBindingDimensions(bind_index);
+#else
+        auto x_name = engine->engine()->getBindingName(bind_index);
+        auto dims = trt_context->getTensorShape(x_name);
         int nb_dims = dims.nbDims;
         for (; nb_dims > 0; nb_dims--) {
           // some 'x 1' of shape is normal, no need to remove it

@@ -180,12 +180,23 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
                "entire graph.";
     return cuda_graph_.Launch(stream);
   }
+  for (size_t j = 0; j < buffers->size(); ++j) {
+    bool status =
+        context->setTensorAddress(m_IOTensorNames[j].c_str(), (*buffers)[j]);
+    if (!status) {
+      return false;
+    }
+  }
 
   bool ret;
   if (!with_dynamic_shape()) {
     ret = context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
+#if IS_TRT_VERSION_GE(8500)
+    ret = context->enqueueV3(stream);
+#else
     ret = context->enqueueV2(buffers->data(), stream, nullptr);
+#endif
   }
   return ret;
 }
