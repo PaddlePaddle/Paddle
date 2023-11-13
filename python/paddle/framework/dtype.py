@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..base.core import VarDesc
-from ..base.core import finfo as core_finfo
-from ..base.core import iinfo as core_iinfo
+from ..base.core import VarDesc, finfo as core_finfo, iinfo as core_iinfo
 from ..base.data_feeder import _NUMPY_DTYPE_2_PADDLE_DTYPE
 
 dtype = VarDesc.VarType

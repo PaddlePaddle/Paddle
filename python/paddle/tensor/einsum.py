@@ -27,8 +27,7 @@ from ..base.framework import in_dynamic_or_pir_mode
 from ..base.layer_helper import LayerHelper
 from .linalg import matmul, transpose
 from .manipulation import reshape, squeeze, unsqueeze
-from .math import multiply
-from .math import sum as paddle_sum
+from .math import multiply, sum as paddle_sum
 
 __all__ = []
 

@@ -19,8 +19,7 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-from paddle.framework import base as imperative_base
-from paddle.framework import core
+from paddle.framework import base as imperative_base, core
 
 
 class HOOK_ACTION:

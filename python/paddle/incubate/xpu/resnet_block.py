@@ -18,8 +18,7 @@ import paddle
 from paddle import _legacy_C_ops, base
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.param_attr import ParamAttr
-from paddle.nn import Layer
-from paddle.nn import initializer as I
+from paddle.nn import Layer, initializer as I
 
 __all__ = ['resnet_basic_block', 'ResNetBasicBlock']
 

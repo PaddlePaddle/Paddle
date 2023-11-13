@@ -17,8 +17,7 @@ import logging
 from abc import ABC, abstractmethod
 
 from ..utils import get_logger, is_recompute_op
-from .trial import OptimizationTunerTrial as Trial
-from .trial import TrialStatus
+from .trial import OptimizationTunerTrial as Trial, TrialStatus
 
 
 class AlgorithmBase(ABC):

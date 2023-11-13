@@ -8,25 +8,17 @@ extend-exclude = '''
 )
 '''
 
-[tool.isort]
-profile = "black"
-line_length = 80
-known_first_party = ["paddle"]
-skip = ["build", "third_party", "__init__.py"]
-extend_skip_glob = [
-    # These files do not need to be formatted,
-    # see .flake8 for more details
-    "python/paddle/utils/gast/**",
-]
-
 [tool.ruff]
 exclude = [
     "./build",
     "third_party",
     "./python/paddle/utils/gast/**",
 ]
+line-length = 80
 target-version = "py37"
 select = [
+    # Isort
+    "I",
     # Pyflakes
     "F",
 
@@ -90,9 +82,13 @@ ignore = [
     "UP038",
 ]
 
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["paddle"]
+
 [tool.ruff.per-file-ignores]
 # Ignore unused imports in __init__.py
-"__init__.py" = ["F401"]
+"__init__.py" = ["F401","I001"]
 # Ignore undefined variables in CMake config and some dygraph_to_static tests
 ".cmake-format.py" = ["F821"]
 "test/dygraph_to_static/test_closure_analysis.py" = ["F821"]
