@@ -25,7 +25,9 @@
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
@@ -278,6 +280,11 @@ const TCValue& TranslationContext::at(const TCKey& key) const {
   return values.back();
 }
 
+bool TranslationContext::Has(const Key& key) const {
+  return container_.find(key) != container_.end() ||
+         (parent_ && parent_->Has(key));
+}
+
 size_t TranslationContext::count(const TCKey& key) const {
   auto it = container_.find(key);
   if (it == container_.end()) {
@@ -499,66 +506,48 @@ void ProgramTranslator::TranslateWhileOperation(
     pir::Block* dst_block) {
   VLOG(8) << "=============>Start to translate while op:" << op;
   auto& sub_block = legacy_program_->Block(op->GetBlockAttrId("sub_block"));
-  int index = static_cast<int>(sub_block.OpSize()) - 1;
-  std::vector<std::pair<std::string, std::string>> loop_vars_reverse;
-  while (index >= 0) {
-    auto sub_op = sub_block.Op(index);
-    if (sub_op->Type() == "assign" &&
-        translation_ctx->count(sub_op->Output("Out")[0]) > 0) {
-      loop_vars_reverse.emplace_back(sub_op->Output("Out")[0],
-                                     sub_op->Input("X")[0]);
-      --index;
-    } else {
-      break;
+  auto& inputs = op->Output("Out");
+  auto& cond_var = op->Input("Condition")[0];
+  std::vector<std::string> loop_vars;
+  for (auto& var : inputs) {
+    if (var != cond_var) {
+      loop_vars.emplace_back(var);
     }
   }
-  PADDLE_ENFORCE(!loop_vars_reverse.empty(),
-                 platform::errors::PreconditionNotMet(
-                     "While op must has condition value input"));
-  PADDLE_ENFORCE(loop_vars_reverse.front().first == op->Input("Condition")[0],
-                 platform::errors::PreconditionNotMet(
-                     "The last op in sub_block of While op must used to assign "
-                     "condition var"));
   auto op_info = ctx_->GetRegisteredOpInfo(paddle::dialect::WhileOp::name());
   std::vector<pir::Value> op_inputs{
-      translation_ctx->at(loop_vars_reverse[0].first).value};
+      GetValueOrCreateInTop(cond_var, translation_ctx).value};
   std::vector<pir::Type> op_outputs_type;
   auto body_block = new pir::Block();
-  std::vector<TCValue> param_status;
-  for (size_t idx = loop_vars_reverse.size() - 1u; idx > 0; --idx) {
-    auto& name = loop_vars_reverse[idx].first;
-    auto& tc_value = translation_ctx->at(name);
+  auto* body_block_context = translation_ctx->CreateInnerContext();
+
+  for (auto& loop_var : loop_vars) {
+    auto& tc_value = GetValueOrCreateInTop(loop_var, translation_ctx);
     auto val_type = tc_value.value.type();
     op_inputs.push_back(tc_value.value);
     op_outputs_type.push_back(val_type);
-    param_status.emplace_back(tc_value);
-    translation_ctx->PushValue(name, body_block->AddArgument(val_type));
+    body_block_context->PushValue(loop_var, body_block->AddArgument(val_type));
   }
+
   pir::Operation* while_op =
       pir::Operation::Create(op_inputs, {}, op_outputs_type, op_info, 1);
   dst_block->push_back(while_op);
   while_op->region(0).push_back(body_block);
-  TranslateBlock(sub_block, 0, index + 1, translation_ctx, body_block);
+
+  TranslateBlock(
+      sub_block, 0, sub_block.OpSize(), body_block_context, body_block);
 
   auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
-  std::vector<pir::Value> yeild_inputs{
-      translation_ctx->at(loop_vars_reverse[0].second).value};
-  for (size_t idx = loop_vars_reverse.size() - 1u; idx > 0; --idx) {
-    auto& name = loop_vars_reverse[idx].second;
-    yeild_inputs.push_back(translation_ctx->at(name).value);
+  std::vector<pir::Value> yeild_inputs{body_block_context->at(cond_var).value};
+  for (auto& loop_var : loop_vars) {
+    yeild_inputs.push_back(body_block_context->at(loop_var).value);
   }
   body_block->push_back(
       pir::Operation::Create(yeild_inputs, {}, {}, yeild_info));
+  for (size_t idx = 0; idx < loop_vars.size(); ++idx) {
+    translation_ctx->PushValue(loop_vars[idx], while_op->result(idx));
+  }
 
-  index = 0;
-  for (size_t idx = loop_vars_reverse.size() - 1u; idx > 0; --idx) {
-    auto& name = loop_vars_reverse[idx].first;
-    translation_ctx->PushValue(name, param_status[index++]);
-  }
-  auto name_iter = loop_vars_reverse.rbegin();
-  for (size_t idx = 0; idx < while_op->num_results(); ++idx) {
-    translation_ctx->PushValue(name_iter++->first, while_op->result(idx));
-  }
   while_op->Verify();
   VLOG(8) << "=============>end to translate while op:" << op;
 }
@@ -760,7 +749,24 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
     }
   }
 }
-
+const VariableDefiningInfo& ProgramTranslator::GetValueOrCreateInTop(
+    const std::string& var_name, TranslationContext* translation_ctx) {
+  if (translation_ctx->Has(var_name)) return translation_ctx->at(var_name);
+  return CreateUndefinedVariable(var_name);
+}
+const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
+    const std::string& var_name) {
+  auto var_desc = legacy_program_->Block(0).FindVar(var_name);
+  pir::Builder builder(ctx_, program_->block(), program_->block()->begin());
+  auto shape = var_desc->GetShape();
+  auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
+  auto val =
+      builder
+          .Build<paddle::dialect::DataOp>(var_name, shape, dtype, phi::Place())
+          .out();
+  param_map_.PushValue(var_name, val);
+  return param_map_.at(var_name);
+}
 void ProgramTranslator::SetIsPersisableAttributeForAllValue(
     const BlockDesc& block) {
   // Currently we set is persisable for operation that generated a value

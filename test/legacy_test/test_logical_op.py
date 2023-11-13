@@ -19,7 +19,7 @@ from op_test import convert_float_to_uint16
 
 import paddle
 from paddle.framework import in_dynamic_mode
-from paddle.static import Executor, Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 SUPPORTED_DTYPES = [
     bool,
@@ -67,16 +67,15 @@ TEST_META_WRONG_SHAPE_DATA = {
 }
 
 
-# @test_with_pir_api
 def run_static(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     paddle.enable_static()
-    startup_program = Program()
-    main_program = Program()
+    startup_program = paddle.static.Program()
+    main_program = paddle.static.Program()
     place = paddle.CPUPlace()
     if use_gpu and paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
-    exe = Executor(place)
-    with program_guard(main_program, startup_program):
+    exe = paddle.static.Executor(place)
+    with paddle.static.program_guard(main_program, startup_program):
         x = paddle.static.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
         op = getattr(paddle, op_str)
         feed_list = {'x': x_np}
@@ -135,6 +134,7 @@ def np_data_generator(np_shape, dtype, *args, **kwargs):
         return np.random.normal(0, 1, np_shape).astype(dtype)
 
 
+@test_with_pir_api
 def test(unit_test, use_gpu=False, test_error=False):
     for op_data in TEST_META_OP_DATA:
         meta_data = dict(op_data)

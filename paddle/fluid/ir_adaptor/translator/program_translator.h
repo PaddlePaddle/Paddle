@@ -88,6 +88,7 @@ class TranslationContext {
 
   const Value& operator[](const Key& key) const;
   const Value& at(const Key& key) const;
+  bool Has(const Key& key) const;
   size_t count(const Key& key)
       const;  // Caution: not exactly same as count in stl library
 
@@ -155,6 +156,12 @@ class ProgramTranslator {
   void SetParameterFromSingleBlock(const BlockDesc& block);
   void SetStopGradientAttributeForAllValue(const BlockDesc& block);
   void SetIsPersisableAttributeForAllValue(const BlockDesc& block);
+
+  const VariableDefiningInfo& GetValueOrCreateInTop(
+      const std::string& var_name, TranslationContext* translation_ctx);
+
+  const VariableDefiningInfo& CreateUndefinedVariable(
+      const std::string& var_name);
 
   /// Translate methods for control flow ops.
   pir::Operation* TranslateCondIfOperation(

@@ -45,7 +45,22 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.COMPLEX128: 'complex128',
 }
 
-_PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE = {
+_NUMPY_DTYPE_2_PADDLE_DTYPE = {
+    'bool': core.VarDesc.VarType.BOOL,
+    'float16': core.VarDesc.VarType.FP16,
+    'uint16': core.VarDesc.VarType.BF16,
+    'float32': core.VarDesc.VarType.FP32,
+    'float64': core.VarDesc.VarType.FP64,
+    'int8': core.VarDesc.VarType.INT8,
+    'int16': core.VarDesc.VarType.INT16,
+    'int32': core.VarDesc.VarType.INT32,
+    'int64': core.VarDesc.VarType.INT64,
+    'uint8': core.VarDesc.VarType.UINT8,
+    'complex64': core.VarDesc.VarType.COMPLEX64,
+    'complex128': core.VarDesc.VarType.COMPLEX128,
+}
+
+_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
     core.DataType.BOOL: 'bool',
     core.DataType.FLOAT16: 'float16',
     core.DataType.BFLOAT16: 'uint16',
@@ -92,8 +107,8 @@ def convert_dtype(dtype):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
     if isinstance(dtype, core.DataType):
-        if dtype in _PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE:
-            return _PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE[dtype]
+        if dtype in _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE:
+            return _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[dtype]
     elif isinstance(dtype, type):
         # This branch is for NumPy scalar types
         if dtype in [
@@ -346,7 +361,7 @@ class DataFeeder:
     Parameters:
         feed_list (list): Variables or names of Variables that need
             to feed.
-        place (:ref:`api_base_CPUPlace` | :ref:`api_base_CUDAPlace` ):
+        place (:ref:`api_paddle_CPUPlace` | :ref:`api_paddle_CUDAPlace` ):
             place indicates the device (CPU | GPU) the data will be fed into, if
             you want to feed data into GPU, please using :code:`base.CUDAPlace(i)`
             (:code:`i` represents the GPU id), or if you want to feed data into CPU,
