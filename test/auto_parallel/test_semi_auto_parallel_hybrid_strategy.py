@@ -19,7 +19,11 @@ import collective.test_communication_api_base as test_base
 
 class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=2, timeout=120, nnode=2)
+        super().setUp(
+            num_of_devices=2,
+            timeout=120,
+            nnode=2,
+        )
         self._default_envs = {
             "dtype": "float32",
             "seed": "2023",

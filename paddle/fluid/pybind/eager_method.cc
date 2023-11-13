@@ -109,6 +109,7 @@ phi::DenseTensor ReshardXToReplicated(
     phi::distributed::TensorDistAttr dist_attr(dist_tensor->dist_attr());
     std::vector<int64_t> dims_mapping(dist_tensor->dims().size(), -1);
     dist_attr.set_dims_mapping(dims_mapping);
+    dist_attr.clean_partial_status();
 
     // reshard to replicate dist tensor
     auto* func =
