@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import logging
 from collections.abc import Sequence
@@ -27,30 +29,46 @@ from paddle.autograd.backward_utils import State
 __all__ = ['grad', 'calc_gradient', 'calc_gradient_helper']
 
 
+class ValueInSet:
+    def __init__(self, value) -> None:
+        self.value = value
+
+    def __hash__(self) -> int:
+        return hash(self.value)
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, ValueInSet):
+            other = other.value
+        return self.value.is_same(other)
+
+
 class ValueSet:
-    def __init__(self, iter=None):
-        self._values: list = []
+    def __init__(
+        self, iter: Sequence[ValueInSet] | set[ValueInSet] | None = None
+    ):
+        self._values: set[ValueInSet] = set()
         if iter is not None:
             for val in iter:
                 self.add(val)
 
     def add(self, other_val):
+        other_val = ValueInSet(other_val)
         if not self.__contains__(other_val):
-            self._values.append(other_val)
+            self._values.add(other_val)
 
-    def update(self, other_set):
+    def update(self, other_set: set):
         for val in other_set:
-            self.add(val)
+            self.add(ValueInSet(val))
 
-    def __and__(self, other_set):
+    def __and__(self, other_set: ValueSet):
         ret = ValueSet()
         for val in self._values:
             if val in other_set:
                 ret.add(val)
         return ret
 
-    def __or__(self, other_set):
-        return ValueSet(self._values + other_set._values)
+    def __or__(self, other_set: ValueSet):
+        return ValueSet(self._values | other_set._values)
 
     def __bool__(self):
         return bool(self._values)
@@ -62,8 +80,9 @@ class ValueSet:
         return iter(self._values)
 
     def __contains__(self, other_val):
+        other_val = ValueInSet(other_val)
         for value in self._values:
-            if hash(value) == hash(other_val) and value.is_same(other_val):
+            if hash(value) == hash(other_val) and value == other_val:
                 return True
         return False
 

@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import collections
 from typing import Any
@@ -60,14 +61,14 @@ class ValueDict:
         else:
             return None
 
-    def __and__(self, other_dict: "ValueDict"):
+    def __and__(self, other_dict: ValueDict):
         ret = ValueDict()
         for key, val in self._items:
             if key in other_dict:
                 ret[key] = val
         return ret
 
-    def __or__(self, other_dict: "ValueDict"):
+    def __or__(self, other_dict: ValueDict):
         return ValueDict(self._items + other_dict._items)
 
     def __bool__(self):
