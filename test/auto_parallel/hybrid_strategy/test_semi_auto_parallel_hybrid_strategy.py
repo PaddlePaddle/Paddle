@@ -24,8 +24,6 @@ class TestSemiAutoParallelDPMPStrategy(test_base.CommunicationTestDistBase):
             "dtype": "float32",
             "seed": "2023",
         }
-        # this test need to be run on 4-cards environment, but our CI only supports
-        # 2-cards distribute test, so skip gpu test now
         self._changeable_envs = {"backend": ["gpu"]}
 
     def test_simple_net_bybrid_strategy(self):
@@ -41,13 +39,15 @@ class TestSemiAutoParallelDPMPStrategy(test_base.CommunicationTestDistBase):
 
 class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=8, timeout=120, nnode=1)
+        super().setUp(
+            num_of_devices=8,
+            timeout=120,
+            nnode=1,
+        )
         self._default_envs = {
             "dtype": "float32",
             "seed": "2023",
         }
-        # this test need to be run on 4-cards environment, but our CI only supports
-        # 2-cards distribute test, so skip gpu test now
         self._changeable_envs = {"backend": ["gpu"]}
 
     def test_simple_net_bybrid_strategy(self):

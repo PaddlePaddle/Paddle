@@ -2489,7 +2489,7 @@ set +x
                 matchstr=''
                 testcase=''
         done <<< "$test_cases";
-        card_test "$eight_cards_tests" 8 1
+        card_test "$eight_cards_tests" -1 1
         collect_failed_tests
 set -x
         ut_endTime_s=`date +%s`
