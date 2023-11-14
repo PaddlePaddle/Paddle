@@ -115,15 +115,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   std::vector<ir::Tensor> group_func_arg_tensors;
   std::unordered_map<std::string, ir::Tensor> tensor_map;
   bool do_op_schedule = apply_group_schedule || apply_op_schedule;
-  if (FLAGS_cinn_enable_map_expr) {
-    return LowerMapExpr(group,
-                        nodes,
-                        /*do_op_schedule=*/do_op_schedule,
-                        /*apply_group_schedule=*/apply_group_schedule,
-                        /*apply_pass=*/apply_pass,
-                        &group_func_arg_tensors,
-                        &tensor_map);
-  }
   std::vector<ir::Expr> func_bodies = LowerOps(nodes,
                                                do_op_schedule,
                                                schedule_determine_func,
