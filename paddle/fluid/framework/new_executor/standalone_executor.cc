@@ -217,9 +217,12 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       if (jobs.size() > 1 && job_type != "forward") {
         const std::vector<std::string> tmp_feed_names = {};
         interpretercores_[job_idx]->Run(tmp_feed_names,
-                                        /*need_fetch = */ false);
+                                        /*need_fetch = */ false,
+                                        /*enable_op_profiling = */ false);
       } else {
-        interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
+        interpretercores_[job_idx]->Run(feed_names,
+                                        /*need_fetch = */ false,
+                                        /*enable_op_profiling = */ false);
       }
     }
   }
@@ -245,8 +248,6 @@ std::shared_ptr<framework::ProgramDesc> StandaloneExecutor::RunProfile(
                                      platform::TracerEventType::UserDefined,
                                      1);
 
-  VLOG(1) << "Profile run started.";
-
   // in profiling run, there can be one and only one job ("default")
   const auto& job = plan_.JobList()[0];
 
@@ -259,7 +260,8 @@ std::shared_ptr<framework::ProgramDesc> StandaloneExecutor::RunProfile(
   VLOG(6) << "Run profiling job (0), type = " << job->Type()
           << ", micro_batch_id =" << job->MicroBatchId();
 
-  interpretercores_[0]->RunProfile(feed_names);
+  interpretercores_[0]->Run(
+      feed_names, /*need_fetch = */ false, /*enable_op_profiling = */ true);
 
   // Don't return program desc directly, instead, return a copy of it since we
   // don't know how the program desc will be further processed in Python side.

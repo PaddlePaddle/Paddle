@@ -71,12 +71,9 @@ FetchList InterpreterCore::Run(
 }
 
 FetchList InterpreterCore::Run(const std::vector<std::string>& feed_names,
-                               bool need_fetch) {
-  return impl_->Run(feed_names, need_fetch);
-}
-
-void InterpreterCore::RunProfile(const std::vector<std::string>& feed_names) {
-  return impl_->RunProfile(feed_names);
+                               bool need_fetch,
+                               bool enable_op_profiling) {
+  return impl_->Run(feed_names, need_fetch, enable_op_profiling);
 }
 
 std::shared_ptr<ProgramDesc> InterpreterCore::GetMutableCopyProgram() {

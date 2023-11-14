@@ -47,9 +47,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
       bool need_fetch = true) override;
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
-                                   bool need_fetch = true) override;
-
-  void RunProfile(const std::vector<std::string>& feed_names) override;
+                                   bool need_fetch = true,
+                                   bool enable_op_profiling = false) override;
 
   std::shared_ptr<ProgramDesc> GetMutableCopyProgram() override;
 
@@ -133,12 +132,6 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // Trace
   void TraceInstructionList(const std::vector<Instruction>& vec_instr);
 
-  // profiling
-  void RunProfileImpl();
-  void ProfileInstructionList(const std::vector<Instruction>& vec_instr);
-  void ProfileInstruction(const Instruction& instr_node);
-  void ProfileOperator(const Instruction& instr_node);
-
   // only used when program contains no feed op
   void Prepare(const std::vector<std::string>& feed_names,
                const std::vector<phi::DenseTensor>& feed_tensors,
@@ -164,6 +157,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   bool static_build_{false};
   // Note(sonder): share the op dependency and event analysis procedure.
   bool is_shared_results_build_{false};
+
+  // op profiling status
+  bool is_in_op_profiling_mode_{false};
 
   const platform::Place place_;
   const BlockDesc& block_;  // not owned

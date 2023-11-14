@@ -29,7 +29,7 @@ from paddle.base.executor import (
     _StandaloneExecutor,
     check_feed_shape_type,
 )
-from paddle.base.framework import Program
+from paddle.base.framework import Operator, Program
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import core
 from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
@@ -2424,92 +2424,71 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
     # tensors and network parameters and feed fake data into them.
     scope = core.Scope()
 
-    def _config_feed_ops():
-        """
-        configure feed op,
-        1. alloc feed op output var storage
-        2. fill feed op's input var
-        return feed var names
-        """
-        num_micro_batches = (
-            cloned_program._pipeline_opt["standalone_opt"]["num_micro_batches"]
-            if (
-                cloned_program._pipeline_opt
-                and "standalone_opt" in cloned_program._pipeline_opt
-            )
-            else 1
-        )
-        if num_micro_batches != 1:
-            warnings.warn(
-                'num_micro_batches should be 1 here, but got %d'
-                % num_micro_batches
-            )
+    def _analyze_graph_and_collect_all_vars_with_zero_in_degree():
+        var_info = {}
 
-        feed_names = []
-        has_feed_op = False
+        def _collect_op_input_var_names(op: Operator):
+            input_var_names = []
+            for input_name in op.input_names:
+                input_var_names += op.input(input_name)
+            return input_var_names
+
+        def _collect_op_output_var_names(op: Operator):
+            output_var_names = []
+            for output_name in op.output_names:
+                output_var_names += op.output(output_name)
+            return output_var_names
+
+        def _record_op_output_vars_in_degree(in_var_names, out_var_names):
+            for out_var_name in out_var_names:
+                if out_var_name in in_var_names:
+                    # NOTE (liuchenghao): if an op's input var is its output var,
+                    # this means this var forms an in-place connection to itself,
+                    # in this situation we need to ignore this variable, this way
+                    # we can ensure that vars with zero in-degree are dangling vars
+                    # and they should be created manually before program executes.
+                    continue
+                if out_var_name not in var_info:
+                    var_info[out_var_name] = {
+                        'in-degree': 0,
+                        'out-degree': 0,
+                        'remarks': '',
+                    }
+                var_info[out_var_name]['in-degree'] += 1
+
+        def _record_op_input_vars_out_degree(in_var_names):
+            for in_var_name in in_var_names:
+                if in_var_name not in var_info:
+                    var_info[in_var_name] = {
+                        'in-degree': 0,
+                        'out-degree': 0,
+                        'remarks': '',
+                    }
+                var_info[in_var_name]['out-degree'] += 1
+
+        def _filter_vars_with_zero_in_degree_and_ignore_feed_fetch_vars():
+            filtered_vars = []
+            for var_name in var_info:
+                if var_name in ['feed', 'fetch']:
+                    continue
+                if var_info[var_name]['in-degree'] == 0:
+                    filtered_vars.append(var_name)
+            return filtered_vars
+
         for op in cloned_main_block.ops:
-            if op.type == "feed":
-                has_feed_op = True
-                out_var_name = op.desc.output('Out')[0]
-                in_var_name = op.desc.input('X')[0]  # this is usually "feed"
-                out_var = cloned_main_block.var(out_var_name)
-                out_var: Variable
-                out_var_shape = out_var.shape
-                out_var_dtype = out_var.dtype
-                input_index = op.desc.attr('col')
-                for dim_shape in out_var_shape:
-                    assert dim_shape > 0, (
-                        "Program profiler currently does not support "
-                        "dynamic shape variable. Found a variable with dynamic shape: "
-                        f"name=\"{out_var_name}\", shape={out_var_shape}."
-                    )
-                # feed random gaussian noises
-                out_var_np_dtype = (
-                    convert_dtype(out_var_dtype)
-                    if isinstance(out_var_dtype, core.VarDesc.VarType)
-                    else out_var_dtype
-                )
-                if str(out_var_dtype).find('int') != -1:
-                    # target variable's type is int* (uint*, int*), it is highly possible that
-                    # the target variable contains indices (such as lookup_table op's input var)
-                    # for safety we need to fill it with all one instead of random numbers
-                    # NOTE: filling with zero will generate "division by zero" error in mod ops,
-                    # so filling with one seems to be the simplest way to make it work, although
-                    # it is possible that for array with only one element, index "1" is invalid,
-                    # that situation is very rare and we don't need to care about it now.
-                    out_cur_feed = np.array(np.ones(out_var_shape)).astype(
-                        out_var_np_dtype
-                    )
-                else:
-                    # target variable's type is float*, we treat it as an ordinary tensor
-                    out_cur_feed = np.array(
-                        np.random.randn(*out_var_shape)
-                    ).astype(out_var_np_dtype)
-                out_cur_feed = _as_lodtensor(out_cur_feed, place, out_var_dtype)
-                check_feed_shape_type(out_var, out_cur_feed)
-                sys.stdout.write(
-                    '[+] feed var: "{}", shape={}, dtype="{}".\n'.format(
-                        out_var_name, str(out_var_shape), str(out_var_dtype)
-                    )
-                ) if verbose else None
-                core.set_variable(
-                    scope, out_cur_feed, out_var_name
-                )  # TODO: try to comment this line to see if VMEM drops
-                core.set_feed_variable(
-                    scope, out_cur_feed, in_var_name, input_index
-                )
-                feed_names.append(out_var_name)
-        if not has_feed_op:
-            sys.stdout.write(
-                "WARNING: program does not have any feed op.\n"
-            ) if verbose else None
-        return feed_names
+            op: Operator
+            if is_comm_op(op):
+                # ignore communication op from graph, bacause sometimes we want to profile a sub-graph
+                # and these dangling operators will not work (no graph to communicate to/from)
+                continue
+            input_var_names, output_var_names = _collect_op_input_var_names(
+                op
+            ), _collect_op_output_var_names(op)
+            _record_op_input_vars_out_degree(input_var_names)
+            _record_op_output_vars_in_degree(input_var_names, output_var_names)
+        return _filter_vars_with_zero_in_degree_and_ignore_feed_fetch_vars()
 
-    def _init_persist_vars_and_parameters():
-        """
-        create and initialize persist vars and parameters in program
-        """
-        all_var_names = []
+    def _alloc_and_fill_var_and_return_created_tensor(var_name):
         supported_var_dtypes = [
             "paddle.float16",
             "paddle.float32",
@@ -2520,60 +2499,76 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
             "paddle.int64",
             "paddle.bool",
         ]
-        for block in cloned_program.blocks:
-            all_var_names += block.vars
-        for var_name in all_var_names:
-            if var_name in ['feed', 'fetch']:
-                continue  # skip special variables, they don't need to be created.
-            var = cloned_main_block.var(var_name)
-            var: Variable
-            if var.persistable or var.is_parameter:
-                var_shape = var.shape
-                var_dtype = var.dtype
-                assert str(var_dtype) in supported_var_dtypes, (
-                    "Found unsupported variable dtype: \"{}\", current supported "
-                    "dtype(s) is/are: [{}]. ".format(
-                        str(var_dtype), ", ".join(supported_var_dtypes)
-                    )
-                )
-                if scope.find_var(var_name) is None:
-                    sys.stdout.write(
-                        '[+] var: "{}", shape={}, dtype="{}".\n'.format(
-                            var_name, str(var_shape), str(var_dtype)
-                        )
-                    ) if verbose else None
-                    # feed random gaussian noises
-                    np_dtype = (
-                        convert_dtype(var_dtype)
-                        if isinstance(var_dtype, core.VarDesc.VarType)
-                        else var_dtype
-                    )
-                    if str(var_dtype).find('int') != -1:
-                        # target variable's type is int* (uint*, int*), it is highly possible that
-                        # the target variable contains indices (such as lookup_table op's input var)
-                        # for safety we need to fill it with all one instead of random numbers
-                        # NOTE: filling with zero will generate "division by zero" error in mod ops,
-                        # so filling with one seems to be the simplest way to make it work, although
-                        # it is possible that for array with only one element, index "1" is invalid,
-                        # that situation is very rare and we don't need to care about it now.
-                        cur_feed = np.array(np.ones(var_shape)).astype(np_dtype)
-                    else:
-                        # target variable's type is float*, we treat it as an ordinary tensor
-                        cur_feed = np.array(np.random.randn(*var_shape)).astype(
-                            np_dtype
-                        )
-                    cur_feed = _as_lodtensor(cur_feed, place, var_dtype)
-                    check_feed_shape_type(var, cur_feed)
-                    core.set_variable(scope, cur_feed, var_name)
-                else:
-                    sys.stdout.write(
-                        '[ ] var: "{}", shape={}, dtype="{}".\n'.format(
-                            var_name, str(var_shape), str(var_dtype)
-                        )
-                    ) if verbose else None
+        var = cloned_main_block.var(var_name)
+        var: Variable
+        var_shape = var.shape
+        var_dtype = var.dtype
+        assert str(var_dtype) in supported_var_dtypes, (
+            "Found unsupported variable dtype: \"{}\", current supported "
+            "dtype(s) is/are: [{}]. ".format(
+                str(var_dtype), ", ".join(supported_var_dtypes)
+            )
+        )
+        sys.stdout.write(
+            '[+] var: "{}", shape={}, dtype="{}".\n'.format(
+                var_name, str(var_shape), str(var_dtype)
+            )
+        ) if verbose else None
+        np_dtype = (
+            convert_dtype(var_dtype)
+            if isinstance(var_dtype, core.VarDesc.VarType)
+            else var_dtype
+        )
+        if str(var_dtype).find('int') != -1:
+            # target variable's type is int* (uint*, int*), it is highly possible that
+            # the target variable contains indices (such as lookup_table op's input var)
+            # for safety we need to fill it with all one instead of random numbers
+            # NOTE (liuchenghao): filling with zero will generate "division by zero" error
+            # in mod ops, so filling with one seems to be the simplest way to make it work,
+            # although it is possible that for array with only one element, index "1" is
+            # invalid, that situation is very rare and we don't need to care about it now.
+            new_tensor = np.array(np.ones(var_shape)).astype(np_dtype)
+        else:
+            # target variable's type is float*, we treat it as an ordinary tensor, fill it
+            # with random gaussian numbers
+            new_tensor = np.array(np.random.randn(*var_shape)).astype(np_dtype)
+        new_tensor = _as_lodtensor(new_tensor, place, var_dtype)
+        check_feed_shape_type(var, new_tensor)
+        core.set_variable(scope, new_tensor, var_name)
+        return new_tensor
 
-    feed_names = _config_feed_ops()
-    _init_persist_vars_and_parameters()
+    def _configure_feed_ops_and_return_feed_names():
+        """
+        configure feed op,
+        1. alloc feed op output var storage
+        2. fill feed op's input var
+        return feed var names
+        """
+
+        feed_names = []
+        has_feed_op = False
+        for op in cloned_main_block.ops:
+            if op.type == "feed":
+                has_feed_op = True
+                out_var_name = op.desc.output('Out')[0]
+                in_var_name = op.desc.input('X')[0]  # this is usually "feed"
+                input_index = op.desc.attr('col')
+                new_tensor = _alloc_and_fill_var_and_return_created_tensor(
+                    out_var_name
+                )
+                core.set_feed_variable(
+                    scope, new_tensor, in_var_name, input_index
+                )
+                feed_names.append(out_var_name)
+        if not has_feed_op:
+            sys.stdout.write(
+                "WARNING: program does not have any feed op.\n"
+            ) if verbose else None
+        return feed_names
+
+    for var_name in _analyze_graph_and_collect_all_vars_with_zero_in_degree():
+        _alloc_and_fill_var_and_return_created_tensor(var_name)
+    feed_names = _configure_feed_ops_and_return_feed_names()
 
     # build a simple plan from program and run profiling
     plan = core.Plan([core.Job("default")], {"default": cloned_program.desc})
@@ -2584,7 +2579,7 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
 
     for iter_id in range(run_iters):
         # for each iteration, run profiling and retrieve modified version of program desc
-        program_desc = exe.run_profile(feed_names)
+        program_desc = exe.run(feed_names, enable_op_profiling=True)
 
         # rebuild program object from the new program desc
         temp_program = cloned_program.clone()
@@ -2706,6 +2701,17 @@ def measure_real_op_cost_wrt_program_and_place(
         warnings.warn(
             'run_iters was set to 1, profile_strategy will not work and profiling results '
             'might be inaccurate.'
+        )
+
+    # check if num_micro_batches == 1
+    num_micro_batches = (
+        program._pipeline_opt["standalone_opt"]["num_micro_batches"]
+        if (program._pipeline_opt and "standalone_opt" in program._pipeline_opt)
+        else 1
+    )
+    if num_micro_batches != 1:
+        raise RuntimeError(
+            'Expected num_micro_batches==1, got %d.' % num_micro_batches
         )
 
     # run profiling multiple times and record op run time of each run

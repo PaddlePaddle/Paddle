@@ -210,6 +210,11 @@ void PirInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
       "SetCopyProgram is not implemented in PirInterpreter."));
 }
 
+std::shared_ptr<ProgramDesc> PirInterpreter::GetMutableCopyProgram() {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetMutableCopyProgram is not implemented in PirInterpreter."));
+}
+
 void PirInterpreter::SetSkipGcVars(const std::set<std::string>& skip_gc_vars) {
   PADDLE_ENFORCE_EQ(
       execution_config_.skip_gc_vars.empty(),
@@ -1182,7 +1187,15 @@ paddle::framework::FetchList PirInterpreter::Run(
 }
 
 FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
-                              bool need_fetch) {
+                              bool need_fetch,
+                              bool enable_op_profiling) {
+  if (enable_op_profiling) {
+    // currently new ir does not support op runtime profiling, throw an
+    // exception here.
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Currently new IR does not support op runtime profiling feature."));
+  }
+
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 

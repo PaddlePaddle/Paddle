@@ -51,7 +51,8 @@ class InterpreterCore {
       bool need_fetch = true);
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
-                                   bool need_fetch = true);
+                                   bool need_fetch = true,
+                                   bool enable_op_profiling = false);
 
   void RunProfile(const std::vector<std::string>& feed_names);
 

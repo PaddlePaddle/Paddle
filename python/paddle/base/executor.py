@@ -798,7 +798,7 @@ class _StandaloneExecutor:
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, feed_names, return_numpy=True):
+    def run(self, feed_names, return_numpy=True, enable_op_profiling=False):
         """
         Args:
             feed_names(list): This parameter represents the input names of the model.
@@ -807,7 +807,25 @@ class _StandaloneExecutor:
             return_numpy(bool): This parameter indicates whether convert the fetched Tensors
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
+            enable_op_profiling(bool): Enable/disable op runtime profiling. The default is False.
         """
+        if enable_op_profiling:
+            return self._run_op_runtime_profiling_and_return_program_desc(
+                feed_names
+            )
+        else:
+            return self._run_feed_forward_and_return_numpy_if_required(
+                feed_names, return_numpy
+            )
+
+    def _create_new_executor(self):
+        new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
+
+        return new_exe
+
+    def _run_feed_forward_and_return_numpy_if_required(
+        self, feed_names, return_numpy
+    ):
         tensors = self._new_exe.run(feed_names)._move_to_list()
         if return_numpy:
             tensors = as_numpy(tensors, copy=True)
@@ -823,21 +841,9 @@ class _StandaloneExecutor:
                 )
             return tensors
 
-    def run_profile(self, feed_names):
-        """
-        Description:
-            Profiling run time (us) for each instruction.
-            NOTE: the time cost of communication op will not be recorded.
-        Args:
-            feed_names (list): input names of the model.
-        """
+    def _run_op_runtime_profiling_and_return_program_desc(self, feed_names):
         program_desc = self._new_exe.run_profile(feed_names)
         return program_desc
-
-    def _create_new_executor(self):
-        new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
-
-        return new_exe
 
 
 class _ExecutorCache:

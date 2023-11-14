@@ -597,14 +597,14 @@ void BuildOpFuncList(const platform::Place& place,
   bool flag_log_is_printed = false;
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
+    op->SetId(i);
+
     const std::string& op_type = op->Type();
     if (execution_config.used_for_inference) {
       if (op_type == "feed" || op_type == "fetch") {
         continue;
       }
     }
-
-    op->SetId(i);
 
     VLOG(6) << "Build OpFuncNode from : " << op_type;
 

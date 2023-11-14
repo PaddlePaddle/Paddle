@@ -71,13 +71,9 @@ class InterpreterBaseImpl {
       bool need_fetch = true) = 0;
 
   virtual paddle::framework::FetchList Run(
-      const std::vector<std::string>& feed_names, bool need_fetch = true) = 0;
-
-  virtual void RunProfile(const std::vector<std::string>& feed_names) {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "RunProfile() is virtual and not implemented in this class. Please "
-        "provide a valid implementation."));
-  }
+      const std::vector<std::string>& feed_names,
+      bool need_fetch = true,
+      bool enable_op_profiling = false) = 0;
 
   virtual void ShareWorkQueueFrom(InterpreterBaseImpl* src) = 0;
 
@@ -85,13 +81,7 @@ class InterpreterBaseImpl {
 
   virtual void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) = 0;
 
-  virtual std::shared_ptr<ProgramDesc> GetMutableCopyProgram() {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "GetMutableCopyProgram() is virtual and not implemented in this class. "
-        "Please provide a valid implementation."));
-    return nullptr;  // this line will never be reached, just adding this line
-                     // to avoid syntax error.
-  }
+  virtual std::shared_ptr<ProgramDesc> GetMutableCopyProgram() = 0;
 
   virtual void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) = 0;
 

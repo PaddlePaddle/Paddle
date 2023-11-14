@@ -40,7 +40,6 @@ class StandaloneExecutor {
   ~StandaloneExecutor() {}
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
-
   std::shared_ptr<framework::ProgramDesc> RunProfile(
       const std::vector<std::string>& feed_names);
 
