@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 from paddle import base, static
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestDiffOp(unittest.TestCase):
@@ -77,13 +78,16 @@ class TestDiffOp(unittest.TestCase):
         self.setUp()
         self.func_dygraph()
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
-            with static.program_guard(static.Program(), static.Program()):
+            with static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(
                     name="input", shape=self.input.shape, dtype=self.input.dtype
                 )
@@ -105,16 +109,21 @@ class TestDiffOp(unittest.TestCase):
                         dtype=self.append.dtype,
                     )
 
-                exe = base.Executor(place)
+                exe = static.Executor(place)
                 out = paddle.diff(
                     x, n=self.n, axis=self.axis, prepend=prepend, append=append
                 )
+                feed_dict = {
+                    "input": self.input,
+                    "prepend": self.prepend,
+                    "append": self.append,
+                }
+                for k in list(feed_dict.keys()):
+                    if feed_dict[k] is None:
+                        feed_dict.pop(k)
+
                 fetches = exe.run(
-                    feed={
-                        "input": self.input,
-                        "prepend": self.prepend,
-                        "append": self.append,
-                    },
+                    feed=feed_dict,
                     fetch_list=[out],
                 )
                 self.assertTrue((fetches[0] == self.output).all(), True)
@@ -257,7 +266,6 @@ class TestDiffOpFp16(TestDiffOp):
                     append=self.append,
                 )
                 fetches = exe.run(
-                    paddle.static.default_main_program(),
                     feed={
                         "input": input,
                     },
