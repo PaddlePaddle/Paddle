@@ -113,17 +113,13 @@ class TestDiffOp(unittest.TestCase):
                 out = paddle.diff(
                     x, n=self.n, axis=self.axis, prepend=prepend, append=append
                 )
-                feed_dict = {
-                    "input": self.input,
-                    "prepend": self.prepend,
-                    "append": self.append,
-                }
-                for k in list(feed_dict.keys()):
-                    if feed_dict[k] is None:
-                        feed_dict.pop(k)
 
                 fetches = exe.run(
-                    feed=feed_dict,
+                    feed={
+                        "input": self.input,
+                        "prepend": self.prepend,
+                        "append": self.append,
+                    },
                     fetch_list=[out],
                 )
                 self.assertTrue((fetches[0] == self.output).all(), True)
