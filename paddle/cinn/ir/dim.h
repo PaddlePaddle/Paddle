@@ -22,7 +22,7 @@ namespace ir {
 struct _Dim_;
 
 // This fake class is to pass the CI, and will be replaced by
-// pir::shape::SymbolicDimOp when pir completely intergrated.
+// pir::shape::SymbolicDimOp when pir is completely integrated.
 class SymbolicDimOp {
   const std::string GetSymName() const { return ""; }
   int64_t GetDimSize() const { return 0; }
