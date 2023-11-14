@@ -365,7 +365,14 @@ void ScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
   const std::array<int, 3> kMaxGridDims = common::GetCUDAMaxGridDims();
   auto check_offset = [&](const char& c) -> bool {
     auto extent = loop.As<ir::For>()->extent.as_int32();
-    return extent < (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);
+    std::cout << "current extent: " << extent << std::endl;
+    std::cout << "c is " << c << std::endl;
+    std::cout << "offset is " << offset << std::endl;
+    std::cout << "MaxValue is "
+              << (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset])
+              << std::endl;
+
+    return extent <= (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);
   };
   if (thread_axis[0] == 'b') {
     CHECK(check_offset(thread_axis[0]))
