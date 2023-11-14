@@ -149,28 +149,27 @@ def fused_linear_activation(
     if activation is None:
         activation = "none"
 
-    if in_dynamic_or_pir_mode():
-        if in_dynamic_mode():
-            return _legacy_C_ops.fused_gemm_epilogue(
-                x,
-                y,
-                bias,
-                'trans_x',
-                trans_x,
-                'trans_y',
-                trans_y,
-                'activation',
-                activation,
-            )
-        else:
-            return _C_ops.fused_gemm_epilogue(
-                x,
-                y,
-                bias,
-                trans_x,
-                trans_y,
-                activation,
-            )
+      if in_dynamic_mode():
+          return _legacy_C_ops.fused_gemm_epilogue(
+              x,
+              y,
+              bias,
+              'trans_x',
+              trans_x,
+              'trans_y',
+              trans_y,
+              'activation',
+              activation,
+          )
+      elif in_pir_mode():
+          return _C_ops.fused_gemm_epilogue(
+              x,
+              y,
+              bias,
+              trans_x,
+              trans_y,
+              activation,
+          )
 
     helper = LayerHelper('fused_matmul_bias', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
