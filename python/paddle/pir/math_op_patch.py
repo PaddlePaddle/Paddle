@@ -307,6 +307,9 @@ def monkey_patch_opresult():
         __impl__.__name__ = method_name
         return __impl__
 
+    def size(self):
+        return paddle.numel(self)
+
     import paddle
 
     opresult_methods = [
@@ -316,6 +319,7 @@ def monkey_patch_opresult():
         ('ndimension', ndimension),
         ('ndim', _ndim),
         ('astype', astype),
+        ('size', size),
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
