@@ -143,7 +143,7 @@ class FusedLinearGeluPattern
                  {"activation", act_attr}}});
     fused_gemm_epilogue_gelu(
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
-        {&res.Tensor("out")});
+        {&res.Tensor("out"), &res.Tensor("reserve_space")});
   }
 };
 class FusedLinearReluPattern
@@ -181,7 +181,7 @@ class FusedLinearReluPattern
                  {"activation", act_attr}}});
     fused_gemm_epilogue_relu(
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
-        {&res.Tensor("out")});
+        {&res.Tensor("out"), &res.Tensor("reserve_space")});
   }
 };
 
