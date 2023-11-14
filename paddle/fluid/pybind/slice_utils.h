@@ -419,6 +419,15 @@ static void ParseIndex(const paddle::Tensor& tensor,
     } else if (slice_item == Py_None) {
       none_axes->push_back(current_dim + none_count);
       none_count++;
+    } else if (PyBool_Check(slice_item)) {
+      *has_advanced_index = true;
+      none_axes->push_back(current_dim + none_count);
+      none_count++;
+      bool index_ele = (slice_item == Py_True);
+      auto slice_tensor = full_ad_func({1}, index_ele, phi::DataType::BOOL);
+      advanced_index->push_back(std::move(slice_tensor));
+      (*advanced_index_dim)[estimated_dim] = estimated_dim;
+      estimated_dim++;
     } else if (PyCheckTensor(slice_item)) {
       auto slice_tensor = CastPyArg2Tensor(slice_item, 0);
       if (slice_tensor.shape().size() == 0 &&
@@ -470,7 +479,7 @@ static void ParseIndex(const paddle::Tensor& tensor,
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Currently, Tensor.__indices__() only allows indexing "
-          "by Integers, Slices, Ellipsis, None, Tuples of these types "
+          "by Boolean, Integers, Slices, Ellipsis, None, Tuples of these types "
           "and List / Tensor of Bool and Integers, but received "
           "%s in %dth slice item",
           std::string(Py_TYPE(slice_item)->tp_name),
