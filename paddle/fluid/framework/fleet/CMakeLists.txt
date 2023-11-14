@@ -123,4 +123,4 @@ cc_library(
 cc_test(
   test_fleet_cc
   SRCS test_fleet.cc
-  DEPS fleet_wrapper gloo_wrapper fs shell)
+  DEPS fleet_wrapper gloo_wrapper framework_io)

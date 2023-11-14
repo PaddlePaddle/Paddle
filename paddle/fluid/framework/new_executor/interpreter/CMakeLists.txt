@@ -14,8 +14,7 @@ set(INTERPRETER_DEPS
     trainer_desc_proto
     glog
     lod_rank_table
-    fs
-    shell
+    framework_io
     fleet_wrapper
     heter_wrapper
     ps_gpu_wrapper

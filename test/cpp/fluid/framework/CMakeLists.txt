@@ -287,3 +287,19 @@ cc_test(
   DEPS phi_utils)
 
 cc_test(convert_utils_test SRCS convert_utils_test.cc)
+
+cc_test(
+  test_fs
+  SRCS io/test_fs.cc
+  DEPS framework_io)
+
+if(WITH_CRYPTO)
+  cc_test(
+    aes_cipher_test
+    SRCS io/aes_cipher_test.cc
+    DEPS framework_io)
+  cc_test(
+    cipher_utils_test
+    SRCS io/cipher_utils_test.cc
+    DEPS framework_io)
+endif()
