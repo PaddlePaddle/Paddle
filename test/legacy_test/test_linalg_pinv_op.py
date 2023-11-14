@@ -90,7 +90,6 @@ class LinalgPinvTestCase(unittest.TestCase):
                     print("GOT     : \n", fetches[0])
                     raise RuntimeError("Check PINV static Failed")
 
-    @test_with_pir_api
     def test_grad(self):
         for place in self.places:
             x = paddle.to_tensor(
