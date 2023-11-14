@@ -306,12 +306,10 @@ def _get_fwd_op(bwd_op, grad_var_to_var_map):
     for idx, input_name in enumerate(bwd_op_input_names):
         if input_name in out_grad_name:
             out_grad = bwd_op.operand(idx).source()
-            out = grad_var_to_var_map[out_grad]
-            assert (
-                out is not None
-            ), "can not find the variable of corresponding forward op"
-            fwd_op = out.get_defining_op()
-            return fwd_op
+            if out_grad in grad_var_to_var_map.keys():
+                out = grad_var_to_var_map[out_grad]
+                fwd_op = out.get_defining_op()
+                return fwd_op
     return None
 
 
@@ -443,6 +441,7 @@ def _decomp_bwd_with_vjp(
                 res.append(pir.fake_op_result())
 
         # update_grad_var_to_var_map
+        assert len(grad_inputs) == len(res)
         for idx, grad_input in enumerate(grad_inputs):
             if grad_input in grad_var_to_var_map.keys():
                 grad_var_to_var_map[res[idx]] = grad_var_to_var_map.pop(
@@ -582,7 +581,8 @@ def decomp_bwd_op(
             "To decompose backward op, please set `core._set_prim_backward_enabled(True)` firstly"
         )
     fwd_op = _get_fwd_op(bwd_op, grad_var_to_var_map)
-    assert fwd_op is not None, "fwd_op is None"
+    if fwd_op is None or fwd_op.name() + "_grad" != bwd_op.name():
+        return None, False
 
     (
         new_grads,

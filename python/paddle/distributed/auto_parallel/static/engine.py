@@ -260,6 +260,7 @@ class Engine:
         #
         self.pir_program = None
         self.param_mapping = None
+        self.pir_grad_var_to_var = None
         self.pir_program_initialized = False
         #
         self.pir_program_after_decomposed = None
@@ -1534,6 +1535,95 @@ class Engine:
                     )
             return tmp_program
 
+        def _update_old_ir_grad_var_to_var(
+            old_ir_program, old_ir_grad_var_to_var
+        ):
+            # process @RESHARD variable in distributed training
+            for op in old_ir_program.global_block().ops:
+                if (
+                    op.has_attr("op_namescope")
+                    and op.attr("op_namescope") == "/auto_parallel/reshard"
+                ):
+                    if op.desc.type() == "split" or op.desc.type() == "assign":
+                        input_names = op.desc.input("X")
+                        output_names = op.desc.output("Out")
+                        if input_names[0] in old_ir_grad_var_to_var.keys():
+                            for output_name in output_names:
+                                old_ir_grad_var_to_var[
+                                    output_name
+                                ] = old_ir_grad_var_to_var[input_names[0]]
+                    elif op.desc.type() == "recv_v2":
+                        output_names = op.desc.output("Out")
+                        original_var_name = (
+                            output_names[0][: output_names[0].rfind("@recv")]
+                            if output_names[0].rfind("@recv") != -1
+                            else ""
+                        )
+                        if original_var_name in old_ir_grad_var_to_var.keys():
+                            old_ir_grad_var_to_var[
+                                output_names[0]
+                            ] = old_ir_grad_var_to_var[original_var_name]
+
+        def _get_pir_grad_var_to_var_map(
+            old_ir_program, old_ir_grad_var_to_var, param_mapping
+        ):
+            _update_old_ir_grad_var_to_var(
+                old_ir_program, old_ir_grad_var_to_var
+            )
+
+            pir_grad_var_to_var_map = {}
+            for grad_var, var in old_ir_grad_var_to_var.items():
+                if (
+                    grad_var in param_mapping.keys()
+                    and var in param_mapping.keys()
+                ):
+                    if (
+                        len(param_mapping[grad_var]) == 1
+                        and len(param_mapping[var]) == 1
+                    ):
+                        new_grad_var = param_mapping[grad_var][0]
+                        new_var = param_mapping[var][0]
+                        pir_grad_var_to_var_map[new_grad_var] = new_var
+                    else:
+                        new_grad_vars = []
+                        new_vars = []
+                        if len(param_mapping[grad_var]) == 1:
+                            new_grad_vars.append(param_mapping[grad_var][0])
+                        elif (
+                            len(param_mapping[grad_var]) == 2
+                            and param_mapping[grad_var][1]
+                            .get_defining_op()
+                            .name()
+                            == "builtin.slice"
+                        ):
+                            new_grad_vars.append(param_mapping[grad_var][1])
+                        else:
+                            last_op = param_mapping[grad_var][
+                                -1
+                            ].get_defining_op()
+                            if last_op.name().endswith("_"):
+                                new_grad_vars.append(param_mapping[grad_var][0])
+
+                        if len(param_mapping[var]) == 1:
+                            new_vars.append(param_mapping[var][0])
+                        elif (
+                            len(param_mapping[var]) == 2
+                            and param_mapping[var][1].get_defining_op().name()
+                            == "builtin.slice"
+                        ):
+                            new_vars.append(param_mapping[var][1])
+                        else:
+                            last_op = param_mapping[var][-1].get_defining_op()
+                            if last_op.name().endswith("_"):
+                                new_vars.append(param_mapping[var][0])
+
+                        assert (
+                            len(new_grad_vars) == 1 and len(new_vars) == 1
+                        ), "translate pir_grad_var_to_var error"
+                        pir_grad_var_to_var_map[new_grad_vars[0]] = new_vars[0]
+
+            return pir_grad_var_to_var_map
+
         if not self.pir_program_initialized:
             if feed_dict is not None:
                 tmp_program = _add_data_ops(self.main_program, feed_dict)
@@ -1554,9 +1644,20 @@ class Engine:
             for data_op in data_ops:
                 global_block.move_op(data_op, insert_point)
 
+            grad_var_to_var_map = self._dist_contexts[
+                self._mode
+            ]._dist_op_context.grad_var_to_var
+            assert len(grad_var_to_var_map.keys()) == 1
+            grad_var_to_var = grad_var_to_var_map[1]
+
+            pir_grad_var_to_var = _get_pir_grad_var_to_var_map(
+                tmp_program, grad_var_to_var, param_mapping
+            )
+
             self.lr_scheduler = self.main_program.lr_scheduler
             self.pir_program = pir_program
             self.param_mapping = param_mapping
+            self.pir_grad_var_to_var = pir_grad_var_to_var
             self.pir_program_initialized = True
 
     def _decompose_pir_program(self):
@@ -1564,35 +1665,6 @@ class Engine:
             raise RuntimeError(
                 "To decompose pir program, please translate the main program to pir program first."
             )
-
-        def _get_pir_grad_var_to_var_map(
-            param_mapping, old_ir_grad_var_to_var_map
-        ):
-            pir_grad_var_to_var_map = {}
-            for grad_var, var in old_ir_grad_var_to_var_map.items():
-                if (
-                    grad_var in param_mapping.keys()
-                    and var in param_mapping.keys()
-                ):
-                    if (
-                        len(param_mapping[grad_var]) == 1
-                        and len(param_mapping[var]) == 1
-                    ):
-                        new_grad_var = param_mapping[grad_var][0]
-                        new_var = param_mapping[var][0]
-                        pir_grad_var_to_var_map[new_grad_var] = new_var
-                    elif len(param_mapping[grad_var]) > len(param_mapping[var]):
-                        new_grad_var_1 = param_mapping[grad_var][0]
-                        new_var_1 = param_mapping[var][0]
-                        pir_grad_var_to_var_map[new_grad_var_1] = new_var_1
-                        new_grad_var_2 = param_mapping[grad_var][-1]
-                        new_var_2 = param_mapping[var][-1]
-                        pir_grad_var_to_var_map[new_grad_var_2] = new_var_2
-                else:
-                    raise RuntimeError(
-                        f"can not find {grad_var} and {var} mapping in param_mapping"
-                    )
-            return pir_grad_var_to_var_map
 
         def _get_bwd_ops_name(pir_program):
             bwd_ops = []
@@ -1608,40 +1680,34 @@ class Engine:
             core._set_prim_forward_enabled(True)
             core._set_prim_backward_enabled(True)
 
-            grad_var_to_var = self._dist_contexts[
-                self._mode
-            ]._dist_op_context.grad_var_to_var
-            assert len(grad_var_to_var.keys()) == 1
-            grad_var_to_var_map = grad_var_to_var[1]
-            pir_grad_var_to_var_map = _get_pir_grad_var_to_var_map(
-                self.param_mapping, grad_var_to_var_map
-            )
-
             # todo: using pir::program_clone for deepcopy
             program = self.pir_program
             with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
                 program
             ):
                 ops = program.global_block().ops
-                bwd_ops_name = _get_bwd_ops_name(program)
-                not_decomposed_bwd_ops_name = []
+                bwd_ops = _get_bwd_ops_name(program)
+                bwd_ops_undecomposed = []
 
                 for op in ops:
-                    if op.name() in bwd_ops_name:
+                    if op.name() in bwd_ops:
                         new_grads, has_decomposed = decomp.decomp_bwd_op(
                             program.global_block(),
                             op,
-                            pir_grad_var_to_var_map,
+                            self.pir_grad_var_to_var,
                         )
                         if (
                             not has_decomposed
-                            and op.name() not in not_decomposed_bwd_ops_name
+                            and op.name() not in bwd_ops_undecomposed
                         ):
-                            not_decomposed_bwd_ops_name.append(op.name())
+                            bwd_ops_undecomposed.append(op.name())
+                self._logger.info(
+                    "The following ops can not be decomposed: %s"
+                    % (', '.join(bwd_ops_undecomposed))
+                )
 
                 self.pir_program_after_decomposed = program
                 self.pir_program_decomposed = True
-
                 core._set_prim_forward_enabled(prev_fwd_prim_state)
                 core._set_prim_backward_enabled(prev_bwd_prim_state)
 
