@@ -58,7 +58,7 @@ std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewChild(Scope* scope) {
   return info;
 }
 
-void ValueExecutionInfo::Add(::pir::Value value, std::string var_name) {
+void ValueExecutionInfo::Add(::pir::Value value, const std::string& var_name) {
   auto* var = scope_->FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::NotFound("Cannot find %s in scope.", var_name));
@@ -84,8 +84,8 @@ void ValueExecutionInfo::Add(::pir::Value value, std::string var_name) {
 }
 
 void ValueExecutionInfo::Rename(pir::Value value,
-                                std::string new_name,
-                                std::string orig_name) {
+                                const std::string& new_name,
+                                const std::string& orig_name) {
   value_2_var_name_[value] = new_name;
 
   for (auto kv : value_2_var_name_) {
@@ -344,9 +344,7 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->result(0);
 
     value_exe_info->Add(value, fetch_var_name);
-  }
-
-  if (op_name == "pd_op.feed" || op_name == "pd_op.data") {
+  } else if (op_name == "pd_op.feed" || op_name == "pd_op.data") {
     VLOG(6) << "Handle for" << op_name;
     auto value = op->result(0);
     VLOG(6) << "link feed output to feed in variable"
@@ -360,9 +358,7 @@ void HandleForSpecialOp(pir::Operation* op,
                        "The variable %s shoud exist", name));
 
     value_exe_info->Add(value, name);
-  }
-
-  if (op_name == "builtin.combine") {
+  } else if (op_name == "builtin.combine") {
     auto out_value = op->result(0);
 
     Variable* var = nullptr;
@@ -386,9 +382,7 @@ void HandleForSpecialOp(pir::Operation* op,
       tensor_array->emplace_back(
           value_exe_info->GetScope()->FindVar(value_2_var_name.at(value)));
     }
-  }
-
-  if (op_name == "builtin.set_parameter") {
+  } else if (op_name == "builtin.set_parameter") {
     VLOG(6) << "Handle for builtin.set_parameter:";
     auto param_name = op->attributes()
                           .at("parameter_name")
@@ -413,8 +407,7 @@ void HandleForSpecialOp(pir::Operation* op,
     }
 
     value_exe_info->Rename(value, param_name, orig_name);
-  }
-  if (op_name.compare(pir::ShadowOutputOp::name()) == 0) {
+  } else if (op_name == "builtin.shadow_output") {
     VLOG(6) << "Handle for builtin.shadow_ouptut";
     auto var_name = op->attributes()
                         .at("output_name")
@@ -433,9 +426,7 @@ void HandleForSpecialOp(pir::Operation* op,
     VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
 
     value_exe_info->Rename(value, var_name, orig_name);
-  }
-
-  if (op_name == "builtin.get_parameter") {
+  } else if (op_name == "builtin.get_parameter") {
     VLOG(6) << "Handle for builtin.get_parameter:";
     auto param_name = op->attributes()
                           .at("parameter_name")
@@ -444,9 +435,7 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->result(0);
 
     value_exe_info->Add(value, param_name);
-  }
-
-  if (op_name == "builtin.slice") {
+  } else if (op_name == "builtin.slice") {
     VLOG(6) << "Handle for builtin.slice";
     auto out_value = op->result(0);
     auto in_value = op->operand_source(0);
@@ -471,9 +460,7 @@ void HandleForSpecialOp(pir::Operation* op,
     std::string var_name =
         value_exe_info->GetVar2VarName().at(variable_array[index]);
     value_exe_info->AddValue2VarName(out_value, var_name);
-  }
-
-  if (op_name == "builtin.split") {
+  } else if (op_name == "builtin.split") {
     VLOG(6) << "Handle for builtin.split";
     auto in_value = op->operand_source(0);
     PADDLE_ENFORCE_EQ(value_exe_info->GetValue2VarName().count(in_value),
@@ -497,17 +484,13 @@ void HandleForSpecialOp(pir::Operation* op,
           value_exe_info->GetVar2VarName().at(variable_array[idx]);
       value_exe_info->AddValue2VarName(out_value, var_name);
     }
-  }
-
-  if (op_name == "pd_op.if") {
+  } else if (op_name == "pd_op.if") {
     auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
     for (size_t i = 0; i < if_op->num_results(); ++i) {
       auto if_op_out_value = if_op->result(i);
       BuildValue(if_op_out_value, var_name_prefix, value_exe_info);
     }
-  }
-
-  if (op_name == "pd_op.while") {
+  } else if (op_name == "pd_op.while") {
     auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
 
     for (size_t i = 0; i < while_op->num_results(); ++i) {
@@ -531,7 +514,8 @@ void HandleForInplaceOp(pir::Operation* op,
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
   paddle::dialect::OpYamlInfoParser yaml_parser(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-          ->get_op_info_());
+          ->get_op_info_(),
+      paddle::dialect::IsLegacyOp(op_name));
 
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value value = op->result(i);
@@ -832,7 +816,6 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
           "pir::vector type"));
     }
   }
-
   auto& op_info = OpInfoMap::Instance().Get(fluid_op_name);
   auto ptr =
       op_info.Creator()(fluid_op_name, in_name_map, out_name_map, attr_map);

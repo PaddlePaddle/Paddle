@@ -15,12 +15,20 @@
 #pragma once
 
 #include <memory>
+#include "paddle/phi/common/place.h"
 #include "paddle/pir/core/dll_decl.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}
+}  // namespace paddle
 
 namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateConstantFoldingPass();
+IR_API std::unique_ptr<Pass> CreateConstantFoldingPass(
+    const phi::Place& place, paddle::framework::Scope* scope);
 
 }  // namespace pir
