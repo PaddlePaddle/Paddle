@@ -157,7 +157,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 }
 
 paddle::framework::FetchList StandaloneExecutor::Run(
-    const std::vector<std::string>& feed_names) {
+    const std::vector<std::string>& feed_names,
+    const bool enable_job_schedule_profiler) {
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
 
@@ -218,19 +219,19 @@ paddle::framework::FetchList StandaloneExecutor::Run(
         interpretercores_[job_idx]->Run(tmp_feed_names,
                                         /*need_fetch = */ false,
                                         /*enable_job_schedule_profiler = */
-                                        enable_job_schedule_profiler_);
+                                        enable_job_schedule_profiler);
       } else {
         interpretercores_[job_idx]->Run(feed_names,
                                         /*need_fetch = */ false,
                                         /*enable_job_schedule_profiler = */
-                                        enable_job_schedule_profiler_);
+                                        enable_job_schedule_profiler);
       }
     }
   }
 
   // record each job's run time
 #if defined(PADDLE_WITH_CUDA)
-  if (enable_job_schedule_profiler_) {
+  if (enable_job_schedule_profiler) {
     for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
       const auto& job = jobs[job_idx];
       const std::string& job_type = job->Type();
@@ -265,22 +266,6 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       return {};
     }
   }
-}
-
-void StandaloneExecutor::SetEnableAutoParallelProfiler(
-    bool enable_job_schedule_profiler) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  gpuStream_t calculated_stream =
-      dynamic_cast<phi::GPUContext*>(
-          platform::DeviceContextPool::Instance().Get(place_))
-          ->stream();
-#if defined(PADDLE_WITH_HIP)
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(calculated_stream));
-#elif defined(PADDLE_WITH_CUDA)
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(calculated_stream));
-#endif
-  enable_job_schedule_profiler_ = enable_job_schedule_profiler;
-#endif
 }
 
 }  // namespace framework

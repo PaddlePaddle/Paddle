@@ -797,6 +797,7 @@ class _StandaloneExecutor:
         self._plan = plan
         self._scope = scope
         self._new_exe = self._create_new_executor()
+        self._enable_job_schedule_profiler = False
 
     def run(self, feed_names, return_numpy=True):
         """
@@ -808,7 +809,9 @@ class _StandaloneExecutor:
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
         """
-        tensors = self._new_exe.run(feed_names)._move_to_list()
+        tensors = self._new_exe.run(
+            feed_names, self._enable_job_schedule_profiler
+        )._move_to_list()
         if return_numpy:
             tensors = as_numpy(tensors, copy=True)
             if not get_flags("FLAGS_enable_pir_in_executor")[
@@ -824,9 +827,7 @@ class _StandaloneExecutor:
             return tensors
 
     def set_enable_job_schedule_profiler(self, enable_job_schedule_profiler):
-        self._new_exe.set_enable_job_schedule_profiler(
-            enable_job_schedule_profiler
-        )
+        self._enable_job_schedule_profiler = enable_job_schedule_profiler
 
     def _create_new_executor(self):
         new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
