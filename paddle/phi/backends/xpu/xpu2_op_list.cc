@@ -577,6 +577,7 @@ XPUOpMap& get_kl2_ops() {
       {"mean_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"mean", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"merged_adam", XPUKernelSet({phi::DataType::FLOAT32})},
       {"merged_momentum",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"mish_grad", XPUKernelSet({phi::DataType::FLOAT32})},
