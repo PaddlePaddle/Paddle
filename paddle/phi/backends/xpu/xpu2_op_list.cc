@@ -117,8 +117,10 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
       {"c_concat",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
-      {"c_embedding", XPUKernelSet({phi::DataType::FLOAT32})},
-      {"c_embedding_grad", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"c_embedding",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"c_embedding_grad",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"c_identity",
        XPUKernelSet({phi::DataType::FLOAT16,
                      phi::DataType::FLOAT32,
@@ -1107,8 +1109,6 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT16,
                      phi::DataType::FLOAT32,
                      phi::DataType::INT32})},
-      {"c_embedding",
-       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
   };
 
   return s_xpu2_kernels;

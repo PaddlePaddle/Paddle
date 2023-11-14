@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import numpy as np
 
 import paddle
@@ -31,6 +33,9 @@ _hcg = None
 # _use_cache = False
 _enable_partial_send_recv = True
 _timers = None
+
+_sync_send = os.environ.get("PADDLE_P2P_SYNC_SEND", "0")
+_sync_send = _sync_send.lower() in ['1', 'true']
 
 
 def initialize_p2p_groups(
@@ -366,55 +371,109 @@ def _p2p_helper(
     pipe_group = _hcg.get_pipe_parallel_group()
 
     # start to p2p communicate
-    if tensor_send_prev is not None:
-        src_rank = _hcg._get_p2p_prev_rank()
-        ops.extend(
-            _process_p2p_tuple_or_tensor(
-                tensor_send_prev,
-                _send_on_calc_stream,
-                src_rank,
-                pipe_group,
-                mp_degree,
-                mp_rank,
+    if not _sync_send:
+        if tensor_send_prev is not None:
+            src_rank = _hcg._get_p2p_prev_rank()
+            ops.extend(
+                _process_p2p_tuple_or_tensor(
+                    tensor_send_prev,
+                    _send_on_calc_stream,
+                    src_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
             )
-        )
-    if tensor_recv_prev is not None:
-        dst_rank = _hcg._get_p2p_prev_rank()
-        ops.extend(
-            _process_p2p_tuple_or_tensor(
-                tensor_recv_prev,
-                _recv_on_calc_stream,
-                dst_rank,
-                pipe_group,
-                mp_degree,
-                mp_rank,
+        if tensor_recv_prev is not None:
+            dst_rank = _hcg._get_p2p_prev_rank()
+            ops.extend(
+                _process_p2p_tuple_or_tensor(
+                    tensor_recv_prev,
+                    _recv_on_calc_stream,
+                    dst_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
             )
-        )
-    if tensor_send_next is not None:
-        src_rank = _hcg._get_p2p_next_rank()
-        ops.extend(
-            _process_p2p_tuple_or_tensor(
-                tensor_send_next,
-                _send_on_calc_stream,
-                src_rank,
-                pipe_group,
-                mp_degree,
-                mp_rank,
+        if tensor_send_next is not None:
+            src_rank = _hcg._get_p2p_next_rank()
+            ops.extend(
+                _process_p2p_tuple_or_tensor(
+                    tensor_send_next,
+                    _send_on_calc_stream,
+                    src_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
             )
-        )
+        if tensor_recv_next is not None:
+            dst_rank = _hcg._get_p2p_next_rank()
+            ops.extend(
+                _process_p2p_tuple_or_tensor(
+                    tensor_recv_next,
+                    _recv_on_calc_stream,
+                    dst_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+    else:
+        # Some devices(NPU for example) do not support asynchronized send op, So the order is
+        # recv_prev -> send_next -> recv_next -> send_prev
+        # When using this order, the environment variable
+        # 'PADDLE_P2P_SYNC_SEND' should be set True
+        if tensor_recv_prev is not None:
+            dst_rank = _hcg._get_p2p_prev_rank()
+            ops.extend(
+                _process_p2p_tuple_or_tensor(
+                    tensor_recv_prev,
+                    _recv_on_calc_stream,
+                    dst_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+        if tensor_send_next is not None:
+            src_rank = _hcg._get_p2p_next_rank()
+            ops.extend(
+                _process_p2p_tuple_or_tensor(
+                    tensor_send_next,
+                    _send_on_calc_stream,
+                    src_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+        if tensor_recv_next is not None:
+            dst_rank = _hcg._get_p2p_next_rank()
+            ops.extend(
+                _process_p2p_tuple_or_tensor(
+                    tensor_recv_next,
+                    _recv_on_calc_stream,
+                    dst_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+        if tensor_send_prev is not None:
+            src_rank = _hcg._get_p2p_prev_rank()
+            ops.extend(
+                _process_p2p_tuple_or_tensor(
+                    tensor_send_prev,
+                    _send_on_calc_stream,
+                    src_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
 
-    if tensor_recv_next is not None:
-        dst_rank = _hcg._get_p2p_next_rank()
-        ops.extend(
-            _process_p2p_tuple_or_tensor(
-                tensor_recv_next,
-                _recv_on_calc_stream,
-                dst_rank,
-                pipe_group,
-                mp_degree,
-                mp_rank,
-            )
-        )
     if len(ops) > 0:
         batch_send_recv_on_calc_stream(ops)
 

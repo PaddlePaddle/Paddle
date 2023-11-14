@@ -909,7 +909,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
     def _check_sanity(self):
         assert (
-            framework.in_dygraph_mode()
+            framework.in_dynamic_mode()
         ), "virtual pipeline stage with interleave only support eager dygraph mode"
 
         assert (
@@ -1462,7 +1462,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
 
     def _check_sanity(self):
         assert (
-            framework.in_dygraph_mode()
+            framework.in_dynamic_mode()
         ), "virtual pipeline stage with interleave only support eager dygraph mode"
 
         assert (
