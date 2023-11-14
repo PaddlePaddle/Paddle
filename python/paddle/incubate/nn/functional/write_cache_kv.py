@@ -42,11 +42,6 @@ def write_cache_kv(
             >>> import paddle
             >>> paddle.device.set_device('gpu')
 
-            >>> paddle_x = paddle.cast(paddle.randn(shape=[32, 256]), dtype=paddle.float16)
-            >>> paddle_weight = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float16)
-            >>> paddle_bias = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float16)
-            >>> epsilon = 1e-6
-            >>> paddle_rmsnorm = paddle.incubate.nn.functional.fused_rms_norm(paddle_x, paddle_weight, paddle_bias, epsilon, 1)
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.write_cache_kv(
