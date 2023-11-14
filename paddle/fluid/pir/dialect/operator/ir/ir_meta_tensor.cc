@@ -29,7 +29,7 @@ int64_t IrMetaTensor::numel() const override {
   return tensor_->numel();
 }
 
-DDim IrMetaTensor::dims() const override {
+phi::DDim IrMetaTensor::dims() const override {
   ValidCheck(*this);
   return tensor_->dims();
 }
@@ -39,12 +39,12 @@ phi::DataType IrMetaTensor::dtype() const override {
   return tensor_->dtype();
 }
 
-DataLayout IrMetaTensor::layout() const override {
+phi::DataLayout IrMetaTensor::layout() const override {
   ValidCheck(*this);
   return tensor_->layout();
 }
 
-void IrMetaTensor::set_dims(const DDim& dims) override {
+void IrMetaTensor::set_dims(const phi::DDim& dims) override {
   static_cast<paddle::dialect::IrTensor*>(tensor_)->SetDims(dims);
 }
 
@@ -52,7 +52,7 @@ void IrMetaTensor::set_dtype(phi::DataType dtype) override {
   static_cast<paddle::dialect::IrTensor*>(tensor_)->SetDtype(dtype);
 }
 
-void IrMetaTensor::set_layout(DataLayout layout) override {
+void IrMetaTensor::set_layout(phi::DataLayout layout) override {
   static_cast<paddle::dialect::IrTensor*>(tensor_)->SetLayout(layout);
 }
 
