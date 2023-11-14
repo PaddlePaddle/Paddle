@@ -43,8 +43,9 @@ void InplaceLogicalKernelImpl(const Context& dev_ctx,
                               const DenseTensor& y,
                               DenseTensor* out) {
   auto x_origin = x;
-  dev_ctx.template Alloc<bool>(out);
+  out->clear();
   out->set_type(phi::DataType::BOOL);
+  dev_ctx.template Alloc<bool>(out);
   Functor binary_func;
   std::vector<const DenseTensor*> ins = {&x_origin, &y};
   std::vector<DenseTensor*> outs = {out};
@@ -83,6 +84,7 @@ void LogicalNotKernel(const Context& dev_ctx,
     funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, unary_func);
   } else {
     auto x_origin = x;
+    out->clear();
     out->set_type(phi::DataType::BOOL);
     dev_ctx.template Alloc<bool>(out);
     funcs::LogicalNotFunctor<T> unary_func;

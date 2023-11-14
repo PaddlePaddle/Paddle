@@ -55,9 +55,9 @@ void CastInplaceKernelImpl(const CPUContext& dev_ctx,
   auto* in_begin = x_origin.data<InT>();
   auto numel = x_origin.numel();
   auto* in_end = in_begin + numel;
-
-  auto* out_begin = dev_ctx.Alloc<OutT>(out);
+  out->clear();
   out->set_type(out_dtype);
+  auto* out_begin = dev_ctx.Alloc<OutT>(out);
 
   phi::Transform<CPUContext> trans;
   trans(dev_ctx,
