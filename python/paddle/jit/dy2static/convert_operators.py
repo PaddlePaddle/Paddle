@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import re
+import warnings
 from contextlib import contextmanager
 
 import paddle
@@ -822,6 +823,11 @@ def convert_auto_cast(
     use_promote=True,
 ):
     from .program_translator import ProgramTranslator
+
+    warnings.warn(
+        "paddle.amp.auto_cast is an experimental features in auto parallel."
+        + "This will take no effect in normal dy2static."
+    )
 
     amp_records = ProgramTranslator.get_instance()._amp_records
     main_program = paddle.static.default_main_program()
