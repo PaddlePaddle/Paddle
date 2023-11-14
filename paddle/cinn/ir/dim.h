@@ -24,6 +24,7 @@ struct _Dim_;
 // This fake class is to pass the CI, and will be replaced by
 // pir::shape::SymbolicDimOp when pir is completely integrated.
 class SymbolicDimOp {
+ public:
   const std::string GetSymName() const { return ""; }
   int64_t GetDimSize() const { return 0; }
   bool IsDynamic() const { return false; }

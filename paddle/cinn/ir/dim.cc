@@ -31,8 +31,7 @@ int64_t _Dim_::GetRealDimSize() const { return sym_dim.GetDimSize(); }
 
 Expr _Dim_::GetDimExpr() const { return dim_expr; }
 
-Dim _Dim_::Make(const std::string& name,
-                const pir::shape::SymbolicDimOp& sym_dim) {
+Dim _Dim_::Make(const std::string& name, const SymbolicDimOp& sym_dim) {
   auto* n = make_shared<_Dim_>();
   n->name = name;
   n->sym_dim = sym_dim;
