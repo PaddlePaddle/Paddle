@@ -421,9 +421,10 @@ void InitDistTensorWithTensor(TensorObject* self,
                               const ProcessMesh& process_mesh,
                               const Placements& placements) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-  PADDLE_ENFORCE(src.is_dense_tensor(),
-                 paddle::platform::errors::InvalidArgument(
-                     "DistTensor can only initialize by DenseTensor"));
+  PADDLE_ENFORCE_EQ(src.is_dense_tensor(),
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "DistTensor can only initialize by DenseTensor"));
   self->tensor.set_name(name);
   VLOG(4) << "Do TensorCopy from DenseTensor to DistTensor.";
   if (place == src.place()) {
