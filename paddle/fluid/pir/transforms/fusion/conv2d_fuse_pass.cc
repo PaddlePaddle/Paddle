@@ -75,7 +75,7 @@ class Conv2dBnFusePattern
     pir::Value bn_bias = op.bias();
 
     // --- deal with filter ---
-    rewriter.SetInsertionPoint(op);
+    rewriter.set_insertion_point(op);
     phi::DDim bn_variance_shape =
         bn_variance.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
     float epsilon = op.attribute<pir::FloatAttribute>("epsilon").data();
