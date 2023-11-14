@@ -256,7 +256,8 @@ const std::vector<std::string> CpuBasicPasses{
     "conv_transpose_bn_fuse_pass",             //
     "conv_transpose_eltwiseadd_bn_fuse_pass",  //
     "is_test_pass",                            //
-    "constant_folding_pass"};
+    "constant_folding_pass",
+};
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
