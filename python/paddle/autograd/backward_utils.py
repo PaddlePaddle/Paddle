@@ -94,7 +94,7 @@ class ValueDict:
         return self.keys()
 
     def __contains__(self, other_key):
-        return other_key in self._items
+        return ValueWrapper(other_key) in self._items
 
 
 class ValueSet:
@@ -136,7 +136,7 @@ class ValueSet:
             yield val.value
 
     def __contains__(self, other_val):
-        return other_val in self._values
+        return ValueWrapper(other_val) in self._values
 
 
 class State:
