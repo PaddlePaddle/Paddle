@@ -2850,6 +2850,16 @@
   inplace: (x -> out)
   backward : where_grad
 
+- op : write_cache_kv
+  args : (Tensor input_k, Tensor input_v, Tensor cache_kv, Tensor sequence_lengths)
+  output : Tensor (cache_kv_out)
+  infer_meta :
+    func : WriteCacheKVInferMeta
+  kernel :
+    func : write_cache_kv
+    data_type : cache_kv
+  inplace: (cache_kv -> cache_kv_out)
+
 - op : yolo_box
   args : (Tensor x, Tensor img_size, int[] anchors={}, int class_num = 1, float conf_thresh = 0.01, int downsample_ratio = 32, bool clip_bbox = true, float scale_x_y=1.0, bool iou_aware=false, float iou_aware_factor=0.5)
   output : Tensor(boxes), Tensor(scores)

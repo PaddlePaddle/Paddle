@@ -735,6 +735,12 @@ void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& y,
                     MetaTensor* out);
 
+void WriteCacheKVInferMeta(const MetaTensor& input_k,
+                           const MetaTensor& input_v,
+                           const MetaTensor& cache_kv,
+                           const MetaTensor& sequence_lengths,
+                           MetaTensor* cache_kv_out);
+
 void YoloLossInferMeta(const MetaTensor& x,
                        const MetaTensor& gt_box,
                        const MetaTensor& gt_label,

@@ -3924,6 +3924,19 @@ void WhereInferMeta(const MetaTensor& condition,
   out->share_meta(x);
 }
 
+void WriteCacheKVInferMeta(const MetaTensor& input_k,
+                           const MetaTensor& input_v,
+                           const MetaTensor& cache_kv,
+                           const MetaTensor& sequence_lengths,
+                           MetaTensor* cache_kv_out) {
+  PADDLE_ENFORCE_EQ(sequence_lengths.dtype(),
+                    DataType::INT32,
+                    errors::InvalidArgument(
+                        "The dtype of sequence_lengths must be int, but got %d",
+                        sequence_lengths.dtype()));
+  cache_kv_out->share_meta(cache_kv);
+}
+
 void YoloLossInferMeta(const MetaTensor& x,
                        const MetaTensor& gt_box,
                        const MetaTensor& gt_label,
