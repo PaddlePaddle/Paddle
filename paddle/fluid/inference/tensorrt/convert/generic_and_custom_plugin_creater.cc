@@ -342,7 +342,7 @@ class CustomGenericPluginCreater : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(custom_plugin_creater, CustomGenericPluginCreater);
+REGISTER_TRT_OP_CONVERTER(custom_plugin_creater, CustomPluginCreater);
 REGISTER_TRT_OP_CONVERTER(generic_plugin_creater, GenericPluginCreater);
 REGISTER_TRT_OP_CONVERTER(custom_generic_plugin_creater,
                           CustomGenericPluginCreater);
