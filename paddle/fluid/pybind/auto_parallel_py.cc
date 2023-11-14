@@ -359,7 +359,7 @@ void BindAutoParallel(py::module *m) {
           py::arg("memo"))
       .def("__str__", &DeviceMesh::to_string);
 
-  py::enum_<phi::ReduceType>(m, "ReduceType")
+  py::enum_<phi::ReduceType>(*m, "ReduceType")
       .value("kRedSum", phi::ReduceType::kRedSum)
       .value("kRedMax", phi::ReduceType::kRedMax)
       .value("kRedMin", phi::ReduceType::kRedMin)
