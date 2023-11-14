@@ -19,6 +19,7 @@ import multiprocessing
 import os
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -1699,7 +1700,7 @@ def main():
     if env_dict.get("WITH_STRIP") == 'ON':
         command = (
             'find '
-            + paddle_binary_dir
+            + shlex.quote(paddle_binary_dir)
             + '/python/paddle -name "*.so" | xargs -i strip {}'
         )
         if os.system(command) != 0:
