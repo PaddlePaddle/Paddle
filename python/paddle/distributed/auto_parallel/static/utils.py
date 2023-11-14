@@ -2397,14 +2397,7 @@ def get_dist_tensor_spec(dist_op, name, is_input=True):
 
 
 def check_if_op_supports_runtime_profiling(op):
-    op_type = op.type
-    if (
-        op_type.startswith('c_')
-        or op_type.startswith('send')
-        or op_type.startswith('recv')
-    ):
-        return False
-    return True
+    return not is_comm_op(op)
 
 
 def _measure_real_op_cost_wrt_program_and_place_multipass(
