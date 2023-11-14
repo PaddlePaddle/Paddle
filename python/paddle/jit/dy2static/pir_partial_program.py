@@ -717,7 +717,9 @@ class PartialProgramLayer:
                     len(program.global_block().ops),
                     "grad_input_",
                 )
-                backward_start_op_index = len(program.global_block().ops)
+                op_between_forward_and_backward = (
+                    len(program.global_block().ops) - forward_end_idx
+                )
 
                 # call grad to get backward ops.
                 if (
@@ -749,7 +751,6 @@ class PartialProgramLayer:
                 ) = self._hooker.after_append_backward(
                     program, targets, forward_end_idx
                 )
-
             # TODO: add later
             # self.prepare_gradient_aggregation(
             # start_idx + 1, main_program, program
@@ -782,6 +783,9 @@ class PartialProgramLayer:
             "grad_output_",
         )
 
+        backward_start_op_index = (
+            forward_end_idx + op_between_forward_and_backward
+        )
         # construct a runnable program.
         return RunableProgram(
             program,
