@@ -55,9 +55,8 @@ MAIN_DIST_BRANCH_TEMPLATE = """
       // 7. Infer Local DenseTensor Meta{}
       // 8. DenseTensor Kernel Call{}
     }}\n
-    // 9. Reshard Partial Output to Replicated (Temporary){}\n
-    // 10. Set Output Dist Attr For Default Impl{}\n
-    // 11. Return
+    // 9. Set Output Dist Attr For Default Impl{}\n
+    // 10. Return
     {}
   }}
 """
@@ -361,17 +360,7 @@ VECTOR_SET_DIST_OUT_DIMS = """
 PREFIX_VECTOR_TENSOR_NAME = "dense_input_"
 SUFFIX_VECTOR_TENSOR_NAME = "_vec"
 
-# 9. Reshard Partial Output to Replicated
-RESHARD_P2R_SINGLE_OUTPUT_TEMPLATE = """
-    dev_ctx = phi::distributed::GetDistTensorDeviceContext(dist_out);
-    ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out);"""
-RESHARD_P2R_MULTI_SINGLE_OUTPUT_TEMPLATE = """
-    dev_ctx = phi::distributed::GetDistTensorDeviceContext(dist_out_{idx});
-    ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out_{idx});"""
-UNSUPPORTED_RESHARD_OUTPUT_COMMENT_TEMPLATE = """
-      // API `{}` does not need to support ReshardOutput now."""
-
-# 10. Set Output DistAttr for Default impl
+# 9. Set Output DistAttr for Default impl
 # Dist Branch will not generated in the API that doesn't have input tensor.
 CURRENT_PROCESS_MESH_TEMPLATE = """
     auto current_process_mesh = paddle::holds_alternative<phi::distributed::TensorDistAttr>(spmd_info.first[0]) ?
@@ -1371,36 +1360,6 @@ class DistForwardAPI(ForwardAPI):
                     result += MULTI_SINGLE_SET_DIST_OUT_DIMS.format(i, i)
         return result
 
-    def generate_reshard_partial_out_to_replicated_code(self) -> str:
-        reshard_p2r_code = ""
-        if self.infer_meta['spmd_rule'] is not None:
-            output_num = len(self.outputs['types'])
-            if output_num == 1:
-                if self.outputs['types'][0] == 'Tensor':
-                    reshard_p2r_code += RESHARD_P2R_SINGLE_OUTPUT_TEMPLATE
-                else:
-                    self.vector_output_size_assertion_check()
-            elif output_num > 1:
-                for i, out_type in enumerate(self.outputs['types']):
-                    if out_type == 'Tensor':
-                        reshard_p2r_code += (
-                            RESHARD_P2R_MULTI_SINGLE_OUTPUT_TEMPLATE.format(
-                                idx=i
-                            )
-                        )
-                    else:
-                        self.vector_output_size_assertion_check()
-            else:
-                raise ValueError(
-                    f"{self.api} : Output error: the output should not be empty."
-                )
-        else:
-            reshard_p2r_code = (
-                UNSUPPORTED_RESHARD_OUTPUT_COMMENT_TEMPLATE.format(self.api)
-            )
-
-        return reshard_p2r_code
-
     def generate_output_dist_attr_setting(self) -> str:
         set_out_dist_attr_code = ""
         if self.generate_general_infer_spmd is True:
@@ -1440,7 +1399,6 @@ class DistForwardAPI(ForwardAPI):
             self.generate_prepare_data_code(),
             self.generate_infer_meta_code(),
             self.generate_kernel_call_code(),
-            self.generate_reshard_partial_out_to_replicated_code(),
             self.generate_output_dist_attr_setting(),
             self.generate_return_code(),
         )

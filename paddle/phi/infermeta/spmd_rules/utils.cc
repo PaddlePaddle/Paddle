@@ -419,6 +419,19 @@ TensorDistAttr FromPlacements(
   return dst_dist_attr;
 }
 
+TensorDistAttr UnShardTensorDims(const TensorDistAttr& dist_attr,
+                                 std::vector<int64_t> dims) {
+  TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
+  std::vector<int64_t> dims_mapping = dist_attr.dims_mapping();
+  int64_t n_dim = dims_mapping.size();
+  for (auto dim : dims) {
+    dim = dim < 0 ? n_dim + dim : dim;
+    dims_mapping[dim] = kReplicateDim;
+  }
+  dst_dist_attr.set_dims_mapping(dims_mapping);
+  return dst_dist_attr;
+}
+
 std::vector<ArgDistAttr> ToArgDistAttr(
     const std::vector<TensorDistAttr>& dist_attrs) {
   std::vector<ArgDistAttr> items_dist_attrs;

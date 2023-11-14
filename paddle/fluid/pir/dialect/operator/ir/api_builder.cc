@@ -19,41 +19,35 @@
 namespace paddle {
 namespace dialect {
 
-APIBuilder::APIBuilder() : builder_(nullptr) {
-  ctx_ = pir::IrContext::Instance();
+ApiBuilder::ApiBuilder()
+    : ctx_(pir::IrContext::Instance()),
+      builder_(std::make_shared<pir::Builder>(ctx_)) {
+  IR_ENFORCE(builder_ != nullptr, "api builder construct error!");
 }
 
-void APIBuilder::SetProgram(pir::Program* program) {
-  builder_ = std::make_shared<pir::Builder>(ctx_, program->block());
+void ApiBuilder::SetProgram(pir::Program* program) {
+  IR_ENFORCE(program != nullptr, "argument of program is nullptr");
+  builder_->SetInsertionPointToEnd(program->block());
 }
 
-void APIBuilder::SetInsertionPoint(pir::Operation* op) {
-  IR_ENFORCE(builder_ != nullptr,
-             "builder doesn't hold program, please call SetProgram for "
-             "initialization.");
-  builder_->SetInsertionPoint(op);
+void ApiBuilder::set_insertion_point(pir::Operation* op) {
+  builder_->set_insertion_point(op);
 }
 
-void APIBuilder::ResetInsertionPointToStart() {
-  IR_ENFORCE(builder_ != nullptr,
-             "builder doesn't hold program, please call SetProgram for "
-             "initialization.");
+void ApiBuilder::ResetInsertionPointToStart() {
   builder_->SetInsertionPointToStart(builder_->block());
 }
 
-void APIBuilder::ResetInsertionPointToEnd() {
-  IR_ENFORCE(builder_ != nullptr,
-             "builder doesn't hold program, please call SetProgram for "
-             "initialization.");
+void ApiBuilder::ResetInsertionPointToEnd() {
   builder_->SetInsertionPointToEnd(builder_->block());
 }
 
-pir::Parameter* APIBuilder::GetParameter(const std::string& name) const {
+pir::Parameter* ApiBuilder::GetParameter(const std::string& name) const {
   pir::Program* program = builder_->block()->GetParentOp()->GetParentProgram();
   return program->GetParameter(name);
 }
 
-void APIBuilder::SetParameter(const std::string& name,
+void ApiBuilder::SetParameter(const std::string& name,
                               std::unique_ptr<pir::Parameter>&& parameter) {
   pir::Program* program = builder_->block()->GetParentOp()->GetParentProgram();
   program->SetParameter(name, std::move(parameter));
