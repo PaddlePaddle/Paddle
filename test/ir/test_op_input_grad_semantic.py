@@ -15,12 +15,12 @@
 import unittest
 
 import paddle
-from paddle import ir
+from paddle import pir
 
 paddle.enable_static()
 
 
-def get_gather_program_new_ir():
+def get_gather_program_pir():
     main_program, start_program = (
         paddle.static.Program(),
         paddle.static.Program(),
@@ -32,11 +32,11 @@ def get_gather_program_new_ir():
         index = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=1.0)
         axis = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=2.0)
         out = paddle.gather(x, index, axis)
-    newir_program = ir.translate_to_new_ir(main_program.desc)
-    return newir_program
+    pir_program = pir.translate_to_pir(main_program.desc)
+    return pir_program
 
 
-def get_multiply_program_new_ir():
+def get_multiply_program_pir():
     main_program, start_program = (
         paddle.static.Program(),
         paddle.static.Program(),
@@ -49,21 +49,21 @@ def get_multiply_program_new_ir():
             shape=[3, 4], dtype='float32', value=3.0
         )
         out = paddle.multiply(x, y)
-    newir_program = ir.translate_to_new_ir(main_program.desc)
-    return newir_program
+    pir_program = pir.translate_to_pir(main_program.desc)
+    return pir_program
 
 
 class TestOpInputGradSemantic(unittest.TestCase):
     def test_gather_op_input_grad_semantic(self):
-        newir_program = get_gather_program_new_ir()
-        gather_op = newir_program.global_block().ops[-1]
+        pir_program = get_gather_program_pir()
+        gather_op = pir_program.global_block().ops[-1]
         self.assertEqual(
             gather_op.get_input_grad_semantics(), [True, False, False]
         )
 
     def test_multiply_op_input_grad_semantic(self):
-        newir_program = get_multiply_program_new_ir()
-        multiply_op = newir_program.global_block().ops[-1]
+        pir_program = get_multiply_program_pir()
+        multiply_op = pir_program.global_block().ops[-1]
         self.assertEqual(multiply_op.get_input_grad_semantics(), [True, True])
 
 

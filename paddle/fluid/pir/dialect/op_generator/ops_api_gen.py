@@ -15,7 +15,7 @@
 import argparse
 import os
 
-from api_gen import NAMESPACE_TEMPLATE, PD_MANUAL_OP_LIST, CodeGen
+from api_gen import NAMESPACE_TEMPLATE, CodeGen
 
 CPP_FILE_TEMPLATE = """
 #include <pybind11/pybind11.h>
@@ -59,7 +59,7 @@ static PyObject *{name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
   }}
 }}"""
 
-NO_DY_FUNCTION_IMPL_TEMPLATE = """
+STATIC_ONLY_FUNCTION_IMPL_TEMPLATE = """
 static PyObject *{name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
   VLOG(6) << "Call static_api_{name}";
   return static_api_{name}(self, args, kwargs);
@@ -68,28 +68,59 @@ static PyObject *{name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
 OPS_API_TEMPLATE = """
 {{"{name}", (PyCFunction)(void (*)(void)){name}, METH_VARARGS | METH_KEYWORDS, "C++ interface function for {name}."}},"""
 
-SPECIAL_STATIC_ONLY_APIS = [
+NEED_GEN_STATIC_ONLY_APIS = [
     'fetch',
-    'set_value_with_tensor',
-    'set_value_with_tensor_',
-    'fused_bn_add_activation_',
-    'fused_batch_norm_act_',
+    'fused_embedding_eltwise_layernorm',
+    'fused_fc_elementwise_layernorm',
+    'fused_multi_transformer_xpu',
+    'fused_scale_bias_relu_conv_bn',
+    'fused_scale_bias_add_relu',
+    'fusion_transpose_flatten_concat',
+    'generate_sequence_xpu',
+    'layer_norm_act_xpu',
+    'multi_encoder_xpu',
+    'multihead_matmul',
+    'squeeze_excitation_block',
+    'yolo_box_xpu',
+    'fusion_gru',
+    'fusion_seqconv_eltadd_relu',
+    'fusion_seqexpand_concat_fc',
+    'fusion_repeated_fc_relu',
+    'fusion_squared_mat_sub',
+    'fused_attention',
+    'fused_feedforward',
+    'self_dp_attention',
+]
+
+NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
-    'set_value',
-    'assign_value',
-    'set_value_',
-    'embedding_grad_sparse',
     'add_n_with_kernel',
-    'print',
-    'send_v2',
-    'shadow_feed',
-    'recv_v2',
-    'rnn_',
-    'fused_scale_bias_relu_conv_bnstats',
+    'assign_value',
     'batch_norm_',
+    'c_allgather',
+    'c_allreduce_max',
     'c_allreduce_sum',
     'c_embedding',
     'c_identity',
+    'c_reduce_sum',
+    'dpsgd',
+    'embedding_grad_sparse',
+    'fused_batch_norm_act_',
+    'fused_bn_add_activation_',
+    'fused_scale_bias_relu_conv_bn',
+    'fused_scale_bias_add_relu',
+    'memcpy',
+    'print',
+    'recv_v2',
+    'rnn_',
+    'seed',
+    'send_v2',
+    'set_value',
+    'set_value_',
+    'set_value_with_tensor',
+    'set_value_with_tensor_',
+    'shadow_feed',
+    'sparse_momentum',
 ]
 
 
@@ -97,14 +128,16 @@ class OpsAPIGen(CodeGen):
     def __init__(self) -> None:
         super().__init__()
 
+    def _need_skip(self, op_info, op_name):
+        return (
+            super()._need_skip(op_info, op_name)
+            or op_name.endswith(('_grad', '_grad_', 'xpu'))
+            or op_name in NO_NEED_GEN_STATIC_ONLY_APIS
+        )
+
     def _gen_one_function_impl(self, name):
-        if (
-            name.endswith('_grad')
-            or name.endswith('_grad_')
-            or name.endswith('xpu')
-            or name in SPECIAL_STATIC_ONLY_APIS
-        ):
-            return NO_DY_FUNCTION_IMPL_TEMPLATE.format(name=name)
+        if name in NEED_GEN_STATIC_ONLY_APIS:
+            return STATIC_ONLY_FUNCTION_IMPL_TEMPLATE.format(name=name)
         else:
             return FUNCTION_IMPL_TEMPLATE.format(name=name)
 
@@ -121,10 +154,7 @@ class OpsAPIGen(CodeGen):
         ops_api_str = ''
         for op_info in op_info_items:
             for op_name in op_info.op_phi_name:
-                if (
-                    op_info.infer_meta_func is None
-                    and op_name not in PD_MANUAL_OP_LIST
-                ):
+                if self._need_skip(op_info, op_name):
                     continue
                 function_impl_str += self._gen_one_function_impl(op_name)
                 ops_api_str += self._gen_one_ops_api(op_name)

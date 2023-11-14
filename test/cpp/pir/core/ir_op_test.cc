@@ -15,11 +15,12 @@
 #include <gtest/gtest.h>
 #include <sstream>
 
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/phi/core/tensor_meta.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/dialect.h"
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/ir_context.h"
@@ -27,220 +28,35 @@
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/region.h"
+#include "test/cpp/pir/tools/test_dialect.h"
+#include "test/cpp/pir/tools/test_op.h"
 
-/// \brief Define built-in Trait, derived from OpTraitBase.
-class ReadOnlyTrait : public pir::OpTraitBase<ReadOnlyTrait> {
- public:
-  explicit ReadOnlyTrait(pir::Operation *op)
-      : pir::OpTraitBase<ReadOnlyTrait>(op) {}
-};
-IR_DECLARE_EXPLICIT_TYPE_ID(ReadOnlyTrait)
-IR_DEFINE_EXPLICIT_TYPE_ID(ReadOnlyTrait)
-
-/// \brief Define built-in Interface, derived from OpInterfaceBase. Concepts and
-/// Models need to be defined within the class. Concept defines abstract
-/// interface functions, and Model is a template class that defines the specific
-/// implementation of interface functions based on template parameters.
-class InferShapeInterface : public pir::OpInterfaceBase<InferShapeInterface> {
- public:
-  struct Concept {
-    explicit Concept(void (*infer_shape)(pir::Operation *))
-        : infer_shape_(infer_shape) {}
-    void (*infer_shape_)(pir::Operation *);
-  };
-
-  template <class ConcreteOp>
-  struct Model : public Concept {
-    static void InferShape(pir::Operation *op) {
-      ConcreteOp concret_op = ConcreteOp(op);
-      if (concret_op == nullptr) throw("concret_op is nullptr");
-      concret_op.InferShape();
-    }
-
-    Model() : Concept(InferShape) {}
-  };
-
-  InferShapeInterface(pir::Operation *op, Concept *impl)
-      : pir::OpInterfaceBase<InferShapeInterface>(op), impl_(impl) {}
-
-  void InferShape() { impl_->infer_shape_(operation()); }
-
- private:
-  Concept *impl_;
-};
-IR_DECLARE_EXPLICIT_TYPE_ID(InferShapeInterface)
-IR_DEFINE_EXPLICIT_TYPE_ID(InferShapeInterface)
-
-pir::AttributeMap CreateAttributeMap(
-    const std::vector<std::string> &attribute_names,
-    const std::vector<std::string> &attributes) {
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  pir::AttributeMap attr_map;
-  for (size_t i = 0; i < attribute_names.size(); i++) {
-    pir::Attribute attr_value = pir::StrAttribute::get(ctx, attributes[i]);
-    attr_map.insert(
-        std::pair<std::string, pir::Attribute>(attribute_names[i], attr_value));
-  }
-  return attr_map;
-}
-
-// Define op1.
-class Operation1 : public pir::Op<Operation1> {
- public:
-  using Op::Op;
-  static const char *name() { return "test.operation1"; }
-  static constexpr uint32_t attributes_num = 2;
-  static const char *attributes_name[attributes_num];  // NOLINT
-  void Verify() {
-    auto &attributes = this->attributes();
-    if (attributes.count("op1_attr1") == 0 ||
-        !attributes.at("op1_attr1").isa<pir::StrAttribute>()) {
-      throw("Type of attribute: parameter_name is not right.");
-    }
-    if (attributes.count("op1_attr2") == 0 ||
-        !attributes.at("op1_attr2").isa<pir::StrAttribute>()) {
-      throw("Type of attribute: parameter_name is not right.");
-    }
-  }
-  static void Build(const pir::Builder &builder,
-                    pir::OperationArgument &argument) {  // NOLINT
-    std::vector<pir::OpResult> inputs = {};
-    std::vector<pir::Type> output_types = {
-        pir::Float32Type::get(builder.ir_context())};
-    std::unordered_map<std::string, pir::Attribute> attributes =
-        CreateAttributeMap({"op1_attr1", "op1_attr2"},
-                           {"op1_attr1", "op1_attr2"});
-    argument.AddOperands(inputs.begin(), inputs.end());
-    argument.AddOutputs(output_types.begin(), output_types.end());
-    argument.AddAttributes(attributes.begin(), attributes.end());
-  }
-};
-const char *Operation1::attributes_name[attributes_num] = {  // NOLINT
-    "op1_attr1",
-    "op1_attr2"};
-
-IR_DECLARE_EXPLICIT_TYPE_ID(Operation1)
-IR_DEFINE_EXPLICIT_TYPE_ID(Operation1)
-
-// Define op2.
-class Operation2
-    : public pir::Op<Operation2, ReadOnlyTrait, InferShapeInterface> {
- public:
-  using Op::Op;
-  static const char *name() { return "test.operation2"; }
-  static constexpr uint32_t attributes_num = 2;
-  static const char *attributes_name[attributes_num];  // NOLINT
-  void Verify() {
-    auto &attributes = this->attributes();
-    if (attributes.count("op2_attr1") == 0 ||
-        (!attributes.at("op2_attr1").isa<pir::StrAttribute>())) {
-      throw("Type of attribute: parameter_name is not right.");
-    }
-    if (attributes.count("op2_attr2") == 0 ||
-        (!attributes.at("op2_attr2").isa<pir::StrAttribute>())) {
-      throw("Type of attribute: parameter_name is not right.");
-    }
-  }
-  static void InferShape() { VLOG(2) << "This is op2's InferShape interface."; }
-};
-const char *Operation2::attributes_name[attributes_num] = {  // NOLINT
-    "op2_attr1",
-    "op2_attr2"};
-IR_DECLARE_EXPLICIT_TYPE_ID(Operation2)
-IR_DEFINE_EXPLICIT_TYPE_ID(Operation2)
-
-// Define a dialect, op1 and op2 will be registered by this dialect.
-class TestDialect : public pir::Dialect {
- public:
-  explicit TestDialect(pir::IrContext *context)
-      : pir::Dialect(name(), context, pir::TypeId::get<TestDialect>()) {
-    initialize();
-  }
-  static const char *name() { return "test"; }
-
-  void PrintOperation(pir::Operation *op,
-                      pir::IrPrinter &printer) const override {
-    printer.PrintOpResult(op);
-    printer.os << " =";
-
-    printer.os << " \"" << op->name() << "\"";
-    printer.PrintOpOperands(op);
-  }
-
- private:
-  void initialize() { RegisterOps<Operation1, Operation2>(); }
-};
-IR_DECLARE_EXPLICIT_TYPE_ID(TestDialect)
-IR_DEFINE_EXPLICIT_TYPE_ID(TestDialect)
-
-TEST(op_test, op_test) {
-  // (1) Register Dialect, Operation1, Operation2 into IrContext.
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  pir::Dialect *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
-  EXPECT_EQ(test_dialect != nullptr, true);
-
-  // (2) Get registered operations.
-  std::string op1_name = Operation1::name();
-  pir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
-  EXPECT_TRUE(op1_info);
-  std::string op2_name = Operation2::name();
-  pir::OpInfo op2_info = ctx->GetRegisteredOpInfo(op2_name);
-  EXPECT_TRUE(op2_info);
-  EXPECT_EQ(op1_info.HasTrait<ReadOnlyTrait>(), false);
-  EXPECT_EQ(op1_info.HasInterface<InferShapeInterface>(), false);
-  EXPECT_EQ(op2_info.HasTrait<ReadOnlyTrait>(), true);
-  EXPECT_EQ(op2_info.HasInterface<InferShapeInterface>(), true);
-
-  // (3) Test uses for op.
-  std::vector<pir::OpResult> op_inputs = {};
-  std::vector<pir::Type> op_output_types = {pir::Float32Type::get(ctx)};
-  pir::Operation *op2 =
-      pir::Operation::Create(op_inputs,
-                             CreateAttributeMap({"op2_attr1", "op2_attr2"},
-                                                {"op2_attr1", "op2_attr2"}),
-                             op_output_types,
-                             op2_info);
-
-  ReadOnlyTrait trait = op2->dyn_cast<ReadOnlyTrait>();
-  EXPECT_EQ(trait.operation(), op2);
-  InferShapeInterface interface = op2->dyn_cast<InferShapeInterface>();
-  interface.InferShape();
-  Operation2 Op2 = op2->dyn_cast<Operation2>();
-  EXPECT_EQ(Op2.operation(), op2);
-  op2->Destroy();
-}
+#include "test/cpp/pir/tools/test_pir_utils.h"
 
 TEST(op_test, region_test) {
   // (1) Register Dialect, Operation1, Operation2 into IrContext.
   pir::IrContext *ctx = pir::IrContext::Instance();
-  pir::Dialect *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
+  pir::Dialect *test_dialect = ctx->GetOrRegisterDialect<test::TestDialect>();
   EXPECT_EQ(test_dialect != nullptr, true);
 
   // (2) Get registered operations.
-  pir::OpInfo op1_info = ctx->GetRegisteredOpInfo(Operation1::name());
-  pir::OpInfo op2_info = ctx->GetRegisteredOpInfo(Operation2::name());
+  pir::OpInfo op1_info = ctx->GetRegisteredOpInfo(test::Operation1::name());
+  pir::OpInfo op2_info = ctx->GetRegisteredOpInfo(test::Operation2::name());
 
-  pir::Operation *op1 =
-      pir::Operation::Create({},
-                             CreateAttributeMap({"op1_attr1", "op1_attr2"},
-                                                {"op1_attr1", "op1_attr2"}),
-                             {pir::Float32Type::get(ctx)},
-                             op1_info);
-  pir::Operation *op1_2 =
-      pir::Operation::Create({},
-                             CreateAttributeMap({"op1_attr1", "op1_attr2"},
-                                                {"op1_attr1", "op1_attr2"}),
-                             {pir::Float32Type::get(ctx)},
-                             op1_info);
+  pir::Operation *op1 = pir::Operation::Create(
+      {},
+      test::CreateAttributeMap({"op1_attr1", "op1_attr2"},
+                               {"op1_attr1", "op1_attr2"}),
+      {pir::Float32Type::get(ctx)},
+      op1_info);
+  pir::Operation *op_2 =
+      pir::Operation::Create({}, {}, {pir::Float32Type::get(ctx)}, op2_info);
 
   pir::OperationArgument argument(op2_info);
-  argument.attributes = CreateAttributeMap({"op2_attr1", "op2_attr2"},
-                                           {"op2_attr1", "op2_attr2"});
   argument.output_types = {pir::Float32Type::get(ctx)};
-  argument.num_regions = 1;
+  argument.AddRegion(nullptr);
 
   pir::Operation *op3 = pir::Operation::Create(std::move(argument));
-  // argument.regions.emplace_back(std::make_unique<pir::Region>());
 
   pir::Region &region = op3->region(0);
   EXPECT_EQ(region.empty(), true);
@@ -255,7 +71,7 @@ TEST(op_test, region_test) {
   region.insert(region.begin(), new pir::Block());
   pir::Block *block = region.front();
   block->push_front(op1);
-  block->insert(block->begin(), op1_2);
+  block->insert(block->begin(), op_2);
   op3->Destroy();
 }
 
@@ -263,7 +79,7 @@ TEST(op_test, module_op_death) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(pir::ModuleOp::name());
 
-  std::vector<pir::OpResult> inputs{pir::OpResult()};
+  std::vector<pir::Value> inputs{pir::Value()};
   pir::AttributeMap attrs{{"program", pir::Int32Attribute::get(ctx, 1)}};
   std::vector<pir::Type> output_types = {pir::Float32Type::get(ctx)};
 
@@ -281,4 +97,386 @@ TEST(op_test, module_op_death) {
 
   program.module_op()->set_attribute("program",
                                      pir::PointerAttribute::get(ctx, &program));
+}
+
+TEST(op_test, trait_and_interface) {
+  pir::IrContext ctx;
+  ctx.GetOrRegisterDialect<test::TestDialect>();
+  pir::Program program(&ctx);
+  auto block = program.block();
+  pir::Builder builder(&ctx, block);
+  auto op1 = builder.Build<test::Operation1>();
+  auto op2 = builder.Build<test::Operation2>();
+
+  EXPECT_EQ(op1->HasTrait<test::ReadOnlyTrait>(), false);
+  EXPECT_EQ(op1->HasInterface<test::InferShapeInterface>(), false);
+  EXPECT_EQ(op2->HasTrait<test::ReadOnlyTrait>(), true);
+  EXPECT_EQ(op2->HasInterface<test::InferShapeInterface>(), true);
+
+  pir::OperationArgument argument(&ctx, "test.region");
+  EXPECT_THROW(builder.Build(std::move(argument)), pir::IrNotMetException);
+}
+
+TEST(op_test, op_traits_test) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  pir::Type dtype = pir::Float32Type::get(ctx);
+  phi::DDim dims = {2, 2};
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  pir::DenseTensorType dense_tensor_dtype =
+      pir::DenseTensorType::get(ctx, dtype, dims, data_layout, lod, offset);
+
+  pir::Operation *op1 =
+      test::CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype);
+  pir::Operation *op2 =
+      test::CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype);
+
+  auto op3 = builder.Build<test::TraitExampleOp>(
+      op1->result(0), op2->result(0), dense_tensor_dtype);
+
+  EXPECT_EQ(op3->HasTrait<pir::SameOperandsShapeTrait>(), true);
+  EXPECT_EQ(op3->HasTrait<pir::SameOperandsAndResultShapeTrait>(), true);
+  EXPECT_EQ(op3->HasTrait<pir::SameOperandsElementTypeTrait>(), true);
+  EXPECT_EQ(op3->HasTrait<pir::SameOperandsAndResultElementTypeTrait>(), true);
+  EXPECT_EQ(op3->HasTrait<pir::SameOperandsAndResultTypeTrait>(), true);
+  EXPECT_EQ(op3->HasTrait<pir::SameTypeOperandsTrait>(), true);
+}
+
+TEST(op_test, same_operands_shape_trait_test1) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsShapeTraitOp1>(),
+               pir::IrNotMetException);
+}
+
+TEST(op_test, same_operands_shape_trait_test2) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  pir::Type dtype1 = pir::Float32Type::get(ctx);
+  phi::DDim dims1 = {2, 2};
+
+  pir::Type dtype2 = pir::Float64Type::get(ctx);
+  phi::DDim dims2 = {2, 2, 2};
+
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  pir::DenseTensorType dense_tensor_dtype =
+      pir::DenseTensorType::get(ctx, dtype1, dims1, data_layout, lod, offset);
+
+  pir::Operation *op1 =
+      test::CreateDenseTensorOp(ctx, dims1, {"op1_temp"}, {"op1_attr"}, dtype1);
+  pir::Operation *op2 =
+      test::CreateDenseTensorOp(ctx, dims2, {"op2_temp"}, {"op2_attr"}, dtype2);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsShapeTraitOp2>(
+                   op1->result(0), op2->result(0), dense_tensor_dtype),
+               pir::IrNotMetException);
+}
+
+TEST(op_test, same_operands_and_result_shape_trait_test1) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsAndResultShapeTraitOp1>(),
+               pir::IrNotMetException);
+}
+
+TEST(op_test, same_operands_and_result_shape_trait_test2) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  pir::Type dtype = pir::Float64Type::get(ctx);
+  phi::DDim dims = {2, 2, 2};
+
+  pir::Operation *op1 =
+      test::CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype);
+  pir::Operation *op2 =
+      test::CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsAndResultShapeTraitOp2>(
+                   op1->result(0), op2->result(0)),
+               pir::IrNotMetException);
+}
+
+TEST(op_test, same_operands_and_result_shape_trait_test3) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  pir::Type dtype1 = pir::Float32Type::get(ctx);
+  phi::DDim dims1 = {2, 2};
+
+  pir::Type dtype2 = pir::Float64Type::get(ctx);
+  phi::DDim dims2 = {2, 2, 2};
+
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  pir::DenseTensorType dense_tensor_dtype =
+      pir::DenseTensorType::get(ctx, dtype1, dims1, data_layout, lod, offset);
+
+  pir::Operation *op1 =
+      test::CreateDenseTensorOp(ctx, dims1, {"op1_temp"}, {"op1_attr"}, dtype1);
+  pir::Operation *op2 =
+      test::CreateDenseTensorOp(ctx, dims2, {"op2_temp"}, {"op2_attr"}, dtype2);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsAndResultShapeTraitOp3>(
+                   op1->result(0), op2->result(0), dense_tensor_dtype),
+               pir::IrNotMetException);
+}
+
+TEST(op_test, same_operands_element_type_trait_test1) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsElementTypeTraitOp1>(),
+               pir::IrNotMetException);
+}
+
+TEST(op_test, same_operands_element_type_trait_test2) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  pir::Type dtype1 = pir::Float32Type::get(ctx);
+  pir::Type dtype2 = pir::Float64Type::get(ctx);
+
+  phi::DDim dims = {2, 2};
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  pir::DenseTensorType dense_tensor_dtype =
+      pir::DenseTensorType::get(ctx, dtype1, dims, data_layout, lod, offset);
+
+  pir::Operation *op1 =
+      test::CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype1);
+  pir::Operation *op2 =
+      test::CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype2);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsElementTypeTraitOp2>(
+                   op1->result(0), op2->result(0), dense_tensor_dtype),
+               pir::IrNotMetException);
+}
+
+TEST(op_test, same_operands_and_result_element_type_trait_test1) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsAndResultElementTypeTraitOp1>(),
+               pir::IrNotMetException);
+}
+
+TEST(op_test, same_operands_and_result_element_type_trait_test2) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  pir::Type dtype = pir::Float32Type::get(ctx);
+  phi::DDim dims = {2, 2};
+
+  pir::Operation *op1 =
+      test::CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype);
+  pir::Operation *op2 =
+      test::CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsAndResultElementTypeTraitOp2>(
+                   op1->result(0), op2->result(0)),
+               pir::IrNotMetException);
+}
+
+TEST(op_test, same_operands_and_result_element_type_trait_test3) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  pir::Type dtype1 = pir::Float32Type::get(ctx);
+  phi::DDim dims1 = {2, 2};
+
+  pir::Type dtype2 = pir::Float64Type::get(ctx);
+  phi::DDim dims2 = {2, 2, 2};
+
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  pir::DenseTensorType dense_tensor_dtype1 =
+      pir::DenseTensorType::get(ctx, dtype1, dims1, data_layout, lod, offset);
+  pir::DenseTensorType dense_tensor_dtype2 =
+      pir::DenseTensorType::get(ctx, dtype2, dims2, data_layout, lod, offset);
+
+  pir::Operation *op1 =
+      test::CreateDenseTensorOp(ctx, dims1, {"op1_temp"}, {"op1_attr"}, dtype1);
+  pir::Operation *op2 =
+      test::CreateDenseTensorOp(ctx, dims2, {"op2_temp"}, {"op2_attr"}, dtype2);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsAndResultElementTypeTraitOp3>(
+                   op1->result(0),
+                   op2->result(0),
+                   dense_tensor_dtype1,
+                   dense_tensor_dtype1),
+               pir::IrNotMetException);
+  EXPECT_THROW(builder.Build<test::SameOperandsAndResultElementTypeTraitOp3>(
+                   op1->result(0),
+                   op1->result(0),
+                   dense_tensor_dtype1,
+                   dense_tensor_dtype2),
+               pir::IrNotMetException);
+}
+
+TEST(op_test, same_operands_and_result_type_trait_test1) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp1>(),
+               pir::IrNotMetException);
+}
+
+TEST(op_test, same_operands_and_result_type_trait_test2) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  pir::Type dtype = pir::Float32Type::get(ctx);
+  phi::DDim dims = {2, 2};
+
+  pir::Operation *op1 =
+      test::CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype);
+  pir::Operation *op2 =
+      test::CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp2>(
+                   op1->result(0), op2->result(0)),
+               pir::IrNotMetException);
+}
+
+TEST(op_test, same_operands_and_result_type_trait_test3) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  pir::Type dtype1 = pir::Float32Type::get(ctx);
+  phi::DDim dims1 = {2, 2};
+
+  pir::Type dtype2 = pir::Float64Type::get(ctx);
+  phi::DDim dims2 = {2, 2, 2};
+
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  pir::DenseTensorType dense_tensor_dtype1 =
+      pir::DenseTensorType::get(ctx, dtype1, dims1, data_layout, lod, offset);
+
+  pir::DenseTensorType dense_tensor_dtype2 =
+      pir::DenseTensorType::get(ctx, dtype2, dims2, data_layout, lod, offset);
+
+  pir::DenseTensorType dense_tensor_dtype3 =
+      pir::DenseTensorType::get(ctx, dtype1, dims2, data_layout, lod, offset);
+
+  pir::Operation *op1 =
+      test::CreateDenseTensorOp(ctx, dims1, {"op1_temp"}, {"op1_attr"}, dtype2);
+  pir::Operation *op2 =
+      test::CreateDenseTensorOp(ctx, dims2, {"op2_temp"}, {"op2_attr"}, dtype1);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp3>(
+                   op1->result(0),
+                   op2->result(0),
+                   dense_tensor_dtype1,
+                   dense_tensor_dtype2),
+               pir::IrNotMetException);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp3>(
+                   op1->result(0),
+                   op2->result(0),
+                   dense_tensor_dtype1,
+                   dense_tensor_dtype3),
+               pir::IrNotMetException);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp3>(
+                   op1->result(0),
+                   op2->result(0),
+                   dense_tensor_dtype1,
+                   dense_tensor_dtype1),
+               pir::IrNotMetException);
+
+  EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp3>(
+                   op2->result(0),
+                   op1->result(0),
+                   dense_tensor_dtype1,
+                   dense_tensor_dtype1),
+               pir::IrNotMetException);
 }

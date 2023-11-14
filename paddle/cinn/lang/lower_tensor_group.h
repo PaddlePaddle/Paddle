@@ -28,14 +28,12 @@
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/common/graph_utils.h"
 #include "paddle/cinn/ir/buffer.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/optim/buffer_assign.h"
 #include "paddle/cinn/optim/compute_inline_expand.h"
 #include "paddle/cinn/optim/fold_cinn_call_arguments.h"
 #include "paddle/cinn/optim/optimize.h"
-#include "paddle/cinn/optim/remove_nested_block.h"
 #include "paddle/cinn/optim/replace_call_with_expr.h"
-#include "paddle/cinn/optim/tensor_write_tell.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 #include "paddle/cinn/poly/ast_gen.h"
@@ -49,13 +47,14 @@ class LowerTensorGroup {
   LowerTensorGroup(const std::string& fn_name,
                    const std::vector<ir::Tensor>& tensor_args,
                    const std::vector<ir::Var>& scalar_args,
-                   const std::vector<ast_gen_ius::TensorGroup*>& tensor_groups,
+                   ast_gen_ius::TensorGroup* tensor_group,
                    const std::vector<ir::Tensor>& temp_tensor_args = {},
                    const Target& target = common::DefaultHostTarget());
 
   std::vector<ir::LoweredFunc> operator()();
 
-  ir::Expr GenerateFunctionBody(ast_gen_ius::TensorGroup* tensor_group);
+  std::vector<ir::Expr> GenerateFunctionBody(
+      ast_gen_ius::TensorGroup* tensor_group);
 
   std::vector<ir::Argument> GenerateFunctionArgumentList(ir::Expr fn_body);
 
@@ -64,11 +63,8 @@ class LowerTensorGroup {
   const std::vector<ir::Tensor>& tensor_args_;
   const std::vector<Var>& scalar_args_;
   std::vector<ir::Tensor> temp_tensor_args_;
-  std::vector<ast_gen_ius::TensorGroup*> tensor_groups_;
+  ast_gen_ius::TensorGroup* tensor_group_;
   Target target_;
-
-  //! CUDA axis info for this function.
-  std::vector<ir::CudaAxisInfo> cuda_axis_info_;
 };
 
 }  // namespace detail

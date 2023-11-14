@@ -15,14 +15,13 @@
 
 #pragma once
 
+#include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/builtin_type_storage.h"
 #include "paddle/pir/core/type.h"
 
 namespace pir {
 ///
-/// \brief Define built-in parameterless types. Please add the necessary
-/// interface functions for built-in types through the macro
-/// DECLARE_TYPE_UTILITY_FUNCTOR.
+/// \brief Define built-in parameterless types.
 ///
 /// NOTE(zhangbo9674): If you need to directly
 /// cache the object of this built-in type in IrContext, please overload the get
@@ -39,11 +38,10 @@ namespace pir {
 // NOTE(dev): Currently Int8 are not considered as a cached member
 // in IrContextImpl because it is not widely used.
 
-class IR_API VectorType : public Type {
+class IR_API VectorType
+    : public Type::TypeBase<VectorType, Type, VectorTypeStorage> {
  public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(VectorType, VectorTypeStorage);
+  using Base::Base;
 
   std::vector<Type> data() const;
 
@@ -54,31 +52,36 @@ class IR_API VectorType : public Type {
   Type operator[](size_t index) const { return data()[index]; }
 };
 
-class DenseTensorType : public pir::Type {
+class DenseTensorType : public Type::TypeBase<DenseTensorType,
+                                              Type,
+                                              DenseTensorTypeStorage,
+                                              ShapedTypeInterface> {
  public:
-  using Type::Type;
+  using Base::Base;
+  using Dim = DenseTensorTypeStorage::Dim;
+  using DataLayout = DenseTensorTypeStorage::DataLayout;
+  using LoD = DenseTensorTypeStorage::LoD;
 
-  DECLARE_TYPE_UTILITY_FUNCTOR(DenseTensorType, DenseTensorTypeStorage);
-
-  const pir::Type &dtype() const;
-
-  const DenseTensorTypeStorage::Dim &dims() const;
-
-  const DenseTensorTypeStorage::DataLayout &data_layout() const;
-
-  const DenseTensorTypeStorage::LoD &lod() const;
-
-  const size_t &offset() const;
+  Type dtype() const;
+  const Dim &dims() const;
+  DataLayout data_layout() const;
+  const LoD &lod() const;
+  size_t offset() const;
+  static DenseTensorType get(IrContext *ctx,
+                             Type dtype,
+                             const Dim &dims,
+                             DataLayout layout = DataLayout::kNCHW,
+                             const LoD &lod = {},
+                             size_t offset = 0u) {
+    return Base::get(ctx, dtype, dims, layout, lod, offset);
+  }
 };
 
-#define DECLARE_BUILTIN_TYPE(__name)                   \
-  class IR_API __name : public Type {                  \
-   public:                                             \
-    using Type::Type;                                  \
-                                                       \
-    DECLARE_TYPE_UTILITY_FUNCTOR(__name, TypeStorage); \
-                                                       \
-    static __name get(IrContext *context);             \
+#define DECLARE_BUILTIN_TYPE(__name)                                       \
+  class IR_API __name : public Type::TypeBase<__name, Type, TypeStorage> { \
+   public:                                                                 \
+    using Base::Base;                                                      \
+    static __name get(IrContext *context);                                 \
   };
 
 #define FOREACH_BUILTIN_TYPE(__macro) \

@@ -21,7 +21,7 @@ const phi::Place& AllocatedDenseTensorType::place() const {
   return storage()->place_;
 }
 
-const pir::Type& AllocatedDenseTensorType::dtype() const {
+pir::Type AllocatedDenseTensorType::dtype() const {
   return storage()->dense_tensor_type_.dtype();
 }
 
@@ -29,7 +29,7 @@ const phi::DDim& AllocatedDenseTensorType::dims() const {
   return storage()->dense_tensor_type_.dims();
 }
 
-const phi::DataLayout& AllocatedDenseTensorType::data_layout() const {
+phi::DataLayout AllocatedDenseTensorType::data_layout() const {
   return storage()->dense_tensor_type_.data_layout();
 }
 
@@ -37,7 +37,7 @@ const phi::LoD& AllocatedDenseTensorType::lod() const {
   return storage()->dense_tensor_type_.lod();
 }
 
-const size_t& AllocatedDenseTensorType::offset() const {
+size_t AllocatedDenseTensorType::offset() const {
   return storage()->dense_tensor_type_.offset();
 }
 
@@ -45,7 +45,7 @@ const phi::Place& AllocatedSelectedRowsType::place() const {
   return storage()->place_;
 }
 
-const pir::Type& AllocatedSelectedRowsType::dtype() const {
+pir::Type AllocatedSelectedRowsType::dtype() const {
   return storage()->selected_rows_type_.dtype();
 }
 
@@ -53,7 +53,7 @@ const phi::DDim& AllocatedSelectedRowsType::dims() const {
   return storage()->selected_rows_type_.dims();
 }
 
-const phi::DataLayout& AllocatedSelectedRowsType::data_layout() const {
+phi::DataLayout AllocatedSelectedRowsType::data_layout() const {
   return storage()->selected_rows_type_.data_layout();
 }
 
@@ -61,7 +61,7 @@ const phi::LoD& AllocatedSelectedRowsType::lod() const {
   return storage()->selected_rows_type_.lod();
 }
 
-const size_t& AllocatedSelectedRowsType::offset() const {
+size_t AllocatedSelectedRowsType::offset() const {
   return storage()->selected_rows_type_.offset();
 }
 

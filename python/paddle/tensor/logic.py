@@ -27,7 +27,7 @@ from paddle.tensor.creation import full
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..framework import LayerHelper, in_dynamic_mode
+from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
 
 __all__ = []
 
@@ -139,7 +139,7 @@ def logical_and(x, y, out=None, name=None):
             [True , False, True , False])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logical_and(x, y)
 
     return _logical_op(
@@ -201,7 +201,7 @@ def logical_or(x, y, out=None, name=None):
             [[True , True ],
              [True , False]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logical_or(x, y)
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True
@@ -262,7 +262,7 @@ def logical_xor(x, y, out=None, name=None):
             [[False, True ],
              [True , False]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logical_xor(x, y)
 
     return _logical_op(
@@ -274,7 +274,7 @@ def logical_xor(x, y, out=None, name=None):
 def logical_xor_(x, y, name=None):
     r"""
     Inplace version of ``logical_xor`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_logical_xor`.
+    Please refer to :ref:`api_paddle_logical_xor`.
     """
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
@@ -322,7 +322,7 @@ def logical_not(x, out=None, name=None):
             Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True , False, True ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logical_not(x)
     return _logical_op(
         op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False
@@ -363,7 +363,7 @@ def is_empty(x, name=None):
             False)
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.is_empty(x)
     else:
         check_variable_and_dtype(
@@ -413,7 +413,7 @@ def equal_all(x, y, name=None):
             Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
             False)
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.equal_all(x, y)
     else:
         helper = LayerHelper("equal_all", **locals())
@@ -476,7 +476,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
             True)
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.allclose(x, y, rtol, atol, equal_nan)
     else:
         check_variable_and_dtype(
@@ -533,16 +533,14 @@ def equal(x, y, name=None):
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False, False])
     """
-    if not isinstance(y, (int, bool, float, Variable)):
+    if not isinstance(y, (int, bool, float, Variable, paddle.pir.OpResult)):
         raise TypeError(
-            "Type of input args must be float, bool, int or Tensor, but received type {}".format(
-                type(y)
-            )
+            f"Type of input args must be float, bool, int or Tensor, but received type {type(y)}"
         )
-    if not isinstance(y, Variable):
+    if not isinstance(y, (Variable, paddle.pir.OpResult)):
         y = full(shape=[], dtype=x.dtype, fill_value=y)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.equal(x, y)
     else:
         check_variable_and_dtype(
@@ -598,7 +596,7 @@ def equal_(x, y, name=None):
                 out_shape, x.shape
             )
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.equal_(x, y)
 
 
@@ -630,7 +628,7 @@ def greater_equal(x, y, name=None):
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False, True ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.greater_equal(x, y)
     else:
         check_variable_and_dtype(
@@ -718,7 +716,7 @@ def greater_than(x, y, name=None):
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, False, True ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.greater_than(x, y)
     else:
         check_variable_and_dtype(
@@ -807,7 +805,7 @@ def less_equal(x, y, name=None):
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , True , False])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.less_equal(x, y)
     else:
         check_variable_and_dtype(
@@ -896,7 +894,7 @@ def less_than(x, y, name=None):
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True , False])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.less_than(x, y)
     else:
         check_variable_and_dtype(
@@ -985,7 +983,7 @@ def not_equal(x, y, name=None):
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True , True ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.not_equal(x, y)
     else:
         check_variable_and_dtype(
@@ -1155,7 +1153,7 @@ def bitwise_and(x, y, out=None, name=None):
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [0, 2, 1])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_and(x, y)
     return _bitwise_op(
         op_name="bitwise_and", x=x, y=y, name=name, out=out, binary_op=True
@@ -1175,7 +1173,7 @@ def bitwise_and_(x, y, name=None):
                 out_shape, x.shape
             )
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bitwise_and_(x, y)
 
 
@@ -1213,7 +1211,7 @@ def bitwise_or(x, y, out=None, name=None):
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [-1, -1, -3])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_or(x, y)
 
     return _bitwise_op(
@@ -1272,7 +1270,7 @@ def bitwise_xor(x, y, out=None, name=None):
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [-1, -3, -4])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_xor(x, y)
     return _bitwise_op(
         op_name="bitwise_xor", x=x, y=y, name=name, out=out, binary_op=True
@@ -1328,7 +1326,7 @@ def bitwise_not(x, out=None, name=None):
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [ 4,  0, -2])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_not(x)
 
     return _bitwise_op(
@@ -1402,7 +1400,7 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
             [True, True])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.isclose(x, y, rtol, atol, equal_nan)
     else:
         check_variable_and_dtype(

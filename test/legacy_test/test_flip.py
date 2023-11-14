@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
@@ -100,10 +100,10 @@ class TestFlipOp(OpTest):
         self.attrs = {"axis": self.axis}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_cinn=True)
+        self.check_grad(["X"], "Out", check_cinn=True, check_pir=True)
 
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 3)
@@ -167,12 +167,16 @@ def create_test_fp16_class(parent):
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(place, check_cinn=True)
+                    self.check_output_with_place(
+                        place, check_cinn=True, check_pir=True
+                    )
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_grad_with_place(place, ["X"], "Out", check_cinn=True)
+                self.check_grad_with_place(
+                    place, ["X"], "Out", check_cinn=True, check_pir=True
+                )
 
     cls_name = "{}_{}".format(parent.__name__, "FP16OP")
     TestFlipFP16.__name__ = cls_name
@@ -202,12 +206,12 @@ def create_test_bf16_class(parent):
         def test_check_output(self):
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, check_pir=True)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(place, ["X"], "Out")
+                self.check_grad_with_place(place, ["X"], "Out", check_pir=True)
 
     cls_name = "{}_{}".format(parent.__name__, "BF16OP")
     TestFlipBF16.__name__ = cls_name

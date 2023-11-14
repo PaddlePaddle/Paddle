@@ -135,8 +135,10 @@ TensorDistAttr CopyTensorDistAttrForOutput(
   TensorDistAttr new_dist_attr = TensorDistAttr();
   new_dist_attr.set_process_mesh(src_dist_attr.process_mesh());
   new_dist_attr.set_batch_dim(src_dist_attr.batch_dim());
-  new_dist_attr.set_dynamic_dims(src_dist_attr.dynamic_dims());
+  // new_dist_attr.set_dynamic_dims(src_dist_attr.dynamic_dims());
   // new_dist_attr.set_annotated(false); TODO unset field is false by default.
+  new_dist_attr.clean_partial_status();  // in partial-stage I, partial is allow
+                                         // to propagate
   return new_dist_attr;
 }
 
@@ -153,6 +155,145 @@ std::vector<int64_t> ResoluteOutputPartialDimension(
     }
   }
   return partial_on_dims;
+}
+
+TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr) {
+  TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
+  std::vector<int64_t> dims_mapping(dist_attr.dims_mapping().size(), -1);
+  dst_dist_attr.set_dims_mapping(dims_mapping);
+  return dst_dist_attr;
+}
+
+TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim) {
+  TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
+  std::vector<int64_t> dims_mapping = dist_attr.dims_mapping();
+  dims_mapping[dim] = kReplicateDim;
+  dst_dist_attr.set_dims_mapping(dims_mapping);
+  return dst_dist_attr;
+}
+
+bool IsDimSharded(const TensorDistAttr& dist_attr, int dim) {
+  return dist_attr.is_shard(-1, dim);
+}
+
+bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
+                    const std::shared_ptr<PlacementStatus>& b) {
+  if (a->is_partial()) {
+    if (!b->is_partial()) {
+      return false;
+    }
+    auto a_partial = std::dynamic_pointer_cast<PartialStatus>(a);
+    auto b_partial = std::dynamic_pointer_cast<PartialStatus>(b);
+    return a_partial->get_reduce_type() == b_partial->get_reduce_type();
+  }
+  if (a->is_replicated()) {
+    if (b->is_replicated()) {
+      return true;
+    }
+    return false;
+  }
+  if (!b->is_shard()) {
+    return false;
+  }
+
+  auto a_shard = std::dynamic_pointer_cast<ShardStatus>(a);
+  auto b_shard = std::dynamic_pointer_cast<ShardStatus>(b);
+  return a_shard->get_axis() == b_shard->get_axis();
+}
+
+TensorDistAttr FromPlacements(
+    const TensorDistAttr& dist_attr,
+    const std::vector<std::shared_ptr<PlacementStatus>>& placements) {
+  TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
+  std::vector<int64_t> dims_mapping(dist_attr.dims_mapping().size(), -1);
+  paddle::flat_hash_map<int64_t, ReduceType> partial_status;
+
+  for (size_t mesh_dim = 0; mesh_dim < placements.size(); mesh_dim++) {
+    auto& placement = placements[mesh_dim];
+    if (placement->is_shard()) {
+      auto shard_placement = std::dynamic_pointer_cast<ShardStatus>(placement);
+      dims_mapping[shard_placement->get_axis()] = mesh_dim;
+    }
+    if (placement->is_partial()) {
+      auto partial_placement =
+          std::dynamic_pointer_cast<PartialStatus>(placement);
+      auto reduce_type = partial_placement->get_reduce_type();
+      partial_status[mesh_dim] = reduce_type;
+    }
+  }
+  dst_dist_attr.set_dims_mapping(dims_mapping);
+  dst_dist_attr.set_partial_status(partial_status);
+  return dst_dist_attr;
+}
+
+TensorDistAttr UnShardTensorDims(const TensorDistAttr& dist_attr,
+                                 std::vector<int64_t> dims) {
+  TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
+  std::vector<int64_t> dims_mapping = dist_attr.dims_mapping();
+  int64_t n_dim = dims_mapping.size();
+  for (auto dim : dims) {
+    dim = dim < 0 ? n_dim + dim : dim;
+    dims_mapping[dim] = kReplicateDim;
+  }
+  dst_dist_attr.set_dims_mapping(dims_mapping);
+  return dst_dist_attr;
+}
+
+std::vector<ArgDistAttr> ToArgDistAttr(
+    const std::vector<TensorDistAttr>& dist_attrs) {
+  std::vector<ArgDistAttr> items_dist_attrs;
+  std::transform(
+      dist_attrs.begin(),
+      dist_attrs.end(),
+      std::back_inserter(items_dist_attrs),
+      [](const TensorDistAttr& attr) -> ArgDistAttr { return {attr}; });
+  return items_dist_attrs;
+}
+
+std::vector<int64_t> GetLocalShape(
+    const std::vector<int64_t> shape,
+    const ProcessMesh& mesh,
+    const std::vector<std::shared_ptr<PlacementStatus>>& placements) {
+  auto local_shape = shape;
+  auto n_placement = placements.size();
+  for (size_t i = 0; i < n_placement; i++) {
+    auto& placement = placements.at(i);
+    if (placement->is_shard()) {
+      auto mesh_dim_size = mesh.dim_size(i);
+      auto shard_dim =
+          std::dynamic_pointer_cast<ShardStatus>(placement)->get_axis();
+      auto split_size =
+          (shape.at(shard_dim) + mesh_dim_size - 1) / mesh_dim_size;
+      local_shape[shard_dim] = split_size;
+    }
+  }
+  return local_shape;
+}
+
+std::vector<int64_t> GetDimsMappingForAxes(
+    const std::string& axes,
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const bool unsharded_miss_axis) {
+  std::vector<int64_t> dims_mapping;
+  for (int64_t i = 0, n = static_cast<int64_t>(axes.size()); i < n; i++) {
+    std::string axis = axes.substr(i, 1);
+    if (axis == "1") {
+      dims_mapping.emplace_back(-1);
+    } else {
+      auto iter = axis_to_dim_map.find(axis);
+      if (iter == axis_to_dim_map.end()) {
+        if (unsharded_miss_axis) {
+          dims_mapping.emplace_back(-1);
+        } else {
+          phi::errors::InvalidArgument(
+              "Tensor axis [%s] of not in axis_to_dim_map.", axis);
+        }
+      } else {
+        dims_mapping.emplace_back(iter->second);
+      }
+    }
+  }
+  return dims_mapping;
 }
 
 }  // namespace distributed

@@ -22,5 +22,12 @@ namespace dialect {
 std::unique_ptr<pir::Program> PdOpLowerToKernelPass(
     pir::Program* prog, phi::Place place = phi::CPUPlace());
 
+void ProcessBlock(
+    const phi::Place& place,
+    pir::Block* block,
+    pir::Block* new_block,
+    pir::IrContext* ctx,
+    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
+    std::unordered_map<pir::Value, pir::Value>* map_value_pair);
 }  // namespace dialect
 }  // namespace paddle

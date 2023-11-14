@@ -16,11 +16,13 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_dtype, check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
-from ..framework import LayerHelper, in_dynamic_mode
+from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
 from .creation import full
 from .manipulation import cast
 from .math import _get_reduce_axis
@@ -81,7 +83,7 @@ def transpose(x, perm, name=None):
             [3, 2, 4]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.transpose(x, perm)
     else:
         check_variable_and_dtype(
@@ -107,10 +109,8 @@ def transpose(x, perm, name=None):
             raise ValueError(
                 "Input(perm) is the permutation of dimensions of Input(x), "
                 "its length should be equal to dimensions of Input(x), "
-                "but received dimension of Input(x) is {}, "
-                "the length of Input(perm) is {}.".format(
-                    len(x.shape), len(perm)
-                )
+                f"but received dimension of Input(x) is {len(x.shape)}, "
+                f"the length of Input(perm) is {len(perm)}."
             )
         for idx, dim in enumerate(perm):
             if dim >= len(x.shape):
@@ -130,6 +130,16 @@ def transpose(x, perm, name=None):
             attrs={'axis': perm},
         )
         return out
+
+
+@inplace_apis_in_dygraph_only
+def transpose_(x, perm, name=None):
+    r"""
+    Inplace version of ``transpose`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_transpose`.
+    """
+    if in_dynamic_mode():
+        return _C_ops.transpose_(x, perm)
 
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
@@ -225,7 +235,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
             [10, 3, 5, 5]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.matmul(x, y, transpose_x, transpose_y)
     else:
         attrs = {
@@ -240,6 +250,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
                     val,
                     name,
                     [
+                        'int8',
                         'uint16',
                         'float16',
                         'float32',
@@ -372,7 +383,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 "The dim of frobenius norm op should be None or two elements list!"
             )
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if dim is None:
                 return _C_ops.frobenius_norm(input, [], keepdim, True)
             return _C_ops.frobenius_norm(input, dim, keepdim, False)
@@ -593,9 +604,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
         else:
             raise ValueError(
-                "unspport p for p-order vector norm. except float, found {}".format(
-                    p
-                )
+                f"unspport p for p-order vector norm. except float, found {p}"
             )
     # calculate matrix norm, where axis is list with two integers
     elif isinstance(axis, list) and len(axis) == 2:
@@ -605,9 +614,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
         elif p == 0:
             raise ValueError(
-                "just support axis type int or list (length of list <=1) if p = 0, found {}".format(
-                    axis
-                )
+                f"just support axis type int or list (length of list <=1) if p = 0, found {axis}"
             )
         else:
             return p_matrix_norm(
@@ -615,9 +622,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
     else:
         raise ValueError(
-            "except axis type int or list (length of list <=2), found {}".format(
-                axis
-            )
+            f"except axis type int or list (length of list <=2), found {axis}"
         )
 
 
@@ -713,7 +718,7 @@ def dist(x, y, p=2, name=None):
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             0.)
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.dist(x, y, p)
 
     check_variable_and_dtype(
@@ -853,7 +858,7 @@ def cond(x, p=None, name=None):
             Calculate the matrix norm of a square matrix or batches of square matrices,
             when porder is in (1, -1, inf, -inf)
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             abs_out = _C_ops.abs(input)
             sum_out = _C_ops.sum(abs_out, axis, None, False)
 
@@ -916,7 +921,7 @@ def cond(x, p=None, name=None):
         NOTE:
             Calculate the frobenius norm of a square matrix or batches of square matrices.
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             pow_out = _C_ops.pow(input, porder)
             sum_out_1 = _C_ops.sum(pow_out, axis, None, False)
             sum_out_2 = _C_ops.sum(sum_out_1, axis, None, False)
@@ -979,7 +984,7 @@ def cond(x, p=None, name=None):
         """
         u, s, vh = svd(input, full_matrices=False)
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if porder == "nuc":
                 return _C_ops.sum(s, axis, None, False)
             max_out = _C_ops.max(s, axis, False)
@@ -1050,7 +1055,7 @@ def cond(x, p=None, name=None):
                 return out
 
     def empty_tensor(input, shape):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return input.reshape(shape)
         raise ValueError(
             "only support x is nonempty tensor in static graph mode"
@@ -1137,7 +1142,7 @@ def dot(x, y, name=None):
             [32, 64])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.dot(x, y)
     else:
         op_type = 'dot'
@@ -1254,7 +1259,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         if fweights.min() < 0:
             raise ValueError(
                 "The value of Input(fweights) cannot be negtive, but received "
-                "min of Input(fweights) is {}.".format(fweights.min())
+                f"min of Input(fweights) is {fweights.min()}."
             )
         if not paddle.all(fweights == paddle.round(fweights.astype('float64'))):
             raise ValueError("Input(fweights) must be integer ")
@@ -1279,7 +1284,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         if aweights.min() < 0:
             raise ValueError(
                 "The value of Input(aweights) cannot be negtive, but received "
-                "min of Input(aweights) is {}.".format(aweights.min())
+                f"min of Input(aweights) is {aweights.min()}."
             )
         if w is not None:
             w = w * aw
@@ -1369,7 +1374,7 @@ def t(input, name=None):
             "length of Input(input) is %s. Perhaps you can use paddle."
             "tensor.transpose() instead." % len(input.shape)
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if len(input.shape) <= 1:
             return input
         # 2-D tensor
@@ -1396,6 +1401,27 @@ def t(input, name=None):
                 outputs={'Out': [out], 'XShape': [input_shape]},
                 attrs={'axis': [1, 0]},
             )
+        return out
+
+
+@inplace_apis_in_dygraph_only
+def t_(input, name=None):
+    r"""
+    Inplace version of ``t`` API, the output Tensor will be inplaced with input ``input``.
+    Please refer to :ref:`api_paddle_t`.
+    """
+    if len(input.shape) > 2:
+        raise ValueError(
+            "Input(input) only support N-D (N<=2) tensor, but received "
+            "length of Input(input) is %s. Perhaps you can use paddle."
+            "tensor.transpose() instead." % len(input.shape)
+        )
+    if in_dynamic_mode():
+        if len(input.shape) <= 1:
+            return input
+        # 2-D tensor
+        perm = [1, 0]
+        out = _C_ops.transpose_(input, perm)
         return out
 
 
@@ -1512,7 +1538,7 @@ def cholesky(x, upper=False, name=None):
              [1.06467664, 0.17859250, 0.        ],
              [1.30602181, 0.08326444, 0.22790681]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cholesky(x, upper)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
@@ -1760,10 +1786,15 @@ def bincount(x, weights=None, minlength=0, name=None):
             Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 2.19999981, 0.40000001, 0.        , 0.50000000, 0.50000000])
     """
-    if x.dtype not in [paddle.int32, paddle.int64]:
+    if x.dtype not in [
+        paddle.int32,
+        paddle.int64,
+        DataType.INT32,
+        DataType.INT64,
+    ]:
         raise TypeError("Elements in Input(x) should all be integers")
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bincount(x, weights, minlength)
     else:
         helper = LayerHelper('bincount', **locals())
@@ -1833,9 +1864,7 @@ def mv(x, vec, name=None):
             vec_shape = list(vec.shape)
             if len(x_shape) != 2:
                 raise ValueError(
-                    "x should be 2-dimensional. But received x's dimention: {}".format(
-                        x_shape
-                    )
+                    f"x should be 2-dimensional. But received x's dimention: {x_shape}"
                 )
             if len(vec_shape) != 1:
                 raise ValueError(
@@ -1882,7 +1911,7 @@ def det(x, name=None):
 
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.det(x)
     else:
         check_dtype(x.dtype, 'Input', ['float16', 'float32', 'float64'], 'det')
@@ -1933,17 +1962,15 @@ def slogdet(x, name=None):
 
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> x =  paddle.randn([3,3,3])
+            >>> x = paddle.randn([3, 3, 3])
             >>> A = paddle.linalg.slogdet(x)
             >>> print(A)
-            >>> # doctest: +SKIP
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-1.        ,  1.        ,  1.        ],
              [ 0.25681755, -0.25061053, -0.10809582]])
-            >>> # doctest: -SKIP
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.slogdet(x)
     else:
         check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
@@ -2191,8 +2218,8 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         q = min(6, m, n)
     elif not (q >= 0 and q <= min(m, n)):
         raise ValueError(
-            'q(={}) must be non-negative integer'
-            ' and not greater than min(m, n)={}'.format(q, min(m, n))
+            f'q(={q}) must be non-negative integer'
+            f' and not greater than min(m, n)={min(m, n)}'
         )
     if not (niter >= 0):
         raise ValueError(f'niter(={niter}) must be non-negative integer')
@@ -2556,9 +2583,9 @@ def eig(x, name=None):
     Performs the eigenvalue decomposition of a square matrix or a batch of square matrices.
 
     Note:
-        - If the matrix is a Hermitian or a real symmetric matrix, please use :ref:`paddle.linalg.eigh` instead, which is much faster.
-        - If only eigenvalues is needed, please use :ref:`paddle.linalg.eigvals` instead.
-        - If the matrix is of any shape, please use :ref:`paddle.linalg.svd`.
+        - If the matrix is a Hermitian or a real symmetric matrix, please use :ref:`api_paddle_linalg_eigh` instead, which is much faster.
+        - If only eigenvalues is needed, please use :ref:`api_paddle_linalg_eigvals` instead.
+        - If the matrix is of any shape, please use :ref:`api_paddle_linalg_svd`.
         - This API is only supported on CPU device.
         - The output datatype is always complex for both real and complex input.
 
@@ -2596,7 +2623,7 @@ def eig(x, name=None):
               (-0.21026138961315155+0j)])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.eig(x)
     else:
         check_variable_and_dtype(
@@ -2662,12 +2689,10 @@ def eigvals(x, name=None):
 
     if x_shape[-1] != x_shape[-2]:
         raise ValueError(
-            "The last two dimensions of Input(x) should be equal, but received x's shape = {}".format(
-                x_shape
-            )
+            f"The last two dimensions of Input(x) should be equal, but received x's shape = {x_shape}"
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.eigvals(x)
     else:
         check_variable_and_dtype(
@@ -2776,10 +2801,12 @@ def eigh(x, UPLO='L', name=None):
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        - out_value(Tensor):  A Tensor with shape [*, N] and data type of float32 and float64.
-            The eigenvalues of eigh op.
-        - out_vector(Tensor): A Tensor with shape [*, N, N] and data type of float32,float64,
-            complex64 and complex128. The eigenvectors of eigh op.
+        2-element tuple containing
+
+        - out_value(Tensor): A Tensor with shape :math:`[*, N]` and data type of float32 and float64.
+          The eigenvalues of eigh op.
+        - out_vector(Tensor): A Tensor with shape :math:`[*, N, N]` and data type of float32, float64,
+          complex64 and complex128. The eigenvectors of eigh op.
 
     Examples:
         .. code-block:: python
@@ -2797,7 +2824,7 @@ def eigh(x, UPLO='L', name=None):
              [ 0.3826833963394165j    , -0.9238795042037964j    ]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.eigh(x, UPLO)
     else:
 
@@ -2810,9 +2837,7 @@ def eigh(x, UPLO='L', name=None):
                 )
             if x_shape[-1] != x_shape[-2]:
                 raise ValueError(
-                    "The input matrix must be batches of square matrices. But received x's dimention: {}".format(
-                        x_shape
-                    )
+                    f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
                 )
             if UPLO != 'L' and UPLO != 'U':
                 raise ValueError(
@@ -3124,7 +3149,7 @@ def solve(x, y, name=None):
             Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [2., 3.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.solve(x, y)
     else:
         inputs = {"X": [x], "Y": [y]}
@@ -3196,7 +3221,7 @@ def triangular_solve(
              [-2.],
              [-5.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.triangular_solve(x, y, upper, transpose, unitriangular)
     else:
         inputs = {"X": [x], "Y": [y]}
@@ -3258,7 +3283,7 @@ def cholesky_solve(x, y, upper=False, name=None):
              [-7.        ],
              [ 9.50000000]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cholesky_solve(x, y, upper)
     else:
         helper = LayerHelper("cholesky_solve", **locals())
@@ -3305,7 +3330,7 @@ def eigvalsh(x, UPLO='L', name=None):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.17157286, 5.82842731])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)
         return values
     else:
@@ -3319,9 +3344,7 @@ def eigvalsh(x, UPLO='L', name=None):
                 )
             if x_shape[-1] != x_shape[-2]:
                 raise ValueError(
-                    "The input matrix must be batches of square matrices. But received x's dimention: {}".format(
-                        x_shape
-                    )
+                    f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
                 )
             if UPLO != 'L' and UPLO != 'U':
                 raise ValueError(
@@ -3419,17 +3442,13 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
     if device == "cpu":
         if driver not in (None, "gels", "gelss", "gelsd", "gelsy"):
             raise ValueError(
-                "Only support valid driver is 'gels', 'gelss', 'gelsd', 'gelsy' or None for CPU inputs. But got {}".format(
-                    driver
-                )
+                f"Only support valid driver is 'gels', 'gelss', 'gelsd', 'gelsy' or None for CPU inputs. But got {driver}"
             )
         driver = "gelsy" if driver is None else driver
     elif "gpu" in device:
         if driver not in (None, "gels"):
             raise ValueError(
-                "Only support valid driver is 'gels' or None for CUDA inputs. But got {}".format(
-                    driver
-                )
+                f"Only support valid driver is 'gels' or None for CUDA inputs. But got {driver}"
             )
         driver = "gels" if driver is None else driver
     else:
@@ -3668,8 +3687,8 @@ def cdist(
     )
     assert x_shape[-1] == y_shape[-1], (
         "The x and y must have same last dimension, "
-        "But received Input x's last dimension is {}, "
-        "Input y's last dimension is {}.\n".format(x_shape[-1], y_shape[-1])
+        f"But received Input x's last dimension is {x_shape[-1]}, "
+        f"Input y's last dimension is {y_shape[-1]}.\n"
     )
     assert p >= 0, (
         "The p must be greater than or equal to 0, "

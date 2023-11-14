@@ -91,15 +91,15 @@ void ProgramProcessor::GetInputsOutputsInBlock(
   // NOTE: Here assumes that all variables are input or output of Ops,
 
   for (OpDesc *op : current_block.AllOps()) {
-    for (auto iname : op->InputNames()) {
-      for (auto in_var_name : op->Input(iname)) {
+    for (auto const &iname : op->InputNames()) {
+      for (auto const &in_var_name : op->Input(iname)) {
         VLOG(3) << "insert inner_inputs_name:" << in_var_name;
         inner_inputs->insert(in_var_name);
       }
     }
 
-    for (auto oname : op->OutputNames()) {
-      for (auto out_var_name : op->Output(oname)) {
+    for (auto const &oname : op->OutputNames()) {
+      for (auto const &out_var_name : op->Output(oname)) {
         VLOG(3) << "insert out_var_name:" << out_var_name;
         inner_outputs->insert(out_var_name);
       }
@@ -151,7 +151,7 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
       VLOG(3) << "sub_outputs.size:" << sub_outputs.size();
 
       auto *op_inputs = op->MutableInputs();
-      std::vector<std::string> *op_input_var_vec;
+      std::vector<std::string> *op_input_var_vec = nullptr;
       VLOG(3) << "op_type:>>>>>>" << op_type;
       if (op_type.compare("while") == 0) {
         op_input_var_vec = &((*op_inputs)["kX"]);
@@ -164,7 +164,7 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
         continue;
       }
 
-      for (auto sub_input : sub_inputs) {
+      for (auto const &sub_input : sub_inputs) {
         if (std::find(op_input_var_vec->begin(),
                       op_input_var_vec->end(),
                       sub_input) == op_input_var_vec->end())
@@ -176,7 +176,7 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
       auto *op_outputs = op->MutableOutputs();
       auto *op_output_var_vec = &((*op_outputs)["kOutputs"]);
 
-      for (auto sub_output : sub_outputs) {
+      for (auto const &sub_output : sub_outputs) {
         if (std::find(op_output_var_vec->begin(),
                       op_output_var_vec->end(),
                       sub_output) == op_output_var_vec->end())
@@ -187,7 +187,6 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
     }
   }
 }
-
 
 ProgramProcessor::ProgramProcessor() = default;
 

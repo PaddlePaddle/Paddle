@@ -189,8 +189,8 @@ void CreateDistTensorWithNumpyValue(TensorObject* self,
         "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/CustomPlace"));
   }
 
-  auto dist_tensor =
-      std::make_shared<phi::distributed::DistTensor>(dense_tensor, dist_attr);
+  auto dist_tensor = std::make_shared<phi::distributed::DistTensor>(
+      std::make_shared<phi::DenseTensor>(dense_tensor), dist_attr);
   self->tensor.set_impl(dist_tensor);
 
   if (!autograd_meta->GetMutableGradNode()) {
@@ -220,20 +220,46 @@ void InitTensorWithNumpyValue(TensorObject* self,
           "EmptyTensorInitializer is "
           "forbidden. Please check your code and make sure you new a "
           "eager tensor before init it with NumPy."));
+
   phi::DenseTensor* impl_ptr =
       static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-
   if (platform::is_cpu_place(place)) {
     SetTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_xpu_place(place)) {
+#if defined(PADDLE_WITH_XPU)
+    phi::backends::xpu::SetXPUDeviceId(place.device);
+    VLOG(4) << "CurrentDeviceId: "
+            << phi::backends::xpu::GetXPUCurrentDeviceId() << " from "
+            << static_cast<int>(place.device);
+#else
+    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with XPU if use XPUPlace."));
+#endif
     SetTensorFromPyArray<platform::XPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    phi::backends::gpu::SetDeviceId(place.device);
+    VLOG(4) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
+            << " from " << static_cast<int>(place.device);
+#else
+    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU if use CUDAPlace."));
+#endif
     SetTensorFromPyArray<platform::CUDAPlace>(
         impl_ptr, array, place, zero_copy);
   } else if (platform::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<platform::CUDAPinnedPlace>(
         impl_ptr, array, place, zero_copy);
   } else if (platform::is_custom_place(place)) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    phi::DeviceManager::SetDevice(place);
+    VLOG(4) << "CurrentDeviceId: "
+            << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from "
+            << static_cast<int>(place.device);
+#else
+    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with CUSTOM_DEVICE if use CustomPlace."));
+#endif
     SetTensorFromPyArray<platform::CustomPlace>(
         impl_ptr, array, place, zero_copy);
   } else {
@@ -276,16 +302,17 @@ void InitDistTensorWithTensor(TensorObject* self,
                  paddle::platform::errors::InvalidArgument(
                      "DistTensor can only initialize by DenseTensor"));
   self->tensor.set_name(name);
+  VLOG(4) << "Do TensorCopy from DenseTensor to DistTensor.";
   if (place == src.place()) {
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(src.impl());
-    self->tensor.set_impl(std::make_shared<DistTensor>(*tensor, dist_attr));
+    self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
     VLOG(4) << "Same place, do ShareDataWith for DistTensor.";
   } else {
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(
             src.copy_to(place, true).impl());
-    self->tensor.set_impl(std::make_shared<DistTensor>(*tensor, dist_attr));
+    self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
     VLOG(4) << "Different place, do TensorCopy for DistTensor.";
   }
   if (src.get_autograd_meta()) {
@@ -454,7 +481,7 @@ std::string ParseName(std::unordered_map<std::string, PyObject*> kws_map,
     }
   } else {
     if (flag_kwargs) {
-      if ((kws_map["name"] == nullptr) || (kws_map["name"] == Py_None)) {
+      if ((kws_map["name"] == NULL) || (kws_map["name"] == Py_None)) {
         act_name =
             egr::Controller::Instance().GenerateUniqueName(unique_name_prefix);
       } else {

@@ -105,23 +105,17 @@ struct PD_INFER_DECL XpuConfig {
   void* stream{nullptr};
 
   // Conv autotune level. Default 0 means no autotune.
-  // Note: Paddle-Lite only.
   int conv_autotune_level{0};
   // Base conv autotune info is read from conv_autotune_file.
-  // Note: Paddle-Lite only.
   std::string conv_autotune_file;
   // Whether write new conv autotune info to conv_autotune_file.
-  // Note: Paddle-Lite only.
   bool conv_autotune_file_writeback{false};
 
   // Fc autotune level. The Optional values are 0-9. Default 0 means no
-  // autotune. Note: Paddle-Lite only.
   int fc_autotune_level{0};
   // Base fc autotune info is read from fc_autotune_file.
-  // Note: Paddle-Lite only.
   std::string fc_autotune_file;
   // Whether write new fc autotune info to fc_autotune_file.
-  // Note: Paddle-Lite only.
   bool fc_autotune_file_writeback{false};
 
   // Gemm compute precision. Optional values are 0(int8),1(int16),2(int31).
@@ -695,8 +689,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param output_tensor_names The name of the Tensor that needs to be marked
   ///
   void MarkTrtEngineOutputs(
-      const std::vector<std::string>& output_tensor_names = {},
-      const bool trt_mark_output_with_id = false);
+      const std::vector<std::string>& output_tensor_names = {});
   ///
   /// \brief Turn on the TensorRT memory optimization.
   ///
@@ -850,7 +843,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether to show TensorRT inspector information.
   ///
-  void EnableTensorRtInspector();
+  void EnableTensorRtInspector(bool inspector_serialize = false);
   bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
 
   ///
@@ -863,6 +856,27 @@ struct PD_INFER_DECL AnalysisConfig {
   bool tensorrt_explicit_quantization_enabled() {
     return trt_use_explicit_quantization_;
   }
+
+  ///
+  /// \brief Set the optimization level of TensorRT
+  /// \param level The optimization level
+  /// The API accepts level in range [0, 5].
+  /// Higher optimization level allows the optimizer to spend more time
+  /// searching for optimization opportunities. The API supports TRT version
+  /// >= 8.6, and takes no effect instead.
+  ///
+  void SetTensorRtOptimizationLevel(int level);
+
+  ///
+  /// \brief An integer telling the TRT optimization level.
+  ///
+  /// \return integer The TRT optimization level.
+  ///
+  int tensorrt_optimization_level() { return trt_optimization_level_; }
+
+  void EnableNewExecutor(bool x = true) { use_new_executor_ = x; }
+
+  bool new_executor_enabled() const { return use_new_executor_; }
 
   void EnableDlnne(
       int min_subgraph_size = 3,
@@ -1238,7 +1252,6 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
   bool trt_mark_output_{false};
-  bool trt_mark_output_with_id_{false};
   std::vector<std::string> trt_output_tensor_names_{};
   std::string tensorrt_transformer_posid_{""};
   std::string tensorrt_transformer_maskid_{""};
@@ -1253,7 +1266,9 @@ struct PD_INFER_DECL AnalysisConfig {
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
   bool trt_use_inspector_{false};
+  bool trt_inspector_serialize_{false};
   bool trt_use_explicit_quantization_{false};
+  int trt_optimization_level_{3};
 
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the
@@ -1274,8 +1289,10 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // memory reuse related.
   bool enable_memory_optim_{false};
-  bool trt_engine_memory_sharing_{false};
+  bool trt_engine_memory_sharing_{true};
   int trt_engine_memory_sharing_identifier_{0};
+
+  std::unordered_set<std::string> trt_ops_run_float_;
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
@@ -1285,6 +1302,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool enable_ir_optim_{true};
   bool use_feed_fetch_ops_{true};
   bool ir_debug_{false};
+
+  bool use_new_executor_{false};
 
   bool specify_input_name_{false};
 

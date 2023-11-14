@@ -4,7 +4,6 @@ gather_srcs(
   cinnapi_src
   SRCS
   replace_call_with_expr.cc
-  ir_replace.cc
   replace_var_with_expr.cc
   ir_simplify.cc
   optimize.cc
@@ -23,9 +22,9 @@ gather_srcs(
   replace_const_param_to_integer.cc
   lower_intrin.cc
   cast_bool_to_int8.cc
-  collect_undefined_vars.cc
   var_mod_simplify.cc
-  remove_schedule_block.cc)
+  remove_schedule_block.cc
+  replace_cross_thread_reduction.cc)
 
 if(WITH_CUDA)
   gather_srcs(cinnapi_src SRCS transform_gpu_forloop.cc)
@@ -57,3 +56,5 @@ cinn_cc_test(test_cast_simplify SRCS cast_simplify_test.cc DEPS cinncore)
 cinn_cc_test(test_remove_schedule_block SRCS remove_schedule_block_test.cc DEPS
              cinncore)
 cinn_cc_test(test_unroll_loops SRCS unroll_loops_test.cc DEPS cinncore)
+cinn_cc_test(test_replace_cross_thread_reduction SRCS
+             replace_cross_thread_reduction_test.cc DEPS cinncore)

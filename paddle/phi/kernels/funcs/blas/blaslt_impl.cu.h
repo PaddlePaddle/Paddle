@@ -182,6 +182,8 @@ template <typename T>
 cublasComputeType_t GetCudaComputeType() {
   if (std::is_same<T, double>::value) {
     return CUBLAS_COMPUTE_64F;
+  } else if (std::is_same<T, int8_t>::value) {
+    return CUBLAS_COMPUTE_32I;
   } else {
     return CUBLAS_COMPUTE_32F;
   }
@@ -204,6 +206,17 @@ struct MatmulDescriptor {
     op_desc = obj.op_desc;
     out_desc = obj.out_desc;
     is_cached = obj.is_cached;
+  }
+
+  MatmulDescriptor& operator=(const MatmulDescriptor& obj) {
+    algo = obj.algo;
+    x_desc = obj.x_desc;
+    y_desc = obj.y_desc;
+    op_desc = obj.op_desc;
+    out_desc = obj.out_desc;
+    is_cached = obj.is_cached;
+
+    return *this;
   }
 
   ~MatmulDescriptor() PADDLE_MAY_THROW {
@@ -237,8 +250,14 @@ struct MatmulDescriptor {
               bool grad_for_dx = true) {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
+    cudaDataType_t out_mat_type = phi::backends::gpu::ToCudaDataType<T>();
     cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
     cublasComputeType_t compute_type = GetCudaComputeType<T>();
+
+    if (std::is_same<T, int8_t>::value) {
+      out_mat_type = phi::backends::gpu::ToCudaDataType<int32_t>();
+      scale_type = phi::backends::gpu::ToCudaDataType<int32_t>();
+    }
 
     // Create operation descriptor; see cublasLtMatmulDescAttributes_t for
     // details about defaults; just need to set the transforms for A and B
@@ -249,7 +268,7 @@ struct MatmulDescriptor {
     // Create matrix descriptors
     CreateMatrixLayout(&x_desc, mat_type, M, K, trans_x);
     CreateMatrixLayout(&y_desc, mat_type, K, N, trans_y);
-    CreateMatrixLayout(&out_desc, mat_type, M, N, false);
+    CreateMatrixLayout(&out_desc, out_mat_type, M, N, false);
 
     // Config batch size and stride.
     if (batch_size > 1) {
@@ -625,6 +644,197 @@ struct CublasLtBase {
   }
 };
 
+template <>
+struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
+ public:
+  static phi::Allocator::AllocationPtr GetWorkspace(const phi::GPUContext& ctx,
+                                                    size_t workspace_size) {
+    return phi::memory_utils::Alloc(
+        ctx.GetPlace(),
+        workspace_size,
+        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+  }
+
+  static void RunImpl(const phi::GPUContext& ctx,
+                      MatmulDescriptor* desc,
+                      const size_t sub_key,
+                      const int8_t* x_ptr,
+                      const int8_t* y_ptr,
+                      int32_t* out_ptr,
+                      phi::funcs::MatmulPlanner* planner) {
+    int32_t alpha = 1;
+    int32_t beta =
+        planner->UseAddTo() ? static_cast<int32_t>(1) : static_cast<int32_t>(0);
+    cublasLtHandle_t cublaslt_handle = ctx.cublaslt_handle();
+
+    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+    phi::Allocator::AllocationPtr workspace = GetWorkspace(ctx, workspace_size);
+
+    if (planner != nullptr) {
+      if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune() &&
+          (!desc->is_cached)) {
+        SearchBestAlgo(ctx,
+                       cublaslt_handle,
+                       desc,
+                       static_cast<void*>(&alpha),
+                       static_cast<void*>(&beta),
+                       y_ptr,
+                       x_ptr,
+                       out_ptr,
+                       workspace->ptr(),
+                       workspace_size);
+        MatmulDescriptor* best_desc = new MatmulDescriptor(*desc);
+        VLOG(6) << best_desc->GetDescResultString(
+            "[Searched CublasltDescriptor] ");
+
+        auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
+        cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
+      }
+    }
+
+    VLOG(7) << desc->GetDescResultString("[Impl CublasltDescriptor] ");
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cublasLtMatmul(cublaslt_handle,
+                                desc->op_desc,
+                                static_cast<void*>(&alpha),
+                                y_ptr,
+                                desc->y_desc,
+                                x_ptr,
+                                desc->x_desc,
+                                static_cast<void*>(&beta),
+                                out_ptr,
+                                desc->out_desc,
+                                out_ptr,
+                                desc->out_desc,
+                                desc->algo,
+                                workspace->ptr(),
+                                workspace_size,
+                                ctx.stream()));
+  }
+
+  static void SearchBestAlgo(const phi::GPUContext& ctx,
+                             const cublasLtHandle_t& lt_handle,
+                             MatmulDescriptor* desc,
+                             const void* alpha,
+                             const void* beta,
+                             const void* y_data,
+                             const void* x_data,
+                             void* out_data,
+                             void* workspace_ptr,
+                             size_t workspace_size) {
+    cublasLtMatmulPreference_t preference;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cublasLtMatmulPreferenceCreate(&preference));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulPreferenceSetAttribute(
+        preference,
+        CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+        &workspace_size,
+        sizeof(workspace_size)));
+
+    int returned_results = 0;
+    constexpr int requested_algo_count = 10;
+    std::vector<cublasLtMatmulHeuristicResult_t> heuristic_results(
+        requested_algo_count);
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cublasLtMatmulAlgoGetHeuristic(lt_handle,
+                                                desc->op_desc,
+                                                desc->y_desc,
+                                                desc->x_desc,
+                                                desc->out_desc,
+                                                desc->out_desc,
+                                                preference,
+                                                requested_algo_count,
+                                                heuristic_results.data(),
+                                                &returned_results));
+    PADDLE_ENFORCE_GT(returned_results,
+                      0,
+                      phi::errors::Unavailable("No GEMM algorithm avaliable."));
+    int best_algo_idx = -1;
+    if (returned_results == 1 || FLAGS_cublaslt_exhaustive_search_times <= 0) {
+      best_algo_idx = 0;
+    } else {
+      float min_time_cost = std::numeric_limits<float>::max();
+      for (int algo_idx = 0; algo_idx < returned_results; ++algo_idx) {
+        float cur_time_cost =
+            RunAndMeasureAlgo(ctx,
+                              lt_handle,
+                              desc,
+                              alpha,
+                              beta,
+                              y_data,
+                              x_data,
+                              out_data,
+                              workspace_ptr,
+                              workspace_size,
+                              &(heuristic_results[algo_idx].algo));
+        VLOG(6) << "[MatmulWithCublaslt] algo[" << algo_idx
+                << "] time: " << cur_time_cost << " s";
+
+        if ((best_algo_idx == 0 && (1.05 * cur_time_cost < min_time_cost)) ||
+            (cur_time_cost < min_time_cost)) {
+          best_algo_idx = algo_idx;
+          min_time_cost = cur_time_cost;
+        }
+      }
+    }
+    VLOG(6) << "[MatmulWithCublaslt] best_algo_idx: " << best_algo_idx;
+
+    cublasLtMatmulAlgo_t* best_algo = desc->SetAlgo();
+    *best_algo = heuristic_results[best_algo_idx].algo;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cublasLtMatmulPreferenceDestroy(preference));
+  }
+
+  static float RunAndMeasureAlgo(const phi::GPUContext& ctx,
+                                 const cublasLtHandle_t& lt_handle,
+                                 MatmulDescriptor* desc,
+                                 const void* alpha,
+                                 const void* beta,
+                                 const void* y_data,
+                                 const void* x_data,
+                                 void* out_data,
+                                 void* workspace_ptr,
+                                 size_t workspace_size,
+                                 cublasLtMatmulAlgo_t* algo) {
+    int repeats = FLAGS_cublaslt_exhaustive_search_times;
+    if (repeats <= 0) {
+      return std::numeric_limits<float>::max();
+    }
+
+    phi::GpuTimer timer;
+    float time_cost = 0.f;
+    const auto& stream = ctx.stream();
+
+    for (int i = 0; i < repeats; ++i) {
+      timer.Start(stream);
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmul(lt_handle,
+                                                         desc->op_desc,
+                                                         alpha,
+                                                         y_data,
+                                                         desc->y_desc,
+                                                         x_data,
+                                                         desc->x_desc,
+                                                         beta,
+                                                         out_data,
+                                                         desc->out_desc,
+                                                         out_data,
+                                                         desc->out_desc,
+                                                         algo,
+                                                         workspace_ptr,
+                                                         workspace_size,
+                                                         stream));
+      timer.Stop(stream);
+      ctx.Wait();
+      auto time = timer.ElapsedTime();
+      if (i > 0) {
+        // Exclude the warmup runtime.
+        time_cost += time;
+      }
+    }
+    return (time_cost / (repeats - 1));
+  }
+};
+
 // To judge if desc is cached or not.
 template <class DescT,
           typename T,
@@ -649,6 +859,70 @@ struct DescriptorSetter {
                    int64_t stride_out = 0,
                    const bool no_exchange = true,
                    bool grad_for_dx = true) {
+    if (std::is_same<T, int8_t>::value) {
+      if (!trans_x && !trans_y) {
+        PADDLE_ENFORCE_EQ(
+            (N % 4 == 0 || N == 1),
+            true,
+            phi::errors::InvalidArgument(
+                "The dimension size N used in int8 matmul must be 1 or a "
+                "multiple of 4 does not "
+                "match the size (%d) currently contained in the container.",
+                N));
+        PADDLE_ENFORCE_EQ(
+            (K % 4 == 0),
+            true,
+            phi::errors::InvalidArgument(
+                "The dimension size K used in int8 matmul must be a multiple "
+                "of 4 does not "
+                "match the size (%d) currently contained in the container.",
+                K));
+      } else if (!trans_x && trans_y) {
+        PADDLE_ENFORCE_EQ(
+            (K % 4 == 0),
+            true,
+            phi::errors::InvalidArgument(
+                "The dimension size K used in int8 matmul must be a multiple "
+                "of 4 does not "
+                "match the size (%d) currently contained in the container.",
+                K));
+      } else if (trans_x && !trans_y) {
+        PADDLE_ENFORCE_EQ(
+            (M % 4 == 0 || M == 1),
+            true,
+            phi::errors::InvalidArgument(
+                "The dimension size M used in int8 matmul must be 1 or a "
+                "multiple of 4 does not "
+                "match the size (%d) currently contained in the container.",
+                M));
+        PADDLE_ENFORCE_EQ(
+            (N % 4 == 0 || N == 1),
+            true,
+            phi::errors::InvalidArgument(
+                "The dimension size N used in int8 matmul must be 1 or a "
+                "multiple of 4 does not "
+                "match the size (%d) currently contained in the container.",
+                N));
+      } else {
+        PADDLE_ENFORCE_EQ(
+            (M % 4 == 0 || M == 1),
+            true,
+            phi::errors::InvalidArgument(
+                "The dimension size M used in int8 matmul must be 1 or a "
+                "multiple of 4 does not "
+                "match the size (%d) currently contained in the container.",
+                M));
+        PADDLE_ENFORCE_EQ(
+            (K % 4 == 0),
+            true,
+            phi::errors::InvalidArgument(
+                "The dimension size K used in int8 matmul must be a multiple "
+                "of 4 does not "
+                "match the size (%d) currently contained in the container.",
+                K));
+      }
+    }
+
     if (planner != nullptr) {
       sub_key = planner->GenSubKey();
     }
@@ -680,13 +954,13 @@ struct DescriptorSetter {
 };
 
 // For matmul with kernels autotune
-template <typename T>
-struct MatmulWithCublasLt : public CublasLtBase<T> {
+template <typename T, typename OutT = T>
+struct MatmulWithCublasLt : public CublasLtBase<T, OutT> {
  public:
   static void Run(const phi::GPUContext& ctx,
                   const T* x_data,
                   const T* y_data,
-                  T* out_data,
+                  OutT* out_data,
                   const int64_t M,
                   const int64_t N,
                   const int64_t K,
@@ -695,14 +969,14 @@ struct MatmulWithCublasLt : public CublasLtBase<T> {
                   phi::funcs::MatmulPlanner* planner = nullptr) {
     auto setter = DescriptorSetter<MatmulDescriptor, T>(
         planner, M, N, K, trans_x, trans_y);
-    CublasLtBase<T>::RunImpl(
+    CublasLtBase<T, OutT>::RunImpl(
         ctx, &setter.desc, setter.sub_key, x_data, y_data, out_data, planner);
   }
 
   static void RunWithBatch(const phi::GPUContext& ctx,
                            const T* x_data,
                            const T* y_data,
-                           T* out_data,
+                           OutT* out_data,
                            const int64_t M,
                            const int64_t N,
                            const int64_t K,
@@ -723,14 +997,14 @@ struct MatmulWithCublasLt : public CublasLtBase<T> {
                                                         stride_x,
                                                         stride_y,
                                                         stride_out);
-    CublasLtBase<T>::RunImpl(
+    CublasLtBase<T, OutT>::RunImpl(
         ctx, &setter.desc, setter.sub_key, x_data, y_data, out_data, planner);
   }
 
   static void RunWithBatch(const phi::GPUContext& ctx,
                            const T** x_data,
                            const T** y_data,
-                           T** out_data,
+                           OutT** out_data,
                            const int64_t M,
                            const int64_t N,
                            const int64_t K,

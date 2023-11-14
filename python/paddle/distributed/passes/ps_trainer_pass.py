@@ -405,7 +405,7 @@ class DistributedOpsPass(PassBase):
                 gpups_outputs.extend(outputs)
                 gpups_w_size.extend([w.shape[1]] * len(inputs))
                 gpups_min_distributed_idx = min(
-                    min(op_idxs), gpups_min_distributed_idx
+                    *op_idxs, gpups_min_distributed_idx
                 )
                 continue
 
@@ -773,7 +773,7 @@ class PsGpuPass(PassBase):
         optimize_op_role_vars = []
         optimize_need_delete_vars = []
         for op in get_optimize_ops(program):
-            #print("op=%s, input_names=%s" % (op, op.input_names))
+            # print("op=%s, input_names=%s" % (op, op.input_names))
             if not "Param" in op.input_names:
                 continue
             for name in op.input("Param"):
@@ -1394,7 +1394,6 @@ class SplitFlOpsPass(PassBase):
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
             },
         )
-        return
 
     def _insert_partB_communicate_op(self, block, idx):
         comm_info = f"backward_joint_{2}_{1}@fl_ps"
@@ -1419,7 +1418,6 @@ class SplitFlOpsPass(PassBase):
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
             },
         )
-        return
 
     def _create_var_for_block(self, vars, block):
         for var in vars:

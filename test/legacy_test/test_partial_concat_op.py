@@ -16,7 +16,7 @@ import random
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 def np_partial_concat(inputs, start, length):
@@ -48,6 +48,15 @@ class TestPartialConcatOp(OpTest):
             np.random.random((self.batch_size, self.column)).astype(self.dtype)
             for num in range(self.var_num)
         ]
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.vars = [
+                (
+                    np.random.uniform(-1, 1, (self.batch_size, self.column))
+                    + 1j
+                    * np.random.uniform(-1, 1, (self.batch_size, self.column))
+                ).astype(self.dtype)
+                for num in range(self.var_num)
+            ]
         self.inputs = {'X': list(zip(self.var_names, self.vars))}
         self.attrs = {'start_index': self.start_index, 'length': self.length}
         y = np_partial_concat(self.vars[:], self.start_index, self.length)
@@ -96,6 +105,78 @@ class TestPartialConcatOp4(TestPartialConcatOp):
         self.start_index = -1
         self.length = -1
         self.var_num = 1
+
+
+class TestPartialConcatOp2_Complex64(TestPartialConcatOp):
+    def init_para(self):
+        self.batch_size = random.randint(1, 10)
+        self.column = random.randint(101, 200)
+        self.start_index = -5
+        self.length = -1
+        self.var_num = 3
+
+    def init_kernel_type(self):
+        self.dtype = np.complex64
+
+
+class TestPartialConcatOp3_Complex64(TestPartialConcatOp):
+    def init_para(self):
+        self.batch_size = random.randint(1, 10)
+        self.column = random.randint(101, 200)
+        self.start_index = 10
+        self.length = 20
+        self.var_num = 2
+
+    def init_kernel_type(self):
+        self.dtype = np.complex64
+
+
+class TestPartialConcatOp4_Complex64(TestPartialConcatOp):
+    def init_para(self):
+        self.batch_size = random.randint(1, 10)
+        self.column = random.randint(101, 200)
+        self.start_index = -1
+        self.length = -1
+        self.var_num = 1
+
+    def init_kernel_type(self):
+        self.dtype = np.complex64
+
+
+class TestPartialConcatOp2_Complex128(TestPartialConcatOp):
+    def init_para(self):
+        self.batch_size = random.randint(1, 10)
+        self.column = random.randint(101, 200)
+        self.start_index = -5
+        self.length = -1
+        self.var_num = 3
+
+    def init_kernel_type(self):
+        self.dtype = np.complex128
+
+
+class TestPartialConcatOp3_Complex128(TestPartialConcatOp):
+    def init_para(self):
+        self.batch_size = random.randint(1, 10)
+        self.column = random.randint(101, 200)
+        self.start_index = 10
+        self.length = 20
+        self.var_num = 2
+
+    def init_kernel_type(self):
+        self.dtype = np.complex128
+
+
+class TestPartialConcatOp4_Complex128(TestPartialConcatOp):
+    def init_para(self):
+        self.batch_size = random.randint(1, 10)
+        self.column = random.randint(101, 200)
+        self.start_index = -1
+        self.length = -1
+        self.var_num = 1
+
+    def init_kernel_type(self):
+        self.dtype = np.complex128
 
 
 if __name__ == '__main__':

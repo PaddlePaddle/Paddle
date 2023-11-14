@@ -24,7 +24,15 @@ limitations under the License. */
 #include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
+#endif
+
 #if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
@@ -32,7 +40,6 @@ limitations under the License. */
 #if defined(PADDLE_WITH_GLOO)
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
-#include "paddle/phi/core/flags.h"
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #endif
@@ -1120,7 +1127,7 @@ void HogwildWorker::SetZero(phi::DenseTensor *tensor,
 void HogwildWorker::BindingDataFeedMemory() {
   const std::vector<std::string> &input_feed =
       device_reader_->GetUseSlotAlias();
-  for (auto name : input_feed) {
+  for (auto const &name : input_feed) {
     device_reader_->AddFeedVar(thread_scope_->FindVar(name), name);
   }
 }
@@ -1153,18 +1160,56 @@ bool HogwildWorker::CheckBatchNum(int flag) {
   }
   //  g_barrier.wait();
   float *stat_ptr = sync_stat_.data<float>();
-  auto comm =
-      platform::NCCLCommContext::Instance().Get(ring_id_, place_.GetDeviceId());
-  //  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
-  //  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-  auto stream = comm->stream();
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&stat_ptr[flag],
-                                                              &stat_ptr[2],
-                                                              1,
-                                                              ncclFloat32,
-                                                              ncclProd,
-                                                              comm->comm(),
-                                                              stream));
+  int ring_id = 0;
+  platform::NCCLComm *comm = nullptr;
+  const auto &comm_context_manager =
+      phi::distributed::CommContextManager::GetInstance();
+  phi::distributed::NCCLCommContext *comm_ctx = nullptr;
+  if (FLAGS_dynamic_static_unified_comm) {
+    PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "You choose to use new communication library by "
+                          "setting environment "
+                          "variable FLAGS_dynamic_static_unified_comm True. "
+                          "But ring_id(%d) is "
+                          "not found in comm_context_manager.",
+                          std::to_string(ring_id)));
+    comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+        comm_context_manager.Get(std::to_string(ring_id)));
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      platform::errors::Unavailable(
+                          "NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
+  } else {
+    comm = platform::NCCLCommContext::Instance().Get(ring_id,
+                                                     place_.GetDeviceId());
+  }
+
+  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
+  if (comm_ctx) {
+    // comm_ctx->AllReduce only support allreduce on the whole tensor,
+    // single element is not supported now.
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::ncclAllReduce(&stat_ptr[flag],
+                                         &stat_ptr[2],
+                                         1,
+                                         ncclFloat32,
+                                         ncclProd,
+                                         comm_ctx->GetNcclComm(),
+                                         stream));
+
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&stat_ptr[flag],
+                                                                &stat_ptr[2],
+                                                                1,
+                                                                ncclFloat32,
+                                                                ncclProd,
+                                                                comm->comm(),
+                                                                stream));
+  }
+
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
                                              &stat_ptr[2],
                                              sizeof(float),
@@ -1226,7 +1271,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
   platform::Timer timeline;
   double total_time = 0.0;
   double read_time = 0.0;
-  int cur_batch;
+  int cur_batch = 0;
   int batch_cnt = 0;
   if (thread_id_ == 0) {
     quit_flag_.store(false);
@@ -1427,7 +1472,7 @@ void HogwildWorker::TrainFiles() {
   int total_batch_num = 0;
   // how to accumulate fetched values here
   device_reader_->Start();
-  int cur_batch;
+  int cur_batch = 0;
   int batch_cnt = 0;
   if (thread_id_ == 0) {
     quit_flag_.store(false);
@@ -1623,7 +1668,7 @@ void HogwildWorker::PrintFetchVars() {
   }
 
   if (thread_id_ == 0 && batch_num_ % batch_per_print == 0) {
-    time_t curtime;
+    time_t curtime = 0;
     time(&curtime);
     std::array<char, 80> mbstr;
     std::strftime(mbstr.data(),

@@ -517,9 +517,7 @@ class UpsamplingNearest2D(Layer):
         else:
             main_str = f'size={self.size}'
         name_str = f', name={self.name}' if self.name else ''
-        return '{}, data_format={}{}'.format(
-            main_str, self.data_format, name_str
-        )
+        return f'{main_str}, data_format={self.data_format}{name_str}'
 
 
 class UpsamplingBilinear2D(Layer):
@@ -606,9 +604,7 @@ class UpsamplingBilinear2D(Layer):
         else:
             main_str = f'size={self.size}'
         name_str = f', name={self.name}' if self.name else ''
-        return '{}, data_format={}{}'.format(
-            main_str, self.data_format, name_str
-        )
+        return f'{main_str}, data_format={self.data_format}{name_str}'
 
 
 class Bilinear(Layer):
@@ -730,6 +726,9 @@ class Dropout(Layer):
 
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
+    Warning:
+        The corresponding `functional methods` please reference :ref:`api_paddle_nn_functional_dropout`.
+
     Parameters:
         p (float|int, optional): Probability of setting units to zero. Default: 0.5
         axis (int|list|tuple, optional): The axis along which the dropout is performed. Default: None.
@@ -795,9 +794,7 @@ class Dropout(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'p={}, axis={}, mode={}{}'.format(
-            self.p, self.axis, self.mode, name_str
-        )
+        return f'p={self.p}, axis={self.axis}, mode={self.mode}{name_str}'
 
 
 class Dropout2D(Layer):
@@ -873,9 +870,7 @@ class Dropout2D(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'p={}, data_format={}{}'.format(
-            self.p, self.data_format, name_str
-        )
+        return f'p={self.p}, data_format={self.data_format}{name_str}'
 
 
 class Dropout3D(Layer):
@@ -953,9 +948,7 @@ class Dropout3D(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'p={}, data_format={}{}'.format(
-            self.p, self.data_format, name_str
-        )
+        return f'p={self.p}, data_format={self.data_format}{name_str}'
 
 
 class AlphaDropout(Layer):
@@ -1221,9 +1214,7 @@ class ZeroPad2D(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'padding={}, data_format={}{}'.format(
-            self._pad, self._data_format, name_str
-        )
+        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
 
 
 class Pad3D(Layer):
@@ -1410,10 +1401,10 @@ class Embedding(Layer):
             such as :ref:`api_paddle_optimizer_adadelta_Adadelta` , :ref:`api_paddle_optimizer_adamax_Adamax` , :ref:`api_paddle_optimizer_lamb_Lamb`.
             In these case, sparse must be False. Default: False.
         weight_attr(ParamAttr, optional): To specify the weight parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_ParamAttr` . In addition,
+            default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` . In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
             The local word vector needs to be transformed into numpy format, and the shape of local word
-            vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_initializer_NumpyArrayInitializer`
+            vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_paddle_nn_initializer_Assign`
             is used to load custom or pre-trained word vectors. See code example for details.
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and
             None by default.
@@ -1493,9 +1484,7 @@ class Embedding(Layer):
 
         if padding_idx >= num_embeddings or padding_idx < -num_embeddings:
             raise ValueError(
-                "padding_idx must be within [-{}, {})".format(
-                    num_embeddings, num_embeddings
-                )
+                f"padding_idx must be within [-{num_embeddings}, {num_embeddings})"
             )
 
         self._dtype = self._helper.get_default_dtype()
@@ -1548,17 +1537,17 @@ class Unfold(Layer):
 
 
     Parameters:
-        kernel_sizes(int|list): The size of convolution kernel, should be [k_h, k_w]
+        kernel_sizes(int|list|tuple): The size of convolution kernel, should be [k_h, k_w]
             or an integer k treated as [k, k].
-        strides(int|list, optional): The strides, should be [stride_h, stride_w]
+        strides(int|list|tuple, optional): The strides, should be [stride_h, stride_w]
             or an integer stride treated as [sride, stride]. For default, strides will be [1, 1].
-        paddings(int|list, optional): The paddings of each dimension, should be
+        paddings(int|list|tuple, optional): The paddings of each dimension, should be
             [padding_top, padding_left, padding_bottom, padding_right] or [padding_h, padding_w]
             or an integer padding. If [padding_h, padding_w] was given, it will expanded to
             [padding_h, padding_w, padding_h, padding_w]. If an integer padding was given,
             [padding, padding, padding, padding] will be used. For default,
             paddings will be [0, 0, 0, 0].
-        dilations(int|list, optional): The dilations of convolution kernel, should be
+        dilations(int|list|tuple, optional): The dilations of convolution kernel, should be
             [dilation_h, dilation_w], or an integer dilation treated as [dilation, dilation].
             For default, it will be [1, 1].
         name(str, optional): The default value is None. Normally there is no need for user to

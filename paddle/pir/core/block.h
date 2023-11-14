@@ -17,6 +17,7 @@
 #include <cstddef>
 #include <list>
 
+#include "paddle/pir/core/block_argument.h"
 #include "paddle/pir/core/block_operand.h"
 #include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/region.h"
@@ -29,9 +30,9 @@ class IR_API Block {
   using OpListType = std::list<Operation *>;
 
  public:
-  using iterator = OpListType::iterator;
-  using reverse_iterator = OpListType::reverse_iterator;
-  using const_iterator = OpListType::const_iterator;
+  using Iterator = OpListType::iterator;
+  using ReverseIterator = OpListType::reverse_iterator;
+  using ConstIterator = OpListType::const_iterator;
 
   Block() = default;
   ~Block();
@@ -42,19 +43,19 @@ class IR_API Block {
   bool empty() const { return ops_.empty(); }
   size_t size() const { return ops_.size(); }
 
-  const_iterator begin() const { return ops_.begin(); }
-  const_iterator end() const { return ops_.end(); }
-  iterator begin() { return ops_.begin(); }
-  iterator end() { return ops_.end(); }
-  reverse_iterator rbegin() { return ops_.rbegin(); }
-  reverse_iterator rend() { return ops_.rend(); }
+  ConstIterator begin() const { return ops_.begin(); }
+  ConstIterator end() const { return ops_.end(); }
+  Iterator begin() { return ops_.begin(); }
+  Iterator end() { return ops_.end(); }
+  ReverseIterator rbegin() { return ops_.rbegin(); }
+  ReverseIterator rend() { return ops_.rend(); }
 
   Operation *back() const { return ops_.back(); }
   Operation *front() const { return ops_.front(); }
   void push_back(Operation *op);
   void push_front(Operation *op);
-  iterator insert(const_iterator iterator, Operation *op);
-  iterator erase(const_iterator position);
+  Iterator insert(ConstIterator iterator, Operation *op);
+  Iterator erase(ConstIterator position);
   void clear();
   operator Region::iterator() { return position_; }
 
@@ -73,6 +74,31 @@ class IR_API Block {
   // This is a unsafe funcion, please use it carefully.
   void ResetOpListOrder(const OpListType &new_op_list);
 
+  ///
+  /// \brief Block argument management
+  ///
+  using BlockArgListType = std::vector<BlockArgument>;
+  using ArgsIterator = BlockArgListType::iterator;
+
+  ArgsIterator args_begin() { return arguments_.begin(); }
+  ArgsIterator args_end() { return arguments_.end(); }
+  bool args_empty() const { return arguments_.empty(); }
+  uint32_t args_size() const { return arguments_.size(); }
+  const BlockArgListType &args() const { return arguments_; }
+  BlockArgument argument(uint32_t index) { return arguments_[index]; }
+  Type argument_type(uint32_t index) const { return arguments_[index].type(); }
+  void ClearArguments();
+  BlockArgument AddArgument(Type type);
+  template <class TypeIter>
+  void AddArguments(TypeIter first, TypeIter last);
+  template <class TypeContainer>
+  void AddArguments(const TypeContainer &container) {
+    AddArguments(container.begin(), container.end());
+  }
+  void AddArguments(std::initializer_list<Type> type_list) {
+    AddArguments(std::begin(type_list), std::end(type_list));
+  }
+
  private:
   Block(Block &) = delete;
   Block &operator=(const Block &) = delete;
@@ -81,12 +107,25 @@ class IR_API Block {
   friend class Region;
   void SetParent(Region *parent, Region::iterator position);
 
+  // Take out corresponding Operation and its ownershipe.
+  friend class Operation;
+  Operation *Take(Operation *op);
+
   static bool TopoOrderCheck(const OpListType &op_list);
 
  private:
-  Region *parent_;  // not owned
-  OpListType ops_;  // owned
   Region::iterator position_;
   BlockOperand first_use_;
+  OpListType ops_;              // owned
+  BlockArgListType arguments_;  // owned
+  Region *parent_;              // not owned
 };
+
+template <class TypeIter>
+void Block::AddArguments(TypeIter first, TypeIter last) {
+  while (first != last) {
+    AddArgument(*first++);
+  }
+}
+
 }  // namespace pir

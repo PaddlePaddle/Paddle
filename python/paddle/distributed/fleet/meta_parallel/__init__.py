@@ -12,19 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .parallel_layers import VocabParallelEmbedding  # noqa: F401
-from .parallel_layers import ColumnParallelLinear  # noqa: F401
-from .parallel_layers import RowParallelLinear  # noqa: F401
-from .parallel_layers import ParallelCrossEntropy  # noqa: F401
-from .parallel_layers import LayerDesc  # noqa: F401
-from .parallel_layers import SharedLayerDesc  # noqa: F401
-from .parallel_layers import PipelineLayer  # noqa: F401
-from .parallel_layers import RNGStatesTracker  # noqa: F401
-from .parallel_layers import model_parallel_random_seed  # noqa: F401
-from .parallel_layers import get_rng_state_tracker  # noqa: F401
-from .tensor_parallel import TensorParallel  # noqa: F401
-from .pipeline_parallel import PipelineParallel  # noqa: F401
-from .pipeline_parallel import PipelineParallelWithInterleave  # noqa: F401
+from .parallel_layers import (  # noqa: F401
+    ColumnParallelLinear,
+    LayerDesc,
+    ParallelCrossEntropy,
+    PipelineLayer,
+    RNGStatesTracker,
+    RowParallelLinear,
+    SharedLayerDesc,
+    VocabParallelEmbedding,
+    get_rng_state_tracker,
+    model_parallel_random_seed,
+)
+from .pipeline_parallel import (  # noqa: F401
+    PipelineParallel,
+    PipelineParallelWithInterleave,
+    PipelineParallelWithInterleaveFthenB,
+)
+from .segment_parallel import SegmentParallel  # noqa: F401
 from .sharding_parallel import ShardingParallel  # noqa: F401
+from .tensor_parallel import TensorParallel  # noqa: F401
 
 __all__ = []

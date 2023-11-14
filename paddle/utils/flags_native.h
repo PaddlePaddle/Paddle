@@ -16,6 +16,7 @@
 
 #include <string>
 #include <vector>
+#include "paddle/utils/test_macros.h"
 
 // This is a simple commandline flags tool for paddle, which is inspired by
 // gflags but only implements the following necessary features:
@@ -33,12 +34,12 @@ namespace flags {
  * which matching the format "--name=value" or "--name value". After parsing,
  * the corresponding flag value will be reset.
  */
-void ParseCommandLineFlags(int* argc, char*** argv);
+TEST_API void ParseCommandLineFlags(int* argc, char*** argv);
 
 /**
  * @brief Allow undefined flags in ParseCommandLineFlags()
  */
-void AllowUndefinedFlags();
+TEST_API void AllowUndefinedFlags();
 
 /**
  * @brief Set flags from environment variables.
@@ -95,7 +96,7 @@ T GetFromEnv(const std::string& name, const T& default_val);
 
 namespace paddle {
 namespace flags {
-class FlagRegisterer {
+class TEST_API FlagRegisterer {
  public:
   template <typename T>
   FlagRegisterer(std::string name,

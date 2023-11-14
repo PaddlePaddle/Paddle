@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from paddle.common_ops_import import check_dtype, check_variable_and_dtype
+from paddle.common_ops_import import check_variable_and_dtype
 from paddle.distributed.auto_parallel.static.cost.comm_op_cost import (
     AllreduceSumOpCost,
     IdentityOpCost,
@@ -21,6 +21,7 @@ from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.framework import core
 from paddle.utils import unique_name
 
+from ..completion import get_phi_spmd_rule
 from ..cost import (
     EmbeddingGradOpCost,
     EmbeddingOpCost,
@@ -37,6 +38,7 @@ from ..utils import (
     _get_corresponding_rank,
     _get_idx_in_axis,
     compute_compatible_and_update_dim_mapping,
+    get_dist_tensor_spec,
     is_dim_replicate,
     is_dim_shard,
     set_var_dist_attr,
@@ -44,18 +46,74 @@ from ..utils import (
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
+    ParallelMode,
+    get_default_distributed_operator_impl,
     gradient_synchronization,
     infer_shape,
     naive_copy_op_dist_attr_for_program,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
-    set_comm_op_dist_attr_for_program,
+    update_op_dims_mapping,
 )
 
 
 class DistributedEmbedding(DistributedOperatorImplContainer):
     def __init__(self, op_type):
         super().__init__(op_type)
+
+    @staticmethod
+    def update_dims_mapping(dist_op):
+        # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
+        op_desc = dist_op.serial_op.desc
+        assert (
+            dist_op.serial_op.type == "lookup_table_v2"
+        ), f"{dist_op.serial_op.type} is not supported by dist embedding yet."
+
+        x_name = op_desc.input('Ids')[0]
+        w_name = op_desc.input('W')[0]
+        out_name = op_desc.output('Out')[0]
+        padding_idx = op_desc.attr('padding_idx')
+        is_sparse = op_desc.attr('is_sparse')
+
+        x_spec = get_dist_tensor_spec(dist_op, x_name)
+        w_spec = get_dist_tensor_spec(dist_op, w_name)
+        output_spec = get_dist_tensor_spec(dist_op, out_name, False)
+
+        # step2: infer spmd
+        rule = get_phi_spmd_rule("embedding")
+        # tensor order following order in PHI defition
+        fw_results = rule.infer_forward(x_spec, w_spec, padding_idx, is_sparse)
+        bw_results = rule.infer_backward(
+            x_spec, w_spec, output_spec, padding_idx, is_sparse
+        )
+
+        # step3: update dist_attr
+        # tensor order following order in PHI defition
+        changed = update_op_dims_mapping(
+            dist_op, [x_name, w_name], [out_name], fw_results, bw_results
+        )
+
+        return changed
+
+    @staticmethod
+    def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
+        reverted = False
+        op_dist_attr = dist_op.dist_attr
+        op_desc = dist_op.serial_op.desc
+        out_name = op_desc.output('Out')[0]
+        out_dist_attr = op_dist_attr.get_output_dist_attr(out_name)
+
+        # vocab parallel embedding
+        if out_dist_attr._is_partial():
+            op_dist_attr.impl_type = op_desc.type()
+            op_dist_attr.impl_idx = 0
+        # data parallel or col parallel of weight
+        else:
+            default_impl = get_default_distributed_operator_impl()
+            op_dist_attr.impl_type = default_impl.type
+            op_dist_attr.impl_idx = default_impl.idx
+
+        return reverted
 
 
 register_distributed_operator_impl_container(
@@ -488,6 +546,9 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
         )
+        c_allreduce_sum_op._set_attr(
+            'op_namescope', '/' + ParallelMode.TensorParallel
+        )
         if Out_var.shape != ref_shape:
             Out_var.desc.set_shape(ref_shape)
 
@@ -499,17 +560,13 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         embedding_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in c_embedding_op.desc.input_arg_names():
             input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            assert input_dist_attr is not None, "dist_attr is {}".format(
-                op_dist_attr
-            )
+            assert input_dist_attr is not None, f"dist_attr is {op_dist_attr}"
             embedding_op_dist_attr.set_input_dist_attr(
                 input_varname, input_dist_attr
             )
         output_varname = c_embedding_op.desc.output_arg_names()[0]
         output_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
-        assert output_dist_attr is not None, "dist_attr is {}".format(
-            op_dist_attr
-        )
+        assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
         embedding_op_dist_attr.set_output_dist_attr(
             output_varname, output_dist_attr
         )
@@ -529,9 +586,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             )
         for output_varname in c_allreduce_sum_op.desc.output_arg_names():
             output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, "dist_attr is {}".format(
-                op_dist_attr
-            )
+            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
             allreduce_op_dist_attr.set_output_dist_attr(
                 output_varname, output_dist_attr
             )
@@ -584,9 +639,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
         assert (
             dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(
-            str(backward_op)
-        )
+        ), f"backward op [{str(backward_op)}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in dist_attr.process_mesh.process_ids:
@@ -653,67 +706,11 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             '_c_identity',
         )
 
-        intermediate_var_0 = main_block.create_var(
-            name=unique_name.generate_with_ignorable_key(
-                ".".join(["c_embedding", '@tmp_0@GRAD'])
-            ),
-            dtype=Out_grad.dtype,
-            shape=Out_grad.shape,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            persistable=False,
-            stop_gradient=Out_grad.stop_gradient,
-        )
-
-        # copy X_var's dist_attr to intermediate_var_0's dist_attr
-        out_grad_dist_attr = dist_attr.get_input_dist_attr(Out_grad.name)
-        assert out_grad_dist_attr is not None
-        ctx.set_tensor_dist_attr_for_program(
-            intermediate_var_0, out_grad_dist_attr
-        )
-
-        group_ranks = _get_comm_group(
-            process_mesh_group,
-            process_mesh_shape,
-            embedding_row_dim_mapping,
-            rank_id,
-        )
-        group = new_process_group(group_ranks)
-
-        c_identity_op = main_block.append_op(
-            type='c_identity',
-            inputs={'X': [Out_grad]},
-            outputs={'Out': intermediate_var_0},
-            attrs={
-                'ring_id': group.id,
-                'use_calc_stream': True,
-                'use_model_parallel': True,
-                OP_ROLE_KEY: OpRole.Backward,
-            },
-        )
-        check_variable_and_dtype(
-            intermediate_var_0,
-            'x',
-            ['float16', 'float32', 'float64', 'uint16'],
-            'linear',
-        )
-        check_dtype(
-            intermediate_var_0.dtype,
-            'dtype',
-            ['float16', 'float32', 'float64', 'uint16'],
-            'linear',
-        )
-
-        set_comm_op_dist_attr_for_program(
-            c_identity_op, dist_attr.process_mesh, out_grad_dist_attr, ctx
-        )
-
         c_embedding_grad_op_desc = main_block.append_op(type='nop').desc
         c_embedding_grad_op_desc.set_type("c_embedding_grad")
         c_embedding_grad_op_desc.set_input('Ids', [Ids_var.name])
         c_embedding_grad_op_desc.set_input('W', [Weight_var.name])
-        c_embedding_grad_op_desc.set_input(
-            'Out@GRAD', [intermediate_var_0.name]
-        )
+        c_embedding_grad_op_desc.set_input('Out@GRAD', [Out_grad.name])
         c_embedding_grad_op_desc.set_output('W@GRAD', [Weight_grad.name])
         c_embedding_grad_op_desc._set_attr('start_index', relative_idx)
         c_embedding_grad_op_desc._set_attr(OP_ROLE_KEY, OpRole.Backward)

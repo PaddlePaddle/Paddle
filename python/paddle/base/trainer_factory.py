@@ -13,36 +13,37 @@
 # limitations under the License.
 """Definition of TrainerFactory."""
 
+import logging
 import threading
 import time
-import logging
+
 import numpy as np
+
 from paddle.base.log_helper import get_logger
 
 local_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
-from .trainer_desc import (
-    MultiTrainer,
-    DistMultiTrainer,
-    PipelineTrainer,
-    HeterXpuTrainer,
-    PSGPUTrainer,
-    HeterPipelineTrainer,
-)
-from .device_worker import (
-    Hogwild,
-    DownpourSGD,
+from .device_worker import (  # noqa: F401
     DownpourLite,
-    Section,
+    DownpourSGD,
     DownpourSGDOPT,
     HeterSection,
+    Hogwild,
+    Section,
 )
 from .framework import Variable
-from multiprocessing import Process, Manager
+from .trainer_desc import (  # noqa: F401
+    DistMultiTrainer,
+    HeterPipelineTrainer,
+    HeterXpuTrainer,
+    MultiTrainer,
+    PipelineTrainer,
+    PSGPUTrainer,
+)
 
-__all__ = ["TrainerFactory", "FetchHandlerMonitor"]
+__all__ = []
 
 
 class TrainerFactory:
@@ -186,14 +187,12 @@ class FetchHandlerMonitor:
             if isinstance(fetch_instance.var_dict[key], Variable):
                 var_name_to_key[fetch_instance.var_dict[key].name] = key
             else:
-                local_logger.warning(
-                    "the value of {} is not a Variable".format(key)
-                )
+                local_logger.warning(f"the value of {key} is not a Variable")
                 var_name_to_key["None.var"] = key
         elapsed_secs = 0
         while True:
             self.running_lock.acquire()
-            if self.running == False:
+            if self.running is False:
                 break
             if elapsed_secs < period_secs:
                 # TODO(guru4elephant): needs customized condition
@@ -207,9 +206,7 @@ class FetchHandlerMonitor:
                     fetch_dict[key] = var
                     if var is None:
                         local_logger.warning(
-                            "{} value currently not available".format(
-                                var_name_to_key[key]
-                            )
+                            f"{var_name_to_key[key]} value currently not available"
                         )
                 res_dict = {}
                 for key in fetch_dict:

@@ -22,6 +22,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/auto_schedule/auto_tuner.h"
 #include "paddle/cinn/auto_schedule/tuning.h"
 #include "paddle/cinn/common/target.h"
@@ -320,6 +321,8 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
           << target.arch_str() << "), and its related graph:\n"
           << cinn_graph->Visualize();
 
+  cinn::adt::TryGenerateMapExprFromGraph(cinn_graph);
+
   auto scope = BuildScope(target, cinn_graph);
   CompilationContext context(cinn_graph, scope, target);
   context.with_instantiate_variables = false;
@@ -343,7 +346,7 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
   *compiled_obj = {std::move(graph_compiler),
                    std::move(auto_tuner),
-                   std::move(compiled_res.runtime_program),
+                   std::move(compiled_res.RuntimeProgram()),
                    scope,
                    symbol.var_model_to_program_map()};
   compiled_obj->cached_index = compiled_num;

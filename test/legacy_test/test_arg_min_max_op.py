@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -42,7 +42,7 @@ class BaseTestCase(OpTest):
             self.outputs = {'Out': np.argmax(self.x, axis=self.axis)}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
 
 class TestCase0(BaseTestCase):
@@ -122,7 +122,7 @@ class TestArgMinBF16OP(OpTest):
             self.outputs = {'Out': np.argmax(x, axis=self.axis)}
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.CUDAPlace(0))
+        self.check_output_with_place(paddle.CUDAPlace(0), check_pir=True)
 
 
 class TestArgMaxBF16OP(TestArgMinBF16OP):

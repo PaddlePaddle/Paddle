@@ -107,9 +107,7 @@ def get_rng_state(device=None):
             )
     else:
         raise ValueError(
-            "get_rng_state is not implemented for current device: {}".format(
-                place
-            )
+            f"get_rng_state is not implemented for current device: {place}"
         )
 
     return state_list
@@ -203,9 +201,7 @@ def set_rng_state(state_list, device=None):
         core.default_cpu_generator().set_state(state_list[0])
     else:
         raise ValueError(
-            "set_rng_state is not implemented for current device: {}".format(
-                place
-            )
+            f"set_rng_state is not implemented for current device: {place}"
         )
 
 
@@ -250,9 +246,9 @@ def _manual_program_seed(seed):
     Returns:
         None
     """
-    base.default_main_program().random_seed = seed
-    base.default_startup_program().random_seed = seed
-    program = base.Program()
+    paddle.static.default_main_program().random_seed = seed
+    paddle.static.default_startup_program().random_seed = seed
+    program = paddle.static.Program()
     program.global_seed(seed)
 
 

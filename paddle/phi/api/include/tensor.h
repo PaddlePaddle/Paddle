@@ -141,6 +141,16 @@ class PADDLE_API Tensor final {
    * */
   explicit Tensor(const std::string& name) : name_(name) {}
 
+  /**
+   * @brief Construct a new Tensor object by a TensorBase pointer and
+   * autograd_meta
+   *
+   * @param tensor_impl
+   * @param autograd_meta
+   */
+  Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
+         std::shared_ptr<AbstractAutogradMeta> autograd_meta);
+
   /* Part 2: Dimension, DataType and DataLayout methods */
 
   /**

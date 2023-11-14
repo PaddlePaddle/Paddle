@@ -16,12 +16,13 @@ import unittest
 
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, skip_check_grad_ci
 from gradient_checker import grad_check
+from op_test import OpTest, skip_check_grad_ci
 
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.base.backward import _as_list
 
 
 @skip_check_grad_ci(
@@ -58,7 +59,7 @@ class TestCholeskyOp(OpTest):
         self.outputs = {"Out": output_data}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         places = [base.CPUPlace()]
@@ -79,7 +80,36 @@ class TestCholeskyOp(OpTest):
             root_t = paddle.transpose(root, self.trans_dims)
             x = paddle.matmul(x=root, y=root_t) + 1e-05
             out = paddle.cholesky(x, upper=self.attrs["upper"])
-            grad_check(root, out, x_init=root_data, place=place)
+            # check input arguments
+            root = _as_list(root)
+            out = _as_list(out)
+
+            for v in root:
+                v.stop_gradient = False
+                v.persistable = True
+            for u in out:
+                u.stop_gradient = False
+                u.persistable = True
+
+            # init variable in startup program
+            scope = base.executor.global_scope()
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
+
+            x_init = _as_list(root_data)
+            # init inputs if x_init is not None
+            if x_init:
+                if len(x_init) != len(root):
+                    raise ValueError(
+                        'len(x_init) (=%d) is not the same'
+                        ' as len(x) (= %d)' % (len(x_init), len(root))
+                    )
+                # init variable in main program
+                for var, arr in zip(root, x_init):
+                    assert var.shape == arr.shape
+                feeds = {k.name: v for k, v in zip(root, x_init)}
+                exe.run(prog, feed=feeds, scope=scope)
+            grad_check(x=root, y=out, x_init=x_init, place=place, program=prog)
 
     def init_config(self):
         self._upper = True

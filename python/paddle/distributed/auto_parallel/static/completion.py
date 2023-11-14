@@ -14,22 +14,41 @@
 
 import copy
 import logging
+import os
 
-from paddle.base.core import get_spmd_rule  # noqa: F401
+from paddle.base.core import (  # noqa: F401
+    contains_spmd_rule,
+    get_phi_spmd_rule,
+    get_spmd_rule,
+)
+from paddle.base.log_helper import get_logger
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.framework import core
 
 from ..process_mesh import ProcessMesh, compute_compatible_process_mesh
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
 from .dist_context import _node_id
-from .operators import find_compatible_distributed_operator_impls
+from .operators import (
+    find_compatible_distributed_operator_impls,
+    find_distributed_operator_impl_container,
+)
 from .process_group import get_world_process_group
 from .utils import (
     __no_shape_var_type__,
-    get_logger,
+    _g_gradient_clip_ops,
     is_gradient_clip_op,
     is_naive_data_parallel,
 )
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
+__skip_dims_mapping_op__ = [
+    "create_py_reader",
+    "create_double_buffer_reader",
+    "while",
+    "read",
+]
 
 
 def compute_compatible_dim_mapping(dim_mapping_list):
@@ -105,12 +124,66 @@ def _validate_dims_mapping(dims_mapping, process_mesh):
     return True
 
 
+def _can_apply_infer_spmd_rule(dist_op):
+    enable = os.getenv("FLAGS_infer_spmd_enable", True)
+    if isinstance(enable, str):
+        enable = enable.lower()
+        enable = True if enable == 'true' else False
+    enable = bool(enable)
+
+    # TODO remove me. ops to be adapted: squeeze2
+    __adapted_ops__ = [
+        "matmul_v2",
+        "elementwise_div",
+        "gelu",
+        "fused_softmax_mask_upper_triangle",
+        "elementwise_add",
+        "elementwise_mul",
+        "assign",
+        "scale",
+        "dropout",
+        "reduce_sum",
+        "layer_norm",
+        "lookup_table_v2",
+        "reshape2",
+        "transpose2",
+        "split",
+        "unsqueeze2",
+    ]
+    op_type = dist_op.serial_op.type
+    return enable and contains_spmd_rule(op_type) and op_type in __adapted_ops__
+
+
+def _update_op_dims_mapping_and_distoperatorimpl(
+    dist_op, original_op_dist_attr, changed
+):
+    dist_op_container = find_distributed_operator_impl_container(dist_op)
+    _logger.debug(
+        "Update Op [{}] using DistOpContainer [{}].".format(
+            dist_op.serial_op.type, dist_op_container.type
+        )
+    )
+    updated = dist_op_container.update_dims_mapping(dist_op)
+    changed = updated or changed
+    # TODO(ljz) remove the below code once we introduce general reshard to replace specifc distopimpls
+    reverted = dist_op_container.mapping_to_dist_operator_impl(
+        dist_op, original_op_dist_attr
+    )
+    _logger.debug(
+        "Op [{}] use dist op impl [{}] idx [{}].".format(
+            dist_op.serial_op.type,
+            dist_op.dist_attr.impl_type,
+            dist_op.dist_attr.impl_idx,
+        )
+    )
+    return changed and not (reverted)
+
+
 class Completer:
     def __init__(self, dist_context):
         assert dist_context is not None
         self._dist_context = dist_context
         self._has_prepared = False
-        self._logger = get_logger(logging.INFO, "Completer")
 
     def _update_tensor_node_dims_mapping(self, tensor_node, fwd=True):
         changed = False
@@ -205,134 +278,95 @@ class Completer:
 
     def _update_op_node_dims_mapping(self, op_node, fwd=True):
         changed = False
+        op_desc = op_node.op()
+
+        # step0: skip corner cases
         if (not op_node.is_op()) or (op_node.op() is None):
             return False
         # Skip reader op
-        op_desc = op_node.op()
-        if (
-            op_desc.type() == "create_py_reader"
-            or op_desc.type() == "create_double_buffer_reader"
-            or op_desc.type() == "while"
-            or op_desc.type() == "read"
-        ):
+        if op_desc.type() in __skip_dims_mapping_op__:
             return False
+
         dist_op = self._dist_context.get_dist_op_for_graph(op_node)
         op_dist_attr = dist_op.dist_attr
         original_op_dist_attr = copy.deepcopy(op_dist_attr)
+
+        # step 1: merge the dims mappings from tensor nodes to op nodes
         if fwd:
-            for tensor_node in op_node.inputs:
-                if tensor_node.is_var() and tensor_node.var() is not None:
-                    if tensor_node.var().type() == core.VarDesc.VarType.READER:
-                        continue
-                    tensor_desc = tensor_node.var()
-                    if op_dist_attr.is_annotated_input_dims_mapping(
-                        tensor_desc.name()
-                    ):
-                        continue
-                    tensor_dist_attr = (
-                        self._dist_context.get_tensor_dist_attr_for_graph(
-                            tensor_node
-                        )
-                    )
-                    if (
-                        op_dist_attr.process_mesh
-                        == tensor_dist_attr.process_mesh
-                    ):
-                        tensor_dims_mapping = tensor_dist_attr.dims_mapping
-                        op_dims_mapping = op_dist_attr.get_input_dims_mapping(
-                            tensor_desc.name()
-                        )
-                        compatible_dims_mapping = (
-                            compute_compatible_dims_mapping(
-                                [op_dims_mapping, tensor_dims_mapping]
-                            )
-                        )
-                        if not _validate_dims_mapping(
-                            compatible_dims_mapping, op_dist_attr.process_mesh
-                        ):
-                            continue
-                        if (compatible_dims_mapping is not None) and (
-                            compatible_dims_mapping != op_dims_mapping
-                        ):
-                            op_dist_attr.set_input_dims_mapping(
-                                tensor_desc.name(), compatible_dims_mapping
-                            )
-                            changed = True
-            # Find the most compatible implementations from the distributed operator
-            op_dist_impls = find_compatible_distributed_operator_impls(
-                dist_op, fwd=True
-            )
-            if op_dist_impls is not None:
-                not_compatible = True
-                backup_op_dist_attr = copy.deepcopy(op_dist_attr)
-                backup_changed = changed
-                for op_dist_impl in op_dist_impls:
-                    dim_changed = op_dist_impl.update_dims_mapping(dist_op)
-                    if dim_changed:
-                        changed = True
-                    if (
-                        op_dist_impl.is_auto_compatible(dist_op)
-                        and dist_op.validate_dist_attr()
-                    ):
-                        if op_dist_impl.type == "elementwise":
-                            op_dist_attr.impl_type = "default"
-                        else:
-                            op_dist_attr.impl_type = op_dist_impl.type
-                        # op_dist_attr.impl_type = op_dist_impl.type
-                        op_dist_attr.impl_idx = op_dist_impl.idx
-                        not_compatible = False
-                        break
-                    else:
-                        dist_op.dist_attr = backup_op_dist_attr
-                        changed = backup_changed
-                if not_compatible:
-                    dist_op.dist_attr = original_op_dist_attr
-                    changed = False
-            else:
-                dist_op.dist_attr = original_op_dist_attr
-                changed = False
+            node_list = op_node.inputs
         else:
-            for tensor_node in op_node.outputs:
-                if tensor_node.is_var() and tensor_node.var() is not None:
-                    if tensor_node.var().type() == core.VarDesc.VarType.READER:
-                        continue
-                    tensor_desc = tensor_node.var()
-                    if op_dist_attr.is_annotated_output_dims_mapping(
+            node_list = op_node.outputs
+        for tensor_node in node_list:
+            if not tensor_node.is_var() or tensor_node.var() is None:
+                continue
+            if tensor_node.var().type() == core.VarDesc.VarType.READER:
+                continue
+
+            tensor_desc = tensor_node.var()
+            if fwd:
+                annotated = op_dist_attr.is_annotated_input_dims_mapping(
+                    tensor_desc.name()
+                )
+            else:
+                annotated = op_dist_attr.is_annotated_output_dims_mapping(
+                    tensor_desc.name()
+                )
+            if annotated:
+                continue
+
+            tensor_dist_attr = (
+                self._dist_context.get_tensor_dist_attr_for_graph(tensor_node)
+            )
+            if op_dist_attr.process_mesh == tensor_dist_attr.process_mesh:
+                tensor_dims_mapping = tensor_dist_attr.dims_mapping
+                if fwd:
+                    op_dims_mapping = op_dist_attr.get_input_dims_mapping(
                         tensor_desc.name()
-                    ):
-                        continue
-                    tensor_dist_attr = (
-                        self._dist_context.get_tensor_dist_attr_for_graph(
-                            tensor_node
-                        )
                     )
-                    if (
-                        op_dist_attr.process_mesh
-                        == tensor_dist_attr.process_mesh
-                    ):
-                        tensor_dims_mapping = tensor_dist_attr.dims_mapping
-                        op_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                            tensor_desc.name()
+                else:
+                    op_dims_mapping = op_dist_attr.get_output_dims_mapping(
+                        tensor_desc.name()
+                    )
+
+                compatible_dims_mapping = compute_compatible_dims_mapping(
+                    [op_dims_mapping, tensor_dims_mapping]
+                )
+                if not _validate_dims_mapping(
+                    compatible_dims_mapping, op_dist_attr.process_mesh
+                ):
+                    continue
+                if (compatible_dims_mapping is not None) and (
+                    compatible_dims_mapping != op_dims_mapping
+                ):
+                    if fwd:
+                        op_dist_attr.set_input_dims_mapping(
+                            tensor_desc.name(), compatible_dims_mapping
                         )
-                        compatible_dims_mapping = (
-                            compute_compatible_dims_mapping(
-                                [op_dims_mapping, tensor_dims_mapping]
-                            )
+                    else:
+                        op_dist_attr.set_output_dims_mapping(
+                            tensor_desc.name(), compatible_dims_mapping
                         )
-                        if not _validate_dims_mapping(
-                            compatible_dims_mapping, op_dist_attr.process_mesh
-                        ):
-                            continue
-                        if (compatible_dims_mapping is not None) and (
-                            compatible_dims_mapping != op_dims_mapping
-                        ):
-                            op_dist_attr.set_output_dims_mapping(
-                                tensor_desc.name(), compatible_dims_mapping
-                            )
-                            changed = True
-            # Find the most compatible implementations from the distributed operator
+                    changed = True
+
+        # step 2: Infer & Update dims mapping of op node using SPMD Rule.
+        if _can_apply_infer_spmd_rule(dist_op):
+            _logger.debug(
+                "Op [{}] update dims mapping using New InferSPMD Rule.".format(
+                    dist_op.serial_op.type
+                )
+            )
+            return _update_op_dims_mapping_and_distoperatorimpl(
+                dist_op, original_op_dist_attr, changed
+            )
+        else:
+            _logger.debug(
+                "Op [{}] update dims mapping using Original DistOp Rule.".format(
+                    dist_op.serial_op.type
+                )
+            )
+            # update_op_dims_mapping_v1()
             op_dist_impls = find_compatible_distributed_operator_impls(
-                dist_op, fwd=False
+                dist_op, fwd=fwd
             )
             if op_dist_impls is not None:
                 not_compatible = True
@@ -346,11 +380,7 @@ class Completer:
                         op_dist_impl.is_auto_compatible(dist_op)
                         and dist_op.validate_dist_attr()
                     ):
-                        if op_dist_impl.type == "elementwise":
-                            op_dist_attr.impl_type = "default"
-                        else:
-                            op_dist_attr.impl_type = op_dist_impl.type
-                        # op_dist_attr.impl_type = op_dist_impl.type
+                        op_dist_attr.impl_type = op_dist_impl.type
                         op_dist_attr.impl_idx = op_dist_impl.idx
                         not_compatible = False
                         break
@@ -363,7 +393,8 @@ class Completer:
             else:
                 dist_op.dist_attr = original_op_dist_attr
                 changed = False
-        return changed
+
+            return changed
 
     def _update_dims_mapping_between_graphs(self):
         changed = False
@@ -955,7 +986,7 @@ class Completer:
             # Copy the corresponding distributed attribute from graph to serial_main_program
             self._dist_context.copy_dist_attr_from_graph_to_program()
         else:
-            self._logger.info("Default distributed attributed will be set.")
+            _logger.info("Default distributed attributed will be set.")
             self._dist_context.initialize(with_graph=False)
             # A fast and special completion for data parallel
             self._update_dist_attr_for_dp()
@@ -1266,9 +1297,7 @@ class Completer:
                     output_name = grad_op.output_arg_names[0]
                     assert (
                         output_name in grad_var_to_var[appended_grad_times]
-                    ), "sum op's output '{}' has no corresponding var".format(
-                        output_name
-                    )
+                    ), f"sum op's output '{output_name}' has no corresponding var"
                     ref_fwd_var_name = grad_var_to_var[appended_grad_times][
                         output_name
                     ]
@@ -1363,6 +1392,124 @@ class Completer:
                     return op
             return None
 
+        def _complete_grad_op_with_forward_op(forward_op, grad_op, vars):
+            fwd_op_dist_attr = self._dist_context.get_op_dist_attr_for_program(
+                forward_op
+            )
+            if grad_op.type == "concat" and forward_op.type == "split":
+                output_var = vars[grad_op.desc.output('Out')[0]]
+                split_input_var_name = forward_op.input("X")[0]
+                ref_dims_mapping = fwd_op_dist_attr.get_input_dims_mapping(
+                    split_input_var_name
+                )
+                ref_mesh = fwd_op_dist_attr.process_mesh
+
+                grad_op_dist_attr = OperatorDistAttr()
+                for input_name in grad_op.input_arg_names:
+                    grad_op_dist_attr.set_input_dims_mapping(
+                        input_name, ref_dims_mapping
+                    )
+
+                output_var_dist_attr = TensorDistAttr()
+                output_var_dist_attr.dims_mapping = ref_dims_mapping
+                output_var_dist_attr.process_mesh = ref_mesh
+                self._dist_context.set_tensor_dist_attr_for_program(
+                    output_var, output_var_dist_attr
+                )
+
+                grad_op_dist_attr.set_output_dims_mapping(
+                    output_var.name, ref_dims_mapping
+                )
+                grad_op_dist_attr.process_mesh = ref_mesh
+                self._dist_context.set_op_dist_attr_for_program(
+                    grad_op, grad_op_dist_attr
+                )
+                grad_op_dist_attr.impl_type = (
+                    fwd_op_dist_attr.impl_type  # noqa: F821
+                )
+                grad_op_dist_attr.impl_idx = (
+                    fwd_op_dist_attr.impl_idx  # noqa: F821
+                )
+                return
+
+            fwd_op_process_mesh = fwd_op_dist_attr.process_mesh
+            grad_op_dist_attr = OperatorDistAttr()
+            grad_op_dist_attr.process_mesh = fwd_op_process_mesh
+
+            for input_name in grad_op.input_arg_names:
+                if (
+                    input_name not in forward_op.input_arg_names
+                    and input_name not in forward_op.output_arg_names
+                ):
+                    if input_name in grad_var_to_var:
+                        fwd_name = grad_var_to_var[input_name]
+                        ref_dims_mapping = (
+                            fwd_op_dist_attr.get_output_dims_mapping(fwd_name)
+                        )
+                    else:
+                        input_var = vars[input_name]
+                        ref_dims_mapping = (
+                            self._dist_context.get_tensor_dist_attr_for_program(
+                                input_var
+                            ).dims_mapping
+                        )
+                else:
+                    if input_name in forward_op.input_arg_names:
+                        ref_dims_mapping = (
+                            fwd_op_dist_attr.get_input_dims_mapping(input_name)
+                        )
+                    else:
+                        ref_dims_mapping = (
+                            fwd_op_dist_attr.get_output_dims_mapping(input_name)
+                        )
+                assert (
+                    ref_dims_mapping is not None
+                ), f"[{input_name}] 's dims mapping is NONE"
+                grad_op_dist_attr.set_input_dims_mapping(
+                    input_name, ref_dims_mapping
+                )
+
+            for output_name in grad_op.output_arg_names:
+                if output_name == "@EMPTY@":
+                    output_var = vars[output_name]
+                    tensor_dist_attr = TensorDistAttr()
+                    ref_dims_mapping = [
+                        -1 for _ in range(len(output_var.shape))
+                    ]
+                    tensor_dist_attr.dims_mapping = ref_dims_mapping
+                    tensor_dist_attr.process_mesh = fwd_op_process_mesh
+                    self._dist_context.set_tensor_dist_attr_for_program(
+                        output_var, tensor_dist_attr
+                    )
+                    grad_op_dist_attr.set_output_dims_mapping(
+                        output_name, ref_dims_mapping
+                    )
+                    continue
+
+                assert output_name in grad_var_to_var
+                fwd_name = grad_var_to_var[output_name]
+                ref_dims_mapping = fwd_op_dist_attr.get_input_dims_mapping(
+                    fwd_name
+                )
+                # var
+                output_var = vars[output_name]
+                tensor_dist_attr = TensorDistAttr()
+                tensor_dist_attr.dims_mapping = ref_dims_mapping
+                tensor_dist_attr.process_mesh = fwd_op_process_mesh
+                self._dist_context.set_tensor_dist_attr_for_program(
+                    output_var, tensor_dist_attr
+                )
+                # op
+                grad_op_dist_attr.set_output_dims_mapping(
+                    output_name, ref_dims_mapping
+                )
+
+            grad_op_dist_attr.impl_type = fwd_op_dist_attr.impl_type
+            grad_op_dist_attr.impl_idx = fwd_op_dist_attr.impl_idx
+            self._dist_context.set_op_dist_attr_for_program(
+                grad_op, grad_op_dist_attr
+            )
+
         first_backward_op_idx = -1
         for idx, op in enumerate(serial_main_program.global_block().ops):
             if int(op.attr('op_role')) == int(
@@ -1449,118 +1596,31 @@ class Completer:
                 )
                 assert forward_op is not None
 
-                if grad_op.type == "concat" and forward_op.type == "split":
-                    forward_op_dist_attr = (
-                        self._dist_context.get_op_dist_attr_for_program(
-                            forward_op
+                if grad_op.has_attr('sub_block') and forward_op.has_attr(
+                    'sub_block'
+                ):
+                    _complete_grad_op_with_forward_op(forward_op, grad_op, vars)
+                    grad_sub_block_id = grad_op.attr('sub_block').id
+                    forward_sub_block_id = forward_op.attr('sub_block').id
+                    grad_sub_block = serial_main_program.blocks[
+                        grad_sub_block_id
+                    ]
+                    forward_sub_block = serial_main_program.blocks[
+                        forward_sub_block_id
+                    ]
+                    for sub_grad_op in grad_sub_block.ops:
+                        sub_forward_op = _get_op_by_id(
+                            forward_sub_block.ops,
+                            dist_op_context.grad_op_id_to_op_id[
+                                sub_grad_op.desc.original_id()
+                            ],
                         )
-                    )
-                    output_var = vars[grad_op.desc.output('Out')[0]]
-                    split_input_var_name = forward_op.input("X")[0]
-                    ref_dims_mapping = (
-                        forward_op_dist_attr.get_input_dims_mapping(
-                            split_input_var_name
+                        _complete_grad_op_with_forward_op(
+                            sub_forward_op, sub_grad_op, grad_sub_block.vars
                         )
-                    )
-                    ref_mesh = forward_op_dist_attr.process_mesh
+                else:
+                    _complete_grad_op_with_forward_op(forward_op, grad_op, vars)
 
-                    grad_op_dist_attr = OperatorDistAttr()
-                    for input_name in grad_op.input_arg_names:
-                        grad_op_dist_attr.set_input_dims_mapping(
-                            input_name, ref_dims_mapping
-                        )
-
-                    output_var_dist_attr = TensorDistAttr()
-                    output_var_dist_attr.dims_mapping = ref_dims_mapping
-                    output_var_dist_attr.process_mesh = ref_mesh
-                    self._dist_context.set_tensor_dist_attr_for_program(
-                        output_var, output_var_dist_attr
-                    )
-
-                    grad_op_dist_attr.set_output_dims_mapping(
-                        output_var.name, ref_dims_mapping
-                    )
-                    grad_op_dist_attr.process_mesh = ref_mesh
-                    self._dist_context.set_op_dist_attr_for_program(
-                        grad_op, grad_op_dist_attr
-                    )
-                    grad_op_dist_attr.impl_type = (
-                        fwd_op_dist_attr.impl_type  # noqa: F821
-                    )
-                    grad_op_dist_attr.impl_idx = (
-                        fwd_op_dist_attr.impl_idx  # noqa: F821
-                    )
-
-                    continue
-
-                fwd_op_dist_attr = (
-                    self._dist_context.get_op_dist_attr_for_program(forward_op)
-                )
-                fwd_op_process_mesh = fwd_op_dist_attr.process_mesh
-                grad_op_dist_attr = OperatorDistAttr()
-                grad_op_dist_attr.process_mesh = fwd_op_process_mesh
-
-                for input_name in grad_op.input_arg_names:
-                    if (
-                        input_name not in forward_op.input_arg_names
-                        and input_name not in forward_op.output_arg_names
-                    ):
-                        if input_name in grad_var_to_var:
-                            fwd_name = grad_var_to_var[input_name]
-                            ref_dims_mapping = (
-                                fwd_op_dist_attr.get_output_dims_mapping(
-                                    fwd_name
-                                )
-                            )
-                        else:
-                            input_var = vars[input_name]
-                            ref_dims_mapping = self._dist_context.get_tensor_dist_attr_for_program(
-                                input_var
-                            ).dims_mapping
-                    else:
-                        if input_name in forward_op.input_arg_names:
-                            ref_dims_mapping = (
-                                fwd_op_dist_attr.get_input_dims_mapping(
-                                    input_name
-                                )
-                            )
-                        else:
-                            ref_dims_mapping = (
-                                fwd_op_dist_attr.get_output_dims_mapping(
-                                    input_name
-                                )
-                            )
-                    assert (
-                        ref_dims_mapping is not None
-                    ), f"[{input_name}] 's dims mapping is NONE"
-                    grad_op_dist_attr.set_input_dims_mapping(
-                        input_name, ref_dims_mapping
-                    )
-
-                for output_name in grad_op.output_arg_names:
-                    assert output_name in grad_var_to_var
-                    fwd_name = grad_var_to_var[output_name]
-                    ref_dims_mapping = fwd_op_dist_attr.get_input_dims_mapping(
-                        fwd_name
-                    )
-                    # var
-                    output_var = vars[output_name]
-                    tensor_dist_attr = TensorDistAttr()
-                    tensor_dist_attr.dims_mapping = ref_dims_mapping
-                    tensor_dist_attr.process_mesh = fwd_op_process_mesh
-                    self._dist_context.set_tensor_dist_attr_for_program(
-                        output_var, tensor_dist_attr
-                    )
-                    # op
-                    grad_op_dist_attr.set_output_dims_mapping(
-                        output_name, ref_dims_mapping
-                    )
-
-                grad_op_dist_attr.impl_type = fwd_op_dist_attr.impl_type
-                grad_op_dist_attr.impl_idx = fwd_op_dist_attr.impl_idx
-                self._dist_context.set_op_dist_attr_for_program(
-                    grad_op, grad_op_dist_attr
-                )
             # grad ops that have not a corresponding mapping in grad_op_id_to_op_id
             else:
                 if grad_op.type == 'sum':
@@ -1568,9 +1628,7 @@ class Completer:
                     output_name = grad_op.output_arg_names[0]
                     assert (
                         output_name in grad_var_to_var
-                    ), "sum op's output '{}' has no corresponding var".format(
-                        output_name
-                    )
+                    ), f"sum op's output '{output_name}' has no corresponding var"
                     ref_fwd_var_name = grad_var_to_var[output_name]
                     ref_fwd_var = vars[ref_fwd_var_name]
                     ref_fwd_dist_attr = (
@@ -1663,13 +1721,7 @@ class Completer:
             op = ops[idx]
             if int(op.attr('op_role')) == int(OpRole.Optimize):
                 if is_gradient_clip_op(op):
-                    if op.type in [
-                        "sum",
-                        "sqrt",
-                        "fill_constant",
-                        "elementwise_max",
-                        "elementwise_div",
-                    ]:
+                    if op.type in _g_gradient_clip_ops:
                         # complete op dist_attr with global world ranks
                         op_dist_attr = OperatorDistAttr()
                         op_dist_attr.process_mesh = ProcessMesh(world_ranks)
@@ -1924,10 +1976,10 @@ class Completer:
                     for op_dist_impl in op_dist_impls:
                         dim_changed = op_dist_impl.update_dims_mapping(dist_op)
                         if op_dist_impl.is_auto_compatible(dist_op):
-                            if op_dist_impl.type == "elementwise":
-                                dist_op.dist_attr.impl_type = "default"
-                            else:
-                                dist_op.dist_attr.impl_type = op_dist_impl.type
+                            # if op_dist_impl.type == "elementwise":
+                            #     dist_op.dist_attr.impl_type = "default"
+                            # else:
+                            dist_op.dist_attr.impl_type = op_dist_impl.type
                             # op_dist_attr.impl_type = op_dist_impl.type
                             dist_op.dist_attr.impl_idx = op_dist_impl.idx
                             break

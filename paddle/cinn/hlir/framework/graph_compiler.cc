@@ -29,7 +29,10 @@
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/utils/enum_string.h"
 #include "paddle/cinn/utils/profiler.h"
+
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 
 namespace cinn {
 namespace hlir {
@@ -44,7 +47,7 @@ std::unique_ptr<Program> GraphCompiler::Build(const std::string& code) {
   compilation_context_.with_instantiate_variables = true;
 
   auto&& result = Build(&compilation_context_);
-  return std::move(result.runtime_program);
+  return result.RuntimeProgram();
 }
 
 CompilationResult GraphCompiler::Build(CompilationContext* context) {
@@ -64,22 +67,22 @@ CompilationResult GraphCompiler::Build(CompilationContext* context) {
   parallel_compiler_ = std::make_shared<ParallelCompiler>(context);
   CompilationResult result = (*parallel_compiler_.get())();
 
-  if (context->stage != CompilationStage::DEFAULT) {
+  if (context->stage != CompilationStage::DEFAULT || !result.IsSuccess()) {
     return result;
   }
 
   if (context->remove_unused_variables) {
-    RemoveInvalidVariables(context, result.instructions);
+    RemoveInvalidVariables(context, result.RuntimeInstructions());
   }
 
   if (context->with_buffer_handle_instruction_inserted) {
     VLOG(3) << "option.with_buffer_handle_instruction_inserted enable";
-    InsertBufferHandlers(context, &result.instructions);
+    InsertBufferHandlers(context, &result.instructions_);
   }
   VLOG(2) << "Compile With Parallel Compiler Done!";
 
-  result.runtime_program =
-      std::make_unique<Program>(context->scope, std::move(result.instructions));
+  result.SetRuntimeProgram(std::make_unique<Program>(
+      context->scope, std::move(result.instructions_)));
   return result;
 }
 
@@ -371,14 +374,17 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
 
   poly::StageMap stages = C.back();
   std::string func_name_prefix = "fn_";
-  auto funcs = lang::LowerVec(func_name_prefix + node_id,
-                              stages,
-                              all_arg_tensors,
-                              {},
-                              {},
-                              nullptr,
-                              target,
-                              true);
+
+  ast_gen_ius::TensorGroup tensor_group =
+      ast_gen_ius::ConvertStageMapToTensorGroup(stages);
+  auto funcs = lang::LowerToAstVec(
+      func_name_prefix + node_id, all_arg_tensors, &tensor_group, target);
+
+  VLOG(4) << "Lower op: " << node_id << ", get " << funcs.size()
+          << " LoweredFunc:\n";
+  for (auto fun : funcs) {
+    VLOG(4) << fun;
+  }
 
   std::vector<common::CINNValue> schedule_inputs;
   for (int i = 0; i < C.size() - 1; ++i) {
@@ -425,7 +431,8 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
     optim::OptimizeExprGPU(&(funcs_after_schedule[i]->body));
 #endif
     auto temp_buffers = lang::GetTempBuffers(
-        all_arg_tensors, stages, funcs_after_schedule[i]->body);
+        all_arg_tensors, tensor_group, funcs_after_schedule[i]->body);
+
     funcs_after_schedule[i]->temp_bufs = temp_buffers;
     funcs_after_schedule[i] =
         ir::_LoweredFunc_::Make(funcs_after_schedule[i]->name,

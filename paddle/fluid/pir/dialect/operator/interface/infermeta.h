@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
 
 #include "paddle/phi/core/infermeta_utils.h"
@@ -20,6 +21,7 @@ namespace paddle {
 namespace dialect {
 class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
  public:
+  /// Defined these methods with the interface.
   struct Concept {
     explicit Concept(void (*infer_meta)(phi::InferMetaContext *))
         : infer_meta_(infer_meta) {}
@@ -28,13 +30,14 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static void InferMeta(phi::InferMetaContext *infer_meta) {
+    static inline void InferMeta(phi::InferMetaContext *infer_meta) {
       return ConcreteOp::InferMeta(infer_meta);
     }
 
     Model() : Concept(InferMeta) {}
   };
 
+  /// Constructor
   InferMetaInterface(pir::Operation *op, Concept *impl)
       : pir::OpInterfaceBase<InferMetaInterface>(op), impl_(impl) {}
 

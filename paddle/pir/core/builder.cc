@@ -25,7 +25,7 @@ Operation *Builder::Build(OperationArgument &&argument) {
 }
 
 /// Creates an operation with the given fields.
-Operation *Builder::Build(const std::vector<OpResult> &inputs,
+Operation *Builder::Build(const std::vector<Value> &inputs,
                           const AttributeMap &attribute,
                           const std::vector<Type> &output_types,
                           OpInfo op_info) {
@@ -33,15 +33,19 @@ Operation *Builder::Build(const std::vector<OpResult> &inputs,
 }
 
 Operation *Builder::Insert(Operation *op) {
-  if (block_) {
-    block_->insert(insert_point_, op);
+  if (insertion_point_.first) {
+    insertion_point_.first->insert(insertion_point_.second, op);
   } else {
     LOG(WARNING) << "Builder's Block is nullptr, insert failed.";
   }
   return op;
 }
+
+BoolType Builder::bool_type() { return BoolType::get(context_); }
 UInt8Type Builder::uint8_type() { return UInt8Type::get(context_); }
 Int8Type Builder::int8_type() { return Int8Type::get(context_); }
+Int16Type Builder::int16_type() { return Int16Type::get(context_); }
+Int32Type Builder::int32_type() { return Int32Type::get(context_); }
 VectorType Builder::vec_type(const std::vector<Type> &value) {
   return VectorType::get(context_, value);
 }
@@ -50,8 +54,6 @@ Float32Type Builder::float32_type() { return Float32Type::get(context_); }
 
 Float64Type Builder::float64_type() { return Float64Type::get(context_); }
 IndexType Builder::index_type() { return IndexType::get(context_); }
-Int16Type Builder::int16_type() { return Int16Type::get(context_); }
-BoolType Builder::bool_type() { return BoolType::get(context_); }
 Complex64Type Builder::complex64_type() { return Complex64Type::get(context_); }
 Complex128Type Builder::complex128_type() {
   return Complex128Type::get(context_);
@@ -70,6 +72,9 @@ DoubleAttribute Builder::double_attr(double value) {
 }
 Int32Attribute Builder::int32_attr(int32_t value) {
   return Int32Attribute::get(context_, value);
+}
+IndexAttribute Builder::index_attr(int64_t value) {
+  return IndexAttribute::get(context_, value);
 }
 Int64Attribute Builder::int64_attr(int64_t value) {
   return Int64Attribute::get(context_, value);

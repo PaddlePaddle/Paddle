@@ -19,8 +19,14 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
+#endif
 
 namespace paddle {
 namespace framework {
@@ -235,9 +241,20 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
     if (op_type == "c_allreduce_sum" &&
         op->Attr<bool>("use_calc_stream") == false) {
       int ring_id = op->Attr<int>("ring_id");
-      return platform::NCCLCommContext::Instance()
-          .Get(ring_id, place_)
-          ->dev_context();
+
+      if (FLAGS_dynamic_static_unified_comm) {
+        const auto& comm_context_manager =
+            phi::distributed::CommContextManager::GetInstance();
+        dev_ctx = static_cast<platform::DeviceContext*>(
+            static_cast<phi::distributed::NCCLCommContext*>(
+                comm_context_manager.Get(std::to_string(ring_id)))
+                ->GetDevContext());
+      } else {
+        dev_ctx = platform::NCCLCommContext::Instance()
+                      .Get(ring_id, place_)
+                      ->dev_context();
+      }
+      return dev_ctx;
     }
 #endif
   }
@@ -414,6 +431,7 @@ void analyse_event_info_for_two_instructions<Instruction>(
 
   if (has_data_dependency<Instruction, std::string>(
           instructions[cur_instr_id], instructions[next_instr_id]) ||
+      !run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty() ||
       instructions[next_instr_id]->OpBase()->Type() == "depend") {
     waiter_instr_ids->insert(next_instr_id);
     return;
@@ -473,6 +491,7 @@ void analyse_event_info_for_two_instructions<
 
   if (has_data_dependency<paddle::framework::InstructionBase, pir::Value>(
           instructions[cur_instr_id], instructions[next_instr_id]) ||
+      !run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty() ||
       instructions[next_instr_id]->Name() == "pd_op.depend") {
     waiter_instr_ids->insert(next_instr_id);
     return;
@@ -634,7 +653,7 @@ void StreamAnalyzer::ShareEventInfoFrom(const StreamAnalyzer& src) {
 /// ======================== ///
 ///        For new ir        ///
 /// ======================== ///
-void NewIrStreamAnalyzer::ConstructEvents(
+void PirStreamAnalyzer::ConstructEvents(
     const std::vector<std::unique_ptr<paddle::framework::InstructionBase>>&
         instructions) {
   if (!is_event_info_build_) {
@@ -647,7 +666,7 @@ void NewIrStreamAnalyzer::ConstructEvents(
       cross_step_merged_instructions_ptr.emplace_back(instr.get());
     }
 
-    NewIrDependencyBuilder dependency_builder;
+    PirDependencyBuilder dependency_builder;
     dependency_builder.Build(cross_step_merged_instructions_ptr);
     const std::map<size_t, std::set<size_t>>& downstream_map =
         dependency_builder.OpDownstreamMap();
@@ -712,7 +731,7 @@ void NewIrStreamAnalyzer::ConstructEvents(
   }
 }
 
-void NewIrStreamAnalyzer::AnalyseAllRunType(
+void PirStreamAnalyzer::AnalyseAllRunType(
     const std::vector<paddle::framework::InstructionBase*>& instructions,
     const std::map<size_t, std::set<size_t>>& downstream_map,
     std::vector<std::vector<std::vector<size_t>>>* run_type_info) const {
@@ -720,7 +739,7 @@ void NewIrStreamAnalyzer::AnalyseAllRunType(
       instructions, downstream_map, place_, run_type_info);
 }
 
-void NewIrStreamAnalyzer::AnalyseAllEventInfo(
+void PirStreamAnalyzer::AnalyseAllEventInfo(
     const std::vector<paddle::framework::InstructionBase*>& instructions,
     const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
     std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
@@ -729,14 +748,14 @@ void NewIrStreamAnalyzer::AnalyseAllEventInfo(
       instructions, run_type_info, event_info);
 }
 
-void NewIrStreamAnalyzer::ShrinkEventInfo(
-    const NewIrDependencyBuilder& dependency_builder,
+void PirStreamAnalyzer::ShrinkEventInfo(
+    const PirDependencyBuilder& dependency_builder,
     std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
         event_info_map) const {
-  shrink_event_info<NewIrDependencyBuilder>(dependency_builder, event_info_map);
+  shrink_event_info<PirDependencyBuilder>(dependency_builder, event_info_map);
 }
 
-platform::DeviceType NewIrStreamAnalyzer::GetWaiterType(
+platform::DeviceType PirStreamAnalyzer::GetWaiterType(
     const paddle::framework::InstructionBase* instr) const {
   if (instr->KernelType() == OpFuncType::kCpuSync) {
     return platform::kCPU;
@@ -750,14 +769,14 @@ platform::DeviceType NewIrStreamAnalyzer::GetWaiterType(
   }
 }
 
-void NewIrStreamAnalyzer::ShareEventInfoFrom(const NewIrStreamAnalyzer& src) {
+void PirStreamAnalyzer::ShareEventInfoFrom(const PirStreamAnalyzer& src) {
   event_info_ = src.GetEventInfo();
   is_event_info_build_ = true;
 }
 
 std::shared_ptr<
     std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
-NewIrStreamAnalyzer::GetEventInfo() const {
+PirStreamAnalyzer::GetEventInfo() const {
   return event_info_;
 }
 

@@ -13,12 +13,14 @@
 # limitations under the License.
 """This is definition of dataset class, which is high performance IO."""
 
-from paddle.base.proto import data_feed_pb2
 from google.protobuf import text_format
-from . import core
-from ..utils import deprecated
 
-__all__ = ['DatasetFactory', 'InMemoryDataset', 'QueueDataset']
+from paddle.base.proto import data_feed_pb2
+
+from ..utils import deprecated
+from . import core
+
+__all__ = []
 
 
 class DatasetFactory:
@@ -143,9 +145,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-            import paddle.base as base
-            dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-            dataset.set_fea_eval(1000000, True)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset.set_fea_eval(1000000, True)
 
         """
         if fea_eval:
@@ -1090,7 +1092,6 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
                 >>> import paddle.base as base
                 >>> from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -1458,7 +1459,7 @@ class BoxPSDataset(InMemoryDataset):
             .. code-block:: python
 
                 >>> import paddle.base as base
-                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
                 >>> dataset.set_merge_by_lineid()
                 >>> #suppose there is a slot 0
                 >>> dataset.slots_shuffle(['0'])

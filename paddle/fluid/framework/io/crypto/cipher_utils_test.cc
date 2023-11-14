@@ -46,19 +46,19 @@ TEST(CipherUtils, load_config) {
   EXPECT_TRUE(CipherUtils::GetValue<std::string>(config, "key_str", &out_str));
   EXPECT_EQ(out_str, std::string("ciphername"));
 
-  int out_int;
+  int out_int = 0;
   EXPECT_TRUE(CipherUtils::GetValue<int>(config, "key_int", &out_int));
   EXPECT_EQ(out_int, 1);
 
-  bool out_bool;
+  bool out_bool = false;
   EXPECT_TRUE(CipherUtils::GetValue<bool>(config, "key_bool", &out_bool));
   EXPECT_EQ(out_bool, true);
 
-  bool out_bool1;
+  bool out_bool1 = false;
   EXPECT_TRUE(CipherUtils::GetValue<bool>(config, "key_bool1", &out_bool1));
   EXPECT_EQ(out_bool1, false);
 
-  bool out_bool2;
+  bool out_bool2 = false;
   EXPECT_TRUE(CipherUtils::GetValue<bool>(config, "key_bool2", &out_bool2));
   EXPECT_EQ(out_bool2, false);
 }

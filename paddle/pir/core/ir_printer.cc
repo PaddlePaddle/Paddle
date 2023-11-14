@@ -87,7 +87,15 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   }
 
   if (auto s = attr.dyn_cast<StrAttribute>()) {
-    os << "(String)" << s.AsString();
+    std::string s_val = s.AsString();
+    std::string replacement = "\\\"";
+    std::string search = "\"";
+    size_t found = s_val.find(search);
+    while (found != std::string::npos) {
+      s_val.replace(found, search.length(), replacement);
+      found = s_val.find(search, found + replacement.length());
+    }
+    os << "\"" << s_val << "\"";
   } else if (auto b = attr.dyn_cast<BoolAttribute>()) {
     if (b.data()) {
       os << "true";
@@ -102,12 +110,13 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
     os << "(Int32)" << i.data();
   } else if (auto i = attr.dyn_cast<Int64Attribute>()) {
     os << "(Int64)" << i.data();
+  } else if (auto i = attr.dyn_cast<IndexAttribute>()) {
+    os << "(Index)" << i.data();
   } else if (auto p = attr.dyn_cast<PointerAttribute>()) {
     os << "(Pointer)" << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
     const auto& vec = arr.AsVector();
-    os << "(Array)"
-       << "[";
+    os << "[";
     PrintInterleave(
         vec.begin(),
         vec.end(),
@@ -139,7 +148,7 @@ void IrPrinter::PrintOperation(Operation* op) {
   PrintGeneralOperation(op);
 }
 
-void IrPrinter::PrintGeneralOperation(const Operation* op) {
+void IrPrinter::PrintGeneralOperation(Operation* op) {
   // TODO(lyk): add API to get opresults directly
   PrintOpResult(op);
   os << " =";
@@ -160,7 +169,7 @@ void IrPrinter::PrintGeneralOperation(const Operation* op) {
   PrintOpReturnType(op);
 }
 
-void IrPrinter::PrintFullOperation(const Operation* op) {
+void IrPrinter::PrintFullOperation(Operation* op) {
   PrintGeneralOperation(op);
   if (op->num_regions() > 0) {
     os << newline;
@@ -186,25 +195,31 @@ void IrPrinter::PrintBlock(const Block* block) {
   os << "}\n";
 }
 
-void IrPrinter::PrintValue(const Value& v) {
+void IrPrinter::PrintValue(Value v) {
   if (!v) {
     os << "<<NULL VALUE>>";
     return;
   }
-  const void* key = static_cast<const void*>(v.impl());
+  const void* key = v.impl();
   auto ret = aliases_.find(key);
   if (ret != aliases_.end()) {
     os << ret->second;
     return;
   }
-
-  std::string new_name = "%" + std::to_string(cur_var_number_);
-  cur_var_number_++;
-  aliases_[key] = new_name;
-  os << new_name;
+  if (v.isa<OpResult>()) {
+    std::string new_name = "%" + std::to_string(cur_result_number_);
+    cur_result_number_++;
+    aliases_[key] = new_name;
+    os << new_name;
+  } else {
+    std::string new_name = "%arg" + std::to_string(cur_block_argument_number_);
+    cur_block_argument_number_++;
+    aliases_[key] = new_name;
+    os << new_name;
+  }
 }
 
-void IrPrinter::PrintOpResult(const Operation* op) {
+void IrPrinter::PrintOpResult(Operation* op) {
   os << " (";
   auto num_op_result = op->num_results();
   std::vector<OpResult> op_results;
@@ -220,7 +235,7 @@ void IrPrinter::PrintOpResult(const Operation* op) {
   os << ")";
 }
 
-void IrPrinter::PrintAttributeMap(const Operation* op) {
+void IrPrinter::PrintAttributeMap(Operation* op) {
   AttributeMap attributes = op->attributes();
   std::map<std::string, Attribute, std::less<std::string>> order_attributes(
       attributes.begin(), attributes.end());
@@ -239,7 +254,7 @@ void IrPrinter::PrintAttributeMap(const Operation* op) {
   os << "}";
 }
 
-void IrPrinter::PrintOpOperands(const Operation* op) {
+void IrPrinter::PrintOpOperands(Operation* op) {
   os << " (";
   auto num_op_operands = op->num_operands();
   std::vector<Value> op_operands;
@@ -255,7 +270,7 @@ void IrPrinter::PrintOpOperands(const Operation* op) {
   os << ")";
 }
 
-void IrPrinter::PrintOperandsType(const Operation* op) {
+void IrPrinter::PrintOperandsType(Operation* op) {
   auto num_op_operands = op->num_operands();
   std::vector<Type> op_operand_types;
   op_operand_types.reserve(num_op_operands);
@@ -276,7 +291,7 @@ void IrPrinter::PrintOperandsType(const Operation* op) {
   os << ")";
 }
 
-void IrPrinter::PrintOpReturnType(const Operation* op) {
+void IrPrinter::PrintOpReturnType(Operation* op) {
   auto num_op_result = op->num_results();
   std::vector<Type> op_result_types;
   op_result_types.reserve(num_op_result);
@@ -295,6 +310,11 @@ void IrPrinter::PrintOpReturnType(const Operation* op) {
       [this]() { this->os << ", "; });
 }
 
+void IrPrinter::AddValueAlias(Value v, const std::string& alias) {
+  const void* key = v.impl();
+  IR_ENFORCE(aliases_.find(key) == aliases_.end(), "Value already has alias");
+  aliases_[key] = alias;
+}
 void Dialect::PrintOperation(Operation* op, IrPrinter& printer) const {
   printer.PrintGeneralOperation(op);
 }
@@ -307,6 +327,11 @@ void Program::Print(std::ostream& os) const {
 void Operation::Print(std::ostream& os) {
   IrPrinter printer(os);
   printer.PrintOperation(this);
+}
+
+void Value::Print(std::ostream& os) const {
+  IrPrinter printer(os);
+  printer.PrintValue(*this);
 }
 
 void Type::Print(std::ostream& os) const {

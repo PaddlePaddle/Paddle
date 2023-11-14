@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..meta_optimizers import *  # noqa: F401, F403
+from ..meta_optimizers import *  # noqa: F403
 
 __all__ = []
 
@@ -31,7 +31,7 @@ class MetaOptimizerFactory:
     def __init__(self):
         pass
 
-    def _get_valid_meta_optimizers(self, user_defined_optimizer, skip_names = []):
+    def _get_valid_meta_optimizers(self, user_defined_optimizer, skip_names=[]):
         opt_list = []
         for opt_name in meta_optimizer_names:
             if opt_name in skip_names:

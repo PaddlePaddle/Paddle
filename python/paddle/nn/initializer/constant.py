@@ -18,7 +18,7 @@ from ...base import core, framework
 from ...base.framework import (
     _current_expected_place,
     in_dygraph_mode,
-    in_dynamic_or_new_ir_mode,
+    in_dynamic_or_pir_mode,
 )
 
 # TODO: define the initializers of Constant in neural network
@@ -58,11 +58,16 @@ class ConstantInitializer(Initializer):
 
         assert isinstance(
             var,
-            (framework.Variable, framework.EagerParamBase, paddle.ir.OpResult),
+            (
+                framework.Variable,
+                framework.EagerParamBase,
+                paddle.pir.OpResult,
+                paddle.pir.core.ParameterMeta,
+            ),
         )
-        assert isinstance(block, (framework.Block, paddle.ir.Block))
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
 
-        if in_dynamic_or_new_ir_mode():
+        if in_dynamic_or_pir_mode():
             place = _current_expected_place()
             if self._force_cpu:
                 place = core.CPUPlace()

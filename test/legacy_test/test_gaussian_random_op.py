@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_uint16_to_float, paddle_static_guard
+from op_test import OpTest, convert_uint16_to_float, paddle_static_guard
 
 import paddle
 from paddle import base
@@ -26,7 +26,7 @@ from paddle.tensor import random
 class TestGaussianRandomOp(OpTest):
     def setUp(self):
         self.op_type = "gaussian_random"
-        self.python_api = paddle.normal
+        self.python_api = paddle.tensor.random.gaussian
         self.set_attrs()
         self.inputs = {}
         self.use_mkldnn = False
@@ -46,7 +46,7 @@ class TestGaussianRandomOp(OpTest):
         self.std = 2.0
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         self.assertEqual(outs[0].shape, (123, 92))
@@ -66,7 +66,7 @@ class TestGaussianRandomOp(OpTest):
 class TestGaussianRandomFP16Op(OpTest):
     def setUp(self):
         self.op_type = "gaussian_random"
-        self.python_api = paddle.normal
+        self.python_api = paddle.tensor.random.gaussian
         self.set_attrs()
         self.inputs = {}
         self.use_mkldnn = False
@@ -88,7 +88,7 @@ class TestGaussianRandomFP16Op(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place_customized(
-            self.verify_output, place=core.CUDAPlace(0)
+            self.verify_output, place=core.CUDAPlace(0), check_pir=True
         )
 
     def verify_output(self, outs):
@@ -103,13 +103,23 @@ class TestGaussianRandomFP16Op(OpTest):
         np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.015)
 
 
+def gaussian_wrapper(dtype_=np.uint16):
+    def gauss_wrapper(shape, mean, std, seed, dtype=np.uint16, name=None):
+        return paddle.tensor.random.gaussian(
+            shape, mean, std, seed, dtype, name
+        )
+
+    return gauss_wrapper
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestGaussianRandomBF16Op(OpTest):
     def setUp(self):
         self.op_type = "gaussian_random"
-        self.python_api = paddle.normal
+        self.python_api = gaussian_wrapper(dtype_=np.uint16)
+        self.__class__.op_type = self.op_type
         self.set_attrs()
         self.inputs = {}
         self.use_mkldnn = False
@@ -131,7 +141,7 @@ class TestGaussianRandomBF16Op(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place_customized(
-            self.verify_output, place=core.CUDAPlace(0)
+            self.verify_output, place=core.CUDAPlace(0), check_pir=True
         )
 
     def verify_output(self, outs):
@@ -158,6 +168,7 @@ class TestGaussianRandomOp_ShapeTensorList(TestGaussianRandomOp):
     def setUp(self):
         '''Test gaussian_random op with specified value'''
         self.op_type = "gaussian_random"
+        self.python_api = paddle.tensor.random.gaussian
         self.init_data()
         shape_tensor_list = []
         for index, ele in enumerate(self.shape):
@@ -185,7 +196,7 @@ class TestGaussianRandomOp_ShapeTensorList(TestGaussianRandomOp):
         self.seed = 10
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
 
 class TestGaussianRandomOp2_ShapeTensorList(
@@ -231,7 +242,7 @@ class TestGaussianRandomOp1_ShapeTensor(TestGaussianRandomOp):
         self.op_type = "gaussian_random"
         self.init_data()
         self.use_mkldnn = False
-
+        self.python_api = paddle.tensor.random.gaussian
         self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
         self.attrs = {
             'mean': self.mean,

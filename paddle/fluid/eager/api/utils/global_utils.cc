@@ -21,4 +21,27 @@ Controller* Controller::controller_ = new Controller();
 thread_local std::shared_ptr<paddle::imperative::Tracer> Controller::tracer_ =
     std::make_shared<paddle::imperative::Tracer>();
 
+Controller& Controller::Instance() { return *controller_; }
+
+void Controller::SetExpectedPlace(const paddle::platform::Place& place) {
+  tracer_->SetExpectedPlace(place);
+}
+
+void Controller::SetUsePromote(bool use_promote) {
+  tracer_->SetUsePromote(use_promote);
+}
+bool Controller::GetUsePromote() const { return tracer_->GetUsePromote(); }
+
+bool Controller::UseLayoutAutoTune() {
+  bool use_autotune = false;
+#if defined(PADDLE_WITH_CUDA)
+  auto place = tracer_->ExpectedPlace();
+  bool is_gpu_place = paddle::platform::is_gpu_place(place);
+  if (is_gpu_place) {
+    use_autotune = tracer_->UseLayoutAutoTune();
+  }
+#endif
+  return use_autotune;
+}
+
 }  // namespace egr

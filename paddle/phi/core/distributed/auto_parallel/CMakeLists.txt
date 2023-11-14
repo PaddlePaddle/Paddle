@@ -7,12 +7,8 @@ collect_srcs(
   process_mesh.cc
   dist_attr.cc
   dist_mapper.cc
-  reshard_utils.cc
   dist_tensor.cc
   dist_meta_tensor.cc
-  inferspmd_utils.cc
-  reshard_function.cc
-  r_to_s_reshard_function.cc
-  s_to_r_reshard_function.cc
-  r_to_p_reshard_function.cc
-  p_to_r_reshard_function.cc)
+  inferspmd_utils.cc)
+
+add_subdirectory(reshard)

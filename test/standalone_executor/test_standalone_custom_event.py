@@ -19,7 +19,7 @@ from paddle.base import core
 from paddle.base.executor import _add_feed_fetch_ops, _StandaloneExecutor
 from paddle.distributed.passes.pass_utils import (
     _add_event_dependency,
-    get_skip_gc_vars,
+    set_skip_gc_vars,
     split_program,
 )
 
@@ -102,7 +102,7 @@ class TestMannulEvent(unittest.TestCase):
         if apply_mannual_event:
             for waiter, recorders in waiter_recorder_events_map.items():
                 for recorder in recorders:
-                    _add_event_dependency(ops[recorder].desc, ops[waiter].desc)
+                    _add_event_dependency(ops[recorder], ops[waiter])
         main_progs, _, _ = split_program(prog, [11])
         return main_progs
 
@@ -112,7 +112,6 @@ class TestMannulEvent(unittest.TestCase):
         job_list = []
         prog_num = len(main_progs)
         fetch_op_num = len(fetch_list)
-        skip_gc_vars = get_skip_gc_vars(main_progs)
 
         if prog_num == 1:  # single prog
             main_progs[0] = _add_feed_fetch_ops(
@@ -140,20 +139,17 @@ class TestMannulEvent(unittest.TestCase):
         # create jobs
         for program_id in range(prog_num):
             job = core.Job(f"prog_{program_id}")
-            job.set_skip_gc_vars(skip_gc_vars[program_id])
-            # Set col_attr info for fetch_op to fetch the correct data after running multiple micro batch
-            if program_id == prog_num - 1:
-                for i in range(fetch_op_num):
-                    job.set_col_attr_for_fetch_op(
-                        fetch_op_indics[i],
-                        i * micro_batch_num + micro_batch_id,
-                    )
             job_list.append(job)
 
-        type_to_program = {}
+        job_types = []
         for program_id in range(prog_num):
-            type_to_program[f"prog_{program_id}"] = main_progs[program_id].desc
+            job_types.append(f"prog_{program_id}")
+        type_to_program = set_skip_gc_vars(
+            micro_batch_num, job_types, main_progs, job_list
+        )
 
+        for type in type_to_program.keys():
+            type_to_program[type] = type_to_program[type].desc
         plan = core.Plan(job_list, type_to_program)
         scope = core.Scope()
         main_exe = _StandaloneExecutor(self.place, plan, scope)

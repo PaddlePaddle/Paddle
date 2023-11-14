@@ -15,10 +15,12 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir_exe_and_pir_api,
+)
 
 import paddle
-from paddle import base
-from paddle.jit.api import to_static
 
 SEED = 2020
 
@@ -28,7 +30,6 @@ class Pool2D(paddle.nn.Layer):
         super().__init__()
         self.pool2d = paddle.nn.AvgPool2D(kernel_size=2, stride=1)
 
-    @to_static
     def forward(self, x):
         # Add func `get_result` for testing arg_name_to_idx in ast transformation.
         def get_result(x):
@@ -53,7 +54,6 @@ class Linear(paddle.nn.Layer):
         )
         self.act = paddle.nn.ReLU()
 
-    # @to_static
     def forward(self, x):
         pre = self.fc(x)
         pre = self.act(pre)
@@ -61,22 +61,20 @@ class Linear(paddle.nn.Layer):
         return pre, loss
 
 
-class TestPool2D(unittest.TestCase):
+class TestPool2D(Dy2StTestBase):
     def setUp(self):
         self.dygraph_class = Pool2D
         self.data = np.random.random((1, 2, 4, 4)).astype('float32')
 
     def train(self, to_static=False):
         paddle.jit.enable_to_static(to_static)
+        dy_layer = paddle.jit.to_static(self.dygraph_class())
+        x = paddle.to_tensor(self.data)
+        prediction = dy_layer(x)
+        if isinstance(prediction, (list, tuple)):
+            prediction = prediction[0]
 
-        with base.dygraph.guard():
-            dy_layer = self.dygraph_class()
-            x = base.dygraph.to_variable(self.data)
-            prediction = dy_layer(x)
-            if isinstance(prediction, (list, tuple)):
-                prediction = prediction[0]
-
-            return prediction.numpy()
+        return prediction.numpy()
 
     def train_static(self):
         return self.train(to_static=True)
@@ -84,7 +82,8 @@ class TestPool2D(unittest.TestCase):
     def train_dygraph(self):
         return self.train(to_static=False)
 
-    def test_declarative(self):
+    @test_legacy_and_pir_exe_and_pir_api
+    def test_to_static(self):
         dygraph_res = self.train_dygraph()
         static_res = self.train_static()
 
@@ -92,9 +91,6 @@ class TestPool2D(unittest.TestCase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph_res is {}\n static_res is \n{}'.format(
-                dygraph_res, static_res
-            ),
         )
 
 

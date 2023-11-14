@@ -15,12 +15,14 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from utils import static_guard
 
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_np_dtype_to_dtype_, in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSumOp(OpTest):
@@ -54,10 +56,16 @@ class TestSumOp(OpTest):
         self.out = self.x.sum(axis=tuple(self.attrs['dim']))
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestComplexSumOP(TestSumOp):
@@ -71,7 +79,7 @@ class TestComplexSumOP(TestSumOp):
         self.attrs = {'dim': [0]}
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_prim=False)
 
 
 class TestSumOp_ZeroDim(TestSumOp):
@@ -85,7 +93,13 @@ class TestSumOp_ZeroDim(TestSumOp):
         self.out = self.x.sum(axis=None)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_new_ir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_prim=True,
+            check_prim_pir=True,
+        )
 
 
 class TestSumOp5D(TestSumOp):
@@ -112,10 +126,10 @@ class TestSumOp8D(TestSumOp):
         self.attrs = {'dim': (0, 3)}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestSumOp_withInt(TestSumOp):
@@ -128,7 +142,7 @@ class TestSumOp_withInt(TestSumOp):
         self.attrs = {'dim': (0, 1)}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -141,7 +155,8 @@ class TestSumOp_withInt(TestSumOp):
             'Out',
             user_defined_grads=self.calc_gradient(),
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
 
@@ -153,7 +168,7 @@ class TestSumOp3Dim(TestSumOp):
         self.attrs = {'dim': (0, 1, 2)}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -166,7 +181,8 @@ class TestSumOp3Dim(TestSumOp):
             'Out',
             user_defined_grads=self.calc_gradient(),
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
 
@@ -179,14 +195,15 @@ def create_test_fp16_class(parent):
             self.dtype = np.float16
 
         def test_check_output(self):
-            self.check_output(check_new_ir=True)
+            self.check_output(check_pir=True)
 
         def test_check_grad(self):
             self.check_grad(
                 ['X'],
                 'Out',
                 check_prim=True,
-                check_new_ir=True,
+                check_prim_pir=True,
+                check_pir=True,
             )
 
 
@@ -215,7 +232,7 @@ def create_test_bf16_class(parent):
 
         def test_check_output(self):
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_new_ir=True)
+            self.check_output_with_place(place, check_pir=True)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
@@ -225,7 +242,8 @@ def create_test_bf16_class(parent):
                 'Out',
                 user_defined_grads=self.gradient,
                 check_prim=True,
-                check_new_ir=True,
+                check_prim_pir=True,
+                check_pir=True,
             )
 
         def calc_gradient(self):
@@ -262,7 +280,7 @@ class TestMaxOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -271,6 +289,7 @@ class TestMaxOp(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_pir=True,
         )
 
 
@@ -296,7 +315,7 @@ class TestMaxOp_ZeroDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -305,6 +324,7 @@ class TestMaxOp_ZeroDim(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_pir=True,
         )
 
 
@@ -349,7 +369,7 @@ class TestMaxFP32Op(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -358,6 +378,7 @@ class TestMaxFP32Op(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_pir=True,
         )
 
     def init_dtype(self):
@@ -383,7 +404,7 @@ class TestMaxBF16Op(TestMaxFP32Op):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -393,6 +414,7 @@ class TestMaxBF16Op(TestMaxFP32Op):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_pir=True,
         )
 
 
@@ -805,7 +827,7 @@ class TestAllOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAllFloatOp(OpTest):
@@ -817,7 +839,7 @@ class TestAllFloatOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAllIntOp(OpTest):
@@ -829,7 +851,7 @@ class TestAllIntOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAllOp_ZeroDim(OpTest):
@@ -841,7 +863,7 @@ class TestAllOp_ZeroDim(OpTest):
         self.attrs = {'dim': []}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAll8DOp(OpTest):
@@ -857,7 +879,7 @@ class TestAll8DOp(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAllOpWithDim(OpTest):
@@ -869,7 +891,7 @@ class TestAllOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAll8DOpWithDim(OpTest):
@@ -885,7 +907,7 @@ class TestAll8DOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAllOpWithKeepDim(OpTest):
@@ -899,7 +921,7 @@ class TestAllOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAll8DOpWithKeepDim(OpTest):
@@ -919,7 +941,7 @@ class TestAll8DOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAllOpError(unittest.TestCase):
@@ -943,7 +965,7 @@ class TestAnyOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAnyFloatOp(OpTest):
@@ -955,7 +977,7 @@ class TestAnyFloatOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAnyIntOp(OpTest):
@@ -967,7 +989,7 @@ class TestAnyIntOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAnyOp_ZeroDim(OpTest):
@@ -979,7 +1001,7 @@ class TestAnyOp_ZeroDim(OpTest):
         self.attrs = {'dim': []}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAny8DOp(OpTest):
@@ -995,7 +1017,7 @@ class TestAny8DOp(OpTest):
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAnyOpWithDim(OpTest):
@@ -1007,7 +1029,7 @@ class TestAnyOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].any(axis=1)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAny8DOpWithDim(OpTest):
@@ -1023,7 +1045,7 @@ class TestAny8DOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAnyOpWithKeepDim(OpTest):
@@ -1039,7 +1061,7 @@ class TestAnyOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAny8DOpWithKeepDim(OpTest):
@@ -1059,7 +1081,7 @@ class TestAny8DOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAnyOpError(unittest.TestCase):
@@ -1187,8 +1209,8 @@ def reduce_sum_wrapper2(x, axis=[0], dtype=None, keepdim=False):
     if paddle.in_dynamic_mode():
         return paddle._C_ops.sum(x, axis, dtype, keepdim)
     else:
-        if paddle.ir.core._use_new_ir_api():
-            return paddle._ir_ops.sum(x, axis, dtype, keepdim)
+        if in_pir_mode():
+            return paddle._pir_ops.sum(x, axis, dtype, keepdim)
 
 
 class Test8DReduce0(Test1DReduce):
@@ -1282,7 +1304,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -1291,6 +1313,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_pir=True,
         )
 
 
@@ -1582,7 +1605,7 @@ class TestReduceWithDtype2(TestReduceWithDtype):
 
 class TestReduceSumOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with program_guard(Program(), Program()):
                 # The input type of reduce_sum_op must be Variable.
                 x1 = base.create_lod_tensor(
@@ -1592,6 +1615,15 @@ class TestReduceSumOpError(unittest.TestCase):
                 # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
                 x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
                 self.assertRaises(TypeError, paddle.sum, x2)
+
+            with paddle.pir_utils.IrGuard(), program_guard(
+                Program(), Program()
+            ):
+                # The input type of reduce_sum_op must be Variable.
+                x1 = base.create_lod_tensor(
+                    np.array([[-1]]), [[1]], base.CPUPlace()
+                )
+                self.assertRaises(ValueError, paddle.sum, x1)
 
 
 class API_TestSumOp(unittest.TestCase):
@@ -1623,6 +1655,7 @@ class API_TestSumOp(unittest.TestCase):
                 rtol=1e-05,
             )
 
+    @test_with_pir_api
     def test_static(self):
         shape = [10, 10]
         axis = 1
@@ -1680,21 +1713,25 @@ class TestAllAPI(unittest.TestCase):
             self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
             input = paddle.static.data(name="input", shape=[4, 4], dtype="bool")
             result = paddle.all(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                main,
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
     def check_static_float_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
             input = paddle.static.data(
                 name="input", shape=[4, 4], dtype="float"
             )
@@ -1703,26 +1740,29 @@ class TestAllAPI(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                main,
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
     def check_static_int_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
             input = paddle.static.data(name="input", shape=[4, 4], dtype="int")
             result = paddle.all(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("int")
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                main,
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -1781,21 +1821,25 @@ class TestAnyAPI(unittest.TestCase):
             self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
             input = paddle.static.data(name="input", shape=[4, 4], dtype="bool")
             result = paddle.any(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                main,
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.any(input_np)).all())
 
     def check_static_float_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
             input = paddle.static.data(
                 name="input", shape=[4, 4], dtype="float"
             )
@@ -1804,26 +1848,29 @@ class TestAnyAPI(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                main,
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.any(input_np)).all())
 
     def check_static_int_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
             input = paddle.static.data(name="input", shape=[4, 4], dtype="int")
             result = paddle.any(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("int")
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                main,
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.any(input_np)).all())
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)

@@ -197,7 +197,6 @@ DenseTensorMeta& DenseTensorMeta::operator=(  // NOLINT
   } else {
     strides = std::move(other.strides);
   }
-
   return *this;
 }
 

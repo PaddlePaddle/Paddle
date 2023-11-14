@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 class TestTransposeMKLDNN(OpTest):
@@ -35,7 +35,6 @@ class TestTransposeMKLDNN(OpTest):
     def init_op_type(self):
         self.op_type = "transpose2"
         self.use_mkldnn = True
-        return
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode

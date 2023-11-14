@@ -247,6 +247,14 @@ if(NOT DEFINED WITH_MKLDNN)
   endif()
 endif()
 
+if(WIN32)
+  if(MSVC)
+    if(MSVC_VERSION LESS 1920)
+      set(WITH_MKLDNN OFF)
+    endif()
+  endif()
+endif()
+
 if(WIN32
    OR APPLE
    OR NOT WITH_GPU
@@ -375,6 +383,10 @@ if(WITH_GPU)
   if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
     include(external/cub) # download cub
     list(APPEND third_party_deps extern_cub)
+  elseif(${CMAKE_CUDA_COMPILER_VERSION} EQUAL 12.0
+         OR ${CMAKE_CUDA_COMPILER_VERSION} GREATER 12.0)
+    include(external/cccl)
+    list(APPEND third_party_deps extern_cccl)
   endif()
   set(URL
       "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg_20210928.tar.gz"

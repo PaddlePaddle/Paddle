@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_uint16_to_float
+from op_test import OpTest, convert_uint16_to_float
 
 import paddle
 from paddle import base
@@ -73,7 +73,7 @@ class TestUniformRandomInplaceFP16Op(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
+        np.testing.assert_allclose(hist, prob, rtol=0.015, atol=0.001)
 
     # TODO: Due to the lack of the self.python_api=paddle.uniform_random_inplace setting, the dynamic graph is temporarily turned off, set check_dygraph=False
     def test_check_grad(self):

@@ -17,8 +17,8 @@
 #include <ostream>
 
 #include "paddle/pir/core/cast_utils.h"
+#include "paddle/pir/core/storage_manager_support.h"
 #include "paddle/pir/core/type_id.h"
-
 namespace pir {
 class TypeStorage;
 class AbstractType;
@@ -32,12 +32,22 @@ class Dialect;
 ///
 class IR_API Type {
  public:
+  template <typename ConcreteType,
+            typename BaseType,
+            typename StorageType,
+            class... TraitOrInterface>
+  using TypeBase = detail::StorageHelperBase<ConcreteType,
+                                             BaseType,
+                                             StorageType,
+                                             TypeManager,
+                                             TraitOrInterface...>;
+
   using Storage = TypeStorage;
+  using AbstractT = AbstractType;
 
   Type() = default;
 
-  Type(const Storage *storage)  // NOLINT
-      : storage_(const_cast<Storage *>(storage)) {}
+  Type(const Storage *storage) : storage_(storage) {}  // NOLINT
 
   Type(const Type &other) = default;
 
@@ -59,8 +69,22 @@ class IR_API Type {
   ///
   TypeId type_id();
 
-  const AbstractType &abstract_type();
+  ///
+  /// \brief Support PointerLikeTypeTraits.
+  ///
+  operator const void *() const { return storage_; }
+  static Type RecoverFromVoidPointer(const void *pointer) {
+    return Type(reinterpret_cast<const Storage *>(pointer));
+  }
 
+  ///
+  /// \brief Return the abstract type descriptor.
+  ///
+  const AbstractT &abstract_type();
+
+  ///
+  /// \brief Return the Type implementation.
+  ///
   const Storage *storage() const { return storage_; }
 
   Dialect &dialect() const;
@@ -79,46 +103,77 @@ class IR_API Type {
 
   template <typename U>
   U dyn_cast() const {
-    return pir::dyn_cast<U>(*this);
+    return CastUtil<U>::call(*this);
   }
 
   void Print(std::ostream &os) const;
 
   static Type Parse(std::istream &is, IrContext *ctx);
 
+  template <typename U>
+  U cast() const {
+    return pir::cast<U>(*this);
+  }
+
   ///
-  /// \brief Enable hashing Type.
+  /// \brief Return true if this is an integer (any signedness) or an index
+  /// type.
   ///
-  friend struct std::hash<Type>;
+  bool IsIntOrIndex() const;
+  bool IsIndex() const;
 
  protected:
   const Storage *storage_{nullptr};
+
+ private:
+  template <typename To, typename Enabler = void>
+  struct CastUtil {
+    static To call(Type type) {
+      throw("Can't dyn_cast to To, To should be a Type or Interface or Trait");
+    }
+  };
+
+  template <typename To>
+  struct CastUtil<
+      To,
+      typename std::enable_if<std::is_base_of<Type, To>::value>::type> {
+    static inline To call(Type type) { return To::dyn_cast_impl(type); }
+  };
 };
 
 IR_API std::ostream &operator<<(std::ostream &os, Type type);
 
-}  // namespace pir
-
 ///
 /// \brief This class represents the base of a type interface.
 ///
+template <typename ConcreteInterface>
+class TypeInterfaceBase : public pir::Type {
+ public:
+  explicit TypeInterfaceBase(Type type) : Type(type) {}
 
-// template <typename ConcreteType>
-// class TypeInterface : public pir::DialectInterface<ConcreteType, Type> {
-//  public:
-//   using Base = TypeInterface<ConcreteType>;
-//   using DialectInterfaceBase = pir::DialectInterface<ConcreteType, Type>;
-//   using DialectInterfaceBase::Base;
+  ///
+  /// \brief Accessor for the ID of this interface.
+  ///
+  static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
 
-//  private:
-//   /// Returns the impl interface instance for the given type.
-//   static typename InterfaceBase::Concept *getInterfaceFor(Type type) {
-//     return type.getAbstractType().getInterface<ConcreteType>();
-//   }
+  ///
+  /// \brief Checking if the given object defines the concrete interface.
+  ///
+  static bool classof(Type type) {
+    return type.abstract_type().HasInterface(TypeId::get<ConcreteInterface>());
+  }
 
-//   /// Allow access to 'getInterfaceFor'.
-//   friend InterfaceBase;
-// };
+  static ConcreteInterface dyn_cast_impl(Type type) {
+    if (type &&
+        type.abstract_type().HasInterface(TypeId::get<ConcreteInterface>())) {
+      return ConcreteInterface(
+          type, type.abstract_type().GetInterfaceImpl<ConcreteInterface>());
+    }
+    return ConcreteInterface(nullptr, nullptr);
+  }
+};
+
+}  // namespace pir
 
 namespace std {
 ///
@@ -127,7 +182,7 @@ namespace std {
 template <>
 struct hash<pir::Type> {
   std::size_t operator()(const pir::Type &obj) const {
-    return std::hash<const pir::Type::Storage *>()(obj.storage_);
+    return std::hash<const void *>()(obj);
   }
 };
 }  // namespace std

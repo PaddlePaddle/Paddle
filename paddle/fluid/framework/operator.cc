@@ -607,6 +607,28 @@ RuntimeInferShapeContext::GetPhiDefaultKernelSignature() const {
 
 void RuntimeInferShapeContext::SetSkipLoD(bool skip) { can_skip_lod_ = skip; }
 
+bool RuntimeInferShapeContext::HasRuntimeAttributes() const {
+  bool is_runtime = false;
+  if (phi::DefaultKernelSignatureMap::Instance().Has(op_.Type())) {
+    auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+        GetPhiDefaultKernelSignature()->name);
+    if (!phi_kernels.empty()) {
+      const auto& args_def = phi_kernels.cbegin()->second.args_def();
+      const auto& attr_defs = args_def.attribute_defs();
+      for (size_t i = 0; i < attr_defs.size(); ++i) {
+        if (attr_defs[i].type_index == phi::AttributeType::SCALAR ||
+            attr_defs[i].type_index == phi::AttributeType::INT_ARRAY) {
+          is_runtime = true;
+          break;
+        }
+      }
+    }
+  } else {
+    is_runtime = true;
+  }
+  return is_runtime;
+}
+
 std::vector<LoD> RuntimeInferShapeContext::GetOutputsLod(
     const std::string& out) const {
   auto out_it = ctx_.outputs.find(out);
@@ -797,7 +819,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
-    throw std::move(exception);
+    throw exception;
   } catch (platform::EOFException&) {
     std::rethrow_exception(std::current_exception());
   } catch (std::exception& ex) {
@@ -1712,8 +1734,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
       VLOG(6) << *kernel_signature_.get();
       phi_kernel_name = kernel_signature_->name;
-      kernel_type_ = std::make_unique<OpKernelType>(
-          std::move(InnerGetExpectedKernelType(exe_ctx)));
+      kernel_type_ =
+          std::make_unique<OpKernelType>(InnerGetExpectedKernelType(exe_ctx));
       dev_ctx = pool.Get(kernel_type_->place_);
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
@@ -2220,8 +2242,8 @@ phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
   }
   VLOG(6) << *kernel_signature_.get();
   phi_kernel_name = kernel_signature_->name;
-  kernel_type_ = std::make_unique<OpKernelType>(
-      std::move(InnerGetExpectedKernelType(ctx)));
+  kernel_type_ =
+      std::make_unique<OpKernelType>(InnerGetExpectedKernelType(ctx));
 
   auto phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
   phi_kernel_ =
@@ -2777,8 +2799,6 @@ void OperatorWithKernel::ParseInputDataType(
     const phi::DenseTensor* t = nullptr;
     if (var->IsType<phi::DenseTensor>()) {
       t = &var->Get<phi::DenseTensor>();
-    } else if (var->IsType<phi::DenseTensor>()) {
-      t = &var->Get<phi::DenseTensor>();
     } else if (var->IsType<phi::SelectedRows>()) {
       t = &(var->Get<phi::SelectedRows>().value());
     } else if (var->IsType<phi::SparseCooTensor>()) {
@@ -3221,11 +3241,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
         } else if (var->template IsType<framework::Strings>()) {
           tensor_out = var->template GetMutable<framework::Strings>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<paddle::framework::RawTensor>()) {
-          tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
-          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (!var->IsInitialized()) {
-          // The following is for RAW type of var
+        } else if (var->template IsType<paddle::framework::RawTensor>() ||
+                   !var->IsInitialized()) {
           tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
@@ -3254,33 +3271,32 @@ void OperatorWithKernel::BuildPhiKernelContext(
           // scalar is in the attribute
           switch (AttrTypeID(attr_iter->second)) {
             case proto::AttrType::FLOAT:
-              phi_kernel_context->EmplaceBackAttr(std::move(
-                  phi::Scalar(PADDLE_GET_CONST(float, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(float, attr_iter->second)));
               break;
             case proto::AttrType::FLOAT64:
-              phi_kernel_context->EmplaceBackAttr(std::move(
-                  phi::Scalar(PADDLE_GET_CONST(double, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(double, attr_iter->second)));
               break;
             case proto::AttrType::INT:
-              phi_kernel_context->EmplaceBackAttr(std::move(
-                  phi::Scalar(PADDLE_GET_CONST(int, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(int, attr_iter->second)));
               break;
             case proto::AttrType::LONG:
-              phi_kernel_context->EmplaceBackAttr(std::move(
-                  phi::Scalar(PADDLE_GET_CONST(int64_t, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(int64_t, attr_iter->second)));
               break;
             case proto::AttrType::STRING:
-              phi_kernel_context->EmplaceBackAttr(std::move(phi::Scalar(
-                  PADDLE_GET_CONST(std::string, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(phi::Scalar(
+                  PADDLE_GET_CONST(std::string, attr_iter->second)));
               break;
             case proto::AttrType::BOOLEAN:
-              phi_kernel_context->EmplaceBackAttr(std::move(
-                  phi::Scalar(PADDLE_GET_CONST(bool, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(bool, attr_iter->second)));
               break;
             case proto::AttrType::SCALAR:
-              phi_kernel_context->EmplaceBackAttr(
-                  std::move(phi::Scalar(PADDLE_GET_CONST(
-                      paddle::experimental::Scalar, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(phi::Scalar(PADDLE_GET_CONST(
+                  paddle::experimental::Scalar, attr_iter->second)));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -3453,7 +3469,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
           } break;
           case phi::AttributeType::STRING:
             phi_kernel_context->EmplaceBackAttr(
-                std::move(PADDLE_GET_CONST(std::string, attr_iter->second)));
+                PADDLE_GET_CONST(std::string, attr_iter->second));
             break;
           case phi::AttributeType::INT64S:
             switch (AttrTypeID(attr_iter->second)) {

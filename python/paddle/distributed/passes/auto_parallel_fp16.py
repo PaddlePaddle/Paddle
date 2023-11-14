@@ -368,9 +368,7 @@ class FP16State:
                     for in_var_name in op.input_arg_names:
                         assert (
                             in_var.dtype == block.var(in_var_name).dtype
-                        ), "{}, {}, {}".format(
-                            in_var, block.var(in_var_name), str(op)
-                        )
+                        ), f"{in_var}, {block.var(in_var_name)}, {str(op)}"
                     out_var.desc.set_dtype(in_var.dtype)
 
             idx += num_cast_ops + 1
@@ -479,9 +477,7 @@ class FP16State:
             out_var = block.var(out_var_name)
             if _keep_fp32_output(op, out_var.name):
                 continue
-            assert out_var.dtype == dst_dtype, "{}, {}".format(
-                str(out_var), dst_dtype
-            )
+            assert out_var.dtype == dst_dtype, f"{str(out_var)}, {dst_dtype}"
 
         for (
             cast_name,
@@ -495,9 +491,7 @@ class FP16State:
             if slot_name in op.input_names:
                 assert src_name in op.input(
                     slot_name
-                ), "var: {} not in op's {}. {}".format(
-                    src_name, slot_name, str(op)
-                )
+                ), f"var: {src_name} not in op's {slot_name}. {str(op)}"
                 src_var_dist_attr = grad_op_attr.get_input_dist_attr(src_name)
                 assert src_var_dist_attr is not None
                 op._rename_input(src_name, cast_name)
@@ -728,9 +722,7 @@ def cast_startup_program():
             if param_to_dtype.get(output_name, None) == __target_dtype__:
                 assert op.has_attr(
                     'dtype'
-                ), "initialization op is supported to has dtype attribute but got {}.".format(
-                    str(op)
-                )
+                ), f"initialization op is supported to has dtype attribute but got {str(op)}."
                 out_var = startup_program.global_block().var(output_name)
                 if out_var.dtype == core.VarDesc.VarType.FP32:
                     out_var.desc.set_dtype(__target_dtype__)
@@ -770,9 +762,7 @@ class FP16Pass(AMPPass):
 
         else:
             raise NotImplementedError(
-                "target dtype [{}] is for amp o2 not supported yet.".format(
-                    self.target_dtype
-                )
+                f"target dtype [{self.target_dtype}] is for amp o2 not supported yet."
             )
         global __target_dtype__
         __target_dtype__ = __target_dtype

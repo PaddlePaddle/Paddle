@@ -18,7 +18,7 @@
 #include "paddle/pir/core/parser/lexer.h"
 #include "paddle/pir/core/program.h"
 
-using OpResultMap = std::map<std::string, pir::OpResult>;
+using ValueMap = std::map<std::string, pir::Value>;
 using AttributeMap = std::unordered_map<std::string, pir::Attribute>;
 using OpAttributeInfoMap = std::map<std::string, std::string>;
 
@@ -27,7 +27,7 @@ class IrParser {
  public:
   std::unique_ptr<Lexer> lexer;
   IrContext* ctx;
-  OpResultMap opresultmap;
+  ValueMap value_map;
   std::unique_ptr<Builder> builder;
 
  public:
@@ -49,15 +49,13 @@ class IrParser {
 
   OpInfo ParseOpInfo();
 
-  std::vector<std::string> ParseOpResultList();
+  std::vector<std::string> ParseValueList();
 
-  std::vector<OpResult> ParseOpRandList();
+  std::vector<Value> ParseOperandList();
 
   AttributeMap ParseAttributeMap();
 
   std::vector<Type> ParseTypeList();
-
-  OpResult GetNullValue();
 
   Type ParseType();
 

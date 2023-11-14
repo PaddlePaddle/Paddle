@@ -23,11 +23,19 @@ enum Mode {
   HETER = 4; // support XPU and GPU computing server
 }
 
+message RefinedOpsPattern {
+    repeated string main_ops = 1;
+    optional int32 num = 2 [default = 0];
+    repeated string pre_ops = 3;
+    repeated string suf_ops = 4;
+}
+
 message RecomputeConfig {
   repeated string checkpoints = 1;
   optional bool enable_offload = 2 [ default = false ];
   repeated int32 checkpoint_shape = 3;
   optional bool enable_tuning = 4 [ default = false ]; // incubate for auto parallel
+  repeated RefinedOpsPattern refined_ops_patterns = 5;
 }
 
 message ShardingConfig {
@@ -63,6 +71,8 @@ message MpConfig {
     optional bool mp_skip_c_identity= 6 [default = false ];
     // Support fused_linear_param_grad_add in ColumnParallelLinear. Only works when mp_async_allreduce is true.
     optional bool mp_fused_linear_param_grad_add= 7 [default = false ];
+    // Broadcast mp input data
+    optional bool need_broadcast_data=8 [default = true];
 }
 
 message PpConfig {
@@ -77,6 +87,8 @@ message DygraphShardingConfig {
   optional bool tensor_fusion = 1 [ default = false ];
   optional int32 accumulate_steps = 2 [ default = 1 ];
   optional bool comm_overlap = 3 [ default = false ];
+  optional bool split_param = 4 [ default = false ];
+  optional bool fuse_optimizer = 5 [ default = true ];
 }
 
 message HybridConfig {
@@ -104,6 +116,7 @@ message AMPConfig {
   optional bool use_fp16_guard = 11 [ default = true ];
   optional bool use_optimizer_fp16 = 12
       [ default = false ]; // auto parallel effective only
+  optional bool use_pure_bf16 = 13 [ default = false ];
 }
 
 message LocalSGDConfig {

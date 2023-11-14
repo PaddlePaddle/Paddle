@@ -16,54 +16,14 @@
 #include <type_traits>
 
 #include "paddle/pir/core/enforce.h"
+#include "paddle/pir/core/interface_support.h"
+#include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/utils.h"
 
 namespace pir {
-
-class IR_API InterfaceValue {
- public:
-  template <typename ConcreteOp, typename T>
-  static InterfaceValue get() {
-    InterfaceValue val;
-    val.type_id_ = TypeId::get<T>();
-    val.model_ = malloc(sizeof(typename T::template Model<ConcreteOp>));
-    if (val.model_ == nullptr) {
-      throw("Alloc memory for interface failed.");
-    }
-    static_assert(std::is_trivially_destructible<
-                      typename T::template Model<ConcreteOp>>::value,
-                  "interface models must be trivially destructible");
-    new (val.model_) typename T::template Model<ConcreteOp>();
-    return val;
-  }
-  TypeId type_id() const { return type_id_; }
-  void *model() const { return model_; }
-
-  InterfaceValue() = default;
-  explicit InterfaceValue(TypeId type_id) : type_id_(type_id) {}
-  InterfaceValue(const InterfaceValue &) = delete;
-  InterfaceValue(InterfaceValue &&) noexcept;
-  InterfaceValue &operator=(const InterfaceValue &) = delete;
-  InterfaceValue &operator=(InterfaceValue &&) noexcept;
-  ~InterfaceValue();
-  void swap(InterfaceValue &&val) {
-    using std::swap;
-    swap(type_id_, val.type_id_);
-    swap(model_, val.model_);
-  }
-
-  ///
-  /// \brief Comparison operations.
-  ///
-  inline bool operator<(const InterfaceValue &other) const {
-    return type_id_ < other.type_id_;
-  }
-
- private:
-  TypeId type_id_;
-  void *model_{nullptr};
-};
+class Builder;
+class IrPrinter;
 
 class IR_API OpBase {
  public:
@@ -103,6 +63,10 @@ class IR_API OpBase {
     return operation()->attribute<T>(name);
   }
 
+  void VerifySig() {}
+
+  void VerifyRegion() {}
+
  private:
   Operation *operation_;  // Not owned
 };
@@ -133,7 +97,17 @@ class OpInterfaceBase : public OpBase {
  public:
   explicit OpInterfaceBase(Operation *op) : OpBase(op) {}
 
+  ///
+  /// \brief Accessor for the ID of this interface.
+  ///
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
+
+  ///
+  /// \brief Checking if the given object defines the concrete interface.
+  ///
+  static bool classof(Operation *op) {
+    return op->HasInterface<ConcreteInterface>();
+  }
 
   static ConcreteInterface dyn_cast(Operation *op) {
     if (op && op->HasInterface<ConcreteInterface>()) {
@@ -144,57 +118,16 @@ class OpInterfaceBase : public OpBase {
   }
 };
 
-template <typename ConcreteOp, typename... Args>
-class ConstructInterfacesOrTraits {
- public:
-  /// Construct method for interfaces.
-  static InterfaceValue *interface(InterfaceValue *p_interface) {
-    (void)std::initializer_list<int>{
-        0, (PlacementConstrctInterface<Args>(p_interface), 0)...};
-    return p_interface;
-  }
-
-  /// Construct method for traits.
-  static TypeId *trait(TypeId *p_trait) {
-    (void)std::initializer_list<int>{
-        0, (PlacementConstrctTrait<Args>(p_trait), 0)...};
-    return p_trait;
-  }
-
- private:
-  /// Placement new interface.
-  template <typename T>
-  static void PlacementConstrctInterface(
-      InterfaceValue *&p_interface) {  // NOLINT
-    p_interface->swap(InterfaceValue::get<ConcreteOp, T>());
-    VLOG(6) << "New a interface: id["
-            << (p_interface->type_id()).AsOpaquePointer() << "].";
-    ++p_interface;
-  }
-
-  /// Placement new trait.
-  template <typename T>
-  static void PlacementConstrctTrait(pir::TypeId *&p_trait) {  // NOLINT
-    *p_trait = TypeId::get<T>();
-    VLOG(6) << "New a trait: id[" << p_trait->AsOpaquePointer() << "].";
-    ++p_trait;
-  }
+template <typename, typename = void>
+struct VerifyTraitOrInterface {
+  static void call(Operation *) {}
 };
 
-/// Specialized for tuple type.
-template <typename ConcreteOp, typename... Args>
-class ConstructInterfacesOrTraits<ConcreteOp, std::tuple<Args...>> {
- public:
-  /// Construct method for interfaces.
-  static InterfaceValue *interface(InterfaceValue *p_interface) {
-    return ConstructInterfacesOrTraits<ConcreteOp, Args...>::interface(
-        p_interface);
-  }
-
-  /// Construct method for traits.
-  static TypeId *trait(TypeId *p_trait) {
-    return ConstructInterfacesOrTraits<ConcreteOp, Args...>::trait(p_trait);
-  }
+template <typename T>
+struct VerifyTraitOrInterface<T,
+                              decltype(T::Verify(
+                                  std::declval<Operation *>()))> {
+  static void call(Operation *op) { T::Verify(op); }
 };
 
 template <typename ConcreteOp, class... TraitOrInterface>
@@ -208,6 +141,7 @@ class Op : public OpBase {
   using InterfaceList =
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
+  // TODO(zhangbopd): Use classof
   static ConcreteOp dyn_cast(Operation *op) {
     if (op && op->info().id() == TypeId::get<ConcreteOp>()) {
       return ConcreteOp(op);
@@ -220,29 +154,33 @@ class Op : public OpBase {
   }
 
   static std::vector<InterfaceValue> GetInterfaceMap() {
-    constexpr size_t interfaces_num = std::tuple_size<InterfaceList>::value;
-    std::vector<InterfaceValue> interfaces_map(interfaces_num);
-    ConstructInterfacesOrTraits<ConcreteOp, InterfaceList>::interface(
-        interfaces_map.data());
-    return interfaces_map;
+    return pir::detail::GetInterfaceMap<ConcreteOp, InterfaceList>();
   }
 
   static std::vector<TypeId> GetTraitSet() {
-    constexpr size_t traits_num = std::tuple_size<TraitList>::value;
-    std::vector<TypeId> trait_set(traits_num);
-    auto p_first_trait = trait_set.data();
-    ConstructInterfacesOrTraits<ConcreteOp, TraitList>::trait(p_first_trait);
-    return trait_set;
+    return pir::detail::GetTraitSet<ConcreteOp, TraitList>();
   }
+
+  // Checking that the derived class does not define any member by comparing
+  // its size to an ad-hoc EmptyOp.
   static constexpr bool HasNoDataMembers() {
     class EmptyOp : public Op<EmptyOp, TraitOrInterface...> {};
     return sizeof(ConcreteOp) == sizeof(EmptyOp);
   }
 
-  static void VerifyInvariants(Operation *op) {
+  // Implementation of `VerifySigInvariantsFn` OperationName hook.
+  static void VerifySigInvariants(Operation *op) {
     static_assert(HasNoDataMembers(),
                   "Op class shouldn't define new data members");
-    op->dyn_cast<ConcreteOp>().Verify();
+    op->dyn_cast<ConcreteOp>().VerifySig();
+    (void)std::initializer_list<int>{
+        0, (VerifyTraitOrInterface<TraitOrInterface>::call(op), 0)...};
+  }
+
+  static void VerifyRegionInvariants(Operation *op) {
+    static_assert(HasNoDataMembers(),
+                  "Op class shouldn't define new data members");
+    op->dyn_cast<ConcreteOp>().VerifyRegion();
   }
 };
 

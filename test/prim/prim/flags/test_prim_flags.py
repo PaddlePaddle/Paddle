@@ -101,7 +101,6 @@ class TestPrimBlacklistFlags(unittest.TestCase):
         _ = exe.run(main_program, feed={'x': inputs}, fetch_list=[y])
         paddle.disable_static()
         core._set_prim_forward_enabled(False)
-        return
 
     def in_blacklist(self):
         inputs = np.random.random([2, 3, 4]).astype("float32")
@@ -131,7 +130,6 @@ class TestPrimBlacklistFlags(unittest.TestCase):
         _ = exe.run(main_program, feed={'x': inputs}, fetch_list=[y])
         paddle.disable_static()
         core._set_prim_forward_enabled(False)
-        return
 
     def test_prim_forward_blacklist(self):
         self.not_in_blacklist()
@@ -155,13 +153,12 @@ class TestPrimBackwardBlacklistFlags(unittest.TestCase):
         x = paddle.randn([2, 4])
         x.stop_gradient = False
         net = PrimeNet()
-        net = paddle.jit.to_static(net)
+        net = paddle.jit.to_static(net, full_graph=True)
 
         out = net(x)
         loss = paddle.mean(out)
         loss.backward()
         self.check_prim(net)
-        return
 
     def check_prim(self, net):
         block = net.forward.program_cache.last()[-1][-1].train_program.block

@@ -13,17 +13,10 @@
 # limitations under the License.
 """Definition of trainers."""
 
-import sys
 import os
+import sys
 
-__all__ = [
-    'TrainerDesc',
-    'MultiTrainer',
-    'DistMultiTrainer',
-    'PipelineTrainer',
-    'HeterXpuTrainer',
-    'HeterPipelineTrainer',
-]
+__all__ = []
 
 
 class TrainerDesc:
@@ -119,7 +112,7 @@ class TrainerDesc:
 
     def _set_fleet_desc(self, fleet_desc):
         self._fleet_desc = fleet_desc
-        ## serialize fleet_desc
+        # serialize fleet_desc
         from google.protobuf import text_format
 
         fleet_desc_str = text_format.MessageToString(fleet_desc)
@@ -250,7 +243,7 @@ class TrainerDesc:
         if len(src_sparse_tables) != len(dest_sparse_tables):
             raise ValueError(
                 "len(src_sparse_tables) != len(dest_sparse_tables),"
-                " %s vs %s" % (len(src_sparse_tables), len(dest_sparse_tables))
+                f" {len(src_sparse_tables)} vs {len(dest_sparse_tables)}"
             )
         for i in src_sparse_tables:
             config.src_sparse_tables.append(i)
@@ -266,7 +259,7 @@ class TrainerDesc:
         if len(src_dense_tables) != len(dest_dense_tables):
             raise ValueError(
                 "len(src_dense_tables) != len(dest_dense_tables),"
-                " %s vs %s" % (len(src_dense_tables), len(dest_dense_tables))
+                f" {len(src_dense_tables)} vs {len(dest_dense_tables)}"
             )
         for i in src_dense_tables:
             config.src_dense_tables.append(i)
@@ -283,8 +276,8 @@ class TrainerDesc:
             dest_var_list = [dest_var_list]
         if len(src_var_list) != len(dest_var_list):
             raise ValueError(
-                "len(src_var_list) != len(dest_var_list), %s vs"
-                " %s" % (len(src_var_list), len(dest_var_list))
+                f"len(src_var_list) != len(dest_var_list), {len(src_var_list)} vs"
+                f" {len(dest_var_list)}"
             )
         for i in src_var_list:
             config.src_var_list.append(i)
@@ -311,8 +304,6 @@ class TrainerDesc:
         )
 
     def _desc(self):
-        from google.protobuf import text_format
-
         return self.proto_desc.SerializeToString()
 
     def __str__(self):

@@ -23,20 +23,16 @@ class Operation;
 namespace paddle {
 namespace framework {
 class Scope;
-class Value;
+class ValueExecutionInfo;
 
 class PhiKernelInstruction : public InstructionBase {
  public:
-  PhiKernelInstruction(
-      size_t id,
-      const platform::Place& place,
-      ::pir::Operation* op,
-      Scope* scope,
-      Scope* local_scope,
-      const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
-      const std::map<std::string, int>& var_name_2_id,
-      const std::unordered_map<const paddle::framework::Variable*, std::string>&
-          variable_2_var_name);
+  PhiKernelInstruction(size_t id,
+                       const platform::Place& place,
+                       ::pir::Operation* op,
+                       const ValueExecutionInfo& value_exec_info);
+
+  ~PhiKernelInstruction();
 
   phi::Kernel* PhiKernel() const { return phi_kernel_; }
 
@@ -49,6 +45,8 @@ class PhiKernelInstruction : public InstructionBase {
   paddle::dialect::InferMetaInterface::Concept* InferMetaInterface() const {
     return infer_meta_interface_;
   }
+
+  ::pir::Operation* Operation() const override { return op_; }
 
   void Run() override;
 
@@ -65,6 +63,10 @@ class PhiKernelInstruction : public InstructionBase {
   phi::Kernel* phi_kernel_{nullptr};  // not owned
 
   std::string phi_op_name_;
+
+  ::pir::Operation* op_{nullptr};  // not owned
+
+  const ValueExecutionInfo& value_exec_info_;  // not owned
 };
 
 }  // namespace framework

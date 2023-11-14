@@ -262,6 +262,7 @@ function cmake_base() {
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
+        -DWITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON}
         -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     ========================================
 EOF
@@ -313,6 +314,7 @@ EOF
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}  \
         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}  \
+        -DWITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON} \
         -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF};build_error=$?
 
     if [ "$build_error" != 0 ];then
@@ -459,7 +461,7 @@ EOF
         fi
         echo "PR whl Size: $PR_whlSize"
         echo "ipipe_log_param_PR_whl_Size: $PR_whlSize" >> ${PADDLE_ROOT}/build/build_summary.txt
-        PR_soSize=$($com ${PADDLE_ROOT}/build/python/paddle/fluid/libpaddle.so |awk '{print $1}')
+        PR_soSize=$($com ${PADDLE_ROOT}/build/python/paddle/base/libpaddle.so |awk '{print $1}')
         echo "PR so Size: $PR_soSize"
         echo "ipipe_log_param_PR_so_Size: $PR_soSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     fi
@@ -624,7 +626,7 @@ EOF
 
 
 function run_mac_test() {
-    export FLAGS_NEW_IR_OPTEST=True
+    export FLAGS_PIR_OPTEST=True
     export FLAGS_CI_PIPELINE=mac
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -685,7 +687,6 @@ EOF
             echo "Unittests with nightly labels  are only run at night"
             echo "========================================="
         fi
-        bash $PADDLE_ROOT/tools/check_added_ut.sh
         check_approvals_of_unittest 2
         # serial_list: Some single tests need to reduce concurrency
         single_list="^test_cdist$|^test_resnet$|^test_resnet_v2$|^test_concat_op$|^test_transformer$|^test_bert_with_stride$|^test_paddle_save_load$"
@@ -775,7 +776,7 @@ EOF
 }
 
 function run_linux_cpu_test() {
-    export FLAGS_NEW_IR_OPTEST=True
+    export FLAGS_PIR_OPTEST=True
     export FLAGS_CI_PIPELINE=py3
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -783,7 +784,7 @@ function run_linux_cpu_test() {
     if [ -d "${PADDLE_ROOT}/dist/" ]; then
         pip install ${PADDLE_ROOT}/dist/*whl
     fi
-    cp ${PADDLE_ROOT}/build/test/legacy_test/eager_op_test.py ${PADDLE_ROOT}/build/python
+    cp ${PADDLE_ROOT}/build/test/legacy_test/op_test.py ${PADDLE_ROOT}/build/python
     cp ${PADDLE_ROOT}/build/test/legacy_test/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/test/white_list ${PADDLE_ROOT}/build/python
     ut_total_startTime_s=`date +%s`
@@ -795,7 +796,6 @@ function run_linux_cpu_test() {
 EOF
 set -x
         export TEST_NUM_PERCENT_CASES=0.15
-        bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
             duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
             if [[ "$duplicate_uts" != "" ]];then
@@ -932,6 +932,96 @@ set -ex
     fi
 }
 
+function check_run_sot_ci() {
+    set +x
+    # use "git commit -m 'message, test=sot'" to force ci to run
+    COMMIT_RUN_CI=$(git log -1 --pretty=format:"%s" | grep -w "test=sot" || true)
+    # check pr title
+    TITLE_RUN_CI=$(curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "sot" || true)
+    if [[ ${COMMIT_RUN_CI} || ${TITLE_RUN_CI} ]]; then
+        set -x
+        return
+    fi
+
+    # git diff
+    SOT_FILE_LIST=(
+        paddle/fluid/operators/run_program_op.h
+        paddle/fluid/operators/run_program_op.cu
+        paddle/fluid/operators/run_program_op.cc
+        paddle/fluid/eager/to_static
+        paddle/fluid/pybind/
+        python/
+        test/sot
+    )
+
+    run_sot_ut="OFF"
+    for change_file in $(git diff --name-only upstream/develop);
+    do
+        for sot_file in ${SOT_FILE_LIST[@]};
+        do
+            if [[ ${change_file} =~ ^"${sot_file}".* ]]; then
+                echo "Detect change about SOT: "
+                echo "Changes related to the sot code were detected: " ${change_file}
+                run_sot_ut="ON"
+                break
+            fi
+        done
+        if [[ "ON" == ${run_sot_ut} ]]; then
+            break
+        fi
+    done
+
+    if [[ "OFF" == ${run_sot_ut} ]]; then
+        echo "No SOT-related changes were found"
+        echo "Skip SOT UT CI"
+        exit 0
+    fi
+    set -x
+}
+
+function run_sot_test() {
+    PY_VERSION=$1
+    PYTHON_WITH_SPECIFY_VERSION=python$PY_VERSION
+    PY_VERSION_NO_DOT=`echo $PY_VERSION | sed 's/\.//g'`
+
+    export STRICT_MODE=1
+    export COST_MODEL=False
+    export MIN_GRAPH_SIZE=0
+    export SOT_LOG_LEVEL=0
+    export FLAGS_cudnn_deterministic=True
+
+    # Install PaddlePaddle
+    $PYTHON_WITH_SPECIFY_VERSION -m pip install ${PADDLE_ROOT}/dist/paddlepaddle-0.0.0-cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}-linux_x86_64.whl
+    # Install PaddleSOT
+    cd $PADDLE_ROOT/test/sot/
+
+    # Run unittest
+    failed_tests=()
+
+    for file in ./test_*.py; do
+        # check file is python file
+        if [ -f "$file" ]; then
+            echo Running: PYTHONPATH=$PYTHONPATH " STRICT_MODE=1 python " $file
+            # run unittests
+            python_output=$($PYTHON_WITH_SPECIFY_VERSION $file 2>&1)
+
+            if [ $? -ne 0 ]; then
+                echo "run $file failed"
+                failed_tests+=("$file")
+                echo -e "$python_output"
+            fi
+        fi
+    done
+
+    if [ ${#failed_tests[@]} -ne 0 ]; then
+        echo "failed tests file:"
+        for failed_test in "${failed_tests[@]}"; do
+            echo "$failed_test"
+        done
+        exit 1
+    fi
+}
+
 function get_precision_ut_mac() {
     on_precision=0
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
@@ -987,10 +1077,10 @@ function check_whl_size() {
     fi
 
     set +x
-    pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/*.whl|awk '{print $1}'`
+    pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/paddle*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
 
-    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/paddle*.whl|awk '{print $1}'`
     echo "dev_whl_size: ${dev_whl_size}"
 
     whldiffSize=`echo $(($pr_whl_size - $dev_whl_size))`
@@ -1164,7 +1254,7 @@ EOF
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "=========================================================================================="
                 echo "This PR make the release inference library size growth exceeds 20 M."
-                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (For NewIR) qingqing01 or yuanlehome) approval for this PR.\n"
+                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (ForPir) qingqing01 or yuanlehome) approval for this PR.\n"
                 echo "=========================================================================================="
                 exit 6
             fi
@@ -1174,9 +1264,9 @@ EOF
 }
 
 function check_diff_file_for_coverage() {
-    diff_h_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
-    diff_cc_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep -E '\.(cc|c)$' | awk -F "/" '{printf "%s,",$NF}')
-    diff_py_file=$(git diff --name-status test develop | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
+    diff_h_file=$(git diff --name-status test -- | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_cc_file=$(git diff --name-status test -- | awk '$1 != "D" {print $2}' | grep -E '\.(cc|c)$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_py_file=$(git diff --name-status test -- | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
     export PADDLE_GIT_DIFF_H_FILE=${diff_h_file%*,}
     export PADDLE_GIT_DIFF_CC_FILE=${diff_cc_file%*,}
     export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
@@ -1317,6 +1407,8 @@ function get_quickly_disable_ut() {
         echo ${disable_ut_quickly}
         echo "========================================="
     else
+
+        exit 102
         disable_ut_quickly='disable_ut'
     fi
 }
@@ -1337,6 +1429,8 @@ function card_test() {
         run_label_mode="-L (RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE)"
     elif [[ "${UT_RUN_TYPE_SETTING}" == "WITHOUT_INFER" ]];then
         run_label_mode="-LE (RUN_TYPE=INFER)"
+    elif [[ "${UT_RUN_TYPE_SETTING}" == "WITHOUT_HYBRID" ]];then
+        run_label_mode="-LE (RUN_TYPE=HYBRID)"
     elif [[ "${UT_RUN_TYPE_SETTING}" == "OTHER" ]];then
         run_label_mode="-LE (RUN_TYPE=INFER|RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE)"
     fi
@@ -2350,6 +2444,62 @@ set -x
         ut_endTime_s=`date +%s`
         echo "CINN testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
+            rm -f $tmp_dir/*
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${failuretest}" | sort -u
+            exit 8;
+        fi
+    fi
+}
+
+function parallel_test_base_hybrid() {
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit hybrid tests ...
+    ========================================
+EOF
+
+set +x
+        ut_startTime_s=`date +%s`
+        test_cases=$(ctest -N -V)        # get all test cases
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+                matchstr=$(echo $line|grep -oEi 'Test[ \t]+#') || true
+                if [[ "$matchstr" == "" ]]; then
+                    # Any test case with LABELS property would be parse here
+                    # RUN_TYPE=HYBRID mean the case would run in HYBRID CI.
+                    is_hybrid=$(echo "$line"|grep -oEi "RUN_TYPE=HYBRID") || true
+                    continue
+                fi
+                testcase=$(echo "$line"|grep -oEi "\w+$")
+                if [[ "$is_hybrid" != "" ]]; then
+                    if [[ "$eight_cards_tests" == "" ]]; then
+                        eight_cards_tests="^$testcase$"
+                    else
+                        eight_cards_tests="$eight_cards_tests|^$testcase$"
+                    fi
+                fi
+                is_hybrid=''
+                matchstr=''
+                testcase=''
+        done <<< "$test_cases";
+        card_test "$eight_cards_tests" -1 1
+        collect_failed_tests
+set -x
+        ut_endTime_s=`date +%s`
+        echo "HYBRID testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            rm -f $tmp_dir/*
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${failuretest}" | sort -u
             exit 8;
         fi
     fi
@@ -2370,7 +2520,7 @@ set -x
         export FLAGS_trt_ibuilder_cache=1
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
-        #check change of pr_unnitests and dev_unnitests
+        #check change of pr_unittests and dev_unittests
         check_approvals_of_unittest 2
         ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/all_ut_list
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
@@ -2708,8 +2858,15 @@ function parallel_test() {
     fi
     cp ${PADDLE_ROOT}/build/test/legacy_test/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/test/white_list ${PADDLE_ROOT}/build/python
+    run_hybrid_ci=${1:-"false"}
     ut_total_startTime_s=`date +%s`
-    if [ "$WITH_CINN" == "ON" ];then
+    if [ "$run_hybrid_ci" == "true" ] && [ "$WITH_DISTRIBUTE" == "ON" ];then
+        if [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
+            parallel_test_base_hybrid
+        else
+            echo "skip parallel_test_base_hybrid when compiling PaddlePaddle without NVIDIA GPU or ROCM platform"
+        fi
+    elif [ "$WITH_CINN" == "ON" ];then
         parallel_test_base_cinn
     elif [ "$WITH_GPU" == "ON" ] && [ "$WITH_HETERPS" == "ON" ];then
         parallel_test_base_gpups
@@ -2739,7 +2896,10 @@ function enable_unused_var_check() {
     # Currently, use it in coverage CI job.
     export FLAGS_enable_unused_var_check=1
 }
-
+function check_coverage_added_ut() {
+    # NOTE(risemeup1):The step of checking added test can be placed on the cpu machine to save gpu resources
+    bash $PADDLE_ROOT/tools/check_added_ut.sh
+}
 function gen_doc_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -3282,21 +3442,23 @@ function build_pr_and_develop() {
         mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
         cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
     else
+        cp -r ${PADDLE_ROOT}/build /tmp/
         if [[ ${cmake_change} ]];then
             rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
-        
         git checkout -b develop_base_pr upstream/$BRANCH
         git submodule update --init
         run_setup ${PYTHON_ABI:-""} "rerun-cmake bdist_wheel" ${parallel_number}
+        rm -rf ${PADDLE_ROOT}/build
+        mv /tmp/build ${PADDLE_ROOT}
         if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
             mkdir ${PADDLE_ROOT}/build/python/dist/
         fi
         mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
-    
+
     generate_api_spec "$1" "DEV"
 
 }
@@ -3348,20 +3510,7 @@ function run_setup(){
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
         echo "Using python abi: $1"
-        if [ "$1" == "cp37-cp37m" ]; then
-            if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
-                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
-                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
-                export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
-                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
-                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
-                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
-                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib
-                pip3.7 install --user -r ${PADDLE_ROOT}/python/requirements.txt
-            else
-                exit 1
-            fi
-        elif [ "$1" == "cp38-cp38" ]; then
+        if [ "$1" == "cp38-cp38" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
@@ -3413,19 +3562,24 @@ function run_setup(){
             else
                 exit 1
             fi
+        elif [ "$1" == "cp312-cp312" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.12" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.12/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.12/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.12/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.12/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.12/include/python3.12/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.12/lib/libpython3.12.dylib
+                pip3.12 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
         fi
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
-            if [ "$1" == "cp37-cp37m" ]; then
-                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH}
-                export PATH=/opt/_internal/cpython-3.7.0/bin/:${PATH}
-                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
-                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.7.0/bin/python3.7
-                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.7.0/include/python3.7m
-                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.7.0/lib/libpython3.so
-                pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
-            elif [ "$1" == "cp38-cp38" ]; then
+            if [ "$1" == "cp38-cp38" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
@@ -3457,14 +3611,14 @@ function run_setup(){
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.11.0/include/python3.11
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.11.0/lib/libpython3.so
                 pip3.11 install -r ${PADDLE_ROOT}/python/requirements.txt
-           elif [ "$1" == "conda-python3.7" ]; then
-                export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
-                export PATH=/opt/conda/bin/:${PATH}
+            elif [ "$1" == "cp312-cp312" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.12.0/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
-                export DPYTHON_EXECUTABLE=/opt/conda/bin/python
-                export PYTHON_INCLUDE_DIR=/opt/conda/include/python3.7m
-                export PYTHON_LIBRARIES=/opt/conda/lib/libpython3.so
-                /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements.txt
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.12.0/bin/python3.12
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.12.0/include/python3.12
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.12.0/lib/libpython3.so
+                pip3.12 install -r ${PADDLE_ROOT}/python/requirements.txt
            fi
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
@@ -3551,7 +3705,8 @@ EOF
     export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     export WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF}
-    
+    export WITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON}
+
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
           parallel_number=$(expr `nproc` - 8)
@@ -3564,7 +3719,7 @@ EOF
     if [ "$3" != "" ]; then
       parallel_number=$3
     fi
-    
+
     # reset ccache zero stats for collect PR's actual hit rate
     if [ "${MAX_JOBS}" == "" ]; then
         export MAX_JOBS=${parallel_number}
@@ -3841,7 +3996,7 @@ EOF
     fi
     # ci will collect ccache hit rate
     collect_ccache_hits
-    
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -3986,12 +4141,17 @@ function main() {
         check_diff_file_for_coverage
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         enable_unused_var_check
+        check_coverage_added_ut
         check_coverage_build
         ;;
       gpu_cicheck_coverage)
-        export FLAGS_NEW_IR_OPTEST=True
+        export FLAGS_PIR_OPTEST=True
         parallel_test
         check_coverage
+        ;;
+      gpu_cicheck_hybrid)
+        export FLAGS_PIR_OPTEST=True
+        parallel_test true
         ;;
       nv_cicheck_coverage)
         parallel_test
@@ -4071,6 +4231,18 @@ function main() {
         ;;
       test_cicheck_py37)
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        ;;
+      cicheck_sot)
+        check_run_sot_ci
+        export WITH_SHARED_PHI=ON
+        PYTHON_VERSIONS=(3.8 3.9 3.10 3.11)
+        for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
+            ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
+            ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
+            run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
+            run_sot_test $PY_VERSION
+            rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
+        done
         ;;
       build_gpubox)
         run_setup ${PYTHON_ABI:-""} install ${parallel_number}

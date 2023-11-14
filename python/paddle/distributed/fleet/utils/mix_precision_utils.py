@@ -28,6 +28,7 @@ from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     obtain_optimizer_parameters_list,
 )
 from paddle.framework import core
+from paddle.utils import deprecated
 
 
 class MixPrecisionLayer(nn.Layer):
@@ -67,7 +68,6 @@ class MixPrecisionLayer(nn.Layer):
                     param.main_grad.add_(tmp_grad)
 
                 tmp_grad._clear_data()
-            return None
 
         return param_hook
 
@@ -233,6 +233,11 @@ def unscale_method(self, optimizer):
         self._found_inf = int(is_found_inf)
 
 
+@deprecated(
+    since="2.5.0",
+    update_to="paddle.distributed_scaler",
+    level=1,
+)
 class MixPrecisionScaler:
     def __init__(self, scaler):
         self._inner_scaler = scaler

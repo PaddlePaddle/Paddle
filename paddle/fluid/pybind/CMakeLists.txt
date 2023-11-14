@@ -38,10 +38,10 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     phi
-    phi_kernel_adaptor
-    pd_op_dialect
+    pir_adaptor
+    op_dialect_vjp
     program_translator
-    pd_inplace_pass
+    pir_transforms
     pir
     new_profiler
     jit_layer
@@ -50,6 +50,11 @@ set(PYBIND_DEPS
     static_tensor_operants
     type_info
     auto_parallel)
+
+if(WITH_CINN)
+  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass
+                  add_broadcast_to_elementwise_pass pd_to_cinn_pass)
+endif()
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -116,7 +121,7 @@ set(PYBIND_SRCS
     inference_api.cc
     ops_api.cc
     static_op_function.cc
-    ir.cc
+    pir.cc
     graph.cc
     bind_fleet_executor.cc
     reader_py.cc
@@ -144,7 +149,9 @@ set(PYBIND_SRCS
     custom_device_py.cc
     xpu_streams_py.cc
     jit.cc
-    auto_parallel_py.cc)
+    auto_parallel_py.cc
+    eval_frame_tools.cc
+    eval_frame.c)
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
@@ -274,8 +281,12 @@ if(WITH_PYTHON)
 
   add_executable(eager_legacy_op_function_generator
                  eager_legacy_op_function_generator.cc)
-  target_link_libraries(eager_legacy_op_function_generator
-                        ${OP_FUNCTION_GENERETOR_DEPS})
+  set(GENERATOR_DEPS ${PYBIND_DEPS})
+  list(REMOVE_DUPLICATES GENERATOR_DEPS)
+  if(NOT WITH_ARM)
+    list(REMOVE_ITEM GENERATOR_DEPS python)
+  endif()
+  target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
   if(NOT WIN32)
     add_executable(kernel_signature_generator kernel_signature_generator.cc)
     target_link_libraries(kernel_signature_generator

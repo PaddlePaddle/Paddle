@@ -1,4 +1,4 @@
-add_subdirectory(new_ir)
+add_subdirectory(pir)
 core_gather_headers()
 
 gather_srcs(
@@ -21,15 +21,13 @@ gather_srcs(
   op_lowering_util.cc
   op_lowering_impl.cc
   accuracy_checker.cc
-  visualize_helper.cc)
+  visualize_helper.cc
+  compile_error.cc)
 
-# TODO(Aurelius84): new_ir_compiler depends on pd_op_dialect and could
+# TODO(Aurelius84): pir_compiler depends on op_dialect_vjp and could
 # not found under CINN_ONLY mode
 if(NOT CINN_ONLY)
-  cinn_cc_library(new_ir_compiler SRCS new_ir_compiler.cc DEPS cinnapi
-                  pd_op_dialect)
-  cinn_cc_library(convert_to_dialect SRCS convert_to_dialect.cc DEPS cinnapi
-                  cinn_op_dialect)
+  cinn_cc_library(pir_compiler SRCS pir_compiler.cc DEPS cinnapi op_dialect_vjp)
 endif()
 
 if(WITH_CUDA)

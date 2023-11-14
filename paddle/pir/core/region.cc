@@ -22,7 +22,11 @@ Region::~Region() { clear(); }
 
 void Region::push_back(Block *block) { insert(blocks_.end(), block); }
 
-void Region::emplace_back() { push_back(new Block); }
+Block *Region::emplace_back() {
+  auto block = new Block;
+  insert(blocks_.end(), block);
+  return block;
+}
 
 void Region::push_front(Block *block) { insert(blocks_.begin(), block); }
 

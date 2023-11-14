@@ -17,12 +17,13 @@ import tempfile
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 import paddle.inference as paddle_infer
 from paddle import base
 from paddle.base.framework import in_dygraph_mode
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -30,10 +31,11 @@ paddle.enable_static()
 class TestBincountOpAPI(unittest.TestCase):
     """Test bincount api."""
 
+    @test_with_pir_api
     def test_static_graph(self):
-        startup_program = base.Program()
-        train_program = base.Program()
-        with base.program_guard(train_program, startup_program):
+        startup_program = paddle.static.Program()
+        train_program = paddle.static.Program()
+        with paddle.static.program_guard(train_program, startup_program):
             inputs = paddle.static.data(name='input', dtype='int64', shape=[7])
             weights = paddle.static.data(
                 name='weights', dtype='int64', shape=[7]
@@ -152,7 +154,7 @@ class TestBincountOp(OpTest):
         self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestCase1(TestBincountOp):

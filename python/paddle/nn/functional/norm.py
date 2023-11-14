@@ -17,7 +17,7 @@ import numbers
 # TODO: define normalization api
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
-from paddle.base.framework import in_dygraph_mode
+from paddle.base.framework import in_dygraph_mode, in_dynamic_or_pir_mode
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -91,9 +91,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
         )
         if len(x.shape) == 1 and axis != 0 and axis != -1:
             raise ValueError(
-                "Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {}".format(
-                    axis
-                )
+                f"Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {axis}"
             )
 
         attrs = {
@@ -116,8 +114,8 @@ def batch_norm(
     x,
     running_mean,
     running_var,
-    weight,
-    bias,
+    weight=None,
+    bias=None,
     training=False,
     momentum=0.9,
     epsilon=1e-05,
@@ -134,8 +132,8 @@ def batch_norm(
         x(Tesnor): input value. It's data type should be float32, float64.
         running_mean(Tensor): running mean.
         running_var(Tensor): running variance.
-        weight(Tensor): The weight tensor of batch_norm, can not be None.
-        bias(Tensor): The bias tensor of batch_norm can not be None.
+        weight(Tensor, optional): The weight tensor of batch_norm. Default: None.
+        bias(Tensor, optional): The bias tensor of batch_norm. Default: None.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         training(bool, optional): True means train mode which compute by batch data and track global mean and var during train period. False means inference mode which compute by global mean and var which calculated by train period. Default False.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
@@ -183,7 +181,7 @@ def batch_norm(
     if data_format not in true_data_format:
         raise ValueError(
             "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
-            "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format)
+            f"'NLC', 'NHWC', 'NDHWC' but receive {data_format}"
         )
 
     data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
@@ -194,7 +192,7 @@ def batch_norm(
     else:
         trainable_statistics = not use_global_stats
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
             x,
             running_mean,
@@ -229,12 +227,14 @@ def batch_norm(
 
         inputs = {
             "X": [x],
-            "Scale": [weight],
-            "Bias": [bias],
             "Mean": [running_mean],
             "Variance": [running_var],
         }
 
+        if weight:
+            inputs['Scale'] = [weight]
+        if bias:
+            inputs['Bias'] = [bias]
         helper = LayerHelper('batch_norm', **locals())
         from paddle.base.data_feeder import convert_dtype
 
@@ -342,7 +342,7 @@ def layer_norm(
             + str(input_shape)
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
         return out
 
@@ -545,23 +545,21 @@ def local_response_norm(
     if data_format not in ['NCL', 'NLC', 'NCHW', 'NHWC', 'NCDHW', 'NDHWC']:
         raise ValueError(
             "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], "
-            "but got {}".format(data_format)
+            f"but got {data_format}"
         )
 
     sizes = x.shape
     dim = len(sizes)
     if dim < 3:
         raise ValueError(
-            'Expected 3D or higher dimensionality input, but got {} dimensions'.format(
-                dim
-            )
+            f'Expected 3D or higher dimensionality input, but got {dim} dimensions'
         )
 
     for i, sz in enumerate(sizes):
         if not sz > 0 and i > 0:
             raise ValueError(
                 "Expected every dim's size to be larger than 0, "
-                "but the size of the {}-th dim is {}".format(i, sz)
+                f"but the size of the {i}-th dim is {sz}"
             )
 
     channel_last = True if data_format[-1] == "C" else False

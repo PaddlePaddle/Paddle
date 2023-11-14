@@ -114,10 +114,10 @@ void FillMatmulOperandNotation(const int x_ndim,
 
 ////////////////// InferMeta(Contains SPMD) Functions //////////////////
 
-SpmdInfo MatmulSpmdInferForward(const DistMetaTensor& x,
-                                const DistMetaTensor& y,
-                                bool trans_x,
-                                bool trans_y) {
+SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
+                         const DistMetaTensor& y,
+                         bool trans_x,
+                         bool trans_y) {
   // Step0: verify input args based on matmul logic
   auto x_shape = phi::vectorize(x.dims());
   auto y_shape = phi::vectorize(y.dims());
@@ -221,11 +221,11 @@ SpmdInfo MatmulSpmdInferForward(const DistMetaTensor& x,
   return {{x_dist_attr_dst, y_dist_attr_dst}, {output_dist_attr_dst}};
 }
 
-SpmdInfo MatmulSpmdInferBackward(const DistMetaTensor& x,
-                                 const DistMetaTensor& y,
-                                 const DistMetaTensor& out,
-                                 bool trans_x,
-                                 bool trans_y) {
+SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
+                                const DistMetaTensor& y,
+                                const DistMetaTensor& out,
+                                bool trans_x,
+                                bool trans_y) {
   auto out_shape = phi::vectorize(out.dims());
   int out_ndim = out_shape.size();
 
@@ -276,6 +276,140 @@ SpmdInfo MatmulSpmdInferBackward(const DistMetaTensor& x,
           << str_join(y_dist_attr_dst.dims_mapping()) << "].";
 
   return {{x_dist_attr_dst, y_dist_attr_dst}, {out_dist_attr_src}};
+}
+
+static bool DistAttrsAreBasicallyEqual(
+    const phi::distributed::TensorDistAttr& in_dist_attr,
+    const phi::distributed::TensorDistAttr& out_dist_attr) {
+  return (in_dist_attr.process_mesh() == out_dist_attr.process_mesh() &&
+          in_dist_attr.dims_mapping() == out_dist_attr.dims_mapping() &&
+          in_dist_attr.partial_status() == out_dist_attr.partial_status());
+}
+
+SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
+                             const DistMetaTensor& y,
+                             const DistMetaTensor& out_grad,
+                             bool trans_x,
+                             bool trans_y) {
+  auto get_attr = [](const ArgDistAttr& attr) -> const TensorDistAttr& {
+    return paddle::get<TensorDistAttr>(attr);
+  };
+
+  auto confirm_dist_attr_same_fn = [&](const ArgDistAttr& x_dist_attr,
+                                       const DistMetaTensor& y,
+                                       const char* debug_msg) {
+    const auto& x_single_dist_attr = get_attr(x_dist_attr);
+    PADDLE_ENFORCE_EQ(
+        DistAttrsAreBasicallyEqual(x_single_dist_attr, y.dist_attr()),
+        true,
+        phi::errors::Unavailable("The matmul grad infer spmd `%s` verify "
+                                 "error: left dist attr is %s, "
+                                 "right dist attr is %s.",
+                                 debug_msg,
+                                 x_single_dist_attr,
+                                 y.dist_attr()));
+  };
+
+  auto confirm_dist_attr_with_arg_same_fn = [&](const ArgDistAttr& x_dist_attr,
+                                                const ArgDistAttr& y_dist_attr,
+                                                const char* debug_msg) {
+    const auto& x_single_dist_attr = get_attr(x_dist_attr);
+    const auto& y_single_dist_attr = get_attr(y_dist_attr);
+    PADDLE_ENFORCE_EQ(
+        DistAttrsAreBasicallyEqual(x_single_dist_attr, y_single_dist_attr),
+        true,
+        phi::errors::Unavailable("The matmul grad infer spmd `%s` verify "
+                                 "error: left dist attr is %s, "
+                                 "right dist attr is %s.",
+                                 debug_msg,
+                                 x_single_dist_attr,
+                                 y_single_dist_attr));
+  };
+
+  // TODO(chenweihang): Now for the case where the forward input generates
+  // an intermediate value through Reshard, because the intermediate value
+  // is destroyed after the forward calculation is completed, the x and y
+  // of the backward input cannot be directly do matmul operation, which
+  // violates some of the original assumptions of the matmul grad operator,
+  // so it cannot be handled correctly in the backward for the time being
+  // For this case, we uniformly transition the input to the Replicated state.
+  auto fwd_spmd_info = MatmulInferSpmd(x, y, trans_x, trans_y);
+  if (x.dist_attr() != get_attr(fwd_spmd_info.first[0]) ||
+      y.dist_attr() != get_attr(fwd_spmd_info.first[1])) {
+    auto x_r_dist_attr = GetReplicatedDistAttr(x.dist_attr());
+    auto y_r_dist_attr = GetReplicatedDistAttr(y.dist_attr());
+    return {{x_r_dist_attr,
+             y_r_dist_attr,
+             GetReplicatedDistAttr(out_grad.dist_attr())},
+            {x_r_dist_attr, y_r_dist_attr}};
+  }
+
+  SpmdInfo dx_spmd_info;
+  SpmdInfo dy_spmd_info;
+  if (trans_x) {
+    if (trans_y) {
+      // X'Y': dX = Y'G', dY = G'X'
+      dx_spmd_info =
+          MatmulInferSpmd(y, out_grad, /*trans_x=*/true, /*trans_y=*/true);
+      dy_spmd_info =
+          MatmulInferSpmd(out_grad, x, /*trans_x=*/true, /*trans_y=*/true);
+      confirm_dist_attr_same_fn(dx_spmd_info.first[0], y, "trans x&y: dx-y");
+      confirm_dist_attr_same_fn(
+          dx_spmd_info.first[1], out_grad, "trans x&y: dx-out_grad");
+      confirm_dist_attr_same_fn(
+          dy_spmd_info.first[0], out_grad, "trans x&y: dy-out_grad");
+      confirm_dist_attr_same_fn(dy_spmd_info.first[1], x, "trans x&y: dy-x");
+      return {
+          {dy_spmd_info.first[1], dx_spmd_info.first[0], dx_spmd_info.first[1]},
+          {dx_spmd_info.second[0], dy_spmd_info.second[0]}};
+    } else {
+      // X'Y: dX = YG', dY = XG
+      dx_spmd_info =
+          MatmulInferSpmd(y, out_grad, /*trans_x=*/false, /*trans_y=*/true);
+      dy_spmd_info =
+          MatmulInferSpmd(x, out_grad, /*trans_x=*/false, /*trans_y=*/false);
+      confirm_dist_attr_same_fn(dx_spmd_info.first[0], y, "trans x: dx-y");
+      confirm_dist_attr_same_fn(
+          dx_spmd_info.first[1], out_grad, "trans x: dx-out_grad");
+      confirm_dist_attr_same_fn(dy_spmd_info.first[0], x, "trans x: dy-x");
+      confirm_dist_attr_same_fn(
+          dy_spmd_info.first[1], out_grad, "trans x: dy-out_grad");
+      return {
+          {dy_spmd_info.first[0], dx_spmd_info.first[0], dx_spmd_info.first[1]},
+          {dx_spmd_info.second[0], dy_spmd_info.second[0]}};
+    }
+  } else {
+    if (trans_y) {
+      // XY': dX = GY, dY = G'X
+      dx_spmd_info =
+          MatmulInferSpmd(out_grad, y, /*trans_x=*/false, /*trans_y=*/false);
+      dy_spmd_info =
+          MatmulInferSpmd(out_grad, x, /*trans_x=*/true, /*trans_y=*/false);
+      confirm_dist_attr_same_fn(
+          dx_spmd_info.first[0], out_grad, "trans y: dx-out_grad");
+      confirm_dist_attr_same_fn(dx_spmd_info.first[1], y, "trans y: dx-y");
+      confirm_dist_attr_same_fn(
+          dy_spmd_info.first[0], out_grad, "trans y: dy-out_grad");
+      confirm_dist_attr_same_fn(dy_spmd_info.first[1], x, "trans y: dy-x");
+      return {
+          {dy_spmd_info.first[1], dx_spmd_info.first[1], dx_spmd_info.first[0]},
+          {dx_spmd_info.second[0], dy_spmd_info.second[0]}};
+    } else {
+      // XY: dX = GY', dY = X'G
+      dx_spmd_info =
+          MatmulInferSpmd(out_grad, y, /*trans_x=*/false, /*trans_y=*/true);
+      dy_spmd_info =
+          MatmulInferSpmd(x, out_grad, /*trans_x=*/true, /*trans_y=*/false);
+      confirm_dist_attr_same_fn(dx_spmd_info.first[1], y, "no trans: dx-y");
+      confirm_dist_attr_same_fn(dy_spmd_info.first[0], x, "no trans: dy-x");
+      confirm_dist_attr_with_arg_same_fn(dx_spmd_info.first[0],
+                                         dy_spmd_info.first[1],
+                                         "no trans: dy-out_grad");
+      return {
+          {dy_spmd_info.first[0], dx_spmd_info.first[1], dx_spmd_info.first[0]},
+          {dx_spmd_info.second[0], dy_spmd_info.second[0]}};
+    }
+  }
 }
 
 }  // namespace distributed

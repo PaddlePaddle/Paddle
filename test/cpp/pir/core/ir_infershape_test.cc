@@ -45,7 +45,7 @@ class OperationTest
   static const char *name() { return "test.operation2"; }
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];  // NOLINT
-  static void Verify() {}
+  static void VerifySig() {}
   static void InferMeta(phi::InferMetaContext *infer_meta) {
     auto fn = PD_INFER_META(phi::CreateInferMeta);
     fn(infer_meta);
@@ -83,7 +83,7 @@ TEST(infershape_test, infershape_test) {
   std::string op_name = OperationTest::name();
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
 
-  std::vector<pir::OpResult> op_inputs = {};
+  std::vector<pir::Value> op_inputs = {};
   std::vector<pir::Type> op_output_types = {pir::Float32Type::get(ctx)};
   pir::Operation *op =
       pir::Operation::Create(op_inputs, {}, op_output_types, op_info);

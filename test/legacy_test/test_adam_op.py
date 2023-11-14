@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
 from op import Operator
+from op_test import OpTest
 
 import paddle
 from paddle import base
@@ -100,7 +100,7 @@ class TestAdamOp1(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAdamOp2(OpTest):
@@ -149,7 +149,7 @@ class TestAdamOp2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAdamOnlyTailOp(TestAdamOp2):
@@ -211,7 +211,7 @@ class TestAdamOpMultipleSteps(OpTest):
             }
 
             # Verify output for this step
-            self.check_output()
+            self.check_output(check_pir=True)
 
             # Output of this step becomes input for next step
             self.inputs['Param'] = param_out
@@ -495,7 +495,7 @@ class TestAdamOpBetaVariable(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAdamOpBetaEpsilonVariable(OpTest):
@@ -543,7 +543,7 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAdamOpWithGlobalBetaPow(OpTest):
@@ -594,7 +594,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAdamOpWithSkipUpdate(OpTest):
@@ -644,7 +644,7 @@ class TestAdamOpWithSkipUpdate(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAdamOpV2(unittest.TestCase):
@@ -680,6 +680,47 @@ class TestAdamOpV2(unittest.TestCase):
         data_np = np.random.random(shape).astype('float32')
         rets = exe.run(train_prog, feed={"data": data_np}, fetch_list=[loss])
         assert rets[0] is not None
+
+    def test_pir_adam_op(self):
+        with paddle.pir_utils.IrGuard():
+            place = base.CPUPlace()
+            shape = [2, 3, 8, 8]
+            exe = base.Executor(place)
+            train_prog = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(train_prog, startup):
+                with base.unique_name.guard():
+                    data = paddle.static.data(name="data", shape=shape)
+                    conv_layer = paddle.nn.Conv2D(3, 8, 3)
+                    conv = conv_layer(data)
+                    loss = paddle.mean(conv)
+
+                    beta1 = paddle.pir.core.create_parameter(
+                        'float32',
+                        [1],
+                        initializer=paddle.nn.initializer.Constant(0.85),
+                    )
+                    beta2 = paddle.pir.core.create_parameter(
+                        'float32',
+                        [1],
+                        initializer=paddle.nn.initializer.Constant(0.95),
+                    )
+                    betas = [beta1, beta2]
+                    opt = paddle.optimizer.Adam(
+                        learning_rate=1e-5,
+                        beta1=beta1,
+                        beta2=beta2,
+                        weight_decay=0.01,
+                        epsilon=1e-8,
+                    )
+                    opt.minimize(loss)
+
+            exe.run(startup)
+            data_np = np.random.random(shape).astype('float32')
+            rets = exe.run(
+                train_prog, feed={"data": data_np}, fetch_list=[loss]
+            )
+            assert rets[0] is not None
 
     def test_adam_op_dygraph(self):
         paddle.disable_static()
@@ -927,7 +968,8 @@ class TestMultiTensorAdam(unittest.TestCase):
                 data = paddle.static.data(
                     shape=[2, 2], name='X', dtype='float32'
                 )
-            hidden = paddle.static.nn.fc(x=data, size=10)
+            hidden_layer = paddle.nn.Linear(2, 10)
+            hidden = hidden_layer(data)
             loss = paddle.mean(hidden)
             optimizer.minimize(loss)
         exe.run(startup_program)
@@ -941,7 +983,7 @@ class TestMultiTensorAdam(unittest.TestCase):
         out = []
         for idx in range(5):
             (loss_data,) = exe.run(
-                train_program, feed={"X": x}, fetch_list=[loss.name]
+                train_program, feed={"X": x}, fetch_list=[loss]
             )
             out.append(loss_data)
         return out
@@ -1020,6 +1062,13 @@ class TestMultiTensorAdam(unittest.TestCase):
                 self._check_with_place_amp(place, use_amp)
                 self._check_with_param_arrt(place, use_amp)
                 self._check_with_param_group(place, use_amp)
+
+    def test_pir_main(self):
+        with paddle.pir_utils.IrGuard():
+            for place in self._get_places():
+                use_amp_list = [False]
+                for use_amp in use_amp_list:
+                    self._check_with_place_amp(place, use_amp)
 
 
 if __name__ == "__main__":

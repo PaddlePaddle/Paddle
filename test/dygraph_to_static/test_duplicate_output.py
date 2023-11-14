@@ -15,6 +15,10 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir_exe_and_pir_api,
+)
 
 import paddle
 
@@ -37,22 +41,24 @@ class SimpleNet(paddle.nn.Layer):
         return x, x
 
 
-class TestDuplicateOutput(unittest.TestCase):
+class TestDuplicateOutput(Dy2StTestBase):
     """
     TestCase for the transformation from control flow `if/else`
     dependent on tensor in Dygraph into Static `base.layers.cond`.
     """
 
-    def setUp(self):
-        self.net = paddle.jit.to_static(SimpleNet())
-        self.x = paddle.to_tensor([1.0])
-
     def _run_static(self):
-        loss0, loss1 = self.net(self.x)
+        net = paddle.jit.to_static(SimpleNet())
+        x = paddle.to_tensor([1.0])
+        param = net.parameters()
+        param[0].clear_grad()
+
+        loss0, loss1 = net(x)
         loss0.backward()
-        param = self.net.parameters()
+
         self.assertEqual(param[0].grad.numpy(), 1.0)
 
+    @test_legacy_and_pir_exe_and_pir_api
     def test_ast_to_func(self):
         self._run_static()
 

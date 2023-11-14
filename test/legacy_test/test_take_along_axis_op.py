@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.framework import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -43,10 +45,12 @@ class TestTakeAlongAxisOp(OpTest):
         self.outputs = {'Result': self.target}
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn)
+        self.check_output(check_cinn=self.check_cinn, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Result', check_cinn=self.check_cinn)
+        self.check_grad(
+            ['Input'], 'Result', check_cinn=self.check_cinn, check_pir=True
+        )
 
     def init_data(self):
         self.x_type = "float64"
@@ -101,11 +105,17 @@ class TestTakeAlongAxisBF16Op(OpTest):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_cinn=self.check_cinn)
+        self.check_output_with_place(
+            self.place, check_cinn=self.check_cinn, check_pir=True
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ['Input'], 'Result', check_cinn=self.check_cinn
+            self.place,
+            ['Input'],
+            'Result',
+            check_cinn=self.check_cinn,
+            check_pir=True,
         )
 
     def init_data(self):
@@ -142,6 +152,7 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
+    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -167,6 +178,20 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
             np.take_along_axis(self.x_np, self.index_np, self.axis)
         )
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+        paddle.enable_static()
+
+    def test_api_dygraph_dtype(self):
+        if sys.platform == 'darwin' or sys.platform == 'win32':
+            return
+        paddle.disable_static(self.place[0])
+        with self.assertRaises(AssertionError):
+            x_tensor = paddle.to_tensor(self.x_np)
+            self.index = paddle.to_tensor(self.index_np).astype("float32")
+            out = paddle.take_along_axis(x_tensor, self.index, self.axis)
+            out_ref = np.array(
+                np.take_along_axis(self.x_np, self.index_np, self.axis)
+            )
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
 
