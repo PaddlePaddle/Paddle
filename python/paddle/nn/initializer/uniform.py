@@ -119,7 +119,7 @@ class UniformInitializer(Initializer):
                 out_var._share_underline_tensor_to(var)
             return None
         elif in_pir_mode():
-            return _C_ops.uniform(
+            out_var = _C_ops.uniform(
                 var.shape,
                 out_dtype,
                 self._low,
@@ -127,6 +127,9 @@ class UniformInitializer(Initializer):
                 self._seed,
                 _current_expected_place(),
             )
+            if var.dtype == core.DataType.FLOAT16:
+                return _C_ops.cast(out_var, var.dtype)
+            return out_var
         else:
             op = block.append_op(
                 type="uniform_random",

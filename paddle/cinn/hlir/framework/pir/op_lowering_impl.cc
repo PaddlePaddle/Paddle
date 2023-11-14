@@ -17,11 +17,12 @@
 #include <string>
 
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
-#include "paddle/cinn/hlir/framework/op_lowering_util.h"
+#include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
 #include "paddle/cinn/hlir/op/external_api_registry.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 
+#include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -40,6 +41,37 @@ using framework::OpPatternKind;
 using framework::StrategyFunction;
 
 namespace details {
+
+bool IsInTensorMap(
+    const std::string& name,
+    const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map) {
+  for (auto iter : tensor_map) {
+    if (name == CompatibleInfo::ValueName(iter.first)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+common::Type GetTensorDtype(const ::pir::Value& value) {
+  auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  auto in_shape = phi::vectorize<int>(type_info.dims());
+  auto dtype = type_info.dtype();
+  return CompatibleInfo::ConvertIRType(dtype);
+}
+
+common::Type GetTensorDtype(
+    const std::string& name,
+    const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map) {
+  for (auto iter : tensor_map) {
+    if (name == CompatibleInfo::ValueName(iter.first)) {
+      return GetTensorDtype(iter.first);
+    }
+  }
+  VLOG(4) << name << " is not in tensor map, return FP32 by default.";
+  return common::F32();
+}
+
 ir::Tensor GetTensor(const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
   auto in_shape = phi::vectorize<int>(type_info.dims());
@@ -106,6 +138,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                                                   bool apply_pass) {
   VLOG(3) << "Lowering Group : " << group->group_id
           << " , Op Pattern : " << group->op_pattern_kind;
+  // TODO(Aurelius84): The logic shoule be moved into op_fusion module.
+  if (group->ops.size() >= 1U & group->output_ops.size() == 0) {
+    group->output_ops.insert(group->ops[group->ops.size() - 1]);
+  }
   group->input_names.clear();
   group->output_names.clear();
   switch (group->op_pattern_kind) {
@@ -138,10 +174,8 @@ bool OpLowererImpl::ElementwiseScheduleDetermineFunction(::pir::Operation* op) {
 }
 
 bool OpLowererImpl::ReduceScheduleDetermineFunction(::pir::Operation* op) {
-  // TODO(Aurelius84): Support this.
-  // auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
-  // return op_pattern_dict[op] == framework::kReduction;
-  return true;
+  VLOG(3) << "in ReduceScheduleDetermineFunction";
+  return CompatibleInfo::OpKind(*op) == framework::kReduction;
 }
 
 bool OpLowererImpl::NonFusibleScheduleDetermineFunction(::pir::Operation* op) {
@@ -160,24 +194,27 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   }
   std::vector<ir::Tensor> group_func_arg_tensors;
   std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
+  // for some op, it will output more tmp value and regard as
+  // XX_0, XX_1, so we log them in tmp_tensor_info;
+  std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
   bool do_op_schedule = apply_group_schedule || apply_op_schedule;
   std::vector<ir::Expr> func_bodies = LowerOps(ops,
                                                do_op_schedule,
                                                schedule_determine_func,
                                                &group_func_arg_tensors,
-                                               &tensor_map);
+                                               &tensor_map,
+                                               &tmp_tensor_info);
 
   // 2.Do group schedule.
   ir::ModuleExpr mod_expr(func_bodies);
   ir::IRSchedule ir_sch(mod_expr);
   ir_sch.MergeExprs();
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
-  // TODO(Aurelius84): Support this.
-  // if (apply_group_schedule) {
-  //   DoGroupSchedule(ir_sch, group, tensor_map);
-  //   VLOG(3) << "After group schedule, ir is: \n"
-  //           << ir_sch.GetModule().GetExprs().at(0);
-  // }
+  if (apply_group_schedule) {
+    DoGroupSchedule(ir_sch, group, tensor_map, tmp_tensor_info);
+    VLOG(3) << "After group schedule, ir is: \n"
+            << ir_sch.GetModule().GetExprs().at(0);
+  }
 
   // 3.Do post-processing,
   // including preparing function args and temporary variables,
@@ -219,7 +256,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
   //   target_);
   // }
   std::vector<common::CINNValue> compute_args = {
-      common::CINNValue(group->fn_name), common::CINNValue(external_api)};
+      common::CINNValue(group->FuncName()), common::CINNValue(external_api)};
   common::CINNValuePack pack =
       impl->fcompute(common::CINNValuePack{compute_args});
   CHECK_EQ(pack.size(), 1UL);
@@ -250,9 +287,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   }
 
   group->output_names.clear();
-  // FIXME(Aurelius84): Do we need to use output_ops?
-  // Currently we regards all ops as output_ops.
-  for (auto& op : group->ops) {
+  VLOG(3) << "group->output_ops.size(): " << group->output_ops.size();
+  for (auto& op : group->output_ops) {
     // collect all output tensor.
     for (auto opresult : op->results()) {
       if (tensor_map.count(opresult) == 0) {
@@ -299,7 +335,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   auto temp_buffers =
       lang::GetTempBuffers(*group_func_arg_tensors, stages, func_body);
   // 3.Building LoweredFunc
-  auto func = ir::_LoweredFunc_::Make(group->fn_name,
+  auto func = ir::_LoweredFunc_::Make(group->FuncName(),
                                       group_func_args,
                                       ir_sch->GetModule().GetExprs().at(0),
                                       temp_buffers);
@@ -316,7 +352,8 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     bool apply_op_schedule,
     ScheduleDetermineFunction schedule_determine_func,
     std::vector<ir::Tensor>* group_func_arg_tensors,
-    std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
+    std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
+    std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info) {
   auto& strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
   std::vector<Expr> func_bodies;
   for (auto* op : ops) {
@@ -336,8 +373,8 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     auto op_impl = OpStrategy::SelectImpl(strategy[cinn_op](
         node_attrs, op_func_arg_tensors, out_types, out_shapes, this->target_));
     // 2.Perform the lower process of Op
-    std::vector<ir::LoweredFunc> funcs =
-        DoOpLower(op_impl, op, tensor_map, &op_func_arg_tensors);
+    std::vector<ir::LoweredFunc> funcs = DoOpLower(
+        op_impl, op, tensor_map, tmp_tensor_info, &op_func_arg_tensors);
 
     if (apply_op_schedule && (this->*schedule_determine_func)(op)) {
       // 3.Perform the schedule of Op
@@ -359,6 +396,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     std::shared_ptr<hlir::framework::OpImpl> op_impl,
     ::pir::Operation* op,
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
+    std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info,
     std::vector<ir::Tensor>* op_func_arg_tensors) {
   VLOG(4) << "Do lower with Compute, op: " << op->name();
   std::vector<common::CINNValue> cinn_inputs;
@@ -381,13 +419,16 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   for (int idx = 0; idx < pack.size() - 1; ++idx) {
     Expr expr = pack[idx];
     // Insert the output tensor defined by Compute into the tensor_map
-    if (pack.size() - 1 > op_results.size() && post == "") {
+    if (pack.size() - 1 > op_results.size()) {
       // Some op may output multiple temp tensors in their Compute
       // definition, but only one output  in the graph, and we use id +
       // "_0"/"_1" as key.
-      // FIXME(Aurelius84): It seems that the implementation is relate with
-      // string name.
-      (*tensor_map)[op_results[idx]] = expr.as_tensor_ref();
+      if (idx < op_results.size()) {
+        (*tensor_map)[op_results[idx]] = expr.as_tensor_ref();
+      }
+      std::string tensor_name = CompatibleInfo::ValueName(op_results[0]) + post;
+      VLOG(3) << "Add tmp tensor name for reducer op: " << tensor_name;
+      (*tmp_tensor_info)[tensor_name] = expr.as_tensor_ref();
       post = "_" + std::to_string(idx);
     } else {
       // If the number of output tensors defined by Compute is less equal than
@@ -450,6 +491,189 @@ ir::Expr OpLowererImpl::DoOpSchedule(
   VLOG(4) << "After op schedule: " << expr_pack[0].operator ir::Expr();
 
   return expr_pack[0].operator ir::Expr();
+}
+
+ir::Expr OpLowererImpl::DoGroupSchedule(
+    ir::IRSchedule& ir_sch,
+    const GroupPtr& group,
+    const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
+    const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
+  // topological order.
+  auto ops_set = group->OpSet();
+  auto v_consumers = BuildVirtualConsumer(group);
+  auto ops_in_order = BFSTopologicalOrderWithPriority(group, v_consumers);
+  // find reducer.
+  std::unordered_set<::pir::Operation*> ops_inline;
+  auto greducer = FindGlobalReducer(ops_in_order);
+
+  // do schedule
+  for (auto op : ops_in_order) {
+    VLOG(4) << "Try FUSION " << op->name();
+    std::string op_name = CompatibleInfo::OpName(*op);
+    auto op_kind = CompatibleInfo::OpKind(*op);
+    // consumers.
+    auto consumers = GetConsumersInSet(op, ops_set);
+    auto* reducer = greducer ? FindNearestReducer(op, ops_set) : greducer;
+    if (!reducer && greducer) {
+      reducer = v_consumers.count(op) ? v_consumers.find(op)->second : reducer;
+      if (reducer &&
+          CompatibleInfo::OpKind(*reducer) != framework::kReduction) {
+        reducer = nullptr;
+      }
+    }
+
+    auto masters = GetMasters(op, ops_inline, ops_set);
+    // TODO(Aurelius84): support inline later.
+    if (CanbeInline(op, reducer, consumers, masters, group, ops_set) && false) {
+      VLOG(3) << "Before compute inline, ir is:\n"
+              << ir_sch.GetModule().GetExprs().at(0);
+      auto block = ir_sch.GetBlock(CompatibleInfo::ValueName(op->result(0)));
+      ir::ComputeInlineChecker checker(ir_sch, block);
+      if (!checker.Check()) {
+        checker.BuildDataDependency();
+        continue;
+      }
+
+      // if exist global reduce node.
+      if (greducer) {
+        auto loops = ir_sch.GetLoops(CompatibleInfo::ValueName(op->result(0)));
+        if (op_kind == framework::kElementWise) {
+          ir_sch.FlattenLoops(loops, true);
+        } else {
+          ir_sch.FlattenLoops(loops, false);
+        }
+      }
+
+      ir_sch.ComputeInline(block);
+      ops_inline.insert(op);
+      VLOG(3) << "After compute inline, ir is:\n"
+              << ir_sch.GetModule().GetExprs().at(0);
+      continue;
+    }
+    // find master to computeat.
+    auto master = GetMasterToComputeAt(
+        op, ops_in_order, ops_inline, ops_set, v_consumers);
+    std::string op_out_name = CompatibleInfo::ValueName(op->result(0));
+    // assign to reducer/master loop.
+    if (reducer) {
+      VLOG(3) << "Before assign node " << op_name
+              << " into vertical link reducer "
+              << CompatibleInfo::OpName(*reducer) << ", ir is:\n"
+              << ir_sch.GetModule().GetExprs().at(0);
+      // if node is vertical with reduce, loop assign reducer.
+      LoopAssignReduce(
+          ir_sch, op, reducer, this->target_, tensor_map, tmp_tensor_info);
+    } else if (greducer) {
+      auto greducer_out_shape = CompatibleInfo::ValueShape(greducer->result(0));
+      auto op_out_shape = CompatibleInfo::ValueShape(op->result(0));
+      if (CompatibleInfo::ShapeProduct(greducer_out_shape) !=
+          CompatibleInfo::ShapeProduct(op_out_shape)) {
+        LoopAssignReduce(
+            ir_sch, op, greducer, this->target_, tensor_map, tmp_tensor_info);
+      }
+    } else {
+      VLOG(3) << "Before assign node " << op_name
+              << " into horizontal link reducer, ir is:\n"
+              << ir_sch.GetModule().GetExprs().at(0);
+      // if node is horizontal with reduce or node is reduce, loop assign
+      // master.
+      auto loops = ir_sch.GetLoops(op_out_name);
+      ir_sch.Fuse(loops);
+
+      if (master && op_kind != framework::kReduction) {
+        auto master_loops =
+            ir_sch.GetLoops(CompatibleInfo::ValueName(master->result(0)));
+        std::vector<int> splits;
+        for (auto loop : master_loops) {
+          splits.push_back(loop.As<ir::For>()->extent.as_int32());
+        }
+        loops = ir_sch.GetLoops(op_out_name);
+        ir_sch.Split(loops[0], splits);
+      }
+    }
+    VLOG(3) << "Before loop fusion, ir is:\n"
+            << ir_sch.GetModule().GetExprs().at(0);
+    // do loop fuse.
+    LoopComputeAt(ir_sch,
+                  op,
+                  master ? master : ops_in_order.front(),
+                  group,
+                  tensor_map,
+                  tmp_tensor_info);
+    VLOG(3) << "After loop fusion, ir is:\n"
+            << ir_sch.GetModule().GetExprs().at(0);
+  }
+
+  // do vectorize
+  auto all_blocks = ir_sch.GetAllBlocks();
+  VLOG(4) << "Size of blocks: " << all_blocks.size();
+  VLOG(4) << "Op Pattern : " << group->op_pattern_kind;
+
+  // only support first block?
+  auto block = all_blocks[0];
+
+  if (block->as<ir::ScheduleBlockRealize>() == nullptr ||
+      block->as<ir::ScheduleBlockRealize>()
+              ->schedule_block->as<ir::ScheduleBlock>() == nullptr) {
+    std::string err_msg =
+        "Group scheduling, the Expr is not wrapped by ScheduleBlockRealize or "
+        "ScheduleBlock, cannot be scheduled.";
+    std::ostringstream detail_info;
+    detail_info << "Expr:\n";
+    detail_info << block;
+    throw CompileErrorHandler(CompilationStatus::LOWERING_FAIL,
+                              err_msg,
+                              detail_info.str(),
+                              __FILE__,
+                              __LINE__);
+  }
+  auto is_tensor_block = true;
+  auto tensor_name = block->as<ir::ScheduleBlockRealize>()
+                         ->schedule_block->as<ir::ScheduleBlock>()
+                         ->name;
+  if (!details::IsInTensorMap(tensor_name, tensor_map)) {
+    is_tensor_block = false;
+  }
+  if (FLAGS_cinn_use_cuda_vectorize && is_tensor_block &&
+      (group->op_pattern_kind == framework::kElementWise ||
+       group->op_pattern_kind == framework::kInjective ||
+       group->op_pattern_kind == framework::kBroadcast)) {
+    // auto loops = ir_sch.GetLoops(GetNodeData(node)->id());
+    auto loops = ir_sch.GetLoops(block);
+    VLOG(4) << "Op Pattern : " << loops.size();
+    if (loops.size() >= 1) {
+      VLOG(4) << "Before vectorize, ir is: \n"
+              << ir_sch.GetModule().GetExprs().at(0);
+      auto loop_inner = loops.back();
+      int vector_width = 1;
+      auto psize = ir::GetLoopExtent(loop_inner);
+      auto dtype = details::GetTensorDtype(tensor_name, tensor_map);
+      VLOG(4) << tensor_name << " dtype " << dtype;
+      if (psize % 8 == 0 && (dtype.is_float16() || dtype.is_bfloat16())) {
+        vector_width = 8;
+      } else if (psize % 4 == 0) {
+        vector_width = 4;
+      } else if (psize % 2 == 0) {
+        vector_width = 2;
+      }
+      if (vector_width > 1) {
+        auto splited = ir_sch.Split(loop_inner, {-1, vector_width});
+        splited[0].As<ir::For>()->set_bind_info(
+            loop_inner.As<ir::For>()->bind_info());
+        splited[1].As<ir::For>()->set_serial();
+        ir_sch.Vectorize(splited[1], vector_width);
+      }
+      VLOG(4) << "After vectorize, ir is: \n"
+              << ir_sch.GetModule().GetExprs().at(0);
+    }
+  }
+
+  VLOG(3) << "Before Sync IRLowerOp schedule, ir is: \n"
+          << ir_sch.GetModule().GetExprs().at(0);
+  SyncThreadWithShared(ir_sch, group, ops_inline, ops_set, tensor_map);
+  VLOG(4) << "After IRSchedule,  ir is: \n"
+          << ir_sch.GetModule().GetExprs().at(0);
+  return ir_sch.GetModule().GetExprs().at(0);
 }
 
 }  // namespace pir
