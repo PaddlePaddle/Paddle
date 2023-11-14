@@ -2245,17 +2245,6 @@ def tensor_split(x, indices_or_sections, axis=0, name=None):
             >>> print(out2.shape)
             [5]
 
-            >>> # split with indices out of range
-            >>> out0, out1, out2, out3 = paddle.tensor_split(x, indices_or_sections=[2, 3, 10])
-            >>> print(out0.shape)
-            [2]
-            >>> print(out1.shape)
-            [1]
-            >>> print(out2.shape)
-            [5]
-            >>> print(out3.shape)
-            [0]
-
             >>> # split along axis
             >>> # x is a Tensor of shape [7, 8]
             >>> x = paddle.rand([7, 8])
