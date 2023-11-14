@@ -210,12 +210,23 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
   auto& input_attrs = *input_attrs_ptr;
   size_t n_inputs = input_attrs.size();
   PADDLE_ENFORCE_EQ(
-      n_inputs, tensor_shapes.size(), phi::errors::InvalidArgument(""));
-  PADDLE_ENFORCE_EQ(
-      n_inputs, axis_names.size(), phi::errors::InvalidArgument(""));
+      n_inputs,
+      tensor_shapes.size(),
+      phi::errors::InvalidArgument(
+          "n_inputs [%d]  and tensor_shapes.size() [%d] not match",
+          n_inputs,
+          tensor_shapes.size()));
+  PADDLE_ENFORCE_EQ(n_inputs,
+                    axis_names.size(),
+                    phi::errors::InvalidArgument(
+                        "n_inputs [%d]  and axis_names.size() [%d] not match",
+                        n_inputs,
+                        axis_names.size()));
 
   PADDLE_ENFORCE_EQ(
-      !align_axis.empty(), true, phi::errors::InvalidArgument(""));
+      !align_axis.empty(),
+      true,
+      phi::errors::InvalidArgument("align_axis should be not empty"));
 
   std::map<std::pair<int64_t, char>, int64_t> axis_name_to_dim;
 

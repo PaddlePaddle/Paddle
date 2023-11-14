@@ -27,12 +27,7 @@ using phi::distributed::auto_parallel::str_join;
 
 std::tuple<std::string, std::string> FillConcatNotation(int64_t n_axis,
                                                         int64_t concat_axis) {
-  PADDLE_ENFORCE_EQ(
-      n_axis > concat_axis, true, phi::errors::InvalidArgument(""));
   static const std::string alphabet = "abcdefghijlopqrstuvwxyz";
-  PADDLE_ENFORCE_EQ(alphabet.size() > static_cast<size_t>(n_axis),
-                    true,
-                    phi::errors::InvalidArgument(""));
   std::string all_axis = alphabet.substr(0, n_axis);
   std::string align_axis =
       std::string(all_axis.begin(), all_axis.begin() + concat_axis) +
