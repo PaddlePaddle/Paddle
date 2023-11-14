@@ -544,9 +544,6 @@ class FusedCommBuffer:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
 
-        scale_factor = 1.0 / self._comm_group.nranks
-        self.grad_storage.scale_(scale_factor)
-
         self._reset_params_checked_in()
 
 
