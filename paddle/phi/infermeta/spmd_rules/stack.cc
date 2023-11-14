@@ -70,7 +70,7 @@ SpmdInfo StackInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
       &input_attrs, tensor_shapes, axis_names, {}, notation, true);
 
   TensorDistAttr output_attr =
-      CopyTensorDistAttrForOutput(input_attrs[non_empty_index], false);
+      CopyTensorDistAttrForOutput(input_attrs[non_empty_index]);
   std::vector<int64_t> dim_mapping(ndim + 1, -1);
   const auto& input_dim_mapping = input_attrs[non_empty_index].dims_mapping();
   for (size_t i = 0; i < ndim; i++) {
@@ -87,7 +87,7 @@ SpmdInfo StackInferSpmdReverse(const std::vector<DistMetaTensor>& x,
   auto out_dist_attr = output.dist_attr();
   out_dist_attr = UnShardTensorDim(out_dist_attr, axis);
   auto n_inputs = x.size();
-  TensorDistAttr input_attr = CopyTensorDistAttrForOutput(out_dist_attr, false);
+  TensorDistAttr input_attr = CopyTensorDistAttrForOutput(out_dist_attr);
   auto ndim = output.dims().size();
   std::vector<int64_t> dim_mapping(ndim - 1, -1);
   const auto& input_dim_mapping = out_dist_attr.dims_mapping();
@@ -121,7 +121,7 @@ SpmdInfo StackGradInferSpmd(const DistMetaTensor& output_grad, int axis) {
   auto out_dist_attr = output_grad.dist_attr();
   out_dist_attr = UnShardTensorDim(out_dist_attr, axis);
   auto n_inputs = output_grad.dims().at(axis);
-  TensorDistAttr input_attr = CopyTensorDistAttrForOutput(out_dist_attr, false);
+  TensorDistAttr input_attr = CopyTensorDistAttrForOutput(out_dist_attr);
   auto ndim = output_grad.dims().size();
   std::vector<int64_t> dim_mapping(ndim - 1, -1);
   const auto& input_dim_mapping = out_dist_attr.dims_mapping();

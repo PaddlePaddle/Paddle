@@ -61,8 +61,7 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
 // activation TensorDistAttr. The process_mesh, batch_dim, dynamic_dim are
 // copied with annotated is forced to False, and dims_mapping is leave to be
 // null.
-TensorDistAttr CopyTensorDistAttrForOutput(const TensorDistAttr& src_dist_attr,
-                                           bool clear_partial = true);
+TensorDistAttr CopyTensorDistAttrForOutput(const TensorDistAttr& src_dist_attr);
 
 TensorDistAttr UnShardTensorDims(const TensorDistAttr& dist_attr,
                                  std::vector<int64_t> dims);

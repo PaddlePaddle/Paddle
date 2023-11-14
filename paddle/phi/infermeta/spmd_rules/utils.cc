@@ -132,17 +132,16 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
   return axis_to_dim_map;
 }
 
-TensorDistAttr CopyTensorDistAttrForOutput(const TensorDistAttr& src_dist_attr,
-                                           bool clear_partial) {
+TensorDistAttr CopyTensorDistAttrForOutput(
+    const TensorDistAttr& src_dist_attr) {
   TensorDistAttr new_dist_attr = TensorDistAttr();
   new_dist_attr.set_process_mesh(src_dist_attr.process_mesh());
   new_dist_attr.set_batch_dim(src_dist_attr.batch_dim());
   // new_dist_attr.set_dynamic_dims(src_dist_attr.dynamic_dims());
   // new_dist_attr.set_annotated(false); TODO unset field is false by default.
-  if (clear_partial) {
-    new_dist_attr.clean_partial_status();  // in partial-stage I, partial is
-                                           // allow to propagate
-  }
+  new_dist_attr.clean_partial_status();  // in partial-stage I, partial is
+                                         // not allowed to propagate
+
   return new_dist_attr;
 }
 
@@ -177,7 +176,7 @@ TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim) {
 }
 
 TensorDistAttr UnShardTensorDim(const TensorDistAttr& dist_attr, int dim) {
-  TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr, false);
+  TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
   std::vector<int64_t> dims_mapping = dist_attr.dims_mapping();
   dims_mapping[dim] = kReplicateDim;
   dst_dist_attr.set_dims_mapping(dims_mapping);
