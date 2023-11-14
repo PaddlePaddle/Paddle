@@ -23,7 +23,6 @@
 
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
-#include "paddle/pir/core/builtin_op.h"
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
@@ -46,6 +45,7 @@
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
@@ -239,6 +239,19 @@ void BindProgram(py::module *m) {
           });
 }
 
+void RefreshOpStopgradients(Operation *op) {
+  if (op->num_operands() == 0 || op->isa<pir::GetParameterOp>() ||
+      op->isa<paddle::dialect::UniformOp>()) {
+    return;
+  } else if (op->isa<pir::SliceOp>()) {
+    op->dyn_cast<pir::SliceOp>().RefreshStopGradients();
+  } else if (op->isa<pir::SplitOp>()) {
+    op->dyn_cast<pir::SplitOp>().RefreshStopGradients();
+  } else {
+    RefreshStopGradientsDefaultly(op);
+  }
+}
+
 void BindBlock(py::module *m) {
   py::class_<Block> block(*m, "Block", R"DOC(
     In IR, a Block has a list of Operation and can represent a sub computational graph.
@@ -295,24 +308,30 @@ void BindBlock(py::module *m) {
               None
 
         )DOC")
-      .def("all_parameters", [](Block &self) -> py::list {
-        py::list param_list;
+      .def("all_parameters",
+           [](Block &self) -> py::list {
+             py::list param_list;
+             for (auto iter = self.begin(); iter != self.end(); iter++) {
+               auto op = *iter;
+               if (op->HasAttribute(kAttrIsPersisable)) {
+                 auto attrs = op->attribute(kAttrIsPersisable)
+                                  .dyn_cast<pir::ArrayAttribute>()
+                                  .AsVector();
+                 for (uint32_t i = 0; i < attrs.size(); i++) {
+                   bool is_persistable =
+                       attrs[i].dyn_cast<pir::BoolAttribute>().data();
+                   if (is_persistable) {
+                     param_list.append(op->result(i));
+                   }
+                 }
+               }
+             }
+             return param_list;
+           })
+      .def("refresh_stopgradient", [](Block &self) {
         for (auto iter = self.begin(); iter != self.end(); iter++) {
-          auto op = *iter;
-          if (op->HasAttribute(kAttrIsPersisable)) {
-            auto attrs = op->attribute(kAttrIsPersisable)
-                             .dyn_cast<pir::ArrayAttribute>()
-                             .AsVector();
-            for (uint32_t i = 0; i < attrs.size(); i++) {
-              bool is_persistable =
-                  attrs[i].dyn_cast<pir::BoolAttribute>().data();
-              if (is_persistable) {
-                param_list.append(op->result(i));
-              }
-            }
-          }
+          RefreshOpStopgradients(*iter);
         }
-        return param_list;
       });
 }
 
