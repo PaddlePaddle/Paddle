@@ -21,6 +21,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -113,13 +114,36 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                .isa<paddle::dialect::DenseTensorType>()) {
         return false;
       }
-      // 3. outputs must be a dense tensor type
-      for (uint32_t i = 0; i < op->num_results(); i++) {
-        if (!op->result(i).type().isa<paddle::dialect::DenseTensorType>()) {
-          return false;
-        }
-      }
     }
+
+    for (uint32_t i = 0; i < op->num_results(); i++) {
+      // 3. outputs must be a dense tensor type
+      if (!op->result(i).type().isa<paddle::dialect::DenseTensorType>()) {
+        return false;
+      }
+      // TODO(liuyuanle): Uncomment follows doce after have a solution to slove
+      // the performance degradation
+      // auto use_ops = pir::GetUseOpsForOutput(op, i);
+      // for (auto* use_op : use_ops) {
+      //   if (use_op->isa<pir::CombineOp>()) {
+      //     return false;
+      //   }
+      //   if (use_op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
+      //     auto [input_infos, _1, _2, _3, _4] =
+      //         use_op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()
+      //             .GetOpInfo();
+      //     for (const auto& input_info : input_infos) {
+      //       if (input_info.type_name.find("IntArrayAttribute") !=
+      //               std::string::npos ||
+      //           input_info.type_name.find("ScalarAttribute") !=
+      //               std::string::npos) {
+      //         return false;
+      //       }
+      //     }
+      //   }
+      // }
+    }
+
     return true;
   }
 
