@@ -163,6 +163,8 @@ cinn_cc_library(
   ${jitify_deps})
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
+target_include_directories(cinnapi PRIVATE ${CINN_DIALECT_BINARY_DIR})
+target_include_directories(cinncore PRIVATE ${CINN_DIALECT_BINARY_DIR})
 if(NOT CINN_ONLY)
   target_link_libraries(cinnapi op_dialect_vjp phi)
   add_dependencies(cinnapi op_dialect_vjp phi)
@@ -218,8 +220,7 @@ function(gen_cinncore LINKTYPE)
     schedule_desc_proto
     absl
     isl
-    ginac
-    cinn_op_dialect)
+    ginac)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
   if(NOT CINN_ONLY)
