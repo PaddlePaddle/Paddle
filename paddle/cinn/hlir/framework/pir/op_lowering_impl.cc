@@ -288,6 +288,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 
   group->output_names.clear();
   VLOG(3) << "group->output_ops.size(): " << group->output_ops.size();
+  // TODO(phlrain): output values not stable here
   for (auto& op : group->output_ops) {
     // collect all output tensor.
     for (auto opresult : op->results()) {
@@ -298,6 +299,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       if (arg_name_set.count(tensor->buffer->name) != 0) {
         continue;
       }
+
+      group->output_values.push_back(opresult);
       // output arg tensors
       group_func_arg_tensors->push_back(tensor);
       // output args
@@ -403,6 +406,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   for (const ir::Tensor& tensor : *op_func_arg_tensors) {
     cinn_inputs.push_back(common::CINNValue(ir::Expr(tensor)));
   }
+
   // set tensor name = operand hash name
   auto op_results = op->results();
   for (const auto& result : op_results) {
@@ -578,11 +582,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
       // if node is horizontal with reduce or node is reduce, loop assign
       // master.
       auto loops = ir_sch.GetLoops(op_out_name);
-      if (op_kind == framework::kElementWise) {
-        ir_sch.FlattenLoops(loops, true);
-      } else if (op_kind != framework::kReduction) {
-        ir_sch.FlattenLoops(loops, false);
-      }
+      ir_sch.Fuse(loops);
 
       if (master && op_kind != framework::kReduction) {
         auto master_loops =

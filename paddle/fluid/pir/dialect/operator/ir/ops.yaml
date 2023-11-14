@@ -62,6 +62,7 @@
   kernel :
     func : fetch
     param : [x]
+  traits : pir::SideEffectTrait
 
 - op : get_tensor_from_selected_rows
   args : (Tensor x)
@@ -138,30 +139,6 @@
   kernel :
     func : send_v2
     param : [x, ring_id, dynamic_shape, peer, use_calc_stream]
-
-- op : set_value
-  args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
-  output : Tensor(out)
-  infer_meta:
-    func: SetValueInferMeta
-    param: [x]
-  kernel:
-    func: set_value
-    param: [x, starts, ends, steps, axes, decrease_axes, none_axes, shape, values]
-  inplace: (x -> out)
-  backward: set_value_grad
-
-- op : set_value_with_tensor
-  args : (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
-  output : Tensor(out)
-  infer_meta:
-    func: SetValueInferMeta
-    param: [x]
-  kernel:
-    func: set_value_with_tensor
-    param: [x, values, starts, ends, steps, axes, decrease_axes, none_axes]
-  inplace: (x -> out)
-  backward: set_value_grad
 
 - op : shadow_feed
   args : (Tensor x)

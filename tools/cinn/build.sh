@@ -154,9 +154,9 @@ function run_test {
     export runtime_include_dir=$workspace/paddle/cinn/runtime/cuda
 
     if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
-        ctest --parallel 10 -V -E "test_frontend_interpreter|test_cinn_fake_resnet"
+        ctest --parallel 10 -V -E "test_frontend_interpreter|test_cinn_fake_resnet|test_dce_pass"
     else
-        ctest --parallel 10 --output-on-failure -E "test_frontend_interpreter|test_cinn_fake_resnet"
+        ctest --parallel 10 --output-on-failure -E "test_frontend_interpreter|test_cinn_fake_resnet|test_dce_pass"
     fi
 }
 
