@@ -134,6 +134,21 @@ bool IsSupportCinn(pir::Operation* op) {
   auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
   VLOG(4) << "The allowed Cinn Ops: " << GetDebugInfo(allow_ops);
   VLOG(4) << "The denied Cinn Ops: " << GetDebugInfo(deny_ops);
+
+  // cinn not support uniform, the FullOp of max and min support NOT generate by
+  // CINN
+  if (op->isa<paddle::dialect::FullOp>()) {
+    auto out = op->result(0);
+    // return IsSuportCinn( out.first_use().owern() )
+    if (out.first_use().owner()->isa<paddle::dialect::UniformOp>()) {
+      return false;
+    }
+  }
+
+  if (op->isa<paddle::dialect::DropoutOp>()) {
+    return false;
+  }
+
   // Strip the dialect, like pd_op.abs -> abs
   const auto op_name = CompatibleInfo::OpName(*op);
   if (CompatibleInfo::IsSupportCinn(*op)) {
@@ -143,13 +158,6 @@ bool IsSupportCinn(pir::Operation* op) {
 
   bool registered =
       ::cinn::frontend::OpMapperRegistry::Global()->Find(op_name) != nullptr;
-
-  // TODO(phlrain): cinn fronted op name is not same with name in codegen
-  //                update using a better way define allow op list
-  if (op_name == "subtract" || op_name == "divide" ||
-      op_name == "broadcast_to") {
-    return true;
-  }
 
   OpTransInfo trans_info;
   bool is_support = registered && !trans_info.default_deny_ops().count(op_name);
@@ -180,6 +188,9 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
       pending_count[op] = 0;
     }
     for (auto& operand : op->operands()) {
+      if (!operand || !(operand.source())) {
+        continue;
+      }
       auto* defined_op = operand.source().dyn_cast<pir::OpResult>().owner();
       if (pending_count.find(defined_op) != pending_count.end()) {
         ++pending_count[defined_op];
@@ -203,6 +214,9 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
     VLOG(4) << "Pop Op: " << op->name();
     sort_ops.push_back(op);
     for (auto& operand : op->operands()) {
+      if (!operand || !(operand.source())) {
+        continue;
+      }
       auto* defined_op = operand.source().dyn_cast<pir::OpResult>().owner();
       --pending_count[defined_op];
       if (pending_count[defined_op] == 0) {
@@ -230,6 +244,9 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
 
   std::vector<pir::Operation*> vec_res;
   for (auto& operand : op->operands()) {
+    if (!operand || !(operand.source())) {
+      continue;
+    }
     auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
     if (!producers.count(source_op)) {
       producers.insert(source_op);
@@ -253,6 +270,9 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
   std::unordered_set<pir::Operation*> producers;
 
   for (auto& operand : op->operands()) {
+    if (!operand || !(operand.source())) {
+      continue;
+    }
     auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
     producers.insert(source_op);
   }
@@ -306,8 +326,9 @@ class CinnSubgraphDetector {
   CinnSubgraphDetector(pir::Block* block, const OpClassifier& classifier)
       : block_(block), op_classifier_(classifier) {
     sort_ops_ = InverselyTopologicalSort(block_);
-    for (size_t i = 0; i < sort_ops_.size(); ++i) {
-      op2id_[sort_ops_[i]] = i;
+    size_t index = 0;
+    for (auto* op : *block) {
+      op2id_[op] = index++;
     }
   }
 
@@ -320,7 +341,18 @@ class CinnSubgraphDetector {
       if (!subgraph->substitute) {
         continue;
       }
-      groups.push_back(subgraph->ops);
+
+      // sort group ops
+      std::vector<pir::Operation*> tmp_ops(subgraph->ops.begin(),
+                                           subgraph->ops.end());
+      auto& op2id = op2id_;
+      std::sort(tmp_ops.begin(),
+                tmp_ops.end(),
+                [&op2id](pir::Operation* a, pir::Operation* b) {
+                  return op2id.at(a) > op2id.at(b);
+                });
+
+      groups.push_back(tmp_ops);
     }
 
     return groups;
@@ -588,6 +620,12 @@ std::vector<pir::Value> AnalysisOutputs(GroupOpsVec& group_ops) {  // NOLINT
     }
   }
 
+  if (vec_res.size() == 0) {
+    for (size_t i = 0; i < group_ops.back()->num_results(); ++i) {
+      vec_res.push_back(group_ops.back()->result(i));
+    }
+  }
+
   return vec_res;
 }
 
@@ -598,7 +636,7 @@ void ReplaceWithGroupOp(pir::Block* block,
   ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
   ::pir::Builder builder = ::pir::Builder(ctx, block);
   // step 1: Ensure the insert point and create GroupOp here.
-  auto* laste_input_op = group_ops.back();
+  auto* laste_input_op = group_ops.front();
   builder.SetInsertionPointAfter(laste_input_op);
   std::vector<pir::Type> output_types;
   std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);
@@ -608,14 +646,20 @@ void ReplaceWithGroupOp(pir::Block* block,
   // step 2: Replace the old op with GroupOp.
   auto new_group_op = builder.Build<cinn::dialect::GroupOp>(output_types);
   pir::Block* group_block = new_group_op.block();
+
   for (auto* op : group_ops) {
     op->MoveTo(group_block, group_block->begin());
   }
 
   // step 3: Replace outputs of inner ops
   std::vector<pir::OpResult> group_outs = new_group_op->results();
+  std::unordered_set<pir::Operation*> inner_ops(group_ops.begin(),
+                                                group_ops.end());
   for (size_t i = 0; i < outputs.size(); ++i) {
-    outputs[i].ReplaceAllUsesWith(group_outs[i]);
+    outputs[i].ReplaceUsesWithIf(group_outs[i],
+                                 [&inner_ops](pir::OpOperand op) {
+                                   return !inner_ops.count(op.owner());
+                                 });
   }
 
   // step 4: Insert YieldOp for outputs

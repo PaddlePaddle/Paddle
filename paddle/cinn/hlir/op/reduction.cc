@@ -141,10 +141,8 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           std::vector<CINNValue> cinn_values{CINNValue(out), CINNValue(stages)};
           *ret = CINNValuePack{cinn_values};
         };
-        if (FLAGS_cinn_enable_map_expr) {
-          NaiveCompute();
-        } else if (!FLAGS_cinn_new_group_scheduler &&
-                   target == common::DefaultNVGPUTarget()) {
+        if (!FLAGS_cinn_enable_map_expr && !FLAGS_cinn_new_group_scheduler &&
+            target == common::DefaultNVGPUTarget()) {
           if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
             VLOG(3) << "Do Two Step Block Reduce Compute!";
             auto res = gpu_reduce_with_last_axis_func(

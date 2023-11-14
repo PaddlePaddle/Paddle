@@ -38,6 +38,13 @@ using EquationCtx4OpStmtT =
     std::function<std::shared_ptr<config::NaiveOpEquationContext>(
         const OpStmt&)>;
 
+/**
+ * IGroup = Inline Group.
+ * Each IGroup must have an AnchorTensor as a representative.
+ * Each index of the AnchorTensor can be mapped to the unique index of any other
+ * Tensor in the IGroup. IGroup solves the problem of cross-thread data usage.
+ * Please note that syncthreads needs to be called in time.
+ */
 class IGroup final {
  public:
   IGroup(const IGroup&) = delete;

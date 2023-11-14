@@ -124,6 +124,14 @@ PD_DEFINE_bool(cinn_compile_with_nvrtc,
                BoolFromEnv("FLAGS_cinn_compile_with_nvrtc", true),
                "Whether nvrtc compile cuda source with nvrtc(default nvcc).");
 
+PD_DEFINE_bool(
+    cinn_nvrtc_cubin_with_fmad,
+    BoolFromEnv("FLAGS_cinn_nvrtc_cubin_with_fmad", true),
+    "Whether nvrtc enables fmad when compile to cubin. This flag only works "
+    "when FLAGS_nvrtc_compile_to_cubin=true. Fmad is the cuda speed up "
+    "technique which contract fp mulitplication and addition/subtraction into "
+    "multiply-add operation. It may result in different fp precision.");
+
 // FLAGS for performance analysis and accuracy debug
 PD_DEFINE_bool(cinn_sync_run,
                BoolFromEnv("FLAGS_cinn_sync_run", false),

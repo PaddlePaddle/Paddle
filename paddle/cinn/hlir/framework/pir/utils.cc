@@ -30,6 +30,7 @@ namespace hlir {
 namespace framework {
 namespace pir {
 
+// Mapping PaddleDialect Op into CINN AST Compute register Op
 const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.full", "fill_constant"},
     {"pd_op.sum", "reduce_sum"},
@@ -37,10 +38,21 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.add", "elementwise_add"},
     {"pd_op.subtract", "subtract"},
     {"pd_op.divide", "divide"},
+    {"pd_op.elementwise_pow", "pow"},
+    {"pd_op.multiply", "elementwise_mul"},
+    {"cinn_op.reshape", "reshape"},
+    {"cinn_op.scale", "scale"},
     {"cinn_op.broadcast", "broadcast_to"}};
 
+// Tagging PaddleDialect Op with REGITER_OP_MAPPER(OP)
 const std::unordered_set<std::string> CompatibleInfo::CINN_WHITE_OPS = {
-    "subtract"};
+    "subtract",
+    "divide",
+    "broadcast_to",
+    "multiply",
+    "scale",
+    "elementwise_pow",
+    "reshape"};
 
 bool CompatibleInfo::IsSupportCinn(const ::pir::Operation& op) {
   return CINN_WHITE_OPS.find(CompatibleInfo::OpName(op)) !=

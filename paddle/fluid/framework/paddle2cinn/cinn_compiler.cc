@@ -321,6 +321,8 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
           << target.arch_str() << "), and its related graph:\n"
           << cinn_graph->Visualize();
 
+  cinn::adt::TryGenerateMapExprFromGraph(cinn_graph);
+
   auto scope = BuildScope(target, cinn_graph);
   CompilationContext context(cinn_graph, scope, target);
   context.with_instantiate_variables = false;

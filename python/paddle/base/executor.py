@@ -21,6 +21,8 @@ from functools import lru_cache
 
 import numpy as np
 
+from paddle import pir
+
 from ..pir import OpResult
 from ..pir import Program as PirProgram
 from ..pir import Value, translate_to_pir
@@ -424,14 +426,19 @@ def has_fetch_operations(
     """
 
     fetch_count = 0
+    mismatch_count = 0
     for op in block.ops:
         if op.name() == fetch_op:
-            fetch_count += 1
             if op.operand_source(0) not in fetch_targets:
-                raise Exception(
-                    "There is a fetch op in Program which will fetch variable that is not belong to fetch_targets."
-                )
-
+                mismatch_count += 1
+                continue
+            fetch_count += 1
+    if mismatch_count > 0:
+        warnings.warn(
+            "There are {} fetch ops in Program which are not responsible for the fetch targets that you have passed in fetch_list".format(
+                mismatch_count
+            )
+        )
     if fetch_count > 0 and fetch_count != len(fetch_targets):
         raise Exception(
             "Fetch operations in program do not match 'fetch_targets'"
@@ -1035,6 +1042,18 @@ class _ExecutorCache:
             else:
                 type_to_program = {"default": new_program.desc}
             plan = core.Plan([default_job], type_to_program)
+
+        if (
+            new_program._pass_opt
+            and "pass_list" in new_program._pass_opt
+            and len(new_program._pass_opt['pass_list']) > 0
+        ):
+            pm = pir.PassManager()
+            for p in new_program._pass_opt['pass_list']:
+                pm.add_pass(p)
+            for job_type in plan.job_types():
+                ir_program = plan.ir_program(job_type)
+                pm.run(ir_program)
 
         new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe

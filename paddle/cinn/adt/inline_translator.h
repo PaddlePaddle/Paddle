@@ -15,9 +15,9 @@
 #pragma once
 
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/inline_translator_trait.h"
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/tree.h"
-#include "paddle/cinn/adt/inline_translator_trait.h"
 
 namespace cinn::adt {
 
