@@ -46,7 +46,7 @@ phi::DataLayout IrMetaTensor::layout() const {
 
 const phi::LoD& IrMetaTensor::lod() const {
   ValidCheck(*this);
-  return tensor_->lod();
+  return static_cast<paddle::dialect::IrTensor*>(tensor_)->lod();
 }
 
 void IrMetaTensor::set_dims(const phi::DDim& dims) {
