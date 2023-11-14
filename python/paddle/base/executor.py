@@ -1333,7 +1333,7 @@ class Executor:
             if feed_name not in feed_target_names:
                 feed.pop(feed_name)
                 warnings.warn(
-                    "The variable %s is not found in program. It is not declared or is pruned."
+                    "The value %s is not found in program. It is not declared or is pruned."
                     % feed_name
                 )
 
