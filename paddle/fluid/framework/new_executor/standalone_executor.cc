@@ -30,7 +30,6 @@
 PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(enable_pir_api);
 PHI_DECLARE_bool(pir_apply_inplace_pass);
-PHI_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {

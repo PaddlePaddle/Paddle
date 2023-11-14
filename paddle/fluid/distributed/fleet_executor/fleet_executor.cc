@@ -28,8 +28,6 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
 
-PHI_DECLARE_bool(use_mkldnn);
-
 namespace paddle {
 namespace distributed {
 

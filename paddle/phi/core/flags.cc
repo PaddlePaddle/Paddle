@@ -17,7 +17,6 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #endif
-#include "paddle/phi/backends/cpu/cpu_info.h"
 
 namespace phi {
 
