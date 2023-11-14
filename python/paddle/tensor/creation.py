@@ -1183,7 +1183,9 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     """
 
     def _check_attr(attr, message):
-        if isinstance(attr, ((Variable, core.eager.Tensor))):
+        if isinstance(
+            attr, ((Variable, core.eager.Tensor, paddle.pir.OpResult))
+        ):
             assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
         elif not isinstance(attr, int) or attr < 0:
             raise TypeError(f"{message} should be a non-negative int.")
