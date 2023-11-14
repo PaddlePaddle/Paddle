@@ -660,10 +660,8 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
         dtype = np.float32
 
         data1 = paddle.static.data('data1', [3, 4, 5], dtype)
-        data1.stop_gradient = False
         data1.persistable = True
         data2 = paddle.static.data('data2', [3, 4, 5], dtype)
-        data2.stop_gradient = False
         data2.persistable = True
         out = paddle.add_n([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
@@ -704,10 +702,8 @@ class TestAddNTripleGradCheck(unittest.TestCase):
         dtype = np.float32
 
         data1 = paddle.static.data('data1', [3, 4, 5], dtype)
-        data1.stop_gradient = False
         data1.persistable = True
         data2 = paddle.static.data('data2', [3, 4, 5], dtype)
-        data2.stop_gradient = False
         data2.persistable = True
         out = paddle.add_n([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)

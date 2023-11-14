@@ -253,9 +253,7 @@ def _compute_numerical_jacobian_pir(
 
     def run():
         res = exe.run(program, feeds, fetch_list=[filted_ddx, y])
-        y_res = []
-        for i in range(len(y)):
-            y_res.append(res[len(filted_ddx) + i])
+        y_res = res[len(filted_ddx) :]
         return [yi.flatten() for yi in y_res]
 
     x_name = x.get_defining_op().attrs()['name']
@@ -326,11 +324,10 @@ def _compute_analytical_jacobian_pir(
 
     # get the name in feeds of dyi
     name = 'dys_%s' % i
-    # set to zeros
     np_t = np.array(feeds[name]).astype(np_type)
     shape = np_t.shape
     np_t = np_t.flatten()
-    for i in range(y_size):  # y_size
+    for i in range(y_size):
         np_t[i] = 1
         np_f = np_t.reshape(shape)
         feeds[name] = np_f
