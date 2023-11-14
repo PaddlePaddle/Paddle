@@ -18,10 +18,15 @@ import numpy as np
 from pass_test import PassTest
 
 import paddle
+from paddle.base import core
 
 paddle.enable_static()
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
 class TestConv2dFusePass(PassTest):
     def setUp(self):
         with paddle.pir_utils.IrGuard():

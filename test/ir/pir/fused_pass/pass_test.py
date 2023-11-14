@@ -63,8 +63,6 @@ class PassTest(unittest.TestCase):
         2.[todo]Check the accuracy before and after running the pass
         '''
         executor = paddle.static.Executor(place)
-        # 转成新ir的 program
-
         self.assertTrue(
             need_translate_to_pir is False and self.pir_program is not None,
             "error!",
