@@ -50,11 +50,13 @@ class Placement {
   virtual std::string to_string() const { return ""; }
 
   virtual bool operator==(const Placement& other) const {
-    PADDLE_THROW(phi::errors::Unimplemented("Not implemented yet."));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Equal function is not implemented yet in Placement."));
   }
 
   virtual bool operator!=(const Placement& other) const {
-    PADDLE_THROW(phi::errors::Unimplemented("Not implemented yet."));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Not Equal function is not implemented yet in Placement."));
   }
 
   friend std::ostream& operator<<(std::ostream& os, const Placement& p) {
@@ -129,8 +131,7 @@ class Replicate : public Placement {
 
 class Partial : public Placement {
  public:
-  explicit Partial(ReduceType reduce_type = ReduceType::kRedSum)
-      : reduce_type_(reduce_type) {}
+  explicit Partial(ReduceType reduce_type) : reduce_type_(reduce_type) {}
   bool is_partial() const override { return true; }
 
   bool operator==(const Placement& other) const override {

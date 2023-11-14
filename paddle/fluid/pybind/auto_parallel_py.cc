@@ -39,6 +39,7 @@
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/nd_mesh_reshard_function.h"
@@ -358,6 +359,15 @@ void BindAutoParallel(py::module *m) {
           py::arg("memo"))
       .def("__str__", &DeviceMesh::to_string);
 
+  py::enum_<phi::ReduceType>(m, "ReduceType")
+      .value("kRedSum", phi::ReduceType::kRedSum)
+      .value("kRedMax", phi::ReduceType::kRedMax)
+      .value("kRedMin", phi::ReduceType::kRedMin)
+      .value("kRedProd", phi::ReduceType::kRedProd)
+      .value("kRedAvg", phi::ReduceType::kRedAvg)
+      .value("kRedAny", phi::ReduceType::kRedAny)
+      .value("kRedAll", phi::ReduceType::kRedAll);
+
   auto Placement =
       py::class_<phi::distributed::Placement,
                  std::shared_ptr<phi::distributed::Placement>>(*m, "Placement")
@@ -396,7 +406,8 @@ void BindAutoParallel(py::module *m) {
   auto Partial = py::class_<phi::distributed::Partial,
                             std::shared_ptr<phi::distributed::Partial>>(
                      *m, "Partial", Placement)
-                     .def(py::init<>())
+                     .def(py::init<phi::ReduceType>(),
+                          py::arg("reduce_type") = phi::ReduceType::kRedSum)
                      .def("__hash__", &phi::distributed::Partial::hash)
                      .def("__str__", &phi::distributed::Partial::to_string)
                      .def(py::self == py::self)
