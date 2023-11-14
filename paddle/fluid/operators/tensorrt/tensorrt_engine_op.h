@@ -741,7 +741,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
             break;
         }
         for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
-#endif
       }
       auto *fluid_v = scope.FindVar(y);
       PADDLE_ENFORCE_NOT_NULL(
