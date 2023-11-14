@@ -41,9 +41,11 @@ PHI_DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace framework {
 NaiveExecutor::NaiveExecutor(const platform::Place &place) : place_(place) {
+#ifdef PADDLE_WITH_DNNL
   if (!platform::is_cpu_place(place_)) {
     FLAGS_use_mkldnn = false;
   }
+#endif
 }
 void NaiveExecutor::Prepare(Scope *scope,
                             const ProgramDesc &program_desc,

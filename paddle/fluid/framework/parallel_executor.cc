@@ -665,7 +665,7 @@ void InitP2P(const std::vector<platform::Place> &places) {
     VLOG(1) << "init p2p";
   });
 #endif
-}
+}  // namespace framework
 
 ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const std::vector<std::string> &bcast_vars,
@@ -676,6 +676,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
+#ifdef PADDLE_WITH_DNNL
   for (size_t i = 0; i < places.size(); i++) {
     if (!platform::is_cpu_place(places[i])) {
       FLAGS_use_mkldnn = false;
@@ -687,6 +688,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       }
     }
   }
+#endif
   PADDLE_ENFORCE_EQ(!places.empty(),
                     true,
                     platform::errors::Unavailable(
