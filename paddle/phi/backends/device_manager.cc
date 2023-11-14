@@ -183,7 +183,7 @@ void Device::BlasAXPBY(const stream::Stream& stream,
                    phi::CppTypeToDataType<T>::Type(),
                    numel,
                    alpha,
-                   reinterpret_cast<void*>(const_cast<T*>(x)),
+                   reinterpret_cast<void*>(const_cast<T*>(x)),  // NOLINT
                    beta,
                    reinterpret_cast<void*>(y));
 }
@@ -697,8 +697,8 @@ DeviceManager& DeviceManager::Instance() {
 }
 
 void DeviceManager::Release() {
-  stream::Stream::ReleaseAll();
   event::Event::ReleaseAll();
+  stream::Stream::ReleaseAll();
   Instance().device_map_.clear();
   Instance().device_impl_map_.clear();
 }

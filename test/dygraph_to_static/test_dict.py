@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
 
 import paddle
 from paddle import base
@@ -116,7 +116,7 @@ def update_cache(cache):
     return cache
 
 
-class TestNetWithDict(unittest.TestCase):
+class TestNetWithDict(Dy2StTestBase):
     """
     TestCase for the transformation from control flow `if/else`
     dependent on tensor in Dygraph into Static `base.layers.cond`.
@@ -126,7 +126,7 @@ class TestNetWithDict(unittest.TestCase):
         self.x = np.random.random([10, 16]).astype('float32')
         self.batch_size = self.x.shape[0]
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def _run_static(self):
         return self.train(to_static=True)
 
@@ -169,7 +169,7 @@ def test_dic_pop_2(x):
     return out
 
 
-class TestDictPop(unittest.TestCase):
+class TestDictPop(Dy2StTestBase):
     def setUp(self):
         self.input = np.random.random(3).astype('int32')
         self.place = (
@@ -182,7 +182,7 @@ class TestDictPop(unittest.TestCase):
     def _set_test_func(self):
         self.dygraph_func = test_dic_pop
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def _run_static(self):
         return self._run(to_static=True)
 
@@ -249,7 +249,7 @@ class TestDictPop3(TestNetWithDict):
         )
 
 
-class TestDictCmpInFor(unittest.TestCase):
+class TestDictCmpInFor(Dy2StTestBase):
     def test_with_for(self):
         def func():
             pos = [1, 3]

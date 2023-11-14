@@ -144,15 +144,15 @@ static int _PySlice_GetIndices(PySliceObject* r,
   return 0;
 }
 
-static void ParseIndexingSlice(phi::DenseTensor* tensor,
+static void ParseIndexingSlice(phi::DDim shape,
                                PyObject* _index,
-                               std::vector<int>* slice_axes,
-                               std::vector<int>* slice_starts,
-                               std::vector<int>* slice_ends,
-                               std::vector<int>* slice_strides,
-                               std::vector<int>* decrease_axis,
-                               std::vector<int>* none_axes,
-                               std::vector<int>* infer_flags,
+                               std::vector<int64_t>* slice_axes,
+                               std::vector<int64_t>* slice_starts,
+                               std::vector<int64_t>* slice_ends,
+                               std::vector<int64_t>* slice_strides,
+                               std::vector<int64_t>* decrease_axis,
+                               std::vector<int64_t>* none_axes,
+                               std::vector<int64_t>* infer_flags,
                                std::vector<int64_t>* list_select_idxs,
                                bool* list_select_flag) {
   // We allow indexing by Integers, Slices, Ellipsis, None, tuples of those
@@ -167,11 +167,7 @@ static void ParseIndexingSlice(phi::DenseTensor* tensor,
       VLOG(4) << "Call Py_DECREF";
     }
   });
-  PADDLE_ENFORCE_EQ(
-      tensor->IsInitialized(),
-      true,
-      platform::errors::InvalidArgument("tensor has not been initialized"));
-  const auto& shape = tensor->dims();
+
   const int rank = shape.size();
   const int size = PyTuple_GET_SIZE(index);
 

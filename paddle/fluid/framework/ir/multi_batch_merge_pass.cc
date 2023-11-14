@@ -249,6 +249,7 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
     sum_op.SetType("sum");
     std::vector<std::string> repeated_grad_names;
     std::vector<std::string> param_grad_op_role_var;
+    repeated_grad_names.reserve(kv.second.size());
     for (auto r : kv.second) {
       repeated_grad_names.push_back(r->Var()->Name());
     }

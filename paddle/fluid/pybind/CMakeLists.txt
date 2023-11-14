@@ -39,9 +39,9 @@ set(PYBIND_DEPS
     phi_utils
     phi
     pir_adaptor
-    pd_op_dialect
+    op_dialect_vjp
     program_translator
-    pd_inplace_pass
+    pir_transforms
     pir
     new_profiler
     jit_layer
@@ -50,6 +50,11 @@ set(PYBIND_DEPS
     static_tensor_operants
     type_info
     auto_parallel)
+
+if(WITH_CINN)
+  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass
+                  add_broadcast_to_elementwise_pass pd_to_cinn_pass)
+endif()
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -145,6 +150,7 @@ set(PYBIND_SRCS
     xpu_streams_py.cc
     jit.cc
     auto_parallel_py.cc
+    eval_frame_tools.cc
     eval_frame.c)
 
 if(WITH_CUSTOM_DEVICE)

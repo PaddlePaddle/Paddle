@@ -14,6 +14,7 @@
 
 import argparse
 import hashlib
+import os
 import pathlib
 import sys
 
@@ -42,7 +43,15 @@ VJPS_BLACK_LIST = [
     'add_n_grad',
 ]
 
-BACKENDS_BLACK_LIST = ['copy_to', 'add_n_grad', "allclose", "isclose"]
+BACKENDS_BLACK_LIST = [
+    'copy_to',
+    'add_n_grad',
+    "allclose",
+    "isclose",
+    "send_v2",
+    "assert",
+    "embedding_grad_sparse",
+]
 
 
 PRIM_VJP = [
@@ -50,6 +59,7 @@ PRIM_VJP = [
     'sum_grad',
     'cast_grad',
     'add_grad',
+    'subtract_grad',
     'multiply_grad',
     'elementwise_pow_grad',
     'reshape_grad',
@@ -57,11 +67,25 @@ PRIM_VJP = [
     'tanh_grad',
     'transpose_grad',
     'concat_grad',
+    'erf_grad',
+    'exp_grad',
+    'expand_grad',
+    'log_grad',
+    'gather_nd_grad',
+    'pad_grad',
+    'max_grad',
+    'maximum_grad',
+    'slice_grad',
+    'tile_grad',
 ]  # vjp list of primitive op
 CUSTOM_VJP = [
     'gelu_grad',
     'layer_norm_grad',
     'dropout_grad',
+    'silu_grad',
+    'softmax_grad',
+    'sqrt_grad',
+    'relu_grad',
 ]  # custom vjp list of composite op
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
@@ -268,18 +292,29 @@ def process_backward_invoke_info(apis):
 
 def process_optional_output_info(apis):
     for api in apis:
-        if not api['is_fwd']:
-            continue
         inputs_dict = to_named_dict(api['inputs'])
         for output in api['outputs']:
-            if (
-                api.get("inplace", None)
-                and output['name'] in api['inplace']
-                and inputs_dict[api['inplace'][output['name']]]['optional']
-            ):
-                output['optional'] = True
-            else:
+            if not api['is_fwd']:
                 output['optional'] = False
+            else:
+                if (
+                    api.get("inplace", None)
+                    and output['name'] in api['inplace']
+                    and inputs_dict[api['inplace'][output['name']]]['optional']
+                ):
+                    output['optional'] = True
+                else:
+                    output['optional'] = False
+
+
+def update_apis(op_yaml_items, update_yaml_file):
+    with open(update_yaml_file, "r") as f:
+        update_apis = yaml.safe_load(f)
+    for i in range(len(op_yaml_items)):
+        for update_api in update_apis:
+            if op_yaml_items[i]['name'] == update_api['name']:
+                op_yaml_items[i] = update_api
+                break
 
 
 def gen(
@@ -289,6 +324,9 @@ def gen(
     rev_path: pathlib.Path,
     rev_legacy_path: pathlib.Path,
     compat_path: pathlib.Path,
+    fwd_pd_op_path: pathlib.Path,
+    update_fwd_pd_op_path: pathlib.Path,
+    rev_pd_op_path: pathlib.Path,
     templates_dir: pathlib.Path,
     destination_dir: pathlib.Path,
 ):
@@ -304,23 +342,45 @@ def gen(
         rev_legacy_path (pathlib.Path): The YAML file path of the legacy
             backward API.
         compat_path: (pathlib.Path): The YAML file path of the ops compat.
+        fwd_pd_op_path (pathlib.Path): The YAML file path of the ir forward API.
+        update_fwd_pd_op_path (pathlib.Path): The YAML file path of the ir update_ops.
+        rev_pd_op_path (pathlib.Path): The YAML file path of the ir backward API.
         templates_dir (pathlib.Path): The directory of the templates.
         destination_dir (pathlib.Path): The Directory of the generated file.
 
     Returns:
         None
     """
-    prims, fwds, legacy_fwds, revs, legacy_revs, compats = (
+    (
+        prims,
+        fwds,
+        legacy_fwds,
+        revs,
+        legacy_revs,
+        compats,
+        ir_fwds,
+        ir_revs,
+    ) = (
         load(prim_path),
         load(fwd_path),
         load(fwd_legacy_path),
         load(rev_path),
         load(rev_legacy_path),
         load(compat_path),
+        load(fwd_pd_op_path),
+        load(rev_pd_op_path),
     )
     filter_compat_info(compats)
-    apis = [{**api, **{'is_fwd': True}} for api in fwds + legacy_fwds]
-    apis = apis + [{**api, **{'is_fwd': False}} for api in revs + legacy_revs]
+
+    fwd_apis = fwds + legacy_fwds + ir_fwds
+    # replace old ir ops with pir ops
+    if os.path.exists(update_fwd_pd_op_path):
+        update_apis(fwd_apis, update_fwd_pd_op_path)
+
+    apis = [{**api, **{'is_fwd': True}} for api in fwd_apis]
+    apis = apis + [
+        {**api, **{'is_fwd': False}} for api in revs + legacy_revs + ir_revs
+    ]
     apis = [
         {**api, **{'is_prim': True}}
         if api['name'] in prims
@@ -372,6 +432,21 @@ if __name__ == "__main__":
         help='The parsed ops compat yaml file.',
     )
     parser.add_argument(
+        '--fwd_pd_op_path',
+        type=str,
+        help='The ir forward ops parsed  yaml file.',
+    )
+    parser.add_argument(
+        '--update_fwd_pd_op_path',
+        type=str,
+        help='The ir update forward ops parsed  yaml file.',
+    )
+    parser.add_argument(
+        '--rev_pd_op_path',
+        type=str,
+        help='The ir backward ops parsed  yaml file.',
+    )
+    parser.add_argument(
         '--templates_dir',
         type=str,
         help='JinJa2 templates base directory.',
@@ -390,6 +465,9 @@ if __name__ == "__main__":
         pathlib.Path(args.rev_path),
         pathlib.Path(args.rev_legacy_path),
         pathlib.Path(args.compat_path),
+        pathlib.Path(args.fwd_pd_op_path),
+        pathlib.Path(args.update_fwd_pd_op_path),
+        pathlib.Path(args.rev_pd_op_path),
         pathlib.Path(args.templates_dir),
         pathlib.Path(args.destination_dir),
     )

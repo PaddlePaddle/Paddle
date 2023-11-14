@@ -502,6 +502,7 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
   // TODO(Ruibiao) : Set OpDeviceAttrName when needed
 
   std::vector<std::string> output_names;
+  output_names.reserve(node.outputs.size());
   for (auto out : node.outputs) {
     output_names.emplace_back(out->Name());
   }

@@ -355,7 +355,7 @@ def monkey_patch_variable():
 
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
-                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}".format(
+                "Only Variable with VarType.LOD_TENSOR_ARRAY support `pop` method, but received type: {}".format(
                     self.type
                 )
             )
@@ -376,7 +376,7 @@ def monkey_patch_variable():
         return _scalar_op_(var, -1.0, 0.0)
 
     @property
-    def _ndim_(self):
+    def _ndim(self):
         """
         Returns the dimension of current Variable
 
@@ -393,7 +393,7 @@ def monkey_patch_variable():
                 >>> # create a static Variable
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
                 >>> # print the dimension of the Variable
-                >>> print(x.ndim())
+                >>> print(x.ndim)
                 3
         """
         return len(self.shape)
@@ -627,7 +627,7 @@ def monkey_patch_variable():
         ('pop', pop),
         ('dim', dim),
         ('ndimension', ndimension),
-        ('ndim', _ndim_),
+        ('ndim', _ndim),
         (
             '__add__',
             _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_),

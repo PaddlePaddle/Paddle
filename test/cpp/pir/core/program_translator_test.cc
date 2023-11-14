@@ -37,7 +37,7 @@
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/parser/ir_parser.h"
 #include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 using OperatorDialect = paddle::dialect::OperatorDialect;
 using ProgramDesc = paddle::framework::ProgramDesc;
@@ -265,4 +265,82 @@ TEST(IrParserTest, StartupProgram) {
   parser_program->Print(ssp);
 
   EXPECT_TRUE(ssp.str() == ss.str());
+}
+
+TEST(OperatorDialectTest, WhileOpProgram) {
+  auto p = load_from_file("while_op_test.prog");
+  EXPECT_EQ(p.Size(), 3u);
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+  auto program = paddle::TranslateLegacyProgramToProgram(p);
+
+  std::stringstream ss;
+  program->Print(ss);
+
+  LOG(INFO) << ss.str();
+
+  EXPECT_EQ(program->block()->size(), 4u);
+  size_t id = 0;
+  for (auto &op : *program->block()) {
+    if (id == 0 || id == 1) {
+      EXPECT_TRUE(op->isa<paddle::dialect::FullOp>());
+    }
+    if (id == 2) {
+      EXPECT_TRUE(op->isa<paddle::dialect::LessThanOp>());
+    }
+    if (id == 3) {
+      EXPECT_TRUE(op->isa<paddle::dialect::WhileOp>());
+      EXPECT_EQ(op->num_regions(), 1u);
+      // body block
+      pir::Block *body_block =
+          op->dyn_cast<paddle::dialect::WhileOp>().body_block();
+      size_t body_id = 0;
+      for (auto &op1 : *body_block) {
+        if (body_id == 0) {
+          EXPECT_TRUE(op1->isa<paddle::dialect::FullOp>());
+        }
+        if (body_id == 1) {
+          EXPECT_TRUE(op1->isa<paddle::dialect::ScaleOp>());
+        }
+        if (body_id == 2) {
+          EXPECT_TRUE(op1->isa<paddle::dialect::LessThanOp>());
+        }
+        if (body_id == 3) {
+          pir::Block *body_body_block =
+              op1->dyn_cast<paddle::dialect::WhileOp>().body_block();
+          size_t body_body_id = 0;
+          for (auto &op2 : *body_body_block) {
+            if (body_body_id == 0) {
+              EXPECT_TRUE(op2->isa<paddle::dialect::FullOp>());
+            }
+            if (body_body_id == 1) {
+              EXPECT_TRUE(op2->isa<paddle::dialect::ScaleOp>());
+            }
+            if (body_body_id == 2) {
+              EXPECT_TRUE(op2->isa<paddle::dialect::LessThanOp>());
+            }
+            if (body_body_id == 3 || body_body_id == 4) {
+              EXPECT_TRUE(op2->isa<paddle::dialect::AssignOp>());
+            }
+            if (body_body_id == 5) {
+              EXPECT_TRUE(op2->isa<pir::YieldOp>());
+            }
+            body_body_id++;
+          }
+        }
+        if (body_id == 4) {
+          EXPECT_TRUE(op1->isa<paddle::dialect::LessThanOp>());
+        }
+        if (body_id == 5 || body_id == 6) {
+          EXPECT_TRUE(op1->isa<paddle::dialect::AssignOp>());
+        }
+        if (body_id == 7) {
+          EXPECT_TRUE(op1->isa<pir::YieldOp>());
+        }
+        body_id++;
+      }
+    }
+    id++;
+  }
 }

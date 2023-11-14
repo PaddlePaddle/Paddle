@@ -16,9 +16,9 @@
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/type_util.h"
 
-namespace pir::detail {
+namespace {
 
-void VerifySameOperandsShapeTrait(Operation *op) {
+void VerifySameOperandsShapeTrait(pir::Operation *op) {
   VLOG(4) << "Verify SameOperandsShapeTrait for : " << op->name();
 
   IR_ENFORCE(op->num_operands() > 0,
@@ -39,7 +39,7 @@ void VerifySameOperandsShapeTrait(Operation *op) {
              op->name());
 }
 
-void VerifySameOperandsAndResultShapeTrait(Operation *op) {
+void VerifySameOperandsAndResultShapeTrait(pir::Operation *op) {
   VLOG(4) << "Verify SameOperandsAndResultShapeTrait for : " << op->name();
 
   IR_ENFORCE(op->num_operands() > 0,
@@ -73,7 +73,7 @@ void VerifySameOperandsAndResultShapeTrait(Operation *op) {
              op->name());
 }
 
-void VerifySameOperandsElementTypeTrait(Operation *op) {
+void VerifySameOperandsElementTypeTrait(pir::Operation *op) {
   VLOG(4) << "Verify SameOperandsElementTypeTrait for : " << op->name();
 
   IR_ENFORCE(op->num_operands() > 0,
@@ -91,7 +91,7 @@ void VerifySameOperandsElementTypeTrait(Operation *op) {
   }
 }
 
-void VerifySameOperandsAndResultElementTypeTrait(Operation *op) {
+void VerifySameOperandsAndResultElementTypeTrait(pir::Operation *op) {
   VLOG(4) << "Verify SameOperandsAndResultElementTypeTrait for : "
           << op->name();
 
@@ -126,7 +126,7 @@ void VerifySameOperandsAndResultElementTypeTrait(Operation *op) {
   }
 }
 
-void VerifySameOperandsAndResultTypeTrait(Operation *op) {
+void VerifySameOperandsAndResultTypeTrait(pir::Operation *op) {
   VLOG(4) << "Verify SameOperandsAndResultTypeTrait for : " << op->name();
 
   IR_ENFORCE(op->num_operands() > 0,
@@ -169,7 +169,7 @@ void VerifySameOperandsAndResultTypeTrait(Operation *op) {
   }
 }
 
-void VerifySameTypeOperandsTrait(Operation *op) {
+void VerifySameTypeOperandsTrait(pir::Operation *op) {
   VLOG(4) << "Verify SameTypeOperandsTrait for : " << op->name();
 
   // For zero or only one operand.
@@ -186,7 +186,40 @@ void VerifySameTypeOperandsTrait(Operation *op) {
   }
 }
 
-}  // namespace  pir::detail
+void VerifyOneResultTrait(pir::Operation *op) {
+  IR_ENFORCE(op->num_results() == 1,
+             "Op %s with OneResultTrait requires 1 result, but got %u results.",
+             op->name(),
+             op->num_results());
+}
+}  // namespace
+
+namespace pir {
+void SameOperandsShapeTrait::Verify(Operation *op) {
+  return VerifySameOperandsShapeTrait(op);
+}
+
+void SameOperandsAndResultShapeTrait::Verify(Operation *op) {
+  return VerifySameOperandsAndResultShapeTrait(op);
+}
+
+void SameOperandsElementTypeTrait::Verify(Operation *op) {
+  return VerifySameOperandsElementTypeTrait(op);
+}
+
+void SameOperandsAndResultElementTypeTrait::Verify(Operation *op) {
+  return VerifySameOperandsAndResultElementTypeTrait(op);
+}
+
+void SameOperandsAndResultTypeTrait::Verify(Operation *op) {
+  return VerifySameOperandsAndResultTypeTrait(op);
+}
+void SameTypeOperandsTrait::Verify(Operation *op) {
+  return VerifySameTypeOperandsTrait(op);
+}
+
+void OneResultTrait::Verify(Operation *op) { return VerifyOneResultTrait(op); }
+}  // namespace pir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameOperandsShapeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultShapeTrait)
@@ -194,3 +227,5 @@ IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameOperandsElementTypeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultElementTypeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultTypeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameTypeOperandsTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::OneResultTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::SideEffectTrait)

@@ -577,7 +577,7 @@ AnalysisPredictor::MkldnnQuantizer::Histogram(
     ++hist[bin];
   }
 
-  return std::make_pair(std::move(hist), std::move(bin_width));
+  return std::make_pair(std::move(hist), bin_width);
 }
 
 void AnalysisPredictor::MkldnnQuantizer::ClearDeviceContext() const {

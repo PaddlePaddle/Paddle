@@ -365,6 +365,7 @@ void FuseOptimizerOpPass::GradientsFilter(
     }
   }
   std::vector<Node *> sorted_ops;
+  sorted_ops.reserve(new_grad_idx.size());
   for (size_t i : new_grad_idx) {
     sorted_ops.emplace_back(opt_nodes->at(i));
   }

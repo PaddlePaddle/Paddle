@@ -11,9 +11,8 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-
+#include <glog/logging.h>
 #ifdef _MSC_VER
 #include <intrin.h>
 #endif
@@ -68,6 +67,7 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
 #endif
     phi::Backend backend_key = phi::TransToPhiBackend(t.place());
     BackendSet backend_set(backend_key);
+    VLOG(10) << "update BackendSet by tensor: add [" << backend_key << "]";
     if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
         static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
       backend_set = backend_set | BackendSet(Backend::GPUDNN);
@@ -78,10 +78,10 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
 }
 
 std::size_t CountLeadingZeros(uint32_t val) {
-#if defined(__clang__) || defined(__GNUC__)
   if (val == 0) {
     return 32;
   }
+#if defined(__clang__) || defined(__GNUC__)
   return __builtin_clz(val);
 #elif defined(_MSC_VER)
   // windows don't have built-in clz/ctz function
@@ -89,9 +89,6 @@ std::size_t CountLeadingZeros(uint32_t val) {
   _BitScanReverse(&Index, val);
   return (uint32_t)Index ^ 31;
 #else
-  if (val == 0) {
-    return 32;
-  }
   std::size_t zero_bits = 0;
   for (std::size_t shift = 32 >> 1; shift; shift >>= 1) {
     uint32_t tmp = val >> shift;

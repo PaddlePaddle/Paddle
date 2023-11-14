@@ -482,6 +482,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
   CP_MEMBER(trt_optimization_level_);
+  CP_MEMBER(trt_ops_run_float_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -575,6 +576,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // JITLayer relate
   CP_MEMBER(apply_optim_);
   CP_MEMBER(skip_load_params_);
+
+  CP_MEMBER(use_new_executor_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
