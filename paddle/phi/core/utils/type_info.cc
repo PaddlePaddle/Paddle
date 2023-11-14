@@ -73,6 +73,10 @@ template class TypeInfoTraits<phi::DeviceContext, XPUContext>;
 template class TypeInfoTraits<phi::StorageProperties, OneDNNStorageProperties>;
 #endif
 
+#ifdef PADDLE_WITH_XPU
+template class TypeInfoTraits<phi::StorageProperties, XPUStorageProperties>;
+#endif
+
 template class TypeInfoTraits<phi::StorageProperties, NPUStorageProperties>;
 
 }  // namespace phi

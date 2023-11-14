@@ -64,6 +64,9 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
 TensorDistAttr CopyTensorDistAttrForOutput(const TensorDistAttr& src_dist_attr,
                                            bool clear_partial = true);
 
+TensorDistAttr UnShardTensorDims(const TensorDistAttr& dist_attr,
+                                 std::vector<int64_t> dims);
+
 // Resolute the partial mesh dimension of a output tensor, giving the
 // merged sharding specifcation of input tensors and the axis names of output
 // tensor. Input are

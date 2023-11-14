@@ -151,6 +151,18 @@ bool AddBroadcastToElementwisePass::Initialize(pir::IrContext* context) {
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::SubtractOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MultiplyOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::DivideOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::ElementwisePowOp>>(
+      context);
+
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::LessThanOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::LessEqualOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::EqualOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::NotEqualOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::GreaterThanOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::GreaterEqualOp>>(
+      context);
 
   patterns_ = ::pir::FrozenRewritePatternSet(std::move(ps));
   return true;

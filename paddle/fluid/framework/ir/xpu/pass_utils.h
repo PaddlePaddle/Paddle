@@ -63,9 +63,12 @@ template <typename Tcpu,
               ptr = nullptr>
 void ConvertWeightWrapper(phi::DenseTensor* weight,
                           phi::DenseTensor* weight_max,
+                          phi::DenseTensor* scale_max,
                           bool transpose,
-                          const std::vector<float>& weight_scales) {
-  ConvertWithQuant<Tcpu, Txpu>(weight, weight_max, transpose, weight_scales);
+                          const std::vector<float>& weight_scales,
+                          bool per_channel_quant) {
+  ConvertWithQuant<Tcpu, Txpu>(
+      weight, weight_max, scale_max, transpose, per_channel_quant);
 }
 
 template <typename Tcpu,
@@ -74,9 +77,12 @@ template <typename Tcpu,
               ptr = nullptr>
 void ConvertWeightWrapper(phi::DenseTensor* weight,
                           phi::DenseTensor* weight_max,
+                          phi::DenseTensor* scale_max,
                           bool transpose,
-                          const std::vector<float>& weight_scales) {
-  ConvertWithoutQuant<Tcpu>(weight, weight_max, transpose, weight_scales);
+                          const std::vector<float>& weight_scales,
+                          bool per_channel_quant) {
+  ConvertWithoutQuant<Tcpu>(
+      weight, weight_max, scale_max, transpose, weight_scales);
 }
 
 // 1. Quant weight from fp32 to int16/int31/int8
@@ -89,8 +95,10 @@ void PrepareWeight(Graph* graph,
                    Node* weight,
                    Node** dst_weight,
                    Node** dst_weight_max,
+                   Node** dst_scale_max,
                    bool transpose,
-                   const std::vector<float>& weight_scales);
+                   const std::vector<float>& weight_scales,
+                   bool per_channel_quant = false);
 
 void PrepareBias(
     Graph* graph, Scope* scope, BlockDesc* block, Node* src, Node** dst);
