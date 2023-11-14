@@ -313,56 +313,56 @@ def GenBuildOutputs(
     build_output_str = '  VLOG(4) << "Builder construction outputs";\n'
     CREATE_INPUT_METATENSOR_TEMPLATE = """
   VLOG(4) << "Builder construction  dense_{name}";
-  paddle::dialect::IrTensor ir_meta_tensor_{name}(paddle::dialect::TransToPhiDataType({name}.dtype()),
+  paddle::dialect::IrTensor ir_tensor_{name}(paddle::dialect::TransToPhiDataType({name}.dtype()),
                                                       {name}.dims(),
                                                       {name}.data_layout(),
                                                       {name}.lod(),
                                                       {name}.offset());
   VLOG(4) << "Builder construction  meta_{name}";
-  phi::MetaTensor meta_{name}(&ir_meta_tensor_{name});
+  paddle::dialect::IrMetaTensor meta_{name}(&ir_tensor_{name});
 """
 
     CREATE_OPTIONAL_INPUT_METATENSOR_TEMPLATE = """
-  phi::MetaTensor meta_{name};
-  paddle::dialect::IrTensor ir_meta_tensor_{name};
+  paddle::dialect::IrMetaTensor meta_{name};
+  paddle::dialect::IrTensor ir_tensor_{name};
   if ({name}_.impl() != nullptr) {{
     paddle::dialect::DenseTensorType {name} = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>();
     VLOG(4) << "Builder construction  dense_{name}";
-    ir_meta_tensor_{name} = paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}.dtype()),
+    ir_tensor_{name} = paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}.dtype()),
                                                         {name}.dims(),
                                                         {name}.data_layout(),
                                                         {name}.lod(),
                                                         {name}.offset());
     VLOG(4) << "Builder construction  meta_{name}";
-    meta_{name} = phi::MetaTensor(&ir_meta_tensor_{name});
+    meta_{name} = paddle::dialect::IrMetaTensor(&ir_tensor_{name});
   }}
 
 """
 
-    CREATE_INPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrTensor> vec_ir_meta_tensor_{name};
+    CREATE_INPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrTensor> vec_ir_tensor_{name};
   for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
-    vec_ir_meta_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
+    vec_ir_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
                                                                      {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
                                                                      {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
                                                                      {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
                                                                      {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
   }}
-  std::vector<phi::MetaTensor> vec_meta_{name};
-  for (size_t i=0; i < vec_ir_meta_tensor_{name}.size(); i++) {{
-    vec_meta_{name}.push_back(phi::MetaTensor(&vec_ir_meta_tensor_{name}[i]));
+  std::vector<paddle::dialect::IrMetaTensor> vec_meta_{name};
+  for (size_t i=0; i < vec_ir_tensor_{name}.size(); i++) {{
+    vec_meta_{name}.push_back(paddle::dialect::IrMetaTensor(&vec_ir_tensor_{name}[i]));
   }}
 
-  std::vector<const phi::MetaTensor*> meta_{name};
+  std::vector<const paddle::dialect::IrMetaTensor*> meta_{name};
   for (size_t i=0; i < static_cast<size_t>(vec_meta_{name}.size()); i++) {{
     meta_{name}.push_back(&vec_meta_{name}[i]);
   }}
  """
 
-    CREATE_OPTIONAL_INPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrTensor> vec_ir_meta_tensor_{name};
+    CREATE_OPTIONAL_INPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrTensor> vec_ir_tensor_{name};
   if ({name}_.impl() != nullptr) {{
     pir::VectorType {name} = {name}_.type().dyn_cast<pir::VectorType>();
     for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
-        vec_ir_meta_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
+        vec_ir_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
                                                                         {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
                                                                         {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
                                                                         {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
@@ -370,12 +370,12 @@ def GenBuildOutputs(
     }}
   }}
 
-  std::vector<phi::MetaTensor> vec_meta_{name};
-  for (size_t i=0; i < vec_ir_meta_tensor_{name}.size(); i++) {{
-    vec_meta_{name}.push_back(phi::MetaTensor(&vec_ir_meta_tensor_{name}[i]));
+  std::vector<paddle::dialect::IrMetaTensor> vec_meta_{name};
+  for (size_t i=0; i < vec_ir_tensor_{name}.size(); i++) {{
+    vec_meta_{name}.push_back(paddle::dialect::IrMetaTensor(&vec_ir_tensor_{name}[i]));
   }}
 
-  std::vector<const phi::MetaTensor*> meta_{name};
+  std::vector<const paddle::dialect::IrMetaTensor*> meta_{name};
   for (size_t i=0; i < static_cast<size_t>(vec_meta_{name}.size()); i++) {{
     meta_{name}.push_back(&vec_meta_{name}[i]);
   }}
@@ -431,14 +431,14 @@ def GenBuildOutputs(
   }}\n"""
 
     CREATE_OUTPUT_METATENSOR_TEMPLATE = """  paddle::dialect::IrTensor dense_{name};
-  phi::MetaTensor meta_{name}(&dense_{name});
+  paddle::dialect::IrMetaTensor meta_{name}(&dense_{name});
 """
     CREATE_OUTPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrTensor> vec_dense_{name}(({output_size}), paddle::dialect::IrTensor());
-  std::vector<phi::MetaTensor> vec_meta_{name};
+  std::vector<paddle::dialect::IrMetaTensor> vec_meta_{name};
   for (size_t i=0; i < static_cast<size_t>({output_size}); i++) {{
-    vec_meta_{name}.push_back(phi::MetaTensor(&vec_dense_{name}[i]));
+    vec_meta_{name}.push_back(paddle::dialect::IrMetaTensor(&vec_dense_{name}[i]));
   }}
-  std::vector<phi::MetaTensor*> meta_{name};
+  std::vector<paddle::dialect::IrMetaTensor*> meta_{name};
   for (size_t i=0; i < static_cast<size_t>(vec_meta_{name}.size()); i++) {{
     meta_{name}.push_back(&vec_meta_{name}[i]);
   }}

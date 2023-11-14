@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-#include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -75,8 +74,6 @@ void MetaTensor::set_dims(const DDim& dims) {
     if (!strided_kernel_used_) {
       meta->strides = meta->calc_strides(dims);
     }
-  } else if (paddle::dialect::IrTensor::classof(tensor_)) {
-    static_cast<paddle::dialect::IrTensor*>(tensor_)->SetDims(dims);
   } else if (phi::StringTensor::classof(tensor_)) {
     StringTensorUtils::GetMutableMeta(static_cast<StringTensor*>(tensor_))
         ->dims = dims;
@@ -109,8 +106,6 @@ void MetaTensor::set_dtype(DataType dtype) {
   if (phi::DenseTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
         ->dtype = dtype;
-  } else if (paddle::dialect::IrTensor::classof(tensor_)) {
-    static_cast<paddle::dialect::IrTensor*>(tensor_)->SetDtype(dtype);
   } else if (phi::StringTensor::classof(tensor_)) {
     // No need to set dtype
   } else if (phi::SelectedRows::classof(tensor_)) {
@@ -146,8 +141,6 @@ void MetaTensor::set_layout(DataLayout layout) {
     if (!strided_kernel_used_) {
       meta->strides = meta->calc_strides(meta->dims);
     }
-  } else if (paddle::dialect::IrTensor::classof(tensor_)) {
-    static_cast<paddle::dialect::IrTensor*>(tensor_)->SetLayout(layout);
   } else if (phi::StringTensor::classof(tensor_)) {
     // No need to set layout
   } else if (phi::SelectedRows::classof(tensor_)) {
@@ -194,8 +187,6 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
     DenseTensorUtils::GetMutableMeta(
         static_cast<SelectedRows*>(tensor_)->mutable_value())
         ->lod = meta_tensor.lod();
-  } else if (paddle::dialect::IrTensor::classof(tensor_)) {
-    static_cast<paddle::dialect::IrTensor*>(tensor_)->SetLod(meta_tensor.lod());
   } else {
     PADDLE_THROW(
         phi::errors::Unimplemented("Unsupported sharing lod inplace for `%s`.",
@@ -206,7 +197,6 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
 void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
   if (phi::DenseTensor::classof(tensor_) ||
-      paddle::dialect::IrTensor::classof(tensor_) ||
       phi::SelectedRows::classof(tensor_) ||
       phi::SparseCooTensor::classof(tensor_) ||
       phi::SparseCsrTensor::classof(tensor_) ||
@@ -243,9 +233,8 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
   bool is_sparse_coo = phi::SparseCooTensor::classof(tensor_);
   bool is_sparse_csr = phi::SparseCsrTensor::classof(tensor_);
   bool is_dist_tensor = phi::distributed::DistTensor::classof(tensor_);
-  bool is_ir_meta_tensor = paddle::dialect::IrTensor::classof(tensor_);
   if (is_dense_tensor || is_selected_rows || is_sparse_coo || is_sparse_csr ||
-      is_dist_tensor || is_ir_meta_tensor) {
+      is_dist_tensor) {
     if (is_selected_rows) {
       const auto in_tensor_base = meta_tensor.tensor();
       PADDLE_ENFORCE_EQ(
@@ -292,8 +281,6 @@ const LoD& MetaTensor::lod() const {
     return static_cast<SparseCooTensor*>(tensor_)->non_zero_elements().lod();
   } else if (phi::SparseCsrTensor::classof(tensor_)) {
     return static_cast<SparseCsrTensor*>(tensor_)->non_zero_elements().lod();
-  } else if (paddle::dialect::IrTensor::classof(tensor_)) {
-    return static_cast<paddle::dialect::IrTensor*>(tensor_)->lod();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented("Unsupported getting lod of `%s`.",
                                             tensor_->type_info().name()));
