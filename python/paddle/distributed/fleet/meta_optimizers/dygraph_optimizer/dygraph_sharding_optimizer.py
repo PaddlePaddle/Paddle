@@ -94,7 +94,9 @@ class DygraphShardingOptimizer:
         self.fuse_optimizer = strategy.hybrid_configs[
             'sharding_configs'
         ].fuse_optimizer
-        self.pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
+        self.pp_overlap = strategy.hybrid_configs[
+            'pp_configs'
+        ].sharding_comm_overlap
         if self.tensor_fusion or self.comm_overlap:
             assert (
                 not self.pp_overlap
