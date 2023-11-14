@@ -69,7 +69,9 @@ class LinalgPinvTestCase(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
-            with base.program_guard(base.Program(), base.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(
                     name="input",
                     shape=self._input_shape,
@@ -78,7 +80,7 @@ class LinalgPinvTestCase(unittest.TestCase):
                 out = paddle.linalg.pinv(
                     x, rcond=self.rcond, hermitian=self.hermitian
                 )
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 fetches = exe.run(
                     feed={"input": self._input_data},
                     fetch_list=[out],
@@ -295,7 +297,6 @@ class LinalgPinvTestCaseHermitianFP32(LinalgPinvTestCase):
 
 
 class TestDivByZero(unittest.TestCase):
-    @test_with_pir_api
     def pinv_zero_input_static(self):
         paddle.enable_static()
         array = np.array([], dtype=np.float32)

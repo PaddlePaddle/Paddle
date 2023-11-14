@@ -301,13 +301,15 @@ class TestSvdAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
-            with base.program_guard(base.Program(), base.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 a = np.random.rand(5, 5)
                 x = paddle.static.data(
                     name="input", shape=[5, 5], dtype='float64'
                 )
                 u, s, vh = paddle.linalg.svd(x)
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
                 fetches = exe.run(
                     feed={"input": a},
@@ -315,7 +317,6 @@ class TestSvdAPI(unittest.TestCase):
                 )
                 np.testing.assert_allclose(fetches[0], gt_s, rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with paddle.base.dygraph.guard():
             # The size of input in svd should not be 0.
