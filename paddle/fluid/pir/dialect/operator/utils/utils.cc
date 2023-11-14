@@ -276,7 +276,8 @@ void DoCheck(const pir::Value& value,
     std::string value_type = phi::DataTypeToString(dialect::TransToPhiDataType(
         value.type().dyn_cast<pir::DenseTensorType>().dtype()));
     if (expected_dtype.find(value_type) == expected_dtype.end()) {
-      PADDLE_THROW(phi::errors::InvalidArgument("Type error %s.", input_name));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Input type error %s, value_type is %s", input_name, value_type));
     }
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
