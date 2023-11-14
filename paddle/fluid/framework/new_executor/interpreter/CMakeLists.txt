@@ -15,6 +15,7 @@ set(INTERPRETER_DEPS
     glog
     lod_rank_table
     framework_io
+    string_helper
     fleet_wrapper
     heter_wrapper
     ps_gpu_wrapper
