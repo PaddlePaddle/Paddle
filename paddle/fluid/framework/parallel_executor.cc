@@ -676,19 +676,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
-#ifdef PADDLE_WITH_DNNL
-  for (size_t i = 0; i < places.size(); i++) {
-    if (!platform::is_cpu_place(places[i])) {
-      FLAGS_use_mkldnn = false;
-      break;
-    } else {
-      char *p = getenv("FLAGS_use_mkldnn");
-      if (p == nullptr) {
-        FLAGS_use_mkldnn = true;
-      }
-    }
-  }
-#endif
   PADDLE_ENFORCE_EQ(!places.empty(),
                     true,
                     platform::errors::Unavailable(

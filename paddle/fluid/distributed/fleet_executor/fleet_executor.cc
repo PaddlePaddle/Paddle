@@ -158,12 +158,6 @@ void FleetExecutor::Init(
                     0,
                     platform::errors::InvalidArgument(
                         "Fleet executor is inited with empty task node"));
-#ifdef PADDLE_WITH_DNNL
-  if (!platform::is_cpu_place(place)) {
-    FLAGS_use_mkldnn = false;
-  }
-#endif
-
   // Set the unused var after running while op
   std::set<TaskNode*> sub_block_tasks;
   std::vector<std::string> while_block_vars;
