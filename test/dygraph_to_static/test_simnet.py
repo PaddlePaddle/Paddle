@@ -126,53 +126,54 @@ def train(conf_dict, to_static):
     train process
     """
     paddle.jit.enable_to_static(to_static)
+    paddle.enable_static()
+    paddle.disable_static()
 
     # Get device
-    if base.is_compiled_with_cuda():
-        place = base.CUDAPlace(0)
+    if paddle.is_compiled_with_cuda():
+        place = paddle.CUDAPlace(0)
     else:
-        place = base.CPUPlace()
+        place = paddle.CPUPlace()
 
-    with base.dygraph.guard(place):
-        paddle.seed(SEED)
-        paddle.framework.random._manual_program_seed(SEED)
+    paddle.seed(SEED)
+    paddle.framework.random._manual_program_seed(SEED)
 
-        conf_dict['dict_size'] = len(vocab)
-        conf_dict['seq_len'] = args.seq_len
+    conf_dict['dict_size'] = len(vocab)
+    conf_dict['seq_len'] = args.seq_len
 
-        net = BOW(conf_dict)
-        loss = HingeLoss(conf_dict)
-        optimizer = paddle.optimizer.Adam(
-            learning_rate=0.001,
-            beta1=0.9,
-            beta2=0.999,
-            epsilon=1e-08,
-            parameters=net.parameters(),
-        )
+    net = BOW(conf_dict)
+    loss = HingeLoss(conf_dict)
+    optimizer = paddle.optimizer.Adam(
+        learning_rate=0.001,
+        beta1=0.9,
+        beta2=0.999,
+        epsilon=1e-08,
+        parameters=net.parameters(),
+    )
 
-        metric = paddle.metric.Auc(name="auc")
+    metric = paddle.metric.Auc(name="auc")
 
-        global_step = 0
-        losses = []
+    global_step = 0
+    losses = []
 
-        train_loader = paddle.io.DataLoader(
-            simnet_process, batch_size=args.batch_size, places=[place]
-        )
+    train_loader = paddle.io.DataLoader(
+        simnet_process, batch_size=args.batch_size, places=[place]
+    )
 
-        for left, pos_right, neg_right in train_loader():
-            left = paddle.reshape(left, shape=[-1, 1])
-            pos_right = paddle.reshape(pos_right, shape=[-1, 1])
-            neg_right = paddle.reshape(neg_right, shape=[-1, 1])
-            net.train()
-            global_step += 1
-            left_feat, pos_score = net(left, pos_right)
-            pred = pos_score
-            _, neg_score = net(left, neg_right)
-            avg_cost = loss.compute(pos_score, neg_score)
-            losses.append(np.mean(avg_cost.numpy()))
-            avg_cost.backward()
-            optimizer.minimize(avg_cost)
-            net.clear_gradients()
+    for left, pos_right, neg_right in train_loader():
+        left = paddle.reshape(left, shape=[-1, 1])
+        pos_right = paddle.reshape(pos_right, shape=[-1, 1])
+        neg_right = paddle.reshape(neg_right, shape=[-1, 1])
+        net.train()
+        global_step += 1
+        left_feat, pos_score = net(left, pos_right)
+        pred = pos_score
+        _, neg_score = net(left, neg_right)
+        avg_cost = loss.compute(pos_score, neg_score)
+        losses.append(np.mean(avg_cost.numpy()))
+        avg_cost.backward()
+        optimizer.minimize(avg_cost)
+        net.clear_gradients()
     return losses
 
 

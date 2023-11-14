@@ -25,7 +25,6 @@ from predictor_utils import PredictorTools
 import paddle
 from paddle import base
 from paddle.base.param_attr import ParamAttr
-from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
 
@@ -267,7 +266,6 @@ class MobileNetV1(paddle.nn.Layer):
             bias_attr=ParamAttr(name="fc7_offset"),
         )
 
-    @to_static
     def forward(self, inputs):
         y = self.conv1(inputs)
         for dws in self.dwsl:
@@ -433,7 +431,6 @@ class MobileNetV2(paddle.nn.Layer):
             bias_attr=ParamAttr(name="fc10_offset"),
         )
 
-    @to_static
     def forward(self, inputs):
         y = self._conv1(inputs, if_act=True)
         for inv in self._invl:
@@ -496,7 +493,9 @@ class Args:
     print_step = 1
     train_step = 10
     place = (
-        base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
+        paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda()
+        else paddle.CPUPlace()
     )
     model_save_dir = None
     model_save_prefix = None
@@ -507,92 +506,97 @@ class Args:
 
 def train_mobilenet(args, to_static):
     paddle.jit.enable_to_static(to_static)
-    with base.dygraph.guard(args.place):
-        np.random.seed(SEED)
-        paddle.seed(SEED)
-        paddle.framework.random._manual_program_seed(SEED)
 
-        if args.model == "MobileNetV1":
-            net = MobileNetV1(class_dim=args.class_dim, scale=1.0)
-        elif args.model == "MobileNetV2":
-            net = MobileNetV2(class_dim=args.class_dim, scale=1.0)
-        else:
-            print(
-                "wrong model name, please try model = MobileNetV1 or MobileNetV2"
+    paddle.enable_static()
+    paddle.disable_static()
+
+    np.random.seed(SEED)
+    paddle.seed(SEED)
+    paddle.framework.random._manual_program_seed(SEED)
+
+    if args.model == "MobileNetV1":
+        net = paddle.jit.to_static(
+            MobileNetV1(class_dim=args.class_dim, scale=1.0)
+        )
+    elif args.model == "MobileNetV2":
+        net = paddle.jit.to_static(
+            MobileNetV2(class_dim=args.class_dim, scale=1.0)
+        )
+    else:
+        print("wrong model name, please try model = MobileNetV1 or MobileNetV2")
+        sys.exit()
+
+    optimizer = create_optimizer(args=args, parameter_list=net.parameters())
+
+    # 3. reader
+    train_dataset = FakeDataSet(
+        args.batch_size, args.class_dim, args.train_step
+    )
+    BatchSampler = paddle.io.BatchSampler(
+        train_dataset, batch_size=args.batch_size
+    )
+    train_data_loader = paddle.io.DataLoader(
+        train_dataset, batch_sampler=BatchSampler
+    )
+
+    # 4. train loop
+    loss_data = []
+    for eop in range(args.num_epochs):
+        net.train()
+        batch_id = 0
+        t_last = 0
+        for img, label in train_data_loader():
+            t1 = time.time()
+            t_start = time.time()
+            out = net(img)
+
+            t_end = time.time()
+            softmax_out = paddle.nn.functional.softmax(out)
+            loss = paddle.nn.functional.cross_entropy(
+                input=softmax_out,
+                label=label,
+                reduction='none',
+                use_softmax=False,
             )
-            sys.exit()
+            avg_loss = paddle.mean(x=loss)
+            acc_top1 = paddle.static.accuracy(input=out, label=label, k=1)
+            acc_top5 = paddle.static.accuracy(input=out, label=label, k=5)
+            t_start_back = time.time()
 
-        optimizer = create_optimizer(args=args, parameter_list=net.parameters())
+            loss_data.append(avg_loss.numpy())
+            avg_loss.backward()
+            t_end_back = time.time()
+            optimizer.minimize(avg_loss)
+            net.clear_gradients()
 
-        # 3. reader
-        train_dataset = FakeDataSet(
-            args.batch_size, args.class_dim, args.train_step
-        )
-        BatchSampler = paddle.io.BatchSampler(
-            train_dataset, batch_size=args.batch_size
-        )
-        train_data_loader = paddle.io.DataLoader(
-            train_dataset, batch_sampler=BatchSampler
-        )
-
-        # 4. train loop
-        loss_data = []
-        for eop in range(args.num_epochs):
-            net.train()
-            batch_id = 0
-            t_last = 0
-            for img, label in train_data_loader():
-                t1 = time.time()
-                t_start = time.time()
-                out = net(img)
-
-                t_end = time.time()
-                softmax_out = paddle.nn.functional.softmax(out)
-                loss = paddle.nn.functional.cross_entropy(
-                    input=softmax_out,
-                    label=label,
-                    reduction='none',
-                    use_softmax=False,
-                )
-                avg_loss = paddle.mean(x=loss)
-                acc_top1 = paddle.static.accuracy(input=out, label=label, k=1)
-                acc_top5 = paddle.static.accuracy(input=out, label=label, k=5)
-                t_start_back = time.time()
-
-                loss_data.append(avg_loss.numpy())
-                avg_loss.backward()
-                t_end_back = time.time()
-                optimizer.minimize(avg_loss)
-                net.clear_gradients()
-
-                t2 = time.time()
-                train_batch_elapse = t2 - t1
-                if batch_id % args.print_step == 0:
-                    print(
-                        "epoch id: %d, batch step: %d,  avg_loss %0.5f acc_top1 %0.5f acc_top5 %0.5f %2.4f sec net_t:%2.4f back_t:%2.4f read_t:%2.4f"
-                        % (
-                            eop,
-                            batch_id,
-                            avg_loss.numpy(),
-                            acc_top1.numpy(),
-                            acc_top5.numpy(),
-                            train_batch_elapse,
-                            t_end - t_start,
-                            t_end_back - t_start_back,
-                            t1 - t_last,
-                        )
+            t2 = time.time()
+            train_batch_elapse = t2 - t1
+            if batch_id % args.print_step == 0:
+                print(
+                    "epoch id: %d, batch step: %d,  avg_loss %0.5f acc_top1 %0.5f acc_top5 %0.5f %2.4f sec net_t:%2.4f back_t:%2.4f read_t:%2.4f"
+                    % (
+                        eop,
+                        batch_id,
+                        avg_loss.numpy(),
+                        acc_top1.numpy(),
+                        acc_top5.numpy(),
+                        train_batch_elapse,
+                        t_end - t_start,
+                        t_end_back - t_start_back,
+                        t1 - t_last,
                     )
-                batch_id += 1
-                t_last = time.time()
-                if batch_id > args.train_step:
-                    if to_static:
-                        paddle.jit.save(net, args.model_save_prefix)
-                    else:
-                        paddle.save(
-                            net.state_dict(),
-                            args.dy_state_dict_save_path + '.pdparams',
-                        )
-                    break
+                )
+            batch_id += 1
+            t_last = time.time()
+            if batch_id > args.train_step:
+                if to_static:
+                    paddle.jit.save(net, args.model_save_prefix)
+                else:
+                    paddle.save(
+                        net.state_dict(),
+                        args.dy_state_dict_save_path + '.pdparams',
+                    )
+                break
 
     return np.array(loss_data)
 
@@ -618,34 +622,37 @@ def predict_static(args, data):
         feed={feed_target_names[0]: data},
         fetch_list=fetch_targets,
     )
+    paddle.disable_static()
     return pred_res[0]
 
 
 def predict_dygraph(args, data):
     paddle.jit.enable_to_static(False)
-    with base.dygraph.guard(args.place):
-        if args.model == "MobileNetV1":
-            model = MobileNetV1(class_dim=args.class_dim, scale=1.0)
-        elif args.model == "MobileNetV2":
-            model = MobileNetV2(class_dim=args.class_dim, scale=1.0)
-        # load dygraph trained parameters
-        model_dict = paddle.load(args.dy_state_dict_save_path + '.pdparams')
-        model.set_dict(model_dict)
-        model.eval()
+    if args.model == "MobileNetV1":
+        model = paddle.jit.to_static(
+            MobileNetV1(class_dim=args.class_dim, scale=1.0)
+        )
+    elif args.model == "MobileNetV2":
+        model = paddle.jit.to_static(
+            MobileNetV2(class_dim=args.class_dim, scale=1.0)
+        )
+    # load dygraph trained parameters
+    model_dict = paddle.load(args.dy_state_dict_save_path + '.pdparams')
+    model.set_dict(model_dict)
+    model.eval()
 
-        pred_res = model(base.dygraph.to_variable(data))
+    pred_res = model(base.dygraph.to_variable(data))
 
-        return pred_res.numpy()
+    return pred_res.numpy()
 
 
 def predict_dygraph_jit(args, data):
-    with base.dygraph.guard(args.place):
-        model = paddle.jit.load(args.model_save_prefix)
-        model.eval()
+    model = paddle.jit.load(args.model_save_prefix)
+    model.eval()
 
-        pred_res = model(data)
+    pred_res = model(data)
 
-        return pred_res.numpy()
+    return pred_res.numpy()
 
 
 def predict_analysis_inference(args, data):

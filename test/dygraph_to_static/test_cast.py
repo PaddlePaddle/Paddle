@@ -18,7 +18,6 @@ import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir,
     test_legacy_and_pir_exe_and_pir_api,
 )
 
@@ -188,7 +187,7 @@ class TestNotVarCast(TestCastBase):
         self.func = paddle.jit.to_static(full_graph=True)(test_not_var_cast)
 
     @test_ast_only
-    @test_legacy_and_pir
+    @test_legacy_and_pir_exe_and_pir_api
     def test_cast_result(self):
         self.set_func()
         # breakpoint()
