@@ -1591,9 +1591,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, A tensor with the contents of the input tensor, with input \
-                  axes flattened by indicated start axis and end axis. \
-                  A Tensor with data type same as input x.
+        Tensor, A tensor with the contents of the input tensor, whose input axes are flattened by indicated :attr:`start_axis` and :attr:`end_axis`, and data type is the same as input :attr:`x`.
 
     Examples:
 
@@ -3857,6 +3855,8 @@ def reshape(x, shape, name=None):
                 'int64',
                 'bool',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'reshape',
         )
