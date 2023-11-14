@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/quant_linear_fuse_pass.h"
-
-#include <string>
-
+#include "paddle/fluid/framework/ir/quantize_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
@@ -217,21 +215,34 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
     // Get in_num_col_dims
     int in_num_col_dims = quantize_linear_op_x->Var()->GetShape().size() - 1;
 
-    // Get weight scale, because although the input weight is of type float,
-    // the value stored inside it is of type int8, so we do not need to
-    // quantize weight in quant linear kernel anymore.
-    float weight_scale = 1.0f;
-
     // because quant_linear kernel need weight's type be int8
     // convert weight fp32 --> int8
     auto* weight_tensor = scope->FindVar(weight_dequantize_linear_op_x->Name())
                               ->GetMutable<phi::DenseTensor>();
     ConvertTensorType<float, int8_t>(weight_tensor);
 
+    // Get scale_weights
+    const phi::DenseTensor& weight_scale_tensor =
+        scope->FindVar(weight_dequantize_linear_op_scale->Name())
+            ->Get<phi::DenseTensor>();
+    PADDLE_ENFORCE_EQ(
+        paddle::platform::is_cpu_place(weight_scale_tensor.place()),
+        true,
+        platform::errors::InvalidArgument(
+            "weight_scale tensor's place should be CPU."));
+    const float* weight_scale_data = weight_scale_tensor.data<float>();
+
+    std::vector<float> scale_weights(weight_tensor->dims()[1],
+                                     weight_scale_data[0]);
+
+    auto* bias_tensor =
+        scope->FindVar(bias->Name())->GetMutable<phi::DenseTensor>();
+    bias_tensor->Resize(phi::make_dim(1, bias->Var()->GetShape()[0]));
+
     Node* relu = nullptr;
     Node* relu_out = nullptr;
     if (with_relu) {
-      GET_IR_NODE_FROM_SUBGRAPH(tmp_relu, relu, pattern)
+      GET_IR_NODE_FROM_SUBGRAPH(tmp_relu, relu, pattern);
       GET_IR_NODE_FROM_SUBGRAPH(tmp_relu_out, relu_out, pattern);
       relu = tmp_relu;
       relu_out = tmp_relu_out;
@@ -253,7 +264,7 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
 
     // Set attributes of quant_linear
     desc.SetAttr("scale_in", input_scale);
-    desc.SetAttr("scale_weight", weight_scale);
+    desc.SetAttr("scale_weights", scale_weights);
     desc.SetAttr("in_num_col_dims", in_num_col_dims);
 
     std::string activation_type = with_relu ? "relu" : "";
@@ -308,3 +319,12 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
 
 REGISTER_PASS(quant_linear_fuse_pass,
               paddle::framework::ir::QuantLinearFusePass);
+REGISTER_PASS_CAPABILITY(quant_linear_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("matmul_v2", 0)
+            .LE("elementwise_add", 1)
+            .EQ("relu", 0)
+            .EQ("quantize_linear", 0)
+            .EQ("dequantize_linear", 0)
+            .EQ("quant_linear", 0));

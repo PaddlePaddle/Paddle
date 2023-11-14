@@ -17,7 +17,7 @@ from functools import partial
 
 import hypothesis.strategies as st
 import numpy as np
-from auto_scan_test import IgnoreReasons, PassAutoScanTest
+from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 from paddle.base import core
@@ -56,43 +56,7 @@ class TestQuantLinearFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         # for gpu
         config = self.create_inference_config(use_gpu=True)
-        yield config, ["quant_linear"], (0.15, 0.15)
-
-    def add_ignore_pass_case(self):
-        # Here we put some skip rules to avoid known bugs
-        def teller1(program_config, predictor_config):
-            # shape of bias should be [1, mul_y_shape[-1]] or [mul_y_shape[-1]]
-            y_shape = list(program_config.weights["input_weight"].shape)
-            bias_shape = list(program_config.weights["bias"].shape)
-
-            if predictor_config.tensorrt_engine_enabled():
-                # TensorRT cann't handle all the situation of elementwise_add
-                # disable it until this problem fixed
-                predictor_config.exp_disable_tensorrt_ops(["elementwise_add"])
-
-            if bias_shape != [y_shape[-1]] and bias_shape != [1, y_shape[-1]]:
-                return True
-            return False
-
-        def teller2(program_config, predictor_config):
-            # TODO fuse has bug while axis != -1
-            axis = program_config.ops[4].attrs["axis"]
-            input_num_col_dims = len(program_config.inputs["input_x"].shape) - 1
-            if axis != -1 and axis != input_num_col_dims:
-                return True
-            return False
-
-        self.add_ignore_check_case(
-            teller1,
-            IgnoreReasons.PASS_ACCURACY_ERROR,
-            "The pass output has diff while shape of bias is not [out_size] or [1, out_size].",
-        )
-
-        self.add_ignore_check_case(
-            teller2,
-            IgnoreReasons.PASS_ACCURACY_ERROR,
-            "The pass output has diff while axis of elementwise_add is not -1.",
-        )
+        yield config, ["quant_linear"], (0.015, 0.015)
 
     def is_program_valid(self, prog_config):
         input_num_col_dims = len(prog_config.inputs["input_x"].shape) - 1
@@ -105,32 +69,83 @@ class TestQuantLinearFusePass(PassAutoScanTest):
         return True
 
     def sample_program_config(self, draw):
-        def generate_scale():
-            return np.zeros(input_shape[-1]).astype(np.float32) + 0.2521234002
-
-        def generate_zeropoint():
-            return np.zeros(input_shape[-1]).astype(np.float32)
-
-        # 1. Generate shape of input:X of matmul_v2
+        # 1. Generate input:X of matmul_v2
         input_shape = draw(
             st.lists(
                 st.integers(min_value=1, max_value=4), min_size=2, max_size=4
             )
         )
-        # 2. align with the behavior of the input_num_col_dims attr of quant_linear
-        input_num_col_dims = len(input_shape) - 1
 
-        # 3. Generate legal shape of input:Y of matmul_v2
+        input_x = np.random.random(input_shape).astype(np.float32)
+
+        def generate_input_x():
+            return input_x
+
+        # 2. Genearate quant dequant scale and zeropoint
+        def generate_input_scale():
+            scale = 1.0 / np.max(input_x)
+            return np.full(input_shape[-1], scale).astype(np.float32)
+
+        def generate_dequant_scale():
+            scale = np.max(input_x)
+            return np.full(input_shape[-1], scale).astype(np.float32)
+
+        def generate_zeropoint():
+            return np.zeros(input_shape[-1]).astype(np.float32)
+
+        # 3. Generate shape of input:Y of matmul_v2
         weight_shape = draw(
             st.lists(
                 st.integers(min_value=1, max_value=8), min_size=2, max_size=2
             )
         )
+        # follow the behavior of the input_num_col_dims attr of quant_linear
+        input_num_col_dims = len(input_shape) - 1
         weight_shape[0] = int(np.prod(input_shape[input_num_col_dims:]))
-        # 4. Generate shape of Output of matmul_v2
+
+        def round_array_with_ties_to_even(x):
+            xLower = np.floor(x)
+            xUpper = np.ceil(x)
+            dLower = x - xLower
+            dUpper = xUpper - x
+            x[(dLower == dUpper) & (xLower % 2 == 0)] = xLower[
+                (dLower == dUpper) & (xLower % 2 == 0)
+            ]
+            x[(dLower == dUpper) & (xLower % 2 != 0)] = xUpper[
+                (dLower == dUpper) & (xLower % 2 != 0)
+            ]
+            x[dLower < dUpper] = xLower[dLower < dUpper]
+            x[dLower > dUpper] = xUpper[dLower > dUpper]
+
+        def round_array(x):
+            x[x > 0] = np.ceil(x[x > 0])
+            x[x <= 0] = np.floor(x[x <= 0])
+
+        weights = np.random.random(weight_shape).astype("float32")
+
+        # 4. Generate the weight which is float type but stores int8 value(align with the behavior of PaddleSlim)
+        def generate_input_weights(
+            quant_round_type=0, quant_max_bound=127, quant_min_bound=-127
+        ):
+            scale_weights = 1.0 / np.max(weights, axis=0)
+            quant_weights = quant_max_bound * scale_weights * weights
+            if quant_round_type == 0:
+                round_array_with_ties_to_even(quant_weights)
+            else:
+                round_array(quant_weights)
+            quant_weights[quant_weights > quant_max_bound] = quant_max_bound
+            quant_weights[quant_weights < quant_min_bound] = quant_min_bound
+            return quant_weights
+
+        # 5. Generate the  weight_dequant_scale
+        def generate_weight_dequant_scale():
+            return np.full(weight_shape[0], np.max(weights)).astype(np.float32)
+
+        # 6. Generate shape of Output of matmul_v2
         mul_out_shape = input_shape[:input_num_col_dims] + weight_shape[1:]
 
-        bias_shape = [mul_out_shape[-1]]
+        # 7. Generate the bias shape
+        bias_shape = [weight_shape[-1]]
 
         has_relu = draw(st.booleans())
 
@@ -142,7 +157,7 @@ class TestQuantLinearFusePass(PassAutoScanTest):
                 "ZeroPoint": ["quant_zero_point"],
             },
             outputs={"Y": ["quantize_linear_op_out"]},
-            attrs={"quant_axis": -1},
+            attrs={"quant_axis": -1, "bit_length": 8, "round_type": 0},
         )
 
         dequantize_linear_op = OpConfig(
@@ -153,7 +168,7 @@ class TestQuantLinearFusePass(PassAutoScanTest):
                 "ZeroPoint": ["dequant_zero_point"],
             },
             outputs={"Y": ["dequantize_linear_op_out"]},
-            attrs={"quant_axis": -1},
+            attrs={"quant_axis": -1, "bit_length": 8, "round_type": 0},
         )
 
         weight_dequantize_linear_op = OpConfig(
@@ -164,7 +179,7 @@ class TestQuantLinearFusePass(PassAutoScanTest):
                 "ZeroPoint": ["weight_dequant_zero_point"],
             },
             outputs={"Y": ["weight_dequantize_linear_op_out"]},
-            attrs={"weight_dequant_axis": 0},
+            attrs={"weight_dequant_axis": -1, "bit_length": 8, "round_type": 0},
         )
 
         matmul_v2_op = OpConfig(
@@ -203,10 +218,14 @@ class TestQuantLinearFusePass(PassAutoScanTest):
             weights={
                 "input_weight": TensorConfig(shape=weight_shape),
                 "bias": TensorConfig(shape=bias_shape),
-                "quant_scale": TensorConfig(data_gen=partial(generate_scale)),
-                "dequant_scale": TensorConfig(data_gen=partial(generate_scale)),
+                "quant_scale": TensorConfig(
+                    data_gen=partial(generate_input_scale)
+                ),
+                "dequant_scale": TensorConfig(
+                    data_gen=partial(generate_dequant_scale)
+                ),
                 "weight_dequant_scale": TensorConfig(
-                    data_gen=partial(generate_scale)
+                    data_gen=partial(generate_weight_dequant_scale)
                 ),
                 "quant_zero_point": TensorConfig(
                     data_gen=partial(generate_zeropoint)
@@ -219,7 +238,7 @@ class TestQuantLinearFusePass(PassAutoScanTest):
                 ),
             },
             inputs={
-                "input_x": TensorConfig(shape=input_shape),
+                "input_x": TensorConfig(data_gen=partial(generate_input_x))
             },
             outputs=ops[-1].outputs["Out"],
         )
