@@ -1687,33 +1687,32 @@ void LayerNormActXPUInferMeta(const MetaTensor& x,
   y->set_layout(x.layout());
 }
 
-void FusedScaleBiasReluConvBnstatsInferMeta(
-    const MetaTensor& x,
-    const MetaTensor& w,
-    const MetaTensor& scale,
-    const MetaTensor& bias,
-    const MetaTensor& bn_scale,
-    const MetaTensor& bn_bias,
-    const MetaTensor& input_running_mean,
-    const MetaTensor& input_running_var,
-    const std::vector<int>& paddings,
-    const std::vector<int>& dilations,
-    const std::vector<int>& strides,
-    const std::string& padding_algorithm,
-    int groups,
-    const std::string& data_format,
-    float momentum,
-    float epsilon,
-    bool fuse_prologue,
-    bool exhaustive_search,
-    int64_t accumulation_count,
-    MetaTensor* out,
-    MetaTensor* out_running_mean,
-    MetaTensor* out_running_var,
-    MetaTensor* saved_mean,
-    MetaTensor* saved_var,
-    MetaTensor* eq_scale,
-    MetaTensor* eq_bias) {
+void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
+                                       const MetaTensor& w,
+                                       const MetaTensor& scale,
+                                       const MetaTensor& bias,
+                                       const MetaTensor& bn_scale,
+                                       const MetaTensor& bn_bias,
+                                       const MetaTensor& input_running_mean,
+                                       const MetaTensor& input_running_var,
+                                       const std::vector<int>& paddings,
+                                       const std::vector<int>& dilations,
+                                       const std::vector<int>& strides,
+                                       const std::string& padding_algorithm,
+                                       int groups,
+                                       const std::string& data_format,
+                                       float momentum,
+                                       float epsilon,
+                                       bool fuse_prologue,
+                                       bool exhaustive_search,
+                                       int64_t accumulation_count,
+                                       MetaTensor* out,
+                                       MetaTensor* out_running_mean,
+                                       MetaTensor* out_running_var,
+                                       MetaTensor* saved_mean,
+                                       MetaTensor* saved_var,
+                                       MetaTensor* eq_scale,
+                                       MetaTensor* eq_bias) {
   auto in_dims = x.dims();
   auto filter_dims = w.dims();
   // do some checks
@@ -1721,7 +1720,7 @@ void FusedScaleBiasReluConvBnstatsInferMeta(
       in_dims.size(),
       4,
       phi::errors::InvalidArgument(
-          "The input of Op(FusedScaleBiasReluConvBnstats) should be a 4-D "
+          "The input of Op(FusedScaleBiasReluConvBn) should be a 4-D "
           "Tensor. But "
           "received: input's dimension is %u, input's shape is [%s].",
           in_dims.size(),
@@ -1732,7 +1731,7 @@ void FusedScaleBiasReluConvBnstatsInferMeta(
       filter_dims.size(),
       phi::errors::InvalidArgument(
           "The input's dimension and filter's dimension of "
-          "Op(FusedScaleBiasReluConvBnstats) should be equal. But received: "
+          "Op(FusedScaleBiasReluConvBn) should be equal. But received: "
           "the input's"
           " shape is [%s], "
           "the input's dimension is %d; the filter's shape is [%s],  "
@@ -1747,7 +1746,7 @@ void FusedScaleBiasReluConvBnstatsInferMeta(
       data_format,
       "NHWC",
       phi::errors::InvalidArgument(
-          "Operator(FusedScaleBiasReluConvBnstats) only supports data format "
+          "Operator(FusedScaleBiasReluConvBn) only supports data format "
           "of "
           "channel last (NHWC) now. But recieved: data_format = '%s'.",
           data_format));
@@ -1774,7 +1773,7 @@ void FusedScaleBiasReluConvBnstatsInferMeta(
       filter_dims[1] * groups,
       phi::errors::InvalidArgument(
           "The number of input's channels should be equal to filter's channels "
-          "* groups for Op(FusedScaleBiasReluConvBnstats). But received: the "
+          "* groups for Op(FusedScaleBiasReluConvBn). But received: the "
           "input's"
           " channels is %d, "
           "the input's shape is [%s]; the filter's channels is %d, the "
@@ -1819,6 +1818,32 @@ void FusedScaleBiasReluConvBnstatsInferMeta(
   saved_var->set_dims(c_dims);
   eq_scale->set_dims(c_dims);
   eq_bias->set_dims(c_dims);
+}
+
+void FusedScaleBiasAddReluInferMeta(const MetaTensor& x1,
+                                    const MetaTensor& scale1,
+                                    const MetaTensor& bias1,
+                                    const MetaTensor& x2,
+                                    const MetaTensor& scale2,
+                                    const MetaTensor& bias2,
+                                    bool fuse_dual,
+                                    bool exhaustive_search,
+                                    MetaTensor* y) {
+  // check optional inputs
+  if (fuse_dual) {
+    bool has_scale2 = !!scale2;
+    bool has_bias2 = !!bias2;
+    PADDLE_ENFORCE(has_scale2 && has_bias2,
+                   phi::errors::InvalidArgument(
+                       "Argument scale2 and bias2 should be provided when "
+                       "fuse_dual is set, but got has_scale2=%d, has_bias2=%d, "
+                       "fuse_dual=%d.",
+                       has_scale2,
+                       has_bias2,
+                       fuse_dual));
+  }
+  // set output dims
+  y->set_dims(x1.dims());
 }
 
 void SqueezeExcitationInferMeta(const MetaTensor& x,

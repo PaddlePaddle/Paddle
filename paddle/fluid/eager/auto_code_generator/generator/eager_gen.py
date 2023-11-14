@@ -826,7 +826,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         max_grad_tensor_position = -1
         for _, (_, _, pos) in backward_grad_inputs_map.items():
             assert pos > max_fwd_input_position, AssertMessage(
-                pos, max_grad_tensor_position
+                pos, max_fwd_input_position
             )
             max_grad_tensor_position = max(max_grad_tensor_position, pos)
 
