@@ -3724,4 +3724,3 @@ def cdist(
     return paddle.linalg.norm(
         x[..., None, :] - y[..., None, :, :], p=p, axis=-1
     )
- 
