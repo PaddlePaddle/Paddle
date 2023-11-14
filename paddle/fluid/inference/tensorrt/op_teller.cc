@@ -3176,18 +3176,20 @@ struct CustomGenericPluginTeller : public Teller {
       auto& trt_supports_formate_fn =
           OpMetaInfoHelper::GetTrtSupportsFormateFn(op_info);
       if (trt_supports_formate_fn == nullptr) {
-        VLOG(3) << op_type
-                << " has no trt supportsFormatCombination function, set with "
-                   "SetTrtSupportFormateFn.";
+        VLOG(3)
+            << op_type
+            << " has no trt supportsFormatCombination function. Please set by "
+               "SetTrtSupportFormateFn.";
         return false;
       }
       auto& trt_infer_shape_fn = OpMetaInfoHelper::GetTrtInferShapeFn(op_info);
       if (trt_infer_shape_fn == nullptr) {
         VLOG(3) << op_type
-                << " has no trt getOutputDimensions function, set with "
+                << " has no trt getOutputDimensions function. Please set by "
                    "SetTrtInferShapeFn.";
         return false;
       }
+      return true;
     }
     VLOG(3) << op_type << " has no meta info";
     return false;
