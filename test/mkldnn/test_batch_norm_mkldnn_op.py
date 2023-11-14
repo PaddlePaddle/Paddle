@@ -136,6 +136,8 @@ class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
         place = core.CPUPlace()
         data_format = "NCHW"
         self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
+        self.check_with_place_without_scale_and_bias(
+                    place, data_format, self.dtype, [2, 3, 4, 5])
 
 
 class TestMKLDNNBatchNormOpInference_NHWC(TestMKLDNNBatchNormOpInference):
@@ -143,6 +145,8 @@ class TestMKLDNNBatchNormOpInference_NHWC(TestMKLDNNBatchNormOpInference):
         place = core.CPUPlace()
         data_format = "NHWC"
         self.check_with_place(place, data_format, self.dtype, [2, 4, 5, 3])
+        self.check_with_place_without_scale_and_bias(
+                    place, data_format, self.dtype, [2, 4, 5, 3])
 
 
 class TestMKLDNNBatchNormOpWithReluInference(TestBatchNormOpInference):
