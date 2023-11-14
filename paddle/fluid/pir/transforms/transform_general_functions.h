@@ -65,8 +65,7 @@ pir::Type GetDataTypeFromValue(pir::Value value);
 Operation* GetDefiningOpForInput(Operation* op, uint32_t index);
 
 /**
- * @brief Get operations that is the first to use the specific output of the
- * operation.
+ * @brief Get operations that use the specific output of the operation.
  *
  * @param Operation* pointer to an operation
  * @param uint32_t index of result of the operation
