@@ -308,7 +308,7 @@ def get_device():
 
     """
     device = ''
-    place = framework.current_expected_place()
+    place = framework._current_expected_place_()
     if isinstance(place, core.CPUPlace):
         device = 'cpu'
     elif isinstance(place, core.CUDAPlace):
