@@ -14,13 +14,14 @@
 
 import unittest
 
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir_api
 
 from paddle.jit.dy2static.utils import ast_to_source_code
 from paddle.jit.dy2static.variable_trans_func import create_fill_constant_node
 
 
 class TestVariableTransFunc(Dy2StTestBase):
+    @test_legacy_and_pir_api
     def test_create_fill_constant_node(self):
         node = create_fill_constant_node("a", 1.0)
         source = "a = paddle.full(shape=[1], dtype='float64', fill_value=1.0, name='a')"
