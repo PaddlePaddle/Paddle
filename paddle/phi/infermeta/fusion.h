@@ -552,7 +552,7 @@ void FusedScaleBiasAddReluInferMeta(const MetaTensor& x1,
                                     const MetaTensor& bias2,
                                     bool fuse_prologue,
                                     bool exhaustive_search,
-                                    MetaTensor* y);
+                                    MetaTensor* out);
 
 void SqueezeExcitationInferMeta(const MetaTensor& x,
                                 const MetaTensor& filter,

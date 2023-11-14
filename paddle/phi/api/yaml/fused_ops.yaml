@@ -252,7 +252,7 @@
 - op : fused_scale_bias_add_relu
   args : (Tensor x1, Tensor scale1, Tensor bias1, Tensor x2, Tensor scale2, Tensor bias2, bool fuse_dual, bool exhaustive_search)
   optional : scale2, bias2
-  output : Tensor(y)
+  output : Tensor(out)
   infer_meta :
     func : FusedScaleBiasAddReluInferMeta
   kernel :

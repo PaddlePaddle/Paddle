@@ -2112,7 +2112,7 @@ void FusedScaleBiasAddReluInferMeta(const MetaTensor& x1,
                                     const MetaTensor& bias2,
                                     bool fuse_dual,
                                     bool exhaustive_search,
-                                    MetaTensor* y) {
+                                    MetaTensor* out) {
   // check optional inputs
   if (fuse_dual) {
     bool has_scale2 = !!scale2;
@@ -2127,7 +2127,9 @@ void FusedScaleBiasAddReluInferMeta(const MetaTensor& x1,
                        fuse_dual));
   }
   // set output dims
-  y->set_dims(x1.dims());
+  out->set_dims(x1.dims());
+  out->set_dtype(x1.dtype());
+  out->set_layout(x1.layout());
 }
 
 void SqueezeExcitationInferMeta(const MetaTensor& x,
