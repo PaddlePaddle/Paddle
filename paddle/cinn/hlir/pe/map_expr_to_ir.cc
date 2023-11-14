@@ -22,6 +22,7 @@
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/map_expr_ctx.h"
 #include "paddle/cinn/adt/match.h"
+#include "paddle/cinn/adt/no_inline_translator.h"
 #include "paddle/cinn/adt/print.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
@@ -209,7 +210,9 @@ class MapExprToIrTranslator {
   }
 
   InlineStmt ConvertToInlineStmt(const InternalStmt& internal_stmt) const {
-    return InlineTranslator<MapStmt, OpCall, Tensor>::Call(internal_stmt);
+    using Translator = InlineTranslator<MapStmt, OpCall, Tensor>;
+    // using Translator = NoInlineTranslator<MapStmt, OpCall, Tensor>;
+    return Translator::Call(internal_stmt);
   }
 
   std::optional<ir::Expr> TranslateOpExprImpl(
