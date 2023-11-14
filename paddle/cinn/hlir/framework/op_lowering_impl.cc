@@ -186,11 +186,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
     bool apply_group_schedule,
     bool apply_pass,
     ScheduleDetermineFunction schedule_determine_func) {
-  if (FLAGS_cinn_enable_map_expr && FLAGS_cinn_enable_map_expr_schedule) {
-    apply_op_schedule = false;
-    apply_group_schedule = false;
-    apply_pass = true;
-  }
   // 1.Do compute, lower and schedule for each op.
   VLOG(3) << "group->fused_sub_groups.size() is : "
           << group->fused_sub_groups.size();
