@@ -1017,7 +1017,64 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
 
     if inplace:
         return _C_ops.fill_diagonal_tensor_(x, y, offset, dim1, dim2)
-    return _C_ops.fill_diagonal_tensor(x, y, offset, dim1, dim2)
+
+    if in_dynamic_mode():
+        return _C_ops.fill_diagonal_tensor(x, y, offset, dim1, dim2)
+    else:
+        check_variable_and_dtype(
+            x,
+            'X',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'uint16',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            'paddle.tensor.manipulation.fill_diagonal_tensor',
+        )
+        check_variable_and_dtype(
+            y,
+            'Y',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'uint16',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            'paddle.tensor.manipulation.fill_diagonal_tensor',
+        )
+        helper = LayerHelper('fill_diagonal_tensor', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='fill_diagonal_tensor',
+            inputs={
+                'X': x,
+                'Y': y,
+            },
+            outputs={'Out': out},
+            attrs={
+                'offset': offset,
+                'dim1': dim1,
+                'dim2': dim2,
+            },
+        )
+        return out
 
 
 def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
@@ -5812,98 +5869,4 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
                     [3., 1., 5.]])
 
     """
-    x_shape = x.shape
-    assert (
-        len(x_shape) >= 2
-    ), "Tensor x must be at least 2-dimensional in diagonal_scatter"
-    assert axis1 < len(x_shape) and axis1 >= -len(
-        x_shape
-    ), "axis1 is out of range in diagonal_scatter (expected to be in range of [-{}, {}), but got {})".format(
-        len(x_shape), len(x_shape), axis1
-    )
-    assert axis2 < len(x_shape) and axis2 >= -len(
-        x_shape
-    ), "axis2 is out of range in diagonal_scatter (expected to be in range of [-{}, {}), but got {})".format(
-        len(x_shape), len(x_shape), axis2
-    )
-
-    axis1 %= len(x_shape)
-    axis2 %= len(x_shape)
-    assert (
-        axis1 != axis2
-    ), "axis1 and axis2 should not be identical in diagonal_scatter, but received axis1 = {}, axis2 = {}".format(
-        axis1, axis2
-    )
-
-    predshape = []
-    for i in range(len(x_shape)):
-        if i != axis1 and i != axis2:
-            predshape.append(x_shape[i])
-    diaglen = min(
-        x_shape[axis1],
-        x_shape[axis1] + offset,
-        x_shape[axis2],
-        x_shape[axis2] - offset,
-    )
-    predshape.append(diaglen)
-    assert tuple(predshape) == tuple(
-        y.shape
-    ), f"y.shape should be {tuple(predshape)}, but received {tuple(y.shape)}"
-    if len(y.shape) == 1:
-        y = y.reshape([1, -1])
-
-    if in_dynamic_mode():
-        return _C_ops.fill_diagonal_tensor(x, y, offset, axis1, axis2)
-    else:
-        check_variable_and_dtype(
-            x,
-            'X',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'uint16',
-                'uint8',
-                'int8',
-                'int32',
-                'int64',
-                'bool',
-                'complex64',
-                'complex128',
-            ],
-            'paddle.tensor.manipulation.diagonal_scatter',
-        )
-        check_variable_and_dtype(
-            y,
-            'Y',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'uint16',
-                'uint8',
-                'int8',
-                'int32',
-                'int64',
-                'bool',
-                'complex64',
-                'complex128',
-            ],
-            'paddle.tensor.manipulation.diagonal_scatter',
-        )
-        helper = LayerHelper('diagonal_scatter', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='fill_diagonal_tensor',
-            inputs={
-                'X': x,
-                'Y': y,
-            },
-            outputs={'Out': out},
-            attrs={
-                'offset': offset,
-                'axis1': axis1,
-                'axis2': axis2,
-            },
-        )
-        return out
+    return fill_diagonal_tensor(x, y, offset, axis1, axis2, name)

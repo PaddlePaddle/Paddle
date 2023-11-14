@@ -154,6 +154,26 @@ class TensorFillDiagTensorFP16OP(TensorFillDiagTensor_Test):
         self.dtype = np.float16
 
 
+class TensorFillDiagTensorINT16OP(TensorFillDiagTensor_Test):
+    def setUp(self):
+        self.op_type = "fill_diagonal_tensor"
+        self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
+        self.init_kernel_type()
+        x = np.random.randint(0, 255, [10, 10]).astype(self.dtype)
+        y = np.random.randint(0, 255, [10]).astype(self.dtype)
+        dim1 = 0
+        dim2 = 1
+        offset = 0
+        out = fill_gt(x, y, offset, dim1, dim2)
+
+        self.inputs = {"X": x, "Y": y}
+        self.outputs = {'Out': out}
+        self.attrs = {"offset": offset, "dim1": dim1, "dim2": dim2}
+
+    def init_kernel_type(self):
+        self.dtype = np.int16
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),

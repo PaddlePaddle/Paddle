@@ -219,6 +219,16 @@ class TestDiagoalScatterInt8(TestDiagonalScatterAPI):
         self.axis2 = 1
 
 
+class TestDiagoalScatterInt16(TestDiagonalScatterAPI):
+    def set_args(self):
+        self.dtype = "int16"
+        self.x = np.random.randint(-128, 127, [10, 10]).astype(np.int16)
+        self.y = np.random.randint(-128, 127, [10]).astype(np.int16)
+        self.offset = 0
+        self.axis1 = 0
+        self.axis2 = 1
+
+
 class TestDiagoalScatterInt32(TestDiagonalScatterAPI):
     def set_args(self):
         self.dtype = "int32"
