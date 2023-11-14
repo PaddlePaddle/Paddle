@@ -33,8 +33,8 @@ Operation *Builder::Build(const std::vector<Value> &inputs,
 }
 
 Operation *Builder::Insert(Operation *op) {
-  if (insert_point_.first) {
-    insert_point_.first->insert(insert_point_.second, op);
+  if (insertion_point_.first) {
+    insertion_point_.first->insert(insertion_point_.second, op);
   } else {
     LOG(WARNING) << "Builder's Block is nullptr, insert failed.";
   }
