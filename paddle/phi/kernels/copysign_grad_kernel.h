@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
@@ -20,8 +19,8 @@
 namespace phi {
 template <typename T, typename Context>
 void CopySignGradKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& y,
-                   const DenseTensor& out_grad,
-                   DenseTensor* x_grad);
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& out_grad,
+                        DenseTensor* x_grad);
 }  // namespace  phi
