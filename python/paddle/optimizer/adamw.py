@@ -19,9 +19,9 @@ from collections.abc import Callable
 import paddle
 
 from .. import _C_ops
-from ..base import core, framework
-from ..base.dygraph import base as imperative_base
-from ..base.framework import Parameter, Variable
+from ..fluid import core, framework
+from ..fluid.dygraph import base as imperative_base
+from ..fluid.framework import Parameter, Variable
 from ..nn.clip import GradientClipBase
 from .lr import LRScheduler
 from .optimizer import Optimizer
