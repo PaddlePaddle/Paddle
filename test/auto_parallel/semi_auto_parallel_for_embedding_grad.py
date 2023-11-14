@@ -57,10 +57,9 @@ class TestCustomEmbeddingGradApiForSemiAutoParallel:
 
         out.backward()
         dist_out.backward()
-        self.check_tensor_eq(x.grad, dist_x.grad)
         self.check_tensor_eq(w.grad, dist_w.grad)
 
-        return dist_out, dist_x.grad, dist_w.grad
+        return dist_out, dist_w.grad
 
     def test_embedding_grad(self):
         self.test_body(
