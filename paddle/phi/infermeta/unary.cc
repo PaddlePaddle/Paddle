@@ -549,17 +549,17 @@ void CumScalarAxisInferMeta(const MetaTensor& x,
 
 void CumWithIndicesInferMeta(const MetaTensor& x,
                              int axis,
-                             int dtype,
+                             DataType dtype,
                              MetaTensor* out,
                              MetaTensor* indices) {
   auto x_dims = x.dims();
-  auto indices_type = phi::TransToPhiDataType(dtype);
   PADDLE_ENFORCE_EQ(
-      (indices_type == DataType::INT32 || indices_type == DataType::INT64),
+      (dtype == DataType::INT32 || dtype == DataType::INT64),
       true,
-      phi::errors::InvalidArgument("dtype of indices must be int32 or int64"));
+      phi::errors::InvalidArgument(
+          "dtype of indices must be DataType::INT32 or DataType::INT64"));
 
-  if (indices_type == DataType::INT32) {
+  if (dtype == DataType::INT32) {
     int _axis = 0;
     if (axis < 0) {
       _axis = axis + x_dims.size();
@@ -606,7 +606,7 @@ void CumWithIndicesInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   out->share_lod(x);
   indices->set_dims(x_dims);
-  indices->set_dtype(indices_type);
+  indices->set_dtype(dtype);
   indices->share_lod(x);
 }
 
@@ -4852,7 +4852,7 @@ void UniqueConsecutiveInferMeta(const MetaTensor& x,
                                 bool return_inverse,
                                 bool return_counts,
                                 const std::vector<int>& axis,
-                                int dtype,
+                                DataType dtype,
                                 MetaTensor* out,
                                 MetaTensor* index,
                                 MetaTensor* counts) {

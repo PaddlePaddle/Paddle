@@ -64,8 +64,14 @@ if(WIN32)
   target_link_libraries(paddle_inference_api phi)
 endif()
 
-set(inference_deps ${analysis_deps} paddle_inference_api analysis
-                   analysis_config naive_executor ${GLOB_PASS_LIB})
+set(inference_deps
+    ${analysis_deps}
+    paddle_inference_api
+    analysis
+    analysis_config
+    naive_executor
+    ${GLOB_PASS_LIB}
+    pir_transforms)
 
 if(WITH_GPU AND TENSORRT_FOUND)
   set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)

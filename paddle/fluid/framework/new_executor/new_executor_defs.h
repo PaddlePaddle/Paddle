@@ -26,6 +26,13 @@
 #include "paddle/fluid/platform/event.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/utils/rw_lock.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
+#endif
 
 #define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
 #define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
@@ -295,6 +302,13 @@ class Instruction {
   bool PreDefineContext() const { return pre_define_context_; }
 
   const OpFuncNode* OpFunc() const { return &op_func_node_; }
+
+  // record stream for gc
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  bool need_record_stream_for_gc_ = false;
+  gpuStream_t stream_{nullptr};
+  void UpdataRecordStreamForGcInfo();
+#endif
 
   bool can_use_infermeta_ctx_ = false;
 

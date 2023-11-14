@@ -22,7 +22,7 @@
 import math
 
 from paddle import _C_ops
-from paddle.framework import LayerHelper, in_dynamic_mode
+from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
 
 def variable_length_memory_efficient_attention(
@@ -93,7 +93,7 @@ def variable_length_memory_efficient_attention(
         head_size = query.shape[3]
         scale = float(1.0 / math.sqrt(head_size))
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.variable_length_memory_efficient_attention(
             query, key, value, seq_lens, kv_seq_lens, mask, scale, causal
         )
