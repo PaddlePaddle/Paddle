@@ -52,10 +52,8 @@ void SetVariable(Scope* scope,
           std::to_string(target_var_type_id) + std::string(") ") +
           std::string("is not a phi::DenseTensor (typeid=") +
           std::to_string(dense_tensor_type_id) + std::string(") ") +
-          std::string(
-              "and other variable types are currently not supported by "
-              "SetVariable().");
-      PADDLE_THROW(phi::errors::Unimplemented(err_msg));
+          std::string("but here you tried to convert its type. Aborted.");
+      PADDLE_THROW(phi::errors::InvalidArgument(err_msg));
     } else {
       // it is a DenseTensor, everything is fine, just need to update its value.
       target_var->Clear();
