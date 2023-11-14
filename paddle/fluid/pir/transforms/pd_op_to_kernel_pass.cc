@@ -282,6 +282,57 @@ std::tuple<phi::Backend, phi::DataLayout> parse_kernel_info(pir::Type type) {
   return {backend, layout};
 }
 
+template <class IrType1, class IrType2>
+static pir::Type create_type(pir::Type type,
+                             const phi::Place& place,
+                             pir::Type out_dtype,
+                             pir::IrContext* ctx) {
+  auto input_type = type.dyn_cast<IrType1>();
+  return IrType2::get(ctx,
+                      place,
+                      out_dtype,
+                      input_type.dims(),
+                      input_type.data_layout(),
+                      input_type.lod(),
+                      input_type.offset());
+}
+
+static pir::Type BuildDtypeTransferOutputType(pir::Type type,
+                                              const phi::Place& place,
+                                              phi::DataType data_dtype,
+                                              pir::IrContext* ctx) {
+  if (type.isa<AllocatedDenseTensorType>()) {
+    auto out_dtype = TransToIrDataType(data_dtype, ctx);
+    return create_type<AllocatedDenseTensorType, AllocatedDenseTensorType>(
+        type, place, out_dtype, ctx);
+  } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+    auto out_dtype = TransToIrDataType(data_dtype, ctx);
+    return create_type<AllocatedSelectedRowsType, AllocatedSelectedRowsType>(
+        type, place, out_dtype, ctx);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "BuildOutputType only support DenseTensorType and SelectedRowsType"));
+  }
+}
+
+static pir::Type BuildOutputType(pir::Type type,
+                                 const phi::Place& place,
+                                 phi::DataType data_type,
+                                 pir::IrContext* ctx) {
+  if (type.isa<DenseTensorType>()) {
+    auto out_dtype = type.dyn_cast<DenseTensorType>().dtype();
+    return create_type<DenseTensorType, AllocatedDenseTensorType>(
+        type, place, out_dtype, ctx);
+  } else if (type.isa<SelectedRowsType>()) {
+    auto out_dtype = type.dyn_cast<SelectedRowsType>().dtype();
+    return create_type<SelectedRowsType, AllocatedSelectedRowsType>(
+        type, place, out_dtype, ctx);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "BuildOutputType only support DenseTensorType and SelectedRowsType"));
+  }
+}
+
 pir::OpResult AddDtypeTransferOp(pir::Value in,
                                  pir::Block* block,
                                  const phi::KernelKey& kernel_key,
@@ -337,65 +388,6 @@ pir::OpResult AddDtypeTransferOp(pir::Value in,
   block->push_back(op);
   pir::OpResult new_in = op->result(0);
   return new_in;
-}
-
-template <class IrType1, IrType2>
-static pir::Type create_type(pir::Type type,
-                             const phi::Place& place,
-                             pir::Type out_dtype,
-                             pir::IrContext* ctx) {
-  auto input_type = type.dyn_cast<IrType1>();
-  return IrType2::get(ctx,
-                      place,
-                      out_dtype,
-                      input_type.dims(),
-                      input_type.data_layout(),
-                      input_type.lod(),
-                      input_type.offset());
-}
-
-static pir::Type BuildDtypeTransferOutputType(pir::Type type,
-                                              const phi::Place& place,
-                                              phi::DataType data_dtype,
-                                              pir::IrContext* ctx) {
-  if (type.isa<AllocatedDenseTensorType>()) {
-    auto out_dtype = TransToIrDataType(data_dtype, ctx);
-    return create_type<AllocatedDenseTensorType, AllocatedDenseTensorType>(
-        type, place, out_dtype, ctx);
-  } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
-    auto out_dtype = TransToIrDataType(data_dtype, ctx);
-    return create_type<AllocatedSelectedRowsType, AllocatedSelectedRowsType>(
-        type, place, out_dtype, ctx);
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "BuildOutputType only support DenseTensorType and SelectedRowsType"));
-  }
-}
-
-static pir::Type BuildOutputType(pir::Type type,
-                                 const phi::Place& place,
-                                 phi::DataType data_type,
-                                 pir::IrContext* ctx) {
-  if (type.isa<DenseTensorType>()) {
-    auto out_dtype = type.dyn_cast<DenseTensorType>().dtype();
-    return create_type<DenseTensorType, AllocatedDenseTensorType>(
-        type, place, out_dtype, ctx);
-  } else if (type.isa<SelectedRowsType>()) {
-    auto out_dtype = type.dyn_cast<SelectedRowsType>().dtype();
-    return create_type<SelectedRowsType, AllocatedSelectedRowsType>(
-        type, place, out_dtype, ctx);
-  } else if (type.isa<dialect::DenseTensorArrayType>()) {
-    auto dense_tensor_array_type =
-        type.dyn_cast<dialect::DenseTensorArrayType>();
-    return dialect::AllocatedDenseTensorArrayType::get(
-        ctx,
-        place,
-        dense_tensor_array_type.dtype(),
-        dense_tensor_array_type.data_layout());
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "BuildOutputType only support DenseTensorType and SelectedRowsType"));
-  }
 }
 
 static phi::DataType GetKernelDtypeByYaml(
