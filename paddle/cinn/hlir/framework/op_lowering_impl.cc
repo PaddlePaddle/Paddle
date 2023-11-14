@@ -115,8 +115,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   std::vector<ir::Tensor> group_func_arg_tensors;
   std::unordered_map<std::string, ir::Tensor> tensor_map;
   bool do_op_schedule = apply_group_schedule || apply_op_schedule;
-  std::vector<ir::Expr> func_bodies = LowerOps(group,
-                                               nodes,
+  std::vector<ir::Expr> func_bodies = LowerOps(nodes,
                                                do_op_schedule,
                                                schedule_determine_func,
                                                &group_func_arg_tensors,
@@ -319,7 +318,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 }
 
 std::vector<ir::Expr> OpLowererImpl::LowerOps(
-    const GroupPtr& group,
     const std::vector<Node*>& nodes,
     bool apply_op_schedule,
     ScheduleDetermineFunction schedule_determine_func,
@@ -351,7 +349,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
 
     // 2.Perform the lower process of Op
     std::vector<ir::LoweredFunc> funcs =
-        DoOpLower(group, op_impl, node, tensor_map, &op_func_arg_tensors);
+        DoOpLower(op_impl, node, tensor_map, &op_func_arg_tensors);
 
     if (apply_op_schedule && (this->*schedule_determine_func)(node)) {
       // 3.Perform the schedule of Op
@@ -367,7 +365,6 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
 }
 
 std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
-    const GroupPtr& group,
     std::shared_ptr<hlir::framework::OpImpl> op_impl,
     Node* node,
     std::unordered_map<std::string, ir::Tensor>* tensor_map,

@@ -186,7 +186,7 @@ bool OpLowererImpl::NonFusibleScheduleDetermineFunction(::pir::Operation* op) {
   return true;
 }
 
-oid OpLowererImpl::LowerOpsForMapExpr(
+void OpLowererImpl::LowerOpsForMapExpr(
     const GroupPtr& group,
     const std::vector<::pir::Operation*>& ops,
     std::vector<ir::Tensor>* group_func_arg_tensors,

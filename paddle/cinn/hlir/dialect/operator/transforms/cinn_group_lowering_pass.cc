@@ -152,7 +152,9 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         auto ir_compiler = std::make_shared<cinn::hlir::framework::PirCompiler>(
             *program, target, scope);
         hlir::framework::PirCompilerManager::Instance().insert(ir_compiler);
-        adt::TryGenerateMapExprFromGroup(group);
+        if (FLAGS_cinn_enable_map_expr) {
+          adt::TryGenerateMapExprFromGroup(group);
+        }
         auto group1 =
             std::make_shared<cinn::hlir::framework::pir::Group>(group->ops);
         if (FLAGS_cinn_enable_map_expr) {
