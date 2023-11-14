@@ -22,6 +22,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 # Situation 1: shape is a list(without tensor)
@@ -47,14 +48,14 @@ class TestExpandV2OpRank1(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
@@ -136,10 +137,10 @@ class TestExpandV2OpRank1_tensor_attr(OpTest):
         self.infer_expand_shape = [-1]
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_cinn=True, check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_cinn=True, check_pir=True)
 
 
 class TestExpandV2OpRank2_Corner_tensor_attr(TestExpandV2OpRank1_tensor_attr):
@@ -173,10 +174,10 @@ class TestExpandV2OpRank1_tensor(OpTest):
         self.expand_shape = [2, 100]
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_cinn=True, check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_cinn=True, check_pir=True)
 
 
 # Situation 4: input x is Integer
@@ -194,7 +195,7 @@ class TestExpandV2OpInteger(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
 
 #  Situation 5: input x is Bool
@@ -210,7 +211,7 @@ class TestExpandV2OpBoolean(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
 
 #  Situation 6: input x is Integer
@@ -228,7 +229,7 @@ class TestExpandV2OpInt64_t(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
 
 #  Situation 7: input x is Float16
@@ -254,7 +255,7 @@ class TestExpandV2FP16Op(OpTest):
             ['X'],
             'Out',
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
@@ -280,7 +281,7 @@ class TestExpandV2BF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_cinn=True, check_new_ir=True)
+        self.check_output_with_place(place, check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -289,7 +290,7 @@ class TestExpandV2BF16Op(OpTest):
             ['X'],
             'Out',
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
@@ -313,35 +314,35 @@ class TestExpandV2Error(unittest.TestCase):
 
 # Test python API
 class TestExpandV2API(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
-        input = np.random.random([12, 14]).astype("float32")
-        x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
+        with paddle.static.program_guard(paddle.static.Program()):
+            input = np.random.random([12, 14]).astype("float32")
+            x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
 
-        positive_2 = paddle.tensor.fill_constant([1], "int32", 12)
-        expand_shape = paddle.static.data(
-            name="expand_shape",
-            shape=[2],
-            dtype="int32",
-        )
+            positive_2 = paddle.tensor.fill_constant([1], "int32", 12)
+            expand_shape = paddle.static.data(
+                name="expand_shape",
+                shape=[2],
+                dtype="int32",
+            )
 
-        out_1 = paddle.expand(x, shape=[12, 14])
-        out_2 = paddle.expand(x, shape=[positive_2, 14])
-        out_3 = paddle.expand(x, shape=expand_shape)
+            out_1 = paddle.expand(x, shape=[12, 14])
+            out_2 = paddle.expand(x, shape=[positive_2, 14])
+            out_3 = paddle.expand(x, shape=expand_shape)
 
-        g0 = base.backward.calc_gradient(out_2, x)
-
-        exe = base.Executor(place=base.CPUPlace())
-        res_1, res_2, res_3 = exe.run(
-            base.default_main_program(),
-            feed={
-                "x": input,
-                "expand_shape": np.array([12, 14]).astype("int32"),
-            },
-            fetch_list=[out_1, out_2, out_3],
-        )
-        np.testing.assert_array_equal(res_1, np.tile(input, (1, 1)))
-        np.testing.assert_array_equal(res_2, np.tile(input, (1, 1)))
-        np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
+            exe = base.Executor(place=base.CPUPlace())
+            res_1, res_2, res_3 = exe.run(
+                paddle.static.default_main_program(),
+                feed={
+                    "x": input,
+                    "expand_shape": np.array([12, 14]).astype("int32"),
+                },
+                fetch_list=[out_1, out_2, out_3],
+            )
+            np.testing.assert_array_equal(res_1, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_2, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
 
 
 class TestExpandInferShape(unittest.TestCase):
@@ -536,6 +537,15 @@ class TestExpandV2CompOpInt64_t(OpTest):
 
     def test_check_output(self):
         self.check_output(check_prim=True)
+
+
+class TestExpandPirOpResultListShape(unittest.TestCase):
+    def test_opresult_list_shape(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data('x', [1, 3])
+            shape = [2, paddle.full([], 4)]
+            out = paddle.expand(x, shape)
+            np.testing.assert_array_equal(tuple(out.shape), (-1, -1))
 
 
 if __name__ == "__main__":

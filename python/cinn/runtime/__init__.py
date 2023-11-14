@@ -68,5 +68,6 @@ from cinn.core_api.runtime import (  # noqa: F401
 )
 
 from .cinn_jit import CinnLowerLevelIrJit
+from .module import Module
 
-__all__ = ["CinnLowerLevelIrJit"]
+__all__ = ["CinnLowerLevelIrJit", "Module"]

@@ -33,8 +33,8 @@ Operation *Builder::Build(const std::vector<Value> &inputs,
 }
 
 Operation *Builder::Insert(Operation *op) {
-  if (insert_point_.first) {
-    insert_point_.first->insert(insert_point_.second, op);
+  if (insertion_point_.first) {
+    insertion_point_.first->insert(insertion_point_.second, op);
   } else {
     LOG(WARNING) << "Builder's Block is nullptr, insert failed.";
   }
@@ -72,6 +72,9 @@ DoubleAttribute Builder::double_attr(double value) {
 }
 Int32Attribute Builder::int32_attr(int32_t value) {
   return Int32Attribute::get(context_, value);
+}
+IndexAttribute Builder::index_attr(int64_t value) {
+  return IndexAttribute::get(context_, value);
 }
 Int64Attribute Builder::int64_attr(int64_t value) {
   return Int64Attribute::get(context_, value);

@@ -36,7 +36,7 @@ class TestShapeOp(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
 
 class case1(TestShapeOp):
@@ -125,7 +125,7 @@ class TestShapeOpBf16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_cinn=True, check_new_ir=True)
+        self.check_output_with_place(place, check_cinn=True, check_pir=True)
 
 
 class case1Bf16(TestShapeOpBf16):

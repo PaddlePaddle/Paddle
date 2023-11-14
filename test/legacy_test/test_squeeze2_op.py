@@ -58,7 +58,7 @@ class TestSqueezeOp(OpTest):
         self.check_output(
             no_check_set=['XShape'],
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
@@ -67,7 +67,7 @@ class TestSqueezeOp(OpTest):
             ["X"],
             "Out",
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
@@ -290,6 +290,16 @@ class TestSqueezeAPI(unittest.TestCase):
             self.squeeze(x2, axis=2.1)
 
         self.assertRaises(TypeError, test_axes_type)
+
+    def test_pir_error(self):
+        def test_axes_type():
+            with paddle.pir_utils.IrGuard():
+                x2 = paddle.static.data(
+                    name="x2", shape=[2, 1, 25], dtype="int32"
+                )
+                self.squeeze(x2, axis=2.1)
+
+        self.assertRaises(ValueError, test_axes_type)
 
 
 class TestSqueezeInplaceAPI(TestSqueezeAPI):

@@ -1134,8 +1134,15 @@ PHI_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
  * Example:
  * Note: nccl blocking wait.
  */
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PHI_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
+                         false,
+                         "enable nccl debug mode to synchronize nccl comm");
 #endif
 
 /**
@@ -1266,13 +1273,13 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
 
 /**
  * Using new IR in executor  FLAG
- * Name: enable_new_ir_in_executor
+ * Name: enable_pir_in_executor
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
  * Note: If Ture, executor will use new IR
  */
-PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor,
+PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
                          false,
                          "Enable new IR in executor");
 
@@ -1288,29 +1295,34 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
 
 /**
  * Using new IR in executor FLAG
- * Name: enable_new_ir_in_executor_trace_run
+ * Name: enable_pir_in_executor_trace_run
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
  * Note: If Ture, executor will use new IR and run in beta version by for trace
  * version.
  */
-PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_trace_run,
+PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor_trace_run,
                          false,
                          "Enable new IR in executor");
 
 /**
  * Apply inplace pass to new IR FLAG
- * Name: new_ir_apply_inplace_pass
+ * Name: pir_apply_inplace_pass
  * Since Version: 2.6.0
  * Value Range: bool, default=true
  * Example:
  * Note: If Ture, will apply inplace pass to new IR.
  */
-PHI_DEFINE_EXPORTED_bool(new_ir_apply_inplace_pass,
+PHI_DEFINE_EXPORTED_bool(pir_apply_inplace_pass,
                          true,
                          "Whether to apply inplace pass on lowering "
                          "::pir::Program to Kernel Dialect");
+
+PHI_DEFINE_EXPORTED_string(
+    ir_inplace_kernel_blacklist,
+    "",
+    "It controls the ir inplace kernel subset do not use.");
 
 PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
 
@@ -1333,6 +1345,8 @@ PHI_DEFINE_EXPORTED_int32(
     "Multiple of the CUPTI device buffer size. If the timestamps have "
     "been dropped when you are profiling, try increasing this value.");
 
+PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 /**
  * Communication library related FLAG
@@ -1348,3 +1362,18 @@ PHI_DEFINE_EXPORTED_bool(dynamic_static_unified_comm,
                          "Whether to use new communication library in auto "
                          "parallel and static mode.");
 #endif  // FLAGS_dynamic_static_unified_comm
+
+/**
+ * ProcessGroupNCCL related FLAG
+ * Name: enable_async_trace
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: enable nccl async trace.
+ */
+
+PHI_DEFINE_EXPORTED_bool(enable_async_trace,
+                         false,
+                         "enable collective async trace");
+
+PHI_DEFINE_EXPORTED_int32(async_trace_count, 5, "collective async trace count");

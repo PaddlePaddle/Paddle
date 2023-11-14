@@ -2067,7 +2067,7 @@ def append_backward(
         # not support double grad in control flow sub-block now.
         if not is_in_control_flow:
             if program._appending_grad_times > 1:
-                input_grad_names_set = set([_append_grad_suffix_(loss.name)])
+                input_grad_names_set = {_append_grad_suffix_(loss.name)}
 
         # TODO: support _append_backward_ops_with_checkpoints_ in
         #  sub-block (control flow)
@@ -2348,7 +2348,7 @@ def _find_op_path_(
         # If block is while block, dealing with op specifically again.
         # TODO(liym27): Consider special types of ops.
         for i, op in reversed(list(enumerate(block.ops))):
-            if relevant_op_flags[i] == False and _some_in_set_(
+            if relevant_op_flags[i] is False and _some_in_set_(
                 op.desc.output_arg_names(), output_names
             ):
                 relevant_op_flags[i] = True

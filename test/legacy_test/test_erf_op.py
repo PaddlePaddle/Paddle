@@ -44,10 +44,10 @@ class TestErfOp(OpTest):
         return "float64"
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
     def test_check_grad_prim_pir(self):
         # Todo(CZ): float64 loss greater than 1e-8
@@ -101,14 +101,14 @@ class TestErfFP16OP(OpTest):
         self.outputs = {'Out': y_ref}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
@@ -135,7 +135,7 @@ class TestErfBF16OP(OpTest):
 
     def test_check_output(self):
         place = paddle.base.core.CUDAPlace(0)
-        self.check_output_with_place(place, check_new_ir=True)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = paddle.base.core.CUDAPlace(0)
@@ -144,7 +144,7 @@ class TestErfBF16OP(OpTest):
             ['X'],
             'Out',
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 

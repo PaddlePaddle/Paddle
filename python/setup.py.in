@@ -9,6 +9,7 @@ import fnmatch
 import errno
 import platform
 import glob
+import shlex
 
 from contextlib import contextmanager
 from setuptools import Command
@@ -429,7 +430,14 @@ packages=['paddle',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
-          'paddle.jit.newir_dy2static',
+          'paddle.jit.pir_dy2static',
+          'paddle.jit.sot',
+          'paddle.jit.sot.opcode_translator',
+          'paddle.jit.sot.opcode_translator.executor',
+          'paddle.jit.sot.opcode_translator.executor.variables',
+          'paddle.jit.sot.opcode_translator.instruction_utils',
+          'paddle.jit.sot.symbolic',
+          'paddle.jit.sot.utils',
           'paddle.inference',
           'paddle.inference.contrib',
           'paddle.inference.contrib.utils',
@@ -905,7 +913,11 @@ with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r", encoding='UTF-8') 
 
 # strip *.so to reduce package size
 if '${WITH_STRIP}' == 'ON':
-    command = 'find ${PADDLE_BINARY_DIR}/python/paddle -name "*.so" | xargs -i strip {}'
+    command = (
+        'find '
+        + shlex.quote('${PADDLE_BINARY_DIR}')
+        + '/python/paddle -name "*.so" | xargs -i strip {}'
+    )
     if os.system(command) != 0:
         raise Exception("strip *.so failed, command: %s" % command)
 
