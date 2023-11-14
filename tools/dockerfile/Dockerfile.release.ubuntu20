@@ -59,7 +59,7 @@ RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && ta
 ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
 
 RUN apt-get update && \
-  apt-get install -y python3.10 python3.10-dev python3.10-distutils \
+  apt-get install -y python3.10 python3.10-dev python3.10-distutils && \
   apt-get install python-is-python3 && \
   rm /usr/bin/python && ln -s /usr/bin/python3.10 /usr/bin/python && \
   rm /usr/bin/python3 && ln -s /usr/bin/python3.10 /usr/bin/python3
