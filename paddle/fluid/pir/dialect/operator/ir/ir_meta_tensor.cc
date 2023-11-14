@@ -24,60 +24,69 @@ static inline void ValidCheck(const IrMetaTensor& meta_tensor) {
                         "The current MetaTensor is not initialized."));
 }
 
-int64_t IrMetaTensor::numel() const override {
+int64_t IrMetaTensor::numel() const {
   ValidCheck(*this);
   return tensor_->numel();
 }
 
-phi::DDim IrMetaTensor::dims() const override {
+phi::DDim IrMetaTensor::dims() const {
   ValidCheck(*this);
   return tensor_->dims();
 }
 
-phi::DataType IrMetaTensor::dtype() const override {
+phi::DataType IrMetaTensor::dtype() const {
   ValidCheck(*this);
   return tensor_->dtype();
 }
 
-phi::DataLayout IrMetaTensor::layout() const override {
+phi::DataLayout IrMetaTensor::layout() const {
   ValidCheck(*this);
   return tensor_->layout();
 }
 
-void IrMetaTensor::set_dims(const phi::DDim& dims) override {
+const phi::LoD& IrMetaTensor::lod() const {
+  ValidCheck(*this);
+  return tensor_->lod();
+}
+
+void IrMetaTensor::set_dims(const phi::DDim& dims) {
   static_cast<paddle::dialect::IrTensor*>(tensor_)->SetDims(dims);
 }
 
-void IrMetaTensor::set_dtype(phi::DataType dtype) override {
+void IrMetaTensor::set_dtype(phi::DataType dtype) {
   static_cast<paddle::dialect::IrTensor*>(tensor_)->SetDtype(dtype);
 }
 
-void IrMetaTensor::set_layout(phi::DataLayout layout) override {
+void IrMetaTensor::set_layout(phi::DataLayout layout) {
   static_cast<paddle::dialect::IrTensor*>(tensor_)->SetLayout(layout);
 }
 
-void IrMetaTensor::share_lod(const MetaTensor& meta_tensor) override {
-  static_cast<paddle::dialect::IrTensor*>(tensor_)->SetLod(meta_tensor.lod());
+void IrMetaTensor::share_lod(const MetaTensor& meta_tensor) {
+  auto& ir_meta_tensor = static_cast<const IrMetaTensor&>(meta_tensor);
+  static_cast<paddle::dialect::IrTensor*>(tensor_)->SetLod(
+      ir_meta_tensor.lod());
 }
 
-void IrMetaTensor::share_dims(const MetaTensor& meta_tensor) override {
-  set_dims(meta_tensor.dims());
+void IrMetaTensor::share_dims(const MetaTensor& meta_tensor) {
+  auto& ir_meta_tensor = static_cast<const IrMetaTensor&>(meta_tensor);
+  set_dims(ir_meta_tensor.dims());
 }
 
-void IrMetaTensor::share_meta(const MetaTensor& meta_tensor) override {
-  share_dims(meta_tensor);
-  set_dtype(meta_tensor.dtype());
-  set_layout(meta_tensor.layout());
-  share_lod(meta_tensor);
+void IrMetaTensor::share_meta(const MetaTensor& meta_tensor) {
+  auto& ir_meta_tensor = static_cast<const IrMetaTensor&>(meta_tensor);
+  share_dims(ir_meta_tensor);
+  set_dtype(ir_meta_tensor.dtype());
+  set_layout(ir_meta_tensor.layout());
+  share_lod(ir_meta_tensor);
 }
 
-bool IrMetaTensor::initialized() const override { return tensor_ != nullptr; }
+bool IrMetaTensor::initialized() const { return tensor_ != nullptr; }
 
-bool IrMetaTensor::is_selected_rows() const override { return false; }
+bool IrMetaTensor::is_selected_rows() const { return false; }
 
-bool IrMetaTensor::is_tensor_array() const override { return false; }
+bool IrMetaTensor::is_tensor_array() const { return false; }
 
-bool IrMetaTensor::is_dense() const override { return false; }
+bool IrMetaTensor::is_dense() const { return false; }
 
 }  // namespace dialect
 }  // namespace paddle

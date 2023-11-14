@@ -30,6 +30,8 @@ class IrMetaTensor : public phi::MetaTensor {
 
   phi::DataLayout layout() const override;
 
+  const phi::LoD& lod() const;
+
   void set_dims(const phi::DDim& dims) override;
 
   void set_dtype(phi::DataType dtype) override;
@@ -48,9 +50,13 @@ class IrMetaTensor : public phi::MetaTensor {
   bool is_tensor_array() const override;
   bool is_dense() const override;
 
-  operator unspecified_bool_type() const override {}
+  operator unspecified_bool_type() const override {
+    return initialized() ? unspecified_bool_true : 0;
+  }
 
   bool operator!() const override { return tensor_ == nullptr; }
+
+  static void unspecified_bool_true() {}
 };
 
 }  // namespace dialect
