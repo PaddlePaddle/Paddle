@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
 import warnings
 from functools import reduce
 
@@ -877,6 +876,7 @@ def _setitem_static(x, indices, values):
     StartsTensorList = None
     EndsTensorList = None
     StepsTensorList = None
+    shape = None
 
     if paddle.utils._contain_var(starts):
         StartsTensorList = paddle.utils._convert_to_tensor_list(starts)
@@ -921,14 +921,29 @@ def _setitem_static(x, indices, values):
 
         # step3.1: Only basic indexing, use OP set_value to set value.
         if paddle.in_dynamic_mode():
-            return paddle._legacy_C_ops.set_value_(
-                x,
-                value_tensor,
-                StartsTensorList,
-                EndsTensorList,
-                StepsTensorList,
-                *itertools.chain.from_iterable(attrs.items()),
-            )
+            if value_tensor is None:
+                return paddle._C_ops.set_value_(
+                    x,
+                    starts,
+                    ends,
+                    steps,
+                    axes,
+                    decrease_axes,
+                    none_axes,
+                    shape,
+                    values,
+                )
+            else:
+                return paddle._C_ops.set_value_with_tensor_(
+                    x,
+                    value_tensor,
+                    starts,
+                    ends,
+                    steps,
+                    axes,
+                    decrease_axes,
+                    none_axes,
+                )
         else:
             helper = paddle.base.layer_helper.LayerHelper(
                 'set_value', **locals()

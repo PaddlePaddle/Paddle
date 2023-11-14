@@ -19,12 +19,13 @@ import multiprocessing
 import os
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 import sys
 import time
+import warnings
 from contextlib import contextmanager
-from distutils.spawn import find_executable
 from subprocess import CalledProcessError
 
 from setuptools import Command, Extension, setup
@@ -34,31 +35,31 @@ from setuptools.command.install import install as InstallCommandBase
 from setuptools.command.install_lib import install_lib
 from setuptools.dist import Distribution
 
-if sys.version_info < (3, 7):
+# check python
+python_version = platform.python_version()
+version_detail = sys.version_info
+version = version_detail[0] + version_detail[1] / 10
+env_version = os.getenv("PY_VERSION")
+
+if version < 3.7:
     raise RuntimeError(
-        "Paddle only supports Python version>=3.7 now, you are using Python %s"
-        % platform.python_version()
+        f"Paddle only supports Python version >= 3.7 now,"
+        f"you are using Python {python_version}"
     )
-else:
-    if os.getenv("PY_VERSION") is None:
-        python_version = platform.python_version()
-        print(f"export PY_VERSION = {python_version}")
-        os.environ["PY_VERSION"] = python_version
-    else:
-        if os.getenv("PY_VERSION") != str(sys.version_info.major) + '.' + str(
-            sys.version_info.minor
-        ):
-            raise RuntimeError(
-                "You set PY_VERSION={}, but your current python environment is {}, you should keep them consistent!".format(
-                    os.getenv("PY_VERSION"),
-                    str(sys.version_info.major)
-                    + '.'
-                    + str(sys.version_info.minor),
-                )
-            )
+elif env_version is None:
+    print(f"export PY_VERSION = { python_version }")
+    os.environ["PY_VERSION"] = python_version
+
+elif env_version != version:
+    warnings.warn(
+        f"You set PY_VERSION={env_version}, but"
+        f"your current python environment is {version}"
+        f"we will use your current python version to execute"
+    )
+    os.environ["PY_VERSION"] = python_version
 
 # check cmake
-CMAKE = find_executable('cmake3') or find_executable('cmake')
+CMAKE = shutil.which('cmake3') or shutil.which('cmake')
 assert (
     CMAKE
 ), 'The "cmake" executable is not found. Please check if Cmake is installed.'
@@ -108,8 +109,8 @@ def parse_input_command(input_parameters):
         dist.parse_command_line()
     except:
         print(
-            "An error occurred while parsing the parameters, '%s'"
-            % dist.script_args
+            f"An error occurred while parsing"
+            f"the parameters, {dist.script_args}"
         )
         sys.exit(1)
 
@@ -1699,7 +1700,7 @@ def main():
     if env_dict.get("WITH_STRIP") == 'ON':
         command = (
             'find '
-            + paddle_binary_dir
+            + shlex.quote(paddle_binary_dir)
             + '/python/paddle -name "*.so" | xargs -i strip {}'
         )
         if os.system(command) != 0:
