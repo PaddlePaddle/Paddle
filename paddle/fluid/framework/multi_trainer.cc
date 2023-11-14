@@ -22,10 +22,11 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
 #include "paddle/fluid/framework/program_utils.h"
+#include "paddle/phi/core/flags.h"
 
-PADDLE_DEFINE_EXPORTED_bool(enable_dump_main_program,
-                            false,
-                            "enable dump main program, default false");
+PHI_DEFINE_EXPORTED_bool(enable_dump_main_program,
+                         false,
+                         "enable dump main program, default false");
 
 namespace paddle {
 namespace framework {
@@ -136,21 +137,20 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   std::vector<std::future<void>> wait_futures;
   CHECK_EQ(static_cast<int>(pool.size()), thread_num_);
   for (int i = 0; i < thread_num_; ++i) {
-    wait_futures.emplace_back(
-        pool[i]->Run([this, i, &main_program, &place]() {
+    wait_futures.emplace_back(pool[i]->Run([this, i, &main_program, &place]() {
 #ifdef PADDLE_WITH_HETERPS
-    workers_[i]->SetPlace(places_[i]);
-    workers_[i]->SetReaderPlace(places_[i]);
-    workers_[i]->SetDeviceContext(
-        platform::DeviceContextPool::Instance().Get(places_[i]));
+      workers_[i]->SetPlace(places_[i]);
+      workers_[i]->SetReaderPlace(places_[i]);
+      workers_[i]->SetDeviceContext(
+          platform::DeviceContextPool::Instance().Get(places_[i]));
 #else
-    workers_[i]->SetPlace(place);
-    workers_[i]->SetReaderPlace(place);
+      workers_[i]->SetPlace(place);
+      workers_[i]->SetReaderPlace(place);
 #endif
-    workers_[i]->SetRootScope(root_scope_);
-    workers_[i]->CreateDeviceResource(main_program);  // Program
-    workers_[i]->BindingDataFeedMemory();
-    workers_[i]->CacheProgram(main_program);
+      workers_[i]->SetRootScope(root_scope_);
+      workers_[i]->CreateDeviceResource(main_program);  // Program
+      workers_[i]->BindingDataFeedMemory();
+      workers_[i]->CacheProgram(main_program);
     }));
   }
   for (auto& th : wait_futures) {

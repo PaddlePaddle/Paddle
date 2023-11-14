@@ -13,6 +13,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
@@ -299,6 +300,8 @@ void AccessorWrapper<GPUAccessor>::CopyForPullImpl(
     const int64_t total_length,
     int* gpu_dim,
     int feature_value_size) {
+  int device_id = place.GetDeviceId();
+  platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
                     paddle::platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
@@ -332,6 +335,8 @@ void AccessorWrapper<GPUAccessor>::CopyForPushImpl(
     size_t grad_value_size,
     std::vector<int>& slot_vector,           // NOLINT
     std::vector<int>& slot_mf_dim_vector) {  // NOLINT
+  int device_id = place.GetDeviceId();
+  platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
                     paddle::platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
@@ -393,6 +398,8 @@ void AccessorWrapper<GPUAccessor>::CopyForPullDedupImpl(
     const int* slot_dims,
     const uint32_t* gpu_restore_idx,
     int pull_value_size) {
+  int device_id = place.GetDeviceId();
+  platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
                     paddle::platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
@@ -427,6 +434,8 @@ void AccessorWrapper<GPUAccessor>::CopyForPushDedupImpl(
     const int* key2slot,
     const uint32_t* d_restore_idx,
     const size_t grad_value_size) {
+  int device_id = place.GetDeviceId();
+  platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
                     paddle::platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
@@ -469,6 +478,8 @@ void AccessorWrapper<GPUAccessor>::CopyForPushDedupImpl(
     const uint32_t* gpu_sort_offset,
     const uint32_t* gpu_sort_lens,
     const size_t grad_value_size) {
+  int device_id = place.GetDeviceId();
+  platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
                     paddle::platform::DeviceContextPool::Instance().Get(place))
                     ->stream();

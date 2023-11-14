@@ -203,67 +203,42 @@ std::unique_ptr<GarbageCollector> CreateGarbageCollector(
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (IsFastEagerDeletionModeEnabled()) {
-      gc.reset(new UnsafeFastGPUGarbageCollector(place, max_memory_size));
+      gc = std::make_unique<UnsafeFastGPUGarbageCollector>(place,
+                                                           max_memory_size);
     } else {
-      gc.reset(new DefaultStreamGarbageCollector(place, max_memory_size));
+      gc = std::make_unique<DefaultStreamGarbageCollector>(place,
+                                                           max_memory_size);
     }
 #else
     PADDLE_THROW(
         platform::errors::Unimplemented("No GPU gc found in CPU/XPU paddle"));
 #endif
   } else if (platform::is_cpu_place(place)) {
-    gc.reset(new CPUGarbageCollector(place, max_memory_size));
+    gc = std::make_unique<CPUGarbageCollector>(place, max_memory_size);
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-    gc.reset(new XPUGarbageCollector(place, max_memory_size));
+    gc = std::make_unique<XPUGarbageCollector>(place, max_memory_size);
 #else
     PADDLE_THROW(
         platform::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
 #endif
   } else if (platform::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
-    gc.reset(new IPUGarbageCollector(place, max_memory_size));
+    gc = std::make_unique<IPUGarbageCollector>(place, max_memory_size);
 #else
     PADDLE_THROW(
         platform::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
-#endif
-  } else if (platform::is_npu_place(place)) {
-#ifdef PADDLE_WITH_ASCEND_CL
-    if (IsFastEagerDeletionModeEnabled()) {
-      VLOG(4) << "Use unsafe fast gc for NPU.";
-      gc.reset(new NPUUnsafeFastGarbageCollector(place, max_memory_size));
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Please set FLAGS_fast_eager_deletion_mode=true to use "
-          "GarbageCollector on NPU."));
-      // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
-      VLOG(4) << "Use default stream gc for NPU.";
-      gc.reset(new NPUDefaultStreamGarbageCollector(place, max_memory_size));
-    }
-#else
-    PADDLE_THROW(
-        platform::errors::Unimplemented("No NPU gc found in CPU/NPU paddle"));
-#endif
-  } else if (platform::is_mlu_place(place)) {
-#ifdef PADDLE_WITH_MLU
-    if (IsFastEagerDeletionModeEnabled()) {
-      gc.reset(new MLUUnsafeFastGarbageCollector(place, max_memory_size));
-    } else {
-      gc.reset(new MLUDefaultStreamGarbageCollector(place, max_memory_size));
-    }
-#else
-    PADDLE_THROW(
-        platform::errors::Unimplemented("No MLU gc found in CPU/MLU paddle"));
 #endif
   } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     if (IsFastEagerDeletionModeEnabled()) {
       VLOG(4) << "Use unsafe fast gc for " << place << ".";
-      gc.reset(
-          new CustomDeviceUnsafeFastGarbageCollector(place, max_memory_size));
+      gc = std::make_unique<CustomDeviceUnsafeFastGarbageCollector>(
+          place_, max_memory_size);
     } else {
       VLOG(4) << "Use default stream gc for " << place << ".";
-      gc.reset(new CustomDefaultStreamGarbageCollector(place, max_memory_size));
+      gc = std::make_unique<CustomDefaultStreamGarbageCollector>(
+          place, max_memory_size);
     }
 #else
     PADDLE_THROW(platform::errors::Unimplemented("No CustomDevice gc found"));

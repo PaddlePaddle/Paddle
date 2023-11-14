@@ -31,8 +31,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
 #include "paddle/phi/kernels/graph_reindex_kernel.h"
 
@@ -75,7 +75,8 @@ __global__ void fill_idx(T *idx, size_t len) {
  * @brief sort cub
  */
 template <typename K, typename V>
-void cub_sort_pairs(int len,
+void cub_sort_pairs(const int gpu_id,
+                    int len,
                     const K *in_keys,
                     K *out_keys,
                     const V *in_vals,
@@ -155,7 +156,8 @@ void cub_runlength_encode(int N,
  * @brief exclusive sum
  */
 template <typename K>
-void cub_exclusivesum(int N,
+void cub_exclusivesum(const int gpu_id,
+                      int N,
                       const K *in,
                       K *out,
                       cudaStream_t stream,
@@ -215,12 +217,14 @@ __global__ void kernel_fill_restore_idx_by_search(size_t N,
 }
 
 // For unique node and inverse id.
-int dedup_keys_and_fillidx(const uint64_t *d_keys,
+int dedup_keys_and_fillidx(const int gpu_id,
+                           const uint64_t *d_keys,
                            int total_nodes_num,
                            uint64_t *d_merged_keys,  // input
                            uint32_t *d_restore_idx,  // inverse
                            const paddle::platform::Place &place,
                            cudaStream_t stream) {
+  platform::CUDADeviceGuard guard(gpu_id);
   auto d_sorted_keys =
       memory::AllocShared(place,
                           total_nodes_num * sizeof(uint64_t),
@@ -256,7 +260,8 @@ int dedup_keys_and_fillidx(const uint64_t *d_keys,
       reinterpret_cast<int *>(&d_index_in_ptr[total_nodes_num]);
   fill_idx<<<GET_BLOCKS(total_nodes_num), CUDA_NUM_THREADS, 0, stream>>>(
       d_index_in_ptr, total_nodes_num);
-  cub_sort_pairs(total_nodes_num,
+  cub_sort_pairs(gpu_id,
+                 total_nodes_num,
                  d_keys,
                  d_sorted_keys_ptr,
                  d_index_in_ptr,
@@ -278,8 +283,13 @@ int dedup_keys_and_fillidx(const uint64_t *d_keys,
                              cudaMemcpyDeviceToHost,
                              stream));
   CUDA_CHECK(cudaStreamSynchronize(stream));
-  cub_exclusivesum(
-      merged_size, d_merged_cnts_ptr, d_offset_ptr, stream, d_buf, place);
+  cub_exclusivesum(gpu_id,
+                   merged_size,
+                   d_merged_cnts_ptr,
+                   d_offset_ptr,
+                   stream,
+                   d_buf,
+                   place);
 
   if (total_nodes_num < merged_size * 2) {
     kernel_fill_restore_idx<<<GET_BLOCKS(merged_size),
@@ -641,6 +651,7 @@ __global__ void FillActualNeighbors(int64_t *vals,
 
 int GraphDataGenerator::FillIdShowClkTensor(int total_instance,
                                             bool gpu_graph_training) {
+  platform::CUDADeviceGuard guard(conf_.gpuid);
   show_tensor_ptr_ =
       feed_vec_[0]->mutable_data<int64_t>({total_instance}, this->place_);
   GraphFillCVMKernel<<<GET_BLOCKS(total_instance),
@@ -705,6 +716,7 @@ int GraphDataGenerator::FillIdShowClkTensor(int total_instance,
 int GraphDataGenerator::FillGraphIdShowClkTensor(int uniq_instance,
                                                  int total_instance,
                                                  int index) {
+  platform::CUDADeviceGuard guard(conf_.gpuid);
   show_tensor_ptr_ =
       feed_vec_[0]->mutable_data<int64_t>({uniq_instance}, this->place_);
   GraphFillCVMKernel<<<GET_BLOCKS(uniq_instance),
@@ -839,6 +851,7 @@ int GraphDataGenerator::FillGraphIdShowClkTensor(int uniq_instance,
 }
 
 int GraphDataGenerator::FillGraphIdShowClkTensorAccum(int index) {
+  platform::CUDADeviceGuard guard(conf_.gpuid);
   VLOG(1) << conf_.gpuid << ": Begin fill in show, cvm and id";
   int fake_accumulate_num = 2;
   for (int accum = 0; accum < fake_accumulate_num; accum++) {
@@ -967,6 +980,7 @@ int GraphDataGenerator::FillGraphSlotFeature(
     int total_instance,
     bool gpu_graph_training,
     std::shared_ptr<phi::Allocation> final_sage_nodes) {
+  platform::CUDADeviceGuard guard(conf_.gpuid);
   int ret = 0;
   uint64_t *ins_cursor, *ins_buf;
 
@@ -1008,6 +1022,7 @@ int GraphDataGenerator::FillGraphSlotFeature(
 
 int GraphDataGenerator::FillGraphSlotFeatureAccum(bool gpu_graph_training,
                                                   int index) {
+  platform::CUDADeviceGuard guard(conf_.gpuid);
   int ret = 0;
   // only use for gpu_graph_training is True and sage_mode is True.
   int fake_accumulate_num = 2;
@@ -1033,6 +1048,7 @@ int MakeInsPair(const std::shared_ptr<phi::Allocation> &d_walk,        // input
                 int *d_pair_num,          // output
                 int *ins_buf_pair_len_ptr,
                 cudaStream_t stream) {
+  platform::CUDADeviceGuard guard(conf.gpuid);
   uint64_t *walk = reinterpret_cast<uint64_t *>(d_walk->ptr());
   uint8_t *walk_ntype = NULL;
   if (conf.need_walk_ntype) {
@@ -1565,6 +1581,7 @@ void FillOneStep(
     int *cur_sampleidx2row,
     const paddle::platform::Place &place,
     cudaStream_t stream) {
+  platform::CUDADeviceGuard guard(conf.gpuid);
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
   uint64_t node_id = gpu_graph_ptr->edge_to_node_map_[etype_id];
   uint8_t edge_src_id = node_id >> 32;
@@ -2302,6 +2319,7 @@ uint64_t CopyUniqueNodes(
     std::vector<uint64_t> *host_vec_ptr,    // output
     std::vector<uint32_t> *host_ranks_ptr,  // output
     cudaStream_t stream) {
+  platform::CUDADeviceGuard guard(gpu_id);
   if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
     uint64_t h_uniq_node_num = 0;
     uint64_t *d_uniq_node_num =
@@ -2383,7 +2401,7 @@ int InsertTable(int gpu_id,
   if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
     return 0;
   }
-
+  platform::CUDADeviceGuard guard(conf.gpuid);
   // Used under NOT WHOLE_HBM.
   uint64_t h_uniq_node_num = 0;
   uint64_t *d_uniq_node_num_ptr =
@@ -2457,6 +2475,7 @@ std::vector<std::shared_ptr<phi::Allocation>> SampleNeighbors(
     std::shared_ptr<HashTable<uint64_t, uint32_t>> keys2rank_table,  // Output
     const paddle::platform::Place &place,
     cudaStream_t stream) {
+  platform::CUDADeviceGuard guard(conf.gpuid);
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
 
   // Obtain the dest machine for sample node through cross machine queries
@@ -2499,6 +2518,7 @@ std::vector<std::shared_ptr<phi::Allocation>> SampleNeighbors(
                                                 conf.weighted_sample,
                                                 conf.return_weight);
 
+  guard.SetDeviceIndex(conf.gpuid);
   int *all_sample_count_ptr =
       reinterpret_cast<int *>(sample_res.actual_sample_size_mem->ptr());
 
@@ -2606,7 +2626,9 @@ std::shared_ptr<phi::Allocation> FillReindexHashTable(
     int *key_index,
     int *final_nodes_len,
     const paddle::platform::Place &place,
+    const int gpu_id,
     cudaStream_t stream) {
+  platform::CUDADeviceGuard guard(gpu_id);
   phi::BuildHashTable<int64_t>
       <<<GET_BLOCKS(num_input), CUDA_NUM_THREADS, 0, stream>>>(
           input, num_input, len_hashtable, keys, key_index);
@@ -2677,7 +2699,9 @@ std::shared_ptr<phi::Allocation> GetReindexResult(
     int node_len,
     int64_t neighbor_len,
     const paddle::platform::Place &place,
+    const int gpu_id,
     cudaStream_t stream) {
+  platform::CUDADeviceGuard guard(gpu_id);
   auto d_reindex_table_key =
       memory::AllocShared(place,
                           reindex_table_size * sizeof(int64_t),
@@ -2734,6 +2758,7 @@ std::shared_ptr<phi::Allocation> GetReindexResult(
                                           d_reindex_table_index_ptr,
                                           final_nodes_len,
                                           place,
+                                          gpu_id,
                                           stream);
 
   phi::ReindexSrcOutput<int64_t>
@@ -2767,6 +2792,7 @@ std::shared_ptr<phi::Allocation> GenerateSampleGraph(
     const paddle::platform::Place &place,
     cudaStream_t stream) {
   VLOG(1) << conf.gpuid << " Get Unique Nodes";
+  platform::CUDADeviceGuard guard(conf.gpuid);
 
   auto inverse =
       memory::AllocShared(place,
@@ -2779,7 +2805,7 @@ std::shared_ptr<phi::Allocation> GenerateSampleGraph(
                     phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
   uint64_t *uniq_nodes_data = reinterpret_cast<uint64_t *>(uniq_nodes->ptr());
   int uniq_len = dedup_keys_and_fillidx(
-      node_ids, len, uniq_nodes_data, inverse_ptr, place, stream);
+      conf.gpuid, node_ids, len, uniq_nodes_data, inverse_ptr, place, stream);
   int len_samples = conf.samples.size();
 
   VLOG(1) << conf.gpuid << " Sample Neighbors and Reindex";
@@ -2850,6 +2876,7 @@ std::shared_ptr<phi::Allocation> GenerateSampleGraph(
                            uniq_len,
                            neighbors_len,
                            place,
+                           conf.gpuid,
                            stream);
       final_nodes_vec.emplace_back(tmp_final_nodes);
       final_nodes_len_vec.emplace_back(final_nodes_len);
@@ -2863,6 +2890,7 @@ std::shared_ptr<phi::Allocation> GenerateSampleGraph(
                                               final_nodes_len_vec[i - 1],
                                               neighbors_len,
                                               place,
+                                              conf.gpuid,
                                               stream);
       final_nodes_vec.emplace_back(tmp_final_nodes);
       final_nodes_len_vec.emplace_back(final_nodes_len);
@@ -2884,7 +2912,6 @@ std::shared_ptr<phi::Allocation> GenerateSampleGraph(
   if (!final_nodes_vec.empty() && !final_nodes_len_vec.empty()) {
     auto d_final_keys =
         reinterpret_cast<uint64_t *>((*final_nodes_vec.rbegin())->ptr());
-    ;
     auto tmp_len = *(final_nodes_len_vec.rbegin());
     if (tmp_len > 0) {
       auto d_ranks =
@@ -2933,6 +2960,7 @@ std::shared_ptr<phi::Allocation> GetNodeDegree(
     const GraphDataGeneratorConfig &conf,
     const paddle::platform::Place &place,
     cudaStream_t stream) {
+  platform::CUDADeviceGuard guard(conf.gpuid);
   auto node_degree =
       memory::AllocShared(place,
                           len * conf.edge_to_id_len * sizeof(int),
@@ -2956,6 +2984,7 @@ std::shared_ptr<phi::Allocation> GetNodeDegree(
 int multi_node_sync_sample(int flag,
                            const ncclRedOp_t &op,
                            const paddle::platform::Place &place,
+                           const int gpu_id,
                            phi::DenseTensor *multi_node_sync_stat_ptr) {
   if (flag < 0 && flag > 2) {
     VLOG(0) << "invalid flag! " << flag;
@@ -2965,6 +2994,7 @@ int multi_node_sync_sample(int flag,
 
   int ret = 0;
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+  platform::CUDADeviceGuard guard(gpu_id);
   int *stat_ptr = multi_node_sync_stat_ptr->data<int>();
   auto comm = platform::NCCLCommContext::Instance().Get(0, place.GetDeviceId());
   auto stream = comm->stream();
@@ -2983,7 +3013,9 @@ int multi_node_sync_sample(int flag,
 int get_multi_node_global_flag(int local_flag,
                                const ncclRedOp_t &op,
                                const paddle::platform::Place &place,
+                               const int gpu_id,
                                cudaStream_t stream) {
+  platform::CUDADeviceGuard guard(gpu_id);
   auto send_buff =
       memory::Alloc(place,
                     2 * sizeof(int),
@@ -3145,7 +3177,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
     // to decide whether to continue sampling
     if (FLAGS_enable_graph_multi_node_sampling) {
       switch_command = multi_node_sync_sample(
-          switch_flag, ncclProd, place, multi_node_sync_stat_ptr);
+          switch_flag, ncclProd, place, conf.gpuid, multi_node_sync_stat_ptr);
       VLOG(2) << "gpuid:" << conf.gpuid << " multi node sample sync"
               << " switch_flag:" << switch_flag << "," << switch_command;
       if (switch_command) {
@@ -3155,7 +3187,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
       }
 
       sample_command = multi_node_sync_sample(
-          sample_flag, ncclMax, place, multi_node_sync_stat_ptr);
+          sample_flag, ncclMax, place, conf.gpuid, multi_node_sync_stat_ptr);
       VLOG(2) << "gpuid:" << conf.gpuid << " multi node sample sync"
               << " sample_flag:" << sample_flag << "," << sample_command;
       if (sample_command == EVENT_FINISH_EPOCH) {
@@ -3248,7 +3280,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
     if (FLAGS_enable_graph_multi_node_sampling) {
       int flag = *jump_rows_ptr > 0 ? 1 : 0;
       int command = multi_node_sync_sample(
-          flag, ncclMax, place, multi_node_sync_stat_ptr);
+          flag, ncclMax, place, conf.gpuid, multi_node_sync_stat_ptr);
       VLOG(2) << "gpuid:" << conf.gpuid << " multi node step sync"
               << " step:" << step << " step_sample:" << flag << "," << command;
       if (command <= 0) {
@@ -3294,7 +3326,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
         // Step synchronization for multi-step sampling in multi node
         int flag = sample_res.total_sample_size > 0 ? 1 : 0;
         int command = multi_node_sync_sample(
-            flag, ncclMax, place, multi_node_sync_stat_ptr);
+            flag, ncclMax, place, conf.gpuid, multi_node_sync_stat_ptr);
         VLOG(2) << "gpuid:" << conf.gpuid << " multi node step sync"
                 << " step:" << step << " step_sample:" << flag << ","
                 << command;
@@ -3464,7 +3496,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
     }
   }
 
-  platform::CUDADeviceGuard guard2(conf_.gpuid);
+  platform::CUDADeviceGuard guard2(conf.gpuid);
   buf_state->Reset(*total_row_ptr);
   paddle::memory::ThrustAllocator<cudaStream_t> allocator(place, stream);
   thrust::random::default_random_engine engine(*shuffle_seed_ptr);
@@ -3814,7 +3846,7 @@ void GraphDataGenerator::DoWalkandSage() {
     } else {
       if (conf_.sage_mode) {
         global_train_flag_ = get_multi_node_global_flag(
-            local_train_flag, ncclProd, place_, sample_stream_);
+            local_train_flag, ncclProd, place_, conf_.gpuid, sample_stream_);
         VLOG(1) << "gpu_id: " << conf_.gpuid
                 << ", local_train_flag: " << local_train_flag
                 << ", global_train_flag: " << global_train_flag_;
@@ -3915,6 +3947,7 @@ bool GraphDataGenerator::DoWalkForTrain() {
 }
 
 void GraphDataGenerator::DoSageForTrain() {
+  platform::CUDADeviceGuard guard(conf_.gpuid);
   int total_instance = 0, uniq_instance = 0;
   bool is_sage_pass_continue = true;
   int sage_pass_end = 0;
@@ -3976,8 +4009,11 @@ void GraphDataGenerator::DoSageForTrain() {
 
       // check whether reach sage pass end
       if (conf_.is_multi_node) {
-        int res = multi_node_sync_sample(
-            sage_pass_end, ncclProd, place_, &multi_node_sync_stat_);
+        int res = multi_node_sync_sample(sage_pass_end,
+                                         ncclProd,
+                                         place_,
+                                         conf_.gpuid,
+                                         &multi_node_sync_stat_);
         VLOG(1) << conf_.gpuid << " get global sage_pass_end: " << res;
         if (res) {
           VLOG(1) << conf_.gpuid << ": reach sage pass end";
@@ -4109,6 +4145,7 @@ void GraphDataGenerator::DoSageForTrain() {
 
 void GraphDataGenerator::DoSageForInfer() {
   // Set new batch size for multi_node
+  platform::CUDADeviceGuard guard(conf_.gpuid);
   if (conf_.is_multi_node) {
     int new_batch_size = dynamic_adjust_batch_num_for_sage();
     conf_.batch_size = new_batch_size;
@@ -4128,7 +4165,7 @@ void GraphDataGenerator::DoSageForInfer() {
       int local_pass_end = total_instance == 0;
       if (conf_.is_multi_node) {
         global_pass_end = get_multi_node_global_flag(
-            local_pass_end, ncclProd, place_, sample_stream_);
+            local_pass_end, ncclProd, place_, conf_.gpuid, sample_stream_);
       } else {
         global_pass_end = local_pass_end;
       }
@@ -4196,7 +4233,6 @@ void GraphDataGenerator::DoSageForInfer() {
                            : infer_node_end_[tensor_pair_idx] -
                                  infer_node_start_[tensor_pair_idx];
       total_instance *= 2;
-
     }  // end while (!global_pass_end)
   }    // end for (int tensor_pair_idx = 0; tensor_pair_idx <
        // conf_.tensor_pair_num;
@@ -4255,7 +4291,7 @@ bool FillInferBuf(
     std::vector<uint64_t> *host_vec_ptr,    // output
     std::vector<uint32_t> *host_ranks_ptr,  // output
     std::shared_ptr<HashTable<uint64_t, uint32_t>> keys2rank_table,
-    std::shared_ptr<phi::Allocation> &d_uniq_node_num,
+    const std::shared_ptr<phi::Allocation> &d_uniq_node_num,
     const paddle::platform::Place &place,
     cudaStream_t stream) {
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
@@ -4270,7 +4306,7 @@ bool FillInferBuf(
   for (auto &node_type : all_node_type) {
     all_node_type_index_set.insert(type_to_index[node_type]);
     VLOG(1) << "add all_node_type_index_set: "
-        << gpu_graph_ptr->node_types_idx_to_node_type_str(node_type);
+            << gpu_graph_ptr->node_types_idx_to_node_type_str(node_type);
   }
 
   if (infer_cursor < h_device_keys_len.size()) {
@@ -4319,8 +4355,8 @@ bool FillInferBuf(
       int local_reach_end =
           global_infer_node_type_start[infer_cursor] + conf.buf_size >=
           device_key_size;
-      int global_reach_end =
-          get_multi_node_global_flag(local_reach_end, ncclProd, place, stream);
+      int global_reach_end = get_multi_node_global_flag(
+          local_reach_end, ncclProd, place, conf.gpuid, stream);
       int remain = device_key_size - global_infer_node_type_start[infer_cursor];
       if (global_reach_end) {
         *total_row_ptr = remain;
@@ -4339,6 +4375,7 @@ bool FillInferBuf(
               : device_key_size - global_infer_node_type_start[infer_cursor];
     }
 
+    platform::CUDADeviceGuard guard(conf.gpuid);
     uint64_t *d_type_keys =
         reinterpret_cast<uint64_t *>(d_device_keys[infer_cursor]->ptr());
     if (!conf.sage_mode) {
@@ -4385,8 +4422,8 @@ bool GraphDataGenerator::DoWalkForInfer() {
                                d_uniq_node_num_,
                                place_,
                                sample_stream_);
-    VLOG(1) << "aft FillInferBuf, total_row[" << tensor_pair_idx << "] = "
-        << total_row_[tensor_pair_idx];
+    VLOG(1) << "aft FillInferBuf, total_row[" << tensor_pair_idx
+            << "] = " << total_row_[tensor_pair_idx];
     cudaStreamSynchronize(sample_stream_);
   }
 
@@ -4855,13 +4892,14 @@ void GraphDataGenerator::DumpWalkPath(std::string dump_path, size_t dump_rate) {
       platform::errors::InvalidArgument(
           "dump_rate can't be large than 10000000. Please check the dump "
           "rate[1, 10000000]"));
-  PADDLE_ENFORCE_GT(dump_rate,
+  PADDLE_ENFORCE_GE(dump_rate,
                     1,
                     platform::errors::InvalidArgument(
                         "dump_rate can't be less than 1. Please check "
                         "the dump rate[1, 10000000]"));
   int err_no = 0;
   std::shared_ptr<FILE> fp = fs_open_append_write(dump_path, &err_no, "");
+  platform::CUDADeviceGuard guard(conf_.gpuid);
   uint64_t *h_walk = new uint64_t[conf_.buf_size];
   uint64_t *walk = reinterpret_cast<uint64_t *>(d_walk_[0]->ptr());
   cudaMemcpy(
@@ -4891,6 +4929,7 @@ void GraphDataGenerator::DumpSampleNeighbors(std::string dump_path) {
   std::string part_path =
       string::format_string("%s-%03d", dump_path.c_str(), part_num);
   std::shared_ptr<FILE> fp = fs_open_append_write(part_path, &err_no, "");
+  platform::CUDADeviceGuard guard(conf_.gpuid);
   for (int i = 0; i < sage_batch_num_; i++) {
     int uniq_instance = uniq_instance_vec_[i];
     uint64_t *h_id_tensor = new uint64_t[uniq_instance];
@@ -4951,6 +4990,7 @@ void GraphDataGenerator::DumpSampleNeighbors(std::string dump_path) {
 }
 
 int GraphDataGenerator::dynamic_adjust_batch_num_for_sage() {
+  platform::CUDADeviceGuard guard(conf_.gpuid);
   int batch_num = (total_row_[0] + conf_.batch_size - 1) / conf_.batch_size;
   auto send_buff = memory::Alloc(
       place_,

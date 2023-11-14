@@ -128,9 +128,7 @@ __global__ void insert_kernel(Table* table,
     uint64_t offset = uint64_t(start_index + i) * feature_value_size;
     kv.second = (Table::mapped_type)(pool + offset);
     auto it = table->insert(kv, op);
-    if (it == table->end()) {
-      printf("error: insert fails: table is full");
-    }
+    PADDLE_ENFORCE(it != table->end(), "error: insert fails: table is full");
   }
 }
 
@@ -150,9 +148,9 @@ __global__ void search_kernel(Table* table,
 
 template <typename Table>
 __global__ void search_ranks_kernel(Table* table,
-                              const typename Table::key_type* const keys,
-                              typename Table::mapped_type* const vals,
-                              size_t len) {
+                                    const typename Table::key_type* const keys,
+                                    typename Table::mapped_type* const vals,
+                                    size_t len) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     auto it = table->find(keys[i]);
@@ -207,7 +205,7 @@ __global__ void dy_mf_search_kernel(Table* table,
       float* input = it->second;
       gpu_accessor.PullValueFill(cur, input);
     } else {
-      printf("warning: pull miss key: %lu", keys[i]);
+      PADDLE_ENFORCE(false, "warning: pull miss key: %lu", keys[i]);
     }
   }
 }
@@ -244,7 +242,7 @@ __global__ void dy_mf_update_kernel(Table* table,
           reinterpret_cast<const float*>(grads + i * grad_value_size);
       sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, cur);
     } else {
-      printf("warning: push miss key: %lu", keys[i]);
+      PADDLE_ENFORCE(false, "warning: push miss key: %lu", keys[i]);
     }
   }
 }
@@ -286,12 +284,12 @@ __global__ void get_keys_kernel(Table* table,
 
 template <typename Table>
 __global__ void get_key_values_kernel(Table* table,
-                                typename Table::key_type* d_keys,
-                                typename Table::mapped_type* d_vals,
-                                uint64_t* global_cursor,
-                                uint64_t unused_key) {
+                                      typename Table::key_type* d_keys,
+                                      typename Table::mapped_type* d_vals,
+                                      uint64_t* global_cursor,
+                                      uint64_t unused_key) {
   __shared__ typename Table::key_type local_key[256];
-  //__shared__ typename Table::mapped_type local_val[256];
+  // __shared__ typename Table::mapped_type local_val[256];
   __shared__ uint8_t local_val[256];
   __shared__ uint64_t local_num;
   __shared__ uint64_t global_num;
@@ -331,13 +329,18 @@ __global__ void get_key_values_kernel(Table* table,
 }
 
 template <typename KeyType, typename ValType>
-HashTable<KeyType, ValType>::HashTable(size_t capacity) {
-  container_ = new TableContainer<KeyType, ValType>(capacity);
-  CUDA_RT_CALL(cudaMalloc(&device_optimizer_config_, sizeof(OptimizerConfig)));
-  CUDA_RT_CALL(cudaMemcpy(device_optimizer_config_,
-                          &host_optimizer_config_,
-                          sizeof(OptimizerConfig),
-                          cudaMemcpyHostToDevice));
+HashTable<KeyType, ValType>::HashTable(size_t capacity, cudaStream_t stream) {
+  stream_ = stream;
+  container_ = new TableContainer<KeyType, ValType>(capacity, stream);
+  CUDA_RT_CALL(cudaMalloc(reinterpret_cast<void**>(&device_optimizer_config_),
+                          sizeof(OptimizerConfig)));
+  CUDA_RT_CALL(
+      cudaMemcpyAsync(reinterpret_cast<void*>(device_optimizer_config_),
+                      &host_optimizer_config_,
+                      sizeof(OptimizerConfig),
+                      cudaMemcpyHostToDevice,
+                      stream));
+  cudaStreamSynchronize(stream);
   rwlock_.reset(new phi::RWLock);
 }
 
@@ -351,11 +354,11 @@ template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::set_sparse_sgd(
     const OptimizerConfig& optimizer_config) {
   host_optimizer_config_.set_sparse_sgd(optimizer_config);
-  cudaMemcpy(device_optimizer_config_,
-             &host_optimizer_config_,
-             sizeof(OptimizerConfig),
-             cudaMemcpyHostToDevice,
-             stream_);
+  cudaMemcpyAsync(device_optimizer_config_,
+                  &host_optimizer_config_,
+                  sizeof(OptimizerConfig),
+                  cudaMemcpyHostToDevice,
+                  stream_);
   cudaStreamSynchronize(stream_);
 }
 
@@ -363,11 +366,11 @@ template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::set_embedx_sgd(
     const OptimizerConfig& optimizer_config) {
   host_optimizer_config_.set_embedx_sgd(optimizer_config);
-  cudaMemcpy(device_optimizer_config_,
-             &host_optimizer_config_,
-             sizeof(OptimizerConfig),
-             cudaMemcpyHostToDevice,
-             stream_);
+  cudaMemcpyAsync(device_optimizer_config_,
+                  &host_optimizer_config_,
+                  sizeof(OptimizerConfig),
+                  cudaMemcpyHostToDevice,
+                  stream_);
   cudaStreamSynchronize(stream_);
 }
 
@@ -414,9 +417,9 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys,
 template <typename KeyType, typename ValType>
 template <typename StreamType>
 void HashTable<KeyType, ValType>::get_ranks(const KeyType* d_keys,
-                                      ValType* d_vals,
-                                      size_t len,
-                                      StreamType stream) {
+                                            ValType* d_vals,
+                                            size_t len,
+                                            StreamType stream) {
   if (len == 0) {
     return;
   }
@@ -591,7 +594,10 @@ template void HashTable<int64_t, int>::get<cudaStream_t>(const int64_t* d_keys,
 template void HashTable<uint64_t, int>::get<cudaStream_t>(
     const uint64_t* d_keys, int* d_vals, size_t len, cudaStream_t stream);
 template void HashTable<uint64_t, unsigned int>::get<cudaStream_t>(
-    const uint64_t* d_keys, unsigned int* d_vals, size_t len, cudaStream_t stream);
+    const uint64_t* d_keys,
+    unsigned int* d_vals,
+    size_t len,
+    cudaStream_t stream);
 template void HashTable<uint64_t, uint64_t>::get<cudaStream_t>(
     const uint64_t* d_keys, uint64_t* d_vals, size_t len, cudaStream_t stream);
 template void HashTable<uint64_t, int64_t>::get<cudaStream_t>(
@@ -671,7 +677,10 @@ template void HashTable<uint64_t, uint32_t>::get_keys<cudaStream_t>(
     uint64_t* d_out, uint64_t* global_cursor, cudaStream_t stream);
 
 template void HashTable<uint64_t, uint32_t>::get_key_values<cudaStream_t>(
-    uint64_t* d_keys, uint32_t* d_vals, uint64_t* global_cursor, cudaStream_t stream);
+    uint64_t* d_keys,
+    uint32_t* d_vals,
+    uint64_t* global_cursor,
+    cudaStream_t stream);
 
 template void HashTable<uint64_t, uint64_t>::insert<cudaStream_t>(
     const uint64_t* d_keys,

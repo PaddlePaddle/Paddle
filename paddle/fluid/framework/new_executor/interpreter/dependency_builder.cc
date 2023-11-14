@@ -15,9 +15,9 @@
 #include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
 
 #include <queue>
-#include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include <sstream>
 #include <stack>
+#include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/flags.h"
 PADDLE_DEFINE_EXPORTED_bool(
@@ -36,7 +36,7 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
                             false,
                             "Enable sequential execution for standalone "
                             "executor, only applied to GPU OPs.");
-DECLARE_int32(enable_adjust_op_order);
+PHI_DECLARE_int32(enable_adjust_op_order);
 // add debug info
 PADDLE_DEFINE_EXPORTED_bool(enable_dependency_builder_debug_info,
                             false,
@@ -1010,9 +1010,8 @@ void DependencyBuilderSimplify::AddDependencyForCoalesceTensorOp() {
         if (del_c_sync_comm_list.count(j)) {
           continue;
         }
-        if (j == target + 1 &&
-            IsCommunicationOp(_ops_ptr->at(target)->Type()) &&
-            IsCommunicationOp(_ops_ptr->at(j)->Type())) {
+        if (j == target + 1 && IsCommunicationOp(_ops_ptr->at(target).get()) &&
+            IsCommunicationOp(_ops_ptr->at(j).get())) {
           VLOG(4) << "Found consecutive communication ops, "
                   << _ops_ptr->at(target)->Type() << " -> "
                   << _ops_ptr->at(j)->Type();
@@ -1045,7 +1044,7 @@ void DependencyBuilderSimplify::AddDependencyForCommunicationOp() {
   std::vector<size_t> com_op_vector;
   std::vector<size_t> sync_com_op_vector;
   for (auto op_idx : ops_list) {
-    if (IsCommunicationOp(_ops_ptr->at(op_idx)->Type())) {
+    if (IsCommunicationOp(_ops_ptr->at(op_idx).get())) {
       com_op_vector.push_back(op_idx);
       for (auto sync_op : sync_com_op_vector) {
         AddDownstreamOp(sync_op, op_idx);

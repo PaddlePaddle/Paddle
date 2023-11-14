@@ -55,11 +55,11 @@ class TableContainer
                                       ValType,
                                       std::numeric_limits<KeyType>::max()> {
  public:
-  TableContainer(size_t capacity)
+  TableContainer(size_t capacity, cudaStream_t stream)
       : concurrent_unordered_map<KeyType,
                                  ValType,
                                  std::numeric_limits<KeyType>::max()>(
-            capacity, ValType()) {}
+            stream, capacity, ValType()) {}
 };
 #elif defined(PADDLE_WITH_XPU_KP)
 template <typename KeyType, typename ValType>
@@ -113,7 +113,11 @@ class XPUCacheArray {
 template <typename KeyType, typename ValType>
 class HashTable {
  public:
+#if defined(PADDLE_WITH_CUDA)
+  explicit HashTable(size_t capacity, cudaStream_t stream = 0);
+#else
   explicit HashTable(size_t capacity);
+#endif
   virtual ~HashTable();
   HashTable(const HashTable&) = delete;
   HashTable& operator=(const HashTable&) = delete;
@@ -161,9 +165,9 @@ class HashTable {
 
   template <typename StreamType>
   void get_ranks(const KeyType* d_keys,
-           ValType* d_vals,
-           size_t len,
-           StreamType stream);
+                 ValType* d_vals,
+                 size_t len,
+                 StreamType stream);
 
   void show();
 
@@ -177,9 +181,9 @@ class HashTable {
   void get_keys(KeyType* d_out, uint64_t* global_cursor, StreamType stream);
 
   template <typename StreamType>
-  void get_key_values(KeyType* d_keys, // output
-                      ValType* d_vals, // output
-                      uint64_t* global_cursor, // temp use
+  void get_key_values(KeyType* d_keys,          // output
+                      ValType* d_vals,          // output
+                      uint64_t* global_cursor,  // temp use
                       StreamType stream);
 
 #if defined(PADDLE_WITH_CUDA)
@@ -238,6 +242,7 @@ class HashTable {
  private:
 #if defined(PADDLE_WITH_CUDA)
   TableContainer<KeyType, ValType>* container_;
+  cudaStream_t stream_ = 0;
 #elif defined(PADDLE_WITH_XPU_KP)
   XPUCacheArray<KeyType, ValType>* container_;
 #endif

@@ -180,6 +180,7 @@ class ValueAccessor {
 
   virtual float GetField(float* value UNUSED, const std::string& name UNUSED) {
     return 0.0;
+  }
   virtual robin_hood::unordered_set<float>* GetFilteredSlots() {
     return nullptr;
   }

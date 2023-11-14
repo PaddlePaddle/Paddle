@@ -19,7 +19,7 @@
 
 class RandomNumGen {
  public:
-  __host__ __device__ __forceinline__ RandomNumGen(int gid, unsigned long long seed) {
+  __host__ __device__ __forceinline__ RandomNumGen(int gid, uint64_t seed) {
     next_random = seed + gid;
     next_random ^= next_random >> 33U;
     next_random *= 0xff51afd7ed558ccdUL;

@@ -644,16 +644,16 @@ class Fleet:
                 fleet.barrier_worker()
         """
         self._role_maker._barrier("worker")
-        
+
     def all_reduce(self, input, mode="sum"):
         """
-             all reduce 
+        all reduce
         """
         return self._role_maker._all_reduce(input, mode, "worker")
-    
+
     def all_gather(self, input):
         """
-            all gather
+        all gather
         """
         return self._role_maker._all_gather(input, "worker")
 
@@ -1331,6 +1331,7 @@ class Fleet:
         context["user_defined_strategy"] = copy.deepcopy(
             self._user_defined_strategy
         )
+        print("_user_defined_strategy=", self._user_defined_strategy)
         if in_dynamic_mode():
             # imitate target optimizer retrieval
             target_opt = self.user_defined_optimizer
@@ -1408,7 +1409,7 @@ class Fleet:
             )
 
             can_not_apply_optimizer_list = []
-            
+
             valid_optimizer_list = []
             valid_graph_optimizer_list = []
             skip_names = []
@@ -1431,9 +1432,7 @@ class Fleet:
             if copy_user_defined_strategy._is_strict_auto():
                 # turn on all the strategy for each optimizer
                 for opt in distributed_optimizer_list:
-                    opt._enable_strategy(
-                        copy_user_defined_strategy, context
-                    )
+                    opt._enable_strategy(copy_user_defined_strategy, context)
 
             valid_optimizer_list = []
             valid_graph_optimizer_list = []
@@ -1451,15 +1450,23 @@ class Fleet:
                     valid_graph_optimizer_list.append(opt)
                 else:
                     can_not_apply_optimizer_list.append(opt)
-                        
+                print(
+                    "distributed_optimizer_list opt:",
+                    opt,
+                    "   apply:",
+                    opt._can_apply(),
+                    " graph:",
+                    opt._is_graph_out(),
+                )
             # fix set collective and fleet ps gpu error
             if (
                 self._is_collective
                 and len(self._user_defined_strategy.sparse_table_configs) > 0
             ):
                 context["use_fleet_ps"] = True
-                
+
                 from .meta_optimizers import ParameterServerOptimizer
+
                 meta_optimizer = ParameterServerOptimizer(
                     self.user_defined_optimizer
                 )
@@ -1469,23 +1476,17 @@ class Fleet:
                     self.user_defined_optimizer,
                     copy_user_defined_strategy,
                 )
+                valid_optimizer_list.clear()
                 valid_optimizer_list.append(meta_optimizer)
                 can_not_apply_optimizer_list.append(meta_optimizer)
-                        
-                from .meta_optimizers import ParameterServerGraphOptimizer
-                graph_optimizer = ParameterServerGraphOptimizer(
-                    self.user_defined_optimizer
-                )
-                graph_optimizer._set_basic_info(
-                    loss,
-                    self._role_maker,
-                    self.user_defined_optimizer,
-                    copy_user_defined_strategy,
-                )
-                valid_graph_optimizer_list.clear()
-                valid_graph_optimizer_list.append(graph_optimizer)
-                can_not_apply_optimizer_list.append(graph_optimizer)
-                
+
+                # meaningless, just for compatibility with other code
+                graph_optimizer = None
+
+                # valid_graph_optimizer_list.clear()
+                # valid_graph_optimizer_list.append(graph_optimizer)
+                # can_not_apply_optimizer_list.append(graph_optimizer)
+
             print("valid_optimizer_list=", valid_optimizer_list)
             # combine recalled meta optimizers to be a valid meta optimizer
             (
@@ -1507,8 +1508,8 @@ class Fleet:
             )
 
             context["valid_strategy"] = copy.deepcopy(valid_strategy)
-            logger.debug("valid_strategy: " + str(context["valid_strategy"]))
-            logger.debug(
+            logger.info("valid_strategy: " + str(context["valid_strategy"]))
+            logger.info(
                 "user_defined_strategy: "
                 + str(context["user_defined_strategy"])
             )
@@ -1550,7 +1551,7 @@ class Fleet:
                 )
 
             if meta_optimizer:
-                logger.debug(
+                logger.info(
                     "before minimize program id: " + str(id(loss.block.program))
                 )
                 optimize_ops, params_grads = meta_optimizer.minimize(
@@ -1559,15 +1560,15 @@ class Fleet:
                     parameter_list,
                     no_grad_set=no_grad_set,
                 )
-                logger.debug(
+                logger.info(
                     "after minimize program id: " + str(id(loss.block.program))
                 )
                 default_program = paddle.static.default_main_program()
-                logger.debug("default program id: " + str(id(default_program)))
+                logger.info("default program id: " + str(id(default_program)))
 
                 if id(default_program) != id(loss.block.program):
                     paddle.framework.switch_main_program(loss.block.program)
-                logger.debug(
+                logger.info(
                     "default program id after switch: "
                     + str(id(default_program))
                 )
@@ -1587,7 +1588,7 @@ class Fleet:
             context["program_params_grads"] = params_grads
 
             if graph_optimizer:
-                logger.debug(
+                logger.info(
                     "before graph minimize program id: "
                     + str(id(loss.block.program))
                 )
@@ -1709,7 +1710,7 @@ class Fleet:
                 if v or k not in opt_info:
                     opt_info[k] = v
             program._fleet_opt = opt_info
-            logger.debug(
+            logger.info(
                 "fleet base opt info: "
                 + str(id(program))
                 + str(program._fleet_opt)

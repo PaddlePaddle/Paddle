@@ -852,7 +852,7 @@ PHI_DEFINE_EXPORTED_bool(graph_load_in_parallel,
                          false,
                          "It controls whether load graph node and edge with "
                          "mutli threads parallely.");
- 
+
 /**
  * Distributed related FLAG
  * Name: FLAGS_enable_neighbor_list_use_uva
@@ -862,8 +862,8 @@ PHI_DEFINE_EXPORTED_bool(graph_load_in_parallel,
  * Note: Control whether store neighbor_list with UVA
  */
 PHI_DEFINE_EXPORTED_bool(enable_neighbor_list_use_uva,
-                            false,
-                            "It controls whether store neighbor_list with UVA");
+                         false,
+                         "It controls whether store neighbor_list with UVA");
 
 /**
  * Distributed related FLAG
@@ -874,9 +874,9 @@ PHI_DEFINE_EXPORTED_bool(enable_neighbor_list_use_uva,
  * Note: Control whether load graph node and edge with multi threads parallely
  *       If it is not set, load graph data with one thread
  */
-PADDLE_DEFINE_EXPORTED_double(graph_neighbor_size_percent,
-                            1.0,
-                            "It controls whether precent of neighbor_size.");
+PHI_DEFINE_EXPORTED_double(graph_neighbor_size_percent,
+                           1.0,
+                           "It controls whether precent of neighbor_size.");
 
 /**
  * Distributed related FLAG
@@ -928,7 +928,7 @@ PHI_DEFINE_EXPORTED_bool(
  * Example:
  * Note: Control  whether adjust op order in worker to reduce hbm cost.
  */
-PADDLE_DEFINE_EXPORTED_int32(
+PHI_DEFINE_EXPORTED_int32(
     enable_adjust_op_order,
     0,
     "It controls whether adjust op order in worker to reduce hbm cost");
@@ -1164,18 +1164,20 @@ PHI_DEFINE_EXPORTED_bool(enable_sparse_inner_gather,
 PHI_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
                          false,
                          "enable debug gpu memory, default false");
-PHI_DEFINE_EXPORTED_bool(graph_embedding_split_infer_mode,
-                            true,
-                            "graph embedding split infer mode not need nccl barrier");
+PHI_DEFINE_EXPORTED_bool(
+    graph_embedding_split_infer_mode,
+    true,
+    "graph embedding split infer mode not need nccl barrier");
 PHI_DEFINE_EXPORTED_bool(enable_graph_multi_node_sampling,
-                            false,
-                            "control multi-node sample");
-PADDLE_DEFINE_EXPORTED_bool(query_dest_rank_by_multi_node,
-                            false,
-                            "Control whether to query dest rank by multi machine");
-PADDLE_DEFINE_EXPORTED_bool(multi_node_sample_use_gpu_table,
-                            true,
-                            "Control whether to use gpu table in sample multi machine");
+                         false,
+                         "control multi-node sample");
+PHI_DEFINE_EXPORTED_bool(query_dest_rank_by_multi_node,
+                         false,
+                         "Control whether to query dest rank by multi machine");
+PHI_DEFINE_EXPORTED_bool(
+    multi_node_sample_use_gpu_table,
+    true,
+    "Control whether to use gpu table in sample multi machine");
 
 /**
  * ProcessGroupNCCL related FLAG

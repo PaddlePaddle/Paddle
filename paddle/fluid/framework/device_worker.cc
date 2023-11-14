@@ -196,8 +196,13 @@ void PrintLodTensor(phi::DenseTensor* tensor,
                     bool need_leading_separator,
                     int num_decimals) {
   if (framework::TransToProtoVarType(tensor->dtype()) == proto::VarType::FP32) {
-    PrintLodTensorType<float>(
-        tensor, start, end, out_val, separator, need_leading_separator, num_decimals);
+    PrintLodTensorType<float>(tensor,
+                              start,
+                              end,
+                              out_val,
+                              separator,
+                              need_leading_separator,
+                              num_decimals);
   } else if (framework::TransToProtoVarType(tensor->dtype()) ==
              proto::VarType::INT64) {
     PrintLodTensorIntType(
@@ -240,7 +245,7 @@ bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size) {
 
 void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
   std::ostringstream os;
-  int device_id = int(place_.GetDeviceId());
+  int device_id = static_cast<int>(place_.GetDeviceId());
   for (auto& param : *dump_param_) {
     os.str("");
     Variable* var = scope.FindVar(param);
@@ -330,24 +335,29 @@ void DeviceWorker::DumpField(const Scope& scope,
     if (dump_fields_ == NULL || (*dump_fields_).empty()) {
       return;
     }
-    auto set_output_str = [&, this](size_t begin,
-                                    size_t end,
-                                    phi::DenseTensor* tensor) {
-      std::pair<int64_t, int64_t> bound;
-      auto& dims = tensor->dims();
-      for (size_t i = begin; i < end; ++i) {
-        bound = {i * dims[1], (i + 1) * dims[1]};
-        // auto bound = GetTensorBound(tensor, i);
+    auto set_output_str =
+        [&, this](size_t begin, size_t end, phi::DenseTensor* tensor) {
+          std::pair<int64_t, int64_t> bound;
+          auto& dims = tensor->dims();
+          for (size_t i = begin; i < end; ++i) {
+            bound = {i * dims[1], (i + 1) * dims[1]};
+            // auto bound = GetTensorBound(tensor, i);
 
-        if (!ars[i].empty()) ars[i] += "\t";
-        // ars[i] += '[';
-        PrintLodTensor(tensor, bound.first, bound.second, ars[i], ' ', false,
-                       dump_num_decimals_);
-        // ars[i] += ']';
-        // ars[i] += "<" + PrintLodTensor(tensor, bound.first, bound.second, '
-        // ', false) + ">";
-      }
-    };
+            if (!ars[i].empty()) ars[i] += "\t";
+            // ars[i] += '[';
+            PrintLodTensor(tensor,
+                           bound.first,
+                           bound.second,
+                           ars[i],
+                           ' ',
+                           false,
+                           dump_num_decimals_);
+            // ars[i] += ']';
+            // ars[i] += "<" + PrintLodTensor(tensor, bound.first, bound.second,
+            // '
+            // ', false) + ">";
+          }
+        };
     std::vector<std::thread> threads(tensor_iterator_thread_num);
     for (auto& field : *dump_fields_) {
       Variable* var = scope.FindVar(field);
@@ -392,7 +402,7 @@ void DeviceWorker::DumpField(const Scope& scope,
     auto end1 = std::chrono::steady_clock::now();
     auto tt =
         std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
-    VLOG(1) << "writing a batch takes " << tt.count() << " us";
+    VLOG(2) << "writing a batch takes " << tt.count() << " us";
 
     size_t acutal_thread_num =
         std::min(static_cast<size_t>(batch_size), tensor_iterator_thread_num);

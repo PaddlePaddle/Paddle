@@ -22,8 +22,8 @@
 #include <set>
 #include <string>
 #include <thread>  // NOLINT
-#include <unordered_set>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/phi/core/macros.h"
@@ -178,10 +178,10 @@ class Dataset {
   virtual void DumpWalkPath(std::string dump_path, size_t dump_rate) = 0;
   virtual void DumpSampleNeighbors(std::string dump_path) = 0;
   virtual const std::vector<uint64_t>& GetGpuGraphTotalKeys() = 0;
-  virtual const std::vector<std::vector<uint64_t>*> & GetPassKeysVec() = 0;
-  virtual const std::vector<std::vector<uint32_t>*> & GetPassRanksVec() = 0;
+  virtual const std::vector<std::vector<uint64_t>*>& GetPassKeysVec() = 0;
+  virtual const std::vector<std::vector<uint32_t>*>& GetPassRanksVec() = 0;
   virtual const std::vector<std::shared_ptr<HashTable<uint64_t, uint32_t>>>
-      GetPassKeys2RankTable() = 0;
+  GetPassKeys2RankTable() = 0;
 
  protected:
   virtual int ReceiveFromClient(int msg_type,
@@ -292,17 +292,17 @@ class DatasetImpl : public Dataset {
       return multi_consume_channel_;
     }
   }
-  std::vector<uint64_t>& GetGpuGraphTotalKeys() {
+  virtual const std::vector<uint64_t>& GetGpuGraphTotalKeys() {
     return gpu_graph_total_keys_;
   }
-  virtual const std::vector<std::vector<uint64_t>*> & GetPassKeysVec() {
+  virtual const std::vector<std::vector<uint64_t>*>& GetPassKeysVec() {
     return keys_vec_;
   }
-  virtual const std::vector<std::vector<uint32_t>*> & GetPassRanksVec() {
+  virtual const std::vector<std::vector<uint32_t>*>& GetPassRanksVec() {
     return ranks_vec_;
   }
   virtual const std::vector<std::shared_ptr<HashTable<uint64_t, uint32_t>>>
-      GetPassKeys2RankTable() {
+  GetPassKeys2RankTable() {
     return keys2rank_tables_;
   }
 
@@ -368,7 +368,6 @@ class DatasetImpl : public Dataset {
   std::vector<std::string> use_slots_;
   bool enable_heterps_ = false;
   int gpu_graph_mode_ = 0;
-  std::vector<std::vector<std::vector<uint64_t>>> gpu_graph_type_keys_;
   std::vector<uint64_t> gpu_graph_total_keys_;
   typedef std::vector<uint64_t> KEYS;
   typedef std::vector<uint32_t> RANKS;

@@ -197,7 +197,7 @@ class GpuPsGraphTable
                        int sample_size,
                        int shard_len,
                        bool need_neighbor_count,
-                       unsigned long long random_seed,
+                       uint64_t random_seed,
                        float *weight_array,
                        bool return_weight);
   void unweighted_sample(GpuPsCommGraph &graph,
@@ -208,7 +208,7 @@ class GpuPsGraphTable
                          int remote_gpu_id,
                          int sample_size,
                          int shard_len,
-                         unsigned long long random_seed,
+                         uint64_t random_seed,
                          float *weight_array,
                          bool return_weight);
   std::vector<std::shared_ptr<phi::Allocation>> get_edge_type_graph(
@@ -238,8 +238,8 @@ class GpuPsGraphTable
       int gpu_id,
       uint64_t *d_nodes,
       int node_num,
-      std::shared_ptr<phi::Allocation> &size_list,
-      std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
+      const std::shared_ptr<phi::Allocation> &size_list,
+      const std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
       std::shared_ptr<phi::Allocation> &feature_list,  // NOLINT
       std::shared_ptr<phi::Allocation> &slot_list,     // NOLINT
       bool sage_mode = false);
@@ -247,8 +247,8 @@ class GpuPsGraphTable
       int gpu_id,
       uint64_t *d_nodes,
       int node_num,
-      std::shared_ptr<phi::Allocation> &size_list,
-      std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
+      const std::shared_ptr<phi::Allocation> &size_list,
+      const std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
       std::shared_ptr<phi::Allocation> &feature_list,  // NOLINT
       std::shared_ptr<phi::Allocation> &slot_list,     // NOLINT
       bool sage_mode = false);
@@ -258,8 +258,8 @@ class GpuPsGraphTable
       int gpu_id,
       uint64_t *d_nodes,
       int node_num,
-      std::shared_ptr<phi::Allocation> &size_list,
-      std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
+      const std::shared_ptr<phi::Allocation> &size_list,
+      const std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
       std::shared_ptr<phi::Allocation> &feature_list,
       std::shared_ptr<phi::Allocation> &slot_list);
 
@@ -268,8 +268,8 @@ class GpuPsGraphTable
       int gpu_id,
       uint64_t *d_nodes,
       int node_num,
-      std::shared_ptr<phi::Allocation> &size_list,
-      std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
+      const std::shared_ptr<phi::Allocation> &size_list,
+      const std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
       std::shared_ptr<phi::Allocation> &feature_list,
       std::shared_ptr<phi::Allocation> &slot_list,
       bool sage_mode = false);
@@ -282,7 +282,8 @@ class GpuPsGraphTable
                                   int idx,
                                   int start,
                                   int query_size);
-  void display_sample_res(void *key, void *val, int len, int sample_len);
+  void display_sample_res(
+      void *key, void *val, int len, int sample_len, int gpu_id);
   void move_result_to_source_gpu(int gpu_id,
                                  int gpu_num,
                                  int sample_size,

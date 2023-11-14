@@ -14,10 +14,10 @@
 
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
+#include <cuda_fp16.h>
 #include <iostream>
 #include <memory>
 #include <string>
-#include <cuda_fp16.h>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
@@ -43,7 +43,8 @@ struct GpuPsCommGraph {
   GpuPsNodeInfo *node_info_list;  // only locate on host side
   uint64_t *neighbor_list;        // locate on both side
   int64_t neighbor_size;          // the size of neighbor_list
-  half *weight_list;             // locate on both side, which length is the same as neighbor_list
+  half *weight_list;  // locate on both side, which length is the same as
+                      // neighbor_list
   bool is_weighted;
   GpuPsCommGraph()
       : node_list(nullptr),
@@ -67,7 +68,9 @@ struct GpuPsCommGraph {
         neighbor_size(neighbor_size_),
         weight_list(weight_list_),
         is_weighted(is_weighted_) {}
-  void init_on_cpu(int64_t neighbor_size_, int64_t node_size_, bool is_weighted_) {
+  void init_on_cpu(int64_t neighbor_size_,
+                   int64_t node_size_,
+                   bool is_weighted_) {
     if (node_size_ > 0) {
       this->node_size = node_size_;
       this->node_list = new uint64_t[node_size_];
@@ -95,7 +98,7 @@ struct GpuPsCommGraph {
     node_size = 0;
     neighbor_size = 0;
   }
-  void display_on_cpu(int edge_idx=-1) const {
+  void display_on_cpu(int edge_idx = -1) const {
     for (int64_t i = 0; i < node_size; i++) {
       auto id = node_list[i];
       auto val = node_info_list[i];
@@ -104,7 +107,9 @@ struct GpuPsCommGraph {
         if (j > 0) neighbor_str += ";";
         neighbor_str += std::to_string(neighbor_list[val.neighbor_offset + j]);
       }
-      VLOG(0) << "node id " << id << ", edge_idx:" << edge_idx << ", " << val.neighbor_offset << ":" << val.neighbor_size << " " << neighbor_str;
+      VLOG(0) << "node id " << id << ", edge_idx:" << edge_idx << ", "
+              << val.neighbor_offset << ":" << val.neighbor_size << " "
+              << neighbor_str;
     }
   }
 };
@@ -158,8 +163,13 @@ struct NeighborSampleQuery {
   int sample_size;
   int sample_step;
   int neighbor_size_limit;
-  void initialize(
-      int gpu_id, int table_idx, uint64_t src_nodes, int sample_size, int len, int neighbor_size_limit, int sample_step=1) {
+  void initialize(int gpu_id,
+                  int table_idx,
+                  uint64_t src_nodes,
+                  int sample_size,
+                  int len,
+                  int neighbor_size_limit,
+                  int sample_step = 1) {
     this->table_idx = table_idx;
     this->gpu_id = gpu_id;
     this->src_nodes = reinterpret_cast<uint64_t *>(src_nodes);
@@ -230,8 +240,10 @@ struct NeighborSampleResult {
   void display() {
     VLOG(0) << "in node sample result display ------------------";
     uint64_t *sample_keys = new uint64_t[query.len];
-    cudaMemcpy(
-        sample_keys, query.src_nodes, query.len * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+    cudaMemcpy(sample_keys,
+               query.src_nodes,
+               query.len * sizeof(uint64_t),
+               cudaMemcpyDeviceToHost);
 
     int64_t *res = new int64_t[sample_size * key_size];
     cudaMemcpy(res,
@@ -258,16 +270,14 @@ struct NeighborSampleResult {
       auto key = sample_keys[i];
       std::string neighbor;
       for (int j = 0; j < ac_size[i]; j++) {
-        if (neighbor.size() > 0) neighbor += ";";  // r
+        if (neighbor.size() > 0) neighbor += ";";     // r
         neighbor += std::to_string(res2[start + j]);  // r
       }
-      VLOG(0) << "sample key:" << key
-          << " gpu_id:" << query.gpu_id
-          << " sample_size:" << query.sample_size
-          << " sample_step:" << query.sample_step
-          << " table_index:" << query.table_idx
-          << " ac_size:" << ac_size[i]
-          << " neighbor:" << neighbor;
+      VLOG(0) << "sample key:" << key << " gpu_id:" << query.gpu_id
+              << " sample_size:" << query.sample_size
+              << " sample_step:" << query.sample_step
+              << " table_index:" << query.table_idx << " ac_size:" << ac_size[i]
+              << " neighbor:" << neighbor;
       start += ac_size[i];  // r
     }
     delete[] res;
@@ -342,7 +352,8 @@ struct NeighborSampleResultV2 {
   int *actual_sample_size;
   float *weight;
   int sample_size, key_size, edge_to_id_len;
-  std::shared_ptr<memory::Allocation> val_mem, actual_sample_size_mem, weight_mem;
+  std::shared_ptr<memory::Allocation> val_mem, actual_sample_size_mem,
+      weight_mem;
   cudaStream_t stream = 0;
 
   void set_stream(cudaStream_t stream_t) { stream = stream_t; }
@@ -378,8 +389,7 @@ struct NeighborSampleResultV2 {
           memory::AllocShared(place, _key_size * _edge_to_id_len * sizeof(int));
       if (_return_weight) {
         weight_mem = memory::AllocShared(
-            place,
-            _sample_size * _key_size * _edge_to_id_len * sizeof(float));
+            place, _sample_size * _key_size * _edge_to_id_len * sizeof(float));
       }
     }
     val = reinterpret_cast<uint64_t *>(val_mem->ptr());
@@ -395,7 +405,7 @@ struct NeighborSampleResultV2 {
     cudaMemcpy(ac_size,
                actual_sample_size,
                key_size * edge_to_id_len * sizeof(int),
-               cudaMemcpyDeviceToHost); // 0, 0, 0...
+               cudaMemcpyDeviceToHost);  // 0, 0, 0...
     std::string print_ac;
     for (int i = 0; i < key_size * edge_to_id_len; i++) {
       print_ac += std::to_string(ac_size[i]);
@@ -411,13 +421,22 @@ struct NeighborSampleResultV2 {
 struct NodeQueryResult {
   uint64_t *val;
   int actual_sample_size;
+  cudaStream_t stream = 0;
+  void set_stream(cudaStream_t stream_t) { stream = stream_t; }
   uint64_t get_val() { return (uint64_t)val; }
   int get_len() { return actual_sample_size; }
   std::shared_ptr<memory::Allocation> val_mem;
   void initialize(int query_size, int dev_id) {
     platform::CUDADeviceGuard guard(dev_id);
     platform::CUDAPlace place = platform::CUDAPlace(dev_id);
-    val_mem = memory::AllocShared(place, query_size * sizeof(uint64_t));
+    if (stream != 0) {
+      val_mem = memory::AllocShared(
+          place,
+          query_size * sizeof(uint64_t),
+          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+    } else {
+      val_mem = memory::AllocShared(place, query_size * sizeof(uint64_t));
+    }
     val = reinterpret_cast<uint64_t *>(val_mem->ptr());
     actual_sample_size = 0;
   }
@@ -531,9 +550,9 @@ struct GpuPsCommGraphFea {
 };  // end of struct GpuPsCommGraphFea
 
 struct GpuPsCommGraphFloatFea {
-  uint64_t *node_list;     // only locate on host side, the list of node id
-  float* feature_list;  // locate on both side
-  uint8_t *slot_id_list;   // locate on both side
+  uint64_t *node_list;    // only locate on host side, the list of node id
+  float *feature_list;    // locate on both side
+  uint8_t *slot_id_list;  // locate on both side
   GpuPsFeaInfo
       *fea_info_list;  // only locate on host side, the list of fea_info
   uint64_t feature_size, node_size, feature_capacity;
@@ -619,8 +638,8 @@ struct GpuPsCommRankFea {
         feature_size(0),
         feature_capacity(0) {}
   GpuPsCommRankFea(uint64_t *node_list_,
-                    uint32_t *rank_list_,
-                    uint64_t feature_size_)
+                   uint32_t *rank_list_,
+                   uint64_t feature_size_)
       : node_list(node_list_),
         rank_list(rank_list_),
         feature_size(feature_size_) {}

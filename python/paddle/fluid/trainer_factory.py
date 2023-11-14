@@ -13,34 +13,22 @@
 # limitations under the License.
 """Defination of TrainerFactory."""
 
+import logging
 import threading
 import time
-import logging
+
 import numpy as np
+
 from paddle.fluid.log_helper import get_logger
 
 local_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
-from .trainer_desc import (
-    MultiTrainer,
-    DistMultiTrainer,
-    PipelineTrainer,
-    HeterXpuTrainer,
-    PSGPUTrainer,
-    HeterPipelineTrainer,
-)
-from .device_worker import (
-    Hogwild,
-    DownpourSGD,
-    DownpourLite,
-    Section,
-    DownpourSGDOPT,
-    HeterSection,
-)
+
+from .device_worker import Hogwild
 from .framework import Variable
-from multiprocessing import Process, Manager
+from .trainer_desc import MultiTrainer
 
 __all__ = ["TrainerFactory", "FetchHandlerMonitor"]
 
@@ -60,12 +48,14 @@ class TrainerFactory:
         device_worker = None
         if not opt_info:
             # default is MultiTrainer + Hogwild
+            print("not opt_info, use default trainer")
             trainer = MultiTrainer()
             device_worker = Hogwild()
             trainer._set_device_worker(device_worker)
         else:
             trainer_class = opt_info.get("trainer", "MultiTrainer")
             device_worker_class = opt_info.get("device_worker", "Hogwild")
+            print("have opt_info!!!, trainer_class:", trainer_class)
             trainer = globals()[trainer_class]()
             device_worker = globals()[device_worker_class]()
 
@@ -92,6 +82,10 @@ class TrainerFactory:
                 ):
                     trainer._set_dump_fields_path(opt_info["dump_fields_path"])
                 if opt_info.get("dump_fields_mode") is not None:
+                    print(
+                        "======get dump_fields_mode:",
+                        opt_info["dump_fields_mode"],
+                    )
                     trainer._set_dump_fields_mode(opt_info["dump_fields_mode"])
                 if (
                     opt_info.get("user_define_dump_filename") is not None
@@ -186,14 +180,12 @@ class FetchHandlerMonitor:
             if isinstance(fetch_instance.var_dict[key], Variable):
                 var_name_to_key[fetch_instance.var_dict[key].name] = key
             else:
-                local_logger.warning(
-                    "the value of {} is not a Variable".format(key)
-                )
+                local_logger.warning(f"the value of {key} is not a Variable")
                 var_name_to_key["None.var"] = key
         elapsed_secs = 0
         while True:
             self.running_lock.acquire()
-            if self.running == False:
+            if self.running is False:
                 break
             if elapsed_secs < period_secs:
                 # TODO(guru4elephant): needs customized condition
