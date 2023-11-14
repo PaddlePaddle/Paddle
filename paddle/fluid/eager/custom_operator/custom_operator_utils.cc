@@ -466,7 +466,12 @@ std::tuple<bool, bool, phi::distributed::ProcessMesh> PrepareCtxForAutoParallel(
   const auto& inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(op_info);
 
   std::vector<Tensor>* all_inputs = ctx.AllMutableInput();
-  std::vector<Tensor> x = *all_inputs;
+  std::vector<Tensor> x;
+  for (auto& t : *all_inputs) {
+    if (t.impl().get()) {
+      x.emplace_back(t);
+    }
+  }
   const phi::distributed::ProcessMesh* mesh = nullptr;
   for (auto& input : x) {
     if (input.is_dist_tensor()) {

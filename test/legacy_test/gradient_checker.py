@@ -21,7 +21,7 @@ from utils import static_guard
 
 import paddle
 from paddle import base
-from paddle.base import Scope, core
+from paddle.base import core
 from paddle.base.backward import _append_grad_suffix_, _as_list
 from paddle.base.framework import in_pir_mode
 
@@ -484,50 +484,37 @@ def double_grad_check(
     x = _as_list(x)
     for v in x:
         v.stop_gradient = False
-        if in_pir_mode():
-            v.is_persistable = True
-        else:
-            v.persistable = True
+        v.persistable = True
     y = _as_list(y)
     for u in y:
         u.stop_gradient = False
-        if in_pir_mode():
-            u.is_persistable = True
-        else:
-            u.persistable = True
+        u.persistable = True
 
     x_init = _as_list(x_init)
 
     if in_pir_mode():
-        if program is None:
-            ir_program = paddle.static.default_main_program()
-        with paddle.static.program_guard(ir_program):
-            (
-                grad_res,
-                x,
-                target_grads,
-                fetch_list,
-                feeds,
-                ir_program,
-            ) = get_pir_static_double_grad(
-                x, y, x_init, y_grads, place, ir_program
-            )
-            grad_check(
-                x,
-                target_grads,
-                fetch_list,
-                feeds,
-                place,
-                ir_program,
-                eps,
-                atol,
-                rtol,
-            )
+        (
+            grad_res,
+            x,
+            target_grads,
+            fetch_list,
+            feeds,
+            ir_program,
+        ) = get_pir_static_double_grad(x, y, x_init, y_grads, place)
+        grad_check(
+            x,
+            target_grads,
+            fetch_list,
+            feeds,
+            place,
+            ir_program,
+            eps,
+            atol,
+            rtol,
+        )
     else:
-        if program is None:
-            program = paddle.static.default_main_program()
         grad_res, x, target_grads, program = get_static_double_grad(
-            x, y, x_init, y_grads, place, program
+            x, y, x_init, y_grads, place
         )
         grad_check(x, target_grads, None, None, place, program, eps, atol, rtol)
 
@@ -575,52 +562,38 @@ def triple_grad_check(
     x = _as_list(x)
     for v in x:
         v.stop_gradient = False
-        if in_pir_mode():
-            v.is_persistable = True
-        else:
-            v.persistable = True
+        v.persistable = True
     y = _as_list(y)
     for u in y:
         u.stop_gradient = False
-        if in_pir_mode():
-            u.is_persistable = True
-        else:
-            u.persistable = True
+        u.persistable = True
 
     x_init = _as_list(x_init)
 
     # x <=> [x, dout, ddx]
     if in_pir_mode():
-        if program is None:
-            ir_program = paddle.static.default_main_program()
-        with paddle.static.program_guard(ir_program):
-            (
-                grad_res,
-                x,
-                target_grads,
-                fetch_list,
-                feeds,
-                ir_program,
-            ) = get_pir_static_triple_grad(
-                x, y, x_init, y_grads, place, ir_program
-            )
-            grad_check(
-                x,
-                target_grads,
-                fetch_list,
-                feeds,
-                place,
-                ir_program,
-                eps,
-                atol,
-                rtol,
-            )
+        (
+            grad_res,
+            x,
+            target_grads,
+            fetch_list,
+            feeds,
+            ir_program,
+        ) = get_pir_static_triple_grad(x, y, x_init, y_grads, place)
+        grad_check(
+            x,
+            target_grads,
+            fetch_list,
+            feeds,
+            place,
+            ir_program,
+            eps,
+            atol,
+            rtol,
+        )
     else:
-        # with static_guard():
-        if program is None:
-            program = paddle.static.default_main_program()
         grad_res, x, target_grads, program = get_static_triple_grad(
-            x, y, x_init, y_grads, place, program
+            x, y, x_init, y_grads, place
         )
         grad_check(x, target_grads, None, None, place, program, eps, atol, rtol)
 
@@ -759,12 +732,14 @@ def get_pir_static_double_grad(
     Returns:
         A list of numpy array that stores second derivative result calculated by static graph.
     """
+    if program is None:
+        program = paddle.static.default_main_program()
     if dy_init is None:
         y_grads = []
         y_grads_init = []
         for i in range(len(y)):
             yi = y[i]
-            yi.is_persistable = True
+            yi.persistable = True
             np_type = dtype_to_np_dtype(yi.dtype)
             dy = paddle.static.data(
                 name='Dgrad_%s' % i,
@@ -772,7 +747,7 @@ def get_pir_static_double_grad(
                 dtype=np_type,
             )
             dy.stop_gradient = False
-            dy.is_persistable = True
+            dy.persistable = True
             v = np.random.random(size=yi.shape).astype(np_type)
             y_grads.append(dy)
             y_grads_init.append(v)
@@ -781,7 +756,7 @@ def get_pir_static_double_grad(
         y_grads_init = dy_init
         for i in range(len(y)):
             yi = y[i]
-            yi.is_persistable = True
+            yi.persistable = True
             np_type = dtype_to_np_dtype(yi.dtype)
             dy = paddle.static.data(
                 name='Dgrad_%s' % i,
@@ -789,7 +764,7 @@ def get_pir_static_double_grad(
                 dtype=np_type,
             )
             dy.stop_gradient = False
-            dy.is_persistable = True
+            dy.persistable = True
             y_grads.append(dy)
 
     # append first order grads
@@ -809,10 +784,10 @@ def get_pir_static_double_grad(
 
     for v in x:
         v.stop_gradient = False
-        v.is_persistable = True
+        v.persistable = True
     for u in y:
         u.stop_gradient = False
-        u.is_persistable = True
+        u.persistable = True
 
     if place is None:
         place = base.CPUPlace()
@@ -973,17 +948,11 @@ def double_grad_check_for_dygraph(
     # check input arguments
     for v in x:
         v.stop_gradient = False
-        if in_pir_mode():
-            v.is_persistable = True
-        else:
-            v.persistable = True
+        v.persistable = True
     y = _as_list(y)
     for u in y:
         u.stop_gradient = False
-        if in_pir_mode():
-            u.is_persistable = True
-        else:
-            u.persistable = True
+        u.persistable = True
     y_grads_init = []
     for yi in y:
         np_type = dtype_to_np_dtype(yi.dtype)
@@ -997,13 +966,9 @@ def double_grad_check_for_dygraph(
     paddle.enable_static()
 
     if in_pir_mode():
-        if program is None:
-            program = paddle.static.default_main_program()
-        with paddle.static.program_guard(program):
-            with base.executor.scope_guard(Scope()):
-                static_double_grad, _, _, _, _, _ = get_pir_static_double_grad(
-                    x, y, x_init, y_grads_init, place, program
-                )
+        static_double_grad, _, _, _, _, _ = get_pir_static_double_grad(
+            x, y, x_init, y_grads_init, place
+        )
     else:
         with static_guard():
             (
@@ -1118,12 +1083,14 @@ def get_pir_static_triple_grad(
     Returns:
         A list of numpy array that stores third derivative result calculated by static graph.
     """
+    if program is None:
+        program = paddle.static.default_main_program()
     if dy_init is None:
         y_grads = []
         y_grads_init = []
         for i in range(len(y)):
             yi = y[i]
-            yi.is_persistable = True
+            yi.persistable = True
             np_type = dtype_to_np_dtype(yi.dtype)
             dy = paddle.static.data(
                 name='Tgrad_%s' % i,
@@ -1131,7 +1098,7 @@ def get_pir_static_triple_grad(
                 dtype=np_type,
             )
             dy.stop_gradient = False
-            dy.is_persistable = True
+            dy.persistable = True
             v = np.random.random(size=yi.shape).astype(np_type)
             y_grads.append(dy)
             y_grads_init.append(v)
@@ -1140,7 +1107,7 @@ def get_pir_static_triple_grad(
         y_grads_init = dy_init
         for i in range(len(y)):
             yi = y[i]
-            yi.is_persistable = True
+            yi.persistable = True
             np_type = dtype_to_np_dtype(yi.dtype)
             dy = paddle.static.data(
                 name='Tgrad_%s' % i,
@@ -1148,7 +1115,7 @@ def get_pir_static_triple_grad(
                 dtype=np_type,
             )
             dy.stop_gradient = False
-            dy.is_persistable = True
+            dy.persistable = True
             y_grads.append(dy)
 
     # append first order grads
@@ -1242,17 +1209,11 @@ def triple_grad_check_for_dygraph(
     x = _as_list(x)
     for v in x:
         v.stop_gradient = False
-        if in_pir_mode():
-            v.is_persistable = True
-        else:
-            v.persistable = True
+        v.persistable = True
     y = _as_list(y)
     for u in y:
         u.stop_gradient = False
-        if in_pir_mode():
-            u.is_persistable = True
-        else:
-            u.persistable = True
+        u.persistable = True
     y_grads_init = []
     for yi in y:
         np_type = dtype_to_np_dtype(yi.dtype)
@@ -1266,13 +1227,9 @@ def triple_grad_check_for_dygraph(
     paddle.enable_static()
 
     if in_pir_mode():
-        if program is None:
-            program = paddle.static.default_main_program()
-        with paddle.static.program_guard(program):
-            with base.executor.scope_guard(Scope()):
-                static_triple_grad, _, _, _, _, _ = get_pir_static_triple_grad(
-                    x, y, x_init, y_grads_init, place
-                )
+        static_triple_grad, _, _, _, _, _ = get_pir_static_triple_grad(
+            x, y, x_init, y_grads_init, place
+        )
     else:
         with static_guard():
             (

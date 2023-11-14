@@ -64,7 +64,6 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     "builtin.slice",
     "builtin.split",
     "pd_op.feed",
-    "pd_op.fetch",
     "builtin.set_parameter",
     "builtin.get_parameter",
     "builtin.shadow_output",
@@ -650,6 +649,7 @@ phi::KernelKey GetKernelKey(
     const std::unordered_map<pir::Value, pir::Value>& map_value_pair,
     dialect::OpYamlInfoParser* op_info_parser = nullptr) {
   if (op->isa<paddle::dialect::FeedOp>() ||
+      op->isa<paddle::dialect::FetchOp>() ||
       op->isa<paddle::dialect::ArrayLengthOp>()) {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
