@@ -18,9 +18,9 @@ from functools import reduce
 
 import paddle
 from paddle import framework
+from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import EagerParamBase
 from paddle.distributed import fleet
-from paddle.fluid.dygraph import base as imperative_base
 
 from ...utils.log_util import logger
 from ...utils.tensor_fusion_helper import (
