@@ -579,7 +579,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
                          this->target_,
                          tensor_map,
                          this->shape_dict_);
-      } else if (master) {
+      } else {
         VLOG(3) << "Before assign node " << node->id()
                 << " into horizontal link reducer, ir is:\n"
                 << ir_sch.GetModule().GetExprs().at(0);
