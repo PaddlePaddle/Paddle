@@ -352,7 +352,7 @@ def GenBuildOutputs(
     vec_meta_{name}.push_back(paddle::dialect::IrMetaTensor(&vec_ir_tensor_{name}[i]));
   }}
 
-  std::vector<const paddle::dialect::IrMetaTensor*> meta_{name};
+  std::vector<const phi::MetaTensor*> meta_{name};
   for (size_t i=0; i < static_cast<size_t>(vec_meta_{name}.size()); i++) {{
     meta_{name}.push_back(&vec_meta_{name}[i]);
   }}
@@ -375,7 +375,7 @@ def GenBuildOutputs(
     vec_meta_{name}.push_back(paddle::dialect::IrMetaTensor(&vec_ir_tensor_{name}[i]));
   }}
 
-  std::vector<const paddle::dialect::IrMetaTensor*> meta_{name};
+  std::vector<const phi::MetaTensor*> meta_{name};
   for (size_t i=0; i < static_cast<size_t>(vec_meta_{name}.size()); i++) {{
     meta_{name}.push_back(&vec_meta_{name}[i]);
   }}
@@ -438,7 +438,7 @@ def GenBuildOutputs(
   for (size_t i=0; i < static_cast<size_t>({output_size}); i++) {{
     vec_meta_{name}.push_back(paddle::dialect::IrMetaTensor(&vec_dense_{name}[i]));
   }}
-  std::vector<paddle::dialect::IrMetaTensor*> meta_{name};
+  std::vector<phi::MetaTensor*> meta_{name};
   for (size_t i=0; i < static_cast<size_t>(vec_meta_{name}.size()); i++) {{
     meta_{name}.push_back(&vec_meta_{name}[i]);
   }}

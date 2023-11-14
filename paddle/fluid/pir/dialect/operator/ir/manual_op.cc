@@ -129,7 +129,7 @@ void AddNOp::Build(pir::Builder &builder,             // NOLINT
     vec_meta_x.push_back(paddle::dialect::IrMetaTensor(&vec_dense_x[i]));
   }
 
-  std::vector<const paddle::dialect::IrMetaTensor *> meta_x;
+  std::vector<const phi::MetaTensor *> meta_x;
   for (size_t i = 0; i < static_cast<size_t>(vec_meta_x.size()); i++) {
     meta_x.push_back(&vec_meta_x[i]);
   }
@@ -203,7 +203,7 @@ void AddN_Op::Build(pir::Builder &builder,
         paddle::dialect::IrMetaTensor(&vec_dense_inputs[i]));
   }
 
-  std::vector<const paddle::dialect::IrMetaTensor *> meta_inputs;
+  std::vector<const phi::MetaTensor *> meta_inputs;
   for (size_t i = 0; i < static_cast<size_t>(vec_meta_inputs.size()); i++) {
     meta_inputs.push_back(&vec_meta_inputs[i]);
   }
@@ -327,7 +327,7 @@ void AddNWithKernelOp::Build(pir::Builder &builder,
         paddle::dialect::IrMetaTensor(&vec_dense_inputs[i]));
   }
 
-  std::vector<const paddle::dialect::IrMetaTensor *> meta_inputs;
+  std::vector<const phi::MetaTensor *> meta_inputs;
   for (size_t i = 0; i < static_cast<size_t>(vec_meta_inputs.size()); i++) {
     meta_inputs.push_back(&vec_meta_inputs[i]);
   }
@@ -916,7 +916,7 @@ void SplitGradOp::Build(pir::Builder &builder,
         paddle::dialect::IrMetaTensor(&vec_dense_out_grad[i]));
   }
 
-  std::vector<const paddle::dialect::IrMetaTensor *> meta_out_grad;
+  std::vector<const phi::MetaTensor *> meta_out_grad;
   for (size_t i = 0; i < static_cast<size_t>(vec_meta_out_grad.size()); i++) {
     meta_out_grad.push_back(&vec_meta_out_grad[i]);
   }
@@ -973,7 +973,7 @@ void SplitGradOp::Build(pir::Builder &builder,
         paddle::dialect::IrMetaTensor(&vec_dense_out_grad[i]));
   }
 
-  std::vector<const paddle::dialect::IrMetaTensor *> meta_out_grad;
+  std::vector<const phi::MetaTensor *> meta_out_grad;
   for (size_t i = 0; i < static_cast<size_t>(vec_meta_out_grad.size()); i++) {
     meta_out_grad.push_back(&vec_meta_out_grad[i]);
   }
