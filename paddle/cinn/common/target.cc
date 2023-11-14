@@ -26,6 +26,13 @@
 namespace cinn {
 namespace common {
 
+Target::Target(OS o,
+               Arch a,
+               Bit b,
+               const std::vector<Feature> &features,
+               const std::vector<Lib> &libs)
+    : os(o), arch(a), bits(b), features(features), libs(libs) {}
+
 bool Target::operator==(const Target &other) const {
   return os == other.os &&      //
          arch == other.arch &&  //
