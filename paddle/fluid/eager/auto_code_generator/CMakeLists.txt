@@ -69,11 +69,6 @@ if(WIN32)
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/ir.dll)
   endif()
 
-  add_custom_command(
-    OUTPUT ${eager_generator_path}/common.dll
-    COMMAND ${CMAKE_COMMAND} -E copy ${COMMON_LIB} ${eager_generator_path})
-  list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/common.dll)
-
   if(${CBLAS_PROVIDER} STREQUAL MKLML)
     message("Copied libiomp5md.dll for Eager AutoCodeGen")
     add_custom_command(

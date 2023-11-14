@@ -18,7 +18,7 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 
-namespace paddle {
+namespace common {
 
 //////////////// Exception handling and Error Message  /////////////////
 #if !defined(_WIN32)
@@ -80,8 +80,8 @@ class ErrorMessage {
 #define PD_CHECK(COND, ...)                                               \
   do {                                                                    \
     if (PD_UNLIKELY(!(COND))) {                                           \
-      auto __message__ = ::paddle::ErrorMessage(__VA_ARGS__).to_string(); \
-      throw ::paddle::PD_Exception(__message__,                           \
+      auto __message__ = ::common::ErrorMessage(__VA_ARGS__).to_string(); \
+      throw ::common::PD_Exception(__message__,                           \
                                    __FILE__,                              \
                                    __LINE__,                              \
                                    "Expected " #COND                      \
@@ -91,9 +91,9 @@ class ErrorMessage {
 
 #define PD_THROW(...)                                                   \
   do {                                                                  \
-    auto __message__ = ::paddle::ErrorMessage(__VA_ARGS__).to_string(); \
-    throw ::paddle::PD_Exception(                                       \
+    auto __message__ = ::common::ErrorMessage(__VA_ARGS__).to_string(); \
+    throw ::common::PD_Exception(                                       \
         __message__, __FILE__, __LINE__, "An error occurred.");         \
   } while (0)
 
-}  // namespace paddle
+}  // namespace common

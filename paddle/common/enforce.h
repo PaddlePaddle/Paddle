@@ -72,8 +72,6 @@ namespace enforce {
 #define HANDLE_THE_ERROR
 #define END_HANDLE_THE_ERROR
 #endif
-namespace details {
-
 template <typename T>
 inline constexpr bool IsArithmetic() {
   return std::is_arithmetic<T>::value;
@@ -106,7 +104,7 @@ using CommonType1 = typename std::add_lvalue_reference<
 template <typename T1, typename T2>
 using CommonType2 = typename std::add_lvalue_reference<
     typename std::add_const<typename TypeConverter<T1, T2>::Type2>::type>::type;
-}  // namespace details
+
 #define COMMON_THROW(...)                                               \
   do {                                                                  \
     HANDLE_THE_ERROR                                                    \
@@ -125,9 +123,9 @@ using CommonType2 = typename std::add_lvalue_reference<
     using __TYPE1__ = decltype(__val1);                                        \
     using __TYPE2__ = decltype(__val2);                                        \
     using __COMMON_TYPE1__ =                                                   \
-        ::common::details::CommonType1<__TYPE1__, __TYPE2__>;                  \
+        common::enforce::CommonType1<__TYPE1__, __TYPE2__>;                    \
     using __COMMON_TYPE2__ =                                                   \
-        ::common::details::CommonType2<__TYPE1__, __TYPE2__>;                  \
+        ::common::enforce::CommonType2<__TYPE1__, __TYPE2__>;                  \
     bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(        \
         static_cast<__COMMON_TYPE2__>(__val2));                                \
     if (UNLIKELY(!__is_not_error)) {                                           \
@@ -161,5 +159,4 @@ using CommonType2 = typename std::add_lvalue_reference<
   __COMMON_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
 
 }  // namespace enforce
-using namespace enforce;  // NOLINT
 }  // namespace common

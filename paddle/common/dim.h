@@ -101,11 +101,3 @@ inline void static_dim_assign(const T1* in, T2* out) {
 }
 
 }  // namespace common
-
-namespace paddle {
-namespace framework {
-template <int D>
-using Dim = common::Dim<D>;
-
-}  // namespace framework
-}  // namespace paddle
