@@ -103,6 +103,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_embedding',
     'c_identity',
     'c_reduce_sum',
+    'c_reducescatter',
     'dpsgd',
     'embedding_grad_sparse',
     'fused_batch_norm_act_',
