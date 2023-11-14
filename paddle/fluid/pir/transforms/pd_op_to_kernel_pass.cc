@@ -117,7 +117,7 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
 }
 
 static phi::Backend DeriveBackend(const std::string& op,
-                                  phi::Place place,
+                                  const phi::Place& place,
                                   const OpYamlInfoParser* op_info_parser,
                                   phi::Backend kernel_backend,
                                   size_t input_index) {
@@ -273,12 +273,12 @@ static const phi::DataType GetKernelTypeforVar(
   return (*expected_kernel_key).dtype();
 }
 
-template <class IrT>
+template <class IrType>
 std::tuple<phi::Backend, phi::DataLayout> parse_kernel_info(pir::Type type) {
   phi::Backend backend =
-      paddle::experimental::ParseBackend(type.dyn_cast<IrT>().place());
+      paddle::experimental::ParseBackend(type.dyn_cast<IrType>().place());
   phi::DataLayout layout =
-      paddle::experimental::ParseLayout(type.dyn_cast<IrT>().data_layout());
+      paddle::experimental::ParseLayout(type.dyn_cast<IrType>().data_layout());
   return {backend, layout};
 }
 
@@ -325,7 +325,7 @@ pir::OpResult AddDtypeTransferOp(pir::Value in,
       {"dtype", DataTypeAttribute::get(ctx, dst_dtype)}};
 
   pir::Type output_types =
-      BuildKernelOpOutputs(in.type(), out_place, dst_dtype, ctx);
+      BuildDtypeTransferOutputType(in.type(), out_place, dst_dtype, ctx);
 
   pir::Operation* op = pir::Operation::Create(
       {in}, op_attribute, {output_types}, kernel_op_info);
@@ -339,50 +339,37 @@ pir::OpResult AddDtypeTransferOp(pir::Value in,
   return new_in;
 }
 
-template <class T>
-static pir::Type create_allocated_type(pir::Type type,
-                                       const phi::Place& place,
-                                       phi::DataType data_dtype,
-                                       pir::IrContext* ctx) {
-  auto input_type = type.dyn_cast<T>();
-  auto out_dtype = TransToIrDataType(data_dtype, ctx);
-  return T::get(ctx,
-                place,
-                out_dtype,
-                input_type.dims(),
-                input_type.data_layout(),
-                input_type.lod(),
-                input_type.offset());
+template <class IrType1, IrType2>
+static pir::Type create_type(pir::Type type,
+                             const phi::Place& place,
+                             pir::Type out_dtype,
+                             pir::IrContext* ctx) {
+  auto input_type = type.dyn_cast<IrType1>();
+  return IrType2::get(ctx,
+                      place,
+                      out_dtype,
+                      input_type.dims(),
+                      input_type.data_layout(),
+                      input_type.lod(),
+                      input_type.offset());
 }
 
-static pir::Type BuildKernelOpOutputs(pir::Type type,
-                                      const phi::Place& place,
-                                      phi::DataType data_dtype,
-                                      pir::IrContext* ctx) {
+static pir::Type BuildDtypeTransferOutputType(pir::Type type,
+                                              const phi::Place& place,
+                                              phi::DataType data_dtype,
+                                              pir::IrContext* ctx) {
   if (type.isa<AllocatedDenseTensorType>()) {
-    return create_allocated_type<AllocatedDenseTensorType>(
-        type, place, data_dtype, ctx);
-  } else if (type.isa<AllocatedSelectedRowsType>()) {
-    return create_allocated_type<AllocatedSelectedRowsType>(
-        type, place, data_dtype, ctx);
+    auto out_dtype = TransToIrDataType(data_dtype, ctx);
+    return create_type<AllocatedDenseTensorType, AllocatedDenseTensorType>(
+        type, place, out_dtype, ctx);
+  } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+    auto out_dtype = TransToIrDataType(data_dtype, ctx);
+    return create_type<AllocatedSelectedRowsType, AllocatedSelectedRowsType>(
+        type, place, out_dtype, ctx);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "BuildOutputType only support DenseTensorType and SelectedRowsType"));
   }
-}
-
-template <class IrT1, class IrT2>
-static IrT2 create_type(pir::Type type,
-                        const phi::Place& place,
-                        pir::IrContext* ctx) {
-  auto tensor_type = type.dyn_cast<IrT1>();
-  return IrT2::get(ctx,
-                   place,
-                   tensor_type.dtype(),
-                   tensor_type.dims(),
-                   tensor_type.data_layout(),
-                   tensor_type.lod(),
-                   tensor_type.offset());
 }
 
 static pir::Type BuildOutputType(pir::Type type,
@@ -390,11 +377,21 @@ static pir::Type BuildOutputType(pir::Type type,
                                  phi::DataType data_type,
                                  pir::IrContext* ctx) {
   if (type.isa<DenseTensorType>()) {
+    auto out_dtype = type.dyn_cast<DenseTensorType>().dtype();
     return create_type<DenseTensorType, AllocatedDenseTensorType>(
-        type, place, ctx);
+        type, place, out_dtype, ctx);
   } else if (type.isa<SelectedRowsType>()) {
+    auto out_dtype = type.dyn_cast<SelectedRowsType>().dtype();
     return create_type<SelectedRowsType, AllocatedSelectedRowsType>(
-        type, place, ctx);
+        type, place, out_dtype, ctx);
+  } else if (type.isa<dialect::DenseTensorArrayType>()) {
+    auto dense_tensor_array_type =
+        type.dyn_cast<dialect::DenseTensorArrayType>();
+    return dialect::AllocatedDenseTensorArrayType::get(
+        ctx,
+        place,
+        dense_tensor_array_type.dtype(),
+        dense_tensor_array_type.data_layout());
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "BuildOutputType only support DenseTensorType and SelectedRowsType"));
