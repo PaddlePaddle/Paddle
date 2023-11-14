@@ -2473,7 +2473,7 @@ def inner(x, y, name=None):
 
 
     """
-    if (len(x.shape) == 0) or (len(y.shape) == 0):
+    if in_dynamic_mode() and (x.size == 1 or y.size == 1):
         return multiply(x, y)
     else:
         xshape = x.shape
