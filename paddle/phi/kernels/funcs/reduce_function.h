@@ -1100,8 +1100,10 @@ void ReduceKernel(const KPDevice& dev_ctx,
   // cuda 12.0 + cub got wrong result in some shapes when build phi with shared
   // library. For example, paddle.sum(paddle.ones([1024,100],
   // dtype=paddle.float32)) is expected to 102400, but got 0.
-#ifdef PHI_SHARED&& CUDA_VERSION >= 12000
+#ifdef PHI_SHARED
+#if CUDA_VERSION >= 12000
   use_cub_reduce = false;
+#endif
 #endif
 
 #ifndef PADDLE_WITH_XPU_KP
