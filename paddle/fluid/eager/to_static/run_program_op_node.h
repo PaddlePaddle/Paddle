@@ -129,6 +129,7 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
 static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
                                   paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
+    VLOG(4) << "Share Tensor Into Scope: " << i;
     auto name = tensors[i].name();
     if (name == paddle::framework::kFakeVarName ||
         name == paddle::framework::kEmptyVarName) {
@@ -511,18 +512,17 @@ inline void PirRunProgramAPI(
         details::GetNameFromValue(forward_global_block, middle_values, false);
     auto skip_names_set =
         std::set<std::string>(skip_names.begin(), skip_names.end());
-    skip_names =
-        details::GetNameFromValue(forward_global_block, output_values, false);
-    skip_names_set.insert(skip_names.begin(), skip_names.end());
     auto no_need_buffer_values = PADDLE_GET_CONST(std::vector<::pir::Value>,
                                                   attrs.at("no_need_buffers"));
     auto no_need_buffer_names = details::GetNameFromValue(
         forward_global_block, no_need_buffer_values, false);
-    VLOG(4) << "start skip no need buffer vars with name:";
     for (auto &name : no_need_buffer_names) {
-      VLOG(4) << "Skip no need buffer vars with name:" << name;
+      VLOG(4) << "Find no need buffer vars with name:" << name;
       skip_names_set.erase(name);
     }
+    skip_names =
+        details::GetNameFromValue(forward_global_block, output_values, false);
+    skip_names_set.insert(skip_names.begin(), skip_names.end());
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
 
