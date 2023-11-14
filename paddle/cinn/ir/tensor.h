@@ -122,6 +122,8 @@ struct WriteCacheRelation;
  */
 class _Tensor_ : public ExprNode<_Tensor_> {
  public:
+  //! Symbolic Shape of this tensor(buffer).
+  std::vector<Dim> sym_shape;
   //! Shape of this tensor(buffer).
   std::vector<Expr> shape;
   //! The domain of each axis(without reduce_axis)
@@ -154,6 +156,21 @@ class _Tensor_ : public ExprNode<_Tensor_> {
   static Tensor Make(const std::string& name,
                      Type dtype,
                      const std::vector<Expr>& shape,
+                     const std::vector<Expr>& domain,
+                     const std::vector<Var>& reduce_axis = {});
+
+  //! (Symbolic Shape) Generate a tensor from a function.
+  static Tensor Make(const std::string& name,
+                     Type dtype,
+                     const std::vector<Dim>& sym_shape,
+                     const std::vector<Expr>& domain,
+                     FunctionRef fn,
+                     const std::vector<Var>& reduce_axis = {});
+
+  // (Symbolic Shape) Manual tensor construction, no FunctionRef information
+  static Tensor Make(const std::string& name,
+                     Type dtype,
+                     const std::vector<Dim>& sym_shape,
                      const std::vector<Expr>& domain,
                      const std::vector<Var>& reduce_axis = {});
 
