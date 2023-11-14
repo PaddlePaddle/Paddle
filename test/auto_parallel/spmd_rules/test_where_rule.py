@@ -30,7 +30,7 @@ class TestWhereSPMDRule(unittest.TestCase):
     def setUp(self):
         self.process_mesh = auto.ProcessMesh(mesh=[[0, 1], [2, 3]])
         self.shapes = [[16, 16, 16], [16, 16], [16]]
-        self.dim_mappings = [[-1, 0, 1], [-1, 1, 0], [-1, -1, 0]]
+        self.dim_mappings = [[-1, 0, -1], [-1, 0], [0]]
 
     def build_inputs(self):
         inputs = []
@@ -50,10 +50,10 @@ class TestWhereSPMDRule(unittest.TestCase):
         infered_output_dist_attrs = infered_dist_attrs[1]
         self.assertEqual(len(infered_output_dist_attrs), 1)
 
-        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [-1, 1, 0])
-        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [-1, 1, 0])
-        self.assertEqual(infered_input_dist_attrs[2].dims_mapping, [-1, 1, 0])
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 1, 0])
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [-1, 0, -1])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0, -1])
+        self.assertEqual(infered_input_dist_attrs[2].dims_mapping, [-1])
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0, -1])
 
     def test_infer_reverse(self):
         inputs = self.build_inputs()
@@ -66,10 +66,10 @@ class TestWhereSPMDRule(unittest.TestCase):
         infered_output_dist_attrs = infered_dist_attrs[1]
         self.assertEqual(len(infered_output_dist_attrs), 1)
 
-        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [-1, 1, 0])
-        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [-1, 1, 0])
-        self.assertEqual(infered_input_dist_attrs[2].dims_mapping, [-1, 1, 0])
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 1, 0])
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [-1, 0, -1])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0, -1])
+        self.assertEqual(infered_input_dist_attrs[2].dims_mapping, [-1])
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0, -1])
 
 
 if __name__ == "__main__":

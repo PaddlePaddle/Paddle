@@ -344,15 +344,15 @@ SpmdInfo WhereGradInferSpmd(const DistMetaTensor& condition,
   for (int i = 0; i < cond_ndim - x_ndim; ++i) {
     auto mapping = dim_mapping[i];
     if (mapping != -1) {
-      x_partial_on_dims.push_back(i);
+      x_partial_on_dims.push_back(mapping);
     }
   }
 
   std::vector<int64_t> y_partial_on_dims;
-  for (int i = 0; i < cond_ndim - x_ndim; ++i) {
+  for (int i = 0; i < cond_ndim - y_ndim; ++i) {
     auto mapping = dim_mapping[i];
     if (mapping != -1) {
-      y_partial_on_dims.push_back(i);
+      y_partial_on_dims.push_back(mapping);
     }
   }
   auto x_grad = CopyTensorDistAttrForOutput(x_dist_attr);
