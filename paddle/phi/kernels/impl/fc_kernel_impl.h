@@ -14,11 +14,10 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/fc_kernel.h"
-
 #include <string>
 #include <vector>
 
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 
