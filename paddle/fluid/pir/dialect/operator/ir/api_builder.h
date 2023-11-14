@@ -23,19 +23,19 @@
 namespace paddle {
 namespace dialect {
 ///
-/// \brief APIBuilder is used in IR API for building op
+/// \brief ApiBuilder is used in IR API for building op
 ///
-class APIBuilder {
+class ApiBuilder {
  public:
-  static APIBuilder& Instance() {
-    static APIBuilder api_builder;
+  static ApiBuilder& Instance() {
+    static ApiBuilder api_builder;
     return api_builder;
   }
   void SetProgram(pir::Program* program);
 
   /// Set the insertion point to the specified operation, which will cause
   /// subsequent insertions to go right before it.
-  void SetInsertionPoint(pir::Operation* op);
+  void set_insertion_point(pir::Operation* op);
 
   void ResetInsertionPointToStart();
 
@@ -48,10 +48,18 @@ class APIBuilder {
 
   std::shared_ptr<pir::Builder> GetBuilder() { return builder_; }
 
- private:
-  APIBuilder();
+  const pir::InsertionPoint& insertion_point() const {
+    return builder_->insertion_point();
+  }
 
-  DISABLE_COPY_AND_ASSIGN(APIBuilder);
+  void set_insertion_point(const pir::InsertionPoint& insertion_point) {
+    builder_->set_insertion_point(insertion_point);
+  }
+
+ private:
+  ApiBuilder();
+
+  DISABLE_COPY_AND_ASSIGN(ApiBuilder);
 
   pir::IrContext* ctx_;
   std::shared_ptr<pir::Builder> builder_;

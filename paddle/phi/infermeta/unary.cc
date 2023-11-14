@@ -148,18 +148,19 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
                         bool flatten,
-                        int dtype,
+                        DataType dtype,
                         MetaTensor* out,
                         MetaConfig config) {
   PADDLE_ENFORCE_EQ(
-      (dtype < 0 || dtype == 2 || dtype == 3),
+      (dtype == DataType::UNDEFINED || dtype == DataType::INT32 ||
+       dtype == DataType::INT64),
       true,
       phi::errors::InvalidArgument(
           "The attribute of dtype in argmin/argmax must be [%s] or [%s], but "
           "received [%s]",
           DataTypeToString(DataType::INT32),
           DataTypeToString(DataType::INT64),
-          DataTypeToString(phi::TransToPhiDataType(dtype))));
+          DataTypeToString(dtype)));
 
   if (!config.is_runtime && axis.FromTensor()) {
     std::vector<int64_t> vec;
@@ -177,10 +178,8 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
       }
     }
     out->set_dims(phi::make_ddim(vec));
-    if (dtype == 2) {
-      out->set_dtype(DataType::INT32);
-    } else if (dtype == 3) {
-      out->set_dtype(DataType::INT64);
+    if (dtype == DataType::INT32 || dtype == DataType::INT64) {
+      out->set_dtype(dtype);
     }
     return;
   }
@@ -216,7 +215,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   if (int_axis < 0) int_axis += x_rank;
 
   if (config.is_runtime) {
-    if (dtype == phi::TransToProtoVarType(DataType::INT32)) {
+    if (dtype == DataType::INT32) {
       int64_t all_element_num = 0;
       if (flatten) {
         all_element_num = phi::product(x_dims);
@@ -253,10 +252,8 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   }
 
   out->set_dims(phi::make_ddim(vec));
-  if (dtype == 2) {
-    out->set_dtype(DataType::INT32);
-  } else if (dtype == 3) {
-    out->set_dtype(DataType::INT64);
+  if (dtype == DataType::INT32 || dtype == DataType::INT64) {
+    out->set_dtype(dtype);
   }
 }
 
@@ -427,6 +424,14 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
+void CINNBroadcastInferMeta(const MetaTensor& x,
+                            const std::vector<int64_t>& axes,
+                            const std::vector<int64_t>& out_shape,
+                            MetaTensor* out) {
+  out->set_dims(phi::make_ddim(out_shape));
+  out->set_dtype(x.dtype());
+}
+
 void ClassCenterSampleInferMeta(const MetaTensor& label,
                                 int num_classes,
                                 int num_samples,
@@ -544,17 +549,17 @@ void CumScalarAxisInferMeta(const MetaTensor& x,
 
 void CumWithIndicesInferMeta(const MetaTensor& x,
                              int axis,
-                             int dtype,
+                             DataType dtype,
                              MetaTensor* out,
                              MetaTensor* indices) {
   auto x_dims = x.dims();
-  auto indices_type = phi::TransToPhiDataType(dtype);
   PADDLE_ENFORCE_EQ(
-      (indices_type == DataType::INT32 || indices_type == DataType::INT64),
+      (dtype == DataType::INT32 || dtype == DataType::INT64),
       true,
-      phi::errors::InvalidArgument("dtype of indices must be int32 or int64"));
+      phi::errors::InvalidArgument(
+          "dtype of indices must be DataType::INT32 or DataType::INT64"));
 
-  if (indices_type == DataType::INT32) {
+  if (dtype == DataType::INT32) {
     int _axis = 0;
     if (axis < 0) {
       _axis = axis + x_dims.size();
@@ -601,7 +606,7 @@ void CumWithIndicesInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   out->share_lod(x);
   indices->set_dims(x_dims);
-  indices->set_dtype(indices_type);
+  indices->set_dtype(dtype);
   indices->share_lod(x);
 }
 
@@ -665,6 +670,15 @@ void DecodeJpegInferMeta(const MetaTensor& x,
     out->set_dims(phi::make_ddim(out_dims));
     out->set_dtype(x.dtype());
   }
+}
+
+void DeQuantizeXPUInferMeta(const MetaTensor& x,
+                            DataType out_dtype,
+                            float scale,
+                            MetaTensor* y) {
+  auto x_dims = x.dims();
+  y->set_dims(x_dims);
+  y->set_dtype(out_dtype);
 }
 
 void DiagEmbedInferMeta(
@@ -3258,6 +3272,7 @@ void ReduceInferMeta(const MetaTensor& x,
   if (axis.empty()) {
     reduce_all = true;
   }
+
   ReduceInferMetaBase(x, axis, keep_dim, reduce_all, out);
 }
 
@@ -3763,6 +3778,15 @@ void FillSplitOutDims(const MetaTensor& x,
   }
 }
 
+void QuantizeXPUInferMeta(const MetaTensor& x,
+                          DataType out_dtype,
+                          float scale,
+                          MetaTensor* y) {
+  auto x_dims = x.dims();
+  y->set_dims(x_dims);
+  y->set_dtype(out_dtype);
+}
+
 void SplitInferMeta(const MetaTensor& x,
                     const IntArray& sections,
                     const Scalar& axis,
@@ -3964,8 +3988,8 @@ void SqueezeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaTensor* xshape,
                                 MetaConfig config) {
-  SqueezeInferMeta(x, axes, out, config);
   const auto& x_dims = x.dims();
+  SqueezeInferMeta(x, axes, out, config);
   std::vector<int64_t> xshape_dims(x_dims.size() + 1);
   xshape_dims[0] = 0;
   for (int i = 0; i < x_dims.size(); ++i) {
@@ -4828,7 +4852,7 @@ void UniqueConsecutiveInferMeta(const MetaTensor& x,
                                 bool return_inverse,
                                 bool return_counts,
                                 const std::vector<int>& axis,
-                                int dtype,
+                                DataType dtype,
                                 MetaTensor* out,
                                 MetaTensor* index,
                                 MetaTensor* counts) {

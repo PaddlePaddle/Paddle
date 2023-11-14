@@ -45,13 +45,13 @@ class StandaloneExecutor {
   bool is_interpretercore_build_result_shared_{false};
   const platform::Place place_;
   interpreter::Plan plan_;
-
-  std::vector<framework::Scope*> micro_batch_scopes_;
   std::vector<std::shared_ptr<InterpreterCore>> interpretercores_;
 
   Scope* scope_;
+  std::vector<Scope*> micro_batch_scopes_;
 
   std::vector<std::string> fetch_var_names_;
+  FetchUnmergedList fetch_list_;
 
   std::vector<std::unordered_map<std::string, std::shared_ptr<EventInter>>>
       vec_force_events_to_wait_;

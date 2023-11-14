@@ -90,7 +90,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
       phi::errors::PreconditionNotMet(
           "can not find OpYamlInfoInterface from [%s]", legacy_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
-      yaml_interface->get_op_info_());
+      yaml_interface->get_op_info_(), paddle::dialect::IsLegacyOp(op_name));
   VLOG(6) << "finish process yaml_info_parser";
 
   if (infer_meta_interface_) {
@@ -166,12 +166,12 @@ LegacyKernelInstruction::~LegacyKernelInstruction() {
 }
 
 void LegacyKernelInstruction::Run() {
+  VLOG(6) << "Run op " << legacy_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
-  VLOG(6) << "Run op " << legacy_op_name_ << " infer meta.";
-  (*(phi_kernel_))((kernel_context_));
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
+  (*(phi_kernel_))((kernel_context_));
 }
 }  // namespace framework
 }  // namespace paddle

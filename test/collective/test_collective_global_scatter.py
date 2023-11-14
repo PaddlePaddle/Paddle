@@ -43,7 +43,7 @@ class TestCollectiveSelectScatterAPI(TestDistBase):
             "collective_global_scatter.py",
             "global_scatter",
             "nccl",
-            need_envs={"FLAGS_dynamic_static_unified_comm": "1"},
+            need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
 

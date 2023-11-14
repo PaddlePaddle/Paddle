@@ -45,7 +45,7 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
     uint64_t tid = static_cast<uint64_t>(
         dwp_param_.program_config(0).pull_dense_table_id(i));
     TableParameter table;
-    for (auto i : param_.dense_table()) {
+    for (auto const& i : param_.dense_table()) {
       if (i.table_id() == tid) {
         table = i;
         break;

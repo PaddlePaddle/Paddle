@@ -626,12 +626,10 @@ def _set_pipeline_stage(stage):
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
         raise AssertionError(
-            "'{}' only can be called by `paddle.Tensor` in dynamic graph mode. Suggestions:\n"
+            f"'{func.__name__}' only can be called by `paddle.Tensor` in dynamic graph mode. Suggestions:\n"
             "  1. If you are in static graph mode, you can switch to dynamic graph mode by turning off `paddle.enable_static()` or calling `paddle.disable_static()`.\n"
             "  2. If you are using `@paddle.jit.to_static`, you can call `paddle.jit.enable_to_static(False)`. "
-            "If you have to translate dynamic graph to static graph, please use other API to replace '{}'.".format(
-                func.__name__, func.__name__
-            )
+            f"If you have to translate dynamic graph to static graph, please use other API to replace '{func.__name__}'."
         )
 
     return __impl__
@@ -2114,7 +2112,7 @@ class Variable(metaclass=VariableMetaClass):
     @property
     def lod_level(self):
         """
-        Indicating ``LoD`` info of current Variable, please refer to  :ref:`api_base_LoDTensor_en` to check the meaning
+        Indicating ``LoD`` info of current Variable, please refer to  :ref:`api_paddle_Tensor` to check the meaning
         of ``LoD``
 
         **Notes**:
@@ -2937,6 +2935,9 @@ class Operator:
             # attr for static graph mode cuda graph
             self._cuda_graph_attr = _current_cuda_graph_mode
 
+            # attr for OP should cast in AMP mode
+            self._should_auto_cast: bool = True
+
             op_maker = core.op_proto_and_checker_maker
 
             if op_maker.kOpRoleAttrName() not in op_attrs:
@@ -2995,7 +2996,7 @@ class Operator:
                     if (
                         type == 'less_than'
                         and op_attrs['force_cpu'] is not None
-                    ) or op_attrs['force_cpu'] != False:
+                    ) or op_attrs['force_cpu'] is not False:
                         warnings.warn(
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
                             "please use 'device_guard' instead. 'device_guard' has higher priority when they are "
@@ -3694,6 +3695,25 @@ class Operator:
         """
         self.desc.dist_attr = dist_attr
 
+    def set_auto_cast(self, auto_cast):
+        """
+        Set auto cast attribute of this Operator.
+
+        Args:
+            auto_cast(bool): True if this Operator should cast in AMP mode.
+        """
+        self._should_auto_cast = auto_cast
+
+    @property
+    def should_auto_cast(self):
+        """
+        Get auto cast attribute of this Operator.
+
+        Returns:
+            bool: True if this Operator should cast in AMP mode.
+        """
+        return self._should_auto_cast
+
 
 @signature_safe_contextmanager
 def _stride_in_no_check_dy2st_diff():
@@ -4266,7 +4286,7 @@ class Block:
         return var
 
     def _remove_var(self, name, sync=True):
-        if sync == True:
+        if sync is True:
             self._sync_with_cpp()
         self.desc._remove_var(name.encode())
         del self.vars[name]
@@ -4455,7 +4475,7 @@ class Block:
         Returns:
             None
         """
-        if sync == True:
+        if sync is True:
             self._sync_with_cpp()
         self.desc._remove_op(index, index + 1)
         del self.ops[index]
@@ -5678,6 +5698,7 @@ class Program:
 
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
+        self._pass_opt = None
 
         # assigned if this program has been parsed by a heter pipeline parameter server optimizer
         self._heter_pipeline_opt = None
@@ -6315,7 +6336,8 @@ class Program:
                 p.lr_scheduler = self.lr_scheduler
             if hasattr(self, '_pipeline_opt'):
                 p._pipeline_opt = self._pipeline_opt
-
+            if hasattr(self, '_pass_opt'):
+                p._pass_opt = self._pass_opt
             # NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.
             p._sync_with_cpp()
@@ -6323,6 +6345,7 @@ class Program:
         p._copy_param_info_from(self)
         p._copy_data_info_from(self, pruned_origin_block_id_map)
         p._copy_dist_param_info_from(self)
+        p._copy_operator_info_from(self)
         return p
 
     def _prune(self, targets):
@@ -6446,6 +6469,7 @@ class Program:
         res._copy_param_info_from(self)
         res._copy_data_info_from(self, pruned_origin_block_id_map)
         res._copy_dist_param_info_from(self)
+        res._copy_operator_info_from(self)
 
         return res
 
@@ -6961,6 +6985,24 @@ class Program:
                 if other_var.stop_gradient:
                     var.stop_gradient = True
 
+    def _copy_operator_info_from(self, other: "Program"):
+        """
+        Copy the information of Operator information from other program.
+
+        Args:
+            other(Program): Other program
+
+        Returns:
+            None
+        """
+        if not isinstance(other, Program):
+            raise TypeError(
+                f"Function Program._copy_operator_info_from() needs to pass in a source Program, but received {type(other)}"
+            )
+        for dst_block, src_block in zip(self.blocks, other.blocks):
+            for dst_op, src_op in zip(dst_block.ops, src_block.ops):
+                dst_op.set_auto_cast(src_op.should_auto_cast)
+
     def list_vars(self):
         """
         Get all Tensors from this Program. A iterable object is returned.
@@ -7114,9 +7156,7 @@ class Program:
                 return is_parameter(var) or is_belong_to_optimizer(var)
             else:
                 raise ValueError(
-                    "`mode` string should be 'param', 'opt' or 'all', but received {}.".format(
-                        mode
-                    )
+                    f"`mode` string should be 'param', 'opt' or 'all', but received {mode}."
                 )
 
         var_list = filter(condition, self.list_vars())

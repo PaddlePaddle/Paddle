@@ -234,6 +234,7 @@ void FlexibleDFS(const std::vector<BriefNode *> &source,
   } FNode;
 
   std::vector<FNode> stack;
+  stack.reserve(source.size());
   for (auto &node : source) {
     stack.push_back(FNode{node, false});
   }
