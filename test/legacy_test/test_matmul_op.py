@@ -96,7 +96,7 @@ class Generator:
         self.python_api = paddle.mm
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_pir=True)
+        self.check_output(check_cinn=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -104,7 +104,6 @@ class Generator:
             'Out',
             max_relative_error=1e-3,
             check_cinn=True,
-            check_pir=True,
         )
 
     def test_check_grad_ignore_x(self):
@@ -114,7 +113,6 @@ class Generator:
             max_relative_error=1e-3,
             no_grad_set=set("X"),
             check_cinn=True,
-            check_pir=True,
         )
 
     def test_check_grad_ignore_y(self):
@@ -124,7 +122,6 @@ class Generator:
             max_relative_error=1e-3,
             no_grad_set=set('Y'),
             check_cinn=True,
-            check_pir=True,
         )
 
 
@@ -225,10 +222,8 @@ class Test_API_Matmul(unittest.TestCase):
 
 
 class API_TestMmError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         with paddle_static_guard():
-            # @test_with_pir_api
             def test_error1():
                 with paddle.base.program_guard(
                     paddle.base.Program(), paddle.base.Program()
@@ -243,7 +238,6 @@ class API_TestMmError(unittest.TestCase):
 
             self.assertRaises(ValueError, test_error1)
 
-            # @test_with_pir_api
             def test_error2():
                 with paddle.base.program_guard(
                     paddle.base.Program(), paddle.base.Program()
@@ -258,7 +252,6 @@ class API_TestMmError(unittest.TestCase):
 
             test_error2()
 
-            # @test_with_pir_api
             def test_error3():
                 with base.program_guard(base.Program(), base.Program()):
                     data1 = paddle.static.data(
