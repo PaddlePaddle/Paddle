@@ -779,8 +779,11 @@ class OpcodeExecutorBase:
             getattr, graph=self._graph, tracker=DanglingTracker()
         )(obj, method_name_var)
 
-        if isinstance(method, MethodVariable):
-            # bound method, push the unbound method and the self
+        if isinstance(method, MethodVariable) and "__getattr__" not in dir(
+            method.bound_instance.get_py_type()
+        ):
+            # bound method or the class override the __getattr__
+            # push the unbound method and the self
             self.stack.push(method.fn)
             self.stack.push(obj)
         else:

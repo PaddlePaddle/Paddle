@@ -16,6 +16,8 @@ exclude = [
 ]
 line-length = 80
 target-version = "py37"
+
+[tool.ruff.lint]
 select = [
     # Pyflakes
     "F",
@@ -87,7 +89,7 @@ ignore = [
 combine-as-imports = true
 known-first-party = ["paddle"]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 # Ignore unused imports in __init__.py
 "__init__.py" = ["F401", "I001"]
 # Ignore undefined variables in CMake config and some dygraph_to_static tests

@@ -503,3 +503,7 @@ class TestSetitemInStatic(unittest.TestCase):
             res = self.exe.run(fetch_list=[y.name])
 
         np.testing.assert_allclose(res[0], np_data)
+
+
+if __name__ == '__main__':
+    unittest.main()
