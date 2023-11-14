@@ -25,7 +25,7 @@ class AddBroadcastToElementwisePass : public pir::PatternRewritePass {
  public:
   AddBroadcastToElementwisePass();
 
-  bool InitializePatterns(pir::IrContext *context) override;
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
 
   bool CanApplyOn(pir::Operation *op) const override;
 };

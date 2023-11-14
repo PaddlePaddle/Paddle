@@ -55,7 +55,7 @@ class ParallelMode:
     """
 
     DataParallel = "auto_parallel/data_parallel"
-    ModelParallel = "auto_parallel/model_parallel"
+    TensorParallel = "auto_parallel/tensor_parallel"
     PipelineParalel = "auto_parallel/pipeline_paralel"
     MoEParallel = "auto_parallel/moe_parallel"
 

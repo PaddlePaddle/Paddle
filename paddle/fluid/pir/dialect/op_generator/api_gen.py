@@ -86,7 +86,7 @@ OPTIONAL_VECTOR_VALUE_INPUT_TEMPLATE = """
     if (!{name}) {{
         optional_{name} = paddle::make_optional<pir::Value>(pir::Value());
     }} else {{
-        auto optional_{name}_combine_op = APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({name}.get());
+        auto optional_{name}_combine_op = ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({name}.get());
         optional_{name} = paddle::make_optional<pir::Value>(optional_{name}_combine_op.out());
     }}"""
 
@@ -107,18 +107,18 @@ OPTIONAL_OPRESULT_OUTPUT_TEMPLATE = """
 OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE = """
     paddle::optional<std::vector<pir::OpResult>> optional_{name};
     if (!IsEmptyValue({op_name}_op.result({index}))) {{
-        auto optional_{name}_slice_op = APIBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({op_name}_op.result({index}));
+        auto optional_{name}_slice_op = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({op_name}_op.result({index}));
         optional_{name} = paddle::make_optional<std::vector<pir::OpResult>>(optional_{name}_slice_op.outputs());
     }}"""
 
 COMBINE_OP_TEMPLATE = """
-    auto {op_name} = APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({in_name});"""
+    auto {op_name} = ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({in_name});"""
 
 SPLIT_OP_TEMPLATE = """
-    auto {op_name} = APIBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({in_name});"""
+    auto {op_name} = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({in_name});"""
 
 COMPUTE_OP_TEMPLATE = """
-    paddle::dialect::{op_class_name} {op_inst_name} = APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::{op_class_name}>({args});"""
+    paddle::dialect::{op_class_name} {op_inst_name} = ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::{op_class_name}>({args});"""
 
 OP_INPUT = 'pir::Value'
 VECTOR_TYPE = 'pir::VectorType'
