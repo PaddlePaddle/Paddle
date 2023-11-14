@@ -462,7 +462,7 @@ static void ParseIndex(const paddle::Tensor& tensor,
         }
 
         *has_advanced_index = true;
-        advanced_index->push_back(slice_tensor);
+        advanced_index->push_back(std::move(slice_tensor));
         (*advanced_index_dim)[estimated_dim] = estimated_dim;
         estimated_dim++;
       }
@@ -577,7 +577,7 @@ static paddle::Tensor dealWithAdvancedIndex(
       }
 
       trans_dim.push_back(index_dim);
-      transed_index->push_back(index);
+      transed_index->push_back(std::move(index));
     }
   }
 
@@ -587,7 +587,17 @@ static paddle::Tensor dealWithAdvancedIndex(
     }
   }
 
-  paddle::Tensor transed_tensor = transpose_ad_func(tensor, trans_dim);
+  paddle::Tensor transed_tensor;
+
+  // skip transform if the `trans_dim` is original order.
+  std::vector<int> original_dim_order(tensor.shape().size());
+  std::iota(original_dim_order.begin(), original_dim_order.end(), 0);
+
+  if (original_dim_order == trans_dim) {
+    transed_tensor = tensor;
+  } else {
+    transed_tensor = transpose_ad_func(tensor, trans_dim);
+  }
 
   if (is_for_setitem) {
     trans_back_dim->resize(trans_dim.size());
