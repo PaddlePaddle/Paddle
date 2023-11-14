@@ -303,3 +303,8 @@ if(WITH_CRYPTO)
     SRCS io/cipher_utils_test.cc
     DEPS framework_io)
 endif()
+
+cc_test(
+  test_fleet_cc
+  SRCS fleet/test_fleet.cc
+  DEPS fleet_wrapper gloo_wrapper framework_io)
