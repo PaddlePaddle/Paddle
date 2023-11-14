@@ -491,6 +491,10 @@ void BindFrontend(pybind11::module *m) {
            py::arg("type"),
            py::arg("shape"),
            py::arg("id_hint"))
+      .def("create_input",
+           static_cast<Placeholder (NetBuilder::*)(const common::Type &,
+                                                   const std::vector<std::string> &, const std::string& , const std::string&) >(
+               &NetBuilder::CreateInput))
       .def(
           "create_input",
           [](NetBuilder &self,

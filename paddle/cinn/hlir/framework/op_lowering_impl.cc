@@ -41,11 +41,25 @@ using common::Type;
 
 using cinn::hlir::op::ExternalApiRegistry;
 
+// OpLowererImpl::OpLowererImpl(
+//     const absl::flat_hash_map<std::string, Type>& type_dict,
+//     const absl::flat_hash_map<std::string, shape_t>& shape_dict,
+//     const Target& target)
+//     : type_dict_(type_dict),
+//       shape_dict_(shape_dict),
+//       target_(target),
+//       dyn_shape_dict_() {}
+
 OpLowererImpl::OpLowererImpl(
     const absl::flat_hash_map<std::string, Type>& type_dict,
     const absl::flat_hash_map<std::string, shape_t>& shape_dict,
-    const Target& target)
-    : type_dict_(type_dict), shape_dict_(shape_dict), target_(target) {}
+    const Target& target,
+    const absl::flat_hash_map<std::string, std::vector<std::string>>&
+        dyn_shape_dict)
+    : type_dict_(type_dict),
+      shape_dict_(shape_dict),
+      dyn_shape_dict_(dyn_shape_dict),
+      target_(target) {}
 
 std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                                                   bool apply_op_schedule,
@@ -112,12 +126,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   std::vector<ir::Tensor> group_func_arg_tensors;
   std::unordered_map<std::string, ir::Tensor> tensor_map;
   bool do_op_schedule = apply_group_schedule || apply_op_schedule;
+  VLOG(3) << "xxxx ";
   std::vector<ir::Expr> func_bodies = LowerOps(nodes,
                                                do_op_schedule,
                                                schedule_determine_func,
                                                &group_func_arg_tensors,
                                                &tensor_map);
 
+  VLOG(3) << "yyyyy ";
   // 2.Do group schedule.
   ir::ModuleExpr mod_expr(func_bodies);
   ir::IRSchedule ir_sch(mod_expr);
@@ -301,6 +317,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
                                       group_func_args,
                                       ir_sch->GetModule().GetExprs().at(0),
                                       temp_buffers);
+  VLOG(-2) << func->body;
   if (!done_op_schedule) {
     func->PrepareBufferCastExprs();
   }
@@ -320,20 +337,31 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
   auto& strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
   std::vector<Expr> func_bodies;
   for (Node* node : nodes) {
+    VLOG(-1) << "dddd ";
     // 1.Select Op impl
     std::vector<Type> out_types;
     std::vector<std::vector<int>> out_shapes;
+    std::vector<std::vector<std::string>> out_dyn_shapes;
     std::vector<NodeData*> node_datas = GetAllNodeData(node);
-    for (const auto& node_data : node_datas) {
-      out_types.push_back(this->type_dict_.at(node_data->id()));
-      out_shapes.push_back(this->shape_dict_.at(node_data->id()));
+    try {
+      for (const auto& node_data : node_datas) {
+        VLOG(-1) << "dddd ";
+        out_types.push_back(this->type_dict_.at(node_data->id()));
+        out_shapes.push_back(this->shape_dict_.at(node_data->id()));
+        out_dyn_shapes.push_back(this->dyn_shape_dict_.at(node_data->id()));
+      }
+    } catch (std::exception& e) {
+      std::cout << phi::GetCurrentTraceBackString() << std::endl;
+      exit(-1);
     }
+    VLOG(-1) << "dddd ";
     std::vector<ir::Tensor> op_func_arg_tensors =
         std::move(CollectInputTensor(node,
                                      this->type_dict_,
                                      this->shape_dict_,
                                      group_func_arg_tensors,
-                                     tensor_map));
+                                     tensor_map,
+                                     this->dyn_shape_dict_));
     auto op_impl =
         OpStrategy::SelectImpl(strategy[node->op()](node->attrs,
                                                     op_func_arg_tensors,
@@ -341,6 +369,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
                                                     out_shapes,
                                                     this->target_));
 
+    VLOG(-1) << "dddd ";
     // 2.Perform the lower process of Op
     std::vector<ir::LoweredFunc> funcs =
         DoOpLower(op_impl, node, tensor_map, &op_func_arg_tensors);
@@ -353,6 +382,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
         func_bodies.push_back(func->body);
       }
     }
+    VLOG(-1) << "dddd ";
   }
 
   return func_bodies;

@@ -15,6 +15,7 @@
 #pragma once
 #include <absl/container/flat_hash_map.h>
 
+#include <exception>
 #include <functional>
 #include <string>
 #include <vector>
@@ -22,6 +23,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/utils/error.h"
 
 namespace cinn {
 namespace common {
@@ -37,7 +39,16 @@ Expr ReplaceMaxToConstant(Expr expr);
 struct CasInterval {
   template <typename T>
   CasInterval(T l, T r) : l(l), r(r) {
-    CHECK_LE(l, r) << "left should not be larger than right";
+    try {
+      if (l > r) {
+        throw std::exception();
+      }
+      // CHECK_LE(l, r) << "left should not be larger than right";
+    } catch (std::exception& e) {
+      std::cout << phi::GetCurrentTraceBackString() << std::endl;
+      std::cout << e.what() << std::endl;
+      exit(-1);
+    }
   }
 
   /**

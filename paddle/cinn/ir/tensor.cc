@@ -105,8 +105,10 @@ Expr Tensor::operator()(const std::vector<Expr> &indices) const {
                                 "tuple and operate on that instead";
   auto *node = operator->();
 
-  CHECK_EQ(indices.size(), ndims())
-      << "number of indices not match the dimension";
+  if (indices.size() != ndims()) {
+    VLOG(-1) << utils::enforce::GetCurrentTraceBackString();
+  }
+  CHECK_EQ(indices.size(), ndims());
 
   return Load::Make(*this, indices);
 }

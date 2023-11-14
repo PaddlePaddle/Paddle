@@ -172,7 +172,9 @@ packages = ["cinn",
             "cinn.ir",
             "cinn.libs",
             "cinn.version",
-            "cinn.runtime"
+            "cinn.compiler",
+            "cinn.runtime",
+            "cinn.hlir",
             ]
 
 with redirect_stdout():

@@ -2,6 +2,8 @@ set(srcs
     runtime.cc
     common.cc
     lang.cc
+    hlir/hlir.cc
+    hlir/transform.cc
     ir/ir.cc
     ir/ir_api.cc
     ir/ir_context.cc

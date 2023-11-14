@@ -261,6 +261,21 @@ Placeholder NetBuilder::CreateInput(const Type& type,
   var->shape = shape;
   return Placeholder(var);
 }
+Placeholder NetBuilder::CreateInput(const Type& type,
+                                    const std::vector<std::string>& shape,
+                                    const std::string& id_hint,
+                                    const std::string&) {
+  std::string id = id_hint.empty() ? Context::Global().NewName("placeholder")
+                                   : cinn::utils::TransValidVarName(id_hint);
+  // std::string id = Context::Global().NewName("placeholder");
+  LOG(WARNING) << "hs";
+  inputs_.emplace_back(id);
+  auto& var = inputs_.back();
+  var->type = type;
+  var->shape = {-1};
+  var->dyn_shape = shape;
+  return Placeholder(var);
+}
 
 Placeholder NetBuilder::CreateInput(const Variable& var) {
   VLOG_IF(4, var->shape.empty())

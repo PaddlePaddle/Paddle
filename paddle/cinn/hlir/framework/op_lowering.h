@@ -51,16 +51,21 @@ class OpLowerer {
 };
 
 template <typename T = GroupPtr>
-OpLowerer<T> CreateOpLowerer(const absl::flat_hash_map<std::string, Type>&,
-                             const absl::flat_hash_map<std::string, shape_t>&,
-                             const Target&);
+OpLowerer<T> CreateOpLowerer(
+    const absl::flat_hash_map<std::string, Type>& type_dict,
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict,
+    const Target& target,
+    const absl::flat_hash_map<std::string, std::vector<std::string>>& = {});
 
 template <>
 inline OpLowerer<GroupPtr> CreateOpLowerer(
     const absl::flat_hash_map<std::string, Type>& type_dict,
     const absl::flat_hash_map<std::string, shape_t>& shape_dict,
-    const Target& target) {
-  auto* impl_base = new OpLowererImpl(type_dict, shape_dict, target);
+    const Target& target,
+    const absl::flat_hash_map<std ::string, std ::vector<std::string>>&
+        dyn_shape_dict) {
+  auto* impl_base =
+      new OpLowererImpl(type_dict, shape_dict, target, dyn_shape_dict);
   return OpLowerer<GroupPtr>(impl_base);
 }
 

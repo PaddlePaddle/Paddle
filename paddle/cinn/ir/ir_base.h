@@ -25,6 +25,7 @@
 #include "paddle/cinn/common/object.h"
 #include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/common/type.h"
+#include "paddle/cinn/utils/error.h"
 
 namespace cinn {
 
@@ -405,6 +406,9 @@ template <typename T>
 struct BinaryOpNode : public ExprNode<T> {
   BinaryOpNode() { operands().resize(2); }
   BinaryOpNode(Type type, Expr a, Expr b) : ExprNode<T>(type) {
+    if (!type.valid()) {
+      VLOG(-1) << utils::enforce::GetCurrentTraceBackString();
+    }
     CHECK(type.valid());
     CHECK(a.defined());
     CHECK(b.defined());

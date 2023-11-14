@@ -35,6 +35,7 @@
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/poly/compute_at_transform.h"
 #include "paddle/cinn/poly/isl_utils.h"
+#include "paddle/cinn/utils/error.h"
 #include "paddle/cinn/utils/functional.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -1884,6 +1885,7 @@ Stage *_StageMap_::InsertLazily(const ir::Tensor &key, Stage *stage) {
 }
 
 StageMap CreateStages(const std::vector<ir::Tensor> &tensors) {
+  VLOG(-1) << utils::enforce::GetCurrentTraceBackString();
   StageMap stages;
 
   std::set<ir::Tensor> all_tensors(tensors.begin(), tensors.end());

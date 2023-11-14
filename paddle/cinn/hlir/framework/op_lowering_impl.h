@@ -43,9 +43,16 @@ typedef bool (OpLowererImpl::*ScheduleDetermineFunction)(Node*);
 
 class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
  public:
-  OpLowererImpl(const absl::flat_hash_map<std::string, Type>&,
-                const absl::flat_hash_map<std::string, shape_t>&,
-                const Target&);
+  // OpLowererImpl(const absl::flat_hash_map<std::string, Type>&,
+  //               const absl::flat_hash_map<std::string, shape_t>&,
+  //               const Target&);
+  OpLowererImpl(
+      const absl::flat_hash_map<std::string, Type>& type_dict,
+      const absl::flat_hash_map<std::string, shape_t>& shape_dict,
+      const Target& target,
+      const absl::flat_hash_map<std::string, std::vector<std::string>>&
+          dyn_shape_dict =
+              absl::flat_hash_map<std::string, std::vector<std::string>>());
 
   /**
    * @brief Lower a group to CINN IR.
@@ -170,6 +177,8 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
   Target target_;
   const absl::flat_hash_map<std::string, Type>& type_dict_;
   const absl::flat_hash_map<std::string, shape_t>& shape_dict_;
+  const absl::flat_hash_map<std::string, std::vector<std::string>>&
+      dyn_shape_dict_;
 
   // fucntion name prefix
   const std::string func_name_prefix = "fn_";
