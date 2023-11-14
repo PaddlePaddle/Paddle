@@ -303,10 +303,6 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
 
   // Get Output AutoGradMeta
   egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
-  bool trace_backward = egr::Controller::Instance().HasGrad();
-  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(
-      trace_backward, x_autograd_meta, y_autograd_meta);
-
   // Check Inplace if needed
 
   egr::EagerUtils::CheckInplace(x, x_autograd_meta, require_any_grad);
