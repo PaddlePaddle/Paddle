@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
-#include "paddle/fluid/pir/dialect/operator/ir/meta_tensor.h"
+#include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -113,9 +113,9 @@ void AddNOp::Build(pir::Builder &builder,             // NOLINT
   VLOG(4) << "Builder construction outputs";
   pir::VectorType x = inputs.type().dyn_cast<pir::VectorType>();
 
-  std::vector<paddle::dialect::IrMetaTensor> vec_dense_x;
+  std::vector<paddle::dialect::IrTensor> vec_dense_x;
   for (size_t i = 0; i < x.size(); i++) {
-    vec_dense_x.push_back(paddle::dialect::IrMetaTensor(
+    vec_dense_x.push_back(paddle::dialect::IrTensor(
         TransToPhiDataType(
             x[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
         x[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
@@ -133,7 +133,7 @@ void AddNOp::Build(pir::Builder &builder,             // NOLINT
     meta_x.push_back(&vec_meta_x[i]);
   }
 
-  paddle::dialect::IrMetaTensor dense_out;
+  paddle::dialect::IrTensor dense_out;
   phi::MetaTensor meta_out(&dense_out);
 
   phi::AddNInferMeta(meta_x, &meta_out);
@@ -186,9 +186,9 @@ void AddN_Op::Build(pir::Builder &builder,
 
   VLOG(4) << "Builder construction outputs";
   pir::VectorType inputs = inputs_.type().dyn_cast<pir::VectorType>();
-  std::vector<paddle::dialect::IrMetaTensor> vec_dense_inputs;
+  std::vector<paddle::dialect::IrTensor> vec_dense_inputs;
   for (size_t i = 0; i < static_cast<size_t>(inputs.size()); i++) {
-    vec_dense_inputs.push_back(paddle::dialect::IrMetaTensor(
+    vec_dense_inputs.push_back(paddle::dialect::IrTensor(
         paddle::dialect::TransToPhiDataType(
             inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
         inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
@@ -205,7 +205,7 @@ void AddN_Op::Build(pir::Builder &builder,
   for (size_t i = 0; i < static_cast<size_t>(vec_meta_inputs.size()); i++) {
     meta_inputs.push_back(&vec_meta_inputs[i]);
   }
-  paddle::dialect::IrMetaTensor dense_out;
+  paddle::dialect::IrTensor dense_out;
   phi::MetaTensor meta_out(&dense_out);
 
   phi::AddNInferMeta(meta_inputs, &meta_out);
@@ -309,9 +309,9 @@ void AddNWithKernelOp::Build(pir::Builder &builder,
 
   VLOG(4) << "Builder construction outputs";
   pir::VectorType inputs = inputs_.type().dyn_cast<pir::VectorType>();
-  std::vector<paddle::dialect::IrMetaTensor> vec_dense_inputs;
+  std::vector<paddle::dialect::IrTensor> vec_dense_inputs;
   for (size_t i = 0; i < static_cast<size_t>(inputs.size()); i++) {
-    vec_dense_inputs.push_back(paddle::dialect::IrMetaTensor(
+    vec_dense_inputs.push_back(paddle::dialect::IrTensor(
         paddle::dialect::TransToPhiDataType(
             inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
         inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
@@ -328,7 +328,7 @@ void AddNWithKernelOp::Build(pir::Builder &builder,
   for (size_t i = 0; i < static_cast<size_t>(vec_meta_inputs.size()); i++) {
     meta_inputs.push_back(&vec_meta_inputs[i]);
   }
-  paddle::dialect::IrMetaTensor dense_out;
+  paddle::dialect::IrTensor dense_out;
   phi::MetaTensor meta_out(&dense_out);
 
   phi::AddNInferMeta(meta_inputs, &meta_out);
@@ -493,7 +493,7 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
   (void)bias;
 
   VLOG(4) << "Builder construction  dense_x";
-  paddle::dialect::IrMetaTensor dense_x(
+  paddle::dialect::IrTensor dense_x(
       paddle::dialect::TransToPhiDataType(x.dtype()),
       x.dims(),
       x.data_layout(),
@@ -503,7 +503,7 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
   phi::MetaTensor meta_x(&dense_x);
 
   VLOG(4) << "Builder construction  dense_y";
-  paddle::dialect::IrMetaTensor dense_y(
+  paddle::dialect::IrTensor dense_y(
       paddle::dialect::TransToPhiDataType(y.dtype()),
       y.dims(),
       y.data_layout(),
@@ -513,7 +513,7 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
   phi::MetaTensor meta_y(&dense_y);
 
   VLOG(4) << "Builder construction  dense_bias";
-  paddle::dialect::IrMetaTensor dense_bias(
+  paddle::dialect::IrTensor dense_bias(
       paddle::dialect::TransToPhiDataType(bias.dtype()),
       bias.dims(),
       bias.data_layout(),
@@ -521,9 +521,9 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
       bias.offset());
   VLOG(4) << "Builder construction  meta_bias";
   phi::MetaTensor meta_bias(&dense_bias);
-  paddle::dialect::IrMetaTensor dense_out;
+  paddle::dialect::IrTensor dense_out;
   phi::MetaTensor meta_out(&dense_out);
-  paddle::dialect::IrMetaTensor dense_reserve_space;
+  paddle::dialect::IrTensor dense_reserve_space;
   phi::MetaTensor meta_reserve_space(&dense_reserve_space);
 
   phi::FusedGemmEpilogueInferMeta(
@@ -750,7 +750,7 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
   (void)out_grad;
 
   VLOG(4) << "Builder construction  dense_x";
-  paddle::dialect::IrMetaTensor dense_x(
+  paddle::dialect::IrTensor dense_x(
       paddle::dialect::TransToPhiDataType(x.dtype()),
       x.dims(),
       x.data_layout(),
@@ -760,7 +760,7 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
   phi::MetaTensor meta_x(&dense_x);
 
   VLOG(4) << "Builder construction  dense_y";
-  paddle::dialect::IrMetaTensor dense_y(
+  paddle::dialect::IrTensor dense_y(
       paddle::dialect::TransToPhiDataType(y.dtype()),
       y.dims(),
       y.data_layout(),
@@ -770,9 +770,9 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
   phi::MetaTensor meta_y(&dense_y);
 
   VLOG(4) << "Builder construction  dense_reserve_space";
-  std::unique_ptr<paddle::dialect::IrMetaTensor> dense_reserve_space =
+  std::unique_ptr<paddle::dialect::IrTensor> dense_reserve_space =
       reserve_space_
-          ? std::make_unique<paddle::dialect::IrMetaTensor>(
+          ? std::make_unique<paddle::dialect::IrTensor>(
                 paddle::dialect::TransToPhiDataType(reserve_space.dtype()),
                 reserve_space.dims(),
                 reserve_space.data_layout(),
@@ -783,7 +783,7 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
   phi::MetaTensor meta_reserve_space(dense_reserve_space.get());
 
   VLOG(4) << "Builder construction  dense_out_grad";
-  paddle::dialect::IrMetaTensor dense_out_grad(
+  paddle::dialect::IrTensor dense_out_grad(
       paddle::dialect::TransToPhiDataType(out_grad.dtype()),
       out_grad.dims(),
       out_grad.data_layout(),
@@ -791,11 +791,11 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
       out_grad.offset());
   VLOG(4) << "Builder construction  meta_out_grad";
   phi::MetaTensor meta_out_grad(&dense_out_grad);
-  paddle::dialect::IrMetaTensor dense_x_grad;
+  paddle::dialect::IrTensor dense_x_grad;
   phi::MetaTensor meta_x_grad(&dense_x_grad);
-  paddle::dialect::IrMetaTensor dense_y_grad;
+  paddle::dialect::IrTensor dense_y_grad;
   phi::MetaTensor meta_y_grad(&dense_y_grad);
-  paddle::dialect::IrMetaTensor dense_bias_grad;
+  paddle::dialect::IrTensor dense_bias_grad;
   phi::MetaTensor meta_bias_grad(&dense_bias_grad);
 
   phi::FusedGemmEpilogueGradInferMeta(meta_x,
@@ -897,9 +897,9 @@ void SplitGradOp::Build(pir::Builder &builder,
 
   VLOG(4) << "Builder construction outputs";
   pir::VectorType out_grad = out_grad_.type().dyn_cast<pir::VectorType>();
-  std::vector<paddle::dialect::IrMetaTensor> vec_dense_out_grad;
+  std::vector<paddle::dialect::IrTensor> vec_dense_out_grad;
   for (size_t i = 0; i < static_cast<size_t>(out_grad.size()); i++) {
-    vec_dense_out_grad.push_back(paddle::dialect::IrMetaTensor(
+    vec_dense_out_grad.push_back(paddle::dialect::IrTensor(
         paddle::dialect::TransToPhiDataType(
             out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
         out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
@@ -916,7 +916,7 @@ void SplitGradOp::Build(pir::Builder &builder,
   for (size_t i = 0; i < static_cast<size_t>(vec_meta_out_grad.size()); i++) {
     meta_out_grad.push_back(&vec_meta_out_grad[i]);
   }
-  paddle::dialect::IrMetaTensor dense_x_grad;
+  paddle::dialect::IrTensor dense_x_grad;
   phi::MetaTensor meta_x_grad(&dense_x_grad);
 
   phi::ConcatInferMeta(meta_out_grad, axis, &meta_x_grad);
@@ -953,9 +953,9 @@ void SplitGradOp::Build(pir::Builder &builder,
                  .data()
                  .to<int>();
 
-  std::vector<paddle::dialect::IrMetaTensor> vec_dense_out_grad;
+  std::vector<paddle::dialect::IrTensor> vec_dense_out_grad;
   for (size_t i = 0; i < static_cast<size_t>(out_grad.size()); i++) {
-    vec_dense_out_grad.push_back(paddle::dialect::IrMetaTensor(
+    vec_dense_out_grad.push_back(paddle::dialect::IrTensor(
         TransToPhiDataType(
             out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
         out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
@@ -972,7 +972,7 @@ void SplitGradOp::Build(pir::Builder &builder,
   for (size_t i = 0; i < static_cast<size_t>(vec_meta_out_grad.size()); i++) {
     meta_out_grad.push_back(&vec_meta_out_grad[i]);
   }
-  paddle::dialect::IrMetaTensor dense_x_grad;
+  paddle::dialect::IrTensor dense_x_grad;
   phi::MetaTensor meta_x_grad(&dense_x_grad);
 
   phi::ConcatInferMeta(meta_out_grad, axis, &meta_x_grad);
@@ -1096,7 +1096,7 @@ void ExpandOp::Build(pir::Builder &builder,
   (void)x;
 
   VLOG(4) << "Builder construction  dense_x";
-  paddle::dialect::IrMetaTensor ir_meta_tensor_x(
+  paddle::dialect::IrTensor ir_meta_tensor_x(
       paddle::dialect::TransToPhiDataType(x.dtype()),
       x.dims(),
       x.data_layout(),
@@ -1104,7 +1104,7 @@ void ExpandOp::Build(pir::Builder &builder,
       x.offset());
   VLOG(4) << "Builder construction  meta_x";
   phi::MetaTensor meta_x(&ir_meta_tensor_x);
-  paddle::dialect::IrMetaTensor dense_out;
+  paddle::dialect::IrTensor dense_out;
   phi::MetaTensor meta_out(&dense_out);
 
   phi::ExpandInferMeta(meta_x, shape, &meta_out);
@@ -1154,7 +1154,7 @@ void ExpandOp::Build(pir::Builder &builder,
   (void)x;
 
   VLOG(4) << "Builder construction  dense_x";
-  paddle::dialect::IrMetaTensor ir_meta_tensor_x(
+  paddle::dialect::IrTensor ir_meta_tensor_x(
       paddle::dialect::TransToPhiDataType(x.dtype()),
       x.dims(),
       x.data_layout(),
@@ -1162,7 +1162,7 @@ void ExpandOp::Build(pir::Builder &builder,
       x.offset());
   VLOG(4) << "Builder construction  meta_x";
   phi::MetaTensor meta_x(&ir_meta_tensor_x);
-  paddle::dialect::IrMetaTensor dense_out;
+  paddle::dialect::IrTensor dense_out;
   phi::MetaTensor meta_out(&dense_out);
 
   phi::ExpandInferMeta(meta_x, shape, &meta_out);
@@ -1224,7 +1224,7 @@ void ExpandOp::Build(pir::Builder &builder,
   }
 
   VLOG(4) << "Builder construction  dense_x";
-  paddle::dialect::IrMetaTensor ir_meta_tensor_x(
+  paddle::dialect::IrTensor ir_meta_tensor_x(
       paddle::dialect::TransToPhiDataType(x.dtype()),
       x.dims(),
       x.data_layout(),
@@ -1232,7 +1232,7 @@ void ExpandOp::Build(pir::Builder &builder,
       x.offset());
   VLOG(4) << "Builder construction  meta_x";
   phi::MetaTensor meta_x(&ir_meta_tensor_x);
-  paddle::dialect::IrMetaTensor dense_out;
+  paddle::dialect::IrTensor dense_out;
   phi::MetaTensor meta_out(&dense_out);
 
   phi::ExpandInferMeta(meta_x, shape, &meta_out);
