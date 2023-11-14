@@ -38,7 +38,7 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
   PADDLE_ENFORCE_GE(broadcast_ndim,
                     tenosr_ndim,
                     phi::errors::InvalidArgument(
-                        "The broadcast ndim [%d] is less than tenosr ndim [%d]",
+                        "The broadcast ndim [%d] is less than tensor ndim [%d]",
                         broadcast_ndim,
                         tenosr_ndim));
   if (tenosr_ndim <= 0) {
@@ -228,13 +228,13 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
   for (size_t i = 0; i < n_inputs; i++) {
     // 1、check all inputs have the align_axis
     for (char axi : align_axis) {
-      if (axis_names[i].find(axi) == std::string::npos) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
-            "[%s] some axis not in input [%d],[%s]",
-            align_axis,
-            i,
-            axis_names[i]));
-      }
+      PADDLE_ENFORCE_EQ(axis_names[i].find(axi) == std::string::npos,
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "align_axis[%s]; some axis not in input [%d],[%s]",
+                            align_axis,
+                            i,
+                            axis_names[i]));
     }
     // 2、build axis map
     for (size_t j = 0; j < axis_names[i].size(); j++) {
