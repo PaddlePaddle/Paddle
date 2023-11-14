@@ -324,9 +324,9 @@ def monkey_patch_opresult():
             >>> with paddle.static.program_guard(startup_prog, main_prog):
             ...     x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
             ...     (output_x,) = exe.run(main_program, fetch_list=[x.size()])
-            ...     print(f"new value's size is: {output_x}")
+            ...     print(f"value's size is: {output_x}")
             ...
-            new value's size is: 24
+            value's size is: 24
         """
         return paddle.numel(self)
 
