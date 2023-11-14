@@ -60,7 +60,7 @@ class TestApiWhileLoop(unittest.TestCase):
             np.asarray(res[0]), np.full(1, 10, np.int64), rtol=1e-05
         )
 
-    # @compare_legacy_with_pir
+    @compare_legacy_with_pir
     def test_var_list(self):
         def cond(i, mem):
             return paddle.less_than(i, ten)
@@ -436,7 +436,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
 
 
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
-    # @compare_legacy_with_pir
+    @compare_legacy_with_pir
     def test_with_switch_case(self):
         def cond(i):
             return paddle.less_than(i, ten)
