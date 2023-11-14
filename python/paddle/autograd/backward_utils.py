@@ -14,18 +14,21 @@
 from __future__ import annotations
 
 import collections
+from collections.abc import Sequence
 from typing import Any
 
 
-class ValueInDict:
+class ValueWrapper:
     def __init__(self, value) -> None:
+        if isinstance(value, ValueWrapper):
+            value = value.value
         self.value = value
 
     def __hash__(self) -> int:
         return hash(self.value)
 
     def __eq__(self, other) -> bool:
-        if isinstance(other, ValueInDict):
+        if isinstance(other, ValueWrapper):
             other = other.value
         return self.value.is_same(other)
 
@@ -33,11 +36,11 @@ class ValueInDict:
 class ValueDict:
     def __init__(
         self,
-        iter: dict[ValueInDict, Any] | None = None,
+        iter: dict[ValueWrapper, Any] | None = None,
         *,
         default_factory=None,
     ):
-        self._items: dict[ValueInDict, Any] = {}
+        self._items: dict[ValueWrapper, Any] = {}
         self._default_factory = default_factory
         if iter is not None:
             for key, val in iter.items():
@@ -45,7 +48,7 @@ class ValueDict:
 
     def update(self, other_dict):
         for key, val in other_dict:
-            self[ValueInDict(key)] = val
+            self[ValueWrapper(key)] = val
 
     def keys(self):
         for key in self._items.keys():
@@ -59,6 +62,8 @@ class ValueDict:
             yield key.value, val
 
     def __setitem__(self, other_key, other_val: Any):
+        if not isinstance(other_key, ValueWrapper):
+            other_key = ValueWrapper(other_key)
         self._items[other_key] = other_val
 
     def __getitem__(self, other_key):
@@ -89,7 +94,49 @@ class ValueDict:
         return self.keys()
 
     def __contains__(self, other_key):
-        return ValueInDict(other_key) in self._items
+        return other_key in self._items
+
+
+class ValueSet:
+    def __init__(
+        self, iter: Sequence[ValueWrapper] | set[ValueWrapper] | None = None
+    ):
+        self._values: set[ValueWrapper] = set()
+        if iter is not None:
+            for val in iter:
+                self.add(val)
+
+    def add(self, other_val):
+        other_val = ValueWrapper(other_val)
+        if not self.__contains__(other_val):
+            self._values.add(other_val)
+
+    def update(self, other_set: set):
+        for val in other_set:
+            self.add(ValueWrapper(val))
+
+    def __and__(self, other_set: ValueSet):
+        ret = ValueSet()
+        for val in self._values:
+            if val in other_set:
+                ret.add(val)
+        return ret
+
+    def __or__(self, other_set: ValueSet):
+        return ValueSet(self._values | other_set._values)
+
+    def __bool__(self):
+        return bool(self._values)
+
+    def __len__(self):
+        return len(self._values)
+
+    def __iter__(self):
+        for val in self._values:
+            yield val.value
+
+    def __contains__(self, other_val):
+        return other_val in self._values
 
 
 class State:

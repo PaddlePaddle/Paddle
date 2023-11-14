@@ -19,7 +19,7 @@ import logging
 from collections.abc import Sequence
 
 import paddle.pir
-from paddle.autograd.backward_utils import State
+from paddle.autograd.backward_utils import State, ValueSet
 
 """
     grad: for templete test, will combine in paddle.grad .
@@ -27,61 +27,6 @@ from paddle.autograd.backward_utils import State
     calc_gradient_helper: for dygraph to static .
 """
 __all__ = ['grad', 'calc_gradient', 'calc_gradient_helper']
-
-
-class ValueInSet:
-    def __init__(self, value) -> None:
-        self.value = value
-
-    def __hash__(self) -> int:
-        return hash(self.value)
-
-    def __eq__(self, other) -> bool:
-        if isinstance(other, ValueInSet):
-            other = other.value
-        return self.value.is_same(other)
-
-
-class ValueSet:
-    def __init__(
-        self, iter: Sequence[ValueInSet] | set[ValueInSet] | None = None
-    ):
-        self._values: set[ValueInSet] = set()
-        if iter is not None:
-            for val in iter:
-                self.add(val)
-
-    def add(self, other_val):
-        other_val = ValueInSet(other_val)
-        if not self.__contains__(other_val):
-            self._values.add(other_val)
-
-    def update(self, other_set: set):
-        for val in other_set:
-            self.add(ValueInSet(val))
-
-    def __and__(self, other_set: ValueSet):
-        ret = ValueSet()
-        for val in self._values:
-            if val in other_set:
-                ret.add(val)
-        return ret
-
-    def __or__(self, other_set: ValueSet):
-        return ValueSet(self._values | other_set._values)
-
-    def __bool__(self):
-        return bool(self._values)
-
-    def __len__(self):
-        return len(self._values)
-
-    def __iter__(self):
-        for val in self._values:
-            yield val.value
-
-    def __contains__(self, other_val):
-        return ValueInSet(other_val) in self._values
 
 
 def check_type(input, input_name, expected_type, op_name, extra_message=''):
