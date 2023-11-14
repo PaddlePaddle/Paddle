@@ -94,6 +94,8 @@ class ValueDict:
         return self.keys()
 
     def __contains__(self, other_key):
+        if isinstance(other_key, ValueWrapper):
+            return other_key in self._items
         return ValueWrapper(other_key) in self._items
 
 
@@ -136,6 +138,8 @@ class ValueSet:
             yield val.value
 
     def __contains__(self, other_val):
+        if isinstance(other_val, ValueWrapper):
+            return other_val in self._values
         return ValueWrapper(other_val) in self._values
 
 
