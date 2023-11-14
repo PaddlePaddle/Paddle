@@ -224,6 +224,7 @@ class Test_API_Matmul(unittest.TestCase):
 class API_TestMmError(unittest.TestCase):
     def test_errors(self):
         with paddle_static_guard():
+
             def test_error1():
                 with paddle.base.program_guard(
                     paddle.base.Program(), paddle.base.Program()
