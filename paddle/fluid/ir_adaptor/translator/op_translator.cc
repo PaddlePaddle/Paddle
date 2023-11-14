@@ -2216,12 +2216,12 @@ struct SetValueWithTensorOpTranscriber : public SetValueOpTranscriber {
 struct SetValueGradOpTranscriber : public SetValueWithTensorOpTranscriber {
   pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
                             const OpDesc& op_desc) override {
-    std::string target_op_name = dialect::SetValueGradOp::name();
+    std::string target_op_name = dialect::SetValueWithTensorGradOp::name();
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       IR_THROW(
           "Op set_value_grad should have corresponding OpInfo "
-          "pd_op.set_value_grad");
+          "pd_op.set_value_with_tensor_grad");
     }
 
     return op_info;

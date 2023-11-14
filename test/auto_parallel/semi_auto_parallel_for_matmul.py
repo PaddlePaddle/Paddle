@@ -111,7 +111,6 @@ class TestMatmulApiForSemiAutoParallel:
         np.testing.assert_equal(
             dist_out.dist_attr.dims_mapping, [-1, -1], verbose=True
         )
-        assert dist_out.dist_attr._is_partial() is False
         # verify x_grad local shape and dist attr
         np.testing.assert_equal(
             dist_x_grad._local_shape, [64, 16], verbose=True

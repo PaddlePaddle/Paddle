@@ -24,6 +24,7 @@ decomp_interface_declare_gen_op_list = [
     "squeeze",
     "add_n",
     "relu",
+    "softmax",
     "gelu",
 ]
 
@@ -34,5 +35,6 @@ decomp_interface_implementation_gen_op_list = [
     "squeeze",
     "add_n",
     "relu",
+    "softmax",
     "gelu",
 ]

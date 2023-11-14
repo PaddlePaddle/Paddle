@@ -63,6 +63,31 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
 }
 
 template <typename T>
+Tensor softmax_decomp(const Tensor& x, const int& axis) {
+  auto org_dtype = x.dtype();
+  auto x_tmp = x;
+  auto axis_tmp = IntArray({axis});
+
+  bool need_cast =
+      org_dtype == phi::DataType::FLOAT16 || org_dtype == phi::DataType::UINT16;
+  if (need_cast) {
+    x_tmp = cast<T>(x, phi::DataType::FLOAT32);
+  }
+
+  auto max_tmp = max<T>(x_tmp, axis_tmp, true);
+  auto molecular = exp<T>(subtract<T>(x_tmp, max_tmp));
+
+  auto denominator = sum<T>(molecular, axis_tmp, molecular.dtype(), true);
+  auto res = divide<T>(molecular, denominator);
+
+  if (need_cast) {
+    return cast<T>(res, org_dtype);
+  } else {
+    return res;
+  }
+}
+
+template <typename T>
 Tensor relu_decomp(const Tensor& x) {
   return maximum<T>(x, full<T>(phi::vectorize(x.dims()), 0.0, x.dtype()));
 }
