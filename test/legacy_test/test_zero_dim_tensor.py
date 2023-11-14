@@ -25,6 +25,7 @@ from decorator_helper import prog_scope
 
 import paddle
 import paddle.nn.functional as F
+from paddle.pir_utils import test_with_pir_api
 
 unary_api_list = [
     paddle.nn.functional.elu,
@@ -5956,6 +5957,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (1,))
         self.assertEqual(res[3].shape, (1,))
 
+    @test_with_pir_api
     def test_static_matrix_rank(self):
         # 2D : OUTPUT 0D
         with paddle.static.program_guard(
