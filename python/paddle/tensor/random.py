@@ -1172,12 +1172,9 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
         low = 0
     if dtype is None:
         dtype = x.dtype
-        if in_pir_mode():
-            from paddle.base.libpaddle import DataType
-
-            dtype = DataType.INT64
-    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+    else:
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+            dtype = convert_np_dtype_to_dtype_(dtype)
     shape = paddle.shape(x)
 
     if low >= high:
