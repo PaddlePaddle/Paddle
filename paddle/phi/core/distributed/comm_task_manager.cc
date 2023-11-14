@@ -65,8 +65,8 @@ CommTaskManager::~CommTaskManager() {
   terminated_.store(true);
 
   if (comm_task_loop_thread_.joinable()) {
-    comm_task_loop_thread_.join();
     comm_task_list_cv_.notify_one();
+    comm_task_loop_thread_.join();
   }
   LOG(INFO) << "CommTaskManager destruct success.";
 }
@@ -83,8 +83,8 @@ void CommTaskManager::Stop() {
 
   LOG(INFO) << "CommTaskManager stopped begin.";
   if (comm_task_loop_thread_.joinable()) {
-    comm_task_loop_thread_.join();
     comm_task_list_cv_.notify_one();
+    comm_task_loop_thread_.join();
   }
   LOG(INFO) << "CommTaskManager stopped.";
 }
