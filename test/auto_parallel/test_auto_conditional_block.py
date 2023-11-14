@@ -88,10 +88,11 @@ def loss_func(pred, label):
 
 class TestMLP(unittest.TestCase):
     def test_conditional_block(self):
-        mlp = MLPLayer(
-            hidden_size=hidden_size,
-            intermediate_size=4 * hidden_size,
-        )
+        with paddle.LazyGuard():
+            mlp = MLPLayer(
+                hidden_size=hidden_size,
+                intermediate_size=4 * hidden_size,
+            )
         optimizer = paddle.optimizer.AdamW(parameters=mlp.parameters())
 
         strategy = auto.Strategy()
