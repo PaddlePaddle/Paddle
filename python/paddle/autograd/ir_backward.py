@@ -77,13 +77,11 @@ class ValueSet:
         return len(self._values)
 
     def __iter__(self):
-        return iter(self._values)
+        for val in self._values:
+            yield val.value
 
     def __contains__(self, other_val):
-        for value in self._values:
-            if hash(value) == hash(other_val) and value == other_val:
-                return True
-        return False
+        return ValueInSet(other_val) in self._values
 
 
 def check_type(input, input_name, expected_type, op_name, extra_message=''):

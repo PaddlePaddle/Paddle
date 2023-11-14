@@ -48,13 +48,15 @@ class ValueDict:
             self[ValueInDict(key)] = val
 
     def keys(self):
-        return self._items.keys()
+        for key in self._items.keys():
+            yield key.value
 
     def values(self):
         return self._items.values()
 
     def items(self):
-        return self._items.items()
+        for key, val in self._items.items():
+            yield key.value, val
 
     def __setitem__(self, other_key, other_val: Any):
         self._items[other_key] = other_val
@@ -87,10 +89,7 @@ class ValueDict:
         return self.keys()
 
     def __contains__(self, other_key):
-        for key in self._items.keys():
-            if hash(key) == hash(other_key) and key == other_key:
-                return True
-        return False
+        return ValueInDict(other_key) in self._items
 
 
 class State:
