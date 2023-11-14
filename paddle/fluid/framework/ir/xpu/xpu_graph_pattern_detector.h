@@ -90,6 +90,21 @@ struct MultipleQuantizeXPU : public PatternBase {
   PATTERN_DECL_NODE(prev_out);
 };
 
+// quantize_xpu(branch_input) + conv2d_xpu + dequantize_xpu
+struct QuantConv2dFusionDequantXPU : public PatternBase {
+  QuantConv2dFusionDequantXPU(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "quant_conv2d_fusion_dequant_xpu") {}
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(quant_in);
+  PATTERN_DECL_NODE(quant_op);
+  PATTERN_DECL_NODE(quant_out);
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(dequant_op);
+  PATTERN_DECL_NODE(dequant_out);
+};
+
 }  // namespace patterns
 }  // namespace ir
 }  // namespace framework
