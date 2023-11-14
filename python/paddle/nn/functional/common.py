@@ -941,7 +941,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
             [5, 1000]
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bilinear(x1, x2, weight, bias)
     else:
         check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
