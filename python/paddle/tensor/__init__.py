@@ -734,6 +734,9 @@ tensor_method_func = [
     'normal_',
     'index_fill',
     'index_fill_',
+    'atleast_1d',
+    'atleast_2d',
+    'atleast_3d',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

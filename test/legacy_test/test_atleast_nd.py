@@ -413,7 +413,7 @@ class TestAtleastMixDtypes(BaseTest):
     ),
 )
 class TestAtleastErrorCombineInputs(BaseTest):
-    """test combine inputs, like: `at_leastNd((x, y))`, where paddle treats like numpy, not pytorch"""
+    """test combine inputs, like: `at_leastNd((x, y))`, where paddle treats like numpy"""
 
     def test_all(self):
         with self.assertRaises(ValueError):
@@ -425,6 +425,33 @@ class TestAtleastErrorCombineInputs(BaseTest):
             self._test_static_api(
                 self.inputs, self.dtypes, self.shapes, self.names
             )
+
+
+class TestAtleastAsTensorMethod(unittest.TestCase):
+    def test_as_tensor_method(self):
+        input = 123
+        tensor = paddle.to_tensor(input)
+
+        for place in PLACES:
+            paddle.disable_static(place)
+
+            out = tensor.atleast_1d()
+            out_ref = np.atleast_1d(input)
+
+            for n, p in zip(out_ref, out):
+                np.testing.assert_allclose(n, p.numpy(), rtol=RTOL, atol=ATOL)
+
+            out = tensor.atleast_2d()
+            out_ref = np.atleast_2d(input)
+
+            for n, p in zip(out_ref, out):
+                np.testing.assert_allclose(n, p.numpy(), rtol=RTOL, atol=ATOL)
+
+            out = tensor.atleast_3d()
+            out_ref = np.atleast_3d(input)
+
+            for n, p in zip(out_ref, out):
+                np.testing.assert_allclose(n, p.numpy(), rtol=RTOL, atol=ATOL)
 
 
 if __name__ == '__main__':
