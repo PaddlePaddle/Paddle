@@ -154,8 +154,8 @@ __global__ void GridSampleCudaKernel(const int nthreads,
         }
       }
     } else if (mode == Mode::nearest) {
-      int ix_nearest = static_cast<int>(std::nearbyint(ix));
-      int iy_nearest = static_cast<int>(std::nearbyint(iy));
+      int ix_nearest = static_cast<int>(std::round(ix));
+      int iy_nearest = static_cast<int>(std::round(iy));
       auto inp_offset_NC = n * inp_sN;
       auto out_ptr_NCHW = output + n * out_sN + h * out_sH + w * out_sW;
       for (int c = 0; c < out_c;
