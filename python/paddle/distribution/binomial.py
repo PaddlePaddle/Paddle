@@ -27,11 +27,11 @@ class Binomial(distribution.Distribution):
 
     Mathematical details
 
-    The probability density function (pdf) is
+    The probability mass function (pmf) is
 
     .. math::
 
-        pdf(x; n, p) = \frac{n!}{x!(n-x)!}p^{x}(1-p)^{n-x}
+        pmf(x; n, p) = \frac{n!}{x!(n-x)!}p^{x}(1-p)^{n-x}
 
     In the above equation:
 

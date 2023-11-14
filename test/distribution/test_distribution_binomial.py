@@ -34,7 +34,7 @@ from paddle.distribution.binomial import Binomial
         ),
         (
             'multi-dim-total_count-probability',
-            parameterize.xrand((2,), min=1, max=100).astype('int32'),
+            parameterize.xrand((2, 1), min=1, max=100).astype('int32'),
             parameterize.xrand((2, 3), dtype='float32', min=0, max=1),
         ),
     ],

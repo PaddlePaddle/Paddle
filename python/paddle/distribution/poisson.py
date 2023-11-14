@@ -27,11 +27,11 @@ class Poisson(distribution.Distribution):
 
     Mathematical details
 
-    The probability density function (pdf) is
+    The probability mass function (pmf) is
 
     .. math::
 
-        pdf(x; \lambda) = \frac{e^{-\lambda} \cdot \lambda^x}{x!}
+        pmf(x; \lambda) = \frac{e^{-\lambda} \cdot \lambda^x}{x!}
 
     In the above equation:
 
