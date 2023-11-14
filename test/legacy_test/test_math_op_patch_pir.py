@@ -424,7 +424,7 @@ class TestMathOpPatchesPir(unittest.TestCase):
             main_program, exe, program_guard = new_program()
             with program_guard:
                 x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
-                (output_x,) = exe.run(main_program, fetch_list=[x.size()])
+                (output_x,) = exe.run(main_program, fetch_list=[x.size])
                 self.assertEqual(output_x, 24)
 
     def test_math_exists(self):

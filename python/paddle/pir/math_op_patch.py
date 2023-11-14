@@ -307,7 +307,8 @@ def monkey_patch_opresult():
         __impl__.__name__ = method_name
         return __impl__
 
-    def size(self):
+    @property
+    def _size_(self):
         """
         Returns the number of elements for current OpResult, which is a int64 OpResult with shape [] .
 
@@ -323,7 +324,7 @@ def monkey_patch_opresult():
             >>> main_prog = paddle.static.Program()
             >>> with paddle.static.program_guard(startup_prog, main_prog):
             ...     x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
-            ...     (output_x,) = exe.run(main_program, fetch_list=[x.size()])
+            ...     (output_x,) = exe.run(main_program, fetch_list=[x.size])
             ...     print(f"value's size is: {output_x}")
             ...
             value's size is: 24
@@ -339,7 +340,7 @@ def monkey_patch_opresult():
         ('ndimension', ndimension),
         ('ndim', _ndim),
         ('astype', astype),
-        ('size', size),
+        ('size', _size_),
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
