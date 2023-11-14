@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/split.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
 #include "paddle/phi/infermeta/spmd_rules/unsqueeze.h"
+#include "paddle/phi/infermeta/spmd_rules/where.h"
 
 /**
  * Design Notes:
@@ -553,6 +554,10 @@ PD_REGISTER_SPMD_RULE(softmax,
 PD_REGISTER_SPMD_RULE(log_softmax,
                       PD_INFER_SPMD(phi::distributed::SoftmaxInferSpmd),
                       PD_INFER_SPMD(phi::distributed::SoftmaxInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(where,
+                      PD_INFER_SPMD(phi::distributed::WhereInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::WhereInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi
