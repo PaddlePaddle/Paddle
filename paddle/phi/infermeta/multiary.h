@@ -334,16 +334,6 @@ void FusedBiasActInferMeta(const MetaTensor& x,
                            MetaTensor* out,
                            MetaConfig config = MetaConfig());
 
-void FusedElemwiseAddActivationInferMeta(
-    const MetaTensor& x,
-    const MetaTensor& y,
-    const std::vector<std::string>& functor_list,
-    float scale,
-    int axis,
-    bool save_intermediate_out,
-    MetaTensor* out,
-    MetaTensor* intermediate_out);
-
 void FusedLayerNormInferMeta(const MetaTensor& x,
                              const MetaTensor& bias,
                              const MetaTensor& residual,

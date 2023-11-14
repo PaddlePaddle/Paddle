@@ -243,6 +243,16 @@ void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
                                  MetaTensor* fmha_out_grad,
                                  MetaTensor* out_linear_out_grad);
 
+void FusedElemwiseAddActivationInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const std::vector<std::string>& functor_list,
+    float scale,
+    int axis,
+    bool save_intermediate_out,
+    MetaTensor* out,
+    MetaTensor* intermediate_out);
+
 void FusedElemwiseAddActivationGradInferMeta(
     const MetaTensor& x,
     const MetaTensor& y,

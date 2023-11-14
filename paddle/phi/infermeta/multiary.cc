@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/multiary.h"
 
-#include <unordered_set>
 #include <vector>
 
 #include "glog/logging.h"
@@ -1607,106 +1606,6 @@ void FusedBiasActInferMeta(const MetaTensor& x,
     }
   }
   out->set_layout(x.layout());
-}
-
-static bool IsBcastY(const phi::DDim& x_dim, const phi::DDim& y_dim) {
-  bool bcast_y = x_dim.size() >= y_dim.size();
-  if (x_dim.size() == y_dim.size()) {
-    for (int i = 0; i < x_dim.size(); ++i) {
-      if (x_dim[i] < y_dim[i]) {
-        bcast_y = false;
-        break;
-      }
-    }
-  }
-  return bcast_y;
-}
-
-static bool IsUnaryCompound(const std::vector<std::string>& functor_list) {
-  PADDLE_ENFORCE_EQ(
-      functor_list.size(),
-      2,
-      phi::errors::InvalidArgument(
-          "Invalid functor list size %d, which should be equal to %d.",
-          functor_list.size(),
-          2));
-  static std::unordered_set<std::string> binary_fun = {"elementwise_add",
-                                                       "elementwise_mul",
-                                                       "elementwise_add_grad",
-                                                       "elementwise_mul_grad"};
-  return binary_fun.count(functor_list[1]) != 0;
-}
-
-void FusedElemwiseAddActivationInferMeta(
-    const MetaTensor& x,
-    const MetaTensor& y,
-    const std::vector<std::string>& functor_list,
-    float scale,
-    int axis,
-    bool save_intermediate_out,
-    MetaTensor* out,
-    MetaTensor* intermediate_out) {
-  PADDLE_ENFORCE_NOT_NULL(
-      x,
-      errors::NotFound(
-          "Input(X) of FusedElemwiseAddActivationOp op should not be null."));
-  PADDLE_ENFORCE_NOT_NULL(
-      y,
-      errors::NotFound(
-          "Input(Y) of FusedElemwiseAddActivationOp op should not be null."));
-  PADDLE_ENFORCE_NOT_NULL(out,
-                          phi::errors::InvalidArgument(
-                              "Output(Out) of FusedElemwiseAddActivationOp op "
-                              "should not be null."));
-
-  auto x_dim = x.dims();
-  auto y_dim = y.dims();
-
-  // Whether the shape of Y is a continuous subsequence of X,
-  // For more information please refer to the op's introduction.
-  bool bcast_y = IsBcastY(x_dim, y_dim);
-
-  auto out_dim = bcast_y ? x_dim : y_dim;
-  auto out_lod = bcast_y ? x : y;
-  auto out_dtype = bcast_y ? x.dtype() : y.dtype();
-
-  PADDLE_ENFORCE_NOT_NULL(
-      intermediate_out,
-      errors::NotFound(
-          "Output(IntermediateOut) of FusedElemwiseAddActivationOp "
-          "should not be null."));
-
-  if (IsUnaryCompound(functor_list)) {
-    // for Unary(Binary(X, Y)), the shape and lod of out and
-    // intermediate_out are the same.
-    intermediate_out->set_dims(out_dim);
-    // set the lod of intermediate_out
-    intermediate_out->share_lod(out_lod);
-  } else {
-    // for Binary(X, Unary(Y)), the shape and lod of Y and
-    // intermediate_out are the same.
-    intermediate_out->set_dims(y_dim);
-    // set the lod of intermediate_out
-    intermediate_out->share_lod(y);
-  }
-  out->set_dims(out_dim);
-  out->share_lod(out_lod);
-  out->set_dtype(out_dtype);
-
-  bool elemntwise_add_detected = false;
-  for (auto names : functor_list) {
-    if (names == "elementwise_add") {
-      elemntwise_add_detected = true;
-      break;
-    }
-  }
-  PADDLE_ENFORCE_EQ(
-      elemntwise_add_detected,
-      true,
-      phi::errors::InvalidArgument(
-          "When the FusedElemwiseAddActivationOp Is used in fused pass, the "
-          "elementwise_add Op must be"
-          "detected and used, Please check the fuse pass pattern"));
 }
 
 void FusedLayerNormInferMeta(const MetaTensor& x,

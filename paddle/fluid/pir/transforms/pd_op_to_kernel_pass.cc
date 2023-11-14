@@ -146,6 +146,7 @@ bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
       return true;
     }
   }
+
   return false;
 }
 
