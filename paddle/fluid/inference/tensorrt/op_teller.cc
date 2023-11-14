@@ -2198,11 +2198,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         for (auto x : dim) {
           if (x == 0 || (x + input_shape.size() == 0)) return false;
         }
-
-      } else {
-        if (PADDLE_GET_CONST(bool, desc.GetAttr("reduce_all")) &&
-            !PADDLE_GET_CONST(bool, desc.GetAttr("keep_dim")))
-          return false;
       }
 
       auto dtype = x_var_desc->GetDataType();
