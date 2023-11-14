@@ -19,6 +19,8 @@
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/op_arg_pos.h"
 #include "paddle/cinn/adt/print.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/utils/type_defs.h"
 
 #include "glog/logging.h"
 
@@ -37,7 +39,7 @@ std::vector<std::uint64_t> MakeTensorRanks(const List<Arg>& arg_lists) {
   return ret;
 }
 
-void GenerateOpEquationsImpl(const hlir::framework::Node* op_node,
+void GenerateOpEquationsImpl(const ::pir::Operation* op_node,
                              const OpStmt& op_stmt,
                              config::NaiveOpEquationContext* ctx) {
   const auto& [_, inputs, outputs] = op_stmt.tuple();
@@ -48,8 +50,10 @@ void GenerateOpEquationsImpl(const hlir::framework::Node* op_node,
   const auto& generate_equations =
       hlir::framework::Operator::GetAttrs<GenerateEquationFunc>(
           "generate_equations");
-  CHECK(generate_equations.Find(op_node->op()));
-  generate_equations[op_node->op()](ctx);
+  const hlir::framework::Operator* cinn_op = hlir::framework::Operator::Get(
+      hlir::framework::pir::CompatibleInfo::OpName(*op_node));
+  CHECK(generate_equations.Find(cinn_op));
+  generate_equations[cinn_op](ctx);
 }
 
 using GetArgStaticDimT = std::function<std::optional<std::int64_t>(
@@ -62,7 +66,7 @@ GetArgStaticDimT MakeGetArgStaticDimT(const List<Tensor>& tensors) {
       return std::nullopt;
     }
     CHECK(tensors->at(tensor_idx).Has<adapter::Tensor>());
-    const auto& tensor_shape =
+    const std::vector<int32_t> tensor_shape =
         tensors->at(tensor_idx).Get<adapter::Tensor>().GetShape();
     if (dim_idx >= tensor_shape.size()) {
       return std::nullopt;
@@ -71,15 +75,14 @@ GetArgStaticDimT MakeGetArgStaticDimT(const List<Tensor>& tensors) {
   };
 }
 
-void GenerateOpEquationsImpl(
-    const tReduceAcc<const hlir::framework::Node*>& op_node,
-    const OpStmt& op_stmt,
-    config::NaiveOpEquationContext* ctx) {
+void GenerateOpEquationsImpl(const tReduceAcc<const ::pir::Operation*>& op_node,
+                             const OpStmt& op_stmt,
+                             config::NaiveOpEquationContext* ctx) {
   GenerateOpEquationsImpl(op_node.value(), op_stmt, ctx);
 }
 
 void GenerateOpEquationsImpl(
-    const tReduceInit<const hlir::framework::Node*>& op_node,
+    const tReduceInit<const ::pir::Operation*>& op_node,
     const OpStmt& op_stmt,
     config::NaiveOpEquationContext* ctx) {
   // Do nothing
@@ -96,29 +99,25 @@ void GenerateOpEquations(const OpStmt& op_stmt,
       op.variant());
 }
 
-const hlir::framework::AttrMapType* GetOpAttrImpl(
-    const hlir::framework::Node* op_node) {
-  return &op_node->attrs.attr_store;
+cinn::utils::AttributeMap GetOpAttrImpl(const ::pir::Operation* op_node) {
+  return hlir::framework::pir::CompatibleInfo::ConvertAttributes(*op_node);
 }
 
-const hlir::framework::AttrMapType* GetOpAttrImpl(
-    const tReduceInit<const hlir::framework::Node*>&) {
-  static hlir::framework::AttrMapType empty{};
-  return &empty;
+cinn::utils::AttributeMap GetOpAttrImpl(
+    const tReduceInit<const ::pir::Operation*>&) {
+  return cinn::utils::AttributeMap{};
 }
 
-const hlir::framework::AttrMapType* GetOpAttrImpl(
-    const tReduceAcc<const hlir::framework::Node*>& op_node) {
+cinn::utils::AttributeMap GetOpAttrImpl(
+    const tReduceAcc<const ::pir::Operation*>& op_node) {
   return GetOpAttrImpl(op_node.value());
 }
 
-const hlir::framework::AttrMapType* GetOpAttr(const OpStmt& op_stmt) {
+cinn::utils::AttributeMap GetOpAttr(const OpStmt& op_stmt) {
   const auto& [op_node, inputs, outputs] = op_stmt.tuple();
 
-  const auto* attr = std::visit(
-      [&](const auto& impl) { return GetOpAttrImpl(impl); }, op_node.variant());
-
-  return attr;
+  return std::visit([&](const auto& impl) { return GetOpAttrImpl(impl); },
+                    op_node.variant());
 }
 
 std::shared_ptr<config::NaiveOpEquationContext> MakeContextAndGenerateEquations(

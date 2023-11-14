@@ -103,9 +103,28 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       std::vector<ir::Tensor>* group_func_arg_tensors);
 
   /**
+   * @brief Generate MapExpr and Lower it to std::vector<ir::LoweredFunc>
+   * @param group The group to be lowered.
+   * @param tensor_map All tensors used for calculating the group.
+   * @param done_op_schedule Mark whether the Op level schedule has been
+   * applied.
+   * @param apply_group_schedule Whether to schedule at group level.
+   * @param group_func_arg_tensors Tensors used as the group function arguments.
+   * @return The lowered funcs after the post processing.
+   */
+  std::vector<ir::LoweredFunc> LowerMapExpr(
+      const GroupPtr& group,
+      const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
+      const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info,
+      bool done_op_schedule,
+      bool apply_group_schedule,
+      std::vector<ir::Tensor>* group_func_arg_tensors);
+
+  /**
    * @brief Lower an Op set to CINN IR.
    * Compute, Lower and optional Schedule will be performed one by one
    * for each Op.
+   * @param group The group to be lowered.
    * @param ops The Op to be lowered.
    * @param apply_op_schedule Whether to schedule at Op level.
    * @param schedule_determine_func Function used to determine which Ops to
@@ -115,6 +134,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * @return The lowered func bodies of Op set.
    */
   std::vector<ir::Expr> LowerOps(
+      const GroupPtr& group,
       const std::vector<::pir::Operation*>& ops,
       bool apply_op_schedule,
       ScheduleDetermineFunction schedule_determine_func,
@@ -125,6 +145,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
   /**
    * @brief Lower an Op to CINN IR. The Compute and Lower processes will be
    * called sequentially.
+   * @param group The group to be lowered.
    * @param op_impl The Op implementation defining Compute and Schedule.
    * @param op The Op to be lowered.
    * @param tensor_map All tensors used for calculating the group.
@@ -132,6 +153,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * @return The lowered func of the Op.
    */
   std::vector<ir::LoweredFunc> DoOpLower(
+      const GroupPtr& group,
       std::shared_ptr<hlir::framework::OpImpl> op_impl,
       ::pir::Operation* op,
       std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
