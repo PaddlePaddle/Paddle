@@ -121,7 +121,7 @@ Tensor gelu_decomp(const Tensor& x, bool approximate) {
   auto org_dtype = x.dtype();
 
   auto half = full<T>(phi::vectorize(x.dims()), 0.5, org_dtype);
-  auto one = full<T>(phi::vectorize(x.dims()), 1, org_dtype);
+  auto one = full<T>(phi::vectorize(x.dims()), 1.0, org_dtype);
   if (approximate) {
     // gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
     auto kAlpha =
