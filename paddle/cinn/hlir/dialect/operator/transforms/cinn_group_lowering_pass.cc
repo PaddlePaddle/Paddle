@@ -110,6 +110,19 @@ std::vector<pir::Operation*> GetOpListNotIncludeYield(
   return vec_res;
 }
 
+std::vector<pir::Operation*> GetOutputOpList(
+    const std::vector<pir::Operation*>& op_list) {
+  std::vector<pir::Operation*> vec_res;
+  auto yield_op = op_list.back();
+
+  for (size_t i = 0; i < yield_op->num_operands(); ++i) {
+    vec_res.push_back(
+        yield_op->operand(i).source().dyn_cast<pir::OpResult>().owner());
+  }
+
+  return vec_res;
+}
+
 std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 
@@ -134,7 +147,8 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
 
       // op fusion
       auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
-          GetOpListNotIncludeYield(group_op.ops()));
+          GetOpListNotIncludeYield(group_op.ops()),
+          GetOutputOpList(group_op.ops()));
 
       // fusion merge
       auto group_list =
@@ -150,11 +164,16 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         hlir::framework::PirCompilerManager::Instance().insert(ir_compiler);
         auto group1 =
             std::make_shared<cinn::hlir::framework::pir::Group>(group->ops);
+        group1->output_ops = group->output_ops;
+        group1->op_pattern_kind = group->op_pattern_kind;
+        std::cerr << "before cmpiler\n";
         auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
         std::unordered_map<std::string, ::pir::Attribute> op_attrs{
             {cinn::dialect::JitKernelOp::kAttrName,
              cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
         };
+
+        std::cerr << "after compiler\n";
 
         // Generate jit kernel op input and output
         auto vec_ins = GetBlockOutsideInput(group->ops);

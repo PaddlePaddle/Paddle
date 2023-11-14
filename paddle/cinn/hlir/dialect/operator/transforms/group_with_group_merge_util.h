@@ -25,6 +25,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
 
@@ -285,6 +286,7 @@ inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
 inline bool broadcast_fuse_reduce(const std::shared_ptr<ir::Group>& first,
                                   const std::shared_ptr<ir::Group>& second) {
   // if same shape with horizontal relation
+  std::cerr << "broadcast fuse reduce \n";
   if (is_same_size(first, second)) {
     return true;
   }
@@ -436,7 +438,8 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
         phi::vectorize(GetValueShape(reducer->result(0)));
     std::vector<int64_t> reduce_axes = GetVectorAttr(reducer, "dim");
 
-    auto keep_dim = false;
+    auto keep_dim =
+        reducer->attribute("keep_dim").dyn_cast<pir::BoolAttribute>().data();
     for (auto& axis : reduce_axes) {
       if (axis == -1) {
         axis = reducer_input_shape.size() - 1;
@@ -469,12 +472,20 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
       while (!candidates.empty()) {
         auto candidate = candidates.front();
         candidates.pop();
+
+        if (candidate->num_results() == 0) {
+          std::cerr << "skip num result " << candidate->name() << std::endl;
+          continue;
+        }
         // TODO(phlrain) : why only deal with first output
         auto first_output = candidate->result(0);
         for (auto it = first_output.use_begin(); it != first_output.use_end();
              ++it) {
           auto consumer = (*it).owner();
 
+          if (consumer->isa<pir::YieldOp>()) {
+            continue;
+          }
           if (!visited_set.count(consumer)) {
             visited_set.insert(consumer);
             candidates.push(consumer);

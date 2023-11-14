@@ -184,11 +184,20 @@ static bool ReduceFuseReduce1(const OpGroupPtr& first,
   //   return false;
   // }
   std::unique_ptr<cinn::dialect::ir::OpNode> reducer_0 = nullptr;
-  first.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
-    if (!reducer_0 && op.kind() == OpPatternKind::kReduction) {
+  // std::cerr << "!!!! " << first.kind() << std::endl;
+  for (auto op : first.GetGroup()->CollectOps()) {
+    // std::cerr << "!!!@@@@  " << op->name() << std::endl;
+    if (GetOpKind(op->name()) == OpPatternKind::kReduction) {
       reducer_0.reset(new cinn::dialect::ir::OpNode(op));
+      break;
     }
-  });
+  }
+  // std::cerr << "========\n";
+  // first.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
+  //   if (!reducer_0 && op.kind() == OpPatternKind::kReduction) {
+  //     reducer_0.reset(new cinn::dialect::ir::OpNode(op));
+  //   }
+  // });
   CHECK(reducer_0) << "Can't find reduce op in group " << first.group_id();
 
   std::unique_ptr<cinn::dialect::ir::OpNode> reducer_1 = nullptr;
@@ -224,6 +233,41 @@ static bool ReduceFuseReduce1(const OpGroupPtr& first,
     }
   }
 
+  // std::cerr << "!!!!!!!!!!!!!!!!!!!!!!!!!\n";
+  // for( size_t i = 0; i < reducer_0_input_shape.size(); ++i)
+  // {
+  //   std::cerr << "reduce 0 input dim \t" << reducer_0_input_shape[i] <<
+  //   std::endl;
+  // }
+
+  // for( size_t i = 0; i < reducer_0_output_shape.size(); ++i)
+  // {
+  //   std::cerr << "reduce 0 output dim \t" << reducer_0_output_shape[i] <<
+  //   std::endl;
+  // }
+
+  // for( size_t i = 0; i < reducer_1_input_shape.size(); ++i)
+  // {
+  //   std::cerr << "reduce 1 input dim \t" << reducer_1_input_shape[i] <<
+  //   std::endl;
+  // }
+
+  // for( size_t i = 0; i < reducer_1_output_shape.size(); ++i)
+  // {
+  //   std::cerr << "reduce 1 output dim \t" << reducer_1_output_shape[i] <<
+  //   std::endl;
+  // }
+
+  // for( auto axis : reducer_0_reduce_dim)
+  // {
+  //   std::cerr << "reduce 0 axis \t" << axis << std::endl;
+  // }
+
+  // for( auto axis : reducer_1_reduce_dim)
+  // {
+  //   std::cerr << "reduce 1 axis \t" << axis << std::endl;
+  // }
+
   // check shape is same
   if (reducer_0_input_shape == reducer_1_input_shape &&
       reducer_0_output_shape == reducer_1_output_shape &&
@@ -236,6 +280,8 @@ static bool ReduceFuseReduce1(const OpGroupPtr& first,
         }
       });
     }
+
+    std::cerr << "!!!!!!!!!!!!shared size \t" << shared_size << std::endl;
 
 #define MAX_AVAILABLE_SHREAD 32 * 1024
     if (shared_size > MAX_AVAILABLE_SHREAD) {

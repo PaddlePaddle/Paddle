@@ -140,7 +140,8 @@ bool IsSupportCinn(pir::Operation* op) {
   if (op->isa<paddle::dialect::FullOp>()) {
     auto out = op->result(0);
     // return IsSuportCinn( out.first_use().owern() )
-    if (out.first_use().owner()->isa<paddle::dialect::UniformOp>()) {
+    if (out.use_count() > 0 &&
+        out.first_use().owner()->isa<paddle::dialect::UniformOp>()) {
       return false;
     }
   }
@@ -640,6 +641,7 @@ void ReplaceWithGroupOp(pir::Block* block,
   builder.SetInsertionPointAfter(laste_input_op);
   std::vector<pir::Type> output_types;
   std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);
+
   for (auto& value : outputs) {
     output_types.emplace_back(value.type());
   }

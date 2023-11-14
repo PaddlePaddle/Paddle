@@ -92,8 +92,16 @@ inline bool is_same_shape(::pir::Operation* producer,
 inline bool is_same_size(::pir::Operation* producer,
                          const std::shared_ptr<Group>& consumer) {
   auto master_op = consumer->master_ops.begin();
+  std::cerr << "in same size, master op" << (*master_op)->name() << std::endl;
   auto producer_shape = GetValueShape(producer->result(0));
+  for (size_t i = 0; i < producer_shape.size(); ++i) {
+    std::cerr << "producer ! " << producer_shape[i] << std::endl;
+  }
   auto consumer_shape = GetValueShape((*master_op)->result(0));
+
+  for (size_t i = 0; i < consumer_shape.size(); ++i) {
+    std::cerr << "consumer ! " << consumer_shape[i] << std::endl;
+  }
   if (producer_shape == consumer_shape) {
     return true;
   }
@@ -224,6 +232,7 @@ inline bool horizontal_or_vertical_reduce_relation(
     return true;
   }
 
+  std::cerr << "1111\n";
   // reducer op in fusion op.
   ::pir::Operation* reducer = NULL;
   for (auto* master : consumer->master_ops) {
@@ -281,6 +290,7 @@ inline bool horizontal_or_vertical_reduce_relation(
 inline bool horizontal_or_can_inline(::pir::Operation* producer,
                                      const std::shared_ptr<Group>& consumer) {
   // horizontal relation.
+  return true;
   if (is_horizontal_relation(producer, consumer)) {
     if (is_same_size(producer, consumer)) {
       return true;
@@ -288,7 +298,7 @@ inline bool horizontal_or_can_inline(::pir::Operation* producer,
       // if do broadcast, check can compute inline.
       // return helper->output_ops_set_.count(producer) == 0;
       // TODO(phlrain): support output op set check
-      return false;
+      return true;
     }
   }
   // vertical relation: 1.can compute inline

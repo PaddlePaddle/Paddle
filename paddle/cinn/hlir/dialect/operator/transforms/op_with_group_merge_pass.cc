@@ -16,6 +16,7 @@
 
 #include <limits.h>
 #include <memory>
+#include <stack>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -23,6 +24,7 @@
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
@@ -37,6 +39,7 @@ std::unordered_map<std::string, OpPatternKind> OpKindMap = {
     {"pd_op.multiply", OpPatternKind::kElementWise},
     {"pd_op.divide", OpPatternKind::kElementWise},
     {"pd_op.sqrt", OpPatternKind::kElementWise},
+    {"pd_op.rsqrt", OpPatternKind::kElementWise},
     {"pd_op.full", OpPatternKind::kElementWise},
     {"pd_op.relu", OpPatternKind::kElementWise},
     {"pd_op.exp", OpPatternKind::kElementWise},
@@ -52,15 +55,137 @@ std::unordered_map<std::string, OpPatternKind> OpKindMap = {
     {"cinn_op.reduce_sum", OpPatternKind::kReduction},
     {"cinn_op.reduce_max", OpPatternKind::kReduction},
     {"cinn_op.broadcast", OpPatternKind::kBroadcast},
+    // {"cf.yield", OpPatternKind::kNonFusible},
     {"cinn_op.uniform_random", OpPatternKind::kElementWise}};
 
 OpPatternKind GetOpKind(const std::string& op_name) {
   auto found_it = OpKindMap.find(op_name);
   if (found_it == OpKindMap.end()) {
-    throw std::runtime_error("not support op yet in op kind map");
+    PADDLE_THROW(phi::errors::Unavailable(
+        "not support [%s] op yet in op kind map", op_name));
+    // throw std::runtime_error("not support op yet in op kind map");
   }
 
   return found_it->second;
+}
+
+std::vector<pir::Operation*> GetProducerOpsReverseSort(
+    pir::Operation* op,
+    const std::unordered_map<pir::Operation*, size_t>& op2id) {
+  std::unordered_set<pir::Operation*> producers;
+
+  std::vector<pir::Operation*> vec_res;
+  for (auto& operand : op->operands()) {
+    if (!operand || !(operand.source())) {
+      continue;
+    }
+    auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
+
+    if (!op2id.count(source_op)) {
+      continue;
+    }
+    if (!producers.count(source_op)) {
+      producers.insert(source_op);
+      PADDLE_ENFORCE(
+          op2id.count(source_op),
+          phi::errors::PreconditionNotMet("source op MUST in op2id map"));
+      vec_res.emplace_back(source_op);
+    }
+  }
+
+  std::sort(vec_res.begin(),
+            vec_res.end(),
+            [&op2id](pir::Operation* a, pir::Operation* b) {
+              return op2id.at(a) > op2id.at(b);
+            });
+
+  return vec_res;
+}
+
+std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
+  std::unordered_set<pir::Operation*> producers;
+
+  for (auto& operand : op->operands()) {
+    if (!operand || !(operand.source())) {
+      continue;
+    }
+    auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
+    producers.insert(source_op);
+  }
+  return producers;
+}
+
+std::unordered_set<pir::Operation*> GetConsumerOps(
+    pir::Operation* op,
+    const std::unordered_map<pir::Operation*, size_t>& op2id) {
+  std::unordered_set<pir::Operation*> consumers;
+
+  for (auto& result : op->results()) {
+    for (auto it = result.use_begin(); it != result.use_end(); ++it) {
+      if (!op2id.count(it->owner())) {
+        continue;
+      }
+      consumers.insert(it->owner());
+    }
+  }
+  return consumers;
+}
+
+std::vector<pir::Operation*> TopologicalSort(
+    const std::vector<::pir::Operation*>& op_list) {
+  std::vector<pir::Operation*> sort_ops;
+  std::unordered_map<pir::Operation*, int> pending_count;
+  // step 1: initialize pending_cout for defined op
+  std::unordered_set<pir::Operation*> inner_set(op_list.begin(), op_list.end());
+
+  for (auto* op : op_list) {
+    int count = 0;
+    for (auto& operand : op->operands()) {
+      if (!operand || !(operand.source())) {
+        continue;
+      }
+
+      if (inner_set.count(operand.source().dyn_cast<pir::OpResult>().owner())) {
+        count++;
+      }
+    }
+
+    pending_count[op] = count;
+  }
+
+  std::stack<pir::Operation*> queue;
+  for (auto* op : op_list) {
+    VLOG(4) << op->name() << " pending_count: " << pending_count[op];
+    if (pending_count[op] == 0) {
+      queue.push(op);
+    }
+  }
+
+  while (!queue.empty()) {
+    auto* op = queue.top();
+    queue.pop();
+    VLOG(4) << "Pop Op: " << op->name();
+    sort_ops.push_back(op);
+
+    for (auto& result : op->results()) {
+      if (!result) {
+        continue;
+      }
+
+      for (auto it = result.use_begin(); it != result.use_end(); ++it) {
+        auto* next_op = (*it).owner();
+        if (!pending_count.count(next_op)) {
+          continue;
+        }
+        --pending_count[next_op];
+        if (pending_count[next_op] == 0) {
+          queue.push(next_op);
+        }
+      }
+    }
+  }
+
+  return sort_ops;
 }
 
 phi::DDim GetFirstInputShape(const ::pir::Operation* op) {
@@ -154,7 +279,9 @@ using ConditionFunction =
 // code generation.
 class OpFusionPassHelper {
  public:
-  explicit OpFusionPassHelper(const std::vector<pir::Operation*>& op_list) {
+  explicit OpFusionPassHelper(
+      const std::vector<pir::Operation*>& op_list,
+      const std::vector<pir::Operation*>& output_op_list = {}) {
     // init fusion relation
     InitFusionRelation();
     // filter op data, create group for each op
@@ -164,11 +291,20 @@ class OpFusionPassHelper {
       local_ops_.insert(*it);
     }
 
+    for (size_t i = 0; i < output_op_list.size(); ++i) {
+      output_ops_set_.insert(output_op_list[i]);
+    }
+
+    auto top_sort_list = TopologicalSort(op_list);
     int index = 0;
-    for (auto it = op_list.begin(); it != op_list.end(); ++it) {
+    std::stringstream ss;
+    ::pir::IrPrinter printer(ss);
+    for (auto it = top_sort_list.begin(); it != top_sort_list.end(); ++it) {
       auto op = *it;
       if (op) {
         ops_.push_back(op);
+        printer.PrintOperation(op);
+        ss << "\n";
         auto group = std::make_shared<Group>();
         // init group
         group->ops.push_back(op);
@@ -193,8 +329,13 @@ class OpFusionPassHelper {
         fusion_groups_[op] = group;
       }
     }
+
+    std::cerr << "top sort \n" << ss.str() << std::endl;
     // reverse op for output to input
     std::reverse(ops_.begin(), ops_.end());
+    for (size_t i = 0; i < top_sort_list.size(); ++i) {
+      op2id_[top_sort_list[i]] = i;
+    }
   }
 
   // return a vector of groups in topological order.
@@ -254,11 +395,19 @@ class OpFusionPassHelper {
 
       // fusion op for consumer
       auto consumer_fusion = fusion_groups_[consumer];  //
-      // check all linkin op
-      for (size_t i = 0; i < consumer->num_operands(); ++i) {
-        auto producer_data = consumer->operand_source(i);
 
-        auto producer = producer_data.dyn_cast<pir::OpResult>().owner();
+      std::cerr << "------------------------------------\n";
+      std::cerr << "consumer fusion  \t" << consumer_fusion->group_id
+                << std::endl;
+      std::cerr << "con sumer  " << consumer->name() << std::endl;
+      // check all linkin op
+      // for (size_t i = 0; i < consumer->num_operands(); ++i) {
+      auto producer_list = GetProducerOpsReverseSort(consumer, op2id_);
+      for (size_t i = 0; i < producer_list.size(); ++i) {
+        // auto producer_data = consumer->operand_source(i);
+
+        auto producer = producer_list[i];
+        std::cerr << "preducer " << producer->name() << std::endl;
         if (!local_ops_.count(producer)) {
           continue;
         }
@@ -286,19 +435,40 @@ class OpFusionPassHelper {
 
         // find all the op use by
         size_t producer_data_used_num = 0;
-        for (auto it = producer_data.use_begin(); it != producer_data.use_end();
-             ++it) {
-          auto consumer_op = it->owner();
+
+        auto consumer_list = GetConsumerOps(producer, op2id_);
+        // for (auto it = producer_data.use_begin(); it !=
+        // producer_data.use_end();
+        //      ++it) {
+        for (auto consumer_op : consumer_list) {
+          // auto consumer_op = it->owner();
+          if (consumer_op->name() == "cf.yield") {
+            continue;
+          }
           producer_data_used_num++;
+          std::cerr << "consumer_op " << consumer_op->name() << std::endl;
           // if fusion group can't find op, can't merge
           if (consumer_fusion->ops_set.find(consumer_op) ==
               consumer_fusion->ops_set.end()) {
             can_fuse = false;
+            std::cerr << "not include \n";
             break;
           }
         }
 
-        if (!can_fuse || !CanFuse(producer, consumer)) continue;
+        // std::cerr << "producer  consumer " << producer->name() << "\t" <<
+        // consumer->name() << std::endl; std::cerr << "can fuse " <<
+        // CanFuse(producer, consumer) << std::endl;
+
+        if (!can_fuse || !CanFuse(producer, consumer)) {
+          std::cerr << "can not fuse  " << producer->name() << "\t"
+                    << consumer->name() << std::endl;
+          std::cerr << "fuse res " << can_fuse << "\t"
+                    << CanFuse(producer, consumer) << std::endl;
+          continue;
+        }
+
+        std::cerr << "can fuse !!!!!!!!!!!!!!!\n\n";
         // VLOG(3) << "Fuse Op " << producer->id() << " into Op "
         //         << consumer->id();
 
@@ -481,10 +651,13 @@ class OpFusionPassHelper {
     // first step: check producer can be fused into consumer
     if (relation.op_kind.count(GetOpKind(consumer->name()))) {
       auto& consumer_group = fusion_groups_[consumer];
+      std::cerr << "can fuse compare " << GetOpKind(producer->name()) << "\t"
+                << consumer_group->op_pattern_kind << "\n";
       // second step: check producer can be fused into consumer group
       VLOG(3) << "Call ConditionFunction, Producer Op Pattern : "
               << GetOpKind(producer->name()) << " , Consumer Group Pattern : "
               << consumer_group->op_pattern_kind;
+
       return relation.fusion_op_kind[consumer_group->op_pattern_kind](
           producer, fusion_groups_[consumer]);
     }
@@ -494,6 +667,8 @@ class OpFusionPassHelper {
   std::vector<::pir::Operation*> ops_;
   std::unordered_map<const ::pir::Operation*, GroupPtr> fusion_groups_;
   std::unordered_set<const ::pir::Operation*> output_ops_set_;
+
+  std::unordered_map<::pir::Operation*, size_t> op2id_;
 
   std::vector<std::shared_ptr<Group>> groups_;
 
@@ -508,10 +683,36 @@ class OpFusionPassHelper {
   std::unordered_map<OpPatternKind, FusionRelation> fusion_relation_map_;
 };
 
-GroupList OpFusionPassInternal(const std::vector<pir::Operation*>& op_list) {
+GroupList OpFusionPassInternal(
+    const std::vector<pir::Operation*>& op_list,
+    const std::vector<pir::Operation*>& output_op_list) {
   VLOG(3) << "OpFusionPass...!";
-  auto op_fusion_helper = OpFusionPassHelper(op_list);
+  std::cerr << "output op list " << output_op_list.size() << std::endl;
+
+  for (auto op : output_op_list) {
+    std::cerr << "fetch op name " << op->name() << std::endl;
+  }
+  auto op_fusion_helper = OpFusionPassHelper(op_list, output_op_list);
   auto res = op_fusion_helper();
+
+  std::cerr << "op fusion res " << res.size() << std::endl;
+
+  for (size_t i = 0; i < res.size(); ++i) {
+    auto group = res[i];
+
+    std::cerr << "!!!!!!!!!!!!!!!!\n";
+    std::cerr << group->group_id << std::endl;
+    std::cerr << group->output_ops.size() << std::endl;
+    std::stringstream ss;
+    ::pir::IrPrinter printer(ss);
+    for (auto op : group->ops) {
+      printer.PrintOperation(op);
+      ss << "\n";
+    }
+    std::cerr << ss.str() << std::endl;
+  }
+
+  VLOG(3) << "OpFusionPass Finish...!";
 
   VLOG(3) << "OpFusionPass Finish...!";
 

@@ -27,6 +27,7 @@
 #include "paddle/phi/core/flags.h"
 
 #include "paddle/cinn/common/is_reachable_predicator.h"
+#include "paddle/pir/core/ir_printer.h"
 
 PD_DECLARE_bool(enhance_vertical_fusion_with_recompute);
 
@@ -749,7 +750,12 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
     if (iter == map.end()) {
       return false;
     }
-    return iter->second(ctx, src, dst);
+    // std::cerr << "group id" << src.group_id() << "\t" << dst.group_id() <<
+    // std::endl; std::cerr << "ver src kind tar kind " << src.kind() << "\t" <<
+    // dst.kind() << std::endl;
+    auto res = iter->second(ctx, src, dst);
+    // std::cerr << "can fusable \t" << res << std::endl;
+    return res;
   }
 
   typedef bool (*ConditionT)(LightwareFusePassCtx* ctx,
@@ -2133,6 +2139,24 @@ GroupList GeneralFusionMergePassInternal(const GroupList& group_list) {
 
   GeneralFusionMergePassHelper fusion_merge_pass_helper(group_list);
   auto res = fusion_merge_pass_helper();
+
+  std::cerr << "op fusion res " << res.size() << std::endl;
+
+  for (size_t i = 0; i < res.size(); ++i) {
+    auto group = res[i];
+
+    std::cerr << "!!!!!!!!!!!!!!!!\n";
+    std::cerr << group->group_id << std::endl;
+    std::cerr << "kind " << group->kind() << std::endl;
+
+    std::stringstream ss;
+    ::pir::IrPrinter printer(ss);
+    for (auto op : group->ops) {
+      printer.PrintOperation(op);
+      ss << "\n";
+    }
+    std::cerr << ss.str() << std::endl;
+  }
 
   return res;
 }

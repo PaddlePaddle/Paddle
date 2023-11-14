@@ -550,12 +550,22 @@ class PartialProgramLayer:
 
             # (NOTE:@xiongkun) HOW TO APPLY PASS: this is a example for forward/backward clone pass, just replace with your cases.
             def pass_fn(forward_program, backward_program, name_attr):
+                # print("###############################")
                 fwd, _ = paddle.base.libpaddle.pir.clone_program(
                     forward_program
                 )
+                # print("before pass")
+                # print(fwd)
+                # fwd = paddle.base.libpaddle.pir.apply_pir_pass(fwd)
+                # print("after pass")
+                # print(fwd)
                 bwd, _ = paddle.base.libpaddle.pir.clone_program(
                     backward_program
                 )
+
+                print("!!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@!!")
+                bwd = paddle.base.libpaddle.pir.apply_pir_pass(bwd)
+                print("!!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@!!")
                 return fwd, bwd
 
             train_program.apply_pir_program_pass(pass_fn)
