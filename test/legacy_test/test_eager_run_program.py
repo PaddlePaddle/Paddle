@@ -64,6 +64,7 @@ def _create_out(var):
         var_desc.type(),
         False,
     )
+    out.stop_gradient = False
     return out
 
 
