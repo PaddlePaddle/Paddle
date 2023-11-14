@@ -94,10 +94,10 @@ class DygraphShardingOptimizer:
         self.fuse_optimizer = strategy.hybrid_configs[
             'sharding_configs'
         ].fuse_optimizer
-        pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
+        self.pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
         if self.tensor_fusion or self.comm_overlap:
             assert (
-                not pp_overlap
+                not self.pp_overlap
             ), "Can not enable pp's sharding_comm_overlap and sharding's tensor_fusion at the same time."
 
         self._use_main_grad = hasattr(self._parameter_list[0], "main_grad")
