@@ -223,11 +223,6 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
                         n_inputs,
                         axis_names.size()));
 
-  PADDLE_ENFORCE_EQ(
-      !align_axis.empty(),
-      true,
-      phi::errors::InvalidArgument("align_axis should be not empty"));
-
   std::map<std::pair<int64_t, char>, int64_t> axis_name_to_dim;
 
   for (size_t i = 0; i < n_inputs; i++) {
@@ -235,7 +230,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
     for (char axi : align_axis) {
       if (axis_names[i].find(axi) == std::string::npos) {
         PADDLE_THROW(phi::errors::PreconditionNotMet(
-            "[%s] some axis not in  input [%d],[%s]",
+            "[%s] some axis not in input [%d],[%s]",
             align_axis,
             i,
             axis_names[i]));
