@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <numeric>
 #include <regex>
 #include <string>
 #include <unordered_set>
@@ -22,6 +23,7 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
@@ -35,6 +37,15 @@
 PHI_DECLARE_string(ir_inplace_kernel_blacklist);
 
 namespace details {
+
+using TensorType = paddle::dialect::AllocatedDenseTensorType;
+
+static std::unordered_set<std::string> relaxing_op_list = {
+    paddle::dialect::ReshapeOp::name(),
+    paddle::dialect::ReshapeGradOp::name(),
+    paddle::dialect::AddGradOp::name(),
+};
+
 // NOTE(zhangbo): Which kind of value can be deleted?
 // (1) Value's type needs to be AllocatedDenseTensorType or
 // AllocatedSelectedRowsType; (2) Value's is not persisable.
@@ -42,7 +53,7 @@ static bool CanBeDeleted(pir::Value value) {
   if (!value.type()) {
     return false;
   }
-  if (!value.type().isa<paddle::dialect::AllocatedDenseTensorType>() &&
+  if (!value.type().isa<TensorType>() &&
       !value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     return false;
   }
@@ -60,43 +71,72 @@ static bool CanBeDeleted(pir::Value value) {
 
 static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
                          pir::Value input,
-                         pir::Value output) {
+                         pir::Value output,
+                         bool relax = false) {
   if (!input.type() || !output.type()) {
     return false;
   }
 
-  if (input.type().isa<paddle::dialect::AllocatedDenseTensorType>() &&
-      output.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
-    auto input_alloc_tensor_type =
-        input.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-    auto output_alloc_tensor_type =
-        output.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+  if (input.type().isa<TensorType>() && output.type().isa<TensorType>()) {
+    auto input_alloc_tensor_type = input.type().dyn_cast<TensorType>();
+    auto output_alloc_tensor_type = output.type().dyn_cast<TensorType>();
 
     if (input_alloc_tensor_type.dtype() != output_alloc_tensor_type.dtype()) {
       VLOG(9) << "     -- input's dtype != output's dtype, can't do inplace";
       return false;
     }
 
-    int64_t in_numel = 1;
-    int64_t out_numel = 1;
-    for (int i = 0; i < input_alloc_tensor_type.dims().size(); i++) {
-      if (input_alloc_tensor_type.dims()[i] == -1 && i != 0) {
-        VLOG(9) << "     -- input's shape has -1 and not in first dim, can't "
-                   "do inplace";
-        return false;
+    auto is_numel_euqal = [](const TensorType& in,
+                             const TensorType& out) -> bool {
+      int64_t in_numel = 1;
+      int64_t out_numel = 1;
+      for (int i = 0; i < in.dims().size(); i++) {
+        if (in.dims()[i] == -1 && i != 0) {
+          VLOG(9) << "     -- input's shape has -1 and not in first dim, can't "
+                     "do inplace";
+          return false;
+        }
+        in_numel *= in.dims()[i];
       }
-      in_numel *= input_alloc_tensor_type.dims()[i];
+
+      for (int i = 0; i < out.dims().size(); i++) {
+        if (out.dims()[i] == -1 && i != 0) {
+          VLOG(9)
+              << "     -- output's shape has -1 and not in first dim, can't "
+                 "do inplace";
+          return false;
+        }
+        out_numel *= out.dims()[i];
+      }
+      return in_numel == out_numel;
+    };
+
+    // In this version, we don't consider the -1 in ddim, we just calculate the
+    // result.
+    auto is_numel_euqal_loose_version = [](const TensorType& in,
+                                           const TensorType& out) -> bool {
+      auto calculate_numel = [](const phi::DDim& ddim) -> int64_t {
+        int64_t numel = 1;
+        for (int i = 0; i < ddim.size(); i++) {
+          numel *= ddim[i];
+        }
+        return numel;
+      };
+      int64_t in_numel = calculate_numel((in.dims()));
+      int64_t out_numel = calculate_numel((out.dims()));
+      VLOG(10) << "in: " << in_numel << ", out: " << out_numel;
+      return in_numel == out_numel;
+    };
+
+    bool equal = false;
+    if (relax) {
+      equal = is_numel_euqal_loose_version(input_alloc_tensor_type,
+                                           output_alloc_tensor_type);
+    } else {
+      equal = is_numel_euqal(input_alloc_tensor_type, output_alloc_tensor_type);
     }
 
-    for (int i = 0; i < output_alloc_tensor_type.dims().size(); i++) {
-      if (output_alloc_tensor_type.dims()[i] == -1 && i != 0) {
-        VLOG(9) << "     -- output's shape has -1 and not in first dim, can't "
-                   "do inplace";
-        return false;
-      }
-      out_numel *= output_alloc_tensor_type.dims()[i];
-    }
-    if (in_numel != out_numel) {
+    if (!equal) {
       VLOG(9) << "     -- input's numel != output's numel, can't do inplace";
       return false;
     }
@@ -338,13 +378,15 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
         upper_inplace_op_info_parser.GetInplaceIdMap();
 
     bool can_do_inplace = true;
+    bool relax = (details::relaxing_op_list.count(upper_op_name) > 0);
     for (auto& kv : inplace_out_2_in) {
       uint32_t out_slot = kv.first;
       uint32_t in_slot = kv.second;
       if ((in_slot >= op->num_operands()) || (out_slot >= op->num_results()) ||
           (!CanDoInplace(eager_dels.at(op),
                          op->operand_source(in_slot),
-                         op->result(out_slot))) ||
+                         op->result(out_slot),
+                         relax)) ||
           (visited_values.count(op->result(out_slot)) > 0) ||
           (!CanBeDeleted(op->result(out_slot))) ||
           (reused_input_values.count(op->operand_source(in_slot)) > 0) ||
@@ -352,7 +394,8 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
         can_do_inplace = false;
         VLOG(6) << upper_op_name
                 << "'s value has been visited or reused by other inplace op, "
-                   "so that can't do inplace.";
+                   "so that can't do inplace when setting relax to :"
+                << relax;
         VLOG_IF(
             8,
             ((in_slot < op->num_operands()) && (out_slot < op->num_results())))
@@ -360,7 +403,8 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
             << " can do inplace: "
             << CanDoInplace(eager_dels.at(op),
                             op->operand_source(in_slot),
-                            op->result(out_slot));
+                            op->result(out_slot),
+                            relax);
         VLOG_IF(8, out_slot < op->num_results())
             << " -- result " << out_slot
             << " visited: " << (visited_values.count(op->result(out_slot)) > 0);
