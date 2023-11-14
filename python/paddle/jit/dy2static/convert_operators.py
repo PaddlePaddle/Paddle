@@ -823,9 +823,6 @@ def convert_auto_cast(
 ):
     from .program_translator import ProgramTranslator
 
-    if enable:
-        raise NotImplementedError("Does not support local switching on amp now")
-
     amp_records = ProgramTranslator.get_instance()._amp_records
     main_program = paddle.static.default_main_program()
     current_block_idx = main_program.current_block_idx
