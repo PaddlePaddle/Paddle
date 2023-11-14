@@ -732,7 +732,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
           ddim.push_back(dims.d[i]);
         }
       } else {
+#if IS_TRT_VERSION_GE(8500)
+        auto x_name = engine->engine()->getBindingName(bind_index);
+        auto dims = trt_context->getTensorShape(x_name);
+#else
         auto dims = trt_context->getBindingDimensions(bind_index);
+
         int nb_dims = dims.nbDims;
         for (; nb_dims > 0; nb_dims--) {
           // some 'x 1' of shape is normal, no need to remove it
@@ -741,6 +746,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             break;
         }
         for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
+#endif
       }
       auto *fluid_v = scope.FindVar(y);
       PADDLE_ENFORCE_NOT_NULL(
