@@ -15,6 +15,7 @@
 
 target_lists_for_hybrid_ci=(
     "python/paddle/distributed"
+
     "python/paddle/base"
     "paddle/fluid/distributed"
     "paddle/fluid/framework/new_executor"

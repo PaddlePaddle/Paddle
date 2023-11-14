@@ -346,7 +346,7 @@ if [ "${HAS_MODIFIED_STATIC_BUILD}" != "" ] && [ "${GIT_PR_ID}" != ""]; then
 fi
 
 HAS_MODIFIED_TARGET_FOR_AUTO_PARALLEL_CI=`git diff --name-only upstream/$BRANCH | grep "tools/auto_parallel/target_path_lists.sh" || true`
-if [ "${HAS_MODIFIED_TARGET_FOR_AUTO_PARALLEL_CI}" != "" ] && [ "${GIT_PR_ID}" != ""]; then
+if [ "${HAS_MODIFIED_TARGET_FOR_AUTO_PARALLEL_CI}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (chenwhql or zhiqiu) approval for file changes in tools/auto_parallel/target_path_lists.sh.\n"
     check_approval 1 chenwhql zhiqiu
 fi
