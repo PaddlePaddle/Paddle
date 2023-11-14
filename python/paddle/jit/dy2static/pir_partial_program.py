@@ -334,9 +334,6 @@ class PartialProgramLayer:
         """
         in_vars, out_vars = self._prepare(inputs)
         attrs = self._prepare_attributes()
-
-        # self._sync_lr_value_with_scheduler()
-
         _legacy_C_ops.pir_run_program(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),

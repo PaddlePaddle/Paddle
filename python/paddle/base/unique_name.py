@@ -230,17 +230,3 @@ def guard(new_generator=None):
         yield
     finally:
         switch(old_generator, old_para_name_checker)
-
-
-def change_unique_name(new_generator=None):
-    if isinstance(new_generator, str):
-        new_generator = UniqueNameGenerator(new_generator)
-    elif isinstance(new_generator, bytes):
-        new_generator = UniqueNameGenerator(new_generator.decode())
-
-    old_generator, old_para_name_checker = switch(new_generator)
-
-    def resumer():
-        switch(old_generator, old_para_name_checker)
-
-    return resumer

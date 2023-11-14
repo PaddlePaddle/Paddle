@@ -24,7 +24,7 @@ from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import _apply_pass, get_flags
-from paddle.base.unique_name import change_unique_name
+from paddle.base.unique_name import switch as swith_unique_name
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
@@ -219,7 +219,9 @@ class PartialProgramLayer:
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        name_resumer = change_unique_name(self._name_generator)
+        old_generator, old_para_name_checker = swith_unique_name(
+            self._name_generator
+        )
 
         in_vars, out_vars, in_var_names, origin_names = self._prepare(inputs)
         self._cast_fp16_if_pure_fp16(in_vars)
@@ -244,7 +246,7 @@ class PartialProgramLayer:
 
         restored_nest_out = self._restore_out(out_vars)
 
-        name_resumer()
+        swith_unique_name(old_generator, old_para_name_checker)
         return restored_nest_out
 
     def _sync_lr_value_with_scheduler(self):
