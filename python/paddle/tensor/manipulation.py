@@ -2196,14 +2196,15 @@ def split(x, num_or_sections, axis=0, name=None):
 
 def tensor_split(x, indices_or_sections, axis=0, name=None):
     """
-    Split the input tensor into multiple sub-Tensors along ``axis``, allowing not equally size.
+    Split the input tensor into multiple sub-Tensors along ``axis``, allowing not being of equal size.
 
     Args:
         x (Tensor): A Tensor whose dimension must be greater than 0. The data type is bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, complex64, complex128 or int64.
         indices_or_sections (int|list|tuple): If ``indices_or_sections`` is an int ``n``, ``x`` is split into ``n`` sections along ``axis``.
             If ``x`` is divisible by ``n``, each section will be ``x.shape[axis] / n``. If ``x`` is not divisible by ``n``, the first
             ``int(x.shape[axis] % n)`` sections will have size ``int(x.shape[axis] / n) + 1``, and the rest will be ``int(x.shape[axis] / n).
-            If ``indices_or_sections`` is a list or tuple of integter indices, ``x`` is split along ``axis`` at each of the indices.
+            If ``indices_or_sections`` is a list or tuple of integter indices, ``x`` is split along ``axis`` at each of the indices. For instance,
+            ``indices_or_sections=[2, 4]`` with ``axis=0`` would split ``x`` into ``x[:2]``, ``x[2:4]`` and ``x[4:]`` along axis 0.
         axis (int|Tensor, optional): The axis along which to split, it can be a integer or a ``0-D Tensor``
             with shape [] and data type  ``int32`` or ``int64``.
             If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
@@ -2280,41 +2281,24 @@ def tensor_split(x, indices_or_sections, axis=0, name=None):
 
     total_n = x.shape[axis]
 
-    def _tensor_split_indices(total_n, indices, axis):
-        splits = []
+    def _tensor_split_indices(x, total_n, indices, axis):
+        indices = [0] + list(indices) + [total_n]
+        num_or_sections = np.diff(indices).tolist()
+        return split(x, num_or_sections, axis)
 
-        starts = 0
-        ends = 0
-        for idx in indices:
-            ends = idx
-            sub_array = paddle.slice(
-                x, axes=[axis], starts=[starts], ends=[ends]
-            )
-            splits.append(sub_array)
-            starts = ends
-
-        starts = ends
-        ends = total_n
-        sub_array = paddle.slice(x, axes=[axis], starts=[starts], ends=[ends])
-        splits.append(sub_array)
-
-        return splits
-
-    def _tensor_split_sections(total_n, sections, axis):
+    def _tensor_split_sections(x, total_n, sections, axis):
         if sections <= 0:
             raise ValueError('indices_or_sections must be larger than 0.')
 
         base, mod = divmod(total_n, sections)
-        section_array = [base + 1] * mod + [base] * (sections - mod)
-        section_array = np.cumsum(section_array[:-1], dtype=int)
-
-        return _tensor_split_indices(total_n, section_array, axis)
+        num_or_sections = [base + 1] * mod + [base] * (sections - mod)
+        return split(x, num_or_sections, axis)
 
     if isinstance(indices_or_sections, int):
-        return _tensor_split_sections(total_n, indices_or_sections, axis)
+        return _tensor_split_sections(x, total_n, indices_or_sections, axis)
 
     elif isinstance(indices_or_sections, (list, tuple)):
-        return _tensor_split_indices(total_n, indices_or_sections, axis)
+        return _tensor_split_indices(x, total_n, indices_or_sections, axis)
 
     else:
         raise ValueError(

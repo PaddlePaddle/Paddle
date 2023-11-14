@@ -24,45 +24,24 @@ from paddle.pir_utils import test_with_pir_api
 RTOL = 1e-5
 ATOL = 1e-8
 
-DTYPE_ALL = [
-    'float16',
-    'float32',
-    'float64',
-    'int16',
-    'int32',
-    'int64',
-    'int8',
-    'uint8',
-    'complex64',
-    'complex128',
-    'bfloat16',
-    'bool',
-]
-
-DTYPE_DYGRAPH_SPLIT = [
+DTYPE_ALL_CPU = {
     'float64',
     'float16',
     'float32',
     'bool',
     'uint8',
-    'bfloat16',
     'int32',
     'int8',
     'int64',
-]
-DTYPE_STATIC_SPLIT = DTYPE_DYGRAPH_SPLIT
+}
 
-DTYPE_DYGRAPH_H_SPLIT = DTYPE_DYGRAPH_SPLIT
-DTYPE_STATIC_H_SPLIT = DTYPE_STATIC_SPLIT
-
-DTYPE_DYGRAPH_V_SPLIT = DTYPE_DYGRAPH_SPLIT
-DTYPE_STATIC_V_SPLIT = DTYPE_STATIC_SPLIT
-
-DTYPE_DYGRAPH_D_SPLIT = DTYPE_DYGRAPH_SPLIT
-DTYPE_STATIC_D_SPLIT = DTYPE_STATIC_SPLIT
-
-DTYPE_DYGRAPH_TENSOR_SPLIT = DTYPE_ALL
-DTYPE_STATIC_TENSOR_SPLIT = DTYPE_ALL
+# add `bfloat16` if core is complied with CUDA and support the bfloat16
+DTYPE_ALL_GPU = DTYPE_ALL_CPU | (
+    {'bfloat16'}
+    if core.is_compiled_with_cuda()
+    and core.is_bfloat16_supported(paddle.CUDAPlace(0))
+    else set()
+)
 
 PLACES = [paddle.CPUPlace()] + (
     [paddle.CUDAPlace(0)] if core.is_compiled_with_cuda() else []
@@ -116,6 +95,7 @@ class BaseTest(unittest.TestCase):
         name,
         split_paddle,
         split_numpy,
+        places=None,
     ):
         """Test `static`
 
@@ -127,12 +107,13 @@ class BaseTest(unittest.TestCase):
             shape: input tensor's shape
             name: input tensor's name
             split_paddle: num_or_sections or indices_or_sections in paddle
-            split_numpy: `hsplit`, `vsplit`, `dsplit` should convert num_or_sections in paddle to indices_or_sections in numpy.
-                For test error, `split_numpy` is None and skip compare result, ensure the error only raised from paddle.
+            split_numpy: `hsplit`, `vsplit`, `dsplit` should convert num_or_sections in paddle to indices_or_sections in numpy. For test error, `split_numpy` is None and skip compare result, ensure the error only raised from paddle.
+            places: exec place, default to PLACES
         """
         paddle.enable_static()
 
-        for place in PLACES:
+        places = PLACES if places is None else places
+        for place in places:
             program = paddle.static.Program()
             exe = paddle.static.Executor(place)
 
@@ -159,11 +140,13 @@ class BaseTest(unittest.TestCase):
         name,
         split_paddle,
         split_numpy,
+        places=None,
     ):
         """Test `dygraph`, and check grads"""
         paddle.disable_static()
 
-        for place in PLACES:
+        places = PLACES if places is None else places
+        for place in places:
             out = func_paddle(paddle.to_tensor(x).astype(dtype), split_paddle)
 
             if split_numpy is not None:
@@ -188,26 +171,9 @@ class BaseTest(unittest.TestCase):
     def _test_all(
         self,
         kwargs,
-        dtype_not_supported_in_dygraph=False,
-        dtype_not_supported_in_static=False,
-        dtype='',
     ):
-        if dtype_not_supported_in_dygraph:
-            # CAUTION: raise RuntimeError instead of TypeError!
-            with self.assertRaises(RuntimeError):
-                self._test_dygraph_api(
-                    self.func_paddle, self.func_numpy, **kwargs
-                )
-        else:
-            self._test_dygraph_api(self.func_paddle, self.func_numpy, **kwargs)
-
-        if dtype_not_supported_in_static:
-            with self.assertRaises(TypeError):
-                self._test_static_api(
-                    self.func_paddle, self.func_numpy, **kwargs
-                )
-        else:
-            self._test_static_api(self.func_paddle, self.func_numpy, **kwargs)
+        self._test_dygraph_api(self.func_paddle, self.func_numpy, **kwargs)
+        self._test_static_api(self.func_paddle, self.func_numpy, **kwargs)
 
 
 class TestHSplit(BaseTest):
@@ -234,7 +200,8 @@ class TestHSplit(BaseTest):
                 'split_numpy': convert_num_or_sections((2, 1, 3)),
             }
         )
-        self._test_all({**x, 'split_paddle': [1, -1, 3], 'split_numpy': [1, 3]})
+        self._test_all({**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [2, 3]})
+        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': []})
 
         x = generate_data([4, 6])
         self._test_all({**x, 'split_paddle': 3, 'split_numpy': 3})
@@ -254,7 +221,8 @@ class TestHSplit(BaseTest):
                 'split_numpy': convert_num_or_sections((2, 1, 3)),
             }
         )
-        self._test_all({**x, 'split_paddle': [1, -1, 3], 'split_numpy': [1, 3]})
+        self._test_all({**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [2, 3]})
+        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': []})
 
         x = generate_data([4, 6, 3])
         self._test_all({**x, 'split_paddle': 3, 'split_numpy': 3})
@@ -274,20 +242,30 @@ class TestHSplit(BaseTest):
                 'split_numpy': convert_num_or_sections((2, 1, 3)),
             }
         )
-        self._test_all({**x, 'split_paddle': [1, -1, 3], 'split_numpy': [1, 3]})
+        self._test_all({**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [2, 3]})
+        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': []})
 
     def test_dtype(self):
-        for dtype in DTYPE_ALL:
+        for dtype in DTYPE_ALL_CPU:
             self._test_all(
                 {
                     **generate_data([6], dtype=dtype),
                     'split_paddle': 3,
                     'split_numpy': 3,
+                    'places': [paddle.CPUPlace()],
                 },
-                dtype not in DTYPE_DYGRAPH_H_SPLIT,
-                dtype not in DTYPE_STATIC_H_SPLIT,
-                dtype,
             )
+
+        if core.is_compiled_with_cuda():
+            for dtype in DTYPE_ALL_GPU:
+                self._test_all(
+                    {
+                        **generate_data([6], dtype=dtype),
+                        'split_paddle': 3,
+                        'split_numpy': 3,
+                        'places': [paddle.CUDAPlace(0)],
+                    },
+                )
 
     def test_error_dim(self):
         # test 0-d
@@ -312,10 +290,16 @@ class TestHSplit(BaseTest):
         with self.assertRaises(ValueError):
             self._test_all({**x, 'split_paddle': [2, 4], 'split_numpy': None})
 
-        # test more than one `-1`
+        # test more `-1`
         with self.assertRaises(ValueError):
             self._test_all(
                 {**x, 'split_paddle': [-1, 2, -1], 'split_numpy': None}
+            )
+
+        # test `-1` infer to `0`
+        with self.assertRaises(ValueError):
+            self._test_all(
+                {**x, 'split_paddle': [-1, 2, 3], 'split_numpy': None}
             )
 
 
@@ -343,7 +327,8 @@ class TestVSplit(BaseTest):
                 'split_numpy': convert_num_or_sections((2, 1, 3)),
             }
         )
-        self._test_all({**x, 'split_paddle': [1, -1, 3], 'split_numpy': [1, 3]})
+        self._test_all({**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [2, 3]})
+        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': []})
 
         x = generate_data([6, 4, 3])
         self._test_all({**x, 'split_paddle': 3, 'split_numpy': 3})
@@ -363,20 +348,30 @@ class TestVSplit(BaseTest):
                 'split_numpy': convert_num_or_sections((2, 1, 3)),
             }
         )
-        self._test_all({**x, 'split_paddle': [1, -1, 3], 'split_numpy': [1, 3]})
+        self._test_all({**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [2, 3]})
+        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': []})
 
     def test_dtype(self):
-        for dtype in DTYPE_ALL:
+        for dtype in DTYPE_ALL_CPU:
             self._test_all(
                 {
                     **generate_data([6, 4], dtype=dtype),
                     'split_paddle': 3,
                     'split_numpy': 3,
+                    'places': [paddle.CPUPlace()],
                 },
-                dtype not in DTYPE_DYGRAPH_V_SPLIT,
-                dtype not in DTYPE_STATIC_V_SPLIT,
-                dtype,
             )
+
+        if core.is_compiled_with_cuda():
+            for dtype in DTYPE_ALL_GPU:
+                self._test_all(
+                    {
+                        **generate_data([6, 4], dtype=dtype),
+                        'split_paddle': 3,
+                        'split_numpy': 3,
+                        'places': [paddle.CUDAPlace(0)],
+                    },
+                )
 
     def test_error_dim(self):
         # test 0-d
@@ -406,10 +401,16 @@ class TestVSplit(BaseTest):
         with self.assertRaises(ValueError):
             self._test_all({**x, 'split_paddle': [2, 4], 'split_numpy': None})
 
-        # test more than one `-1`
+        # test more `-1`
         with self.assertRaises(ValueError):
             self._test_all(
                 {**x, 'split_paddle': [-1, 2, -1], 'split_numpy': None}
+            )
+
+        # test `-1` infer to `0`
+        with self.assertRaises(ValueError):
+            self._test_all(
+                {**x, 'split_paddle': [-1, 2, 3], 'split_numpy': None}
             )
 
 
@@ -437,20 +438,30 @@ class TestDSplit(BaseTest):
                 'split_numpy': convert_num_or_sections((2, 1, 3)),
             }
         )
-        self._test_all({**x, 'split_paddle': [1, -1, 3], 'split_numpy': [1, 3]})
+        self._test_all({**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [2, 3]})
+        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': []})
 
     def test_dtype(self):
-        for dtype in DTYPE_ALL:
+        for dtype in DTYPE_ALL_CPU:
             self._test_all(
                 {
-                    **generate_data([4, 3, 6], dtype=dtype),
+                    **generate_data([4, 2, 6], dtype=dtype),
                     'split_paddle': 3,
                     'split_numpy': 3,
+                    'places': [paddle.CPUPlace()],
                 },
-                dtype not in DTYPE_DYGRAPH_D_SPLIT,
-                dtype not in DTYPE_STATIC_D_SPLIT,
-                dtype,
             )
+
+        if core.is_compiled_with_cuda():
+            for dtype in DTYPE_ALL_GPU:
+                self._test_all(
+                    {
+                        **generate_data([4, 2, 6], dtype=dtype),
+                        'split_paddle': 3,
+                        'split_numpy': 3,
+                        'places': [paddle.CUDAPlace(0)],
+                    },
+                )
 
     def test_error_dim(self):
         # test 0-d
@@ -485,10 +496,16 @@ class TestDSplit(BaseTest):
         with self.assertRaises(ValueError):
             self._test_all({**x, 'split_paddle': [2, 4], 'split_numpy': None})
 
-        # test more than one `-1`
+        # test more `-1`
         with self.assertRaises(ValueError):
             self._test_all(
                 {**x, 'split_paddle': [-1, 2, -1], 'split_numpy': None}
+            )
+
+        # test `-1` infer to `0`
+        with self.assertRaises(ValueError):
+            self._test_all(
+                {**x, 'split_paddle': [-1, 2, 3], 'split_numpy': None}
             )
 
 
@@ -503,9 +520,9 @@ class TestTensorSplit(BaseTest):
         self._test_all({**x, 'split_paddle': 2, 'split_numpy': 2})
         self._test_all({**x, 'split_paddle': [2, 4], 'split_numpy': [2, 4]})
         self._test_all({**x, 'split_paddle': [2, 3], 'split_numpy': [2, 3]})
-        self._test_all({**x, 'split_paddle': (2, 13), 'split_numpy': (2, 13)})
+        self._test_all({**x, 'split_paddle': (2, 5), 'split_numpy': (2, 5)})
         self._test_all(
-            {**x, 'split_paddle': [2, 4, 13], 'split_numpy': [2, 4, 13]}
+            {**x, 'split_paddle': [2, 4, 5], 'split_numpy': [2, 4, 5]}
         )
 
         # not evenly split
@@ -514,29 +531,29 @@ class TestTensorSplit(BaseTest):
         self._test_all({**x, 'split_paddle': 2, 'split_numpy': 2})
         self._test_all({**x, 'split_paddle': [2, 4], 'split_numpy': [2, 4]})
         self._test_all({**x, 'split_paddle': [2, 3], 'split_numpy': [2, 3]})
-        self._test_all({**x, 'split_paddle': (2, 13), 'split_numpy': (2, 13)})
+        self._test_all({**x, 'split_paddle': (2, 6), 'split_numpy': (2, 6)})
         self._test_all(
-            {**x, 'split_paddle': [2, 4, 13], 'split_numpy': [2, 4, 13]}
+            {**x, 'split_paddle': [2, 4, 6], 'split_numpy': [2, 4, 6]}
         )
 
-        x = generate_data([4, 6])
+        x = generate_data([7, 4])
         self._test_all({**x, 'split_paddle': 3, 'split_numpy': 3})
         self._test_all({**x, 'split_paddle': 2, 'split_numpy': 2})
         self._test_all({**x, 'split_paddle': [2, 4], 'split_numpy': [2, 4]})
         self._test_all({**x, 'split_paddle': [2, 3], 'split_numpy': [2, 3]})
-        self._test_all({**x, 'split_paddle': (2, 13), 'split_numpy': (2, 13)})
+        self._test_all({**x, 'split_paddle': (2, 6), 'split_numpy': (2, 6)})
         self._test_all(
-            {**x, 'split_paddle': [2, 4, 13], 'split_numpy': [2, 4, 13]}
+            {**x, 'split_paddle': [2, 4, 6], 'split_numpy': [2, 4, 6]}
         )
 
-        x = generate_data([4, 6, 3])
+        x = generate_data([7, 4, 3])
         self._test_all({**x, 'split_paddle': 3, 'split_numpy': 3})
         self._test_all({**x, 'split_paddle': 2, 'split_numpy': 2})
         self._test_all({**x, 'split_paddle': [2, 4], 'split_numpy': [2, 4]})
         self._test_all({**x, 'split_paddle': [2, 3], 'split_numpy': [2, 3]})
-        self._test_all({**x, 'split_paddle': (2, 13), 'split_numpy': (2, 13)})
+        self._test_all({**x, 'split_paddle': (2, 6), 'split_numpy': (2, 6)})
         self._test_all(
-            {**x, 'split_paddle': [2, 4, 13], 'split_numpy': [2, 4, 13]}
+            {**x, 'split_paddle': [2, 4, 6], 'split_numpy': [2, 4, 6]}
         )
 
     def test_split_axis(self):
@@ -548,9 +565,9 @@ class TestTensorSplit(BaseTest):
         self._test_all({**x, 'split_paddle': 3, 'split_numpy': 3})
         self._test_all({**x, 'split_paddle': 2, 'split_numpy': 2})
         self._test_all({**x, 'split_paddle': [2, 3], 'split_numpy': [2, 3]})
-        self._test_all({**x, 'split_paddle': (2, 13), 'split_numpy': (2, 13)})
+        self._test_all({**x, 'split_paddle': (2, 6), 'split_numpy': (2, 6)})
         self._test_all(
-            {**x, 'split_paddle': [2, 4, 13], 'split_numpy': [2, 4, 13]}
+            {**x, 'split_paddle': [2, 4, 6], 'split_numpy': [2, 4, 6]}
         )
 
         # 2-d
@@ -561,9 +578,9 @@ class TestTensorSplit(BaseTest):
         self._test_all({**x, 'split_paddle': 3, 'split_numpy': 3})
         self._test_all({**x, 'split_paddle': 2, 'split_numpy': 2})
         self._test_all({**x, 'split_paddle': [2, 3], 'split_numpy': [2, 3]})
-        self._test_all({**x, 'split_paddle': (2, 13), 'split_numpy': (2, 13)})
+        self._test_all({**x, 'split_paddle': (2, 6), 'split_numpy': (2, 6)})
         self._test_all(
-            {**x, 'split_paddle': [2, 4, 13], 'split_numpy': [2, 4, 13]}
+            {**x, 'split_paddle': [2, 4, 6], 'split_numpy': [2, 4, 6]}
         )
 
         # 3-d
@@ -574,9 +591,9 @@ class TestTensorSplit(BaseTest):
         self._test_all({**x, 'split_paddle': 3, 'split_numpy': 3})
         self._test_all({**x, 'split_paddle': 2, 'split_numpy': 2})
         self._test_all({**x, 'split_paddle': [2, 3], 'split_numpy': [2, 3]})
-        self._test_all({**x, 'split_paddle': (2, 13), 'split_numpy': (2, 13)})
+        self._test_all({**x, 'split_paddle': (2, 6), 'split_numpy': (2, 6)})
         self._test_all(
-            {**x, 'split_paddle': [2, 4, 13], 'split_numpy': [2, 4, 13]}
+            {**x, 'split_paddle': [2, 4, 6], 'split_numpy': [2, 4, 6]}
         )
 
         # n-d
@@ -587,56 +604,96 @@ class TestTensorSplit(BaseTest):
         self._test_all({**x, 'split_paddle': 3, 'split_numpy': 3})
         self._test_all({**x, 'split_paddle': 2, 'split_numpy': 2})
         self._test_all({**x, 'split_paddle': [2, 3], 'split_numpy': [2, 3]})
-        self._test_all({**x, 'split_paddle': (2, 13), 'split_numpy': (2, 13)})
+        self._test_all({**x, 'split_paddle': (2, 6), 'split_numpy': (2, 6)})
         self._test_all(
-            {**x, 'split_paddle': [2, 4, 13], 'split_numpy': [2, 4, 13]}
+            {**x, 'split_paddle': [2, 4, 6], 'split_numpy': [2, 4, 6]}
+        )
+
+        # axis -2
+        self.func_paddle = functools.partial(paddle.tensor_split, axis=-2)
+        self.func_numpy = functools.partial(np.array_split, axis=-2)
+
+        x = generate_data([4, 4, 7, 4])
+        self._test_all({**x, 'split_paddle': 3, 'split_numpy': 3})
+        self._test_all({**x, 'split_paddle': 2, 'split_numpy': 2})
+        self._test_all({**x, 'split_paddle': [2, 3], 'split_numpy': [2, 3]})
+        self._test_all({**x, 'split_paddle': (2, 6), 'split_numpy': (2, 6)})
+        self._test_all(
+            {**x, 'split_paddle': [2, 4, 6], 'split_numpy': [2, 4, 6]}
         )
 
     def test_dtype(self):
         self.func_paddle = functools.partial(paddle.tensor_split, axis=0)
         self.func_numpy = functools.partial(np.array_split, axis=0)
 
-        for dtype in DTYPE_ALL:
+        for dtype in DTYPE_ALL_CPU:
             self._test_all(
                 {
                     **generate_data([6], dtype=dtype),
                     'split_paddle': 3,
                     'split_numpy': 3,
+                    'places': [paddle.CPUPlace()],
                 },
-                dtype not in DTYPE_DYGRAPH_TENSOR_SPLIT,
-                dtype not in DTYPE_STATIC_TENSOR_SPLIT,
-                dtype,
             )
+
+        if core.is_compiled_with_cuda():
+            for dtype in DTYPE_ALL_GPU:
+                self._test_all(
+                    {
+                        **generate_data([6], dtype=dtype),
+                        'split_paddle': 3,
+                        'split_numpy': 3,
+                        'places': [paddle.CUDAPlace(0)],
+                    },
+                )
 
         self.func_paddle = functools.partial(paddle.tensor_split, axis=1)
         self.func_numpy = functools.partial(np.array_split, axis=1)
 
-        for dtype in DTYPE_ALL:
+        for dtype in DTYPE_ALL_CPU:
             self._test_all(
                 {
                     **generate_data([4, 6], dtype=dtype),
                     'split_paddle': 3,
                     'split_numpy': 3,
+                    'places': [paddle.CPUPlace()],
                 },
-                dtype not in DTYPE_DYGRAPH_TENSOR_SPLIT,
-                dtype not in DTYPE_STATIC_TENSOR_SPLIT,
-                dtype,
             )
+
+        if core.is_compiled_with_cuda():
+            for dtype in DTYPE_ALL_GPU:
+                self._test_all(
+                    {
+                        **generate_data([4, 6], dtype=dtype),
+                        'split_paddle': 3,
+                        'split_numpy': 3,
+                        'places': [paddle.CUDAPlace(0)],
+                    },
+                )
 
         self.func_paddle = functools.partial(paddle.tensor_split, axis=2)
         self.func_numpy = functools.partial(np.array_split, axis=2)
 
-        for dtype in DTYPE_ALL:
+        for dtype in DTYPE_ALL_CPU:
             self._test_all(
                 {
                     **generate_data([4, 4, 6], dtype=dtype),
                     'split_paddle': 3,
                     'split_numpy': 3,
+                    'places': [paddle.CPUPlace()],
                 },
-                dtype not in DTYPE_DYGRAPH_TENSOR_SPLIT,
-                dtype not in DTYPE_STATIC_TENSOR_SPLIT,
-                dtype,
             )
+
+        if core.is_compiled_with_cuda():
+            for dtype in DTYPE_ALL_GPU:
+                self._test_all(
+                    {
+                        **generate_data([4, 4, 6], dtype=dtype),
+                        'split_paddle': 3,
+                        'split_numpy': 3,
+                        'places': [paddle.CUDAPlace(0)],
+                    },
+                )
 
     def test_error_dim(self):
         # axis 0
@@ -685,6 +742,24 @@ class TestTensorSplit(BaseTest):
         x = generate_data([6])
         with self.assertRaises(ValueError):
             self._test_all({**x, 'split_paddle': 0, 'split_numpy': None})
+
+    def test_error_from_numpy(self):
+        """not support(like numpy does) indices in a mess, or index out of range"""
+        self.func_paddle = functools.partial(paddle.tensor_split, axis=0)
+        self.func_numpy = functools.partial(np.array_split, axis=0)
+
+        x = generate_data([7])
+        with self.assertRaises(ValueError):
+            # indices' order in a mess
+            self._test_all(
+                {**x, 'split_paddle': [2, 1, 3], 'split_numpy': None}
+            )
+
+        with self.assertRaises(RuntimeError):
+            # index out of range
+            self._test_all(
+                {**x, 'split_paddle': [2, 3, 16], 'split_numpy': None}
+            )
 
 
 if __name__ == '__main__':
