@@ -103,6 +103,24 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       std::vector<ir::Tensor>* group_func_arg_tensors);
 
   /**
+   * @brief Generate MapExpr and Lower it to std::vector<ir::LoweredFunc>
+   * @param group The group to be lowered.
+   * @param tensor_map All tensors used for calculating the group.
+   * @param done_op_schedule Mark whether the Op level schedule has been
+   * applied.
+   * @param apply_group_schedule Whether to schedule at group level.
+   * @param group_func_arg_tensors Tensors used as the group function arguments.
+   * @return The lowered funcs after the post processing.
+   */
+  std::vector<ir::LoweredFunc> LowerMapExpr(
+      const GroupPtr& group,
+      const std::unordered_map<std::string, ir::Tensor>& tensor_map,
+      bool done_op_schedule,
+      bool apply_group_schedule,
+      bool apply_pass,
+      std::vector<ir::Tensor>* group_func_arg_tensors);
+
+  /**
    * @brief Lower an Op set to CINN IR.
    * Compute and Lower will be performed one by one for each Op.
    * @param group The group to be lowered.
@@ -153,6 +171,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * @return The lowered func bodies of Op set.
    */
   std::vector<ir::Expr> LowerOps(
+      const GroupPtr& group,
       const std::vector<Node*>& nodes,
       bool apply_op_schedule,
       ScheduleDetermineFunction schedule_determine_func,
@@ -169,6 +188,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * @return The lowered func of the Op node.
    */
   std::vector<ir::LoweredFunc> DoOpLower(
+      const GroupPtr& group,
       std::shared_ptr<hlir::framework::OpImpl> op_impl,
       Node* node,
       std::unordered_map<std::string, ir::Tensor>* tensor_map,
