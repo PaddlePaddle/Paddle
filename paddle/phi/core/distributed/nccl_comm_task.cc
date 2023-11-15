@@ -222,7 +222,8 @@ std::string NCCLCommTask::GetTraceMsg() {
          ",op:" + CommTypeToString(comm_type_) +
          ",started:" + std::to_string(started_) +
          ",completed:" + std::to_string(completed_) +
-         ",size:" + std::to_string(size_);
+         ",numel:" + std::to_string(numel_) +
+         ",nranks:" + std::to_string(size_);
 }
 
 }  // namespace distributed
