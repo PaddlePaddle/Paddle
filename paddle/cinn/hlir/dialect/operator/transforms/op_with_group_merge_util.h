@@ -253,7 +253,8 @@ inline bool horizontal_or_vertical_reduce_relation(
     }
   }
 
-  auto op_shape = phi::vectorize<int64_t>(GetFirstInputShape(producer));
+  auto op_shape = phi::vectorize<int64_t>(GetValueShape(producer->result(0)));
+  // auto op_shape = phi::vectorize<int64_t>(GetFirstInputShape(producer));
   auto op_size = std::accumulate(
       op_shape.begin(), op_shape.end(), 1, std::multiplies<int>());
   auto reduce_size = std::accumulate(
