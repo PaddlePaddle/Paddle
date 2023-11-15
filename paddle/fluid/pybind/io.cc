@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/io.h"
 
+#include "paddle/fluid/framework/io/save_load_tensor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -117,8 +118,9 @@ void BindIO(pybind11::module *m) {
          });
 
   m->def("load_dense_tensor", [](const std::string path) {
-    auto tensor = paddle::pybind::PyLoadTensor(path);
-    return tensor;
+    phi::DenseTensor tensor_load;
+    paddle::framework::LoadTensor(path, &tensor_load);
+    return tensor_load;
   });
 }
 }  // namespace pybind

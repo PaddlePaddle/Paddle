@@ -21,11 +21,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/version.h"
 
 namespace paddle {
-
+namespace framework {
 void SaveTensor(const phi::DenseTensor& x,
                 const std::string& file_path,
                 bool overwrite);
 
 void LoadTensor(const std::string& file_path, phi::DenseTensor* out);
 
+}  // namespace framework
 }  // namespace paddle

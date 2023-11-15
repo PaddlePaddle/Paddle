@@ -9,9 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include "paddle/utils/save_load_tensor.h"
+#include "paddle/fluid/framework/io/save_load_tensor.h"
 
 #include <cstdint>
 
@@ -20,10 +18,10 @@ limitations under the License. */
 #include <string>
 
 #include "glog/logging.h"
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
+namespace framework {
 
 void SaveTensor(const phi::DenseTensor& x,
                 const std::string& file_path,
@@ -34,7 +32,7 @@ void SaveTensor(const phi::DenseTensor& x,
     return;
   }
 
-  VLOG(6) << "saved to " << new_path;
+  VLOG(6) << "tensor will be saved to " << new_path;
   MkDirRecursively(DirName(new_path).c_str());
 
   std::ofstream fout(new_path, std::ios::binary);
@@ -61,5 +59,5 @@ void LoadTensor(const std::string& file_path, phi::DenseTensor* out) {
 
   framework::DeserializeFromStream(fin, out);
 }
-
+}  // namespace framework
 }  // namespace paddle

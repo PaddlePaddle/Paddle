@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/io/save_load_tensor.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
@@ -38,7 +39,6 @@
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/utils/save_load_tensor.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -968,7 +968,7 @@ void BuildOpFuncList(const platform::Place& place,
           continue;
         }
         if (!tensor->IsInitialized()) continue;
-        paddle::SaveTensor(
+        paddle::framework::SaveTensor(
             *tensor, root_path + op_type + "-input-" + vname + "_1", false);
       }
       for (auto& vname : op->OutputVars(true)) {
@@ -982,7 +982,7 @@ void BuildOpFuncList(const platform::Place& place,
           continue;
         }
         if (!tensor->IsInitialized()) continue;
-        paddle::SaveTensor(
+        paddle::framework::SaveTensor(
             *tensor, root_path + op_type + "-output-" + vname + "_1", false);
       }
       VLOG(6) << "end save paddle variable";
