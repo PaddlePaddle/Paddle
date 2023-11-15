@@ -49,7 +49,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     ss << scope << ", ";
   }
   VLOG(6) << ss.str();
-  enable_job_schedule_profiler_ = false;
 
   const auto& jobs = plan_.JobList();
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {

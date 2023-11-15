@@ -642,7 +642,7 @@ void ProgramInterpreter::ClearLoDTensorArrayInLocalScope() {
 }
 
 std::tuple<double, double> ProgramInterpreter::InterpreterRunTime() {
-  double start_time, end_time;
+  double start_time = 0, end_time = 0;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   start_time = calculate_stream_timer_.StartTime();
   end_time = calculate_stream_timer_.EndTime();
