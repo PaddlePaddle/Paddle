@@ -59,23 +59,24 @@ std::unordered_map<std::string, phi::DataType> Str2PhiDataType = {
 };
 
 const std::unordered_set<std::string> UnchangeOutputOps = {
-    DataOp::name(),
-    "builtin.combine",
-    "builtin.slice",
-    "builtin.split",
+    pir::CombineOp::name(),
+    pir::SliceOp::name(),
+    pir::SplitOp::name(),
+    pir::SetParameterOp::name(),
+    pir::GetParameterOp::name(),
+    pir::ShadowOutputOp::name(),
     FeedOp::name(),
-    "builtin.set_parameter",
-    "builtin.get_parameter",
-    "builtin.shadow_output",
+    DataOp::name(),
+    ArrayLengthOp::name(),
     "cinn_runtime.jit_kernel",
-    ArrayLengthOp::name()};
+};
 const std::unordered_set<std::string> SpecialLowerOps = {
-    "builtin.combine",
-    "builtin.slice",
-    "builtin.split",
-    "pd_op.if",
-    "pd_op.while",
-    "cf.yield",
+    pir::CombineOp::name(),
+    pir::SliceOp::name(),
+    pir::SplitOp::name(),
+    pir::YieldOp::name(),
+    IfOp::name(),
+    WhileOp::name(),
     "cinn_runtime.jit_kernel"};
 
 static bool NeedFallBackCpu(const pir::Operation* op,
@@ -123,7 +124,8 @@ static phi::Backend DeriveBackend(const std::string& op,
                                   phi::Backend kernel_backend,
                                   size_t input_index) {
   // NOTE: Paramters are initilizered on executor place defined
-  if ((op == "builtin.set_parameter" || op == "builtin.shadow_output") &&
+  if ((op.compare(pir::SetParameterOp::name()) == 0 ||
+       op.compare(pir::ShadowOutputOp::name()) == 0) &&
       place.GetType() == phi::AllocationType::GPU) {
     return phi::TransToPhiBackend(place);
   }
@@ -198,12 +200,7 @@ static std::vector<std::shared_ptr<phi::TensorBase>> PrepareFakeTensors(
             fake_sr(inner_types[i].dyn_cast<AllocatedSelectedRowsType>()));
       }
     }
-  } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("PrepareFakeTensors only support "
-                                   "DenseTensorTypes or SelectedRowsTypes"));
   }
-
   return res;
 }
 
@@ -306,7 +303,7 @@ static pir::Type BuildDtypeTransferOutputType(pir::Type type,
     auto out_dtype = TransToIrDataType(data_dtype, ctx);
     return create_type<AllocatedDenseTensorType, AllocatedDenseTensorType>(
         type, place, out_dtype, ctx);
-  } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+  } else if (type.isa<AllocatedSelectedRowsType>()) {
     auto out_dtype = TransToIrDataType(data_dtype, ctx);
     return create_type<AllocatedSelectedRowsType, AllocatedSelectedRowsType>(
         type, place, out_dtype, ctx);
@@ -1349,11 +1346,10 @@ std::vector<pir::Value> BuildOpInputList(
           new_in = AddPlaceTransferOp(
               new_in, out_type, in_place, out_place, kernel_key, block);
         }
-      } else if (new_in_type.isa<dialect::AllocatedDenseTensorArrayType>()) {
+      } else if (new_in_type.isa<AllocatedDenseTensorArrayType>()) {
         // allocated type
         auto in_place =
-            new_in_type.dyn_cast<dialect::AllocatedDenseTensorArrayType>()
-                .place();
+            new_in_type.dyn_cast<AllocatedDenseTensorArrayType>().place();
 
         // get input args def type
         auto args_def = kernel.args_def();
@@ -1376,8 +1372,8 @@ std::vector<pir::Value> BuildOpInputList(
           // build memcopy op
           auto out_place = phi::TransToPhiPlace(dst_backend);
           auto new_in_alloc_type =
-              new_in_type.dyn_cast<dialect::AllocatedDenseTensorArrayType>();
-          auto out_type = dialect::AllocatedDenseTensorArrayType::get(
+              new_in_type.dyn_cast<AllocatedDenseTensorArrayType>();
+          auto out_type = AllocatedDenseTensorArrayType::get(
               ctx,
               out_place,
               new_in_alloc_type.dtype(),
