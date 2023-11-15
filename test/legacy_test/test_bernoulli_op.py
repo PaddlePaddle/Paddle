@@ -69,7 +69,7 @@ class TestBernoulliApi(unittest.TestCase):
         out = paddle.bernoulli(x)
         exe = paddle.static.Executor(paddle.CPUPlace())
         out = exe.run(
-            paddle.static.default_main_program(), fetch_list=[out.name]
+            paddle.static.default_main_program(), fetch_list=[out]
         )
         hist, prob = output_hist(out[0])
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
