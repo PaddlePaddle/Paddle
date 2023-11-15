@@ -12,26 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/adt/print_utils/print_loop_size.h"
-#include "paddle/cinn/adt/schedule_descriptor.h"
+#pragma once
+
+#include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/unique_id.h"
 
 namespace cinn::adt {
 
-std::string ToTxtString(const LoopSize& loop_size) {
-  return std::to_string(loop_size.Get<std::int64_t>());
-}
+DEFINE_ADT_TAG(tSymbolicDim);
 
-std::string ToTxtString(const List<LoopSize>& loop_sizes) {
-  std::string ret;
-  ret += "[";
-  for (std::size_t idx = 0; idx < loop_sizes->size(); ++idx) {
-    if (idx != 0) {
-      ret += ", ";
-    }
-    ret += ToTxtString(loop_sizes.Get(idx));
-  }
-  ret += "]";
-  return ret;
-}
+using SymbolicDim = tSymbolicDim<UniqueId>;
 
 }  // namespace cinn::adt

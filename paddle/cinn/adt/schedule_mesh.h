@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/cinn/adt/dim_expr.h"
 #include "paddle/cinn/adt/schedule_dim.h"
 
 namespace cinn::adt {
@@ -64,7 +65,7 @@ std::size_t GetInputRank(const ScheduleMesh& sched_mesh);
 
 std::size_t GetOutputRank(const ScheduleMesh& sched_mesh);
 
-List<Constant> GetOutputDimValues(const ScheduleMesh& sched_mesh);
+List<DimExpr> GetOutputDimValues(const ScheduleMesh& sched_mesh);
 
 ScheduleMesh GetInputScheduleMesh(const ScheduleMesh& sched_mesh);
 

@@ -21,38 +21,13 @@
 
 namespace cinn::adt {
 
-namespace {
-
-std::vector<int32_t> GetTensorShape(const Tensor& tensor) {
-  CHECK(tensor.Has<adapter::Tensor>());
-  return tensor.Get<adapter::Tensor>().GetShape();
-}
-
-}  // namespace
-
 LoopDescriptors CreateScheduleDescriptor(const ScheduleMesh& sched_mesh,
                                          const List<LoopType>& loop_types) {
   const auto& sched_dims = GetOutputDimValues(sched_mesh);
   CHECK_EQ(sched_dims->size(), loop_types->size());
   LoopDescriptors ret{};
   for (std::size_t i = 0; i < sched_dims->size(); ++i) {
-    const auto& sched_dim = sched_dims->at(i);
-    CHECK(sched_dim.Has<std::int64_t>());
-    ret->emplace_back(LoopDescriptor{loop_types->at(i),
-                                     LoopSize{sched_dim.Get<std::int64_t>()}});
-  }
-  return ret;
-}
-
-LoopDescriptors MakeNaiveScheduleDescriptor(
-    const std::shared_ptr<KGroup>& kgroup,
-    const std::shared_ptr<IGroup>& igroup) {
-  const Tensor& tensor = igroup->anchor_tensor();
-
-  List<LoopDescriptor> ret{};
-  const std::vector<int32_t> tensor_shape = GetTensorShape(tensor);
-  for (int32_t dim : tensor_shape) {
-    ret->emplace_back(LoopDescriptor{Temporal{}, dim});
+    ret->emplace_back(LoopDescriptor{loop_types->at(i), sched_dims->at(i)});
   }
   return ret;
 }

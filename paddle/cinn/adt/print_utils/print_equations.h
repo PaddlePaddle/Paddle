@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "paddle/cinn/adt/equation.h"
-#include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
 
 namespace cinn::adt {
@@ -37,8 +37,6 @@ std::string ToTxtString(const FakeOpPlaceHolder& op);
 std::string ToTxtString(const List<Index>& indexes);
 
 std::string ToTxtString(const List<std::optional<Index>>& indexes);
-
-std::string ToTxtString(const List<Dim>& strides);
 
 std::string ToTxtString(const List<Iterator>& iterators);
 

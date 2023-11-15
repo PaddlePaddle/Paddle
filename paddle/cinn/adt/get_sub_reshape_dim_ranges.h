@@ -18,14 +18,13 @@
 #include <vector>
 
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/dim_expr.h"
 
 namespace cinn::adt {
 
-class Constant;
-
 std::optional<std::tuple<std::vector<std::pair<int, int>>,
                          std::vector<std::pair<int, int>>>>
-GetSubReshapeDimRanges(const List<Constant>& lhs_dims,
-                       const List<Constant>& rhs_dims);
+GetSubReshapeDimRanges(const List<DimExpr>& lhs_dims,
+                       const List<DimExpr>& rhs_dims);
 
 }  // namespace cinn::adt

@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/index_expr_infer_context.h"
-#include "paddle/cinn/adt/equation_function_constants_provider.h"
 
 namespace cinn::adt {
 
-Constant IndexExprInferContext::GetDimSize(const Dim& dim) const {
-  return constants_provider_->GetDimSize(dim);
+bool IndexExprInferContext::DimsEqual(const List<DimExpr>& lhs,
+                                      const List<DimExpr>& rhs) const {
+  return lhs == rhs;
 }
 
 }  // namespace cinn::adt

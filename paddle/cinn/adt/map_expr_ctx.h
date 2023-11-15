@@ -17,7 +17,7 @@
 #include <memory>
 #include <unordered_map>
 
-#include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/pir/core/operation.h"

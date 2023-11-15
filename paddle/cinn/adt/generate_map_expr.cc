@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/generate_map_expr.h"
+
 #include "paddle/cinn/adt/anchor_sd_equation_context.h"
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_solver.h"
+#include "paddle/cinn/adt/graph_symbolic_dim_infer_ctx.h"
 #include "paddle/cinn/adt/igroup.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/kgroup.h"
@@ -31,10 +33,12 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/pir/dialect/shape/utils/shape_optimization_utils.h"
 
 #include "glog/logging.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr);
+PD_DECLARE_bool(cinn_map_expr_enable_dynamic_shape);
 
 namespace cinn::adt {
 
@@ -97,11 +101,27 @@ void VisitEachInputTensor(const ::pir::Operation* op, const DoEachT& DoEach) {
   }
 }
 
-List<Arg> MakeOpStmtInputList(const ::pir::Operation* op) {
+bool HasDynamicShape(const ::pir::Value& tensor) {
+  const auto& shape = hlir::framework::pir::CompatibleInfo::ValueShape(tensor);
+  for (int dim : shape) {
+    if (dim < 0) {
+      CHECK_EQ(dim, -1);
+      return true;
+    }
+  }
+  return false;
+}
+
+List<Arg> MakeOpStmtInputList(const ::pir::Operation* op,
+                              const hlir::framework::pir::Group* group) {
   List<Arg> ret{};
 
   VisitEachInputTensor(op, [&](const ::pir::Value& tensor) {
-    ret->emplace_back(adapter::Tensor{tensor});
+    if (HasDynamicShape(tensor)) {
+      ret->emplace_back(adapter::DynamicTensor{tensor, group});
+    } else {
+      ret->emplace_back(adapter::Tensor{tensor});
+    }
   });
 
   return ret;
@@ -114,11 +134,16 @@ void VisitEachOutputTensor(const ::pir::Operation* op, const DoEachT& DoEach) {
   }
 }
 
-List<Arg> MakeOpStmtOutputList(const ::pir::Operation* op) {
+List<Arg> MakeOpStmtOutputList(const ::pir::Operation* op,
+                               const hlir::framework::pir::Group* group) {
   List<Arg> ret{};
 
   VisitEachOutputTensor(op, [&](const ::pir::Value& tensor) {
-    ret->emplace_back(adapter::Tensor{tensor});
+    if (HasDynamicShape(tensor)) {
+      ret->emplace_back(adapter::DynamicTensor{tensor, group});
+    } else {
+      ret->emplace_back(adapter::Tensor{tensor});
+    }
   });
 
   return ret;
@@ -128,8 +153,9 @@ template <typename DoEachT>
 void VisitEachOpStmt(const std::shared_ptr<hlir::framework::pir::Group>& group,
                      const DoEachT& DoEach) {
   for (const auto* op : group->CollectOps()) {
-    DoEach(
-        OpStmt{MakeOp(op), MakeOpStmtInputList(op), MakeOpStmtOutputList(op)});
+    DoEach(OpStmt{MakeOp(op),
+                  MakeOpStmtInputList(op, group.get()),
+                  MakeOpStmtOutputList(op, group.get())});
   }
 }
 
@@ -146,7 +172,8 @@ bool CollectRewritedReductionOpStmts(const OpStmt& op_stmt, List<OpStmt>* ret) {
         op.Get<const ::pir::Operation*>()};
     (*ret)->emplace_back(OpStmt{init_op, List<Arg>{}, outputs});
 
-    tReduceAcc<const pir::Operation*> acc_op{op.Get<const ::pir::Operation*>()};
+    tReduceAcc<const ::pir::Operation*> acc_op{
+        op.Get<const ::pir::Operation*>()};
     (*ret)->emplace_back(OpStmt{acc_op, inputs, outputs});
     return true;
   } else {
@@ -188,18 +215,13 @@ void PartitionIGroupOpStmts(const List<OpStmt>& op_stmts,
 }
 
 std::shared_ptr<IGroup> MakeIGroup(const AnchorGroup& igroup_spec) {
-  std::shared_ptr<const EquationFunctionConstantsProvider> constants_provider{
-      new NaiveEquationFunctionConstantsProvider{
-          igroup_spec.op_stmts, igroup_spec.EquationCtx4OpStmt}};
   std::shared_ptr<DirectionEquationGenerator> direction_equation_generator{
       new NaiveBidirectionEquationGenerator{igroup_spec.op_stmts,
                                             igroup_spec.EquationCtx4OpStmt}};
-  CheckEquationSolvable(
-      igroup_spec, constants_provider, direction_equation_generator);
+  CheckEquationSolvable(igroup_spec, direction_equation_generator);
   return std::make_shared<IGroup>(igroup_spec.op_stmts,
                                   igroup_spec.anchor_index,
-                                  igroup_spec.EquationCtx4OpStmt,
-                                  constants_provider);
+                                  igroup_spec.EquationCtx4OpStmt);
 }
 
 std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
@@ -230,7 +252,7 @@ GraphView GenerateSdEquationGraphView(const std::shared_ptr<IGroup>& igroup,
 
   Equations equations = igroup->anchor_sd_equation_ctx().value().equations();
 
-  return Graph::New(equations)->GetGraphView();
+  return Graph<Variable, Equation>::New(equations)->GetGraphView();
 }
 
 using TensorIndexExpr = Value;
@@ -257,8 +279,7 @@ std::shared_ptr<IndexExprInferContext> SolveEquationsThenReturnCtx(
   GraphView merged_view = igroup_view.Merge(sd_equation_graph_view);
 
   const auto& init_var2value = MakeSdIterator2Iterator(*igroup);
-  auto ctx = std::make_shared<IndexExprInferContext>(
-      init_var2value, igroup->constants_provider());
+  auto ctx = std::make_shared<IndexExprInferContext>(init_var2value);
 
   std::vector<Variable> starts{};
   for (const auto& loop_iterator : *igroup->loop_iterators()) {
@@ -439,6 +460,11 @@ void TryGenerateMapExprFromGraph(
     return;
   }
   for (const auto& fusion_group : groups) {
+    // ADT_TODO : Fake pointer here, remove this later
+    ::pir::SymbolicDimMgr* symbolic_dim_mgr;
+    fusion_group->set_graph_symbolic_dim_infer_ctx(
+        std::make_unique<config::GraphSymbolicDimInferCtx>(fusion_group.get(),
+                                                           symbolic_dim_mgr));
     const auto& map_expr = GenerateMapExpr(fusion_group);
     VLOG(1) << ToTxtString(map_expr, fusion_group->group_id);
     fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));
@@ -450,6 +476,11 @@ void TryGenerateMapExprFromGroup(
   if (!FLAGS_cinn_enable_map_expr) {
     return;
   }
+  // ADT_TODO : Fake pointer here, remove this later
+  ::pir::SymbolicDimMgr* symbolic_dim_mgr;
+  fusion_group->set_graph_symbolic_dim_infer_ctx(
+      std::make_unique<config::GraphSymbolicDimInferCtx>(fusion_group.get(),
+                                                         symbolic_dim_mgr));
   const auto& map_expr = GenerateMapExpr(fusion_group);
   VLOG(1) << ToTxtString(map_expr, fusion_group->group_id);
   fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));

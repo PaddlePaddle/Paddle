@@ -16,10 +16,14 @@
 
 #include <string>
 
+#include "paddle/cinn/adt/adt.h"
+
 namespace cinn::adt {
 
 class ScheduleDim;
 
 std::string ToTxtString(const ScheduleDim& schedule_dim);
+
+std::string ToTxtString(const List<ScheduleDim>& schedule_dims);
 
 }  // namespace cinn::adt

@@ -14,11 +14,10 @@
 
 #pragma once
 
-#include "paddle/cinn/adt/print_utils/print_constant.h"
-#include "paddle/cinn/adt/print_utils/print_equations.h"
-#include "paddle/cinn/adt/print_utils/print_loop_size.h"
-#include "paddle/cinn/adt/print_utils/print_map_expr.h"
-#include "paddle/cinn/adt/print_utils/print_schedule_descriptor.h"
-#include "paddle/cinn/adt/print_utils/print_schedule_dim.h"
-#include "paddle/cinn/adt/print_utils/print_schedule_mesh.h"
-#include "paddle/cinn/adt/print_utils/print_value.h"
+#include "paddle/cinn/adt/print_dim_expr.h"
+#include "paddle/cinn/adt/print_equations.h"
+#include "paddle/cinn/adt/print_map_expr.h"
+#include "paddle/cinn/adt/print_schedule_descriptor.h"
+#include "paddle/cinn/adt/print_schedule_dim.h"
+#include "paddle/cinn/adt/print_schedule_mesh.h"
+#include "paddle/cinn/adt/print_value.h"

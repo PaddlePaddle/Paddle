@@ -20,13 +20,13 @@ namespace cinn::adt {
 
 DEFINE_ADT_TAG(tIn);
 DEFINE_ADT_TAG(tOut);
+DEFINE_ADT_TAG(tTrue);
+DEFINE_ADT_TAG(tFalse);
 
-DEFINE_ADT_TAG(tSSAShadow);
 DEFINE_ADT_TAG(tAnchor);
 
 DEFINE_ADT_TAG(tIterator);
 DEFINE_ADT_TAG(tIndex);
-DEFINE_ADT_TAG(tDim);
 DEFINE_ADT_TAG(tOpPlaceHolder);
 
 DEFINE_ADT_TAG(tInMsg);
