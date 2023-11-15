@@ -784,7 +784,6 @@ class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
         )
         return optimizer
 
-    @test_with_pir_api
     def get_optimizer(self):
         optimizer = paddle.optimizer.Lamb(
             learning_rate=0.002, exclude_from_weight_decay_fn=exclude_fn
@@ -792,7 +791,8 @@ class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
         return optimizer
 
     # should fix: may fail in CI-windows
-    def _test_lamb(self):
+    @test_with_pir_api
+    def test_lamb(self):
         self._check_mlp()
 
 
