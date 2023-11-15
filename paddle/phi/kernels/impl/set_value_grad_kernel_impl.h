@@ -341,4 +341,97 @@ void SetValueGradKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void SetValueWithScalarGradKernel(const Context& dev_ctx,
+                                  const DenseTensor& out_grad,
+                                  const IntArray& starts,
+                                  const IntArray& ends,
+                                  const IntArray& steps,
+                                  const std::vector<int64_t>& axes,
+                                  const std::vector<int64_t>& decrease_axes,
+                                  const std::vector<int64_t>& none_axes,
+                                  DenseTensor* x_grad) {
+  const int rank = out_grad.dims().size();
+
+  switch (rank) {
+    case 1:
+      SetValueGradImpl<T, Context, 1>(dev_ctx,
+                                      out_grad,
+                                      starts,
+                                      ends,
+                                      steps,
+                                      axes,
+                                      decrease_axes,
+                                      none_axes,
+                                      x_grad,
+                                      nullptr);
+      break;
+    case 2:
+      SetValueGradImpl<T, Context, 2>(dev_ctx,
+                                      out_grad,
+                                      starts,
+                                      ends,
+                                      steps,
+                                      axes,
+                                      decrease_axes,
+                                      none_axes,
+                                      x_grad,
+                                      nullptr);
+      break;
+    case 3:
+      SetValueGradImpl<T, Context, 3>(dev_ctx,
+                                      out_grad,
+                                      starts,
+                                      ends,
+                                      steps,
+                                      axes,
+                                      decrease_axes,
+                                      none_axes,
+                                      x_grad,
+                                      nullptr);
+      break;
+    case 4:
+      SetValueGradImpl<T, Context, 4>(dev_ctx,
+                                      out_grad,
+                                      starts,
+                                      ends,
+                                      steps,
+                                      axes,
+                                      decrease_axes,
+                                      none_axes,
+                                      x_grad,
+                                      nullptr);
+      break;
+    case 5:
+      SetValueGradImpl<T, Context, 5>(dev_ctx,
+                                      out_grad,
+                                      starts,
+                                      ends,
+                                      steps,
+                                      axes,
+                                      decrease_axes,
+                                      none_axes,
+                                      x_grad,
+                                      nullptr);
+      break;
+    case 6:
+      SetValueGradImpl<T, Context, 6>(dev_ctx,
+                                      out_grad,
+                                      starts,
+                                      ends,
+                                      steps,
+                                      axes,
+                                      decrease_axes,
+                                      none_axes,
+                                      x_grad,
+                                      nullptr);
+      break;
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The rank of set_value_with_scalar_grad's input should be less than "
+          "7, but "
+          "received %d.",
+          rank));
+  }
+}
 }  // namespace phi

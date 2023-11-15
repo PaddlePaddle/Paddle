@@ -151,31 +151,26 @@ class SetValueGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
+    op->SetType("set_value_grad");
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    if (this->HasInput("StartsTensorList")) {
+      op->SetInput("StartsTensorList", this->Input("StartsTensorList"));
+    }
+    if (this->HasInput("EndsTensorList")) {
+      op->SetInput("EndsTensorList", this->Input("EndsTensorList"));
+    }
+    if (this->HasInput("StepsTensorList")) {
+      op->SetInput("StepsTensorList", this->Input("StepsTensorList"));
+    }
+
+    op->SetAttrMap(this->Attrs());
+
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+
     if (this->HasInput("ValueTensor")) {
-      op->SetType("set_value_grad");
-
-      op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
       op->SetInput("ValueTensor", this->Input("ValueTensor"));
-      if (this->HasInput("StartsTensorList")) {
-        op->SetInput("StartsTensorList", this->Input("StartsTensorList"));
-      }
-      if (this->HasInput("EndsTensorList")) {
-        op->SetInput("EndsTensorList", this->Input("EndsTensorList"));
-      }
-      if (this->HasInput("StepsTensorList")) {
-        op->SetInput("StepsTensorList", this->Input("StepsTensorList"));
-      }
-
-      op->SetAttrMap(this->Attrs());
-
       op->SetOutput(framework::GradVarName("ValueTensor"),
                     this->InputGrad("ValueTensor"));
-      op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
-
-    } else {
-      op->SetType("assign");
-      op->SetInput("X", this->OutputGrad("Out"));
-      op->SetOutput("Out", this->InputGrad("Input"));
     }
   }
 };
