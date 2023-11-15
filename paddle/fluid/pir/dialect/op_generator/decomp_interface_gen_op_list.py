@@ -16,7 +16,6 @@
 # DecompInterface gen op list
 # =====================================
 
-
 # come into effect in generated file pd_op.h
 # manual decomp interface declare are located in manual_op.h
 decomp_interface_declare_gen_op_list = [
@@ -25,6 +24,7 @@ decomp_interface_declare_gen_op_list = [
     "add_n",
     "relu",
     "softmax",
+    "layer_norm",
     "gelu",
 ]
 
@@ -36,5 +36,10 @@ decomp_interface_implementation_gen_op_list = [
     "add_n",
     "relu",
     "softmax",
+    "layer_norm",
     "gelu",
 ]
+
+
+# xshape output will no longer used after decomp, but return none to keep output num the same as origin op
+decomp_ops_contain_unused_output = ["squeeze", "unsqueeze"]

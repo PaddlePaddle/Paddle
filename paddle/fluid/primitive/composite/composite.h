@@ -112,6 +112,79 @@ Tensor add_n_decomp(const std::vector<Tensor>& x) {
 }
 
 template <typename T>
+std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
+    const Tensor& x,
+    const paddle::optional<Tensor>& scale,
+    const paddle::optional<Tensor>& bias,
+    float epsilon,
+    int begin_norm_axis) {
+  std::vector<int64_t> axis;
+  auto org_dtype = x.dtype();
+  Tensor x_cast = x;
+
+  bool need_cast = org_dtype == phi::DataType::FLOAT16 ||
+                   org_dtype == phi::DataType::BFLOAT16;
+
+  // cast dtype to float32 if dtype =float16 or bfloat16
+  if (need_cast) {
+    x_cast = cast<T>(x_cast, phi::DataType::FLOAT32);
+  }
+
+  auto x_dim = phi::vectorize<int64_t>(x.dims());
+  for (size_t i = begin_norm_axis; i < x_dim.size(); i++) {
+    axis.push_back(static_cast<int64_t>(i));
+  }
+  auto mean_ = mean_decomp<T>(x_cast, IntArray(axis), true);
+  auto difference = x_cast - mean_;
+  auto var_tmp1 = difference * difference;
+  auto variance = mean_decomp<T>(var_tmp1, IntArray(axis), true);
+  auto var_tmp3 = variance + epsilon;
+  auto rsqrt_var = elementwise_pow<T>(
+      var_tmp3,
+      full<T>(phi::vectorize(var_tmp3.dims()), -0.5, var_tmp3.dtype()));
+  auto out = difference * rsqrt_var;
+
+  auto scale_ptr = scale.get_ptr();
+  auto bias_ptr = bias.get_ptr();
+
+  std::vector<int64_t> slice_shape;
+  for (int64_t i = begin_norm_axis; i < static_cast<int64_t>(x_dim.size());
+       i++) {
+    slice_shape.push_back(x_dim[i]);
+  }
+  Tensor scale_cast;
+  if (scale_ptr) {
+    if (slice_shape != scale_ptr->shape()) {
+      scale_cast = reshape<T>(*scale_ptr, slice_shape);
+    }
+    if (need_cast) {
+      scale_cast = cast<T>(scale_cast, phi::DataType::FLOAT32);
+    }
+    out = out * scale_cast;
+  }
+  Tensor bias_cast;
+  if (bias_ptr) {
+    if (slice_shape != bias_ptr->shape()) {
+      bias_cast = reshape<T>(*bias_ptr, slice_shape);
+    }
+    if (need_cast) {
+      bias_cast = cast<T>(bias_cast, phi::DataType::FLOAT32);
+    }
+    out = out + bias_cast;
+  }
+  mean_ = reshape<T>(mean_, std::vector<int64_t>({-1}));
+  variance = reshape<T>(variance, std::vector<int64_t>({-1}));
+
+  if (need_cast) {
+    out = cast<T>(out, org_dtype);
+    mean_ = cast<T>(mean_, org_dtype);
+    variance = cast<T>(variance, org_dtype);
+  }
+
+  return std::make_tuple(out, mean_, variance);
+}
+
+template <typename T>
 Tensor gelu_decomp(const Tensor& x, bool approximate) {
   auto org_dtype = x.dtype();
 

@@ -71,6 +71,50 @@ Tensor _Tensor_::Make(const std::string &name,
   return Tensor(n);
 }
 
+Tensor _Tensor_::Make(const std::string &name,
+                      Type dtype,
+                      const std::vector<Dim> &sym_shape,
+                      const std::vector<Expr> &domain,
+                      FunctionRef fn,
+                      const std::vector<Var> &reduce_axis) {
+  CHECK(!name.empty()) << "Tensor name is set empty";
+  auto n = make_shared<_Tensor_>();
+  n->name = name;
+  n->sym_shape = sym_shape;
+  n->shape.reserve(sym_shape.size());
+  for (int i = 0; i < sym_shape.size(); i++) {
+    n->shape[i] = sym_shape[i]->dim_expr;
+  }
+  n->domain = domain;
+  n->reduce_axis = reduce_axis;
+  n->set_type(dtype);
+  n->operation = fn;
+  n->InitAxis();
+
+  return Tensor(n);
+}
+Tensor _Tensor_::Make(const std::string &name,
+                      Type dtype,
+                      const std::vector<Dim> &sym_shape,
+                      const std::vector<Expr> &domain,
+                      const std::vector<Var> &reduce_axis) {
+  CHECK(!name.empty()) << "Cannot set empty Tensor name in Tensor::Make";
+  auto n = make_shared<_Tensor_>();
+  n->name = name;
+  n->sym_shape = sym_shape;
+  n->shape.reserve(sym_shape.size());
+  for (int i = 0; i < sym_shape.size(); i++) {
+    n->shape[i] = sym_shape[i]->dim_expr;
+  }
+  n->domain = domain;
+  n->reduce_axis = reduce_axis;
+  n->operation = PlaceholderOp::Make(n->name, n->shape, Float(32));
+  n->set_type(dtype);
+  n->InitAxis();
+
+  return Tensor(n);
+}
+
 size_t Tensor::ndims() const { return operator->()->shape.size(); }
 
 std::set<std::string> _Tensor_::GetDependTensorNames() const {
