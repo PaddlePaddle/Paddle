@@ -23,7 +23,6 @@
 
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
-#include "paddle/pir/core/builtin_op.h"
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
@@ -46,6 +45,7 @@
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
@@ -65,7 +65,7 @@
 #endif
 
 namespace py = pybind11;
-using paddle::dialect::APIBuilder;
+using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
 using pir::Attribute;
@@ -239,6 +239,19 @@ void BindProgram(py::module *m) {
           });
 }
 
+void RefreshOpStopgradients(Operation *op) {
+  if (op->num_operands() == 0 || op->isa<pir::GetParameterOp>() ||
+      op->isa<paddle::dialect::UniformOp>()) {
+    return;
+  } else if (op->isa<pir::SliceOp>()) {
+    op->dyn_cast<pir::SliceOp>().RefreshStopGradients();
+  } else if (op->isa<pir::SplitOp>()) {
+    op->dyn_cast<pir::SplitOp>().RefreshStopGradients();
+  } else {
+    RefreshStopGradientsDefaultly(op);
+  }
+}
+
 void BindBlock(py::module *m) {
   py::class_<Block> block(*m, "Block", R"DOC(
     In IR, a Block has a list of Operation and can represent a sub computational graph.
@@ -295,24 +308,30 @@ void BindBlock(py::module *m) {
               None
 
         )DOC")
-      .def("all_parameters", [](Block &self) -> py::list {
-        py::list param_list;
+      .def("all_parameters",
+           [](Block &self) -> py::list {
+             py::list param_list;
+             for (auto iter = self.begin(); iter != self.end(); iter++) {
+               auto op = *iter;
+               if (op->HasAttribute(kAttrIsPersisable)) {
+                 auto attrs = op->attribute(kAttrIsPersisable)
+                                  .dyn_cast<pir::ArrayAttribute>()
+                                  .AsVector();
+                 for (uint32_t i = 0; i < attrs.size(); i++) {
+                   bool is_persistable =
+                       attrs[i].dyn_cast<pir::BoolAttribute>().data();
+                   if (is_persistable) {
+                     param_list.append(op->result(i));
+                   }
+                 }
+               }
+             }
+             return param_list;
+           })
+      .def("refresh_stopgradient", [](Block &self) {
         for (auto iter = self.begin(); iter != self.end(); iter++) {
-          auto op = *iter;
-          if (op->HasAttribute(kAttrIsPersisable)) {
-            auto attrs = op->attribute(kAttrIsPersisable)
-                             .dyn_cast<pir::ArrayAttribute>()
-                             .AsVector();
-            for (uint32_t i = 0; i < attrs.size(); i++) {
-              bool is_persistable =
-                  attrs[i].dyn_cast<pir::BoolAttribute>().data();
-              if (is_persistable) {
-                param_list.append(op->result(i));
-              }
-            }
-          }
+          RefreshOpStopgradients(*iter);
         }
-        return param_list;
       });
 }
 
@@ -762,16 +781,16 @@ void BindOpResult(py::module *m) {
                                 /*default_value=*/true);
           })
       .def_property(
-          "is_persistable",
+          "persistable",
           [](OpResult &self) {
             return GetOpResultBoolAttr(self, kAttrIsPersisable);
           },
-          [](OpResult &self, bool is_persistable) {
+          [](OpResult &self, bool persistable) {
             // NOTE(Aurelius84): For other OpResult, set theirs
-            // is_persistable default value as false.
+            // persistable default value as false.
             SetOpResultBoolAttr(self,
                                 kAttrIsPersisable,
-                                is_persistable,
+                                persistable,
                                 /*default_value=*/false);
           })
       .def_property(
@@ -1015,17 +1034,25 @@ void AppendSetParameter(Program *forward_program,
   }
 }
 
-void AppendSetParameters(Program *forward_program,
-                         const std::vector<pir::OpResult> &outputs_op_result,
-                         int start_point,
-                         std::string name_prefix) {
+int AppendSetParameters(Program *forward_program,
+                        const std::vector<pir::OpResult> &outputs_op_result,
+                        int start_point,
+                        std::string name_prefix) {
   int counter = 0;
+  std::unordered_set<pir::OpResult> added_op_result;
+
   for (const auto &result : outputs_op_result) {
-    std::string parameter_name = name_prefix + std::to_string(counter);
-    AppendSetParameter(
-        forward_program, result, parameter_name, start_point + counter);
-    counter += 1;
+    if (!added_op_result.count(result)) {
+      std::string parameter_name = name_prefix + std::to_string(counter);
+      AppendSetParameter(
+          forward_program, result, parameter_name, start_point + counter);
+      counter += 1;
+
+      added_op_result.insert(result);
+    }
   }
+  // return the inserted op.
+  return counter;
 }
 
 SplitedResult SplitForwardBackward(
@@ -1137,6 +1164,7 @@ SplitedResult SplitForwardBackward(
     // calling SplitForwardBackward multi-times.
     std::string parameter_name =
         std::string("output_") + std::to_string(counter);
+    std::unordered_set<pir::Value> inserted_value;
     for (auto it = forward_program->block()->rbegin();
          it != forward_program->block()->rend();
          ++it) {
@@ -1149,9 +1177,14 @@ SplitedResult SplitForwardBackward(
                   << " has been inserted SetParameterOp, skip it now.";
           return;
         }
+
+        inserted_value.insert(op->operand_source(0));
       }
     }
 
+    if (inserted_value.count(forward_value_map[v])) {
+      return;
+    }
     auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
     pir::AttributeMap attribute_map = {
         {"parameter_name", pir::StrAttribute::get(ctx, parameter_name)},
@@ -1288,13 +1321,20 @@ void BindUtils(pybind11::module *m) {
   m->def("fake_op_result", FakeOpResult);
   m->def("is_fake_op_result", IsFakeOpResult);
   m->def("set_global_program",
-         [](Program *program) { APIBuilder::Instance().SetProgram(program); });
+         [](Program *program) { ApiBuilder::Instance().SetProgram(program); });
+  m->def(
+      "cur_insertion_point",
+      []() { return ApiBuilder::Instance().insertion_point(); },
+      return_value_policy::reference);
+  m->def("set_insertion_point", [](const pir::InsertionPoint &insertion_point) {
+    ApiBuilder::Instance().set_insertion_point(insertion_point);
+  });
   m->def("set_insertion_point",
-         [](Operation *op) { APIBuilder::Instance().SetInsertionPoint(op); });
+         [](Operation *op) { ApiBuilder::Instance().set_insertion_point(op); });
   m->def("reset_insertion_point_to_start",
-         []() { APIBuilder::Instance().ResetInsertionPointToStart(); });
+         []() { ApiBuilder::Instance().ResetInsertionPointToStart(); });
   m->def("reset_insertion_point_to_end",
-         []() { APIBuilder::Instance().ResetInsertionPointToEnd(); });
+         []() { ApiBuilder::Instance().ResetInsertionPointToEnd(); });
   m->def("register_paddle_dialect", []() {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -1455,6 +1495,7 @@ std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
   pass_manager.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager.AddPass(pir::CreateBuildCinnPass());
+
   pass_manager.Run(&forward_program);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
   std::unique_ptr<pir::Program> new_program =
