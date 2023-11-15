@@ -23,29 +23,29 @@ namespace dialect {
 
 using LoD = std::vector<std::vector<size_t>>;
 
-class IrMetaTensor : public phi::TensorBase,
-                     public phi::TypeInfoTraits<phi::TensorBase, IrMetaTensor> {
+class IrTensor : public phi::TensorBase,
+                 public phi::TypeInfoTraits<phi::TensorBase, IrTensor> {
  public:
-  IrMetaTensor() = default;
+  IrTensor() = default;
 
-  IrMetaTensor(phi::DataType dtype,
-               const phi::DDim& dims,
-               phi::DataLayout layout,
-               const LoD& lod,
-               size_t offset = 0);
+  IrTensor(phi::DataType dtype,
+           const phi::DDim& dims,
+           phi::DataLayout layout,
+           const LoD& lod,
+           size_t offset = 0);
 
-  IrMetaTensor(IrMetaTensor&& other) = default;
+  IrTensor(IrTensor&& other) = default;
 
-  IrMetaTensor(const IrMetaTensor& other);
+  IrTensor(const IrTensor& other);
 
-  IrMetaTensor& operator=(const IrMetaTensor& other);
+  IrTensor& operator=(const IrTensor& other);
 
-  IrMetaTensor& operator=(IrMetaTensor&& other) noexcept;
+  IrTensor& operator=(IrTensor&& other) noexcept;
 
-  virtual ~IrMetaTensor() = default;
+  virtual ~IrTensor() = default;
 
  public:
-  static const char* name() { return "IrMetaTensor"; }
+  static const char* name() { return "IrTensor"; }
 
   int64_t numel() const override;
 
