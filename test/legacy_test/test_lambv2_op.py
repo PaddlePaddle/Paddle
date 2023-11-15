@@ -202,7 +202,6 @@ class TestLambOpV2Group(TestLambOpV2):
 
 
 class TestLambOpMultiPrecision(unittest.TestCase):
-    @test_with_pir_api
     def check_main(self, x_np, place, multi_precision=False, seed=10, n=10):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -269,6 +268,7 @@ class TestLambOpMultiPrecision(unittest.TestCase):
                 np.testing.assert_array_equal(bias_np, get_parameter(bias))
             return weight_np, bias_np
 
+    @test_with_pir_api
     @switch_to_static_graph
     def test_main(self):
         if not paddle.is_compiled_with_cuda():
