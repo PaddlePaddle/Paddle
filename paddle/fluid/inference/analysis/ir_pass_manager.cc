@@ -365,8 +365,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       VLOG(5) << "Fc GEMM Compute Type:" << gemm_compute_precision;
 
       bool fc_per_channel = argument->xpu_fc_per_channel();
-      pass->Set("fc_per_channel", new int(fc_per_channel));
-      std::cout << "fc per channel:" << fc_per_channel << std::endl;
+      pass->Set("fc_per_channel", new bool(fc_per_channel));
+      VLOG(5) << "fc per channel:" << fc_per_channel;
     }
 
     pre_pass = pass_name;

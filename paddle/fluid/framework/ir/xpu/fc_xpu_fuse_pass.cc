@@ -532,8 +532,12 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   Node* filter_intx = nullptr;
   Node* filter_max = nullptr;
   Node* scale_max = nullptr;
+
   bool per_channel_quant =
-      std::getenv("FLAGS_fc_gemm_use_per_channel") == nullptr ? false : true;
+      Has("fc_per_channel") ? Get<bool>("fc_per_channel") : false;
+
+  VLOG(5) << "per_channel_quant:" << per_channel_quant;
+
   if (op_weights_precision != "int8") {
     if (gemm_compute != 2) {
       PrepareWeight<float, int16_t>(graph,
