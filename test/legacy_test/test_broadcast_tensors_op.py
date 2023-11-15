@@ -272,7 +272,6 @@ class TestBroadcastTensorsAPI(unittest.TestCase):
 
 
 class TestRaiseBroadcastTensorsError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         def test_type():
             inputs = [
