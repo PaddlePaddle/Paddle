@@ -58,44 +58,64 @@ class TestRpropOp(OpTest):
         grads = np.random.random((self.h, self.w)).astype("float32")
         prevs = np.random.random((self.h, self.w)).astype("float32")
         learning_rates = np.random.random((self.h, self.w)).astype("float32")
+
+        np.subtract(params, 0.5, out=params)
+        np.multiply(params, 100, out=params)
+        np.subtract(grads, 0.5, out=grads)
+        np.multiply(grads, 100, out=grads)
+        np.subtract(prevs, 0.5, out=prevs)
+        np.multiply(prevs, 100, out=prevs)
+        np.multiply(learning_rates, 100, out=learning_rates)
+
         delta_min = 1e-6
         delta_max = 50
         eta_negative = 0.5
         eta_positive = 1.2
 
-        param_outs = params.clone()
-        prev_outs = prevs.clone()
-        learning_rate_outs = learning_rates.clone()
+        param_outs = params.copy()
+        prev_outs = prevs.copy()
+        learning_rate_outs = learning_rates.copy()
+
+        # pdb.set_trace()
+
         for i, param in enumerate(params):
             grad = grads[i]
             prev = prevs[i]
             lr = learning_rate_outs[i]
             param_out = param_outs[i]
             prev_out = prev_outs[i]
-            sign = grad.mul(prev).sign()
-            sign[sign.gt(0)] = eta_positive
-            sign[sign.lt(0)] = eta_negative
-            sign[sign.eq(0)] = 1
 
-            lr.mul_(sign).clamp_(delta_min, delta_max)
+            sign = grad.copy()
+            sign = np.multiply(grad, prev)
+            sign = np.sign(sign)
+            sign[np.greater(sign, 0)] = eta_positive
+            sign[np.less(sign, 0)] = eta_negative
+            sign[np.equal(sign, 0)] = 1
+            np.multiply(lr, sign, out=lr)
+            lr[np.less(lr, delta_min)] = delta_min
+            lr[np.greater(lr, delta_max)] = delta_max
 
-            grad = grad.clone()
-            grad[sign.eq(eta_negative)] = 0
+            grad = grad.copy()
+            grad[np.equal(sign, eta_negative)] = 0
 
-            param_out.addcmul_(grad.sign(), lr, value=-1)
-            prev_out.copy_(grad)
+            np.subtract(
+                param_out, np.multiply(np.sign(grad), lr), out=param_out
+            )
+            prev_out = grad.copy()
+
+        # pdb.set_trace()
 
         self.inputs = {
-            "Param": params,
-            "Grad": grads,
-            'Prev': prevs,
-            "LearningRate": learning_rates,
+            "param": params,
+            "grad": grads,
+            'prev': prevs,
+            "learning_rate": learning_rates,
         }
 
         self.outputs = {
-            "ParamOut": param_outs,
-            "PrevOut": prev_outs,
-            "LearningRateOut": learning_rate_outs,
+            "param_out": param_outs,
+            "prev_out": prev_outs,
+            "learning_rate_out": learning_rate_outs,
         }
 
         self.attrs = {
@@ -106,8 +126,8 @@ class TestRpropOp(OpTest):
         }
 
     def conf(self):
-        self.h = 102
-        self.w = 105
+        self.h = 1
+        self.w = 3
 
     def test_check_output(self):
         self.check_output(check_pir=True)

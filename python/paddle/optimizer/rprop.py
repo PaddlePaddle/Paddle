@@ -14,7 +14,8 @@
 
 import warnings
 
-from paddle import _C_ops, zeros_like
+from paddle import _C_ops
+from paddle.tensor.creation import zeros_like
 
 from ..base import framework
 from ..base.dygraph import no_grad

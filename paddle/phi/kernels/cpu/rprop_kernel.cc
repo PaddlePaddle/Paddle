@@ -34,40 +34,51 @@ void RpropKernelCPUImpl(const DenseTensor& param,
                         DenseTensor* prev_out,
                         DenseTensor* learning_rate_out) {
   auto param_eigen = EigenVector<T>::Flatten(param);
-  DenseTensor grad_new(grad);
-  auto grad_eigen = EigenVector<T>::Flatten(grad_new);
-  DenseTensor grad_new_new(grad);
-  auto grad_sign_eigen = EigenVector<T>::Flatten(grad_new_new);
+  DenseTensor grad_tensor(grad);
+  auto grad_eigen = EigenVector<T>::Flatten(grad_tensor);
+  DenseTensor grad_sign_tensor(grad);
+  auto grad_sign_eigen = EigenVector<T>::Flatten(grad_sign_tensor);
+  DenseTensor product_tensor(grad);
+  auto product_eigen = EigenVector<T>::Flatten(product_tensor);
   auto prev_eigen = EigenVector<T>::Flatten(prev);
-  DenseTensor learning_rate_new(learning_rate);
-  auto learning_rate_eigen = EigenVector<T>::Flatten(learning_rate_new);
-  DenseTensor learning_rate_new_new(learning_rate);
-  auto eta_eigen = EigenVector<T>::Flatten(learning_rate_new_new);
+  DenseTensor learning_rate_tensor(learning_rate);
+  auto learning_rate_eigen = EigenVector<T>::Flatten(learning_rate_tensor);
+  DenseTensor eta_tensor(learning_rate);
+  auto eta_eigen = EigenVector<T>::Flatten(eta_tensor);
   auto param_out_eigen = EigenVector<T>::Flatten(*param_out);
   auto prev_out_eigen = EigenVector<T>::Flatten(*prev_out);
   auto learning_rate_out_eigen = EigenVector<T>::Flatten(*learning_rate_out);
 
-  auto product_eigen = grad_eigen * prev_eigen;
-  for (int i = 0; i < product_eigen.size(); i++) {
-    if (product_eigen[i] > 0) {
-      grad_sign_eigen[i] = 1;
-      eta_eigen[i] = eta_positive;
-    } else if (product_eigen[i] = 0) {
-      grad_sign_eigen[i] = 0;
-      eta_eigen[i] = 1;
-    } else if (product_eigen[i] < 0) {
-      grad_eigen[i] = 0;
-      grad_sign_eigen[i] = 0;
-      eta_eigen[i] = eta_negative;
+  product_eigen = grad_eigen * prev_eigen;
+  T* product_data = product_tensor.data<T>();
+  T* grad_data = grad_tensor.data<T>();
+  T* grad_sign_data = grad_sign_tensor.data<T>();
+  T* eta_data = eta_tensor.data<T>();
+  T zero = static_cast<T>(0);
+  T one = static_cast<T>(1);
+  for (int i = 0, n = product_tensor.numel(); i < n; i++) {
+    if (product_data[i] > zero) {
+      grad_sign_data[i] = one;
+      eta_data[i] = eta_positive;
+    } else if (product_data[i] = zero) {
+      grad_sign_data[i] = zero;
+      eta_data[i] = one;
+    } else if (product_data[i] < zero) {
+      grad_data[i] = zero;
+      grad_sign_data[i] = zero;
+      eta_data[i] = eta_negative;
     }
   }
 
   learning_rate_eigen = learning_rate_eigen * eta_eigen;
-  for (int i = 0; i < learning_rate_eigen.size(); i++) {
-    if (learning_rate_eigen[i] > delta_max) {
-      learning_rate_eigen[i] = delta_max;
-    } else if (learning_rate_eigen[i] < delta_min) {
-      learning_rate_eigen[i] = delta_min;
+  T* learning_rate_data = learning_rate_tensor.data<T>();
+  T delta_max_data = static_cast<T>(delta_max);
+  T delta_min_data = static_cast<T>(delta_min);
+  for (int i = 0, n = learning_rate_tensor.numel(); i < n; i++) {
+    if (learning_rate_data[i] > delta_max_data) {
+      learning_rate_data[i] = delta_max_data;
+    } else if (learning_rate_data[i] < delta_min_data) {
+      learning_rate_data[i] = delta_min_data;
     }
   }
 
