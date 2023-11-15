@@ -523,7 +523,7 @@ def append_backward_ops(
     # with bwd_block:
     for op in clear_effective_forward_ops:
         if paddle.framework.core.has_vjp(op):
-            if op.name() == "pd_op.if" | op.name() == "pd_op.while":
+            if op.name() == "pd_op.if" or op.name() == "pd_op.while":
                 continue
 
             # prepare output_grad
