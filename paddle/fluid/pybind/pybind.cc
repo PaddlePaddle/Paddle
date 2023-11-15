@@ -2021,10 +2021,10 @@ All parameter, weight, gradient are variables in Paddle.
                ret = self.Run(feed_names, enable_job_schedule_profiler);
              }
              return py::cast(std::move(ret));
-           })
+           });
 
-          py::class_<framework::interpreter::Job,
-                     std::shared_ptr<framework::interpreter::Job>>(m, "Job")
+  py::class_<framework::interpreter::Job,
+             std::shared_ptr<framework::interpreter::Job>>(m, "Job")
       .def(py::init<const std::string &>(), py::arg("type"))
       .def("micro_batch_id", &framework::interpreter::Job::MicroBatchId)
       .def("type", &framework::interpreter::Job::Type)
