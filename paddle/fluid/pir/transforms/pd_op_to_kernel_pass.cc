@@ -64,11 +64,11 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     "builtin.slice",
     "builtin.split",
     "pd_op.feed",
-    "pd_op.fetch",
     "builtin.set_parameter",
     "builtin.get_parameter",
     "builtin.shadow_output",
-    "cinn_runtime.jit_kernel"};
+    "cinn_runtime.jit_kernel",
+    "pd_op.array_length"};
 const std::unordered_set<std::string> SpecialLowerOps = {
     "builtin.combine",
     "builtin.slice",
@@ -456,6 +456,14 @@ pir::Type BuildOutputType(pir::Type type,
         selected_rows_type.data_layout(),
         selected_rows_type.lod(),
         selected_rows_type.offset());
+  } else if (type.isa<dialect::DenseTensorArrayType>()) {
+    auto dense_tensor_array_type =
+        type.dyn_cast<dialect::DenseTensorArrayType>();
+    return dialect::AllocatedDenseTensorArrayType::get(
+        ctx,
+        place,
+        dense_tensor_array_type.dtype(),
+        dense_tensor_array_type.data_layout());
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "BuildOutputType only support DenseTensorType and SelectedRowsType"));
@@ -515,6 +523,10 @@ phi::DataType GetKernelDataTypeByYamlInfo(
       } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
         kernel_data_type = TransToPhiDataType(
             type.dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+                .dtype());
+      } else if (type.isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+        kernel_data_type = TransToPhiDataType(
+            type.dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
                 .dtype());
       } else {
         PADDLE_THROW(phi::errors::Unimplemented(
@@ -590,6 +602,10 @@ phi::Backend GetKernelBackendByYamlInfo(
         kernel_backend = paddle::experimental::ParseBackend(
             type.dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
                 .place());
+      } else if (type.isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+        kernel_backend = paddle::experimental::ParseBackend(
+            type.dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
+                .place());
       } else {
         PADDLE_THROW(phi::errors::Unimplemented(
             "Only support DenseTensorType, SelectedRows, VectorType"));
@@ -632,7 +648,9 @@ phi::KernelKey GetKernelKey(
     const std::string& kernel_fn_str,
     const std::unordered_map<pir::Value, pir::Value>& map_value_pair,
     dialect::OpYamlInfoParser* op_info_parser = nullptr) {
-  if (op->isa<paddle::dialect::FeedOp>()) {
+  if (op->isa<paddle::dialect::FeedOp>() ||
+      op->isa<paddle::dialect::FetchOp>() ||
+      op->isa<paddle::dialect::ArrayLengthOp>()) {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
     VLOG(6) << "FeedOp doesn't need a kernel. Backend: CPU, DataLayout: ANY";
@@ -1176,7 +1194,8 @@ std::vector<pir::Type> BuildOpOutputType(pir::Operation* op_item,
     if (!result_type) {
       op_output_types.push_back(result_type);
     } else if (result_type.isa<dialect::DenseTensorType>() ||
-               result_type.isa<dialect::SelectedRowsType>()) {
+               result_type.isa<dialect::SelectedRowsType>() ||
+               result_type.isa<dialect::DenseTensorArrayType>()) {
       op_output_types.push_back(
           BuildOutputType(result_type, out_place, out_phi_dtype, ctx));
     } else if (result_type.isa<pir::VectorType>()) {
@@ -1433,6 +1452,42 @@ std::vector<pir::Value> BuildOpInputList(
               new_in_alloc_type.data_layout(),
               new_in_alloc_type.lod(),
               new_in_alloc_type.offset());
+          new_in = AddPlaceTransferOp(
+              new_in, out_type, in_place, out_place, kernel_key, block);
+        }
+      } else if (new_in_type.isa<dialect::AllocatedDenseTensorArrayType>()) {
+        // allocated type
+        auto in_place =
+            new_in_type.dyn_cast<dialect::AllocatedDenseTensorArrayType>()
+                .place();
+
+        // get input args def type
+        auto args_def = kernel.args_def();
+        auto input_defs = args_def.input_defs();
+
+        auto dst_backend =
+            GetDstBackend(op_item->name(),
+                          place,
+                          op_info_parser,
+                          kernel.InputAt(tensor_param_index).backend,
+                          i);
+        VLOG(6) << "Infer kernel backend from input " << i << " of op ";
+        bool need_trans =
+            (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
+            (paddle::experimental::NeedTransformPlace(
+                in_place, dst_backend, {}));
+        if (need_trans) {
+          VLOG(6) << "need trans from " << in_place << " to "
+                  << kernel_key.backend();
+          // build memcopy op
+          auto out_place = phi::TransToPhiPlace(dst_backend);
+          auto new_in_alloc_type =
+              new_in_type.dyn_cast<dialect::AllocatedDenseTensorArrayType>();
+          auto out_type = dialect::AllocatedDenseTensorArrayType::get(
+              ctx,
+              out_place,
+              new_in_alloc_type.dtype(),
+              new_in_alloc_type.data_layout());
           new_in = AddPlaceTransferOp(
               new_in, out_type, in_place, out_place, kernel_key, block);
         }

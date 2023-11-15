@@ -17,13 +17,13 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/op_operand.h"
 #include "paddle/pir/core/parameter.h"
 #include "paddle/pir/core/program.h"
 
 namespace pir {
 
-std::pair<std::string, pir::Parameter*> GetParameterFromValue(
-    pir::Value value) {
+std::string GetParameterNameFromValue(pir::Value value) {
   pir::GetParameterOp op =
       value.dyn_cast<OpResult>().owner()->dyn_cast<pir::GetParameterOp>();
   PADDLE_ENFORCE_NOT_NULL(
@@ -37,10 +37,7 @@ std::pair<std::string, pir::Parameter*> GetParameterFromValue(
                          .at(op.attributes_name[0])
                          .dyn_cast<pir::StrAttribute>()
                          .AsString();
-  pir::Parameter* param = program->GetParameter(name);
-  PADDLE_ENFORCE_NOT_NULL(
-      param, phi::errors::InvalidArgument("Parameter should not be null."));
-  return {name, param};
+  return name;
 }
 
 const phi::DDim& GetShapeFromValue(pir::Value value) {
@@ -69,12 +66,17 @@ Operation* GetDefiningOpForInput(Operation* op, uint32_t index) {
   return op->operand_source(index).dyn_cast<OpResult>().owner();
 }
 
-Operation* GetFirstUseOperationForOutput(Operation* op, uint32_t index) {
+std::vector<Operation*> GetUseOpsForOutput(Operation* op, uint32_t index) {
   PADDLE_ENFORCE_EQ(
       index < op->num_results(),
       true,
       phi::errors::InvalidArgument("Output op result's index must be valid."));
-  return op->result(index).first_use().owner();
+  auto result = op->result(index);
+  std::vector<Operation*> use_ops;
+  for (auto it = result.use_begin(); it != result.use_end(); ++it) {
+    use_ops.push_back(it->owner());
+  }
+  return use_ops;
 }
 
 }  // namespace pir
