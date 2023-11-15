@@ -2621,9 +2621,9 @@ def measure_real_op_cost_wrt_program_and_place(
         'stable_average': first remove the outliers then average the remained result.
     @param verbose_level: int
         Set up verbose level during profiling. Can be set to one of the following:
-        0 = turn off, don't print anything,
-        1 = print profiling message only,
-        2 = print profiling and debug message.
+        0 = turn off, don't output anything,
+        1 = output profiling message only,
+        2 = output profiling and debug message.
     Returns
     -----------
     Returns profiling report (as Python string). This API will write op run time
@@ -2645,20 +2645,13 @@ def measure_real_op_cost_wrt_program_and_place(
     >>> measure_real_op_cost_wrt_program_and_place(
     >>>     program, paddle.CUDAPlace(0), verbose_level=1
     >>> )
-    >>> print("first op execution time: %d us." % \\
-    >>>     int(program.global_block().ops[0].dist_attr.run_time_us)
-    >>> )
-    * Profiling a program which is already embedded into an Executor or
-    some other class instance (inspect mode):
+    * Profiling a program which is already embedded into an Executor or some other class instance:
     >>> import paddle
     >>> from paddle.distributed.auto_parallel.static.utils import measure_real_op_cost_wrt_program_and_place
     >>> place: str = paddle.device.get_device() # here we assume place = "cuda:x"
     >>> place = paddle.CUDAPlace(int(place.split(':')[1]))
     >>> # here "program" is an inner object that has alredy been built before
-    >>> profiled_message = measure_real_op_cost_wrt_program_and_place(program, place, verbose_level=1)
-    >>> save_log = "./profile[pid=%d].log" % os.getpid()
-    >>> with open(save_log, 'w') as f:
-    >>>     f.write(profiled_message)
+    >>> measure_real_op_cost_wrt_program_and_place(program, place, verbose_level=1)
     '''
 
     # parameter checks

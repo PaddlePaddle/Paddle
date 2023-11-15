@@ -45,17 +45,9 @@ void SetVariable(Scope* scope,
     val->set_lod(input.lod());
   } else {
     if (!target_var->IsType<phi::DenseTensor>()) {
-      int dense_tensor_type_id = VarTypeTrait<phi::DenseTensor>::kId;
-      int target_var_type_id = target_var->Type();
-      std::string err_msg =
-          std::string("Variable \"") + var_name + std::string("\" (typeid=") +
-          std::to_string(target_var_type_id) + std::string(") ") +
-          std::string("is not a phi::DenseTensor (typeid=") +
-          std::to_string(dense_tensor_type_id) + std::string(") ") +
-          std::string(
-              "but here you tried to convert its type to phi::DenseTensor. "
-              "Aborted.");
-      PADDLE_THROW(phi::errors::InvalidArgument(err_msg));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The variable you want to set is not a phi::DenseTensor, but here "
+          "you tried to convert its type to phi::DenseTensor. Aborted."));
     } else {
       // it is a DenseTensor, everything is fine, just need to update its value.
       target_var->Clear();
