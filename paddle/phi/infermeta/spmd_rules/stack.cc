@@ -100,23 +100,6 @@ SpmdInfo StackInferSpmdReverse(const std::vector<DistMetaTensor>& x,
   return {{input_attrs}, {output.dist_attr()}};
 }
 
-std::tuple<std::string, std::string> FillStackGradNotation(int64_t n_axis,
-                                                           int64_t stack_dim) {
-  static const std::string alphabet = "abcdefghijlopqrstuvwxyz";
-
-  PADDLE_ENFORCE_GT(alphabet.size(),
-                    static_cast<size_t>(n_axis),
-                    phi::errors::InvalidArgument(
-                        "alphabet.size() [%d]; n_axis [%d] is too large",
-                        alphabet.size(),
-                        n_axis));
-
-  std::string input_axis = alphabet.substr(0, n_axis);
-  std::string output_axis = input_axis.substr(0, stack_dim) +
-                            alphabet[stack_dim] + input_axis.substr(stack_dim);
-  return {input_axis, output_axis};
-}
-
 SpmdInfo StackGradInferSpmd(const DistMetaTensor& output_grad, int axis) {
   auto out_dist_attr = output_grad.dist_attr();
   out_dist_attr = UnShardTensorDim(out_dist_attr, axis);
