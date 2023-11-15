@@ -29,6 +29,7 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
+#include "paddle/cinn/optim/resize_buffer.h"
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/runtime/intrinsic.h"
@@ -373,9 +374,14 @@ void UpdateBufferAxisPass(ir::Expr *expr) {
         auto store = expr.As<ir::Store>();
         if (keep_loop_vars.size() == 0 ||
             !keep_loop_vars[idy].count(loop_var->name)) {
+          std::string tensor_name = load ? load->tensor.as_tensor_ref()->name
+                                         : store->tensor.as_tensor_ref()->name;
+          VLOG(6) << "Replacing var " << loop_var << " of tensor name "
+                  << tensor_name;
+          optim::ReplaceVarWithExpr(&expr, loop_var, ir::Expr(0), tensor_name);
           auto &indices = load ? load->indices : store->indices;
           for (auto &indice : indices) {
-            optim::ReplaceVarWithExpr(&indice, loop_var, ir::Expr(0));
+            // optim::ReplaceVarWithExpr(&indice, loop_var, ir::Expr(0));
             indice = common::AutoSimplify(indice);
           }
         }
@@ -697,8 +703,9 @@ void OptimizeExprGPU(Expr *expr) {
   LocalAxisVisitor local_axis_visitor;
   local_axis_visitor(expr);
 
-  ResizeBufferSizeVisitor resize_buffer_size_visitor;
-  resize_buffer_size_visitor(expr);
+  ResizeBufferToMaxVarRange(expr);
+  // ResizeBufferSizeVisitor resize_buffer_size_visitor;
+  // resize_buffer_size_visitor(expr);
 
   ReplaceVarToZero replace_var_to_zero;
   replace_var_to_zero(expr);
