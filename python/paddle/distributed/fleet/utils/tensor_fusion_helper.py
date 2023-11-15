@@ -385,7 +385,12 @@ class FusedCommBuffer:
             param._copy_gradient_from(tmp_var)
 
     def add_grad(self, param, use_comm=True):
-        assert param.name in self._params_step_dict
+        assert (
+            param.name in self._params_step_dict
+        ), "{} not in params_dict, please check accumulation_steps".format(
+            param.name
+        )
+
         if not self._release_grads:
             current_ptr = get_grad_address(param, self.use_main_grad)
             if self._params_to_addr[param.name] != current_ptr:

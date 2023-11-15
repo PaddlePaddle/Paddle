@@ -130,6 +130,9 @@ class DygraphShardingOptimizer:
         comm_group = self._hcg.get_sharding_parallel_group()
 
         if not self._pp_overlap and self.comm_overlap:
+            assert (
+                acc_steps > 0
+            ), "acc_steps should be larger than 0 when using comm_overlap in sharding"
             self.register_reduce_overlap_hook(
                 comm_group, acc_steps, use_comm=True
             )
@@ -269,12 +272,7 @@ class DygraphShardingOptimizer:
         return mapping
 
     def reduce_gradients(self, parameter_list, hcg):
-        if self._pp_overlap:
-            return
-
-        if self.comm_overlap:
-            for buffer in self.comm_buffers:
-                buffer.scale_and_split_grads()
+        if self._pp_overlap or self.comm_overlap:
             return
 
         # TODO merge grad / nrank with dp
@@ -340,6 +338,10 @@ class DygraphShardingOptimizer:
         # NOTE in dygraph mode, the only different between step and minimize is that minimize
         # allow user to customize the parameters for updating on each step
 
+        if self.comm_overlap:
+            for buffer in self.comm_buffers:
+                buffer.scale_and_split_grads()
+
         assert (
             not self._using_param_groups
         ), "minimize() is not support if using param_groups"
@@ -363,6 +365,9 @@ class DygraphShardingOptimizer:
     @framework.dygraph_only
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
+        if self.comm_overlap:
+            for buffer in self.comm_buffers:
+                buffer.scale_and_split_grads()
 
         # hack to grad_clip all parameters,
         # otherwise the self._inner_opt will only grad_clip the self._rank2params[self._sharding_rank] params
