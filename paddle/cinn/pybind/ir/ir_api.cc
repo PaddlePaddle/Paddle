@@ -843,6 +843,8 @@ void BindIrContext(py::module *m) {
       .def_static("MakeThenContext",
                   []() { return IRContext(new ThenContextNode()); });
 
+  m->def("link_to_parent_context", &pybind::LinkToParentContext);
+
   py::class_<IRBuilder> ir_builder(*m, "IRBuilder");
   ir_builder.def(py::init<>())
       .def("EnterWithContext", &IRBuilder::EnterWithContext)

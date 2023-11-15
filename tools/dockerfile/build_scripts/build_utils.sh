@@ -83,9 +83,6 @@ function do_cpython_build {
     rm -rf Python-$py_ver
     # Some python's install as bin/python3. Make them available as
     # bin/python.
-    if [ -e ${prefix}/bin/python3.7 ]; then
-        ln -s python3.7 ${prefix}/bin/python
-    fi
     if [ -e ${prefix}/bin/python3.8 ]; then
         ln -s python3.8 ${prefix}/bin/python
     fi
@@ -98,16 +95,20 @@ function do_cpython_build {
     if [ -e ${prefix}/bin/python3.11 ]; then
         ln -s python3.11 ${prefix}/bin/python
     fi
+    if [ -e ${prefix}/bin/python3.12 ]; then
+        ln -s python3.12 ${prefix}/bin/python
+    fi
     # NOTE Make libpython shared library visible to python calls below
-    if [ -e ${prefix}/bin/python3.10 ] || [ -e ${prefix}/bin/python3.11 ]; then
+    if [ -e ${prefix}/bin/python3.10 ] || [ -e ${prefix}/bin/python3.11 ] || [ -e ${prefix}/bin/python3.12 ]; then
         LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python -m pip config set global.trusted-host mirrors.aliyun.com
         LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python -m pip config set global.index-url http://mirrors.aliyun.com/pypi/simple/
     fi
     LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python get-pip.py
-    LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/pip install wheel==0.32.2
+    LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/pip install wheel==0.40.0
     cd /
     ls ${MY_DIR}
-    local abi_tag=$(LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/python ${MY_DIR}/python-tag-abi-tag.py)
+    abi_version=$(LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/python -V|awk '{print $2}'|awk -F '.' '{print $1$2}')
+    local abi_tag=$(echo cp$abi_version-cp$abi_version)
     ln -s ${prefix} /opt/python/${abi_tag}
 }
 

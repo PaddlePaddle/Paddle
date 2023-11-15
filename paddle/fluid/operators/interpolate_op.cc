@@ -61,7 +61,7 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  int out_w;
+  int out_w = 0;
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(
@@ -151,7 +151,7 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  int out_h, out_w;
+  int out_h = 0, out_w = 0;
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(
@@ -247,7 +247,7 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  int out_d, out_h, out_w;
+  int out_d = 0, out_h = 0, out_w = 0;
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(

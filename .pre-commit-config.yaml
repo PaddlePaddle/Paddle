@@ -56,17 +56,13 @@ repos:
     hooks:
     -   id: black
         files: (.*\.(py|pyi|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
--   repo: https://github.com/pycqa/isort
-    rev: 5.11.5
-    hooks:
-    -   id: isort
 -   repo: https://github.com/PyCQA/flake8
     rev: 5.0.4
     hooks:
     -   id: flake8
         args: ["--config=.flake8"]
 -   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.289
+    rev: v0.1.5
     hooks:
     -   id: ruff
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
@@ -160,3 +156,13 @@ repos:
     hooks:
     -   id: cmakelint
         args: [--config=./tools/codestyle/.cmakelintrc]
+# Others
+-   repo: local
+    hooks:
+    -   id: sort-txt-file
+        name: sort-txt-file
+        description: Sorts each line string in a text file
+        entry: python ./tools/codestyle/sort_txt_file.py
+        language: python
+        files: test/white_list/pir_op_test_white_list
+        args: []

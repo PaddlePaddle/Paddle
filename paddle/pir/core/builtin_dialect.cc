@@ -46,6 +46,7 @@ void BuiltinDialect::initialize() {
                      DoubleAttribute,
                      PointerAttribute,
                      Int32Attribute,
+                     IndexAttribute,
                      Int64Attribute,
                      ArrayAttribute,
                      TypeAttribute>();
@@ -53,6 +54,7 @@ void BuiltinDialect::initialize() {
   RegisterOps<ModuleOp,
               GetParameterOp,
               SetParameterOp,
+              ShadowOutputOp,
               CombineOp,
               SliceOp,
               SplitOp,

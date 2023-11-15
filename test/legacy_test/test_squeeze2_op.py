@@ -56,11 +56,20 @@ class TestSqueezeOp(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            no_check_set=['XShape'], check_prim=True, check_new_ir=True
+            no_check_set=['XShape'],
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ["X"],
+            "Out",
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -281,6 +290,16 @@ class TestSqueezeAPI(unittest.TestCase):
             self.squeeze(x2, axis=2.1)
 
         self.assertRaises(TypeError, test_axes_type)
+
+    def test_pir_error(self):
+        def test_axes_type():
+            with paddle.pir_utils.IrGuard():
+                x2 = paddle.static.data(
+                    name="x2", shape=[2, 1, 25], dtype="int32"
+                )
+                self.squeeze(x2, axis=2.1)
+
+        self.assertRaises(ValueError, test_axes_type)
 
 
 class TestSqueezeInplaceAPI(TestSqueezeAPI):

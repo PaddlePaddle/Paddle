@@ -33,10 +33,14 @@ class GroupOp : public pir::Op<GroupOp> {
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::Type> &output_types);
 
-  pir::Block *Block();
-  std::vector<pir::Operation *> Ops();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    std::unique_ptr<pir::Block> &&block);
 
-  void Verify();
+  pir::Block *block();
+  std::vector<pir::Operation *> ops();
+
+  void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT
 };
 
