@@ -719,6 +719,10 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
   Node* filter_max = nullptr;
   Node* scale_max = nullptr;
   bool per_channel_quant = false;
+
+  // bool per_channel_quant =
+  //   std::getenv("FLAGS_fc_gemm_use_per_channel") == nullptr ? false : true;
+
   if (op_weights_precision != "int8") {
     PrepareWeight<float, int16_t>(graph,
                                   scope,

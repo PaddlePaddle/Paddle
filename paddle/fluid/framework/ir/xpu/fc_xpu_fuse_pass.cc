@@ -524,13 +524,31 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
 
   (*fusion_nodes_map)["bias"] = fusion_bias_node;
 
+  int gemm_compute =
+      Has("gemm_compute_precision") ? Get<int>("gemm_compute_precision") : -1;
+
+  VLOG(5) << "Gemm Compute Type:" << gemm_compute;
+
   Node* filter_intx = nullptr;
   Node* filter_max = nullptr;
   Node* scale_max = nullptr;
   bool per_channel_quant =
       std::getenv("FLAGS_fc_gemm_use_per_channel") == nullptr ? false : true;
   if (op_weights_precision != "int8") {
-    PrepareWeight<float, int16_t>(graph,
+    if (gemm_compute != 2) {
+      PrepareWeight<float, int16_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    per_channel_quant);
+    } else {
+      VLOG(5) << "Gemm compute type is int31";
+      PrepareWeight<float, float>(graph,
                                   scope,
                                   block,
                                   mul_w_replicated_node,
@@ -540,6 +558,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                   !transpose_w,
                                   weight_scale,
                                   per_channel_quant);
+    }
   } else {
     PrepareWeight<int8_t, int8_t>(graph,
                                   scope,
