@@ -429,6 +429,11 @@ static void ParseIndex(const paddle::Tensor& tensor,
       if (slice_tensor.shape().size() == 0 &&
           slice_tensor.dtype() != phi::DataType::BOOL) {
         // 0-D tensor is same with scalar
+        PADDLE_ENFORCE_EQ(
+            slice_tensor.is_dense_tensor(),
+            true,
+            platform::errors::InvalidArgument(
+                "Now, Tensor in indexing only support DenseTensor."));
         Py_ssize_t s_t = GetSliceIndexFromTensor(
             (*static_cast<phi::DenseTensor*>(slice_tensor.impl().get())));
         auto start = s_t < 0 ? s_t + dim_len : s_t;
@@ -618,6 +623,11 @@ static paddle::Tensor dealWithAdvancedIndex(
 
 static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
                                             const paddle::Tensor& bool_index) {
+  PADDLE_ENFORCE_EQ(bool_index.is_dense_tensor(),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "Now, Tensor in indexing only support DenseTensor."));
+
   PADDLE_ENFORCE(bool_index.shape().size() <= tensor.shape().size(),
                  platform::errors::InvalidArgument(
                      "The dims of bool index doesn't match indexed array, "
