@@ -362,10 +362,11 @@ if(WITH_PYTHON)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/ir.dll)
     endif()
 
-    add_custom_command(
-      OUTPUT ${op_impl_path}/common.dll COMMAND ${CMAKE_COMMAND} -E copy
-                                                ${COMMON_LIB} ${op_impl_path})
-    list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/common.dll)
+    # add_custom_command(
+    #   OUTPUT ${op_impl_path}/common.dll COMMAND ${CMAKE_COMMAND} -E copy
+    #                                             ${COMMON_LIB} ${op_impl_path})
+    # list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/common.dll)
+
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
       add_custom_command(
         OUTPUT ${op_impl_path}/libiomp5md.dll

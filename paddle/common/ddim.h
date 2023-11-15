@@ -268,14 +268,6 @@ DDim stride(const DDim& ddim);
 DDim stride_numel(const DDim& ddim);
 }  // namespace common
 
-namespace paddle {
-namespace framework {
-
-using DDim = common::DDim;
-
-}  // namespace framework
-}  // namespace paddle
-
 namespace std {
 template <>
 struct hash<common::DDim> {
