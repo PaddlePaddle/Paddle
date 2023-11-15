@@ -25,6 +25,7 @@ function case_list_unit() {
     fi
     
     for ((i=2; i<=`awk -F, 'END {print NR}' testslist.csv`; i++)); do
+        echo "=========== $case_name run  begin ==========="
         item=`awk -F, 'NR=='$i' {print}' testslist.csv`
         if [[ $item =~ PYTHONPATH=([^,;]*)([,;]|$) ]]; then
             substring="${BASH_REMATCH[1]}"
@@ -32,10 +33,7 @@ function case_list_unit() {
             export PYTHONPATH=$substring
         fi
         case_name=`awk -F, 'NR=='$i' {print $1}' testslist.csv`
-        echo "=========== $case_name run  begin ==========="
-        rm -rf ./mylog
-        python -m paddle.distributed.launch --log_dir=./mylog \
-            --devices=0,1,2,3,4,5,6,7 $case_name.py >>${log_path}/$case_name 2>&1
+        python $case_name.py >>${log_path}/$case_name 2>&1
         echo "=========== $case_name run  end ==========="
     done
 }
