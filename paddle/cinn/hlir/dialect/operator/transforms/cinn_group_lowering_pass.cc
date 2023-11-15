@@ -159,10 +159,10 @@ std::shared_ptr<pir::ShapeConstraintIRAnalysis> CreateShapeAnalysis(
     }
   }
 
-  sym_dim_mgr.MapSymbolicDimEqual(sym_vec1[0], sym_vec1[1]);
   sym_dim_mgr.MapSymbolicDimEqual(sym_vec1[0], sym_vec2[0]);
   sym_dim_mgr.MapSymbolicDimEqual(sym_vec1[1], sym_vec2[1]);
-  sym_dim_mgr.MapSymbolicDimEqual(sym_vec3[1], sym_vec1[1]);
+  sym_dim_mgr.MapSymbolicDimEqual(sym_vec1[0], sym_vec3[0]);
+  sym_dim_mgr.MapSymbolicDimEqual(sym_vec1[1], sym_vec3[1]);
 
   std::cout << sym_dim_mgr.IsSymbolicDimEqual(sym_vec1[0], sym_vec2[0])
             << std::endl;
