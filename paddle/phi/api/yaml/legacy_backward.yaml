@@ -645,6 +645,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [input]
+    spmd_rule: SliceGradInferSpmdDynamic
   kernel :
     func : slice_grad
   composite: slice_grad(input, out_grad, axes, starts, ends, infer_flags, decrease_axis, input_grad)
@@ -683,6 +684,7 @@
   infer_meta :
     func : GeneralUnaryGradInferMeta
     param : [x]
+    spmd_rule : StridedSliceGradInferSpmdDynamic
   kernel :
     func : strided_slice_grad
   no_need_buffer : x

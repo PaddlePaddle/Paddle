@@ -78,10 +78,10 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
 }
 
 std::size_t CountLeadingZeros(uint32_t val) {
-#if defined(__clang__) || defined(__GNUC__)
   if (val == 0) {
     return 32;
   }
+#if defined(__clang__) || defined(__GNUC__)
   return __builtin_clz(val);
 #elif defined(_MSC_VER)
   // windows don't have built-in clz/ctz function
@@ -89,9 +89,6 @@ std::size_t CountLeadingZeros(uint32_t val) {
   _BitScanReverse(&Index, val);
   return (uint32_t)Index ^ 31;
 #else
-  if (val == 0) {
-    return 32;
-  }
   std::size_t zero_bits = 0;
   for (std::size_t shift = 32 >> 1; shift; shift >>= 1) {
     uint32_t tmp = val >> shift;

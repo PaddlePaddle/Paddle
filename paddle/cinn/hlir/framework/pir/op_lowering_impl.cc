@@ -672,7 +672,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
         LoopAssignReduce(
             ir_sch, op, greducer, this->target_, tensor_map, tmp_tensor_info);
       }
-    } else {
+    } else if (master) {
       VLOG(3) << "Before assign node " << op_name
               << " into horizontal link reducer, ir is:\n"
               << ir_sch.GetModule().GetExprs().at(0);
