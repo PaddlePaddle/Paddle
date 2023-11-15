@@ -1109,7 +1109,7 @@ TEST(pattern_rewrite, Patterns) {
   paddle::framework::Scope scope;
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  pm.AddPass(pir::CreateConstantFoldingPass(&scope));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
