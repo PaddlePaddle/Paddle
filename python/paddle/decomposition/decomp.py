@@ -17,6 +17,7 @@ import typing
 
 from paddle import pir
 from paddle.autograd import ir_backward
+from paddle.autograd.backward_utils import ValueDict
 from paddle.base.core import (
     call_decomp,
     decomp_ops_list_contain_unused_output,
@@ -122,7 +123,7 @@ def _check_op_results(
             continue
         elif new_out is not None:
             if orig_vars is not None and dst_vars is not None:
-                if orig_out in orig_vars.keys():
+                if orig_out in orig_vars:
                     dst_vars[orig_vars[orig_out]] = new_out
             orig_dtype = orig_out.dtype
             new_dtype = new_out.dtype
@@ -202,7 +203,7 @@ def decompose(
     else:
         op_filter = lambda x: True
     dst_vars = [None] * len(src_vars)
-    dst_vars_dct = {}
+    dst_vars_dct = ValueDict()
     for idx, item in enumerate(src_vars):
         if not isinstance(item, pir.OpResult):
             raise TypeError(

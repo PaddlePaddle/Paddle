@@ -30,6 +30,8 @@ class ValueWrapper:
     def __eq__(self, other) -> bool:
         if isinstance(other, ValueWrapper):
             other = other.value
+        if self.value is None:
+            return other is None
         return self.value.is_same(other)
 
 
@@ -61,28 +63,18 @@ class ValueDict:
         for key, val in self._items.items():
             yield key.value, val
 
-    def __setitem__(self, other_key, other_val: Any):
-        if not isinstance(other_key, ValueWrapper):
-            other_key = ValueWrapper(other_key)
-        self._items[other_key] = other_val
+    def __setitem__(self, key, val: Any):
+        if not isinstance(key, ValueWrapper):
+            key = ValueWrapper(key)
+        self._items[key] = val
 
-    def __getitem__(self, other_key):
-        if not self.__contains__(other_key):
+    def __getitem__(self, key):
+        if not self.__contains__(key):
             if self._default_factory is not None:
-                self[other_key] = self._default_factory()
+                self[key] = self._default_factory()
             else:
-                self[other_key] = None
-        return self._items[other_key]
-
-    def __and__(self, other_dict: ValueDict):
-        ret = ValueDict()
-        for key, val in self._items.items():
-            if key in other_dict:
-                ret[key] = val
-        return ret
-
-    def __or__(self, other_dict: ValueDict):
-        return ValueDict(self._items | other_dict._items)
+                raise KeyError(f'{key} not in ValueDict')
+        return self._items[key]
 
     def __bool__(self):
         return bool(self._items)
@@ -93,10 +85,10 @@ class ValueDict:
     def __iter__(self):
         return self.keys()
 
-    def __contains__(self, other_key):
-        if isinstance(other_key, ValueWrapper):
-            return other_key in self._items
-        return ValueWrapper(other_key) in self._items
+    def __contains__(self, key):
+        if isinstance(key, ValueWrapper):
+            return key in self._items
+        return ValueWrapper(key) in self._items
 
 
 class ValueSet:
@@ -108,10 +100,10 @@ class ValueSet:
             for val in iter:
                 self.add(val)
 
-    def add(self, other_val):
-        other_val = ValueWrapper(other_val)
-        if not self.__contains__(other_val):
-            self._values.add(other_val)
+    def add(self, val):
+        val = ValueWrapper(val)
+        if not self.__contains__(val):
+            self._values.add(val)
 
     def update(self, other_set: set):
         for val in other_set:
@@ -137,10 +129,10 @@ class ValueSet:
         for val in self._values:
             yield val.value
 
-    def __contains__(self, other_val):
-        if isinstance(other_val, ValueWrapper):
-            return other_val in self._values
-        return ValueWrapper(other_val) in self._values
+    def __contains__(self, val):
+        if isinstance(val, ValueWrapper):
+            return val in self._values
+        return ValueWrapper(val) in self._values
 
 
 class State:

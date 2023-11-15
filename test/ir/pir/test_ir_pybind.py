@@ -16,6 +16,7 @@ import unittest
 
 import paddle
 from paddle import pir
+from paddle.autograd.backward_utils import ValueSet
 
 paddle.enable_static()
 
@@ -92,7 +93,7 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(matmul_op.result(0).stop_gradient, True)
 
         # test opresult hash
-        result_set = set()
+        result_set = ValueSet()
         for opresult in matmul_op.results():
             result_set.add(opresult)
         # test opresult hash and hash(opresult) == hash(operesult)

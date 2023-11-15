@@ -20,6 +20,7 @@ import paddle
 import paddle.pir.core as ir_static
 from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+from paddle.autograd.backward_utils import ValueDict
 from paddle.autograd.ir_backward import grad
 from paddle.base import core, framework
 from paddle.base.compiler import BuildStrategy
@@ -121,7 +122,7 @@ class RunableProgram:
 
     @classmethod
     def _get_value_name_map_from_program(cls, program):
-        ret = {}
+        ret = ValueDict()
         ret[fake_op_result()] = "FakeVar"
         for op in program.global_block().ops:
             if op.name() == "pd_op.data":
