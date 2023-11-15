@@ -19,6 +19,7 @@
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/pir/core/operation.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
 namespace cinn {
 namespace hlir {
@@ -63,6 +64,8 @@ struct Group {
   std::vector<std::shared_ptr<Group>> fused_sub_groups;
   // if as sub-group, used for belong groups.
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
+
+  std::shared_ptr<::pir::ShapeConstraintIRAnalysis> shape_analysis = nullptr;
 
   // for op lowering.
   std::vector<std::string> input_names;

@@ -67,7 +67,7 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   /// \brief kDynamic
   ///
-  static constexpr int64_t kDynamic = std::numeric_limits<int64_t>::min();
+  static constexpr int64_t kDynamic = -1;
 
   ///
   /// \brief Check whether this type is ranked, currently return true.
