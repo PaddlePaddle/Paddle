@@ -221,9 +221,11 @@ class UniformOpPattern : public pir::drr::DrrPatternBase<UniformOpPattern> {
   }
 };
 
-PdOpToCinnOpPass::PdOpToCinnOpPass() : pir::Pass("pd_to_cinn_pass", 1) {}
+PdOpToCinnOpPass::PdOpToCinnOpPass()
+    : pir::PatternRewritePass("pd_to_cinn_pass", 1) {}
 
-bool PdOpToCinnOpPass::Initialize(pir::IrContext *context) {
+pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
+    pir::IrContext *context) {
   pir::RewritePatternSet ps(context);
   ps.Add<ScaleOpPattern>(
       context);  // NOTE, scale op pattern should before AddBroadcastTo
@@ -232,15 +234,7 @@ bool PdOpToCinnOpPass::Initialize(pir::IrContext *context) {
   ps.Add<ReshapeOpPattern>(context);
   // ps.Add(UniformOpPattern().Build(context));
 
-  patterns_ = ::pir::FrozenRewritePatternSet(std::move(ps));
-  return true;
-}
-
-void PdOpToCinnOpPass::Run(pir::Operation *op) {
-  pir::GreedyRewriteConfig cfg;
-  cfg.use_top_down_traversal = true;
-  cfg.max_iterations = 10;
-  pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+  return ps;
 }
 
 bool PdOpToCinnOpPass::CanApplyOn(pir::Operation *op) const {
