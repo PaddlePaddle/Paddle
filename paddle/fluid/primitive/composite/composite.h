@@ -129,7 +129,7 @@ Tensor gelu_decomp(const Tensor& x, bool approximate) {
     auto GELU_CONSTANT = full<T>(phi::vectorize(x.dims()), 0.044715, org_dtype);
     auto x_pow3 =
         elementwise_pow<T>(x, full<T>(phi::vectorize(x.dims()), 3, org_dtype));
-    auto tanh_out = tanh<T>(kAlpha * (x + x * x * x * GELU_CONSTANT));
+    auto tanh_out = tanh<T>(kAlpha * (x + x_pow3 * GELU_CONSTANT));
 
     auto res = x * half * (one + tanh_out);
     return res;

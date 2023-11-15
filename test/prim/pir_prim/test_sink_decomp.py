@@ -184,14 +184,12 @@ class TestGeluSink(unittest.TestCase):
     def test_gelu_forward_true(self):
         res_ref = self.base_net(approximate=True)
         res = self.base_net(approximate=True, flag="forward")
-        print("---------------gelu_true-----------------")
         for ref, actual in zip(res_ref, res):
             np.testing.assert_equal(ref, actual)
 
     def test_gelu_approximate_false(self):
         res_ref = self.base_net(approximate=False)
         res = self.base_net(approximate=False, flag="forward")
-        print("---------------gelu_false-----------------")
         for ref, actual in zip(res_ref, res):
             np.testing.assert_equal(ref, actual)
 
