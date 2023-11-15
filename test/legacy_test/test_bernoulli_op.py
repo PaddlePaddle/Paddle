@@ -32,6 +32,7 @@ def output_hist(out):
 
 class TestBernoulliOp(OpTest):
     def setUp(self):
+        self.python_api = paddle.bernoulli
         self.op_type = "bernoulli"
         self.init_dtype()
         self.init_test_case()
