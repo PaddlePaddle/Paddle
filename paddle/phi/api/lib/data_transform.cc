@@ -601,12 +601,19 @@ void TransDataBackend(const phi::SelectedRows* tensor,
 
 /* ------------------ for auto parallel ----------------------- */
 
-static bool ReshardIsNeeded(
+static bool ReshardIsNeededWithPartial(
     const phi::distributed::TensorDistAttr& in_dist_attr,
     const phi::distributed::TensorDistAttr& out_dist_attr) {
   return (in_dist_attr.process_mesh() != out_dist_attr.process_mesh() ||
           in_dist_attr.dims_mapping() != out_dist_attr.dims_mapping() ||
           in_dist_attr.partial_status() != out_dist_attr.partial_status());
+}
+
+static bool ReshardIsNeeded(
+    const phi::distributed::TensorDistAttr& in_dist_attr,
+    const phi::distributed::TensorDistAttr& out_dist_attr) {
+  return (in_dist_attr.process_mesh() != out_dist_attr.process_mesh() ||
+          in_dist_attr.dims_mapping() != out_dist_attr.dims_mapping());
 }
 
 std::string ReshardDebugInfo(
@@ -634,7 +641,8 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
   if (tensor_in) {
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_in.get());
-    if (ReshardIsNeeded(dist_tensor->dist_attr(), tensor_dist_attr)) {
+    if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(),
+                                   tensor_dist_attr)) {
       VLOG(6) << "ApiIn to Replicated KernelIn - "
               << ReshardDebugInfo(*dist_tensor, tensor_dist_attr);
       auto* func = phi::distributed::ChooseProperReshardFunction(
@@ -670,7 +678,7 @@ ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
     if (tensor_in) {
       phi::distributed::DistTensor* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(tensor_in.get());
-      if (ReshardIsNeeded(dist_tensor->dist_attr(), dist_attr)) {
+      if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(), dist_attr)) {
         VLOG(6) << "Vector ApiIn to Replicated KernelIn - "
                 << ReshardDebugInfo(*dist_tensor, dist_attr);
         auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
@@ -756,6 +764,7 @@ void ReshardKernelOutputToApiOutput(
       // avoid add branch here
       // shallow copy dense tensor
       *dist_tensor->unsafe_mutable_value() = src_tensor->value();
+      dist_tensor->unsafe_set_dist_attr(src_tensor->dist_attr());
     }
   } else {
     VLOG(3) << "The output tensor is nullptr when call "
