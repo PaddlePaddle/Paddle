@@ -215,19 +215,13 @@ def _clip_by_global_norm_using_mp_type(*args):
 
 def _cast_to_mp_type_if_enabled(x):
     if (
-        in_dynamic_mode()
-        and (
-            x.dtype == core.VarDesc.VarType.FP16
-            or x.dtype == core.VarDesc.VarType.BF16
-        )
-        and _clip_by_global_norm_using_mp_type()
-    ):
+        x.dtype == core.VarDesc.VarType.FP16
+        or x.dtype == core.VarDesc.VarType.BF16
+    ) and _clip_by_global_norm_using_mp_type():
         return x.astype(core.VarDesc.VarType.FP32)
     elif (
-        in_pir_mode()
-        and (x.dtype == DataType.FLOAT16 or x.dtype == DataType.BFLOAT16)
-        and _clip_by_global_norm_using_mp_type()
-    ):
+        x.dtype == DataType.FLOAT16 or x.dtype == DataType.BFLOAT16
+    ) and _clip_by_global_norm_using_mp_type():
         return x.astype(DataType.FP32)
     else:
         return x
