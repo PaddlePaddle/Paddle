@@ -30,6 +30,7 @@ install_paddle(){
 
 get_diff_TO_case(){
 cd ${paddle_dir}
+let last_num=${#target_lists_for_hybrid_ci[@]}-1
 for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{print $NF}'`;do
     arr_file_name=(${file_name//// })
     dir1=${arr_file_name[0]}
@@ -44,8 +45,11 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
         continue
     else
         for ((i=0; i<${#target_lists_for_hybrid_ci[@]}; i++)); do
-            if [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
+            if [[ $i != ${last_num} ]] && [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=gpt-3
+                case_list[${#case_list[*]}]=unit_test
+                break
+            elif [[ $i == ${last_num} ]] && [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=unit_test
                 break
             else

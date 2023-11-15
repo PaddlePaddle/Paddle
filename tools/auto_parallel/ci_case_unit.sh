@@ -34,6 +34,9 @@ function case_list_unit() {
         fi
         case_name=`awk -F, 'NR=='$i' {print $1}' testslist.csv`
         python $case_name.py >>${log_path}/$case_name 2>&1
+        if [ $? -eq 0 ]; then
+            tail -n 10 ${log_path}/$case_name
+        fi
         echo "=========== $case_name run  end ==========="
     done
 }
