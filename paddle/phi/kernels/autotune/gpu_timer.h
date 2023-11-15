@@ -108,17 +108,15 @@ class CalculateStreamTimer {
         end_time_(0),
         is_started_(false) {}
 
-  explicit CalculateStreamTimer(const paddle::platform::Place place)
+  explicit CalculateStreamTimer(const paddle::platform::Place &place)
       : calculated_stream_(nullptr),
         start_time_(0),
         end_time_(0),
         is_started_(false) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     calculated_stream_ =
         dynamic_cast<phi::GPUContext *>(
             paddle::platform::DeviceContextPool::Instance().Get(place))
             ->stream();
-#endif
   }
 
   void Start() {
