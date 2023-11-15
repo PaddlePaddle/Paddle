@@ -1499,7 +1499,6 @@ std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-  forward_program.Print(std::cout);
   pir::PassManager pass_manager(ctx);
   cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
 
@@ -1508,7 +1507,6 @@ std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
   pass_manager.AddPass(pir::CreateBuildCinnPass());
 
   pass_manager.Run(&forward_program);
-  forward_program.Print(std::cout);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
   std::unique_ptr<pir::Program> new_program =
       cinn::dialect::ir::CINNGroupLoweringPass(&forward_program);
