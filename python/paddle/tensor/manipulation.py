@@ -4999,10 +4999,10 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         )
     axis = non_negative_axis(arr, axis)
     broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         values = (
             paddle.to_tensor(values)
-            if not isinstance(values, paddle.Tensor)
+            if not isinstance(values, (paddle.Tensor, paddle.pir.OpResult))
             else values
         )
         if broadcast_shape:
