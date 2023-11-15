@@ -697,21 +697,21 @@ GroupList OpFusionPassInternal(
 
   std::cerr << "op fusion res " << res.size() << std::endl;
 
+  std::stringstream ss;
+  ::pir::IrPrinter printer(ss);
   for (size_t i = 0; i < res.size(); ++i) {
     auto group = res[i];
 
-    std::cerr << "!!!!!!!!!!!!!!!!\n";
-    std::cerr << group->group_id << std::endl;
-    std::cerr << group->output_ops.size() << std::endl;
-    std::stringstream ss;
-    ::pir::IrPrinter printer(ss);
+    ss << "!!!!!!!!!!!!!!!!\n";
+    ss << group->group_id << std::endl;
+    ss << group->kind() << std::endl;
+
     for (auto op : group->ops) {
       printer.PrintOperation(op);
       ss << "\n";
     }
-    std::cerr << ss.str() << std::endl;
   }
-
+  std::cerr << ss.str() << std::endl;
   VLOG(3) << "OpFusionPass Finish...!";
 
   VLOG(3) << "OpFusionPass Finish...!";

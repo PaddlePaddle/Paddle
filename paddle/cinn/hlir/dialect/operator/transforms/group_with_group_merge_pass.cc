@@ -399,6 +399,8 @@ struct HorizontalFuseUtil {
   static bool DetectFusabilityByKind(FusePassCtxT* ctx,
                                      const OpGroupPtr& src,
                                      const OpGroupPtr& dst) {
+    std::cerr << "horzi " << src.group_id() << "\t" << dst.group_id()
+              << std::endl;
     const KindKeyT kind_pair(src.kind(), dst.kind());
     const auto& map = GetConditionMap();
     const auto& iter = map.find(kind_pair);
@@ -406,6 +408,8 @@ struct HorizontalFuseUtil {
       return false;
     }
     auto out = iter->second(src, dst);
+
+    std::cerr << "res " << out << std::endl;
 
     return out;
   }
@@ -2142,21 +2146,22 @@ GroupList GeneralFusionMergePassInternal(const GroupList& group_list) {
 
   std::cerr << "op fusion res " << res.size() << std::endl;
 
+  std::stringstream ss;
+  ::pir::IrPrinter printer(ss);
   for (size_t i = 0; i < res.size(); ++i) {
     auto group = res[i];
 
-    std::cerr << "!!!!!!!!!!!!!!!!\n";
-    std::cerr << group->group_id << std::endl;
-    std::cerr << "kind " << group->kind() << std::endl;
+    ss << "!!!!!!!!!!!!!!!!\n";
+    ss << group->group_id << std::endl;
+    ss << "kind " << group->kind() << std::endl;
 
-    std::stringstream ss;
-    ::pir::IrPrinter printer(ss);
     for (auto op : group->ops) {
       printer.PrintOperation(op);
       ss << "\n";
     }
-    std::cerr << ss.str() << std::endl;
   }
+
+  std::cerr << ss.str() << std::endl;
 
   return res;
 }
