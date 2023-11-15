@@ -1606,8 +1606,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
                << "[" << op_desc.Type() << "]" << grad_var_name << " "
                << idx_in_op << " " << idx_in_vec;
 
-      VarDesc* var_desc =
-          op_desc.Block()->FindVarRecursive(var_name.substr(0, 1));
+      VarDesc* var_desc = op_desc.Block()->FindVarRecursive(
+          op_desc.Input(var_name.substr(0, 1))[0]);
       IR_ENFORCE(var_desc != nullptr,
                  "[op:%s] Input %s should not be null",
                  op_desc.Type(),
@@ -1640,10 +1640,6 @@ struct MulGradOpTranscriber : public OpTranscriber {
 
     if (x_grad_output.size()) {
       gradReshape("X@GRAD");
-    }
-
-    if (y_grad_output.size() < 1) {
-      return;
     }
 
     if (y_grad_output.size()) {
@@ -2437,6 +2433,35 @@ struct RepeatInterLeaveGradOpTranscriber : public OpTranscriber {
   }
 };
 
+struct FusedElemwiseAddActivationOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "scale") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.0);
+    } else if (info.name == "axis") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -1);
+    } else if (info.name == "save_intermediate_out") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    }
+  }
+};
+
+struct FusedElemwiseAddActivationGradOpTranscriber
+    : public FusedElemwiseAddActivationOpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    const auto inter_out_grad = op_desc.Output("IntermediateOut@GRAD");
+    if (inter_out_grad.size() > 0) {
+      IR_THROW(
+          "pd_op.fused_elemwise_add_activation_grad doesn't have "
+          "Intermediate_out_grad output");
+    }
+
+    return OpTranscriber::LoopkUpOpInfo(ctx, op_desc);
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -2452,6 +2477,10 @@ OpTranslator::OpTranslator() {
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["fill_constant"] = FillConstantTranscriber();
   special_handlers["fused_feedforward"] = FusedFeedForwardOpTranscriber();
+  special_handlers["fused_elemwise_add_activation"] =
+      FusedElemwiseAddActivationOpTranscriber();
+  special_handlers["fused_elemwise_add_activation_grad"] =
+      FusedElemwiseAddActivationGradOpTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
