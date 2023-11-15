@@ -3448,7 +3448,16 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
     else:
         raise RuntimeError("Only support lstsq api for CPU or CUDA device.")
 
-    if not (x.dtype == y.dtype and x.dtype in (paddle.float32, paddle.float64)):
+    if not (
+        x.dtype == y.dtype
+        and x.dtype
+        in (
+            paddle.float32,
+            paddle.float64,
+            paddle.base.core.DataType.FLOAT32,
+            paddle.base.core.DataType.FLOAT64,
+        )
+    ):
         raise ValueError(
             "Only support x and y have the same dtype such as 'float32' and 'float64'."
         )
@@ -3469,9 +3478,15 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         )
 
     if rcond is None:
-        if x.dtype == paddle.float32:
+        if (
+            x.dtype == paddle.float32
+            or x.dtype == paddle.base.core.DataType.FLOAT32
+        ):
             rcond = 1e-7 * max(x.shape[-2], x.shape[-1])
-        elif x.dtype == paddle.float64:
+        elif (
+            x.dtype == paddle.float64
+            or x.dtype == paddle.base.core.DataType.FLOAT64
+        ):
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
     if in_dynamic_or_pir_mode():
@@ -3479,7 +3494,13 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
             x, y, rcond, driver
         )
         if driver == "gels":
-            rank = paddle.empty(shape=[0], dtype=paddle.int32)
+            if in_dynamic_mode():
+                rank = paddle.empty(shape=[0], dtype=paddle.int32)
+
+            else:
+                rank = paddle.empty(
+                    shape=[0], dtype=paddle.base.core.DataType.INT32
+                )
             singular_values = paddle.empty(shape=[0], dtype=x.dtype)
         elif driver == "gelsy":
             singular_values = paddle.empty(shape=[0], dtype=x.dtype)
