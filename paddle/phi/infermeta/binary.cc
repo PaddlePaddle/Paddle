@@ -140,6 +140,29 @@ void KLDivInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void ArrayWriteInferMeta(const MetaTensor& array,
+                         const MetaTensor& x,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  out->set_dtype(array.dtype());
+  out->set_layout(array.layout());
+}
+
+void ArrayReadInferMeta(const MetaTensor& array,
+                        const Scalar& i,
+                        MetaTensor* out,
+                        MetaConfig config) {
+  if (!config.is_runtime) {
+    out->set_dims({-1});
+  } else {
+    double index = i.to<int64_t>();
+    out->set_dims(array.dims(index));
+    out->share_lod(array, index);
+  }
+  out->set_dtype(array.dtype());
+  out->set_layout(array.layout());
+}
+
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto x_dims = x.dims();
   auto y_dims = y.dims();
@@ -2853,6 +2876,27 @@ void TriangularSolveInferMeta(const MetaTensor& x,
   out->set_dtype(y.dtype());
   out->set_layout(y.layout());
   out->share_lod(y);
+}
+
+void TopPSamplingInferMeta(const MetaTensor& x,
+                           const MetaTensor& ps,
+                           const MetaTensor& threshold,
+                           int random_seed,
+                           MetaTensor* out,
+                           MetaTensor* ids) {
+  auto x_dims = x.dims();
+  auto ps_dims = ps.dims();
+  PADDLE_ENFORCE_EQ(x_dims[0],
+                    ps_dims[0],
+                    phi::errors::InvalidArgument(
+                        "The x_dims[0] must be equal to ps_dims[0] "
+                        "But received x_dims[0] = %d and ps_dims[0] = %d.",
+                        x_dims[0],
+                        ps_dims[0]));
+  ids->set_dims(phi::make_ddim({x_dims[0], 1}));
+  ids->set_dtype(DataType::INT64);
+  out->set_dims(phi::make_ddim({x_dims[0], 1}));
+  out->set_dtype(x.dtype());
 }
 
 void LstsqInferMeta(const MetaTensor& x,

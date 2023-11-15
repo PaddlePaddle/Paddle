@@ -539,6 +539,15 @@ class TestExpandV2CompOpInt64_t(OpTest):
         self.check_output(check_prim=True)
 
 
+class TestExpandPirOpResultListShape(unittest.TestCase):
+    def test_opresult_list_shape(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data('x', [1, 3])
+            shape = [2, paddle.full([], 4)]
+            out = paddle.expand(x, shape)
+            np.testing.assert_array_equal(tuple(out.shape), (-1, -1))
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
