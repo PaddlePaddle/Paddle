@@ -157,5 +157,40 @@ class TestArrayReadWriteApi(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestPirArrayOp(unittest.TestCase):
+    def test_array(self):
+        paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.pir.Program()
+            with paddle.static.program_guard(main_program):
+                x = paddle.full(shape=[1, 3], fill_value=5, dtype="float32")
+                y = paddle.full(shape=[1, 3], fill_value=6, dtype="float32")
+                array = paddle.tensor.create_array(
+                    dtype="float32", initialized_list=[x]
+                )
+                array = paddle.tensor.array_write(
+                    y, paddle.tensor.array_length(array), array=array
+                )
+                out0 = paddle.tensor.array_read(array, 0)
+                out1 = paddle.tensor.array_read(array, 1)
+
+            place = (
+                paddle.base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else paddle.base.CUDAPlace(0)
+            )
+            exe = paddle.base.Executor(place)
+            [fetched_out0, fetched_out1] = exe.run(
+                main_program, feed={}, fetch_list=[out0, out1]
+            )
+
+        np.testing.assert_array_equal(
+            fetched_out0, np.ones([1, 3], dtype="float32") * 5
+        )
+        np.testing.assert_array_equal(
+            fetched_out1, np.ones([1, 3], dtype="float32") * 6
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

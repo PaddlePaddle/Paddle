@@ -19,7 +19,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.base import Program, program_guard
 
 
 def python_matrix_nms(
@@ -296,7 +295,7 @@ class TestMatrixNMSOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestMatrixNMSOpNoOutput(TestMatrixNMSOp):
@@ -327,7 +326,9 @@ class TestMatrixNMSError(unittest.TestCase):
         scores = np.reshape(scores, (N, M, C))
         scores_np = np.transpose(scores, (0, 2, 1))
 
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             boxes_data = paddle.static.data(
                 name='bboxes', shape=[M, C, BOX_SIZE], dtype='float32'
             )
