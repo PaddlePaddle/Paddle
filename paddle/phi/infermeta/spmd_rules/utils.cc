@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
+
 #include <queue>
+
 #include "glog/logging.h"
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
@@ -38,7 +40,7 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
   PADDLE_ENFORCE_GE(broadcast_ndim,
                     tenosr_ndim,
                     phi::errors::InvalidArgument(
-                        "The broadcast ndim [%d] is less than tensor ndim [%d]",
+                        "The broadcast ndim [%d] is less than tenosr ndim [%d]",
                         broadcast_ndim,
                         tenosr_ndim));
   if (tenosr_ndim <= 0) {
@@ -137,8 +139,9 @@ TensorDistAttr CopyTensorDistAttrForOutput(
   new_dist_attr.set_batch_dim(src_dist_attr.batch_dim());
   // new_dist_attr.set_dynamic_dims(src_dist_attr.dynamic_dims());
   // new_dist_attr.set_annotated(false); TODO unset field is false by default.
-  new_dist_attr.clean_partial_status();  // in partial-stage I, partial is allow
-                                         // to propagate
+  new_dist_attr.clean_partial_status();  // in partial-stage I, partial is
+                                         // not allowed to propagate
+
   return new_dist_attr;
 }
 
@@ -165,6 +168,14 @@ TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr) {
 }
 
 TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim) {
+  TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
+  std::vector<int64_t> dims_mapping = dist_attr.dims_mapping();
+  dims_mapping[dim] = kReplicateDim;
+  dst_dist_attr.set_dims_mapping(dims_mapping);
+  return dst_dist_attr;
+}
+
+TensorDistAttr UnShardTensorDim(const TensorDistAttr& dist_attr, int dim) {
   TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
   std::vector<int64_t> dims_mapping = dist_attr.dims_mapping();
   dims_mapping[dim] = kReplicateDim;
@@ -209,32 +220,35 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
                        bool allow_partial) {
   auto& input_attrs = *input_attrs_ptr;
   size_t n_inputs = input_attrs.size();
-  PADDLE_ENFORCE_EQ(
-      n_inputs,
-      tensor_shapes.size(),
-      phi::errors::InvalidArgument(
-          "n_inputs [%d]  and tensor_shapes.size() [%d] not match",
-          n_inputs,
-          tensor_shapes.size()));
+  PADDLE_ENFORCE_EQ(n_inputs,
+                    tensor_shapes.size(),
+                    phi::errors::InvalidArgument(
+                        "n_inputs[%d] and tensor_shapes size [%d] not equal",
+                        n_inputs,
+                        tensor_shapes.size()));
   PADDLE_ENFORCE_EQ(n_inputs,
                     axis_names.size(),
                     phi::errors::InvalidArgument(
-                        "n_inputs [%d]  and axis_names.size() [%d] not match",
+                        "n_inputs[%d] and axis_names size [%d] not equal",
                         n_inputs,
                         axis_names.size()));
+
+  PADDLE_ENFORCE_EQ(!align_axis.empty(),
+                    true,
+                    phi::errors::InvalidArgument("align_axis is empty"));
 
   std::map<std::pair<int64_t, char>, int64_t> axis_name_to_dim;
 
   for (size_t i = 0; i < n_inputs; i++) {
     // 1、check all inputs have the align_axis
     for (char axi : align_axis) {
-      PADDLE_ENFORCE_EQ(axis_names[i].find(axi) == std::string::npos,
-                        true,
-                        phi::errors::PreconditionNotMet(
-                            "align_axis[%s]; some axis not in input [%d],[%s]",
-                            align_axis,
-                            i,
-                            axis_names[i]));
+      if (axis_names[i].find(axi) == std::string::npos) {
+        PADDLE_THROW(phi::errors::PreconditionNotMet(
+            "[%s] some axis not in  input [%d],[%s]",
+            align_axis,
+            i,
+            axis_names[i]));
+      }
     }
     // 2、build axis map
     for (size_t j = 0; j < axis_names[i].size(); j++) {
@@ -259,33 +273,27 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
 
   const auto& process_mess = input_attrs[non_empty_index].process_mesh();
   auto has_mismatch = [&](int32_t mesh_dim) {
-    bool mismatch = false;
     for (size_t i = 0; i < n_inputs; i++) {
       if (IsEmpty(tensor_shapes[i])) {
         continue;
       }
       auto& p_a = inputs_placements[non_empty_index][mesh_dim];
       auto& p_b = inputs_placements[i][mesh_dim];
-      if (!p_a->is_shard()) {
-        if (!PlacementEqual(p_a, p_b)) {
-          mismatch = true;
-          break;
+      if (p_a->is_shard() && p_b->is_shard()) {
+        auto a_shard = std::dynamic_pointer_cast<ShardStatus>(p_a);
+        auto b_shard = std::dynamic_pointer_cast<ShardStatus>(p_b);
+        auto a_axis = axis_names[non_empty_index][a_shard->get_axis()];
+        auto b_axis = axis_names[i][b_shard->get_axis()];
+        if (a_axis != b_axis) {
+          return true;
         }
       }
-      if (!p_b->is_shard()) {
-        mismatch = true;
-        break;
-      }
-      auto a_shard = std::dynamic_pointer_cast<ShardStatus>(p_a);
-      auto b_shard = std::dynamic_pointer_cast<ShardStatus>(p_b);
-      auto a_axis = axis_names[non_empty_index][a_shard->get_axis()];
-      auto b_axis = axis_names[i][b_shard->get_axis()];
-      if (a_axis != b_axis) {
-        mismatch = true;
-        break;
+
+      if (!PlacementEqual(p_a, p_b)) {
+        return true;
       }
     }
-    return mismatch;
+    return false;
   };
 
   // a dim can not be sharded twice along diffrent mesh_dim

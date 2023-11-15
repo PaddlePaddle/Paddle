@@ -93,6 +93,8 @@ std::vector<ArgDistAttr> ToArgDistAttr(
 
 TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim);
 
+TensorDistAttr UnShardTensorDim(const TensorDistAttr& dist_attr, int dim);
+
 bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
                     const std::shared_ptr<PlacementStatus>& b);
 
