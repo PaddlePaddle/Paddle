@@ -220,6 +220,10 @@ PD_DEFINE_double(cinn_infer_model_version,
                  "Paddle has different model format in inference model. We use "
                  "a flag to load different versions.");
 
+PD_DEFINE_bool(cinn_use_cutlass,
+               BoolFromEnv("FLAGS_cinn_use_cutlass", false),
+               "Whether to use cutlass kernels");
+
 namespace cinn {
 namespace runtime {
 
