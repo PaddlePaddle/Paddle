@@ -320,7 +320,7 @@ class TestCheckNumericsAPI(TestNanInfBase):
             )
         exe = paddle.static.Executor(paddle.CPUPlace())
         exe.run(
-            main_program, feed={"x": x_np, "y": y_np}, fetch_list=[out.name]
+            main_program, feed={"x": x_np, "y": y_np}, fetch_list=[out]
         )
         paddle.disable_static()
 
