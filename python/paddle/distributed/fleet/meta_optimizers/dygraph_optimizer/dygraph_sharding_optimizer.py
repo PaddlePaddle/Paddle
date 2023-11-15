@@ -121,12 +121,12 @@ class DygraphShardingOptimizer:
             )
 
         strategy = fleet.fleet._user_defined_strategy
-        sharding_cofigs = strategy.hybrid_configs["sharding_configs"]
+        sharding_configs = strategy.hybrid_configs["sharding_configs"]
         pp_configs = strategy.hybrid_configs["pp_configs"]
 
         self._pp_overlap = pp_configs.sharding_comm_overlap
-        acc_steps = sharding_cofigs.accumulate_steps
-        self.comm_overlap = sharding_cofigs.comm_overlap
+        acc_steps = sharding_configs.accumulate_steps
+        self.comm_overlap = sharding_configs.comm_overlap
         comm_group = self._hcg.get_sharding_parallel_group()
 
         if not self._pp_overlap and self.comm_overlap:
