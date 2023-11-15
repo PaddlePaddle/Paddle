@@ -102,7 +102,6 @@ class SemiAutoParallelTestBase:
             dist_input.stop_gradient = False
             flat_inputs.append(input)
             flat_dist_inputs.append(dist_input)
-
         inputs, _ = self.unflatten(flat_inputs, inputs_structure)
         dist_inputs, _ = self.unflatten(flat_dist_inputs, inputs_structure)
 
