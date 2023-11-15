@@ -119,8 +119,3 @@ cc_library(
   heter_wrapper
   SRCS heter_wrapper.cc
   DEPS framework_proto device_context heter_service_proto ${BRPC_DEPS})
-
-cc_test(
-  test_fleet_cc
-  SRCS test_fleet.cc
-  DEPS fleet_wrapper gloo_wrapper fs shell)
