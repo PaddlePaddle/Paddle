@@ -25,6 +25,7 @@
 
 #include <memory>
 #include <string>
+#include <future>
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -228,9 +229,12 @@ void CommTaskManager::CommTaskLoop() {
 
 void CommTaskManager::CommTaskClearLoop() {
   bool done = false;
+  std::future<void> future;
   while (!terminated_.load() || !done) {
+    if (future.valid()) {
+        future.wait();
+    }
     std::unique_lock<std::mutex> lock(comm_task_clear_list_mutex_);
-
     comm_task_clear_list_cv_.wait_for(
         lock,
         std::chrono::milliseconds(loop_thread_sleep_millis),
@@ -238,12 +242,18 @@ void CommTaskManager::CommTaskClearLoop() {
 
     VLOG(3) << "comm_task_clear_list_ size: " << comm_task_clear_list_.size();
     for (auto iter = comm_task_clear_list_.begin();
-         iter != comm_task_clear_list_.end();) {
-      auto task = *iter;
-      VLOG(3) << "start clear task: " << task->GetTraceMsg();
-      task->ClearRecord();
-      VLOG(3) << "end clear task: " << task->GetTraceMsg();
-      iter = comm_task_clear_list_.erase(iter);
+       iter != comm_task_clear_list_.end();) {
+       auto task = *iter;
+       VLOG(3) << "start clear task: " << task->GetTraceMsg();
+       future = std::async(std::launch::async, [&]() {
+         task->ClearRecord();
+       });
+       if (future.wait_for(std::chrono::seconds(1)) == std::future_status::timeout) {
+           VLOG(0) << "clear task timeout, detail: " << task->GetTraceMsg();
+           break;
+       }
+       VLOG(3) << "end clear task: " << task->GetTraceMsg();
+       iter = comm_task_clear_list_.erase(iter);
     }
   }
 }
