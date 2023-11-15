@@ -92,7 +92,11 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
   PrepareForCUDAGraphCapture();
 
 #if defined(PADDLE_WITH_CUDA)
-  calculate_stream_timer_ = phi::CalculateStreamTimer(place_);
+  gpuStream_t calculated_stream =
+      dynamic_cast<phi::GPUContext*>(
+          paddle::platform::DeviceContextPool::Instance().Get(place))
+          ->stream();
+  calculate_stream_timer_.SetStream(calculated_stream);
 #endif
 }
 
