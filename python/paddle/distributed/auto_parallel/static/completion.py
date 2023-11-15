@@ -1510,6 +1510,80 @@ class Completer:
                 grad_op, grad_op_dist_attr
             )
 
+            # inference partial backward
+            __gradient_sync_by_partial_ops__ = [
+                "matmul_v2_grad",
+                "elementwise_add_grad",
+                "layer_norm_grad",
+                "lookup_table_v2",
+                # "conv",
+            ]
+
+            def infer_backward_op_partial_status(
+                vars, grad_op, grad_op_dist_attr
+            ):
+                # NOTE Since we use composite op in static mode which might have implicit Reduction of broadcast axes for caculating parameter's gradient.
+                # Those implicit Reduction hinder the Partial inference in a normal way, and we need a special method to handle it:
+                # If the intput activation_grad has sharded broadcast axes, the output param_grads will be Partial.
+                # resulote broadcast axes
+                if grad_op.type == "matmul_v2_grad":
+                    activation_grad = grad_op.input("Out@GRAD")[0]
+
+                    param_grads = [grad_op.input("Y@GRAD")[0]]
+                    broadcast_axis_indies = list(
+                        range(len(vars[activation_grad].shape) - 1)
+                    )
+                elif grad_op.type == "elementwise_add_grad":
+                    activation_grad = grad_op.input("Out@GRAD")[0]
+                    param_grads = [grad_op.input("Y@GRAD")[0]]
+                    param_var = grad_op.input("Y")[0]
+                    broadcast_axis_indies = list(
+                        range(
+                            len(vars[activation_grad].shape)
+                            - len(vars[param_var].shape)
+                        )
+                    )
+                elif grad_op.type == "layer_norm_grad":
+                    activation_grad = grad_op.input("Y@GRAD")[0]
+                    param_grads = [
+                        grad_op.input("Bias@GRAD")[0],
+                        grad_op.input("Scale@GRAD")[0],
+                    ]
+                    begin_norm_axis = int(grad_op.attr("begin_norm_axis"))
+                    broadcast_axis_indies = list(range(begin_norm_axis))
+                elif grad_op.type == "lookup_table_v2_grad":
+                    activation_grad = grad_op.input("Out@GRAD")[0]
+                    param_grads = [grad_op.input("W@GRAD")[0]]
+                    broadcast_axis_indies = list(
+                        range(len(vars[activation_grad].shape) - 1)
+                    )
+                else:
+                    raise NotImplementedError(
+                        f"Backward Partial is not adapted for {str(grad_op)}"
+                    )
+
+                # resulote partial
+                # NOTE We set the Partial status in op_dist_attr instead tensor_dist_attr
+                # since the Partial will be reshard as Replicated immedidately after op output in static mode.
+                activation_grad_dims_mapping = (
+                    grad_op_dist_attr.get_input_dims_mapping(activation_grad)
+                )
+                for axis in broadcast_axis_indies:
+                    if activation_grad_dims_mapping[axis] != -1:
+                        partial_dim = activation_grad_dims_mapping[axis]
+                        for p_grad_name in param_grads:
+                            p_grad_dist_attr = (
+                                grad_op_dist_attr.get_output_dist_attr(
+                                    p_grad_name
+                                )
+                            )
+                            p_grad_dist_attr._set_partial_dims(partial_dim)
+
+            if grad_op.type in __gradient_sync_by_partial_ops__:
+                infer_backward_op_partial_status(
+                    vars, grad_op, grad_op_dist_attr
+                )
+
         first_backward_op_idx = -1
         for idx, op in enumerate(serial_main_program.global_block().ops):
             if int(op.attr('op_role')) == int(
