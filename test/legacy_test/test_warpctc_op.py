@@ -671,8 +671,7 @@ class TestCTCLossAPICase(unittest.TestCase):
         np.testing.assert_allclose(loss_pd, loss_np, rtol=1e-05, atol=1)
 
     def test_eager_ctcloss(self):
-        @test_with_pir_api
-        def test_functinal_api():
+        def test_functional_api():
             self.batch_size = 4
             self.num_classes = CUDA_BLOCK_SIZE + 2
             self.logits_length = np.array([4, 1, 3, 3], dtype=np.int64)
@@ -742,7 +741,7 @@ class TestCTCLossAPICase(unittest.TestCase):
                 loss_pd_sum, loss_np_sum, rtol=1e-05, atol=1
             )
 
-        test_functinal_api()
+        test_functional_api()
 
 
 if __name__ == "__main__":
