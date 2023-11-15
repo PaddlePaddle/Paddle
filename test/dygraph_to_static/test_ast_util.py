@@ -20,7 +20,7 @@ import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir,
+    test_legacy_and_pir_api,
 )
 from ifelse_simple_func import (
     dyfunc_with_if_else,
@@ -48,6 +48,7 @@ class TestAST2Func(Dy2StTestBase):
         return transformed_func
 
     @test_ast_only
+    @test_legacy_and_pir_api
     def test_ast2func(self):
         def func(x, y):
             return x + y
@@ -56,19 +57,19 @@ class TestAST2Func(Dy2StTestBase):
         self.assertEqual(func(x, y), self._ast2func(func)(x, y))
 
     @test_ast_only
+    @test_legacy_and_pir_api
     def test_ast2func_dygraph(self):
         paddle.disable_static()
         funcs = [dyfunc_with_if_else, dyfunc_with_if_else2, nested_if_else]
         x_data = np.random.random([10, 16]).astype('float32')
         for func in funcs:
-            with base.dygraph.guard():
-                x_v = base.dygraph.to_variable(x_data)
-                true_ret = func(x_v).numpy()
-                test_ret = self._ast2func(func)(x_v).numpy()
-                self.assertTrue((true_ret == test_ret).all())
+            x_v = base.dygraph.to_variable(x_data)
+            true_ret = func(x_v).numpy()
+            test_ret = self._ast2func(func)(x_v).numpy()
+            self.assertTrue((true_ret == test_ret).all())
 
-    @test_legacy_and_pir
     @test_ast_only
+    @test_legacy_and_pir_api
     def test_ast2func_static(self):
         paddle.enable_static()
 
@@ -83,11 +84,12 @@ class TestAST2Func(Dy2StTestBase):
             x_v = paddle.assign(x_data)
             true_ret = func(x_v)
             test_ret = self._ast2func(func)(x_v)
-            exe = base.Executor(base.CPUPlace())
+            exe = base.Executor(paddle.CPUPlace())
             ret = exe.run(main_program, fetch_list=[true_ret, test_ret])
             self.assertTrue((ret[0] == ret[1]).all())
 
     @test_ast_only
+    @test_legacy_and_pir_api
     def test_ast2func_error(self):
         with self.assertRaises(Exception) as e:
             self.assertRaises(TypeError, ast_to_func("x = a + b", 'foo'))

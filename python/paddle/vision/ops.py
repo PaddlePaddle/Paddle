@@ -2284,7 +2284,7 @@ def matrix_nms(
             ...                         score_threshold=0.5, post_threshold=0.1,
             ...                         nms_top_k=400, keep_top_k=200, normalized=False)
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         out, index, rois_num = _C_ops.matrix_nms(
             bboxes,
             scores,
