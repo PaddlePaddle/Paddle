@@ -217,6 +217,10 @@ PD_MANUAL_OP_LIST = {
     'expand',
 }
 
+vjp_manual_list = {
+    'sigmoid_grad',
+    'sigmoid_double_grad',
+}
 
 attr_types_map = {
     'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
@@ -1590,6 +1594,7 @@ def OpGenerator(
                         op_info.backward_name
                         and op_info.op_phi_name[0]
                         not in vjp_interface_black_list
+                        and op_info.op_phi_name[0] not in vjp_manual_list
                     ):
                         op_vjp_str = gen_op_vjp_str(
                             op_class_name,

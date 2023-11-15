@@ -22,9 +22,11 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSigmoidTripleGradCheck(unittest.TestCase):
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -52,9 +54,10 @@ class TestSigmoidDoubleGradCheck(unittest.TestCase):
     def sigmoid_wrapper(self, x):
         return F.sigmoid(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        shape = [2, 3, 7, 9]
+        shape = [2, 3, 2]
         eps = 0.0005
         dtype = np.float64
         x = paddle.static.data('x', shape, dtype=dtype)
@@ -82,6 +85,7 @@ class TestTanhTripleGradCheck(unittest.TestCase):
     def tanh_wrapper(self, x):
         return paddle.tanh(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -116,6 +120,7 @@ class TestTanhDoubleGradCheck(unittest.TestCase):
     def tanh_wrapper(self, x):
         return paddle.tanh(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
