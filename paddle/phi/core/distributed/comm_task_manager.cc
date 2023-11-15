@@ -41,12 +41,18 @@ namespace phi {
 namespace distributed {
 
 std::thread CommTaskManager::comm_task_loop_thread_;
+std::thread CommTaskManager::comm_task_clear_loop_thread_;
 const int64_t CommTaskManager::loop_thread_sleep_millis = 10000;
 
 std::atomic<bool> CommTaskManager::terminated_;
 std::mutex CommTaskManager::comm_task_list_mutex_;
 std::condition_variable CommTaskManager::comm_task_list_cv_;
 std::list<std::shared_ptr<CommTask>> CommTaskManager::comm_task_list_;
+
+std::mutex CommTaskManager::comm_task_clear_list_mutex_;
+std::condition_variable CommTaskManager::comm_task_clear_list_cv_;
+std::list<std::shared_ptr<CommTask>> CommTaskManager::comm_task_clear_list_;
+
 std::unordered_map<std::string, std::shared_ptr<CommTask>>
     CommTaskManager::init_comm_task_map_;
 std::unordered_map<std::string, std::shared_ptr<CommTask>>
@@ -59,26 +65,48 @@ std::chrono::time_point<std::chrono::steady_clock>
 CommTaskManager::CommTaskManager() {
   terminated_.store(false);
   comm_task_loop_thread_ = std::thread(&CommTaskManager::CommTaskLoop, this);
+  comm_task_clear_loop_thread_ = std::thread(&CommTaskManager::CommTaskClearLoop, this);
   LOG(INFO) << "CommTaskManager init success.";
 }
 CommTaskManager::~CommTaskManager() {
+  VLOG(0) << "terminated_.store true";
   terminated_.store(true);
 
   if (comm_task_loop_thread_.joinable()) {
     comm_task_list_cv_.notify_one();
     comm_task_loop_thread_.join();
   }
+
+  if (comm_task_clear_loop_thread_.joinable()) {
+    comm_task_clear_list_cv_.notify_one();
+    comm_task_clear_loop_thread_.join();
+  }
   LOG(INFO) << "CommTaskManager destruct success.";
+
 }
 
 void CommTaskManager::CommTaskEnqueue(std::shared_ptr<CommTask> comm_task) {
   if (!terminated_.load()) {
+    VLOG(0) << "debug CommTaskEnqueue";
     std::lock_guard<std::mutex> lock(comm_task_list_mutex_);
+    VLOG(0) << "debug before comm_task_list_ size: " << comm_task_list_.size();
     comm_task_list_.emplace_back(std::move(comm_task));
+    VLOG(0) << "debug after comm_task_list_ size: " << comm_task_list_.size();
+  }
+}
+
+void CommTaskManager::CommTaskClearEnqueue(std::shared_ptr<CommTask> comm_task) {
+  if (!terminated_.load()) {
+    VLOG(0) << "debug CommTaskEnqueue";
+    std::lock_guard<std::mutex> lock(comm_task_clear_list_mutex_);
+    VLOG(0) << "debug before comm_task_list_ size: " << comm_task_clear_list_.size();
+    comm_task_clear_list_.emplace_back(comm_task);
+    VLOG(0) << "debug after comm_task_list_ size: " << comm_task_clear_list_.size();
   }
 }
 
 void CommTaskManager::Stop() {
+  VLOG(0) << "terminated_.store true";
   terminated_.store(true);
 
   LOG(INFO) << "CommTaskManager stopped begin.";
@@ -86,17 +114,32 @@ void CommTaskManager::Stop() {
     comm_task_list_cv_.notify_one();
     comm_task_loop_thread_.join();
   }
+
+  if (comm_task_clear_loop_thread_.joinable()) {
+    comm_task_clear_list_cv_.notify_one();
+    comm_task_clear_loop_thread_.join();
+  }
+
   LOG(INFO) << "CommTaskManager stopped.";
 }
 
 void CommTaskManager::CommTaskLoop() {
   bool done = false;
   while (!terminated_.load() || !done) {
+    VLOG(0) << "debug CommTaskLoop";
     std::unique_lock<std::mutex> lock(comm_task_list_mutex_);
+    VLOG(0) << "debug IsTimeout: " << IsTimeout()
+        << ", comm_task_list_ size: " << comm_task_list_.size()
+        << ", init_comm_task_map_ size: " << init_comm_task_map_.size()
+        << ", start_comm_task_map_ size: " << start_comm_task_map_.size()
+        << ", logged_ " << logged_;
+
     comm_task_list_cv_.wait_for(
         lock,
         std::chrono::milliseconds(loop_thread_sleep_millis),
         [&]() -> bool { return terminated_.load(); });
+
+    VLOG(0) << "debug after wait_for, logged_ " << logged_ << ", IsTimeout: " << IsTimeout();
 
     if (IsTimeout() && !logged_) {
       // case 1: all group is empty, has no task
@@ -128,9 +171,14 @@ void CommTaskManager::CommTaskLoop() {
       }
       logged_ = true;
     }
+    VLOG(0) << "debug after comm_task_list_ size: " << comm_task_list_.size();
+    int debug_count = 0;
     for (auto iter = comm_task_list_.begin(); iter != comm_task_list_.end();) {
+      debug_count++;
+      VLOG(0) << "debug for loop: comm_task_list_ begin count: " << debug_count;
       auto task = *iter;
       if (task->IsTimeout()) {
+        VLOG(0) << "debug for loop: comm_task_list_ count: " << debug_count << ", timeout";
         if (!task->IsStarted()) {
           LOG(WARNING) << "Find timeout init but not start task:"
                        << task->GetTraceMsg();
@@ -144,18 +192,29 @@ void CommTaskManager::CommTaskLoop() {
         }
         iter = comm_task_list_.erase(iter);
       } else {
+        VLOG(0) << "debug for loop: comm_task_list_ count: " << debug_count << ", not timeout";
         if (task->IsStarted()) {
+          VLOG(0) << "debug for loop: comm_task_list_ count: " << debug_count << ", not timeout, started";
           if (task->IsCompleted()) {
-            task->ClearRecord();
+            VLOG(0) << "debug for loop: comm_task_list_ count: " << debug_count << ", not timeout, completed";
+            CommTaskClearEnqueue(task);
+            VLOG(0) << "debug for loop: comm_task_list_ count: " << debug_count << ", not timeout, completed, clear record";
             iter = comm_task_list_.erase(iter);
+            VLOG(0) << "debug for loop: comm_task_list_ count: " << debug_count << ", not timeout, completed, erase iter";
+          } else {
+            VLOG(0) << "debug for loop: comm_task_list_ count: " << debug_count << ", not timeout, not completed";
+            ++iter;
           }
           UpdateLastCommTask(task);
         } else {
+          VLOG(0) << "debug for loop: comm_task_list_ count: " << debug_count << ", not timeout, not started";
           ++iter;
         }
       }
+      VLOG(0) << "debug for loop: comm_task_list_ end count: " << debug_count;
     }
 
+    VLOG(0) << "debug after init_comm_task_map_ size: " << init_comm_task_map_.size();
     for (auto iter = init_comm_task_map_.begin();
          iter != init_comm_task_map_.end();) {
       auto task = iter->second;
@@ -169,11 +228,12 @@ void CommTaskManager::CommTaskLoop() {
       }
     }
 
+    VLOG(0) << "debug after start_comm_task_map_ size: " << start_comm_task_map_.size();
     for (auto iter = start_comm_task_map_.begin();
          iter != start_comm_task_map_.end();) {
       auto task = iter->second;
       if (task->IsCompleted()) {
-        task->ClearRecord();
+        CommTaskClearEnqueue(task);
         UpdateLastCommTask(task);
         iter = start_comm_task_map_.erase(iter);
         LOG(INFO) << "Finish timeout task: " << task->GetTraceMsg();
@@ -187,6 +247,28 @@ void CommTaskManager::CommTaskLoop() {
       done = true;
     } else {
       done = false;
+    }
+    VLOG(0) << "debug after done: " << done;
+  }
+}
+
+void CommTaskManager::CommTaskClearLoop() {
+  bool done = false;
+  while (!terminated_.load() || !done) {
+    std::unique_lock<std::mutex> lock(comm_task_clear_list_mutex_);
+
+    comm_task_clear_list_cv_.wait_for(
+        lock,
+        std::chrono::milliseconds(loop_thread_sleep_millis),
+        [&]() -> bool { return terminated_.load(); });
+
+    VLOG(3) << "comm_task_clear_list_ size: " << comm_task_clear_list_.size();
+    for (auto iter = comm_task_clear_list_.begin(); iter != comm_task_clear_list_.end();) {
+      auto task = *iter;
+      VLOG(3) << "start clear task: " << task->GetTraceMsg();
+      task->ClearRecord();
+      VLOG(3) << "end clear task: " << task->GetTraceMsg();
+      iter = comm_task_clear_list_.erase(iter);
     }
   }
 }

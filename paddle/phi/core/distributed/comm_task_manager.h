@@ -47,15 +47,18 @@ class CommTaskManager {
   }
 
   void CommTaskEnqueue(std::shared_ptr<CommTask> comm_task);
+  void CommTaskClearEnqueue(std::shared_ptr<CommTask> comm_task);
   void Stop();
   void UpdateLastCommTask(std::shared_ptr<CommTask> comm_task);
   void SetTimeout(int64_t timeout);
 
  private:
   void CommTaskLoop();
+  void CommTaskClearLoop();
   bool IsTimeout();
 
   static std::thread comm_task_loop_thread_;
+  static std::thread comm_task_clear_loop_thread_;
   static const int64_t loop_thread_sleep_millis;
 
   static std::atomic<bool> terminated_;
@@ -63,6 +66,11 @@ class CommTaskManager {
   static std::mutex comm_task_list_mutex_;
   static std::condition_variable comm_task_list_cv_;
   static std::list<std::shared_ptr<CommTask>> comm_task_list_;
+
+  static std::mutex comm_task_clear_list_mutex_;
+  static std::condition_variable comm_task_clear_list_cv_;
+  static std::list<std::shared_ptr<CommTask>> comm_task_clear_list_;
+
   // not start task
   static std::unordered_map<std::string, std::shared_ptr<CommTask>>
       init_comm_task_map_;
