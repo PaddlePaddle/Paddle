@@ -33,12 +33,12 @@ namespace ir {
 class Graph;
 class Node;
 
-static const char kParamScopeAttr[] = "__param_scope__";
-static const char kFuseStatisAttr[] = "__fuse_statis__";
+static constexpr char kParamScopeAttr[] = "__param_scope__";
+static constexpr char kFuseStatisAttr[] = "__fuse_statis__";
 // When we use trt or other third_party lib, the parameters are managed by
 // the lib, but not the fluid. So we need to record them to avoid duplicate
 // allocation.
-static const char kRepetitiveParamAttr[] = "__repetitive_param__";
+static constexpr char kRepetitiveParamAttr[] = "__repetitive_param__";
 
 enum FuseOptions {
   DO_NOT_FUSE,  // fusing will not be done

@@ -19,7 +19,7 @@
 namespace cinn {
 namespace backends {
 
-static const char* extern_func__tanh_v = "tanh_v";
+static constexpr char* extern_func__tanh_v = "tanh_v";
 
 class ExternFunctionProtoRegistry : public FunctionProtoRegistry {
  public:

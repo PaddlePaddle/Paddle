@@ -47,7 +47,7 @@ class RawTensor : public phi::ExtendedTensor,
  public:
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
-  static const char* name() { return "RawTensor"; }
+  static constexpr char* name() { return "RawTensor"; }
 
   template <typename T>
   T& Get() const {

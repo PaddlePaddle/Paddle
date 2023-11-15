@@ -1249,7 +1249,7 @@ bool OpSupportGPU(const std::string& op_type) {
 }
 
 struct OperatorWithKernel::CacheImpl {
-  static const char kNotAllowInferShapeCahce[];  // NOLINT
+  static constexpr char kNotAllowInferShapeCahce[];  // NOLINT
   explicit CacheImpl(phi::KernelContext* kernel_ctx,
                      RuntimeInferShapeContext* infer_shape_ctx,
                      const std::vector<phi::DenseTensor*>& tensors,

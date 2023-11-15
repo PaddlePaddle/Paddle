@@ -29,7 +29,7 @@ namespace test {
 class RegionOp : public pir::Op<RegionOp, OneRegionTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "test.region"; }
+  static constexpr char *name() { return "test.region"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,              // NOLINT
@@ -43,7 +43,7 @@ class RegionOp : public pir::Op<RegionOp, OneRegionTrait> {
 class BranchOp : public pir::Op<BranchOp> {
  public:
   using Op::Op;
-  static const char *name() { return "test.branch"; }
+  static constexpr charchar *name() { return "test.branch"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,             // NOLINT
@@ -57,9 +57,9 @@ class BranchOp : public pir::Op<BranchOp> {
 class Operation1 : public pir::Op<Operation1> {
  public:
   using Op::Op;
-  static const char *name() { return "test.operation1"; }
+  static constexpr charchar *name() { return "test.operation1"; }
   static constexpr uint32_t attributes_num = 2;
-  static const char *attributes_name[attributes_num];
+  static constexpr charchar *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,              // NOLINT
                     pir::OperationArgument &argument);  // NOLINT
   void VerifySig() const;
@@ -70,7 +70,7 @@ class Operation2
     : public pir::Op<Operation2, ReadOnlyTrait, InferShapeInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "test.operation2"; }
+  static constexpr charchar *name() { return "test.operation2"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,                // NOLINT
@@ -90,7 +90,7 @@ class TraitExampleOp
                      pir::SameTypeOperandsTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "test.trait_example_op"; }
+  static constexpr charchar *name() { return "test.trait_example_op"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,             // NOLINT
@@ -106,7 +106,7 @@ class SameOperandsShapeTraitOp1
     : public pir::Op<SameOperandsShapeTraitOp1, pir::SameOperandsShapeTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "test.same_operands_shape_op1"; }
+  static constexpr charchar *name() { return "test.same_operands_shape_op1"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,                // NOLINT
@@ -119,7 +119,7 @@ class SameOperandsShapeTraitOp2
     : public pir::Op<SameOperandsShapeTraitOp2, pir::SameOperandsShapeTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "test.same_operands_shape_op2"; }
+  static constexpr charchar *name() { return "test.same_operands_shape_op2"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,             // NOLINT
@@ -136,7 +136,7 @@ class SameOperandsAndResultShapeTraitOp1
                      pir::SameOperandsAndResultShapeTrait> {
  public:
   using Op::Op;
-  static const char *name() {
+  static constexpr charchar *name() {
     return "test.same_operands_and_result_shape_op1";
   }
   static constexpr uint32_t attributes_num = 0;
@@ -152,7 +152,7 @@ class SameOperandsAndResultShapeTraitOp2
                      pir::SameOperandsAndResultShapeTrait> {
  public:
   using Op::Op;
-  static const char *name() {
+  static constexpr charchar *name() {
     return "test.same_operands_and_result_shape_op2";
   }
   static constexpr uint32_t attributes_num = 0;
@@ -170,7 +170,7 @@ class SameOperandsAndResultShapeTraitOp3
                      pir::SameOperandsAndResultShapeTrait> {
  public:
   using Op::Op;
-  static const char *name() {
+  static constexpr charchar *name() {
     return "test.same_operands_and_result_shape_op3";
   }
   static constexpr uint32_t attributes_num = 0;
@@ -189,7 +189,9 @@ class SameOperandsElementTypeTraitOp1
                      pir::SameOperandsElementTypeTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "test.same_operands_element_type_op1"; }
+  static constexpr charchar *name() {
+    return "test.same_operands_element_type_op1";
+  }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,                // NOLINT
@@ -203,7 +205,9 @@ class SameOperandsElementTypeTraitOp2
                      pir::SameOperandsElementTypeTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "test.same_operands_element_type_op1"; }
+  static constexpr charchar *name() {
+    return "test.same_operands_element_type_op1";
+  }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,             // NOLINT
@@ -220,7 +224,7 @@ class SameOperandsAndResultElementTypeTraitOp1
                      pir::SameOperandsAndResultElementTypeTrait> {
  public:
   using Op::Op;
-  static const char *name() {
+  static constexpr charchar *name() {
     return "test.same_operands_and_result_element_type_op1";
   }
   static constexpr uint32_t attributes_num = 0;
@@ -236,7 +240,7 @@ class SameOperandsAndResultElementTypeTraitOp2
                      pir::SameOperandsAndResultElementTypeTrait> {
  public:
   using Op::Op;
-  static const char *name() {
+  static constexpr charchar *name() {
     return "test.same_operands_and_result_element_type_op2";
   }
   static constexpr uint32_t attributes_num = 0;
@@ -254,7 +258,7 @@ class SameOperandsAndResultElementTypeTraitOp3
                      pir::SameOperandsAndResultElementTypeTrait> {
  public:
   using Op::Op;
-  static const char *name() {
+  static constexpr charchar *name() {
     return "test.same_operands_and_result_element_type_op3";
   }
   static constexpr uint32_t attributes_num = 0;
@@ -274,7 +278,9 @@ class SameOperandsAndResultTypeTraitOp1
                      pir::SameOperandsAndResultTypeTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "test.same_operands_and_result_type_op1"; }
+  static constexpr charchar *name() {
+    return "test.same_operands_and_result_type_op1";
+  }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,                // NOLINT
@@ -288,7 +294,9 @@ class SameOperandsAndResultTypeTraitOp2
                      pir::SameOperandsAndResultTypeTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "test.same_operands_and_result_type_op2"; }
+  static constexpr charchar *name() {
+    return "test.same_operands_and_result_type_op2";
+  }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,             // NOLINT
@@ -304,7 +312,9 @@ class SameOperandsAndResultTypeTraitOp3
                      pir::SameOperandsAndResultTypeTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "test.same_operands_and_result_type_op3"; }
+  static constexpr charchar *name() {
+    return "test.same_operands_and_result_type_op3";
+  }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
 

@@ -38,7 +38,7 @@
 class AddOp : public pir::Op<AddOp> {
  public:
   using Op::Op;
-  static const char *name() { return "test.add"; }
+  static constexpr char *name() { return "test.add"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
   void VerifySig();

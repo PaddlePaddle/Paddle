@@ -52,7 +52,7 @@ class TensorArray : public TensorBase,
  public:
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
-  static const char* name() { return "TensorArray"; }
+  static constexpr char* name() { return "TensorArray"; }
 
   /// \brief This overrided function is not used in TensorArray.
   int64_t numel() const override;

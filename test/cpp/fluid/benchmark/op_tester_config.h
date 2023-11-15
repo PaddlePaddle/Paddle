@@ -78,9 +78,9 @@ T StringTo(const std::string& str) {
   return value;
 }
 
-static const char kStartSeparator[] = "{";
-static const char kEndSeparator[] = "}";
-static const char kSepBetweenItems[] = ";";
+static constexpr char kStartSeparator[] = "{";
+static constexpr charchar kEndSeparator[] = "}";
+static constexpr charchar kSepBetweenItems[] = ";";
 
 static bool StartWith(const std::string& str, const std::string& substr) {
   return str.find(substr) == 0;

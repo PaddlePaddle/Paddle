@@ -43,7 +43,7 @@ struct NPUStorageProperties
     : public StorageProperties,
       public TypeInfoTraits<StorageProperties, NPUStorageProperties> {
   virtual ~NPUStorageProperties() = default;
-  static const char* name() { return "NPUStorageProperties"; }
+  static constexpr char* name() { return "NPUStorageProperties"; }
 
   int64_t storage_format{-1};
   DDim storage_dims;
@@ -69,7 +69,7 @@ struct OneDNNStorageProperties
     : public StorageProperties,
       public TypeInfoTraits<StorageProperties, OneDNNStorageProperties> {
   virtual ~OneDNNStorageProperties() = default;
-  static const char* name() { return "OneDNNStorageProperties"; }
+  static constexpr char* name() { return "OneDNNStorageProperties"; }
 
   /**
    * @brief the detail format of memory block which have layout as ONEDNN

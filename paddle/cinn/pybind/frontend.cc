@@ -48,7 +48,7 @@ using namespace cinn::frontend;  // NOLINT
 
 // this function is a helper function, not threadsafe,
 // used in this file only for py function register
-static const char *SnakeName(const char *name) {
+static constexpr char *SnakeName(const char *name) {
   static char buf[256];
   char *p = buf;
   const char *q = name;

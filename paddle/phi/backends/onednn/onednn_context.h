@@ -155,7 +155,7 @@ class OneDNNContext : public CPUContext {
   const std::vector<std::string>& GetOutputsName(
       const std::string& output) const;
 
-  static const char* name();
+  static constexpr char* name();
 
  private:
   struct Impl;

@@ -33,7 +33,7 @@ class TEST_API ExtendedTensor : public TensorBase {
  public:
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
-  static const char* name() { return "ExtendedTensor"; }
+  static constexpr char* name() { return "ExtendedTensor"; }
 
   int64_t numel() const override;
 

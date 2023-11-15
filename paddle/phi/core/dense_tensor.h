@@ -80,7 +80,7 @@ class TEST_API DenseTensor : public TensorBase,
  public:
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
-  static const char* name() { return "DenseTensor"; }
+  static constexpr char* name() { return "DenseTensor"; }
 
   /// \brief Returns the number of elements contained in tensor.
   /// \return The number of elements contained in tensor.

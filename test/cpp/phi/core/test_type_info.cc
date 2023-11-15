@@ -48,13 +48,13 @@ class Base {
 template <typename T>
 class DerivedA : public Base<T>, public TypeInfoTraits<Base<T>, DerivedA<T>> {
  public:
-  static const char* name() { return "DerivedA"; }
+  static constexpr char* name() { return "DerivedA"; }
 };
 
 template <typename T>
 class DerivedB : public Base<T>, public TypeInfoTraits<Base<T>, DerivedB<T>> {
  public:
-  static const char* name() { return "DerivedB"; }
+  static constexpr char* name() { return "DerivedB"; }
 };
 
 template <typename T>

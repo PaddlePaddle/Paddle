@@ -92,7 +92,7 @@
 namespace cinn {
 namespace backends {
 
-static const char* TargetToBackendRepr(Target target) {
+static constexpr char* TargetToBackendRepr(Target target) {
   switch (target.arch) {
     case Target::Arch::X86:
       return backend_llvm_host;

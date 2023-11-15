@@ -93,7 +93,7 @@ OP_DECLARE_TEMPLATE = """
 class {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
  public:
   using Op::Op;
-  static const char *name() {{ return "{dialect_op_name}"; }}
+  static constexpr char *name() {{ return "{dialect_op_name}"; }}
   {attribute_declare}
   static constexpr uint32_t attributes_num = {attribute_num};
   static OpInfoTuple GetOpInfo();
@@ -111,7 +111,7 @@ op_0_attribute_declare_str = (
     "static constexpr const char **attributes_name = nullptr;"
 )
 op_n_attribute_declare_str = (
-    "static const char *attributes_name[{attribute_num}];"
+    "static constexpr char *attributes_name[{attribute_num}];"
 )
 
 get_kernel_type_for_var_declare_template = """

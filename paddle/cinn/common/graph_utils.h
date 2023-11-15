@@ -218,7 +218,7 @@ class GraphNode : public Object {
 
   GraphNode() = default;
 
-  static const char* __type_info__;
+  static constexpr char* __type_info__;
 
  protected:
   //! The input links of the node.

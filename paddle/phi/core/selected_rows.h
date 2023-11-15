@@ -125,7 +125,7 @@ class SelectedRows : public TensorBase,
 
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
-  static const char* name() { return "SelectedRows"; }
+  static constexpr char* name() { return "SelectedRows"; }
 
   /// \brief Returns the number of elements contained in tensor.
   /// \return The number of elements contained in tensor.

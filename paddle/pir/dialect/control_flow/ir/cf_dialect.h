@@ -23,7 +23,7 @@ class ControlFlowDialect : public Dialect {
       : Dialect(name(), context, TypeId::get<ControlFlowDialect>()) {
     initialize();
   }
-  static const char *name() { return "cf"; }
+  static constexpr char *name() { return "cf"; }
   void PrintType(pir::Type type, std::ostream &os) const override;
   void PrintOperation(pir::Operation *op,
                       pir::IrPrinter &printer) const override;  // NOLINT

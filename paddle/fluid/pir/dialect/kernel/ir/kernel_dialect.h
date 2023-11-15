@@ -23,7 +23,7 @@ class KernelDialect : public pir::Dialect {
  public:
   explicit KernelDialect(pir::IrContext* context);
 
-  static const char* name() { return "pd_kernel"; }
+  static constexpr char* name() { return "pd_kernel"; }
 
   void PrintType(pir::Type type, std::ostream& os) const override;
 

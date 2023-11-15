@@ -26,9 +26,9 @@ namespace dialect {
 class GroupOp : public pir::Op<GroupOp> {
  public:
   using Op::Op;
-  static const char *name() { return "cinn_op.group"; }
+  static constexpr char *name() { return "cinn_op.group"; }
   static constexpr uint32_t attributes_num = 1;
-  static const char *attributes_name[attributes_num];
+  static constexpr char *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::Type> &output_types);

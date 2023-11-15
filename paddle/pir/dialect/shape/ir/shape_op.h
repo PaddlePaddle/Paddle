@@ -26,10 +26,10 @@ namespace pir::shape {
 class IR_API SymbolicDimOp : public Op<SymbolicDimOp> {
  public:
   using Op::Op;
-  static const char *name() { return "shape.symbolic_dim"; }
+  static constexpr char *name() { return "shape.symbolic_dim"; }
 
   static constexpr uint32_t attributes_num = 6;
-  static const char *attributes_name[attributes_num];
+  static constexpr charchar *attributes_name[attributes_num];
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
@@ -79,10 +79,10 @@ class IR_API SymbolicDimOp : public Op<SymbolicDimOp> {
 class IR_API DimOp : public Op<DimOp> {
  public:
   using Op::Op;
-  static const char *name() { return "shape.dim"; }
+  static constexpr charchar *name() { return "shape.dim"; }
 
   static constexpr uint32_t attributes_num = 1;
-  static const char *attributes_name[attributes_num];
+  static constexpr charchar *attributes_name[attributes_num];
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
@@ -97,10 +97,10 @@ class IR_API DimOp : public Op<DimOp> {
 class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
  public:
   using Op::Op;
-  static const char *name() { return "shape.tie_product_equal"; }
+  static constexpr charchar *name() { return "shape.tie_product_equal"; }
 
   static constexpr uint32_t attributes_num = 2;
-  static const char *attributes_name[attributes_num];
+  static constexpr charchar *attributes_name[attributes_num];
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
@@ -119,10 +119,10 @@ class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
 class IR_API TieShapeOp : public Op<TieShapeOp> {
  public:
   using Op::Op;
-  static const char *name() { return "shape.tie_shape"; }
+  static constexpr charchar *name() { return "shape.tie_shape"; }
 
   static constexpr uint32_t attributes_num = 1;
-  static const char *attributes_name[attributes_num];
+  static constexpr charchar *attributes_name[attributes_num];
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
@@ -140,7 +140,7 @@ class IR_API TieShapeOp : public Op<TieShapeOp> {
 class IR_API FuncOp : public Op<FuncOp> {
  public:
   using Op::Op;
-  static const char *name() { return "shape.func"; }
+  static constexpr charchar *name() { return "shape.func"; }
 
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
@@ -155,7 +155,7 @@ class IR_API FuncOp : public Op<FuncOp> {
 class IR_API TensorDimOp : public Op<TensorDimOp, OneResultTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "shape.tensor_dim"; }
+  static constexpr charchar *name() { return "shape.tensor_dim"; }
 
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
@@ -179,7 +179,7 @@ class IR_API TensorDimOp : public Op<TensorDimOp, OneResultTrait> {
 class IR_API ShapeOfOp : public Op<ShapeOfOp> {
  public:
   using Op::Op;
-  static const char *name() { return "shape.shape_of"; }
+  static constexpr charchar *name() { return "shape.shape_of"; }
 
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
@@ -196,7 +196,7 @@ class IR_API ShapeOfOp : public Op<ShapeOfOp> {
 class IR_API FromElementsOp : public Op<FromElementsOp> {
  public:
   using Op::Op;
-  static const char *name() { return "shape.from_elements"; }
+  static constexpr charchar *name() { return "shape.from_elements"; }
 
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
@@ -213,7 +213,7 @@ class IR_API FromElementsOp : public Op<FromElementsOp> {
 class IR_API ExtractOp : public Op<ExtractOp> {
  public:
   using Op::Op;
-  static const char *name() { return "shape.extract"; }
+  static constexpr charchar *name() { return "shape.extract"; }
 
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
@@ -243,7 +243,7 @@ class IR_API ConstantIndexOp : public ConstantOp {
 class IR_API IndexCastOp : public Op<IndexCastOp> {
  public:
   using Op::Op;
-  static const char *name() { return "shape.index_cast"; }
+  static constexpr charchar *name() { return "shape.index_cast"; }
 
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;

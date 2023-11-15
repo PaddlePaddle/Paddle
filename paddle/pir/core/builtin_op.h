@@ -29,9 +29,9 @@ constexpr char kStopGradientAttrName[] = "stop_gradient";
 class IR_API ModuleOp : public pir::Op<ModuleOp> {
  public:
   using Op::Op;
-  static const char *name() { return "builtin.module"; }
+  static constexpr char *name() { return "builtin.module"; }
   static constexpr uint32_t attributes_num = 1;
-  static const char *attributes_name[attributes_num];
+  static constexpr char *attributes_name[attributes_num];
   void VerifySig() const;
   Program *program();
   Block *block();
@@ -50,9 +50,9 @@ class IR_API ModuleOp : public pir::Op<ModuleOp> {
 class IR_API GetParameterOp : public pir::Op<GetParameterOp> {
  public:
   using Op::Op;
-  static const char *name() { return "builtin.get_parameter"; }
+  static constexpr char *name() { return "builtin.get_parameter"; }
   static constexpr uint32_t attributes_num = 1;
-  static const char *attributes_name[attributes_num];
+  static constexpr char *attributes_name[attributes_num];
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
                     const std::string &name,
@@ -70,9 +70,9 @@ class IR_API GetParameterOp : public pir::Op<GetParameterOp> {
 class IR_API SetParameterOp : public pir::Op<SetParameterOp, SideEffectTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "builtin.set_parameter"; }
+  static constexpr char *name() { return "builtin.set_parameter"; }
   static constexpr uint32_t attributes_num = 1;
-  static const char *attributes_name[attributes_num];
+  static constexpr char *attributes_name[attributes_num];
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
                     Value parameter,
@@ -87,9 +87,9 @@ class IR_API SetParameterOp : public pir::Op<SetParameterOp, SideEffectTrait> {
 class IR_API ShadowOutputOp : public pir::Op<ShadowOutputOp, SideEffectTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "builtin.shadow_output"; }
+  static constexpr char *name() { return "builtin.shadow_output"; }
   static constexpr uint32_t attributes_num = 1;
-  static const char *attributes_name[attributes_num];
+  static constexpr char *attributes_name[attributes_num];
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
                     Value parameter,
@@ -104,7 +104,7 @@ class IR_API CombineOp : public pir::Op<CombineOp> {
  public:
   using Op::Op;
 
-  static const char *name() { return "builtin.combine"; }
+  static constexpr char *name() { return "builtin.combine"; }
 
   static constexpr uint32_t attributes_num = 0;
 
@@ -132,11 +132,11 @@ class IR_API SliceOp : public pir::Op<SliceOp> {
  public:
   using Op::Op;
 
-  static const char *name() { return "builtin.slice"; }
+  static constexpr char *name() { return "builtin.slice"; }
 
   static constexpr uint32_t attributes_num = 1;
 
-  static const char *attributes_name[attributes_num];
+  static constexpr char *attributes_name[attributes_num];
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
@@ -159,7 +159,7 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
  public:
   using Op::Op;
 
-  static const char *name() { return "builtin.split"; }
+  static constexpr char *name() { return "builtin.split"; }
 
   static constexpr uint32_t attributes_num = 0;
 
@@ -196,10 +196,10 @@ class IR_API ConstantLikeTrait : public OpTraitBase<ConstantLikeTrait> {
 class IR_API ConstantOp : public Op<ConstantOp, ConstantLikeTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "builtin.constant"; }
+  static constexpr char *name() { return "builtin.constant"; }
 
   static constexpr uint32_t attributes_num = 1;
-  static const char *attributes_name[attributes_num];
+  static constexpr char *attributes_name[attributes_num];
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT

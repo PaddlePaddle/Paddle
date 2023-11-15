@@ -179,7 +179,7 @@ class PADDLE_API GPUContext : public DeviceContext,
   void SetDnnAttr(const std::string& attr_name, Attribute attr);
   void ClearDnnAttr();
 
-  static const char* name() { return "GPUContext"; }
+  static constexpr char* name() { return "GPUContext"; }
 
  public:
   /*! \brief  Return nccl communicators. */
@@ -300,7 +300,7 @@ class GPUPinnedContext
 
   Eigen::DefaultDevice* eigen_device() const;
 
-  static const char* name() { return "GPUPinnedContext"; }
+  static constexpr char* name() { return "GPUPinnedContext"; }
 
  private:
   GPUPinnedPlace place_;

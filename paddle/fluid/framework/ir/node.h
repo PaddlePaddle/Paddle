@@ -70,7 +70,7 @@ class Node {
 #if !defined(_WIN32) && (__cplusplus < 201703L)
   static constexpr char kControlDepVarName[] = "__control_var";
 #else
-  static const char kControlDepVarName[];
+  static constexpr char kControlDepVarName[];
 #endif
 
   Type NodeType() const { return type_; }
