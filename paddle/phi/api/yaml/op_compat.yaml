@@ -3317,6 +3317,13 @@
   outputs:
     {out: Out}
 
+- op: fused_elemwise_add_activation
+  backward: fused_elemwise_add_activation_grad
+  inputs :
+    {x: X, y: Y}
+  outputs :
+    {out : Out, intermediate_out : IntermediateOut}
+
 - op: fusion_squared_mat_sub
   inputs :
     x : X
