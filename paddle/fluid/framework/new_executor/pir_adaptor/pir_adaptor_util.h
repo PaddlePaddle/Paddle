@@ -187,6 +187,9 @@ void BuildPhiContext(pir::Operation* op,
     if (var->IsType<phi::DenseTensor>()) {
       const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
       ctx->EmplaceBackInput(InType(tensor_in));
+    } else if (var->IsType<phi::TensorArray>()) {
+      const phi::TensorBase* tensor_in = &(var->Get<phi::TensorArray>());
+      ctx->EmplaceBackInput(InType(tensor_in));
     } else if (var->IsType<VariableRefArray>()) {
       InListType inputs;
       auto& variable_array = var->Get<VariableRefArray>();
@@ -410,6 +413,13 @@ void BuildPhiContext(pir::Operation* op,
           &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
                 ->Get<phi::SelectedRows>()))));
       VLOG(8) << "ctx->EmplaceBackOutput SelectedRows: "
+              << value_exec_info.GetVarName(out_ptr);
+    } else if (out_ptr.type()
+                   .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+      ctx->EmplaceBackOutput(OutType(const_cast<phi::TensorArray*>(
+          &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
+                ->Get<phi::TensorArray>()))));
+      VLOG(8) << "ctx->EmplaceBackOutput TensorArray: "
               << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type().isa<pir::VectorType>()) {
       OutListType outputs;

@@ -1642,10 +1642,6 @@ struct MulGradOpTranscriber : public OpTranscriber {
       gradReshape("X@GRAD");
     }
 
-    if (y_grad_output.size() < 1) {
-      return;
-    }
-
     if (y_grad_output.size()) {
       gradReshape("Y@GRAD");
     }

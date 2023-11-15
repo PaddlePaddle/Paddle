@@ -17,6 +17,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/op_operand.h"
 #include "paddle/pir/core/parameter.h"
 #include "paddle/pir/core/program.h"
 
@@ -65,12 +66,17 @@ Operation* GetDefiningOpForInput(Operation* op, uint32_t index) {
   return op->operand_source(index).dyn_cast<OpResult>().owner();
 }
 
-Operation* GetFirstUseOperationForOutput(Operation* op, uint32_t index) {
+std::vector<Operation*> GetUseOpsForOutput(Operation* op, uint32_t index) {
   PADDLE_ENFORCE_EQ(
       index < op->num_results(),
       true,
       phi::errors::InvalidArgument("Output op result's index must be valid."));
-  return op->result(index).first_use().owner();
+  auto result = op->result(index);
+  std::vector<Operation*> use_ops;
+  for (auto it = result.use_begin(); it != result.use_end(); ++it) {
+    use_ops.push_back(it->owner());
+  }
+  return use_ops;
 }
 
 }  // namespace pir
