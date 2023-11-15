@@ -315,7 +315,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
     """
     if in_pir_mode():
         if not isinstance(input, paddle.ir.Value):
-            raise TypeError("In median, the input x should be a Tensor.")
+            raise TypeError("In pir nanmedian, the input x should be a value.")
     else:
         if not isinstance(x, Variable):
             raise TypeError("In median, the input x should be a Tensor.")
