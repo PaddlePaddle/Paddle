@@ -179,7 +179,7 @@ class TestQuantLinearFusePass(PassAutoScanTest):
                 "ZeroPoint": ["weight_dequant_zero_point"],
             },
             outputs={"Y": ["weight_dequantize_linear_op_out"]},
-            attrs={"weight_dequant_axis": -1, "bit_length": 8, "round_type": 0},
+            attrs={"quant_axis": -1, "bit_length": 8, "round_type": 0},
         )
 
         matmul_v2_op = OpConfig(

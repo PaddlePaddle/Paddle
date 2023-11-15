@@ -235,10 +235,6 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
     std::vector<float> scale_weights(weight_tensor->dims()[1],
                                      weight_scale_data[0]);
 
-    auto* bias_tensor =
-        scope->FindVar(bias->Name())->GetMutable<phi::DenseTensor>();
-    bias_tensor->Resize(phi::make_dim(1, bias->Var()->GetShape()[0]));
-
     Node* relu = nullptr;
     Node* relu_out = nullptr;
     if (with_relu) {
