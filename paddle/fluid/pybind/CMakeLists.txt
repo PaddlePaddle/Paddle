@@ -43,6 +43,7 @@ set(PYBIND_DEPS
     program_translator
     pir_transforms
     pir
+    common
     new_profiler
     jit_layer
     jit_property
@@ -191,7 +192,7 @@ if(WITH_GLOO)
 endif()
 
 if(WITH_CRYPTO)
-  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_crypto)
+  set(PYBIND_DEPS ${PYBIND_DEPS} framework_io)
   set(PYBIND_SRCS ${PYBIND_SRCS} crypto.cc)
 endif()
 
@@ -358,6 +359,11 @@ if(WITH_PYTHON)
         DEPENDS pir)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/ir.dll)
     endif()
+
+    # add_custom_command(
+    #   OUTPUT ${op_impl_path}/common.dll COMMAND ${CMAKE_COMMAND} -E copy
+    #                                             ${COMMON_LIB} ${op_impl_path})
+    # list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/common.dll)
 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
       add_custom_command(
