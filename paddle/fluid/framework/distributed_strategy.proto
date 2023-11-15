@@ -69,6 +69,8 @@ message PpConfig {
 
 message DygraphShardingConfig {
   optional bool split_param = 1 [ default = false ];
+  optional bool comm_overlap = 2 [ default = false ];
+  optional int32 accumulate_steps = 3 [ default = 1 ];
 }
 
 
