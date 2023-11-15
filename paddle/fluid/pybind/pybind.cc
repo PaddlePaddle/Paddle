@@ -2014,7 +2014,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](StandaloneExecutor &self,
               std::vector<std::string> feed_names,
-              constbool enable_job_schedule_profiler = false) {
+              const bool enable_job_schedule_profiler = false) {
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
