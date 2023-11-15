@@ -1917,6 +1917,7 @@
   kernel :
     func : numel
     data_type : x
+    spmd_rule : NumelInferSpmd
   data_transform:
     skip_transform : x
   no_need_buffer : x
