@@ -35,6 +35,7 @@ class TestHybridParallel(TestMultipleGpus):
 
     def test_hybrid_parallel_mp_clip_grad(self):
         self.run_mnist_2gpu('hybrid_parallel_mp_clip_grad.py')
+        self.run_mnist_2gpu('hybrid_parallel_mp_clip_catch_error.py')
 
     def test_hybrid_parallel_mp_broadcast_obj(self):
         self.run_mnist_2gpu('hybrid_parallel_mp_broadcast_obj.py')
