@@ -77,31 +77,16 @@ void NCCLCommTask::EndRecord() {
 }
 
 void NCCLCommTask::ClearRecord() {
-  return;
-  VLOG(0) << "debug NCCLCommTask::ClearRecord begin, start_event_created_ " << start_event_created_ << ", end_event_created_ " << end_event_created_;
   if (start_event_created_) {
-    VLOG(0) << "debug NCCLCommTask::ClearRecord, nccl_start_event_ begin query";
-    bool started = CudaEventQuery(nccl_start_event_);
-    VLOG(0) << "debug NCCLCommTask::ClearRecord, nccl_start_event_ started " << started;
-
-    VLOG(0) << "debug NCCLCommTask::ClearRecord, start_event_created_ begin guard";
     backends::gpu::GPUDeviceGuard guard(place_.device);
-    VLOG(0) << "debug NCCLCommTask::ClearRecord, start_event_created_ destroy ";
     CUDA_CHECK(cudaEventDestroy(nccl_start_event_));
-    VLOG(0) << "debug NCCLCommTask::ClearRecord, start_event_created_ begin false";
     start_event_created_ = false;
-    VLOG(0) << "debug NCCLCommTask::ClearRecord, start_event_created_ end";
   }
   if (end_event_created_) {
-    VLOG(0) << "debug NCCLCommTask::ClearRecord, end_event_created_ begin guard";
     backends::gpu::GPUDeviceGuard guard(place_.device);
-    VLOG(0) << "debug NCCLCommTask::ClearRecord, end_event_created_ begin destroy";
     CUDA_CHECK(cudaEventDestroy(nccl_end_event_));
-    VLOG(0) << "debug NCCLCommTask::ClearRecord, end_event_created_ begin false";
     end_event_created_ = false;
-    VLOG(0) << "debug NCCLCommTask::ClearRecord, end_event_created_ end";
   }
-  VLOG(0) << "debug NCCLCommTask::ClearRecord end, start_event_created_ " << start_event_created_ << ", end_event_created_ " << end_event_created_;
 }
 
 bool NCCLCommTask::CudaEventQuery(cudaEvent_t event) {
