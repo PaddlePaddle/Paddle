@@ -25,14 +25,14 @@ function case_list_unit() {
     fi
     
     for ((i=2; i<=`awk -F, 'END {print NR}' testslist.csv`; i++)); do
-        echo "=========== $case_name run  begin ==========="
         item=`awk -F, 'NR=='$i' {print}' testslist.csv`
+        case_name=`awk -F, 'NR=='$i' {print $1}' testslist.csv`
+        echo "=========== $case_name run  begin ==========="
         if [[ $item =~ PYTHONPATH=([^,;]*)([,;]|$) ]]; then
             substring="${BASH_REMATCH[1]}"
             echo "PYTHONPATH=$substring"
-            export PYTHONPATH=$substring
+            export PYTHONPATH=$substring:$PYTHNPATH
         fi
-        case_name=`awk -F, 'NR=='$i' {print $1}' testslist.csv`
         python $case_name.py >>${log_path}/$case_name 2>&1
         if [ $? -eq 0 ]; then
             tail -n 10 ${log_path}/$case_name
