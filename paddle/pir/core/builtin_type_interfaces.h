@@ -85,9 +85,7 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   /// \brief Check whether the given dimension size is a dynamic dimension.
   ///
-  static constexpr bool IsDynamic(int64_t dValue) {
-    return dValue == kDynamic || dValue == -1;
-  }
+  static constexpr bool IsDynamic(int64_t dValue) { return dValue == kDynamic; }
 
   ///
   /// \brief Check whether the given shape has any size indicating a dynamic
