@@ -16,7 +16,7 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
+from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode, in_pir_mode
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
