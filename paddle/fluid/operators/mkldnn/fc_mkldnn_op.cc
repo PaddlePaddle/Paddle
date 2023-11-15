@@ -33,6 +33,7 @@ struct InnerProductCache {
   dnnl::memory weights_mem;
   dnnl::memory bias_mem;
   dnnl::memory dst_mem;
+  dnnl::memory residual_mem;
   dnnl::memory src_scales_mem;
   dnnl::memory wei_scales_mem;
   dnnl::memory dst_scales_mem;
@@ -59,6 +60,49 @@ GetDNNLScales(const ExecutionContext& ctx) {
 
   return std::make_tuple(
       dnnl_src_scales, dnnl_wei_scales, dnnl_psum_scales, dnnl_dst_scales);
+}
+
+std::shared_ptr<dnnl::memory> GetBinaryAddValueInt8(
+    const OneDNNContext& dev_ctx,
+    const phi::DenseTensor* residual,
+    const dnnl::memory::dims& dims,
+    float scale_data) {
+  void* residual_ptr = const_cast<void*>(residual->data());
+  auto src_0_md = residual->mem_desc().reshape(dims);
+  auto src_1_md = dnnl::memory::desc(
+      {1, 1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
+  auto dst_md = dnnl::memory::desc(
+      dims, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
+  std::vector<float> src_data{1.f / scale_data};
+  dnnl::memory src_0_mem = dnnl::memory(src_0_md, dev_ctx.GetEngine());
+
+  src_0_mem.set_data_handle(residual_ptr);
+
+  auto src_1_mem =
+      dnnl::memory(src_1_md,
+                   dev_ctx.GetEngine(),
+                   phi::funcs::to_void_cast<float>(src_data.data()));
+
+  auto dst_memory = dnnl::memory(dst_md, dev_ctx.GetEngine());
+
+  auto binary_pd = dnnl::binary::primitive_desc(dev_ctx.GetEngine(),
+                                                dnnl::algorithm::binary_mul,
+                                                src_0_md,
+                                                src_1_md,
+                                                dst_md);
+
+  // Create the primitive.
+  auto binary_prim = dnnl::binary(binary_pd);
+
+  std::unordered_map<int, dnnl::memory> binary_args = {
+      {DNNL_ARG_SRC_0, src_0_mem},
+      {DNNL_ARG_SRC_1, src_1_mem},
+      {DNNL_ARG_DST, dst_memory}};
+
+  auto& astream = OneDNNContext::tls().get_stream();
+  binary_prim.execute(astream, binary_args);
+  astream.wait();
+  return std::make_shared<dnnl::memory>(dst_memory);
 }
 
 template <typename T_in, typename T_w, typename T_out>
@@ -109,7 +153,7 @@ class FCMKLDNNHandler
                                    dnnl::memory::format_tag::a);
     }
 
-    const auto attrs = CreateFCAttrs(ctx);
+    const auto attrs = CreateFCAttrs(ctx, MB, OC);
 
     this->AcquireForwardPrimitiveDescriptor(attrs,
                                             dnnl::prop_kind::forward_inference,
@@ -120,7 +164,9 @@ class FCMKLDNNHandler
   }
 
  private:
-  dnnl::primitive_attr CreateFCAttrs(const ExecutionContext& ctx) {
+  dnnl::primitive_attr CreateFCAttrs(const ExecutionContext& ctx,
+                                     int MB,
+                                     int OC) {
     dnnl::primitive_attr attributes;
     dnnl::post_ops post_operations;
 
@@ -164,6 +210,20 @@ class FCMKLDNNHandler
                dst_scales.data(),
                dst_scales.size() * sizeof(float));
       }
+    }
+
+    if (ctx.HasAttr("fuse_residual_connection") &&
+        ctx.Attr<bool>("fuse_residual_connection")) {
+      // For Inner Product primitives, the destination always N * C
+      auto residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
+      auto residual_data_md =
+          dnnl::memory::desc({MB, OC},
+                             phi::funcs::is_int8<T_in>()
+                                 ? dnnl::memory::data_type::f32
+                                 : residual_data->mem_desc().get_data_type(),
+                             dnnl::memory::format_tag::ab);
+      post_operations.append_binary(dnnl::algorithm::binary_add,
+                                    residual_data_md);
     }
 
     // ReLU from "fc_fuse_pass"
@@ -282,6 +342,23 @@ class FCMKLDNNHandler
                                             to_void_cast<float>(bias_data));
   }
 
+  std::shared_ptr<dnnl::memory> AcquireResidualMemory(
+      const phi::DenseTensor* residual, float scale_data) {
+    auto dims = this->fwd_pd_->dst_desc().get_dims();
+    if (phi::funcs::is_int8<T_in>()) {
+      auto memory_p =
+          GetBinaryAddValueInt8(this->dev_ctx_, residual, dims, scale_data);
+      return memory_p;
+    } else {
+      auto residual_md = residual->mem_desc().reshape(dims);
+      void* residual_ptr = const_cast<void*>(residual->data());
+      auto memory_p = std::make_shared<dnnl::memory>(
+          residual_md, this->dev_ctx_.GetEngine());
+      memory_p->set_data_handle(residual_ptr);
+      return memory_p;
+    }
+  }
+
   std::shared_ptr<dnnl::memory> AcquireWeightsMemoryWithReorder(
       const phi::DenseTensor* weights, const std::vector<float>& scale_data) {
     const std::string weights_base_key = this->memory_key_ + "@weights";
@@ -327,6 +404,20 @@ class FCMKLDNNHandler
 
   std::shared_ptr<dnnl::memory> AcquireCustomDstMemory(
       const ExecutionContext& ctx, phi::DenseTensor* out) {
+    if (ctx.HasAttr("fuse_residual_connection") &&
+        ctx.Attr<bool>("fuse_residual_connection")) {
+      auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
+      PADDLE_ENFORCE_EQ(
+          out->dims(),
+          residual_param->dims(),
+          phi::errors::InvalidArgument(
+              "Output and elementwise parameter need to have the "
+              "same dimension sizes, but got output's dimension = %d"
+              " and residual param's dimension =%d .",
+              out->dims().size(),
+              residual_param->dims().size()));
+    }
+
     return this->template AcquireDstMemory<T_out>(out);
   }  // namespace operators
 
@@ -402,12 +493,17 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     auto out = ctx.Output<phi::DenseTensor>("Out");
 
     const auto& scale_weights = ctx.Attr<std::vector<float>>("Scale_weights");
+    auto scale_in_eltwise_data = ctx.HasAttr("Scale_in_eltwise")
+                                     ? ctx.Attr<float>("Scale_in_eltwise")
+                                     : 1.0f;
 
     std::shared_ptr<dnnl::inner_product_forward> fc_p;
     std::shared_ptr<dnnl::memory> src_memory_p;
     std::shared_ptr<dnnl::memory> weights_memory_p;
     std::shared_ptr<dnnl::memory> bias_memory_p;
     std::shared_ptr<dnnl::memory> dst_memory_p;
+    std::shared_ptr<dnnl::memory> residual_data_memory_p;
+    auto* residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
 
     std::string cache_key;
     cache_key.reserve(64);
@@ -452,6 +548,20 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
             std::make_shared<dnnl::memory>(inner_product_cache->bias_mem);
         fc_args.insert({DNNL_ARG_BIAS, *bias_memory_p});
       }
+      if (residual_data) {
+        residual_data_memory_p =
+            std::make_shared<dnnl::memory>(inner_product_cache->residual_mem);
+        if (phi::funcs::is_int8<T_in>()) {
+          auto dims = dst_memory_p->get_desc().get_dims();
+          residual_data_memory_p = GetBinaryAddValueInt8(
+              dev_ctx, residual_data, dims, scale_in_eltwise_data);
+        } else {
+          void* residual_ptr = const_cast<void*>(residual_data->data());
+          residual_data_memory_p->set_data_handle(residual_ptr);
+        }
+        fc_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
+                        *residual_data_memory_p});
+      }
 
       if (inner_product_cache->src_scales_mem.get(true)) {
         fc_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC,
@@ -493,6 +603,13 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
         handler.SetScalesIfNeeded(&fc_args);
       }
 
+      if (residual_data) {
+        residual_data_memory_p =
+            handler.AcquireResidualMemory(residual_data, scale_in_eltwise_data);
+        fc_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
+                        *residual_data_memory_p});
+      }
+
       fc_p = handler.AcquireForwardPrimitive();
     }
 
@@ -506,6 +623,9 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
       ip_cache->src_mem = *src_memory_p;
       ip_cache->weights_mem = *weights_memory_p;
       ip_cache->dst_mem = *dst_memory_p;
+      if (residual_data_memory_p) {
+        ip_cache->residual_mem = *residual_data_memory_p;
+      }
       if (bias) {
         ip_cache->bias_mem = *bias_memory_p;
       }
