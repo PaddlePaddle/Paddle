@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -26,6 +27,10 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 class TensorDistAttr;
+
+inline bool IsEmpty(const std::vector<int64_t>& shape) {
+  return shape.empty() || shape.at(0) == 0;
+}
 
 // Generate the axis notation of tensor for the einsum notation of a broadcast
 // operation(alignment star from the rightmost axis). tenosr_ndim: the size of
@@ -88,8 +93,17 @@ std::vector<ArgDistAttr> ToArgDistAttr(
 
 TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim);
 
+TensorDistAttr UnShardTensorDim(const TensorDistAttr& dist_attr, int dim);
+
 bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
                     const std::shared_ptr<PlacementStatus>& b);
+
+void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs,
+                       const std::vector<std::vector<int64_t>>& tensor_shapes,
+                       const std::vector<std::string>& axis_names,
+                       const std::set<int64_t>& skip_mesh_dims,
+                       const std::string& align_axis,
+                       bool allow_partial);
 
 // Adaptor for variadic arguments
 template <typename Functor>
