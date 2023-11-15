@@ -291,7 +291,7 @@ class TestExponentialSampleKS(unittest.TestCase):
             [samples] = self.executor.run(
                 self.program,
                 feed=self.feeds,
-                fetch_list=self._paddle_gamma.sample(sample_shape),
+                fetch_list=self._paddle_expon.sample(sample_shape),
             )
             self.assertTrue(self._kstest(samples))
 
@@ -301,14 +301,14 @@ class TestExponentialSampleKS(unittest.TestCase):
             [samples] = self.executor.run(
                 self.program,
                 feed=self.feeds,
-                fetch_list=self._paddle_gamma.rsample(sample_shape),
+                fetch_list=self._paddle_expon.rsample(sample_shape),
             )
             self.assertTrue(self._kstest(samples))
 
     def _kstest(self, samples):
         # Uses the Kolmogorov-Smirnov test for goodness of fit.
         ks, _ = scipy.stats.kstest(
-            samples, scipy.stats.gamma(self.concentration, scale=self.scale).cdf
+            samples, scipy.stats.expon(scale=self.scale).cdf
         )
         return ks < 0.02
 
