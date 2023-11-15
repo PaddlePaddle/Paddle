@@ -18,8 +18,10 @@ import paddle
 from paddle.amp.auto_cast import amp_state
 from paddle.base import framework
 from paddle.base.data_feeder import convert_dtype
-from paddle.base.unique_name import UniqueNameGenerator
-from paddle.base.unique_name import guard as UniqueNameGuard
+from paddle.base.unique_name import (
+    UniqueNameGenerator,
+    guard as UniqueNameGuard,
+)
 from paddle.utils import flatten, is_sequence
 
 from .utils import Cache, Singleton, map_if_extend, meta_str

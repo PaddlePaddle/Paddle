@@ -59,9 +59,11 @@ from .dispatch_functions import (
 )
 from .dispatcher import Dispatcher
 from .function_graph import FunctionGraph
-from .instr_flag import CALL_FUNCTION_EX_FLAG as CFE
-from .instr_flag import FORMAT_VALUE_FLAG as FV
-from .instr_flag import MAKE_FUNCTION_FLAG as MF
+from .instr_flag import (
+    CALL_FUNCTION_EX_FLAG as CFE,
+    FORMAT_VALUE_FLAG as FV,
+    MAKE_FUNCTION_FLAG as MF,
+)
 from .pycode_generator import PyCodeGen
 from .tracker import (
     CellTracker,
