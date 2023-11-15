@@ -14,9 +14,11 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
@@ -99,6 +101,7 @@ TEST(if_op_test, network_with_backward) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
 
   pir::Program program(ctx);
   pir::Block* block = program.block();
@@ -169,4 +172,6 @@ TEST(if_op_test, network_with_backward) {
   builder.SetInsertionPointToEnd(block);
 
   LOG(INFO) << program;
+
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 }
