@@ -1200,7 +1200,9 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
                 core.VarDesc.VarType.INT64,
             )
         else:
-            out = _C_ops.randint(low, high, shape, dtype, place)
+            from paddle.base.libpaddle import DataType
+
+            out = _C_ops.randint(low, high, shape, DataType.INT64, place)
         out = paddle.cast(out, dtype)
         return out
     else:
