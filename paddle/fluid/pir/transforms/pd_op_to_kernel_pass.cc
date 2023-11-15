@@ -524,7 +524,6 @@ static phi::Backend GetKernelBackendByYaml(
         PADDLE_THROW(phi::errors::Unimplemented(
             "Only support DenseTensorType, SelectedRows, VectorType"));
       }
-
     } else {
       PADDLE_ENFORCE_EQ(attr_map.count(slot_name),
                         true,
@@ -1361,7 +1360,7 @@ std::vector<pir::Value> BuildOpInputList(
         auto input_defs = args_def.input_defs();
 
         auto dst_backend =
-            GetDstBackend(op_item->name(),
+            DeriveBackend(op_item->name(),
                           place,
                           op_info_parser,
                           kernel.InputAt(tensor_param_index).backend,
