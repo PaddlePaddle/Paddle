@@ -1055,6 +1055,9 @@ def multiply(x, y, name=None):
         out = x * y
 
     Note:
+        Supported shape of :attr:`x` and :attr:`y` for this operator:
+        1. `x.shape` == `y.shape`.
+        2. `x.shape` could be the continuous subsequence of `y.shape`.
         ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
@@ -1065,7 +1068,7 @@ def multiply(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+        N-D Tensor. A location into which the result is stored. If :attr:`x`, :attr:`y` have different shapes and are "broadcastable", the resulting tensor shape is the shape of :attr:`x` and :attr:`y` after broadcasting. If :attr:`x`, :attr:`y` have the same shape, its shape is the same as :attr:`x` and :attr:`y`.
 
     Examples:
 
