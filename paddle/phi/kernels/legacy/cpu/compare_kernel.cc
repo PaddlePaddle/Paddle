@@ -115,6 +115,7 @@ PD_REGISTER_KERNEL(less_than_raw,
                    ALL_LAYOUT,
                    phi::LessThanRawKernel,
                    bool,
+                   int8_t,
                    int16_t,
                    int,
                    int64_t,
@@ -131,6 +132,7 @@ PD_REGISTER_KERNEL(less_than_raw,
                      ALL_LAYOUT,                          \
                      phi::func##RawKernel,                \
                      bool,                                \
+                     int8_t,                              \
                      int16_t,                             \
                      int,                                 \
                      int64_t,                             \
