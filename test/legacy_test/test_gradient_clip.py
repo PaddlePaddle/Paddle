@@ -252,9 +252,7 @@ class TestPirGradientClipByGlobalNorm(TestGradientClip):
             params = prog.global_block().all_parameters()
             grad_list = paddle.autograd.ir_backward.grad(avg_cost, params)
 
-            p_g_clip = self.clip_gradient(
-                [(a, b) for a, b in zip(params, grad_list)]
-            )
+            p_g_clip = self.clip_gradient(list(zip(params, grad_list)))
 
             grad_clip_list = [elem[1] for elem in p_g_clip]
             train_reader = paddle.batch(
