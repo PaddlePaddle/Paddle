@@ -917,7 +917,6 @@ def get_package_data_and_package_dir():
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
     package_data['paddle.libs'] = []
-
     if env_dict.get("WITH_SHARED_PHI") == "ON":
         package_data['paddle.libs'] += [
             ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
@@ -934,6 +933,10 @@ def get_package_data_and_package_dir():
         ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix,
         ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_suffix,
     ]
+    package_data['paddle.libs'] += [
+        ('libcommon' if os.name != 'nt' else 'common') + ext_suffix,
+    ]
+    shutil.copy(env_dict.get("COMMON_LIB"), libs_path)
     shutil.copy(env_dict.get("WARPCTC_LIBRARIES"), libs_path)
     shutil.copy(env_dict.get("WARPRNNT_LIBRARIES"), libs_path)
     package_data['paddle.libs'] += [
@@ -1169,6 +1172,12 @@ def get_package_data_and_package_dir():
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 )
+                commands.append(
+                    "install_name_tool -add_rpath '@loader_path' "
+                    + env_dict.get("PADDLE_BINARY_DIR")
+                    + '/python/paddle/libs/'
+                    + env_dict.get("COMMON_NAME")
+                )
                 if env_dict.get("WITH_SHARED_PHI") == "ON":
                     commands.append(
                         "install_name_tool -add_rpath '@loader_path' "
@@ -1191,6 +1200,12 @@ def get_package_data_and_package_dir():
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 ]
+                commands.append(
+                    "patchelf --set-rpath '$ORIGIN' "
+                    + env_dict.get("PADDLE_BINARY_DIR")
+                    + '/python/paddle/libs/'
+                    + env_dict.get("COMMON_NAME")
+                )
                 if env_dict.get("WITH_SHARED_PHI") == "ON":
                     commands.append(
                         "patchelf --set-rpath '$ORIGIN' "
