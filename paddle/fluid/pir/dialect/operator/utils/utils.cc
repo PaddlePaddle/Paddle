@@ -14,31 +14,33 @@
 
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include <unordered_set>
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
 namespace paddle {
 namespace dialect {
 
 const std::unordered_set<std::string> LegacyOpList = {
-    "pd_op.load_combine",
-    "pd_op.c_concat",
-    "pd_op.c_broadcast_",
-    "pd_op.c_sync_calc_stream_",
-    "pd_op.c_sync_comm_stream_",
-    "pd_op.fused_gemm_epilogue",
-    "pd_op.fused_gemm_epilogue_grad",
-    "pd_op.dpsgd",
-    "pd_op.send_v2",
-    "pd_op.recv_v2",
-    "pd_op.c_allreduce_sum",
-    "pd_op.c_allreduce_sum_",
-    "pd_op.c_reduce_sum",
-    "pd_op.c_reduce_sum_",
-    "pd_op.c_allreduce_max_",
-    "pd_op.c_allgather",
-    "pd_op.seed",
-    "pd_op.share_data",
-    "pd_op.sparse_momentum"};
+    LoadCombineOp::name(),
+    CConcatOp::name(),
+    CBroadcast_Op::name(),
+    CSyncCalcStream_Op::name(),
+    CSyncCommStream_Op::name(),
+    FusedGemmEpilogueOp::name(),
+    FusedGemmEpilogueGradOp::name(),
+    DpsgdOp::name(),
+    SendV2Op::name(),
+    RecvV2Op::name(),
+    CAllreduceSumOp::name(),
+    CAllreduceSum_Op::name(),
+    CReduceSumOp::name(),
+    CReduceSum_Op::name(),
+    CAllreduceMax_Op::name(),
+    CAllgatherOp::name(),
+    SeedOp::name(),
+    ShareDataOp::name(),
+    SparseMomentumOp::name()};
 
 enum class AttrType {
   UNDEFINED = 0,

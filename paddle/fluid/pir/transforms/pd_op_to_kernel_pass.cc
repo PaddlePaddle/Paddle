@@ -1052,10 +1052,10 @@ void HandleForSpecialOp(
   VLOG(6) << "Deep copy a new builtin op: " << op_item->name();
 }
 
-std::vector<pir::Type> BuildOpOutputType(pir::Operation* op_item,
-                                         const std::string& kernel_fn_str,
-                                         const phi::KernelKey& kernel_key,
-                                         pir::IrContext* ctx) {
+std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
+                                    const std::string& kernel_fn_str,
+                                    const phi::KernelKey& kernel_key,
+                                    pir::IrContext* ctx) {
   if (op_item->num_results() == 0) {
     return {};
   }
@@ -1133,7 +1133,7 @@ std::vector<pir::Type> BuildOpOutputType(pir::Operation* op_item,
   return op_output_types;
 }
 
-std::vector<pir::Value> BuildOpInputList(
+std::vector<pir::Value> BuildInputs(
     pir::Operation* op_item,
     const std::string& kernel_fn_str,
     const phi::KernelKey& kernel_key,
@@ -1423,7 +1423,7 @@ std::vector<pir::Value> BuildOpInputList(
   return vec_inputs;
 }
 
-void AddShadowFeed(
+void AddShadowFeedOpForDataOrFeed(
     const phi::Place& place,
     pir::Operation* op_item,
     pir::Operation* kernel_op,
@@ -1485,8 +1485,8 @@ std::unique_ptr<OpYamlInfoParser> GetOpYamlInfoParser(pir::Operation* op) {
   return op_info_parser;
 }
 
-std::string GetKernelFnStr(const OpYamlInfoParser* op_info_parser,
-                           pir::Operation* op_item) {
+std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
+                          pir::Operation* op_item) {
   std::string kernel_fn_str;
   if (op_info_parser != nullptr) {
     kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func;
@@ -1580,33 +1580,27 @@ void ProcessBlock(
       continue;
     }
 
-    // Lower from PaddleDialect to KernelDialect
-
     auto op_info_parser = GetOpYamlInfoParser(op_item);
-
-    auto kernel_fn_str = GetKernelFnStr(op_info_parser.get(), op_item);
-
+    auto kernel_name = GetKernelName(op_info_parser.get(), op_item);
     auto kernel_key = GetKernelKey(
-        op_item, place, kernel_fn_str, *map_value_pair, op_info_parser.get());
+        op_item, place, kernel_name, *map_value_pair, op_info_parser.get());
     VLOG(6) << "kernel type " << kernel_key;
 
     // build output type
-    auto op_output_types =
-        BuildOpOutputType(op_item, kernel_fn_str, kernel_key, ctx);
-
+    auto op_output_types = BuildOutputs(op_item, kernel_name, kernel_key, ctx);
     // build input
-    auto vec_inputs = BuildOpInputList(op_item,
-                                       kernel_fn_str,
-                                       kernel_key,
-                                       place,
-                                       op_info_parser.get(),
-                                       ctx,
-                                       map_op_pair,
-                                       map_value_pair,
-                                       new_block);
+    auto vec_inputs = BuildInputs(op_item,
+                                  kernel_name,
+                                  kernel_key,
+                                  place,
+                                  op_info_parser.get(),
+                                  ctx,
+                                  map_op_pair,
+                                  map_value_pair,
+                                  new_block);
 
     // build op
-    pir::Operation* op = BuildKernelOp(kernel_fn_str,
+    pir::Operation* op = BuildKernelOp(kernel_name,
                                        kernel_key,
                                        vec_inputs,
                                        op_output_types,
@@ -1616,7 +1610,7 @@ void ProcessBlock(
                                        map_op_pair,
                                        map_value_pair);
 
-    AddShadowFeed(
+    AddShadowFeedOpForDataOrFeed(
         place, op_item, op, new_block, ctx, map_op_pair, map_value_pair);
   }
 }
