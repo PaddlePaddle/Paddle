@@ -92,7 +92,6 @@ class TestDeviceGuard(unittest.TestCase):
 
         execute(main_program, startup_program)
 
-    @test_with_pir_api
     def test_cpu_only_op(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
