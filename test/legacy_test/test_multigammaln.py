@@ -24,6 +24,14 @@ def ref_multigammaln(x, p):
     return special.multigammaln(x, p)
 
 
+def ref_multigammaln_grad(x, p):
+    def single_multigammaln_grad(x, p):
+        return special.psi(x - 0.5 * np.arange(0, p)).sum()
+
+    vectorized_multigammaln_grad = np.vectorize(single_multigammaln_grad)
+    return vectorized_multigammaln_grad(x, p)
+
+
 class TestMultigammalnAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
@@ -81,19 +89,8 @@ class TestMultigammalnGrad(unittest.TestCase):
         )
 
     def test_backward(self):
+        expected_x_grad = ref_multigammaln_grad(self.x, self.p)
         paddle.disable_static(self.place)
-        expected_x_grad = np.array(
-            [
-                -0.117942,
-                2.048725,
-                3.282059,
-                4.151106,
-                4.823328,
-                5.371814,
-                5.835183,
-            ]
-        ).astype('float32')
-
         x = paddle.to_tensor(self.x, dtype=self.dtype, place=self.place)
         x.stop_gradient = False
         out = x.multigammaln(self.p)
