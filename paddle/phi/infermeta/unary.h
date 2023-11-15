@@ -59,6 +59,8 @@ void ArgsortInferMeta(const MetaTensor& input,
                       MetaTensor* output,
                       MetaTensor* indices);
 
+void ArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void AsRealInferMeta(const MetaTensor& input, MetaTensor* output);
 
 void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output);

@@ -22,8 +22,10 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/fusion.h"
 #include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
@@ -1046,6 +1048,486 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
+const char *CreateArrayOp::attributes_name[1] = {"dtype"};
+
+OpInfoTuple CreateArrayOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {};
+
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo(
+          "dtype", "paddle::dialect::DataTypeAttribute", "")};
+
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {OpOutputInfo(
+      "out", "paddle::dialect::DenseTensorArrayType", false, false)};
+
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      OpRunTimeInfo("CreateArrayInferMeta",
+                    {"dtype"},
+                    "create_array",
+                    {"dtype"},
+                    {"dtype"},
+                    {},
+                    {},
+                    {});
+
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "create_array");
+}
+
+void CreateArrayOp::Build(pir::Builder &builder,
+                          pir::OperationArgument &argument,
+                          phi::DataType dtype) {
+  VLOG(4) << "Start build CreateArrayOp";
+  VLOG(4) << "Builder construction inputs";
+  VLOG(4) << "Builder construction attributes";
+  pir::Attribute attr_dtype = paddle::dialect::DataTypeAttribute::get(
+      pir::IrContext::Instance(), dtype);
+  argument.AddAttribute("dtype", attr_dtype);
+  VLOG(4) << "Builder construction outputs";
+
+  paddle::dialect::IrMetaTensor dense_out;
+  phi::MetaTensor meta_out(&dense_out);
+
+  phi::CreateArrayInferMeta(dtype, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorArrayType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.layout());
+  argument_outputs.push_back(out_dense_tensor_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+}
+
+void CreateArrayOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
+             "CreateArrayOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        0u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of inputs must be equal to 1.", input_size));
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    auto &attributes = this->attributes();
+    PADDLE_ENFORCE(attributes.count("dtype") > 0, "dtype does not exist.");
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorArrayType>(),
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 0th output."));
+  }
+  VLOG(4) << "End Verifying for: CreateArrayOp.";
+}
+
+void CreateArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::CreateArrayInferMeta);
+  fn(infer_meta);
+}
+
+OpInfoTuple ArrayLengthOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      OpInputInfo("x",
+                  "paddle::dialect::DenseTensorArrayType",
+                  false,
+                  false,
+                  false,
+                  false)};
+
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
+
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      OpOutputInfo("out", "paddle::dialect::DenseTensorType", false, false)};
+
+  paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo(
+      "ArrayLengthInferMeta", {"x"}, "array_length", {"x"}, {}, {}, {}, {});
+
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "array_length");
+}
+
+void ArrayLengthOp::Build(pir::Builder &builder,
+                          pir::OperationArgument &argument,
+                          pir::Value x) {
+  VLOG(4) << "Start build ArrayLengthOp";
+  VLOG(4) << "Builder construction inputs";
+  argument.AddInputs({x});
+  VLOG(4) << "Builder construction attributes";
+  VLOG(4) << "Builder construction outputs";
+
+  paddle::dialect::DenseTensorArrayType x_type =
+      x.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+  paddle::dialect::IrMetaTensor dense_x(
+      paddle::dialect::TransToPhiDataType(x_type.dtype()),
+      {},
+      x_type.data_layout(),
+      {});
+  phi::MetaTensor meta_x(&dense_x);
+
+  paddle::dialect::IrMetaTensor dense_out;
+  phi::MetaTensor meta_out(&dense_out);
+
+  phi::ArrayLengthInferMeta(meta_x, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+}
+
+void ArrayLengthOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
+             "ArrayLengthOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of inputs must be equal to 1.", input_size));
+
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(0)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorArrayType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 0th input."));
+  }
+  VLOG(4) << "Verifying attributes:";
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 0th output."));
+  }
+  VLOG(4) << "End Verifying for: ArrayLengthOp.";
+}
+
+void ArrayLengthOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::ArrayLengthInferMeta);
+  fn(infer_meta);
+}
+
+OpInfoTuple ArrayReadOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      OpInputInfo("array",
+                  "paddle::dialect::DenseTensorArrayType",
+                  false,
+                  false,
+                  false,
+                  false),
+      OpInputInfo(
+          "i", "paddle::dialect::ScalarAttribute", false, false, true, false)};
+
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
+
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      OpOutputInfo("out", "paddle::dialect::DenseTensorType", false, false)};
+
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      OpRunTimeInfo("ArrayReadInferMeta",
+                    {"array", "i"},
+                    "array_read",
+                    {"array", "i"},
+                    {"array"},
+                    {},
+                    {},
+                    {});
+
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "array_read");
+}
+
+void ArrayReadOp::Build(pir::Builder &builder,
+                        pir::OperationArgument &argument,
+                        pir::Value array,
+                        int64_t i) {
+  VLOG(4) << "Start build ArrayReadOp";
+  paddle::dialect::FullOp full_i_op = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1}, i, phi::DataType::INT64, phi::CPUPlace());
+
+  VLOG(4) << "Builder construction inputs";
+  argument.AddInputs({array, full_i_op.result(0)});
+  VLOG(4) << "Builder construction attributes";
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorArrayType array_type =
+      array.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+  paddle::dialect::IrMetaTensor dense_array(
+      paddle::dialect::TransToPhiDataType(array_type.dtype()),
+      {},
+      array_type.data_layout(),
+      {});
+  phi::MetaTensor meta_array(&dense_array);
+
+  paddle::dialect::IrMetaTensor dense_out;
+  phi::MetaTensor meta_out(&dense_out);
+
+  phi::ArrayReadInferMeta(
+      meta_array, i, &meta_out, phi::MetaConfig(false, false));
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod());
+  argument_outputs.push_back(out_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+}
+
+void ArrayReadOp::Build(pir::Builder &builder,
+                        pir::OperationArgument &argument,
+                        pir::Value array,
+                        pir::Value i) {
+  VLOG(4) << "Start build ArrayReadOp";
+  VLOG(4) << "Builder construction inputs";
+  argument.AddInputs({array, i});
+  VLOG(4) << "Builder construction attributes";
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorArrayType array_type =
+      array.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+  paddle::dialect::IrMetaTensor dense_array(
+      paddle::dialect::TransToPhiDataType(array_type.dtype()),
+      {},
+      array_type.data_layout(),
+      {});
+  phi::MetaTensor meta_array(&dense_array);
+
+  phi::Scalar i_scalar;
+  if (i.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullOp>()) {
+    i_scalar =
+        std::move(phi::Scalar(i.dyn_cast<pir::OpResult>()
+                                  .owner()
+                                  ->dyn_cast<paddle::dialect::FullOp>()
+                                  .attribute("value")
+                                  .dyn_cast<paddle::dialect::ScalarAttribute>()
+                                  .data()
+                                  .to<int64_t>()));
+  } else {
+    i_scalar = std::move(phi::Scalar(-1));
+    i_scalar.SetFromTensor(true);
+  }
+
+  paddle::dialect::IrMetaTensor dense_out;
+  phi::MetaTensor meta_out(&dense_out);
+
+  phi::ArrayReadInferMeta(
+      meta_array, i_scalar, &meta_out, phi::MetaConfig(false, false));
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod());
+  argument_outputs.push_back(out_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+}
+
+void ArrayReadOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
+             "ArrayReadOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        2u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of inputs must be equal to 3.", input_size));
+
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(0)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorArrayType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 0th input."));
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(1)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 1th input."));
+  }
+  VLOG(4) << "Verifying attributes:";
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 0th output."));
+  }
+  VLOG(4) << "End Verifying for: ArrayWrite_Op.";
+}
+
+void ArrayReadOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::ArrayReadInferMeta);
+  fn(infer_meta);
+}
+
+OpInfoTuple ArrayWrite_Op::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      OpInputInfo("array",
+                  "paddle::dialect::DenseTensorArrayType",
+                  false,
+                  false,
+                  false,
+                  false),
+      OpInputInfo(
+          "x", "paddle::dialect::DenseTensorType", false, false, false, false),
+      OpInputInfo(
+          "i", "paddle::dialect::ScalarAttribute", false, false, true, false)};
+
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
+
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {OpOutputInfo(
+      "out", "paddle::dialect::DenseTensorArrayType", false, false)};
+
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      OpRunTimeInfo("ArrayWriteInferMeta",
+                    {"array", "x"},
+                    "array_write",
+                    {"array", "x", "i"},
+                    {"array"},
+                    {},
+                    {{"out", "array"}},
+                    {});
+
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "array_write");
+}
+
+void ArrayWrite_Op::Build(pir::Builder &builder,
+                          pir::OperationArgument &argument,
+                          pir::Value array,
+                          pir::Value x,
+                          pir::Value i) {
+  VLOG(4) << "Start build ArrayWrite_Op";
+  VLOG(4) << "Builder construction inputs";
+  argument.AddInputs({array, x, i});
+  VLOG(4) << "Builder construction attributes";
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorArrayType array_type =
+      array.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+  paddle::dialect::IrMetaTensor dense_array(
+      paddle::dialect::TransToPhiDataType(array_type.dtype()),
+      {},
+      array_type.data_layout(),
+      {});
+  phi::MetaTensor meta_array(&dense_array);
+
+  paddle::dialect::DenseTensorType x_type =
+      x.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  paddle::dialect::IrMetaTensor dense_x(
+      paddle::dialect::TransToPhiDataType(x_type.dtype()),
+      x_type.dims(),
+      x_type.data_layout(),
+      x_type.lod(),
+      x_type.offset());
+  phi::MetaTensor meta_x(&dense_x);
+
+  paddle::dialect::IrMetaTensor dense_out;
+  phi::MetaTensor meta_out(&dense_out);
+
+  phi::ArrayWriteInferMeta(
+      meta_array, meta_x, &meta_out, phi::MetaConfig(false, false));
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_type = paddle::dialect::DenseTensorArrayType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.layout());
+  argument_outputs.push_back(out_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+}
+
+void ArrayWrite_Op::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
+             "ArrayWrite_Op.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        3u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of inputs must be equal to 3.", input_size));
+
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(0)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorArrayType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 0th input."));
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(1)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 1th input."));
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(2)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 2th input."));
+  }
+  VLOG(4) << "Verifying attributes:";
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorArrayType>(),
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 0th output."));
+  }
+  VLOG(4) << "End Verifying for: ArrayWrite_Op.";
+}
+
+void ArrayWrite_Op::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::ArrayWriteInferMeta);
+  fn(infer_meta);
+}
+
 OpInfoTuple ExpandOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo(
@@ -1316,4 +1798,8 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayLengthOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayReadOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayWrite_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)
