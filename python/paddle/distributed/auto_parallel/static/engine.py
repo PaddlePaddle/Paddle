@@ -843,6 +843,15 @@ class Engine:
             self.program_helper.init(
                 dist_main_program, self._place, dist_context
             )
+            # The model's instance variables (not paramters), used in forward function,
+            # have been initialized when initialize model in dynamic mode.
+            if self._model and len(self._model.buffers()) > 0:
+                for buffer in self._model.buffers():
+                    scope_var = global_scope().find_var(buffer.name)
+                    buffer_tensor = global_scope().var(buffer.name).get_tensor()
+                    if scope_var and buffer_tensor._is_initialized():
+                        continue
+                    buffer_tensor.set(buffer.numpy(), self._place)
 
         if self._executor is None:
             self._executor = paddle.static.Executor(self._place)
@@ -857,7 +866,6 @@ class Engine:
                 uninitialized.append(var)
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
-
                 if self.enable_prim_in_distribute:
                     self.pir_prune_startup_program = (
                         paddle.pir.translate_to_pir(prune_startup_prog.desc)
@@ -868,14 +876,6 @@ class Engine:
                         self._executor.run(self.pir_prune_startup_program)
                 else:
                     self._executor.run(prune_startup_prog)
-
-            if self._model and len(self._model.buffers()) > 0:
-                for buffer in self._model.buffers():
-                    scope_var = global_scope().find_var(buffer.name)
-                    buffer_tensor = global_scope().var(buffer.name).get_tensor()
-                    if scope_var and buffer_tensor._is_initialized():
-                        continue
-                    buffer_tensor.set(buffer.value().get_tensor(), self._place)
 
             if hasattr(self, "_state_dict") and hasattr(self, "_dist_attr"):
                 self._set_state_dict(
