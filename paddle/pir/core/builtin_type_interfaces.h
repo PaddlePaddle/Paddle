@@ -57,10 +57,7 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   static constexpr int64_t kDynamic = std::numeric_limits<int64_t>::min();
 
   ShapedTypeInterface(Type type, Concept *impl)
-      : TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {
-    dy_shape_ = vectorize(impl->get_shape(type));
-    std::replace(dy_shape_.begin(), dy_shape_.end(), (int64_t)-1, kDynamic);
-  }
+      : TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
 
   ///
   /// \brief Get the element type.
@@ -97,8 +94,9 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   /// dimension.
   ///
   bool IsDynamicShape() const {
+    auto size_vec = (*this).GetDyShape();
     return std::any_of(
-        dy_shape_.begin(), dy_shape_.end(), [](int64_t size_value) {
+        size_vec.begin(), size_vec.end(), [](int64_t size_value) {
           return IsDynamic(size_value);
         });
   }
@@ -114,7 +112,7 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   bool IsDynamicDim(unsigned idx) const {
     IR_ENFORCE(idx < GetRank(), "Invalid index for shaped type.");
-    return ShapedTypeInterface::IsDynamic(dy_shape_[idx]);
+    return ShapedTypeInterface::IsDynamic((*this).GetDyShape()[idx]);
   }
 
   ///
@@ -122,8 +120,9 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   /// Aborts for unranked types.
   ///
   int64_t GetNumDynamicDims() const {
+    auto shape_vec = (*this).GetDyShape();
     return std::count_if(
-        dy_shape_.begin(), dy_shape_.end(), ShapedTypeInterface::IsDynamic);
+        shape_vec.begin(), shape_vec.end(), ShapedTypeInterface::IsDynamic);
   }
 
   ///
@@ -132,12 +131,12 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   int64_t GetDimSize(unsigned idx) const {
     IR_ENFORCE(idx < GetRank(), "Invalid index for shaped type.");
-    return dy_shape_[idx];
+    return (*this).GetDyShape()[idx];
   }
 
  private:
   Concept *impl_;
-  std::vector<int64_t> dy_shape_;
+  mutable std::vector<int64_t> dy_shape_;
 };
 
 }  // namespace pir
