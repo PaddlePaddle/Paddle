@@ -1343,6 +1343,15 @@
     shift_data : Shift_data
     scale_weights : Scale_weights
 
+- op : fusion_repeated_fc_relu
+  inputs :
+    x : X
+    w : W
+    bias : Bias
+  outputs :
+    relu_out : ReluOut
+    out : Out
+
 - op : fusion_seqconv_eltadd_relu
   inputs :
     x : X
@@ -2624,6 +2633,12 @@
   outputs :
     {out : Out, summed_ids : SummedIds}
 
+- op : self_dp_attention
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : selu
   backward : selu_grad
   inputs :
@@ -2670,10 +2685,6 @@
     sgd_ : GetSgdExpectedKernelType
   extra :
     attrs : [bool use_mkldnn=false]
-
-- op : shadow_output
-  inputs: {x: x}
-  outputs: {out: out}
 
 - op : shape
   inputs :
@@ -2935,6 +2946,7 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
 
 - op : sum (reduce_sum)
   backward : sum_grad (reduce_sum_grad), sum_double_grad
@@ -3311,6 +3323,23 @@
   outputs:
     {out: Out}
 
+- op: fused_elemwise_add_activation
+  backward: fused_elemwise_add_activation_grad
+  inputs :
+    {x: X, y: Y}
+  outputs :
+    {out : Out, intermediate_out : IntermediateOut}
+
+- op: fusion_squared_mat_sub
+  inputs :
+    x : X
+    y : Y
+  outputs :
+    squared_x : SquaredX
+    squared_y : SquaredY
+    squared_xy : SquaredXY
+    out : Out
+
 - op: get_tensor_from_selected_rows
   inputs :
     x : X
@@ -3410,6 +3439,16 @@
     {x: X, label: Label}
   outputs :
     out : Out
+
+- op: sparse_momentum
+  inputs :
+    {param: Param, grad: Grad, velocity: Velocity, index: Index, axis: Axis, learning_rate: LearningRate,master_param: MasterParam}
+  outputs :
+    {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+  scalar:
+   axis:
+     datatype : int
+     tensor_name : Axis
 
 - op: squared_l2_norm
   backward: squared_l2_norm_grad

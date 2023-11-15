@@ -243,6 +243,29 @@ void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
                                  MetaTensor* fmha_out_grad,
                                  MetaTensor* out_linear_out_grad);
 
+void FusedElemwiseAddActivationInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const std::vector<std::string>& functor_list,
+    float scale,
+    int axis,
+    bool save_intermediate_out,
+    MetaTensor* out,
+    MetaTensor* intermediate_out);
+
+void FusedElemwiseAddActivationGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const MetaTensor& out,
+    const MetaTensor& intermediate_out,
+    const MetaTensor& out_grad,
+    const std::vector<std::string>& functor_list,
+    float scale,
+    int axis,
+    bool save_intermediate_out,
+    MetaTensor* x_grad,
+    MetaTensor* y_grad);
+
 void FusedFeedForwardInferMeta(const MetaTensor& x,
                                const MetaTensor& dropout1_seed,
                                const MetaTensor& dropout2_seed,
@@ -451,33 +474,42 @@ void LayerNormActXPUInferMeta(const MetaTensor& x,
                               float act_param,
                               MetaTensor* y);
 
-void FusedScaleBiasReluConvBnstatsInferMeta(
-    const MetaTensor& x,
-    const MetaTensor& w,
-    const MetaTensor& scale,
-    const MetaTensor& bias,
-    const MetaTensor& bn_scale,
-    const MetaTensor& bn_bias,
-    const MetaTensor& input_running_mean,
-    const MetaTensor& input_running_var,
-    const std::vector<int>& paddings,
-    const std::vector<int>& dilations,
-    const std::vector<int>& strides,
-    const std::string& padding_algorithm,
-    int groups,
-    const std::string& data_format,
-    float momentum,
-    float epsilon,
-    bool fuse_prologue,
-    bool exhaustive_search,
-    int64_t accumulation_count,
-    MetaTensor* out,
-    MetaTensor* out_running_mean,
-    MetaTensor* out_running_var,
-    MetaTensor* saved_mean,
-    MetaTensor* saved_var,
-    MetaTensor* eq_scale,
-    MetaTensor* eq_bias);
+void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
+                                       const MetaTensor& w,
+                                       const MetaTensor& scale,
+                                       const MetaTensor& bias,
+                                       const MetaTensor& bn_scale,
+                                       const MetaTensor& bn_bias,
+                                       const MetaTensor& input_running_mean,
+                                       const MetaTensor& input_running_var,
+                                       const std::vector<int>& paddings,
+                                       const std::vector<int>& dilations,
+                                       const std::vector<int>& strides,
+                                       const std::string& padding_algorithm,
+                                       int groups,
+                                       const std::string& data_format,
+                                       float momentum,
+                                       float epsilon,
+                                       bool fuse_prologue,
+                                       bool exhaustive_search,
+                                       int64_t accumulation_count,
+                                       MetaTensor* out,
+                                       MetaTensor* out_running_mean,
+                                       MetaTensor* out_running_var,
+                                       MetaTensor* saved_mean,
+                                       MetaTensor* saved_var,
+                                       MetaTensor* eq_scale,
+                                       MetaTensor* eq_bias);
+
+void FusedScaleBiasAddReluInferMeta(const MetaTensor& x1,
+                                    const MetaTensor& scale1,
+                                    const MetaTensor& bias1,
+                                    const MetaTensor& x2,
+                                    const MetaTensor& scale2,
+                                    const MetaTensor& bias2,
+                                    bool fuse_prologue,
+                                    bool exhaustive_search,
+                                    MetaTensor* y);
 
 void SqueezeExcitationInferMeta(const MetaTensor& x,
                                 const MetaTensor& filter,
@@ -519,6 +551,20 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
                                           MetaTensor* variance,
                                           MetaConfig config = MetaConfig());
 
+void FusionRepeatedFCReluInferMeta(const MetaTensor& x,
+                                   const std::vector<const MetaTensor*>& w,
+                                   const std::vector<const MetaTensor*>& bias,
+                                   std::vector<MetaTensor*> relu_out,
+                                   MetaTensor* out);
+
+void FusionSquaredMatSubInferMeta(const MetaTensor& x,
+                                  const MetaTensor& y,
+                                  const float scalar,
+                                  MetaTensor* squared_x,
+                                  MetaTensor* squared_y,
+                                  MetaTensor* squared_xy,
+                                  MetaTensor* out);
+
 void FusionGRUInferMeta(const MetaTensor& x,
                         const MetaTensor& h0,
                         const MetaTensor& weight_x,
@@ -556,4 +602,9 @@ void FusionSeqExpandConcatFCInferMeta(const std::vector<const MetaTensor*>& x,
                                       const std::string& fc_activation,
                                       MetaTensor* out,
                                       MetaTensor* fc_out);
+
+void SelfDPAttenInferMeta(const MetaTensor& x,
+                          const float alpha,
+                          const int head_number,
+                          MetaTensor* out);
 }  // namespace phi

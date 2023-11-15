@@ -15,7 +15,7 @@
 from paddle import _C_ops
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
-from ..base.framework import in_dygraph_mode
+from ..base.framework import in_dynamic_or_pir_mode
 from ..base.layer_helper import LayerHelper
 from ..nn import Layer
 
@@ -64,7 +64,7 @@ def viterbi_decode(
             [[0, 0],
              [1, 1]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.viterbi_decode(
             potentials, transition_params, lengths, include_bos_eos_tag
         )

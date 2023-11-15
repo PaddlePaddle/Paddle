@@ -36,7 +36,7 @@ MAIN_DIST_BRANCH_TEMPLATE = """
       // 8. Infer Local DenseTensor Meta{}
       // 9. DenseTensor Kernel Call{}
     }}
-    // 10. Reshard Partial Output to Replicated (Temporary){}\n
+    // 10. Reshard Kernel Output to API output{}\n
     // 11. Return
     {}
   }}
@@ -340,7 +340,7 @@ def source_include(header_file_path, fw_header_file_path):
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #endif
 
 PD_DECLARE_bool(conv2d_disable_cudnn);

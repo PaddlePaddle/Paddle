@@ -47,14 +47,12 @@ class TestSimpleNetWithGradientHookForSemiAutoParallel(
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
         paddle.set_device(self._backend)
-        self.init_input_data()
 
     def run_dynamic(self, layer):
+        image, label = self.init_input_data()
         loss_fn = nn.MSELoss()
-        image = paddle.to_tensor(self.image)
 
         out = layer(image)
-        label = paddle.to_tensor(self.label)
         loss = loss_fn(out, label)
         loss.backward()
 

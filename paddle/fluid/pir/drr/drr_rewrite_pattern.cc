@@ -271,11 +271,19 @@ bool DrrRewritePattern::MatchFromOutputToInput(
         break;
       }
       // bfs producer_op of current_op
-      if (!drr_visited.count(drr_producer_op)) {
+      if (drr_visited.count(drr_producer_op) &&
+          ir_visited.count(ir_producer_op)) {
+        continue;
+      }
+      if (!drr_visited.count(drr_producer_op) &&
+          !ir_visited.count(ir_producer_op)) {
         drr_q.push(drr_producer_op);
         ir_q.push(ir_producer_op);
         drr_visited.insert(drr_producer_op);
         ir_visited.insert(ir_producer_op);
+      } else {
+        matched = false;
+        break;
       }
     }
     // binding output tensor of current_op
@@ -405,7 +413,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
           src_match_ctx.Operation(source_pattern_graph.owned_op_call()[0].get())
               .get();
       max_input_op_index = op_2_temp_program_index[source_patter_first_op];
-      rewriter.SetInsertionPoint(source_patter_first_op);
+      rewriter.set_insertion_point(source_patter_first_op);
     } else {
       rewriter.SetInsertionPointAfter(max_index_op);
     }
