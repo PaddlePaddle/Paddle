@@ -111,11 +111,6 @@ Tensor add_n_decomp(const std::vector<Tensor>& x) {
   return res;
 }
 
-// template <typename T>
-// Tensor pow_decomp(const Tensor& x, const bool approximate) {
-
-// }
-
 template <typename T>
 Tensor gelu_decomp(const Tensor& x, bool approximate) {
   auto org_dtype = x.dtype();
