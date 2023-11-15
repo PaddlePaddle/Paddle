@@ -140,6 +140,8 @@ from ..core_api.ir import (  # noqa: F401
     Sequential,
     TensorStore,
     AxisMap,
+    Ramp,
+    Broadcast,
 )
 
 

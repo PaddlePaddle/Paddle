@@ -24,6 +24,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_python_printer.h"
 #include "paddle/cinn/pybind/bind.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 
@@ -183,4 +184,8 @@ class IrNodeWrapper : ir::IrNode {
   using ir::IrNode::IrNode;
 };
 
+#define BIND_PYTHON_PRINTER(PrintType)                       \
+  .def("__str__", [](const PrintType &self) -> std::string { \
+    return utils::GetStreamCnt(self);                        \
+  })
 }  // namespace cinn::pybind

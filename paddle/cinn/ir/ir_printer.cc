@@ -21,9 +21,12 @@
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_python_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
+
+PD_DECLARE_bool(cinn_print_python_script);
 
 namespace cinn {
 namespace ir {
@@ -669,16 +672,26 @@ void IrPrinter::Visit(const intrinsics::BuiltinIntrin *x) {
 
 std::ostream &operator<<(std::ostream &os, Expr a) {
   std::stringstream ss;
-  IrPrinter printer(ss);
-  printer.Print(a);
+  if (FLAGS_cinn_print_python_script) {
+    IrPythonPrinter printer(ss);
+    printer.Print(a);
+  } else {
+    IrPrinter printer(ss);
+    printer.Print(a);
+  }
   os << ss.str();
   return os;
 }
 
 std::ostream &operator<<(std::ostream &os, const std::vector<Expr> &a) {
   std::stringstream ss;
-  IrPrinter printer(ss);
-  printer.Print(a);
+  if (FLAGS_cinn_print_python_script) {
+    IrPythonPrinter printer(ss);
+    printer.Print(a);
+  } else {
+    IrPrinter printer(ss);
+    printer.Print(a);
+  }
   os << ss.str();
   return os;
 }
