@@ -21,7 +21,9 @@ from op_gen import (
     PD_MANUAL_OP_LIST,
     OpCompatParser,
     OpInfoParser,
+    check_need_update_ops,
     to_pascal_case,
+    update_ops,
 )
 
 H_FILE_TEMPLATE = """
@@ -84,7 +86,7 @@ OPTIONAL_VECTOR_VALUE_INPUT_TEMPLATE = """
     if (!{name}) {{
         optional_{name} = paddle::make_optional<pir::Value>(pir::Value());
     }} else {{
-        auto optional_{name}_combine_op = APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({name}.get());
+        auto optional_{name}_combine_op = ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({name}.get());
         optional_{name} = paddle::make_optional<pir::Value>(optional_{name}_combine_op.out());
     }}"""
 
@@ -105,18 +107,18 @@ OPTIONAL_OPRESULT_OUTPUT_TEMPLATE = """
 OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE = """
     paddle::optional<std::vector<pir::OpResult>> optional_{name};
     if (!IsEmptyValue({op_name}_op.result({index}))) {{
-        auto optional_{name}_slice_op = APIBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({op_name}_op.result({index}));
+        auto optional_{name}_slice_op = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({op_name}_op.result({index}));
         optional_{name} = paddle::make_optional<std::vector<pir::OpResult>>(optional_{name}_slice_op.outputs());
     }}"""
 
 COMBINE_OP_TEMPLATE = """
-    auto {op_name} = APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({in_name});"""
+    auto {op_name} = ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({in_name});"""
 
 SPLIT_OP_TEMPLATE = """
-    auto {op_name} = APIBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({in_name});"""
+    auto {op_name} = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({in_name});"""
 
 COMPUTE_OP_TEMPLATE = """
-    paddle::dialect::{op_class_name} {op_inst_name} = APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::{op_class_name}>({args});"""
+    paddle::dialect::{op_class_name} {op_inst_name} = ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::{op_class_name}>({args});"""
 
 OP_INPUT = 'pir::Value'
 VECTOR_TYPE = 'pir::VectorType'
@@ -152,29 +154,9 @@ class CodeGen:
     def __init__(self) -> None:
         pass
 
-    def _check_need_update_ops(self, op_yaml_files):
-        need_update_ops = False
-        for yaml_file in op_yaml_files:
-            if yaml_file.find("update_ops.parsed.yaml") != -1:
-                need_update_ops = True
-                update_yaml_file = yaml_file
-                break
-        return need_update_ops, update_yaml_file
-
-    def _update_ops(self, op_yaml_items, update_yaml_file):
-        with open(update_yaml_file, "r") as f:
-            update_ops = yaml.safe_load(f)
-        for i in range(len(op_yaml_items)):
-            for update_op in update_ops:
-                if op_yaml_items[i]['name'] == update_op['name']:
-                    op_yaml_items[i] = update_op
-                    break
-
     def _parse_yaml(self, op_yaml_files, op_compat_yaml_file):
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
-        need_update_ops, update_yaml_file = self._check_need_update_ops(
-            op_yaml_files
-        )
+        need_update_ops, update_yaml_file = check_need_update_ops(op_yaml_files)
 
         op_yaml_items = []
         for yaml_file in op_yaml_files:
@@ -185,7 +167,7 @@ class CodeGen:
                 op_yaml_items = op_yaml_items + ops
         # replace old ir ops with pir ops
         if need_update_ops:
-            self._update_ops(op_yaml_items, update_yaml_file)
+            update_ops(op_yaml_items, update_yaml_file)
         op_info_items = []
         for op in op_yaml_items:
             op_compat_item = op_compat_parser.get_compat(op['name'])
@@ -204,7 +186,7 @@ class CodeGen:
                 and 'scalar' in op_compat_item
             ):
                 op_compat_item = op_compat_item.pop('scalar')
-            if op['support_tensor'] != []:
+            if 'support_tensor' in op.keys() and op['support_tensor']:
                 (
                     scalar_item,
                     int_array_item,

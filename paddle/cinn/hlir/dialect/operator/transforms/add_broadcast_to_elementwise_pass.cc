@@ -81,6 +81,19 @@ bool IsSameDim(const phi::DDim& first, const std::vector<int64_t>& second) {
   return false;
 }
 
+std::vector<int64_t> GetBroadcastAxis(const phi::DDim& in_shape,
+                                      const std::vector<int64_t>& out_shape) {
+  std::vector<int64_t> broadcast_axes(in_shape.size(), 0);
+  auto in_shape_size = in_shape.size();
+  if (in_shape_size >= 1) {
+    for (int i = 1; i <= in_shape_size; ++i) {
+      broadcast_axes[in_shape_size - i] = out_shape.size() - i;
+    }
+  }
+
+  return broadcast_axes;
+}
+
 bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   auto x_dims = op->operand_source(0)
                     .type()
@@ -96,14 +109,18 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
     if (!IsSameDim(x_dims, output_shape)) {
       // add broadcast to input 0
       auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
-          op->operand_source(0), std::vector<int64_t>({}), output_shape);
+          op->operand_source(0),
+          GetBroadcastAxis(x_dims, output_shape),
+          output_shape);
 
       op->operand(0).set_source(new_transpose_op->result(0));
     }
 
     if (!IsSameDim(y_dims, output_shape)) {
       auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
-          op->operand_source(1), std::vector<int64_t>({}), output_shape);
+          op->operand_source(1),
+          GetBroadcastAxis(y_dims, output_shape),
+          output_shape);
 
       op->operand(1).set_source(new_transpose_op->result(0));
     }
@@ -134,6 +151,18 @@ bool AddBroadcastToElementwisePass::Initialize(pir::IrContext* context) {
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::SubtractOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MultiplyOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::DivideOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::ElementwisePowOp>>(
+      context);
+
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::LessThanOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::LessEqualOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::EqualOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::NotEqualOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::GreaterThanOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::GreaterEqualOp>>(
+      context);
 
   patterns_ = ::pir::FrozenRewritePatternSet(std::move(ps));
   return true;

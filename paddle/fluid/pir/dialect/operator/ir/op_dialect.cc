@@ -60,7 +60,8 @@ void OperatorDialect::initialize() {
               paddle::dialect::AddNWithKernelOp,
               paddle::dialect::FusedGemmEpilogueOp,
               paddle::dialect::FusedGemmEpilogueGradOp,
-              paddle::dialect::SplitGradOp>();
+              paddle::dialect::SplitGradOp,
+              paddle::dialect::ExpandOp>();
 
   RegisterInterfaces<ParameterConvertInterface>();
 }

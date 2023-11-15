@@ -156,7 +156,9 @@ class SuggestionDict:
         self.suggestion_dict = {
             ('is not initialized.', 'Hint:', 'IsInitialized'): (
                 "Please ensure all your sublayers are inheritted from nn.Layer.",
-                "Please ensure there is no tensor created explicitly depended on external data, we suggest to register it as buffer tensor. See https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/04_dygraph_to_static/export_model/principle_cn.html#parameters-buffers for details",
+                "Please ensure there is no tensor created explicitly depended on external data, "
+                + "we suggest to register it as buffer tensor. "
+                + "See https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/jit/principle_cn.html#buffers for details",
             )
         }
 

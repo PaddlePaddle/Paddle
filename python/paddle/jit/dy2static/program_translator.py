@@ -12,16 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import inspect
 import os
 import threading
 import warnings
 import weakref
+from typing import TYPE_CHECKING
 
 import paddle.pir.core as ir_static
 from paddle import decomposition
-from paddle.base import core, framework
+from paddle.base import core, framework, in_pir_mode
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
     _to_static_mode_guard_,
@@ -42,15 +45,15 @@ from .function_spec import (
     get_buffers,
     get_parameters,
 )
-from .newir_partial_program import (
-    PartialProgramLayerHook as PirPartialProgramLayerHook,
-)
 from .origin_info import (
     attach_origin_info,
     create_and_update_origin_info_map,
     update_op_callstack_with_origin_info,
 )
 from .partial_program import PartialProgramLayerHook
+from .pir_partial_program import (
+    PartialProgramLayerHook as PirPartialProgramLayerHook,
+)
 from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
@@ -64,6 +67,9 @@ from .utils import (
     type_name,
     unwrap,
 )
+
+if TYPE_CHECKING:
+    from paddle.static.amp.fp16_utils import AmpOptions
 
 __all__ = []
 
@@ -198,7 +204,7 @@ class CacheKey:
         'class_instance',
         'kwargs',
         '_spec_names_id',
-        '_new_ir_flags',
+        '_pir_flags',
     ]
 
     def __init__(
@@ -228,9 +234,7 @@ class CacheKey:
         self._spec_names_id = _hash_spec_names(
             input_args_with_spec, input_kwargs_with_spec
         )
-        self._new_ir_flags = os.environ.get(
-            'FLAGS_enable_new_ir_in_executor', None
-        )
+        self._pir_flags = os.environ.get('FLAGS_enable_pir_in_executor', None)
 
     @classmethod
     def from_func_and_args(cls, function_spec, args, kwargs, class_instance):
@@ -274,7 +278,7 @@ class CacheKey:
                 self.class_instance,
                 with_hook,
                 is_train,
-                self._new_ir_flags,
+                self._pir_flags,
             )
         )
 
@@ -341,8 +345,12 @@ class StaticFunction:
             self._dygraph_function = function
             self._class_instance = None
 
-        if input_spec is not None and prim_or_cinn_is_enabled(
-            kwargs.get("build_strategy", None), kwargs.get("backend", None)
+        if (
+            input_spec is not None
+            and prim_or_cinn_is_enabled(
+                kwargs.get("build_strategy", None), kwargs.get("backend", None)
+            )
+            and not in_pir_mode()
         ):
             from paddle.static import InputSpec
 
@@ -473,11 +481,9 @@ class StaticFunction:
 
         if not in_dynamic_mode():
             raise RuntimeError(
-                "Failed to run the callable object {} decorated by '@paddle.jit.to_static', "
+                f"Failed to run the callable object {self.dygraph_function} decorated by '@paddle.jit.to_static', "
                 "because it is NOT in dynamic mode. Please disable the static graph mode to enter dynamic mode with the "
-                "following API: paddle.disable_static().".format(
-                    self.dygraph_function
-                )
+                "following API: paddle.disable_static()."
             )
 
         return self._perform_call(*args, **kwargs)
@@ -798,7 +804,7 @@ class ASTStaticFunction(StaticFunction):
             else:
                 logging_utils.warn(
                     "Please file an issue at 'https://github.com/PaddlePaddle/Paddle/issues'"
-                    " if you can't handle this {} yourself.".format(type(e))
+                    f" if you can't handle this {type(e)} yourself."
                 )
                 raise e
 
@@ -1153,7 +1159,7 @@ class ConcreteProgram:
 
     @staticmethod
     @switch_to_static_graph
-    def newir_from_func_spec(
+    def pir_from_func_spec(
         func_spec, input_spec, input_kwargs_spec, class_instance, **kwargs
     ):
         """
@@ -1189,10 +1195,10 @@ class ConcreteProgram:
         with ir_static.program_guard(main_program, startup_program):
             with _to_static_mode_guard_(is_to_static=True):
                 # 1. Adds `paddle.static.data` layers for input if needed
-                static_inputs = func_spec.newir_to_static_inputs_with_spec(
+                static_inputs = func_spec.pir_to_static_inputs_with_spec(
                     input_spec, main_program
                 )
-                _kwargs = func_spec.newir_to_static_inputs_with_spec(
+                _kwargs = func_spec.pir_to_static_inputs_with_spec(
                     input_kwargs_spec, main_program
                 )
                 if class_instance:
@@ -1221,7 +1227,7 @@ class ConcreteProgram:
                         raise
 
                 # 3. Gets all ParamBases and buffered VarBases in the function
-                from ..newir_dy2static.parameter_recorder import (
+                from ..pir_dy2static.parameter_recorder import (
                     _global_parameter_recorder,
                 )
 
@@ -1286,6 +1292,7 @@ class ConcreteProgram:
         )
 
         new_name_generator = UniqueNameGenerator()
+        ProgramTranslator.get_instance()._amp_records.clear()
 
         with framework.program_guard(main_program, startup_program):
             with _to_static_mode_guard_(is_to_static=True), UniqueNameGuard(
@@ -1504,12 +1511,18 @@ class PirPrimHooker(PirPartialProgramLayerHook):
                 return whole_program, new_start_index, dst_vars
             return whole_program, forward_end_idx, src_vars
 
-    def after_infer(self, infer_program, src_vars):
+    def after_infer(self, infer_program):
         with backend_guard(self.backend):
             if core._is_fwd_prim_enabled():
-                dst_vars = decomposition.decompose(infer_program, src_vars)
-                return infer_program, dst_vars
-            return infer_program, src_vars
+                targets = decomposition.decompose(
+                    infer_program.program, infer_program.out_values
+                )
+                infer_program.out_values = targets
+                infer_program.forward_range = (
+                    0,
+                    len(infer_program.program.global_block().ops),
+                )
+            return
 
 
 class ProgramCache:
@@ -1534,7 +1547,7 @@ class ProgramCache:
         enable_fallback = enable_prim
         try:
             if use_pir_api():
-                concrete_program = ConcreteProgram.newir_from_func_spec(
+                concrete_program = ConcreteProgram.pir_from_func_spec(
                     func_spec=cache_key.function_spec,
                     input_spec=cache_key.input_args_with_spec,
                     input_kwargs_spec=cache_key.input_kwargs_with_spec,
@@ -1582,12 +1595,12 @@ class ProgramCache:
                     )
 
         if use_pir_api():
-            from .newir_partial_program import partial_program_from
+            from .pir_partial_program import partial_program_from
 
             partial_program = partial_program_from(
                 concrete_program, cache_key.class_instance is not None
             )
-        else:  # TODO(new_ir): remove later.
+        else:  # TODO(pir): remove later.
             from .partial_program import partial_program_from
 
             partial_program = partial_program_from(
@@ -1757,6 +1770,7 @@ class ProgramTranslator:
         self._program_cache = ProgramCache()
         self._params_recorder = ParametersRecorder()
         self._inplace_map = InplaceMap()
+        self._amp_records: dict[int, list[tuple[AmpOptions, int, int]]] = {}
         self.enable_to_static = True
 
     def enable(self, enable_to_static):
