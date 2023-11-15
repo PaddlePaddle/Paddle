@@ -177,8 +177,8 @@ def standard_gamma(x, name=None):
             >>> print(out)
             >>> # doctest: +SKIP("Random output")
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[2., 5., 0.],
-             [5., 1., 3.]])
+            [[3.35393834, 0.80538225, 0.36511323],
+             [6.10344696, 4.28612375, 6.37196636]])
             >>> # doctest: -SKIP
     """
     if in_dynamic_or_pir_mode():
