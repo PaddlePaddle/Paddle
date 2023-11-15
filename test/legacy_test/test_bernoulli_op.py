@@ -47,7 +47,7 @@ class TestBernoulliOp(OpTest):
         self.out = np.zeros((1000, 784)).astype(self.dtype)
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]))
