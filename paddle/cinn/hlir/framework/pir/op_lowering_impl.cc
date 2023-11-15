@@ -138,10 +138,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                                                   bool apply_pass) {
   VLOG(3) << "Lowering Group : " << group->group_id
           << " , Op Pattern : " << group->op_pattern_kind;
-  // TODO(Aurelius84): The logic shoule be moved into op_fusion module.
-  if (group->ops.size() >= 1U & group->output_ops.size() == 0) {
-    group->output_ops.insert(group->ops[group->ops.size() - 1]);
-  }
   group->input_names.clear();
   group->output_names.clear();
   switch (group->op_pattern_kind) {
