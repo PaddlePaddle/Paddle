@@ -166,6 +166,9 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     size_t out_size, std::vector<Tensor>* out);
 
+std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
+    const phi::distributed::ArgDistAttr& dist_attr, std::vector<Tensor>* out);
+
 std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOutput(
     size_t out_size, std::vector<Tensor>* out);
 

@@ -656,7 +656,8 @@ ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
       true,
       phi::errors::PreconditionNotMet(
           "Arg must be a vector of TensorDistAttr"));
-  const auto& tensor_dist_attrs = paddle::get<1>(dist_attrs);
+  const auto& tensor_dist_attrs = PADDLE_GET_CONST(
+      std::vector<phi::distributed::TensorDistAttr>, dist_attrs);
 
   PADDLE_ENFORCE_EQ(tensors.size(),
                     tensor_dist_attrs.size(),
