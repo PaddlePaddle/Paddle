@@ -49,7 +49,9 @@ class TestLogLossOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['Predicted'], 'Loss', max_relative_error=0.03, check_pir=True)
+        self.check_grad(
+            ['Predicted'], 'Loss', max_relative_error=0.03, check_pir=True
+        )
 
 
 if __name__ == '__main__':
