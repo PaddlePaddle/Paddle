@@ -150,10 +150,6 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
 
         rewriter->ReplaceOp(full_op,
                             std::vector<pir::Value>({new_full->result(0)}));
-        // rewriter->EraseOp( full_op );
-        // op->operand(0).set_source( new_full->result(0));
-
-        // full_op->Erase();
       } else {
         auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
             op->operand_source(1),

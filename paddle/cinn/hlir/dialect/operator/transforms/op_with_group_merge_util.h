@@ -92,16 +92,9 @@ inline bool is_same_shape(::pir::Operation* producer,
 inline bool is_same_size(::pir::Operation* producer,
                          const std::shared_ptr<Group>& consumer) {
   auto master_op = consumer->master_ops.begin();
-  std::cerr << "in same size, master op" << (*master_op)->name() << std::endl;
   auto producer_shape = GetValueShape(producer->result(0));
-  for (size_t i = 0; i < producer_shape.size(); ++i) {
-    std::cerr << "producer ! " << producer_shape[i] << std::endl;
-  }
   auto consumer_shape = GetValueShape((*master_op)->result(0));
 
-  for (size_t i = 0; i < consumer_shape.size(); ++i) {
-    std::cerr << "consumer ! " << consumer_shape[i] << std::endl;
-  }
   if (producer_shape == consumer_shape) {
     return true;
   }
@@ -232,7 +225,6 @@ inline bool horizontal_or_vertical_reduce_relation(
     return true;
   }
 
-  std::cerr << "1111\n";
   // reducer op in fusion op.
   ::pir::Operation* reducer = NULL;
   for (auto* master : consumer->master_ops) {

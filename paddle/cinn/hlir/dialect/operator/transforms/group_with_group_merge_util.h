@@ -286,7 +286,6 @@ inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
 inline bool broadcast_fuse_reduce(const std::shared_ptr<ir::Group>& first,
                                   const std::shared_ptr<ir::Group>& second) {
   // if same shape with horizontal relation
-  std::cerr << "broadcast fuse reduce \n";
   if (is_same_size(first, second)) {
     return true;
   }
@@ -474,7 +473,6 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
         candidates.pop();
 
         if (candidate->num_results() == 0) {
-          std::cerr << "skip num result " << candidate->name() << std::endl;
           continue;
         }
         // TODO(phlrain) : why only deal with first output

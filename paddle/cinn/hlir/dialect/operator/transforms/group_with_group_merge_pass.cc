@@ -399,8 +399,6 @@ struct HorizontalFuseUtil {
   static bool DetectFusabilityByKind(FusePassCtxT* ctx,
                                      const OpGroupPtr& src,
                                      const OpGroupPtr& dst) {
-    std::cerr << "horzi " << src.group_id() << "\t" << dst.group_id()
-              << std::endl;
     const KindKeyT kind_pair(src.kind(), dst.kind());
     const auto& map = GetConditionMap();
     const auto& iter = map.find(kind_pair);
@@ -408,8 +406,6 @@ struct HorizontalFuseUtil {
       return false;
     }
     auto out = iter->second(src, dst);
-
-    std::cerr << "res " << out << std::endl;
 
     return out;
   }
@@ -754,11 +750,8 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
     if (iter == map.end()) {
       return false;
     }
-    // std::cerr << "group id" << src.group_id() << "\t" << dst.group_id() <<
-    // std::endl; std::cerr << "ver src kind tar kind " << src.kind() << "\t" <<
-    // dst.kind() << std::endl;
+
     auto res = iter->second(ctx, src, dst);
-    // std::cerr << "can fusable \t" << res << std::endl;
     return res;
   }
 
@@ -2144,24 +2137,23 @@ GroupList GeneralFusionMergePassInternal(const GroupList& group_list) {
   GeneralFusionMergePassHelper fusion_merge_pass_helper(group_list);
   auto res = fusion_merge_pass_helper();
 
-  std::cerr << "op fusion res " << res.size() << std::endl;
+  if (VLOG_IS_ON(6)) {
+    std::stringstream ss;
+    ::pir::IrPrinter printer(ss);
+    for (size_t i = 0; i < res.size(); ++i) {
+      auto group = res[i];
 
-  std::stringstream ss;
-  ::pir::IrPrinter printer(ss);
-  for (size_t i = 0; i < res.size(); ++i) {
-    auto group = res[i];
+      ss << "group\t" << group->group_id << std::endl;
+      ss << "kind\t" << group->kind() << std::endl;
 
-    ss << "!!!!!!!!!!!!!!!!\n";
-    ss << group->group_id << std::endl;
-    ss << "kind " << group->kind() << std::endl;
-
-    for (auto op : group->ops) {
-      printer.PrintOperation(op);
-      ss << "\n";
+      for (auto op : group->ops) {
+        printer.PrintOperation(op);
+        ss << "\n";
+      }
     }
-  }
 
-  std::cerr << ss.str() << std::endl;
+    VLOG(6) << ss.str();
+  }
 
   return res;
 }

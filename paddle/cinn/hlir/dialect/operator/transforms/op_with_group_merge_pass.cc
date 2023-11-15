@@ -51,11 +51,11 @@ std::unordered_map<std::string, OpPatternKind> OpKindMap = {
     {"cinn_op.reshape", OpPatternKind::kElementWise},
     {"pd_op.cast", OpPatternKind::kElementWise},
     {"pd_op.greater_than", OpPatternKind::kElementWise},
+    {"pd_op.greater_equal", OpPatternKind::kElementWise},
     {"cinn_op.scale", OpPatternKind::kElementWise},
     {"cinn_op.reduce_sum", OpPatternKind::kReduction},
     {"cinn_op.reduce_max", OpPatternKind::kReduction},
     {"cinn_op.broadcast", OpPatternKind::kBroadcast},
-    // {"cf.yield", OpPatternKind::kNonFusible},
     {"cinn_op.uniform_random", OpPatternKind::kElementWise}};
 
 OpPatternKind GetOpKind(const std::string& op_name) {
@@ -63,7 +63,6 @@ OpPatternKind GetOpKind(const std::string& op_name) {
   if (found_it == OpKindMap.end()) {
     PADDLE_THROW(phi::errors::Unavailable(
         "not support [%s] op yet in op kind map", op_name));
-    // throw std::runtime_error("not support op yet in op kind map");
   }
 
   return found_it->second;
@@ -330,7 +329,6 @@ class OpFusionPassHelper {
       }
     }
 
-    std::cerr << "top sort \n" << ss.str() << std::endl;
     // reverse op for output to input
     std::reverse(ops_.begin(), ops_.end());
     for (size_t i = 0; i < top_sort_list.size(); ++i) {
@@ -395,11 +393,6 @@ class OpFusionPassHelper {
 
       // fusion op for consumer
       auto consumer_fusion = fusion_groups_[consumer];  //
-
-      std::cerr << "------------------------------------\n";
-      std::cerr << "consumer fusion  \t" << consumer_fusion->group_id
-                << std::endl;
-      std::cerr << "con sumer  " << consumer->name() << std::endl;
       // check all linkin op
       // for (size_t i = 0; i < consumer->num_operands(); ++i) {
       auto producer_list = GetProducerOpsReverseSort(consumer, op2id_);
@@ -407,7 +400,6 @@ class OpFusionPassHelper {
         // auto producer_data = consumer->operand_source(i);
 
         auto producer = producer_list[i];
-        std::cerr << "preducer " << producer->name() << std::endl;
         if (!local_ops_.count(producer)) {
           continue;
         }
@@ -446,29 +438,18 @@ class OpFusionPassHelper {
             continue;
           }
           producer_data_used_num++;
-          std::cerr << "consumer_op " << consumer_op->name() << std::endl;
           // if fusion group can't find op, can't merge
           if (consumer_fusion->ops_set.find(consumer_op) ==
               consumer_fusion->ops_set.end()) {
             can_fuse = false;
-            std::cerr << "not include \n";
             break;
           }
         }
 
-        // std::cerr << "producer  consumer " << producer->name() << "\t" <<
-        // consumer->name() << std::endl; std::cerr << "can fuse " <<
-        // CanFuse(producer, consumer) << std::endl;
-
         if (!can_fuse || !CanFuse(producer, consumer)) {
-          std::cerr << "can not fuse  " << producer->name() << "\t"
-                    << consumer->name() << std::endl;
-          std::cerr << "fuse res " << can_fuse << "\t"
-                    << CanFuse(producer, consumer) << std::endl;
           continue;
         }
 
-        std::cerr << "can fuse !!!!!!!!!!!!!!!\n\n";
         // VLOG(3) << "Fuse Op " << producer->id() << " into Op "
         //         << consumer->id();
 
@@ -651,8 +632,6 @@ class OpFusionPassHelper {
     // first step: check producer can be fused into consumer
     if (relation.op_kind.count(GetOpKind(consumer->name()))) {
       auto& consumer_group = fusion_groups_[consumer];
-      std::cerr << "can fuse compare " << GetOpKind(producer->name()) << "\t"
-                << consumer_group->op_pattern_kind << "\n";
       // second step: check producer can be fused into consumer group
       VLOG(3) << "Call ConditionFunction, Producer Op Pattern : "
               << GetOpKind(producer->name()) << " , Consumer Group Pattern : "
@@ -687,31 +666,25 @@ GroupList OpFusionPassInternal(
     const std::vector<pir::Operation*>& op_list,
     const std::vector<pir::Operation*>& output_op_list) {
   VLOG(3) << "OpFusionPass...!";
-  std::cerr << "output op list " << output_op_list.size() << std::endl;
 
-  for (auto op : output_op_list) {
-    std::cerr << "fetch op name " << op->name() << std::endl;
-  }
   auto op_fusion_helper = OpFusionPassHelper(op_list, output_op_list);
   auto res = op_fusion_helper();
 
-  std::cerr << "op fusion res " << res.size() << std::endl;
+  if (VLOG_IS_ON(6)) {
+    std::stringstream ss;
+    ::pir::IrPrinter printer(ss);
+    for (size_t i = 0; i < res.size(); ++i) {
+      auto group = res[i];
+      ss << "group\t" << group->group_id << std::endl;
+      ss << "kind\t" << group->kind() << std::endl;
 
-  std::stringstream ss;
-  ::pir::IrPrinter printer(ss);
-  for (size_t i = 0; i < res.size(); ++i) {
-    auto group = res[i];
-
-    ss << "!!!!!!!!!!!!!!!!\n";
-    ss << group->group_id << std::endl;
-    ss << group->kind() << std::endl;
-
-    for (auto op : group->ops) {
-      printer.PrintOperation(op);
-      ss << "\n";
+      for (auto op : group->ops) {
+        printer.PrintOperation(op);
+        ss << "\n";
+      }
     }
+    VLOG(6) << ss.str();
   }
-  std::cerr << ss.str() << std::endl;
   VLOG(3) << "OpFusionPass Finish...!";
 
   VLOG(3) << "OpFusionPass Finish...!";

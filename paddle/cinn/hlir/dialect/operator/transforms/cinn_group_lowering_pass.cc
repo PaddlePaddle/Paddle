@@ -168,8 +168,6 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
              cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
         };
 
-        std::cerr << "after compiler\n";
-
         // Generate jit kernel op input and output
         auto vec_ins = GetBlockOutsideInput(group->ops);
 
