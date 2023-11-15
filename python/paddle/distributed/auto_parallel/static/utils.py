@@ -2583,9 +2583,11 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
         for op_id, temp_op in zip(
             range(len(temp_main_block.ops)), temp_main_block.ops
         ):
+            run_time_us = temp_op.dist_attr.run_time_us
             prof_results[op_id][iter_id] = (
-                temp_op.dist_attr.run_time_us
+                run_time_us
                 if check_if_op_supports_runtime_profiling(temp_op)
+                and run_time_us >= 0.0
                 else None
             )
     return prof_results

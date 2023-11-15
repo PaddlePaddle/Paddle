@@ -141,9 +141,6 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
                                   bool need_fetch,
                                   bool enable_op_profiling) {
   is_in_op_profiling_mode_ = enable_op_profiling;
-  if (enable_op_profiling) {
-    LOG_FIRST_N(INFO, 1) << "Op runtime profiling is enabled.";
-  }
 
   std::vector<paddle::framework::OpFuncNode> op_func_nodes;
   Build(feed_names, &op_func_nodes);
@@ -167,6 +164,13 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
     ClearLoDTensorArrayInLocalScope();
   }
 
+  // NOTE (liuchenghao): we need to reset "is_in_op_profiling_mode_" to false.
+  // This is because ProgramInterpreter::Run(...) has two implementations, only
+  // this implementation correctly updates its state, if user switches to
+  // another implementation of Run(...) half way, its state can cause potential
+  // problems.
+  is_in_op_profiling_mode_ = false;
+
   if (need_fetch) {
     // return Fetch Tensors
     Scope* inner_scope =
@@ -186,13 +190,6 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
       return fetch_list;
     }
   }
-
-  // NOTE (liuchenghao): we need to reset "is_in_op_profiling_mode_"
-  // this is because ProgramInterpreter::Run(...) has two implementations,
-  // only this implementation correctly updates its state, if user switches
-  // to another implementation of Run(...) half way, its state can cause
-  // potential problems.
-  is_in_op_profiling_mode_ = false;
 
   return {};
 }
@@ -961,23 +958,13 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
       return us_since_epoch;
     };
 
-    OperatorDistAttr* op_dist_attr = nullptr;
-
-    // Sometimes executor will automatically insert some new ops before
-    // executing. Under this situation, these new ops' id cannot be defined (as
-    // they don't exist in block desc) and are set to an invalid default value
-    // (uint64_max), and doesn't have op_dist_attr pointer.
-    if (op->Id() < block_.OpSize())
-      // make sure op index is valid before getting its dist attr pointer
-      op_dist_attr = block_.Op(op->Id())->MutableDistAttr();
-
-    if (is_in_op_profiling_mode_) SyncDevice();
-
     platform::RecordEvent compute_event(
         "compute",
         platform::TracerEventType::OperatorInner,
         1,
         platform::EventRole::kInnerOp);
+
+    if (is_in_op_profiling_mode_) SyncDevice();
 
     if (op_with_kernel == nullptr) {  // operator base
       instr_node.OpBase()->Run(*local_scope, place_);
@@ -1006,9 +993,18 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     }
 
     if (is_in_op_profiling_mode_) {
-      uint64_t op_start_ts = Tick();
+      OperatorDistAttr* op_dist_attr = nullptr;
+      // Sometimes executor will automatically insert some new ops before
+      // executing. Under this situation, these new ops' id cannot be defined
+      // (as they don't exist in block desc) and are set to an invalid default
+      // value (uint64_max), and doesn't have op_dist_attr pointer. So adding a
+      // if statement to check.
+      if (op->Id() < block_.OpSize())
+        // make sure op index is valid before getting its dist attr pointer
+        op_dist_attr = block_.Op(op->Id())->MutableDistAttr();
+      uint64_t _start = Tick();
       SyncDevice();
-      op_dist_attr->set_run_time_us(Tick() - op_start_ts);
+      if (op_dist_attr) op_dist_attr->set_run_time_us(Tick() - _start);
     }
   }
 
