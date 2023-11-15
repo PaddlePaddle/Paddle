@@ -50,7 +50,7 @@ paddle::Tensor CastPyArg2Tensor(PyObject* obj, Py_ssize_t arg_pos);
 PyObject* ToPyObject(const paddle::Tensor& value,
                      bool return_py_none_if_not_initialize = false);
 
-phi::DenseTensor LoadTensor(std::string path);
+phi::DenseTensor PyLoadTensor(std::string path);
 
 // Internal use only, switch tensor_operants_mode to phi
 void EnableTensorOperantsToPhiMode();

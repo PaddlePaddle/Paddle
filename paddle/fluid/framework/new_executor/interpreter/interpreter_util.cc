@@ -38,7 +38,7 @@
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/utils/save_tensor.h"
+#include "paddle/utils/save_load_tensor.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -964,14 +964,12 @@ void BuildOpFuncList(const platform::Place& place,
         if (var->IsType<phi::DenseTensor>()) {
           tensor = &var->Get<phi::DenseTensor>();
         } else {
-          VLOG(6) << vname << " var_name is not DenseTensor";
+          VLOG(6) << vname << " is not DenseTensor";
           continue;
         }
         if (!tensor->IsInitialized()) continue;
-        paddle::SaveTensor(*tensor,
-                           root_path + op_type + "-input-" + vname + "_1",
-                           true,
-                           true);
+        paddle::SaveTensor(
+            *tensor, root_path + op_type + "-input-" + vname + "_1", false);
       }
       for (auto& vname : op->OutputVars(true)) {
         auto* var = local_scope->FindVar(vname);
@@ -980,16 +978,14 @@ void BuildOpFuncList(const platform::Place& place,
         if (var->IsType<phi::DenseTensor>()) {
           tensor = &var->Get<phi::DenseTensor>();
         } else {
-          VLOG(6) << vname << " var_name is not DenseTensor";
+          VLOG(6) << vname << "  is not DenseTensor";
           continue;
         }
         if (!tensor->IsInitialized()) continue;
-        paddle::SaveTensor(*tensor,
-                           root_path + op_type + "-output-" + vname + "_1",
-                           true,
-                           true);
+        paddle::SaveTensor(
+            *tensor, root_path + op_type + "-output-" + vname + "_1", false);
       }
-      VLOG(6) << "end  save paddle variable";
+      VLOG(6) << "end save paddle variable";
     }
 
     if (FLAGS_check_nan_inf) {

@@ -11,18 +11,41 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/utils/save_load_tensor.h"
+
 #include <cstdint>
 
 #include <fstream>
 #include <numeric>
 #include <string>
-#include <vector>
 
+#include "glog/logging.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/version.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
+
+void SaveTensor(const phi::DenseTensor& x,
+                const std::string& file_path,
+                bool overwrite) {
+  std::string new_path(file_path);
+  if (FileExists(new_path)) {
+    VLOG(6) << "FileExists : " << new_path << ", pass";
+    return;
+  }
+
+  VLOG(6) << "saved to " << new_path;
+  MkDirRecursively(DirName(new_path).c_str());
+
+  std::ofstream fout(new_path, std::ios::binary);
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(fout),
+      true,
+      phi::errors::Unavailable("Cannot open %s to save variables.", new_path));
+  framework::SerializeToStream(fout, x);
+
+  fout.close();
+}
 
 void LoadTensor(const std::string& file_path, phi::DenseTensor* out) {
   std::ifstream fin(file_path, std::ios::binary);

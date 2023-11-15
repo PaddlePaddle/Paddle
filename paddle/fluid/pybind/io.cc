@@ -115,8 +115,9 @@ void BindIO(pybind11::module *m) {
                                   std::ios::in | std::ios::binary);
            paddle::framework::DeserializeFromStream(fin, &selected_rows);
          });
-  m->def("load_tensor_c", [](const std::string path) {
-    auto tensor = paddle::pybind::LoadTensor(path);
+
+  m->def("load_dense_tensor", [](const std::string path) {
+    auto tensor = paddle::pybind::PyLoadTensor(path);
     return tensor;
   });
 }
