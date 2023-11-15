@@ -93,7 +93,6 @@ class Generator:
             'transpose_Y': self.transpose_Y,
         }
         self.outputs = {'Out': Out}
-        self.python_api = paddle.mm
 
     def test_check_output(self):
         self.check_output(check_cinn=True)
