@@ -210,8 +210,10 @@ SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
                                 const IntArray& axis,
                                 bool keep_dim,
                                 bool reduce_all) {
-  TensorDistAttr x_dist_attr = out_grad.dist_attr();
-  TensorDistAttr x_grad_dist_attr = out_grad.dist_attr();
+  TensorDistAttr out_grad_dist_attr = out_grad.dist_attr();
+  out_grad_dist_attr.clean_partial_status();
+  TensorDistAttr x_dist_attr = out_grad_dist_attr;
+  TensorDistAttr x_grad_dist_attr = out_grad_dist_attr;
 
   std::vector<int64_t> x_dim = phi::vectorize(x.dims());
   std::vector<int64_t> out_grad_dim = phi::vectorize(out_grad.dims());
@@ -241,7 +243,7 @@ SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
     x_grad_dist_attr.set_dims_mapping(dims_mapping);
   }
 
-  return {{x_dist_attr, out_grad.dist_attr()}, {x_grad_dist_attr}};
+  return {{x_dist_attr, out_grad_dist_attr}, {x_grad_dist_attr}};
 }
 
 }  // namespace distributed
