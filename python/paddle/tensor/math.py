@@ -414,7 +414,7 @@ def multiplex(inputs, index, name=None):
              [3., 4.]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multiplex(inputs, index)
     else:
         helper = LayerHelper('multiplex', **locals())
@@ -5419,7 +5419,7 @@ def rad2deg(x, name=None):
             57.29578018)
     """
     rad2deg_scale = 180 / np.pi
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.scale(x, rad2deg_scale, 0.0, True)
@@ -6629,7 +6629,7 @@ def nextafter(x, y, name=None):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.00000012, 1.99999988])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.nextafter(x, y)
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'nextafter')
