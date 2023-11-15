@@ -47,6 +47,11 @@ class HybridParallelClipGrad:
         self._hcg = hcg
         self.not_sharding_stage1 = True
 
+        if hasattr(self._clip, "clip_norm"):
+            assert (
+                self._clip.clip_norm > 0.0
+            ), "It's not supported when clip_norm of grad clip is set to 0."
+
     def _global_norm(self, global_norm_var_dist, global_norm_var_not_dist):
         # sharding first
         sharding_flag = self._hcg.get_sharding_parallel_world_size() > 1
