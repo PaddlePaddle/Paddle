@@ -86,15 +86,15 @@ class TestCinnSubGraphBase(unittest.TestCase):
 
     def setUp(self):
         paddle.seed(2022)
-        self.shape = [64, 128]
-        self.axis = -1
         self.prepare_data()
 
     def prepare_data(self):
+        self.shape = [64, 128]
+        self.axis = -1
         self.x = paddle.randn(self.shape, dtype="float32")
         self.x.stop_gradient = False
 
-    def train(self, use_cinn):
+    def eval(self, use_cinn):
         paddle.seed(2022)
         net = CINNSubGraphNet()
         net = apply_to_static(net, use_cinn)
@@ -102,14 +102,14 @@ class TestCinnSubGraphBase(unittest.TestCase):
         out = net(self.x)
         return out
 
-    def test_forward(self):
-        cinn_out = self.train(use_cinn=True)
-        dy_out = self.train(use_cinn=False)
+    def test_eval(self):
+        cinn_out = self.eval(use_cinn=True)
+        dy_out = self.eval(use_cinn=False)
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
 class TestCinnSoftmax(TestCinnSubGraphBase):
-    def train(self, use_cinn):
+    def eval(self, use_cinn):
         paddle.seed(2022)
         net = CINNSoftmaxSubGraphNet()
         net = apply_to_static(net, use_cinn)
