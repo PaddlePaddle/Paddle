@@ -57,7 +57,7 @@ class TestSigmoidDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        shape = [2, 3, 2]
+        shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
         x = paddle.static.data('x', shape, dtype=dtype)
