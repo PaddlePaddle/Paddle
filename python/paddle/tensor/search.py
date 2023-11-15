@@ -913,12 +913,9 @@ def masked_select(x, mask, name=None):
             >>> print(out.numpy())
             [1. 5. 6. 9.]
     """
-
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.masked_select(x, mask)
-
     else:
-        helper = LayerHelper("masked_select", **locals())
         check_variable_and_dtype(
             x,
             'x',
@@ -928,6 +925,7 @@ def masked_select(x, mask, name=None):
         check_variable_and_dtype(
             mask, 'mask', ['bool'], 'paddle.tensor.search.masked_select'
         )
+        helper = LayerHelper("masked_select", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
             type='masked_select',
