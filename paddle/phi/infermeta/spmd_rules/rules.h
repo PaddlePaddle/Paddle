@@ -444,6 +444,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
 
+PD_REGISTER_SPMD_RULE(
+    not_equal,
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
+
 // TODO(pkuzyc): add multiary elementwise rule
 
 // reduction rule
@@ -471,6 +476,12 @@ PD_REGISTER_SPMD_RULE(
     max,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    reduce_max,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
 PD_REGISTER_SPMD_RULE(
     min,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
