@@ -21,7 +21,6 @@ from test_softmax_op import stable_softmax
 
 import paddle
 import paddle.nn.functional as F
-from paddle import static
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
@@ -530,9 +529,9 @@ class TestWarpCTCOpFp64(OpTest):
 class TestWarpCTCOpError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
-        main_program = static.Program()
-        startup_program = static.Program()
-        with static.program_guard(
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(
             main_program=main_program, startup_program=startup_program
         ):
             logits = paddle.static.data(
