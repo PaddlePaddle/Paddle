@@ -2557,7 +2557,7 @@ def outer(x, y, name=None):
     nx = x.reshape((-1, 1))
     ny = y.reshape((1, -1))
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.matmul(nx, ny, False, False)
     else:
 
