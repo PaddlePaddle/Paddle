@@ -139,25 +139,9 @@ void CommTaskManager::CommTaskLoop() {
         LOG(ERROR) << "Find no task started in all group";
       } else {
         // case 2: all group is not empty, but all last task is completed
-        // when some group is empty ?
-        bool all_completed = true;
+        // case 3: all group is not empty, some group task started but not
         for (auto iter : group_last_comm_task_) {
-          if (!iter.second->IsCompleted()) {
-            all_completed = false;
-            break;
-          }
-        }
-        if (all_completed) {
-          // report error immediately
-          LOG(ERROR)
-              << "Find no task started with prev task completed in all group";
-        } else {
-          // case 3: all group is not empty, some group task started but not
-          // finished analyze by automated script
-          for (auto iter : group_last_comm_task_) {
-            LogLongStr("Find last group comm task:",
-                       iter.second->GetTraceMsg());
-          }
+          LogLongStr("Find last group comm task:", iter.second->GetTraceMsg());
         }
       }
       logged_ = true;
