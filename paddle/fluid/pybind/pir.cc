@@ -65,7 +65,7 @@
 #endif
 
 namespace py = pybind11;
-using paddle::dialect::APIBuilder;
+using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
 using pir::Attribute;
@@ -1034,10 +1034,10 @@ void AppendSetParameter(Program *forward_program,
   }
 }
 
-void AppendSetParameters(Program *forward_program,
-                         const std::vector<pir::OpResult> &outputs_op_result,
-                         int start_point,
-                         std::string name_prefix) {
+int AppendSetParameters(Program *forward_program,
+                        const std::vector<pir::OpResult> &outputs_op_result,
+                        int start_point,
+                        std::string name_prefix) {
   int counter = 0;
   std::unordered_set<pir::OpResult> added_op_result;
 
@@ -1051,6 +1051,8 @@ void AppendSetParameters(Program *forward_program,
       added_op_result.insert(result);
     }
   }
+  // return the inserted op.
+  return counter;
 }
 
 SplitedResult SplitForwardBackward(
@@ -1319,13 +1321,20 @@ void BindUtils(pybind11::module *m) {
   m->def("fake_op_result", FakeOpResult);
   m->def("is_fake_op_result", IsFakeOpResult);
   m->def("set_global_program",
-         [](Program *program) { APIBuilder::Instance().SetProgram(program); });
+         [](Program *program) { ApiBuilder::Instance().SetProgram(program); });
+  m->def(
+      "cur_insertion_point",
+      []() { return ApiBuilder::Instance().insertion_point(); },
+      return_value_policy::reference);
+  m->def("set_insertion_point", [](const pir::InsertionPoint &insertion_point) {
+    ApiBuilder::Instance().set_insertion_point(insertion_point);
+  });
   m->def("set_insertion_point",
-         [](Operation *op) { APIBuilder::Instance().SetInsertionPoint(op); });
+         [](Operation *op) { ApiBuilder::Instance().set_insertion_point(op); });
   m->def("reset_insertion_point_to_start",
-         []() { APIBuilder::Instance().ResetInsertionPointToStart(); });
+         []() { ApiBuilder::Instance().ResetInsertionPointToStart(); });
   m->def("reset_insertion_point_to_end",
-         []() { APIBuilder::Instance().ResetInsertionPointToEnd(); });
+         []() { ApiBuilder::Instance().ResetInsertionPointToEnd(); });
   m->def("register_paddle_dialect", []() {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
