@@ -107,6 +107,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'embedding_grad_sparse',
     'fused_batch_norm_act_',
     'fused_bn_add_activation_',
+    'fused_elemwise_add_activation',
     'fused_scale_bias_relu_conv_bn',
     'fused_scale_bias_add_relu',
     'memcpy',
