@@ -14,8 +14,6 @@
 import paddle
 from paddle import _legacy_C_ops
 
-__all__ = []
-
 FLOAT_TYPE_DICT = {
     paddle.float16: "float16",
     paddle.float32: "float32",
