@@ -164,7 +164,7 @@ cinn_cc_library(
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
 target_include_directories(cinnapi PRIVATE ${CINN_DIALECT_BINARY_DIR})
-target_include_directories(cinncore PRIVATE ${CINN_DIALECT_BINARY_DIR})
+
 if(NOT CINN_ONLY)
   target_link_libraries(cinnapi op_dialect_vjp phi)
   add_dependencies(cinnapi op_dialect_vjp phi)
@@ -223,6 +223,7 @@ function(gen_cinncore LINKTYPE)
     ginac)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
+
   if(NOT CINN_ONLY)
     target_link_libraries(${CINNCORE_TARGET} op_dialect_vjp phi)
     add_dependencies(${CINNCORE_TARGET} op_dialect_vjp phi)
@@ -230,6 +231,8 @@ function(gen_cinncore LINKTYPE)
 
   add_dependencies(${CINNCORE_TARGET} pybind)
   target_link_libraries(${CINNCORE_TARGET} ${PYTHON_LIBRARIES})
+  target_include_directories(${CINNCORE_TARGET}
+                             PRIVATE ${CINN_DIALECT_BINARY_DIR})
 
   if(WITH_MKL)
     target_link_libraries(${CINNCORE_TARGET} cinn_mklml)
