@@ -150,14 +150,14 @@ def poisson(x, name=None):
 
 def standard_gamma(x, name=None):
     r"""
-    Returns a tensor filled with random number from a Poisson Distribution.
+    Returns a tensor filled with random number from a Standard Gamma Distribution.
 
     .. math::
 
-        out_i \sim Poisson (lambda = x_i)
+        out_i \sim Gamma (alpha = x_i, beta = 1.0)
 
     Args:
-        x(Tensor):  A tensor with rate parameter of poisson Distribution. The data type
+        x(Tensor):  A tensor with rate parameter of standrad gamma Distribution. The data type
             should be bfloat16, float16, float32, float64.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
@@ -173,7 +173,7 @@ def standard_gamma(x, name=None):
             >>> paddle.seed(100)
 
             >>> x = paddle.uniform([2,3], min=1.0, max=5.0)
-            >>> out = paddle.poisson(x)
+            >>> out = paddle.standard_gamma(x)
             >>> print(out)
             >>> # doctest: +SKIP("Random output")
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
