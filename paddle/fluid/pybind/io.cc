@@ -14,11 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/io.h"
 
-#include <iostream>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/utils/pybind.h"
 

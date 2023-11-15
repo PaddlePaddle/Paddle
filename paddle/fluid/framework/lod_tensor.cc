@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <cstdint>
 
-#include "glog/logging.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/version.h"
 
@@ -230,10 +229,8 @@ void SerializeToStream(std::ostream &os,
     }
   }
   // the 3st field, Tensor
-  VLOG(6) << "start TensorToStream";
   paddle::framework::TensorToStream(
       os, static_cast<phi::DenseTensor>(tensor), dev_ctx);
-  VLOG(6) << "start TensorToStream success";
 }
 
 void SerializeToStream(std::ostream &os, const phi::DenseTensor &tensor) {
