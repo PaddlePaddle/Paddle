@@ -221,7 +221,7 @@ class RedundantTransposeFusePattern
       IR_ENFORCE(axis_first.size() == axis_last.size(),
                  "tranpose op's perm rank should be same.");
       auto new_perm = GetPerm(axis_first, axis_last);
-      rewriter.SetInsertionPoint(op);
+      rewriter.set_insertion_point(op);
       auto new_transpose_op = rewriter.Build<paddle::dialect::TransposeOp>(
           pir::GetDefiningOpForInput(prev_trans_op, 0)->result(0), new_perm);
       rewriter.ReplaceOp(op, {new_transpose_op.out()});
@@ -291,7 +291,7 @@ class Conv2dBnFusePattern
     pir::Value bn_bias = op.bias();
 
     // --- deal with filter ---
-    rewriter.SetInsertionPoint(op);
+    rewriter.set_insertion_point(op);
     phi::DDim bn_variance_shape =
         bn_variance.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
     float epsilon = op.attribute<pir::FloatAttribute>("epsilon").data();
@@ -1123,7 +1123,7 @@ TEST(pattern_rewrite, Patterns) {
   paddle::framework::Scope scope;
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  pm.AddPass(pir::CreateConstantFoldingPass(&scope));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
