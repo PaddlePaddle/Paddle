@@ -4845,17 +4845,17 @@ create_test_act_fp16_class(
     check_pir=True,
     check_prim_pir=True,
 )
-# create_test_act_fp16_class(
-#     TestGelu,
-#     check_prim=True,
-#     check_prim_pir=True,
-#     check_pir=True,
-#     enable_cinn=True,
-#     rev_comp_rtol=1e-3,
-#     rev_comp_atol=1e-3,
-#     cinn_rtol=1e-3,
-#     cinn_atol=1e-3,
-# )
+create_test_act_fp16_class(
+    TestGelu,
+    check_prim=True,
+    check_prim_pir=True,
+    check_pir=True,
+    enable_cinn=True,
+    rev_comp_rtol=1e-3,
+    rev_comp_atol=1e-3,
+    cinn_rtol=1e-3,
+    cinn_atol=1e-3,
+)
 create_test_act_fp16_class(TestBRelu, check_pir=True)
 create_test_act_fp16_class(TestRelu6)
 create_test_act_fp16_class(TestSoftRelu, check_dygraph=False)
