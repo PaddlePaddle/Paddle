@@ -82,6 +82,7 @@ VisitDoNothing(ScheduleBlockRealize);
 VisitDoNothing(Ramp);
 VisitDoNothing(_Buffer_);
 VisitDoNothing(_BufferRange_);
+VisitDoNothing(_Dim_);
 
 #define NotVisitExprFields(NodeType) \
   void FeatureExtractor::Visit(const NodeType *x) {}

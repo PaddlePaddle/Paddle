@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# GET_ITER (new)
-# FOR_ITER (new)
-
 from __future__ import annotations
 
 import unittest
@@ -62,6 +59,14 @@ def case_all(x, vars):
     return x
 
 
+class CustomLayer(paddle.nn.Layer):
+    def forward(self, x):
+        return self.forward_features(x)
+
+    def forward_features(self, x):
+        return x.numpy()
+
+
 class TestMinGraphSize(TestCaseBase):
     @min_graph_size_guard(10)
     def test_cases(self):
@@ -70,6 +75,12 @@ class TestMinGraphSize(TestCaseBase):
         self.assert_results(case_if, x)
         self.assert_results(case_call, x)
         self.assert_results(case_all, x, [4, 5, 6])
+
+    @min_graph_size_guard(10)
+    def test_layer(self):
+        x = paddle.to_tensor(1)
+        layer = CustomLayer()
+        self.assert_results(layer.forward, x)
 
 
 if __name__ == "__main__":

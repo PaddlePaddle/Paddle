@@ -31,8 +31,10 @@ from paddle.base.dygraph.base import (
     param_guard,
     switch_to_static_graph,
 )
-from paddle.base.unique_name import UniqueNameGenerator
-from paddle.base.unique_name import guard as UniqueNameGuard
+from paddle.base.unique_name import (
+    UniqueNameGenerator,
+    guard as UniqueNameGuard,
+)
 from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
