@@ -3770,6 +3770,8 @@ def householder_product(A, tau, name=None):
         [
             'float32',
             'float64',
+            'complex64',
+            'complex128',
         ],
         'householder_product',
     )
@@ -3779,6 +3781,8 @@ def householder_product(A, tau, name=None):
         [
             'float32',
             'float64',
+            'complex64',
+            'complex128',
         ],
         'householder_product',
     )
@@ -3796,17 +3800,25 @@ def householder_product(A, tau, name=None):
     assert (
         A.shape[-2] >= A.shape[-1]
     ), "The rows of input A must be greater than or equal to the columns of input A.\n"
+    assert (
+        A.shape[-1] >= tau.shape[-1]
+    ), "The last dim of A must be greater than tau.\n"
     for idx, _ in enumerate(A.shape[:-2]):
         assert (
             A.shape[idx] == tau.shape[idx]
         ), "The input A must have the same batch dimensions with input tau.\n"
 
+    def _norm(x):
+        ret = paddle.to_tensor(0, dtype=x.dtype)
+        for i in range(x.shape[0]):
+            ret += x[i] * x[i]
+        return ret
+
     def _householder_product(A, tau):
         m, n = A.shape[-2:]
-        Q = paddle.eye(m)
-        for i in range(min(m, n)):
-            normx = paddle.norm(A[i:, i])
-            sign = 1 if A[i, i] < 0 else -1
+        k = tau.shape[-1]
+        Q = paddle.eye(m).astype(A.dtype)
+        for i in range(min(k, n)):
             w = A[i:, i]
             if in_dynamic_mode():
                 w[0] = 1
@@ -3814,12 +3826,19 @@ def householder_product(A, tau, name=None):
                 w = paddle.static.setitem(w, 0, 1)
             w = w.reshape([-1, 1])
             if in_dynamic_mode():
-                Q[:, i:] = Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+                if A.dtype in [paddle.complex128, paddle.complex64]:
+                    Q[:, i:] = Q[:, i:] - (
+                        Q[:, i:] @ w @ paddle.conj(w).T * tau[i]
+                    )
+                else:
+                    Q[:, i:] = Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
             else:
                 Q = paddle.static.setitem(
                     Q,
                     (slice(None), slice(i, None)),
-                    Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i]),
+                    Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+                    if A.dtype in [paddle.complex128, paddle.complex64]
+                    else Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i]),
                 )
         return Q[:, :n]
 
@@ -3831,7 +3850,7 @@ def householder_product(A, tau, name=None):
     A = A.reshape((-1, org_A_shape[-2], org_A_shape[-1]))
     tau = tau.reshape((-1, org_tau_shape[-1]))
     n_batch = A.shape[0]
-    out = paddle.zeros([n_batch, m, n])
+    out = paddle.zeros([n_batch, m, n], dtype=A.dtype)
     for i in range(n_batch):
         if in_dynamic_mode():
             out[i] = _householder_product(A[i], tau[i])
