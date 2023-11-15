@@ -300,6 +300,9 @@ void BuildValue(pir::Value value,
     var->GetMutable<phi::DenseTensor>();
   } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     var->GetMutable<phi::SelectedRows>();
+  } else if (value.type()
+                 .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    var->GetMutable<phi::TensorArray>();
   } else if (value.type().isa<pir::VectorType>()) {
     auto tensor_array = var->GetMutable<VariableRefArray>();
     tensor_array->clear();
