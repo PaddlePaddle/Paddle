@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <list>
+#include <memory>
 
 #include "paddle/pir/core/dll_decl.h"
 
@@ -53,6 +54,9 @@ class IR_API Region {
   iterator erase(const_iterator position);
   void clear();
 
+  // take the last block of region.
+  // if region is empty, return nullptr;
+  std::unique_ptr<Block> TakeBack();
   void TakeBody(Region &&other);
 
   Operation *GetParent() const { return parent_; }
