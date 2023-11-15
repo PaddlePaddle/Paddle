@@ -262,15 +262,15 @@ class FunctionGraph:
 
         origin_instrs = get_instructions(self.pycode_gen._origin_code)
 
-        restroe_instrs = origin_instrs[:instr_idx]
+        restore_instrs = origin_instrs[:instr_idx]
         restore_instr_names = [
-            instr.opname for instr in restroe_instrs[:instr_idx]
+            instr.opname for instr in restore_instrs[:instr_idx]
         ]
         # NOTE(SigureMo): Trailing KW_NAMES + PRECALL is no need to restore in Python 3.11+
         if restore_instr_names[-2:] == ["KW_NAMES", "PRECALL"]:
-            restroe_instrs = restroe_instrs[:-2]
+            restore_instrs = restore_instrs[:-2]
 
-        for instr in restroe_instrs:
+        for instr in restore_instrs:
             if (
                 instr.opname == 'LOAD_FAST'
                 and instr.argval in self.pycode_gen._frame.f_locals.keys()
