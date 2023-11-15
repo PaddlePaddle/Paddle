@@ -26,7 +26,7 @@ void TrainerBase::ParseDumpConfig(const TrainerDesc& desc) {
   need_dump_field_ = false;
   need_dump_param_ = false;
   dump_fields_mode_ = desc.dump_fields_mode();
-  if (dump_fields_path_ == "") {
+  if (dump_fields_path_.empty()) {
     VLOG(2) << "dump_fields_path_ is empty";
     return;
   }
@@ -63,8 +63,7 @@ void TrainerBase::DumpWork(int tid) {
   if (dump_fields_mode_ == "a") {
     VLOG(3) << "dump field mode append";
     fp = fs_open_append_write(path, &err_no, dump_converter_);
-  }
-  else {
+  } else {
     VLOG(3) << "dump field mode overwrite";
     fp = fs_open_write(path, &err_no, dump_converter_);
   }

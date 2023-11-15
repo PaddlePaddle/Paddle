@@ -1180,10 +1180,10 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
                            const char* prefix = "") {
       if (compress && (save_param == 0 || save_param == 3)) {
         return ::paddle::string::format_string("%s/%s/part-%05d-%03d.gz",
-                                             table_path,
-                                             prefix,
-                                             shard_num,
-                                             split_num);
+                                               table_path,
+                                               prefix,
+                                               shard_num,
+                                               split_num);
       } else {
         return ::paddle::string::format_string(
             "%s/%s/part-%05d-%03d", table_path, prefix, shard_num, split_num);
@@ -1532,10 +1532,10 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
   }
   VLOG(0) << "DownpourSparseSSDTable save success, feasign size:"
           << feasign_size_all << " ,path:"
-          << paddle::string::format_string("%s/%03d/part-%03d-",
-                                           path.c_str(),
-                                           _config.table_id(),
-                                           _shard_idx)
+          << ::paddle::string::format_string("%s/%03d/part-%03d-",
+                                             path.c_str(),
+                                             _config.table_id(),
+                                             _shard_idx)
           << " from " << file_start_idx << " to "
           << file_start_idx + _real_local_shard_num - 1;
   if (_config.enable_sparse_table_cache()) {

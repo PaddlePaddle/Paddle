@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Definition of TrainerFactory."""
+"""Defination of TrainerFactory."""
 
 import logging
 import threading
@@ -61,12 +61,14 @@ class TrainerFactory:
         device_worker = None
         if not opt_info:
             # default is MultiTrainer + Hogwild
+            print("not opt_info, use default trainer")
             trainer = MultiTrainer()
             device_worker = Hogwild()
             trainer._set_device_worker(device_worker)
         else:
             trainer_class = opt_info.get("trainer", "MultiTrainer")
             device_worker_class = opt_info.get("device_worker", "Hogwild")
+            print("have opt_info!!!, trainer_class:", trainer_class)
             trainer = globals()[trainer_class]()
             device_worker = globals()[device_worker_class]()
 
@@ -93,6 +95,10 @@ class TrainerFactory:
                 ):
                     trainer._set_dump_fields_path(opt_info["dump_fields_path"])
                 if opt_info.get("dump_fields_mode") is not None:
+                    print(
+                        "======get dump_fields_mode:",
+                        opt_info["dump_fields_mode"],
+                    )
                     trainer._set_dump_fields_mode(opt_info["dump_fields_mode"])
                 if (
                     opt_info.get("user_define_dump_filename") is not None
@@ -167,7 +173,7 @@ class TrainerFactory:
 
 class FetchHandlerMonitor:
     """
-    Definition of FetchHandlerMonitor class,
+    Defination of FetchHandlerMonitor class,
     it's for fetch handler.
     """
 

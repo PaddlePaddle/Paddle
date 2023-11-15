@@ -474,7 +474,7 @@ int32_t MemorySparseTable::Save_v2(const std::string &dirname,
   TopkCalculator tk(_real_local_shard_num, tk_size);
 
   std::string table_path = TableDir(dirname);
-  _afs_client.remove(paddle::string::format_string(
+  _afs_client.remove(::paddle::string::format_string(
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
   // path to save non 9008 slot's feasign
   _afs_client.remove(paddle::string::format_string(
@@ -567,7 +567,7 @@ int32_t MemorySparseTable::Save_v2(const std::string &dirname,
         if (_value_accesor->Save(it.value().data(), save_param)) {
           std::string format_value = _value_accesor->ParseToString(
               it.value().data(), it.value().size());
-          if (0 != write_channel->write_line(paddle::string::format_string(
+          if (0 != write_channel->write_line(::paddle::string::format_string(
                        "%lu %s", it.key(), format_value.c_str()))) {
             ++retry_num;
             is_write_failed = true;

@@ -12,55 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import errno
-import warnings
 import logging
+import math
+import os
 import pickle
-import contextlib
-from functools import reduce
 import sys
+import warnings
 from io import BytesIO
 
 import numpy as np
-import math
+
 import paddle
-from paddle.fluid import layers
+from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import (
-    Program,
     Parameter,
-    default_main_program,
-    default_startup_program,
+    Program,
     Variable,
-    program_guard,
+    default_main_program,
     dygraph_not_support,
+    program_guard,
     static_only,
 )
-from paddle.reader import (
-    cache,
-    map_readers,
-    buffered,
-    compose,
-    chain,
-    shuffle,
-    ComposeNotAligned,
-    firstn,
-    xmap_readers,
-    multiprocess_reader,
-)
-from .wrapped_decorator import signature_safe_contextmanager
-from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.log_helper import get_logger
-from . import reader
-from . import unique_name
-from .reader import *
-from . import dataloader
-from .dataloader import *
-from . import core
 from paddle.utils import deprecated
-from paddle.fluid.framework import static_only
+
+from . import core, reader
+from .dataloader import *
+from .reader import *
+from .wrapped_decorator import signature_safe_contextmanager
 
 batch = paddle.batch
 
@@ -116,7 +97,6 @@ def _is_file_path(path):
 
 
 def _open_file_buffer(path_or_buffer, mode):
-
     if _is_file_path(path_or_buffer):
         return open(path_or_buffer, mode)
     else:
@@ -125,9 +105,7 @@ def _open_file_buffer(path_or_buffer, mode):
         elif 'r' in mode:
             return _buffer_reader(path_or_buffer)
         else:
-            raise ValueError(
-                "Expected 'r' or 'w' in mode but got {}".format(mode)
-            )
+            raise ValueError(f"Expected 'r' or 'w' in mode but got {mode}")
 
 
 def _is_memory_buffer(buffer):
@@ -429,7 +407,7 @@ def save_vars(
             for name in sorted(save_var_map.keys()):
                 save_var_list.append(save_var_map[name])
 
-            save_path = str()
+            save_path = ''
             if save_to_memory is False:
                 save_path = os.path.join(os.path.normpath(dirname), filename)
 
@@ -600,7 +578,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
 
                 index = block_id if is_slice else idx
                 slices[index] = slice
-                slice_varnames[index] = "{}.slice.{}".format(slice.name, idx)
+                slice_varnames[index] = f"{slice.name}.slice.{idx}"
                 remote_varnames[index] = slice.name
                 endpoints[index] = endpoint
 
@@ -1225,7 +1203,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                 )
             else:
                 origin = load_block.create_var(
-                    name="{}".format(origin_var.name),
+                    name=f"{origin_var.name}",
                     type=origin_var.type,
                     shape=origin_var.shape,
                     dtype=origin_var.dtype,
@@ -1984,14 +1962,12 @@ def save(program, model_path, protocol=4, **configs):
 
     if not isinstance(protocol, int):
         raise ValueError(
-            "The 'protocol' MUST be `int`, but received {}".format(
-                type(protocol)
-            )
+            f"The 'protocol' MUST be `int`, but received {type(protocol)}"
         )
 
     if protocol < 2 or protocol > 4:
         raise ValueError(
-            "Expected 1<'protocol'<5, but received protocol={}".format(protocol)
+            f"Expected 1<'protocol'<5, but received protocol={protocol}"
         )
 
     dir_name = os.path.dirname(model_path)
@@ -2225,7 +2201,6 @@ def load(program, model_path, executor=None, var_list=None):
             parameter_list, global_scope(), executor._default_executor
         )
     with open(parameter_file_name, 'rb') as f:
-
         # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
         if sys.platform == 'darwin' and sys.version_info.major == 3:
             load_dict = _pickle_loads_mac(parameter_file_name, f)
@@ -2235,9 +2210,7 @@ def load(program, model_path, executor=None, var_list=None):
     for v in parameter_list:
         assert (
             v.name in load_dict
-        ), "Can not find [{}] in model file [{}]".format(
-            v.name, parameter_file_name
-        )
+        ), f"Can not find [{v.name}] in model file [{parameter_file_name}]"
         set_var(v, load_dict[v.name])
 
     optimizer_var_list = list(
@@ -2248,7 +2221,7 @@ def load(program, model_path, executor=None, var_list=None):
         opt_file_name = model_prefix + ".pdopt"
         assert os.path.exists(
             opt_file_name
-        ), "Optimizer file [{}] not exits".format(opt_file_name)
+        ), f"Optimizer file [{opt_file_name}] not exits"
 
         if executor:
             paddle.fluid.core._create_loaded_parameter(
@@ -2260,9 +2233,7 @@ def load(program, model_path, executor=None, var_list=None):
         for v in optimizer_var_list:
             assert (
                 v.name in load_dict
-            ), "Can not find [{}] in model file [{}]".format(
-                v.name, opt_file_name
-            )
+            ), f"Can not find [{v.name}] in model file [{opt_file_name}]"
             set_var(v, load_dict[v.name])
 
 
@@ -2427,7 +2398,7 @@ def load_program_state(model_path, var_list=None):
 
     assert os.path.exists(
         parameter_file_name
-    ), "Parameter file [{}] not exits".format(parameter_file_name)
+    ), f"Parameter file [{parameter_file_name}] not exits"
 
     with open(parameter_file_name, 'rb') as f:
         # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'

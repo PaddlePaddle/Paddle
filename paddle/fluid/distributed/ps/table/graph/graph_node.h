@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #pragma once
+#include <cuda_fp16.h>
 #include <cstring>
 #include <iostream>
 #include <memory>
 #include <set>
 #include <sstream>
 #include <vector>
-#include <cuda_fp16.h>
 
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_weighted_sampler.h"
@@ -66,9 +66,10 @@ class Node {
       std::vector<uint8_t> &slot_id UNUSED) const {  // NOLINT
     return 0;
   }
-  virtual int get_float_feature(int slot_idx UNUSED,
-                              std::vector<float> &feature_id UNUSED,      // NOLINT
-                              std::vector<uint8_t> &slot_id UNUSED) const {  // NOLINT
+  virtual int get_float_feature(
+      int slot_idx UNUSED,
+      std::vector<float> &feature_id UNUSED,         // NOLINT
+      std::vector<uint8_t> &slot_id UNUSED) const {  // NOLINT
     return 0;
   }
   virtual void set_feature(int idx UNUSED, const std::string &str UNUSED) {}
@@ -197,9 +198,10 @@ class FeatureNode : public Node {
     return num;
   }
 
-  virtual int get_float_feature(int slot_idx,
-                                std::vector<float> &float_feature,      // NOLINT
-                                std::vector<uint8_t> &slot_id) const {  // NOLINT
+  virtual int get_float_feature(
+      int slot_idx,
+      std::vector<float> &float_feature,      // NOLINT
+      std::vector<uint8_t> &slot_id) const {  // NOLINT
     return 0;
   }
 
@@ -218,13 +220,9 @@ class FeatureNode : public Node {
     }
     this->feature[idx] = str;
   }
-  virtual void set_feature_size(int size) { 
-    this->feature.resize(size);
-  }
+  virtual void set_feature_size(int size) { this->feature.resize(size); }
   virtual void set_float_feature_size(int size) {}
-  virtual int get_feature_size() { 
-    return this->feature.size();
-  }
+  virtual int get_feature_size() { return this->feature.size(); }
   virtual int get_float_feature_size() { return 0; }
   virtual void shrink_to_fit() {
     feature.shrink_to_fit();
@@ -255,7 +253,8 @@ class FeatureNode : public Node {
     T v;
     size_t feat_str_size = feat_str_end - feat_str_begin;
     size_t Tsize = sizeof(T) * feat_str_size;
-    char buffer[Tsize] = {'\0'};
+    char buffer[Tsize];
+    memset(buffer, 0, Tsize * sizeof(char));
     for (size_t i = 0; i < feat_str_size; i++) {
       std::stringstream ss(*(feat_str_begin + i));
       ss >> v;
@@ -327,8 +326,8 @@ class FloatFeatureNode : public FeatureNode {
                                 "get_feature_ids res should not be null"));
     errno = 0;
     for (int slot_idx = 0; slot_idx < float_feature_start_idx; slot_idx++) {
-      auto& feature_item = this->feature[slot_idx];
-    // for (auto &feature_item : feature) {
+      auto &feature_item = this->feature[slot_idx];
+      // for (auto &feature_item : feature) {
       const uint64_t *feas = (const uint64_t *)(feature_item.c_str());
       size_t num = feature_item.length() / sizeof(uint64_t);
       CHECK((feature_item.length() % sizeof(uint64_t)) == 0)
@@ -397,12 +396,14 @@ class FloatFeatureNode : public FeatureNode {
     return num;
   }
 
-  virtual int get_float_feature(int slot_idx,
-                                std::vector<float> &float_feature,      // NOLINT
-                                std::vector<uint8_t> &slot_id) const {  // NOLINT
+  virtual int get_float_feature(
+      int slot_idx,
+      std::vector<float> &float_feature,      // NOLINT
+      std::vector<uint8_t> &slot_id) const {  // NOLINT
     errno = 0;
     size_t num = 0;
-    if (float_feature_start_idx + slot_idx < static_cast<int>(this->feature.size())) {
+    if (float_feature_start_idx + slot_idx <
+        static_cast<int>(this->feature.size())) {
       const std::string &s = this->feature[float_feature_start_idx + slot_idx];
       const float *feas = (const float *)(s.c_str());
       num = s.length() / sizeof(float);
@@ -417,7 +418,7 @@ class FloatFeatureNode : public FeatureNode {
         errno,
         0,
         paddle::platform::errors::InvalidArgument(
-             "get_feature_ids get errno should be 0, but got %d.", errno));
+            "get_feature_ids get errno should be 0, but got %d.", errno));
     return num;
   }
 
@@ -430,7 +431,8 @@ class FloatFeatureNode : public FeatureNode {
   }
 
   virtual std::string *mutable_float_feature(int idx) {
-    if (float_feature_start_idx + idx >= static_cast<int>(this->feature.size())) {
+    if (float_feature_start_idx + idx >=
+        static_cast<int>(this->feature.size())) {
       this->feature.resize(float_feature_start_idx + idx + 1);
     }
     return &(this->feature[float_feature_start_idx + idx]);
@@ -442,15 +444,15 @@ class FloatFeatureNode : public FeatureNode {
     }
     this->feature[idx] = str;
   }
-  virtual void set_feature_size(int size) { 
+  virtual void set_feature_size(int size) {
     this->feature.resize(size);
     float_feature_start_idx = size;
   }
-  virtual void set_float_feature_size(int size) { this->feature.resize(float_feature_start_idx + size); }
-  virtual int get_feature_size() { 
-    return float_feature_start_idx;
+  virtual void set_float_feature_size(int size) {
+    this->feature.resize(float_feature_start_idx + size);
   }
-  virtual int get_float_feature_size() { 
+  virtual int get_feature_size() { return float_feature_start_idx; }
+  virtual int get_float_feature_size() {
     return this->feature.size() - float_feature_start_idx;
   }
   virtual void shrink_to_fit() {

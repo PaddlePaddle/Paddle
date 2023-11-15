@@ -307,9 +307,7 @@ void set_constant_with_place<phi::IPUPlace>(const phi::DeviceContext& context,
 
 template <>
 void set_constant_with_place<phi::CustomPlace>(
-    const phi::DeviceContext& context,
-    phi::DenseTensor* tensor,
-    const void* value) {
+    const phi::DeviceContext& context, phi::DenseTensor* tensor, float value) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "full",

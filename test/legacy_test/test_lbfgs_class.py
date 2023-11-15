@@ -17,8 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.incubate.optimizer import lbfgs as incubate_lbfgs
-from paddle.incubate.optimizer import line_search_dygraph
+from paddle.incubate.optimizer import (
+    lbfgs as incubate_lbfgs,
+    line_search_dygraph,
+)
 from paddle.optimizer import lbfgs
 
 np.random.seed(123)
