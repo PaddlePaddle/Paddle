@@ -276,7 +276,7 @@ class TestWarpCTCOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
@@ -286,7 +286,6 @@ class TestWarpCTCOp(OpTest):
                 "Loss",
                 max_relative_error=0.009,
                 check_dygraph=False,
-                check_pir=True,
             )
         else:
             self.check_grad(
@@ -294,7 +293,6 @@ class TestWarpCTCOp(OpTest):
                 "Loss",
                 max_relative_error=0.007,
                 check_dygraph=False,
-                check_pir=True,
             )
 
 

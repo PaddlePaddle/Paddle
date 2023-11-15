@@ -450,7 +450,7 @@ class DownpourSGD(DeviceWorker):
             if (
                 opt_info["use_cvm"]
                 or "no_cvm" in opt_info
-                and opt_info["no_cvm"] == True
+                and opt_info["no_cvm"] is True
             ):
                 sparse_table.emb_dim = self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                     i
@@ -560,7 +560,7 @@ class DownpourSGDOPT(DeviceWorker):
             if (
                 opt_info["use_cvm"]
                 or "no_cvm" in opt_info
-                and opt_info["no_cvm"] == True
+                and opt_info["no_cvm"] is True
             ):
                 sparse_table.emb_dim = self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                     i

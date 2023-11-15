@@ -173,7 +173,7 @@ class FunctionSpec:
         return args_with_spec, kwargs_with_spec
 
     @switch_to_static_graph
-    def newir_to_static_inputs_with_spec(self, input_with_spec, main_program):
+    def pir_to_static_inputs_with_spec(self, input_with_spec, main_program):
         """
         Constructs feed layer by inputs with InputSpec information for main program.
 

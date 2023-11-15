@@ -60,6 +60,18 @@ void NaiveExecutor::PrepareInterpreterCore(
       place_, program_desc.Block(0), scope, execution_config);
 }
 
+void NaiveExecutor::PrepareInterpreterCore(
+    Scope *scope,
+    const ::pir::Program &pir_program,
+    const framework::interpreter::ExecutionConfig &execution_config) {
+  interpreter_core_ =
+      std::make_unique<framework::InterpreterCore>(place_,
+                                                   std::vector<std::string>{},
+                                                   pir_program.block(),
+                                                   scope,
+                                                   execution_config);
+}
+
 void NaiveExecutor::RunInterpreterCore(
     const std::vector<std::string> &feed_names, bool need_fetch) {
   platform::ScopedFlushDenormal flush;

@@ -179,4 +179,10 @@ PD_REGISTER_KERNEL(index_put,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {}
+                   int16_t,
+                   uint8_t,
+                   int8_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

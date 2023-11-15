@@ -21,7 +21,11 @@ from functools import lru_cache
 
 import numpy as np
 
-from ..pir import OpResult, Value, translate_to_new_ir
+from paddle import pir
+
+from ..pir import OpResult
+from ..pir import Program as PirProgram
+from ..pir import Value, translate_to_pir
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
@@ -594,6 +598,10 @@ def _to_name_str(var):
             return str(var)
         elif isinstance(var, Operator):
             return str(id(var))
+        elif isinstance(var, OpResult):
+            return str(var)
+        elif isinstance(var, Value):
+            return str(var)
         else:
             raise TypeError(str(var) + " should be Variable, Operator or str")
 
@@ -628,11 +636,18 @@ def _prepare_fleet_executor():
 
 
 def _get_strong_program_cache_key_for_new_exe(program, scope, feed, fetch_list):
-    return (
-        program.desc.cached_hash_str()
-        + str(scope.raw_address())
-        + _get_program_cache_key(feed, fetch_list)
-    )
+    if isinstance(program, PirProgram):
+        return (
+            str(program)
+            + str(scope.raw_address())
+            + _get_program_cache_key(feed, fetch_list)
+        )
+    else:
+        return (
+            program.desc.cached_hash_str()
+            + str(scope.raw_address())
+            + _get_program_cache_key(feed, fetch_list)
+        )
 
 
 def _get_strong_program_cache_key(program, feed, fetch_list):
@@ -798,8 +813,8 @@ class _StandaloneExecutor:
         tensors = self._new_exe.run(feed_names)._move_to_list()
         if return_numpy:
             tensors = as_numpy(tensors, copy=True)
-            if not get_flags("FLAGS_enable_new_ir_in_executor")[
-                'FLAGS_enable_new_ir_in_executor'
+            if not get_flags("FLAGS_enable_pir_in_executor")[
+                'FLAGS_enable_pir_in_executor'
             ]:
                 return _merge_tensors(tensors, self._plan.micro_batch_num())
             return tensors
@@ -875,6 +890,9 @@ class _ExecutorCache:
         # the Executor instance deleted
         self._get_cached_program_and_executor = lru_cache(maxsize=8)(
             self._get_program_and_executor
+        )
+        self._get_cached_program_and_executor_pir_mode = lru_cache(maxsize=8)(
+            self._get_pir_program_and_executor
         )
 
     def clear(self):
@@ -980,8 +998,8 @@ class _ExecutorCache:
             else False
         )
 
-        if get_flags('FLAGS_enable_new_ir_in_executor')[
-            'FLAGS_enable_new_ir_in_executor'
+        if get_flags('FLAGS_enable_pir_in_executor')[
+            'FLAGS_enable_pir_in_executor'
         ]:
             # todo(phlrain), skip inplace add addto pass in new IR
             enable_inplace = False
@@ -1010,15 +1028,27 @@ class _ExecutorCache:
             )
         else:
             default_job = core.Job("default")
-            if get_flags("FLAGS_enable_new_ir_in_executor")[
-                'FLAGS_enable_new_ir_in_executor'
+            if get_flags("FLAGS_enable_pir_in_executor")[
+                'FLAGS_enable_pir_in_executor'
             ]:
                 type_to_program = {
-                    "default": translate_to_new_ir(new_program.desc)
+                    "default": translate_to_pir(new_program.desc)
                 }
             else:
                 type_to_program = {"default": new_program.desc}
             plan = core.Plan([default_job], type_to_program)
+
+        if (
+            new_program._pass_opt
+            and "pass_list" in new_program._pass_opt
+            and len(new_program._pass_opt['pass_list']) > 0
+        ):
+            pm = pir.PassManager()
+            for p in new_program._pass_opt['pass_list']:
+                pm.add_pass(p)
+            for job_type in plan.job_types():
+                ir_program = plan.ir_program(job_type)
+                pm.run(ir_program)
 
         new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
@@ -1033,6 +1063,27 @@ class _ExecutorCache:
         place,
         scope,
     ):
+        return self._get_cached_program_and_executor_pir_mode(
+            self._CachedData(
+                program,
+                feed,
+                fetch_list,
+                feed_var_name,
+                fetch_var_name,
+                place,
+                scope,
+            )
+        )
+
+    def _get_pir_program_and_executor(self, cached_data):
+        program = cached_data.program
+        feed = cached_data.feed
+        fetch_list = cached_data.fetch_list
+        feed_var_name = cached_data.feed_var_name
+        fetch_var_name = cached_data.fetch_var_name
+        place = cached_data.place
+        scope = cached_data.scope
+
         _add_pir_fetch_ops(
             program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
         )
@@ -1215,7 +1266,7 @@ class Executor:
                         )
                     check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
-                pir_flag_name = 'FLAGS_enable_new_ir_in_executor'
+                pir_flag_name = 'FLAGS_enable_pir_in_executor'
                 if get_flags(pir_flag_name)[pir_flag_name]:
                     core.set_feed_variable(
                         scope, cur_feed, feed_target_name, idx
@@ -1711,7 +1762,7 @@ class Executor:
         if isinstance(program, Program) and program._heter_pipeline_opt:
             # print("program._heter_pipeline_opt: {}".format(
             #    program._heter_pipeline_opt))
-            ## change default executor
+            # change default executor
             heter_place = program._heter_pipeline_opt["heter_place"]
             heter_place = framework._get_paddle_place(heter_place)
             p = core.Place()
@@ -1868,12 +1919,12 @@ class Executor:
                 varobj = global_block.vars[varname]
 
                 if (
-                    vardesc.persistable() == False
+                    vardesc.persistable() is False
                     and vardesc.type() == core.VarDesc.VarType.LOD_TENSOR
-                    and vardesc.need_check_feed() == True
-                    and varobj.stop_gradient == True
-                    and varobj.is_data == True
-                    and varobj.belong_to_optimizer == False
+                    and vardesc.need_check_feed() is True
+                    and varobj.stop_gradient is True
+                    and varobj.is_data is True
+                    and varobj.belong_to_optimizer is False
                     and varname not in feed
                 ):
                     raise ValueError('Need feed data for variable %s' % varname)
@@ -2161,7 +2212,7 @@ class Executor:
     ):
         is_heter = 0
         use_ps_gpu = 0
-        if not program._fleet_opt is None:
+        if program._fleet_opt is not None:
             if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
                 is_heter = 1
             if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
@@ -2287,7 +2338,7 @@ class Executor:
                     raise RuntimeError(
                         "dataset is need and should be initialized"
                     )
-            ## change default executor
+            # change default executor
             heter_place = framework._get_paddle_place(heter_place)
             p = core.Place()
             p.set_place(heter_place)
