@@ -141,36 +141,43 @@ class DygraphShardingOptimizer:
         self, comm_group, acc_steps=1, group_size=256 * 1024 * 1024
     ):
         parameter_list = list(self._parameter_list)
-        fused_parameter_group = {}
 
-        if len(parameter_list) < 1:
-            return
+        if not parameter_list:
+            return []
+
+        # Using defaultdict for automatic list creation
+        fused_parameter_group = defaultdict(list)
 
         for p in parameter_list:
             assert p.name in self._param2rank
             dst_rank = self._param2rank[p.name]
-            if dst_rank in fused_parameter_group:
-                fused_parameter_group[dst_rank].append(p)
-            else:
-                fused_parameter_group[dst_rank] = [p]
+            fused_parameter_group[dst_rank].append(p)
+
+        # Pre-compute absolute destination ranks
+        absolute_dst_ranks = {
+            rank: comm_group.ranks[rank] for rank in fused_parameter_group
+        }
 
         comm_buffers = []
-        for dst in fused_parameter_group:
-            parameter_list = fused_parameter_group[dst]
-            # parse the relative dst rank to absolute dst rank for sharding
-            dst = comm_group.ranks[dst]
-            var_groups = assign_group_by_size(parameter_list, group_size)
-            for group_idx, parameters in var_groups.items():
-                buffer = FusedCommBuffer(
+        for dst, params in fused_parameter_group.items():
+            var_groups = assign_group_by_size(params, group_size)
+            abs_dst = absolute_dst_ranks[dst]
+
+            # Using list comprehension for buffer creation
+            buffers = [
+                FusedCommBuffer(
                     group_idx,
                     parameters,
                     comm_group,
                     acc_steps,
                     HOOK_ACTION.REDUCE,
-                    dst,
+                    abs_dst,
                     release_grads=False,
                 )
-                comm_buffers.append(buffer)
+                for group_idx, parameters in var_groups.items()
+            ]
+            comm_buffers.extend(buffers)
+
         return comm_buffers
 
     def register_reduce_overlap_hook(
@@ -180,18 +187,26 @@ class DygraphShardingOptimizer:
         use_comm=False,
         group_size=128 * 1024 * 1024,
     ):
-        self.comm_buffers = self._build_comm_buffers(
-            comm_group, acc_steps, group_size
-        )
+        # Build communication buffers once and store them
+        if not hasattr(self, 'comm_buffers'):
+            self.comm_buffers = self._build_comm_buffers(
+                comm_group, acc_steps, group_size
+            )
+
+        # Register backward hooks for each parameter in the buffer
         for buffer in self.comm_buffers:
             for param in buffer._params:
+                # Directly register the hook function with necessary parameters
                 param._register_backward_hook(
-                    self.bw_hook_func(buffer, param, use_comm)
+                    self._create_backward_hook(buffer, param, use_comm)
                 )
 
-    def bw_hook_func(self, buffer, param, use_comm):
+    def _create_backward_hook(self, buffer, param, use_comm):
+        """Creates a backward hook function for autograd."""
+
         @paddle.autograd.no_grad()
         def fused_allreduce(*_):
+            # Directly add gradient to the buffer
             buffer.add_grad(param, use_comm=use_comm)
 
         return fused_allreduce
