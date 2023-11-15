@@ -495,3 +495,125 @@ TEST(GroupOp, TestBuildPower) {
   bool res0 = simple_cmp(out_tensor.data<float>()[0], 4.0);
   EXPECT_EQ(res0, true);
 }
+
+std::shared_ptr<::pir::Program> BuildLayerNorm2Program() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  auto program = std::make_shared<::pir::Program>(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+
+  std::vector<int64_t> axes{-1};
+  auto x =
+      builder
+          .Build<paddle::dialect::DataOp>("x",
+                                          std::vector<int64_t>({128, 128, 768}),
+                                          phi::DataType::FLOAT32,
+                                          phi::GPUPlace())
+          .result(0);
+
+  auto bias = builder
+                  .Build<paddle::dialect::DataOp>("bias",
+                                                  std::vector<int64_t>({768}),
+                                                  phi::DataType::FLOAT32,
+                                                  phi::GPUPlace())
+                  .result(0);
+
+  auto scale = builder
+                   .Build<paddle::dialect::DataOp>("scale",
+                                                   std::vector<int64_t>({768}),
+                                                   phi::DataType::FLOAT32,
+                                                   phi::GPUPlace())
+                   .result(0);
+
+  auto num =
+      builder
+          .Build<paddle::dialect::FullOp>(std::vector<int64_t>{128, 128, 1},
+                                          768.0,
+                                          phi::DataType::FLOAT32,
+                                          phi::CPUPlace())
+          .result(0);
+  auto sum =
+      builder
+          .Build<paddle::dialect::SumOp>(x, axes, phi::DataType::FLOAT32, true)
+          .result(0);
+
+  auto mean = builder.Build<paddle::dialect::DivideOp>(sum, num).result(0);
+
+  auto diff = builder.Build<paddle::dialect::SubtractOp>(x, mean).result(0);
+
+  auto power = builder.Build<paddle::dialect::MultiplyOp>(diff, diff).result(0);
+  auto power_sum = builder
+                       .Build<paddle::dialect::SumOp>(
+                           power, axes, phi::DataType::FLOAT32, true)
+                       .result(0);
+  auto num2 =
+      builder
+          .Build<paddle::dialect::FullOp>(std::vector<int64_t>{128, 128, 1},
+                                          768.0,
+                                          phi::DataType::FLOAT32,
+                                          phi::CPUPlace())
+          .result(0);
+  auto var2 =
+      builder.Build<paddle::dialect::DivideOp>(power_sum, num2).result(0);
+
+  auto t1 = builder.Build<paddle::dialect::ScaleOp>(var2, 1.0, 1e-5).result(0);
+  auto factor = builder
+                    .Build<paddle::dialect::FullOp>(std::vector<int64_t>{1},
+                                                    -0.5,
+                                                    phi::DataType::FLOAT32,
+                                                    phi::CPUPlace())
+                    .result(0);
+  auto t2 =
+      builder.Build<paddle::dialect::ElementwisePowOp>(t1, factor).result(0);
+  // auto t2 = builder.Build<paddle::dialect::RsqrtOp>(t1).result(0);
+  auto t3 = builder.Build<paddle::dialect::MultiplyOp>(diff, t2).result(0);
+  auto t5 = builder.Build<paddle::dialect::MultiplyOp>(t3, scale).result(0);
+  auto out = builder.Build<paddle::dialect::AddOp>(t5, bias).result(0);
+  auto mean_out =
+      builder
+          .Build<paddle::dialect::ReshapeOp>(mean, std::vector<int64_t>({-1}))
+          .result(0);
+  auto mean2_out =
+      builder
+          .Build<paddle::dialect::ReshapeOp>(var2, std::vector<int64_t>({-1}))
+          .result(0);
+
+  builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+  builder.Build<paddle::dialect::FetchOp>(mean_out, "mean", 0);
+  builder.Build<paddle::dialect::FetchOp>(mean2_out, "var", 0);
+  return program;
+}
+
+TEST(GroupOp, TestBuildLayerNorm2) {
+  // Step 1: Construct pir::Program
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  std::shared_ptr<::pir::Program> program = BuildLayerNorm2Program();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+
+  cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
+
+  pir::PassManager pm(ctx);
+  pm.AddPass(
+      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(pir::CreateBuildCinnPass());
+  CHECK_EQ(pm.Run(program.get()), true);
+
+  auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
+
+  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+
+  auto kernel_program =
+      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+
+  paddle::framework::Scope exe_scope;
+
+  paddle::framework::InterpreterCore executor(
+      place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+
+  // TODO(phlrain): fix exec error
+  //   executor.Run({}, true);
+
+  //   auto out_tensor =
+  //       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
+}
