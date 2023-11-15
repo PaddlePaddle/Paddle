@@ -187,7 +187,8 @@ class Fleet:
                 is False.
             strategy (DistributedStrategy): Extra properties for distributed training.
                 For details, please refer to paddle.distributed.fleet.DistributedStrategy. Default: None.
-            log_level (Integer, String, optional): A ``Integer`` or ``String`` Variable determining how hight the logging level is. Default is "INFO".
+            log_level (Integer, String, optional): A ``Integer`` or ``String`` Variable determining how hight
+                the logging level is. Default is "INFO".
 
         Returns:
             None
@@ -213,14 +214,14 @@ class Fleet:
                 >>> fleet.init(role)
 
             .. code-block:: python
-                :name: code-example4
+                :name: code-init-example4
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
                 >>> fleet.init(strategy=strategy)
 
             .. code-block:: python
-                :name: code-example5
+                :name: code-init-example5
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()

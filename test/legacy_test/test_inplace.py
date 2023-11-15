@@ -1573,10 +1573,10 @@ class TestDygrapInplaceT(TestDygraphInplaceWithContinuous):
             self.assertEqual(var.inplace_version, 1)
 
             inplace_var[0] = 2
-            self.assertEqual(var.inplace_version, 1)
+            self.assertEqual(var.inplace_version, 2)
 
             inplace_var = self.inplace_api_processing(inplace_var)
-            self.assertEqual(var.inplace_version, 2)
+            self.assertEqual(var.inplace_version, 3)
 
 
 class TestDygrapInplaceTranspose(TestDygraphInplaceWithContinuous):
@@ -1595,10 +1595,25 @@ class TestDygrapInplaceTranspose(TestDygraphInplaceWithContinuous):
             self.assertEqual(var.inplace_version, 1)
 
             inplace_var[0] = 2
-            self.assertEqual(var.inplace_version, 1)
+            self.assertEqual(var.inplace_version, 2)
 
             inplace_var = self.inplace_api_processing(inplace_var)
-            self.assertEqual(var.inplace_version, 2)
+            self.assertEqual(var.inplace_version, 3)
+
+
+class TestDygraphInplaceIndexFill(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.random.random((20, 40))
+        self.dtype = "float32"
+        self.axis = 0
+        self.index = paddle.to_tensor([0, 2])
+        self.value = -1
+
+    def inplace_api_processing(self, var):
+        return paddle.index_fill_(var, self.index, self.axis, self.value)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.index_fill(var, self.index, self.axis, self.value)
 
 
 if __name__ == '__main__':

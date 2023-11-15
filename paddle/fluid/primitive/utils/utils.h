@@ -55,6 +55,47 @@ static std::vector<int64_t> get_unsqueeze_dims(
   return result;
 }
 
+// This fucction compute unsqueeze dims for reshape to replace unsqueeze.
+static std::vector<int64_t> get_squeeze_dims(const Tensor& origin,
+                                             const std::vector<int64_t>& axis) {
+  auto origin_dims = origin.shape();
+  auto total_shape_size = origin_dims.size();
+  std::vector<int64_t> result;
+  for (size_t i = 0; i < total_shape_size; ++i) {
+    if (origin_dims[i] != 1) {
+      result.push_back(origin_dims[i]);
+    } else if (origin_dims[i] == 1 &&
+               std::find(axis.begin(), axis.end(), int64_t(i)) == axis.end()) {
+      result.push_back(1);
+    } else {
+      continue;
+    }
+  }
+  return result;
+}
+
+static std::vector<int64_t> process_dims(const Tensor& origin,
+                                         const std::vector<int64_t>& axis) {
+  auto origin_dims = origin.shape();
+  auto total_shape_size = origin_dims.size();
+  std::vector<int64_t> result;
+  auto axis_size = axis.size();
+  if (axis_size == 0) {
+    for (size_t i = 0; i < total_shape_size; ++i) {
+      result.push_back(i);
+    }
+  } else {
+    for (size_t i = 0; i < axis_size; ++i) {
+      if (axis[i] < 0) {
+        result.push_back(axis[i] + total_shape_size);
+      } else {
+        result.push_back(axis[i]);
+      }
+    }
+  }
+  return result;
+}
+
 // These method don't need to be specified
 static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
                                           const phi::DDim& in_dims) {
