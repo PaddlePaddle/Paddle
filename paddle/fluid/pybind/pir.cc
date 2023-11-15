@@ -66,6 +66,7 @@
 
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
+using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
 using pir::Attribute;
@@ -761,6 +762,14 @@ void BindOpResult(py::module *m) {
                return false;
              }
            })
+      .def("is_dense_tensor_array_type",
+           [](OpResult &self) {
+             if (self.type().isa<DenseTensorArrayType>()) {
+               return true;
+             } else {
+               return false;
+             }
+           })
       .def("numel",
            [](OpResult &self) { return phi::product(GetOpResultDims(self)); })
       .def("replace_all_uses_with",
@@ -1034,10 +1043,10 @@ void AppendSetParameter(Program *forward_program,
   }
 }
 
-void AppendSetParameters(Program *forward_program,
-                         const std::vector<pir::OpResult> &outputs_op_result,
-                         int start_point,
-                         std::string name_prefix) {
+int AppendSetParameters(Program *forward_program,
+                        const std::vector<pir::OpResult> &outputs_op_result,
+                        int start_point,
+                        std::string name_prefix) {
   int counter = 0;
   std::unordered_set<pir::OpResult> added_op_result;
 
@@ -1051,6 +1060,8 @@ void AppendSetParameters(Program *forward_program,
       added_op_result.insert(result);
     }
   }
+  // return the inserted op.
+  return counter;
 }
 
 SplitedResult SplitForwardBackward(

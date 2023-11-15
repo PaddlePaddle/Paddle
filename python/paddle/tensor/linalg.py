@@ -1595,8 +1595,8 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
              [1, 1, 1, 1]])
 
     """
-    if in_dynamic_mode():
-        if isinstance(tol, Variable):
+    if in_dynamic_or_pir_mode():
+        if isinstance(tol, (Variable, paddle.pir.OpResult)):
             if tol.dtype != x.dtype:
                 tol_tensor = cast(tol, x.dtype)
             else:
@@ -1850,7 +1850,7 @@ def mv(x, vec, name=None):
             Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [14., 10.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.mv(x, vec)
     else:
 
@@ -2288,7 +2288,7 @@ def matrix_power(x, n, name=None):
              [-7.66666667 ,  8.         , -1.83333333 ],
              [ 1.80555556 , -1.91666667 ,  0.44444444 ]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.matrix_power(x, n)
     else:
         check_variable_and_dtype(
@@ -2348,7 +2348,7 @@ def qr(x, mode="reduced", name=None):
 
             >>> # one can verify : X = Q * R ;
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         q, r = _C_ops.qr(x, mode)
         if mode == "r":
             return r
@@ -2762,7 +2762,7 @@ def multi_dot(x, name=None):
             [10, 7]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multi_dot(x)
     else:
         check_type(x, 'x', (list, tuple), 'multi_dot')

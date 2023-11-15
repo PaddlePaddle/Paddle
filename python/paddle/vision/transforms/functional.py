@@ -21,9 +21,11 @@ from PIL import Image
 import paddle
 
 from ...base.framework import Variable
-from . import functional_cv2 as F_cv2
-from . import functional_pil as F_pil
-from . import functional_tensor as F_t
+from . import (
+    functional_cv2 as F_cv2,
+    functional_pil as F_pil,
+    functional_tensor as F_t,
+)
 
 __all__ = []
 

@@ -67,6 +67,8 @@
 - op : get_tensor_from_selected_rows
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel:
     func: get_tensor_from_selected_rows {selected_rows -> dense}
 
@@ -180,6 +182,16 @@
     func: FusedAttentionInferMeta
   optional: cache_kv, ln_scale, ln_bias, qkv_bias, src_mask, out_linear_bias, ln_scale_2, ln_bias_2, ln_mean_2, ln_var_2, bias_dropout_residual_out, cache_kv_out
   backward: fused_attention_grad
+
+- op: fused_elemwise_add_activation
+  args: (Tensor x, Tensor y, str[] functor_list, float scale=0.0, int axis=-1, bool save_intermediate_out=false)
+  output: Tensor(out), Tensor(intermediate_out)
+  kernel:
+    func: fused_elemwise_add_activation
+  infer_meta:
+    func : FusedElemwiseAddActivationInferMeta
+  backward: fused_elemwise_add_activation_grad
+  intermediate: intermediate_out
 
 - op: fused_feedforward
   args: (Tensor x, Tensor dropout1_seed, Tensor dropout2_seed, Tensor linear1_weight, Tensor linear1_bias, Tensor linear2_weight, Tensor linear2_bias, Tensor ln1_scale, Tensor ln1_bias, Tensor ln2_scale, Tensor ln2_bias, bool pre_layer_norm, float ln1_epsilon, float ln2_epsilon, str act_method, float dropout1_prob, float dropout2_prob, str dropout1_implementation, str dropout2_implementation, bool is_test, bool dropout1_fix_seed, bool dropout2_fix_seed, int dropout1_seed_val, int dropout2_seed_val, bool add_residual, int ring_id)

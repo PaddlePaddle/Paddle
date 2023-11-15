@@ -574,6 +574,10 @@ package_data['paddle.libs']+=[
     ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name,
     ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_name,
 ]
+package_data['paddle.libs']+=[
+    ('libcommon' if os.name != 'nt' else 'common') + ext_name,
+]
+shutil.copy('${COMMON_LIB}', libs_path)
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 shutil.copy('${WARPRNNT_LIBRARIES}', libs_path)
 
@@ -733,6 +737,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
         if "@APPLE@" == "1":
             commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
             commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so')
+            commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${COMMON_NAME}")
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
@@ -741,6 +746,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         else:
             commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
+            commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${COMMON_NAME}")
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
