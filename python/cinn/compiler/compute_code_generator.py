@@ -65,7 +65,7 @@ class ComputeCodeGenerator(ast.NodeVisitor):
                         ir.Expr(dim) for dim in self.inputs_signature[i].shape
                     ]
                     llir_value = ir._Buffer_.make(
-                        arg_name, self.inputs_signature[i].dtype
+                        arg_name, self.inputs_signature[i].dtype, tensor_shape
                     )
                     ir.Arg(arg_name, llir_value)
                     llir_value = ir._Tensor_.make(
@@ -219,7 +219,7 @@ class ComputeCodeGenerator(ast.NodeVisitor):
                 if node.orelse:
                     with ir.ElseContext():
                         with self.variables_table:
-                            self.visit_compound_statement(node.body)
+                            self.visit_compound_statement(node.orelse)
 
     def visit_With(self, node):
         with self.variables_table:
