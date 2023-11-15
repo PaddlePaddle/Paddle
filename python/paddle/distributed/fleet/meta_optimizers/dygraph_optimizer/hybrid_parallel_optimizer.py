@@ -54,6 +54,11 @@ class HybridParallelClipGrad:
             os.getenv('FLAGS_force_align_vpp_grad_sum_order', '0')
         )
 
+        if hasattr(self._clip, "clip_norm"):
+            assert (
+                self._clip.clip_norm > 0.0
+            ), "It's not supported when clip_norm of grad clip is set to 0."
+
     def _get_vpp_chunk_num(self, params_grads):
         chunk_num = -1
         for p, g in params_grads:
