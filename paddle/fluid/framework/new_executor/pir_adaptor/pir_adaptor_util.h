@@ -187,6 +187,9 @@ void BuildPhiContext(pir::Operation* op,
     if (var->IsType<phi::DenseTensor>()) {
       const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
       ctx->EmplaceBackInput(InType(tensor_in));
+    } else if (var->IsType<phi::TensorArray>()) {
+      const phi::TensorBase* tensor_in = &(var->Get<phi::TensorArray>());
+      ctx->EmplaceBackInput(InType(tensor_in));
     } else if (var->IsType<VariableRefArray>()) {
       InListType inputs;
       auto& variable_array = var->Get<VariableRefArray>();
@@ -367,6 +370,25 @@ void BuildPhiContext(pir::Operation* op,
         }
       }
       ctx->EmplaceBackAttr(vec_res);
+
+    } else if (attr_type_name == "pir::ArrayAttribute<pir::StrAttribute>") {
+      auto array_list = attr_map[t].dyn_cast<pir::ArrayAttribute>().AsVector();
+
+      std::vector<std::string> vec_res;
+      if (array_list.size() > 0) {
+        PADDLE_ENFORCE_EQ(
+            array_list[0].isa<pir::StrAttribute>(),
+            true,
+            phi::errors::PreconditionNotMet(
+                "Element in array list MUST be pir::StrAttribute "));
+
+        for (size_t i = 0; i < array_list.size(); ++i) {
+          vec_res.push_back(
+              array_list[i].dyn_cast<pir::StrAttribute>().AsString());
+        }
+      }
+      ctx->EmplaceBackAttr(vec_res);
+
     } else if (attr_type_name == "paddle::dialect::PlaceAttribute") {
       ctx->EmplaceBackAttr(
           attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
@@ -410,6 +432,13 @@ void BuildPhiContext(pir::Operation* op,
           &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
                 ->Get<phi::SelectedRows>()))));
       VLOG(8) << "ctx->EmplaceBackOutput SelectedRows: "
+              << value_exec_info.GetVarName(out_ptr);
+    } else if (out_ptr.type()
+                   .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+      ctx->EmplaceBackOutput(OutType(const_cast<phi::TensorArray*>(
+          &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
+                ->Get<phi::TensorArray>()))));
+      VLOG(8) << "ctx->EmplaceBackOutput TensorArray: "
               << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type().isa<pir::VectorType>()) {
       OutListType outputs;

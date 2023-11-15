@@ -446,8 +446,17 @@ def append_backward_ops(
             op.operands_source(), grad_semantic_info
         ):
             if not grad_semantic:
-                inputs.append([input])
+                if (
+                    input.get_defining_op() is not None
+                    and input.get_defining_op().name() == "builtin.combine"
+                ):
+                    inputs.append(
+                        list(input.get_defining_op().operands_source())
+                    )
+                else:
+                    inputs.append([input])
                 continue
+
             if (
                 input.get_defining_op() is not None
                 and input.get_defining_op().name() == "builtin.combine"
@@ -622,7 +631,9 @@ def remove_op(block, op, state):
 
 def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     block = outputs[0].get_defining_op().get_parent_block()
+    block.refresh_stopgradient()
     state = State(block.program)
+
     # check all inputs and outputs in the same block
     check_all_puts(block, inputs, outputs)
     # update no_grad_set if some value stop_gradient=True

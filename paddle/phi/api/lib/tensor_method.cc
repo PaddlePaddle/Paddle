@@ -29,7 +29,7 @@ limitations under the License. */
 // clang-format off
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #endif
 namespace paddle {

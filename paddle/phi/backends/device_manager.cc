@@ -183,7 +183,7 @@ void Device::BlasAXPBY(const stream::Stream& stream,
                    phi::CppTypeToDataType<T>::Type(),
                    numel,
                    alpha,
-                   reinterpret_cast<void*>(const_cast<T*>(x)),
+                   reinterpret_cast<void*>(const_cast<T*>(x)),  // NOLINT
                    beta,
                    reinterpret_cast<void*>(y));
 }

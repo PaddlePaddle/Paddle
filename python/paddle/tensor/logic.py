@@ -201,7 +201,7 @@ def logical_or(x, y, out=None, name=None):
             [[True , True ],
              [True , False]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logical_or(x, y)
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True
@@ -322,7 +322,7 @@ def logical_not(x, out=None, name=None):
             Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True , False, True ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logical_not(x)
     return _logical_op(
         op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False
@@ -363,7 +363,7 @@ def is_empty(x, name=None):
             False)
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.is_empty(x)
     else:
         check_variable_and_dtype(

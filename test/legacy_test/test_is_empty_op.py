@@ -28,7 +28,7 @@ class TestEmpty(OpTest):
         self.outputs = {'Out': np.array(False)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestNotEmpty(TestEmpty):
