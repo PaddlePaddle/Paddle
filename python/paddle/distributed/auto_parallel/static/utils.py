@@ -1325,11 +1325,11 @@ def naive_set_dist_op_attr_for_program_by_mesh(
     new_op_dist_attr = OperatorDistAttr()
 
     for input_varname in new_op.desc.input_arg_names():
-        var = ctx.serial_main_program.global_block().var(input_varname)
+        var = new_op.block.var(input_varname)
         mapping = ctx.get_tensor_dist_attr_for_program(var).dims_mapping
         new_op_dist_attr.set_input_dims_mapping(input_varname, mapping)
     for output_varname in new_op.desc.output_arg_names():
-        var = ctx.serial_main_program.global_block().var(output_varname)
+        var = new_op.block.var(output_varname)
         mapping = ctx.get_tensor_dist_attr_for_program(var).dims_mapping
         new_op_dist_attr.set_output_dims_mapping(output_varname, mapping)
 

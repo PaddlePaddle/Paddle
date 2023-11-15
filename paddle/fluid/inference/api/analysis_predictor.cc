@@ -103,8 +103,10 @@
 #endif
 
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/phi/core/flags.h"
@@ -531,6 +533,16 @@ void AnalysisPredictor::InitDeviceContexts() {
           auto &instance = memory::allocation::AllocatorFacade::Instance();
           auto *xpu_context =
               new InferXPUContext(place_, config_.xpu_config().context_gm_size);
+          xpu_context->SetConvAutotuneInfo(
+              config_.xpu_config_.conv_autotune_file,
+              config_.xpu_config_.conv_autotune_level,
+              config_.xpu_config_.conv_autotune_file_writeback,
+              place_);
+          xpu_context->SetFcAutotuneInfo(
+              config_.xpu_config_.fc_autotune_file,
+              config_.xpu_config_.fc_autotune_level,
+              config_.xpu_config_.fc_autotune_file_writeback,
+              place_);
           xpu_context->SetAllocator(instance.GetAllocator(place_).get());
           xpu_context->SetGenerator(
               phi::DefaultXPUGenerator(place_.GetDeviceId()).get());
@@ -731,10 +743,12 @@ bool AnalysisPredictor::PrepareExecutor() {
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
 
       ::pir::PassManager pm(::pir::IrContext::Instance(), 2);
-      pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+      // TODO(liuyuanle): Uncomment constant_folding_pass after fix it
+      // pm.AddPass(::pir::CreateConstantFoldingPass(sub_scope_));
       pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+      pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
 
-      pm.EnableIRPrinting();
+      // pm.EnableIRPrinting();
       pm.Run(pir_program_.get());
 
       pir_program_ = std::move(
@@ -743,6 +757,7 @@ bool AnalysisPredictor::PrepareExecutor() {
       if (FLAGS_pir_apply_inplace_pass) {
         ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
         pm.AddPass(::pir::CreateInplacePass());
+        pm.AddPass(::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
         pm.Run(pir_program_.get());
       }
 

@@ -34,8 +34,10 @@ import paddle.version as paddle_version
 from .. import pir
 from . import core, unique_name
 from .libpaddle import DataType
-from .proto import data_feed_pb2  # noqa: F401
-from .proto import framework_pb2
+from .proto import (
+    data_feed_pb2,  # noqa: F401
+    framework_pb2,
+)
 from .variable_index import _getitem_static, _setitem_impl_, _setitem_static
 from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 
@@ -2112,7 +2114,7 @@ class Variable(metaclass=VariableMetaClass):
     @property
     def lod_level(self):
         """
-        Indicating ``LoD`` info of current Variable, please refer to  :ref:`api_base_LoDTensor_en` to check the meaning
+        Indicating ``LoD`` info of current Variable, please refer to  :ref:`api_paddle_Tensor` to check the meaning
         of ``LoD``
 
         **Notes**:
@@ -2935,6 +2937,9 @@ class Operator:
             # attr for static graph mode cuda graph
             self._cuda_graph_attr = _current_cuda_graph_mode
 
+            # attr for OP should cast in AMP mode
+            self._should_auto_cast: bool = True
+
             op_maker = core.op_proto_and_checker_maker
 
             if op_maker.kOpRoleAttrName() not in op_attrs:
@@ -3691,6 +3696,25 @@ class Operator:
         Set distributed attribute of this Variable.
         """
         self.desc.dist_attr = dist_attr
+
+    def set_auto_cast(self, auto_cast):
+        """
+        Set auto cast attribute of this Operator.
+
+        Args:
+            auto_cast(bool): True if this Operator should cast in AMP mode.
+        """
+        self._should_auto_cast = auto_cast
+
+    @property
+    def should_auto_cast(self):
+        """
+        Get auto cast attribute of this Operator.
+
+        Returns:
+            bool: True if this Operator should cast in AMP mode.
+        """
+        return self._should_auto_cast
 
 
 @signature_safe_contextmanager
@@ -5676,6 +5700,7 @@ class Program:
 
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
+        self._pass_opt = None
 
         # assigned if this program has been parsed by a heter pipeline parameter server optimizer
         self._heter_pipeline_opt = None
@@ -6313,7 +6338,8 @@ class Program:
                 p.lr_scheduler = self.lr_scheduler
             if hasattr(self, '_pipeline_opt'):
                 p._pipeline_opt = self._pipeline_opt
-
+            if hasattr(self, '_pass_opt'):
+                p._pass_opt = self._pass_opt
             # NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.
             p._sync_with_cpp()
@@ -6321,6 +6347,7 @@ class Program:
         p._copy_param_info_from(self)
         p._copy_data_info_from(self, pruned_origin_block_id_map)
         p._copy_dist_param_info_from(self)
+        p._copy_operator_info_from(self)
         return p
 
     def _prune(self, targets):
@@ -6444,6 +6471,7 @@ class Program:
         res._copy_param_info_from(self)
         res._copy_data_info_from(self, pruned_origin_block_id_map)
         res._copy_dist_param_info_from(self)
+        res._copy_operator_info_from(self)
 
         return res
 
@@ -6958,6 +6986,24 @@ class Program:
                     var.desc.set_need_check_feed(True)
                 if other_var.stop_gradient:
                     var.stop_gradient = True
+
+    def _copy_operator_info_from(self, other: "Program"):
+        """
+        Copy the information of Operator information from other program.
+
+        Args:
+            other(Program): Other program
+
+        Returns:
+            None
+        """
+        if not isinstance(other, Program):
+            raise TypeError(
+                f"Function Program._copy_operator_info_from() needs to pass in a source Program, but received {type(other)}"
+            )
+        for dst_block, src_block in zip(self.blocks, other.blocks):
+            for dst_op, src_op in zip(dst_block.ops, src_block.ops):
+                dst_op.set_auto_cast(src_op.should_auto_cast)
 
     def list_vars(self):
         """
