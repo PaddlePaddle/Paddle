@@ -234,8 +234,6 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
   if (paddle::string::ends_with(op_name, "_")) {
     non_inplace_op_name = op_name.substr(0, op_name.size() - 1);
   }
-  VLOG(1) << "op_name: " << op_name;
-  VLOG(1) << "non_inplace_op_name: " << non_inplace_op_name;
 
   std::set<framework::proto::VarType::Type> proto_type;
   auto phi_kernels = phi::KernelFactory::Instance().kernels();
@@ -259,12 +257,6 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
         phi::DataTypeToString(framework::TransToPhiDataType(iter)));
   }
 
-  VLOG(1) << "data_type.size(): " << data_type.size();
-
-  for (auto& type : data_type) {
-    VLOG(1) << "data_type: " << type;
-  }
-
   return data_type;
 }
 
@@ -277,7 +269,11 @@ void DoCheck(const pir::Value& value,
         value.type().dyn_cast<pir::DenseTensorType>().dtype()));
     if (expected_dtype.find(value_type) == expected_dtype.end()) {
       PADDLE_THROW(phi::errors::InvalidArgument(
-          "Input type error %s, value_type is %s", input_name, value_type));
+          "Check data type error for op: %s, input: %s, and %s.dtype is %s",
+          op_name,
+          input_name,
+          input_name,
+          value_type));
     }
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
@@ -289,6 +285,7 @@ void DoCheck(const pir::Value& value,
 void CheckValueDataType(const pir::Value& value,
                         const std::string& input_name,
                         const std::string& op_name) {
+  VLOG(6) << "CheckValueDataType for " << op_name << ", input: " << input_name;
   std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
   DoCheck(value, input_name, expected_dtype, op_name);
 }
@@ -296,6 +293,8 @@ void CheckValueDataType(const pir::Value& value,
 void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
                                 const std::string& input_name,
                                 const std::string& op_name) {
+  VLOG(6) << "CheckVectorOfValueDataType for " << op_name
+          << ", input: " << input_name;
   std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
   for (auto& value : vector_value) {
     DoCheck(value, input_name, expected_dtype, op_name);
