@@ -2889,6 +2889,12 @@
     attrs : [bool use_mkldnn = false]
   drop_empty_grad : [x_grad]
 
+- op : standard_gamma
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : stanh
   backward : stanh_grad
   inputs :

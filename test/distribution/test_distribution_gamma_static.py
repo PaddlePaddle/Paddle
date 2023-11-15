@@ -185,6 +185,198 @@ class TestGamma(unittest.TestCase):
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'concentration', 'rate'),
+    [
+        (
+            'one-dim',
+            parameterize.xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+        ),
+        (
+            'multi-dim',
+            parameterize.xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+        ),
+    ],
+)
+class TestGammaSample(unittest.TestCase):
+    def setUp(self):
+        self.program = paddle.static.Program()
+        self.executor = paddle.static.Executor(self.place)
+        with paddle.static.program_guard(self.program):
+            self.scale = 1 / self.rate
+            concentration = paddle.static.data(
+                'concentration',
+                self.concentration.shape,
+                self.concentration.dtype,
+            )
+            rate = paddle.static.data('rate', self.rate.shape, self.rate.dtype)
+            self._paddle_gamma = gamma.Gamma(concentration, rate)
+            self.feeds = {
+                'concentration': self.concentration,
+                'rate': self.rate,
+            }
+
+    def test_sample_shape(self):
+        cases = [
+            {
+                'input': (),
+                'expect': () + np.squeeze(self.rate).shape,
+            },
+            {
+                'input': (4, 2),
+                'expect': (4, 2) + np.squeeze(self.rate).shape,
+            },
+        ]
+        for case in cases:
+            with paddle.static.program_guard(self.program):
+                [data] = self.executor.run(
+                    self.program,
+                    feed=self.feeds,
+                    fetch_list=self._paddle_gamma.sample(case.get('input')),
+                )
+
+                self.assertTrue(data.shape == case.get('expect'))
+
+    def test_rsample_shape(self):
+        cases = [
+            {
+                'input': (),
+                'expect': () + np.squeeze(self.rate).shape,
+            },
+            {
+                'input': (3, 2),
+                'expect': (3, 2) + np.squeeze(self.rate).shape,
+            },
+        ]
+        for case in cases:
+            with paddle.static.program_guard(self.program):
+                [data] = self.executor.run(
+                    self.program,
+                    feed=self.feeds,
+                    fetch_list=self._paddle_gamma.rsample(case.get('input')),
+                )
+
+                self.assertTrue(data.shape == case.get('expect'))
+
+    def test_sample(self):
+        sample_shape = (13000,)
+        with paddle.static.program_guard(self.program):
+            [data] = self.executor.run(
+                self.program,
+                feed=self.feeds,
+                fetch_list=self._paddle_gamma.sample(sample_shape),
+            )
+            except_shape = sample_shape + np.squeeze(self.rate).shape
+            self.assertTrue(data.shape == except_shape)
+            np.testing.assert_allclose(
+                data.mean(axis=0),
+                scipy.stats.gamma.mean(self.concentration, scale=self.scale),
+                rtol=0.1,
+                atol=config.ATOL.get(str(self.concentration.dtype)),
+            )
+            np.testing.assert_allclose(
+                data.var(axis=0),
+                scipy.stats.gamma.var(self.concentration, scale=self.scale),
+                rtol=0.1,
+                atol=config.ATOL.get(str(self.concentration.dtype)),
+            )
+
+    def test_rsample(self):
+        sample_shape = (13000,)
+        with paddle.static.program_guard(self.program):
+            [data] = self.executor.run(
+                self.program,
+                feed=self.feeds,
+                fetch_list=self._paddle_gamma.rsample(sample_shape),
+            )
+            except_shape = sample_shape + np.squeeze(self.rate).shape
+            self.assertTrue(data.shape == except_shape)
+            np.testing.assert_allclose(
+                data.mean(axis=0),
+                scipy.stats.gamma.mean(self.concentration, scale=self.scale),
+                rtol=0.1,
+                atol=config.ATOL.get(str(self.concentration.dtype)),
+            )
+            np.testing.assert_allclose(
+                data.var(axis=0),
+                scipy.stats.gamma.var(self.concentration, scale=self.scale),
+                rtol=0.1,
+                atol=config.ATOL.get(str(self.concentration.dtype)),
+            )
+
+
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'concentration', 'rate'),
+    [
+        ('0-dim', 0.4, 0.5),
+    ],
+)
+class TestGammaSampleKS(unittest.TestCase):
+    def setUp(self):
+        self.program = paddle.static.Program()
+        self.executor = paddle.static.Executor(self.place)
+        with paddle.static.program_guard(self.program):
+            self.scale = 1 / self.rate
+            concentration = paddle.static.data(
+                'concentration',
+                (),
+                'float',
+            )
+            rate = paddle.static.data('rate', (), 'float')
+            self._paddle_gamma = gamma.Gamma(concentration, rate)
+            self.feeds = {
+                'concentration': self.concentration,
+                'rate': self.rate,
+            }
+
+    def test_sample(self):
+        sample_shape = (6000,)
+        with paddle.static.program_guard(self.program):
+            [samples] = self.executor.run(
+                self.program,
+                feed=self.feeds,
+                fetch_list=self._paddle_gamma.sample(sample_shape),
+            )
+            self.assertTrue(self._kstest(samples))
+
+    def test_rsample(self):
+        sample_shape = (6000,)
+        with paddle.static.program_guard(self.program):
+            [samples] = self.executor.run(
+                self.program,
+                feed=self.feeds,
+                fetch_list=self._paddle_gamma.rsample(sample_shape),
+            )
+            self.assertTrue(self._kstest(samples))
+
+    def _kstest(self, samples):
+        # Uses the Kolmogorov-Smirnov test for goodness of fit.
+        ks, _ = scipy.stats.kstest(
+            samples, scipy.stats.gamma(self.concentration, scale=self.scale).cdf
+        )
+        return ks < 0.02
+
+
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
     (
         parameterize.TEST_CASE_NAME,
         'concentration1',

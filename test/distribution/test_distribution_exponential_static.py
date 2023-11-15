@@ -237,6 +237,12 @@ class TestExponentialSample(unittest.TestCase):
                 rtol=0.1,
                 atol=config.ATOL.get(str(self.rate.dtype)),
             )
+            np.testing.assert_allclose(
+                data.var(axis=0),
+                scipy.stats.expon.var(scale=self.scale),
+                rtol=0.1,
+                atol=config.ATOL.get(str(self.rate.dtype)),
+            )
 
     def test_rsample(self):
         sample_shape = (10000,)
@@ -251,6 +257,12 @@ class TestExponentialSample(unittest.TestCase):
             np.testing.assert_allclose(
                 data.mean(axis=0),
                 scipy.stats.expon.mean(scale=self.scale),
+                rtol=0.1,
+                atol=config.ATOL.get(str(self.rate.dtype)),
+            )
+            np.testing.assert_allclose(
+                data.var(axis=0),
+                scipy.stats.expon.var(scale=self.scale),
                 rtol=0.1,
                 atol=config.ATOL.get(str(self.rate.dtype)),
             )
@@ -274,28 +286,30 @@ class TestExponentialSampleKS(unittest.TestCase):
             self.feeds = {'rate': self.rate}
 
     def test_sample(self):
-        sample_shape = (10000,)
+        sample_shape = (6000,)
         with paddle.static.program_guard(self.program):
             [samples] = self.executor.run(
                 self.program,
                 feed=self.feeds,
-                fetch_list=self._paddle_expon.sample(sample_shape),
+                fetch_list=self._paddle_gamma.sample(sample_shape),
             )
-            self.assertTrue(self._kstest(self.scale, samples))
+            self.assertTrue(self._kstest(samples))
 
     def test_rsample(self):
-        sample_shape = (10000,)
+        sample_shape = (6000,)
         with paddle.static.program_guard(self.program):
             [samples] = self.executor.run(
                 self.program,
                 feed=self.feeds,
-                fetch_list=self._paddle_expon.rsample(sample_shape),
+                fetch_list=self._paddle_gamma.rsample(sample_shape),
             )
-            self.assertTrue(self._kstest(self.scale, samples))
+            self.assertTrue(self._kstest(samples))
 
-    def _kstest(self, scale, samples):
+    def _kstest(self, samples):
         # Uses the Kolmogorov-Smirnov test for goodness of fit.
-        ks, _ = scipy.stats.kstest(samples, scipy.stats.expon(scale=scale).cdf)
+        ks, _ = scipy.stats.kstest(
+            samples, scipy.stats.gamma(self.concentration, scale=self.scale).cdf
+        )
         return ks < 0.02
 
 

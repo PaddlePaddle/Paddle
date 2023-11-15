@@ -15,6 +15,7 @@
 import numbers
 
 import paddle
+from paddle import distribution
 from paddle.distribution import exponential_family
 
 
@@ -139,12 +140,33 @@ class Gamma(exponential_family.ExponentialFamily):
         )
 
     def sample(self, shape=()):
-        """Generate samples of the specified shape."""
-        raise NotImplementedError
+        """Generate samples of the specified shape.
+
+        Args:
+            shape (Sequence[int], optional): Shape of the generated samples.
+
+        Returns:
+            Tensor, A tensor with prepended dimensions shape.The data type is float32.
+        """
+        with paddle.no_grad():
+            return self.rsample(shape)
 
     def rsample(self, shape=()):
-        """Generate reparameterized samples of the specified shape."""
-        raise NotImplementedError
+        """Generate reparameterized samples of the specified shape.
+
+        Args:
+            shape (Sequence[int], optional): Shape of the generated samples.
+
+        Returns:
+            Tensor: A tensor with prepended dimensions shape.The data type is float32.
+        """
+        shape = distribution.Distribution._extend_shape(
+            self, sample_shape=shape
+        )
+        return paddle.divide(
+            paddle.standard_gamma(self.concentration.expand(shape)),
+            self.rate.expand(shape),
+        )
 
     def kl_divergence(self, other):
         """The KL-divergence between two gamma distributions.

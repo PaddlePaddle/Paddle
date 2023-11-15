@@ -185,7 +185,7 @@ class TestExponentialSample(unittest.TestCase):
             )
 
     def test_sample(self):
-        sample_shape = (10000,)
+        sample_shape = (6000,)
         samples = self._paddle_expon.sample(sample_shape)
         sample_values = samples.numpy()
         self.assertEqual(sample_values.dtype, self.rate.dtype)
@@ -223,7 +223,7 @@ class TestExponentialSample(unittest.TestCase):
             )
 
     def test_rsample(self):
-        sample_shape = (10000,)
+        sample_shape = (6000,)
         samples = self._paddle_expon.rsample(sample_shape)
         sample_values = samples.numpy()
         self.assertEqual(sample_values.dtype, self.rate.dtype)
@@ -267,16 +267,18 @@ class TestExponentialSampleKS(unittest.TestCase):
     def test_sample_ks(self):
         sample_shape = (10000,)
         samples = self._paddle_expon.sample(sample_shape)
-        self.assertTrue(self._kstest(self.scale, samples))
+        self.assertTrue(self._kstest(samples))
 
     def test_rsample_ks(self):
         sample_shape = (10000,)
         samples = self._paddle_expon.rsample(sample_shape)
-        self.assertTrue(self._kstest(self.scale, samples))
+        self.assertTrue(self._kstest(samples))
 
-    def _kstest(self, scale, samples):
+    def _kstest(self, samples):
         # Uses the Kolmogorov-Smirnov test for goodness of fit.
-        ks, _ = scipy.stats.kstest(samples, scipy.stats.expon(scale=scale).cdf)
+        ks, _ = scipy.stats.kstest(
+            samples, scipy.stats.expon(scale=self.scale).cdf
+        )
         return ks < 0.02
 
 

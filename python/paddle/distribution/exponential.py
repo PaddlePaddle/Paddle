@@ -82,7 +82,6 @@ class Exponential(exponential_family.ExponentialFamily):
 
         Returns:
             Tensor, A tensor with prepended dimensions shape.The data type is float32.
-
         """
         with paddle.no_grad():
             return self.rsample(shape)
@@ -95,7 +94,6 @@ class Exponential(exponential_family.ExponentialFamily):
 
         Returns:
             Tensor: A tensor with prepended dimensions shape.The data type is float32.
-
         """
         shape = distribution.Distribution._extend_shape(
             self, sample_shape=shape

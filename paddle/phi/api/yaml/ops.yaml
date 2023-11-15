@@ -2508,6 +2508,15 @@
     func : stack
   backward : stack_grad
 
+- op : standard_gamma
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : standard_gamma
+  backward : standard_gamma_grad
+
 - op : stanh
   args : (Tensor x, float scale_a=0.67f, float scale_b=1.7159f)
   output : Tensor(out)

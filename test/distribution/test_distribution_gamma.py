@@ -211,21 +211,127 @@ class TestGammaSample(unittest.TestCase):
         self.scale = 1 / rate
         self._paddle_gamma = gamma.Gamma(concentration, rate)
 
+    def test_sample_shape(self):
+        cases = [
+            {
+                'input': (),
+                'expect': ()
+                + tuple(paddle.squeeze(self._paddle_gamma.rate).shape),
+            },
+            {
+                'input': (3, 2),
+                'expect': (3, 2)
+                + tuple(paddle.squeeze(self._paddle_gamma.rate).shape),
+            },
+        ]
+        for case in cases:
+            self.assertTrue(
+                tuple(self._paddle_gamma.sample(case.get('input')).shape)
+                == case.get('expect')
+            )
+
+    def test_rsample_shape(self):
+        cases = [
+            {
+                'input': (),
+                'expect': ()
+                + tuple(paddle.squeeze(self._paddle_gamma.rate).shape),
+            },
+            {
+                'input': (3, 2),
+                'expect': (3, 2)
+                + tuple(paddle.squeeze(self._paddle_gamma.rate).shape),
+            },
+        ]
+        for case in cases:
+            self.assertTrue(
+                tuple(self._paddle_gamma.rsample(case.get('input')).shape)
+                == case.get('expect')
+            )
+
     def test_sample(self):
-        sample_shape = (10000,)
-        self.assertRaises(
-            NotImplementedError,
-            self._paddle_gamma.sample,
-            sample_shape,
+        sample_shape = (13000,)
+        samples = self._paddle_gamma.sample(sample_shape)
+        sample_values = samples.numpy()
+        self.assertEqual(sample_values.dtype, self.rate.dtype)
+
+        np.testing.assert_allclose(
+            sample_values.mean(axis=0),
+            scipy.stats.gamma.mean(self.concentration, scale=self.scale),
+            rtol=0.1,
+            atol=config.ATOL.get(
+                str(self._paddle_gamma.concentration.numpy().dtype)
+            ),
+        )
+        np.testing.assert_allclose(
+            sample_values.var(axis=0),
+            scipy.stats.gamma.var(self.concentration, scale=self.scale),
+            rtol=0.1,
+            atol=config.ATOL.get(
+                str(self._paddle_gamma.concentration.numpy().dtype)
+            ),
         )
 
     def test_rsample(self):
-        sample_shape = (10000,)
-        self.assertRaises(
-            NotImplementedError,
-            self._paddle_gamma.rsample,
-            sample_shape,
+        sample_shape = (13000,)
+        samples = self._paddle_gamma.rsample(sample_shape)
+        sample_values = samples.numpy()
+        self.assertEqual(sample_values.dtype, self.rate.dtype)
+
+        np.testing.assert_allclose(
+            sample_values.mean(axis=0),
+            scipy.stats.gamma.mean(self.concentration, scale=self.scale),
+            rtol=0.1,
+            atol=config.ATOL.get(
+                str(self._paddle_gamma.concentration.numpy().dtype)
+            ),
         )
+        np.testing.assert_allclose(
+            sample_values.var(axis=0),
+            scipy.stats.gamma.var(self.concentration, scale=self.scale),
+            rtol=0.1,
+            atol=config.ATOL.get(
+                str(self._paddle_gamma.concentration.numpy().dtype)
+            ),
+        )
+
+
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'concentration', 'rate'),
+    [
+        ('0-dim', 0.4, 0.5),
+    ],
+)
+class TestGammaSampleKS(unittest.TestCase):
+    def setUp(self):
+        concentration = self.concentration
+        if not isinstance(self.concentration, numbers.Real):
+            concentration = paddle.to_tensor(self.concentration)
+
+        rate = self.rate
+        if not isinstance(self.rate, numbers.Real):
+            rate = paddle.to_tensor(self.rate)
+
+        self.scale = 1 / rate
+        self._paddle_gamma = gamma.Gamma(concentration, rate)
+
+    def test_sample_ks(self):
+        sample_shape = (6000,)
+        samples = self._paddle_gamma.sample(sample_shape)
+        self.assertTrue(self._kstest(samples))
+
+    def test_rsample_ks(self):
+        sample_shape = (6000,)
+        samples = self._paddle_gamma.rsample(sample_shape)
+        self.assertTrue(self._kstest(samples))
+
+    def _kstest(self, samples):
+        # Uses the Kolmogorov-Smirnov test for goodness of fit.
+        ks, _ = scipy.stats.kstest(
+            samples, scipy.stats.gamma(self.concentration, scale=self.scale).cdf
+        )
+        return ks < 0.02
 
 
 @parameterize.place(config.DEVICES)

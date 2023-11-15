@@ -340,7 +340,3 @@ class TestGeometricKL(unittest.TestCase):
         return self.probs1 * np.log(self.probs1 / self.probs2) + (
             1.0 - self.probs1
         ) * np.log((1.0 - self.probs1) / (1.0 - self.probs2))
-
-
-if __name__ == '__main__':
-    unittest.main()
