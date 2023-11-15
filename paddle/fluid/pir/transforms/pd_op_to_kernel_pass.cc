@@ -454,7 +454,7 @@ static phi::DataType GetKernelDtypeByYaml(
 
       auto attr_type = op_info_parser->AttrTypeName(slot_name);
       PADDLE_ENFORCE_EQ(attr_type,
-                        "DataTypeAttribute",
+                        "paddle::dialect::DataTypeAttribute",
                         phi::errors::PreconditionNotMet(
                             "Type of [%s] should be DataType", slot_name));
       kernel_data_type =
@@ -522,7 +522,7 @@ static phi::Backend GetKernelBackendByYaml(
 
       auto attr_type = op_info_parser->AttrTypeName(slot_name);
       PADDLE_ENFORCE_EQ(attr_type,
-                        "PlaceAttribute",
+                        "paddle::dialect::PlaceAttribute",
                         phi::errors::PreconditionNotMet(
                             "Type of [%s] should be DataType", slot_name));
       kernel_backend = paddle::experimental::ParseBackend(
