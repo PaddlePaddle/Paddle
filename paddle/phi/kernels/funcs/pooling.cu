@@ -1931,6 +1931,21 @@ __global__ void KernelMaxPool2dWithIdx(const int nthreads,
                                        T1* output_data,
                                        T2* mask_data,
                                        FastDivModForPooling divmods) {
+  float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
+  float u_height = 0, u_width = 0, u_depth = 0;
+  if (fractional) {
+    std::uniform_real_distribution<float> dist(0, 1);
+    auto engine = phi::GetCPURandomEngine(0);
+    float u = dist(*engine);
+
+    alpha_height = static_cast<float>(input_height) / output_height;
+    alpha_width = static_cast<float>(input_width) / output_width;
+
+    u_height =
+        FractionalRationalU(u, alpha_height, input_height, output_height);
+    u_width = FractionalRationalU(u, alpha_width, input_width, output_width);
+  }
+
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int hstart, hend, wstart, wend;
@@ -1955,7 +1970,15 @@ __global__ void KernelMaxPool2dWithIdx(const int nthreads,
       wstart = AdaptStartIndex(w_offset, input_width, output_width);
       wend = AdaptEndIndex(w_offset, input_width, output_width);
     } else if (fractional) {
-      // TODO(megemini)
+      hstart = FractionalStartIndex(h_offset, alpha_height, u_height);
+      hend = FractionalEndIndex(h_offset, alpha_height, u_height);
+      hstart = std::max(hstart, 0);
+      hend = std::min(hend, input_height);
+
+      wstart = FractionalStartIndex(w_offset, alpha_width, u_width);
+      wend = FractionalEndIndex(w_offset, alpha_width, u_width);
+      wstart = std::max(wstart, 0);
+      wend = std::min(wend, input_width);
     } else {
       hstart = h_offset * stride_height - padding_height;
       hend = min(hstart + ksize_height, input_height);
@@ -2054,6 +2077,21 @@ __global__ void KernelMaxPool2DWithIdxGrad(const int nthreads,
                                            bool fractional,
                                            T1* input_grad,
                                            FastDivModForPooling divmods) {
+  float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
+  float u_height = 0, u_width = 0, u_depth = 0;
+  if (fractional) {
+    std::uniform_real_distribution<float> dist(0, 1);
+    auto engine = phi::GetCPURandomEngine(0);
+    float u = dist(*engine);
+
+    alpha_height = static_cast<float>(input_height) / output_height;
+    alpha_width = static_cast<float>(input_width) / output_width;
+
+    u_height =
+        FractionalRationalU(u, alpha_height, input_height, output_height);
+    u_width = FractionalRationalU(u, alpha_width, input_width, output_width);
+  }
+
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int phstart, phend, pwstart, pwend;
@@ -2080,7 +2118,15 @@ __global__ void KernelMaxPool2DWithIdxGrad(const int nthreads,
       pwend =
           min((w_offset + 1) * output_width / input_width + 1, output_width);
     } else if (fractional) {
-      // TODO(megemini)
+      phstart = FractionalStartIndex(h_offset, alpha_height, u_height);
+      phend = FractionalEndIndex(h_offset, alpha_height, u_height);
+      phstart = std::max(phstart, 0);
+      phend = std::min(phend, input_height);
+
+      pwstart = FractionalStartIndex(w_offset, alpha_width, u_width);
+      pwend = FractionalEndIndex(w_offset, alpha_width, u_width);
+      pwstart = std::max(pwstart, 0);
+      pwend = std::min(pwend, input_width);
     } else {
       phstart =
           (h_offset + padding_height < ksize_height)
@@ -2302,6 +2348,23 @@ __global__ void KernelMaxPool3DWithIdx(const int ncd,
                                        T1* output_data,
                                        T2* mask_data,
                                        FastDivModForPooling3D divmods_output) {
+  float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
+  float u_height = 0, u_width = 0, u_depth = 0;
+  if (fractional) {
+    std::uniform_real_distribution<float> dist(0, 1);
+    auto engine = phi::GetCPURandomEngine(0);
+    float u = dist(*engine);
+
+    alpha_depth = static_cast<float>(input_depth) / output_depth;
+    alpha_height = static_cast<float>(input_height) / output_height;
+    alpha_width = static_cast<float>(input_width) / output_width;
+
+    u_depth = FractionalRationalU(u, alpha_depth, input_depth, output_depth);
+    u_height =
+        FractionalRationalU(u, alpha_height, input_height, output_height);
+    u_width = FractionalRationalU(u, alpha_width, input_width, output_width);
+  }
+
   int w_offset, h_offset, d_offset, nc_offset;
   int dstart, dend, hstart, hend, wstart, wend;
   const T1* input_data_cur;
@@ -2332,7 +2395,20 @@ __global__ void KernelMaxPool3DWithIdx(const int ncd,
         wstart = AdaptStartIndex(w_offset, input_width, output_width);
         wend = AdaptEndIndex(w_offset, input_width, output_width);
       } else if (fractional) {
-        // TODO(megemini)
+        dstart = FractionalStartIndex(d_offset, alpha_depth, u_depth);
+        dend = FractionalEndIndex(d_offset, alpha_depth, u_depth);
+        dstart = std::max(dstart, 0);
+        dend = std::min(dend, input_depth);
+
+        hstart = FractionalStartIndex(h_offset, alpha_height, u_height);
+        hend = FractionalEndIndex(h_offset, alpha_height, u_height);
+        hstart = std::max(hstart, 0);
+        hend = std::min(hend, input_height);
+
+        wstart = FractionalStartIndex(w_offset, alpha_width, u_width);
+        wend = FractionalEndIndex(w_offset, alpha_width, u_width);
+        wstart = std::max(wstart, 0);
+        wend = std::min(wend, input_width);
       } else {
         dstart = d_offset * stride_depth - padding_depth;
         hstart = h_offset * stride_height - padding_height;

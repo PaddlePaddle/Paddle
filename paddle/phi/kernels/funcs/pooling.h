@@ -103,18 +103,26 @@ HOSTDEVICE inline int AdaptEndIndex(int ph, int input_size, int output_size) {
 /* used for fractional pool to calculate start and end index of each divided
  * grid
  */
-HOSTDEVICE inline int FractionalStartIndex(int ph,
-                                           int input_size,
-                                           int output_size) {
-  return static_cast<int>(
-      floor(static_cast<float>(ph * input_size) / output_size));
+HOSTDEVICE inline float FractionalRationalU(float u,
+                                            float alpha,
+                                            int input,
+                                            int output) {
+  int base = input / output;
+
+  float u_max1 = static_cast<float>(base + 2) / alpha - 1;
+  float u_max2 = static_cast<float>(input + 1 - base) / alpha -
+                 static_cast<float>(output - 1);
+  float max_u = std::min(u_max1, u_max2);
+
+  return u * max_u;
 }
 
-HOSTDEVICE inline int FractionalEndIndex(int ph,
-                                         int input_size,
-                                         int output_size) {
-  return static_cast<int>(
-      ceil(static_cast<float>((ph + 1) * input_size) / output_size));
+HOSTDEVICE inline int FractionalStartIndex(int ph, float alpha, float u) {
+  return static_cast<int>(ceil(alpha * (ph + u) - 1));
+}
+
+HOSTDEVICE inline int FractionalEndIndex(int ph, float alpha, float u) {
+  return static_cast<int>(ceil(alpha * (ph + 1 + u) - 1));
 }
 
 /*

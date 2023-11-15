@@ -1593,6 +1593,21 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
     T1* output_data = context.template Alloc<T1>(output);
     T2* mask_data = context.template Alloc<T2>(mask);
 
+    float alpha_height = 0, alpha_width = 0;
+    float u_height = 0, u_width = 0;
+    if (fractional) {
+      std::uniform_real_distribution<float> dist(0, 1);
+      auto engine = phi::GetCPURandomEngine(0);
+      float u = dist(*engine);
+
+      alpha_height = static_cast<float>(input_height) / output_height;
+      alpha_width = static_cast<float>(input_width) / output_width;
+
+      u_height =
+          FractionalRationalU(u, alpha_height, input_height, output_height);
+      u_width = FractionalRationalU(u, alpha_width, input_width, output_width);
+    }
+
     int hstart = 0, hend = 0;
     int wstart = 0, wend = 0;
     for (int i = 0; i < batch_size; i++) {
@@ -1602,7 +1617,10 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
             hstart = AdaptStartIndex(ph, input_height, output_height);
             hend = AdaptEndIndex(ph, input_height, output_height);
           } else if (fractional) {
-            // TODO(megemini)
+            hstart = FractionalStartIndex(ph, alpha_height, u_height);
+            hend = FractionalEndIndex(ph, alpha_height, u_height);
+            hstart = std::max(hstart, 0);
+            hend = std::min(hend, input_height);
           } else {
             hstart = ph * stride_height - padding_height;
             hend = std::min(hstart + ksize_height, input_height);
@@ -1613,7 +1631,10 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
               wstart = AdaptStartIndex(pw, input_width, output_width);
               wend = AdaptEndIndex(pw, input_width, output_width);
             } else if (fractional) {
-              // TODO(megemini)
+              wstart = FractionalStartIndex(pw, alpha_width, u_width);
+              wend = FractionalEndIndex(pw, alpha_width, u_width);
+              wstart = std::max(wstart, 0);
+              wend = std::min(wend, input_width);
             } else {
               wstart = pw * stride_width - padding_width;
               wend = std::min(wstart + ksize_width, input_width);
@@ -1737,6 +1758,23 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
     T1* output_data = context.template Alloc<T1>(output);
     T2* mask_data = context.template Alloc<T2>(mask);
 
+    float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
+    float u_height = 0, u_width = 0, u_depth = 0;
+    if (fractional) {
+      std::uniform_real_distribution<float> dist(0, 1);
+      auto engine = phi::GetCPURandomEngine(0);
+      float u = dist(*engine);
+
+      alpha_depth = static_cast<float>(input_depth) / output_depth;
+      alpha_height = static_cast<float>(input_height) / output_height;
+      alpha_width = static_cast<float>(input_width) / output_width;
+
+      u_depth = FractionalRationalU(u, alpha_depth, input_depth, output_depth);
+      u_height =
+          FractionalRationalU(u, alpha_height, input_height, output_height);
+      u_width = FractionalRationalU(u, alpha_width, input_width, output_width);
+    }
+
     int dstart = 0, dend = 0;
     int hstart = 0, hend = 0;
     int wstart = 0, wend = 0;
@@ -1747,7 +1785,10 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
             dstart = AdaptStartIndex(pd, input_depth, output_depth);
             dend = AdaptEndIndex(pd, input_depth, output_depth);
           } else if (fractional) {
-            /* TODO(megemini) */
+            dstart = FractionalStartIndex(pd, alpha_depth, u_depth);
+            dend = FractionalEndIndex(pd, alpha_depth, u_depth);
+            dstart = std::max(dstart, 0);
+            dend = std::min(dend, input_depth);
           } else {
             dstart = pd * stride_depth - padding_depth;
             dend = std::min(dstart + ksize_depth, input_depth);
@@ -1758,7 +1799,10 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
               hstart = AdaptStartIndex(ph, input_height, output_height);
               hend = AdaptEndIndex(ph, input_height, output_height);
             } else if (fractional) {
-              /* TODO(megemini) */
+              hstart = FractionalStartIndex(ph, alpha_height, u_height);
+              hend = FractionalEndIndex(ph, alpha_height, u_height);
+              hstart = std::max(hstart, 0);
+              hend = std::min(hend, input_height);
             } else {
               hstart = ph * stride_height - padding_height;
               hend = std::min(hstart + ksize_height, input_height);
@@ -1769,7 +1813,10 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
                 wstart = AdaptStartIndex(pw, input_width, output_width);
                 wend = AdaptEndIndex(pw, input_width, output_width);
               } else if (fractional) {
-                // TODO(megemini)
+                wstart = FractionalStartIndex(pw, alpha_width, u_width);
+                wend = FractionalEndIndex(pw, alpha_width, u_width);
+                wstart = std::max(wstart, 0);
+                wend = std::min(wend, input_width);
               } else {
                 wstart = pw * stride_width - padding_width;
                 wend = std::min(wstart + ksize_width, input_width);
