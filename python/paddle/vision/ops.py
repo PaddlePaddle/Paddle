@@ -22,7 +22,7 @@ from ..base import core
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..base.framework import Variable, in_dygraph_mode
 from ..base.layer_helper import LayerHelper
-from ..framework import _current_expected_place
+from ..framework import _current_expected_place, in_dynamic_or_pir_mode
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
 from ..nn.initializer import Normal
 
@@ -510,7 +510,7 @@ def prior_box(
             max_sizes = [max_sizes]
         cur_max_sizes = max_sizes
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         step_w, step_h = steps
         if max_sizes is None:
             max_sizes = []
