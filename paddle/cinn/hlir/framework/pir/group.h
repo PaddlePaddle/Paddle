@@ -19,6 +19,7 @@
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
 namespace cinn {
@@ -70,6 +71,7 @@ struct Group {
   // for op lowering.
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
+  std::vector<::pir::Value> output_values;
   std::string fn_name{""};
 
   struct SharedGroupHasher {

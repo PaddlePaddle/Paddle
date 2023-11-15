@@ -1573,10 +1573,10 @@ class TestDygrapInplaceT(TestDygraphInplaceWithContinuous):
             self.assertEqual(var.inplace_version, 1)
 
             inplace_var[0] = 2
-            self.assertEqual(var.inplace_version, 1)
+            self.assertEqual(var.inplace_version, 2)
 
             inplace_var = self.inplace_api_processing(inplace_var)
-            self.assertEqual(var.inplace_version, 2)
+            self.assertEqual(var.inplace_version, 3)
 
 
 class TestDygrapInplaceTranspose(TestDygraphInplaceWithContinuous):
@@ -1595,10 +1595,10 @@ class TestDygrapInplaceTranspose(TestDygraphInplaceWithContinuous):
             self.assertEqual(var.inplace_version, 1)
 
             inplace_var[0] = 2
-            self.assertEqual(var.inplace_version, 1)
+            self.assertEqual(var.inplace_version, 2)
 
             inplace_var = self.inplace_api_processing(inplace_var)
-            self.assertEqual(var.inplace_version, 2)
+            self.assertEqual(var.inplace_version, 3)
 
 
 class TestDygraphInplaceIndexFill(TestDygraphInplace):
