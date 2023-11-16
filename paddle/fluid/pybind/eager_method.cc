@@ -575,7 +575,7 @@ static PyObject* tensor_method__is_dense_tensor_hold_allocation(
             ->IsInitialized());
   } else if (self->tensor.is_dist_tensor()) {
     return ToPyObject(
-        static_cast<phi::distributed::DistTensor*>(grad->impl().get())
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
             ->value()
             .IsInitialized());
   } else {
