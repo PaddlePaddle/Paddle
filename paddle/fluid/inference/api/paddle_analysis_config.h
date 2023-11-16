@@ -33,13 +33,13 @@
 #include <vector>
 
 #include "paddle_infer_declare.h"  // NOLINT
-
 /*! \file */
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
 #ifdef PADDLE_WITH_DNNL
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle_mkldnn_quantizer_config.h"  // NOLINT
 #endif
 
@@ -939,6 +939,13 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void EnableMKLDNN();
+
+  ///
+  /// \brief Turn down MKLDNN.
+  ///
+  ///
+  void DisableMKLDNN();
+
   ///
   /// \brief Set the cache capacity of different input shapes for MKLDNN.
   /// Default value 0 means not caching any shape.
@@ -1304,7 +1311,14 @@ struct PD_INFER_DECL AnalysisConfig {
 
   std::unordered_set<std::string> trt_ops_run_float_;
 
+#ifdef PADDLE_WITH_DNNL
+  bool use_mkldnn_{
+      phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) ? true
+                                                                       : false};
+#else
   bool use_mkldnn_{false};
+#endif
+
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
   bool model_from_memory_{false};
