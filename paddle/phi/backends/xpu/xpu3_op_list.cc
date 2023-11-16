@@ -801,6 +801,8 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"square",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"squared_l2_norm",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"squeeze2_grad",
        XPUKernelSet({phi::DataType::FLOAT64,
                      phi::DataType::INT64,
