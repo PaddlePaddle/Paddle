@@ -27,10 +27,13 @@ class PassTest(unittest.TestCase):
         self.main_program = paddle.static.Program()
         self.feeds = None
         self.fetch_list = None
-        self.fused_op_type = None
+        self.fuse_op_type = None
         self.pass_list = []
         self.pir_program = None
         self.fused_ops = []
+        self.num_ops_before_pass = -1
+        self.num_reduced_ops = -1
+        self.op_not_exist_unittest = False
 
         np.random.seed(123)
         random.seed(124)
@@ -49,13 +52,36 @@ class PassTest(unittest.TestCase):
         '''
         Check whether the fused ops are correct.
         '''
-        if self.fused_op_type is None or len(self.fused_ops) < 0:
-            return
+        self.assertFalse(
+            self.fuse_op_type is None
+            or len(self.fused_ops) < 0
+            or self.num_reduced_ops < 0,
+            "1. fuse_op_type means 'fusion into new op or fusion into old op' \n \
+                         2. fused_ops means fused op lists \n \
+                         3. num_reduced_ops means the number of reduced_ops \n \
+                         These params cannot all be empty!",
+        )
         op_names = [op.name() for op in self.pir_program.global_block().ops]
-        if self.fused_op_type:
-            self.assertTrue(self.fused_op_type in op_names, "error!")
-        for fused_op in self.fused_ops:
-            self.assertTrue(fused_op not in op_names, "error!")
+        acctual_num_reduce_ops = self.num_ops_before_pass - len(op_names)
+
+        if self.fuse_op_type:
+            self.assertTrue(
+                self.fuse_op_type in op_names, "The fused op does not exist !"
+            )
+
+        self.assertTrue(
+            acctual_num_reduce_ops == self.num_reduced_ops,
+            "Checking of the number of fused operator < {} > failed. "
+            "Expected: {}, Received: {}".format(
+                self.fuse_op_type, self.num_reduced_ops, acctual_num_reduce_ops
+            ),
+        )
+        if self.op_not_exist_unittest:
+            for fused_op in self.fused_ops:
+                self.assertTrue(
+                    fused_op not in op_names,
+                    f"fused operator<{fused_op}>  is not fused !",
+                )
 
     def check_pass_correct(self, place, need_translate_to_pir=False, atol=1e-5):
         '''
@@ -65,10 +91,11 @@ class PassTest(unittest.TestCase):
         executor = paddle.static.Executor(place)
         self.assertTrue(
             need_translate_to_pir is False and self.pir_program is not None,
-            "error!",
+            "using old ir need_translate_to_pir Cannot be fasle.\n \
+             using new ir program Cannot be None. \n",
         )
         if need_translate_to_pir and self.pir_program is None:
             self.pir_program = pir.translate_to_pir(self.main_program.desc)
-
+        self.num_ops_before_pass = len(self.pir_program.global_block().ops)
         self.run_pir_pass()
         self.check_fused_ops()

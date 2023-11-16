@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/parameter.h"
 #include "paddle/pir/core/program.h"
@@ -25,17 +21,16 @@
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-
 #include "paddle/fluid/pir/transforms/fusion/conv2d_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+
 #include "paddle/phi/core/ddim.h"
 
 namespace {
@@ -47,7 +42,7 @@ class Conv2dBnFusePattern
   bool MatchAndRewrite(
       paddle::dialect::BatchNorm_Op op,
       pir::PatternRewriter &rewriter) const override {  // NOLINT
-    // The next op should be batch_norm.
+    // The prev op should be conv2d op.
     paddle::dialect::Conv2dOp conv2d_op =
         pir::GetDefiningOpForInput(op, 0)
             ->dyn_cast<paddle::dialect::Conv2dOp>();
@@ -57,10 +52,6 @@ class Conv2dBnFusePattern
     if (!conv2d_out.HasOneUse()) return false;
 
     pir::Value conv2d_filter = conv2d_op.filter();
-
-    // pir::GetParameterOp filter_parameter_op =
-    //     conv2d_filter.GetDefiningOp()->dyn_cast<pir::GetParameterOp>();
-    // if (!filter_parameter_op) return false;
 
     pir::OpResult conv2d_filter_result =
         conv2d_filter.dyn_cast<pir::OpResult>();
