@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import copy
 import functools
@@ -26,6 +28,7 @@ import traceback
 import warnings
 from collections.abc import Iterable
 from types import FunctionType, MethodType
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -40,6 +43,9 @@ from .proto import (
 )
 from .variable_index import _getitem_static, _setitem_impl_, _setitem_static
 from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+
+if TYPE_CHECKING:
+    from paddle.static.amp.fp16_utils import AmpOptions
 
 __all__ = []
 
@@ -2937,8 +2943,11 @@ class Operator:
             # attr for static graph mode cuda graph
             self._cuda_graph_attr = _current_cuda_graph_mode
 
-            # attr for OP should cast in AMP mode
-            self._should_auto_cast: bool = True
+            # attr for OP AMP mode
+            # using dynamic import to avoid cyclic dependency
+            from paddle.static.amp.fp16_utils import DEFAULT_AMP_OPTIONS
+
+            self._amp_options: AmpOptions = DEFAULT_AMP_OPTIONS
 
             op_maker = core.op_proto_and_checker_maker
 
@@ -3697,24 +3706,24 @@ class Operator:
         """
         self.desc.dist_attr = dist_attr
 
-    def set_auto_cast(self, auto_cast):
+    def set_amp_options(self, amp_options):
         """
         Set auto cast attribute of this Operator.
 
         Args:
-            auto_cast(bool): True if this Operator should cast in AMP mode.
+            amp_options (AmpOptions): AmpOptions of this Operator.
         """
-        self._should_auto_cast = auto_cast
+        self._amp_options = amp_options
 
     @property
-    def should_auto_cast(self):
+    def amp_options(self):
         """
         Get auto cast attribute of this Operator.
 
         Returns:
-            bool: True if this Operator should cast in AMP mode.
+            bool: AmpOptions of this Operator.
         """
-        return self._should_auto_cast
+        return self._amp_options
 
 
 @signature_safe_contextmanager
@@ -6987,7 +6996,7 @@ class Program:
                 if other_var.stop_gradient:
                     var.stop_gradient = True
 
-    def _copy_operator_info_from(self, other: "Program"):
+    def _copy_operator_info_from(self, other: Program):
         """
         Copy the information of Operator information from other program.
 
@@ -7003,7 +7012,7 @@ class Program:
             )
         for dst_block, src_block in zip(self.blocks, other.blocks):
             for dst_op, src_op in zip(dst_block.ops, src_block.ops):
-                dst_op.set_auto_cast(src_op.should_auto_cast)
+                dst_op.set_amp_options(src_op.amp_options)
 
     def list_vars(self):
         """
