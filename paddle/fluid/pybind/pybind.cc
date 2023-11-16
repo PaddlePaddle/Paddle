@@ -886,7 +886,7 @@ PYBIND11_MODULE(libpaddle, m) {
       py::arg("var_descs"));
 
   m.def(
-      "create_empty_tensors_with_op_result",
+      "create_empty_tensors_with_op_results",
       [](const py::object &op_results) {
         auto ret = GetEmpytyTensorsWithOpResult(op_results.ptr());
         auto obj = py::reinterpret_borrow<py::object>(ret);
