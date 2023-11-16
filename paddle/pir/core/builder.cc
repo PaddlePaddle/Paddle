@@ -35,8 +35,8 @@ Operation *Builder::Build(const std::vector<Value> &inputs,
 Operation *Builder::Insert(Operation *op) {
   if (insertion_point_.first) {
     insertion_point_.first->insert(insertion_point_.second, op);
-  } else {
-    LOG(WARNING) << "Builder's Block is nullptr, insert failed.";
+  } else if (forbid_insert_without_position_) {
+    IR_THROW("Insertion position not set, insert failed.");
   }
   return op;
 }
