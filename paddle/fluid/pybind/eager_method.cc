@@ -1848,6 +1848,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
 
     // TODO(zoooo0820) 1.Using inplace version index_put
     //                  2.Remove following code after backward bug fixed.
+    transed_sub_tensor = assign_ad_func(transed_sub_tensor);
     transed_sub_tensor =
         index_put_ad_func(transed_sub_tensor, transed_index, value_tensor);
 
@@ -1859,7 +1860,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self->tensor, transback_sub_tensor);
     }
     self->tensor = set_value_with_tensor__ad_func(self->tensor,
-                                                  value_tensor,
+                                                  transback_sub_tensor,
                                                   slice_starts,
                                                   slice_ends,
                                                   slice_strides,

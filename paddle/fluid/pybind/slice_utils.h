@@ -340,8 +340,6 @@ static void ParseIndex(const paddle::Tensor& tensor,
   const int rank = shape.size();
   const int size = PyTuple_GET_SIZE(index);
 
-  // deal with Ndarray & range
-
   // Check Ellipsis is valid
   int specified_dims = 0;
   int ell_count = 0;
