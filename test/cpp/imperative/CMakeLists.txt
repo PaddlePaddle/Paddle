@@ -18,8 +18,7 @@ else()
            gloo_context
            gloo_wrapper
            gloo
-           fs
-           shell)
+           framework_io)
     #set_tests_properties(heter_ccl_context_test PROPERTIES LABELS "RUN_TYPE=DIST")
   endif()
   if(WITH_XPU_BKCL)
