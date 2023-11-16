@@ -12,15 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/core/op_info.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
-#include "paddle/pir/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -35,11 +27,11 @@
 namespace {
 
 class Conv2dBnFusePattern
-    : public pir::OpRewritePattern<paddle::dialect::BatchNormOp> {
+    : public pir::OpRewritePattern<paddle::dialect::BatchNorm_Op> {
  public:
-  using pir::OpRewritePattern<paddle::dialect::BatchNormOp>::OpRewritePattern;
+  using pir::OpRewritePattern<paddle::dialect::BatchNorm_Op>::OpRewritePattern;
   bool MatchAndRewrite(
-      paddle::dialect::BatchNormOp op,
+      paddle::dialect::BatchNorm_Op op,
       pir::PatternRewriter &rewriter) const override {  // NOLINT
     // The prev op should be conv2d op.
     paddle::dialect::Conv2dOp conv2d_op =
@@ -129,14 +121,15 @@ class Conv2dBnFusePattern
     return true;
   }
 };
+
 class BatchNormReplacePattern
-    : public pir::OpRewritePattern<paddle::dialect::BatchNorm_Op> {
+    : public pir::OpRewritePattern<paddle::dialect::BatchNormOp> {
  public:
-  using pir::OpRewritePattern<paddle::dialect::BatchNorm_Op>::OpRewritePattern;
+  using pir::OpRewritePattern<paddle::dialect::BatchNormOp>::OpRewritePattern;
   bool MatchAndRewrite(
-      paddle::dialect::BatchNorm_Op op,
+      paddle::dialect::BatchNormOp op,
       pir::PatternRewriter &rewriter) const override {  // NOLINT
-    auto bn_op = rewriter.Build<paddle::dialect::BatchNormOp>(
+    auto bn_op = rewriter.Build<paddle::dialect::BatchNorm_Op>(
         op.x().dyn_cast<pir::OpResult>(),
         op.mean().dyn_cast<pir::OpResult>(),
         op.variance().dyn_cast<pir::OpResult>(),
@@ -148,11 +141,12 @@ class BatchNormReplacePattern
     return true;
   }
 };
-class Conv2dFusePass : public pir::Pass {
- public:
-  Conv2dFusePass() : pir::Pass("conv2d_fuse_pass", 2) {}
 
-  bool Initialize(pir::IrContext *context) override {
+class Conv2dFusePass : public pir::PatternRewritePass {
+ public:
+  Conv2dFusePass() : pir::PatternRewritePass("conv2d_fuse_pass", 2) {}
+
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
     auto conv_bn_pattern = std::make_unique<Conv2dBnFusePattern>(
         context,
@@ -175,23 +169,8 @@ class Conv2dFusePass : public pir::Pass {
         std::vector<std::string>{paddle::dialect::BatchNormOp::name()});
     ps.Add(std::move(bn_replace_pattern));
     ps.Add(std::move(conv_bn_pattern));
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
+    return ps;
   }
-
-  void Run(pir::Operation *op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
-  }
-
-  bool CanApplyOn(pir::Operation *op) const override {
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
-  }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
 }  // namespace

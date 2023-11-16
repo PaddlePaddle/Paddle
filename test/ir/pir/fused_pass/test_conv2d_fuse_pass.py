@@ -44,12 +44,11 @@ class TestConv2dFusePass(PassTest):
                     bias_attr=False,
                 )
                 bn = paddle.nn.BatchNorm2D(num_features=32, data_format='NCHW')
-                result1 = conv2d(x)
-                result2 = bn(result1)
+                out = bn(conv2d(x))
 
         self.pass_list = ['conv2d_fuse_pass']
         self.feeds = {"x": np.random.random((3, 1, 28, 28)).astype("float32")}
-        self.fetch_list = [result2]
+        self.fetch_list = [out]
         self.valid_op_map = {
             "pd_op.conv2d": 1,
             "pd_op.batch_norm": 0,
