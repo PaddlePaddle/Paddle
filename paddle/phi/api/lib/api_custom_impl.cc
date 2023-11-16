@@ -343,7 +343,7 @@ void embedding_grad_impl(const Tensor& x,
                      padding_idx,
                      dense_out);
       }
-      // 9. Reshard Partial Output to Replicated (Temporary)
+      // 9. Reshard Kernel Output to API output (Temporary)
       ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, weight_grad);
 
       // 10. Return
