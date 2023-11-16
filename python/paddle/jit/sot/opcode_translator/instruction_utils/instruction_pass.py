@@ -12,24 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .instruction_utils import (  # noqa: F401
-    Instruction,
-    calc_offset_from_bytecode_offset,
-    calc_stack_effect,
-    convert_instruction,
-    gen_instr,
-    get_instructions,
-    instrs_info,
-    modify_extended_args,
-    modify_instrs,
-    modify_vars,
-    relocate_jump_target,
-    replace_instr,
-    reset_offset,
-)
-from .opcode_analysis import (  # noqa: F401
-    Space,
-    analysis_inputs,
-    analysis_used_names_with_space,
-)
-from .instruction_pass import apply_instr_pass
+supported_passes = ()
+
+
+def remove_not_needed_rename(instrs, code_options):
+    stack = []
+    for instr in instrs:
+        if instr.opname == "STORE_FAST":
+            stack.append(None)
+        elif instr.opname == "LOAD_FAST":
+            pass
+
+
+def apply_instr_pass(instrs, code_options):
+    for instr_pass in supported_passes:
+        instr_pass(instrs, code_options)

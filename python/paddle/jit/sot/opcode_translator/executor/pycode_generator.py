@@ -40,6 +40,7 @@ from ...utils import (
 )
 from ..instruction_utils import (
     analysis_inputs,
+    apply_instr_pass,
     calc_stack_effect,
     gen_instr,
     get_instructions,
@@ -499,6 +500,7 @@ class PyCodeGen:
         self.hooks.clear()
 
         self.insert_prefix_instructions()
+        apply_instr_pass(self._instructions, self._code_options)
         modify_instrs(self._instructions)
         modify_vars(self._instructions, self._code_options)
         new_code = gen_new_opcode(
