@@ -287,7 +287,12 @@ class DygraphShardingOptimizer:
         return mapping
 
     def reduce_gradients(self, parameter_list, hcg):
-        if self._pp_overlap or self.comm_overlap:
+        if self._pp_overlap:
+            return
+
+        if self.comm_overlap:
+            for buffer in self.comm_buffers:
+                buffer.scale_and_split_grads()
             return
 
         # TODO merge grad / nrank with dp
@@ -380,10 +385,6 @@ class DygraphShardingOptimizer:
     @framework.dygraph_only
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
-        if self.comm_overlap:
-            for buffer in self.comm_buffers:
-                buffer.scale_and_split_grads()
-
         # hack to grad_clip all parameters,
         # otherwise the self._inner_opt will only grad_clip the self._rank2params[self._sharding_rank] params
         # TODO(pangengzheng): remove the hacked grad_clip codes here when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
