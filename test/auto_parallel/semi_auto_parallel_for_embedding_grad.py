@@ -61,12 +61,68 @@ class TestCustomEmbeddingGradApiForSemiAutoParallel:
 
         return dist_out, dist_w.grad
 
-    def test_embedding_grad(self):
+    def test_non_shard(self):
         self.test_body(
             x_shape=[12, 16],
             w_shape=[10, 4],
             x_specs=[None, None],
             w_specs=[None, None],
+        )
+
+    def test_x_row_shard(self):
+        self.test_body(
+            x_shape=[12, 16],
+            w_shape=[10, 4],
+            x_specs=["x", None],
+            w_specs=[None, None],
+        )
+
+    def test_x_col_shard(self):
+        self.test_body(
+            x_shape=[12, 16],
+            w_shape=[10, 4],
+            x_specs=[None, "x"],
+            w_specs=[None, None],
+        )
+
+    def test_w_row_shard(self):
+        self.test_body(
+            x_shape=[12, 16],
+            w_shape=[10, 4],
+            x_specs=[None, None],
+            w_specs=["x", None],
+        )
+
+    def test_w_col_shard(self):
+        self.test_body(
+            x_shape=[12, 16],
+            w_shape=[10, 4],
+            x_specs=[None, None],
+            w_specs=[None, "x"],
+        )
+
+    def test_x_row_w_col_shard(self):
+        self.test_body(
+            x_shape=[12, 16],
+            w_shape=[10, 4],
+            x_specs=["x", None],
+            w_specs=[None, "x"],
+        )
+
+    def test_x_col_w_row_shard(self):
+        self.test_body(
+            x_shape=[12, 16],
+            w_shape=[10, 4],
+            x_specs=[None, "x"],
+            w_specs=["x", None],
+        )
+
+    def test_both_row_shard(self):
+        self.test_body(
+            x_shape=[12, 16],
+            w_shape=[10, 4],
+            x_specs=[None, "x"],
+            w_specs=[None, "x"],
         )
 
     def run_test_case(self):
@@ -77,7 +133,14 @@ class TestCustomEmbeddingGradApiForSemiAutoParallel:
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
-        self.test_embedding_grad()
+        self.test_non_shard()
+        self.test_x_row_shard()
+        self.test_x_col_shard()
+        self.test_w_row_shard()
+        self.test_w_col_shard()
+        self.test_x_row_w_col_shard()
+        self.test_x_col_w_row_shard()
+        self.test_both_row_shard()
 
 
 if __name__ == '__main__':
