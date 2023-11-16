@@ -28,7 +28,11 @@ from paddle.base.unique_name import guard as UniqueNameGuard
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
-from .utils import backend_guard, construct_grad_names
+from .utils import (
+    RETURN_NO_VALUE_MAGIC_NUM,
+    backend_guard,
+    construct_grad_names,
+)
 
 __all__ = []
 
@@ -244,7 +248,7 @@ class PartialProgramLayer:
             )
 
             restored_nest_out = self._restore_out(out_vars)
-            return restored_nest_out
+            return self._remove_no_value(restored_nest_out)
 
     def sot_call(self, inputs):
         """
@@ -939,7 +943,16 @@ class PartialProgramLayer:
                     zero_copy=True,
                 )
             elif isinstance(value, core.eager.Tensor):
-                var = value
+                # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
+                # into CUDAPlace when it's as input of multi Ops. so we move it in advance
+                # to avoid this problem.
+                if value.stop_gradient and not value.place._equals(
+                    expected_place
+                ):
+                    var = value._copy_to(expected_place, False)
+                    var.stop_gradient = True
+                else:
+                    var = value
             else:
                 continue
             input_var_names.append(self._inputs[i].desc.name())
@@ -1018,6 +1031,41 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _clone_for_test(self, main_program):
         return main_program.clone(for_test=True)
+
+    def _is_no_value(self, var):
+        if isinstance(var, core.eager.Tensor) and var.shape == [1]:
+            # NOTE: .numpy() will insert MemcpySync operation, it hits performance.
+            if var.numpy()[0] == RETURN_NO_VALUE_MAGIC_NUM:
+                return True
+        return False
+
+    def _remove_no_value(self, out_vars):
+        """
+        Removes invalid value for various-length return statement
+        """
+        if isinstance(out_vars, core.eager.Tensor):
+            if self._is_no_value(out_vars):
+                return None
+            return out_vars
+        elif isinstance(out_vars, (tuple, list)):
+            if isinstance(out_vars, tuple):
+                res = tuple(
+                    var for var in out_vars if not self._is_no_value(var)
+                )
+            else:
+                # isinstance(out_vars, list)
+                res = [var for var in out_vars if not self._is_no_value(var)]
+
+            has_removed = len(out_vars) > len(res)
+            # len(out_vars) > len(res) means we have removed var. This is
+            # preventing out_vars is empty or just one element at the beginning
+            if len(res) == 0 and has_removed:
+                return None
+            elif len(res) == 1 and has_removed:
+                return res[0]
+            return res
+
+        return out_vars
 
     def _set_grad_type(self, params, train_program):
         # NOTE: if user set sparse gradient mode, the param's gradient

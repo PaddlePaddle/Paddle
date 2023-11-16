@@ -346,7 +346,7 @@ class PartialProgramLayer:
             *attrs,
         )
         restored_nest_out = self._restore_out(out_vars)
-        return restored_nest_out
+        return self._remove_no_value(restored_nest_out)
 
     def sot_call(self, inputs):
         """
@@ -705,7 +705,16 @@ class PartialProgramLayer:
                     zero_copy=True,
                 )
             elif isinstance(value, core.eager.Tensor):
-                var = value
+                # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
+                # into CUDAPlace when it's as input of multi Ops. so we move it in advance
+                # to avoid this problem.
+                if value.stop_gradient and not value.place._equals(
+                    expected_place
+                ):
+                    var = value._copy_to(expected_place, False)
+                    var.stop_gradient = True
+                else:
+                    var = value
             else:
                 continue
             input_vars.append(var)
@@ -738,7 +747,7 @@ class PartialProgramLayer:
             return out
 
         # Create Tensor to receive output data.
-        out_vars = list(map(create_out, self._outputs.var_ids))
+        out_vars = list(map(create_out, self._outputs.var_list))
         return out_vars
 
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
