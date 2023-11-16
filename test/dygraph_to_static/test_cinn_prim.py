@@ -180,7 +180,10 @@ class TestBackend(Dy2StTestBase):
     @test_legacy_and_pir_exe_and_pir_api
     def test_backend(self):
         x = paddle.randn([2, 4])
-        out1 = self.forward(x, 'CINN')
+        if paddle.is_compiled_with_cinn():
+            out1 = self.forward(x, 'CINN')
+        else:
+            out1 = self.forward(x, None)
         out2 = self.forward(x, None)
         np.testing.assert_allclose(out1, out2, rtol=1e-6)
 
