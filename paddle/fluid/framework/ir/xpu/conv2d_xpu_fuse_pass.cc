@@ -720,9 +720,6 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
   Node* scale_max = nullptr;
   bool per_channel_quant = false;
 
-  // bool per_channel_quant =
-  //   std::getenv("FLAGS_fc_gemm_use_per_channel") == nullptr ? false : true;
-
   int conv_compute_precision =
       Has("conv_compute_precision") ? Get<int>("conv_compute_precision") : -1;
 

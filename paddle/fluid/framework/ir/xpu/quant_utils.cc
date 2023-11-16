@@ -374,13 +374,6 @@ void ConvertWithoutQuant(phi::DenseTensor* weight,
                          phi::DenseTensor* scale_max,
                          bool transpose,
                          const std::vector<float>& weight_scales) {
-  /*
-   PADDLE_ENFORCE_EQ(
-       weight_scales.empty(),
-       false,
-       platform::errors::InvalidArgument(
-           "ConvertWithoutQuant is not allowed weight scales is empty!"));
-   */
   if (transpose) {
     Transpose2D(weight);
   }

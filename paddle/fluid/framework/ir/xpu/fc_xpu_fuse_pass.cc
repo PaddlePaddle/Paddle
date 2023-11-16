@@ -524,11 +524,6 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
 
   (*fusion_nodes_map)["bias"] = fusion_bias_node;
 
-  // int gemm_compute =
-  //   Has("gemm_compute_precision") ? Get<int>("gemm_compute_precision") : -1;
-
-  // VLOG(5) << "Gemm Compute Type:" << gemm_compute;
-
   int fc_compute_precision =
       Has("fc_compute_precision") ? Get<int>("fc_compute_precision") : -1;
 
@@ -545,6 +540,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
 
   if (op_weights_precision != "int8") {
     if (fc_compute_precision != 2) {
+      VLOG(5) << "fc compute type is int16";
       PrepareWeight<float, int16_t>(graph,
                                     scope,
                                     block,
@@ -555,8 +551,9 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                     !transpose_w,
                                     weight_scale,
                                     per_channel_quant);
-    } else {
-      VLOG(5) << "Gemm compute type is int31";
+    }
+    if (fc_compute_precision == 2 && per_channel_quant == false) {
+      VLOG(5) << "fc compute type is int31";
       PrepareWeight<float, float>(graph,
                                   scope,
                                   block,
@@ -568,7 +565,21 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                   weight_scale,
                                   per_channel_quant);
     }
+    if (fc_compute_precision == 2 && per_channel_quant == true) {
+      VLOG(5) << "fc compute type is int16";
+      PrepareWeight<float, int16_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    per_channel_quant);
+    }
   } else {
+    VLOG(5) << "fc compute type is int8";
     PrepareWeight<int8_t, int8_t>(graph,
                                   scope,
                                   block,

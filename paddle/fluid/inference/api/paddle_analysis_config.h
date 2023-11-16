@@ -118,14 +118,14 @@ struct PD_INFER_DECL XpuConfig {
   // Whether write new fc autotune info to fc_autotune_file.
   bool fc_autotune_file_writeback{false};
 
-  // fc quant support per channel ways.
+  // Fc quant support per channel ways.
   bool fc_per_channel{false};
-
+  // Fc compute precision. Optional values are 0(int8),1(int16),2(int31).
   int fc_compute_precision{1};
 
-  // conv quant support per channel ways.
+  // Conv quant support per channel ways.
   bool conv_per_channel{false};
-
+  // Conv compute precision. Optional values are 0(int8),1(int16),2(int31).
   int conv_compute_precision{1};
 
   // Gemm compute precision. Optional values are 0(int8),1(int16),2(int31).
