@@ -1473,8 +1473,8 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 
   auto tensor = self->tensor;
   const int rank = tensor.shape().size();
-  std::vector<int> slice_starts, slice_ends, slice_strides, none_axes;
-  std::vector<int64_t> slice_axes, decrease_axis, infer_flags;
+  std::vector<int> slice_starts, slice_ends, slice_strides;
+  std::vector<int64_t> slice_axes, decrease_axis, infer_flags, none_axes;
 
   bool has_advanced_index = false;
   bool use_strided_slice = false;
@@ -1540,7 +1540,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
     } else {
       // fast path for single index tensor, since stack is much slower than
       // unsqueeze
-      transed_advanced_index_tensor = unsqueeze_ad_func(transed_index[0], -1);
+      transed_advanced_index_tensor = unsqueeze_ad_func(transed_index[0], {-1});
     }
     out = gather_nd_ad_func(transed_tensor, transed_advanced_index_tensor);
   }
@@ -1713,8 +1713,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
             tensor.name()));
   }
   const int rank = tensor.shape().size();
-  std::vector<int> slice_starts, slice_ends, slice_strides, none_axes;
-  std::vector<int64_t> slice_axes, decrease_axis, infer_flags;
+  std::vector<int> slice_starts, slice_ends, slice_strides;
+  std::vector<int64_t> slice_axes, decrease_axis, infer_flags, none_axes;
 
   bool has_advanced_index = false;
   bool use_strided_slice = false;

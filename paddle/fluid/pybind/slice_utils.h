@@ -317,7 +317,7 @@ static void ParseIndex(const paddle::Tensor& tensor,
                        std::vector<int>* slice_ends,
                        std::vector<int>* slice_strides,
                        std::vector<int64_t>* decrease_axis,
-                       std::vector<int>* none_axes,
+                       std::vector<int64_t>* none_axes,
                        std::vector<int64_t>* infer_flags,
                        std::vector<int>* advanced_index_dim,
                        std::vector<paddle::Tensor>* advanced_index,
@@ -505,7 +505,7 @@ static paddle::Tensor getTensorWithBasicIndexing(
     std::vector<int>* slice_ends,
     std::vector<int>* slice_strides,
     std::vector<int64_t>* decrease_axis,
-    std::vector<int>* none_axes,
+    std::vector<int64_t>* none_axes,
     std::vector<int64_t>* infer_flags,
     bool* use_strided_slice) {
   paddle::Tensor out;
