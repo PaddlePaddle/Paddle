@@ -119,7 +119,7 @@ def pow_composite(x, y):
     return res
 
 
-@register_decomp('pd_op.dropout')
+# @register_decomp('pd_op.dropout')
 def dropout(x, seed_tensor, p, is_test, mode, seed, fix_seed):
     """define composite rule of op dropout.
     upscale_in_train:

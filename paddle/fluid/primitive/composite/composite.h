@@ -184,6 +184,21 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   return std::make_tuple(out, mean_, variance);
 }
 
+template <typename T>
+std::tuple<Tensor, Tensor> dropout_decomp(
+    const Tensor& x,
+    const paddle::optional<Tensor>& seed_tensor,
+    const paddle::Scalar& p,
+    bool is_test,
+    const std::string& mode,
+    const int seed,
+    bool fix_seed) {
+  // auto org_dtype = x.dtype();
+  Tensor x_cast = x;
+
+  return std::make_tuple(x_cast, x);
+}
+
 }  // namespace details
 
 }  // namespace primitive
