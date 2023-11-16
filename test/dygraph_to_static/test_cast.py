@@ -190,8 +190,6 @@ class TestNotVarCast(TestCastBase):
     @test_legacy_and_pir_exe_and_pir_api
     def test_cast_result(self):
         self.set_func()
-        # breakpoint()
-        # print("run once!!!")
         res = self.do_test()
         self.assertTrue(type(res) == int, msg='The casted dtype is not int.')
         ref_val = int(self.input)
