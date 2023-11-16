@@ -246,7 +246,10 @@ class TestQuantLinearFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_examples=300, passes=["quant_linear_fuse_pass"]
+            quant=False,
+            max_examples=300,
+            passes=["quant_linear_fuse_pass"],
+            only_use_this_pass=True,
         )
 
 

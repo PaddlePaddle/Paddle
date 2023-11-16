@@ -393,6 +393,7 @@ class PassAutoScanTest(AutoScanTest):
         min_success_num=25,
         max_duration=180,
         passes=None,
+        only_use_this_pass=False,
     ):
         if os.getenv("HYPOTHESIS_TEST_PROFILE", "ci") == "dev":
             max_examples *= 10
@@ -421,7 +422,11 @@ class PassAutoScanTest(AutoScanTest):
             return self.sample_program_config(draw)
 
         def run_test(prog_config):
-            return self.run_test(quant=quant, prog_configs=[prog_config])
+            return self.run_test(
+                quant=quant,
+                prog_configs=[prog_config],
+                only_use_this_pass=only_use_this_pass,
+            )
 
         generator = st.composite(program_generator)
         loop_func = given(generator())(run_test)
@@ -460,7 +465,9 @@ class PassAutoScanTest(AutoScanTest):
             )
             raise AssertionError()
 
-    def run_test(self, quant=False, prog_configs=None):
+    def run_test(
+        self, quant=False, prog_configs=None, only_use_this_pass=False
+    ):
         status = True
 
         for prog_config in prog_configs:
@@ -523,7 +530,8 @@ class PassAutoScanTest(AutoScanTest):
                     if os.path.exists(self.cache_dir):
                         shutil.rmtree(self.cache_dir)
 
-                    pred_config.pass_builder().set_passes(self.passes)
+                    if only_use_this_pass:
+                        pred_config.pass_builder().set_passes(self.passes)
                     pred_result = self.run_test_config(
                         model, params, prog_config, pred_config, feed_data
                     )
