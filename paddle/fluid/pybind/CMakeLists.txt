@@ -122,6 +122,7 @@ set(PYBIND_SRCS
     inference_api.cc
     ops_api.cc
     static_op_function.cc
+    control_flow_api.cc
     pir.cc
     graph.cc
     bind_fleet_executor.cc
