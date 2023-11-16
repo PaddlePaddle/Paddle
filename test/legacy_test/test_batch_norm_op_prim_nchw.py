@@ -74,6 +74,7 @@ class TestBatchNormOp(OpTest):
                 no_check_set=None,
                 check_prim=True,
                 only_check_prim=True,
+                check_prim_pir=True,
             )
         if paddle.is_compiled_with_cuda():
             self.check_output_with_place(
@@ -93,6 +94,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
+                check_prim_pir=True,
             )
         if paddle.is_compiled_with_cuda():
             self.check_grad_with_place(
@@ -102,6 +104,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
+                check_prim_pir=True,
             )
 
     def test_check_grad_scale_bias(self):
@@ -125,6 +128,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
+                check_prim_pir=True,
             )
         if paddle.is_compiled_with_cuda():
             self.check_grad_with_place(
@@ -134,6 +138,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
+                check_prim_pir=True,
             )
 
     def initConfig(self):
