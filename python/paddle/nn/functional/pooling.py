@@ -634,7 +634,7 @@ def max_pool1d(
     if in_dygraph_mode():
         if return_mask:
             pool_out = _C_ops.max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False
+                x, kernel_size, stride, padding, False, False, False
             )
             return (
                 (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
@@ -1261,7 +1261,7 @@ def max_pool2d(
     if in_dynamic_or_pir_mode():
         if return_mask:
             output = _C_ops.max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False
+                x, kernel_size, stride, padding, False, False, False
             )
             return output if return_mask else output[0]
         else:
@@ -1428,7 +1428,7 @@ def max_pool3d(
     if in_dygraph_mode():
         if return_mask:
             output = _C_ops.max_pool3d_with_index(
-                x, kernel_size, stride, padding, False, False
+                x, kernel_size, stride, padding, False, False, False
             )
             return output if return_mask else output[0]
         else:
@@ -1877,7 +1877,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     x = unsqueeze(x, [2])
     if in_dygraph_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, pool_size, [1, 1], [0, 0], False, True
+            x, pool_size, [1, 1], [0, 0], False, True, False
         )
         return (
             (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
@@ -1971,7 +1971,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
             output_size[1] = in_w
     if in_dygraph_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, output_size, [1, 1], [0, 0], False, True
+            x, output_size, [1, 1], [0, 0], False, True, False
         )
         return pool_out if return_mask else pool_out[0]
     else:
@@ -2064,7 +2064,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
     if in_dygraph_mode():
         # By default, strides is [1,1,1] and paddings is [0, 0, 0]
         pool_out = _C_ops.max_pool3d_with_index(
-            x, output_size, [1, 1, 1], [0, 0, 0], False, True
+            x, output_size, [1, 1, 1], [0, 0, 0], False, True, False
         )
         return pool_out if return_mask else pool_out[0]
     else:

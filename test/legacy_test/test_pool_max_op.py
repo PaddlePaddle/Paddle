@@ -143,9 +143,10 @@ def max_pool3d_with_index_wapper(
     paddings=[],
     global_pooling=False,
     adaptive=False,
+    fractional=False,
 ):
     return paddle._C_ops.max_pool3d_with_index(
-        x, kernel_size, strides, paddings, global_pooling, adaptive
+        x, kernel_size, strides, paddings, global_pooling, adaptive, fractional
     )
 
 
@@ -342,9 +343,10 @@ def max_pool2d_with_index_wapper(
     paddings=[],
     global_pooling=False,
     adaptive=False,
+    fractional=False,
 ):
     return paddle._C_ops.max_pool2d_with_index(
-        x, kernel_size, strides, paddings, global_pooling, adaptive
+        x, kernel_size, strides, paddings, global_pooling, adaptive, fractional
     )
 
 
