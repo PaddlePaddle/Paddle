@@ -875,8 +875,24 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);
-  m.def("create_empty_tensors_with_var_descs", &GetEmpytyTensorsWithVarDesc);
-  m.def("create_empty_tensors_with_op_result", &GetEmpytyTensorsWithOpResult);
+
+  m.def(
+      "create_empty_tensors_with_var_descs",
+      [](const py::object &var_descs) {
+        auto ret = GetEmpytyTensorsWithVarDesc(var_descs.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("var_descs"));
+
+  m.def(
+      "create_empty_tensors_with_op_result",
+      [](const py::object &op_results) {
+        auto ret = GetEmpytyTensorsWithOpResult(op_results.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("op_results"));
 
   m.def("clear_gradients",
         [](std::vector<std::shared_ptr<imperative::VarBase>> param_list,
