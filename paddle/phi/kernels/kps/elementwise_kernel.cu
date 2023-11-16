@@ -18,9 +18,9 @@
 #include "paddle/phi/common/float16.h"
 #endif
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 #include "paddle/phi/kernels/legacy/elementwise_add_kernel.h"
+#include "paddle/phi/kernels/legacy/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/legacy/elementwise_kernel.h"
 #include "paddle/phi/kernels/legacy/elementwise_multipy_kernel.h"
 #include "paddle/phi/kernels/legacy/elementwise_subtract_kernel.h"
@@ -146,13 +146,8 @@ void HeavisideKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
+  std::vector<const DenseTensor*> inputs = {&x, &y};
+  std::vector<DenseTensor*> outputs = {out};
   dev_ctx.template Alloc<T>(out);
   funcs::BroadcastKernel<T>(
       dev_ctx, inputs, &outputs, funcs::ElementwiseHeavisideFunctor<T>());
@@ -312,8 +307,12 @@ PD_REGISTER_KERNEL(divide,
                    phi::DivideKernel,
                    float,
                    double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
                    int,
                    int64_t,
+                   bool,
                    float16,
                    bfloat16,
                    complex64,

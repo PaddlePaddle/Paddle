@@ -46,7 +46,7 @@ void DistributeFpnProposalsKernel(
   }
 
   std::vector<size_t> fpn_rois_lod;
-  int fpn_rois_num;
+  int fpn_rois_num = 0;
   if (rois_num.get_ptr()) {
     fpn_rois_lod = funcs::GetLodFromRoisNum(dev_ctx, rois_num.get_ptr());
   } else {

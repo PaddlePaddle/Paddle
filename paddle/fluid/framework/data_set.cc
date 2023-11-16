@@ -138,7 +138,7 @@ std::vector<std::string> DatasetImpl<T>::GetSlots() {
     }
   }
   std::cout << "dataset use slots: ";
-  for (auto s : use_slots_) {
+  for (auto const& s : use_slots_) {
     std::cout << s << " | ";
   }
   std::cout << " end " << std::endl;
@@ -216,7 +216,7 @@ template <typename T>
 std::vector<paddle::framework::DataFeed*> DatasetImpl<T>::GetReaders() {
   std::vector<paddle::framework::DataFeed*> ret;
   ret.reserve(readers_.size());
-  for (auto i : readers_) {
+  for (auto const& i : readers_) {
     ret.push_back(i.get());
   }
   return ret;
@@ -1533,7 +1533,7 @@ void MultiSlotDataset::MergeByInsId() {
           break;
         }
         local_uint64.insert(slot);
-        rec.uint64_feasigns_.push_back(std::move(feature));
+        rec.uint64_feasigns_.push_back(feature);
       }
       if (has_conflict_slot) {
         break;
@@ -1550,7 +1550,7 @@ void MultiSlotDataset::MergeByInsId() {
           break;
         }
         local_float.insert(slot);
-        rec.float_feasigns_.push_back(std::move(feature));
+        rec.float_feasigns_.push_back(feature);
       }
       if (has_conflict_slot) {
         break;

@@ -1692,6 +1692,7 @@ class TestDistBase(unittest.TestCase):
             "NCCL_P2P_DISABLE": "1",
             "NCCL_SHM_DISABLE": "1",
             "FLAGS_new_executor_static_build": "1",
+            "FLAGS_dynamic_static_unified_comm": "0",
         }
 
         if check_error_log:

@@ -8,28 +8,22 @@ extend-exclude = '''
 )
 '''
 
-[tool.isort]
-profile = "black"
-line_length = 80
-known_first_party = ["paddle"]
-skip = ["build", "third_party", "__init__.py"]
-extend_skip_glob = [
-    # These files do not need to be formatted,
-    # see .flake8 for more details
-    "python/paddle/utils/gast/**",
-    "python/paddle/base/framework.py",
-]
-
 [tool.ruff]
 exclude = [
     "./build",
     "third_party",
     "./python/paddle/utils/gast/**",
 ]
+line-length = 80
 target-version = "py37"
+
+[tool.ruff.lint]
 select = [
     # Pyflakes
     "F",
+
+    # Isort
+    "I",
 
     # Comprehensions
     "C4",
@@ -73,6 +67,9 @@ select = [
     "PLR1711",
     "PLR1722",
     "PLW3301",
+
+    # Pygrep-hooks
+    "PGH004",
 ]
 unfixable = [
     "NPY001"
@@ -88,9 +85,13 @@ ignore = [
     "UP038",
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["paddle"]
+
+[tool.ruff.lint.per-file-ignores]
 # Ignore unused imports in __init__.py
-"__init__.py" = ["F401"]
+"__init__.py" = ["F401", "I001"]
 # Ignore undefined variables in CMake config and some dygraph_to_static tests
 ".cmake-format.py" = ["F821"]
 "test/dygraph_to_static/test_closure_analysis.py" = ["F821"]
@@ -101,25 +102,3 @@ ignore = [
 "test/dygraph_to_static/test_loop.py" = ["C416", "F821"]
 # Ignore unnecessary lambda in dy2st unittest test_lambda
 "test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
-
-# Temporarily ignored
-"python/paddle/base/**" = [
-    "C408",
-    "UP030",
-    "C405",
-    "B019", # Confirmation required
-    "C416",
-    "F821",
-    "PLC0414",
-]
-
-# B017
-"test/auto_parallel/spmd_rules/test_reshape_rule.py" = ["B017"]
-"test/dygraph_to_static/test_assert.py" = ["B017"]
-"test/legacy_test/test_cuda_max_memory_allocated.py" = ["B017"]
-"test/legacy_test/test_cuda_max_memory_reserved.py" = ["B017"]
-"test/legacy_test/test_cuda_memory_allocated.py" = ["B017"]
-"test/legacy_test/test_cuda_memory_reserved.py" = ["B017"]
-"test/legacy_test/test_eigvals_op.py" = ["B017"]
-"test/legacy_test/test_tensordot.py" = ["B017"]
-"test/legacy_test/test_top_k_v2_op.py" = ["B017"]

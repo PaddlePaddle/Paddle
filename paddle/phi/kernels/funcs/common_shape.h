@@ -244,5 +244,58 @@ inline int64_t CalStride(phi::DDim dim) {
   return strides;
 }
 
+inline std::vector<int32_t> GetPermuteShape(const std::vector<int> &axis,
+                                            const DDim &in_dims) {
+  std::vector<int32_t> out_dims(in_dims.size());
+  for (size_t i = 0; i < axis.size(); i++) {
+    out_dims[i] = in_dims[axis[i]];
+  }
+  return out_dims;
+}
+
+inline std::vector<int32_t> GetFlattenShape(const int axis,
+                                            const std::vector<int> &in_dims) {
+  int64_t outer = 1, inner = 1;
+  for (int i = 0; i < static_cast<int>(in_dims.size()); ++i) {
+    if (i < axis) {
+      outer *= in_dims[i];
+    } else {
+      inner *= in_dims[i];
+    }
+  }
+  std::vector<int32_t> out_shape(2);
+  out_shape[0] = outer;
+  out_shape[1] = inner;
+  return out_shape;
+}
+
+inline void FCOutputSize(const DDim &in_dims,
+                         const DDim &w_dims,
+                         std::vector<int64_t> &out_dims,  // NOLINT
+                         int in_num_col_dims,
+                         bool padding_weights) {
+  auto in_mat_dims = phi::flatten_to_2d(in_dims, in_num_col_dims);
+  auto w_dims0 = padding_weights ? w_dims[0] - 4 : w_dims[0];
+  auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
+  PADDLE_ENFORCE_EQ(
+      in_mat_dims[1],
+      w_dims0,
+      phi::errors::InvalidArgument(
+          "The input's second dimension and weight's first dimension is "
+          "expected to be the same. But received input's second dimension is "
+          "%d, input's shape is %s; weight's first dimension is %d, weight's "
+          "shape is %s.",
+          in_mat_dims[1],
+          in_mat_dims,
+          w_dims0,
+          phi::make_ddim({w_dims0, w_dims1})));
+
+  out_dims.reserve(static_cast<size_t>(in_num_col_dims + 1));
+  for (int i = 0; i < in_num_col_dims; ++i) {
+    out_dims.push_back(in_dims[i]);
+  }
+  out_dims.push_back(w_dims1);
+}
+
 }  // namespace funcs
 }  // namespace phi

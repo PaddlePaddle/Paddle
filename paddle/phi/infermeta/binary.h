@@ -44,6 +44,16 @@ void KLDivInferMeta(const MetaTensor& x,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
+void ArrayWriteInferMeta(const MetaTensor& array,
+                         const MetaTensor& x,
+                         MetaTensor* out,
+                         MetaConfig config = MetaConfig());
+
+void ArrayReadInferMeta(const MetaTensor& array,
+                        const Scalar& i,
+                        MetaTensor* out,
+                        MetaConfig config = MetaConfig());
+
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void BCELossInferMeta(const MetaTensor& input,
@@ -443,6 +453,13 @@ void TriangularSolveInferMeta(const MetaTensor& x,
                               bool unitriangular,
                               MetaTensor* out);
 
+void TopPSamplingInferMeta(const MetaTensor& x,
+                           const MetaTensor& ps,
+                           const MetaTensor& threshold,
+                           int random_seed,
+                           MetaTensor* out,
+                           MetaTensor* ids);
+
 void LstsqInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
                     const Scalar& rcond,
@@ -492,5 +509,11 @@ void Unpool3dInferMeta(const MetaTensor& x,
                        const std::string& data_format,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
+
+void WeightDequantizeInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const std::string& algo,
+                               DataType out_dtype,
+                               MetaTensor* out);
 
 }  // namespace phi

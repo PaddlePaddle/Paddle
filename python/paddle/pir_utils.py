@@ -62,13 +62,18 @@ class IrGuard:
         if paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
             "FLAGS_enable_pir_api"
         ]:
-            paddle.framework.set_flags(
-                {"FLAGS_enable_new_ir_in_executor": True}
-            )
+            paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": True})
             paddle.pir.register_paddle_dialect()
-            paddle.static.Program = paddle.pir.Program
+
             paddle.base.Program = paddle.pir.Program
             paddle.base.program_guard = paddle.pir.core.program_guard
+            # paddle.base.default_main_program = (
+            #     paddle.pir.core.default_main_program
+            # )
+            # paddle.base.default_startup_program = (
+            #     paddle.pir.core.default_startup_program
+            # )
+            paddle.static.Program = paddle.pir.Program
             paddle.static.program_guard = paddle.pir.core.program_guard
             paddle.static.default_main_program = (
                 paddle.pir.core.default_main_program
@@ -81,12 +86,15 @@ class IrGuard:
         if not paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
             "FLAGS_enable_pir_api"
         ]:
-            paddle.framework.set_flags(
-                {"FLAGS_enable_new_ir_in_executor": False}
-            )
-            paddle.static.Program = self.old_Program
+            paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": False})
+
             paddle.base.Program = self.old_Program
             paddle.base.program_guard = self.old_program_guard
+            # paddle.base.default_main_program = self.old_default_main_program
+            # paddle.base.default_startup_program = (
+            #     self.old_default_startup_program
+            # )
+            paddle.static.Program = self.old_Program
             paddle.static.program_guard = self.old_program_guard
             paddle.static.default_main_program = self.old_default_main_program
             paddle.static.default_startup_program = (

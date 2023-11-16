@@ -76,19 +76,19 @@ class IR_API Pattern {
 
   std::optional<OpInfo> root_kind() const {
     if (root_kind_ == RootKind::OperationInfo)
-      return OpInfo::RecoverFromOpaquePointer(root_val_);
+      return OpInfo::RecoverFromVoidPointer(root_val_);
     return std::nullopt;
   }
 
   std::optional<TypeId> GetRootInterfaceID() const {
     if (root_kind_ == RootKind::InterfaceId)
-      return TypeId::RecoverFromOpaquePointer(root_val_);
+      return TypeId::RecoverFromVoidPointer(root_val_);
     return std::nullopt;
   }
 
   std::optional<TypeId> GetRootTraitID() const {
     if (root_kind_ == RootKind::TraitId)
-      return TypeId::RecoverFromOpaquePointer(root_val_);
+      return TypeId::RecoverFromVoidPointer(root_val_);
     return std::nullopt;
   }
 
@@ -272,9 +272,16 @@ class RewriterBase : public Builder {
 
   virtual void ReplaceOp(Operation* op, const std::vector<Value>& new_values);
 
-  // template <typename OpTy, typename... Args>
-  // OpTy ReplaceOpWithNewOp(Operation *op, Args &&...args);
+  // Replaces the result op with a new op.
+  // The result values of the two ops must be the same types.
+  template <typename OpTy, typename... Args>
+  OpTy ReplaceOpWithNewOp(Operation* op, Args&&... args) {
+    auto new_op = Build<OpTy>(std::forward<Args>(args)...);
+    ReplaceOpWithResultsOfAnotherOp(op, new_op.operation());
+    return new_op;
+  }
 
+  // This method erases an operation that is known to have no uses.
   virtual void EraseOp(Operation* op);
 
   IR_API void ReplaceAllUsesWith(Value from, Value to);
@@ -327,6 +334,7 @@ class RewritePatternSet {
  public:
   explicit RewritePatternSet(IrContext* context) : context_(context) {}
 
+  // Construct a RewritePatternSet with the given patterns.
   RewritePatternSet(IrContext* context, std::unique_ptr<RewritePattern> pattern)
       : context_(context) {
     native_patterns_.emplace_back(std::move(pattern));
@@ -338,13 +346,15 @@ class RewritePatternSet {
 
   void Clear() { native_patterns_.clear(); }
 
+  bool Empty() const { return native_patterns_.empty(); }
+
   // 'add' methods for adding patterns to the set.
   template <typename... Ts,
             typename ConstructorArg,
             typename... ConstructorArgs,
             typename = std::enable_if_t<sizeof...(Ts) != 0>>
   RewritePatternSet& Add(ConstructorArg&& arg, ConstructorArgs&&... args) {
-    std::initializer_list<int>{
+    (void)std::initializer_list<int>{
         (AddImpl<Ts>({},
                      std::forward<ConstructorArg>(arg),
                      std::forward<ConstructorArgs>(args)...),
@@ -359,7 +369,7 @@ class RewritePatternSet {
   RewritePatternSet& AddWithLabel(const std::vector<std::string>& debug_labels,
                                   ConstructorArg&& arg,
                                   ConstructorArgs&&... args) {
-    std::initializer_list<int>{
+    (void)std::initializer_list<int>{
         (AddImpl<Ts>(debug_labels,
                      std::forward<ConstructorArg>(arg),
                      std::forward<ConstructorArgs>(args)...),

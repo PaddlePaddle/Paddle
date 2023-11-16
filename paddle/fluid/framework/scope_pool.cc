@@ -29,7 +29,7 @@ void ScopePool::Insert(std::unique_ptr<Scope> &&s) {
 }
 
 void ScopePool::Remove(Scope *s) {
-  size_t has_scope;
+  size_t has_scope = 0;
   {
     std::lock_guard<std::mutex> guard(mtx_);
     has_scope = scopes_.erase(s);

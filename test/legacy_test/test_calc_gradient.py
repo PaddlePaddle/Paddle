@@ -99,8 +99,8 @@ class TestGradientWithPrune(unittest.TestCase):
             x1_grad = base.gradients(y, x)
 
             exe = base.Executor(base.CPUPlace())
-            main = base.default_main_program()
-            exe.run(base.default_startup_program())
+            main = paddle.static.default_main_program()
+            exe.run(paddle.static.default_startup_program())
             out = exe.run(
                 main,
                 feed={'x': np.ones([3]).astype('float32')},

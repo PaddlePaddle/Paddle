@@ -22,6 +22,7 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestConcatOp(OpTest):
@@ -53,9 +54,9 @@ class TestConcatOp(OpTest):
     def test_check_output(self):
         if self.dtype == np.uint16:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_new_ir=True)
+            self.check_output_with_place(place, check_pir=True)
         else:
-            self.check_output(check_new_ir=True)
+            self.check_output(check_pir=True)
 
     def test_check_grad(self):
         if self.dtype == np.uint16:
@@ -65,7 +66,7 @@ class TestConcatOp(OpTest):
                 ['x0'],
                 'Out',
                 check_prim=True,
-                check_new_ir=True,
+                check_pir=True,
                 check_prim_pir=True,
             )
             self.check_grad_with_place(
@@ -73,7 +74,7 @@ class TestConcatOp(OpTest):
                 ['x1'],
                 'Out',
                 check_prim=True,
-                check_new_ir=True,
+                check_pir=True,
                 check_prim_pir=True,
             )
             self.check_grad_with_place(
@@ -81,7 +82,7 @@ class TestConcatOp(OpTest):
                 ['x2'],
                 'Out',
                 check_prim=True,
-                check_new_ir=True,
+                check_pir=True,
                 check_prim_pir=True,
             )
         else:
@@ -89,21 +90,21 @@ class TestConcatOp(OpTest):
                 ['x0'],
                 'Out',
                 check_prim=True,
-                check_new_ir=True,
+                check_pir=True,
                 check_prim_pir=True,
             )
             self.check_grad(
                 ['x1'],
                 'Out',
                 check_prim=True,
-                check_new_ir=True,
+                check_pir=True,
                 check_prim_pir=True,
             )
             self.check_grad(
                 ['x2'],
                 'Out',
                 check_prim=True,
-                check_new_ir=True,
+                check_pir=True,
                 check_prim_pir=True,
             )
 
@@ -199,12 +200,12 @@ class TestConcatOp6(TestConcatOp):
         pass
 
     def test_check_output(self):
-        self.check_output(check_new_ir=False)
+        self.check_output(check_pir=False)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_new_ir=False)
-        self.check_grad(['x1'], 'Out', check_new_ir=False)
-        self.check_grad(['x2'], 'Out', check_new_ir=False)
+        self.check_grad(['x0'], 'Out', check_pir=False)
+        self.check_grad(['x1'], 'Out', check_pir=False)
+        self.check_grad(['x2'], 'Out', check_pir=False)
 
     def init_test_data(self):
         self.x0 = np.random.random([100]).astype(self.dtype)
@@ -243,28 +244,28 @@ class TestConcatOp7(TestConcatOp):
         return "float64"
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['x0'],
             'Out',
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
         self.check_grad(
             ['x1'],
             'Out',
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
         self.check_grad(
             ['x2'],
             'Out',
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
@@ -319,19 +320,13 @@ def create_test_AxisTensor(parent):
                 return
             if self.dtype == np.uint16:
                 place = core.CUDAPlace(0)
-                self.check_grad_with_place(
-                    place, ['x0'], 'Out', check_new_ir=True
-                )
-                self.check_grad_with_place(
-                    place, ['x1'], 'Out', check_new_ir=True
-                )
-                self.check_grad_with_place(
-                    place, ['x2'], 'Out', check_new_ir=True
-                )
+                self.check_grad_with_place(place, ['x0'], 'Out', check_pir=True)
+                self.check_grad_with_place(place, ['x1'], 'Out', check_pir=True)
+                self.check_grad_with_place(place, ['x2'], 'Out', check_pir=True)
             else:
-                self.check_grad(['x0'], 'Out', check_new_ir=True)
-                self.check_grad(['x1'], 'Out', check_new_ir=True)
-                self.check_grad(['x2'], 'Out', check_new_ir=True)
+                self.check_grad(['x0'], 'Out', check_pir=True)
+                self.check_grad(['x1'], 'Out', check_pir=True)
+                self.check_grad(['x2'], 'Out', check_pir=True)
 
     cls_name = "{}_{}".format(parent.__name__, "AxisTensor")
     TestConcatAxisTensor.__name__ = cls_name
@@ -388,7 +383,7 @@ def create_test_fp16(parent):
                     place,
                     ['x0'],
                     'Out',
-                    check_new_ir=True,
+                    check_pir=True,
                     check_prim=True,
                     check_prim_pir=True,
                 )
@@ -396,7 +391,7 @@ def create_test_fp16(parent):
                     place,
                     ['x1'],
                     'Out',
-                    check_new_ir=True,
+                    check_pir=True,
                     check_prim=True,
                     check_prim_pir=True,
                 )
@@ -404,7 +399,7 @@ def create_test_fp16(parent):
                     place,
                     ['x2'],
                     'Out',
-                    check_new_ir=True,
+                    check_pir=True,
                     check_prim=True,
                     check_prim_pir=True,
                 )
@@ -412,21 +407,21 @@ def create_test_fp16(parent):
                 self.check_grad(
                     ['x0'],
                     'Out',
-                    check_new_ir=True,
+                    check_pir=True,
                     check_prim=True,
                     check_prim_pir=True,
                 )
                 self.check_grad(
                     ['x1'],
                     'Out',
-                    check_new_ir=True,
+                    check_pir=True,
                     check_prim=True,
                     check_prim_pir=True,
                 )
                 self.check_grad(
                     ['x2'],
                     'Out',
-                    check_new_ir=True,
+                    check_pir=True,
                     check_prim=True,
                     check_prim_pir=True,
                 )
@@ -493,7 +488,7 @@ def create_test_bf16(parent):
                     place,
                     ['x0'],
                     'Out',
-                    check_new_ir=True,
+                    check_pir=True,
                     check_prim=True,
                     check_prim_pir=True,
                 )
@@ -501,7 +496,7 @@ def create_test_bf16(parent):
                     place,
                     ['x1'],
                     'Out',
-                    check_new_ir=True,
+                    check_pir=True,
                     check_prim=True,
                     check_prim_pir=True,
                 )
@@ -509,7 +504,7 @@ def create_test_bf16(parent):
                     place,
                     ['x2'],
                     'Out',
-                    check_new_ir=True,
+                    check_pir=True,
                     check_prim=True,
                     check_prim_pir=True,
                 )
@@ -517,21 +512,21 @@ def create_test_bf16(parent):
                 self.check_grad(
                     ['x0'],
                     'Out',
-                    check_new_ir=True,
+                    check_pir=True,
                     check_prim=True,
                     check_prim_pir=True,
                 )
                 self.check_grad(
                     ['x1'],
                     'Out',
-                    check_new_ir=True,
+                    check_pir=True,
                     check_prim=True,
                     check_prim_pir=True,
                 )
                 self.check_grad(
                     ['x2'],
                     'Out',
-                    check_new_ir=True,
+                    check_pir=True,
                     check_prim=True,
                     check_prim_pir=True,
                 )
@@ -597,76 +592,88 @@ class TestConcatOpError(unittest.TestCase):
 
 
 class TestConcatAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_base_api(self):
         paddle.enable_static()
-        x_1 = paddle.static.data(
-            shape=[None, 1, 4, 5], dtype='int32', name='x_1'
-        )
-        paddle.concat([x_1, x_1], 0)
+        with paddle.static.program_guard(paddle.static.Program()):
+            x_1 = paddle.static.data(
+                shape=[None, 1, 4, 5], dtype='int32', name='x_1'
+            )
+            paddle.concat([x_1, x_1], 0)
 
-        input_2 = np.random.random([2, 1, 4, 5]).astype("int32")
-        input_3 = np.random.random([2, 2, 4, 5]).astype("int32")
-        x_2 = paddle.static.data(shape=[2, 1, 4, 5], dtype='int32', name='x_2')
-        x_3 = paddle.static.data(shape=[2, 2, 4, 5], dtype='int32', name='x_3')
-        positive_1_int32 = paddle.tensor.fill_constant([1], "int32", 1)
-        positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
-        out_1 = paddle.concat([x_2, x_3], axis=1)
-        out_2 = paddle.concat([x_2, x_3], axis=positive_1_int32)
-        out_3 = paddle.concat([x_2, x_3], axis=positive_1_int64)
+            input_2 = np.random.random([2, 1, 4, 5]).astype("int32")
+            input_3 = np.random.random([2, 2, 4, 5]).astype("int32")
+            x_2 = paddle.static.data(
+                shape=[2, 1, 4, 5], dtype='int32', name='x_2'
+            )
+            x_3 = paddle.static.data(
+                shape=[2, 2, 4, 5], dtype='int32', name='x_3'
+            )
+            positive_1_int32 = paddle.tensor.fill_constant([1], "int32", 1)
+            positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
+            out_1 = paddle.concat([x_2, x_3], axis=1)
+            out_2 = paddle.concat([x_2, x_3], axis=positive_1_int32)
+            out_3 = paddle.concat([x_2, x_3], axis=positive_1_int64)
 
-        exe = base.Executor(place=base.CPUPlace())
-        [res_1, res_2, res_3] = exe.run(
-            base.default_main_program(),
-            feed={"x_1": input_2, "x_2": input_2, "x_3": input_3},
-            fetch_list=[out_1, out_2, out_3],
-        )
-        np.testing.assert_array_equal(
-            res_1, np.concatenate((input_2, input_3), axis=1)
-        )
-        np.testing.assert_array_equal(
-            res_2, np.concatenate((input_2, input_3), axis=1)
-        )
-        np.testing.assert_array_equal(
-            res_3, np.concatenate((input_2, input_3), axis=1)
-        )
+            exe = base.Executor(place=base.CPUPlace())
+            [res_1, res_2, res_3] = exe.run(
+                paddle.static.default_main_program(),
+                feed={"x_1": input_2, "x_2": input_2, "x_3": input_3},
+                fetch_list=[out_1, out_2, out_3],
+            )
+            np.testing.assert_array_equal(
+                res_1, np.concatenate((input_2, input_3), axis=1)
+            )
+            np.testing.assert_array_equal(
+                res_2, np.concatenate((input_2, input_3), axis=1)
+            )
+            np.testing.assert_array_equal(
+                res_3, np.concatenate((input_2, input_3), axis=1)
+            )
 
+    @test_with_pir_api
     def test_api(self):
         paddle.enable_static()
-        x_1 = paddle.static.data(
-            shape=[None, 1, 4, 5], dtype='int32', name='x_1'
-        )
-        paddle.concat([x_1, x_1], 0)
+        with paddle.static.program_guard(paddle.static.Program()):
+            x_1 = paddle.static.data(
+                shape=[None, 1, 4, 5], dtype='int32', name='x_1'
+            )
+            paddle.concat([x_1, x_1], 0)
 
-        input_2 = np.random.random([2, 1, 4, 5]).astype("int32")
-        input_3 = np.random.random([2, 2, 4, 5]).astype("int32")
-        x_2 = paddle.static.data(shape=[2, 1, 4, 5], dtype='int32', name='x_2')
-        x_3 = paddle.static.data(shape=[2, 2, 4, 5], dtype='int32', name='x_3')
-        positive_1_int32 = paddle.tensor.fill_constant([1], "int32", 1)
-        positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
-        negative_int64 = paddle.tensor.fill_constant([1], "int64", -3)
-        out_1 = paddle.concat(x=[x_2, x_3], axis=1)
-        out_2 = paddle.concat(x=[x_2, x_3], axis=positive_1_int32)
-        out_3 = paddle.concat(x=[x_2, x_3], axis=positive_1_int64)
-        out_4 = paddle.concat(x=[x_2, x_3], axis=negative_int64)
+            input_2 = np.random.random([2, 1, 4, 5]).astype("int32")
+            input_3 = np.random.random([2, 2, 4, 5]).astype("int32")
+            x_2 = paddle.static.data(
+                shape=[2, 1, 4, 5], dtype='int32', name='x_2'
+            )
+            x_3 = paddle.static.data(
+                shape=[2, 2, 4, 5], dtype='int32', name='x_3'
+            )
+            positive_1_int32 = paddle.tensor.fill_constant([1], "int32", 1)
+            positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
+            negative_int64 = paddle.tensor.fill_constant([1], "int64", -3)
+            out_1 = paddle.concat(x=[x_2, x_3], axis=1)
+            out_2 = paddle.concat(x=[x_2, x_3], axis=positive_1_int32)
+            out_3 = paddle.concat(x=[x_2, x_3], axis=positive_1_int64)
+            out_4 = paddle.concat(x=[x_2, x_3], axis=negative_int64)
 
-        exe = paddle.static.Executor(place=paddle.CPUPlace())
-        [res_1, res_2, res_3, res_4] = exe.run(
-            paddle.static.default_main_program(),
-            feed={"x_1": input_2, "x_2": input_2, "x_3": input_3},
-            fetch_list=[out_1, out_2, out_3, out_4],
-        )
-        np.testing.assert_array_equal(
-            res_1, np.concatenate((input_2, input_3), axis=1)
-        )
-        np.testing.assert_array_equal(
-            res_2, np.concatenate((input_2, input_3), axis=1)
-        )
-        np.testing.assert_array_equal(
-            res_3, np.concatenate((input_2, input_3), axis=1)
-        )
-        np.testing.assert_array_equal(
-            res_4, np.concatenate((input_2, input_3), axis=1)
-        )
+            exe = paddle.static.Executor(place=paddle.CPUPlace())
+            [res_1, res_2, res_3, res_4] = exe.run(
+                paddle.static.default_main_program(),
+                feed={"x_1": input_2, "x_2": input_2, "x_3": input_3},
+                fetch_list=[out_1, out_2, out_3, out_4],
+            )
+            np.testing.assert_array_equal(
+                res_1, np.concatenate((input_2, input_3), axis=1)
+            )
+            np.testing.assert_array_equal(
+                res_2, np.concatenate((input_2, input_3), axis=1)
+            )
+            np.testing.assert_array_equal(
+                res_3, np.concatenate((input_2, input_3), axis=1)
+            )
+            np.testing.assert_array_equal(
+                res_4, np.concatenate((input_2, input_3), axis=1)
+            )
 
     def test_imperative(self):
         in1 = np.array([[1, 2, 3], [4, 5, 6]])
@@ -735,8 +742,8 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
     def set_program(self, use_base_api):
         paddle.enable_static()
         if use_base_api:
-            self.program = base.Program()
-            with base.program_guard(self.program):
+            self.program = paddle.static.Program()
+            with paddle.static.program_guard(self.program):
                 input = paddle.assign(self.x)
                 tensor_array = paddle.tensor.create_array(dtype='float32')
                 zero = paddle.tensor.fill_constant(
@@ -782,6 +789,7 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
     def concat_wrapper(self, x):
         return paddle.concat(x)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -823,6 +831,7 @@ class TestConcatTripleGradCheck(unittest.TestCase):
     def concat_wrapper(self, x):
         return paddle.concat(x, 1)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -836,14 +845,14 @@ class TestConcatTripleGradCheck(unittest.TestCase):
         out = paddle.concat([data1, data2], 1)
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data2.shape).astype(dtype)
-        gradient_checker.double_grad_check(
+        gradient_checker.triple_grad_check(
             [data1, data2],
             out,
             x_init=[data1_arr, data2_arr],
             place=place,
             eps=eps,
         )
-        gradient_checker.double_grad_check_for_dygraph(
+        gradient_checker.triple_grad_check_for_dygraph(
             self.concat_wrapper,
             [data1, data2],
             out,

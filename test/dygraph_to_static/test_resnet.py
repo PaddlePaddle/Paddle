@@ -19,7 +19,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_with_new_ir
+from dygraph_to_static_utils_new import Dy2StTestBase, test_pir_only
 from predictor_utils import PredictorTools
 
 import paddle
@@ -386,7 +386,7 @@ class ResNetHelper:
         return out
 
 
-class TestResnet(unittest.TestCase):
+class TestResnet(Dy2StTestBase):
     def setUp(self):
         self.resnet_helper = ResNetHelper()
 
@@ -419,8 +419,8 @@ class TestResnet(unittest.TestCase):
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_with_new_ir
-    def test_resnet_new_ir(self):
+    @test_pir_only
+    def test_resnet_pir(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
         np.testing.assert_allclose(

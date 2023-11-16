@@ -1230,8 +1230,7 @@ bool UseCudnnSoftmax(const GPUContext& ctx,
   }
   constexpr int max_dim = 1024;
   if (!cudnn_available || !last_dim ||
-      (softmax_dim <= max_dim && sizeof(T) <= 4) ||
-      softmax_dim >= MATRIX_SOFTMAX_THREAHOLD) {
+      (softmax_dim <= max_dim && sizeof(T) <= 4)) {
     return false;
   } else {
     return true;

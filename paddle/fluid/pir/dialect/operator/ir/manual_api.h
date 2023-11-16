@@ -47,5 +47,26 @@ pir::OpResult split_with_num_grad(const std::vector<pir::Value>& out_grad,
 
 pir::OpResult split_with_num_grad(const std::vector<pir::Value>& out_grad,
                                   const pir::Value& axis);
+
+pir::OpResult ones(const std::vector<int64_t>& shape,
+                   phi::DataType dtype = phi::DataType::FLOAT32,
+                   const Place& place = phi::CPUPlace());
+
+pir::OpResult ones_like(pir::Value x_,
+                        phi::DataType dtype = phi::DataType::UNDEFINED,
+                        const Place& place = {});
+
+pir::OpResult zeros(const std::vector<int64_t>& shape,
+                    phi::DataType dtype = phi::DataType::FLOAT32,
+                    const Place& place = phi::CPUPlace());
+
+pir::OpResult create_array(phi::DataType dtype);
+
+pir::OpResult array_length(pir::Value x);
+
+pir::OpResult array_read(pir::Value array, pir::Value i);
+
+pir::OpResult array_write_(pir::Value array, pir::Value x, pir::Value i);
+
 }  // namespace dialect
 }  // namespace paddle
