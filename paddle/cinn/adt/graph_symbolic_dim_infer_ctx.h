@@ -38,9 +38,8 @@ class GraphSymbolicDimInferCtx {
   GraphSymbolicDimInferCtx(GraphSymbolicDimInferCtx&&) = delete;
 
   explicit GraphSymbolicDimInferCtx(
-      const cinn::hlir::framework::pir::Group* group,
-      const ::pir::SymbolicDimMgr* symbolic_dim_mgr)
-      : group_(group), symbolic_dim_mgr_(symbolic_dim_mgr) {
+      const cinn::hlir::framework::pir::Group* group)
+      : group_(group) {
     InitTensorDimExpr();
   }
 
@@ -57,7 +56,6 @@ class GraphSymbolicDimInferCtx {
   void InitTensorDimExpr();
 
   const cinn::hlir::framework::pir::Group* group_;
-  const ::pir::SymbolicDimMgr* symbolic_dim_mgr_;
   std::unordered_map<::pir::Value, std::vector<std::optional<DimExpr>>>
       tensor2dim_exprs_;
 };

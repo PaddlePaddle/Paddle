@@ -342,34 +342,34 @@ void BuildTensorShapeDialectConstraints(
     const ::pir::Value& lhs_tensor,
     const ::pir::Value& rhs_tensor,
     const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis,
-    const ::pir::SymbolicDimMgr* symbolic_dim_mgr,
     DimFunctions* ret) {
   std::vector<::pir::shape::SymbolicDimOp> lhs_dims =
       CreateSymbolicDimsFromValue(lhs_tensor, shape_analysis);
   std::vector<::pir::shape::SymbolicDimOp> rhs_dims =
       CreateSymbolicDimsFromValue(lhs_tensor, shape_analysis);
 
-  GenerateDimEqualConstraints(
-      lhs_dims, rhs_dims, lhs_tensor, rhs_tensor, symbolic_dim_mgr, ret);
+  GenerateDimEqualConstraints(lhs_dims,
+                              rhs_dims,
+                              lhs_tensor,
+                              rhs_tensor,
+                              &shape_analysis->symbolicDimMgr(),
+                              ret);
 
-  if (const_cast<::pir::SymbolicDimMgr*>(symbolic_dim_mgr)
-          ->IsSymbolicDimProductEqual(::pir::SymbolicDimProduct{lhs_dims},
-                                      ::pir::SymbolicDimProduct{rhs_dims})) {
-    // ADT_TODO(Hongyu Jia)
-    // GenerateProductEqualConstraints(lhs_tensor, rhs_tensor, ret);
+  if (shape_analysis->symbolicDimMgr().IsSymbolicDimProductEqual(
+          ::pir::SymbolicDimProduct{lhs_dims},
+          ::pir::SymbolicDimProduct{rhs_dims})) {
+    GenerateProductEqualConstraints(lhs_tensor, rhs_tensor, ret);
   }
 }
 
 DimFunctions BuildGraphShapeDialectConstraints(
     const cinn::hlir::framework::pir::Group* group,
-    const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis,
-    const ::pir::SymbolicDimMgr* symbolic_dim_mgr) {
+    const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis) {
   DimFunctions ret{};
   for (const ::pir::Operation* op_node : group->ops) {
     VisitEachTensorPairOfOp(
         op_node, [&](const ::pir::Value& lhs, const ::pir::Value& rhs) {
-          BuildTensorShapeDialectConstraints(
-              lhs, rhs, shape_analysis, symbolic_dim_mgr, &ret);
+          BuildTensorShapeDialectConstraints(lhs, rhs, shape_analysis, &ret);
         });
   }
   return ret;
@@ -632,8 +632,8 @@ SolveShapeDialectConstraints(
 }  // namespace
 
 void GraphSymbolicDimInferCtx::InitTensorDimExpr() {
-  DimFunctions dim_functions = BuildGraphShapeDialectConstraints(
-      group_, group_->shape_analysis, symbolic_dim_mgr_);
+  DimFunctions dim_functions =
+      BuildGraphShapeDialectConstraints(group_, group_->shape_analysis);
   std::unordered_map<DimVar, const DimExpr> equation_start =
       MakeEquationStartExpr(group_, group_->shape_analysis);
 

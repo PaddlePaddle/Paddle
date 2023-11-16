@@ -461,9 +461,7 @@ void TryGenerateMapExprFromGraph(
   }
   for (const auto& fusion_group : groups) {
     fusion_group->set_graph_symbolic_dim_infer_ctx(
-        std::make_unique<config::GraphSymbolicDimInferCtx>(
-            fusion_group.get(),
-            &fusion_group->shape_analysis->symbolicDimMgr()));
+        std::make_unique<config::GraphSymbolicDimInferCtx>(fusion_group.get()));
     const auto& map_expr = GenerateMapExpr(fusion_group);
     VLOG(1) << ToTxtString(map_expr, fusion_group->group_id);
     fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));
@@ -476,8 +474,7 @@ void TryGenerateMapExprFromGroup(
     return;
   }
   fusion_group->set_graph_symbolic_dim_infer_ctx(
-      std::make_unique<config::GraphSymbolicDimInferCtx>(
-          fusion_group.get(), &fusion_group->shape_analysis->symbolicDimMgr()));
+      std::make_unique<config::GraphSymbolicDimInferCtx>(fusion_group.get()));
   const auto& map_expr = GenerateMapExpr(fusion_group);
   VLOG(1) << ToTxtString(map_expr, fusion_group->group_id);
   fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));

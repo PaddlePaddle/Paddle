@@ -17,6 +17,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/cinn/adt/dim_expr.h"
+#include "paddle/cinn/adt/dim_expr_simplifier.h"
 #include "paddle/cinn/adt/equation_value_match_trait.h"
 #include "paddle/cinn/adt/inline_translator.h"
 #include "paddle/cinn/adt/map_expr.h"
@@ -648,36 +650,42 @@ class MapExprToIrTranslator {
         loop_type.variant());
   }
 
-  ir::Expr Mul(const ir::Expr& a, std::int64_t b) const {
-    if (b == 1) {
-      return a;
-    } else {
-      ir::Expr b_expr{IteratorInt(b)};
-      return ir::Mul::Make(a, b_expr);
-    }
-  }
-
-  ir::Expr Accumulate(const std::vector<ir::Expr>& strided_exprs) const {
-    if (strided_exprs.size() == 0) {
+  ir::Expr Accumulate(const std::vector<ir::Expr>& ir_exprs) const {
+    if (ir_exprs.size() == 0) {
       LOG(FATAL) << "Dead code";
-    } else if (strided_exprs.size() == 1) {
-      return strided_exprs.at(0);
+    } else if (ir_exprs.size() == 1) {
+      return ir_exprs.at(0);
     } else {
-      ir::Expr ret = strided_exprs.at(0);
-      for (int i = 1; i < strided_exprs.size(); ++i) {
-        ret = ir::Add::Make(ret, strided_exprs.at(i));
+      ir::Expr ret = ir_exprs.at(0);
+      for (int i = 1; i < ir_exprs.size(); ++i) {
+        ret = ir::Add::Make(ret, ir_exprs.at(i));
       }
       return ret;
     }
     LOG(FATAL) << "Dead code";
   }
 
-  std::int64_t GetStride(const List<DimExpr>& dims, int start) const {
+  ir::Expr Multiply(const std::vector<ir::Expr>& ir_exprs) const {
+    if (ir_exprs.size() == 0) {
+      LOG(FATAL) << "Dead code";
+    } else if (ir_exprs.size() == 1) {
+      return ir_exprs.at(0);
+    } else {
+      ir::Expr ret = ir_exprs.at(0);
+      for (int i = 1; i < ir_exprs.size(); ++i) {
+        ret = ir::Mul::Make(ret, ir_exprs.at(i));
+      }
+      return ret;
+    }
+    LOG(FATAL) << "Dead code";
+  }
+
+  ir::Expr GetStride(const List<DimExpr>& dims, int start) const {
     CHECK_GE(start, -1);
-    std::int64_t ret = 1;
-    for (int idx = start + 1; idx < dims->size(); ++idx) {
-      CHECK(dims->at(idx).Has<std::int64_t>());
-      ret *= dims->at(idx).Get<std::int64_t>();
+    CHECK_LT(start + 1, dims->size());
+    ir::Expr ret = TranslateDimExpr(dims->at(start + 1));
+    for (int idx = start + 2; idx < dims->size(); ++idx) {
+      ret = ir::Mul::Make(ret, TranslateDimExpr(dims->at(idx)));
     }
     return ret;
   }
@@ -693,7 +701,7 @@ class MapExprToIrTranslator {
     for (std::size_t i = 0; i < values->size(); ++i) {
       const auto& value_expr = TranslateTensorIterator(values->at(i));
       const auto& stride_value = GetStride(dim_values, i);
-      strided_exprs.emplace_back(Mul(value_expr, stride_value));
+      strided_exprs.emplace_back(ir::Mul::Make(value_expr, stride_value));
     }
     return Accumulate(strided_exprs);
   }
@@ -708,8 +716,8 @@ class MapExprToIrTranslator {
     ir::Expr tensor_index_expr = TranslateTensorIterator(tensor_index_value);
     std::int64_t idx = idx_value.Get<std::int64_t>();
 
-    ir::Expr mod_operand{IteratorInt(GetStride(dims, idx - 1))};
-    ir::Expr div_operant{IteratorInt(GetStride(dims, idx))};
+    ir::Expr mod_operand = GetStride(dims, idx - 1);
+    ir::Expr div_operant = GetStride(dims, idx);
     return ir::Div::Make(ir::Mod::Make(tensor_index_expr, mod_operand),
                          div_operant);
   }
@@ -719,14 +727,56 @@ class MapExprToIrTranslator {
     return ir::Var("v_" + std::to_string(iterator.value().unique_id()));
   }
 
+  ir::Expr TranslateDimExprImpl(std::int64_t dim_expr) {
+    return ir::Expr(IteratorInt(dim_expr));
+  }
+
+  ir::Expr TranslateDimExprImpl(const SymbolicDim& dim_expr) {
+    // ADT_TODO(Hongyu Jia) : Replace to real SymbolicDimOp when pir is ready
+    return ir::_Dim_::Make(
+        std::string("sym_") + std::to_string(dim_expr.value().unique_id()),
+        cinn::ir::SymbolicDimOp());
+  }
+
+  ir::Expr TranslateDimExprImpl(const Negative<DimExpr>& dim_expr) {
+    const auto& [inner_dim_expr] = dim_expr.tuple();
+    ir::Expr inner_expr = TranslateDimExpr(inner_dim_expr);
+    return ir::Sub::Make(ir::Expr(0), inner_expr);
+  }
+
+  ir::Expr TranslateDimExprImpl(const Reciprocal<DimExpr>& dim_expr) {
+    const auto& [inner_dim_expr] = dim_expr.tuple();
+    ir::Expr inner_expr = TranslateDimExpr(inner_dim_expr);
+    return ir::Div::Make(ir::Expr(1), inner_expr);
+  }
+
+  ir::Expr TranslateDimExprImpl(const Sum<DimExpr>& dim_expr) {
+    std::vector<ir::Expr> ir_exprs{};
+    const auto& [exprs] = dim_expr.tuple();
+    for (const auto& expr : *exprs) {
+      ir_exprs.emplace_back(TranslateDimExpr(expr));
+    }
+    return Accumulate(ir_exprs);
+  }
+
+  ir::Expr TranslateDimExprImpl(const Product<DimExpr>& dim_expr) {
+    std::vector<ir::Expr> ir_exprs{};
+    const auto& [exprs] = dim_expr.tuple();
+    for (const auto& expr : *exprs) {
+      ir_exprs.emplace_back(TranslateDimExpr(expr));
+    }
+    return Multiply(ir_exprs);
+  }
+
+  ir::Expr TranslateDimExprImpl(const BroadcastedDim<DimExpr>& dim_expr) {
+    LOG(FATAL) << "Not Supported yet";
+  }
+
   ir::Expr TranslateDimExpr(const Value& value) const {
     const auto& dim_expr = value.Get<DimExpr>();
-    if (dim_expr.Has<std::int64_t>()) {
-      return ir::Expr(static_cast<int>(dim_expr.Get<std::int64_t>()));
-    } else {
-      // ADT_TODO(Hongyu Jia)
-      LOG(FATAL) << "Not implemented yet";
-    }
+    return std::visit(
+        [&](const auto& impl) { return TranslateDimExprImpl(impl); },
+        dim_expr.variant());
   }
 
   ir::Expr TranslateTensorIterator(const Value& value) const {

@@ -358,7 +358,6 @@ class StaticFunction:
 
             for spec in flatten(input_spec):
                 if isinstance(spec, InputSpec) and -1 in spec.shape:
-                    input_spec = None
                     warnings.warn(
                         'Now prim and cinn do not support -1 shape, but input_spec has -1 shape so we set it to None.'
                     )

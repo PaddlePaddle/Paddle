@@ -39,4 +39,42 @@ TEST(DimExpr, flatten_bd) {
   ASSERT_EQ(SimplifyDimExpr(origin), expected);
 }
 
+TEST(Simplify, NumberSum) {
+  List<DimExpr> num_lists{DimExpr(5), Negative<DimExpr>(5)};
+  DimExpr dim_expr{Sum<DimExpr>{num_lists}};
+
+  DimExpr simplified_dim_expr = SimplifyDimExpr(dim_expr);
+  ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 0);
+}
+
+TEST(Simplify, NumberProduct) {
+  List<DimExpr> num_lists{DimExpr(5), Reciprocal<DimExpr>(5)};
+  DimExpr dim_expr{Product<DimExpr>{num_lists}};
+
+  DimExpr simplified_dim_expr = SimplifyDimExpr(dim_expr);
+  ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 1);
+}
+
+TEST(Simplify, NestNumberSumProduct) {
+  List<DimExpr> num_lists{DimExpr(5), Reciprocal<DimExpr>(5)};
+  List<DimExpr> sum_lists{DimExpr(0), Product<DimExpr>{num_lists}};
+  DimExpr dim_expr{Sum<DimExpr>{sum_lists}};
+
+  DimExpr simplified_dim_expr = SimplifyDimExpr(dim_expr);
+  ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 1);
+}
+
+TEST(Simplify, NestNumberProductSum) {
+  List<DimExpr> num_lists{DimExpr(5), Negative<DimExpr>(5)};
+  List<DimExpr> product_lists{DimExpr(5), Sum<DimExpr>{num_lists}};
+  DimExpr dim_expr{Sum<DimExpr>{product_lists}};
+
+  DimExpr simplified_dim_expr = SimplifyDimExpr(dim_expr);
+  ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 0);
+}
+
 }  // namespace cinn::adt::test
