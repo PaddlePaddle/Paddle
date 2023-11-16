@@ -15,13 +15,12 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir_exe_and_pir_api,
 )
 
 import paddle
-from paddle import base
 
 SEED = 2020
 np.random.seed(SEED)
@@ -36,13 +35,12 @@ def function(x: A) -> A:
     return 2 * x
 
 
-@dy2static_unittest
-class TestTypeHint(unittest.TestCase):
+class TestTypeHint(Dy2StTestBase):
     def setUp(self):
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
         self.x = np.zeros(shape=(1), dtype=np.int32)
         self._init_dyfunc()
@@ -50,7 +48,6 @@ class TestTypeHint(unittest.TestCase):
     def _init_dyfunc(self):
         self.dyfunc = function
 
-    @test_and_compare_with_new_ir(True)
     def _run_static(self):
         return self._run(to_static=True)
 
@@ -58,18 +55,18 @@ class TestTypeHint(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        with base.dygraph.guard(self.place):
-            # Set the input of dyfunc to Tensor
-            tensor_x = base.dygraph.to_variable(self.x, zero_copy=False)
-            if to_static:
-                ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
-            else:
-                ret = self.dyfunc(tensor_x)
-            if hasattr(ret, "numpy"):
-                return ret.numpy()
-            else:
-                return ret
+        # Set the input of dyfunc to Tensor
+        tensor_x = paddle.to_tensor(self.x)
+        if to_static:
+            ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
+        else:
+            ret = self.dyfunc(tensor_x)
+        if hasattr(ret, "numpy"):
+            return ret.numpy()
+        else:
+            return ret
 
+    @test_legacy_and_pir_exe_and_pir_api
     def test_ast_to_func(self):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()

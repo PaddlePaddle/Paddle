@@ -201,7 +201,7 @@ struct FindChannelAbsMaxFunctor<phi::GPUContext, T> {
         FindChannelAbsMaxKernelQuantAxis1<T>
             <<<grid, block, block * sizeof(T), ctx.stream()>>>(
                 in_data, num, cin, cout, out_abs_max);
-        in_data += num / cin;
+        in_data += cout * max_threads;
       }
 
       int block = cin % max_threads;
