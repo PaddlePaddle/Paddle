@@ -1499,17 +1499,27 @@ std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
+  forward_program.Print(std::cout);
   pir::PassManager pass_manager(ctx);
   cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
 
+  std::cerr << "after convert =================\n";
+  forward_program.Print(std::cout);
   pass_manager.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager.AddPass(pir::CreateBuildCinnPass());
 
   pass_manager.Run(&forward_program);
+
+  std::cerr << "after build cinn pass====================\n";
+  forward_program.Print(std::cout);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
   std::unique_ptr<pir::Program> new_program =
       cinn::dialect::ir::CINNGroupLoweringPass(&forward_program);
+
+  std::cerr << "after lowering pass ===========================\n";
+  new_program->Print(std::cout);
   VLOG(3) << "after CINNGroupLoweringPass, forward_program:\n" << *new_program;
   return std::move(new_program);
 #endif

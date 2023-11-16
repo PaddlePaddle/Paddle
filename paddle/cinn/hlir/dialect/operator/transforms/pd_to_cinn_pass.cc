@@ -15,6 +15,8 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/fluid/pir/drr/api/match_context.h"
@@ -104,7 +106,6 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
               .data());
       rewriter.ReplaceAllUsesWith(op.result(0), cinn_scale.result(0));
       rewriter.EraseOp(op);
-      rewriter.EraseOp(full_op);
     } else {
       // using mul op
       auto bias =
@@ -123,7 +124,6 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
           mul_in, op->operand_source(1));
 
       rewriter.ReplaceAllUsesWith(op.result(0), mul_op.result(0));
-      rewriter.EraseOp(op);
     }
 
     return true;
@@ -165,7 +165,83 @@ class ReshapeOpPattern
           op->operand_source(0).dyn_cast<pir::OpResult>(), vec_out_shape);
       rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
       rewriter.EraseOp(op);
-      rewriter.EraseOp(full_op);
+
+      return true;
+    }
+    return false;
+  }
+};
+
+class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::SliceOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::SliceOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto start_gen_op = op->operand_source(1)
+                            .dyn_cast<pir::OpResult>()
+                            .owner()
+                            ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+
+    auto end_gen_op = op->operand_source(2)
+                          .dyn_cast<pir::OpResult>()
+                          .owner()
+                          ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+
+    if (start_gen_op && end_gen_op) {
+      // sacle is generator by full op
+      // get attribute value from full op
+      auto start_vec = cinn::dialect::ir::GetVectorAttr(start_gen_op, "value");
+      auto end_vec = cinn::dialect::ir::GetVectorAttr(end_gen_op, "value");
+      auto axes = cinn::dialect::ir::GetVectorAttr(op, "axes");
+      auto decrease_axis =
+          cinn::dialect::ir::GetVectorAttr(op, "decrease_axis");
+      auto infer_flags = cinn::dialect::ir::GetVectorAttr(op, "infer_flags");
+
+      auto cinn_slice = rewriter.Build<cinn::dialect::SliceOp>(
+          op->operand_source(0).dyn_cast<pir::OpResult>(),
+          axes,
+          start_vec,
+          end_vec,
+          infer_flags,
+          decrease_axis);
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_slice.result(0));
+      rewriter.EraseOp(op);
+
+      return true;
+    }
+    return false;
+  }
+};
+
+class ConcatOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::ConcatOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::ConcatOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::ConcatOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto axis_gen_op = op->operand_source(1).dyn_cast<pir::OpResult>().owner();
+    std::cerr << "concat op\n";
+    std::cerr << axis_gen_op->name() << std::endl;
+    if (auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>()) {
+      std::cerr << "is full\n";
+
+      int axis = phi::Scalar(full_op.attribute("value")
+                                 .dyn_cast<::pir::FloatAttribute>()
+                                 .data())
+                     .to<int>();
+
+      auto input_ops = op->operand_source(0)
+                           .dyn_cast<pir::OpResult>()
+                           .owner()
+                           ->dyn_cast<pir::CombineOp>()
+                           .inputs();
+
+      auto cinn_concat =
+          rewriter.Build<cinn::dialect::ConcatOp>(input_ops, axis);
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_concat.result(0));
+      rewriter.EraseOp(op);
 
       return true;
     }
@@ -232,6 +308,8 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add(SumOpPattern().Build(context));
   ps.Add(MaxOpPattern().Build(context));
   ps.Add<ReshapeOpPattern>(context);
+  ps.Add<ConcatOpPattern>(context);
+  ps.Add<SliceOpPattern>(context);
   // ps.Add(UniformOpPattern().Build(context));
 
   return ps;
