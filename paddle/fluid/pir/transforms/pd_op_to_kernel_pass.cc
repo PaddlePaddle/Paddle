@@ -1575,6 +1575,20 @@ static void HandleForSpecialOp(
     }
   }
 
+  if (op_item->isa<::pir::HasElementsOp>()) {
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      vec_inputs.push_back(new_in);
+    }
+    // TODO(zhangbo): change has_element op build, output should be
+    // DenseTensor<bool>
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      op_output_types.push_back(op_item->result(i).type());
+    }
+  }
+
   if (op_item->name() == "cinn_runtime.jit_kernel") {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
