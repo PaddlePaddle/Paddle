@@ -293,6 +293,7 @@ class DygraphShardingOptimizer:
         if self.comm_overlap:
             for buffer in self.comm_buffers:
                 buffer.scale_and_split_grads()
+            return
 
         # TODO merge grad / nrank with dp
         with framework.no_grad():
