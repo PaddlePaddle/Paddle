@@ -1746,12 +1746,6 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
   paddle::Tensor value_tensor =
       reinterpret_cast<TensorObject*>(value_obj)->tensor;
 
-  framework::AttributeMap attrs = {{"axes", slice_axes},
-                                   {"starts", slice_starts},
-                                   {"ends", slice_ends},
-                                   {"steps", slice_strides},
-                                   {"decrease_axes", decrease_axis},
-                                   {"none_axes", none_axes}};
   if (!has_advanced_index) {
     // use set_value OP if there is no advanced index
 
@@ -1777,9 +1771,18 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
     }
 
     // step3.1: Only basic indexing, use OP set_value.
-    self->tensor = set_value__dygraph_function(
-        self->tensor, value_tensor, {}, {}, {}, attrs);
-
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self->tensor, value_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, self->tensor, value_tensor);
+    }
+    self->tensor = set_value_with_tensor__ad_func(self->tensor,
+                                                  value_tensor,
+                                                  slice_starts,
+                                                  slice_ends,
+                                                  slice_strides,
+                                                  slice_axes,
+                                                  decrease_axis,
+                                                  none_axes);
     if (PyCheckTensor(value_obj)) {
       // pass the stop_gradient from value to tensor.
       // pass stop gradient should be done after CheckInplace in
@@ -1850,9 +1853,19 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
 
     paddle::Tensor transback_sub_tensor =
         transpose_ad_func(transed_sub_tensor, trans_back_dim);
-    self->tensor = set_value__dygraph_function(
-        self->tensor, transback_sub_tensor, {}, {}, {}, attrs);
 
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self->tensor, transback_sub_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, self->tensor, transback_sub_tensor);
+    }
+    self->tensor = set_value_with_tensor__ad_func(self->tensor,
+                                                  value_tensor,
+                                                  slice_starts,
+                                                  slice_ends,
+                                                  slice_strides,
+                                                  slice_axes,
+                                                  decrease_axis,
+                                                  none_axes);
     if (PyCheckTensor(value_obj)) {
       // pass the stop_gradient from value to tensor.
       // pass stop gradient should be done after CheckInplace in
