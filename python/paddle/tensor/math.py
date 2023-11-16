@@ -1946,7 +1946,7 @@ def add_n(inputs, name=None):
 
     Args:
         inputs (Tensor|list[Tensor]|tuple[Tensor]):  A Tensor or a list/tuple of Tensors. The shape and data type of the list/tuple elements should be consistent.
-            Input can be multi-dimensional Tensor, and data types can be: float32, float64, int32, int64.
+            Input can be multi-dimensional Tensor, and data types can be: float32, float64, int32, int64, complex64, complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1985,6 +1985,8 @@ def add_n(inputs, name=None):
                             'int32',
                             'int64',
                             'uint16',
+                            'complex64',
+                            'complex128',
                         ],
                         'add_n',
                     )
@@ -1992,7 +1994,16 @@ def add_n(inputs, name=None):
             check_variable_and_dtype(
                 inputs,
                 "inputs",
-                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+                [
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'uint16',
+                    'complex64',
+                    'complex128',
+                ],
                 'add_n',
             )
 

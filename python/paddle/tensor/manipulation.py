@@ -567,12 +567,12 @@ def unstack(x, axis=0, num=None):
     raised.
 
     Args:
-        x (Tensor): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64.
+        x (Tensor): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64, complex64, complex128.
         axis (int): The axis along which the input is unstacked.
         num (int|None): The number of output variables.
 
     Returns:
-        list(Tensor), The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
+        list(Tensor), The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64, complex64, complex128.
 
     Examples:
         .. code-block:: python
