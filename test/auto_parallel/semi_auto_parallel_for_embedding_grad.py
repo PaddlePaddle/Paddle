@@ -140,7 +140,7 @@ class TestCustomEmbeddingGradApiForSemiAutoParallel:
         self.test_w_col_shard()
         self.test_x_row_w_col_shard()
         self.test_x_col_w_row_shard()
-        self.test_both_row_shard()
+        self.test_both_col_shard()
 
 
 if __name__ == '__main__':
