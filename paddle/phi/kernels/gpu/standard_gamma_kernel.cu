@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/gpu/dirichlet_util.h"
-#include "paddle/phi/kernels/impl/dirichlet_kernel_impl.h"
 
 namespace phi {
 template <typename T, typename Context>

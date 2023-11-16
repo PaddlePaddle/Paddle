@@ -21,7 +21,6 @@
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/gpu/dirichlet_util.h"
-#include "paddle/phi/kernels/impl/dirichlet_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {

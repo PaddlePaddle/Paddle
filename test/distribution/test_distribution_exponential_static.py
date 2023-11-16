@@ -22,6 +22,7 @@ import paddle
 from paddle.distribution import exponential
 
 np.random.seed(2023)
+paddle.seed(2023)
 
 paddle.enable_static()
 

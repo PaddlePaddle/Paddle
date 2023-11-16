@@ -332,12 +332,12 @@ class TestGammaSampleKS(unittest.TestCase):
         self._paddle_gamma = gamma.Gamma(concentration, rate)
 
     def test_sample_ks(self):
-        sample_shape = (6000,)
+        sample_shape = (8000,)
         samples = self._paddle_gamma.sample(sample_shape)
         self.assertTrue(self._kstest(samples))
 
     def test_rsample_ks(self):
-        sample_shape = (6000,)
+        sample_shape = (8000,)
         samples = self._paddle_gamma.rsample(sample_shape)
         self.assertTrue(self._kstest(samples))
 
