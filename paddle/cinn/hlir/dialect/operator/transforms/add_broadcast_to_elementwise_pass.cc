@@ -143,9 +143,10 @@ class AddBrodcastToElementwisePattern : public pir::OpRewritePattern<OPTYPE> {
 };
 
 AddBroadcastToElementwisePass::AddBroadcastToElementwisePass()
-    : pir::Pass("add_broadcast_to_elementwise_pass", 1) {}
+    : pir::PatternRewritePass("add_broadcast_to_elementwise_pass", 1) {}
 
-bool AddBroadcastToElementwisePass::Initialize(pir::IrContext* context) {
+pir::RewritePatternSet AddBroadcastToElementwisePass::InitializePatterns(
+    pir::IrContext* context) {
   pir::RewritePatternSet ps(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::AddOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::SubtractOp>>(context);
@@ -153,16 +154,17 @@ bool AddBroadcastToElementwisePass::Initialize(pir::IrContext* context) {
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::DivideOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::ElementwisePowOp>>(
       context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::LessThanOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::LessEqualOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::EqualOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::NotEqualOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::GreaterThanOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::GreaterEqualOp>>(
+      context);
 
-  patterns_ = ::pir::FrozenRewritePatternSet(std::move(ps));
-  return true;
-}
-
-void AddBroadcastToElementwisePass::Run(pir::Operation* op) {
-  pir::GreedyRewriteConfig cfg;
-  cfg.use_top_down_traversal = true;
-  cfg.max_iterations = 10;
-  pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+  return ps;
 }
 
 bool AddBroadcastToElementwisePass::CanApplyOn(pir::Operation* op) const {

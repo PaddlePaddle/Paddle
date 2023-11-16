@@ -16,8 +16,11 @@
 
 #include <queue>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
+#include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/platform/flags.h"
+
 PADDLE_DEFINE_EXPORTED_bool(
     add_dependency_for_communication_op,
     true,
@@ -553,6 +556,32 @@ PirDependencyBuilder::PirDependencyBuilder() {
   op_happens_before_ = std::make_shared<std::vector<std::vector<bool>>>();
 }
 
+void PirDependencyBuilder::AddDependencyForRandomOp() {
+  const std::set<std::string> random_op_set = {
+      dialect::BernoulliOp::name(),
+      dialect::PoissonOp::name(),
+      dialect::MultinomialOp::name(),
+      dialect::GaussianOp::name(),
+      dialect::TruncatedGaussianRandomOp::name(),
+      dialect::UniformOp::name(),
+      dialect::RandintOp::name(),
+      dialect::RandpermOp::name(),
+      dialect::Exponential_Op::name(),
+      dialect::DropoutOp::name(),
+      dialect::ClassCenterSampleOp::name()};
+
+  size_t dependence_op_idx = ULLONG_MAX;
+  for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+    if (dynamic_cast<PhiKernelInstruction*>(instructions_.at(op_idx)) &&
+        random_op_set.count(instructions_.at(op_idx)->Name())) {
+      if (dependence_op_idx != ULLONG_MAX) {
+        AddDownstreamOp(dependence_op_idx, op_idx);
+      }
+      dependence_op_idx = op_idx;
+    }
+  }
+}
+
 const std::map<size_t, std::set<size_t>>& PirDependencyBuilder::Build(
     std::vector<paddle::framework::InstructionBase*> instructions) {
   if (is_build_) {
@@ -579,6 +608,8 @@ const std::map<size_t, std::set<size_t>>& PirDependencyBuilder::Build(
   }
 
   // TODO(zhangbo): Add dependency for special op ？
+  // Note(lvyongkang): necessary for reproducibility
+  AddDependencyForRandomOp();
 
   VLOG(6) << "Finish build dependency";
   VLOG(8) << "downstream count: " << CountDownstreamMap(*op_downstream_map_);

@@ -94,7 +94,7 @@ struct ExpandShapeOfOpPattern : public OpRewritePattern<shape::ShapeOfOp> {
 
     // std::vector<Value> dim_sizes;
     // for (int dim = 0, rank =
-    // type.dyn_cast<ShapedTypeInterface>().GetShape()[0];
+    // type.dyn_cast<ShapedTypeInterface>().GetDyShape()[0];
     //      dim < rank;
     //      ++dim) {
     //   dim_sizes.push_back(
@@ -183,7 +183,7 @@ bool IsCandidateShapeTensorType(Type type) {
   return (tensor_type && tensor_type && shaped_type.GetRank() == 1 &&
           shaped_type.HasStaticShape() &&
           shaped_type.GetElementType().IsIntOrIndex() &&
-          shaped_type.GetShape()[0] < 32);
+          shaped_type.GetDyShape()[0] < 32);
 }
 
 class ShapeComputationIRAnalysis {
@@ -309,7 +309,7 @@ bool ShapeComputationIRAnalysis::BuildShapeOnValue(Value value) {
   } else if (IsCandidateShapeTensorType(type)) {
     auto shaped_type = type.dyn_cast<ShapedTypeInterface>();
     std::vector<SymbolicDimOp> symbols;
-    for (size_t i = 0, d = shaped_type.GetShape()[0]; i < d; ++i)
+    for (size_t i = 0, d = shaped_type.GetDyShape()[0]; i < d; ++i)
       symbols.push_back(mgr_.NewSymbolicDim());
     shape_tensor_to_sym_dims_[value] = std::move(symbols);
   }

@@ -60,6 +60,7 @@ class TrtConvertGatherNdTest_dim_4_1(TrtLayerAutoScanTest):
                     ),
                 },
                 outputs=["output_data"],
+                no_cast_list=["index_data"],
             )
 
             yield program_config
@@ -154,6 +155,7 @@ class TrtConvertGatherNdTest_dim_4_1_2(TrtLayerAutoScanTest):
                 "index_data": TensorConfig(data_gen=partial(generate_input2)),
             },
             outputs=["output_data"],
+            no_cast_list=["index_data"],
         )
 
         yield program_config
@@ -248,6 +250,7 @@ class TrtConvertGatherNdTest_dim_4_2(TrtLayerAutoScanTest):
                 "index_data": TensorConfig(data_gen=partial(generate_input2)),
             },
             outputs=["output_data"],
+            no_cast_list=["index_data"],
         )
 
         yield program_config
@@ -342,6 +345,7 @@ class TrtConvertGatherNdTest_dim_4_3(TrtLayerAutoScanTest):
                 "index_data": TensorConfig(data_gen=partial(generate_input2)),
             },
             outputs=["output_data"],
+            no_cast_list=["index_data"],
         )
 
         yield program_config
@@ -436,6 +440,7 @@ class TrtConvertGatherNdTest_dim_2_2(TrtLayerAutoScanTest):
                 "index_data": TensorConfig(data_gen=partial(generate_input2)),
             },
             outputs=["output_data"],
+            no_cast_list=["index_data"],
         )
 
         yield program_config
@@ -532,6 +537,7 @@ class TrtConvertGatherNdTest_dim_3_3(TrtLayerAutoScanTest):
                 "index_data": TensorConfig(data_gen=partial(generate_input2)),
             },
             outputs=["output_data"],
+            no_cast_list=["index_data"],
         )
 
         yield program_config

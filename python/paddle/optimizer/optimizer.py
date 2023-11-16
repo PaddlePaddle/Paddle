@@ -795,7 +795,6 @@ class Optimizer:
         if param.name in self._master_weights:
             var = self._master_weights[param.name]
         else:
-            assert isinstance(self.helper, LayerHelper)
             var_name = self._gen_master_weight_var_name(param)
             if in_pir_mode():
                 var = paddle.cast(param, 'float32')
@@ -803,6 +802,7 @@ class Optimizer:
                 var = paddle.cast(param, 'float32')
                 var.name = var_name
             else:
+                assert isinstance(self.helper, LayerHelper)
                 var = paddle.static.create_global_var(
                     name=var_name,
                     shape=param.shape,
