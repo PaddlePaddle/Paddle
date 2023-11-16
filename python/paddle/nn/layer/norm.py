@@ -1623,7 +1623,7 @@ class SyncBatchNorm(_BatchNormBase):
 
         # train mode: use mini-batch stats, eval mode: use global stats
         # use_global_stats only support False in sync_batch_norm
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
                 x,
                 self._mean,
