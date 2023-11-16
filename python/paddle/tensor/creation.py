@@ -1202,7 +1202,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     else:
         num_columns = num_rows
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.eye(
             num_rows, num_columns, dtype, _current_expected_place()
         )
@@ -1759,7 +1759,7 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     if not isinstance(input, Variable):
         input = assign(input)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.diag_embed(input, offset, dim1, dim2)
 
     inputs = {'Input': [input]}
@@ -1896,7 +1896,7 @@ def diagflat(x, offset=0, name=None):
              [0, 0, 3, 0, 0],
              [0, 0, 0, 4, 0]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if len(x.shape) <= 1:
             return _C_ops.diag(x, offset, 0)
         else:

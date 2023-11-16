@@ -42,52 +42,54 @@ from ..framework import (
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
 from .manipulation import cast, cast_
-from .ops import abs  # noqa: F401
-from .ops import abs_  # noqa: F401
-from .ops import acos  # noqa: F401
-from .ops import acos_  # noqa: F401
-from .ops import acosh  # noqa: F401
-from .ops import acosh_  # noqa: F401
-from .ops import asin  # noqa: F401
-from .ops import asin_  # noqa: F401
-from .ops import asinh  # noqa: F401
-from .ops import asinh_  # noqa: F401
-from .ops import atan  # noqa: F401
-from .ops import atan_  # noqa: F401
-from .ops import atanh  # noqa: F401
-from .ops import atanh_  # noqa: F401
-from .ops import ceil  # noqa: F401
-from .ops import ceil_  # noqa: F401
-from .ops import cos  # noqa: F401
-from .ops import cos_  # noqa: F401
-from .ops import cosh  # noqa: F401
-from .ops import cosh_  # noqa: F401
-from .ops import erf  # noqa: F401
-from .ops import erf_  # noqa: F401
-from .ops import exp  # noqa: F401
-from .ops import exp_  # noqa: F401
-from .ops import expm1  # noqa: F401
-from .ops import expm1_  # noqa: F401
-from .ops import floor  # noqa: F401
-from .ops import floor_  # noqa: F401
-from .ops import reciprocal  # noqa: F401
-from .ops import reciprocal_  # noqa: F401
-from .ops import round  # noqa: F401
-from .ops import round_  # noqa: F401
-from .ops import rsqrt  # noqa: F401
-from .ops import rsqrt_  # noqa: F401
-from .ops import sigmoid  # noqa: F401
-from .ops import sigmoid_  # noqa: F401
-from .ops import sin  # noqa: F401
-from .ops import sin_  # noqa: F401
-from .ops import sinh  # noqa: F401
-from .ops import sinh_  # noqa: F401
-from .ops import sqrt  # noqa: F401
-from .ops import sqrt_  # noqa: F401
-from .ops import square  # noqa: F401
-from .ops import square_  # noqa: F401
-from .ops import tan  # noqa: F401
-from .ops import tan_  # noqa: F401
+from .ops import (  # noqa: F401
+    abs,
+    abs_,
+    acos,
+    acos_,
+    acosh,
+    acosh_,
+    asin,
+    asin_,
+    asinh,
+    asinh_,
+    atan,
+    atan_,
+    atanh,
+    atanh_,
+    ceil,
+    ceil_,
+    cos,
+    cos_,
+    cosh,
+    cosh_,
+    erf,
+    erf_,
+    exp,
+    exp_,
+    expm1,
+    expm1_,
+    floor,
+    floor_,
+    reciprocal,
+    reciprocal_,
+    round,
+    round_,
+    rsqrt,
+    rsqrt_,
+    sigmoid,
+    sigmoid_,
+    sin,
+    sin_,
+    sinh,
+    sinh_,
+    sqrt,
+    sqrt_,
+    square,
+    square_,
+    tan,
+    tan_,
+)
 
 __all__ = []
 
@@ -1055,6 +1057,9 @@ def multiply(x, y, name=None):
         out = x * y
 
     Note:
+        Supported shape of :attr:`x` and :attr:`y` for this operator:
+        1. `x.shape` == `y.shape`.
+        2. `x.shape` could be the continuous subsequence of `y.shape`.
         ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
@@ -1065,7 +1070,7 @@ def multiply(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+        N-D Tensor. A location into which the result is stored. If :attr:`x`, :attr:`y` have different shapes and are "broadcastable", the resulting tensor shape is the shape of :attr:`x` and :attr:`y` after broadcasting. If :attr:`x`, :attr:`y` have the same shape, its shape is the same as :attr:`x` and :attr:`y`.
 
     Examples:
 
@@ -2552,7 +2557,7 @@ def outer(x, y, name=None):
     nx = x.reshape((-1, 1))
     ny = y.reshape((1, -1))
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.matmul(nx, ny, False, False)
     else:
 
@@ -3758,7 +3763,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
              [0.97020894, 0.97786582]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.diagonal(x, offset, axis1, axis2)
     else:
 
@@ -4351,7 +4356,7 @@ def isfinite(x, name=None):
             Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True , True , False, True , False, False])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.isfinite(x)
     else:
         helper = LayerHelper("isfinite_v2", **locals())
@@ -4398,7 +4403,7 @@ def isinf(x, name=None):
             Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False, False, True , False, False, False])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.isinf(x)
     else:
         helper = LayerHelper("isinf_v2", **locals())

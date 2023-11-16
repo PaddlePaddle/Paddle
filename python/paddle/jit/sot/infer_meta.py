@@ -16,8 +16,10 @@ import paddle
 from paddle.amp.auto_cast import amp_state
 from paddle.base import framework
 from paddle.base.data_feeder import convert_dtype
-from paddle.base.unique_name import UniqueNameGenerator
-from paddle.base.unique_name import guard as UniqueNameGuard
+from paddle.base.unique_name import (
+    UniqueNameGenerator,
+    guard as UniqueNameGuard,
+)
 from paddle.static import Program
 from paddle.utils import flatten, is_sequence
 
@@ -41,7 +43,7 @@ class MetaInfo:
         # We always use float32 in simulation if AMP is enabled.
         if isinstance(tensor, paddle.pir.OpResult):
             name = "OpResult@NoName"
-            persistable = tensor.is_persistable
+            persistable = tensor.persistable
             dtype = framework.paddle_type_to_proto_type[tensor.dtype]
         else:
             name = tensor.name

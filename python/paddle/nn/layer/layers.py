@@ -26,17 +26,18 @@ from paddle import nn, profiler
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
 from paddle.base.dygraph import no_grad
-from paddle.base.dygraph.base import in_declarative_mode  # noqa: F401
 from paddle.base.dygraph.base import (
     _convert_into_variable,
+    in_declarative_mode,  # noqa: F401
     in_to_static_mode,
     program_desc_tracing_guard,
 )
 from paddle.base.dygraph_utils import _append_activation_in_dygraph
 from paddle.base.executor import Executor, global_scope
-from paddle.base.framework import Parameter, Program
-from paddle.base.framework import _current_expected_place as _get_device
 from paddle.base.framework import (
+    Parameter,
+    Program,
+    _current_expected_place as _get_device,
     _global_flags,
     convert_np_dtype_to_dtype_,
     default_main_program,
@@ -1671,7 +1672,7 @@ class Layer:
 
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
             params[name] = value
-        elif isinstance(value, paddle.pir.OpResult) and value.is_persistable:
+        elif isinstance(value, paddle.pir.OpResult) and value.persistable:
             if params is None:
                 raise ValueError("super().__init__() should be called first")
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
