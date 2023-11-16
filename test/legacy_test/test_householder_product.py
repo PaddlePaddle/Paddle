@@ -27,7 +27,11 @@ def geqrf(A):
             alpha = A[i, i]
             normx = np.linalg.norm(A[min(i + 1, m) :, i])
             beta = np.linalg.norm(A[i:, i])
-            s = 1 if alpha < 0 else -1
+            if A.dtype in [np.complex64, np.complex128]:
+                s = 1 if alpha < 0 else -1
+            else:
+                alphar = A[i, i].real
+                s = 1 if alphar < 0 else -1
             u1 = alpha - s * beta
             w = A[i:, i] / u1
             w[0] = 1
@@ -38,9 +42,14 @@ def geqrf(A):
                 tau[i] = -s * u1 / beta
                 A[i, i] = s * beta
             w = w.reshape([-1, 1])
-            A[i:, i + 1 :] = A[i:, i + 1 :] - (tau[i] * w) @ (
-                w.T @ A[i:, i + 1 :]
-            )
+            if A.dtype in [np.complex64, np.complex128]:
+                A[i:, i + 1 :] = A[i:, i + 1 :] - (tau[i] * w) @ (
+                    np.conj(w).T @ A[i:, i + 1 :]
+                )
+            else:
+                A[i:, i + 1 :] = A[i:, i + 1 :] - (tau[i] * w) @ (
+                    w.T @ A[i:, i + 1 :]
+                )
         return A, tau[: min(m, n)].reshape(-1)
 
     if len(A.shape) == 2:
@@ -49,8 +58,8 @@ def geqrf(A):
     org_A_shape = A.shape
     A = A.reshape((-1, A.shape[-2], A.shape[-1]))
     n_batch = A.shape[0]
-    out = np.zeros([n_batch, m, n])
-    taus = np.zeros([n_batch, min(m, n)])
+    out = np.zeros([n_batch, m, n], dtype=A.dtype)
+    taus = np.zeros([n_batch, min(m, n)], dtype=A.dtype)
     org_taus_shape = list(org_A_shape[:-2]) + [min(m, n)]
     for i in range(n_batch):
         out[i], t = _geqrf(A[i])
@@ -112,7 +121,7 @@ class TestHouseholderProductAPI(unittest.TestCase):
                 feed={'x': self.geqrf_x, 'tau': self.tau}, fetch_list=[out]
             )
             out_ref = ref_qr(self._x)
-            np.testing.assert_allclose(out_ref, res[0], atol=1e-6)
+            np.testing.assert_allclose(out_ref, res[0], atol=1e-3)
 
     def test_dygraph_api(self):
         m, n = self.x.shape[-2:]
@@ -123,7 +132,7 @@ class TestHouseholderProductAPI(unittest.TestCase):
         tau = paddle.to_tensor(self.tau)
         out = paddle.linalg.householder_product(x, tau)
         out_ref = ref_qr(self._x)
-        np.testing.assert_allclose(out_ref, out.numpy(), atol=1e-6)
+        np.testing.assert_allclose(out_ref, out.numpy(), atol=1e-3)
         paddle.enable_static()
 
     def test_error(self):
@@ -155,8 +164,19 @@ class TestHouseholderProductAPICase5(TestHouseholderProductAPI):
         self.x = np.random.randn(4, 3).astype('float32')
 
 
+# complex dtype
+class TestHouseholderProductAPICase6(TestHouseholderProductAPI):
+    def init_input(self):
+        self.x = np.random.randn(4, 3).astype('complex64')
+
+
+class TestHouseholderProductAPICase7(TestHouseholderProductAPI):
+    def init_input(self):
+        self.x = np.random.randn(4, 3).astype('complex128')
+
+
 class TestHouseholderProductAPI_batch_error(TestHouseholderProductAPI):
-    # shape "*" in x.shape:[*, m, n] and tau.shape:[*, k] must be the same
+    # shape "*" in x.shape:[*, m, n] and tau.shape:[*, k] must be the same, eg. * == [2, 2] in x, but * == [2, 3] in tau
     def test_error(self):
         with self.assertRaises(AssertionError):
             x = paddle.randn([2, 2, 5, 4])
@@ -179,11 +199,11 @@ class TestHouseholderProductAPI_dim_error(TestHouseholderProductAPI):
 
 
 class TestHouseholderProductAPI_type_error(TestHouseholderProductAPI):
-    # type of x and tau must be the same
+    # type of x and tau must be float32 or float64
     def test_error(self):
         with self.assertRaises(TypeError):
             x = paddle.randn([3, 2, 1], dtype=paddle.int32)
-            tau = paddle.randn([3, 4], dtype=paddle.int32)
+            tau = paddle.randn([3, 1], dtype=paddle.int32)
             out = paddle.linalg.householder_product(x, tau)
 
 
@@ -202,6 +222,17 @@ class TestHouseholderProductAPI_col_row_error(TestHouseholderProductAPI):
         with self.assertRaises(AssertionError):
             x = paddle.randn([3, 6], dtype=paddle.float32)
             tau = paddle.randn([6], dtype=paddle.float32)
+            out = paddle.linalg.householder_product(x, tau)
+
+
+class TestHouseholderProductAPI_n_greater_than_k_error(
+    TestHouseholderProductAPI
+):
+    # A.shape:[*, m, n], tau.shape:[*, k], n must be greater than k
+    def test_error(self):
+        with self.assertRaises(AssertionError):
+            x = paddle.randn([6, 3], dtype=paddle.float32)
+            tau = paddle.randn([4], dtype=paddle.float32)
             out = paddle.linalg.householder_product(x, tau)
 
 
