@@ -126,7 +126,8 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
                     name='X', shape=[-1, 13], dtype='float32'
                 )
                 y = paddle.static.data(name='Y', shape=[-1, 1], dtype='float32')
-                prediction = paddle.nn.Linear.fc(x, size=1, activation=None)
+                linear = paddle.nn.Linear(in_features=x.shape[-1], out_features=1)
+                prediction = linear(x)
                 loss = paddle.nn.functional.square_error_cost(
                     input=prediction, label=y
                 )
