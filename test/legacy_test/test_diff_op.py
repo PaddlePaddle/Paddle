@@ -83,7 +83,9 @@ class TestDiffOp(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
-            with base.program_guard(base.Program(), base.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(
                     name="input", shape=self.input.shape, dtype=self.input.dtype
                 )
@@ -110,7 +112,6 @@ class TestDiffOp(unittest.TestCase):
                     x, n=self.n, axis=self.axis, prepend=prepend, append=append
                 )
                 fetches = exe.run(
-                    base.default_main_program(),
                     feed={
                         "input": self.input,
                         "prepend": self.prepend,
