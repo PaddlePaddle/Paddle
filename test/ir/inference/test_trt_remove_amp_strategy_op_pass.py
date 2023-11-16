@@ -32,6 +32,14 @@ class TestRemoveStrategyOpBase:
         np.random.seed(1024)
         paddle.seed(1024)
 
+    def build_program(self):
+        # The following attribute should be set
+        self.serialized_program = None
+        self.serialized_params = None
+        self.input_data = None
+        self.precision_mode = None
+        self.dynamic_shape_info = None
+
     def infer_program(self, use_trt=False):
         config = Config()
 
@@ -87,6 +95,10 @@ class TestRemoveStrategyOpBase:
         )
 
 
+@unittest.skipIf(
+    paddle.inference.get_trt_compile_version() < (8, 5, 1),
+    "Quantization axis is consistent with Paddle after TRT 8.5.2.",
+)
 class TestRemoveStrategyOpAMP(TestRemoveStrategyOpBase, unittest.TestCase):
     def build_program(self):
         place = paddle.CUDAPlace(0)
@@ -164,6 +176,10 @@ class TestRemoveStrategyOpAMP(TestRemoveStrategyOpBase, unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    paddle.inference.get_trt_compile_version() < (8, 5, 1),
+    "Quantization axis is consistent with Paddle after TRT 8.5.2.",
+)
 class TestRemoveStrategyOpAMPQAT(TestRemoveStrategyOpBase, unittest.TestCase):
     def build_program(self):
         place = paddle.CUDAPlace(0)

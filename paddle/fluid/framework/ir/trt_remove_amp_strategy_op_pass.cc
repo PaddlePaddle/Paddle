@@ -33,8 +33,9 @@ void CastDataTypeInplace(phi::DenseTensor *tensor) {
   phi::DenseTensor tmp_tensor;
   tmp_tensor.set_type(phi::CppTypeToDataType<OutType>::Type());
   tmp_tensor.Resize(tensor->dims());
-  auto *tmp_data =
-      tmp_tensor.mutable_data<OutType>(paddle::platform::CPUPlace());
+  auto *cpu_ctx = static_cast<phi::CPUContext *>(
+      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+  auto *tmp_data = cpu_ctx->Alloc<OutType>(&tmp_tensor);
   auto *data = tensor->mutable_data<InType>(paddle::platform::CPUPlace());
   for (int i = 0; i < tensor->numel(); i++) {
     tmp_data[i] = static_cast<OutType>(data[i]);
