@@ -911,6 +911,34 @@ class Conv2dAddFusePattern
   }
 };
 
+class TestPass : public pir::PatternRewritePass {
+ public:
+  TestPass() : pir::PatternRewritePass("test_pass", 1) {}
+
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add<RedundantTransposeFusePattern>(context);
+    auto conv_bn_pattern = std::make_unique<Conv2dBnFusePattern>(
+        context,
+        1,
+        std::vector<std::string>{paddle::dialect::FullOp::name(),
+                                 paddle::dialect::AddOp::name(),
+                                 paddle::dialect::SqrtOp::name(),
+                                 paddle::dialect::DivideOp::name(),
+                                 paddle::dialect::ReshapeOp::name(),
+                                 paddle::dialect::MultiplyOp::name(),
+                                 paddle::dialect::SubtractOp::name(),
+                                 paddle::dialect::Conv2dOp::name()});
+    LOG(INFO) << "Conv2dBnFusePattern will generate the following operations: ";
+    for (auto op_info : conv_bn_pattern->generated_ops()) {
+      LOG(INFO) << "--- " << op_info.name();
+    }
+    ps.Add(std::move(conv_bn_pattern));
+
+    return ps;
+  }
+};
+
 void BuildProgram(pir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp full_input_op =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{4, 3, 16, 16},
@@ -983,8 +1011,9 @@ TEST(pattern_rewrite, Patterns) {
   EXPECT_EQ(program.block()->size(), 11u);
   paddle::framework::Scope scope;
   pir::PassManager pm(ctx);
+  pm.AddPass(std::make_unique<TestPass>());
   pm.AddPass(pir::CreateConv2dFusePass());
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  pm.AddPass(pir::CreateConstantFoldingPass(&scope));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnablePassTiming();
   pm.EnableIRPrinting();

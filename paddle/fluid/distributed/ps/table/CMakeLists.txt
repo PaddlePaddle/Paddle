@@ -91,7 +91,7 @@ cc_library(
        device_context
        phi
        glog
-       fs
+       framework_io
        afs_wrapper
        rocksdb
        eigen3)
