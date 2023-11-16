@@ -17,12 +17,16 @@ import math
 # TODO: define loss functions of neural network
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
-from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 
 from ...base.data_feeder import check_variable_and_dtype
-from ...base.framework import _current_expected_place, in_pir_mode
+from ...base.framework import (
+    _current_expected_place,
+    core,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...tensor.manipulation import reshape
@@ -800,7 +804,7 @@ def binary_cross_entropy_with_logits(
         one = _C_ops.full(
             [1],
             1.0,
-            logit.dtype if in_pir_mode() else logit._dtype,
+            logit._dtype if in_pir_mode() else logit.dtype,
             _current_expected_place(),
         )
 
