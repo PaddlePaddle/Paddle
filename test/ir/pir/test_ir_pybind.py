@@ -101,11 +101,13 @@ class TestPybind(unittest.TestCase):
         # test value hash and hash(value) == hash(operesult)
         self.assertTrue(add_op.operands_source()[0] in result_set)
         # test value == value
-        self.assertEqual(
-            add_op.operands_source()[0], add_op.operands_source()[0]
+        self.assertTrue(
+            add_op.operands_source()[0].is_same(add_op.operands_source()[0])
         )
         # test value == opresult
-        self.assertEqual(add_op.operands_source()[0], matmul_op.results()[0])
+        self.assertTrue(
+            add_op.operands_source()[0].is_same(matmul_op.results()[0])
+        )
         # test opresult print
         self.assertTrue(
             'dtype=pd_op.tensor<4x4xf32>'

@@ -701,7 +701,7 @@ def calc_gradient(outputs, inputs, grad_outputs, no_grad_set):
             be: (1) a Value filled with 1 when the i-th element of `grad_outputs`
             is None; (2) the i-th element of `grad_outputs` when the i-th element of
             `grad_outputs` is a Value. Default None.
-        no_grad_set (list(Value)|tuple(Value), optional):
+        no_grad_set (set(Value), optional):
             the Values whose gradients are not needed to compute. Default None.
 
     Return:
@@ -778,7 +778,7 @@ def grad(
             `inputs` are unreachable in the graph (i.e., their gradients are None),
             error would be raised if allow_unused=False, or None would be returned as
             their gradients if allow_unused=True. Default False.
-        no_grad_vars (Value|list(Value)|tuple(Value), optional):
+        no_grad_vars (Value|list(Value)|tuple(Value)|set(Value), optional):
             the Values whose gradients are not needed to compute. Default None.
 
     Returns:
@@ -808,7 +808,7 @@ def grad(
     check_type(
         no_grad_vars,
         'no_grad_vars',
-        ((paddle.pir.Value, paddle.pir.OpResult), list, tuple, type(None)),
+        ((paddle.pir.Value, paddle.pir.OpResult), list, tuple, set, type(None)),
         'paddle.autograd.ir_backward.grad',
     )
     outputs = _as_list(outputs)
