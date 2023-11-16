@@ -12,24 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import inspect
 import os
 import threading
 import warnings
 import weakref
+from typing import TYPE_CHECKING
 
 import paddle.pir.core as ir_static
 from paddle import decomposition
-from paddle.base import core, framework
+from paddle.base import core, framework, in_pir_mode
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
     _to_static_mode_guard_,
     param_guard,
     switch_to_static_graph,
 )
-from paddle.base.unique_name import UniqueNameGenerator
-from paddle.base.unique_name import guard as UniqueNameGuard
+from paddle.base.unique_name import (
+    UniqueNameGenerator,
+    guard as UniqueNameGuard,
+)
 from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
@@ -64,6 +69,9 @@ from .utils import (
     type_name,
     unwrap,
 )
+
+if TYPE_CHECKING:
+    from paddle.static.amp.fp16_utils import AmpOptions
 
 __all__ = []
 
@@ -339,8 +347,12 @@ class StaticFunction:
             self._dygraph_function = function
             self._class_instance = None
 
-        if input_spec is not None and prim_or_cinn_is_enabled(
-            kwargs.get("build_strategy", None), kwargs.get("backend", None)
+        if (
+            input_spec is not None
+            and prim_or_cinn_is_enabled(
+                kwargs.get("build_strategy", None), kwargs.get("backend", None)
+            )
+            and not in_pir_mode()
         ):
             from paddle.static import InputSpec
 
@@ -1282,6 +1294,7 @@ class ConcreteProgram:
         )
 
         new_name_generator = UniqueNameGenerator()
+        ProgramTranslator.get_instance()._amp_records.clear()
 
         with framework.program_guard(main_program, startup_program):
             with _to_static_mode_guard_(is_to_static=True), UniqueNameGuard(
@@ -1500,12 +1513,18 @@ class PirPrimHooker(PirPartialProgramLayerHook):
                 return whole_program, new_start_index, dst_vars
             return whole_program, forward_end_idx, src_vars
 
-    def after_infer(self, infer_program, src_vars):
+    def after_infer(self, infer_program):
         with backend_guard(self.backend):
             if core._is_fwd_prim_enabled():
-                dst_vars = decomposition.decompose(infer_program, src_vars)
-                return infer_program, dst_vars
-            return infer_program, src_vars
+                targets = decomposition.decompose(
+                    infer_program.program, infer_program.out_values
+                )
+                infer_program.out_values = targets
+                infer_program.forward_range = (
+                    0,
+                    len(infer_program.program.global_block().ops),
+                )
+            return
 
 
 class ProgramCache:
@@ -1753,6 +1772,7 @@ class ProgramTranslator:
         self._program_cache = ProgramCache()
         self._params_recorder = ParametersRecorder()
         self._inplace_map = InplaceMap()
+        self._amp_records: dict[int, list[tuple[AmpOptions, int, int]]] = {}
         self.enable_to_static = True
 
     def enable(self, enable_to_static):

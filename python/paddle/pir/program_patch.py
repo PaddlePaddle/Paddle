@@ -25,10 +25,10 @@ def monkey_patch_program():
         global_prog_seed = seed
         self._seed = global_prog_seed
 
-    Program.global_seed = global_seed
-    global global_prog_seed
-    Program._seed = global_prog_seed
-
     global _already_patch_program
     if not _already_patch_program:
+        Program.global_seed = global_seed
+        global global_prog_seed
+        Program._seed = global_prog_seed
+
         _already_patch_program = True

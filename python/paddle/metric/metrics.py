@@ -92,6 +92,7 @@ class Metric(metaclass=abc.ABCMeta):
             ...     correct = pred == label
             ...     return paddle.cast(correct, dtype='float32')
             ...
+
         With the :code:`compute`, we split some calculations to OPs (which
         may run on GPU devices, will be faster), and only fetch 1 tensor with
         shape as [N, 5] instead of 2 tensors with shapes as [N, 10] and [N, 1].

@@ -42,7 +42,7 @@ class ReplaceFetchWithShadowOutputPattern
 class ReplaceFetchWithShadowOutputPass : public pir::Pass {
  public:
   ReplaceFetchWithShadowOutputPass()
-      : pir::Pass("replace_fetch_with_shadow_output_pass", 1) {}
+      : pir::Pass("replace_fetch_with_shadow_output_pass", 0) {}
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
