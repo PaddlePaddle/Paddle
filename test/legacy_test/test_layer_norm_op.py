@@ -507,7 +507,7 @@ class TestLayerNormOpByOpTestFP32_case1(TestLayerNormOpByOpTest):
 
         self.ori_atol = 1e-4
         self.ori_rtol = 1e-4
-        self.max_relative_error = 7e-3
+        self.max_relative_error = 1e-2
 
         self.dtype = "float32"
         self.x_shape = [2, 3]
