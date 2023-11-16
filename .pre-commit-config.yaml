@@ -151,8 +151,8 @@ repos:
             (?x)^(
                 paddle/fluid/operators/CMakeLists.txt
             )$
--   repo: https://github.com/cmake-lint/cmake-lint
-    rev: 1.4.2
+-   repo: https://github.com/PFCCLab/cmake-lint-paddle
+    rev: v1.5.0
     hooks:
     -   id: cmakelint
         args: [--config=./tools/codestyle/.cmakelintrc]
