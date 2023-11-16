@@ -13,31 +13,33 @@
 # limitations under the License.
 
 from .tensor import inverse as inv  # noqa: F401
-from .tensor.linalg import cholesky  # noqa: F401
-from .tensor.linalg import cholesky_solve  # noqa: F401
-from .tensor.linalg import cond  # noqa: F401
-from .tensor.linalg import corrcoef  # noqa: F401
-from .tensor.linalg import cov  # noqa: F401
-from .tensor.linalg import det  # noqa: F401
-from .tensor.linalg import eig  # noqa: F401
-from .tensor.linalg import eigh  # noqa: F401
-from .tensor.linalg import eigvals  # noqa: F401
-from .tensor.linalg import eigvalsh  # noqa: F401
-from .tensor.linalg import householder_product  # noqa: F401
-from .tensor.linalg import lu  # noqa: F401
-from .tensor.linalg import lu_unpack  # noqa: F401
-from .tensor.linalg import matrix_power  # noqa: F401
-from .tensor.linalg import matrix_rank  # noqa: F401
-from .tensor.linalg import multi_dot  # noqa: F401
-from .tensor.linalg import norm  # noqa: F401
-from .tensor.linalg import pca_lowrank  # noqa: F401
-from .tensor.linalg import pinv  # noqa: F401
-from .tensor.linalg import qr  # noqa: F401
-from .tensor.linalg import slogdet  # noqa: F401
-from .tensor.linalg import solve  # noqa: F401
-from .tensor.linalg import svd  # noqa: F401
-from .tensor.linalg import triangular_solve  # noqa: F401
-from .tensor.linalg import lstsq
+from .tensor.linalg import (
+    cholesky,  # noqa: F401
+    cholesky_solve,  # noqa: F401
+    cond,  # noqa: F401
+    corrcoef,  # noqa: F401
+    cov,  # noqa: F401
+    det,  # noqa: F401
+    eig,  # noqa: F401
+    eigh,  # noqa: F401
+    eigvals,  # noqa: F401
+    eigvalsh,  # noqa: F401
+    householder_product,  # noqa: F401
+    lstsq,
+    lu,  # noqa: F401
+    lu_unpack,  # noqa: F401
+    matrix_power,  # noqa: F401
+    matrix_rank,  # noqa: F401
+    multi_dot,  # noqa: F401
+    norm,  # noqa: F401
+    pca_lowrank,  # noqa: F401
+    pinv,  # noqa: F401
+    qr,  # noqa: F401
+    slogdet,  # noqa: F401
+    solve,  # noqa: F401
+    svd,  # noqa: F401
+    triangular_solve,  # noqa: F401
+)
 
 __all__ = [
     'cholesky',
