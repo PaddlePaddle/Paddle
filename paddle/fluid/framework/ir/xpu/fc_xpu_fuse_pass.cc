@@ -552,7 +552,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                     weight_scale,
                                     per_channel_quant);
     }
-    if (fc_compute_precision == 2 && per_channel_quant) {
+    if (fc_compute_precision == 2 && !per_channel_quant) {
       VLOG(5) << "fc compute type is int31";
       PrepareWeight<float, float>(graph,
                                   scope,
@@ -565,7 +565,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                   weight_scale,
                                   per_channel_quant);
     }
-    if (fc_compute_precision == 2 && !per_channel_quant) {
+    if (fc_compute_precision == 2 && per_channel_quant) {
       VLOG(5) << "fc compute type is int16";
       PrepareWeight<float, int16_t>(graph,
                                     scope,
