@@ -109,6 +109,16 @@
     func : fast_where_xpu
     data_type : x
 
+- op : fc
+  args : (Tensor input, Tensor w, Tensor bias, int in_num_col_dims = 1, str activation_type = "", bool use_mkldnn = false, bool padding_weights = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float scale_in = 1.0f, float[] scale_weights = {1.0f}, float scale_out = 1.0f, bool force_fp32_output = false)
+  output : Tensor(out)
+  infer_meta :
+    func : FCInferMeta
+  kernel :
+    func : fc
+    data_type : input
+  optional : bias
+
 - op : fc_xpu
   args : (Tensor x, Tensor x_max, Tensor w, Tensor w_max, Tensor bias, Tensor scale_max, Tensor out_max_in, int in_num_col_dims, bool transpose_x, float alpha, float beta, int act_type, float act_alpha, DataType out_dtype)
   output : Tensor(out), Tensor(out_max)
@@ -218,14 +228,24 @@
   backward: fused_rotary_position_embedding_grad
   support_dygraph_mode : true
 
-- op : fused_scale_bias_relu_conv_bnstats
+- op : fused_scale_bias_add_relu
+  args : (Tensor x1, Tensor scale1, Tensor bias1, Tensor x2, Tensor scale2, Tensor bias2, bool fuse_dual, bool exhaustive_search)
+  optional : scale2, bias2
+  output : Tensor(y)
+  infer_meta :
+    func : FusedScaleBiasAddReluInferMeta
+  kernel :
+    func : fused_scale_bias_add_relu
+    data_type : x1
+
+- op : fused_scale_bias_relu_conv_bn
   args : (Tensor x, Tensor w, Tensor scale, Tensor bias, Tensor bn_scale, Tensor bn_bias, Tensor input_running_mean, Tensor input_running_var, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, str data_format, float momentum, float epsilon, bool fuse_prologue, bool exhaustive_search, int64_t accumulation_count = 0)
   optional : scale, bias
   output : Tensor(out), Tensor(out_running_mean), Tensor(out_running_var), Tensor(saved_mean), Tensor(saved_var), Tensor(eq_scale), Tensor(eq_bias)
   infer_meta :
-    func : FusedScaleBiasReluConvBnstatsInferMeta
+    func : FusedScaleBiasReluConvBnInferMeta
   kernel :
-    func : fused_scale_bias_relu_conv_bnstats
+    func : fused_scale_bias_relu_conv_bn
     data_type : x
 
 - op : fusion_gru

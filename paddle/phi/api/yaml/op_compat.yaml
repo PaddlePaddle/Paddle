@@ -1033,6 +1033,20 @@
   extra :
     attrs : [int round_type = 1]
 
+- op : fc
+  inputs :
+    input : Input
+    w : W
+    bias : Bias
+  outputs :
+    out : Out
+  attrs :
+    scale_in : Scale_in
+    scale_weights : Scale_weights
+    scale_out : Scale_out
+  extra :
+    [bool @ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@ = true]
+
 - op : feed
   outputs: {out: Out}
 
@@ -2701,10 +2715,6 @@
   extra :
     attrs : [bool use_mkldnn=false]
 
-- op : shadow_output
-  inputs: {x: x}
-  outputs: {out: out}
-
 - op : shape
   inputs :
     input : Input
@@ -3335,6 +3345,13 @@
     {input: Input}
   outputs:
     {out: Out}
+
+- op: fused_elemwise_add_activation
+  backward: fused_elemwise_add_activation_grad
+  inputs :
+    {x: X, y: Y}
+  outputs :
+    {out : Out, intermediate_out : IntermediateOut}
 
 - op: fusion_squared_mat_sub
   inputs :

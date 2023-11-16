@@ -112,6 +112,7 @@ std::vector<pir::Operation*> GetOpListNotIncludeYield(
 
 std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+
   ctx->GetOrRegisterDialect<cinn::dialect::RuntimeDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
@@ -139,17 +140,18 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
       auto group_list =
           cinn::dialect::ir::GeneralFusionMergePassInternal(op_fusion);
 
-      PADDLE_ENFORCE_EQ(group_list.size(),
-                        1u,
-                        phi::errors::Unimplemented(
-                            "Only support one group after group fusion"));
+      // using yield op to sort
+      std::unordered_map<::pir::Value, size_t> value2id;
+      auto yeild_op = group_op.ops().back();
+      for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
+        value2id[yeild_op->operand_source(i)] = i;
+      }
+
       for (auto group : group_list) {
         auto ir_compiler = std::make_shared<cinn::hlir::framework::PirCompiler>(
             *program, target, scope);
         hlir::framework::PirCompilerManager::Instance().insert(ir_compiler);
-        auto group1 =
-            std::make_shared<cinn::hlir::framework::pir::Group>(group->ops);
-        auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
+        auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
         std::unordered_map<std::string, ::pir::Attribute> op_attrs{
             {cinn::dialect::JitKernelOp::kAttrName,
              cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
@@ -163,18 +165,23 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
           vec_new_ins.push_back(value_map.at(vec_ins[i]));
         }
 
-        auto vec_outs = GetBlockOutsideOutput(group->ops, group_op.ops());
+        std::unordered_map<size_t, size_t> codegen2orig;
 
         std::vector<pir::Type> vec_types;
-        for (auto& out : vec_outs) {
-          vec_types.push_back(out.type());
+        for (size_t i = 0; i < group->output_values.size(); ++i) {
+          vec_types.push_back(group->output_values[i].type());
         }
 
         ::pir::Operation* cinn_op =
             ::pir::Operation::Create(vec_new_ins, op_attrs, vec_types, op_info);
 
-        for (size_t i = 0; i < group_op.num_results(); ++i) {
-          value_map[group_op.result(i)] = cinn_op->result(i);
+        for (size_t i = 0; i < cinn_op->num_results(); ++i) {
+          auto find_it = value2id.find(group->output_values[i]);
+          if (find_it == value2id.end()) {
+            value_map[group->output_values[i]] = cinn_op->result(i);
+          } else {
+            value_map[group_op.result(find_it->second)] = cinn_op->result(i);
+          }
         }
 
         ir_program->block()->push_back(cinn_op);
@@ -184,7 +191,11 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
       std::vector<pir::Value> vec_ins;
 
       for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-        vec_ins.push_back(value_map.at((*it)->operand_source(i)));
+        if ((*it)->operand_source(i)) {
+          vec_ins.push_back(value_map.at((*it)->operand_source(i)));
+        } else {
+          vec_ins.push_back((*it)->operand_source(i));
+        }
       }
 
       std::vector<pir::Type> vec_types;

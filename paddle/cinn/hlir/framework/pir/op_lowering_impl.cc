@@ -288,6 +288,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 
   group->output_names.clear();
   VLOG(3) << "group->output_ops.size(): " << group->output_ops.size();
+  // TODO(phlrain): output values not stable here
   for (auto& op : group->output_ops) {
     // collect all output tensor.
     for (auto opresult : op->results()) {
@@ -298,6 +299,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       if (arg_name_set.count(tensor->buffer->name) != 0) {
         continue;
       }
+
+      group->output_values.push_back(opresult);
       // output arg tensors
       group_func_arg_tensors->push_back(tensor);
       // output args
@@ -403,6 +406,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   for (const ir::Tensor& tensor : *op_func_arg_tensors) {
     cinn_inputs.push_back(common::CINNValue(ir::Expr(tensor)));
   }
+
   // set tensor name = operand hash name
   auto op_results = op->results();
   for (const auto& result : op_results) {
@@ -571,7 +575,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
         LoopAssignReduce(
             ir_sch, op, greducer, this->target_, tensor_map, tmp_tensor_info);
       }
-    } else {
+    } else if (master) {
       VLOG(3) << "Before assign node " << op_name
               << " into horizontal link reducer, ir is:\n"
               << ir_sch.GetModule().GetExprs().at(0);
