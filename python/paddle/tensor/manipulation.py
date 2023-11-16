@@ -5853,7 +5853,7 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, Tensor with diagonal embedeed with y.
+        Tensor, Tensor with diagonal embedeed with ``y``.
 
     Examples:
         .. code-block:: python
