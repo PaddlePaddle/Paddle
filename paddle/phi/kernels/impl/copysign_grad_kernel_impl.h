@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/copysign_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
@@ -33,7 +31,7 @@ struct CopySignGradFunctor {
       dx_[idx] = T(0);
     else
       dx_[idx] = T(dout_[idx]) *
-                 (T(std::copysign(x_data_[idx], y_data_[idx]) / x_data_[idx]));
+                 (T(copysign(x_data_[idx], y_data_[idx]) / x_data_[idx]));
   }
 
   const T* x_data_;
