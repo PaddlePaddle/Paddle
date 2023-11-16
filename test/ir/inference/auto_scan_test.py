@@ -133,8 +133,6 @@ class AutoScanTest(unittest.TestCase):
         Test a single case.
         """
         pred_config.set_model_buffer(model, len(model), params, len(params))
-        if pred_config.ir_optim():
-            pred_config.pass_builder().set_passes(self.passes)
         predictor = paddle_infer.create_predictor(pred_config)
         self.available_passes_in_framework = (
             self.available_passes_in_framework
@@ -525,6 +523,7 @@ class PassAutoScanTest(AutoScanTest):
                     if os.path.exists(self.cache_dir):
                         shutil.rmtree(self.cache_dir)
 
+                    pred_config.pass_builder().set_passes(self.passes)
                     pred_result = self.run_test_config(
                         model, params, prog_config, pred_config, feed_data
                     )
