@@ -2406,7 +2406,7 @@ def renorm(x, p, axis, max_norm):
                 )
             )
         axis = axis + len(input_shape)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.renorm(x, p, axis, max_norm)
         return out
     else:
