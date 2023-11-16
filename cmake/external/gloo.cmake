@@ -61,6 +61,18 @@ if(CMAKE_COMPILER_IS_GNUCC)
         ${SOURCE_DIR}/gloo/ < ${types_header})
   endif()
 endif()
+
+file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/linux.cc.patch
+     linux_cc_ethtool)
+if(GLOO_PATCH_COMMAND STREQUAL "")
+  set(GLOO_PATCH_COMMAND
+      git checkout -- . && git checkout ${GLOO_TAG} && patch -Nd
+      ${SOURCE_DIR}/gloo/common/ < ${linux_cc_ethtool})
+else()
+  set(GLOO_PATCH_COMMAND ${GLOO_PATCH_COMMAND} && patch -Nd
+      ${SOURCE_DIR}/gloo/common/ < ${linux_cc_ethtool})
+endif()
+
 include_directories(${GLOO_INCLUDE_DIR})
 
 ExternalProject_Add(

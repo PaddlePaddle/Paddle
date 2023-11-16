@@ -17,6 +17,7 @@ limitations under the License. */
 #include <set>
 #include <unordered_map>
 #include <utility>
+#include <cstdint>
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler/output_logger.h"

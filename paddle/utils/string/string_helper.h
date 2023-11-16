@@ -18,6 +18,7 @@
 #include <ctype.h>
 #include <stdio.h>
 
+#include <cstdint>
 #include <algorithm>
 #include <cstring>
 #include <sstream>
