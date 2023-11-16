@@ -24,7 +24,6 @@ from dygraph_to_static_utils_new import (
 
 import paddle
 from paddle.base import core
-from paddle.base.framework import Program, program_guard
 
 
 def case0(x):
@@ -182,9 +181,9 @@ class TestToTensorReturnVal(Dy2StTestBase):
 class TestStatic(Dy2StTestBase):
     def test_static(self):
         paddle.enable_static()
-        main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        main_prog = paddle.static.Program()
+        starup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, starup_prog):
             if core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
             else:
