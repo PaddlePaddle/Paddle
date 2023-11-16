@@ -36,11 +36,11 @@
 namespace {
 
 class Conv2dBnFusePattern
-    : public pir::OpRewritePattern<paddle::dialect::BatchNorm_Op> {
+    : public pir::OpRewritePattern<paddle::dialect::BatchNormOp> {
  public:
-  using pir::OpRewritePattern<paddle::dialect::BatchNorm_Op>::OpRewritePattern;
+  using pir::OpRewritePattern<paddle::dialect::BatchNormOp>::OpRewritePattern;
   bool MatchAndRewrite(
-      paddle::dialect::BatchNorm_Op op,
+      paddle::dialect::BatchNormOp op,
       pir::PatternRewriter &rewriter) const override {  // NOLINT
     // The prev op should be conv2d op.
     paddle::dialect::Conv2dOp conv2d_op =
@@ -130,7 +130,25 @@ class Conv2dBnFusePattern
     return true;
   }
 };
-
+class BatchNormReplacePattern
+    : public pir::OpRewritePattern<paddle::dialect::BatchNorm_Op> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::BatchNorm_Op>::OpRewritePattern;
+  bool MatchAndRewrite(
+      paddle::dialect::BatchNorm_Op op,
+      pir::PatternRewriter &rewriter) const override {  // NOLINT
+    auto bn_op = rewriter.Build<paddle::dialect::BatchNormOp>(
+        op.x().dyn_cast<pir::OpResult>(),
+        op.mean().dyn_cast<pir::OpResult>(),
+        op.variance().dyn_cast<pir::OpResult>(),
+        op.scale().dyn_cast<pir::OpResult>(),
+        op.bias().dyn_cast<pir::OpResult>(),
+        op->attributes());
+    rewriter.ReplaceAllUsesWith(op.out(), bn_op.out());
+    rewriter.EraseOp(op);
+    return true;
+  }
+};
 class Conv2dFusePass : public pir::Pass {
  public:
   Conv2dFusePass() : pir::Pass("conv2d_fuse_pass", 2) {}
@@ -152,6 +170,11 @@ class Conv2dFusePass : public pir::Pass {
     for (auto op_info : conv_bn_pattern->generated_ops()) {
       VLOG(4) << "--- " << op_info.name();
     }
+    auto bn_replace_pattern = std::make_unique<BatchNormReplacePattern>(
+        context,
+        1,
+        std::vector<std::string>{paddle::dialect::BatchNormOp::name()});
+    ps.Add(std::move(bn_replace_pattern));
     ps.Add(std::move(conv_bn_pattern));
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;

@@ -749,8 +749,7 @@ bool AnalysisPredictor::PrepareExecutor() {
       pm.AddPass(::pir::CreateConv2dFusePass());
       pm.AddPass(::pir::CreateDeadCodeEliminationPass());
       pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
-
-      // pm.EnableIRPrinting();
+      pm.EnableIRPrinting();
       pm.Run(pir_program_.get());
 
       pir_program_ = std::move(

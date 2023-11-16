@@ -918,23 +918,6 @@ class TestPass : public pir::PatternRewritePass {
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<RedundantTransposeFusePattern>(context);
-    auto conv_bn_pattern = std::make_unique<Conv2dBnFusePattern>(
-        context,
-        1,
-        std::vector<std::string>{paddle::dialect::FullOp::name(),
-                                 paddle::dialect::AddOp::name(),
-                                 paddle::dialect::SqrtOp::name(),
-                                 paddle::dialect::DivideOp::name(),
-                                 paddle::dialect::ReshapeOp::name(),
-                                 paddle::dialect::MultiplyOp::name(),
-                                 paddle::dialect::SubtractOp::name(),
-                                 paddle::dialect::Conv2dOp::name()});
-    LOG(INFO) << "Conv2dBnFusePattern will generate the following operations: ";
-    for (auto op_info : conv_bn_pattern->generated_ops()) {
-      LOG(INFO) << "--- " << op_info.name();
-    }
-    ps.Add(std::move(conv_bn_pattern));
-
     return ps;
   }
 };

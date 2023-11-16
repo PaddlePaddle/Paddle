@@ -50,8 +50,10 @@ class TestConv2dFusePass(PassTest):
         self.pass_list = ['conv2d_fuse_pass']
         self.feeds = {"x": np.random.random((3, 1, 28, 28)).astype("float32")}
         self.fetch_list = [result2]
-        self.fused_op_type = "pd_op.conv2d"
-        self.fused_ops = ["pd_op.batch_norm_"]
+        self.fuse_op_type = "pd_op.conv2d"
+        self.fused_ops = ["pd_op.batch_norm"]
+        self.num_reduced_fused_ops = 1
+        self.op_not_exist_unittest = True
 
     def test_check_output(self):
         place = paddle.base.CUDAPlace(0)

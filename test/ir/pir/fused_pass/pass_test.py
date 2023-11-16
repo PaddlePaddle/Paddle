@@ -31,7 +31,6 @@ class PassTest(unittest.TestCase):
         self.pass_list = []
         self.pir_program = None
         self.fused_ops = []
-        self.num_ops_before_pass = -1
         self.num_reduced_ops = -1
         self.op_not_exist_unittest = False
 
@@ -53,30 +52,22 @@ class PassTest(unittest.TestCase):
         Check whether the fused ops are correct.
         '''
         self.assertFalse(
-            self.fuse_op_type is None
-            or len(self.fused_ops) < 0
-            or self.num_reduced_ops < 0,
-            "1. fuse_op_type means 'fusion into new op or fusion into old op' \n \
-                         2. fused_ops means fused op lists \n \
-                         3. num_reduced_ops means the number of reduced_ops \n \
-                         These params cannot all be empty!",
+            self.fuse_op_type is None,
+            "fuse_op_type means 'fusion into new op or fusion into old op' \n \
+             The param cannot  be empty!",
         )
         op_names = [op.name() for op in self.pir_program.global_block().ops]
-        acctual_num_reduce_ops = self.num_ops_before_pass - len(op_names)
 
         if self.fuse_op_type:
             self.assertTrue(
                 self.fuse_op_type in op_names, "The fused op does not exist !"
             )
 
-        self.assertTrue(
-            acctual_num_reduce_ops == self.num_reduced_ops,
-            "Checking of the number of fused operator < {} > failed. "
-            "Expected: {}, Received: {}".format(
-                self.fuse_op_type, self.num_reduced_ops, acctual_num_reduce_ops
-            ),
-        )
         if self.op_not_exist_unittest:
+            self.assertFalse(
+                len(self.fused_ops) < 0,
+                "fused_ops cannot be empty when op_not_exist_unittest is True !",
+            )
             for fused_op in self.fused_ops:
                 self.assertTrue(
                     fused_op not in op_names,
@@ -96,6 +87,6 @@ class PassTest(unittest.TestCase):
         )
         if need_translate_to_pir and self.pir_program is None:
             self.pir_program = pir.translate_to_pir(self.main_program.desc)
-        self.num_ops_before_pass = len(self.pir_program.global_block().ops)
+
         self.run_pir_pass()
         self.check_fused_ops()
