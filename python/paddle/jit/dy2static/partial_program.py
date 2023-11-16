@@ -180,10 +180,6 @@ class PartialProgramLayer:
     ):
         super().__init__()
         self._inputs = NestSequence(inputs)
-        self._in_var_names = []
-        for var in self._inputs:
-            if isinstance(var, framework.Variable):
-                self._in_var_names.append(var.desc.name())
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
         self._name_generator = name_generator
@@ -222,6 +218,14 @@ class PartialProgramLayer:
         self._hooker = None
         self._backend = kwargs.get('backend', None)
         self._grad_var_names = {}
+
+        self._in_var_names = []
+        for var in self._inputs:
+            if isinstance(var, framework.Variable):
+                self._in_var_names.append(var.desc.name())
+        self._out_var_descs = [
+            self._outputs[var_id].desc for var_id in self._outputs.var_ids
+        ]
 
     def __call__(self, inputs):
         """
@@ -967,31 +971,9 @@ class PartialProgramLayer:
         return input_vars, input_var_names
 
     def _prepare_outputs(self):
-        # mapping from name(string) -> Tensor
-        out_tensor_map = {}
-
-        def create_out(var_id):
-            var = self._outputs[var_id]
-            assert isinstance(var, framework.Variable)
-            var_desc = var.desc
-
-            if var_desc.name() in out_tensor_map:
-                return out_tensor_map[var_desc.name()]
-
-            out = core.eager.Tensor(
-                var_desc.dtype(),
-                var_desc.shape(),
-                var_desc.name(),
-                var_desc.type(),
-                False,
-            )
-            out.stop_gradient = var.stop_gradient
-            out_tensor_map[var_desc.name()] = out
-            return out
-
-        # Create Tensor to receive output data.
-        out_vars = list(map(create_out, self._outputs.var_ids))
-        return out_vars
+        return paddle.framework.core.create_empty_tensors_with_var_descs(
+            self._out_var_descs
+        )
 
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
         inner_scope = self._get_scope(

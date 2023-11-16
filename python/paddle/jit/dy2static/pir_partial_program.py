@@ -894,33 +894,9 @@ class PartialProgramLayer:
         return input_vars
 
     def _prepare_outputs(self):
-        # mapping from name(string) -> Tensor
-        out_tensor_map = {}
-
-        def create_out(var):
-            assert isinstance(var, OpResult)
-
-            if id(var) in out_tensor_map:
-                return out_tensor_map[id(var)]
-
-            if var.is_dense_tensor_type():
-                tensor_type = paddle.dtype(7)  # LOD TENSOR
-            else:
-                tensor_type = paddle.dtype(8)  # SELECT ROW TENSOR
-            out = core.eager.Tensor(
-                framework.paddle_type_to_proto_type[var.dtype],
-                var.shape,
-                "",
-                tensor_type,
-                False,
-            )
-            out.stop_gradient = var.stop_gradient
-            out_tensor_map[id(var)] = out
-            return out
-
-        # Create Tensor to receive output data.
-        out_vars = list(map(create_out, self._outputs.var_list))
-        return out_vars
+        return paddle.framework.core.create_empty_tensors_with_op_result(
+            self._outputs.var_list
+        )
 
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
         inner_scope = self._get_scope(
