@@ -19,19 +19,17 @@ from op_test import OpTest
 
 import paddle
 
-paddle.enable_static()
-
 
 def rprop_wrapper(
     param,
     grad,
     prev,
     learning_rate,
-    delta_min,
-    delta_max,
-    eta_negative,
-    eta_positive,
     master_param=None,
+    delta_min=1e-6,
+    delta_max=50,
+    eta_negative=0.5,
+    eta_positive=1.2,
     multi_precision=False,
 ):
     paddle._C_ops.rprop_(
@@ -39,12 +37,12 @@ def rprop_wrapper(
         grad,
         prev,
         learning_rate,
-        master_param,
+        None,
         delta_min,
         delta_max,
         eta_negative,
         eta_positive,
-        multi_precision,
+        False,
     )
 
 
@@ -76,8 +74,6 @@ class TestRpropOp(OpTest):
         prev_outs = prevs.copy()
         learning_rate_outs = learning_rates.copy()
 
-        # pdb.set_trace()
-
         for i, param in enumerate(params):
             grad = grads[i]
             prev = prevs[i]
@@ -85,9 +81,7 @@ class TestRpropOp(OpTest):
             param_out = param_outs[i]
             prev_out = prev_outs[i]
 
-            sign = grad.copy()
-            sign = np.multiply(grad, prev)
-            sign = np.sign(sign)
+            sign = np.sign(np.multiply(grad, prev))
             sign[np.greater(sign, 0)] = eta_positive
             sign[np.less(sign, 0)] = eta_negative
             sign[np.equal(sign, 0)] = 1
@@ -98,12 +92,11 @@ class TestRpropOp(OpTest):
             grad = grad.copy()
             grad[np.equal(sign, eta_negative)] = 0
 
-            np.subtract(
-                param_out, np.multiply(np.sign(grad), lr), out=param_out
+            learning_rate_outs[i] = lr
+            param_outs[i] = np.subtract(
+                param_out, np.multiply(np.sign(grad), lr)
             )
-            prev_out = grad.copy()
-
-        # pdb.set_trace()
+            prev_outs[i] = grad.copy()
 
         self.inputs = {
             "param": params,
@@ -126,7 +119,7 @@ class TestRpropOp(OpTest):
         }
 
     def conf(self):
-        self.h = 1
+        self.h = 2
         self.w = 3
 
     def test_check_output(self):

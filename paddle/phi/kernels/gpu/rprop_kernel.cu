@@ -44,6 +44,7 @@ __global__ void RpropKernelGPUImpl(const T* param,
   MT eta_positive_data = static_cast<MT>(eta_positive);
   MT zero_data = static_cast<MT>(0);
   MT one_data = static_cast<MT>(1);
+  MT negative_one_data = static_cast<MT>(-1);
 
   CUDA_KERNEL_LOOP(i, num) {
     MT param_data = master_param ? master_param[i] : static_cast<MT>(param[i]);
@@ -52,10 +53,8 @@ __global__ void RpropKernelGPUImpl(const T* param,
     MT learning_rate_data = static_cast<MT>(learning_rate[i]);
     MT product_data = grad_data * prev_data;
 
-    MT grad_sign_data = zero_data;
     MT eta_data = one_data;
     if (product_data > zero_data) {
-      grad_sign_data = one_data;
       eta_data = eta_positive_data;
     } else if (product_data < zero_data) {
       grad_data = zero_data;
@@ -67,6 +66,13 @@ __global__ void RpropKernelGPUImpl(const T* param,
       learning_rate_data = delta_max_data;
     } else if (learning_rate_data < delta_min_data) {
       learning_rate_data = delta_min_data;
+    }
+
+    MT grad_sign_data = zero_data;
+    if (grad_data > zero_data) {
+      grad_sign_data = one_data;
+    } else if (grad_data < zero_data) {
+      grad_sign_data = negative_one_data;
     }
 
     param_data = param_data - grad_sign_data * learning_rate_data;
