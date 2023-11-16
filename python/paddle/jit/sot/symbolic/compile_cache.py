@@ -113,7 +113,7 @@ class FallbackWrapper:
             else:
                 # Speed up Resnet from 0.0068 --> 0.0057
                 with EventGuard("FallbackWrapper: call partial_program"):
-                    outputs = self.partial_program(*args, **kwargs)
+                    outputs = self.partial_program.sot_call(*args, **kwargs)
 
             clear_eager_tensor_name(outputs)
             log_do(

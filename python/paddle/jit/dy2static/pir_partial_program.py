@@ -332,7 +332,8 @@ class PartialProgramLayer:
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        in_vars, out_vars = self._prepare(inputs)
+        in_vars = self._prepare_inputs(inputs)
+        out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes()
         _legacy_C_ops.pir_run_program(
             self._valid_vars(in_vars),
@@ -346,6 +347,24 @@ class PartialProgramLayer:
         )
         restored_nest_out = self._restore_out(out_vars)
         return restored_nest_out
+
+    def sot_call(self, inputs):
+        """
+        In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
+        """
+        out_vars = self._prepare_outputs()
+        attrs = self._prepare_attributes()
+        _legacy_C_ops.pir_run_program(
+            self._valid_vars(inputs),
+            self._valid_vars(self._params),
+            self._valid_vars(out_vars),
+            self._create_scope_vec(
+                program_id=self.program_id, use_scope_cache=True
+            ),
+            self._cuda_graph_vec,
+            *attrs,
+        )
+        return out_vars
 
     @cached_property
     def origin_runable_program(self):
@@ -666,7 +685,7 @@ class PartialProgramLayer:
             )
         return attrs
 
-    def _prepare(self, inputs):
+    def _prepare_inputs(self, inputs):
         """
         Prepare inputs, outputs, attrs.
         """
@@ -690,7 +709,9 @@ class PartialProgramLayer:
             else:
                 continue
             input_vars.append(var)
+        return input_vars
 
+    def _prepare_outputs(self):
         # mapping from name(string) -> Tensor
         out_tensor_map = {}
 
@@ -718,7 +739,7 @@ class PartialProgramLayer:
 
         # Create Tensor to receive output data.
         out_vars = list(map(create_out, self._outputs.var_ids))
-        return input_vars, out_vars
+        return out_vars
 
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
         inner_scope = self._get_scope(
