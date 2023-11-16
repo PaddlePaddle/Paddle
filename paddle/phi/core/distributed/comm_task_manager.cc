@@ -136,7 +136,7 @@ void CommTaskManager::CommTaskLoop() {
       // case 1: all group is empty, has no task
       // report error immediately
       if (group_last_comm_task_.empty()) {
-        LOG(ERROR) << "Find no task started in all group";
+        LOG(WARNING) << "Find no task started in all group";
       } else {
         // case 2: all group is not empty, but all last task is completed
         // case 3: all group is not empty, some group task started but not
@@ -229,7 +229,7 @@ void CommTaskManager::CommTaskClearLoop() {
       auto task = *iter;
       VLOG(3) << "start clear task: " << task->GetTraceMsg();
       future = std::async(std::launch::async, [&]() { task->ClearRecord(); });
-      if (future.wait_for(std::chrono::seconds(1)) ==
+      if (future.wait_for(std::chrono::seconds(30)) ==
           std::future_status::timeout) {
         VLOG(0) << "clear task timeout, detail: " << task->GetTraceMsg();
         break;
