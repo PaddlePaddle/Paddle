@@ -67,7 +67,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     },
                     outputs=["output_data"],
                 )
-                program_config.input_type = program_config.inputs[
+                program_config._input_type = program_config.inputs[
                     'input_data'
                 ].dtype
                 yield program_config
@@ -114,9 +114,9 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             if not dynamic_shape:
                 if self.dims == 1 or self.dims == 0:
                     return 0, 3
-            if program_config.input_type in ['int8', 'uint8']:
+            if program_config._input_type in ['int8', 'uint8']:
                 return 0, 3
-            elif program_config.input_type == 'bool':
+            elif program_config._input_type == 'bool':
                 if trt_version <= 8600 and self.dims == 0:
                     return 0, 3
                 elif trt_version <= 8400:
@@ -133,12 +133,10 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
@@ -146,12 +144,10 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
