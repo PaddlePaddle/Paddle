@@ -80,8 +80,8 @@ void BindIfOp(py::module *m) {
     ApiBuilder::Instance().GetBuilder()->Build<YieldOp>(input_values);
   });
   py::class_<PyIfOp> if_op(*m, "IfOp", R"DOC(
-    The PyIfOp is a encapsulation of IfOp. Compared with ifOp, it provides an additional "update_output" interface。
-    The "update_output" interface will construct a new IfOp operation to replace its underlying IfOp. In the process, the original
+    The PyIfOp is a encapsulation of IfOp. Compared with ifOp, it provides an additional 'update_output' interface.
+    The 'update_output' interface will construct a new IfOp operation to replace its underlying IfOp. In the process, the original
     IfOp will be destroyed. In order to avoid the risk of memory used in python side, We encapsulate PyIfOp to python api.
   )DOC");
   if_op.def("true_block", &PyIfOp::true_block, return_value_policy::reference)
