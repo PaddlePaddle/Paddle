@@ -136,7 +136,7 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
 // Call destructors for Region , OpResults, Operation, and OpOperands in
 // sequence, and finally free memory.
 void Operation::Destroy() {
-  VLOG(10) << "Destroy Operation [" << name() << "] ...";
+  VLOG(8) << "Destroy Operation [" << name() << "] ...";
   // 1. Deconstruct Regions.
   if (num_regions_ > 0) {
     for (size_t idx = 0; idx < num_regions_; idx++) {
@@ -182,8 +182,8 @@ void Operation::Destroy() {
           : sizeof(detail::OpInlineResultImpl) * num_results_;
   void *aligned_ptr = reinterpret_cast<char *>(this) - result_mem_size;
 
-  VLOG(6) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
-          << ", size = " << result_mem_size << "} done.";
+  VLOG(10) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
+           << ", size = " << result_mem_size << "} done.";
   aligned_free(aligned_ptr);
 }
 

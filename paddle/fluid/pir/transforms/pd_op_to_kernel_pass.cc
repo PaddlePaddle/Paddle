@@ -70,15 +70,22 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     ArrayLengthOp::name(),
     "cinn_runtime.jit_kernel",
 };
+
+// Non universal logic, operators that require special handling
 const std::unordered_set<std::string> SpecialLowerOps = {
     pir::CombineOp::name(),
     pir::SliceOp::name(),
     pir::SplitOp::name(),
     pir::YieldOp::name(),
+    pir::CreateStackOp::name(),
+    pir::PushBackOp::name(),
+    pir::PopBackOp::name(),
     IfOp::name(),
     WhileOp::name(),
     "cinn_runtime.jit_kernel"};
 
+// When the currently selected version of Kernel can not be found in the
+// KernelFactory, it needs to be fallback to the CPU.
 static bool NeedFallBackCpu(const pir::Operation* op,
                             const std::string& kernel,
                             const phi::KernelKey& kernel_key) {
@@ -272,7 +279,8 @@ static const phi::DataType GetKernelTypeforVar(
 }
 
 template <class IrType>
-std::tuple<phi::Backend, phi::DataLayout> parse_kernel_info(pir::Type type) {
+static std::tuple<phi::Backend, phi::DataLayout> parse_kernel_info(
+    pir::Type type) {
   phi::Backend backend =
       paddle::experimental::ParseBackend(type.dyn_cast<IrType>().place());
   phi::DataLayout layout =
@@ -335,13 +343,13 @@ static pir::Type BuildOutputType(pir::Type type,
   }
 }
 
-pir::OpResult AddDtypeTransferOp(pir::Value in,
-                                 pir::Block* block,
-                                 const phi::KernelKey& kernel_key,
-                                 const phi::Place& origin_place,
-                                 const phi::Place& out_place,
-                                 const phi::DataType& src_dtype,
-                                 const phi::DataType& dst_dtype) {
+static pir::OpResult AddDtypeTransferOp(pir::Value in,
+                                        pir::Block* block,
+                                        const phi::KernelKey& kernel_key,
+                                        const phi::Place& origin_place,
+                                        const phi::Place& out_place,
+                                        const phi::DataType& src_dtype,
+                                        const phi::DataType& dst_dtype) {
   pir::IrContext* ctx = pir::IrContext::Instance();
 
   pir::OpInfo kernel_op_info = ctx->GetRegisteredOpInfo(PhiKernelOp::name());
@@ -550,7 +558,7 @@ static phi::Backend GetKernelBackendByYaml(
   return kernel_backend;
 }
 
-phi::KernelKey GetKernelKey(
+static phi::KernelKey GetKernelKey(
     pir::Operation* op,
     const phi::Place& place,
     const std::string& kernel_fn_str,
@@ -604,22 +612,22 @@ phi::KernelKey GetKernelKey(
     // only suppurt non vector input for now
     int tensor_input_number =
         static_cast<int>(op_info_parser->InputTensorNumber());
-    VLOG(8) << "Begin to infer kernel key from op_info_parser(defined by yaml "
+    VLOG(6) << "Begin to infer kernel key from op_info_parser(defined by yaml "
                "info)";
     // get datatype info
     kernel_dtype = GetKernelDtypeByYaml(op, map_value_pair, op_info_parser);
-    VLOG(8) << "Infer kernel data_type: [" << kernel_dtype
+    VLOG(6) << "Infer kernel data_type: [" << kernel_dtype
             << "] from yaml info";
     kernel_backend =
         GetKernelBackendByYaml(op, map_value_pair, op_info_parser, place);
-    VLOG(8) << "Infer kernel backend: [" << kernel_backend
+    VLOG(6) << "Infer kernel backend: [" << kernel_backend
             << "] from yaml info";
     // parse all the input tensor
     if (tensor_input_number == 0 || op->isa<Full_Op>()) {
       // all the information have to get from attribute and context
       if (kernel_backend == phi::Backend::UNDEFINED) {
         kernel_backend = paddle::experimental::ParseBackend(place);
-        VLOG(8) << "Infer kernel backend: [" << kernel_backend
+        VLOG(6) << "Infer kernel backend: [" << kernel_backend
                 << "] when tensor_input_number == 0  or is Full_Op";
       }
     }
@@ -773,7 +781,7 @@ phi::KernelKey GetKernelKey(
   return res;
 }
 
-void HandleForIfOp(
+static void HandleForIfOp(
     const phi::Place& place,
     pir::Operation* op_item,
     pir::Block* block,
@@ -845,7 +853,7 @@ void HandleForIfOp(
   }
 }
 
-void HandleForWhileOp(
+static void HandleForWhileOp(
     const phi::Place& place,
     pir::Operation* op_item,
     pir::Block* block,
@@ -897,165 +905,10 @@ void HandleForWhileOp(
   }
 }
 
-pir::Value GetNewInput(
-    const pir::Value cur_in,
-    const std::unordered_map<pir::Value, pir::Value>& map_value_pair,
-    const int index,
-    const std::string& op_name) {
-  PADDLE_ENFORCE_EQ(
-      map_value_pair.count(cur_in),
-      true,
-      phi::errors::PreconditionNotMet(
-          "[%d]'s input of [%s] op MUST be in map pair", index, op_name));
-  auto new_in = map_value_pair.at(cur_in);
-  return new_in;
-}
-
-void HandleForSpecialOp(
-    const phi::Place& place,
-    pir::Operation* op_item,
-    pir::Block* block,
-    pir::IrContext* ctx,
-    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
-    std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
-  if (op_item->isa<IfOp>()) {
-    HandleForIfOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
-    return;
-  }
-
-  if (op_item->isa<WhileOp>()) {
-    HandleForWhileOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
-    return;
-  }
-  std::vector<pir::Value> vec_inputs;
-  std::vector<pir::Type> op_output_types;
-  if (op_item->isa<::pir::CombineOp>()) {
-    // Copy op inputs
-    std::vector<pir::Type> vec_inner_types;
-    if (op_item->num_operands() > 0) {
-      for (size_t i = 0; i < op_item->num_operands(); ++i) {
-        auto cur_in = op_item->operand_source(i);
-        if (!cur_in) {
-          vec_inputs.emplace_back();
-          continue;
-        }
-        auto new_in = GetNewInput(
-            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
-        vec_inputs.push_back(new_in);
-        vec_inner_types.push_back(new_in.type());
-      }
-    }
-    // Copy op output type
-
-    pir::Type t1 = pir::VectorType::get(ctx, vec_inner_types);
-    op_output_types.push_back(t1);
-  }
-
-  if (op_item->isa<::pir::SliceOp>()) {
-    if (op_item->num_operands() > 0) {
-      for (size_t i = 0; i < op_item->num_operands(); ++i) {
-        auto cur_in = op_item->operand_source(i);
-        if (!cur_in) {
-          vec_inputs.emplace_back();
-          continue;
-        }
-        auto new_in = GetNewInput(
-            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
-        vec_inputs.push_back(new_in);
-
-        if (new_in.type().isa<pir::VectorType>()) {
-          auto vec_types = new_in.type().dyn_cast<pir::VectorType>().data();
-          auto index = op_item->attribute("index")
-                           .dyn_cast<pir::Int32Attribute>()
-                           .data();
-          op_output_types.push_back(vec_types[index]);
-        } else {
-          PADDLE_THROW(
-              phi::errors::Unimplemented("only support vector type for now"));
-        }
-      }
-    }
-  }
-
-  if (op_item->isa<::pir::SplitOp>()) {
-    if (op_item->num_operands() > 0) {
-      for (size_t i = 0; i < op_item->num_operands(); ++i) {
-        auto cur_in = op_item->operand_source(i);
-        if (!cur_in) {
-          vec_inputs.emplace_back();
-          continue;
-        }
-        auto new_in = GetNewInput(
-            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
-        vec_inputs.push_back(new_in);
-
-        if (new_in.type().isa<pir::VectorType>()) {
-          auto vec_types = new_in.type().dyn_cast<pir::VectorType>().data();
-          for (uint64_t idx = 0; idx < vec_types.size(); idx++) {
-            op_output_types.push_back(vec_types[idx]);
-          }
-        } else {
-          PADDLE_THROW(
-              phi::errors::Unimplemented("only support vector type for now"));
-        }
-      }
-    }
-  }
-
-  if (op_item->isa<::pir::YieldOp>()) {
-    if (op_item->num_operands() > 0) {
-      for (size_t i = 0; i < op_item->num_operands(); ++i) {
-        auto cur_in = op_item->operand_source(i);
-        if (!cur_in) {
-          vec_inputs.emplace_back();
-          continue;
-        }
-        auto new_in = GetNewInput(
-            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
-        vec_inputs.push_back(new_in);
-      }
-    }
-  }
-
-  if (op_item->name() == "cinn_runtime.jit_kernel") {
-    if (op_item->num_operands() > 0) {
-      for (size_t i = 0; i < op_item->num_operands(); ++i) {
-        auto cur_in = op_item->operand_source(i);
-        if (!cur_in) {
-          vec_inputs.emplace_back();
-          continue;
-        }
-        auto new_in = GetNewInput(
-            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
-        vec_inputs.push_back(new_in);
-      }
-    }
-
-    for (size_t i = 0; i < op_item->num_results(); ++i) {
-      op_output_types.push_back(AllocatedDenseTensorType::get(
-          ctx, place, op_item->result(i).type().dyn_cast<DenseTensorType>()));
-    }
-  }
-
-  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
-  // Generate new op
-  pir::Operation* op = pir::Operation::Create(
-      vec_inputs, op_item->attributes(), op_output_types, op_info);
-  block->push_back(op);
-  (*map_op_pair)[op_item] = op;
-  // only deal with single output
-  if (op_item->num_results() > 0) {
-    for (size_t i = 0; i < op_item->num_results(); ++i) {
-      (*map_value_pair)[op_item->result(i)] = op->result(i);
-    }
-  }
-  VLOG(6) << "Deep copy a new builtin op: " << op_item->name();
-}
-
-std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
-                                    const std::string& kernel_fn_str,
-                                    const phi::KernelKey& kernel_key,
-                                    pir::IrContext* ctx) {
+static std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
+                                           const std::string& kernel_fn_str,
+                                           const phi::KernelKey& kernel_key,
+                                           pir::IrContext* ctx) {
   if (op_item->num_results() == 0) {
     return {};
   }
@@ -1133,7 +986,7 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
   return op_output_types;
 }
 
-std::vector<pir::Value> BuildInputs(
+static std::vector<pir::Value> BuildInputs(
     pir::Operation* op_item,
     const std::string& kernel_fn_str,
     const phi::KernelKey& kernel_key,
@@ -1194,12 +1047,20 @@ std::vector<pir::Value> BuildInputs(
         auto args_def = kernel.args_def();
         auto input_defs = args_def.input_defs();
 
-        auto dst_backend =
-            DeriveBackend(op_item->name(),
-                          place,
-                          op_info_parser,
-                          kernel.InputAt(tensor_param_index).backend,
-                          i);
+        phi::Backend dst_backend = phi::Backend::UNDEFINED;
+        if (kernel.GetKernelRegisteredType() ==
+            phi::KernelRegisteredType::FUNCTION) {
+          dst_backend =
+              DeriveBackend(op_item->name(),
+                            place,
+                            op_info_parser,
+                            kernel.InputAt(tensor_param_index).backend,
+                            i);
+        } else {
+          dst_backend = DeriveBackend(
+              op_item->name(), place, op_info_parser, kernel_key.backend(), i);
+        }
+
         VLOG(6) << "Infer kernel backend from input " << i << " of op "
                 << op_item->name();
 
@@ -1423,7 +1284,7 @@ std::vector<pir::Value> BuildInputs(
   return vec_inputs;
 }
 
-void AddShadowFeedOpForDataOrFeed(
+static void AddShadowFeedOpForDataOrFeed(
     const phi::Place& place,
     pir::Operation* op_item,
     pir::Operation* kernel_op,
@@ -1473,7 +1334,8 @@ void AddShadowFeedOpForDataOrFeed(
   }
 }
 
-std::unique_ptr<OpYamlInfoParser> GetOpYamlInfoParser(pir::Operation* op) {
+static std::unique_ptr<OpYamlInfoParser> GetOpYamlInfoParser(
+    pir::Operation* op) {
   OpYamlInfoInterface op_info_interface = op->dyn_cast<OpYamlInfoInterface>();
 
   std::unique_ptr<OpYamlInfoParser> op_info_parser(nullptr);
@@ -1485,8 +1347,8 @@ std::unique_ptr<OpYamlInfoParser> GetOpYamlInfoParser(pir::Operation* op) {
   return op_info_parser;
 }
 
-std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
-                          pir::Operation* op_item) {
+static std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
+                                 pir::Operation* op_item) {
   std::string kernel_fn_str;
   if (op_info_parser != nullptr) {
     kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func;
@@ -1500,7 +1362,7 @@ std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
   return kernel_fn_str;
 }
 
-pir::Operation* BuildKernelOp(
+static pir::Operation* BuildKernelOp(
     const std::string& kernel_fn_str,
     const phi::KernelKey& kernel_key,
     const std::vector<pir::Value>& vec_inputs,
@@ -1551,6 +1413,203 @@ pir::Operation* BuildKernelOp(
   return op;
 }
 
+static pir::Value GetNewInput(
+    const pir::Value cur_in,
+    const std::unordered_map<pir::Value, pir::Value>& map_value_pair,
+    const int index,
+    const std::string& op_name) {
+  PADDLE_ENFORCE_EQ(
+      map_value_pair.count(cur_in),
+      true,
+      phi::errors::PreconditionNotMet(
+          "[%d]'s input of [%s] op MUST be in map pair", index, op_name));
+  auto new_in = map_value_pair.at(cur_in);
+  return new_in;
+}
+
+static void HandleForSpecialOp(
+    const phi::Place& place,
+    pir::Operation* op_item,
+    pir::Block* block,
+    pir::IrContext* ctx,
+    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
+    std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
+  if (op_item->isa<IfOp>()) {
+    HandleForIfOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
+    return;
+  }
+
+  if (op_item->isa<WhileOp>()) {
+    HandleForWhileOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
+    return;
+  }
+
+  std::vector<pir::Value> vec_inputs;
+  std::vector<pir::Type> op_output_types;
+
+  if (op_item->isa<::pir::CombineOp>()) {
+    // Copy op inputs
+    std::vector<pir::Type> vec_inner_types;
+    if (op_item->num_operands() > 0) {
+      for (size_t i = 0; i < op_item->num_operands(); ++i) {
+        auto cur_in = op_item->operand_source(i);
+        if (!cur_in) {
+          vec_inputs.emplace_back();
+          continue;
+        }
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        vec_inputs.push_back(new_in);
+        vec_inner_types.push_back(new_in.type());
+      }
+    }
+    // Copy op output type
+
+    pir::Type t1 = pir::VectorType::get(ctx, vec_inner_types);
+    op_output_types.push_back(t1);
+  }
+
+  if (op_item->isa<::pir::SliceOp>()) {
+    if (op_item->num_operands() > 0) {
+      for (size_t i = 0; i < op_item->num_operands(); ++i) {
+        auto cur_in = op_item->operand_source(i);
+        if (!cur_in) {
+          vec_inputs.emplace_back();
+          continue;
+        }
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        vec_inputs.push_back(new_in);
+
+        if (new_in.type().isa<pir::VectorType>()) {
+          auto vec_types = new_in.type().dyn_cast<pir::VectorType>().data();
+          auto index = op_item->attribute("index")
+                           .dyn_cast<pir::Int32Attribute>()
+                           .data();
+          op_output_types.push_back(vec_types[index]);
+        } else {
+          PADDLE_THROW(
+              phi::errors::Unimplemented("only support vector type for now"));
+        }
+      }
+    }
+  }
+
+  if (op_item->isa<::pir::SplitOp>()) {
+    if (op_item->num_operands() > 0) {
+      for (size_t i = 0; i < op_item->num_operands(); ++i) {
+        auto cur_in = op_item->operand_source(i);
+        if (!cur_in) {
+          vec_inputs.emplace_back();
+          continue;
+        }
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        vec_inputs.push_back(new_in);
+
+        if (new_in.type().isa<pir::VectorType>()) {
+          auto vec_types = new_in.type().dyn_cast<pir::VectorType>().data();
+          for (uint64_t idx = 0; idx < vec_types.size(); idx++) {
+            op_output_types.push_back(vec_types[idx]);
+          }
+        } else {
+          PADDLE_THROW(
+              phi::errors::Unimplemented("only support vector type for now"));
+        }
+      }
+    }
+  }
+
+  if (op_item->isa<::pir::YieldOp>()) {
+    if (op_item->num_operands() > 0) {
+      for (size_t i = 0; i < op_item->num_operands(); ++i) {
+        auto cur_in = op_item->operand_source(i);
+        if (!cur_in) {
+          vec_inputs.emplace_back();
+          continue;
+        }
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        vec_inputs.push_back(new_in);
+      }
+    }
+  }
+
+  if (op_item->isa<::pir::CreateStackOp>() ||
+      op_item->isa<::pir::PushBackOp>()) {
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      if (!cur_in) {
+        vec_inputs.emplace_back();
+        continue;
+      }
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      vec_inputs.push_back(new_in);
+    }
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      op_output_types.push_back(op_item->result(i).type());
+    }
+  }
+
+  if (op_item->isa<::pir::PopBackOp>()) {
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      vec_inputs.push_back(new_in);
+    }
+
+    auto pop_back_op = op_item->dyn_cast<::pir::PopBackOp>();
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      auto cur_inlet_element = pop_back_op.inlet_element(i);
+      PADDLE_ENFORCE_EQ(map_value_pair->count(cur_inlet_element),
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "[%d]'s output of [%s] op MUST be in map pair",
+                            i,
+                            op_item->name()));
+      auto new_inlet_element = map_value_pair->at(cur_inlet_element);
+
+      op_output_types.push_back(new_inlet_element.type());
+    }
+  }
+
+  if (op_item->name() == "cinn_runtime.jit_kernel") {
+    if (op_item->num_operands() > 0) {
+      for (size_t i = 0; i < op_item->num_operands(); ++i) {
+        auto cur_in = op_item->operand_source(i);
+        if (!cur_in) {
+          vec_inputs.emplace_back();
+          continue;
+        }
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        vec_inputs.push_back(new_in);
+      }
+    }
+
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      op_output_types.push_back(AllocatedDenseTensorType::get(
+          ctx, place, op_item->result(i).type().dyn_cast<DenseTensorType>()));
+    }
+  }
+
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
+  // Generate new op
+  pir::Operation* op = pir::Operation::Create(
+      vec_inputs, op_item->attributes(), op_output_types, op_info);
+  block->push_back(op);
+  (*map_op_pair)[op_item] = op;
+  // only deal with single output
+  if (op_item->num_results() > 0) {
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      (*map_value_pair)[op_item->result(i)] = op->result(i);
+    }
+  }
+  VLOG(6) << "Deep copy a new builtin op: " << op_item->name();
+}
+
 void ProcessBlock(
     const phi::Place& place,
     pir::Block* block,
@@ -1561,7 +1620,7 @@ void ProcessBlock(
   auto inputs_by_data_op = GetInputsByDataOp(block);
 
   for (auto op_item : *block) {
-    VLOG(6) << "op name " << op_item->name();
+    VLOG(6) << "Begin lower op: " << op_item->name() << " to Kernel dialct.";
     if ((op_item->isa<FeedOp>()) &&
         inputs_by_data_op.count(op_item->attributes()
                                     .at("name")
@@ -1581,10 +1640,12 @@ void ProcessBlock(
     }
 
     auto op_info_parser = GetOpYamlInfoParser(op_item);
+    VLOG(6) << "GetOpYamlInfor: " << op_info_parser.get();
     auto kernel_name = GetKernelName(op_info_parser.get(), op_item);
+    VLOG(6) << "GetKernelName: " << kernel_name;
     auto kernel_key = GetKernelKey(
         op_item, place, kernel_name, *map_value_pair, op_info_parser.get());
-    VLOG(6) << "kernel type " << kernel_key;
+    VLOG(6) << "GetKernelKey " << kernel_key;
 
     // build output type
     auto op_output_types = BuildOutputs(op_item, kernel_name, kernel_key, ctx);

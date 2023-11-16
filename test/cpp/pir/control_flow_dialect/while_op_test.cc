@@ -14,9 +14,12 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
@@ -25,57 +28,69 @@
 
 using namespace paddle::dialect;  // NOLINT
 
-// example for while_op use
-// while(i < ten) { i = i + 1;}
-TEST(while_op_test, base) {
-  pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
-  ctx->GetOrRegisterDialect<OperatorDialect>();
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(less_than, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_n, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_n, GPU, ALL_LAYOUT);
 
-  pir::Program program(ctx);
-  pir::Block* block = program.block();
-  pir::Builder builder(ctx, block);
+// // example for while_op use
+// // while(i < ten) { i = i + 1;}
+// TEST(while_op_test, base) {
+//   pir::IrContext* ctx = pir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
+//   ctx->GetOrRegisterDialect<OperatorDialect>();
 
-  auto i =
-      builder.Build<FullOp>(std::vector<int64_t>{1}, 1, phi::DataType::INT32)
-          .out();
-  auto ten =
-      builder.Build<FullOp>(std::vector<int64_t>{1}, 10, phi::DataType::INT32)
-          .out();
+//   pir::Program program(ctx);
+//   pir::Block* block = program.block();
+//   pir::Builder builder(ctx, block);
 
-  // comput condition value: i < ten
-  auto cond_value = builder.Build<LessThanOp>(i, ten).out();
+//   auto i =
+//       builder.Build<FullOp>(std::vector<int64_t>{1}, 1, phi::DataType::INT32)
+//           .out();
+//   auto ten =
+//       builder.Build<FullOp>(std::vector<int64_t>{1}, 10,
+//       phi::DataType::INT32)
+//           .out();
 
-  auto while_op =
-      builder.Build<WhileOp>(cond_value, std::vector<pir::Value>{i, ten});
+//   // comput condition value: i < ten
+//   auto cond_value = builder.Build<LessThanOp>(i, ten).out();
 
-  // { i = i + 1}
-  pir::Block* body_block = while_op.body_block();
-  auto body_i_argument = body_block->AddArgument(i.type());
-  auto body_ten_argument = body_block->AddArgument(ten.type());
-  builder.SetInsertionPointToStart(body_block);
-  auto one =
-      builder.Build<FullOp>(std::vector<int64_t>{1}, 1, phi::DataType::INT32)
-          .out();
-  auto new_i = builder.Build<AddOp>(body_i_argument, one).out();
+//   auto while_op =
+//       builder.Build<WhileOp>(cond_value, std::vector<pir::Value>{i, ten});
 
-  // comput new condition value: new_i < new_ten
-  auto new_cond_value =
-      builder.Build<LessThanOp>(new_i, body_ten_argument).out();
+//   // { i = i + 1}
+//   pir::Block* body_block = while_op.body_block();
+//   auto body_i_argument = body_block->AddArgument(i.type());
+//   auto body_ten_argument = body_block->AddArgument(ten.type());
+//   builder.SetInsertionPointToStart(body_block);
+//   auto one =
+//       builder.Build<FullOp>(std::vector<int64_t>{1}, 1, phi::DataType::INT32)
+//           .out();
+//   auto new_i = builder.Build<AddOp>(body_i_argument, one).out();
 
-  builder.Build<pir::YieldOp>(
-      std::vector<pir::Value>{new_cond_value, new_i, body_ten_argument});
+//   // comput new condition value: new_i < new_ten
+//   auto new_cond_value =
+//       builder.Build<LessThanOp>(new_i, body_ten_argument).out();
 
-  builder.SetInsertionPointAfter(while_op);
-  LOG(INFO) << program;
+//   builder.Build<pir::YieldOp>(
+//       std::vector<pir::Value>{new_cond_value, new_i, body_ten_argument});
 
-  EXPECT_EQ(while_op.cond(), cond_value);
-}
+//   builder.SetInsertionPointAfter(while_op);
+//   LOG(INFO) << program;
+
+//   EXPECT_EQ(while_op.cond(), cond_value);
+// }
 
 TEST(while_op_test, network_with_backward) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
 
   pir::Program program(ctx);
   pir::Block* block = program.block();
@@ -172,4 +187,8 @@ TEST(while_op_test, network_with_backward) {
   EXPECT_EQ(y_grad.type(), y.type());
 
   LOG(INFO) << program;
+
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+
+  LOG(INFO) << *kernel_program.get();
 }

@@ -42,7 +42,7 @@ class ConstructInterfacesOrTraits {
   static void PlacementConstrctInterface(
       InterfaceValue *&p_interface) {  // NOLINT
     p_interface->swap(InterfaceValue::get<ConcreteT, T>());
-    VLOG(6) << "New a interface: id[" << p_interface->type_id() << "].";
+    VLOG(8) << "New a interface: id[" << p_interface->type_id() << "].";
     ++p_interface;
   }
 
@@ -50,7 +50,7 @@ class ConstructInterfacesOrTraits {
   template <typename T>
   static void PlacementConstrctTrait(pir::TypeId *&p_trait) {  // NOLINT
     *p_trait = TypeId::get<T>();
-    VLOG(6) << "New a trait: id[" << *p_trait << "].";
+    VLOG(8) << "New a trait: id[" << *p_trait << "].";
     ++p_trait;
   }
 };

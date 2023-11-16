@@ -29,12 +29,12 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
   // (1) Malloc memory for interfaces, traits, opinfo_impl.
   size_t interfaces_num = interface_map.size();
   size_t traits_num = trait_set.size();
-  VLOG(6) << "Create OpInfoImpl with: " << interfaces_num << " interfaces, "
+  VLOG(8) << "Create OpInfoImpl with: " << interfaces_num << " interfaces, "
           << traits_num << " traits, " << attributes_num << " attributes.";
   size_t base_size = sizeof(InterfaceValue) * interfaces_num +
                      sizeof(TypeId) * traits_num + sizeof(OpInfoImpl);
   char *base_ptr = static_cast<char *>(::operator new(base_size));
-  VLOG(6) << "Malloc " << base_size << " Bytes at "
+  VLOG(8) << "Malloc " << base_size << " Bytes at "
           << static_cast<void *>(base_ptr);
   if (interfaces_num > 0) {
     std::sort(interface_map.begin(), interface_map.end());
@@ -51,7 +51,7 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
     base_ptr += traits_num * sizeof(TypeId);
   }
   // Construct OpInfoImpl.
-  VLOG(6) << "Construct OpInfoImpl at " << reinterpret_cast<void *>(base_ptr)
+  VLOG(8) << "Construct OpInfoImpl at " << reinterpret_cast<void *>(base_ptr)
           << " ......";
   OpInfo op_info = OpInfo(new (base_ptr) OpInfoImpl(dialect,
                                                     op_id,

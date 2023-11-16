@@ -56,7 +56,7 @@ class IrContextImpl {
 
   void RegisterAbstractType(pir::TypeId type_id, AbstractType *abstract_type) {
     std::lock_guard<pir::SpinLock> guard(registed_abstract_types_lock_);
-    VLOG(6) << "Register an abstract_type of: [TypeId_hash="
+    VLOG(8) << "Register an abstract_type of: [TypeId_hash="
             << std::hash<pir::TypeId>()(type_id)
             << ", AbstractType_ptr=" << abstract_type << "].";
     registed_abstract_types_.emplace(type_id, abstract_type);
@@ -66,7 +66,7 @@ class IrContextImpl {
     std::lock_guard<pir::SpinLock> guard(registed_abstract_types_lock_);
     auto iter = registed_abstract_types_.find(type_id);
     if (iter != registed_abstract_types_.end()) {
-      VLOG(6) << "Found a cached abstract_type of: [TypeId_hash="
+      VLOG(8) << "Found a cached abstract_type of: [TypeId_hash="
               << std::hash<pir::TypeId>()(type_id)
               << ", AbstractType_ptr=" << iter->second << "].";
       return iter->second;
@@ -79,7 +79,7 @@ class IrContextImpl {
   void RegisterAbstractAttribute(pir::TypeId type_id,
                                  AbstractAttribute *abstract_attribute) {
     std::lock_guard<pir::SpinLock> guard(registed_abstract_attributes_lock_);
-    VLOG(6) << "Register an abstract_attribute of: [TypeId_hash="
+    VLOG(8) << "Register an abstract_attribute of: [TypeId_hash="
             << std::hash<pir::TypeId>()(type_id)
             << ", AbstractAttribute_ptr=" << abstract_attribute << "].";
     registed_abstract_attributes_.emplace(type_id, abstract_attribute);
@@ -89,7 +89,7 @@ class IrContextImpl {
     std::lock_guard<pir::SpinLock> guard(registed_abstract_attributes_lock_);
     auto iter = registed_abstract_attributes_.find(type_id);
     if (iter != registed_abstract_attributes_.end()) {
-      VLOG(4) << "Found a cached abstract_attribute of: [TypeId_hash="
+      VLOG(8) << "Found a cached abstract_attribute of: [TypeId_hash="
               << std::hash<pir::TypeId>()(type_id)
               << ", AbstractAttribute_ptr=" << iter->second << "].";
       return iter->second;
@@ -105,7 +105,7 @@ class IrContextImpl {
 
   void RegisterOpInfo(const std::string &name, OpInfo info) {
     std::lock_guard<pir::SpinLock> guard(registed_op_infos_lock_);
-    VLOG(6) << "Register an operation of: [Name=" << name
+    VLOG(8) << "Register an operation of: [Name=" << name
             << ", OpInfo ptr=" << info << "].";
     registed_op_infos_.emplace(name, info);
   }
@@ -125,7 +125,7 @@ class IrContextImpl {
 
   void RegisterDialect(std::string name, Dialect *dialect) {
     std::lock_guard<pir::SpinLock> guard(registed_dialect_lock_);
-    VLOG(6) << "Register a dialect of: [name=" << name
+    VLOG(8) << "Register a dialect of: [name=" << name
             << ", dialect_ptr=" << dialect << "].";
     registed_dialect_.emplace(name, dialect);
   }
@@ -138,7 +138,7 @@ class IrContextImpl {
     std::lock_guard<pir::SpinLock> guard(registed_dialect_lock_);
     auto iter = registed_dialect_.find(name);
     if (iter != registed_dialect_.end()) {
-      VLOG(6) << "Found a cached dialect of: [name=" << name
+      VLOG(8) << "Found a cached dialect of: [name=" << name
               << ", dialect_ptr=" << iter->second << "].";
       return iter->second;
     }
@@ -247,10 +247,10 @@ AbstractAttribute *IrContext::GetRegisteredAbstractAttribute(TypeId id) {
 
 Dialect *IrContext::GetOrRegisterDialect(
     const std::string &dialect_name, std::function<Dialect *()> constructor) {
-  VLOG(4) << "Try to get or register a Dialect of: [name=" << dialect_name
+  VLOG(8) << "Try to get or register a Dialect of: [name=" << dialect_name
           << "].";
   if (!impl().IsDialectRegistered(dialect_name)) {
-    VLOG(4) << "Create and register a new Dialect of: [name=" << dialect_name
+    VLOG(8) << "Create and register a new Dialect of: [name=" << dialect_name
             << "].";
     impl().RegisterDialect(dialect_name, constructor());
   }
