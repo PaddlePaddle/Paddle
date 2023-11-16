@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.distributed.auto_parallel.placement_type import to_placements
 
 
 class SemiAutoParallelTestBase:
@@ -95,13 +96,17 @@ class SemiAutoParallelTestBase:
             input_np = np.random.random(size=shape).astype(self._dtype)
             input = paddle.to_tensor(input_np)
             input.stop_gradient = False
+            # retain dist_attr here.
             input_dist_attr = dist.DistAttr(
                 mesh=self._mesh, sharding_specs=spec
             )
-            dist_input = dist.shard_tensor(input, dist_attr=input_dist_attr)
+            # for dygraph auto_parallel, get placements by using to_placements
+            placements = to_placements(input_dist_attr.dims_mapping, self._mesh)
+            dist_input = dist.shard_tensor(input, self._mesh, placements)
             dist_input.stop_gradient = False
             flat_inputs.append(input)
             flat_dist_inputs.append(dist_input)
+
         inputs, _ = self.unflatten(flat_inputs, inputs_structure)
         dist_inputs, _ = self.unflatten(flat_dist_inputs, inputs_structure)
 

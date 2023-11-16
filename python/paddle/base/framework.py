@@ -7449,10 +7449,13 @@ class EagerParamBase(core.eager.Tensor):
         param = cls(tensor.shape, tensor.dtype, **kwargs)
 
         # 2. transform data if needed
-        dist_attr = kwargs.get('dist_attr', None)
+        mesh = kwargs.get("process_mesh", None)
+        placements = kwargs.get("placements", None)
         src_tensor = tensor
-        if dist_attr is not None:
-            src_tensor = core.eager.Tensor(tensor, dist_attr=dist_attr)
+        if mesh is not None and placements is not None:
+            src_tensor = core.eager.Tensor(
+                tensor, process_mesh=mesh, placements=placements
+            )
 
         # 3. set param data
         param._set_impl(src_tensor)

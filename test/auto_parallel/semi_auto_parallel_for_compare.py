@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.distributed import Replicate, Shard
 
 
 class TestCompareApiForSemiAutoParallel:
@@ -40,15 +41,25 @@ class TestCompareApiForSemiAutoParallel:
         )
 
     def test_binary_body(
-        self, x_shape, y_shape, out_shape, x_specs, y_specs, binary_func
+        self,
+        x_shape,
+        y_shape,
+        out_shape,
+        x_placements,
+        y_placements,
+        binary_func,
     ):
         x = paddle.randn(x_shape, self._dtype)
         y = paddle.randn(y_shape, self._dtype)
         x.stop_gradient = False
         y.stop_gradient = False
 
-        x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=x_specs)
-        y_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=y_specs)
+        x_dist_attr = dist.DistAttr(
+            mesh=self._mesh, sharding_specs=x_placements
+        )
+        y_dist_attr = dist.DistAttr(
+            mesh=self._mesh, sharding_specs=y_placements
+        )
 
         dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
         dist_y = dist.shard_tensor(y, dist_attr=y_dist_attr)
@@ -70,8 +81,8 @@ class TestCompareApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None],
+            x_placements=[Shard(0)],
+            y_placements=[Replicate()],
             binary_func=paddle.equal,
         )
 
@@ -80,8 +91,8 @@ class TestCompareApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[2, 16, 32],
             out_shape=[2, 16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None, None],
+            x_placements=[Shard(0)],
+            y_placements=[Replicate()],
             binary_func=paddle.equal,
         )
 
@@ -92,8 +103,8 @@ class TestCompareApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, 'x'],
+            x_placements=[Shard(0)],
+            y_placements=[Shard(1)],
             binary_func=paddle.equal,
         )
 
@@ -102,8 +113,8 @@ class TestCompareApiForSemiAutoParallel:
             x_shape=[4, 16, 32],
             y_shape=[16, 32],
             out_shape=[4, 16, 32],
-            x_specs=['x', None, None],
-            y_specs=[None, None],
+            x_placements=[Shard(0)],
+            y_placements=[Replicate()],
             binary_func=paddle.equal,
         )
 
@@ -112,8 +123,8 @@ class TestCompareApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None],
+            x_placements=[Shard(0)],
+            y_placements=[Replicate()],
             binary_func=paddle.not_equal,
         )
 
@@ -122,8 +133,8 @@ class TestCompareApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[2, 16, 32],
             out_shape=[2, 16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None, None],
+            x_placements=[Shard(0)],
+            y_placements=[Replicate()],
             binary_func=paddle.not_equal,
         )
 
@@ -134,8 +145,8 @@ class TestCompareApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, 'x'],
+            x_placements=[Shard(0)],
+            y_placements=[Shard(1)],
             binary_func=paddle.not_equal,
         )
 
@@ -144,8 +155,8 @@ class TestCompareApiForSemiAutoParallel:
             x_shape=[4, 16, 32],
             y_shape=[16, 32],
             out_shape=[4, 16, 32],
-            x_specs=['x', None, None],
-            y_specs=[None, None],
+            x_placements=[Shard(0)],
+            y_placements=[Replicate()],
             binary_func=paddle.not_equal,
         )
 
