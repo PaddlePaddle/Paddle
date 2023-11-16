@@ -24,7 +24,7 @@ from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import _apply_pass, get_flags
-from paddle.base.unique_name import guard as UniqueNameGuard
+from paddle.base.unique_name import switch
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
@@ -227,52 +227,58 @@ class PartialProgramLayer:
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        with UniqueNameGuard(self._name_generator):
-            in_vars, in_var_names = self._prepare_inputs(inputs)
-            out_vars = self._prepare_outputs()
-            self._cast_fp16_if_pure_fp16(in_vars)
-            attrs = self._prepare_attributes()
-            attrs.extend(["x_names", in_var_names])
+        old_generator, old_para_name_checker = switch(self._name_generator)
 
-            self._sync_lr_value_with_scheduler()
+        in_vars, in_var_names = self._prepare_inputs(inputs)
+        out_vars = self._prepare_outputs()
+        self._cast_fp16_if_pure_fp16(in_vars)
+        attrs = self._prepare_attributes()
+        attrs.extend(["x_names", in_var_names])
 
-            _legacy_C_ops.run_program(
-                self._valid_vars(in_vars),
-                self._valid_vars(self._params),
-                self._valid_vars(out_vars),
-                self._create_scope_vec(
-                    program_id=self.program_id, use_scope_cache=True
-                ),
-                self._cuda_graph_vec,
-                *attrs
-            )
+        self._sync_lr_value_with_scheduler()
 
-            restored_nest_out = self._restore_out(out_vars)
-            return self._remove_no_value(restored_nest_out)
+        _legacy_C_ops.run_program(
+            self._valid_vars(in_vars),
+            self._valid_vars(self._params),
+            self._valid_vars(out_vars),
+            self._create_scope_vec(
+                program_id=self.program_id, use_scope_cache=True
+            ),
+            self._cuda_graph_vec,
+            *attrs
+        )
+
+        restored_nest_out = self._restore_out(out_vars)
+        restored_nest_out = self._remove_no_value(restored_nest_out)
+
+        switch(old_generator, old_para_name_checker)
+        return restored_nest_out
 
     def sot_call(self, inputs):
         """
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
-        with UniqueNameGuard(self._name_generator):
-            out_vars = self._prepare_outputs()
-            self._cast_fp16_if_pure_fp16(inputs)
-            attrs = self._prepare_attributes()
-            attrs.extend(["x_names", self._in_var_names])
-            self._sync_lr_value_with_scheduler()
+        old_generator, old_para_name_checker = switch(self._name_generator)
 
-            _legacy_C_ops.run_program(
-                self._valid_vars(inputs),
-                self._valid_vars(self._params),
-                self._valid_vars(out_vars),
-                self._create_scope_vec(
-                    program_id=self.program_id, use_scope_cache=True
-                ),
-                self._cuda_graph_vec,
-                *attrs
-            )
+        out_vars = self._prepare_outputs()
+        self._cast_fp16_if_pure_fp16(inputs)
+        attrs = self._prepare_attributes()
+        attrs.extend(["x_names", self._in_var_names])
+        self._sync_lr_value_with_scheduler()
 
-            return out_vars
+        _legacy_C_ops.run_program(
+            self._valid_vars(inputs),
+            self._valid_vars(self._params),
+            self._valid_vars(out_vars),
+            self._create_scope_vec(
+                program_id=self.program_id, use_scope_cache=True
+            ),
+            self._cuda_graph_vec,
+            *attrs
+        )
+
+        switch(old_generator, old_para_name_checker)
+        return out_vars
 
     def _sync_lr_value_with_scheduler(self):
         """Update lr_var value with calculated by lr_scheduler."""

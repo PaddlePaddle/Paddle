@@ -54,6 +54,18 @@ namespace pybind {
 
 namespace py = ::pybind11;
 
+template <typename T>
+static T PyObjectCast(PyObject* obj) {
+  try {
+    return py::cast<T>(py::handle(obj));
+  } catch (py::cast_error&) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Python object is not type of %s, the real type is %s",
+        typeid(T).name(),
+        obj->ob_type->tp_name));
+  }
+}
+
 int TensorDtype2NumpyDtype(phi::DataType dtype);
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
@@ -122,6 +134,8 @@ PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
 PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value);
 PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
+                     bool return_py_none_if_not_initialize = false);
+PyObject* ToPyObject(const std::vector<paddle::Tensor*>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
                      bool return_py_none_if_not_initialize = false);
@@ -373,6 +387,10 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj);
 std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
                                                       bool allow_none = false);
 paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj);
+
+PyObject* GetEmpytyTensorsWithVarDesc(PyObject* var_desc_list);
+
+PyObject* GetEmpytyTensorsWithOpResult(PyObject* op_result_list);
 
 // end of Slice related methods
 

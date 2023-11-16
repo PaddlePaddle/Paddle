@@ -526,18 +526,6 @@ static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
   }
 }
 
-template <typename T>
-static T PyObjectCast(PyObject *obj) {
-  try {
-    return py::cast<T>(py::handle(obj));
-  } catch (py::cast_error &) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Python object is not type of %s, the real type is %s",
-        typeid(T).name(),
-        obj->ob_type->tp_name));
-  }
-}
-
 using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
 
 static std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseList(
@@ -887,6 +875,8 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);
+  m.def("create_empty_tensors_with_var_descs", &GetEmpytyTensorsWithVarDesc);
+  m.def("create_empty_tensors_with_op_result", &GetEmpytyTensorsWithOpResult);
 
   m.def("clear_gradients",
         [](std::vector<std::shared_ptr<imperative::VarBase>> param_list,
