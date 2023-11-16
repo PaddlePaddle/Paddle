@@ -5845,7 +5845,7 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
         ``y`` should have the same shape as paddle.diagonal(x, offset, axis1, axis2).
 
     Args:
-        x (Tensor): `x`` is the original Tensor. Must be at least 2-dimensional.
+        x (Tensor): ``x`` is the original Tensor. Must be at least 2-dimensional.
         y (Tensor): ``y`` is the Tensor to embed into ``x``
         offset (int, optional): which diagonal to consider. Default: 0 (main diagonal).
         axis1 (int, optional): first axis with respect to which to take diagonal. Default: 0.
