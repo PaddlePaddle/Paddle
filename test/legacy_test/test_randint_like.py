@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 
@@ -37,6 +38,7 @@ class TestRandintLikeAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -50,10 +52,18 @@ class TestRandintLikeAPI(unittest.TestCase):
                 paddle.randint_like(x_bool, low=-10, high=10, dtype=dtype)
                 for dtype in self.dtype
             ]
-            outs1 = exe.run(feed={'x_bool': self.x_bool}, fetch_list=outlist1)
+            outs1 = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x_bool': self.x_bool},
+                fetch_list=[outlist1],
+            )
             for out, dtype in zip(outs1, self.dtype):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -10) & (out <= 10)).all(), True)
+
+    @test_with_pir_api
+    def test_static_api_with_int32(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             x_int32 = paddle.static.data(
                 name="x_int32", shape=[10, 12], dtype="int32"
@@ -64,7 +74,11 @@ class TestRandintLikeAPI(unittest.TestCase):
                 paddle.randint_like(x_int32, low=-5, high=10, dtype=dtype)
                 for dtype in self.dtype
             ]
-            outs2 = exe.run(feed={'x_int32': self.x_int32}, fetch_list=outlist2)
+            outs2 = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x_int32': self.x_int32},
+                fetch_list=[outlist2],
+            )
             for out2, dtype in zip(outs2, self.dtype):
                 self.assertTrue(out2.dtype, np.dtype(dtype))
                 self.assertTrue(((out2 >= -5) & (out2 <= 10)).all(), True)
