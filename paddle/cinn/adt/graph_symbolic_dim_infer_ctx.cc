@@ -294,12 +294,21 @@ void GenerateProductEqualConstraints(const ::pir::Value& lhs_tensor,
 }
 
 std::vector<::pir::shape::SymbolicDimOp> CreateSymbolicDimsFromValue(
-    const ::pir::Value& tensor, const ::pir::SymbolicDimMgr* symbolic_dim_mgr) {
+    const ::pir::Value& tensor,
+    const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis) {
+  CHECK_NOTNULL(shape_analysis.get());
   std::vector<::pir::shape::SymbolicDimOp> dims =
-      const_cast<::pir::SymbolicDimMgr*>(symbolic_dim_mgr)
-          ->CreateSymbolicDimsForRankedValue(tensor);
+      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(tensor);
   CHECK_EQ(dims.size(),
            hlir::framework::pir::CompatibleInfo::ValueShape(tensor).size());
+  return dims;
+}
+
+std::string ToTxtString(const ShapeDialectTensorDim& tensor_dim) {
+  std::string ret{};
+  ret += hlir::framework::pir::CompatibleInfo::ValueName(tensor_dim.tensor) +
+         "[" + std::to_string(tensor_dim.axis) + "]";
+  return ret;
 }
 
 void GenerateDimEqualConstraints(
@@ -317,6 +326,8 @@ void GenerateDimEqualConstraints(
                 ->IsSymbolicDimEqual(lhs_dim, rhs_dim)) {
           ShapeDialectTensorDim lhs_adt_dim{lhs_tensor, lhs_idx};
           ShapeDialectTensorDim rhs_adt_dim{rhs_tensor, rhs_idx};
+          VLOG(1) << "Dim Equal: " << ToTxtString(lhs_adt_dim)
+                  << " == " << ToTxtString(rhs_adt_dim);
           (*ret)->emplace_back(DimIdentity<tOut<ShapeDialectTensorDim>,
                                            tIn<ShapeDialectTensorDim>>{
               lhs_adt_dim, rhs_adt_dim});
@@ -330,12 +341,13 @@ void GenerateDimEqualConstraints(
 void BuildTensorShapeDialectConstraints(
     const ::pir::Value& lhs_tensor,
     const ::pir::Value& rhs_tensor,
+    const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis,
     const ::pir::SymbolicDimMgr* symbolic_dim_mgr,
     DimFunctions* ret) {
   std::vector<::pir::shape::SymbolicDimOp> lhs_dims =
-      CreateSymbolicDimsFromValue(lhs_tensor, symbolic_dim_mgr);
+      CreateSymbolicDimsFromValue(lhs_tensor, shape_analysis);
   std::vector<::pir::shape::SymbolicDimOp> rhs_dims =
-      CreateSymbolicDimsFromValue(lhs_tensor, symbolic_dim_mgr);
+      CreateSymbolicDimsFromValue(lhs_tensor, shape_analysis);
 
   GenerateDimEqualConstraints(
       lhs_dims, rhs_dims, lhs_tensor, rhs_tensor, symbolic_dim_mgr, ret);
@@ -343,18 +355,21 @@ void BuildTensorShapeDialectConstraints(
   if (const_cast<::pir::SymbolicDimMgr*>(symbolic_dim_mgr)
           ->IsSymbolicDimProductEqual(::pir::SymbolicDimProduct{lhs_dims},
                                       ::pir::SymbolicDimProduct{rhs_dims})) {
-    GenerateProductEqualConstraints(lhs_tensor, rhs_tensor, ret);
+    // ADT_TODO(Hongyu Jia)
+    // GenerateProductEqualConstraints(lhs_tensor, rhs_tensor, ret);
   }
 }
 
 DimFunctions BuildGraphShapeDialectConstraints(
     const cinn::hlir::framework::pir::Group* group,
+    const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis,
     const ::pir::SymbolicDimMgr* symbolic_dim_mgr) {
   DimFunctions ret{};
   for (const ::pir::Operation* op_node : group->ops) {
     VisitEachTensorPairOfOp(
         op_node, [&](const ::pir::Value& lhs, const ::pir::Value& rhs) {
-          BuildTensorShapeDialectConstraints(lhs, rhs, symbolic_dim_mgr, &ret);
+          BuildTensorShapeDialectConstraints(
+              lhs, rhs, shape_analysis, symbolic_dim_mgr, &ret);
         });
   }
   return ret;
@@ -404,11 +419,42 @@ void VisitEachTensor(const List<::pir::Value>& tensors, const DoEachT& DoEach) {
   }
 }
 
+::pir::shape::SymbolicDimOp GetSymbolicDimOp4TensorDim(
+    const ShapeDialectTensorDim& tensor_dim,
+    const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis) {
+  const auto& [tensor, axis] = tensor_dim;
+  const auto& symbolic_dim_ops =
+      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(tensor);
+  CHECK_LT(axis, symbolic_dim_ops.size());
+  return symbolic_dim_ops.at(axis);
+}
+
+SymbolicDim GetOrNewSymbolicDim(
+    const ShapeDialectTensorDim& target_tensor_dim,
+    const std::unordered_map<ShapeDialectTensorDim, SymbolicDim>&
+        tensor_dim2symbolic_Dim,
+    const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis) {
+  const auto& target_symbolic_dim_op =
+      GetSymbolicDimOp4TensorDim(target_tensor_dim, shape_analysis);
+  for (const auto& [tensor_dim, symbolic_dim] : tensor_dim2symbolic_Dim) {
+    const auto& cur_symblic_dim_op =
+        GetSymbolicDimOp4TensorDim(tensor_dim, shape_analysis);
+    if (shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
+            target_symbolic_dim_op, cur_symblic_dim_op)) {
+      return symbolic_dim;
+    }
+  }
+  return SymbolicDim{UniqueId::New()};
+}
+
 std::unordered_map<DimVar, const DimExpr> MakeEquationStartExpr(
-    const cinn::hlir::framework::pir::Group* group) {
+    const cinn::hlir::framework::pir::Group* group,
+    const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis) {
   std::unordered_map<DimVar, const DimExpr> ret{};
   std::unordered_set<std::string> output_names = GetAllOutputNames(group->ops);
   List<::pir::Value> feed_tensors = GetFeedList(group->ops, output_names);
+  std::unordered_map<ShapeDialectTensorDim, SymbolicDim>
+      tensor_dim2symbolic_Dim{};
   VisitEachTensor(feed_tensors, [&](const ::pir::Value& tensor) {
     std::vector<int> shape =
         hlir::framework::pir::CompatibleInfo::ValueShape(tensor);
@@ -417,8 +463,10 @@ std::unordered_map<DimVar, const DimExpr> MakeEquationStartExpr(
       if (shape.at(i) > 0) {
         CHECK(ret.emplace(tensor_dim, std::int64_t(shape.at(i))).second);
       } else if (shape.at(i) == -1) {
-        SymbolicDim symbolic_dim{UniqueId::New()};
+        SymbolicDim symbolic_dim = GetOrNewSymbolicDim(
+            tensor_dim, tensor_dim2symbolic_Dim, shape_analysis);
         CHECK(ret.emplace(tensor_dim, symbolic_dim).second);
+        CHECK(tensor_dim2symbolic_Dim.emplace(tensor_dim, symbolic_dim).second);
       } else {
         LOG(FATAL) << "Dead code. Invalid tensor shape = " << shape.at(i);
       }
@@ -584,11 +632,10 @@ SolveShapeDialectConstraints(
 }  // namespace
 
 void GraphSymbolicDimInferCtx::InitTensorDimExpr() {
-  DimFunctions dim_functions =
-      BuildGraphShapeDialectConstraints(group_, symbolic_dim_mgr_);
-
+  DimFunctions dim_functions = BuildGraphShapeDialectConstraints(
+      group_, group_->shape_analysis, symbolic_dim_mgr_);
   std::unordered_map<DimVar, const DimExpr> equation_start =
-      MakeEquationStartExpr(group_);
+      MakeEquationStartExpr(group_, group_->shape_analysis);
 
   tensor2dim_exprs_ =
       SolveShapeDialectConstraints(group_, dim_functions, equation_start);

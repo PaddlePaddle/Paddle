@@ -460,11 +460,10 @@ void TryGenerateMapExprFromGraph(
     return;
   }
   for (const auto& fusion_group : groups) {
-    // ADT_TODO : Fake pointer here, remove this later
-    ::pir::SymbolicDimMgr* symbolic_dim_mgr;
     fusion_group->set_graph_symbolic_dim_infer_ctx(
-        std::make_unique<config::GraphSymbolicDimInferCtx>(fusion_group.get(),
-                                                           symbolic_dim_mgr));
+        std::make_unique<config::GraphSymbolicDimInferCtx>(
+            fusion_group.get(),
+            &fusion_group->shape_analysis->symbolicDimMgr()));
     const auto& map_expr = GenerateMapExpr(fusion_group);
     VLOG(1) << ToTxtString(map_expr, fusion_group->group_id);
     fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));
@@ -476,11 +475,9 @@ void TryGenerateMapExprFromGroup(
   if (!FLAGS_cinn_enable_map_expr) {
     return;
   }
-  // ADT_TODO : Fake pointer here, remove this later
-  ::pir::SymbolicDimMgr* symbolic_dim_mgr;
   fusion_group->set_graph_symbolic_dim_infer_ctx(
-      std::make_unique<config::GraphSymbolicDimInferCtx>(fusion_group.get(),
-                                                         symbolic_dim_mgr));
+      std::make_unique<config::GraphSymbolicDimInferCtx>(
+          fusion_group.get(), &fusion_group->shape_analysis->symbolicDimMgr()));
   const auto& map_expr = GenerateMapExpr(fusion_group);
   VLOG(1) << ToTxtString(map_expr, fusion_group->group_id);
   fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));

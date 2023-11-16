@@ -1030,7 +1030,10 @@ class FusionPassRegistrar final : public Registrar {
 // code generation.
 class GeneralFusionMergePassHelper {
  public:
-  explicit GeneralFusionMergePassHelper(const GroupList& group_list) {
+  explicit GeneralFusionMergePassHelper(
+      const GroupList& group_list,
+      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis)
+      : shape_analysis_(shape_analysis) {
     fusion_groups_ = group_list;
     // init input to consumers.
     InitInputToConsumers();
@@ -2117,21 +2120,29 @@ class GeneralFusionMergePassHelper {
     }
   }
 
+  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis() const {
+    return CHECK_NOTNULL(shape_analysis_.lock());
+  }
+
   GroupList fusion_groups_;
   std::unordered_map<GroupPtr, int> fusion_groups_index_;
   std::unordered_set<const ::pir::Operation*> output_ops_set_;
   std::unordered_map<::pir::Value,
                      std::unordered_set<GroupPtr, Hasher, Comparator>>
       input_to_consumers_;
+  std::weak_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
 };
 
-GroupList GeneralFusionMergePassInternal(const GroupList& group_list) {
+GroupList GeneralFusionMergePassInternal(
+    const GroupList& group_list,
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
   if (group_list.size() <= 1) {
     VLOG(3) << "Don't do Fusoin Merge Pass...!";
     return group_list;
   }
 
-  GeneralFusionMergePassHelper fusion_merge_pass_helper(group_list);
+  GeneralFusionMergePassHelper fusion_merge_pass_helper(group_list,
+                                                        shape_analysis);
   auto res = fusion_merge_pass_helper();
 
   return res;

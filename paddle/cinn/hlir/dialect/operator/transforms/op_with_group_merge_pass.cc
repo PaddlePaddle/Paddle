@@ -154,7 +154,10 @@ using ConditionFunction =
 // code generation.
 class OpFusionPassHelper {
  public:
-  explicit OpFusionPassHelper(const std::vector<pir::Operation*>& op_list) {
+  explicit OpFusionPassHelper(
+      const std::vector<pir::Operation*>& op_list,
+      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis)
+      : shape_analysis_(shape_analysis) {
     // init fusion relation
     InitFusionRelation();
     // filter op data, create group for each op
@@ -491,6 +494,11 @@ class OpFusionPassHelper {
 
     return false;
   }
+
+  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis() const {
+    return CHECK_NOTNULL(shape_analysis_.lock());
+  }
+
   std::vector<::pir::Operation*> ops_;
   std::unordered_map<const ::pir::Operation*, GroupPtr> fusion_groups_;
   std::unordered_set<const ::pir::Operation*> output_ops_set_;
@@ -506,11 +514,14 @@ class OpFusionPassHelper {
     std::unordered_map<OpPatternKind, ConditionFunction> fusion_op_kind = {};
   };
   std::unordered_map<OpPatternKind, FusionRelation> fusion_relation_map_;
+  std::weak_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
 };
 
-GroupList OpFusionPassInternal(const std::vector<pir::Operation*>& op_list) {
+GroupList OpFusionPassInternal(
+    const std::vector<pir::Operation*>& op_list,
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
   VLOG(3) << "OpFusionPass...!";
-  auto op_fusion_helper = OpFusionPassHelper(op_list);
+  auto op_fusion_helper = OpFusionPassHelper(op_list, shape_analysis);
   auto res = op_fusion_helper();
 
   VLOG(3) << "OpFusionPass Finish...!";

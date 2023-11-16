@@ -17,7 +17,7 @@
 #include <type_traits>
 #include "paddle/cinn/adt/dim_expr.h"
 #include "paddle/cinn/adt/match.h"
-#include "paddle/cinn/adt/print_dim_expr.h"
+#include "paddle/cinn/adt/print_utils/print_dim_expr.h"
 
 namespace cinn::adt {
 

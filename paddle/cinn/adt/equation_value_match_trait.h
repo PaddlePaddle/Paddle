@@ -30,6 +30,11 @@ struct MatchTrait<Value, Iterator> final {
   static constexpr int is_template = false;
 };
 
+template <>
+struct MatchTrait<Value, DimExpr> final {
+  static constexpr int is_template = false;
+};
+
 template <typename T>
 struct MatchTrait<Value, List<T>> final {
   using base_type = List<Value>;
