@@ -114,11 +114,13 @@ class TestPybind(unittest.TestCase):
             in add_op.operands_source()[0].__str__()
         )
         # test opresult == value
-        self.assertEqual(
-            add_op.operands()[0].source(), add_op.operands_source()[0]
+        self.assertTrue(
+            add_op.operands()[0].source().is_same(add_op.operands_source()[0])
         )
         # test opresult == opresult
-        self.assertEqual(add_op.operands()[0].source(), matmul_op.results()[0])
+        self.assertTrue(
+            add_op.operands()[0].source().is_same(matmul_op.results()[0])
+        )
 
         # test opresult print
         self.assertEqual(
