@@ -156,6 +156,8 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   if (scale_ptr) {
     if (slice_shape != scale_ptr->shape()) {
       scale_cast = reshape<T>(*scale_ptr, slice_shape);
+    } else {
+      scale_cast = *scale_ptr;
     }
     if (need_cast) {
       scale_cast = cast<T>(scale_cast, phi::DataType::FLOAT32);
@@ -166,6 +168,8 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   if (bias_ptr) {
     if (slice_shape != bias_ptr->shape()) {
       bias_cast = reshape<T>(*bias_ptr, slice_shape);
+    } else {
+      bias_cast = *bias_ptr;
     }
     if (need_cast) {
       bias_cast = cast<T>(bias_cast, phi::DataType::FLOAT32);
