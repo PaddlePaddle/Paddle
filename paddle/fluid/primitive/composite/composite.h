@@ -128,8 +128,10 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
       x_hat = (x - reshape<T>(batch_mean, stats_shape)) *
               reshape<T>(inv_std, stats_shape);
     }
-    // run_mean = run_mean * momentum + batch_mean * (1 - momentum);
-    // run_var = run_var * momentum + batch_var * (1 - momentum);
+    run_mean = run_mean * momentum;
+    run_var = run_var * momentum;
+    // run_mean = run_mean * momentum + batch_mean * (1. - momentum);
+    // run_var = run_var * momentum + batch_var * (1. - momentum);
   } else {
     batch_mean = full<T>(phi::vectorize(run_mean.dims()), 0, run_mean.dtype());
     auto batch_var =
