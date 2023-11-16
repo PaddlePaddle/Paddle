@@ -30,7 +30,15 @@ install_paddle(){
 
 get_diff_TO_case(){
 cd ${paddle_dir}
-let last_num=${#target_lists_for_hybrid_ci[@]}-1
+# 获取test/auto_parallel位置
+count=0  
+for element in "${target_lists_for_hybrid_ci[@]}";do
+  if [[ "$element" == "test/auto_parallel" ]]; then  
+    test_num=$count
+    break
+  fi
+  count=$((count+1))
+done
 for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{print $NF}'`;do
     arr_file_name=(${file_name//// })
     dir1=${arr_file_name[0]}
@@ -43,21 +51,29 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
         continue
     elif [[ ${file_name##*.} == "md" ]] || [[ ${file_name##*.} == "rst" ]] || [[ ${dir1} == "docs" ]];then
         continue
-    else
+    elif
         for ((i=0; i<${#target_lists_for_hybrid_ci[@]}; i++)); do
-            if [[ $i != ${last_num} ]] && [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
+            if [[ $i != ${test_num} ]] && [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=gpt-3
                 case_list[${#case_list[*]}]=unit_test
                 break
-            elif [[ $i == ${last_num} ]] && [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
+            elif [[ $i == ${test_num} ]] && [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=unit_test
                 break
             else
                 continue
             fi
         done
+    else
+        for ((i=0; i<${#target_lists_for_pir_ci[@]}; i++)); do
+            if [[ ${file_item} == *${target_lists_for_pir_ci[i]}* ]];then
+                case_list[${#case_list[*]}]=auto_pir
+                break
+            else
+                continue
+            fi
+        done
     fi
-
 done
 }
 
@@ -92,8 +108,13 @@ if [[ ${#case_list[*]} -ne 0 ]];then
         echo -e "\033[31m ---- running case $case_num/${#case_list[*]}: ${case} \033"
         if [[ ${case} == "gpt-3" ]];then
             echo -e "\033[31m ---- running case gpt-3 auto \033"
-            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh
+            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh case_list_auto
             print_info $? `ls -lt ${log_path} | grep gpt | head -n 1 | awk '{print $9}'`
+            let case_num++
+        elif [[ ${case} == "auto_pir" ]];then
+            echo -e "\033[31m ---- running case auto_pir \033"
+            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh case_list_auto_pir
+            print_info $? `ls -lt ${log_path} | grep pir | head -n 1 | awk '{print $9}'`
             let case_num++
         elif [[ ${case} == "unit_test" ]];then
             echo -e "\033[31m ---- running case unit_test \033"
