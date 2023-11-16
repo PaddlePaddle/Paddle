@@ -48,8 +48,7 @@ void FusedBiasDropoutResidualLnGradKernel(
     DenseTensor* ln_scale_grad,
     DenseTensor* ln_bias_grad,
     DenseTensor* x_grad,
-    DenseTensor* residual_grad,
-    DenseTensor* bias_dropout_residual_out_grad) {
+    DenseTensor* residual_grad) {
   using U = LayerNormParamType<T>;
   auto* d_y_data = y_grad.data<T>();
   auto* ln_scale_data =
@@ -62,9 +61,10 @@ void FusedBiasDropoutResidualLnGradKernel(
       dev_ctx.template Alloc<T>(x_grad, x_grad->numel() * sizeof(T));
   auto* d_residual_data = dev_ctx.template Alloc<T>(
       residual_grad, residual_grad->numel() * sizeof(T));
-  auto* d_bias_dropout_residual_out_data = dev_ctx.template Alloc<T>(
-      bias_dropout_residual_out_grad,
-      bias_dropout_residual_out_grad->numel() * sizeof(T));
+  DenseTensor bias_dropout_residual_out_grad;
+  bias_dropout_residual_out_grad.Resize(bias_dropout_residual_out.dims());
+  auto* d_bias_dropout_residual_out_data =
+      dev_ctx.template Alloc<T>(&bias_dropout_residual_out_grad);
   auto* d_bias_data =
       (bias_grad == nullptr ? nullptr
                             : dev_ctx.template Alloc<T>(

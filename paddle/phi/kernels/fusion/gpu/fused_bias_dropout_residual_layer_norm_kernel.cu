@@ -43,7 +43,7 @@ void FusedBiasDropoutResidualLnKernel(
   using U = phi::funcs::LayerNormParamType<T>;
   auto* x_data = x.data<T>();
   auto* bias_data = (bias.get_ptr() == nullptr) ? nullptr : bias->data<T>();
-  auto* residual_data = residual->data<T>();
+  auto* residual_data = residual.data<T>();
   auto* ln_scale_data =
       (ln_scale.get_ptr() == nullptr ? nullptr : ln_scale->data<U>());
   auto* ln_bias_data =

@@ -2693,8 +2693,7 @@ void FusedBiasDropoutResidualLnGradInferMeta(
     MetaTensor* ln_scale_grad,
     MetaTensor* ln_bias_grad,
     MetaTensor* x_grad,
-    MetaTensor* residual_grad,
-    MetaTensor* bias_dropout_residual_out_grad) {
+    MetaTensor* residual_grad) {
   PADDLE_ENFORCE_EQ(is_test,
                     false,
                     phi::errors::InvalidArgument(
@@ -2719,8 +2718,6 @@ void FusedBiasDropoutResidualLnGradInferMeta(
     x_grad->set_dims(x.dims());
     x_grad->set_dtype(y_grad.dtype());
   }
-  bias_dropout_residual_out_grad->set_dims(bias_dropout_residual_out.dims());
-  bias_dropout_residual_out_grad->set_dtype(y_grad.dtype());
 }
 
 }  // namespace phi

@@ -618,8 +618,7 @@ void FusedBiasDropoutResidualLnGradInferMeta(
     MetaTensor* ln_scale_grad,
     MetaTensor* ln_bias_grad,
     MetaTensor* x_grad,
-    MetaTensor* residual_grad,
-    MetaTensor* bias_dropout_residual_out_grad);
+    MetaTensor* residual_grad);
 
 void SelfDPAttenInferMeta(const MetaTensor& x,
                           const float alpha,
