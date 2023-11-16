@@ -15,7 +15,11 @@
 import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops
-from paddle.framework import in_dynamic_mode, in_pir_mode
+from paddle.framework import (
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from paddle.tensor.math import _add_with_axis
 from paddle.utils import convert_to_list
 
