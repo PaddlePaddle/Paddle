@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <cstdint>
 #include <map>
 #include <set>
 #include <unordered_map>
 #include <utility>
-#include <cstdint>
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler/output_logger.h"
