@@ -100,16 +100,6 @@ class TestCopySignAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestCopySignCPU(TestCopySignAPI):
-    def place_init(self):
-        self.place = paddle.CPUPlace()
-
-
-class TestCopySignGPU(TestCopySignAPI):
-    def place_init(self):
-        self.place = paddle.CUDAPlace(0)
-
-
 class TestCopySignInt32(TestCopySignAPI):
     def input_init(self):
         dtype = np.int32
