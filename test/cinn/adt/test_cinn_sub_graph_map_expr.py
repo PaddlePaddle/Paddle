@@ -63,7 +63,7 @@ class TestCinnSubGraphBase(unittest.TestCase):
         net = CINNSubGraphNet()
         net = apply_to_static(net, use_cinn)
         net.eval()
-        out = net(self.x, self.axis)
+        out = net(self.x)
         return out
 
     def test_forward(self):
