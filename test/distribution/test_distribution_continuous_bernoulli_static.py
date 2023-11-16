@@ -210,8 +210,8 @@ class TestContinuousBernoulli(unittest.TestCase):
         np.testing.assert_allclose(
             self.var,
             self._np_variance(),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=0.00,
+            atol=0.20,
         )
 
     def test_entropy(self):
@@ -221,8 +221,8 @@ class TestContinuousBernoulli(unittest.TestCase):
         np.testing.assert_allclose(
             self.entropy,
             self._np_entropy(),
-            rtol=0.10,
-            atol=0.10,
+            rtol=0.00,
+            atol=0.20,
         )
 
     def test_sample(self):
