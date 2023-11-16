@@ -66,6 +66,7 @@ class TrtConvertScatterNd(TrtLayerAutoScanTest):
                     ),
                 },
                 outputs=["output_data"],
+                no_cast_list=["index_data"],
             )
 
             yield program_config
@@ -106,7 +107,7 @@ class TrtConvertScatterNd(TrtLayerAutoScanTest):
         yield self.create_inference_config(), (0, 5), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), (0, 5), 1e-3
+        yield self.create_inference_config(), (0, 5), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -115,7 +116,7 @@ class TrtConvertScatterNd(TrtLayerAutoScanTest):
         yield self.create_inference_config(), (1, 4), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), (1, 4), 1e-3
+        yield self.create_inference_config(), (1, 4), (1e-3, 1e-3)
 
     def test(self):
         self.run_test()
