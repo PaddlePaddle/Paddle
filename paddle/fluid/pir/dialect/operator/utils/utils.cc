@@ -14,9 +14,9 @@
 
 #include <glog/logging.h>
 #include <unordered_set>
-#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
 #include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
