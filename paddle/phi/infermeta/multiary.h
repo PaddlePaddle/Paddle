@@ -873,4 +873,10 @@ void FullWithTensorInferMeta(const MetaTensor& shape,
                              DataType dtype,
                              MetaTensor* out);
 
+void RebuildPaddingInferMeta(const MetaTensor& tmp_out,
+                             const MetaTensor& padding_offset,
+                             const MetaTensor& seq_lens,
+                             const MetaTensor& input_ids,
+                             MetaTensor* out);
+
 }  // namespace phi

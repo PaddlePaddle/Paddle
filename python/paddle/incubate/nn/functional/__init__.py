@@ -32,6 +32,7 @@ from .fused_rms_norm import fused_rms_norm
 from .fused_layer_norm import fused_layer_norm
 from .masked_multihead_attention import masked_multihead_attention
 from .write_cache_kv import write_cache_kv
+from .rebuild_padding import rebuild_padding
 
 __all__ = [
     'fused_multi_head_attention',
@@ -49,4 +50,5 @@ __all__ = [
     "fused_layer_norm",
     "masked_multihead_attention",
     "write_cache_kv",
+    "rebuild_padding",
 ]
