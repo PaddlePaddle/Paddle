@@ -2930,11 +2930,19 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
       phi::errors::InvalidArgument(
           "The batch size of Query, Key, Value should be equal."));
 
+  PADDLE_ENFORCE_EQ((key_num_head == value_num_head),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The head number of Key, Value should be equal."));
+
   PADDLE_ENFORCE_EQ(
-      ((query_num_head == key_num_head) && (key_num_head == value_num_head)),
-      true,
-      phi::errors::InvalidArgument(
-          "The head number of Query, Key, Value should be equal."));
+      query_num_head % key_num_head,
+      0,
+      errors::InvalidArgument(
+          "The num_head of query must be divisible by the num_head of key, but "
+          "recived num_head of query is %d, and the num_head of key is %d",
+          query_num_head,
+          key_num_head));
 
   PADDLE_ENFORCE_EQ(query_head_size == key_head_size,
                     true,
@@ -4283,9 +4291,21 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        MetaTensor* beam_cache_offset_out) {
   int bsz = static_cast<int>(x.dims()[0]);
   auto cache_kv_dims = cache_kv.dims();
-  int num_head = static_cast<int>(cache_kv.dims()[2]);
+  int k_num_head = static_cast<int>(cache_kv.dims()[2]);
+  int v_num_head = k_num_head;
   int dim_head = static_cast<int>(cache_kv.dims()[4]);
+  // below's num_head is q's head actually.
+  int num_head =
+      x.dims()[x.dims().size() - 1] / dim_head - k_num_head - v_num_head;
 
+  PADDLE_ENFORCE_EQ(
+      num_head % k_num_head,
+      0,
+      errors::InvalidArgument(
+          "The num_head of query must be divisible by the num_head of key, but "
+          "recived num_head of query is %d, and the num_head of key is %d",
+          num_head,
+          k_num_head));
   PADDLE_ENFORCE_EQ(
       cache_kv_dims.size(),
       5,

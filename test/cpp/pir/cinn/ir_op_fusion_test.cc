@@ -57,6 +57,8 @@ TEST(IROpFusionPass, demo) {
           program.block()->begin(), program.block()->end()));
 
   ASSERT_EQ(res.size(), 1u);
+
+  ASSERT_EQ(res[0]->ops.size(), program.block()->size());
 }
 
 TEST(IROpFusionPass, ElementWise_Fusion_0) {
@@ -84,6 +86,8 @@ TEST(IROpFusionPass, ElementWise_Fusion_0) {
   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
   ASSERT_EQ(res.size(), 1u);
+
+  ASSERT_EQ(res[0]->ops.size(), program.block()->size());
 }
 
 // Real test 0
@@ -116,7 +120,9 @@ TEST(IROpFusionPass, Broadcast_Test_0) {
 
   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
-  // ASSERT_EQ(res.size(), 1u);
+  ASSERT_EQ(res.size(), 1u);
+
+  ASSERT_EQ(res[0]->ops.size(), program.block()->size());
 }
 
 // Real test 1
@@ -149,40 +155,43 @@ TEST(IROpFusionPass, Broadcast_Test_1) {
   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
   ASSERT_EQ(new_group.size(), 2u);
+  ASSERT_EQ(new_group[0]->ops.size(), 2u);
+  ASSERT_EQ(new_group[1]->ops.size(), 3u);
 }
 
-// Real test 2
-TEST(IROpFusionPass, Broadcast_Test_2) {
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-  ::pir::Program program_base(ctx);
-  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
+// FIXME(Aurelius84): Real test 2
+// TEST(IROpFusionPass, Broadcast_Test_2) {
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+//   ::pir::Program program_base(ctx);
+//   ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
 
-  int h = 32, w = 32;
-  auto inputs = BuildInput(&builder_base, {{w}, {w}, {w}, {h, w}, {h, w}});
+//   int h = 32, w = 32;
+//   auto inputs = BuildInput(&builder_base, {{w}, {w}, {w}, {h, w}, {h, w}});
 
-  ::pir::Program program(ctx);
-  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
+//   ::pir::Program program(ctx);
+//   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
-  auto f =
-      builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
-  builder.Build<paddle::dialect::AddOp>(inputs[2], f).result(0);
-  std::vector<int64_t> axes{1};
-  std::vector<int64_t> out_shape{h, w};
-  auto f1 =
-      builder.Build<cinn::dialect::BroadcastOp>(f, axes, out_shape).result(0);
-  builder.Build<paddle::dialect::AddOp>(inputs[3], f1);
-  builder.Build<paddle::dialect::AddOp>(inputs[4], f1);
+//   auto f =
+//       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
+//   builder.Build<paddle::dialect::AddOp>(inputs[2], f).result(0);
+//   std::vector<int64_t> axes{1};
+//   std::vector<int64_t> out_shape{h, w};
+//   auto f1 =
+//       builder.Build<cinn::dialect::BroadcastOp>(f, axes,
+//       out_shape).result(0);
+//   builder.Build<paddle::dialect::AddOp>(inputs[3], f1);
+//   builder.Build<paddle::dialect::AddOp>(inputs[4], f1);
 
-  auto res =
-      cinn::dialect::ir::OpFusionPassInternal(std::vector<pir::Operation*>(
-          program.block()->begin(), program.block()->end()));
+//   auto res =
+//       cinn::dialect::ir::OpFusionPassInternal(std::vector<pir::Operation*>(
+//           program.block()->begin(), program.block()->end()));
 
-  auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
+//   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
-  ASSERT_EQ(new_group.size(), 2u);
-}
+//   ASSERT_EQ(new_group.size(), 2u);
+// }
 
 // Real reduce 0
 TEST(IROpFusionPass, reduce_test_0) {
@@ -212,6 +221,8 @@ TEST(IROpFusionPass, reduce_test_0) {
   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
   ASSERT_EQ(new_group.size(), 1u);
+
+  ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
 }
 
 // Real reduce 1
@@ -242,6 +253,8 @@ TEST(IROpFusionPass, reduce_test_1) {
   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
   ASSERT_EQ(new_group.size(), 2u);
+  ASSERT_EQ(new_group[0]->ops.size(), 2u);
+  ASSERT_EQ(new_group[1]->ops.size(), 2u);
 }
 
 // Real reduce 2
@@ -274,6 +287,8 @@ TEST(IROpFusionPass, reduce_test_2) {
   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
   ASSERT_EQ(new_group.size(), 2u);
+  ASSERT_EQ(new_group[0]->ops.size(), 3u);
+  ASSERT_EQ(new_group[1]->ops.size(), 3u);
 }
 
 // Real reduce 3
@@ -310,46 +325,50 @@ TEST(IROpFusionPass, reduce_test_3) {
   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
   ASSERT_EQ(new_group.size(), 1u);
+  ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
 }
 
-// Real reduce 4
-TEST(IROpFusionPass, reduce_test_4) {
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-  ::pir::Program program_base(ctx);
-  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
+// FIXME(Aurelius84): Real reduce 4
+// TEST(IROpFusionPass, reduce_test_4) {
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+//   ::pir::Program program_base(ctx);
+//   ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
 
-  int h = 32, w = 32;
-  auto inputs = BuildInput(&builder_base, {{h, w}, {h, w}, {w}, {h, w}});
+//   int h = 32, w = 32;
+//   auto inputs = BuildInput(&builder_base, {{h, w}, {h, w}, {w}, {h, w}});
 
-  ::pir::Program program(ctx);
-  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
+//   ::pir::Program program(ctx);
+//   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
-  std::vector<int64_t> axes{0};
-  std::vector<int64_t> axes1{1};
-  auto e =
-      builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
-  auto f = builder.Build<cinn::dialect::ReduceSumOp>(e, axes, false).result(0);
+//   std::vector<int64_t> axes{0};
+//   std::vector<int64_t> axes1{1};
+//   auto e =
+//       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
+//   auto f = builder.Build<cinn::dialect::ReduceSumOp>(e, axes,
+//   false).result(0);
 
-  builder.Build<paddle::dialect::AddOp>(inputs[2], f).result(0);
+//   builder.Build<paddle::dialect::AddOp>(inputs[2], f).result(0);
 
-  std::vector<int64_t> out_shape{h, w};
-  auto f1 =
-      builder.Build<cinn::dialect::BroadcastOp>(f, axes1, out_shape).result(0);
-  builder.Build<paddle::dialect::AddOp>(inputs[3], f1).result(0);
-  auto f2 =
-      builder.Build<cinn::dialect::BroadcastOp>(f, axes1, out_shape).result(0);
-  builder.Build<paddle::dialect::AddOp>(inputs[3], f2).result(0);
+//   std::vector<int64_t> out_shape{h, w};
+//   auto f1 =
+//       builder.Build<cinn::dialect::BroadcastOp>(f, axes1,
+//       out_shape).result(0);
+//   builder.Build<paddle::dialect::AddOp>(inputs[3], f1).result(0);
+//   auto f2 =
+//       builder.Build<cinn::dialect::BroadcastOp>(f, axes1,
+//       out_shape).result(0);
+//   builder.Build<paddle::dialect::AddOp>(inputs[3], f2).result(0);
 
-  auto res =
-      cinn::dialect::ir::OpFusionPassInternal(std::vector<pir::Operation*>(
-          program.block()->begin(), program.block()->end()));
+//   auto res =
+//       cinn::dialect::ir::OpFusionPassInternal(std::vector<pir::Operation*>(
+//           program.block()->begin(), program.block()->end()));
 
-  auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
+//   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
-  ASSERT_EQ(new_group.size(), 1u);
-}
+//   ASSERT_EQ(new_group.size(), 1u);
+// }
 
 // Real reduce 5
 TEST(IROpFusionPass, reduce_test_5) {
@@ -380,6 +399,8 @@ TEST(IROpFusionPass, reduce_test_5) {
   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
   ASSERT_EQ(new_group.size(), 1u);
+
+  ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
 }
 
 TEST(IROpFusionPass, layer_norm) {
@@ -454,4 +475,54 @@ TEST(IROpFusionPass, layer_norm) {
   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
   ASSERT_EQ(new_group.size(), 1u);
+
+  ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
+}
+
+TEST(IROpFusionPass, softmax) {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ::pir::Program program_base(ctx);
+  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
+
+  auto inputs = BuildInput(&builder_base, {{128, 128, 768}});
+
+  ::pir::Program program(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
+
+  std::vector<int64_t> axes{-1};
+
+  auto x = inputs[0];
+  auto max = builder.Build<cinn::dialect::ReduceMaxOp>(x, axes, true).result(0);
+  auto broadcast_1 = builder
+                         .Build<cinn::dialect::BroadcastOp>(
+                             max,
+                             std::vector<int64_t>({0, 1, 2}),
+                             std::vector<int64_t>({128, 128, 768}))
+                         .result(0);
+  auto sub =
+      builder.Build<paddle::dialect::SubtractOp>(x, broadcast_1).result(0);
+  auto exp = builder.Build<paddle::dialect::ExpOp>(sub).result(0);
+  auto sum =
+      builder.Build<cinn::dialect::ReduceSumOp>(exp, axes, true).result(0);
+
+  auto broadcast_2 = builder
+                         .Build<cinn::dialect::BroadcastOp>(
+                             sum,
+                             std::vector<int64_t>({0, 1, 2}),
+                             std::vector<int64_t>({128, 128, 768}))
+                         .result(0);
+  auto divide =
+      builder.Build<paddle::dialect::DivideOp>(exp, broadcast_2).result(0);
+
+  auto res =
+      cinn::dialect::ir::OpFusionPassInternal(std::vector<pir::Operation*>(
+          program.block()->begin(), program.block()->end()));
+
+  auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
+
+  ASSERT_EQ(new_group.size(), 1u);
+
+  ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
 }

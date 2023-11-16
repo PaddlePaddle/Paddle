@@ -27,6 +27,7 @@ sys.path.append(
 )
 import filters as op_gen_filters
 import tests_utils as op_gen_tests
+from gen import extend_compat_info, filter_compat_info
 from parse_utils import to_named_dict
 from type_mapping import output_type_map
 
@@ -37,6 +38,7 @@ sys.path.append(
 
 from decomp_interface_gen_op_list import (
     decomp_interface_implementation_gen_op_list,
+    decomp_ops_contain_unused_output,
 )
 from op_gen import attr_types_map, to_pascal_case
 
@@ -128,80 +130,6 @@ def save(content: str, path: pathlib.Path):
             f.write(content)
 
 
-def filter_compat_info(items):
-    for item in items:
-        item['op'] = item['op'].split('(')[0].strip()
-        if 'backward' in item:
-            item_backwards = item['backward'].split(',')
-            for idx, item_backward in enumerate(item_backwards):
-                item_backward = item_backward.split('(')[0].strip()
-                item_backwards[idx] = item_backward
-            item['backward'] = (
-                ','.join(item_backwards)
-                if len(item_backwards) > 0
-                else item_backwards[0]
-            )
-
-
-def extend_compat_info(apis, compats):
-    for api in apis:
-        attrs = api["attrs"]
-        for attr in attrs:
-            if op_gen_tests.is_scalar(
-                attr['typename']
-            ) or op_gen_tests.is_intarray(attr['typename']):
-                attr["support_tensor"] = False
-    apis_dict = to_named_dict(apis)
-    for compat_item in compats:
-        fwd_op_name = compat_item["op"]
-        if fwd_op_name not in apis_dict:
-            continue
-        fwd_api = apis_dict[fwd_op_name]
-        backward_op_names = []
-        while fwd_op_name is not None and fwd_op_name in apis_dict:
-            backward_op_names.append(apis_dict[fwd_op_name]['backward'])
-            fwd_op_name = apis_dict[fwd_op_name]['backward']
-        backward_apis = []
-        for backward_op_name in backward_op_names:
-            if backward_op_name in apis_dict:
-                backward_apis.append(apis_dict[backward_op_name])
-        support_tensor_attrs_names = []
-        compat_attrs_data_type = {}
-        if 'scalar' in compat_item and compat_item['op'] != "pow":
-            for attr_name, attr_info in compat_item['scalar'].items():
-                if (
-                    'support_tensor' in attr_info
-                    and attr_info['support_tensor'] is True
-                    or 'tensor_name' in attr_info
-                ):
-                    support_tensor_attrs_names.append(attr_name)
-                if 'data_type' in attr_info:
-                    compat_attrs_data_type.update(
-                        {attr_name: attr_info['data_type']}
-                    )
-        if 'int_array' in compat_item:
-            for attr_name, attr_info in compat_item['int_array'].items():
-                if (
-                    'support_tensor' in attr_info
-                    and attr_info['support_tensor'] is True
-                    or 'tensor_name' in attr_info
-                    or 'tensors_name' in attr_info
-                ):
-                    support_tensor_attrs_names.append(attr_name)
-        if len(support_tensor_attrs_names) > 0:
-            for api in [fwd_api] + backward_apis:
-                attrs = api["attrs"]
-                for attr in attrs:
-                    if attr['name'] in support_tensor_attrs_names:
-                        attr['support_tensor'] = True
-        for api in [fwd_api] + backward_apis:
-            attrs = api["attrs"]
-            for attr in attrs:
-                if attr['name'] in compat_attrs_data_type:
-                    attr['data_type'] = compat_attrs_data_type[attr['name']]
-    return apis
-
-
 def process_optional_output_info(apis):
     for api in apis:
         inputs_dict = to_named_dict(api['inputs'])
@@ -287,6 +215,7 @@ def gen(
         destination_dir,
         apis=apis,
         decomp_white_list=decomp_interface_implementation_gen_op_list,
+        decomp_ops_list_contain_unused_output=decomp_ops_contain_unused_output,
     )
 
 

@@ -626,7 +626,7 @@ EOF
 
 
 function run_mac_test() {
-    export FLAGS_NEW_IR_OPTEST=True
+    export FLAGS_PIR_OPTEST=True
     export FLAGS_CI_PIPELINE=mac
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -776,7 +776,7 @@ EOF
 }
 
 function run_linux_cpu_test() {
-    export FLAGS_NEW_IR_OPTEST=True
+    export FLAGS_PIR_OPTEST=True
     export FLAGS_CI_PIPELINE=py3
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -988,6 +988,7 @@ function run_sot_test() {
     export COST_MODEL=False
     export MIN_GRAPH_SIZE=0
     export SOT_LOG_LEVEL=0
+    export FLAGS_cudnn_deterministic=True
 
     # Install PaddlePaddle
     $PYTHON_WITH_SPECIFY_VERSION -m pip install ${PADDLE_ROOT}/dist/paddlepaddle-0.0.0-cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}-linux_x86_64.whl
@@ -1253,7 +1254,7 @@ EOF
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "=========================================================================================="
                 echo "This PR make the release inference library size growth exceeds 20 M."
-                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (For NewIR) qingqing01 or yuanlehome) approval for this PR.\n"
+                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (ForPir) qingqing01 or yuanlehome) approval for this PR.\n"
                 echo "=========================================================================================="
                 exit 6
             fi
@@ -1406,7 +1407,7 @@ function get_quickly_disable_ut() {
         echo ${disable_ut_quickly}
         echo "========================================="
     else
-    
+
         exit 102
         disable_ut_quickly='disable_ut'
     fi
@@ -1428,6 +1429,8 @@ function card_test() {
         run_label_mode="-L (RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE)"
     elif [[ "${UT_RUN_TYPE_SETTING}" == "WITHOUT_INFER" ]];then
         run_label_mode="-LE (RUN_TYPE=INFER)"
+    elif [[ "${UT_RUN_TYPE_SETTING}" == "WITHOUT_HYBRID" ]];then
+        run_label_mode="-LE (RUN_TYPE=HYBRID)"
     elif [[ "${UT_RUN_TYPE_SETTING}" == "OTHER" ]];then
         run_label_mode="-LE (RUN_TYPE=INFER|RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE)"
     fi
@@ -2451,6 +2454,57 @@ set -x
     fi
 }
 
+function parallel_test_base_hybrid() {
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit hybrid tests ...
+    ========================================
+EOF
+
+set +x
+        ut_startTime_s=`date +%s`
+        test_cases=$(ctest -N -V)        # get all test cases
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+                matchstr=$(echo $line|grep -oEi 'Test[ \t]+#') || true
+                if [[ "$matchstr" == "" ]]; then
+                    # Any test case with LABELS property would be parse here
+                    # RUN_TYPE=HYBRID mean the case would run in HYBRID CI.
+                    is_hybrid=$(echo "$line"|grep -oEi "RUN_TYPE=HYBRID") || true
+                    continue
+                fi
+                testcase=$(echo "$line"|grep -oEi "\w+$")
+                if [[ "$is_hybrid" != "" ]]; then
+                    if [[ "$eight_cards_tests" == "" ]]; then
+                        eight_cards_tests="^$testcase$"
+                    else
+                        eight_cards_tests="$eight_cards_tests|^$testcase$"
+                    fi
+                fi
+                is_hybrid=''
+                matchstr=''
+                testcase=''
+        done <<< "$test_cases";
+        card_test "$eight_cards_tests" -1 1
+        collect_failed_tests
+set -x
+        ut_endTime_s=`date +%s`
+        echo "HYBRID testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            rm -f $tmp_dir/*
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${failuretest}" | sort -u
+            exit 8;
+        fi
+    fi
+}
+
 function parallel_test_base_gpu_test() {
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
@@ -2804,8 +2858,15 @@ function parallel_test() {
     fi
     cp ${PADDLE_ROOT}/build/test/legacy_test/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/test/white_list ${PADDLE_ROOT}/build/python
+    run_hybrid_ci=${1:-"false"}
     ut_total_startTime_s=`date +%s`
-    if [ "$WITH_CINN" == "ON" ];then
+    if [ "$run_hybrid_ci" == "true" ] && [ "$WITH_DISTRIBUTE" == "ON" ];then
+        if [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
+            parallel_test_base_hybrid
+        else
+            echo "skip parallel_test_base_hybrid when compiling PaddlePaddle without NVIDIA GPU or ROCM platform"
+        fi
+    elif [ "$WITH_CINN" == "ON" ];then
         parallel_test_base_cinn
     elif [ "$WITH_GPU" == "ON" ] && [ "$WITH_HETERPS" == "ON" ];then
         parallel_test_base_gpups
@@ -3449,20 +3510,7 @@ function run_setup(){
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
         echo "Using python abi: $1"
-        if [ "$1" == "cp37-cp37m" ]; then
-            if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
-                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
-                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
-                export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
-                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
-                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
-                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
-                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib
-                pip3.7 install --user -r ${PADDLE_ROOT}/python/requirements.txt
-            else
-                exit 1
-            fi
-        elif [ "$1" == "cp38-cp38" ]; then
+        if [ "$1" == "cp38-cp38" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
@@ -3514,19 +3562,24 @@ function run_setup(){
             else
                 exit 1
             fi
+        elif [ "$1" == "cp312-cp312" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.12" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.12/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.12/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.12/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.12/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.12/include/python3.12/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.12/lib/libpython3.12.dylib
+                pip3.12 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
         fi
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
-            if [ "$1" == "cp37-cp37m" ]; then
-                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH}
-                export PATH=/opt/_internal/cpython-3.7.0/bin/:${PATH}
-                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
-                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.7.0/bin/python3.7
-                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.7.0/include/python3.7m
-                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.7.0/lib/libpython3.so
-                pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
-            elif [ "$1" == "cp38-cp38" ]; then
+            if [ "$1" == "cp38-cp38" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
@@ -3558,14 +3611,14 @@ function run_setup(){
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.11.0/include/python3.11
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.11.0/lib/libpython3.so
                 pip3.11 install -r ${PADDLE_ROOT}/python/requirements.txt
-           elif [ "$1" == "conda-python3.7" ]; then
-                export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
-                export PATH=/opt/conda/bin/:${PATH}
+            elif [ "$1" == "cp312-cp312" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.12.0/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
-                export DPYTHON_EXECUTABLE=/opt/conda/bin/python
-                export PYTHON_INCLUDE_DIR=/opt/conda/include/python3.7m
-                export PYTHON_LIBRARIES=/opt/conda/lib/libpython3.so
-                /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements.txt
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.12.0/bin/python3.12
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.12.0/include/python3.12
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.12.0/lib/libpython3.so
+                pip3.12 install -r ${PADDLE_ROOT}/python/requirements.txt
            fi
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
@@ -4092,9 +4145,13 @@ function main() {
         check_coverage_build
         ;;
       gpu_cicheck_coverage)
-        export FLAGS_NEW_IR_OPTEST=True
+        export FLAGS_PIR_OPTEST=True
         parallel_test
         check_coverage
+        ;;
+      gpu_cicheck_hybrid)
+        export FLAGS_PIR_OPTEST=True
+        parallel_test true
         ;;
       nv_cicheck_coverage)
         parallel_test

@@ -46,7 +46,7 @@ cc_library(
 cc_library(
   op_compat_sensible_pass
   SRCS op_compat_sensible_pass.cc
-  DEPS graph_pattern_detector op_def_api pass pir_core)
+  DEPS graph_pattern_detector op_def_api pass pir)
 cc_library(
   subgraph_detector
   SRCS subgraph_detector.cc
@@ -516,14 +516,14 @@ if(WITH_MKLDNN)
     test_depthwise_conv_mkldnn_pass
     SRCS mkldnn/depthwise_conv_mkldnn_pass_tester.cc
     DEPS depthwise_conv_mkldnn_pass)
-  cc_test_old(
-    test_int8_scale_calculation_mkldnn_pass SRCS
-    mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc DEPS
-    int8_scale_calculation_mkldnn_pass pass_test_util)
-  cc_test_old(
-    test_params_quantization_mkldnn_pass SRCS
-    mkldnn/params_quantization_mkldnn_pass_tester.cc DEPS
-    params_quantization_mkldnn_pass)
+  cc_test(
+    test_int8_scale_calculation_mkldnn_pass
+    SRCS mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc
+    DEPS int8_scale_calculation_mkldnn_pass pass_test_util)
+  cc_test(
+    test_params_quantization_mkldnn_pass
+    SRCS mkldnn/params_quantization_mkldnn_pass_tester.cc
+    DEPS params_quantization_mkldnn_pass)
   set(TEST_CONV_BN_PASS_DEPS
       conv_bn_fuse_pass
       graph_to_program_pass
