@@ -51,6 +51,18 @@ __skip_dims_mapping_op__ = [
 ]
 
 
+def log_program(dist_context, name=""):
+    import paddle
+
+    if paddle.distributed.get_rank() == 0:
+        if name in ["before_update", "after_update", "final"]:
+            from .dist_context import set_default_distributed_context
+
+            set_default_distributed_context(dist_context)
+        with open(f"./main_program_{name}.txt", "w+") as f:
+            f.write(str(dist_context.serial_main_program))
+
+
 def compute_compatible_dim_mapping(dim_mapping_list):
     """Compute the compatible dim mapping given a list of dim mapping."""
     if not dim_mapping_list:
@@ -163,7 +175,13 @@ def _update_op_dims_mapping_and_distoperatorimpl(
             dist_op.serial_op.type, dist_op_container.type
         )
     )
+    op_dist_attr = dist_op.dist_attr  #
+    original_op_dist_attr = copy.deepcopy(op_dist_attr)  #
     updated = dist_op_container.update_dims_mapping(dist_op)
+    if updated and dist_op.serial_op.type in ["layer_norm", "reshape2"]:
+        print(dist_op.serial_op.type)
+        print("before update: ", original_op_dist_attr)
+        print("after update: ", dist_op.dist_attr)
     changed = updated or changed
     # TODO(ljz) remove the below code once we introduce general reshard to replace specifc distopimpls
     reverted = dist_op_container.mapping_to_dist_operator_impl(
@@ -196,9 +214,15 @@ class Completer:
         tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
             tensor_node
         )
+        varname = tensor_desc.name()
         assert tensor_dist_attr is not None
         if tensor_dist_attr.is_annotated("dims_mapping"):
+            if varname == "layer_norm_12.tmp_2":
+                print("layer_norm_12.tmp_2: return")
             return False
+        if varname == "layer_norm_12.tmp_2":
+            print("layer_norm_12.tmp_2: forward")
+            print("layer_norm_12.tmp_2 dist attr", tensor_dist_attr)
         tensor_dims_mapping = tensor_dist_attr.dims_mapping
         if fwd:
             dims_mapping_list = []
@@ -346,6 +370,12 @@ class Completer:
                         op_dist_attr.set_output_dims_mapping(
                             tensor_desc.name(), compatible_dims_mapping
                         )
+                    print(
+                        tensor_desc.name(),
+                        op_dims_mapping,
+                        compatible_dims_mapping,
+                        fwd,
+                    )
                     changed = True
 
         # step 2: Infer & Update dims mapping of op node using SPMD Rule.
@@ -469,6 +499,7 @@ class Completer:
     def _update_dims_mapping(self):
         # Complete dims_mapping for each node
         reach_fix_point = False
+        count = 0
         while not reach_fix_point:
             changed = False
             for is_fwd in [True, False]:
@@ -484,15 +515,19 @@ class Completer:
                         )
                         if tensor_changed:
                             changed = True
+                            print("tensor changed count: ", count, is_fwd)
                     if node.is_op() and node.op() is not None:
                         op_changed = self._update_op_node_dims_mapping(
                             node, fwd=is_fwd
                         )
                         if op_changed:
                             changed = True
+                            print("op changed count: ", count, is_fwd)
                 graph_changed = self._update_dims_mapping_between_graphs()
                 if graph_changed:
                     changed = True
+                    print("graph changed count: ", count, is_fwd)
+            count += 1
             if changed:
                 reach_fix_point = False
             else:
@@ -977,6 +1012,8 @@ class Completer:
             serial_main_program = self._dist_context.serial_main_program
         else:
             self._dist_context._serial_main_program = serial_main_program
+
+        log_program(self._dist_context, name="before_completion")
 
         if not is_naive_data_parallel(self._dist_context):
             self._dist_context.initialize(with_graph=True)
@@ -1506,9 +1543,6 @@ class Completer:
 
             grad_op_dist_attr.impl_type = fwd_op_dist_attr.impl_type
             grad_op_dist_attr.impl_idx = fwd_op_dist_attr.impl_idx
-            self._dist_context.set_op_dist_attr_for_program(
-                grad_op, grad_op_dist_attr
-            )
 
             # inference partial backward
             __gradient_sync_by_partial_ops__ = [
@@ -1523,19 +1557,23 @@ class Completer:
                 vars, grad_op, grad_op_dist_attr
             ):
                 # NOTE Since we use composite op in static mode which might have implicit Reduction of broadcast axes for caculating parameter's gradient.
-                # Those implicit Reduction hinder the Partial inference in a normal way, and we need a special method to handle it:
-                # If the intput activation_grad has sharded broadcast axes, the output param_grads will be Partial.
-                # resulote broadcast axes
-                if grad_op.type == "matmul_v2_grad":
+                # Those implicit Reduction hinder the Partial inference in a normal way, and we need a special method to handle it.
+                param_grads = []
+                activation_grad = None
+                broadcast_axis_indies = []
+                if (
+                    grad_op.type == "matmul_v2_grad"
+                    and len(grad_op.output("Y@GRAD")) > 0
+                ):
                     activation_grad = grad_op.input("Out@GRAD")[0]
-
-                    param_grads = [grad_op.input("Y@GRAD")[0]]
-                    broadcast_axis_indies = list(
-                        range(len(vars[activation_grad].shape) - 1)
-                    )
+                    param_grads.extend(grad_op.output("Y@GRAD"))
+                    len1 = len(vars[activation_grad].shape)
+                    len2 = len(vars[grad_op.input("Y")[0]].shape)
+                    if len1 > len2:
+                        broadcast_axis_indies = list(range(len1 - len2))
                 elif grad_op.type == "elementwise_add_grad":
                     activation_grad = grad_op.input("Out@GRAD")[0]
-                    param_grads = [grad_op.input("Y@GRAD")[0]]
+                    param_grads.extend(grad_op.output("Y@GRAD"))
                     param_var = grad_op.input("Y")[0]
                     broadcast_axis_indies = list(
                         range(
@@ -1545,15 +1583,13 @@ class Completer:
                     )
                 elif grad_op.type == "layer_norm_grad":
                     activation_grad = grad_op.input("Y@GRAD")[0]
-                    param_grads = [
-                        grad_op.input("Bias@GRAD")[0],
-                        grad_op.input("Scale@GRAD")[0],
-                    ]
+                    param_grads.extend(grad_op.output("Bias@GRAD"))
+                    param_grads.extend(grad_op.output("Scale@GRAD"))
                     begin_norm_axis = int(grad_op.attr("begin_norm_axis"))
                     broadcast_axis_indies = list(range(begin_norm_axis))
                 elif grad_op.type == "lookup_table_v2_grad":
                     activation_grad = grad_op.input("Out@GRAD")[0]
-                    param_grads = [grad_op.input("W@GRAD")[0]]
+                    param_grads.extend(grad_op.output("W@GRAD"))
                     broadcast_axis_indies = list(
                         range(len(vars[activation_grad].shape) - 1)
                     )
@@ -1565,24 +1601,36 @@ class Completer:
                 # resulote partial
                 # NOTE We set the Partial status in op_dist_attr instead tensor_dist_attr
                 # since the Partial will be reshard as Replicated immedidately after op output in static mode.
-                activation_grad_dims_mapping = (
-                    grad_op_dist_attr.get_input_dims_mapping(activation_grad)
-                )
-                for axis in broadcast_axis_indies:
-                    if activation_grad_dims_mapping[axis] != -1:
-                        partial_dim = activation_grad_dims_mapping[axis]
-                        for p_grad_name in param_grads:
-                            p_grad_dist_attr = (
-                                grad_op_dist_attr.get_output_dist_attr(
-                                    p_grad_name
+                if len(param_grads) > 0:
+                    activation_grad_dims_mapping = (
+                        grad_op_dist_attr.get_input_dims_mapping(
+                            activation_grad
+                        )
+                    )
+                    for axis in broadcast_axis_indies:
+                        if activation_grad_dims_mapping[axis] != -1:
+                            partial_dim = activation_grad_dims_mapping[axis]
+                            for p_grad_name in param_grads:
+                                p_grad_dist_attr = (
+                                    grad_op_dist_attr.get_output_dist_attr(
+                                        p_grad_name
+                                    )
                                 )
-                            )
-                            p_grad_dist_attr._set_partial_dims(partial_dim)
+                                print(p_grad_name, str(grad_op))
+                                p_grad_dist_attr._set_partial_dims(
+                                    [partial_dim]
+                                )
+                                print(p_grad_dist_attr)
+                                print(grad_op_dist_attr)
 
             if grad_op.type in __gradient_sync_by_partial_ops__:
                 infer_backward_op_partial_status(
                     vars, grad_op, grad_op_dist_attr
                 )
+
+            self._dist_context.set_op_dist_attr_for_program(
+                grad_op, grad_op_dist_attr
+            )
 
         first_backward_op_idx = -1
         for idx, op in enumerate(serial_main_program.global_block().ops):

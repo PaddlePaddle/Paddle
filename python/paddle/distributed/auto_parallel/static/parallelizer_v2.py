@@ -238,6 +238,18 @@ class Parallelizer:
                 distop_context=self._dist_context.dist_op_context,
             )
         self._completer.complete_backward_annotation(main_program)
+
+        import paddle
+
+        if paddle.distributed.get_rank() == 0:
+            from .dist_context import set_default_distributed_context
+
+            set_default_distributed_context(self._dist_context)
+            with open(
+                "./main_program_{}.txt".format("bw_completion"), "w+"
+            ) as f:
+                f.write(str(main_program))
+
         self._dist_context.block_state.parse_backward_blocks(main_program)
         return params_grads
 
