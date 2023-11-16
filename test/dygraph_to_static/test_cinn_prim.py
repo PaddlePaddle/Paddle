@@ -96,7 +96,10 @@ class TestPrimForward(Dy2StTestBase):
     @test_ast_only
     def test_cinn_prim_forward(self):
         dy_res = self.train(use_prim=False)
-        cinn_res = self.train(use_prim=True)
+        use_cinn = False
+        if paddle.is_compiled_with_cinn():
+            use_cinn = True
+        cinn_res = self.train(use_prim=use_cinn)
 
         for i in range(len(dy_res)):
             np.testing.assert_allclose(
@@ -162,7 +165,10 @@ class TestPrimForwardAndBackward(Dy2StTestBase):
     @test_ast_only
     def test_cinn_prim(self):
         dy_res = self.train(use_prim=False)
-        cinn_res = self.train(use_prim=True)
+        use_cinn = False
+        if paddle.is_compiled_with_cinn():
+            use_cinn = True
+        cinn_res = self.train(use_prim=use_cinn)
 
         for i in range(len(dy_res)):
             np.testing.assert_allclose(
