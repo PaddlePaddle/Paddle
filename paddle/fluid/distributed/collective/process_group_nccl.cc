@@ -863,45 +863,45 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   comm_ctx->set_nccl_comm(nccl_comm);
 
   if (FLAGS_enable_async_trace) {
-      // gather global ranks in current group
-      int* gpu_global_rank = nullptr;
-      size_t gpu_global_rank_size = sizeof(int);
-      CUDA_CHECK(cudaMalloc(&gpu_global_rank, gpu_global_rank_size));
+    // gather global ranks in current group
+    int* gpu_global_rank = nullptr;
+    size_t gpu_global_rank_size = sizeof(int);
+    CUDA_CHECK(cudaMalloc(&gpu_global_rank, gpu_global_rank_size));
 
-      CUDA_CHECK(cudaMemcpy(gpu_global_rank,
-                  &global_rank_,
-                  gpu_global_rank_size,
-                  cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(gpu_global_rank,
+                          &global_rank_,
+                          gpu_global_rank_size,
+                          cudaMemcpyHostToDevice));
 
-      int* gpu_global_ranks = nullptr;
-      size_t gpu_global_ranks_size = num_ranks * sizeof(int);
-      CUDA_CHECK(cudaMalloc(&gpu_global_ranks, gpu_global_ranks_size));
+    int* gpu_global_ranks = nullptr;
+    size_t gpu_global_ranks_size = num_ranks * sizeof(int);
+    CUDA_CHECK(cudaMalloc(&gpu_global_ranks, gpu_global_ranks_size));
 
-      NCCL_CHECK(phi::dynload::ncclAllGather(gpu_global_rank,
-                  gpu_global_ranks,
-                  1,
-                  ncclInt,
-                  nccl_comm,
-                  comm_ctx->stream()));
+    NCCL_CHECK(phi::dynload::ncclAllGather(gpu_global_rank,
+                                           gpu_global_ranks,
+                                           1,
+                                           ncclInt,
+                                           nccl_comm,
+                                           comm_ctx->stream()));
 
-      std::vector<int> global_ranks(num_ranks);
-      CUDA_CHECK(cudaMemcpy(global_ranks.data(),
-                  gpu_global_ranks,
-                  gpu_global_ranks_size,
-                  cudaMemcpyDeviceToHost));
-      CUDA_CHECK(cudaFree(gpu_global_rank));
-      CUDA_CHECK(cudaFree(gpu_global_ranks));
+    std::vector<int> global_ranks(num_ranks);
+    CUDA_CHECK(cudaMemcpy(global_ranks.data(),
+                          gpu_global_ranks,
+                          gpu_global_ranks_size,
+                          cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaFree(gpu_global_rank));
+    CUDA_CHECK(cudaFree(gpu_global_ranks));
 
-      // store global_ranks in current group_key
-      std::once_flag flag;
-      std::call_once(flag, [this]() {
-              phi::distributed::CommContextManager::GetInstance().SetStore(store_);
-              phi::distributed::CommTaskManager::GetInstance().SetTimeout(pg_timeout_);
-              });
+    // store global_ranks in current group_key
+    std::once_flag flag;
+    std::call_once(flag, [this]() {
+      phi::distributed::CommContextManager::GetInstance().SetStore(store_);
+      phi::distributed::CommTaskManager::GetInstance().SetTimeout(pg_timeout_);
+    });
 
-      std::string group_key = place_to_group_key_.at(place_key);
-      phi::distributed::CommContextManager::GetInstance().AddGroupRanks(
-              group_key, global_ranks);
+    std::string group_key = place_to_group_key_.at(place_key);
+    phi::distributed::CommContextManager::GetInstance().AddGroupRanks(
+        group_key, global_ranks);
   }
 
   auto* calc_ctx = static_cast<phi::GPUContext*>(
