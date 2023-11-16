@@ -37,7 +37,9 @@ class TestPool3D_API(unittest.TestCase):
 
     @test_with_pir_api
     def check_avg_static_results(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 32, 32, 32], dtype="float32"
             )
@@ -52,9 +54,8 @@ class TestPool3D_API(unittest.TestCase):
                 pool_type='avg',
             )
 
-            exe = base.Executor(place)
+            exe = paddle.static.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
@@ -143,7 +144,9 @@ class TestPool3D_API(unittest.TestCase):
 
     @test_with_pir_api
     def check_max_static_results(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 32, 32, 32], dtype="float32"
             )
@@ -158,9 +161,8 @@ class TestPool3D_API(unittest.TestCase):
                 pool_type='max',
             )
 
-            exe = base.Executor(place)
+            exe = paddle.static.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
@@ -388,7 +390,6 @@ class TestPool3D_API(unittest.TestCase):
 
                 exe = paddle.static.Executor(place)
                 res = exe.run(
-                    paddle.static.default_main_program(),
                     feed={
                         "x": input,
                     },
@@ -419,7 +420,6 @@ class TestPool3D_API(unittest.TestCase):
 
                 exe = paddle.static.Executor(place)
                 res = exe.run(
-                    paddle.static.default_main_program(),
                     feed={
                         "x": input,
                     },

@@ -414,9 +414,8 @@ class TestUnpool3DOpAPI_static(unittest.TestCase):
                     output, indices, kernel_size=2, stride=None
                 )
 
-                exe = paddle.base.Executor(place)
+                exe = paddle.static.Executor(place)
                 fetches = exe.run(
-                    paddle.base.default_main_program(),
                     feed={"x": input_data},
                     fetch_list=[output_unpool],
                     return_numpy=True,

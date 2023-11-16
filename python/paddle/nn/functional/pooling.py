@@ -629,7 +629,7 @@ def max_pool1d(
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         if return_mask:
             pool_out = _C_ops.max_pool2d_with_index(
                 x, kernel_size, stride, padding, False, False
@@ -1423,7 +1423,7 @@ def max_pool3d(
             "When setting return_mask to true, data_format must be set to NCDHW in API:max_pool3d"
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         if return_mask:
             output = _C_ops.max_pool3d_with_index(
                 x, kernel_size, stride, padding, False, False
