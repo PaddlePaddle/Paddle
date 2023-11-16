@@ -17,6 +17,7 @@
 #include <unordered_map>
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/op_group.h"
+#include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/value.h"
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_with_group_merge_pass_utils.h"
