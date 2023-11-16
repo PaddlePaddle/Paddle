@@ -117,7 +117,7 @@ class TestCustomEmbeddingGradApiForSemiAutoParallel:
             w_specs=["x", None],
         )
 
-    def test_both_row_shard(self):
+    def test_both_col_shard(self):
         self.test_body(
             x_shape=[12, 16],
             w_shape=[10, 4],
