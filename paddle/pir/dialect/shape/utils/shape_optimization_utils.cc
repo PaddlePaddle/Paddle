@@ -262,9 +262,10 @@ std::vector<SymbolicDimOp> SymbolicDimMgr::CreateSymbolicDimsForRankedValue(
   std::vector<SymbolicDimOp> symbols;
   auto dims = value.type().dyn_cast<pir::DenseTensorType>().dims();
   for (int idx = 0; idx < dims.size(); ++idx) {
-    symbols.push_back(dims[idx] == ShapedTypeInterface::kDynamic
-                          ? NewSymbolicDim()
-                          : NewConstantSymbolicDim(dims[idx]));
+    symbols.push_back(
+        (dims[idx] == ShapedTypeInterface::kDynamic || dims[idx] == -1)
+            ? NewSymbolicDim()
+            : NewConstantSymbolicDim(dims[idx]));
   }
   return symbols;
 }
