@@ -154,10 +154,13 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
       auto group_list =
           cinn::dialect::ir::GeneralFusionMergePassInternal(op_fusion);
 
-      PADDLE_ENFORCE_EQ(group_list.size(),
-                        1u,
-                        phi::errors::Unimplemented(
-                            "Only support one group after group fusion"));
+      // using yield op to sort
+      std::unordered_map<::pir::Value, size_t> value2id;
+      auto yeild_op = group_op.ops().back();
+      for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
+        value2id[yeild_op->operand_source(i)] = i;
+      }
+
       for (auto group : group_list) {
         auto ir_compiler = std::make_shared<cinn::hlir::framework::PirCompiler>(
             *program, target, scope);
@@ -176,26 +179,23 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
           vec_new_ins.push_back(value_map.at(vec_ins[i]));
         }
 
-        // using yield op to sort
-        std::unordered_map<::pir::Value, size_t> value2id;
-        auto yeild_op = group_op.ops().back();
-        for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
-          value2id[yeild_op->operand_source(i)] = i;
-        }
-
         std::unordered_map<size_t, size_t> codegen2orig;
 
         std::vector<pir::Type> vec_types;
         for (size_t i = 0; i < group->output_values.size(); ++i) {
           vec_types.push_back(group->output_values[i].type());
-          codegen2orig[value2id.at(group->output_values[i])] = i;
         }
 
         ::pir::Operation* cinn_op =
             ::pir::Operation::Create(vec_new_ins, op_attrs, vec_types, op_info);
 
-        for (size_t i = 0; i < group_op.num_results(); ++i) {
-          value_map[group_op.result(i)] = cinn_op->result(codegen2orig.at(i));
+        for (size_t i = 0; i < cinn_op->num_results(); ++i) {
+          auto find_it = value2id.find(group->output_values[i]);
+          if (find_it == value2id.end()) {
+            value_map[group->output_values[i]] = cinn_op->result(i);
+          } else {
+            value_map[group_op.result(find_it->second)] = cinn_op->result(i);
+          }
         }
 
         ir_program->block()->push_back(cinn_op);
