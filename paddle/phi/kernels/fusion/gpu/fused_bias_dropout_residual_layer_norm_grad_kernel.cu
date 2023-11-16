@@ -26,7 +26,7 @@
 namespace phi {
 namespace fusion {
 template <typename T, typename Context>
-void FusedBiasDropoutResidualLnKernel(
+void FusedBiasDropoutResidualLnGradKernel(
     const Context& dev_ctx,
     const DenseTensor& y_grad,
     const DenseTensor& x,
