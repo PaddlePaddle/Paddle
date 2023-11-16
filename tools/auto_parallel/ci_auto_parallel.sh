@@ -13,15 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-source ./target_path_lists.sh
+source /workspace/Paddle/tools/auto_parallel/target_path_lists.sh
 
 export paddle=$1
-export nlp_dir=/workspace/PaddleNLP
-mkdir -p /workspace/PaddleNLP/model_logs
-export log_path=/workspace/PaddleNLP/model_logs
+export paddle_dir=/workspace/Paddle
+mkdir -p /workspace/case_logs
+export log_path=/workspace/case_logs
 export case_list=()
-
-cd /workspace/Paddle
 
 # Insatll paddlepaddle-gpu
 install_paddle(){
@@ -31,6 +29,8 @@ install_paddle(){
 }
 
 get_diff_TO_case(){
+cd ${paddle_dir}
+let last_num=${#target_lists_for_hybrid_ci[@]}-1
 for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{print $NF}'`;do
     arr_file_name=(${file_name//// })
     dir1=${arr_file_name[0]}
@@ -45,8 +45,12 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
         continue
     else
         for ((i=0; i<${#target_lists_for_hybrid_ci[@]}; i++)); do
-            if [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
+            if [[ $i != ${last_num} ]] && [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=gpt-3
+                case_list[${#case_list[*]}]=unit_test
+                break
+            elif [[ $i == ${last_num} ]] && [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
+                case_list[${#case_list[*]}]=unit_test
                 break
             else
                 continue
@@ -87,10 +91,14 @@ if [[ ${#case_list[*]} -ne 0 ]];then
     for case in ${case_list[*]};do
         echo -e "\033[31m ---- running case $case_num/${#case_list[*]}: ${case} \033"
         if [[ ${case} == "gpt-3" ]];then
-            bash /workspace/PaddleNLP/scripts/distribute/before_hook.sh ${case}
             echo -e "\033[31m ---- running case gpt-3 auto \033"
             bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh
             print_info $? `ls -lt ${log_path} | grep gpt | head -n 1 | awk '{print $9}'`
+            let case_num++
+        elif [[ ${case} == "unit_test" ]];then
+            echo -e "\033[31m ---- running case unit_test \033"
+            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh
+            print_info $? `ls -lt ${log_path} | grep test | head -n 1 | awk '{print $9}'`
             let case_num++
         else
             echo -e "\033[31m ---- no ${case} \033"
@@ -98,7 +106,7 @@ if [[ ${#case_list[*]} -ne 0 ]];then
         fi
     done
     echo -e "\033[31m ---- end run case  \033"
-    cd ${nlp_dir}/model_logs
+    cd ${log_path}
     if [ ! -f *FAIL* ];then
         FF=0
         EXCODE=0
