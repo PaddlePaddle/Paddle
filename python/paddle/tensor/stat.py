@@ -314,7 +314,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
             2.0
     """
     if in_pir_mode():
-        if not isinstance(input, paddle.ir.Value):
+        if not isinstance(input, paddle.pir.Value):
             raise TypeError("In pir nanmedian, the input x should be a value.")
     else:
         if not isinstance(x, Variable):
