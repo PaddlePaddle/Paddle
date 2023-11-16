@@ -27,12 +27,9 @@ class PassTest(unittest.TestCase):
         self.main_program = paddle.static.Program()
         self.feeds = None
         self.fetch_list = None
-        self.fuse_op_type = None
+        self.valid_op_map = {}
         self.pass_list = []
         self.pir_program = None
-        self.fused_ops = []
-        self.num_reduced_ops = -1
-        self.op_not_exist_unittest = False
 
         np.random.seed(123)
         random.seed(124)
@@ -51,28 +48,20 @@ class PassTest(unittest.TestCase):
         '''
         Check whether the fused ops are correct.
         '''
-        self.assertFalse(
-            self.fuse_op_type is None,
-            "fuse_op_type means 'fusion into new op or fusion into old op' \n \
-             The param cannot  be empty!",
+        self.assertTrue(
+            len(self.valid_op_map) != 0,
+            "self.fuse_op_map cannot  be empty!",
         )
         op_names = [op.name() for op in self.pir_program.global_block().ops]
-
-        if self.fuse_op_type:
+        for valid_op_name, valid_op_count in self.valid_op_map.items():
+            acctual_valid_op_count = op_names.count(valid_op_name)
             self.assertTrue(
-                self.fuse_op_type in op_names, "The fused op does not exist !"
+                valid_op_count == acctual_valid_op_count,
+                "Checking of the number of fused operator < {} > failed. "
+                "Expected: {}, Received: {}".format(
+                    valid_op_name, valid_op_count, acctual_valid_op_count
+                ),
             )
-
-        if self.op_not_exist_unittest:
-            self.assertFalse(
-                len(self.fused_ops) < 0,
-                "fused_ops cannot be empty when op_not_exist_unittest is True !",
-            )
-            for fused_op in self.fused_ops:
-                self.assertTrue(
-                    fused_op not in op_names,
-                    f"fused operator<{fused_op}>  is not fused !",
-                )
 
     def check_pass_correct(self, place, need_translate_to_pir=False, atol=1e-5):
         '''
