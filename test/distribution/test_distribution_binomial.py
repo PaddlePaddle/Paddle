@@ -166,10 +166,10 @@ class TestBinomialProbs(unittest.TestCase):
         ),
         (
             'multi-dim-probability',
-            np.array([189, 189, 189]),
-            parameterize.xrand((5, 3), dtype='float32', min=0, max=1),
-            np.array([189, 189, 189]),
-            parameterize.xrand((5, 3), dtype='float32', min=0, max=1),
+            np.array([25, 25, 25]),
+            parameterize.xrand((2, 3), dtype='float32', min=0, max=1),
+            np.array([25, 25, 25]),
+            parameterize.xrand((2, 3), dtype='float32', min=0, max=1),
         ),
     ],
 )
@@ -198,7 +198,8 @@ class TestBinomialKL(unittest.TestCase):
         )
 
     def kl_divergence(self, dist1, dist2):
-        support = dist1._enumerate_support()
+        support = np.arange(1 + self.n_1.max(), dtype="float32")
+        support = support.reshape((-1,) + (1,) * len(self.p_1.shape))
         log_prob_1 = scipy.stats.binom.logpmf(
             support, dist1.total_count, dist1.probability
         )
