@@ -24,13 +24,6 @@ from paddle.static import Program, program_guard
 # Test python API
 class TestRandintLikeAPI(unittest.TestCase):
     def setUp(self):
-        self.x_bool = np.zeros((10, 12)).astype("bool")
-        self.x_int32 = np.zeros((10, 12)).astype("int32")
-        self.x_int64 = np.zeros((10, 12)).astype("int64")
-        self.x_float16 = np.zeros((10, 12)).astype("float16")
-        self.x_float32 = np.zeros((10, 12)).astype("float32")
-        self.x_float64 = np.zeros((10, 12)).astype("float64")
-
         self.dtype = ["bool", "int32", "int64", "float16", "float32", "float64"]
         self.place = (
             paddle.CUDAPlace(0)
@@ -39,99 +32,123 @@ class TestRandintLikeAPI(unittest.TestCase):
         )
 
     @test_with_pir_api
-    def test_static_api(self):
+    def test_static_api_with_bool(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # results are from [-100, 100).
-            x_bool = paddle.static.data(
-                name="x_bool", shape=[10, 12], dtype="bool"
-            )
+            x = paddle.static.data(name="x", shape=[10, 12], dtype="bool")
+            x_bool = np.zeros((10, 12)).astype("bool")
             exe = paddle.static.Executor(self.place)
             # x dtype is bool output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist1 = [
-                paddle.randint_like(x_bool, low=-10, high=10, dtype=dtype)
+                paddle.randint_like(x, low=-10, high=10, dtype=dtype)
                 for dtype in self.dtype
             ]
-            outs1 = exe.run(feed={'x_bool': self.x_bool}, fetch_list=outlist1)
+            outs1 = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': x_bool},
+                fetch_list=[outlist1],
+            )
             for out, dtype in zip(outs1, self.dtype):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -10) & (out <= 10)).all(), True)
+
+    @test_with_pir_api
+    def test_static_api_with_int32(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
-            x_int32 = paddle.static.data(
-                name="x_int32", shape=[10, 12], dtype="int32"
-            )
+            x = paddle.static.data(name="x", shape=[10, 12], dtype="int32")
+            x_int32 = np.zeros((10, 12)).astype("int32")
             exe = paddle.static.Executor(self.place)
             # x dtype is int32 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist2 = [
-                paddle.randint_like(x_int32, low=-5, high=10, dtype=dtype)
+                paddle.randint_like(x, low=-5, high=10, dtype=dtype)
                 for dtype in self.dtype
             ]
-            outs2 = exe.run(feed={'x_int32': self.x_int32}, fetch_list=outlist2)
+            outs2 = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': x_int32},
+                fetch_list=[outlist2],
+            )
             for out, dtype in zip(outs2, self.dtype):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -5) & (out <= 10)).all(), True)
 
+    @test_with_pir_api
+    def test_static_api_with_int64(self):
         with program_guard(Program(), Program()):
-            x_int64 = paddle.static.data(
-                name="x_int64", shape=[10, 12], dtype="int64"
-            )
+            x = paddle.static.data(name="x", shape=[10, 12], dtype="int64")
+            x_int64 = np.zeros((10, 12)).astype("int64")
             exe = paddle.static.Executor(self.place)
             # x dtype is int64 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist3 = [
-                paddle.randint_like(x_int64, low=-100, high=100, dtype=dtype)
+                paddle.randint_like(x, low=-100, high=100, dtype=dtype)
                 for dtype in self.dtype
             ]
-            outs3 = exe.run(feed={'x_int64': self.x_int64}, fetch_list=outlist3)
+            outs3 = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': x_int64},
+                fetch_list=[outlist3],
+            )
             for out, dtype in zip(outs3, self.dtype):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -100) & (out <= 100)).all(), True)
         if paddle.is_compiled_with_cuda():
             with program_guard(Program(), Program()):
-                x_float16 = paddle.static.data(
-                    name="x_float16", shape=[10, 12], dtype="float16"
+                x_fp16 = paddle.static.data(
+                    name="x", shape=[10, 12], dtype="float16"
                 )
+                x_float16 = np.zeros((10, 12)).astype("float16")
                 exe = paddle.static.Executor(self.place)
                 # x dtype is float16 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
                 outlist4 = [
-                    paddle.randint_like(x_float16, low=-3, high=25, dtype=dtype)
+                    paddle.randint_like(x_fp16, low=-3, high=25, dtype=dtype)
                     for dtype in self.dtype
                 ]
                 outs4 = exe.run(
-                    feed={'x_float16': self.x_float16}, fetch_list=outlist4
+                    paddle.static.default_main_program(),
+                    feed={'x': x_float16},
+                    fetch_list=[outlist4],
                 )
                 for out, dtype in zip(outs4, self.dtype):
                     self.assertTrue(out.dtype, np.dtype(dtype))
                     self.assertTrue(((out >= -3) & (out <= 25)).all(), True)
 
+    @test_with_pir_api
+    def test_static_with_api_float32(self):
         with program_guard(Program(), Program()):
-            x_float32 = paddle.static.data(
-                name="x_float32", shape=[10, 12], dtype="float32"
-            )
+            x = paddle.static.data(name="x", shape=[10, 12], dtype="float32")
+            x_float32 = np.zeros((10, 12)).astype("float32")
             exe = paddle.static.Executor(self.place)
             # x dtype is float32 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist5 = [
-                paddle.randint_like(x_float32, low=-25, high=25, dtype=dtype)
+                paddle.randint_like(x, low=-25, high=25, dtype=dtype)
                 for dtype in self.dtype
             ]
             outs5 = exe.run(
-                feed={'x_float32': self.x_float32}, fetch_list=outlist5
+                paddle.static.default_main_program(),
+                feed={'x': x_float32},
+                fetch_list=[outlist5],
             )
             for out, dtype in zip(outs5, self.dtype):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -25) & (out <= 25)).all(), True)
 
+    @test_with_pir_api
+    def test_static_with_api_float64(self):
         with program_guard(Program(), Program()):
-            x_float64 = paddle.static.data(
-                name="x_float64", shape=[10, 12], dtype="float64"
-            )
+            x = paddle.static.data(name="x", shape=[10, 12], dtype="float64")
+            x_float64 = np.zeros((10, 12)).astype("float64")
             exe = paddle.static.Executor(self.place)
             # x dtype is float64 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist6 = [
-                paddle.randint_like(x_float64, low=-16, high=16, dtype=dtype)
+                paddle.randint_like(x, low=-16, high=16, dtype=dtype)
                 for dtype in self.dtype
             ]
             outs6 = exe.run(
-                feed={'x_float64': self.x_float64}, fetch_list=outlist6
+                paddle.static.default_main_program(),
+                feed={'x': x_float64},
+                fetch_list=[outlist6],
             )
             for out, dtype in zip(outs6, self.dtype):
                 self.assertTrue(out.dtype, dtype)
