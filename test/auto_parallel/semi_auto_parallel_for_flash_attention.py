@@ -16,6 +16,7 @@ from semi_auto_parallel_util import SemiAutoParallelTestBase
 
 import paddle
 import paddle.distributed as dist
+from paddle.nn.functional.flash_attention import flash_attention
 
 
 class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
@@ -27,17 +28,28 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
             output.dist_attr.dims_mapping == expected_dim_mapping
         ), f"{output.dist_attr.dims_mapping}  vs {expected_dim_mapping}"
 
-    def test_concat_forward_reshard(self):
-        shapes = [[16, 4, 4], [64, 4, 4]]
-        specs = [['x', None, None], [None, None, 'x']]
+    def test_flash_att_forward(self):
+        shapes = [[2, 256, 2, 128], [2, 256, 2, 128], [2, 256, 2, 128]]
+        specs = [['x', None, None], ["x", None, None], ['x', None, None]]
         inputs, outputs = self.runfunc_and_check(
             inputs_shape=shapes,
             inputs_specs=specs,
-            op_func=paddle.concat,
-            with_backward=False,
-            axis=0,
+            op_func=flash_attention,
+            with_backward=True,
+            causal=True,
         )
-        self.check_dim_mapping(outputs, [-1, -1, 0])
+
+    def test_flash_att_forward_reshard(self):
+        shapes = [[2, 256, 2, 128], [2, 256, 2, 128], [2, 256, 2, 128]]
+        specs = [['x', None, None], [None, None, 'x'], ['x', None, None]]
+        inputs, outputs = self.runfunc_and_check(
+            inputs_shape=shapes,
+            inputs_specs=specs,
+            op_func=flash_attention,
+            with_backward=True,
+            causal=True,
+        )
+        # self.check_dim_mapping(outputs, [-1, -1, 0])
 
     def run_test_case(self):
         if self._backend == "cpu":
@@ -47,11 +59,11 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
-        self.test_concat_forward()
+        self.test_flash_att_forward()
 
         # all to all is not supported yet for cpu
         if self._backend == "gpu":
-            self.test_concat_forward_reshard()
+            self.test_flash_att_forward_reshard()
 
 
 if __name__ == '__main__':
