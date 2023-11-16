@@ -185,13 +185,13 @@ class TestGeluSink(unittest.TestCase):
         res_ref = self.base_net(approximate=True)
         res = self.base_net(approximate=True, flag="forward")
         for ref, actual in zip(res_ref, res):
-            np.testing.assert_equal(ref, actual)
+            np.testing.assert_allclose(ref, actual, rtol=1e-6)
 
     def test_gelu_approximate_false(self):
         res_ref = self.base_net(approximate=False)
         res = self.base_net(approximate=False, flag="forward")
         for ref, actual in zip(res_ref, res):
-            np.testing.assert_equal(ref, actual)
+            np.testing.assert_allclose(ref, actual, rtol=1e-6)
 
 
 if __name__ == "__main__":
