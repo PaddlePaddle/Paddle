@@ -299,8 +299,9 @@ void FcXPUFusePass::CreateTheReplicatedWeights(
       true,
       platform::errors::InvalidArgument("mul node ptr can not be null"));
   auto mul_w_name = mul->Op()->Input("Y")[0];
-  std::string replicated_w_name =
-      mul_w_name + "_copy_" + std::to_string(mul->id());
+  std::string replicated_w_name = mul_w_name + "_copy_" +
+                                  std::to_string(block->ID()) + "_" +
+                                  std::to_string(mul->id());
   auto* replicated_w_var = scope->FindVar(replicated_w_name);
   if (replicated_w_var == nullptr) {
     auto* filter_tensor =
@@ -395,8 +396,9 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   auto mul_w_name = mul->Op()->Input("Y")[0];
   Node* mul_w = FindNodeWithName(graph, mul_w_name);
   CreateTheReplicatedWeights(graph, scope, block, nodes_map);
-  std::string replicated_w_name =
-      mul_w_name + "_copy_" + std::to_string(mul->id());
+  std::string replicated_w_name = mul_w_name + "_copy_" +
+                                  std::to_string(block->ID()) + "_" +
+                                  std::to_string(mul->id());
   auto* mul_w_replicated_node = FindNodeWithName(graph, replicated_w_name);
   // transfilter fp16 --> fp32
   auto* filter_t = scope->FindVar(mul_w_replicated_node->Name())
