@@ -18,7 +18,9 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+)
 from seq2seq_dygraph_model import AttentionModel, BaseModel
 from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
 
@@ -45,28 +47,32 @@ def prepare_input(batch):
 
 def train(args, attn_model=False):
     with base.dygraph.guard(place):
-        base.default_startup_program().random_seed = 2020
-        base.default_main_program().random_seed = 2020
+        paddle.static.default_startup_program().random_seed = 2020
+        paddle.static.default_main_program().random_seed = 2020
 
         if attn_model:
-            model = AttentionModel(
-                args.hidden_size,
-                args.src_vocab_size,
-                args.tar_vocab_size,
-                args.batch_size,
-                num_layers=args.num_layers,
-                init_scale=args.init_scale,
-                dropout=args.dropout,
+            model = paddle.jit.to_static(
+                AttentionModel(
+                    args.hidden_size,
+                    args.src_vocab_size,
+                    args.tar_vocab_size,
+                    args.batch_size,
+                    num_layers=args.num_layers,
+                    init_scale=args.init_scale,
+                    dropout=args.dropout,
+                )
             )
         else:
-            model = BaseModel(
-                args.hidden_size,
-                args.src_vocab_size,
-                args.tar_vocab_size,
-                args.batch_size,
-                num_layers=args.num_layers,
-                init_scale=args.init_scale,
-                dropout=args.dropout,
+            model = paddle.jit.to_static(
+                BaseModel(
+                    args.hidden_size,
+                    args.src_vocab_size,
+                    args.tar_vocab_size,
+                    args.batch_size,
+                    num_layers=args.num_layers,
+                    init_scale=args.init_scale,
+                    dropout=args.dropout,
+                )
             )
 
         gloabl_norm_clip = ClipGradByGlobalNorm(args.max_grad_norm)
@@ -86,7 +92,7 @@ def train(args, attn_model=False):
             batch_start_time = time.time()
             input_data_feed, word_num = prepare_input(batch)
             input_data_feed = [
-                base.dygraph.to_variable(np_inp) for np_inp in input_data_feed
+                paddle.to_tensor(np_inp) for np_inp in input_data_feed
             ]
             word_count += word_num
             loss = model(input_data_feed)
@@ -133,28 +139,32 @@ def train(args, attn_model=False):
 def infer(args, attn_model=False):
     with base.dygraph.guard(place):
         if attn_model:
-            model = AttentionModel(
-                args.hidden_size,
-                args.src_vocab_size,
-                args.tar_vocab_size,
-                args.batch_size,
-                beam_size=args.beam_size,
-                num_layers=args.num_layers,
-                init_scale=args.init_scale,
-                dropout=0.0,
-                mode='beam_search',
+            model = paddle.jit.to_static(
+                AttentionModel(
+                    args.hidden_size,
+                    args.src_vocab_size,
+                    args.tar_vocab_size,
+                    args.batch_size,
+                    beam_size=args.beam_size,
+                    num_layers=args.num_layers,
+                    init_scale=args.init_scale,
+                    dropout=0.0,
+                    mode='beam_search',
+                )
             )
         else:
-            model = BaseModel(
-                args.hidden_size,
-                args.src_vocab_size,
-                args.tar_vocab_size,
-                args.batch_size,
-                beam_size=args.beam_size,
-                num_layers=args.num_layers,
-                init_scale=args.init_scale,
-                dropout=0.0,
-                mode='beam_search',
+            model = paddle.jit.to_static(
+                BaseModel(
+                    args.hidden_size,
+                    args.src_vocab_size,
+                    args.tar_vocab_size,
+                    args.batch_size,
+                    beam_size=args.beam_size,
+                    num_layers=args.num_layers,
+                    init_scale=args.init_scale,
+                    dropout=0.0,
+                    mode='beam_search',
+                )
             )
 
         model_path = (
@@ -169,7 +179,7 @@ def infer(args, attn_model=False):
             input_data_feed = [
                 base.dygraph.to_variable(np_inp) for np_inp in input_data_feed
             ]
-            outputs = model.beam_search(input_data_feed)
+            outputs = paddle.jit.to_static(model.beam_search)(input_data_feed)
             break
 
         return outputs.numpy()
