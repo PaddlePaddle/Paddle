@@ -237,8 +237,8 @@ class AutoScanTest(unittest.TestCase):
             config.switch_ir_optim(ir_optim)
         if use_gpu:
             config.enable_use_gpu(100, 0)
-        if use_mkldnn:
-            config.enable_mkldnn()
+        if not use_mkldnn:
+            config.disable_mkldnn()
         if use_xpu:
             config.enable_xpu()
         if passes is not None:
