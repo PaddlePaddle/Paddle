@@ -41,6 +41,15 @@ Region::iterator Region::erase(const_iterator position) {
   delete *position;
   return blocks_.erase(position);
 }
+
+std::unique_ptr<pir::Block> Region::TakeBack() {
+  Block *block = nullptr;
+  if (!blocks_.empty()) {
+    block = blocks_.back();
+    blocks_.pop_back();
+  }
+  return std::unique_ptr<pir::Block>(block);
+}
 void Region::TakeBody(Region &&other) {
   clear();
   blocks_.swap(other.blocks_);
