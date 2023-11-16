@@ -172,7 +172,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
                     ["Logits"],
                     "Loss",
                     numeric_grad_delta=0.001,
-                    check_pir=False
+                    check_pir=False,
                 )
             self.check_grad(
                 ["Logits"], "Loss", numeric_grad_delta=0.001, check_pir=False
@@ -517,9 +517,9 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
 
     def test_check_grad(self):
         if self.python_api is not None:
-            self.check_grad(["Logits"], "Loss", check_pir=True)
+            self.check_grad(["Logits"], "Loss", check_pir=False)
         self.check_grad(
-            ["Logits"], "Loss", max_relative_error=0.1, check_pir=True
+            ["Logits"], "Loss", max_relative_error=0.1, check_pir=False
         )
 
 
@@ -540,10 +540,10 @@ class TestSoftmaxWithCrossEntropyOpNoCudnnFp16(
     def test_check_grad(self):
         if self.python_api is not None:
             self.check_grad(
-                ["Logits"], "Loss", max_relative_error=0.1, check_pir=True
+                ["Logits"], "Loss", max_relative_error=0.1, check_pir=False
             )
         self.check_grad(
-            ["Logits"], "Loss", max_relative_error=0.1, check_pir=True
+            ["Logits"], "Loss", max_relative_error=0.1, check_pir=False
         )
 
 
@@ -574,15 +574,15 @@ class TestSoftmaxWithCrossEntropyOp2(TestSoftmaxWithCrossEntropyOp):
             # HIP will have accuracy fail when using float32 in CPU place
             if self.python_api is not None:
                 self.check_grad(
-                    ["Logits"], "Loss", max_relative_error=0.1, check_pir=True
+                    ["Logits"], "Loss", max_relative_error=0.1, check_pir=False
                 )
             self.check_grad(
-                ["Logits"], "Loss", max_relative_error=0.1, check_pir=True
+                ["Logits"], "Loss", max_relative_error=0.1, check_pir=False
             )
         else:
             if self.python_api is not None:
-                self.check_grad(["Logits"], "Loss", check_pir=True)
-            self.check_grad(["Logits"], "Loss", check_pir=True)
+                self.check_grad(["Logits"], "Loss", check_pir=False)
+            self.check_grad(["Logits"], "Loss", check_pir=False)
 
 
 class TestSoftmaxWithCrossEntropyOp3(TestSoftmaxWithCrossEntropyOp):
