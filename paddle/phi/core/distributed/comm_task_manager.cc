@@ -212,9 +212,8 @@ void CommTaskManager::CommTaskLoop() {
 }
 
 void CommTaskManager::CommTaskClearLoop() {
-  bool done = false;
   std::future<void> future;
-  while (!terminated_.load() || !done) {
+  while (!terminated_.load()) {
     if (future.valid()) {
       future.wait();
     }
