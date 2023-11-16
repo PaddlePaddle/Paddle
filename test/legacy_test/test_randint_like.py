@@ -76,6 +76,7 @@ class TestRandintLikeAPI(unittest.TestCase):
 
     @test_with_pir_api
     def test_static_api_with_int64(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             x = paddle.static.data(name="x", shape=[10, 12], dtype="int64")
             x_int64 = np.zeros((10, 12)).astype("int64")
@@ -116,6 +117,7 @@ class TestRandintLikeAPI(unittest.TestCase):
 
     @test_with_pir_api
     def test_static_with_api_float32(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             x = paddle.static.data(name="x", shape=[10, 12], dtype="float32")
             x_float32 = np.zeros((10, 12)).astype("float32")
@@ -136,6 +138,7 @@ class TestRandintLikeAPI(unittest.TestCase):
 
     @test_with_pir_api
     def test_static_with_api_float64(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             x = paddle.static.data(name="x", shape=[10, 12], dtype="float64")
             x_float64 = np.zeros((10, 12)).astype("float64")
