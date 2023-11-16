@@ -2128,7 +2128,7 @@ def mm(input, mat2, name=None):
 
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.matmul(input, mat2, False, False)
     else:
 
