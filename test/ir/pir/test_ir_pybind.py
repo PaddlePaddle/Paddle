@@ -205,6 +205,16 @@ class TestPybind(unittest.TestCase):
         p.global_seed(10)
         self.assertEqual(p._seed, 10)
 
+    def test_opresult_id(self):
+        with paddle.pir_utils.IrGuard():
+            a = paddle.static.data(name='a', shape=[4, 4], dtype='float32')
+            result = paddle.tanh(a)
+
+        self.assertIsInstance(a.id, str)
+        self.assertTrue(a.id.startswith("0x"))
+        self.assertIsInstance(result.id, str)
+        self.assertTrue(result.id.startswith("0x"))
+
 
 if __name__ == "__main__":
     unittest.main()
