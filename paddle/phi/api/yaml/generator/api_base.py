@@ -1257,9 +1257,31 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 transdata2strided += f"""{code_indent}  TransStride(dev_ctx, {kernel_out}, backup{i});\n"""
                 i = i + 1
         fallback_kernel_output_trans = ""
-        for kernel_out in outputs_args:
+        for idx, kernel_out in enumerate(outputs_args):
             fallback_kernel_output_trans += f"""
 {code_indent}    TransDataBackend({kernel_out}, kernel_backend, {kernel_out});"""
+            if (
+                self.outputs['types'][idx] == 'std::vector<Tensor>'
+                and self.outputs['names'][idx] in self.inplace_map
+            ):
+                target_input = self.inplace_map[self.outputs['names'][idx]]
+                if (
+                    self.inplace_map[self.outputs['names'][idx]]
+                    in self.optional_vars
+                ):
+                    fallback_kernel_output_trans += f"""
+{code_indent}    if ({target_input}) {{
+{code_indent}      for (size_t i = 0; i < {target_input}->size(); ++i) {{
+{code_indent}        auto target_ptr = static_cast<phi::DenseTensor*>({target_input}->at(i).impl().get());
+{code_indent}        *target_ptr = *{kernel_out}.at(i);
+{code_indent}      }}
+{code_indent}    }}"""
+                else:
+                    fallback_kernel_output_trans += f"""
+{code_indent}    for (size_t i = 0; i < {target_input}.size(); ++i) {{
+{code_indent}      auto target_ptr = static_cast<phi::DenseTensor*>({target_input}.at(i).impl().get());
+{code_indent}      *target_ptr = *{kernel_out}.at(i);
+{code_indent}    }}"""
         return f"""
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
