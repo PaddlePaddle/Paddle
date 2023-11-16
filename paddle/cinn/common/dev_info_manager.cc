@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 
 #include <glog/logging.h>
 
+#include "paddle/cinn/common/dev_info_base.h"
 #include "paddle/cinn/common/dev_info_manager.h"
 
 namespace cinn {
@@ -28,16 +29,19 @@ DevInfoMgr::DevInfoMgr(Target::Arch arch, int device_num)
       impl_ = std::make_unique<DevInfoBase>();
       break;
     case Target::Arch::NVGPU:
+#ifdef CINN_WITH_CUDA
       impl_ = std::make_unique<NVGPUDevInfo>(device_num);
+#endif
     default:
       CHECK(false) << "Current device can't be recognized!\n";
       break;
   }
 }
 
-DevInfoMgr* DevInfoMgr::GetCurrentDevInfo(Target::Arch arch, int device_num) {
-  static DevInfoMgr dev_info_mgr(arch, device_num);
-  return &dev_info_mgr;
+std::unique_ptr<DevInfoMgr> DevInfoMgr::GetDevInfo(Target::Arch arch,
+                                                   int device_num) {
+  std::unique_ptr<DevInfoMgr> ret(new DevInfoMgr(arch, device_num));
+  return ret;
 }
 
 }  // namespace common

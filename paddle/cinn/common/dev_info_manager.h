@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,14 +27,13 @@ class DevInfoMgr final {
  private:
   explicit DevInfoMgr(Target::Arch arch = Target::Arch::Unk,
                       int device_num = 0);
-
+  std::unique_ptr<DevInfoBase> impl_;
   Target::Arch arch_;
   int device_num_;
-  std::unique_ptr<DevInfoBase> impl_;
 
  public:
-  static DevInfoMgr* GetCurrentDevInfo(Target::Arch arch = Target::Arch::NVGPU,
-                                       int device_num = 0);
+  static std::unique_ptr<DevInfoMgr> GetDevInfo(
+      Target::Arch arch = Target::Arch::NVGPU, int device_num = 0);
 
 // Extra device should be added here
 #ifdef CINN_WITH_CUDA

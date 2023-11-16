@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+
+#ifdef CINN_WITH_CUDA
 
 #include <ostream>
 #include <string>
@@ -29,25 +31,19 @@ namespace common {
 class NVGPUDevInfo : public DevInfoBase {
  public:
   explicit NVGPUDevInfo(int device) : device_num_(device) {
-#ifdef CINN_WITH_CUDA
     CUDA_CALL(cudaGetDeviceProperties(prop_, device));
-#endif
   }
 
-#ifdef CINN_WITH_CUDA
   std::array<int, 3> GetMaxGridDims() const;
   std::array<int, 3> GetMaxBlockDims() const;
   int GetMultiProcessorCount() const;
   int GetMaxThreadsPerMultiProcessor() const;
   int GetMaxThreadsPerBlock() const;
-#endif
 
  private:
   int device_num_;
-#ifdef CINN_WITH_CUDA
   cudaDeviceProp* prop_;
-#endif
 };
-
 }  // namespace common
 }  // namespace cinn
+#endif
