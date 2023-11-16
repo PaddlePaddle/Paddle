@@ -65,9 +65,9 @@ class TestRandintLikeAPI(unittest.TestCase):
                 for dtype in self.dtype
             ]
             outs2 = exe.run(feed={'x_int32': self.x_int32}, fetch_list=outlist2)
-            for out, dtype in zip(outs2, self.dtype):
-                self.assertTrue(out.dtype, np.dtype(dtype))
-                self.assertTrue(((out >= -5) & (out <= 10)).all(), True)
+            for out2, dtype in zip(outs2, self.dtype):
+                self.assertTrue(out2.dtype, np.dtype(dtype))
+                self.assertTrue(((out2 >= -5) & (out2 <= 10)).all(), True)
 
         with program_guard(Program(), Program()):
             x_int64 = paddle.static.data(
@@ -80,9 +80,9 @@ class TestRandintLikeAPI(unittest.TestCase):
                 for dtype in self.dtype
             ]
             outs3 = exe.run(feed={'x_int64': self.x_int64}, fetch_list=outlist3)
-            for out, dtype in zip(outs3, self.dtype):
-                self.assertTrue(out.dtype, np.dtype(dtype))
-                self.assertTrue(((out >= -100) & (out <= 100)).all(), True)
+            for out3, dtype in zip(outs3, self.dtype):
+                self.assertTrue(out3.dtype, np.dtype(dtype))
+                self.assertTrue(((out3 >= -100) & (out3 <= 100)).all(), True)
         if paddle.is_compiled_with_cuda():
             with program_guard(Program(), Program()):
                 x_float16 = paddle.static.data(
@@ -97,9 +97,9 @@ class TestRandintLikeAPI(unittest.TestCase):
                 outs4 = exe.run(
                     feed={'x_float16': self.x_float16}, fetch_list=outlist4
                 )
-                for out, dtype in zip(outs4, self.dtype):
-                    self.assertTrue(out.dtype, np.dtype(dtype))
-                    self.assertTrue(((out >= -3) & (out <= 25)).all(), True)
+                for out4, dtype in zip(outs4, self.dtype):
+                    self.assertTrue(out4.dtype, np.dtype(dtype))
+                    self.assertTrue(((out4 >= -3) & (out4 <= 25)).all(), True)
 
         with program_guard(Program(), Program()):
             x_float32 = paddle.static.data(
@@ -114,9 +114,9 @@ class TestRandintLikeAPI(unittest.TestCase):
             outs5 = exe.run(
                 feed={'x_float32': self.x_float32}, fetch_list=outlist5
             )
-            for out, dtype in zip(outs5, self.dtype):
-                self.assertTrue(out.dtype, np.dtype(dtype))
-                self.assertTrue(((out >= -25) & (out <= 25)).all(), True)
+            for out5, dtype in zip(outs5, self.dtype):
+                self.assertTrue(out5.dtype, np.dtype(dtype))
+                self.assertTrue(((out5 >= -25) & (out5 <= 25)).all(), True)
 
         with program_guard(Program(), Program()):
             x_float64 = paddle.static.data(
@@ -131,9 +131,9 @@ class TestRandintLikeAPI(unittest.TestCase):
             outs6 = exe.run(
                 feed={'x_float64': self.x_float64}, fetch_list=outlist6
             )
-            for out, dtype in zip(outs6, self.dtype):
-                self.assertTrue(out.dtype, dtype)
-                self.assertTrue(((out >= -16) & (out <= 16)).all(), True)
+            for out6, dtype in zip(outs6, self.dtype):
+                self.assertTrue(out6.dtype, dtype)
+                self.assertTrue(((out6 >= -16) & (out6 <= 16)).all(), True)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
