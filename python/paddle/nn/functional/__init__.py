@@ -125,6 +125,8 @@ from .pooling import adaptive_avg_pool3d  # noqa: F401
 from .pooling import max_unpool1d  # noqa: F401
 from .pooling import max_unpool2d  # noqa: F401
 from .pooling import max_unpool3d  # noqa: F401
+from .pooling import fractional_max_pool2d  # noqa: F401
+from .pooling import fractional_max_pool3d  # noqa: F401
 
 from .vision import affine_grid  # noqa: F401
 from .vision import grid_sample  # noqa: F401
@@ -212,6 +214,8 @@ __all__ = [
     'adaptive_max_pool1d',
     'adaptive_max_pool2d',
     'adaptive_max_pool3d',
+    'fractional_max_pool2d',
+    'fractional_max_pool3d',
     'binary_cross_entropy',
     'binary_cross_entropy_with_logits',
     'cross_entropy',

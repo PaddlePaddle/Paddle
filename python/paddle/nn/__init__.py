@@ -86,7 +86,8 @@ from .layer.pooling import AdaptiveAvgPool3D  # noqa: F401
 from .layer.pooling import AdaptiveMaxPool1D  # noqa: F401
 from .layer.pooling import AdaptiveMaxPool2D  # noqa: F401
 from .layer.pooling import AdaptiveMaxPool3D  # noqa: F401
-
+from .layer.pooling import FractionalMaxPool2D  # noqa: F401
+from .layer.pooling import FractionalMaxPool3D  # noqa: F401
 from .layer.conv import Conv1D  # noqa: F401
 from .layer.conv import Conv2D  # noqa: F401
 from .layer.conv import Conv3D  # noqa: F401
@@ -219,6 +220,8 @@ __all__ = [
     'SmoothL1Loss',
     'MaxPool3D',
     'AdaptiveMaxPool2D',
+    'FractionalMaxPool2D',
+    'FractionalMaxPool3D',
     'Hardshrink',
     'Softplus',
     'KLDivLoss',

@@ -63,6 +63,8 @@ from .pooling import AdaptiveMaxPool3D  # noqa: F401
 from .pooling import MaxUnPool1D  # noqa: F401
 from .pooling import MaxUnPool2D  # noqa: F401
 from .pooling import MaxUnPool3D  # noqa: F401
+from .pooling import FractionalMaxPool2D  # noqa: F401
+from .pooling import FractionalMaxPool3D  # noqa: F401
 from .conv import Conv1D  # noqa: F401
 from .conv import Conv2D  # noqa: F401
 from .conv import Conv3D  # noqa: F401
