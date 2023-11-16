@@ -5837,9 +5837,9 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
     This function returns a tensor with fresh storage.
 
     The argument ``offset`` controls which diagonal to consider:
-    If ``offset`` = 0, it is the main diagonal.
-    If ``offset`` > 0, it is above the main diagonal.
-    If ``offset`` < 0, it is below the main diagonal.
+    - If ``offset`` = 0, it is the main diagonal.
+    - If ``offset`` > 0, it is above the main diagonal.
+    - If ``offset`` < 0, it is below the main diagonal.
 
     Note:
         ``y`` should have the same shape as paddle.diagonal(x, offset, axis1, axis2).
@@ -5858,7 +5858,6 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> x = paddle.arange(6.0).reshape((2, 3))
             >>> y = paddle.ones((2,))
