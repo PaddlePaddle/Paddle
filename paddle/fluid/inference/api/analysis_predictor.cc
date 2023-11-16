@@ -106,6 +106,7 @@
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/phi/core/flags.h"
@@ -742,9 +743,10 @@ bool AnalysisPredictor::PrepareExecutor() {
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
 
       ::pir::PassManager pm(::pir::IrContext::Instance(), 2);
-      pm.AddPass(::pir::CreateConstantFoldingPass(place_, sub_scope_));
-      pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+      // TODO(liuyuanle): Uncomment constant_folding_pass after fix it
+      // pm.AddPass(::pir::CreateConstantFoldingPass(sub_scope_));
       pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+      pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
 
       // pm.EnableIRPrinting();
       pm.Run(pir_program_.get());
@@ -755,6 +757,7 @@ bool AnalysisPredictor::PrepareExecutor() {
       if (FLAGS_pir_apply_inplace_pass) {
         ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
         pm.AddPass(::pir::CreateInplacePass());
+        pm.AddPass(::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
         pm.Run(pir_program_.get());
       }
 
