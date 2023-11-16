@@ -129,6 +129,8 @@ from .pooling import (
     adaptive_max_pool1d,
     adaptive_max_pool2d,
     adaptive_max_pool3d,
+    fractional_max_pool2d,
+    fractional_max_pool3d,
     avg_pool1d,
     avg_pool2d,
     avg_pool3d,
