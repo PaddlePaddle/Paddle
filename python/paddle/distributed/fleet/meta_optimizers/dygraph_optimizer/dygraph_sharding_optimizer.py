@@ -120,6 +120,97 @@ class DygraphShardingOptimizer:
                 '_parameter_list', self._rank2params[self._sharding_rank]
             )
 
+        strategy = fleet.fleet._user_defined_strategy
+        sharding_configs = strategy.hybrid_configs["sharding_configs"]
+        pp_configs = strategy.hybrid_configs["pp_configs"]
+
+        self._pp_overlap = pp_configs.sharding_comm_overlap
+        acc_steps = sharding_configs.accumulate_steps
+        self.comm_overlap = sharding_configs.comm_overlap
+        comm_group = self._hcg.get_sharding_parallel_group()
+
+        if not self._pp_overlap and self.comm_overlap:
+            assert (
+                acc_steps > 0
+            ), "acc_steps should be larger than 0 when using comm_overlap in sharding"
+            self.register_reduce_overlap_hook(
+                comm_group, acc_steps, use_comm=True
+            )
+
+    def _build_comm_buffers(
+        self, comm_group, acc_steps=1, group_size=256 * 1024 * 1024
+    ):
+        parameter_list = list(self._parameter_list)
+
+        if not parameter_list:
+            return []
+
+        # Using defaultdict for automatic list creation
+        fused_parameter_group = defaultdict(list)
+
+        for p in parameter_list:
+            assert p.name in self._param2rank
+            dst_rank = self._param2rank[p.name]
+            fused_parameter_group[dst_rank].append(p)
+
+        # Pre-compute absolute destination ranks
+        absolute_dst_ranks = {
+            rank: comm_group.ranks[rank] for rank in fused_parameter_group
+        }
+
+        comm_buffers = []
+        for dst, params in fused_parameter_group.items():
+            var_groups = assign_group_by_size(params, group_size)
+            abs_dst = absolute_dst_ranks[dst]
+
+            # Using list comprehension for buffer creation
+            buffers = [
+                FusedCommBuffer(
+                    group_idx,
+                    parameters,
+                    comm_group,
+                    acc_steps,
+                    HOOK_ACTION.REDUCE,
+                    abs_dst,
+                    release_grads=False,
+                )
+                for group_idx, parameters in var_groups.items()
+            ]
+            comm_buffers.extend(buffers)
+
+        return comm_buffers
+
+    def register_reduce_overlap_hook(
+        self,
+        comm_group,
+        acc_steps,
+        use_comm=False,
+        group_size=128 * 1024 * 1024,
+    ):
+        # Build communication buffers once and store them
+        if not hasattr(self, 'comm_buffers'):
+            self.comm_buffers = self._build_comm_buffers(
+                comm_group, acc_steps, group_size
+            )
+
+        # Register backward hooks for each parameter in the buffer
+        for buffer in self.comm_buffers:
+            for param in buffer._params:
+                # Directly register the hook function with necessary parameters
+                param._register_backward_hook(
+                    self._create_backward_hook(buffer, param, use_comm)
+                )
+
+    def _create_backward_hook(self, buffer, param, use_comm):
+        """Creates a backward hook function for autograd."""
+
+        @paddle.autograd.no_grad()
+        def fused_allreduce(*_):
+            # Directly add gradient to the buffer
+            buffer.add_grad(param, use_comm=use_comm)
+
+        return fused_allreduce
+
     def clear_grad(self, set_to_zero=True):
         """
         should clear grad for all parameters in model
@@ -196,6 +287,9 @@ class DygraphShardingOptimizer:
         return mapping
 
     def reduce_gradients(self, parameter_list, hcg):
+        if self._pp_overlap or self.comm_overlap:
+            return
+
         # TODO merge grad / nrank with dp
         with framework.no_grad():
             sharding_nrank = hcg.get_sharding_parallel_group().nranks
@@ -259,6 +353,10 @@ class DygraphShardingOptimizer:
         # NOTE in dygraph mode, the only different between step and minimize is that minimize
         # allow user to customize the parameters for updating on each step
 
+        if self.comm_overlap:
+            for buffer in self.comm_buffers:
+                buffer.scale_and_split_grads()
+
         assert (
             not self._using_param_groups
         ), "minimize() is not support if using param_groups"
@@ -282,6 +380,9 @@ class DygraphShardingOptimizer:
     @framework.dygraph_only
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
+        if self.comm_overlap:
+            for buffer in self.comm_buffers:
+                buffer.scale_and_split_grads()
 
         # hack to grad_clip all parameters,
         # otherwise the self._inner_opt will only grad_clip the self._rank2params[self._sharding_rank] params
