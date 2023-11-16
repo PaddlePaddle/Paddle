@@ -106,7 +106,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
       paddle::dialect::GetInt64Vector({{item.name}}_define_op->attribute("value")));
 
       {% else %}
-        {% if {{item.mapped_type[0]}} == "pir::StrAttribute" %}
+        {% if item.mapped_type[0] == "pir::StrAttribute" %}
   {{item.mapped_type[1]}} {{item.name}} = op->attribute("{{item.name}}").dyn_cast<{{item.mapped_type[0]}}>().AsString();
         {% else %}
   {{item.mapped_type[1]}} {{item.name}} = op->attribute("{{item.name}}").dyn_cast<{{item.mapped_type[0]}}>().data();

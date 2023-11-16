@@ -81,6 +81,7 @@ class TestBatchNormOp(OpTest):
                 no_check_set=None,
                 check_prim=True,
                 only_check_prim=True,
+                check_prim_pir=True,
             )
 
     def test_check_grad_x(self):

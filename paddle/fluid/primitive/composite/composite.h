@@ -83,6 +83,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     const std::string& data_layout,
     bool use_global_stats,
     bool trainable_statistics) {
+  VLOG(4) << "Decomp prepare call batch_norm's decomp interface";
+
   std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
   int rank = x_dim.size();
   DataLayout data_layout_ = phi::StringToDataLayout(data_layout);
@@ -116,6 +118,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
   Tensor x_hat;
   Tensor batch_mean;
   Tensor inv_std;
+  Tensor run_mean_;
+  Tensor run_var_;
 
   if (!use_run_stat) {
     batch_mean = mean_decomp<T>(x, IntArray(reduce_axes), false);
@@ -128,10 +132,10 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
       x_hat = (x - reshape<T>(batch_mean, stats_shape)) *
               reshape<T>(inv_std, stats_shape);
     }
-    run_mean = run_mean * momentum;
-    run_var = run_var * momentum;
+    run_mean_ = run_mean * momentum + batch_mean * (1. - momentum);
+    // run_var = run_var * momentum;
     // run_mean = run_mean * momentum + batch_mean * (1. - momentum);
-    // run_var = run_var * momentum + batch_var * (1. - momentum);
+    run_var_ = run_var * momentum + batch_var * (1. - momentum);
   } else {
     batch_mean = full<T>(phi::vectorize(run_mean.dims()), 0, run_mean.dtype());
     auto batch_var =
@@ -144,6 +148,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
               elementwise_pow<T>((reshape<T>(run_var, stats_shape) + epsilon),
                                  half);
     }
+    run_mean_ = assign<T>(run_mean);
+    run_var_ = assign<T>(run_var);
   }
   Tensor y;
   auto scale_ptr = scale.get_ptr();
@@ -162,8 +168,6 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
 
   auto batch_mean_ = assign<T>(batch_mean);
   auto inv_std_ = assign<T>(inv_std);
-  auto run_mean_ = assign<T>(run_mean);
-  auto run_var_ = assign<T>(run_var);
   if (!use_run_stat) {
     return std::make_tuple(
         y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space);
