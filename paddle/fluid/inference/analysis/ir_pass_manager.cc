@@ -367,6 +367,14 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool fc_per_channel = argument->xpu_fc_per_channel();
       pass->Set("fc_per_channel", new bool(fc_per_channel));
       VLOG(5) << "fc per channel:" << fc_per_channel;
+
+      int fc_compute_precision = argument->xpu_fc_compute_precision();
+      pass->Set("fc_compute_precision", new int(fc_compute_precision));
+      VLOG(5) << "fc compute precision:" << fc_compute_precision;
+    } else if (pass_name == "conv2d_xpu_fuse_pass") {
+      int conv_compute_precision = argument->xpu_conv_compute_precision();
+      pass->Set("conv_compute_precision", new int(conv_compute_precision));
+      VLOG(5) << "conv compute precision:" << conv_compute_precision;
     }
 
     pre_pass = pass_name;

@@ -524,10 +524,15 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
 
   (*fusion_nodes_map)["bias"] = fusion_bias_node;
 
-  int gemm_compute =
-      Has("gemm_compute_precision") ? Get<int>("gemm_compute_precision") : -1;
+  // int gemm_compute =
+  //   Has("gemm_compute_precision") ? Get<int>("gemm_compute_precision") : -1;
 
-  VLOG(5) << "Gemm Compute Type:" << gemm_compute;
+  // VLOG(5) << "Gemm Compute Type:" << gemm_compute;
+
+  int fc_compute_precision =
+      Has("fc_compute_precision") ? Get<int>("fc_compute_precision") : -1;
+
+  VLOG(5) << "fc compute precision type:" << fc_compute_precision;
 
   Node* filter_intx = nullptr;
   Node* filter_max = nullptr;
@@ -539,7 +544,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   VLOG(5) << "per_channel_quant:" << per_channel_quant;
 
   if (op_weights_precision != "int8") {
-    if (gemm_compute != 2) {
+    if (fc_compute_precision != 2) {
       PrepareWeight<float, int16_t>(graph,
                                     scope,
                                     block,

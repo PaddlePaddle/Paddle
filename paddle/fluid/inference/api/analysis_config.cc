@@ -1412,6 +1412,10 @@ std::string AnalysisConfig::Summary() {
                   std::to_string(xpu_config_.gemm_compute_precision)});
     os.InsertRow(
         {"xpu_fc_per_channel", std::to_string(xpu_config_.fc_per_channel)});
+    os.InsertRow({"xpu_fc_compute_precision",
+                  std::to_string(xpu_config_.fc_compute_precision)});
+    os.InsertRow({"xpu_conv_compute_precision",
+                  std::to_string(xpu_config_.conv_compute_precision)});
     os.InsertRow(
         {"xpu_transformer_softmax_optimize_level",
          std::to_string(xpu_config_.transformer_softmax_optimize_level)});

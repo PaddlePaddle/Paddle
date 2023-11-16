@@ -120,8 +120,13 @@ struct PD_INFER_DECL XpuConfig {
 
   // fc quant support per channel ways.
   bool fc_per_channel{false};
+
+  int fc_compute_precision{1};
+
   // conv quant support per channel ways.
   bool conv_per_channel{false};
+
+  int conv_compute_precision{1};
 
   // Gemm compute precision. Optional values are 0(int8),1(int16),2(int31).
   // Note: "gemm_compute_precision" has no effect on quanted ops of quant model
