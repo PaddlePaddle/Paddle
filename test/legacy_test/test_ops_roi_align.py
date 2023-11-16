@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 from paddle.vision.ops import RoIAlign, roi_align
 
 
@@ -81,11 +82,13 @@ class TestRoIAlign(unittest.TestCase):
         self.roi_align_functional(3)
         self.roi_align_functional(output_size=(3, 4))
 
+    @test_with_pir_api
     def test_roi_align_functional_static(self):
         paddle.enable_static()
         self.roi_align_functional(3)
         paddle.disable_static()
 
+    @test_with_pir_api
     def test_RoIAlign(self):
         roi_align_c = RoIAlign(output_size=(4, 3))
         data = paddle.to_tensor(self.data)
