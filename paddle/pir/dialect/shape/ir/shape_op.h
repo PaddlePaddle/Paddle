@@ -40,8 +40,8 @@ class IR_API SymbolicDimOp : public Op<SymbolicDimOp> {
                     bool known_non_size_one = false,
                     bool known_non_size_zero = false);
 
-  const std::string GetSymName();
-  int64_t GetDimSize();
+  const std::string GetSymName() const;
+  int64_t GetDimSize() const;
 
   bool GetKnownNonNegative();
   bool GetKnownNegativeOne();
@@ -64,7 +64,7 @@ class IR_API SymbolicDimOp : public Op<SymbolicDimOp> {
   void UpdateKnownNonSizeZero(bool flag);
 
   // Returns true if this SymbolicDimOp is not known at compile-time.
-  bool IsDynamic();
+  bool IsDynamic() const;
 
   // Try to merge two SymbolicDimOp.
   bool Merge(SymbolicDimOp other);
