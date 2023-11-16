@@ -89,7 +89,9 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'fusion_squared_mat_sub',
     'fused_attention',
     'fused_feedforward',
+    'fc',
     'self_dp_attention',
+    'get_tensor_from_selected_rows',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
