@@ -1126,25 +1126,27 @@ void DropoutNdInferMeta(const MetaTensor& x,
 }
 
 void DetInferMeta(const MetaTensor& x, MetaTensor* out) {
-	auto input_dim = x.dims();
-	auto input_dim_size = input_dim.size();     
-	PADDLE_ENFORCE_GE(
-			input_dim_size,
-			2,
-			phi::errors::InvalidArgument("the input maatrix dimension size should greater than 2."));
-	
-	PADDLE_ENFORCE_EQ(input_dim[input_dim_size - 1],
-			input_dim[input_dim_size - 2],
-			phi::errors::InvalidArgument("the input matrix should be square matrix."));
+  auto input_dim = x.dims();
+  auto input_dim_size = input_dim.size();
+  PADDLE_ENFORCE_GE(
+      input_dim_size,
+      2,
+      phi::errors::InvalidArgument(
+          "the input maatrix dimension size should greater than 2."));
 
-	auto output_dims = phi::slice_ddim(x.dims(), 0, input_dim_size -2);
-	
-	if (input_dim_size > 2) {
-	        out->set_dims(output_dims);
- 	} else {
-		out->set_dims(phi::make_ddim({}));
-	}
-	out->set_dtype(x.dtype());
+  PADDLE_ENFORCE_EQ(input_dim[input_dim_size - 1],
+                    input_dim[input_dim_size - 2],
+                    phi::errors::InvalidArgument(
+                        "the input matrix should be square matrix."));
+
+  auto output_dims = phi::slice_ddim(x.dims(), 0, input_dim_size - 2);
+
+  if (input_dim_size > 2) {
+    out->set_dims(output_dims);
+  } else {
+    out->set_dims(phi::make_ddim({}));
+  }
+  out->set_dtype(x.dtype());
 }
 
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
