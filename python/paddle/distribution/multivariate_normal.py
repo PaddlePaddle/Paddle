@@ -49,27 +49,33 @@ class MultivariateNormal(distribution.Distribution):
             >>> import paddle
             >>> from paddle.distribution import MultivariateNormal
             >>> rv = MultivariateNormal(loc=paddle.to_tensor([2.,5.]), covariance_matrix=paddle.to_tensor([[2.,1.],[1.,2.]]))
+
+            >>> # doctest: +SKIP
             >>> print(rv.sample([3, 2]))
             Tensor(shape=[3, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[[0.68554986, 3.85142398],
-                [1.88336682, 5.43841648]],
+            [[[0.68554986, 3.85142398],
+            [1.88336682, 5.43841648]],
 
-                [[5.32492065, 7.23725986],
-                [3.42192221, 4.83934879]],
+            [[5.32492065, 7.23725986],
+            [3.42192221, 4.83934879]],
 
-                [[3.36775684, 4.46108866],
-                [4.58927441, 4.32255936]]])
+            [[3.36775684, 4.46108866],
+            [4.58927441, 4.32255936]]])
+
+            >>> # doctest: -SKIP
             >>> print(rv.mean)
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [2., 5.])
+            [2., 5.])
+
             >>> print(rv.entropy())
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                3.38718319)
+            3.38718319)
+
             >>> rv1 = MultivariateNormal(loc=paddle.to_tensor([2.,5.]), covariance_matrix=paddle.to_tensor([[2.,1.],[1.,2.]]))
             >>> rv2 = MultivariateNormal(loc=paddle.to_tensor([-1.,3.]), covariance_matrix=paddle.to_tensor([[3.,2.],[2.,3.]]))
             >>> print(rv1.kl_divergence(rv2))
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                1.55541301)
+            1.55541301)
     """
 
     def __init__(

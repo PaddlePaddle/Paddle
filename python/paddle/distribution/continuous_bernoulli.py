@@ -54,21 +54,27 @@ class ContinuousBernoulli(distribution.Distribution):
             >>> import paddle
             >>> from paddle.distribution import ContinuousBernoulli
             >>> rv = ContinuousBernoulli(paddle.to_tensor([0.2, 0.5]))
+
+            >>> # doctest: +SKIP
             >>> print(rv.sample([2]))
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[0.09428147, 0.81438422],
-                [0.24624705, 0.93354583]])
+            [[0.09428147, 0.81438422],
+            [0.24624705, 0.93354583]])
+
+            >>> # doctest: -SKIP
             >>> print(rv.mean)
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [0.38801414, 0.50000000])
+            [0.38801414, 0.50000000])
+
             >>> print(rv.entropy())
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [-0.07641461,  0.        ])
+            [-0.07641461,  0.        ])
+
             >>> rv1 = ContinuousBernoulli(paddle.to_tensor([0.2, 0.8]))
             >>> rv2 = ContinuousBernoulli(paddle.to_tensor([0.7, 0.5]))
             >>> print(rv1.kl_divergence(rv2))
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [0.20103613, 0.07641447])
+            [0.20103613, 0.07641447])
     """
 
     def __init__(self, probability, eps=1e-4):
