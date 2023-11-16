@@ -2478,7 +2478,7 @@ def inner(x, y, name=None):
 
 
     """
-    if x.size == 1 or y.size == 1:
+    if in_dynamic_mode() and (x.size == 1 or y.size == 1):
         return multiply(x, y)
     else:
         xshape = x.shape
@@ -2488,8 +2488,10 @@ def inner(x, y, name=None):
         nx = x.reshape((-1, xshape[-1]))
         ny = y.reshape((-1, yshape[-1]))
 
-        if in_dynamic_mode():
-            return _C_ops.matmul(nx, ny.T, False, False).reshape(dstshape)
+        if in_dynamic_or_pir_mode():
+            return _C_ops.matmul(
+                nx, paddle.transpose(ny, [1, 0]), False, False
+            ).reshape(dstshape)
         else:
 
             def __check_input(x, y):
@@ -2513,7 +2515,6 @@ def inner(x, y, name=None):
                         )
 
             __check_input(nx, ny)
-
             helper = LayerHelper('inner', **locals())
             out = helper.create_variable_for_type_inference(dtype=nx.dtype)
             helper.append_op(
