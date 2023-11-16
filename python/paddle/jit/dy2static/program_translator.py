@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 
 import paddle.pir.core as ir_static
 from paddle import decomposition
-from paddle.base import core, framework, in_pir_mode
+from paddle.base import core, framework
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
     _to_static_mode_guard_,
@@ -352,7 +352,7 @@ class StaticFunction:
             and prim_or_cinn_is_enabled(
                 kwargs.get("build_strategy", None), kwargs.get("backend", None)
             )
-            and not in_pir_mode()
+            and not use_pir_api()
         ):
             from paddle.static import InputSpec
 
