@@ -295,10 +295,6 @@ bool MetaTensor::is_same_tensor(const MetaTensor& meta_tensor) const {
   return tensor_ != nullptr && tensor_ == meta_tensor.tensor();
 }
 
-bool MetaTensor::is_same_tensor(const MetaTensor& meta_tensor) const {
-  return tensor_ != nullptr && tensor_ == meta_tensor.tensor();
-}
-
 void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
   bool is_dense_tensor = phi::DenseTensor::classof(tensor_);

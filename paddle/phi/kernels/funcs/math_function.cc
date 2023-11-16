@@ -247,41 +247,34 @@ struct TensorSetConstantXPU {
   phi::Place place_;
 };
 
-template <>
-struct TensorSetConstantXPU<float> {
-  TensorSetConstantXPU(const phi::DeviceContext& context,
+struct TensorSetConstantXPU {
+  TensorSetConstantXPU(const paddle::platform::DeviceContext& context,
                        phi::DenseTensor* tensor,
-                       float value,
-                       phi::Place place)
+                       const void* value,
+                       paddle::platform::Place place)
       : context_(context), tensor_(tensor), value_(value), place_(place) {}
   template <typename T>
   void apply() const {
-    auto begin = ctx->Alloc<T>(tensor_);
+    auto* data = tensor_->mutable_data<T>(place_);
     int numel = tensor_->numel();
-    if (((std::is_same<T, float>::value) ||
-         (std::is_same<T, phi::dtype::float16>::value)) &&
-        (place_ == phi::XPUPlace())) {
-      using XPUType = typename XPUTypeTrait<T>::Type;
-      auto dev_ctx = reinterpret_cast<const phi::XPUContext*>(&context_);
-      int r = xpu::constant<XPUType>(dev_ctx->x_context(),
-                                     reinterpret_cast<XPUType*>(begin),
-                                     numel,
-                                     static_cast<XPUType>(value_));
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-      dev_ctx->Wait();
-    } else {
-      std::unique_ptr<T[]> data_cpu(new T[numel]);
-      std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
-      memory_utils::Copy(place_,
-                         begin,
-                         phi::CPUPlace(),
-                         static_cast<void*>(data_cpu.get()),
-                         numel * sizeof(T));
-    }
+    using XPUInTDType = typename XPUTensorTrait<T>::Type;
+    float num = static_cast<float>(*reinterpret_cast<const T*>(value_));
+    auto dev_ctx = reinterpret_cast<const phi::XPUContext*>(&context_);
+    int ret = xpu::constant(dev_ctx->x_context(),
+                            reinterpret_cast<XPUInTDType*>(data),
+                            numel,
+                            static_cast<XPUInTDType>(num));
+    PADDLE_ENFORCE_EQ(
+        ret,
+        XPU_SUCCESS,
+        phi::errors::External("XPU CONSTANT API return wrong value[%d %s].",
+                              ret,
+                              XPUAPIErrorMsg[ret]));
   }
+  const paddle::platform::DeviceContext& context_;
   phi::DenseTensor* tensor_;
-  float value_;
-  phi::Place place_;
+  const void* value_;
+  paddle::platform::Place place_;
 };
 #endif
 
@@ -307,7 +300,9 @@ void set_constant_with_place<phi::IPUPlace>(const phi::DeviceContext& context,
 
 template <>
 void set_constant_with_place<phi::CustomPlace>(
-    const phi::DeviceContext& context, phi::DenseTensor* tensor, float value) {
+    const phi::DeviceContext& context,
+    phi::DenseTensor* tensor,
+    const void* value) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "full",
@@ -320,10 +315,11 @@ void set_constant_with_place<phi::CustomPlace>(
                                     const phi::Scalar&,
                                     DataType,
                                     phi::DenseTensor*);
+  float num = static_cast<float>(*reinterpret_cast<const float*>(value));
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(context,
                phi::IntArray(phi::vectorize(tensor->dims())),
-               phi::Scalar(value),
+               phi::Scalar(num),
                tensor->dtype(),
                tensor);
 #else

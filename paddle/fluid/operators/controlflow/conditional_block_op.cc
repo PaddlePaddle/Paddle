@@ -107,7 +107,10 @@ class ConditionalBlockOp : public ConditionalOp {
         execution_config.used_for_control_flow_op = true;
         execution_config.skip_gc_vars =
             std::set<std::string>(skip_vars.begin(), skip_vars.end());
-
+        // add for performance in gpugraph transformer mode
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+        execution_config.used_for_inference = true;
+#endif
         core_.reset(new InterpreterCore(
             dev_place, *block, &cur_scope, execution_config));
         VLOG(10) << "[interpreterCore] created:" << core_;
