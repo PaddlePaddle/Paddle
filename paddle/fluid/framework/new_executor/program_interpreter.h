@@ -221,7 +221,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   std::vector<HookFunc> hookfuncs_;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  phi::CalculateStreamTimer calculate_stream_timer_;
+  std::unique_ptr<phi::CalculateStreamTimer> calculate_stream_timer_;
 #endif
   size_t last_calculate_instr_id_;
   bool enable_job_schedule_profiler_;

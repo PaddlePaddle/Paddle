@@ -90,6 +90,10 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
   };
 
   PrepareForCUDAGraphCapture();
+
+#if defined(PADDLE_WITH_CUDA)
+  calculate_stream_timer_ = std::make_unique<phi::CalculateStreamTimer>(place);
+#endif
 }
 
 ProgramInterpreter::~ProgramInterpreter() {
@@ -138,16 +142,6 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
                                   bool need_fetch,
                                   bool enable_job_schedule_profiler) {
   enable_job_schedule_profiler_ = enable_job_schedule_profiler;
-
-#if defined(PADDLE_WITH_CUDA)
-  if (enable_job_schedule_profiler_) {
-    gpuStream_t calculated_stream =
-        dynamic_cast<phi::GPUContext*>(
-            paddle::platform::DeviceContextPool::Instance().Get(place_))
-            ->stream();
-    calculate_stream_timer_.SetStream(calculated_stream);
-  }
-#endif
 
   std::vector<paddle::framework::OpFuncNode> op_func_nodes;
   Build(feed_names, &op_func_nodes);
@@ -650,8 +644,8 @@ void ProgramInterpreter::ClearLoDTensorArrayInLocalScope() {
 std::tuple<double, double> ProgramInterpreter::InterpreterRunTime() {
   double start_time = 0, end_time = 0;
 #if defined(PADDLE_WITH_CUDA)
-  start_time = calculate_stream_timer_.StartTime();
-  end_time = calculate_stream_timer_.EndTime();
+  start_time = calculate_stream_timer_->StartTime();
+  end_time = calculate_stream_timer_->EndTime();
 #endif
   return std::make_tuple(start_time, end_time);
 }
@@ -1065,10 +1059,10 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     instr_node.WaitEvent(place_);
 #if defined(PADDLE_WITH_CUDA)
     if (enable_job_schedule_profiler_) {
-      if (!calculate_stream_timer_.IsStarted() &&
+      if (!calculate_stream_timer_->IsStarted() &&
           !interpreter::IsCommunicationOp(instr_node)) {
         VLOG(3) << "Start calculated stream timer from op: " << op->Type();
-        calculate_stream_timer_.Start();
+        calculate_stream_timer_->Start();
       }
     }
 #endif
@@ -1251,10 +1245,10 @@ void ProgramInterpreter::RunInstructionAsync(size_t instr_id) {
 #if defined(PADDLE_WITH_CUDA)
     if (enable_job_schedule_profiler_) {
       if (instr_id == last_calculate_instr_id_ &&
-          calculate_stream_timer_.IsStarted()) {
+          calculate_stream_timer_->IsStarted()) {
         VLOG(3) << "Stop calculated stream timer from op: "
                 << instr_node.OpBase()->Type();
-        calculate_stream_timer_.Stop();
+        calculate_stream_timer_->Stop();
       }
     }
 #endif
