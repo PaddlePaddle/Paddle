@@ -16,7 +16,7 @@ from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 
 
-def unzip(input, lod, len):
+def unzip(input, lod):
     r"""
 
     **unzip layers**
@@ -24,11 +24,11 @@ def unzip(input, lod, len):
     unzip 'input' accroding to 'lod'
 
     Args:
-        input (Variable): The zipped input
+        input (Variable): The zipped input, 2-D LodTensor with shape [N, M].
         lod (Variable): The original lod of unzipped input, 1-D LodTensor with shape[K].
 
     Returns:
-        Variable: The original unzipped tensor, 2-D LodTensor with shape[K-1, len].
+        Variable: The original unzipped tensor, 2-D LodTensor with shape[K-1, M].
 
     Examples:
 
@@ -70,12 +70,7 @@ def unzip(input, lod, len):
         'unzip',
     )
     check_variable_and_dtype(lod, 'lod', ['int', 'int64'], 'unzip')
-    check_type(len, 'len', (int), 'unzip')
-    attrs = {'len': len}
     helper.append_op(
-        type='unzip',
-        inputs={'X': [input], 'lod': [lod]},
-        outputs={'Y': [out]},
-        attrs=attrs,
+        type='unzip', inputs={'X': [input], 'lod': [lod]}, outputs={'Y': [out]}
     )
     return out

@@ -511,6 +511,10 @@ if(WITH_HETERPS AND WITH_PSLIB)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
 
+if(WITH_HETERPS AND WITH_PSCORE)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
+endif()
+
 if(WITH_DISTRIBUTE)
   if(LINUX)
     set(WITH_GLOO
@@ -519,7 +523,7 @@ if(WITH_DISTRIBUTE)
   endif()
   if(WITH_ROCM AND HIP_VERSION LESS_EQUAL 40020496)
     # TODO(qili93): third-party rocksdb throw Illegal instruction with HIP version 40020496
-    message(
+    message(rm
       WARNING
         "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496. Force WITH_PSCORE=OFF."
     )
