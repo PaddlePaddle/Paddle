@@ -52,7 +52,7 @@ class TestRandintLikeAPI(unittest.TestCase):
                 paddle.randint_like(x_bool, low=-10, high=10, dtype=dtype)
                 for dtype in self.dtype
             ]
-            outs1 = exe.run(feed={'x_bool': self.x_bool}, fetch_list=outlist1)
+            outs1 = exe.run(feed={'x_bool': self.x_bool}, fetch_list=[outlist1])
             for out, dtype in zip(outs1, self.dtype):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -10) & (out <= 10)).all(), True)
@@ -66,10 +66,12 @@ class TestRandintLikeAPI(unittest.TestCase):
                 paddle.randint_like(x_int32, low=-5, high=10, dtype=dtype)
                 for dtype in self.dtype
             ]
-            outs2 = exe.run(feed={'x_int32': self.x_int32}, fetch_list=outlist2)
-            for out, dtype in zip(outs2, self.dtype):
-                self.assertTrue(out.dtype, np.dtype(dtype))
-                self.assertTrue(((out >= -5) & (out <= 10)).all(), True)
+            outs2 = exe.run(
+                feed={'x_int32': self.x_int32}, fetch_list=[outlist2]
+            )
+            for out2, dtype in zip(outs2, self.dtype):
+                self.assertTrue(out2.dtype, np.dtype(dtype))
+                self.assertTrue(((out2 >= -5) & (out2 <= 10)).all(), True)
 
         with program_guard(Program(), Program()):
             x_int64 = paddle.static.data(
