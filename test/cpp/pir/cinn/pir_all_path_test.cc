@@ -564,6 +564,6 @@ TEST(GroupOp, TestBuildSum2Group) {
   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.0);
   EXPECT_EQ(res0, true);
 
-  bool res1 = simple_cmp(out_tensor2.data<float>()[0], 0.0);
+  bool res1 = (out_tensor2.data<float>()[0] == 0.0);
   EXPECT_EQ(res1, true);
 }
