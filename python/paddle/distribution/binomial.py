@@ -58,6 +58,7 @@ class Binomial(distribution.Distribution):
             [[33., 56., 93.],
             [32., 53., 91.]])
 
+            >>> # doctest: -SKIP
             >>> print(rv.mean)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [30.00000191, 60.00000381, 90.        ])

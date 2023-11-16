@@ -55,6 +55,7 @@ class Poisson(distribution.Distribution):
             [36., 34., 47., 22.],
             [28., 24., 33., 31.]])
 
+            >>> # doctest: -SKIP
             >>> print(rv.mean)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             30.)
