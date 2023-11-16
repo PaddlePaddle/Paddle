@@ -16,7 +16,7 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode, in_pir_mode
+from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
@@ -313,12 +313,8 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
             >>> print(y4.numpy())
             2.0
     """
-    if in_pir_mode():
-        if not isinstance(input, paddle.pir.Value):
-            raise TypeError("In pir nanmedian, the input x should be a value.")
-    else:
-        if not isinstance(x, Variable):
-            raise TypeError("In median, the input x should be a Tensor.")
+    if not isinstance(x, (Variable, paddle.pir.OpResult)):
+        raise TypeError("In median, the input x should be a Tensor.")
 
     if isinstance(axis, (list, tuple)) and len(axis) == 0:
         raise ValueError("Axis list should not be empty.")
