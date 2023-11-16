@@ -1495,10 +1495,9 @@ class Engine:
         ):
             self._prepare_reader()
 
-        if self._strategy.pipeline.schedule_profiler:
-            self._executor.enable_job_schedule_profiler = (
-                self.enable_job_schedule_profiler
-            )
+        self._executor.enable_job_schedule_profiler = (
+            self.enable_job_schedule_profiler
+        )
 
         outs = self._executor.run(
             self.main_program,

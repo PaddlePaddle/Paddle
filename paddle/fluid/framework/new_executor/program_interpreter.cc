@@ -90,14 +90,6 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
   };
 
   PrepareForCUDAGraphCapture();
-
-#if defined(PADDLE_WITH_CUDA)
-  gpuStream_t calculated_stream =
-      dynamic_cast<phi::GPUContext*>(
-          paddle::platform::DeviceContextPool::Instance().Get(place))
-          ->stream();
-  calculate_stream_timer_.SetStream(calculated_stream);
-#endif
 }
 
 ProgramInterpreter::~ProgramInterpreter() {
@@ -146,6 +138,16 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
                                   bool need_fetch,
                                   bool enable_job_schedule_profiler) {
   enable_job_schedule_profiler_ = enable_job_schedule_profiler;
+
+#if defined(PADDLE_WITH_CUDA)
+  if (enable_job_schedule_profiler_) {
+    gpuStream_t calculated_stream =
+        dynamic_cast<phi::GPUContext*>(
+            paddle::platform::DeviceContextPool::Instance().Get(place_))
+            ->stream();
+    calculate_stream_timer_.SetStream(calculated_stream);
+  }
+#endif
 
   std::vector<paddle::framework::OpFuncNode> op_func_nodes;
   Build(feed_names, &op_func_nodes);
