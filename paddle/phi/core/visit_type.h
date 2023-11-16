@@ -168,6 +168,10 @@ namespace phi {
           NAME, ::paddle::DataType::UINT8, uint8_t, __VA_ARGS__)              \
       PD_PRIVATE_CASE_TYPE(                                                   \
           NAME, ::paddle::DataType::INT16, int16_t, __VA_ARGS__)              \
+      PD_PRIVATE_CASE_TYPE(                                                   \
+          NAME, ::paddle::DataType::FLOAT16, float16, __VA_ARGS__)            \
+      PD_PRIVATE_CASE_TYPE(                                                   \
+          NAME, ::paddle::DataType::BFLOAT16, bfloat16, __VA_ARGS__)          \
       default:                                                                \
         PD_THROW("function " #NAME " is not implemented for data type `",     \
                  __dtype__,                                                   \
