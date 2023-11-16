@@ -3808,12 +3808,6 @@ def householder_product(A, tau, name=None):
             A.shape[idx] == tau.shape[idx]
         ), "The input A must have the same batch dimensions with input tau.\n"
 
-    def _norm(x):
-        ret = paddle.to_tensor(0, dtype=x.dtype)
-        for i in range(x.shape[0]):
-            ret += x[i] * x[i]
-        return ret
-
     def _householder_product(A, tau):
         m, n = A.shape[-2:]
         k = tau.shape[-1]
