@@ -56,6 +56,10 @@ class TestRandintLikeAPI(unittest.TestCase):
             for out, dtype in zip(outs1, self.dtype):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -10) & (out <= 10)).all(), True)
+
+    @test_with_pir_api
+    def test_static_api_with_int32(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             x_int32 = paddle.static.data(
                 name="x_int32", shape=[10, 12], dtype="int32"
