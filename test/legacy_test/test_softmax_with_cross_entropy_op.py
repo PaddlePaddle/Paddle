@@ -169,7 +169,10 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         else:
             if self.python_api is not None:
                 self.check_grad(
-                    ["Logits"], "Loss", numeric_grad_delta=0.001, check_pir=False
+                    ["Logits"],
+                    "Loss",
+                    numeric_grad_delta=0.001,
+                    check_pir=False
                 )
             self.check_grad(
                 ["Logits"], "Loss", numeric_grad_delta=0.001, check_pir=False
