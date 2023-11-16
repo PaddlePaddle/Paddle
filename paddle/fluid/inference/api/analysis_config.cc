@@ -658,6 +658,11 @@ void AnalysisConfig::EnableMKLDNN() {
   Update();
 }
 
+void AnalysisConfig::DisableMKLDNN() {
+  use_mkldnn_ = false;
+  Update();
+}
+
 void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
 #ifdef PADDLE_WITH_DNNL
   mkldnn_cache_capacity_ = capacity;
@@ -933,6 +938,24 @@ void AnalysisConfig::Update() {
     }
   }
 
+#ifdef PADDLE_WITH_DNNL
+  // Since EnableMKLDNN is default, the pass_builder has created in the first
+  // time.
+  // Case1: User manually disable mkldnn after pass_builder
+  // create.(config.disable_mkldnn())
+  // Case2: User device is gpu/ipu/xpu, use
+  // EnableXpu(), EnableCUDNN(), PassStrategy has been reset in the above code
+  // block
+  //  Case3: pass_builder_ has been created and belongs to
+  // GpuPassStrategy(or IpuPassStrategy), neither enable mkldnn and
+  // disable mkldnn will be executed
+  if (!use_gpu() && !use_xpu() && !use_ipu() && !use_custom_device() &&
+      !use_mkldnn_) {
+    // User manually disable mkldnn
+    pass_builder()->DisableMKLDNN();
+  }
+#endif
+
   if (use_tensorrt_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kTRTSubgraphPasses) {
@@ -976,15 +999,13 @@ void AnalysisConfig::Update() {
 #endif
   }
 
-  if (use_mkldnn_) {
+  if (!use_gpu() && !use_xpu() && !use_ipu()) {
+    if (use_mkldnn_ && enable_ir_optim_) {
 #ifdef PADDLE_WITH_DNNL
-    if (!enable_ir_optim_) {
-      LOG(ERROR)
-          << "EnableMKLDNN() only works when IR optimization is enabled.";
-    } else {
+      // default enable mkldnn when device is cpu and enable_ir_optim
       pass_builder()->EnableMKLDNN();
-    }
 #endif
+    }
   }
 
   // Quantization passes must come after all other optimization passes

@@ -413,7 +413,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
           src_match_ctx.Operation(source_pattern_graph.owned_op_call()[0].get())
               .get();
       max_input_op_index = op_2_temp_program_index[source_patter_first_op];
-      rewriter.SetInsertionPoint(source_patter_first_op);
+      rewriter.set_insertion_point(source_patter_first_op);
     } else {
       rewriter.SetInsertionPointAfter(max_index_op);
     }

@@ -21,7 +21,14 @@ from functools import lru_cache
 
 import numpy as np
 
-from ..pir import OpResult, Value, translate_to_pir
+from paddle import pir
+
+from ..pir import (
+    OpResult,
+    Program as PirProgram,
+    Value,
+    translate_to_pir,
+)
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
@@ -422,14 +429,19 @@ def has_fetch_operations(
     """
 
     fetch_count = 0
+    mismatch_count = 0
     for op in block.ops:
         if op.name() == fetch_op:
-            fetch_count += 1
             if op.operand_source(0) not in fetch_targets:
-                raise Exception(
-                    "There is a fetch op in Program which will fetch variable that is not belong to fetch_targets."
-                )
-
+                mismatch_count += 1
+                continue
+            fetch_count += 1
+    if mismatch_count > 0:
+        warnings.warn(
+            "There are {} fetch ops in Program which are not responsible for the fetch targets that you have passed in fetch_list".format(
+                mismatch_count
+            )
+        )
     if fetch_count > 0 and fetch_count != len(fetch_targets):
         raise Exception(
             "Fetch operations in program do not match 'fetch_targets'"
@@ -594,6 +606,10 @@ def _to_name_str(var):
             return str(var)
         elif isinstance(var, Operator):
             return str(id(var))
+        elif isinstance(var, OpResult):
+            return str(var)
+        elif isinstance(var, Value):
+            return str(var)
         else:
             raise TypeError(str(var) + " should be Variable, Operator or str")
 
@@ -628,11 +644,18 @@ def _prepare_fleet_executor():
 
 
 def _get_strong_program_cache_key_for_new_exe(program, scope, feed, fetch_list):
-    return (
-        program.desc.cached_hash_str()
-        + str(scope.raw_address())
-        + _get_program_cache_key(feed, fetch_list)
-    )
+    if isinstance(program, PirProgram):
+        return (
+            str(program)
+            + str(scope.raw_address())
+            + _get_program_cache_key(feed, fetch_list)
+        )
+    else:
+        return (
+            program.desc.cached_hash_str()
+            + str(scope.raw_address())
+            + _get_program_cache_key(feed, fetch_list)
+        )
 
 
 def _get_strong_program_cache_key(program, feed, fetch_list):
@@ -876,6 +899,9 @@ class _ExecutorCache:
         self._get_cached_program_and_executor = lru_cache(maxsize=8)(
             self._get_program_and_executor
         )
+        self._get_cached_program_and_executor_pir_mode = lru_cache(maxsize=8)(
+            self._get_pir_program_and_executor
+        )
 
     def clear(self):
         self._get_cached_program_and_executor.cache_clear()
@@ -1020,6 +1046,18 @@ class _ExecutorCache:
                 type_to_program = {"default": new_program.desc}
             plan = core.Plan([default_job], type_to_program)
 
+        if (
+            new_program._pass_opt
+            and "pass_list" in new_program._pass_opt
+            and len(new_program._pass_opt['pass_list']) > 0
+        ):
+            pm = pir.PassManager()
+            for p in new_program._pass_opt['pass_list']:
+                pm.add_pass(p)
+            for job_type in plan.job_types():
+                ir_program = plan.ir_program(job_type)
+                pm.run(ir_program)
+
         new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
 
@@ -1033,6 +1071,27 @@ class _ExecutorCache:
         place,
         scope,
     ):
+        return self._get_cached_program_and_executor_pir_mode(
+            self._CachedData(
+                program,
+                feed,
+                fetch_list,
+                feed_var_name,
+                fetch_var_name,
+                place,
+                scope,
+            )
+        )
+
+    def _get_pir_program_and_executor(self, cached_data):
+        program = cached_data.program
+        feed = cached_data.feed
+        fetch_list = cached_data.fetch_list
+        feed_var_name = cached_data.feed_var_name
+        fetch_var_name = cached_data.fetch_var_name
+        place = cached_data.place
+        scope = cached_data.scope
+
         _add_pir_fetch_ops(
             program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
         )
@@ -1258,10 +1317,12 @@ class Executor:
 
     def _pir_feed_data(self, program, feed, scope):
         # feed var to framework
+        feed_target_names = set()
         global_block = program.global_block()
         for op in global_block.ops:
             if op.name() == 'pd_op.data':
                 feed_target_name = op.attrs()["name"]
+                feed_target_names.add(feed_target_name)
                 var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
                 var_shape = op.attrs()["shape"]
                 cur_feed = feed[feed_target_name]
@@ -1274,6 +1335,15 @@ class Executor:
                 core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
             else:
                 break
+
+        # pop variable which is not found in program
+        for feed_name in list(feed.keys()):
+            if feed_name not in feed_target_names:
+                feed.pop(feed_name)
+                warnings.warn(
+                    "The value %s is not found in program. It is not declared or is pruned."
+                    % feed_name
+                )
 
     def _fetch_data(self, fetch_list, fetch_var_name, scope):
         outs = [

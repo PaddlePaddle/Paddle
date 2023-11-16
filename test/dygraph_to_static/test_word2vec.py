@@ -21,7 +21,6 @@ from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 
 import paddle
 from paddle import base
-from paddle.jit.api import to_static
 from paddle.nn import Embedding
 
 
@@ -247,7 +246,6 @@ class SkipGram(paddle.nn.Layer):
             ),
         )
 
-    @to_static
     def forward(self, center_words, target_words, label):
         center_words_emb = self.embedding(center_words)
         target_words_emb = self.embedding_out(target_words)
@@ -287,8 +285,8 @@ def train(to_static):
         base.default_startup_program().random_seed = 1000
         base.default_main_program().random_seed = 1000
 
-        skip_gram_model = SkipGram(
-            "skip_gram_model", vocab_size, embedding_size
+        skip_gram_model = paddle.jit.to_static(
+            SkipGram("skip_gram_model", vocab_size, embedding_size)
         )
         adam = paddle.optimizer.Adam(
             learning_rate=learning_rate,
