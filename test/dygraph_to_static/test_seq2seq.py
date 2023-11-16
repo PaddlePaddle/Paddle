@@ -28,7 +28,9 @@ import paddle
 from paddle import base
 from paddle.nn import ClipGradByGlobalNorm
 
-place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
+place = (
+    paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+)
 STEP_NUM = 10
 PRINT_STEP = 2
 
@@ -177,7 +179,7 @@ def infer(args, attn_model=False):
         for batch_id, batch in enumerate(train_data_iter):
             input_data_feed, word_num = prepare_input(batch)
             input_data_feed = [
-                base.dygraph.to_variable(np_inp) for np_inp in input_data_feed
+                paddle.to_tensor(np_inp) for np_inp in input_data_feed
             ]
             outputs = paddle.jit.to_static(model.beam_search)(input_data_feed)
             break
