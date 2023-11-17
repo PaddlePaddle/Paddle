@@ -4440,15 +4440,26 @@ void FullWithTensorInferMeta(const MetaTensor& shape,
   out->set_dtype(dtype);
 }
 
+void RebuildPaddingInferMeta(const MetaTensor& x,
+                             const MetaTensor& padding_offset,
+                             const MetaTensor& seq_lens,
+                             const MetaTensor& input_ids,
+                             MetaTensor* out) {
+  int bsz = seq_lens.dims()[0];
+  int dim_embed = x.dims()[1];
+  auto out_shape = phi::make_ddim({bsz, dim_embed});
+  out->set_dims(out_shape);
+  out->set_dtype(x.dtype());
+}
 void QkvTransposeSplitInferMeta(const MetaTensor& qkv,
-                            const MetaTensor& padding_offset,
-                            const MetaTensor& seq_lens,
-                            const MetaTensor& input_ids,
-                            int num_head,
-                            int head_size,
-                            MetaTensor* q_out,
-                            MetaTensor* k_out,
-                            MetaTensor* v_out) {
+                                const MetaTensor& padding_offset,
+                                const MetaTensor& seq_lens,
+                                const MetaTensor& input_ids,
+                                int num_head,
+                                int head_size,
+                                MetaTensor* q_out,
+                                MetaTensor* k_out,
+                                MetaTensor* v_out) {
   int bsz = static_cast<int>(seq_lens.dims()[0]);
   int fused_hidden_size = static_cast<int>(qkv.dims()[1]);
   int kv_num_head = (fused_hidden_size - num_head * head_size) / head_size / 2;
@@ -4459,6 +4470,5 @@ void QkvTransposeSplitInferMeta(const MetaTensor& qkv,
   v_out->set_dims(phi::make_ddim({bsz, kv_num_head, -1, head_size}));
   v_out->set_dtype(qkv.dtype());
 }
-
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

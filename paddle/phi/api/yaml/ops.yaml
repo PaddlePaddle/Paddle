@@ -2059,6 +2059,15 @@
     func : real
   backward : real_grad
 
+- op : rebuild_padding
+  args : (Tensor x, Tensor padding_offset, Tensor seq_lens, Tensor input_ids)
+  output: Tensor(out)
+  infer_meta:
+    func: RebuildPaddingInferMeta
+  kernel :
+    func : rebuild_padding
+    data_type : x
+
 - op : reciprocal
   args : (Tensor x)
   output : Tensor(out)
