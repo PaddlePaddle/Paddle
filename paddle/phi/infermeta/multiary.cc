@@ -4440,16 +4440,16 @@ void FullWithTensorInferMeta(const MetaTensor& shape,
   out->set_dtype(dtype);
 }
 
-void RebuildPaddingInferMeta(const MetaTensor& tmp_out,
+void RebuildPaddingInferMeta(const MetaTensor& x,
                              const MetaTensor& padding_offset,
                              const MetaTensor& seq_lens,
                              const MetaTensor& input_ids,
                              MetaTensor* out) {
   int bsz = seq_lens.dims()[0];
-  int dim_embed = tmp_out.dims()[1];
+  int dim_embed = x.dims()[1];
   auto out_shape = phi::make_ddim({bsz, dim_embed});
   out->set_dims(out_shape);
-  out->set_dtype(tmp_out.dtype());
+  out->set_dtype(x.dtype());
 }
 
 }  // namespace phi

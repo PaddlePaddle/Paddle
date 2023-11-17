@@ -12,19 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/phi/kernels/rebuild_padding_kernel.h"
-#include <cuda_fp16.h>
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_launch_config.h"
-#include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/datatype_traits.h"
-#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
-#include "paddle/phi/kernels/funcs/for_range.h"
-#include "paddle/phi/kernels/randint_kernel.h"
-#include "paddle/utils/flags.h"
+
+namespace {
+template <typename T>
+__global__ void RebuildPaddingKernel(T *output_data,
+                                     const T *input_data,
+                                     const int *padding_offset,
+                                     const int dim_embed) {
+  const int tid = threadIdx.x;
+  const int bid = blockIdx.x;
+  const int dst_seq_id = bid + padding_offset[bid];
+  const int src_seq_id = bid;
+
+  for (int i = tid; i < dim_embed; i += blockDim.x) {
+    output_data[dst_seq_id * dim_embed + i] =
+        input_data[src_seq_id * dim_embed + i];
+  }
+}
+}  // namespace
+
 namespace phi {
 constexpr int VEC_16B = 16;
 
@@ -51,49 +59,20 @@ __global__ void RebuildPaddingKernel(T *output_data,
   }
 }
 
-template <typename T>
-__global__ void RebuildPaddingKernel(T *output_data,
-                                     const T *input_data,
-                                     const int *padding_offset,
-                                     const int dim_embed) {
-  const int tid = threadIdx.x;
-  const int bid = blockIdx.x;
-  const int dst_seq_id = bid + padding_offset[bid];
-  const int src_seq_id = bid;
-
-  for (int i = tid; i < dim_embed; i += blockDim.x) {
-    output_data[dst_seq_id * dim_embed + i] =
-        input_data[src_seq_id * dim_embed + i];
-  }
-}
-
-template <typename T>
-void InvokeRebuildPadding(T *output_data,
-                          const T *input_data,
-                          const int *padding_offset,
-                          const int token_num,
-                          const int dim_embed,
-                          cudaStream_t stream) {
-  // src: [token_num, dim_embed]
-  // dst: [batch_size * max_seq_len, dim_embed]
-  RebuildPaddingKernel<<<token_num, 256, 0, stream>>>(
-      output_data, input_data, padding_offset, dim_embed);
-}
-
 template <typename T, typename Context>
-void rebuild_paddingKernel(const Context &dev_ctx,
-                           const DenseTensor &tmp_out,
-                           const DenseTensor &padding_offset,
-                           const DenseTensor &seq_lens,
-                           const DenseTensor &input_ids,
-                           DenseTensor *output) {
+void RebuildPaddingKernel(const Context &dev_ctx,
+                          const DenseTensor &x,
+                          const DenseTensor &padding_offset,
+                          const DenseTensor &seq_lens,
+                          const DenseTensor &input_ids,
+                          DenseTensor *output) {
   dev_ctx.template Alloc<T>(output);
 
   auto cu_stream = dev_ctx.stream();
 
   // 获取输入张量的维度信息
-  const int token_num = tmp_out.dims()[0];
-  const int dim_embed = tmp_out.dims()[1];
+  const int token_num = x.dims()[0];
+  const int dim_embed = x.dims()[1];
   const int bsz = seq_lens.dims()[0];
 
   // 计算用于 CUDA 内核的参数
@@ -106,7 +85,7 @@ void rebuild_paddingKernel(const Context &dev_ctx,
   // 调用 CUDA 内核
   RebuildPaddingKernel<T, PackSize><<<grid_size, blocksize, 0, cu_stream>>>(
       reinterpret_cast<T *>(output->data<T>()),
-      reinterpret_cast<const T *>(tmp_out.data<T>()),
+      reinterpret_cast<const T *>(x.data<T>()),
       padding_offset.data<int>(),
       seq_lens.data<int>(),
       input_ids.dims()[1],
@@ -117,7 +96,7 @@ void rebuild_paddingKernel(const Context &dev_ctx,
 PD_REGISTER_KERNEL(rebuild_padding,
                    GPU,
                    ALL_LAYOUT,
-                   phi::rebuild_paddingKernel,
+                   phi::RebuildPaddingKernel,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
