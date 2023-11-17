@@ -126,12 +126,10 @@ std::shared_ptr<DimTrans> make_flatten(
     const std::vector<std::shared_ptr<DimTrans>>& dims) {
   std::shared_ptr<DimTrans> ptr;
   if (dims.size() == 0) {
-    // ptr = new Singleton();
     ptr = std::make_shared<Singleton>();
   } else if (dims.size() == 1) {
     ptr = dims[0];
   } else {
-    // ptr = new Flatten(dims);
     ptr = std::make_shared<Flatten>(dims);
   }
   return ptr;
@@ -157,7 +155,6 @@ std::shared_ptr<DimTrans> make_split(const std::shared_ptr<DimTrans>& dim,
                           id));
     ptr = dim;
   } else if (shape[id] == 1) {
-    // ptr = new Singleton();
     ptr = std::make_shared<Singleton>();
   } else {
     // new shape that remove 1
@@ -170,7 +167,6 @@ std::shared_ptr<DimTrans> make_split(const std::shared_ptr<DimTrans>& dim,
         new_shape.emplace_back(shape[i]);
       }
     }
-    // ptr = new Split(dim, new_shape, idx_map[id]);
     ptr = std::make_shared<Split>(dim, new_shape, idx_map[id]);
   }
   return ptr;

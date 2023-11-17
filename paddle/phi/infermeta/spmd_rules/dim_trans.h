@@ -134,8 +134,6 @@ class Split : public DimTrans {
   int64_t split_id_;
 };
 
-void CleanUp();
-
 std::shared_ptr<DimTrans> make_flatten(
     const std::vector<std::shared_ptr<DimTrans>>& dims = {});
 
