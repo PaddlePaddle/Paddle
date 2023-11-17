@@ -38,7 +38,7 @@ def create_test_class(op_type, typename, callback, check_pir=False):
         def test_output(self):
             self.check_output(check_cinn=True, check_pir=check_pir)
 
-        def test_int16_support(self):
+        def test_errors(self):
             paddle.enable_static()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
@@ -523,7 +523,7 @@ create_bf16_case('not_equal', lambda _a, _b: _a != _b, True)
 
 
 class TestCompareOpError(unittest.TestCase):
-    def test_int16_support(self):
+    def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
