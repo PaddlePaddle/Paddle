@@ -31,6 +31,7 @@ void CreateStackOp::Build(Builder &builder, OperationArgument &argument) {
   auto outlet_type = OutletType::get(builder.ir_context());
   argument.AddOutputs({stack_type, inlet_type, outlet_type});
 }
+
 void CreateStackOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs and attributes for: CreateStackOp.";
   // Verify inputs:
@@ -50,18 +51,23 @@ void CreateStackOp::VerifySig() {
 
   VLOG(4) << "End Verifying for CreateStackOp.";
 }
+
 size_t CreateStackOp::stack_size() { return push_op().stack_size(); }
+
 Value CreateStackOp::inlet_element(size_t index) {
   return push_op().inlet_element(index);
 }
+
 Value CreateStackOp::outlet_element(size_t index) {
   return pop_op().outlet_element(index);
 }
+
 PushBackOp CreateStackOp::push_op() {
   auto inlet_value = inlet();
   IR_ENFORCE(inlet_value.HasOneUse(), "The inlet value must has one use.");
   return inlet_value.first_use().owner()->dyn_cast<PushBackOp>();
 }
+
 PopBackOp CreateStackOp::pop_op() {
   auto outlet_value = outlet();
   IR_ENFORCE(outlet_value.HasOneUse(), "The outlet value must has one use.");
@@ -105,6 +111,8 @@ void PushBackOp::VerifySig() {
   IR_ENFORCE(num_operands() >= 2u, "The size of inputs must no less than 2.");
   IR_ENFORCE(operand_source(0).type().isa<InletType>(),
              "The first input of cf.push_back must be inlet_type.");
+  IR_ENFORCE(operand_source(0).HasOneUse(),
+             "The inlet value of cf.push_back can only be used once.");
 
   // No attributes should be verify.
 
@@ -121,6 +129,7 @@ size_t PushBackOp::stack_size() {
 }
 
 PopBackOp PushBackOp::pop_op() { return create_op().pop_op(); }
+
 void PopBackOp::Build(Builder &builder,             // NOLINT
                       OperationArgument &argument,  // NOLINT
                       Value outlet) {
@@ -142,6 +151,8 @@ void PopBackOp::VerifySig() {
   IR_ENFORCE(num_operands() == 1u, "The size of inputs must equal to 1.");
   IR_ENFORCE(operand_source(0).type().isa<OutletType>(),
              "The first input of cf.pop_back must be outlet_type.");
+  IR_ENFORCE(operand_source(0).HasOneUse(),
+             "The outlet value of cf.pop_back can only be used once.");
 
   // No attributes should be verify.
 
@@ -158,8 +169,10 @@ void PopBackOp::VerifySig() {
              "The pop elements size must equal to push elements size.");
   for (size_t index = 0; index < inlet_size; ++index) {
     IR_ENFORCE(outlet_element(index).type() == inlet_element(index).type(),
-               "The %d element's push type isn't equal to pop type",
-               index);
+               "The %d element's push type (%s) isn't equal to pop type (%s)",
+               index,
+               outlet_element(index).type(),
+               inlet_element(index).type());
   }
   VLOG(4) << "End Verifying for PopBackOp.";
 }
