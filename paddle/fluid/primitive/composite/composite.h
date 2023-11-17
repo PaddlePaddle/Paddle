@@ -205,7 +205,7 @@ Tensor gelu_decomp(const Tensor& x, bool approximate) {
     return res;
   } else {
     // gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
-    auto M_SQRT1_2T = full<T>(phi::vectorize(x.dims()), M_SQRT1_2, org_dtype);
+    auto M_SQRT1_2T = full<T>(phi::vectorize(x.dims()), PM_SQRT1_2, org_dtype);
     auto erf_out = one + erf<T>(x * M_SQRT1_2T);
 
     auto res = x * half * erf_out;
