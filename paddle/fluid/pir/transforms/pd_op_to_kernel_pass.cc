@@ -77,6 +77,9 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     pir::YieldOp::name(),
     IfOp::name(),
     WhileOp::name(),
+    pir::CreateStackOp::name(),
+    pir::PushBackOp::name(),
+    pir::PopBackOp::name(),
     "cinn_runtime.jit_kernel"};
 
 static bool NeedFallBackCpu(const pir::Operation* op,
@@ -1017,6 +1020,45 @@ void HandleForSpecialOp(
     }
   }
 
+  if (op_item->isa<::pir::CreateStackOp>() ||
+      op_item->isa<::pir::PushBackOp>()) {
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      if (!cur_in) {
+        vec_inputs.emplace_back();
+        continue;
+      }
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      vec_inputs.push_back(new_in);
+    }
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      op_output_types.push_back(op_item->result(i).type());
+    }
+  }
+
+  if (op_item->isa<::pir::PopBackOp>()) {
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      vec_inputs.push_back(new_in);
+    }
+
+    auto pop_back_op = op_item->dyn_cast<::pir::PopBackOp>();
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      auto cur_inlet_element = pop_back_op.inlet_element(i);
+      PADDLE_ENFORCE_EQ(map_value_pair->count(cur_inlet_element),
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "[%d]'s output of [%s] op MUST be in map pair",
+                            i,
+                            op_item->name()));
+      auto new_inlet_element = map_value_pair->at(cur_inlet_element);
+
+      op_output_types.push_back(new_inlet_element.type());
+    }
+  }
   if (op_item->name() == "cinn_runtime.jit_kernel") {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
@@ -1049,7 +1091,7 @@ void HandleForSpecialOp(
       (*map_value_pair)[op_item->result(i)] = op->result(i);
     }
   }
-  VLOG(6) << "Deep copy a new builtin op: " << op_item->name();
+  VLOG(6) << "Deep copy a new special op: " << op_item->name();
 }
 
 std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,

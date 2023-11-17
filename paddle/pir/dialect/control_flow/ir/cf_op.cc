@@ -169,8 +169,10 @@ void PopBackOp::VerifySig() {
              "The pop elements size must equal to push elements size.");
   for (size_t index = 0; index < inlet_size; ++index) {
     IR_ENFORCE(outlet_element(index).type() == inlet_element(index).type(),
-               "The %d element's push type isn't equal to pop type",
-               index);
+               "The %d element's push type (%s) isn't equal to pop type (%s)",
+               index,
+               outlet_element(index).type(),
+               inlet_element(index).type());
   }
   VLOG(4) << "End Verifying for PopBackOp.";
 }
