@@ -569,6 +569,9 @@ static PyObject* tensor_method__is_initialized(TensorObject* self,
 static PyObject* tensor_method__is_dense_tensor_hold_allocation(
     TensorObject* self, PyObject* args, PyObject* kwargs) {
   EAGER_TRY
+  if (!self->tensor.defined()) {
+    return ToPyObject(false);
+  }
   if (self->tensor.is_dense_tensor()) {
     return ToPyObject(
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl())
