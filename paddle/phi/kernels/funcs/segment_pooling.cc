@@ -31,10 +31,14 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
                   const DenseTensor& input,
                   const DenseTensor& segments,
                   DenseTensor* output,
-                  DenseTensor* index UNUSED,
+                  DenseTensor* summed,
                   const std::string pooltype = "SUM") {
     const IndexT* segment_ids = segments.data<IndexT>();
     auto curent_id = segment_ids[0];
+    summed->Resize(phi::make_ddim(
+        std::vector<int64_t>{segment_ids[segments.numel() - 1] + 1, 1}));
+    auto summed_ids =
+        dev_ctx.Alloc<int64_t>(summed, summed->numel() * sizeof(int64_t));
     int64_t last_idx = 0;
     int64_t w = input.numel() / input.dims()[0];
     auto& place = *dev_ctx.eigen_device();
@@ -56,6 +60,7 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
       Tensor in_t = input.Slice(last_idx, idx);
 
       int64_t h = idx - last_idx;
+      summed_ids[curent_id] = h;
       auto in_e = EigenMatrix<T>::From(in_t, phi::make_ddim({h, w}));
       auto out_e = EigenVector<T>::Flatten(out_t);
 
