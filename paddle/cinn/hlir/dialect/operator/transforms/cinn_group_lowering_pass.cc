@@ -171,18 +171,14 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
              cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
         };
 
-        std::cerr << "compile 11\n";
         // Generate jit kernel op input and output
         auto vec_ins = GetBlockOutsideInput(group->ops);
 
         std::vector<pir::Value> vec_new_ins;
         for (size_t i = 0; i < vec_ins.size(); ++i) {
-          std::cerr << "i  " << i << "\t"
-                    << vec_ins[i].dyn_cast<pir::OpResult>().owner()->name()
-                    << std::endl;
           vec_new_ins.push_back(value_map.at(vec_ins[i]));
         }
-        std::cerr << "compile 12\n";
+
         std::unordered_map<size_t, size_t> codegen2orig;
 
         std::vector<pir::Type> vec_types;

@@ -182,7 +182,7 @@ class TestApiWhileLoop(unittest.TestCase):
 
 
 class TestApiWhileLoop_Nested(unittest.TestCase):
-    # @compare_legacy_with_pir
+    @compare_legacy_with_pir
     def test_nested_net(self):
         def external_cond(i, j, init, sums):
             return paddle.less_than(i, loop_len1)

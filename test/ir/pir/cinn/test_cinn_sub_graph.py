@@ -175,10 +175,10 @@ class TestCinnSubGraphBase(unittest.TestCase):
         out = net(self.x)
         return out
 
-    # def test_eval(self):
-    #     cinn_out = self.eval(use_cinn=True)
-    #     dy_out = self.eval(use_cinn=False)
-    #     np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+    def test_eval(self):
+        cinn_out = self.eval(use_cinn=True)
+        dy_out = self.eval(use_cinn=False)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
 class TestCinnSoftmax(TestCinnSubGraphBase):

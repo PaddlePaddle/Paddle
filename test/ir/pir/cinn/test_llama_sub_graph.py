@@ -13,6 +13,7 @@
 # limitations under the License.
 import unittest
 
+import numpy as np
 from test_cinn_sub_graph import TestCinnSubGraphBase, apply_to_static
 
 import paddle
@@ -39,26 +40,26 @@ class LlamaRMSNorm(nn.Layer):
         return hidden_states * self.weight
 
 
-# class TestLlamaRMSNorm(TestCinnSubGraphBase):
-#     def prepare_data(self):
-#         self.shape = [1, 2048, 768]
-#         self.hidden_states = paddle.randn(self.shape, dtype="float32")
-#         self.hidden_states.stop_gradient = False
+class TestLlamaRMSNorm(TestCinnSubGraphBase):
+    def prepare_data(self):
+        self.shape = [1, 2048, 768]
+        self.hidden_states = paddle.randn(self.shape, dtype="float32")
+        self.hidden_states.stop_gradient = False
 
-#     def eval(self, use_cinn):
-#         paddle.seed(2022)
-#         net = LlamaRMSNorm()
-#         # TODO(Aurelius84): Need to remove it after verify CINN
-#         if use_cinn:
-#             net = apply_to_static(net, False)
-#         net.eval()
-#         out = net(self.hidden_states)
-#         return out
+    def eval(self, use_cinn):
+        paddle.seed(2022)
+        net = LlamaRMSNorm()
+        # TODO(Aurelius84): Need to remove it after verify CINN
+        if use_cinn:
+            net = apply_to_static(net, False)
+        net.eval()
+        out = net(self.hidden_states)
+        return out
 
-#     def test_eval(self):
-#         cinn_out = self.eval(use_cinn=True)
-#         dy_out = self.eval(use_cinn=False)
-#         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+    def test_eval(self):
+        cinn_out = self.eval(use_cinn=True)
+        dy_out = self.eval(use_cinn=False)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
 class RotaryPosEmb(nn.Layer):
@@ -107,10 +108,6 @@ class TestRotaryPosEmb(TestCinnSubGraphBase):
             net = apply_to_static(net, use_cinn)
 
         out = net(self.q, self.k, self.cos, self.sin, self.position_ids)
-
-        # loss = out[0] + out[1]
-        # loss = loss.sum()
-        # loss.backward()
         return out
 
     def test_eval(self):
@@ -142,28 +139,28 @@ class RepeatKV(nn.Layer):
         )
 
 
-# class TestRepeatKV(TestCinnSubGraphBase):
-#     def prepare_data(self):
-#         self.shape = [1, 2048, 8, 96]
-#         self.hidden_states = paddle.randn(self.shape, dtype="float32")
-#         self.hidden_states.stop_gradient = False
+class TestRepeatKV(TestCinnSubGraphBase):
+    def prepare_data(self):
+        self.shape = [1, 2048, 8, 96]
+        self.hidden_states = paddle.randn(self.shape, dtype="float32")
+        self.hidden_states.stop_gradient = False
 
-#         self.n_rep = 4
+        self.n_rep = 4
 
-#     def eval(self, use_cinn):
-#         paddle.seed(2022)
-#         net = RepeatKV()
-#         # TODO(Aurelius84): Need to remove it after verify CINN
-#         if use_cinn:
-#             net = apply_to_static(net, False)
-#         net.eval()
-#         out = net(self.hidden_states, self.n_rep)
-#         return out
+    def eval(self, use_cinn):
+        paddle.seed(2022)
+        net = RepeatKV()
+        # TODO(Aurelius84): Need to remove it after verify CINN
+        if use_cinn:
+            net = apply_to_static(net, False)
+        net.eval()
+        out = net(self.hidden_states, self.n_rep)
+        return out
 
-#     def test_eval(self):
-#         cinn_out = self.eval(use_cinn=True)
-#         dy_out = self.eval(use_cinn=False)
-#         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+    def test_eval(self):
+        cinn_out = self.eval(use_cinn=True)
+        dy_out = self.eval(use_cinn=False)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
 if __name__ == '__main__':
