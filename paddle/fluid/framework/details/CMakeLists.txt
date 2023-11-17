@@ -381,8 +381,8 @@ set(IR_PASS_DEPS
     delete_dropout_op_pass)
 
 if(WITH_CINN)
-  set(IR_PASS_DEPS ${IR_PASS_DEPS} build_cinn_pass)
-  set(IR_PASS_DEPS ${IR_PASS_DEPS} cinn_zero_tensor_trick_pass)
+  set(IR_PASS_DEPS ${IR_PASS_DEPS})
+  set(IR_PASS_DEPS ${IR_PASS_DEPS})
 endif()
 
 if(NOT APPLE

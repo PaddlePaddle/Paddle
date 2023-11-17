@@ -1,5 +1,5 @@
 if(WITH_CINN)
-  set(CINN_DEPS cinn_compiler python)
+  set(CINN_DEPS python)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   # fusion_group
