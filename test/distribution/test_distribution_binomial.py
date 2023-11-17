@@ -29,7 +29,7 @@ from paddle.distribution.binomial import Binomial
     [
         (
             'one-dim',
-            100,
+            1000,
             np.array([0.4]).astype('float32'),
         ),
         (
