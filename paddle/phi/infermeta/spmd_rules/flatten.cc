@@ -44,16 +44,16 @@ int PreprocessAxis(int axis, int ndim) {
   return axis;
 }
 
-std::vector<DimTrans*> MakeFlattenDimTrans(
+std::vector<std::shared_ptr<DimTrans>> MakeFlattenDimTrans(
     const std::vector<int64_t>& src_shape, int start_axis, int stop_axis) {
-  std::vector<DimTrans*> ret;
+  std::vector<std::shared_ptr<DimTrans>> ret;
 
-  std::vector<DimTrans*> input_dims;
+  std::vector<std::shared_ptr<DimTrans>> input_dims;
   for (int64_t i = 0; i < static_cast<int64_t>(src_shape.size()); i++) {
     if (i < start_axis || i > stop_axis) {
-      ret.emplace_back(new InputDim(i));
+      ret.emplace_back(std::make_shared<InputDim>(i));
     } else {
-      input_dims.emplace_back(new InputDim(i));
+      input_dims.emplace_back(std::make_shared<InputDim>(i));
     }
 
     if (i == stop_axis) {
@@ -64,9 +64,9 @@ std::vector<DimTrans*> MakeFlattenDimTrans(
   return ret;
 }
 
-std::vector<DimTrans*> MakeFlattenDimTransReverse(
+std::vector<std::shared_ptr<DimTrans>> MakeFlattenDimTransReverse(
     const std::vector<int64_t>& src_shape, int start_axis, int stop_axis) {
-  std::vector<DimTrans*> ret;
+  std::vector<std::shared_ptr<DimTrans>> ret;
 
   std::vector<int64_t> tgt_splitted_shape;
   for (int i = start_axis; i <= stop_axis; i++) {
@@ -75,12 +75,14 @@ std::vector<DimTrans*> MakeFlattenDimTransReverse(
 
   for (int64_t i = 0; i < static_cast<int64_t>(src_shape.size()); i++) {
     if (i < start_axis) {
-      ret.emplace_back(new InputDim(i));
+      ret.emplace_back(std::make_shared<InputDim>(i));
     } else if (i > stop_axis) {
-      ret.emplace_back(new InputDim(i - (stop_axis - start_axis)));
+      ret.emplace_back(
+          std::make_shared<InputDim>(i - (stop_axis - start_axis)));
     } else {
-      ret.emplace_back(make_split(
-          new InputDim(start_axis), tgt_splitted_shape, i - start_axis));
+      ret.emplace_back(make_split(std::make_shared<InputDim>(start_axis),
+                                  tgt_splitted_shape,
+                                  i - start_axis));
     }
   }
 
@@ -108,7 +110,7 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
 
   start_axis = PreprocessAxis(start_axis, x_ndim);
   stop_axis = PreprocessAxis(stop_axis, x_ndim);
-  std::vector<DimTrans*> trans =
+  std::vector<std::shared_ptr<DimTrans>> trans =
       MakeFlattenDimTrans(src_shape, start_axis, stop_axis);
 
   // Step2: Infer the dims mapping of input (if reshard is
@@ -128,14 +130,12 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
   VLOG(4) << "Stop_axis: " << start_axis;
   VLOG(4) << "Transformation from input to output:";
   for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
-    DimTrans* t = trans[i];
+    std::shared_ptr<DimTrans> t = trans[i];
     VLOG(4) << "\tOut axis[" << i << "]: " << t->to_string();
   }
   VLOG(4) << "X dims_mapping_src: [" << str_join(x_dims_mapping)
           << "] dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "Out dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
-
-  CleanUp();
 
   return {{x_dist_attr_dst}, {out_dist_attr}};
 }
@@ -168,7 +168,7 @@ SpmdInfo FlattenInferSpmdReverse(const DistMetaTensor& x,
   start_axis = PreprocessAxis(start_axis, x_ndim);
   stop_axis = PreprocessAxis(stop_axis, x_ndim);
 
-  std::vector<DimTrans*> trans =
+  std::vector<std::shared_ptr<DimTrans>> trans =
       MakeFlattenDimTransReverse(x_shape, start_axis, stop_axis);
 
   // Step2: Infer the dims mapping of input with
@@ -187,14 +187,12 @@ SpmdInfo FlattenInferSpmdReverse(const DistMetaTensor& x,
           << "] X shape: [" << str_join(x_shape) << "]";
   VLOG(4) << "Transformation from output to input:";
   for (int64_t i = 0, n = trans.size(); i < n; i++) {
-    DimTrans* t = trans[i];
+    std::shared_ptr<DimTrans> t = trans[i];
     VLOG(4) << "\tX axis[" << i << "]: " << t->to_string();
   }
   VLOG(4) << "Out dims_mapping_src: [" << str_join(out_dims_mapping) << "] "
           << "dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "X dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
-
-  CleanUp();
 
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }

@@ -67,10 +67,10 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
 
 // Compute how each dimension in target shape
 // is obtained from the input dimensions
-std::vector<DimTrans*> MakeReshapeDimTrans(
+std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
     const std::vector<int64_t>& src_shape,
     const std::vector<int64_t>& tgt_shape) {
-  std::vector<DimTrans*> ret;
+  std::vector<std::shared_ptr<DimTrans>> ret;
   int64_t total_elem_num_src = std::accumulate(
       src_shape.begin(), src_shape.end(), 1, std::multiplies<int64_t>());
   std::vector<int64_t> inferred_tgt_shape =
@@ -121,14 +121,14 @@ std::vector<DimTrans*> MakeReshapeDimTrans(
     }
 
     if (tgt_splitted_shape.size() > 0) {
-      std::vector<DimTrans*> input_dims;
+      std::vector<std::shared_ptr<DimTrans>> input_dims;
       for (int i = 0, n = static_cast<int>(src_dims.size()); i < n; i++) {
         int64_t in_dim = src_dims[i];
         if (src_shape[in_dim] > 1) {
-          input_dims.emplace_back(new InputDim(in_dim));
+          input_dims.emplace_back(std::make_shared<InputDim>(in_dim));
         }
       }
-      DimTrans* flatten = make_flatten(input_dims);
+      std::shared_ptr<DimTrans> flatten = make_flatten(input_dims);
 
       for (int64_t i = 0, n = static_cast<int64_t>(tgt_splitted_shape.size());
            i < n;
@@ -143,8 +143,6 @@ std::vector<DimTrans*> MakeReshapeDimTrans(
 SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
                           const std::vector<int64_t>& shape) {
   // Step0: Verify input args based on reshape logic
-  VLOG(2) << "Debug Info for reshape";
-  VLOG(2) << "shape: " << str_join(shape);
   auto x_shape = phi::vectorize(x.dims());
   int x_ndim = x_shape.size();
   int out_ndim = shape.size();
@@ -181,7 +179,8 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
     }
   }
 
-  std::vector<DimTrans*> trans = MakeReshapeDimTrans(x_shape, tgt_shape);
+  std::vector<std::shared_ptr<DimTrans>> trans =
+      MakeReshapeDimTrans(x_shape, tgt_shape);
 
   // Step2: Infer the dims mapping of input (if reshard is
   // needed) and output from the dimension transformation.
@@ -197,14 +196,12 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
 
   VLOG(4) << "Transformation from input to output:";
   for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
-    DimTrans* t = trans[i];
+    std::shared_ptr<DimTrans> t = trans[i];
     VLOG(4) << "\tOut axis[" << i << "]: " << t->to_string();
   }
   VLOG(4) << "X dims_mapping_src: [" << str_join(x_dims_mapping)
           << "] dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "Out dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
-
-  CleanUp();
 
   return {{x_dist_attr_dst}, {out_dist_attr}};
 }
@@ -212,8 +209,6 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
 SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
                                  const DistMetaTensor& out,
                                  const std::vector<int64_t>& shape) {
-  VLOG(2) << "Debug Info for reshape_reverse";
-  VLOG(2) << "shape: " << str_join(shape);
   // Step0: Verify input args based on reshape logic
   auto x_shape = phi::vectorize(x.dims());
   auto out_shape = phi::vectorize(out.dims());
@@ -261,7 +256,8 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   int64_t nelm = std::accumulate(
       x_shape.begin(), x_shape.end(), 1, std::multiplies<int64_t>());
   out_shape = InferTargetShape(out_shape, nelm);
-  std::vector<DimTrans*> trans = MakeReshapeDimTrans(out_shape, x_shape);
+  std::vector<std::shared_ptr<DimTrans>> trans =
+      MakeReshapeDimTrans(out_shape, x_shape);
 
   // Step2: Infer the dims mapping of input with
   // output's dims_mapping and the transformation.
@@ -277,14 +273,12 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
 
   VLOG(4) << "Transformation from output to input:";
   for (int64_t i = 0, n = trans.size(); i < n; i++) {
-    DimTrans* t = trans[i];
+    std::shared_ptr<DimTrans> t = trans[i];
     VLOG(4) << "\tX axis[" << i << "]: " << t->to_string();
   }
   VLOG(4) << "Out dims_mapping_src: [" << str_join(out_dims_mapping) << "] "
           << "dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "X dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
-
-  CleanUp();
 
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }

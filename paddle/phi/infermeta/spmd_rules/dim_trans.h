@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <iostream>
+#include <memory>
 #include <vector>
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
@@ -90,18 +91,18 @@ class Flatten : public DimTrans {
  public:
   Flatten();
 
-  explicit Flatten(const std::vector<DimTrans*>& dims);
+  explicit Flatten(const std::vector<std::shared_ptr<DimTrans>>& dims);
 
   virtual ~Flatten();
 
-  const std::vector<DimTrans*>& inputs() const;
+  const std::vector<std::shared_ptr<DimTrans>>& inputs() const;
 
-  void set_inputs(const std::vector<DimTrans*>& dims);
+  void set_inputs(const std::vector<std::shared_ptr<DimTrans>>& dims);
 
   std::string to_string() override;
 
  private:
-  std::vector<DimTrans*> input_dims_;
+  std::vector<std::shared_ptr<DimTrans>> input_dims_;
 };
 
 // Split indicates that the output dimension
@@ -110,13 +111,15 @@ class Split : public DimTrans {
  public:
   Split();
 
-  Split(DimTrans* dim, const std::vector<int64_t>& shape, int64_t id);
+  Split(const std::shared_ptr<DimTrans>& dim,
+        const std::vector<int64_t>& shape,
+        int64_t id);
 
   virtual ~Split();
 
-  DimTrans* input() const;
+  const std::shared_ptr<DimTrans>& input() const;
 
-  void set_input(DimTrans* dim);
+  void set_input(const std::shared_ptr<DimTrans>& dim);
 
   int64_t split_id() const;
 
@@ -126,18 +129,19 @@ class Split : public DimTrans {
   std::string to_string() override;
 
  private:
-  DimTrans* input_dim_trans_;
+  std::shared_ptr<DimTrans> input_dim_trans_;
   std::vector<int64_t> splitted_shape_;
   int64_t split_id_;
 };
 
 void CleanUp();
 
-DimTrans* make_flatten(const std::vector<DimTrans*>& dims = {});
+std::shared_ptr<DimTrans> make_flatten(
+    const std::vector<std::shared_ptr<DimTrans>>& dims = {});
 
-DimTrans* make_split(DimTrans* dim,
-                     const std::vector<int64_t>& shape = {},
-                     int64_t id = 0);
+std::shared_ptr<DimTrans> make_split(const std::shared_ptr<DimTrans>& dim,
+                                     const std::vector<int64_t>& shape = {},
+                                     int64_t id = 0);
 
 // Infer the dims mapping of the output tensor according to the transformation
 // `dim_trans`. Returns the dims mapping of the input tensor (the input dims
@@ -153,7 +157,8 @@ DimTrans* make_split(DimTrans* dim,
 // leftmost output split axis can be sharded when its shape can be divisible
 // by the mesh dimension.
 std::vector<std::vector<int64_t>> InferFromDimTrans(
-    const DistMetaTensor& input_spec, const std::vector<DimTrans*>& dim_trans);
+    const DistMetaTensor& input_spec,
+    const std::vector<std::shared_ptr<DimTrans>>& dim_trans);
 
 }  // namespace distributed
 }  // namespace phi
