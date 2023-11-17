@@ -27,6 +27,7 @@ class PassTest(unittest.TestCase):
         self.valid_op_map = {}
         self.pass_list = []
         self.pir_program = None
+        self.place_runtime = "cpu"
 
     def run_pir_pass(self):
         if not isinstance(self.pass_list, list):
@@ -54,8 +55,15 @@ class PassTest(unittest.TestCase):
                 ),
             )
 
-    def check_pass_correct(self, place, need_translate_to_pir=False, atol=1e-5):
-        executor = paddle.static.Executor(place)
+    def check_pass_correct(self, need_translate_to_pir=False, atol=1e-5):
+        self.assertTrue(
+            self.place_runtime == "cpu" or self.place_runtime == "gpu",
+            "The place param must be either GPU or CPU ",
+        )
+        if self.place_runtime == "cpu":
+            executor = paddle.static.Executor(paddle.base.CPUPlace())
+        elif self.place_runtime == "gpu":
+            executor = paddle.static.Executor(paddle.base.CUDAPlace(0))
         self.assertTrue(
             need_translate_to_pir is False and self.pir_program is not None,
             "using old ir need_translate_to_pir Cannot be fasle.\n \

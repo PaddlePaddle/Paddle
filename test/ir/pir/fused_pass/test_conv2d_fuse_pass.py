@@ -23,7 +23,7 @@ paddle.enable_static()
 
 
 class TestConv2dFusePass(PassTest):
-    def setUp(self):
+    def build_ir_progam(self):
         with paddle.pir_utils.IrGuard():
             self.pir_program = paddle.static.Program()
             with paddle.pir.core.program_guard(self.pir_program):
@@ -49,9 +49,18 @@ class TestConv2dFusePass(PassTest):
             "pd_op.batch_norm": 0,
         }
 
+    def setUp(self):
+        self.place_runtime = "gpu"
+        self.build_ir_progam()
+
     def test_check_output(self):
-        place = paddle.base.CUDAPlace(0)
-        self.check_pass_correct(place)
+        self.check_pass_correct()
+
+
+class TestConv2dFusePassWtihCpu(TestConv2dFusePass):
+    def setUp(self):
+        self.place_runtime = "cpu"
+        self.build_ir_progam()
 
 
 if __name__ == "__main__":
