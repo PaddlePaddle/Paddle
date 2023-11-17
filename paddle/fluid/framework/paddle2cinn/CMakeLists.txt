@@ -8,6 +8,9 @@ set(paddle2cinn_deps
     pybind
     python
     pass
+    cinnapi
+    proto_desc
+    device_context
     auto_parallel_proto
     cinn_framework_proto
     schedule_desc_proto
