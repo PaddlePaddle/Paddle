@@ -227,6 +227,8 @@ from .math import sqrt_  # noqa: F401
 from .math import square  # noqa: F401
 from .math import stanh  # noqa: F401
 from .math import sum  # noqa: F401
+from .math import multigammaln  # noqa: F401
+from .math import multigammaln_  # noqa: F401
 from .math import nan_to_num  # noqa: F401
 from .math import nan_to_num_  # noqa: F401
 from .math import nansum  # noqa: F401
@@ -473,6 +475,8 @@ tensor_method_func = [
     'square',
     'stanh',
     'sum',
+    'multigammaln',
+    'multigammaln_',
     'nan_to_num',
     'nan_to_num_',
     'hypot',
