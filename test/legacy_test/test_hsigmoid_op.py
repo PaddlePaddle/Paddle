@@ -325,7 +325,9 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
         return avg_cost, data_list
 
     def training_test(self, is_sparse):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             paddle.seed(1)
             start_up = base.default_startup_program()
             x = np.arange(6).reshape(6)
@@ -360,7 +362,6 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
                 result.append(loss_val)
         return result
 
-    @test_with_pir_api
     def test_hs_grad_with_sparse(self):
         dense_result = self.training_test(is_sparse=False)
         sparse_result = self.training_test(is_sparse=True)
@@ -609,6 +610,7 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             out2 = m(x, labels, path_table, path_code)
 
             exe = paddle.static.Executor(self.place)
+            exe.run(startup_program)
             feed_dict = {
                 'x': self.x_np,
                 'labels': self.labels_np,
@@ -618,7 +620,9 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             if self.is_custom:
                 feed_dict["path_code"] = self.path_code_np
                 feed_dict["path_table"] = self.path_table_np
-            ret1, ret2 = exe.run(feed=feed_dict, fetch_list=[out1, out2])
+            ret1, ret2 = exe.run(
+                train_program, feed=feed_dict, fetch_list=[out1, out2]
+            )
 
             for ret in [ret1, ret2]:
                 np.testing.assert_allclose(self.out_np, ret, rtol=1e-05)

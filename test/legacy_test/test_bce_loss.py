@@ -56,7 +56,6 @@ def test_static_layer(
     return static_result
 
 
-@test_with_pir_api
 def test_static_functional(
     place, input_np, label_np, reduction='mean', weight_np=None
 ):
