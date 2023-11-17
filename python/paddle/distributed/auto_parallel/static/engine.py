@@ -1043,7 +1043,6 @@ class Engine:
                     batches = self._validate_batch(batch)
                 else:
                     batches = [{}]
-
                 try:
                     for micro_batch in batches:
                         with paddle.profiler.utils._nvprof_range(
@@ -1510,6 +1509,18 @@ class Engine:
             self._switch_mode(self._mode)
 
     def _translate_to_pir_program(self, feed_dict=None):
+        def _get_invalid_feeds(program, feed):
+            current_feed_vars = []
+            for op in program.global_block().ops:
+                if op.desc.type() == "data":
+                    output_name = op.desc.output("out")[0]
+                    current_feed_vars.append(output_name)
+            return [
+                var_name
+                for var_name in feed.keys()
+                if var_name not in current_feed_vars
+            ]
+
         def _add_data_ops(
             program,
             feed,
@@ -1635,7 +1646,20 @@ class Engine:
 
         if not self.pir_program_initialized:
             if feed_dict is not None:
-                tmp_program = _add_data_ops(self.main_program, feed_dict)
+                invalid_feed_var_names = _get_invalid_feeds(
+                    self.main_program, feed_dict
+                )
+                if invalid_feed_var_names:
+                    new_feed_dict = {}
+                    for invalid_feed_var_name in invalid_feed_var_names:
+                        new_feed_dict[invalid_feed_var_name] = feed_dict[
+                            invalid_feed_var_name
+                        ]
+                    tmp_program = _add_data_ops(
+                        self.main_program, new_feed_dict
+                    )
+                else:
+                    tmp_program = self.main_program.clone()
             else:
                 tmp_program = self.main_program.clone()
 
@@ -1663,7 +1687,11 @@ class Engine:
                 tmp_program, grad_var_to_var, param_mapping
             )
 
-            self.lr_scheduler = self.main_program.lr_scheduler
+            self.lr_scheduler = (
+                self.main_program.lr_scheduler
+                if hasattr(self.main_program, 'lr_scheduler')
+                else None
+            )
             self.pir_program = pir_program
             self.param_mapping = param_mapping
             self.pir_grad_var_to_var = pir_grad_var_to_var
