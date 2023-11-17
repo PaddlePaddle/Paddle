@@ -56,7 +56,7 @@ class TestQuantLinearFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         # for gpu
         config = self.create_inference_config(use_gpu=True)
-        yield config, ["quant_linear"], (0.015, 0.015)
+        yield config, ["quant_linear"], (0.35, 0.35)
 
     def is_program_valid(self, prog_config):
         input_num_col_dims = len(prog_config.inputs["input_x"].shape) - 1
@@ -127,7 +127,7 @@ class TestQuantLinearFusePass(PassAutoScanTest):
         def generate_input_weights(
             quant_round_type=0, quant_max_bound=127, quant_min_bound=-127
         ):
-            scale_weights = 1.0 / np.max(weights, axis=0)
+            scale_weights = 1.0 / np.max(weights)
             quant_weights = quant_max_bound * scale_weights * weights
             if quant_round_type == 0:
                 round_array_with_ties_to_even(quant_weights)

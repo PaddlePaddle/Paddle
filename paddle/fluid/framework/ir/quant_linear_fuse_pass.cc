@@ -233,7 +233,7 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
     const float* weight_scale_data = weight_scale_tensor.data<float>();
 
     std::vector<float> scale_weights(weight_tensor->dims()[1],
-                                     weight_scale_data[0]);
+                                     1.0f / weight_scale_data[0]);
 
     Node* relu = nullptr;
     Node* relu_out = nullptr;
