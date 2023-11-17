@@ -28,7 +28,7 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
 
     def test_matmul_api(self):
         default_envs = self._default_envs
-        default_envs["NVIDIA_TF32_OVERRIDE"] = 0
+        default_envs["NVIDIA_TF32_OVERRIDE"] = "0"
         envs_list = test_base.gen_product_envs_list(
             default_envs, self._changeable_envs
         )
