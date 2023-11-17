@@ -33,6 +33,7 @@ from .fused_layer_norm import fused_layer_norm
 from .masked_multihead_attention import masked_multihead_attention
 from .write_cache_kv import write_cache_kv
 from .qkv_transpose_split import qkv_transpose_split
+from .fused_get_rotary_embedding import fused_get_rotary_embedding
 
 __all__ = [
     'fused_multi_head_attention',

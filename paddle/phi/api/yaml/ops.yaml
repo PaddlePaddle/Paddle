@@ -2889,3 +2889,11 @@
   kernel :
     func : qkv_transpose_split
     data_type : qkv
+
+- op : fused_get_rotary_embedding
+  args : (Tensor input_ids, Tensor position_ids, Tensor head_dim_shape_tensor, int prompt_num, bool use_neox)
+  output : Tensor (rotary_embedding)
+  infer_meta :
+    func : FusedGetRotaryEmbeddingInferMeta
+  kernel :
+    func : fused_get_rotary_embedding
