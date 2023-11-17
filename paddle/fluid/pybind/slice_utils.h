@@ -308,8 +308,6 @@ static void ParseIndexingSlice(phi::DDim shape,
                         rank));
 }
 
-static void ConvertIndex(PyObject* _index) {}
-
 static void ParseIndex(const paddle::Tensor& tensor,
                        PyObject* _index,
                        std::vector<int64_t>* slice_axes,
@@ -418,63 +416,69 @@ static void ParseIndex(const paddle::Tensor& tensor,
       none_axes->push_back(current_dim + none_count);
       none_count++;
       bool index_ele = (slice_item == Py_True);
-      auto slice_tensor = full_ad_func({1}, index_ele, phi::DataType::BOOL);
+      auto slice_tensor =
+          full_ad_func({1}, index_ele, phi::DataType::BOOL, tensor.place());
       advanced_index->push_back(std::move(slice_tensor));
       (*advanced_index_dim)[estimated_dim] = estimated_dim;
       estimated_dim++;
     } else if (PyCheckTensor(slice_item)) {
       auto slice_tensor = CastPyArg2Tensor(slice_item, 0);
-      if (slice_tensor.shape().size() == 0 &&
-          slice_tensor.dtype() != phi::DataType::BOOL) {
-        // 0-D tensor is same with scalar
-        PADDLE_ENFORCE_EQ(
-            slice_tensor.is_dense_tensor(),
-            true,
-            platform::errors::InvalidArgument(
-                "Now, Tensor in indexing only support DenseTensor."));
-        Py_ssize_t s_t = GetSliceIndexFromTensor(
-            (*static_cast<phi::DenseTensor*>(slice_tensor.impl().get())));
-        auto start = s_t < 0 ? s_t + dim_len : s_t;
+      if (slice_tensor.shape().size() == 0) {
+        if (slice_tensor.dtype() != phi::DataType::BOOL) {
+          // 0-D int tensor is same with scalar
+          PADDLE_ENFORCE_EQ(
+              slice_tensor.is_dense_tensor(),
+              true,
+              platform::errors::InvalidArgument(
+                  "Now, Tensor in indexing only support DenseTensor."));
+          Py_ssize_t s_t = GetSliceIndexFromTensor(
+              (*static_cast<phi::DenseTensor*>(slice_tensor.impl().get())));
+          auto start = s_t < 0 ? s_t + dim_len : s_t;
 
-        PADDLE_ENFORCE(0 <= start && start < dim_len,
-                       platform::errors::OutOfRange(
-                           "The starting index %d of slice is out "
-                           "of bounds in tensor %d-th axis, it "
-                           "shound be in the range of [%d, %d).",
-                           s_t,
-                           current_dim,
-                           -dim_len,
-                           dim_len));
+          PADDLE_ENFORCE(0 <= start && start < dim_len,
+                         platform::errors::OutOfRange(
+                             "The starting index %d of slice is out "
+                             "of bounds in tensor %d-th axis, it "
+                             "shound be in the range of [%d, %d).",
+                             s_t,
+                             current_dim,
+                             -dim_len,
+                             dim_len));
 
-        slice_axes->push_back(current_dim);
-        slice_starts->push_back(start);
-        slice_ends->push_back(start + 1);
-        slice_strides->push_back(1);
-        decrease_axis->push_back(current_dim);
+          slice_axes->push_back(current_dim);
+          slice_starts->push_back(start);
+          slice_ends->push_back(start + 1);
+          slice_strides->push_back(1);
+          decrease_axis->push_back(current_dim);
+          current_dim++;
+        } else {
+          // 0-D bool Tensor, same as single PY-bool.
+          *has_advanced_index = true;
+          none_axes->push_back(current_dim + none_count);
+          none_count++;
+          slice_tensor = unsqueeze_ad_func(slice_tensor, {-1});
+          advanced_index->push_back(std::move(slice_tensor));
+          (*advanced_index_dim)[estimated_dim] = estimated_dim;
+          estimated_dim++;
+        }
       } else {
         if (slice_tensor.dtype() == phi::DataType::BOOL) {
-          if (slice_tensor.shape().size() == 0) {
-            // 0-D bool Tensor, same as single PY-bool.
-            none_axes->push_back(current_dim + none_count);
-            none_count++;
-          } else {
-            PADDLE_ENFORCE_EQ(slice_tensor.shape()[0],
-                              dim_len,
-                              platform::errors::OutOfRange(
-                                  "The shape of boolean index %d did not match"
-                                  "indexed tensor %d along axis %d.",
-                                  slice_tensor.shape()[0],
-                                  dim_len,
-                                  current_dim));
-          }
+          PADDLE_ENFORCE_EQ(slice_tensor.shape()[0],
+                            dim_len,
+                            platform::errors::OutOfRange(
+                                "The shape of boolean index %d did not match"
+                                "indexed tensor %d along axis %d.",
+                                slice_tensor.shape()[0],
+                                dim_len,
+                                current_dim));
         }
-
         *has_advanced_index = true;
         advanced_index->push_back(std::move(slice_tensor));
         (*advanced_index_dim)[estimated_dim] = estimated_dim;
         estimated_dim++;
+        current_dim++;
       }
-      current_dim++;
+
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Currently, Tensor.__indices__() only allows indexing "
