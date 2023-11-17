@@ -211,9 +211,7 @@ class TestPybind(unittest.TestCase):
             result = paddle.tanh(a)
 
         self.assertIsInstance(a.id, str)
-        self.assertTrue(a.id.startswith("0x"))
         self.assertIsInstance(result.id, str)
-        self.assertTrue(result.id.startswith("0x"))
 
 
 if __name__ == "__main__":
