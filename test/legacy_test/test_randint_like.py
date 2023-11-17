@@ -81,6 +81,9 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(((out2 >= -5) & (out2 <= 10)).all(), True)
         paddle.disable_static()
 
+    @test_with_pir_api
+    def test_static_api_with_int64(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             x_int64 = paddle.static.data(
                 name="x_int64", shape=[10, 12], dtype="int64"
@@ -95,6 +98,11 @@ class TestRandintLikeAPI(unittest.TestCase):
             for out, dtype in zip(outs3, self.dtype):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -100) & (out <= 100)).all(), True)
+        paddle.disable_static()
+
+    @test_with_pir_api
+    def test_static_api_with_fp16(self):
+        paddle.enable_static()
         if paddle.is_compiled_with_cuda():
             with program_guard(Program(), Program()):
                 x_float16 = paddle.static.data(
@@ -112,7 +120,11 @@ class TestRandintLikeAPI(unittest.TestCase):
                 for out, dtype in zip(outs4, self.dtype):
                     self.assertTrue(out.dtype, np.dtype(dtype))
                     self.assertTrue(((out >= -3) & (out <= 25)).all(), True)
+        paddle.disable_static()
 
+    @test_with_pir_api
+    def test_static_api_with_float32(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             x_float32 = paddle.static.data(
                 name="x_float32", shape=[10, 12], dtype="float32"
@@ -129,7 +141,11 @@ class TestRandintLikeAPI(unittest.TestCase):
             for out, dtype in zip(outs5, self.dtype):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -25) & (out <= 25)).all(), True)
+        paddle.disable_static()
 
+    @test_with_pir_api
+    def test_static_api_with_float64(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             x_float64 = paddle.static.data(
                 name="x_float64", shape=[10, 12], dtype="float64"
@@ -146,6 +162,7 @@ class TestRandintLikeAPI(unittest.TestCase):
             for out, dtype in zip(outs6, self.dtype):
                 self.assertTrue(out.dtype, dtype)
                 self.assertTrue(((out >= -16) & (out <= 16)).all(), True)
+        paddle.disable_static()
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
