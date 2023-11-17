@@ -40,6 +40,8 @@ class IfOp : public pir::Op<IfOp> {
   pir::Value cond() { return operand_source(0); }
   pir::Block *true_block();
   pir::Block *false_block();
+  pir::Region &true_region() { return (*this)->region(0); }
+  pir::Region &false_region() { return (*this)->region(1); }
   void Print(pir::IrPrinter &printer);  // NOLINT
   void VerifySig();
   void VerifyRegion();
