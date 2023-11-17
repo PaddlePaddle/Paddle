@@ -411,56 +411,6 @@ MultiplyDoubleGradNode::operator()(
 
   // Create Grad Node
 
-  if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {
-    if (trace_backward) {
-      paddle::platform::RecordEvent node_creation_record_event(
-          "multiply_double_grad node_creation",
-          paddle::platform::TracerEventType::OperatorInner,
-          1);
-
-      // Node Construction
-      auto grad_node = std::shared_ptr<MultiplyTripleGradNode>(
-          new MultiplyTripleGradNode(3, 5));
-      // SetAttributes if needed
-      grad_node->SetAttributeaxis(-1);
-      // Set TensorWrappers for Forward Inputs if needed
-      grad_node->SetTensorWrapperx(x);
-      grad_node->SetTensorWrappery(y);
-      grad_node->SetTensorWrapperfwd_grad_out(fwd_grad_out);
-      grad_node->SetTensorWrapperfwd_grad_grad_x(fwd_grad_grad_x);
-      grad_node->SetTensorWrapperfwd_grad_grad_y(fwd_grad_grad_y);
-      // SetGradOutMeta & SetEdges
-      grad_node->SetGradOutMeta(x, 0);
-      grad_node->SetGradOutMeta(y, 1);
-      grad_node->SetGradOutMeta(fwd_grad_out, 2);
-      grad_node->SetGradOutMeta(fwd_grad_grad_x, 3);
-      grad_node->SetGradOutMeta(fwd_grad_grad_y, 4);
-      // SetOutRank & SetHistory & SetGradInMeta
-      if (grad_x_autograd_meta) {
-        egr::EagerUtils::SetOutRankWithSlot(grad_x_autograd_meta, 0);
-      }
-      if (grad_y_autograd_meta) {
-        egr::EagerUtils::SetOutRankWithSlot(grad_y_autograd_meta, 1);
-      }
-      if (grad_grad_out_autograd_meta) {
-        egr::EagerUtils::SetOutRankWithSlot(grad_grad_out_autograd_meta, 2);
-      }
-      if (grad_x_autograd_meta) {
-        egr::EagerUtils::SetHistory(grad_x_autograd_meta, grad_node);
-      }
-      if (grad_y_autograd_meta) {
-        egr::EagerUtils::SetHistory(grad_y_autograd_meta, grad_node);
-      }
-      if (grad_grad_out_autograd_meta) {
-        egr::EagerUtils::SetHistory(grad_grad_out_autograd_meta, grad_node);
-      }
-      grad_node->SetGradInMeta(grad_x, 0);
-      grad_node->SetGradInMeta(grad_y, 1);
-      grad_node->SetGradInMeta(grad_grad_out, 2);
-      // Set TensorWrappers for Forward Outputs if needed
-    }
-  }
-
   VLOG(4) << "Finish AD API GRAD: multiply_double_grad";
   // LOG IF DEBUG
 
