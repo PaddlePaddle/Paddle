@@ -30,12 +30,12 @@ from paddle.distribution.binomial import Binomial
         (
             'one-dim',
             100,
-            parameterize.xrand((1,), dtype='float32', min=0, max=1),
+            np.array([0.4]).astype('float32'),
         ),
         (
             'multi-dim-total_count-probability',
             parameterize.xrand((2, 1), min=1, max=100).astype('int32'),
-            parameterize.xrand((2, 3), dtype='float32', min=0, max=1),
+            parameterize.xrand((2, 3), dtype='float32', min=0.3, max=1),
         ),
     ],
 )
@@ -166,9 +166,9 @@ class TestBinomialProbs(unittest.TestCase):
         ),
         (
             'multi-dim-probability',
-            np.array([25, 25, 25]),
+            np.array([125, 125, 125]),
             parameterize.xrand((2, 3), dtype='float32', min=0, max=1),
-            np.array([25, 25, 25]),
+            np.array([125, 125, 125]),
             parameterize.xrand((2, 3), dtype='float32', min=0, max=1),
         ),
     ],

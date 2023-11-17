@@ -23,9 +23,12 @@ from paddle.framework import in_dynamic_mode
 
 
 class Poisson(distribution.Distribution):
-    r"""The Poisson distribution with occurrence rate parameter: `rate`.
+    r"""
+    The Poisson distribution with occurrence rate parameter: `rate`.
 
-    Mathematical details
+    In probability theory and statistics, the Poisson distribution is the most basic probability
+    distribution, which is used to describe the probability distribution of the number of random
+    events occurring per unit time.
 
     The probability mass function (pmf) is
 
@@ -136,7 +139,7 @@ class Poisson(distribution.Distribution):
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor, A tensor with prepended dimensions shape. The data type is float32.
+            Tensor: A tensor with prepended dimensions shape. The data type is float32.
         """
         if not isinstance(shape, Iterable):
             raise TypeError('sample shape must be Iterable object.')
@@ -178,7 +181,7 @@ class Poisson(distribution.Distribution):
         * :math:\Omega: is the support of the distribution.
 
         Returns:
-            Tensor, Shannon entropy of poisson distribution. The data type is float32.
+            Tensor: Shannon entropy of poisson distribution. The data type is float32.
         """
         values = self._enumerate_bounded_support(self.rate).reshape(
             (-1,) + (1,) * len(self.batch_shape)
@@ -187,14 +190,15 @@ class Poisson(distribution.Distribution):
         return -(paddle.exp(log_prob) * log_prob).sum(0)
 
     def _enumerate_bounded_support(self, rate):
-        """Generate a bounded approximation of the support. Approximately view Poisson r.v. as a Normal r.v. with mu = rate and sigma = sqrt(rate).
-        Then by 30-sigma rule, generate a bounded approximation of the support.
+        """Generate a bounded approximation of the support. Approximately view Poisson r.v. as a
+        Normal r.v. with mu = rate and sigma = sqrt(rate). Then by 30-sigma rule, generate a bounded
+        approximation of the support.
 
         Args:
             rate (float): rate of one poisson r.v.
 
         Returns:
-            numpy.ndarray: the bounded approximation of the support
+            Tensor: the bounded approximation of the support
         """
         s_max = (
             paddle.sqrt(paddle.max(rate))
@@ -258,7 +262,7 @@ class Poisson(distribution.Distribution):
             p_2(x) = \frac{e^{-\lambda_2} \cdot \lambda_2^x}{x!}
 
         Args:
-            other (Poisson): instance of Poisson.
+            other (Poisson): instance of ``Poisson``.
 
         Returns:
             Tensor, kl-divergence between two poisson distributions. The data type is float32.

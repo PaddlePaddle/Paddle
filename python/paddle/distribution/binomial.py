@@ -23,9 +23,12 @@ from paddle.framework import in_dynamic_mode
 
 
 class Binomial(distribution.Distribution):
-    r"""The Binomial distribution with size `total_count` and `probability` parameters.
+    r"""
+    The Binomial distribution with size `total_count` and `probability` parameters.
 
-    Mathematical details
+    In probability theory and statistics, the binomial distribution is the most basic probability distribution,
+    which can be viewed as the number of times a potentially unfair coin is tossed to get heads, and the result
+    of its random variable can be viewed as the sum of a series of independent Bernoulli experiments.
 
     The probability mass function (pmf) is
 
@@ -88,7 +91,7 @@ class Binomial(distribution.Distribution):
         """Convert the input parameters into tensors and broadcast them
 
         Returns:
-            (Tensor, Tensor): converted total_count and probability.
+            Tuple[Tensor, Tensor]: converted total_count and probability.
         """
         # convert type
         if isinstance(total_count, int):
@@ -144,7 +147,7 @@ class Binomial(distribution.Distribution):
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor, A tensor with prepended dimensions shape. The data type is float32.
+            Tensor: A tensor with prepended dimensions shape. The data type is float32.
         """
         if not isinstance(shape, Iterable):
             raise TypeError('sample shape must be Iterable object.')
@@ -192,17 +195,12 @@ class Binomial(distribution.Distribution):
 
         * :math:\Omega: is the support of the distribution.
 
-        Returns:
-            Tensor: Shannon entropy of binomial distribution. The data type is float32.
-        """
-        """Evaluated the entropy of one binomial r.v..
-
         Args:
             n (float): size of the binomial r.v.
             p (float): probability of the binomial r.v.
 
         Returns:
-            numpy.ndarray: the entropy for the binomial r.v.
+            Tensor: Shannon entropy of binomial distribution. The data type is float32.
         """
         values = self._enumerate_support()
         log_prob = self.log_prob(values)
@@ -278,7 +276,7 @@ class Binomial(distribution.Distribution):
             p_2(x) = \frac{n_2!}{x!(n_2-x)!}p_2^{x}(1-p_2)^{n_2-x}
 
         Args:
-            other (Binomial): instance of Binomial.
+            other (Binomial): instance of ``Binomial``.
 
         Returns:
             Tensor: kl-divergence between two binomial distributions. The data type is float32.
