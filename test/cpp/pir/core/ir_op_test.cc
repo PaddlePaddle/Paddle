@@ -21,7 +21,6 @@
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/dialect.h"
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/ir_context.h"
@@ -32,39 +31,7 @@
 #include "test/cpp/pir/tools/test_dialect.h"
 #include "test/cpp/pir/tools/test_op.h"
 
-pir::AttributeMap CreateAttributeMap(
-    const std::vector<std::string> &attribute_names,
-    const std::vector<std::string> &attributes) {
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  pir::AttributeMap attr_map;
-  for (size_t i = 0; i < attribute_names.size(); i++) {
-    pir::Attribute attr_value = pir::StrAttribute::get(ctx, attributes[i]);
-    attr_map.insert(
-        std::pair<std::string, pir::Attribute>(attribute_names[i], attr_value));
-  }
-  return attr_map;
-}
-
-pir::Operation *CreateDenseTensorOp(
-    pir::IrContext *ctx,
-    const phi::DDim &dims,
-    const std::vector<std::string> &attribute_names,
-    const std::vector<std::string> &attributes,
-    const pir::Type &dtype =
-        pir::Float32Type::get(pir::IrContext::Instance())) {
-  std::vector<pir::Value> op_inputs = {};
-  phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0, 1, 2}};
-  size_t offset = 0;
-  std::vector<pir::Type> op_output_types = {
-      pir::DenseTensorType::get(ctx, dtype, dims, data_layout, lod, offset)};
-  pir::Operation *op =
-      pir::Operation::Create(op_inputs,
-                             CreateAttributeMap(attribute_names, attributes),
-                             op_output_types,
-                             pir::OpInfo());
-  return op;
-}
+#include "test/cpp/pir/tools/test_pir_utils.h"
 
 TEST(op_test, region_test) {
   // (1) Register Dialect, Operation1, Operation2 into IrContext.
@@ -76,12 +43,12 @@ TEST(op_test, region_test) {
   pir::OpInfo op1_info = ctx->GetRegisteredOpInfo(test::Operation1::name());
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo(test::Operation2::name());
 
-  pir::Operation *op1 =
-      pir::Operation::Create({},
-                             CreateAttributeMap({"op1_attr1", "op1_attr2"},
-                                                {"op1_attr1", "op1_attr2"}),
-                             {pir::Float32Type::get(ctx)},
-                             op1_info);
+  pir::Operation *op1 = pir::Operation::Create(
+      {},
+      test::CreateAttributeMap({"op1_attr1", "op1_attr2"},
+                               {"op1_attr1", "op1_attr2"}),
+      {pir::Float32Type::get(ctx)},
+      op1_info);
   pir::Operation *op_2 =
       pir::Operation::Create({}, {}, {pir::Float32Type::get(ctx)}, op2_info);
 
@@ -169,10 +136,12 @@ TEST(op_test, op_traits_test) {
       pir::DenseTensorType::get(ctx, dtype, dims, data_layout, lod, offset);
 
   pir::Operation *op1 =
-      CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype);
+      test::CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype);
   pir::Operation *op2 =
-      CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype);
+      test::CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype);
 
+  block->push_back(op1);
+  block->push_back(op2);
   auto op3 = builder.Build<test::TraitExampleOp>(
       op1->result(0), op2->result(0), dense_tensor_dtype);
 
@@ -220,9 +189,12 @@ TEST(op_test, same_operands_shape_trait_test2) {
       pir::DenseTensorType::get(ctx, dtype1, dims1, data_layout, lod, offset);
 
   pir::Operation *op1 =
-      CreateDenseTensorOp(ctx, dims1, {"op1_temp"}, {"op1_attr"}, dtype1);
+      test::CreateDenseTensorOp(ctx, dims1, {"op1_temp"}, {"op1_attr"}, dtype1);
   pir::Operation *op2 =
-      CreateDenseTensorOp(ctx, dims2, {"op2_temp"}, {"op2_attr"}, dtype2);
+      test::CreateDenseTensorOp(ctx, dims2, {"op2_temp"}, {"op2_attr"}, dtype2);
+
+  block->push_back(op1);
+  block->push_back(op2);
 
   EXPECT_THROW(builder.Build<test::SameOperandsShapeTraitOp2>(
                    op1->result(0), op2->result(0), dense_tensor_dtype),
@@ -255,9 +227,12 @@ TEST(op_test, same_operands_and_result_shape_trait_test2) {
   phi::DDim dims = {2, 2, 2};
 
   pir::Operation *op1 =
-      CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype);
+      test::CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype);
   pir::Operation *op2 =
-      CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype);
+      test::CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype);
+
+  block->push_back(op1);
+  block->push_back(op2);
 
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultShapeTraitOp2>(
                    op1->result(0), op2->result(0)),
@@ -287,10 +262,12 @@ TEST(op_test, same_operands_and_result_shape_trait_test3) {
       pir::DenseTensorType::get(ctx, dtype1, dims1, data_layout, lod, offset);
 
   pir::Operation *op1 =
-      CreateDenseTensorOp(ctx, dims1, {"op1_temp"}, {"op1_attr"}, dtype1);
+      test::CreateDenseTensorOp(ctx, dims1, {"op1_temp"}, {"op1_attr"}, dtype1);
   pir::Operation *op2 =
-      CreateDenseTensorOp(ctx, dims2, {"op2_temp"}, {"op2_attr"}, dtype2);
+      test::CreateDenseTensorOp(ctx, dims2, {"op2_temp"}, {"op2_attr"}, dtype2);
 
+  block->push_back(op1);
+  block->push_back(op2);
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultShapeTraitOp3>(
                    op1->result(0), op2->result(0), dense_tensor_dtype),
                pir::IrNotMetException);
@@ -330,10 +307,12 @@ TEST(op_test, same_operands_element_type_trait_test2) {
       pir::DenseTensorType::get(ctx, dtype1, dims, data_layout, lod, offset);
 
   pir::Operation *op1 =
-      CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype1);
+      test::CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype1);
   pir::Operation *op2 =
-      CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype2);
+      test::CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype2);
 
+  block->push_back(op1);
+  block->push_back(op2);
   EXPECT_THROW(builder.Build<test::SameOperandsElementTypeTraitOp2>(
                    op1->result(0), op2->result(0), dense_tensor_dtype),
                pir::IrNotMetException);
@@ -365,10 +344,12 @@ TEST(op_test, same_operands_and_result_element_type_trait_test2) {
   phi::DDim dims = {2, 2};
 
   pir::Operation *op1 =
-      CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype);
+      test::CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype);
   pir::Operation *op2 =
-      CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype);
+      test::CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype);
 
+  block->push_back(op1);
+  block->push_back(op2);
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultElementTypeTraitOp2>(
                    op1->result(0), op2->result(0)),
                pir::IrNotMetException);
@@ -399,10 +380,12 @@ TEST(op_test, same_operands_and_result_element_type_trait_test3) {
       pir::DenseTensorType::get(ctx, dtype2, dims2, data_layout, lod, offset);
 
   pir::Operation *op1 =
-      CreateDenseTensorOp(ctx, dims1, {"op1_temp"}, {"op1_attr"}, dtype1);
+      test::CreateDenseTensorOp(ctx, dims1, {"op1_temp"}, {"op1_attr"}, dtype1);
   pir::Operation *op2 =
-      CreateDenseTensorOp(ctx, dims2, {"op2_temp"}, {"op2_attr"}, dtype2);
+      test::CreateDenseTensorOp(ctx, dims2, {"op2_temp"}, {"op2_attr"}, dtype2);
 
+  block->push_back(op1);
+  block->push_back(op2);
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultElementTypeTraitOp3>(
                    op1->result(0),
                    op2->result(0),
@@ -443,10 +426,12 @@ TEST(op_test, same_operands_and_result_type_trait_test2) {
   phi::DDim dims = {2, 2};
 
   pir::Operation *op1 =
-      CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype);
+      test::CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype);
   pir::Operation *op2 =
-      CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype);
+      test::CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype);
 
+  block->push_back(op1);
+  block->push_back(op2);
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp2>(
                    op1->result(0), op2->result(0)),
                pir::IrNotMetException);
@@ -481,10 +466,12 @@ TEST(op_test, same_operands_and_result_type_trait_test3) {
       pir::DenseTensorType::get(ctx, dtype1, dims2, data_layout, lod, offset);
 
   pir::Operation *op1 =
-      CreateDenseTensorOp(ctx, dims1, {"op1_temp"}, {"op1_attr"}, dtype2);
+      test::CreateDenseTensorOp(ctx, dims1, {"op1_temp"}, {"op1_attr"}, dtype2);
   pir::Operation *op2 =
-      CreateDenseTensorOp(ctx, dims2, {"op2_temp"}, {"op2_attr"}, dtype1);
+      test::CreateDenseTensorOp(ctx, dims2, {"op2_temp"}, {"op2_attr"}, dtype1);
 
+  block->push_back(op1);
+  block->push_back(op2);
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp3>(
                    op1->result(0),
                    op2->result(0),

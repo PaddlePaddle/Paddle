@@ -49,6 +49,9 @@ def _reference_layer_norm_naive(x, scale, beta, epsilon, begin_norm_axis=1):
     )
 
     x.shape, output.shape = x_shape, x_shape
+    mean.shape = x_shape[0:begin_norm_axis]
+    var.shape = x_shape[0:begin_norm_axis]
+
     return output, mean, var
 
 

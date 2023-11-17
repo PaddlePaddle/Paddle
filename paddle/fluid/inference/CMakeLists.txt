@@ -69,13 +69,8 @@ if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
-  if(WIN32)
-    create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                      ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
-  else()
-    create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                      ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
-  endif()
+  create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
+                    ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
 
 if(NOT APPLE)
@@ -115,7 +110,7 @@ if(NOT WIN32)
 endif()
 
 if(WITH_CRYPTO)
-  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} framework_io)
 endif()
 
 if(WITH_PSCORE)

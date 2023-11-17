@@ -17,6 +17,7 @@
 #include <unordered_map>
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/op_group.h"
+#include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/value.h"
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_with_group_merge_pass_utils.h"
@@ -25,6 +26,8 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_with_group_merge_util.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
 #include "paddle/phi/core/flags.h"
+
+#include "paddle/cinn/common/is_reachable_predicator.h"
 
 PD_DECLARE_bool(enhance_vertical_fusion_with_recompute);
 
@@ -154,49 +157,45 @@ class GraphGroupFuseHelper final : public FuseHelper {
  private:
   bool IsReachableInDag(const OpGroupPtr& producer,
                         const OpGroupPtr& consumer) const {
-    // const auto& MinDepth4Node = [&](const OpGroupPtr& node) {
-    //   return node.GetGroup()->min_depth;
-    // };
-    // const auto& MaxDepth4Node = [&](const OpGroupPtr& node) {
-    //   return node.GetGroup()->max_depth;
-    // };
-    // const auto& VisitNextNodes =
-    //     [&](const OpGroupPtr& node,
-    //         const std::function<void(OpGroupPtr)>& Visit) {
-    //       for (const auto& node_producer : node.producers()) {
-    //         Visit(node_producer);
-    //       }
-    //     };
-    // common::IsReachablePredicator<OpGroupPtr> is_reachable(
-    //     MinDepth4Node, MaxDepth4Node, VisitNextNodes);
-    // return is_reachable(consumer, producer, [](OpGroupPtr) {});
-    // TODO(phlrain) : support IsReachable
-    return false;
+    const auto& MinDepth4Node = [&](const OpGroupPtr& node) {
+      return node.GetGroup()->min_depth;
+    };
+    const auto& MaxDepth4Node = [&](const OpGroupPtr& node) {
+      return node.GetGroup()->max_depth;
+    };
+    const auto& VisitNextNodes =
+        [&](const OpGroupPtr& node,
+            const std::function<void(OpGroupPtr)>& Visit) {
+          for (const auto& node_producer : node.producers()) {
+            Visit(node_producer);
+          }
+        };
+    ::cinn::common::IsReachablePredicator<OpGroupPtr> is_reachable(
+        MinDepth4Node, MaxDepth4Node, VisitNextNodes);
+    return is_reachable(consumer, producer, [](OpGroupPtr) {});
   }
 
   bool ReachableIfDirectEdgeIgnored(const OpGroupPtr& producer,
                                     const OpGroupPtr& consumer) const {
-    // const auto& MinDepth4Node = [&](const OpGroupPtr& node) {
-    //   return node.GetGroup()->min_depth;
-    // };
-    // const auto& MaxDepth4Node = [&](const OpGroupPtr& node) {
-    //   return node.GetGroup()->max_depth;
-    // };
-    // const auto& VisitNextNodes =
-    //     [&](const OpGroupPtr& node,
-    //         const std::function<void(OpGroupPtr)>& Visit) {
-    //       for (const auto& node_producer : node.producers()) {
-    //         if (node == consumer && node_producer == producer) {
-    //           continue;
-    //         }
-    //         Visit(node_producer);
-    //       }
-    //     };
-    // common::IsReachablePredicator<OpGroupPtr> is_reachable(
-    //     MinDepth4Node, MaxDepth4Node, VisitNextNodes);
-    // return is_reachable(consumer, producer, [](OpGroupPtr) {});
-    // TODO(phlrain) : support IsReachable
-    return false;
+    const auto& MinDepth4Node = [&](const OpGroupPtr& node) {
+      return node.GetGroup()->min_depth;
+    };
+    const auto& MaxDepth4Node = [&](const OpGroupPtr& node) {
+      return node.GetGroup()->max_depth;
+    };
+    const auto& VisitNextNodes =
+        [&](const OpGroupPtr& node,
+            const std::function<void(OpGroupPtr)>& Visit) {
+          for (const auto& node_producer : node.producers()) {
+            if (node == consumer && node_producer == producer) {
+              continue;
+            }
+            Visit(node_producer);
+          }
+        };
+    common::IsReachablePredicator<OpGroupPtr> is_reachable(
+        MinDepth4Node, MaxDepth4Node, VisitNextNodes);
+    return is_reachable(consumer, producer, [](OpGroupPtr) {});
   }
 
   const FusePassCtxT* ctx_;
@@ -390,7 +389,7 @@ bool GraphGroupFuseHelper<FusePassCtxT>::ReduceFuseBroadcast(
 template <typename FusePassCtxT>
 bool GraphGroupFuseHelper<FusePassCtxT>::ReduceFuseReduce(
     const OpGroupPtr& src, const OpGroupPtr& dst) const {
-  return reduce_fuse_reduce(src.GetGroup(), dst.GetGroup());
+  return ReduceFuseReduce1(src, dst);
 }
 
 template <typename FusePassCtxT>
@@ -407,6 +406,7 @@ struct HorizontalFuseUtil {
       return false;
     }
     auto out = iter->second(src, dst);
+
     return out;
   }
 
@@ -419,25 +419,29 @@ struct HorizontalFuseUtil {
 
   static std::map<KindKeyT, ConditionT> RawConditionMap() {
     return std::map<KindKeyT, ConditionT>{
-        {{kElementWise, kElementWise}, &IsSameSize},
-        {{kElementWise, kBroadcast}, &IsSameSize},
-        {{kElementWise, kInjective}, &IsSameSize},
-        {{kElementWise, kReduction}, &HorizontalElementwiseFuseReduce},
+        {{OpPatternKind::kElementWise, OpPatternKind::kElementWise},
+         &IsSameSize},
+        {{OpPatternKind::kElementWise, OpPatternKind::kBroadcast}, &IsSameSize},
+        {{OpPatternKind::kElementWise, OpPatternKind::kInjective}, &IsSameSize},
+        {{OpPatternKind::kElementWise, OpPatternKind::kReduction},
+         &HorizontalElementwiseFuseReduce},
 
-        {{kBroadcast, kElementWise}, &IsSameSize},
-        {{kBroadcast, kBroadcast}, &IsSameSize},
-        {{kBroadcast, kInjective}, &IsSameSize},
-        {{kBroadcast, kReduction}, &IsSameSize},
+        {{OpPatternKind::kBroadcast, OpPatternKind::kElementWise}, &IsSameSize},
+        {{OpPatternKind::kBroadcast, OpPatternKind::kBroadcast}, &IsSameSize},
+        {{OpPatternKind::kBroadcast, OpPatternKind::kInjective}, &IsSameSize},
+        {{OpPatternKind::kBroadcast, OpPatternKind::kReduction}, &IsSameSize},
 
-        {{kInjective, kElementWise}, &IsSameSize},
-        {{kInjective, kBroadcast}, &IsSameSize},
-        {{kInjective, kInjective}, &IsSameSize},
-        {{kInjective, kReduction}, &IsSameSize},
+        {{OpPatternKind::kInjective, OpPatternKind::kElementWise}, &IsSameSize},
+        {{OpPatternKind::kInjective, OpPatternKind::kBroadcast}, &IsSameSize},
+        {{OpPatternKind::kInjective, OpPatternKind::kInjective}, &IsSameSize},
+        {{OpPatternKind::kInjective, OpPatternKind::kReduction}, &IsSameSize},
 
-        {{kReduction, kElementWise}, &HorizontalElementwiseFuseReduce},
-        {{kReduction, kBroadcast}, &IsSameSize},
-        {{kReduction, kInjective}, &IsSameSize},
-        {{kReduction, kReduction}, &ReduceFuseReduce},
+        {{OpPatternKind::kReduction, OpPatternKind::kElementWise},
+         &HorizontalElementwiseFuseReduce},
+        {{OpPatternKind::kReduction, OpPatternKind::kBroadcast}, &IsSameSize},
+        {{OpPatternKind::kReduction, OpPatternKind::kInjective}, &IsSameSize},
+        {{OpPatternKind::kReduction, OpPatternKind::kReduction},
+         &ReduceFuseReduce},
     };
   }
 
@@ -455,7 +459,7 @@ struct HorizontalFuseUtil {
     const OpGroupPtr* ele_group = nullptr;
     const OpGroupPtr* reduce_group = nullptr;
 
-    if (src.kind() == kReduction) {
+    if (src.kind() == OpPatternKind::kReduction) {
       ele_group = &dst;
       reduce_group = &src;
     } else {
@@ -481,7 +485,7 @@ struct HorizontalFuseUtil {
 
   static bool ReduceFuseReduce(const OpGroupPtr& src, const OpGroupPtr& dst) {
     // return ctx->fuse_helper().ReduceFuseReduce(src, dst);
-    return reduce_fuse_reduce(src.GetGroup(), dst.GetGroup());
+    return ReduceFuseReduce1(src, dst);
   }
 };
 
@@ -524,8 +528,10 @@ class DefaultInputFusePass final : public InputFusePass {
         [&]() -> std::unordered_set<OpGroupPtr> {
       std::unordered_set<OpGroupPtr> consumers;
       for (const auto& consumer : consumer_set) {
-        if (consumer.kind() == kElementWise || consumer.kind() == kBroadcast ||
-            consumer.kind() == kInjective || consumer.kind() == kReduction) {
+        if (consumer.kind() == OpPatternKind::kElementWise ||
+            consumer.kind() == OpPatternKind::kBroadcast ||
+            consumer.kind() == OpPatternKind::kInjective ||
+            consumer.kind() == OpPatternKind::kReduction) {
           consumers.insert(consumer);
         }
       }
@@ -613,8 +619,10 @@ class DefaultHorizontalFusePass final : public HorizontalFusePass {
         [&]() -> std::unordered_set<OpGroupPtr> {
       std::unordered_set<OpGroupPtr> consumers;
       for (const auto& consumer : producer.consumers()) {
-        if (consumer.kind() == kElementWise || consumer.kind() == kBroadcast ||
-            consumer.kind() == kInjective || consumer.kind() == kReduction) {
+        if (consumer.kind() == OpPatternKind::kElementWise ||
+            consumer.kind() == OpPatternKind::kBroadcast ||
+            consumer.kind() == OpPatternKind::kInjective ||
+            consumer.kind() == OpPatternKind::kReduction) {
           consumers.insert(consumer);
         }
       }
@@ -715,7 +723,7 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
       candidates.push_back(consumer);
     }
     if (candidates.size() == consumers.size() &&
-        producer.kind() == kElementWise) {
+        producer.kind() == OpPatternKind::kElementWise) {
       return;
     }
 
@@ -756,40 +764,40 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
 
   static std::map<KindKeyT, ConditionT> RawConditionMap() {
     return std::map<KindKeyT, ConditionT>{
-        {{OpPatternKind::kElementWise, kElementWise},
+        {{OpPatternKind::kElementWise, OpPatternKind::kElementWise},
          &DefaultVerticalFusePass::IsSameSize},
-        {{OpPatternKind::kElementWise, kBroadcast},
+        {{OpPatternKind::kElementWise, OpPatternKind::kBroadcast},
          &DefaultVerticalFusePass::ElementwiseFuseBroadcast},
-        {{OpPatternKind::kElementWise, kInjective},
+        {{OpPatternKind::kElementWise, OpPatternKind::kInjective},
          &DefaultVerticalFusePass::HorizontalWithInjective},
-        {{OpPatternKind::kElementWise, kReduction},
+        {{OpPatternKind::kElementWise, OpPatternKind::kReduction},
          &DefaultVerticalFusePass::ElementwiseFuseReduce},
 
-        {{OpPatternKind::kBroadcast, kElementWise},
+        {{OpPatternKind::kBroadcast, OpPatternKind::kElementWise},
          &DefaultVerticalFusePass::IsSameSize},
-        {{OpPatternKind::kBroadcast, kBroadcast},
+        {{OpPatternKind::kBroadcast, OpPatternKind::kBroadcast},
          &DefaultVerticalFusePass::IsSameSize},
-        {{OpPatternKind::kBroadcast, kInjective},
+        {{OpPatternKind::kBroadcast, OpPatternKind::kInjective},
          &DefaultVerticalFusePass::HorizontalWithInjective},
-        {{OpPatternKind::kBroadcast, kReduction},
+        {{OpPatternKind::kBroadcast, OpPatternKind::kReduction},
          &DefaultVerticalFusePass::BroadcastFuseReduce},
 
-        {{OpPatternKind::kInjective, kElementWise},
+        {{OpPatternKind::kInjective, OpPatternKind::kElementWise},
          &DefaultVerticalFusePass::IsSameSize},
-        {{OpPatternKind::kInjective, kBroadcast},
+        {{OpPatternKind::kInjective, OpPatternKind::kBroadcast},
          &DefaultVerticalFusePass::IsSameSize},
-        {{OpPatternKind::kInjective, kInjective},
+        {{OpPatternKind::kInjective, OpPatternKind::kInjective},
          &DefaultVerticalFusePass::HorizontalWithInjective},
-        {{OpPatternKind::kInjective, kReduction},
+        {{OpPatternKind::kInjective, OpPatternKind::kReduction},
          &DefaultVerticalFusePass::InjectiveHorizontalWithReduce},
 
-        {{OpPatternKind::kReduction, kElementWise},
+        {{OpPatternKind::kReduction, OpPatternKind::kElementWise},
          &DefaultVerticalFusePass::ReduceFuseElementwise},
-        {{OpPatternKind::kReduction, kBroadcast},
+        {{OpPatternKind::kReduction, OpPatternKind::kBroadcast},
          &DefaultVerticalFusePass::ReduceFuseBroadcast},
-        {{OpPatternKind::kReduction, kInjective},
+        {{OpPatternKind::kReduction, OpPatternKind::kInjective},
          &DefaultVerticalFusePass::HorizontalWithInjective},
-        {{OpPatternKind::kReduction, kReduction},
+        {{OpPatternKind::kReduction, OpPatternKind::kReduction},
          &DefaultVerticalFusePass::ReduceFuseReduce},
     };
   }
@@ -895,7 +903,7 @@ class DefaultRecomputeFusePass final : public RecomputeFusePass {
     }
 
     if (!candidates.empty() && unsafe_candidates.size() == consumers.size() &&
-        producer.kind() == kElementWise) {
+        producer.kind() == OpPatternKind::kElementWise) {
       for (const auto& consumer : consumers) {
         ctx->MarkFusible(producer, consumer);
       }
@@ -1023,9 +1031,7 @@ class FusionPassRegistrar final : public Registrar {
 // code generation.
 class GeneralFusionMergePassHelper {
  public:
-  explicit GeneralFusionMergePassHelper(const ::pir::Program* graph,
-                                        const GroupList& group_list)
-      : graph_(graph) {
+  explicit GeneralFusionMergePassHelper(const GroupList& group_list) {
     fusion_groups_ = group_list;
     // init input to consumers.
     InitInputToConsumers();
@@ -1078,8 +1084,10 @@ class GeneralFusionMergePassHelper {
     VLOG(3) << "DoFusionMerge...!";
     while (DoGeneralHorizontalFusion()) {
     }
+
     while (DoGeneralVerticalFusion()) {
     }
+
     while (DoGeneralRecomputeAndVerticalFusion()) {
     }
   }
@@ -1355,6 +1363,10 @@ class GeneralFusionMergePassHelper {
       } else {
         fused_group->group_id = consumer->group_id;
       }
+
+      for (auto* op : consumer->ops) {
+        fused_group->ops.push_back(op);
+      }
       // set op pattern kind
       fused_group->op_pattern_kind =
           static_cast<int>(fused_group->op_pattern_kind) >=
@@ -1362,27 +1374,27 @@ class GeneralFusionMergePassHelper {
               ? fused_group->op_pattern_kind
               : consumer->op_pattern_kind;
       // input nodes
-      for (auto& node : consumer->input_nodes) {
-        if (fused_group->input_nodes.count(node.first)) {
-          fused_group->input_nodes[node.first] += node.second;
+      for (auto& node : consumer->input_ops) {
+        if (fused_group->input_ops.count(node.first)) {
+          fused_group->input_ops[node.first] += node.second;
         } else {
-          fused_group->input_nodes.insert(node);
+          fused_group->input_ops.insert(node);
         }
       }
       // output node
-      for (auto& node : consumer->output_nodes) {
-        fused_group->output_nodes.insert(node);
+      for (auto& node : consumer->output_ops) {
+        fused_group->output_ops.insert(node);
       }
       // internal node
       if (consumer->fused_sub_groups.size()) {
-        for (auto& node : consumer->internal_nodes) {
-          fused_group->internal_nodes.insert(node);
+        for (auto& node : consumer->internal_ops) {
+          fused_group->internal_ops.insert(node);
         }
       }
       // master node
-      for (auto& node : consumer->master_nodes) {
-        if (GetOpKind(node->name()) == kReduction) {
-          fused_group->master_nodes.insert(node);
+      for (auto& node : consumer->master_ops) {
+        if (GetOpKind(node->name()) == OpPatternKind::kReduction) {
+          fused_group->master_ops.insert(node);
         }
       }
       // insert sub group
@@ -1440,27 +1452,27 @@ class GeneralFusionMergePassHelper {
     // if node is output nodes of sub_group, check it can't be internal node.
     for (auto& sub_group : repeat_sub_groups) {
       // check each output node in sub_group.
-      for (auto& node : sub_group->output_nodes) {
+      for (auto& node : sub_group->output_ops) {
         // if node is not output node of fused_group.
-        if (!fused_group->output_nodes.count(node)) {
-          fused_group->internal_nodes.insert(node);
+        if (!fused_group->output_ops.count(node)) {
+          fused_group->internal_ops.insert(node);
         }
       }
     }
 
-    if (static_cast<int>(kReduction) >
+    if (static_cast<int>(OpPatternKind::kReduction) >
         static_cast<int>((consumers.back())->op_pattern_kind)) {
       auto consumer = consumers.back();
 
-      for (auto& node : consumer->master_nodes) {
-        fused_group->master_nodes.insert(node);
+      for (auto& node : consumer->master_ops) {
+        fused_group->master_ops.insert(node);
       }
     } else {
       for (auto consumer = consumers.rbegin(); consumer != consumers.rend();
            ++consumer) {
         ::pir::Operation* master_node = nullptr;
-        for (auto& node : (*consumer)->master_nodes) {
-          if (GetOpKind(node->name()) != kReduction) {
+        for (auto& node : (*consumer)->master_ops) {
+          if (GetOpKind(node->name()) != OpPatternKind::kReduction) {
             master_node = node;
             break;
           }
@@ -1468,7 +1480,7 @@ class GeneralFusionMergePassHelper {
         if (master_node) {
           // VLOG(3) << "Insert Master node : " << master_node->id()
           //         << " into group : " << fused_group->group_id;
-          fused_group->master_nodes.insert(master_node);
+          fused_group->master_ops.insert(master_node);
           break;
         }
       }
@@ -1478,7 +1490,7 @@ class GeneralFusionMergePassHelper {
     fusion_groups_[postion] = fused_group;
     fusion_groups_index_[fused_group] = postion;
 
-    CHECK(fused_group->output_nodes.size())
+    CHECK(fused_group->output_ops.size())
         << "No output node is found, " << fused_group->group_id;
   }
 
@@ -1502,6 +1514,7 @@ class GeneralFusionMergePassHelper {
     }
     const auto& fuse_passes = GetVerticalFusePasses();
     for (const auto& fuse_pass : fuse_passes) {
+      // TODO(Aurelius84): Broadcast_Test_2 failed here
       (*fuse_pass)(ctx);
     }
   }
@@ -1570,27 +1583,32 @@ class GeneralFusionMergePassHelper {
               ? producer->op_pattern_kind
               : consumer->op_pattern_kind;
       // input nodes
-      fused_group->input_nodes = producer->input_nodes;
+      fused_group->input_ops = producer->input_ops;
+
+      fused_group->ops = producer->ops;
+      for (size_t i = 0; i < consumer->ops.size(); ++i) {
+        fused_group->ops.push_back(consumer->ops[i]);
+      }
 
       // internal nodes
       if (producer->fused_sub_groups.size()) {
-        for (auto& node : producer->internal_nodes) {
-          fused_group->internal_nodes.insert(node);
+        for (auto& node : producer->internal_ops) {
+          fused_group->internal_ops.insert(node);
         }
       }
       // convert producer's output node to internal.
-      for (auto node : producer->output_nodes) {
+      for (auto node : producer->output_ops) {
         // if node is used more than 1 time.
-        if (consumer->input_nodes.count(node)) {
-          if (consumer->input_nodes[node] > 1 && node->num_operands() > 0) {
-            fused_group->internal_nodes.insert(node);
+        if (consumer->input_ops.count(node)) {
+          if (consumer->input_ops[node] > 1 && node->num_operands() > 0) {
+            fused_group->internal_ops.insert(node);
           }
         }
       }
       // master nodes
-      for (auto& node : producer->master_nodes) {
-        if (GetOpKind(node->name()) == kReduction) {
-          fused_group->master_nodes.insert(node);
+      for (auto& node : producer->master_ops) {
+        if (GetOpKind(node->name()) == OpPatternKind::kReduction) {
+          fused_group->master_ops.insert(node);
         }
       }
 
@@ -1616,32 +1634,32 @@ class GeneralFusionMergePassHelper {
       producer->belong_groups.insert(fused_group);
 
       // input nodes
-      for (auto& input_node : consumer->input_nodes) {
+      for (auto& input_node : consumer->input_ops) {
         // if input node not in producer output.
-        if (!producer->output_nodes.count(input_node.first)) {
-          if (fused_group->input_nodes.count(input_node.first)) {
-            fused_group->input_nodes[input_node.first] += input_node.second;
+        if (!producer->output_ops.count(input_node.first)) {
+          if (fused_group->input_ops.count(input_node.first)) {
+            fused_group->input_ops[input_node.first] += input_node.second;
           } else {
-            fused_group->input_nodes.insert(input_node);
+            fused_group->input_ops.insert(input_node);
           }
         }
       }
 
       // output nodes
-      for (auto& node : consumer->output_nodes) {
-        fused_group->output_nodes.insert(node);
+      for (auto& node : consumer->output_ops) {
+        fused_group->output_ops.insert(node);
       }
 
       // internal nodes
       if (consumer->fused_sub_groups.size()) {
-        for (auto& node : consumer->internal_nodes) {
-          fused_group->internal_nodes.insert(node);
+        for (auto& node : consumer->internal_ops) {
+          fused_group->internal_ops.insert(node);
         }
       }
 
       // master nodes
-      for (auto& node : consumer->master_nodes) {
-        fused_group->master_nodes.insert(node);
+      for (auto& node : consumer->master_ops) {
+        fused_group->master_ops.insert(node);
       }
 
       // producer nodes
@@ -1690,36 +1708,36 @@ class GeneralFusionMergePassHelper {
       if (!master_fuesd_group.get()) {
         master_fuesd_group = fused_group;
       }
-      CHECK(fused_group->output_nodes.size())
+      CHECK(fused_group->output_ops.size())
           << "No output node is found, " << fused_group->group_id;
     }
 
-    for (auto& node : producer->output_nodes) {
+    for (auto& node : producer->output_ops) {
       bool be_output = true;
       for (const auto& consumer : producer->consumer_groups()) {
         // if consumer is in fusionable.
         if (fusionable_consumers.count(consumer)) {
-          if (consumer->input_nodes.count(node)) {
+          if (consumer->input_ops.count(node)) {
             be_output = false;
           }
           continue;
         }
         // if consumer is not in fusionable.
-        if (consumer->input_nodes.count(node)) {
+        if (consumer->input_ops.count(node)) {
           be_output = true;
           break;
         }
         // others node is as graph output.
       }
 
-      if (output_nodes_set_.count(node)) {
+      if (output_ops_set_.count(node)) {
         be_output = true;
       }
 
       if (be_output) {
         // VLOG(4) << "Insert Id " << node->id() << " Into Group "
         //         << master_fuesd_group->group_id;
-        master_fuesd_group->output_nodes.insert(node);
+        master_fuesd_group->output_ops.insert(node);
       }
     }
     // insert unfusionable consumer groups
@@ -1820,11 +1838,11 @@ class GeneralFusionMergePassHelper {
           // just merge the node into group.
           auto& sub_group = consumer->fused_sub_groups.front();
           sub_group->group_id = producer->group_id + "_" + sub_group->group_id;
-          sub_group->nodes.insert(sub_group->nodes.begin(),
-                                  producer->CollectNodes()[0]);
-          sub_group->nodes_set.insert(producer->CollectNodes()[0]);
+          sub_group->ops.insert(sub_group->ops.begin(),
+                                producer->CollectOps()[0]);
+          sub_group->ops_set.insert(producer->CollectOps()[0]);
           // remove depency.
-          consumer->input_nodes.erase(producer->CollectNodes()[0]);
+          consumer->input_ops.erase(producer->CollectOps()[0]);
           consumer->mut_producer_groups()->erase(producer);
           producer->mut_consumer_groups()->erase(consumer);
         }
@@ -1832,7 +1850,7 @@ class GeneralFusionMergePassHelper {
 
       CHECK_GE(producer->consumer_groups().size(), candidates.size());
       if (producer->consumer_groups().size() == 0 && candidates.size() == 0 &&
-          output_nodes_set_.count(producer->CollectNodes()[0]) == 0) {
+          output_ops_set_.count(producer->CollectOps()[0]) == 0) {
         producer->belong_groups.insert(*fusionable_consumers->begin());
       }
 
@@ -1849,19 +1867,19 @@ class GeneralFusionMergePassHelper {
     if (false) {
       std::vector<GroupPtr> candidates;
       for (auto& consumer : *fusionable_consumers) {
-        if (consumer->op_pattern_kind == kElementWise) {
+        if (consumer->op_pattern_kind == OpPatternKind::kElementWise) {
           candidates.push_back(consumer);
           continue;
         }
 
         auto producer_output_shape = phi::vectorize(
-            GetValueShape((*producer->output_nodes.begin())->result(0)));
+            GetValueShape((*producer->output_ops.begin())->result(0)));
 
         auto consumer_output_shape = phi::vectorize(
-            GetValueShape((*consumer->output_nodes.begin())->result(0)));
+            GetValueShape((*consumer->output_ops.begin())->result(0)));
 
         auto consumer_master_input_shape = phi::vectorize(GetValueShape(
-            (*(consumer->master_nodes.begin()))->operand_source(0)));
+            (*(consumer->master_ops.begin()))->operand_source(0)));
 
         int producer_output_numel =
             std::accumulate(producer_output_shape.begin(),
@@ -1883,8 +1901,8 @@ class GeneralFusionMergePassHelper {
           continue;
         }
 
-        if (producer->op_pattern_kind != kInjective &&
-            consumer->op_pattern_kind == kReduction &&
+        if (producer->op_pattern_kind != OpPatternKind::kInjective &&
+            consumer->op_pattern_kind == OpPatternKind::kReduction &&
             producer_output_numel == consumer_master_input_numel) {
           candidates.push_back(consumer);
         }
@@ -1902,15 +1920,15 @@ class GeneralFusionMergePassHelper {
     } else {
       std::vector<GroupPtr> candidates;
       for (auto& consumer : *fusionable_consumers) {
-        if (consumer->op_pattern_kind == kElementWise) {
+        if (consumer->op_pattern_kind == OpPatternKind::kElementWise) {
           candidates.push_back(consumer);
           continue;
         }
 
         auto shape0 = phi::vectorize(
-            GetValueShape((*producer->output_nodes.begin())->result(0)));
+            GetValueShape((*producer->output_ops.begin())->result(0)));
         auto shape1 = phi::vectorize(
-            GetValueShape((*consumer->output_nodes.begin())->result(0)));
+            GetValueShape((*consumer->output_ops.begin())->result(0)));
 
         if (std::accumulate(
                 shape0.begin(), shape0.end(), 1, std::multiplies<int>()) ==
@@ -2042,7 +2060,7 @@ class GeneralFusionMergePassHelper {
     VLOG(3) << "InitInputToConsumers...!";
     // init input data node -> fusion group map.
     for (auto& group : fusion_groups_) {
-      for (auto& node : group->nodes_set) {
+      for (auto& node : group->ops_set) {
         // collect producer node data.
         for (size_t i = 0; i < node->num_operands(); ++i) {
           auto in = node->operand_source(i);
@@ -2064,10 +2082,11 @@ class GeneralFusionMergePassHelper {
       belong_group->max_depth = group->depth;
       belong_group->min_depth = group->depth;
       belong_group->group_id = group->group_id;
-      belong_group->input_nodes = group->input_nodes;
-      belong_group->output_nodes = group->output_nodes;
+      belong_group->ops = group->ops;
+      belong_group->input_ops = group->input_ops;
+      belong_group->output_ops = group->output_ops;
       belong_group->op_pattern_kind = group->op_pattern_kind;
-      belong_group->master_nodes = group->master_nodes;
+      belong_group->master_ops = group->master_ops;
       (*belong_group->mut_producer_groups()) = group->producer_groups();
       (*belong_group->mut_consumer_groups()) = group->consumer_groups();
       belong_group->fused_sub_groups.push_back(group);
@@ -2099,23 +2118,21 @@ class GeneralFusionMergePassHelper {
     }
   }
 
-  const ::pir::Program* graph_;
   GroupList fusion_groups_;
   std::unordered_map<GroupPtr, int> fusion_groups_index_;
-  std::unordered_set<const ::pir::Operation*> output_nodes_set_;
+  std::unordered_set<const ::pir::Operation*> output_ops_set_;
   std::unordered_map<::pir::Value,
                      std::unordered_set<GroupPtr, Hasher, Comparator>>
       input_to_consumers_;
 };
 
-GroupList GeneralFusionMergePassInternal(const ::pir::Program* graph,
-                                         const GroupList& group_list) {
+GroupList GeneralFusionMergePassInternal(const GroupList& group_list) {
   if (group_list.size() <= 1) {
     VLOG(3) << "Don't do Fusoin Merge Pass...!";
     return group_list;
   }
 
-  GeneralFusionMergePassHelper fusion_merge_pass_helper(graph, group_list);
+  GeneralFusionMergePassHelper fusion_merge_pass_helper(group_list);
   auto res = fusion_merge_pass_helper();
 
   return res;

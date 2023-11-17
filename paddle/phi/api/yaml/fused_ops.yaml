@@ -62,14 +62,23 @@
   optional : bias, x_max
 
 - op : conv2d_xpu
-  args : (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, Tensor branch_max, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, int act_type, float act_param, DataType out_dtype)
+  args : (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, Tensor branch_max, Tensor scale_max, Tensor out_max_in, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, int act_type, float act_param, DataType out_dtype)
   output : Tensor(out), Tensor(out_max)
   infer_meta :
     func : Conv2dXPUInferMeta
   kernel :
     func : conv2d_xpu
     data_type : x
-  optional : bias, branch, branch_max ,x_max
+  optional : bias, branch, branch_max ,x_max, scale_max, out_max_in
+
+- op : dequantize_xpu
+  args : (Tensor x, DataType out_dtype, float scale = 1.0f)
+  output : Tensor(y)
+  infer_meta :
+    func : DeQuantizeXPUInferMeta
+  kernel :
+    func : dequantize_xpu
+    data_type: x
 
 - op : embedding_with_eltwise_add_xpu
   args : (Tensor[] ids, Tensor[] tables, Tensor mask, int64_t padding_idx)
@@ -100,15 +109,25 @@
     func : fast_where_xpu
     data_type : x
 
+- op : fc
+  args : (Tensor input, Tensor w, Tensor bias, int in_num_col_dims = 1, str activation_type = "", bool use_mkldnn = false, bool padding_weights = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float scale_in = 1.0f, float[] scale_weights = {1.0f}, float scale_out = 1.0f, bool force_fp32_output = false)
+  output : Tensor(out)
+  infer_meta :
+    func : FCInferMeta
+  kernel :
+    func : fc
+    data_type : input
+  optional : bias
+
 - op : fc_xpu
-  args : (Tensor x, Tensor x_max, Tensor w, Tensor w_max, Tensor bias, int in_num_col_dims, bool transpose_x, float alpha, float beta, int act_type, float act_alpha, DataType out_dtype)
+  args : (Tensor x, Tensor x_max, Tensor w, Tensor w_max, Tensor bias, Tensor scale_max, Tensor out_max_in, int in_num_col_dims, bool transpose_x, float alpha, float beta, int act_type, float act_alpha, DataType out_dtype)
   output : Tensor(out), Tensor(out_max)
   infer_meta :
     func : FcXPUInferMeta
   kernel :
     func : fc_xpu
     data_type : x
-  optional : bias, x_max
+  optional : bias, x_max, scale_max, out_max_in
 
 - op : fused_bias_act
   args : (Tensor x, Tensor bias, Tensor dequant_scales, Tensor shift, Tensor smooth, str act_method = "gelu", str compute_dtype = "default", float quant_scale = -1, int quant_round_type = 1, float quant_max_bound = 127.0, float quant_min_bound = -127.0)
@@ -197,15 +216,77 @@
   backward: fused_rotary_position_embedding_grad
   support_dygraph_mode : true
 
-- op : fused_scale_bias_relu_conv_bnstats
+- op : fused_scale_bias_add_relu
+  args : (Tensor x1, Tensor scale1, Tensor bias1, Tensor x2, Tensor scale2, Tensor bias2, bool fuse_dual, bool exhaustive_search)
+  optional : scale2, bias2
+  output : Tensor(y)
+  infer_meta :
+    func : FusedScaleBiasAddReluInferMeta
+  kernel :
+    func : fused_scale_bias_add_relu
+    data_type : x1
+
+- op : fused_scale_bias_relu_conv_bn
   args : (Tensor x, Tensor w, Tensor scale, Tensor bias, Tensor bn_scale, Tensor bn_bias, Tensor input_running_mean, Tensor input_running_var, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, str data_format, float momentum, float epsilon, bool fuse_prologue, bool exhaustive_search, int64_t accumulation_count = 0)
   optional : scale, bias
   output : Tensor(out), Tensor(out_running_mean), Tensor(out_running_var), Tensor(saved_mean), Tensor(saved_var), Tensor(eq_scale), Tensor(eq_bias)
   infer_meta :
-    func : FusedScaleBiasReluConvBnstatsInferMeta
+    func : FusedScaleBiasReluConvBnInferMeta
   kernel :
-    func : fused_scale_bias_relu_conv_bnstats
+    func : fused_scale_bias_relu_conv_bn
     data_type : x
+
+- op : fusion_gru
+  args : (Tensor x, Tensor h0, Tensor weight_x, Tensor weight_h, Tensor bias, str activation = "tanh", str gate_activation = "sigmoid", bool is_reverse = false, bool use_seq = true, bool origin_mode = false, bool use_mkldnn = false, str mkldnn_data_type = "float32", float scale_data = 1.0f, float shift_data = 0.0f, float[] scale_weights = {1.0f}, bool force_fp32_output = false)
+  output : Tensor(reordered_h0), Tensor(xx), Tensor(batched_input), Tensor(batched_out), Tensor(hidden)
+  infer_meta :
+    func : FusionGRUInferMeta
+  kernel :
+    func : fusion_gru
+    data_type : x
+  optional : h0, bias
+  intermediate : reordered_h0, xx, batched_input, batched_out
+
+- op : fusion_repeated_fc_relu
+  args : (Tensor x, Tensor[] w, Tensor[] bias)
+  output : Tensor[](relu_out){w.size()-1}, Tensor(out)
+  infer_meta :
+    func : FusionRepeatedFCReluInferMeta
+  kernel :
+    func : fusion_repeated_fc_relu
+    data_type: x
+  intermediate : relu_out
+
+- op : fusion_seqconv_eltadd_relu
+  args : (Tensor x, Tensor filter, Tensor bias, int context_length, int context_start = 0, int context_stride = 1)
+  output : Tensor(out), Tensor(col_mat)
+  infer_meta :
+    func : FusionSeqConvEltAddReluInferMeta
+  kernel :
+    func : fusion_seqconv_eltadd_relu
+    data_type : x
+  intermediate : col_mat
+
+- op : fusion_seqexpand_concat_fc
+  args : (Tensor[] x, Tensor fc_weight, Tensor fc_bias, str fc_activation="identity")
+  output : Tensor(out), Tensor(fc_out)
+  infer_meta :
+    func : FusionSeqExpandConcatFCInferMeta
+  kernel :
+    func : fusion_seqexpand_concat_fc
+    data_type : x
+  optional : fc_bias
+  intermediate : fc_out
+
+- op : fusion_squared_mat_sub
+  args : (Tensor x, Tensor y, float scalar = 1.0f)
+  output : Tensor(squared_x), Tensor(squared_y), Tensor(squared_xy), Tensor(out)
+  infer_meta :
+    func : FusionSquaredMatSubInferMeta
+  kernel :
+    func : fusion_squared_mat_sub
+    data_type : x
+  intermediate : squared_x, squared_y, squared_xy
 
 - op : fusion_transpose_flatten_concat
   args : (Tensor[] x, int[] trans_axis, int flatten_axis, int concat_axis)
@@ -253,6 +334,24 @@
     func : multihead_matmul
     data_type : input
   optional : bias_qk
+
+- op : quantize_xpu
+  args : (Tensor x, DataType out_dtype, float scale = 1.0f)
+  output : Tensor(y)
+  infer_meta :
+    func : QuantizeXPUInferMeta
+  kernel :
+    func : quantize_xpu
+    data_type : x
+
+- op : self_dp_attention
+  args : (Tensor x, float alpha = 1.0f, int head_number = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : SelfDPAttenInferMeta
+  kernel :
+    func : self_dp_attention
+    data_type : x
 
 - op : squeeze_excitation_block
   args : (Tensor x, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, int[] act_type, float[] act_param, int[] filter_dims)

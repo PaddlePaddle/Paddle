@@ -17,10 +17,11 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    ast_only_test,
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    compare_legacy_with_pir,
+    test_ast_only,
+    test_legacy_and_pir,
 )
 
 import paddle
@@ -77,15 +78,14 @@ class SimplePyLayerNet(paddle.nn.Layer):
         return loss, out
 
 
-@dy2static_unittest
-class TestDyToStaticSaveInferenceModel(unittest.TestCase):
+class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @ast_only_test
+    @test_ast_only
     def test_save_inference_model(self):
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
@@ -127,7 +127,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
             layer, [x_data], dygraph_out.numpy(), feed=[x]
         )
 
-    @ast_only_test
+    @test_ast_only
     def test_save_pylayer_model(self):
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
@@ -162,17 +162,17 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
 
         loss_out_numpy = float(loss_out)
         self.check_save_inference_model(
-            layer, [x_data], loss_out_numpy, enable_new_ir=False
+            layer, [x_data], loss_out_numpy, enable_pir=False
         )
         self.check_save_inference_model(
-            layer, [x_data], loss_out_numpy, fetch=[loss], enable_new_ir=False
+            layer, [x_data], loss_out_numpy, fetch=[loss], enable_pir=False
         )
         self.check_save_inference_model(
-            layer, [x_data], loss_out_numpy, feed=[x], enable_new_ir=False
+            layer, [x_data], loss_out_numpy, feed=[x], enable_pir=False
         )
 
     def check_save_inference_model(
-        self, model, inputs, gt_out, feed=None, fetch=None, enable_new_ir=True
+        self, model, inputs, gt_out, feed=None, fetch=None, enable_pir=True
     ):
         expected_persistable_vars = {p.name for p in model.parameters()}
 
@@ -190,8 +190,8 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
             input_spec=feed if feed else None,
             output_spec=fetch if fetch else None,
         )
-        if enable_new_ir:
-            wrapped_load_and_run_inference = test_and_compare_with_new_ir(True)(
+        if enable_pir:
+            wrapped_load_and_run_inference = compare_legacy_with_pir(
                 self.load_and_run_inference
             )
             infer_out = wrapped_load_and_run_inference(
@@ -228,10 +228,9 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
         return np.array(results[0])
 
 
-@dy2static_unittest
-class TestPartialProgramRaiseError(unittest.TestCase):
-    @ast_only_test
-    @test_and_compare_with_new_ir(False)
+class TestPartialProgramRaiseError(Dy2StTestBase):
+    @test_ast_only
+    @test_legacy_and_pir
     def test_param_type(self):
         paddle.jit.enable_to_static(True)
         x_data = np.random.random((20, 20)).astype('float32')

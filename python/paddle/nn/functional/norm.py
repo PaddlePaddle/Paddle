@@ -91,9 +91,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
         )
         if len(x.shape) == 1 and axis != 0 and axis != -1:
             raise ValueError(
-                "Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {}".format(
-                    axis
-                )
+                f"Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {axis}"
             )
 
         attrs = {
@@ -116,8 +114,8 @@ def batch_norm(
     x,
     running_mean,
     running_var,
-    weight,
-    bias,
+    weight=None,
+    bias=None,
     training=False,
     momentum=0.9,
     epsilon=1e-05,
@@ -134,8 +132,8 @@ def batch_norm(
         x(Tesnor): input value. It's data type should be float32, float64.
         running_mean(Tensor): running mean.
         running_var(Tensor): running variance.
-        weight(Tensor): The weight tensor of batch_norm, can not be None.
-        bias(Tensor): The bias tensor of batch_norm can not be None.
+        weight(Tensor, optional): The weight tensor of batch_norm. Default: None.
+        bias(Tensor, optional): The bias tensor of batch_norm. Default: None.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         training(bool, optional): True means train mode which compute by batch data and track global mean and var during train period. False means inference mode which compute by global mean and var which calculated by train period. Default False.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
@@ -229,12 +227,14 @@ def batch_norm(
 
         inputs = {
             "X": [x],
-            "Scale": [weight],
-            "Bias": [bias],
             "Mean": [running_mean],
             "Variance": [running_var],
         }
 
+        if weight:
+            inputs['Scale'] = [weight]
+        if bias:
+            inputs['Bias'] = [bias]
         helper = LayerHelper('batch_norm', **locals())
         from paddle.base.data_feeder import convert_dtype
 

@@ -532,7 +532,7 @@ class GroupNorm(Layer):
             )
 
     def forward(self, input):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.group_norm(
                 input,
                 self.weight,
@@ -727,46 +727,25 @@ class _BatchNormBase(Layer):
         param_shape = [num_features]
 
         # create parameter
-        if weight_attr is False:
-            self.weight = self.create_parameter(
-                attr=None,
-                shape=param_shape,
-                dtype=self._dtype,
-                default_initializer=Constant(1.0),
-            )
-            self.weight.stop_gradient = True
-        else:
+        if weight_attr is not False:
             self.weight = self.create_parameter(
                 attr=self._weight_attr,
                 shape=param_shape,
                 dtype=self._dtype,
                 default_initializer=Constant(1.0),
             )
-            self.weight.stop_gradient = (
-                self._weight_attr is not None
-                and self._weight_attr.learning_rate == 0.0
-            )
 
-        if bias_attr is False:
-            self.bias = self.create_parameter(
-                attr=None,
-                shape=param_shape,
-                dtype=self._dtype,
-                default_initializer=Constant(0.0),
-                is_bias=True,
-            )
-            self.bias.stop_gradient = True
         else:
+            self.weight = None
+        if bias_attr is not False:
             self.bias = self.create_parameter(
                 attr=self._bias_attr,
                 shape=param_shape,
                 dtype=self._dtype,
                 is_bias=True,
             )
-            self.bias.stop_gradient = (
-                self._bias_attr is not None
-                and self._bias_attr.learning_rate == 0.0
-            )
+        else:
+            self.bias = None
 
         moving_mean_name = None
         moving_variance_name = None
@@ -992,10 +971,6 @@ class BatchNorm(Layer):
         self._act = act
         self._use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
 
-        assert (
-            bias_attr is not False
-        ), "bias_attr should not be False in batch_norm."
-
         if dtype == "float16":
             self._dtype = "float32"
         else:
@@ -1004,25 +979,24 @@ class BatchNorm(Layer):
         param_shape = [num_channels]
 
         # create parameter
-        self.weight = self.create_parameter(
-            attr=self._param_attr,
-            shape=param_shape,
-            dtype=self._dtype,
-            default_initializer=Constant(1.0),
-        )
-        self.weight.stop_gradient = (
-            use_global_stats and self._param_attr.learning_rate == 0.0
-        )
-
-        self.bias = self.create_parameter(
-            attr=self._bias_attr,
-            shape=param_shape,
-            dtype=self._dtype,
-            is_bias=True,
-        )
-        self.bias.stop_gradient = (
-            use_global_stats and self._param_attr.learning_rate == 0.0
-        )
+        if param_attr is not False:
+            self.weight = self.create_parameter(
+                attr=self._param_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(1.0),
+            )
+        else:
+            self.weight = None
+        if bias_attr is not False:
+            self.bias = self.create_parameter(
+                attr=self._bias_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                is_bias=True,
+            )
+        else:
+            self.bias = None
 
         self._mean = self.create_parameter(
             attr=ParamAttr(
@@ -1610,6 +1584,24 @@ class SyncBatchNorm(_BatchNormBase):
             None,
             name,
         )
+        param_shape = [num_features]
+        if weight_attr is False:
+            self.weight = self.create_parameter(
+                attr=None,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(1.0),
+            )
+            self.weight.stop_gradient = True
+        if bias_attr is False:
+            self.bias = self.create_parameter(
+                attr=None,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(0.0),
+                is_bias=True,
+            )
+            self.bias.stop_gradient = True
 
     def _check_data_format(self):
         if self._data_format in ['NCHW', 'NCDHW', 'NC', 'NCL']:

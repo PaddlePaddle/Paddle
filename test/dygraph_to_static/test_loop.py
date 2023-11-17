@@ -16,7 +16,7 @@ import inspect
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase
 
 import paddle
 import paddle.nn.functional as F
@@ -230,8 +230,7 @@ def for_loop_dufunc_with_listcomp(array):
     return res
 
 
-@dy2static_unittest
-class TestNameVisitor(unittest.TestCase):
+class TestNameVisitor(Dy2StTestBase):
     def setUp(self):
         self.loop_funcs = [
             while_loop_dyfunc,
@@ -301,8 +300,7 @@ class TestNameVisitor(unittest.TestCase):
                 i += 1
 
 
-@dy2static_unittest
-class TestTransformWhileLoop(unittest.TestCase):
+class TestTransformWhileLoop(Dy2StTestBase):
     def setUp(self):
         self.place = (
             base.CUDAPlace(0)
@@ -381,8 +379,7 @@ class TestLoopVarContainsProperty(TestTransformWhileLoop):
         self.dyfunc = loop_var_contains_property
 
 
-@dy2static_unittest
-class TestTransformForLoop(unittest.TestCase):
+class TestTransformForLoop(Dy2StTestBase):
     def setUp(self):
         self.place = (
             base.CUDAPlace(0)
@@ -464,8 +461,7 @@ class Net(paddle.nn.Layer):
         return out
 
 
-@dy2static_unittest
-class TestForLoopMeetDict(unittest.TestCase):
+class TestForLoopMeetDict(Dy2StTestBase):
     def test_start(self):
         net = Net()
         model = paddle.jit.to_static(

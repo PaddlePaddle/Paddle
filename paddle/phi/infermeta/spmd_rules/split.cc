@@ -92,8 +92,10 @@ SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
             << str_join(out_dims_mapping) << "]";
   }
   VLOG(4) << std::endl;
-
-  return {{x_dist_attr_dst}, out_dist_attrs};
+  // TODO(liuzhenhai): remedy this
+  // should return list in list []
+  // return {{x_dist_attr_dst}, {out_dist_attrs}};
+  return {{x_dist_attr_dst}, ToArgDistAttr(out_dist_attrs)};
 }
 
 SpmdInfo SplitWithNumInferSpmdReverse(
@@ -193,8 +195,9 @@ SpmdInfo SplitWithNumInferSpmdReverse(
   }
   VLOG(4) << "Input shape: [" << str_join(x_shape) << "] "
           << "dims_mapping: [" << str_join(x_dims_mapping) << "]\n\n";
-
-  return {{x_dist_attr}, out_dist_attrs};
+  // TODO(liuzhenhai): remedy this
+  // return {{x_dist_attr}, {out_dist_attrs}};
+  return {{x_dist_attr}, ToArgDistAttr(out_dist_attrs)};
 }
 
 SpmdInfo SplitInferSpmd(const DistMetaTensor& x,
@@ -210,6 +213,22 @@ SpmdInfo SplitInferSpmdReverse(const DistMetaTensor& x,
                                int axis) {
   int num = sections.size();
   return SplitWithNumInferSpmdReverse(x, outs, num, axis);
+}
+
+SpmdInfo SplitWithNumInferSpmdDynamic(const DistMetaTensor& x,
+                                      int num,
+                                      const Scalar& axis) {
+  auto tmp = SplitWithNumInferSpmd(x, num, axis.to<int32_t>());
+  // bridge the diff concerning vector output between static and dynamic auto
+  // parallel ToDo(liuzhenhai): unify the difference between static and dynamic
+  SpmdInfo ret;
+  ret.first = tmp.first;
+  std::vector<TensorDistAttr> out_dist_attrs;
+  for (const auto& out : tmp.second) {
+    out_dist_attrs.push_back(PADDLE_GET_CONST(TensorDistAttr, out));
+  }
+  ret.second = {out_dist_attrs};
+  return ret;
 }
 
 }  // namespace distributed
