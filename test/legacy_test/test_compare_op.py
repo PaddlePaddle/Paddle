@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-
+ 
 import numpy
 import numpy as np
 import op_test
