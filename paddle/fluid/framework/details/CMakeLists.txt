@@ -381,8 +381,8 @@ set(IR_PASS_DEPS
     delete_dropout_op_pass)
 
 if(WITH_CINN)
-  set(IR_PASS_DEPS ${IR_PASS_DEPS})
-  set(IR_PASS_DEPS ${IR_PASS_DEPS})
+  set(IR_PASS_DEPS ${IR_PASS_DEPS} paddle2cinn)
+  set(IR_PASS_DEPS ${IR_PASS_DEPS} paddle2cinn)
 endif()
 
 if(NOT APPLE

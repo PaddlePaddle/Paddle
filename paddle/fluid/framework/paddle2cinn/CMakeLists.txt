@@ -7,14 +7,17 @@ set(paddle2cinn_deps
     xxhash
     pybind
     python
+    op_registry
     pass
+    graph_traits
     cinnapi
+    cinn_launch_context
     proto_desc
-    device_context
     auto_parallel_proto
     cinn_framework_proto
     schedule_desc_proto
-    auto_schedule_proto)
+    auto_schedule_proto
+    parallel_executor)
 
 cc_library(
   paddle2cinn
