@@ -31,12 +31,13 @@ using IntArray = paddle::experimental::IntArray;
 
 std::vector<std::vector<pir::OpResult>> BatchNormOp::Decomp(
     pir::Operation* op) {
+  VLOG(4) << "Decomp call batch_norm's decomp interface begin";
   BatchNormOp op_obj = op->dyn_cast<BatchNormOp>();
   (void)op_obj;
 
   FLAGS_tensor_operants_mode = "static";
 
-  VLOG(4) << "Decomp Prepare inputs of batch_norm";
+  VLOG(6) << "Decomp Prepare inputs of batch_norm";
 
   Tensor x(std::make_shared<primitive::LazyTensor>(op_obj.x()));
   Tensor mean(std::make_shared<primitive::LazyTensor>(op_obj.mean()));
@@ -52,7 +53,7 @@ std::vector<std::vector<pir::OpResult>> BatchNormOp::Decomp(
         Tensor(std::make_shared<primitive::LazyTensor>(op_obj.bias())));
   }
 
-  VLOG(4) << "Decomp prepare attributes of batch_norm";
+  VLOG(6) << "Decomp prepare attributes of batch_norm";
   bool is_test = op->attribute("is_test").dyn_cast<pir::BoolAttribute>().data();
   float momentum =
       op->attribute("momentum").dyn_cast<pir::FloatAttribute>().data();
@@ -66,11 +67,12 @@ std::vector<std::vector<pir::OpResult>> BatchNormOp::Decomp(
                                   .dyn_cast<pir::BoolAttribute>()
                                   .data();
 
-  VLOG(4) << "Decomp prepare call batch_norm's decomp interface";
+  VLOG(6) << "Decomp call batch_norm's forward composite rule prepare";
 
   auto org_res = op->results();
   std::vector<std::vector<pir::OpResult>> res(org_res.size());
-  VLOG(4) << "Decomp prepare call batch_norm's decomp interface begin";
+
+  VLOG(6) << "Decomp call batch_norm's forward composite rule begin";
 
   std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> op_res =
       paddle::primitive::details::batch_norm_decomp<primitive::LazyTensor>(
@@ -85,6 +87,8 @@ std::vector<std::vector<pir::OpResult>> BatchNormOp::Decomp(
           data_layout,
           use_global_stats,
           trainable_statistics);
+
+  VLOG(6) << "Decomp call batch_norm's forward composite rule end";
 
   res[0].push_back(std::static_pointer_cast<primitive::LazyTensor>(
                        std::get<0>(op_res).impl())
@@ -108,6 +112,8 @@ std::vector<std::vector<pir::OpResult>> BatchNormOp::Decomp(
                        .dyn_cast<pir::OpResult>());
   pir::OpResult reserve_space;
   res[5].push_back(reserve_space);
+
+  VLOG(4) << "Decomp call batch_norm's decomp interface end";
   return res;
 }
 

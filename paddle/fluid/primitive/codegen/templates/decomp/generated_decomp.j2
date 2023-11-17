@@ -21,13 +21,14 @@ using IntArray = paddle::experimental::IntArray;
 {% set output_types=[] %}
 
 std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* op) {
+  VLOG(4) << "Decomp call {{fwd_name}}'s decomp interface begin";
+
   {{class_name}} op_obj = op->dyn_cast<{{class_name}}>();
   (void)op_obj;
 
   FLAGS_tensor_operants_mode = "static";
-  VLOG(4) << "Decomp call {{fwd_name}}'s decomp interface begin";
 
-  VLOG(4) << "Decomp Prepare inputs of {{fwd_name}}";
+  VLOG(6) << "Decomp Prepare inputs of {{fwd_name}}";
 
     {% for item in inputs -%}
       {% do input_names.append(item.name) %}
@@ -67,7 +68,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
       {% endif %}
     {% endfor %}
 
-  VLOG(4) << "Decomp prepare attributes of {{fwd_name}}";
+  VLOG(6) << "Decomp prepare attributes of {{fwd_name}}";
     {% if attrs %}
       {% for item in attrs %}
       {% do attr_names.append(item.name) %}
@@ -116,15 +117,16 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
       {% endfor %}
     {% endif %}
 
-  VLOG(4) << "Decomp prepare call {{fwd_name}}'s decomp interface";
+  VLOG(6) << "Decomp call {{fwd_name}}'s forward composite rule prepare";
 
   auto org_res = op->results();
   std::vector<std::vector<pir::OpResult>> res(org_res.size());
 
-  VLOG(4) << "Decomp call {{fwd_name}}'s forward composite rule begin";
+  VLOG(6) << "Decomp call {{fwd_name}}'s forward composite rule begin";
   {% if outputs|length == 1 %}
   Tensor op_res = paddle::primitive::details::{{fwd_name}}_decomp<primitive::LazyTensor>({{common.args(input_names, attr_names)}});
-  VLOG(4) << "Decomp call {{fwd_name}}'s forward composite rule end";
+  VLOG(6) << "Decomp call {{fwd_name}}'s forward composite rule end";
+
   res[0].push_back(
     std::static_pointer_cast<primitive::LazyTensor>(op_res.impl())
         ->value()
@@ -136,7 +138,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
     {% endfor %}
   std::tuple<{{common.sequence('', '', ', ', output_types)}}> op_res = paddle::primitive::details::{{fwd_name}}_decomp<primitive::LazyTensor>(
           {{common.args(input_names, attr_names)}});
-  VLOG(4) << "Decomp call {{fwd_name}}'s forward composite rule end";
+  VLOG(6) << "Decomp call {{fwd_name}}'s forward composite rule end";
   {% for k in range(outputs|length) %}
     {% if outputs[k].intermediate and fwd_name in decomp_ops_list_contain_unused_output %}
   pir::OpResult {{outputs[k].name}};
