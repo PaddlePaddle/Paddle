@@ -541,8 +541,8 @@ class PartialProgramLayer:
                     backward_program
                 )
 
-                # if self._build_strategy.build_cinn_pass:
-                #     bwd = paddle.base.libpaddle.pir.apply_pir_pass(bwd)
+                if self._build_strategy.build_cinn_pass:
+                    bwd = paddle.base.libpaddle.pir.apply_pir_pass(bwd)
 
                 return fwd, bwd
 

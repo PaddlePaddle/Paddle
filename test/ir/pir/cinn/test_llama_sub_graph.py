@@ -72,9 +72,8 @@ class RotaryPosEmb(nn.Layer):
         cos = cos[position_ids].unsqueeze(2)  # [bs, seq_len, 1, dim]
         sin = sin[position_ids].unsqueeze(2)  # [bs, seq_len, 1, dim]
         q_embed = (q * cos) + (self.rotate_half(q) * sin)
-        # k_embed = (k * cos) + (self.rotate_half(k) * sin)
-        # return q_embed, k_embed
-        return q_embed
+        k_embed = (k * cos) + (self.rotate_half(k) * sin)
+        return q_embed, k_embed
 
     def rotate_half(self, x):
         """Rotates half the hidden dims of the input."""
@@ -103,21 +102,22 @@ class TestRotaryPosEmb(TestCinnSubGraphBase):
     def eval(self, use_cinn):
         paddle.seed(2022)
         net = RotaryPosEmb()
-        # TODO(Aurelius84): Need to remove it after verify CINN
+        net.eval()
         if use_cinn:
             net = apply_to_static(net, use_cinn)
 
         out = net(self.q, self.k, self.cos, self.sin, self.position_ids)
+
+        # loss = out[0] + out[1]
+        # loss = loss.sum()
+        # loss.backward()
         return out
 
     def test_eval(self):
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         cinn_outs = self.eval(use_cinn=True)
-        # print(cinn_outs )
-        # print( "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
         # dy_outs = self.eval(use_cinn=False)
-        # print( dy_outs )
 
+        # TODO(phlrain): Need to check result
         # for cinn_out, dy_out in zip(cinn_outs, dy_outs):
         #     np.testing.assert_allclose(
         #         cinn_out.numpy(), dy_out.numpy(), atol=1e-8

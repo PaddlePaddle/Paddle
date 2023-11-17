@@ -46,7 +46,14 @@ void AppendAttrForTransposeOp(const ::pir::Operation& op,
                               utils::AttributeMap& attrs) {  // NOLINT
   auto attr = op.attributes().at("perm");
 
-  attrs["axis"] = GetVec32FromVec64Attr(attr);
+  auto attr_vec = attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
+
+  std::vector<int> dim;
+  for (auto vec_element : attr_vec) {
+    dim.push_back(vec_element.dyn_cast<::pir::Int32Attribute>().data());
+  }
+
+  attrs["axis"] = dim;
 }
 
 void AppendAttrForUniformOp(const ::pir::Operation& op,
