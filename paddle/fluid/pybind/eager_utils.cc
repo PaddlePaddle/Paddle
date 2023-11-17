@@ -66,7 +66,6 @@ extern PyTypeObject* g_framework_lodtensorarray_pytype;
 extern PyTypeObject* g_jit_function_pytype;
 extern PyTypeObject* g_tensor_dist_attr_pytype;
 extern PyTypeObject* g_process_mesh_pytype;
-extern PyTypeObject* g_placement_base_pytype;
 extern PyTypeObject* g_placement_shard_pytype;
 extern PyTypeObject* g_placement_replicated_pytype;
 extern PyTypeObject* g_placement_partial_pytype;
