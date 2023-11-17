@@ -185,6 +185,27 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
 }
 
 template <typename T>
+Tensor bernoulli(const phi::DDim& xddim,
+                 paddle::DataType dtype,
+                 const paddle::Scalar& p,
+                 const int seed) {
+  auto new_dtype = dtype;
+  if (dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::UINT16) {
+    new_dtype = phi::DataType::FLOAT32;
+  }
+
+  // InitRandomTensor<T>()
+  auto tensor_var = RandomTensor<T>(xddim, place, low, high);
+
+  Tensor out(std::make_shared<LazyTensor>(op_res));
+
+  auto uniform_tensor = full<T>(phi::vectorize(xddim),
+                                utils::SampleUniformDouble(0.0, 1.0, seed),
+                                new_dtype);
+  return cast<T>(greater_equal<T>(uniform_tensor, p), dtype);
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor> dropout_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& seed_tensor,
@@ -201,24 +222,32 @@ std::tuple<Tensor, Tensor> dropout_decomp(
     upscale_in_train = true;
   }
 
-  // greater_equal<T>()
+  pir::Value x_res = std::static_pointer_cast<LazyTensor>(p.impl())->value();
+  auto op_res = paddle::dialect::bernoulli(x_res);
+  auto mask = out(std::make_shared<LazyTensor>(op_res));
+  // auto mask = paddle::dialect::bernoulli(p);
+  auto ones = full<T>(phi::vectorize(x.dims()), 1.0, org_dtype);
+
   if (upscale_in_train) {
     if (is_test) {
-      std::cout >> "AAA" << std::endl;
+      // inference: out = input
+      return std::make_tuple(x, cast<T>(mask, phi::DataType::UINT8));
     } else {
+      // train: out = input * mask / ( 1.0 - p )
       // Process p=1. for avoid devide zero error (x*mask/(1.0-p))
-      std::cout >> "AAA" << std::endl;
+      auto ans = divide<T>(x * mask, ones - p);
+      return std::make_tuple(ans, cast<T>(mask, phi::DataType::UINT8));
     }
   } else {
     if (is_test) {
-      auto tensor_tmp = full<T>(phi::vectorize(x.dims()), 1.0, x.dtype()) - p;
-
+      // inference: out = input * (1.0 - p)
+      auto ans = x * (ones - p);
+      return std::make_tuple(ans, cast<T>(mask, phi::DataType::UINT8));
     } else {
-      std::cout >> "AAA" << std::endl;
+      // train: out = input * mask
+      return std::make_tuple(x * mask, cast<T>(mask, phi::DataType::UINT8));
     }
   }
-
-  return std::make_tuple(x_cast, x);
 }
 
 }  // namespace details
