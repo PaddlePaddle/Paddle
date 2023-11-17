@@ -54,7 +54,8 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
       block_(block),
       stream_analyzer_(place),
       execution_config_(execution_config),
-      var_scope_(scope) {
+      var_scope_(scope),
+      enable_job_schedule_profiler_(false) {
   VLOG(4) << "ProgramInterpreter(): " << this << " on " << place_;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
