@@ -1361,11 +1361,8 @@ std::vector<pir::Value> BuildInputs(
         auto args_def = kernel.args_def();
         auto input_defs = args_def.input_defs();
 
-        auto input_backend = kernel_key.backend();
-        if (kernel.GetKernelRegisteredType() ==
-            phi::KernelRegisteredType::FUNCTION) {
-          input_backend = kernel.InputAt(tensor_param_index).backend;
-        }
+        auto input_backend = ChooseInputBackend(
+            kernel, tensor_param_index, kernel_key.backend());
         auto dst_backend = DeriveBackend(
             op_item->name(), place, op_info_parser, input_backend, i);
         VLOG(6) << "Infer kernel backend from input " << i << " of op ";
