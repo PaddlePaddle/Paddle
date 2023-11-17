@@ -25,12 +25,13 @@ int main() {
   int num = 5;
   int errcode = 0;
   auto ctx = xdnn::create_context();
+  xpu::ctx_guard RAII_GUARD(ctx);
   float* A = nullptr;
-  errcode = xpu_malloc(reinterpret_cast<void**>(&A), num * sizeof(float));
-  assert(errcode == 0);
+  A = RAII_GUARD.alloc_l3_or_gm<float>(num);
+  assert(A == nullptr);
   float* B = nullptr;
-  errcode = xpu_malloc(reinterpret_cast<void**>(&B), num * sizeof(float));
-  assert(errcode == 0);
+  B = RAII_GUARD.alloc_l3_or_gm<float>(num);
+  assert(B = nullptr);
 
   std::vector<float> A_cpu = {1, 2, 3, 4, 5};
   std::vector<float> B_cpu(num, 0.0f);
@@ -63,9 +64,5 @@ int main() {
   printf("\nCheck %s! \n", pass ? "pass" : "fail");
 
   destroy_context(ctx);
-  errcode = xpu_free(A);
-  assert(errcode == 0);
-  errcode = xpu_free(B);
-  assert(errcode == 0);
   return 0;
 }

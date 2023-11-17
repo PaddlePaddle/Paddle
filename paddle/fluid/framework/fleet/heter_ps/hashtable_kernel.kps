@@ -210,26 +210,29 @@ __global__ void update_kernel(Table& table,
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
   auto tmp_container = XPUCacheArray<KeyType, ValType>(capacity);
-  xpu_malloc(reinterpret_cast<void**>(&container_),
-             sizeof(XPUCacheArray<KeyType, ValType>));
+  auto xpu_context =
+      context.template device_context<DeviceContext>().x_context();
+  xpu::ctx_guard RAII_GUARD(xpu_context);
+  container_ = RAII_GUARD.alloc_l3_or_gm<XPUCacheArray<KeyType, ValType>>(1);
+  PADDLE_ENFORCE_NOT_NULL(
+      container_, paddle::platform::errors::Fatal("XPU memory is not enough"));
   xpu_memcpy((void*)container_,
              &tmp_container,
              sizeof(XPUCacheArray<KeyType, ValType>),
              XPU_HOST_TO_DEVICE);
-  xpu_malloc(reinterpret_cast<void**>(&device_optimizer_config_),
-             sizeof(OptimizerConfig));
+  auto xpu_context =
+      context.template device_context<DeviceContext>().x_context();
+  xpu::ctx_guard RAII_GUARD(xpu_context);
+  device_optimizer_config_ = RAII_GUARD.alloc_l3_or_gm<OptimizerConfig>(1);
+  PADDLE_ENFORCE_NOT_NULL(
+      device_optimizer_config_,
+      paddle::platform::errors::Fatal("XPU memory is not enough"));
   xpu_memcpy((void*)device_optimizer_config_,
              &host_optimizer_config_,
              sizeof(OptimizerConfig),
              XPU_HOST_TO_DEVICE);
 
   rwlock_.reset(new phi::RWLock);
-}
-
-template <typename KeyType, typename ValType>
-HashTable<KeyType, ValType>::~HashTable() {
-  xpu_free((void*)container_);
-  xpu_free((void*)device_optimizer_config_);
 }
 
 template <typename KeyType, typename ValType>

@@ -66,14 +66,18 @@ template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
   explicit XPUCacheArray(int64_t capacity) : capacity_(capacity), size_(0) {
-    xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
-    xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
+    auto xpu_context =
+        context.template device_context<DeviceContext>().x_context();
+    xpu::ctx_guard RAII_GUARD(xpu_context);
+    keys = RAII_GUARD.alloc_l3_or_gm<KeyType>(capacity_);
+    PADDLE_ENFORCE_NOT_NULL(
+        keys, paddle::platform::errors::Fatal("XPU memory is not enough"));
+    vals = RAII_GUARD.alloc_l3_or_gm<ValType>(capacity_);
+    PADDLE_ENFORCE_NOT_NULL(
+        vals, paddle::platform::errors::Fatal("XPU memory is not enough"));
   }
 
-  virtual ~XPUCacheArray() {
-    xpu_free(keys);
-    xpu_free(vals);
-  }
+  virtual ~XPUCacheArray() {}
 
   void print() {}
   void print_collision(int i) {}

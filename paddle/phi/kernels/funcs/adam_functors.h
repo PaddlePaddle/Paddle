@@ -36,9 +36,11 @@ static int ConvertDataByType(
     const T1* x, T2** y, int len, bool allocateFlag, const Context& dev_ctx) {
   if (nullptr == x || nullptr == y || len <= 0)
     return xpu::Error_t::INVALID_PARAM;
-  int r = 0;
   if (allocateFlag) {
-    r = xpu_malloc(reinterpret_cast<void**>(y), sizeof(T2) * len);
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    T2* y_tmp = RAII_GUARD.alloc_l3_or_gm<T2>(len);
+    y = reinterpret_cast<T2**>(&y_tmp);
+    bool r = (y == nullptr) ? false : true;
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
   }
 

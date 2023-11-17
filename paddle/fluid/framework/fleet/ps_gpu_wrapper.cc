@@ -2050,9 +2050,14 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     VLOG(3) << "Begine Xpu Ps PullSparse";
     size_t total_length =
         std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
-    FeatureValue* total_values_gpu = nullptr;
-    xpu_malloc(reinterpret_cast<void**>(&total_values_gpu),
-               total_length * feature_value_size);
+    auto xpu_context =
+        context.template device_context<DeviceContext>().x_context();
+    xpu::ctx_guard RAII_GUARD(xpu_context);
+    FeatureValue* total_values_gpu =
+        RAII_GUARD.alloc_l3_or_gm<FeatureValue>(total_length);
+    PADDLE_ENFORCE_NOT_NULL(
+        total_values_gpu,
+        paddle::platform::errors::Fatal("XPU memory is not enough"));
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
     int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
