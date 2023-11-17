@@ -42,12 +42,26 @@ SpmdInfo TriuInferSpmdBase(const DistMetaTensor& x) {
                         "The Tensor x's rank [%d] must be ge than 2"));
 
   std::vector<int64_t> dims_to_unshard;
-  for (int i = 0; i < x_ndim - 2; ++i) {
+  for (int i = x_ndim - 2; i < x_ndim; ++i) {
     dims_to_unshard.push_back(i);
   }
   auto x_dist_attr = UnShardTensorDims(x_dist_attr_src, dims_to_unshard);
   auto out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr);
   out_dist_attr.set_dims_mapping(x_dist_attr.dims_mapping());
+
+  VLOG(4) << "TriuInferSpmd:";
+
+  VLOG(4) << "x shape: [" << str_join(x_shape) << "]"
+          << "src_dims_mapping: [" << str_join(x_dist_attr_src.dims_mapping())
+          << "] "
+          << "dst_dims_mapping: [" << str_join(x_dist_attr.dims_mapping())
+          << "]";
+
+  VLOG(4) << "Output"
+          << " dims_mapping: [" << str_join(out_dist_attr.dims_mapping())
+          << "]";
+  VLOG(4) << std::endl;
+
   return SpmdInfo{{x_dist_attr}, {out_dist_attr}};
 }
 
@@ -57,7 +71,7 @@ SpmdInfo TriuInferSpmd(const DistMetaTensor& x, int diagonal) {
 
 SpmdInfo TriuInferSpmdReverseBase(const DistMetaTensor& x,
                                   const DistMetaTensor& out) {
-  auto out_shape = phi::vectorize(x.dims());
+  auto out_shape = phi::vectorize(out.dims());
   int out_ndim = out_shape.size();
   auto out_dist_attr_src = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
@@ -75,12 +89,24 @@ SpmdInfo TriuInferSpmdReverseBase(const DistMetaTensor& x,
                         "The Tensor x's rank [%d] must be ge than 2"));
 
   std::vector<int64_t> dims_to_unshard;
-  for (int i = 0; i < out_ndim - 2; ++i) {
+  for (int i = out_ndim - 2; i < out_ndim; ++i) {
     dims_to_unshard.push_back(i);
   }
   auto out_dist_attr = UnShardTensorDims(out_dist_attr_src, dims_to_unshard);
   auto x_dist_attr = CopyTensorDistAttrForOutput(out_dist_attr);
   x_dist_attr.set_dims_mapping(out_dist_attr.dims_mapping());
+  VLOG(4) << "TriuInferSpmdReverse:";
+
+  VLOG(4) << "out shape: [" << str_join(out_shape) << "]"
+          << "src_dims_mapping: [" << str_join(out_dist_attr_src.dims_mapping())
+          << "] "
+          << "dst_dims_mapping: [" << str_join(out_dist_attr.dims_mapping())
+          << "]";
+
+  VLOG(4) << "x: "
+          << "dst_dims_mapping: [" << str_join(x_dist_attr.dims_mapping())
+          << "]";
+  VLOG(4) << std::endl;
   return SpmdInfo{{x_dist_attr}, {out_dist_attr}};
 }
 
@@ -110,7 +136,7 @@ SpmdInfo TriuGradInferSpmdBase(const DistMetaTensor& out_grad) {
                         "The Tensor x's rank [%d] must be ge than 2"));
 
   std::vector<int64_t> dims_to_unshard;
-  for (int i = 0; i < out_ndim - 2; ++i) {
+  for (int i = out_ndim - 2; i < out_ndim; ++i) {
     dims_to_unshard.push_back(i);
   }
   // partial status is erased
@@ -119,6 +145,19 @@ SpmdInfo TriuGradInferSpmdBase(const DistMetaTensor& out_grad) {
   out_grad_dist_attr.set_dims_mapping(out_grad_dist_attr.dims_mapping());
   auto in_grad_dist_attr = CopyTensorDistAttrForOutput(out_grad_dist_attr);
   in_grad_dist_attr.set_dims_mapping(out_grad_dist_attr.dims_mapping());
+
+  VLOG(4) << "TriuGradInferSpmdBase:";
+
+  VLOG(4) << "out_grad: " << str_join(out_shape) << "]"
+          << "src_dims_mapping: [" << str_join(out_dist_attr_src.dims_mapping())
+          << "] "
+          << "dst_dims_mapping: ["
+          << str_join(out_grad_dist_attr.dims_mapping()) << "]";
+
+  VLOG(4) << "in grad"
+          << "dst_dims_mapping: [" << str_join(in_grad_dist_attr.dims_mapping())
+          << "]";
+
   return SpmdInfo{{out_grad_dist_attr}, {in_grad_dist_attr}};
 }
 
