@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import random
 import unittest
-
-import numpy as np
 
 import paddle
 from paddle import pir
@@ -31,9 +28,6 @@ class PassTest(unittest.TestCase):
         self.pass_list = []
         self.pir_program = None
 
-        np.random.seed(123)
-        random.seed(124)
-
     def run_pir_pass(self):
         if not isinstance(self.pass_list, list):
             self.pass_list = [self.pass_list]
@@ -45,9 +39,6 @@ class PassTest(unittest.TestCase):
         pm.run(self.pir_program)
 
     def check_fused_ops(self):
-        '''
-        Check whether the fused ops are correct.
-        '''
         self.assertTrue(
             len(self.valid_op_map) != 0,
             "self.fuse_op_map cannot  be empty!",
@@ -64,10 +55,6 @@ class PassTest(unittest.TestCase):
             )
 
     def check_pass_correct(self, place, need_translate_to_pir=False, atol=1e-5):
-        '''
-        1.Check whether the pass is effective
-        2.[todo]Check the accuracy before and after running the pass
-        '''
         executor = paddle.static.Executor(place)
         self.assertTrue(
             need_translate_to_pir is False and self.pir_program is not None,
