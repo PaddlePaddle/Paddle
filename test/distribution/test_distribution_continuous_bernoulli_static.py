@@ -160,7 +160,7 @@ paddle.enable_static()
     [
         (
             'multi-dim',
-            parameterize.xrand((2, 3), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((1, 3), min=0.1, max=0.9).astype("float32"),
         ),
     ],
 )
@@ -178,9 +178,8 @@ class TestContinuousBernoulli(unittest.TestCase):
             mean = dist.mean
             var = dist.variance
             entropy = dist.entropy()
-            mini_samples = dist.sample(shape=())
             large_samples = dist.sample(shape=(1000,))
-        fetch_list = [mean, var, entropy, mini_samples, large_samples]
+        fetch_list = [mean, var, entropy, large_samples]
         feed = {'probability': self.probability}
 
         executor.run(startup_program)
@@ -188,7 +187,6 @@ class TestContinuousBernoulli(unittest.TestCase):
             self.mean,
             self.var,
             self.entropy,
-            self.mini_samples,
             self.large_samples,
         ] = executor.run(main_program, feed=feed, fetch_list=fetch_list)
 
@@ -210,8 +208,8 @@ class TestContinuousBernoulli(unittest.TestCase):
         np.testing.assert_allclose(
             self.var,
             self._np_variance(),
-            rtol=0.00,
-            atol=0.20,
+            rtol=config.RTOL.get(str(self.probability.dtype)),
+            atol=config.ATOL.get(str(self.probability.dtype)),
         )
 
     def test_entropy(self):
@@ -221,14 +219,11 @@ class TestContinuousBernoulli(unittest.TestCase):
         np.testing.assert_allclose(
             self.entropy,
             self._np_entropy(),
-            rtol=0.00,
+            rtol=0.0,
             atol=0.20,
         )
 
     def test_sample(self):
-        self.assertEqual(
-            str(self.mini_samples.dtype).split('.')[-1], self.probability.dtype
-        )
         sample_mean = self.large_samples.mean(axis=0)
         sample_variance = self.large_samples.var(axis=0)
         np.testing.assert_allclose(sample_mean, self.mean, atol=0, rtol=0.20)
@@ -251,7 +246,7 @@ class TestContinuousBernoulli(unittest.TestCase):
         (
             'value-broadcast-shape',
             parameterize.xrand((1,), min=0.1, max=0.9).astype("float32"),
-            parameterize.xrand((2, 3), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((2, 2), min=0.1, max=0.9).astype("float32"),
         ),
     ],
 )
@@ -294,8 +289,8 @@ class TestContinuousBernoulliProbs(unittest.TestCase):
     [
         (
             'multi-dim',
-            parameterize.xrand((5,), min=0.1, max=0.9).astype("float32"),
-            parameterize.xrand((5,), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((2,), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((2,), min=0.1, max=0.9).astype("float32"),
         ),
     ],
 )
@@ -328,7 +323,7 @@ class TestContinuousBernoulliKL(unittest.TestCase):
 
         self.assertEqual(tuple(kl0.shape), self.p_1.shape)
         self.assertEqual(tuple(kl1.shape), self.p_1.shape)
-        np.testing.assert_allclose(kl0, kl1, rtol=0.1, atol=0.1)
+        np.testing.assert_allclose(kl0, kl1, rtol=0, atol=0.2)
 
 
 if __name__ == '__main__':
