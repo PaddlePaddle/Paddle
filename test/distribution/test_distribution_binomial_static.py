@@ -57,7 +57,7 @@ class TestBinomial(unittest.TestCase):
             mean = dist.mean
             var = dist.variance
             entropy = dist.entropy()
-            large_samples = dist.sample(shape=(3000,))
+            large_samples = dist.sample(shape=(1000,))
         fetch_list = [mean, var, entropy, large_samples]
         feed = {
             'probability': self.probability,

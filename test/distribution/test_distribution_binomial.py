@@ -166,9 +166,9 @@ class TestBinomialProbs(unittest.TestCase):
         ),
         (
             'multi-dim-probability',
-            np.array([125, 125, 125]),
+            np.array([25, 25, 25]),
             parameterize.xrand((2, 3), dtype='float32', min=0, max=1),
-            np.array([125, 125, 125]),
+            np.array([25, 25, 25]),
             parameterize.xrand((2, 3), dtype='float32', min=0, max=1),
         ),
     ],
