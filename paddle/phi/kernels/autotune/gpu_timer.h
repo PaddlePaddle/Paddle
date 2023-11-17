@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
@@ -108,7 +108,7 @@ class CalculateStreamTimer {
         end_time_(0),
         is_started_(false) {}
 
-  explicit CalculateStreamTimer(const paddle::platform::Place &place)
+  explicit CalculateStreamTimer(const phi::Place &place)
       : calculated_stream_(nullptr),
         start_time_(0),
         end_time_(0),
@@ -120,10 +120,9 @@ class CalculateStreamTimer {
     // of the event, "gettimeofday" is used here to retrieve it. The callback is
     // used to record the start time of the event.
     if (!is_started_) {
-      calculated_stream_ =
-          dynamic_cast<phi::GPUContext *>(
-              paddle::platform::DeviceContextPool::Instance().Get(place_))
-              ->stream();
+      calculated_stream_ = dynamic_cast<phi::GPUContext *>(
+                               phi::DeviceContextPool::Instance().Get(place_))
+                               ->stream();
     }
     if (calculated_stream_ != nullptr) {
 #ifdef PADDLE_WITH_HIP
@@ -193,7 +192,7 @@ class CalculateStreamTimer {
   double start_time_;
   double end_time_;
   bool is_started_;
-  const paddle::platform::Place place_;
+  const phi::Place place_;
 };
 
 }  // namespace phi
