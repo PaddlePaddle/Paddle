@@ -50,7 +50,8 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                 out->data<int8_t>(),
                                 weight_shape);
   } else if (algo == "weight_only_int4") {
-    // quant_compute<Context, T, int8_t, 4>(dev_ctx, x, out, scale, algo); 
+    phi::errors::Unimplemented(
+        "Weight quant gpu kernel currently don't support weight_only_int4 algo, please use cpu version.");
   } else {
     phi::errors::Unimplemented(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
