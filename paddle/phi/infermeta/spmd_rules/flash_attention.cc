@@ -44,7 +44,6 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
                                    "seq_len_q, num_heads, head_dim]"));
 
   auto batch_size = q_shape[0];
-  auto seq_len_q = q_shape[1];
   auto num_heads = q_shape[2];
   auto head_dim = q_shape[3];
 
@@ -120,7 +119,6 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   auto v_batch_size = v_shape[0];
   auto v_seq_len = v_shape[1];
   auto v_num_heads = v_shape[2];
-  auto v_head_dim = v_shape[3];
 
   PADDLE_ENFORCE_EQ(
       batch_size,
@@ -305,7 +303,6 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
                                    "seq_len_q, num_heads, head_dim]"));
 
   auto batch_size = q_shape[0];
-  auto seq_len_q = q_shape[1];
   auto num_heads = q_shape[2];
   auto head_dim = q_shape[3];
 
@@ -381,7 +378,6 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   auto v_batch_size = v_shape[0];
   auto v_seq_len = v_shape[1];
   auto v_num_heads = v_shape[2];
-  auto v_head_dim = v_shape[3];
 
   PADDLE_ENFORCE_EQ(
       batch_size,

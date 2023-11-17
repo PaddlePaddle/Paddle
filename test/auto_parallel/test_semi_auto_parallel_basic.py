@@ -110,7 +110,7 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
 
     def test_flash_attention_api(self):
         envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
+            {"dtype": "float16", "seed": "2023"}, self._changeable_envs
         )
         for envs in envs_list:
             self.run_test_case(

@@ -29,8 +29,12 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
         ), f"{output.dist_attr.dims_mapping}  vs {expected_dim_mapping}"
 
     def test_flash_att_forward(self):
-        shapes = [[2, 256, 2, 128], [2, 256, 2, 128], [2, 256, 2, 128]]
-        specs = [['x', None, None], ["x", None, None], ['x', None, None]]
+        shapes = ([2, 256, 2, 128], [2, 256, 2, 128], [2, 256, 2, 128])
+        specs = (
+            ['x', None, None, None],
+            ["x", None, None, None],
+            ['x', None, None, None],
+        )
         inputs, outputs = self.runfunc_and_check(
             inputs_shape=shapes,
             inputs_specs=specs,
@@ -38,10 +42,39 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
             with_backward=True,
             causal=True,
         )
+        self.check_dim_mapping(outputs[0], [0, -1, -1, -1])
+        self.check_dim_mapping(inputs[0].grad, [0, -1, -1, -1])
+        self.check_dim_mapping(inputs[1].grad, [0, -1, -1, -1])
+        self.check_dim_mapping(inputs[2].grad, [0, -1, -1, -1])
+
+    def test_flash_att_forward_return_softmax(self):
+        shapes = ([2, 256, 2, 128], [2, 256, 2, 128], [2, 256, 2, 128])
+        specs = (
+            ['x', None, None, None],
+            ["x", None, None, None],
+            ['x', None, None, None],
+        )
+        inputs, outputs = self.runfunc_and_check(
+            inputs_shape=shapes,
+            inputs_specs=specs,
+            op_func=flash_attention,
+            with_backward=True,
+            causal=True,
+            return_softmax=True,
+        )
+        self.check_dim_mapping(outputs[0], [0, -1, -1, -1])
+        self.check_dim_mapping(outputs[1], [0, -1, -1, -1])
+        self.check_dim_mapping(inputs[0].grad, [0, -1, -1, -1])
+        self.check_dim_mapping(inputs[1].grad, [0, -1, -1, -1])
+        self.check_dim_mapping(inputs[2].grad, [0, -1, -1, -1])
 
     def test_flash_att_forward_reshard(self):
-        shapes = [[2, 256, 2, 128], [2, 256, 2, 128], [2, 256, 2, 128]]
-        specs = [['x', None, None], [None, None, 'x'], ['x', None, None]]
+        shapes = ([2, 256, 2, 128], [2, 256, 2, 128], [2, 256, 2, 128])
+        specs = (
+            ['x', None, None, None],
+            [None, None, None, 'x'],
+            ['x', None, None, None],
+        )
         inputs, outputs = self.runfunc_and_check(
             inputs_shape=shapes,
             inputs_specs=specs,
@@ -49,7 +82,10 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
             with_backward=True,
             causal=True,
         )
-        # self.check_dim_mapping(outputs, [-1, -1, 0])
+        self.check_dim_mapping(outputs[0], [0, -1, -1, -1])
+        self.check_dim_mapping(inputs[0].grad, [0, -1, -1, -1])
+        self.check_dim_mapping(inputs[1].grad, [0, -1, -1, -1])
+        self.check_dim_mapping(inputs[2].grad, [0, -1, -1, -1])
 
     def run_test_case(self):
         if self._backend == "cpu":
@@ -59,10 +95,10 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
-        self.test_flash_att_forward()
-
-        # all to all is not supported yet for cpu
+        # flash attention is not supported yet for cpu
         if self._backend == "gpu":
+            self.test_flash_att_forward()
+            self.test_flash_att_forward_return_softmax()
             self.test_flash_att_forward_reshard()
 
 
