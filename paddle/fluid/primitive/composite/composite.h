@@ -186,11 +186,10 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
 
 template <typename T>
 Tensor gelu_decomp(const Tensor& x, bool approximate) {
-  using PM_2_SQRTPI = 1.12837916709551257390; /* 2/sqrt(pi) */
-  using PM_SQRT1_2 = 0.70710678118654752440;  /* 1/sqrt(2) */
+  const double PM_2_SQRTPI = 1.12837916709551257390; /* 2/sqrt(pi) */
+  const double PM_SQRT1_2 = 0.70710678118654752440;  /* 1/sqrt(2) */
 
   auto org_dtype = x.dtype();
-
   auto half = full<T>(phi::vectorize(x.dims()), 0.5, org_dtype);
   auto one = full<T>(phi::vectorize(x.dims()), 1.0, org_dtype);
   if (approximate) {
