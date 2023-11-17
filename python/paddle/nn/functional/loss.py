@@ -147,7 +147,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
             >>> prob = paddle.randn((10,1))
             >>> cost = F.log_loss(input=prob, label=label)
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.log_loss(input, label, epsilon)
 
     helper = LayerHelper('log_loss', **locals())
