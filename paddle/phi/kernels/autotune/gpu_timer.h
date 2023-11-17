@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
