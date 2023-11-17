@@ -873,10 +873,22 @@ void FullWithTensorInferMeta(const MetaTensor& shape,
                              DataType dtype,
                              MetaTensor* out);
 
+<<<<<<< HEAD
 void RebuildPaddingInferMeta(const MetaTensor& x,
                              const MetaTensor& padding_offset,
                              const MetaTensor& seq_lens,
                              const MetaTensor& input_ids,
                              MetaTensor* out);
+=======
+void QkvTransposeSplitInferMeta(const MetaTensor& qkv,
+                            const MetaTensor& padding_offset,
+                            const MetaTensor& seq_lens,
+                            const MetaTensor& input_ids,
+                            int num_head,
+                            int head_size,
+                            MetaTensor* q_out,
+                            MetaTensor* k_out,
+                            MetaTensor* v_out);
+>>>>>>> eb28eb896d9507b30f860170611766f9d9315be5
 
 }  // namespace phi

@@ -2889,3 +2889,20 @@
   optional : gt_score
   intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
+
+- op : qkv_transpose_split
+  args : (Tensor qkv, Tensor padding_offset, Tensor seq_lens, Tensor input_ids, int num_head, int head_size)
+  output : Tensor (q_out), Tensor(k_out), Tensor(v_out)
+  infer_meta :
+    func : QkvTransposeSplitInferMeta
+  kernel :
+    func : qkv_transpose_split
+    data_type : qkv
+
+- op : fused_get_rotary_embedding
+  args : (Tensor input_ids, Tensor position_ids, Tensor head_dim_shape_tensor, int prompt_num, bool use_neox)
+  output : Tensor (rotary_embedding)
+  infer_meta :
+    func : FusedGetRotaryEmbeddingInferMeta
+  kernel :
+    func : fused_get_rotary_embedding

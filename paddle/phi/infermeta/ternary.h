@@ -238,4 +238,11 @@ void QuantLinearInferMeta(const MetaTensor& x,
                           float quant_min_bound,
                           MetaTensor* y);
 
+void FusedGetRotaryEmbeddingInferMeta(const MetaTensor& input_ids,
+                                      const MetaTensor& position_ids,
+                                      const MetaTensor& head_dim_shape_tensor,
+                                      int prompt_num,
+                                      bool use_neox,
+                                      MetaTensor* rotary_embedding);
+
 }  // namespace phi
