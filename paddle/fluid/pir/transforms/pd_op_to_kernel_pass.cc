@@ -145,6 +145,15 @@ static phi::Backend DeriveBackend(const std::string& op,
   return kernel_backend;
 }
 
+static phi::Backend ChooseInputBackend(const phi::Kernel& kernel,
+                                       size_t input_index,
+                                       phi::Backend default_backend) {
+  if (kernel.GetKernelRegisteredType() == phi::KernelRegisteredType::FUNCTION) {
+    return kernel.InputAt(input_index).backend;
+  }
+  return default_backend;
+}
+
 static std::set<std::string> GetInputsByDataOp(pir::Block* block) {
   std::set<std::string> data_op_names;
   for (auto op_item : *block) {
@@ -1044,24 +1053,10 @@ static std::vector<pir::Value> BuildInputs(
         auto in_place =
             new_in_type.dyn_cast<AllocatedDenseTensorType>().place();
 
-        // get input args def type
-        auto args_def = kernel.args_def();
-        auto input_defs = args_def.input_defs();
-
-        phi::Backend dst_backend = phi::Backend::UNDEFINED;
-        if (kernel.GetKernelRegisteredType() ==
-            phi::KernelRegisteredType::FUNCTION) {
-          dst_backend =
-              DeriveBackend(op_item->name(),
-                            place,
-                            op_info_parser,
-                            kernel.InputAt(tensor_param_index).backend,
-                            i);
-        } else {
-          dst_backend = DeriveBackend(
-              op_item->name(), place, op_info_parser, kernel_key.backend(), i);
-        }
-
+        auto input_backend = ChooseInputBackend(
+            kernel, tensor_param_index, kernel_key.backend());
+        auto dst_backend = DeriveBackend(
+            op_item->name(), place, op_info_parser, input_backend, i);
         VLOG(6) << "Infer kernel backend from input " << i << " of op "
                 << op_item->name();
 
@@ -1111,22 +1106,19 @@ static std::vector<pir::Value> BuildInputs(
                   "VectorType<SelectedRowsType>"));
             }
 
-            // get input args def type
-            auto args_def = kernel.args_def();
-            auto input_defs = args_def.input_defs();
-
+            auto input_backend = ChooseInputBackend(
+                kernel, tensor_param_index, kernel_key.backend());
             bool need_trans =
                 (place.GetType() != phi::AllocationType::UNDEFINED) &&
                 (op_info_parser != nullptr &&
                  !op_info_parser->IsTensorAttribute(i)) &&
                 (paddle::experimental::NeedTransformPlace(
-                    place, kernel.InputAt(tensor_param_index).backend, {}));
+                    place, input_backend, {}));
             if (need_trans) {
               VLOG(6) << "need trans from " << place << " to "
                       << kernel_key.backend();
               // build memcopy op
-              auto out_place = phi::TransToPhiPlace(
-                  kernel.InputAt(tensor_param_index).backend);
+              auto out_place = phi::TransToPhiPlace(input_backend);
               pir::Type out_type;
               if (in_i_type.isa<AllocatedDenseTensorType>()) {
                 out_type = AllocatedDenseTensorType::get(
@@ -1175,16 +1167,10 @@ static std::vector<pir::Value> BuildInputs(
         auto in_place =
             new_in_type.dyn_cast<AllocatedSelectedRowsType>().place();
 
-        // get input args def type
-        auto args_def = kernel.args_def();
-        auto input_defs = args_def.input_defs();
-
-        auto dst_backend =
-            DeriveBackend(op_item->name(),
-                          place,
-                          op_info_parser,
-                          kernel.InputAt(tensor_param_index).backend,
-                          i);
+        auto input_backend = ChooseInputBackend(
+            kernel, tensor_param_index, kernel_key.backend());
+        auto dst_backend = DeriveBackend(
+            op_item->name(), place, op_info_parser, input_backend, i);
         VLOG(6) << "Infer kernel backend from input " << i << " of op ";
         bool need_trans =
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
@@ -1213,16 +1199,10 @@ static std::vector<pir::Value> BuildInputs(
         auto in_place =
             new_in_type.dyn_cast<AllocatedDenseTensorArrayType>().place();
 
-        // get input args def type
-        auto args_def = kernel.args_def();
-        auto input_defs = args_def.input_defs();
-
-        auto dst_backend =
-            DeriveBackend(op_item->name(),
-                          place,
-                          op_info_parser,
-                          kernel.InputAt(tensor_param_index).backend,
-                          i);
+        auto input_backend = ChooseInputBackend(
+            kernel, tensor_param_index, kernel_key.backend());
+        auto dst_backend = DeriveBackend(
+            op_item->name(), place, op_info_parser, input_backend, i);
         VLOG(6) << "Infer kernel backend from input " << i << " of op ";
         bool need_trans =
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&

@@ -38,8 +38,6 @@ class WhileInstruction : public InstructionBase {
   WhileInstruction(size_t id,
                    const platform::Place& place,
                    ::pir::Operation* op,
-                   Scope* scope,
-                   Scope* local_scope,
                    ValueExecutionInfo* parent_exe_info);
 
   void Run() override;

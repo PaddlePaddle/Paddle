@@ -651,7 +651,7 @@ void PirInterpreter::BuildInstruction() {
             op_idx++, place_, op, value_exe_info_.get()));
       } else if (op->isa<paddle::dialect::WhileOp>()) {
         vec_instruction_base_.emplace_back(std::make_unique<WhileInstruction>(
-            op_idx++, place_, op, scope_, local_scope_, value_exe_info_.get()));
+            op_idx++, place_, op, value_exe_info_.get()));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Now only support pd_kernel and cinn dialect."));

@@ -43,8 +43,6 @@ namespace framework {
 WhileInstruction::WhileInstruction(size_t id,
                                    const platform::Place& place,
                                    pir::Operation* op,
-                                   Scope* scope,
-                                   Scope* local_scope,
                                    ValueExecutionInfo* parent_exe_info)
     : InstructionBase(id, place) {
   op_ = op;
