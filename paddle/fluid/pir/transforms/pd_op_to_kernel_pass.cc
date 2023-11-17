@@ -137,6 +137,15 @@ static phi::Backend DeriveBackend(const std::string& op,
   return kernel_backend;
 }
 
+static phi::Backend ChooseInputBackend(const phi::Kernel& kernel,
+                                       size_t input_index,
+                                       phi::Backend default_backend) {
+  if (kernel.GetKernelRegisteredType() == phi::KernelRegisteredType::FUNCTION) {
+    return kernel.InputAt(input_index).backend;
+  }
+  return default_backend;
+}
+
 static std::set<std::string> GetInputsByDataOp(pir::Block* block) {
   std::set<std::string> data_op_names;
   for (auto op_item : *block) {
@@ -1194,11 +1203,8 @@ std::vector<pir::Value> BuildInputs(
         auto args_def = kernel.args_def();
         auto input_defs = args_def.input_defs();
 
-        auto input_backend = kernel_key.backend();
-        if (kernel.GetKernelRegisteredType() ==
-            phi::KernelRegisteredType::FUNCTION) {
-          input_backend = kernel.InputAt(tensor_param_index).backend;
-        }
+        auto input_backend = ChooseInputBackend(
+            kernel, tensor_param_index, kernel_key.backend());
         auto dst_backend = DeriveBackend(
             op_item->name(), place, op_info_parser, input_backend, i);
         VLOG(6) << "Infer kernel backend from input " << i << " of op "
@@ -1254,12 +1260,8 @@ std::vector<pir::Value> BuildInputs(
             auto args_def = kernel.args_def();
             auto input_defs = args_def.input_defs();
 
-            auto input_backend = kernel_key.backend();
-            if (kernel.GetKernelRegisteredType() ==
-                phi::KernelRegisteredType::FUNCTION) {
-              input_backend = kernel.InputAt(tensor_param_index).backend;
-            }
-
+            auto input_backend = ChooseInputBackend(
+                kernel, tensor_param_index, kernel_key.backend());
             bool need_trans =
                 (place.GetType() != phi::AllocationType::UNDEFINED) &&
                 (op_info_parser != nullptr &&
@@ -1323,11 +1325,8 @@ std::vector<pir::Value> BuildInputs(
         auto args_def = kernel.args_def();
         auto input_defs = args_def.input_defs();
 
-        auto input_backend = kernel_key.backend();
-        if (kernel.GetKernelRegisteredType() ==
-            phi::KernelRegisteredType::FUNCTION) {
-          input_backend = kernel.InputAt(tensor_param_index).backend;
-        }
+        auto input_backend = ChooseInputBackend(
+            kernel, tensor_param_index, kernel_key.backend());
         auto dst_backend = DeriveBackend(
             op_item->name(), place, op_info_parser, input_backend, i);
         VLOG(6) << "Infer kernel backend from input " << i << " of op ";
