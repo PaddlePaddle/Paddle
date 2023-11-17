@@ -63,6 +63,10 @@ class PhiVector : public phi::ExtendedTensor,
 
   void emplace_back(const T& feed_data) { data_.emplace_back(feed_data); }
 
+  void push_back(const T& feed_data) { data_.push_back(feed_data); }
+
+  void pop_back() { data_.pop_back(); }
+
   const T& operator[](size_t index) const { return data_[index]; }
 
   T& operator[](size_t index) { return data_[index]; }

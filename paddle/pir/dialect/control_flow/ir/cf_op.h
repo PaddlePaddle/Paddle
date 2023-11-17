@@ -109,24 +109,9 @@ class IR_API PopBackOp : public Op<PopBackOp> {
   PushBackOp push_op() { return create_op().push_op(); }
 };
 
-class IR_API HasElementsOp : public Op<HasElementsOp> {
- public:
-  using Op::Op;
-  static const char *name() { return "cf.has_elements"; }
-  static constexpr uint32_t attributes_num = 0;
-  static constexpr const char **attributes_name = nullptr;
-
-  static void Build(Builder &builder,             // NOLINT
-                    OperationArgument &argument,  // NOLINT
-                    Value stack);
-  void VerifySig();
-  Value out() { return result(0); }
-};
-
 }  // namespace pir
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::YieldOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::CreateStackOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::PushBackOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::PopBackOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::HasElementsOp);

@@ -29,14 +29,10 @@
 using namespace paddle::dialect;  // NOLINT
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(less_than, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_n, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(add_n, GPU, ALL_LAYOUT);
 
 // // example for while_op use
 // // while(i < ten) { i = i + 1;}
@@ -153,7 +149,7 @@ TEST(while_op_test, network_with_backward) {
   // the output of while_grad op is {x_grad, y_grad}
   // the value {i , one, ten} is stop gradient.
 
-  auto bwd_cond = builder.Build<pir::HasElementsOp>(stack).out();
+  auto bwd_cond = builder.Build<HasElementsOp>(stack).out();
   auto while_grad = builder.Build<WhileOp>(
       bwd_cond, std::vector<pir::Value>{x_out_grad, zero});
   pir::Block* bwd_body_block = while_grad.body_block();
@@ -176,7 +172,7 @@ TEST(while_op_test, network_with_backward) {
                        .out();
   auto local_next_y_grad = builder.Build<AddNOp>(combine_y).out();
 
-  auto next_bwd_cond = builder.Build<pir::HasElementsOp>(stack).out();
+  auto next_bwd_cond = builder.Build<HasElementsOp>(stack).out();
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{
       next_bwd_cond, bwd_body_x_argument_grad, local_next_y_grad});
 
