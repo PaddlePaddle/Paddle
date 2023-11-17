@@ -147,6 +147,7 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
             full_op->attribute("place")
                 .dyn_cast<paddle::dialect::PlaceAttribute>()
                 .data());
+
         op->operand(1).set_source(new_full->result(0));
       } else {
         auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(

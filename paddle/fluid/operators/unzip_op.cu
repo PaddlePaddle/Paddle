@@ -91,7 +91,9 @@ PD_REGISTER_STRUCT_KERNEL(unzip,
                           plat::float16,
                           bool,
                           int,
-                          int64_t) {}
+                          int64_t,
+                          phi::dtype::complex<float>,
+                          phi::dtype::complex<double>) {}
 PD_REGISTER_STRUCT_KERNEL(unzip_grad,
                           GPU,
                           ALL_LAYOUT,
@@ -101,4 +103,6 @@ PD_REGISTER_STRUCT_KERNEL(unzip_grad,
                           plat::float16,
                           bool,
                           int,
-                          int64_t) {}
+                          int64_t,
+                          phi::dtype::complex<float>,
+                          phi::dtype::complex<double>) {}
