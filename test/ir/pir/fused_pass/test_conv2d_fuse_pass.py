@@ -22,6 +22,10 @@ import paddle
 paddle.enable_static()
 
 
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
 class TestConv2dFusePass(PassTest):
     def build_ir_progam(self):
         with paddle.pir_utils.IrGuard():
