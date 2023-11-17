@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 
+#include "paddle/phi/infermeta/spmd_rules/cast.h"
 #include "paddle/phi/infermeta/spmd_rules/concat.h"
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
