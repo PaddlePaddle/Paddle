@@ -129,6 +129,8 @@ PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const phi::DenseTensor* value);
 PyObject* ToPyObject(const phi::distributed::DistTensor* value);
 PyObject* ToPyObject(const phi::distributed::TensorDistAttr* value);
+PyObject* ToPyObject(const phi::distributed::ProcessMesh* value);
+PyObject* ToPyObject(const phi::distributed::Placements& value);
 PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
@@ -321,12 +323,19 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
 phi::distributed::TensorDistAttr CastPyArg2DistAttr(PyObject* obj,
                                                     ssize_t arg_pos);
 
+phi::distributed::ProcessMesh CastPyArg2ProcessMesh(PyObject* obj,
+                                                    ssize_t arg_pos);
+
+phi::distributed::Placements CastPyArg2VectorOfPlacement(PyObject* obj,
+                                                         ssize_t arg_pos);
+
 paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     const std::string& op_type,
     const std::string& arg_name,
     PyObject* args,
     ssize_t arg_idx,
-    bool dispensable = false);
+    bool dispensable = false,
+    const phi::distributed::ProcessMesh* mesh = nullptr);
 
 paddle::Tensor& GetTensorFromArgs(const std::string& op_type,
                                   const std::string& arg_name,
@@ -339,13 +348,16 @@ paddle::optional<std::vector<paddle::Tensor>> GetOptionalTensorListFromArgs(
     const std::string& arg_name,
     PyObject* args,
     ssize_t arg_idx,
-    bool dispensable = false);
+    bool dispensable = false,
+    const phi::distributed::ProcessMesh* mesh = nullptr);
 
-std::vector<paddle::Tensor> GetTensorListFromArgs(const std::string& op_type,
-                                                  const std::string& arg_name,
-                                                  PyObject* args,
-                                                  ssize_t arg_idx,
-                                                  bool dispensable = false);
+std::vector<paddle::Tensor> GetTensorListFromArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable = false,
+    const phi::distributed::ProcessMesh* mesh = nullptr);
 
 paddle::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
                                      const std::string& arg_name,

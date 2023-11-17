@@ -300,6 +300,9 @@ void BuildValue(pir::Value value,
     var->GetMutable<phi::DenseTensor>();
   } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     var->GetMutable<phi::SelectedRows>();
+  } else if (value.type()
+                 .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    var->GetMutable<phi::TensorArray>();
   } else if (value.type().isa<pir::VectorType>()) {
     auto tensor_array = var->GetMutable<VariableRefArray>();
     tensor_array->clear();
@@ -514,7 +517,8 @@ void HandleForInplaceOp(pir::Operation* op,
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
   paddle::dialect::OpYamlInfoParser yaml_parser(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-          ->get_op_info_());
+          ->get_op_info_(),
+      paddle::dialect::IsLegacyOp(op_name));
 
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value value = op->result(i);
@@ -765,6 +769,13 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
               attribute.dyn_cast<pir::DoubleAttribute>().data());  // NOLINT
         }
         attr_map[name] = vec_double;
+      } else if (array_list[0].isa<pir::StrAttribute>()) {
+        std::vector<std::string> vec_string;
+        for (auto attribute : array_list) {
+          vec_string.push_back(
+              attribute.dyn_cast<pir::StrAttribute>().AsString());  // NOLINT
+        }
+        attr_map[name] = vec_string;
       } else {
         std::stringstream ss;
         val.Print(ss);
@@ -815,7 +826,6 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
           "pir::vector type"));
     }
   }
-
   auto& op_info = OpInfoMap::Instance().Get(fluid_op_name);
   auto ptr =
       op_info.Creator()(fluid_op_name, in_name_map, out_name_map, attr_map);

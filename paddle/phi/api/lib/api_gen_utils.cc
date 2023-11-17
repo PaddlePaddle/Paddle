@@ -629,6 +629,30 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
 }
 
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
+    const phi::distributed::ArgDistAttr& dist_attr, std::vector<Tensor>* out) {
+  PADDLE_ENFORCE_EQ(
+      paddle::holds_alternative<std::vector<phi::distributed::TensorDistAttr>>(
+          dist_attr),
+      true,
+      phi::errors::PreconditionNotMet(
+          "Arg must be a vector of  TensorDistAttr"));
+  const std::vector<phi::distributed::TensorDistAttr>& dist_attrs =
+      PADDLE_GET_CONST(std::vector<phi::distributed::TensorDistAttr>,
+                       dist_attr);
+  auto out_size = dist_attrs.size();
+  out->reserve(out_size);
+  std::vector<phi::distributed::DistTensor*> results(out_size);
+  for (size_t i = 0; i < out_size; ++i) {
+    auto dist_t = std::make_shared<phi::distributed::DistTensor>(phi::DDim(),
+                                                                 dist_attrs[i]);
+    results[i] = dist_t.get();
+    out->emplace_back();
+    out->back().set_impl(dist_t);
+  }
+  return results;
+}
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     size_t out_size, std::vector<Tensor>* out) {
   out->reserve(out_size);
   std::vector<phi::distributed::DistTensor*> results(out_size);
