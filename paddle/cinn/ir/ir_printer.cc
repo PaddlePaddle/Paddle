@@ -613,7 +613,7 @@ void IrPrinter::Visit(const _Dim_ *x) {
   str_ += ", sym_name: ";
   str_ += x->GetSymbolName();
   str_ += ", dim_size: ";
-  str_ += x->GetRealDimSize();
+  str_ += std::to_string(x->GetRealDimSize());
   str_ += ")\n";
 }
 
