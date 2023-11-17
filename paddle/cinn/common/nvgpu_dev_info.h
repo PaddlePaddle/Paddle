@@ -30,8 +30,8 @@ namespace common {
 
 class NVGPUDevInfo : public DevInfoBase {
  public:
-  explicit NVGPUDevInfo(int device = 0) : DevInfoBase(device) {
-    CUDA_CALL(cudaGetDeviceProperties(prop_, device));
+  explicit NVGPUDevInfo(int device_num = 0) : DevInfoBase(device_num) {
+    CUDA_CALL(cudaGetDeviceProperties(prop_, device_num));
   }
 
   std::array<int, 3> GetMaxGridDims() const;

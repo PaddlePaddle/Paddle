@@ -19,8 +19,8 @@ namespace common {
 
 class DevInfoBase {
  public:
+  explicit DevInfoBase(int device_num = 0) : device_num_(device_num) {}
   virtual ~DevInfoBase() = default;
-  explicit DevInfoBase(int device = 0) : device_num_(device) {}
 
  protected:
   int device_num_;
