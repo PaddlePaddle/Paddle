@@ -348,6 +348,33 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
 }
 }  // namespace
 
+AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
+    : config_(config) {
+  if (config_.shape_range_info_collected()) {
+    config_.SwitchIrOptim(false);
+  }
+  if (config_.new_executor_enabled()) {
+    config_.EnableMemoryOptim(false);
+    if (FLAGS_enable_pir_in_executor) {
+      config_.SwitchIrOptim(false);
+    }
+  }
+  int trt_identifier = config_.trt_engine_memory_sharing_identifier_;
+  if (trt_identifier > 0) {
+    // NOTE(liuyuanle): For convenience, we set the id of the predictor to
+    // negative sharing_identifier directly. In the future, this may affect
+    // the meaning of negative predictor id.
+    predictor_id_ = -trt_identifier;
+    LOG(WARNING)
+        << "Since the engine context memory of multiple predictors "
+           "is enabled in Paddle-TRT, we set the id of these predictors to "
+           "negative sharing_identifier you specified : "
+        << predictor_id_;
+  } else {
+    predictor_id_ = inference::GetUniqueId();
+  }
+}
+
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
     const std::shared_ptr<framework::ProgramDesc> &program) {
@@ -743,24 +770,26 @@ bool AnalysisPredictor::PrepareExecutor() {
       pir_program_ = std::move(
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
 
-      ::pir::PassManager pm(::pir::IrContext::Instance(), 2);
+      ::pir::PassManager pm_for_op_program(::pir::IrContext::Instance(), 2);
       // TODO(liuyuanle): Uncomment constant_folding_pass after fix it
-      // pm.AddPass(::pir::CreateConstantFoldingPass(sub_scope_));
-      pm.AddPass(::pir::CreateConv2dFusePass());
-      pm.AddPass(::pir::CreateDeadCodeEliminationPass());
-      pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
-      pm.EnableIRPrinting();
-      pm.Run(pir_program_.get());
+      // pm_for_op_program.AddPass(::pir::CreateConstantFoldingPass(sub_scope_));
+      pm_for_op_program.AddPass(::pir::CreateConv2dFusePass());
+      pm_for_op_program.AddPass(::pir::CreateDeadCodeEliminationPass());
+      pm_for_op_program.AddPass(
+          ::pir::CreateReplaceFetchWithShadowOutputPass());
+      // pm_for_op_program.EnableIRPrinting();
+      pm_for_op_program.Run(pir_program_.get());
 
       pir_program_ = std::move(
           paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_));
 
+      ::pir::PassManager pm_for_kernel_program(::pir::IrContext::Instance(), 3);
       if (FLAGS_pir_apply_inplace_pass) {
-        ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
-        pm.AddPass(::pir::CreateInplacePass());
-        pm.AddPass(::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
-        pm.Run(pir_program_.get());
+        pm_for_kernel_program.AddPass(::pir::CreateInplacePass());
       }
+      pm_for_kernel_program.AddPass(
+          ::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
+      pm_for_kernel_program.Run(pir_program_.get());
 
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
