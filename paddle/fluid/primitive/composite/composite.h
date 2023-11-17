@@ -193,8 +193,30 @@ std::tuple<Tensor, Tensor> dropout_decomp(
     const std::string& mode,
     const int seed,
     bool fix_seed) {
-  // auto org_dtype = x.dtype();
+  auto org_dtype = x.dtype();
   Tensor x_cast = x;
+
+  bool upscale_in_train = false;
+  if (mode.compare("upscale_in_train") == 0) {
+    upscale_in_train = true;
+  }
+
+  // greater_equal<T>()
+  if (upscale_in_train) {
+    if (is_test) {
+      std::cout >> "AAA" << std::endl;
+    } else {
+      // Process p=1. for avoid devide zero error (x*mask/(1.0-p))
+      std::cout >> "AAA" << std::endl;
+    }
+  } else {
+    if (is_test) {
+      auto tensor_tmp = full<T>(phi::vectorize(x.dims()), 1.0, x.dtype()) - p;
+
+    } else {
+      std::cout >> "AAA" << std::endl;
+    }
+  }
 
   return std::make_tuple(x_cast, x);
 }
