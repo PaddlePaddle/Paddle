@@ -310,8 +310,14 @@ cc_test(
   DEPS fleet_wrapper gloo_wrapper framework_io string_helper)
 
 if(WITH_CINN)
-  cc_test_old(cinn_cache_key_test SRCS paddle2cinn/cinn_cache_key_test.cc DEPS
-              paddle2cinn)
+  cc_test_old(
+    cinn_cache_key_test
+    SRCS
+    paddle2cinn/cinn_cache_key_test.cc
+    DEPS
+    paddle2cinn
+    graph
+    python)
   set_tests_properties(cinn_cache_key_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
   cc_test_old(build_cinn_pass_test SRCS paddle2cinn/build_cinn_pass_test.cc
@@ -329,7 +335,13 @@ if(WITH_CINN)
               paddle2cinn)
   set_tests_properties(transform_desc_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  cc_test_old(transform_type_test SRCS paddle2cinn/transform_type_test.cc DEPS
-              paddle2cinn)
+  cc_test_old(
+    transform_type_test
+    SRCS
+    paddle2cinn/transform_type_test.cc
+    DEPS
+    paddle2cinn
+    cinnapi
+    cinn_op_dialect)
   set_tests_properties(transform_type_test PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()
