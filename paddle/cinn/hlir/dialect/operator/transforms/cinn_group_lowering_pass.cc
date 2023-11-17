@@ -110,6 +110,19 @@ std::vector<pir::Operation*> GetOpListNotIncludeYield(
   return vec_res;
 }
 
+std::vector<pir::Operation*> GetOutputOpList(
+    const std::vector<pir::Operation*>& op_list) {
+  std::vector<pir::Operation*> vec_res;
+  auto yield_op = op_list.back();
+
+  for (size_t i = 0; i < yield_op->num_operands(); ++i) {
+    vec_res.push_back(
+        yield_op->operand(i).source().dyn_cast<pir::OpResult>().owner());
+  }
+
+  return vec_res;
+}
+
 std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 
@@ -134,7 +147,8 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
 
       // op fusion
       auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
-          GetOpListNotIncludeYield(group_op.ops()));
+          GetOpListNotIncludeYield(group_op.ops()),
+          GetOutputOpList(group_op.ops()));
 
       // fusion merge
       auto group_list =

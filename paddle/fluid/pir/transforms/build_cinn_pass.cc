@@ -641,6 +641,7 @@ void ReplaceWithGroupOp(pir::Block* block,
   builder.SetInsertionPointAfter(laste_input_op);
   std::vector<pir::Type> output_types;
   std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);
+
   for (auto& value : outputs) {
     output_types.emplace_back(value.type());
   }
