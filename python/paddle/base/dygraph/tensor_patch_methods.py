@@ -32,9 +32,7 @@ from ..framework import (
     EagerParamBase,
     Parameter,
     Variable,
-    _getitem_static,
     _setitem_impl_,
-    _setitem_static,
     convert_np_dtype_to_dtype_,
 )
 from .base import switch_to_static_graph
@@ -845,38 +843,6 @@ def monkey_patch_tensor():
             array = array.astype(dtype)
         return array
 
-    def contain_tensor(item):
-        if not isinstance(item, (tuple, list)):
-            item = [item]
-
-        for slice_item in item:
-            if isinstance(slice_item, slice):
-                if (
-                    isinstance(slice_item.start, Variable)
-                    or isinstance(slice_item.stop, Variable)
-                    or isinstance(slice_item.step, Variable)
-                ):
-                    return True
-            else:
-                if (
-                    isinstance(slice_item, (Variable, np.ndarray))
-                    and Variable.dtype != paddle.bool
-                ):
-                    return True
-        return False
-
-    def contain_tensor_or_list(item):
-        if not isinstance(item, tuple):
-            item = (item,)
-
-        for slice_item in item:
-            if isinstance(
-                slice_item, (list, np.ndarray, Variable, range, bool)
-            ):
-                return True
-
-        return False
-
     def pre_deal_index_and_value(self, item, value=None):
         # since in pybind there is no effiency way to transfer Py_Tuple/Py_List/Py_Range to Tensor
         # we call this function in python level.
@@ -896,51 +862,12 @@ def monkey_patch_tensor():
         item, _ = pre_deal_index_and_value(self, item)
         return self._getitem_dygraph(item)
 
-        if contain_tensor_or_list(item):
-            # 1. Call _getitem_impl_ when item contains tensor.
-            # Why not call a c++ function ? Because item can't be parsed when it contains tensor.
-            return _getitem_static(self, item)
-
-        else:
-            # 2. Call c++ func getitem_index_not_tensor to speedup.
-            # return self._getitem_index_not_tensor(item)
-            return self._getitem_dygraph(item)
-
     def __setitem__(self, item, value):
+        if core.is_compiled_with_xpu():
+            # (NOTE): Currently, there is no index_put_xpu kernel.
+            return _setitem_impl_(self, item, value)
         item, value = pre_deal_index_and_value(self, item, value)
         return self._setitem_dygraph(item, value)
-
-        def is_combine_index(item):
-            var_type = None
-            item_type = None
-            if isinstance(item, (tuple, list)):
-                for slice_item in item:
-                    if item_type is None:
-                        item_type = type(slice_item)
-                    else:
-                        if type(slice_item) != item_type:
-                            return True
-
-                    if isinstance(slice_item, Variable):
-                        if var_type is None:
-                            var_type = slice_item.dtype
-                        else:
-                            if var_type != slice_item.dtype:
-                                return True
-                return False
-
-            return False
-
-        if contain_tensor_or_list(item):
-            if core.is_compiled_with_xpu() and not is_combine_index(item):
-                # (NOTE): Currently, there is no index_put_xpu kernel.
-                return _setitem_impl_(self, item, value)
-            # To reuse code with static graph,
-            # Call _setitem_static when item contains tensor or list.
-            return _setitem_static(self, item, value)
-
-        else:
-            return self.__setitem_eager_tensor__(item, value)
 
     @framework.dygraph_only
     def _set_grad_ivar(self, value):
