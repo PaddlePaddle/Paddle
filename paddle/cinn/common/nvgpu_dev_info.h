@@ -30,7 +30,7 @@ namespace common {
 
 class NVGPUDevInfo : public DevInfoBase {
  public:
-  explicit NVGPUDevInfo(int device) : device_num_(device) {
+  explicit NVGPUDevInfo(int device = 0) : DevInfoBase(device) {
     CUDA_CALL(cudaGetDeviceProperties(prop_, device));
   }
 
@@ -41,7 +41,6 @@ class NVGPUDevInfo : public DevInfoBase {
   int GetMaxThreadsPerBlock() const;
 
  private:
-  int device_num_;
   cudaDeviceProp* prop_;
 };
 }  // namespace common

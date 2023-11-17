@@ -19,30 +19,22 @@
 
 namespace cinn {
 namespace common {
-
-DevInfoMgr::DevInfoMgr(Target::Arch arch, int device_num)
-    : arch_(arch), device_num_(device_num) {
-  switch (arch) {
-    case Target::Arch::ARM:
-    case Target::Arch::X86:
-    case Target::Arch::Unk:
-      impl_ = std::make_unique<DevInfoBase>();
-      break;
-    case Target::Arch::NVGPU:
-#ifdef CINN_WITH_CUDA
-      impl_ = std::make_unique<NVGPUDevInfo>(device_num);
-#endif
-    default:
-      CHECK(false) << "Current device can't be recognized!\n";
-      break;
-  }
+template <Target::Arch arch>
+DevInfoMgr<arch>::DevInfoMgr(int device_num) : device_num_(device_num) {
+  impl = std::make_unique<NVGPUDevInfo>(device_num)
 }
 
-std::unique_ptr<DevInfoMgr> DevInfoMgr::GetDevInfo(Target::Arch arch,
-                                                   int device_num) {
-  std::unique_ptr<DevInfoMgr> ret(new DevInfoMgr(arch, device_num));
+template <Target::Arch arch>
+DevInfoMgr<arch> DevInfoMgr<arch>::GetDevInfo(int device_num) {
+  std::unique_ptr<DevInfoMgr> ret(new DevInfoMgr(device_num));
   return ret;
 }
+
+class NVGPUDevInfo;
+template <>
+struct DevInfoMgr<Target::Arch::NVGPU>::GetRetType<Target::Arch::NVGPU> {
+  using RetType = NVGPUDevInfo;
+};
 
 }  // namespace common
 }  // namespace cinn

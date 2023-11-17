@@ -22,32 +22,35 @@
 
 namespace cinn {
 namespace common {
-
+template <Target::Arch arch>
 class DevInfoMgr final {
  private:
-  explicit DevInfoMgr(Target::Arch arch = Target::Arch::Unk,
-                      int device_num = 0);
+  explicit DevInfoMgr(int device_num = 0);
   std::unique_ptr<DevInfoBase> impl_;
-  Target::Arch arch_;
   int device_num_;
 
- public:
-  static std::unique_ptr<DevInfoMgr> GetDevInfo(
-      Target::Arch arch = Target::Arch::NVGPU, int device_num = 0);
+  template <Target::Arch arch>
+  struct GetRetType {
+    using RetType = DevInfoBase;
+  };
 
-// Extra device should be added here
-#ifdef CINN_WITH_CUDA
-  using RET_TYPE = NVGPUDevInfo;
-  const RET_TYPE* operator->() const {
+ public:
+  static DevInfoMgr<arch> GetDevInfo(int device_num = 0);
+
+  using RetType = GetRetType<arch>::RetType;
+  const RetType* operator->() const {
     CHECK(!std::is_void<RET_TYPE>()) << "Current device can't be recognized!\n";
     return dynamic_cast<const RET_TYPE*>(impl_.get());
   }
-  RET_TYPE* operator->() {
+  RetType* operator->() {
     CHECK(!std::is_void<RET_TYPE>()) << "Current device can't be recognized!\n";
     return dynamic_cast<RET_TYPE*>(impl_.get());
   }
-#endif
 };
+
+// Extra device should be added here
+template <>
+struct DevInfoMgr<Target::Arch::NVGPU>::GetRetType<Target::Arch::NVGPU>;
 
 }  // namespace common
 }  // namespace cinn

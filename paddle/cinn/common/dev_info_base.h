@@ -20,6 +20,10 @@ namespace common {
 class DevInfoBase {
  public:
   virtual ~DevInfoBase() = default;
+  explicit DevInfoBase(int device = 0) : device_num_(device) {}
+
+ protected:
+  int device_num_;
 };
 
 }  // namespace common
