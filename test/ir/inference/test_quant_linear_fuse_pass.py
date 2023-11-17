@@ -56,7 +56,7 @@ class TestQuantLinearFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         # for gpu
         config = self.create_inference_config(use_gpu=True)
-        yield config, ["quant_linear"], (0.35, 0.35)
+        yield config, ["quant_linear"], (0.4, 0.3)
 
     def is_program_valid(self, prog_config):
         input_num_col_dims = len(prog_config.inputs["input_x"].shape) - 1
@@ -75,7 +75,6 @@ class TestQuantLinearFusePass(PassAutoScanTest):
                 st.integers(min_value=1, max_value=4), min_size=2, max_size=4
             )
         )
-
         input_x = np.random.random(input_shape).astype(np.float32)
 
         def generate_input_x():
@@ -84,14 +83,17 @@ class TestQuantLinearFusePass(PassAutoScanTest):
         # 2. Genearate quant dequant scale and zeropoint
         def generate_input_scale():
             scale = 1.0 / np.max(input_x)
-            return np.full(input_shape[-1], scale).astype(np.float32)
+            return np.array(scale).astype(np.float32)
 
         def generate_dequant_scale():
-            scale = np.max(input_x)
-            return np.full(input_shape[-1], scale).astype(np.float32)
+            dequant_scale = np.max(input_x)
+            return np.array(dequant_scale).astype(np.float32)
 
-        def generate_zeropoint():
-            return np.zeros(input_shape[-1]).astype(np.float32)
+        def generate_quant_dequant_zeropoint():
+            return np.array(0.0).astype(np.float32)
+
+        def generate_weight_dequant_zeropoint():
+            return np.zeros(weight_shape[-1]).astype(np.float32)
 
         # 3. Generate shape of input:Y of matmul_v2
         weight_shape = draw(
@@ -123,11 +125,16 @@ class TestQuantLinearFusePass(PassAutoScanTest):
 
         weights = np.random.random(weight_shape).astype("float32")
 
-        # 4. Generate the weight which is float type but stores int8 value(align with the behavior of PaddleSlim)
+        # 4. Generate the  weight_dequant_scale
+        def generate_weight_dequant_scale():
+            return np.max(weights, axis=0)
+
+        # 5. Generate the weight which is float type but stores int8 value(align with the behavior of PaddleSlim)
         def generate_input_weights(
             quant_round_type=0, quant_max_bound=127, quant_min_bound=-127
         ):
-            scale_weights = 1.0 / np.max(weights)
+            # scale_weights = 1.0 / np.max(weights, axis=0)
+            scale_weights = 1.0 / generate_weight_dequant_scale()
             quant_weights = quant_max_bound * scale_weights * weights
             if quant_round_type == 0:
                 round_array_with_ties_to_even(quant_weights)
@@ -136,10 +143,6 @@ class TestQuantLinearFusePass(PassAutoScanTest):
             quant_weights[quant_weights > quant_max_bound] = quant_max_bound
             quant_weights[quant_weights < quant_min_bound] = quant_min_bound
             return quant_weights
-
-        # 5. Generate the  weight_dequant_scale
-        def generate_weight_dequant_scale():
-            return np.full(weight_shape[0], np.max(weights)).astype(np.float32)
 
         # 6. Generate shape of Output of matmul_v2
         mul_out_shape = input_shape[:input_num_col_dims] + weight_shape[1:]
@@ -179,7 +182,7 @@ class TestQuantLinearFusePass(PassAutoScanTest):
                 "ZeroPoint": ["weight_dequant_zero_point"],
             },
             outputs={"Y": ["weight_dequantize_linear_op_out"]},
-            attrs={"quant_axis": 0, "bit_length": 8, "round_type": 0},
+            attrs={"quant_axis": 1, "bit_length": 8, "round_type": 0},
         )
 
         matmul_v2_op = OpConfig(
@@ -230,13 +233,13 @@ class TestQuantLinearFusePass(PassAutoScanTest):
                     data_gen=partial(generate_weight_dequant_scale)
                 ),
                 "quant_zero_point": TensorConfig(
-                    data_gen=partial(generate_zeropoint)
+                    data_gen=partial(generate_quant_dequant_zeropoint)
                 ),
                 "dequant_zero_point": TensorConfig(
-                    data_gen=partial(generate_zeropoint)
+                    data_gen=partial(generate_quant_dequant_zeropoint)
                 ),
                 "weight_dequant_zero_point": TensorConfig(
-                    data_gen=partial(generate_zeropoint)
+                    data_gen=partial(generate_weight_dequant_zeropoint)
                 ),
             },
             inputs={

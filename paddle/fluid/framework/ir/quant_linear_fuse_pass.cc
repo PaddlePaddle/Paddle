@@ -232,8 +232,11 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
             "weight_scale tensor's place should be CPU."));
     const float* weight_scale_data = weight_scale_tensor.data<float>();
 
-    std::vector<float> scale_weights(weight_tensor->dims()[1],
-                                     1.0f / weight_scale_data[0]);
+    std::vector<float> scale_weights(weight_tensor->dims()[1], 1.0f);
+
+    for (int i = 0; i < weight_tensor->dims()[1]; ++i) {
+      scale_weights[i] = 1.0f / weight_scale_data[i];
+    }
 
     Node* relu = nullptr;
     Node* relu_out = nullptr;
