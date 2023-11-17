@@ -419,6 +419,14 @@ class TestMathOpPatchesPir(unittest.TestCase):
             self.assertEqual(x.ndimension(), 3)
             self.assertEqual(x.ndim, 3)
 
+    def test_size(self):
+        with paddle.pir_utils.IrGuard():
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
+                (output_x,) = exe.run(main_program, fetch_list=[x.size])
+                self.assertEqual(output_x, 24)
+
     def test_math_exists(self):
         with paddle.pir_utils.IrGuard():
             a = paddle.static.data(name='a', shape=[1], dtype='float32')
