@@ -249,10 +249,7 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
       continue;
     }
     for (auto& info_pair : kernel_pair.second) {
-      framework::OpKernelType kernel_type =
-          framework::TransPhiKernelKeyToOpKernelType(info_pair.first);
-      data_type.insert(phi::DataTypeToString(
-          framework::TransToPhiDataType(kernel_type.data_type_)));
+      data_type.insert(phi::DataTypeToString(info_pair.first.dtype()));
     }
   }
 
