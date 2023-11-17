@@ -98,8 +98,6 @@ std::vector<std::vector<pir::OpResult>> BatchNormOp::Decomp(
                        std::get<2>(op_res).impl())
                        ->value()
                        .dyn_cast<pir::OpResult>());
-  //   bool use_run_stat = (is_test && (!trainable_statistics)) ||
-  //   use_global_stats; if (!use_run_stat) {
   res[3].push_back(std::static_pointer_cast<primitive::LazyTensor>(
                        std::get<3>(op_res).impl())
                        ->value()
@@ -110,7 +108,6 @@ std::vector<std::vector<pir::OpResult>> BatchNormOp::Decomp(
                        .dyn_cast<pir::OpResult>());
   pir::OpResult reserve_space;
   res[5].push_back(reserve_space);
-  //   }
   return res;
 }
 

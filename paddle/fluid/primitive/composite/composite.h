@@ -22,14 +22,6 @@ namespace paddle {
 namespace primitive {
 namespace details {
 
-bool find_value(const std::vector<int64_t>& vec, int64_t value) {
-  if (std::find(vec.begin(), vec.end(), value) != vec.end()) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
 template <typename T>
 Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto org_dtype = x.dtype();
@@ -85,7 +77,17 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     bool trainable_statistics) {
   VLOG(4) << "bn================================= begin";
 
-  std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
+  auto org_dtype = x.dtype();
+  Tensor x_cast = x;
+
+  bool need_cast = org_dtype == phi::DataType::FLOAT16 ||
+                   org_dtype == phi::DataType::BFLOAT16;
+
+  if (need_cast) {
+    x_cast = cast<T>(x, phi::DataType::FLOAT32);
+  }
+
+  std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x_cast.dims());
   int rank = x_dim.size();
   DataLayout data_layout_ = phi::StringToDataLayout(data_layout);
   int feature_axis;
@@ -112,7 +114,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     }
   }
 
-  Tensor half = full<T>(IntArray({1}), -0.5, x.dtype());
+  Tensor half = full<T>(IntArray({1}), -0.5, x_cast.dtype());
 
   bool use_run_stat = (is_test && (!trainable_statistics)) || use_global_stats;
   Tensor x_hat;
@@ -122,14 +124,14 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
   Tensor run_var_;
   VLOG(4) << "bn================================= 2";
   if (!use_run_stat) {
-    batch_mean = mean_decomp<T>(x, IntArray(reduce_axes), false);
-    auto temp = mean_decomp<T>(x * x, IntArray(reduce_axes), false);
+    batch_mean = mean_decomp<T>(x_cast, IntArray(reduce_axes), false);
+    auto temp = mean_decomp<T>(x_cast * x_cast, IntArray(reduce_axes), false);
     auto batch_var = temp - batch_mean * batch_mean;
     inv_std = elementwise_pow<T>((batch_var + epsilon), half);
     if (data_layout_ == DataLayout::kNHWC) {
-      x_hat = (x - batch_mean) * inv_std;
+      x_hat = (x_cast - batch_mean) * inv_std;
     } else {
-      x_hat = (x - reshape<T>(batch_mean, stats_shape)) *
+      x_hat = (x_cast - reshape<T>(batch_mean, stats_shape)) *
               reshape<T>(inv_std, stats_shape);
     }
     run_mean_ = run_mean * momentum + batch_mean * (1. - momentum);
@@ -142,9 +144,10 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
         full<T>(phi::vectorize(run_var.dims()), 0, run_var.dtype());
     inv_std = elementwise_pow<T>((batch_var + epsilon), half);
     if (data_layout_ == DataLayout::kNHWC) {
-      x_hat = (x - run_mean) * elementwise_pow<T>((run_var + epsilon), half);
+      x_hat =
+          (x_cast - run_mean) * elementwise_pow<T>((run_var + epsilon), half);
     } else {
-      x_hat = (x - reshape<T>(run_mean, stats_shape)) *
+      x_hat = (x_cast - reshape<T>(run_mean, stats_shape)) *
               elementwise_pow<T>((reshape<T>(run_var, stats_shape) + epsilon),
                                  half);
     }
@@ -156,14 +159,19 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
   auto scale_ptr = scale.get_ptr();
   auto bias_ptr = bias.get_ptr();
   Tensor new_scale =
-      scale_ptr ? *scale_ptr : full<T>(phi::vectorize(x.dims()), 1, x.dtype());
+      scale_ptr ? *scale_ptr
+                : full<T>(phi::vectorize(x_cast.dims()), 1, x_cast.dtype());
   Tensor new_bias =
-      bias_ptr ? *bias_ptr : full<T>(phi::vectorize(x.dims()), 0, x.dtype());
+      bias_ptr ? *bias_ptr
+               : full<T>(phi::vectorize(x_cast.dims()), 0, x_cast.dtype());
   if (data_layout_ == DataLayout::kNHWC) {
     y = x_hat * new_scale + new_bias;
   } else {
     y = x_hat * reshape<T>(new_scale, stats_shape) +
         reshape<T>(new_bias, stats_shape);
+  }
+  if (need_cast) {
+    y = cast<T>(y, org_dtype);
   }
   Tensor reserve_space;
 
@@ -174,14 +182,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     return std::make_tuple(
         y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space);
   } else {
-    Tensor none_output_batch_mean;
-    Tensor none_output_batch_var;
-    return std::make_tuple(y,
-                           run_mean_,
-                           run_var_,
-                           none_output_batch_mean,
-                           none_output_batch_var,
-                           reserve_space);
+    return std::make_tuple(
+        y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space);
   }
 }
 
