@@ -17,7 +17,7 @@ from functools import partial, reduce
 
 import paddle
 from paddle import _C_ops
-from paddle.base import core, in_pir_mode
+from paddle.base import core
 from paddle.base.backward import _infer_var_data_type_shape_
 from paddle.base.framework import (
     Operator,

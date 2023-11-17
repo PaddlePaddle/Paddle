@@ -94,7 +94,7 @@ class TestPrintOpCPU(unittest.TestCase):
                             )
             loss = paddle.mean(x)
             if in_dynamic_or_pir_mode():
-                dx = grad(loss, prog.global_block().all_parameters())
+                dx = grad(loss, [x])
             else:
                 paddle.static.append_backward(loss=loss)
             exe = paddle.static.Executor(self.place)
