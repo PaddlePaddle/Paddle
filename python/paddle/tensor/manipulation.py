@@ -5842,7 +5842,7 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
     - If ``offset`` < 0, it is below the main diagonal.
 
     Note:
-        ``y`` should have the same shape as paddle.diagonal(x, offset, axis1, axis2).
+        ``y`` should have the same shape as :ref:`paddle.diagonal <api_paddle_diagonal>`.
 
     Args:
         x (Tensor): ``x`` is the original Tensor. Must be at least 2-dimensional.
