@@ -21,7 +21,7 @@ namespace cinn {
 namespace common {
 template <Target::Arch arch>
 DevInfoMgr<arch>::DevInfoMgr(int device_num) : device_num_(device_num) {
-  impl = std::make_unique<NVGPUDevInfo>(device_num)
+  impl = std::make_unique<GetRetType<arch>::RetType>(device_num)
 }
 
 template <Target::Arch arch>
