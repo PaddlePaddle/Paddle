@@ -843,6 +843,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"squared_l2_norm",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"squared_l2_norm_grad",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"squeeze2_grad",
        XPUKernelSet({phi::DataType::FLOAT64,
                      phi::DataType::INT64,

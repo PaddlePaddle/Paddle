@@ -24,11 +24,6 @@ from op_test_xpu import XPUOpTest
 
 import paddle
 
-paddle.enable_static()
-
-
-paddle.seed(10)
-
 
 class XPUTestSquaredL2NormOp(XPUOpTestWrapper):
     def __init__(self):
@@ -40,9 +35,6 @@ class XPUTestSquaredL2NormOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
             self.op_type = 'squared_l2_norm'
-
-            # no grad implement at this time
-            self.__class__.no_need_check_grad = True
 
         def setUp(self):
             self.init()
@@ -57,20 +49,23 @@ class XPUTestSquaredL2NormOp(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
+
         def set_inputs(self):
             self.x = np.random.uniform(-1, 1, (13, 19)).astype(self.in_type)
             self.x[np.abs(self.x) < self.max_relative_error] = 0.1
 
     class TestSquaredL2NormOp_1(TestSquaredL2NormOp):
         def set_inputs(self):
-            self.x = np.random.uniform(-0.2, 0.2, (8, 128, 24, 6)).astype(
+            self.x = np.random.uniform(-0.2, 0.2, (8, 128, 24)).astype(
                 self.in_type
             )
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.05
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.02
 
     class TestSquaredL2NormOp_2(TestSquaredL2NormOp):
         def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (2, 128, 512)).astype(
+            self.x = np.random.uniform(-0.1, 0.1, (2, 128, 256)).astype(
                 self.in_type
             )
             self.x[np.abs(self.x) < self.max_relative_error] = 0.01
@@ -81,4 +76,6 @@ for stype in support_types:
     create_test_class(globals(), XPUTestSquaredL2NormOp, stype)
 
 if __name__ == "__main__":
+    paddle.enable_static()
+    paddle.seed(10)
     unittest.main()
