@@ -4258,6 +4258,17 @@ void MultiheadMatmulInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
   out->share_lod(input);
 }
+void  EncodeRotaryQKInferMeta(const MetaTensor& q,
+                              const MetaTensor& kv,
+                              const MetaTensor& rotary_emb,
+                              const MetaTensor& seq_lens,
+                              int rotary_emb_dims,
+                              bool use_neox,
+                              MetaTensor* rotary_q_out,
+                              MetaTensor* rotary_kv_out) {
+   rotary_q_out->share_meta(q);
+   rotary_kv_out->share_meta(kv);
+}
 
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        const MetaTensor& cache_kv,
