@@ -205,9 +205,10 @@ class TestExp_Complex128(TestExp_Complex64):
 
 
 class Test_Exp_Op_Fp16(unittest.TestCase):
+    @test_with_pir_api
     def test_api_fp16(self):
         with static_guard():
-            with static.program_guard(
+            with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
                 np_x = np.array([[2, 3, 4], [7, 8, 9]])
@@ -408,7 +409,8 @@ class TestSigmoid_Complex64(TestSigmoid):
         self.dtype = np.complex64
 
     def test_check_output(self):
-        self.check_output(check_prim=False, check_pir=True)
+        with paddle.static.scope_guard(paddle.static.Scope()):
+            self.check_output(check_prim=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -559,6 +561,7 @@ class TestSiluAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -624,7 +627,7 @@ class TestLogSigmoid(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.008)
+        self.check_grad(['X'], 'Out', max_relative_error=0.008, check_pir=True)
 
 
 class TestLogSigmoidComplex64(TestLogSigmoid):
@@ -653,6 +656,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -754,10 +758,18 @@ class TestTanh_Complex64(TestTanh):
     def init_dtype(self):
         self.dtype = np.complex64
 
+    def test_check_output(self):
+        with paddle.static.scope_guard(paddle.static.Scope()):
+            self.check_output(check_pir=True)
+
 
 class TestTanh_Complex128(TestTanh):
     def init_dtype(self):
         self.dtype = np.complex128
+
+    def test_check_output(self):
+        with paddle.static.scope_guard(paddle.static.Scope()):
+            self.check_output(check_pir=True)
 
 
 class TestTanh_ZeroDim(TestTanh):
@@ -781,6 +793,7 @@ class TestTanhAPI(unittest.TestCase):
     def executed_api(self):
         self.tanh = F.tanh
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -848,11 +861,15 @@ class TestAtan(TestActivation, TestParameter):
         self.outputs = {'Out': out}
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
+    @test_with_pir_api
     def test_out_name(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -911,10 +928,13 @@ class TestSinh(TestActivation):
 
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestSinh_Complex64(TestSinh):
@@ -941,10 +961,13 @@ class TestSinhAPI(unittest.TestCase):
             z_expected = np.sinh(np_x)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
+    @test_with_pir_api
     def test_api(self):
         with static_guard():
             test_data_shape = [11, 17]
-            with base.program_guard(base.Program(), base.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 input_x = np.random.uniform(0.1, 1, test_data_shape).astype(
                     "float32"
                 )
@@ -956,9 +979,9 @@ class TestSinhAPI(unittest.TestCase):
 
                 pd_sinh_out = paddle.sinh(data_x)
                 exe = base.Executor(place=base.CPUPlace())
-                exe.run(base.default_startup_program())
+                exe.run(paddle.static.default_startup_program())
                 (np_sinh_res,) = exe.run(
-                    base.default_main_program(),
+                    paddle.static.default_main_program(),
                     feed={"data_x": input_x},
                     fetch_list=[pd_sinh_out],
                 )
@@ -1018,14 +1041,19 @@ class TestCosh(TestActivation):
 
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         if self.dtype == np.complex64 or self.dtype == np.complex128:
             # Complex64 [CPU]: AssertionError: 0.006845869 not less than or equal to 0.005
-            self.check_grad(['X'], 'Out', max_relative_error=0.007)
+            self.check_grad(
+                ['X'], 'Out', max_relative_error=0.007, check_pir=True
+            )
         else:
-            self.check_grad(['X'], 'Out')
+            self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestCosh_Complex64(TestCosh):
@@ -1052,13 +1080,16 @@ class TestCoshAPI(unittest.TestCase):
             z_expected = np.cosh(np_x)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
+    @test_with_pir_api
     def test_api(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
         with static_guard():
             test_data_shape = [11, 17]
-            with base.program_guard(base.Program(), base.Program()):
-                input_x = np.random.uniform(0.1, 1, test_data_shape).astype(
-                    "float32"
-                )
+            input_x = np.random.uniform(0.1, 1, test_data_shape).astype(
+                "float32"
+            )
+            with base.program_guard(main, startup):
                 data_x = paddle.static.data(
                     name="data_x",
                     shape=test_data_shape,
@@ -1067,9 +1098,8 @@ class TestCoshAPI(unittest.TestCase):
 
                 pd_cosh_out = paddle.cosh(data_x)
                 exe = base.Executor(place=base.CPUPlace())
-                exe.run(base.default_startup_program())
                 (np_cosh_res,) = exe.run(
-                    base.default_main_program(),
+                    main,
                     feed={"data_x": input_x},
                     fetch_list=[pd_cosh_out],
                 )
@@ -1132,7 +1162,10 @@ class TestTanhshrink(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 class TestTanhshrink_ZeroDim(TestTanhshrink):
@@ -1151,6 +1184,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1222,10 +1256,13 @@ class TestHardShrink(TestActivation):
     def set_attrs(self):
         pass
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestHardShrink_threshold_negative(TestHardShrink):
@@ -1252,6 +1289,7 @@ class TestHardShrinkAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1318,6 +1356,7 @@ class TestHardtanhAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1391,10 +1430,13 @@ class TestSoftshrink(TestActivation):
 
         self.attrs = {"lambda": threshold}
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestSoftshrink_ZeroDim(TestSoftshrink):
@@ -1414,6 +1456,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1944,10 +1987,13 @@ class TestTan(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestTan_float32(TestTan):
@@ -1988,6 +2034,7 @@ class TestTanAPI(unittest.TestCase):
             out_ref = np.tan(self.x_np)
             np.testing.assert_allclose(out_ref, out_test.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2035,13 +2082,16 @@ class TestAcos(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
-class TestAcos_Comple64(TestAcos):
+class TestAcos_Complex64(TestAcos):
     def init_dtype(self):
         self.dtype = np.complex64
 
@@ -2140,10 +2190,13 @@ class TestAsin(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestAsin_Complex64(TestAsin):
@@ -2184,14 +2237,19 @@ class TestAcosh(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         if self.dtype == np.complex64:
             # Complex64[CPU]: AssertionError: 0.012431525 not less than or equal to 0.005
-            self.check_grad(['X'], 'Out', max_relative_error=0.02)
+            self.check_grad(
+                ['X'], 'Out', max_relative_error=0.02, check_pir=True
+            )
         else:
-            self.check_grad(['X'], 'Out')
+            self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestAcosh_Complex64(TestAcosh):
@@ -2232,14 +2290,19 @@ class TestAsinh(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         if self.dtype == np.complex64 or self.dtype == np.complex128:
             # Complex64 [CPU]: AssertionError: 0.006898686 not less than or equal to 0.005
-            self.check_grad(['X'], 'Out', max_relative_error=0.007)
+            self.check_grad(
+                ['X'], 'Out', max_relative_error=0.007, check_pir=True
+            )
         else:
-            self.check_grad(['X'], 'Out')
+            self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestAsinh_Complex64(TestAsinh):
@@ -2280,10 +2343,13 @@ class TestAtanh(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestAtanh_Complex64(TestAtanh):
@@ -2354,10 +2420,12 @@ class TestRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True)
+        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
 
     def if_enable_cinn(self):
         pass
@@ -2466,12 +2534,12 @@ class TestLeakyRelu(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_pir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
 
 class TestLeakyReluAlpha1(TestLeakyRelu):
@@ -2508,6 +2576,7 @@ class TestLeakyReluAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2750,10 +2819,13 @@ class TestBRelu(TestActivation):
         self.convert_input_output()
         self.attrs = {'t_min': t_min, 't_max': t_max}
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 def ref_relu6(x, threshold=6.0):
@@ -2787,7 +2859,7 @@ class TestRelu6(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestRelu6_ZeroDim(TestRelu6):
@@ -2807,6 +2879,7 @@ class TestRelu6API(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2830,6 +2903,7 @@ class TestRelu6API(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -2938,13 +3012,15 @@ class TestHardSwish(TestActivation):
             if self.dtype not in [np.complex64, np.complex128]
             else False,
             only_check_prim=self.if_only_check_prim(),
+            check_pir=True,
         )
 
     def test_check_output(self):
         self.check_output(
             check_prim=True
             if self.dtype not in [np.complex64, np.complex128]
-            else False
+            else False,
+            check_pir=True,
         )
 
 
@@ -2973,6 +3049,7 @@ class TestHardswishAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2996,6 +3073,7 @@ class TestHardswishAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -3209,7 +3287,7 @@ class TestCELU(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestCELU_ZeroDim(TestCELU):
@@ -3232,6 +3310,7 @@ class TestCELUAPI(unittest.TestCase):
     def executed_api(self):
         self.celu = F.celu
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3413,8 +3492,9 @@ class TestLog2(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
+    @test_with_pir_api
     def test_api(self):
         with static_guard():
             with paddle.static.program_guard(
@@ -3462,6 +3542,7 @@ class TestLog2_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_api_bf16(self):
         with static_guard():
             with static.program_guard(
@@ -3490,10 +3571,13 @@ class TestLog10(TestActivation):
         self.outputs = {'Out': out}
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestLog10_ZeroDim(TestLog10):
@@ -3512,21 +3596,23 @@ class TestLog10_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_api_bf16(self):
-        with static_guard():
-            with static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x = [[2, 3, 4], [7, 8, 9]]
-                x = paddle.to_tensor(x, dtype='bfloat16')
-                out = paddle.log10(x)
-                if core.is_compiled_with_cuda():
-                    place = paddle.CUDAPlace(0)
-                    exe = paddle.static.Executor(place)
-                    (res,) = exe.run(fetch_list=[out])
+        paddle.enable_static()
+        with static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = [[2, 3, 4], [7, 8, 9]]
+            x = paddle.to_tensor(x, dtype='bfloat16')
+            out = paddle.log10(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
 
 
 class TestLog10API(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
         with static_guard():
             with paddle.static.program_guard(
@@ -3573,13 +3659,17 @@ class TestLog1p(TestActivation):
         self.outputs = {'Out': out}
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class Test_Log1p_Op_Fp16(unittest.TestCase):
+    @test_with_pir_api
     def test_api_fp16(self):
         with static_guard():
             with static.program_guard(
@@ -3605,6 +3695,7 @@ class TestLog1p_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_api_bf16(self):
         with static_guard():
             with static.program_guard(
@@ -3625,9 +3716,12 @@ class TestLog1p_ZeroDim(TestLog1p):
 
 
 class TestLog1pAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
         with static_guard():
-            with base.program_guard(base.Program(), base.Program()):
+            with base.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
                 data_x = paddle.static.data(
                     name="data_x",
@@ -3637,9 +3731,9 @@ class TestLog1pAPI(unittest.TestCase):
 
                 out1 = paddle.log1p(data_x)
                 exe = base.Executor(place=base.CPUPlace())
-                exe.run(base.default_startup_program())
+                exe.run(paddle.static.default_startup_program())
                 (res1,) = exe.run(
-                    base.default_main_program(),
+                    paddle.static.default_main_program(),
                     feed={"data_x": input_x},
                     fetch_list=[out1],
                 )
@@ -3835,7 +3929,10 @@ class TestSTanh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 class TestSTanhScaleA(TestSTanh):
@@ -3882,6 +3979,7 @@ class TestSTanhAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3901,6 +3999,7 @@ class TestSTanhAPI(unittest.TestCase):
             for r in [out]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -3972,10 +4071,13 @@ class TestSoftplus(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestSoftplus_Complex64(TestSoftplus):
@@ -3983,7 +4085,7 @@ class TestSoftplus_Complex64(TestSoftplus):
         self.dtype = np.complex64
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.06)
+        self.check_grad(['X'], 'Out', max_relative_error=0.06, check_pir=True)
 
 
 class TestSoftplus_Complex128(TestSoftplus):
@@ -4021,11 +4123,13 @@ class TestSoftplusBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=0.05)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', numeric_grad_delta=0.05, check_pir=True
+        )
 
 
 class TestSoftplusAPI(unittest.TestCase):
@@ -4041,6 +4145,7 @@ class TestSoftplusAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4096,6 +4201,11 @@ class TestSoftsign(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = ref_softsign(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -4105,10 +4215,23 @@ class TestSoftsign(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+
+class TestSoftsign_Complex64(TestSoftsign):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestSoftsign_Complex128(TestSoftsign):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestSoftsign_ZeroDim(TestSoftsign):
@@ -4127,6 +4250,7 @@ class TestSoftsignAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4197,7 +4321,10 @@ class TestThresholdedRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 class TestThresholdedRelu_ZeroDim(TestThresholdedRelu):
@@ -4218,6 +4345,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4295,6 +4423,14 @@ class TestHardSigmoid(TestActivation):
     def set_attrs(self):
         pass
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_pir=True)
+
 
 class TestHardSigmoidFP32(TestHardSigmoid):
     def set_attrs(self):
@@ -4322,6 +4458,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4345,6 +4482,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -4407,6 +4545,7 @@ class TestSwish(TestActivation):
         self.check_grad(
             ['X'],
             'Out',
+            check_pir=True,
         )
 
 
@@ -4426,6 +4565,7 @@ class TestSwishAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4449,6 +4589,7 @@ class TestSwishAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -4672,9 +4813,9 @@ create_test_act_fp16_class(TestLogSigmoid)
 create_test_act_fp16_class(
     TestTanh, check_prim=True, check_prim_pir=True, enable_cinn=True
 )
-create_test_act_fp16_class(TestTanhshrink)
-create_test_act_fp16_class(TestHardShrink)
-create_test_act_fp16_class(TestSoftshrink)
+create_test_act_fp16_class(TestTanhshrink, check_pir=True)
+create_test_act_fp16_class(TestHardShrink, check_pir=True)
+create_test_act_fp16_class(TestSoftshrink, check_pir=True)
 create_test_act_fp16_class(
     TestSqrt,
     check_prim=True,
@@ -4701,19 +4842,23 @@ create_test_act_fp16_class(
     check_pir=True,
 )
 create_test_act_fp16_class(TestCos, check_pir=True)
-create_test_act_fp16_class(TestTan)
-create_test_act_fp16_class(TestCosh)
-create_test_act_fp16_class(TestAcos)
+create_test_act_fp16_class(TestTan, check_pir=True)
+create_test_act_fp16_class(TestCosh, check_pir=True)
+create_test_act_fp16_class(TestAcos, check_pir=True)
 create_test_act_fp16_class(TestSin, check_pir=True)
 create_test_act_fp16_class(TestSinh)
-create_test_act_fp16_class(TestAsin)
-create_test_act_fp16_class(TestAtan)
-create_test_act_fp16_class(TestAcosh)
-create_test_act_fp16_class(TestAsinh)
-create_test_act_fp16_class(TestAtanh)
+create_test_act_fp16_class(TestAsin, check_pir=True)
+create_test_act_fp16_class(TestAtan, check_pir=True)
+create_test_act_fp16_class(TestAcosh, check_pir=True)
+create_test_act_fp16_class(TestAsinh, check_pir=True)
+create_test_act_fp16_class(TestAtanh, check_pir=True)
 create_test_act_fp16_class(TestRound, grad_check=False, check_pir=True)
 create_test_act_fp16_class(
-    TestRelu, check_prim=True, enable_cinn=True, check_pir=True
+    TestRelu,
+    check_prim=True,
+    enable_cinn=True,
+    check_pir=True,
+    check_prim_pir=True,
 )
 create_test_act_fp16_class(
     TestGelu,
@@ -4726,7 +4871,7 @@ create_test_act_fp16_class(
     cinn_rtol=1e-3,
     cinn_atol=1e-3,
 )
-create_test_act_fp16_class(TestBRelu)
+create_test_act_fp16_class(TestBRelu, check_pir=True)
 create_test_act_fp16_class(TestRelu6)
 create_test_act_fp16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_fp16_class(TestELU)
@@ -4734,23 +4879,25 @@ create_test_act_fp16_class(TestCELU)
 create_test_act_fp16_class(TestReciprocal)
 create_test_act_fp16_class(TestLog, check_prim=True, check_pir=True)
 if core.is_compiled_with_rocm():
-    create_test_act_fp16_class(TestLog2)
+    create_test_act_fp16_class(TestLog2, check_pir=True)
 else:
-    create_test_act_fp16_class(TestLog2)
-create_test_act_fp16_class(TestLog10)
-create_test_act_fp16_class(TestLog1p)
+    create_test_act_fp16_class(TestLog2, check_pir=True)
+create_test_act_fp16_class(TestLog10, check_pir=True)
+create_test_act_fp16_class(TestLog1p, check_pir=True)
 create_test_act_fp16_class(TestSquare, check_pir=True)
 create_test_act_fp16_class(TestPow, check_prim=True, check_prim_pir=True)
 create_test_act_fp16_class(TestPow_API)
 create_test_act_fp16_class(TestSTanh)
-create_test_act_fp16_class(TestSoftplus)
-create_test_act_fp16_class(TestSoftsign)
+create_test_act_fp16_class(TestSoftplus, check_pir=True)
+create_test_act_fp16_class(TestSoftsign, check_pir=True)
 create_test_act_fp16_class(TestThresholdedRelu)
-create_test_act_fp16_class(TestHardSigmoid)
+create_test_act_fp16_class(TestHardSigmoid, check_pir=True)
 create_test_act_fp16_class(TestSwish)
-create_test_act_fp16_class(TestHardSwish, check_prim=True)
+create_test_act_fp16_class(TestHardSwish, check_prim=True, check_pir=True)
 create_test_act_fp16_class(TestMish)
-create_test_act_fp16_class(TestLeakyRelu, check_prim=True, enable_cinn=True)
+create_test_act_fp16_class(
+    TestLeakyRelu, check_prim=True, enable_cinn=True, check_pir=True
+)
 create_test_act_fp16_class(
     TestLeakyReluAlpha1, check_prim=True, enable_cinn=True
 )
@@ -4778,6 +4925,7 @@ def create_test_act_bf16_class(
     check_prim=False,
     enable_cinn=False,
     check_pir=False,
+    check_prim_pir=False,
     grad_atol=1e-2,
     **kwargs
 ):
@@ -4810,6 +4958,7 @@ def create_test_act_bf16_class(
                 atol=atol,
                 check_prim=check_prim,
                 check_pir=check_pir,
+                check_prim_pir=check_prim_pir,
             )
 
         def test_check_grad(self):
@@ -4822,6 +4971,7 @@ def create_test_act_bf16_class(
                     max_relative_error=grad_atol,
                     check_prim=check_prim,
                     check_pir=check_pir,
+                    check_prim_pir=check_prim_pir,
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16OP")
@@ -4838,9 +4988,9 @@ create_test_act_bf16_class(TestSigmoid, check_prim=True, check_pir=True)
 create_test_act_bf16_class(TestSilu, check_prim=True, check_prim_pir=True)
 create_test_act_bf16_class(TestLogSigmoid)
 create_test_act_bf16_class(TestTanh, check_prim=True, check_prim_pir=True)
-create_test_act_bf16_class(TestTanhshrink)
-create_test_act_bf16_class(TestHardShrink)
-create_test_act_bf16_class(TestSoftshrink)
+create_test_act_bf16_class(TestTanhshrink, check_pir=True)
+create_test_act_bf16_class(TestHardShrink, check_pir=True)
+create_test_act_bf16_class(TestSoftshrink, check_pir=True)
 create_test_act_bf16_class(
     TestSqrt, check_prim=True, check_pir=True, check_prim_pir=True
 )
@@ -4853,18 +5003,20 @@ create_test_act_bf16_class(
     TestFloor, grad_check=False, check_prim=True, check_pir=True
 )
 create_test_act_bf16_class(TestCos, check_pir=True)
-create_test_act_bf16_class(TestTan)
-create_test_act_bf16_class(TestCosh)
-create_test_act_bf16_class(TestAcos)
+create_test_act_bf16_class(TestTan, check_pir=True)
+create_test_act_bf16_class(TestCosh, check_pir=True)
+create_test_act_bf16_class(TestAcos, check_pir=True)
 create_test_act_bf16_class(TestSin, check_pir=True)
 create_test_act_bf16_class(TestSinh)
-create_test_act_bf16_class(TestAsin)
-create_test_act_bf16_class(TestAtan)
-create_test_act_bf16_class(TestAcosh)
-create_test_act_bf16_class(TestAsinh)
-create_test_act_bf16_class(TestAtanh)
+create_test_act_bf16_class(TestAsin, check_pir=True)
+create_test_act_bf16_class(TestAtan, check_pir=True)
+create_test_act_bf16_class(TestAcosh, check_pir=True)
+create_test_act_bf16_class(TestAsinh, check_pir=True)
+create_test_act_bf16_class(TestAtanh, check_pir=True)
 create_test_act_bf16_class(TestRound, grad_check=False, check_pir=True)
-create_test_act_bf16_class(TestRelu, check_prim=True, check_pir=True)
+create_test_act_bf16_class(
+    TestRelu, check_prim=True, check_pir=True, check_prim_pir=True
+)
 create_test_act_bf16_class(
     TestGelu,
     check_prim=True,
@@ -4874,7 +5026,7 @@ create_test_act_bf16_class(
     cinn_rtol=1e-2,
     cinn_atol=1e-2,
 )
-create_test_act_bf16_class(TestBRelu)
+create_test_act_bf16_class(TestBRelu, check_pir=True)
 create_test_act_bf16_class(TestRelu6)
 create_test_act_bf16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_bf16_class(TestELU)
@@ -4882,23 +5034,23 @@ create_test_act_bf16_class(TestCELU)
 create_test_act_bf16_class(TestReciprocal)
 create_test_act_bf16_class(TestLog, check_prim=True, check_pir=True)
 if core.is_compiled_with_rocm():
-    create_test_act_bf16_class(TestLog2)
+    create_test_act_bf16_class(TestLog2, check_pir=True)
 else:
-    create_test_act_bf16_class(TestLog2)
-create_test_act_bf16_class(TestLog10)
-create_test_act_bf16_class(TestLog1p)
+    create_test_act_bf16_class(TestLog2, check_pir=True)
+create_test_act_bf16_class(TestLog10, check_pir=True)
+create_test_act_bf16_class(TestLog1p, check_pir=True)
 create_test_act_bf16_class(TestSquare, check_pir=True)
 create_test_act_bf16_class(TestPow, check_prim=True)
 create_test_act_bf16_class(TestPow_API)
 create_test_act_bf16_class(TestSTanh)
-create_test_act_bf16_class(TestSoftplus)
-create_test_act_bf16_class(TestSoftsign)
+create_test_act_bf16_class(TestSoftplus, check_pir=True)
+create_test_act_bf16_class(TestSoftsign, check_pir=True)
 create_test_act_bf16_class(TestThresholdedRelu)
-create_test_act_bf16_class(TestHardSigmoid)
+create_test_act_bf16_class(TestHardSigmoid, check_pir=True)
 create_test_act_bf16_class(TestSwish)
-create_test_act_bf16_class(TestHardSwish, check_prim=True)
+create_test_act_bf16_class(TestHardSwish, check_prim=True, check_pir=True)
 create_test_act_bf16_class(TestMish)
-create_test_act_bf16_class(TestLeakyRelu, check_prim=True)
+create_test_act_bf16_class(TestLeakyRelu, check_prim=True, check_pir=True)
 create_test_act_bf16_class(TestLeakyReluAlpha1, check_prim=True)
 create_test_act_bf16_class(TestLeakyReluAlpha2, check_prim=True)
 create_test_act_bf16_class(TestLeakyReluAlpha3, check_prim=True)

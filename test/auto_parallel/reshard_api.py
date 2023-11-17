@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle import nn
 
 
 class TestReshardAPI:
@@ -33,6 +34,8 @@ class TestReshardAPI:
         if self._backend == "cpu":
             paddle.set_device("cpu")
         self.test_case_p_to_r()
+        self.test_case_r_to_s()
+        self.test_case_forward_and_backward()
 
     def test_case_p_to_r(self):
         a = paddle.ones(self._shape)
@@ -81,6 +84,68 @@ class TestReshardAPI:
 
         assert np.equal(output_tensor.shape, input_tensor.shape).all()
         assert np.equal(output_tensor._local_shape, out_shape).all()
+
+    def test_case_forward_and_backward(self):
+        if self._backend == "cpu":
+            return
+
+        np.random.seed(1901)
+        input_numpy = np.random.random(self._shape).astype("float32")
+        label_numpy = np.random.random(self._shape).astype('float32')
+
+        in_shard_specs = [None for i in range(len(self._shape))]
+        out_shard_specs = [None for i in range(len(self._shape))]
+        out_shard_specs[self._shard] = "x"
+
+        in_dist_attr = dist.DistAttr(
+            mesh=dist.ProcessMesh([0, 1], dim_names=["x"]),
+            sharding_specs=in_shard_specs,
+        )
+
+        out_dist_attr = dist.DistAttr(
+            mesh=dist.ProcessMesh([0, 1], dim_names=["x"]),
+            sharding_specs=out_shard_specs,
+        )
+
+        local_input = paddle.to_tensor(input_numpy)
+        dist_input = dist.shard_tensor(
+            paddle.to_tensor(input_numpy), dist_attr=in_dist_attr
+        )
+
+        local_input.stop_gradient = False
+        dist_input.stop_gradient = False
+
+        local_output = local_input + paddle.ones(self._shape)
+        dist_output = dist_input + dist.shard_tensor(
+            paddle.ones(self._shape), dist_attr=in_dist_attr
+        )
+        dist_output.stop_gradient = False
+
+        dist_output = dist.reshard(dist_output, dist_attr=out_dist_attr)
+
+        local_label = paddle.to_tensor(label_numpy)
+        dist_label = dist.shard_tensor(
+            paddle.to_tensor(label_numpy), dist_attr=out_dist_attr
+        )
+
+        local_loss_fn = nn.MSELoss()
+        dist_loss_fn = nn.MSELoss()
+
+        local_loss = local_loss_fn(local_output, local_label)
+        dist_loss = dist_loss_fn(dist_output, dist_label)
+
+        np.testing.assert_allclose(
+            local_loss.numpy(), dist_loss.numpy(), rtol=1e-5, atol=1e-5
+        )
+
+        local_loss.backward()
+        dist_loss.backward()
+        np.testing.assert_allclose(
+            local_input.grad.numpy(),
+            dist_input.grad.numpy(),
+            rtol=1e-5,
+            atol=1e-5,
+        )
 
 
 if __name__ == '__main__':

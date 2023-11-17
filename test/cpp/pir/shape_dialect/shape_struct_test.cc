@@ -15,97 +15,24 @@
 #include <gtest/gtest.h>
 #include <map>
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/dialect.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
-pir::AttributeMap CreateAttributeMap(
-    const std::vector<std::string> &attribute_names,
-    const std::vector<std::string> &attributes) {
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  pir::AttributeMap attr_map;
-  for (size_t i = 0; i < attribute_names.size(); i++) {
-    pir::Attribute attr_value = pir::StrAttribute::get(ctx, attributes[i]);
-    attr_map.insert(
-        std::pair<std::string, pir::Attribute>(attribute_names[i], attr_value));
-  }
-  return attr_map;
-}
-
-pir::Operation *CreateDenseTensorOp(
-    pir::IrContext *ctx,
-    const phi::DDim &dims,
-    const std::vector<std::string> &attribute_names,
-    const std::vector<std::string> &attributes) {
-  std::vector<pir::Value> op_inputs = {};
-  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
-  phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0, 1, 2}};
-  size_t offset = 0;
-  std::vector<pir::Type> op_output_types = {
-      paddle::dialect::DenseTensorType::get(
-          ctx, fp32_dtype, dims, data_layout, lod, offset)};
-  pir::Operation *op =
-      pir::Operation::Create(op_inputs,
-                             CreateAttributeMap(attribute_names, attributes),
-                             op_output_types,
-                             pir::OpInfo());
-  return op;
-}
-
-TEST(shape_struct_test, symbolic_dim) {
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  pir::Program program(ctx);
-  ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
-  pir::Builder builder = pir::Builder(ctx, program.block());
-
-  pir::dialect::SymbolicDim sym_dim1 = builder.Build<pir::dialect::SymbolicDim>(
-      "S0", 10, false, false, false, false);
-  pir::dialect::SymbolicDim sym_dim2 = builder.Build<pir::dialect::SymbolicDim>(
-      "S1", 10, false, false, false, false);
-
-  EXPECT_EQ(sym_dim1.GetDimSize(), 10);
-  EXPECT_EQ(sym_dim1.GetSymName(), "S0");
-  EXPECT_FALSE(sym_dim1.GetKnownNegativeOne());
-  EXPECT_FALSE(sym_dim1.GetKnownNonSizeOne());
-  EXPECT_FALSE(sym_dim1.GetKnownNonSizeZero());
-  EXPECT_FALSE(sym_dim1.GetKnownNonNegative());
-
-  EXPECT_FALSE(sym_dim1.IsDynamic());
-  EXPECT_TRUE(sym_dim1.Merge(sym_dim2));
-
-  sym_dim1.SetDimSize(20);
-  sym_dim1.SetSymName("S2");
-  sym_dim1.UpdateKnownNegativeOne(true);
-  sym_dim1.UpdateKnownNonSizeOne(true);
-  sym_dim1.UpdateKnownNonSizeZero(true);
-  sym_dim1.UpdateKnownNonNegative(true);
-
-  EXPECT_FALSE(sym_dim1.Merge(sym_dim2));
-
-  EXPECT_EQ(sym_dim1.GetDimSize(), 20);
-  EXPECT_EQ(sym_dim1.GetSymName(), "S2");
-  EXPECT_TRUE(sym_dim1.GetKnownNegativeOne());
-  EXPECT_TRUE(sym_dim1.GetKnownNonSizeOne());
-  EXPECT_TRUE(sym_dim1.GetKnownNonSizeZero());
-  EXPECT_TRUE(sym_dim1.GetKnownNonNegative());
-}
+#include "test/cpp/pir/tools/test_pir_utils.h"
 
 TEST(shape_struct_test, symbolic_dim_product) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
-  ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   pir::Builder builder = pir::Builder(ctx, program.block());
-  pir::dialect::SymbolicDim sym_dim = builder.Build<pir::dialect::SymbolicDim>(
+  pir::shape::SymbolicDimOp sym_dim = builder.Build<pir::shape::SymbolicDimOp>(
       "S0", pir::ShapedTypeInterface::kDynamic, false, false, false, false);
   pir::SymbolicDimProduct sym_dim_product1;
   pir::SymbolicDimProduct sym_dim_product2;
@@ -119,39 +46,39 @@ TEST(shape_struct_test, symbolic_dim_product) {
 TEST(shape_struct_test, symbolic_dim_table) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
-  ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   pir::Builder builder = pir::Builder(ctx, program.block());
-  pir::dialect::SymbolicDim sym_dim = builder.Build<pir::dialect::SymbolicDim>(
+  pir::shape::SymbolicDimOp sym_dim = builder.Build<pir::shape::SymbolicDimOp>(
       "S0", 10, false, false, false, false);
 
   pir::SymbolTable symbol_table(program.module_op());
   EXPECT_EQ(symbol_table.insert(sym_dim), "S0");
-  EXPECT_EQ(symbol_table.Lookup<pir::dialect::SymbolicDim>("S0"), sym_dim);
+  EXPECT_EQ(symbol_table.Lookup<pir::shape::SymbolicDimOp>("S0"), sym_dim);
   EXPECT_EQ(symbol_table.getOp(), program.module_op());
-  EXPECT_FALSE(symbol_table.Lookup<pir::dialect::SymbolicDim>("S1"));
+  EXPECT_FALSE(symbol_table.Lookup<pir::shape::SymbolicDimOp>("S1"));
 }
 
 TEST(shape_struct_test, symbolic_dim_mgr_simple) {
   /******************************************************/
-  /* Mgr simple version, only SymbolicDim related func. */
+  /* Mgr simple version, only SymbolicDimOp related func. */
   /******************************************************/
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
-  ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   pir::SymbolicDimMgr sym_dim_mgr(program.module_op());
-  pir::dialect::SymbolicDim sym_dim_s0 = sym_dim_mgr.NewSymbolicDim();
-  pir::dialect::SymbolicDim sym_dim_s1 = sym_dim_mgr.NewSymbolicDim();
-  pir::dialect::SymbolicDim sym_dim_c10 =
+  pir::shape::SymbolicDimOp sym_dim_s0 = sym_dim_mgr.NewSymbolicDim();
+  pir::shape::SymbolicDimOp sym_dim_s1 = sym_dim_mgr.NewSymbolicDim();
+  pir::shape::SymbolicDimOp sym_dim_c10 =
       sym_dim_mgr.NewConstantSymbolicDim(10);
   sym_dim_mgr.MapSymbolicDimEqual(sym_dim_s0, sym_dim_s1);
 
-  auto op = CreateDenseTensorOp(
+  auto op = test::CreateDenseTensorOp(
       ctx, {pir::ShapedTypeInterface::kDynamic, 2}, {"op_attr"}, {"op_name"});
   pir::Value res = op->result(0);
 
-  std::vector<pir::dialect::SymbolicDim> sym_dim_vec =
+  std::vector<pir::shape::SymbolicDimOp> sym_dim_vec =
       sym_dim_mgr.CreateSymbolicDimsForRankedValue(res);
 
   EXPECT_EQ(sym_dim_s0.GetSymName(), "S0");
@@ -161,9 +88,9 @@ TEST(shape_struct_test, symbolic_dim_mgr_simple) {
   EXPECT_EQ(sym_dim_c10.GetDimSize(), 10);
   EXPECT_EQ(sym_dim_vec[0].GetSymName(), "S2");
   EXPECT_EQ(sym_dim_vec[1].GetSymName(), "C2");
-  EXPECT_EQ(sym_dim_mgr.symbolTable().Lookup<pir::dialect::SymbolicDim>("S0"),
+  EXPECT_EQ(sym_dim_mgr.symbolTable().Lookup<pir::shape::SymbolicDimOp>("S0"),
             sym_dim_s0);
-  EXPECT_EQ(sym_dim_mgr.symbolTable().Lookup<pir::dialect::SymbolicDim>("C10"),
+  EXPECT_EQ(sym_dim_mgr.symbolTable().Lookup<pir::shape::SymbolicDimOp>("C10"),
             sym_dim_c10);
   EXPECT_EQ(sym_dim_mgr.GetRootSymbolicDim(sym_dim_s1), sym_dim_s0);
   EXPECT_TRUE(sym_dim_mgr.IsSymbolicDimEqual(sym_dim_s0, sym_dim_s1));
@@ -176,47 +103,47 @@ TEST(shape_struct_test, symbolic_dim_mgr_complex) {
   /***************************************************************/
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
-  ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   pir::SymbolicDimMgr sym_dim_mgr(program.module_op());
   auto func_op =
-      sym_dim_mgr.symbolTable().getOp()->dyn_cast<pir::dialect::FuncOp>();
+      sym_dim_mgr.symbolTable().getOp()->dyn_cast<pir::shape::FuncOp>();
 
   pir::Builder builder = pir::Builder(ctx, func_op.block());
 
-  pir::dialect::SymbolicDim sym_dim_s0 = sym_dim_mgr.NewSymbolicDim("S0");
-  pir::dialect::SymbolicDim sym_dim_s1 = sym_dim_mgr.NewSymbolicDim("S1");
-  pir::dialect::SymbolicDim sym_dim_s2 = sym_dim_mgr.NewSymbolicDim("S2");
-  pir::dialect::SymbolicDim sym_dim_s3 = sym_dim_mgr.NewSymbolicDim("S3");
-  pir::dialect::SymbolicDim sym_dim_s4 = sym_dim_mgr.NewSymbolicDim("S4");
-  pir::dialect::SymbolicDim sym_dim_s5 = sym_dim_mgr.NewSymbolicDim("S5");
-  pir::dialect::SymbolicDim sym_dim_s6 = sym_dim_mgr.NewSymbolicDim("S6");
-  pir::dialect::SymbolicDim sym_dim_s7 = sym_dim_mgr.NewSymbolicDim("S7");
-  pir::dialect::SymbolicDim sym_dim_s8 = sym_dim_mgr.NewSymbolicDim("S8");
-  pir::dialect::SymbolicDim sym_dim_s9 = sym_dim_mgr.NewSymbolicDim("S9");
-  pir::dialect::SymbolicDim sym_dim_s10 = sym_dim_mgr.NewSymbolicDim("S10");
-  pir::dialect::SymbolicDim sym_dim_s11 = sym_dim_mgr.NewSymbolicDim("S11");
-  pir::dialect::SymbolicDim sym_dim_s12 = sym_dim_mgr.NewSymbolicDim("S12");
-  pir::dialect::SymbolicDim sym_dim_c10 =
+  pir::shape::SymbolicDimOp sym_dim_s0 = sym_dim_mgr.NewSymbolicDim("S0");
+  pir::shape::SymbolicDimOp sym_dim_s1 = sym_dim_mgr.NewSymbolicDim("S1");
+  pir::shape::SymbolicDimOp sym_dim_s2 = sym_dim_mgr.NewSymbolicDim("S2");
+  pir::shape::SymbolicDimOp sym_dim_s3 = sym_dim_mgr.NewSymbolicDim("S3");
+  pir::shape::SymbolicDimOp sym_dim_s4 = sym_dim_mgr.NewSymbolicDim("S4");
+  pir::shape::SymbolicDimOp sym_dim_s5 = sym_dim_mgr.NewSymbolicDim("S5");
+  pir::shape::SymbolicDimOp sym_dim_s6 = sym_dim_mgr.NewSymbolicDim("S6");
+  pir::shape::SymbolicDimOp sym_dim_s7 = sym_dim_mgr.NewSymbolicDim("S7");
+  pir::shape::SymbolicDimOp sym_dim_s8 = sym_dim_mgr.NewSymbolicDim("S8");
+  pir::shape::SymbolicDimOp sym_dim_s9 = sym_dim_mgr.NewSymbolicDim("S9");
+  pir::shape::SymbolicDimOp sym_dim_s10 = sym_dim_mgr.NewSymbolicDim("S10");
+  pir::shape::SymbolicDimOp sym_dim_s11 = sym_dim_mgr.NewSymbolicDim("S11");
+  pir::shape::SymbolicDimOp sym_dim_s12 = sym_dim_mgr.NewSymbolicDim("S12");
+  pir::shape::SymbolicDimOp sym_dim_c10 =
       sym_dim_mgr.NewConstantSymbolicDim(10);
-  pir::dialect::SymbolicDim sym_dim_c20 =
+  pir::shape::SymbolicDimOp sym_dim_c20 =
       sym_dim_mgr.NewConstantSymbolicDim(20);
 
-  pir::OpResult dim_op_s0 = builder.Build<pir::dialect::DimOp>("S0").out();
-  pir::OpResult dim_op_s1 = builder.Build<pir::dialect::DimOp>("S1").out();
-  pir::OpResult dim_op_s2 = builder.Build<pir::dialect::DimOp>("S2").out();
-  pir::OpResult dim_op_s3 = builder.Build<pir::dialect::DimOp>("S3").out();
-  pir::OpResult dim_op_s4 = builder.Build<pir::dialect::DimOp>("S4").out();
-  pir::OpResult dim_op_s5 = builder.Build<pir::dialect::DimOp>("S5").out();
-  pir::OpResult dim_op_s6 = builder.Build<pir::dialect::DimOp>("S6").out();
-  pir::OpResult dim_op_s7 = builder.Build<pir::dialect::DimOp>("S7").out();
-  pir::OpResult dim_op_s8 = builder.Build<pir::dialect::DimOp>("S8").out();
-  pir::OpResult dim_op_s9 = builder.Build<pir::dialect::DimOp>("S9").out();
-  pir::OpResult dim_op_s10 = builder.Build<pir::dialect::DimOp>("S10").out();
-  pir::OpResult dim_op_s11 = builder.Build<pir::dialect::DimOp>("S11").out();
-  pir::OpResult dim_op_c10 = builder.Build<pir::dialect::DimOp>("C10").out();
-  pir::OpResult dim_op_c20 = builder.Build<pir::dialect::DimOp>("C20").out();
+  pir::OpResult dim_op_s0 = builder.Build<pir::shape::DimOp>("S0").out();
+  pir::OpResult dim_op_s1 = builder.Build<pir::shape::DimOp>("S1").out();
+  pir::OpResult dim_op_s2 = builder.Build<pir::shape::DimOp>("S2").out();
+  pir::OpResult dim_op_s3 = builder.Build<pir::shape::DimOp>("S3").out();
+  pir::OpResult dim_op_s4 = builder.Build<pir::shape::DimOp>("S4").out();
+  pir::OpResult dim_op_s5 = builder.Build<pir::shape::DimOp>("S5").out();
+  pir::OpResult dim_op_s6 = builder.Build<pir::shape::DimOp>("S6").out();
+  pir::OpResult dim_op_s7 = builder.Build<pir::shape::DimOp>("S7").out();
+  pir::OpResult dim_op_s8 = builder.Build<pir::shape::DimOp>("S8").out();
+  pir::OpResult dim_op_s9 = builder.Build<pir::shape::DimOp>("S9").out();
+  pir::OpResult dim_op_s10 = builder.Build<pir::shape::DimOp>("S10").out();
+  pir::OpResult dim_op_s11 = builder.Build<pir::shape::DimOp>("S11").out();
+  pir::OpResult dim_op_c10 = builder.Build<pir::shape::DimOp>("C10").out();
+  pir::OpResult dim_op_c20 = builder.Build<pir::shape::DimOp>("C20").out();
   pir::OpResult constant =
       builder
           .Build<pir::ConstantOp>(pir::Int32Attribute::get(ctx, 2),
@@ -224,62 +151,47 @@ TEST(shape_struct_test, symbolic_dim_mgr_complex) {
           ->result(0);
 
   // Mark S1 == S2.
-  builder.Build<pir::dialect::TieProductEqualOp>(
+  builder.Build<pir::shape::TieProductEqualOp>(
       2, 2, std::vector<pir::Value>{constant, dim_op_s1, dim_op_s2, constant});
   // Mark S0 * S1 == S2 * S3, For check S0 == S3.
-  builder.Build<pir::dialect::TieProductEqualOp>(
+  builder.Build<pir::shape::TieProductEqualOp>(
       2,
       2,
       std::vector<pir::Value>{dim_op_s0, dim_op_s1, dim_op_s2, dim_op_s3});
   // Mark S4 * S0 * S1 == S2 * S3 * S5, For check S4 == S5.
-  builder.Build<pir::dialect::TieProductEqualOp>(
+  builder.Build<pir::shape::TieProductEqualOp>(
       3,
       3,
       std::vector<pir::Value>{
           dim_op_s4, dim_op_s0, dim_op_s1, dim_op_s2, dim_op_s3, dim_op_s5});
   // For check S6 == C10 * C20.
-  builder.Build<pir::dialect::TieProductEqualOp>(
+  builder.Build<pir::shape::TieProductEqualOp>(
       1, 2, std::vector<pir::Value>{dim_op_s6, dim_op_c10, dim_op_c20});
   // Mark C10 * S0 * S1 == S2 * S3 * S7, for check C10 == S7.
-  builder.Build<pir::dialect::TieProductEqualOp>(
+  builder.Build<pir::shape::TieProductEqualOp>(
       3,
       3,
       std::vector<pir::Value>{
           dim_op_c10, dim_op_s0, dim_op_s1, dim_op_s2, dim_op_s3, dim_op_s7});
 
   // For unsimplify product case: S8 * S9 == S10 * S11
-  builder.Build<pir::dialect::TieProductEqualOp>(
+  builder.Build<pir::shape::TieProductEqualOp>(
       2,
       2,
       std::vector<pir::Value>{dim_op_s8, dim_op_s9, dim_op_s10, dim_op_s11});
 
-  auto op = CreateDenseTensorOp(ctx,
-                                {pir::ShapedTypeInterface::kDynamic,
-                                 pir::ShapedTypeInterface::kDynamic,
-                                 pir::ShapedTypeInterface::kDynamic,
-                                 pir::ShapedTypeInterface::kDynamic,
-                                 pir::ShapedTypeInterface::kDynamic,
-                                 pir::ShapedTypeInterface::kDynamic},
-                                {"op0_attr"},
-                                {"op0_name"});
-  auto op_ = CreateDenseTensorOp(ctx,
-                                 {pir::ShapedTypeInterface::kDynamic,
-                                  pir::ShapedTypeInterface::kDynamic,
-                                  pir::ShapedTypeInterface::kDynamic,
-                                  pir::ShapedTypeInterface::kDynamic,
-                                  pir::ShapedTypeInterface::kDynamic,
-                                  10,
-                                  20},
-                                 {"op1_attr"},
-                                 {"op1_name"});
+  auto op = test::CreateDenseTensorOp(
+      ctx, {-1, -1, -1, -1, -1, -1}, {"op0_attr"}, {"op0_name"});
+  auto op_ = test::CreateDenseTensorOp(
+      ctx, {-1, -1, -1, -1, -1, 10, 20}, {"op1_attr"}, {"op1_name"});
   pir::OpResult res = op->result(0);
   pir::OpResult res_ = op_->result(0);
 
   builder.SetInsertionPointToEnd(program.block());
-  pir::dialect::TieShapeOp tie_shape_op1 =
-      builder.Build<pir::dialect::TieShapeOp>(res);
-  pir::dialect::TieShapeOp tie_shape_op2 =
-      builder.Build<pir::dialect::TieShapeOp>(res_);
+  pir::shape::TieShapeOp tie_shape_op1 =
+      builder.Build<pir::shape::TieShapeOp>(res);
+  pir::shape::TieShapeOp tie_shape_op2 =
+      builder.Build<pir::shape::TieShapeOp>(res_);
 
   pir::Attribute attr_s0 = pir::StrAttribute::get(ctx, "S0");
   pir::Attribute attr_s1 = pir::StrAttribute::get(ctx, "S1");
@@ -314,9 +226,9 @@ TEST(shape_struct_test, symbolic_dim_mgr_complex) {
   auto array_attr_ref = pir::ArrayAttribute::get(ctx, new_attrs_ref);
 
   tie_shape_op1->set_attribute(
-      pir::dialect::SymbolicDim::GetSymbolicDimAttrName(), array_attr1);
+      pir::shape::SymbolicDimOp::GetSymbolicDimAttrName(), array_attr1);
   tie_shape_op2->set_attribute(
-      pir::dialect::SymbolicDim::GetSymbolicDimAttrName(), array_attr2);
+      pir::shape::SymbolicDimOp::GetSymbolicDimAttrName(), array_attr2);
 
   EXPECT_TRUE(sym_dim_mgr.Load());
 
@@ -380,7 +292,7 @@ TEST(shape_struct_test, symbolic_dim_mgr_complex) {
   EXPECT_TRUE(sym_dim_mgr.IsSymbolicDimEqual(sym_dim_s0, sym_dim_s3));
   EXPECT_TRUE(sym_dim_mgr.IsSymbolicDimEqual(sym_dim_s4, sym_dim_s5));
   EXPECT_EQ(sym_dim_s6.GetDimSize(), 200);
-  EXPECT_EQ(sym_dim_mgr.symbolTable().Lookup<pir::dialect::SymbolicDim>("C20"),
+  EXPECT_EQ(sym_dim_mgr.symbolTable().Lookup<pir::shape::SymbolicDimOp>("C20"),
             sym_dim_c20);
   EXPECT_EQ(sym_dim_s7.GetDimSize(), sym_dim_c10.GetDimSize());
   EXPECT_EQ(simplified_product_s7.factor, 10);
@@ -402,11 +314,11 @@ TEST(shape_struct_test, symbolic_dim_mgr_complex) {
   EXPECT_TRUE(sym_dim_mgr_new.Load());
 
   auto attrs = tie_shape_op1.attribute<pir::ArrayAttribute>(
-      pir::dialect::SymbolicDim::GetSymbolicDimAttrName());
+      pir::shape::SymbolicDimOp::GetSymbolicDimAttrName());
   EXPECT_FALSE(
-      sym_dim_mgr_new.symbolTable().Lookup<pir::dialect::SymbolicDim>("S7"));
+      sym_dim_mgr_new.symbolTable().Lookup<pir::shape::SymbolicDimOp>("S7"));
   EXPECT_EQ(sym_dim_mgr_new.symbolTable()
-                .Lookup<pir::dialect::TieProductEqualOp>("tie_product_equal")
+                .Lookup<pir::shape::TieProductEqualOp>("tie_product_equal")
                 .size(),
             static_cast<size_t>(1));
 
@@ -416,52 +328,56 @@ TEST(shape_struct_test, symbolic_dim_mgr_complex) {
 TEST(shape_struct_test, shape_analysis) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
-  ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
-  pir::dialect::FuncOp func_op = builder.Build<pir::dialect::FuncOp>();
+  pir::shape::FuncOp func_op = builder.Build<pir::shape::FuncOp>();
 
-  phi::DDim dims_D_2 = {pir::ShapedTypeInterface::kDynamic, 2};
+  phi::DDim dims_D_2 = {-1, 2};
   phi::DDim dims_2_2 = {2, 2};
-  phi::DDim dims_D = {pir::ShapedTypeInterface::kDynamic};
+  phi::DDim dims_D = {-1};
 
   // same shape with dynamic: value1 == value2
-  auto op1 = CreateDenseTensorOp(ctx, dims_D_2, {"op1_attr"}, {"op1_name"});
-  auto op2 = CreateDenseTensorOp(ctx, dims_D_2, {"op2_attr"}, {"op2_name"});
+  auto op1 =
+      test::CreateDenseTensorOp(ctx, dims_D_2, {"op1_attr"}, {"op1_name"});
+  auto op2 =
+      test::CreateDenseTensorOp(ctx, dims_D_2, {"op2_attr"}, {"op2_name"});
   pir::OpResult value1 = op1->result(0);
   pir::OpResult value2 = op2->result(0);
 
   // same shape with static: value3 == value4
-  auto op3 = CreateDenseTensorOp(ctx, dims_2_2, {"op3_attr"}, {"op3_name"});
-  auto op4 = CreateDenseTensorOp(ctx, dims_2_2, {"op4_attr"}, {"op4_name"});
+  auto op3 =
+      test::CreateDenseTensorOp(ctx, dims_2_2, {"op3_attr"}, {"op3_name"});
+  auto op4 =
+      test::CreateDenseTensorOp(ctx, dims_2_2, {"op4_attr"}, {"op4_name"});
   pir::OpResult value3 = op3->result(0);
   pir::OpResult value4 = op4->result(0);
 
   // one dimension with dynamic: value5 != value1 != value3
-  auto op5 = CreateDenseTensorOp(ctx, dims_D, {"op5_attr"}, {"op5_name"});
+  auto op5 = test::CreateDenseTensorOp(ctx, dims_D, {"op5_attr"}, {"op5_name"});
   pir::OpResult value5 = op5->result(0);
 
-  pir::dialect::TieShapeOp tie_shape_op1 =
-      builder.Build<pir::dialect::TieShapeOp>(value1);
-  pir::dialect::TieShapeOp tie_shape_op2 =
-      builder.Build<pir::dialect::TieShapeOp>(value2);
-  pir::dialect::TieShapeOp tie_shape_op3 =
-      builder.Build<pir::dialect::TieShapeOp>(value3);
-  pir::dialect::TieShapeOp tie_shape_op4 =
-      builder.Build<pir::dialect::TieShapeOp>(value4);
-  pir::dialect::TieShapeOp tie_shape_op5 =
-      builder.Build<pir::dialect::TieShapeOp>(value5);
+  pir::shape::TieShapeOp tie_shape_op1 =
+      builder.Build<pir::shape::TieShapeOp>(value1);
+  pir::shape::TieShapeOp tie_shape_op2 =
+      builder.Build<pir::shape::TieShapeOp>(value2);
+  pir::shape::TieShapeOp tie_shape_op3 =
+      builder.Build<pir::shape::TieShapeOp>(value3);
+  pir::shape::TieShapeOp tie_shape_op4 =
+      builder.Build<pir::shape::TieShapeOp>(value4);
+  pir::shape::TieShapeOp tie_shape_op5 =
+      builder.Build<pir::shape::TieShapeOp>(value5);
 
   builder.SetInsertionPointToEnd(func_op.block());
-  builder.Build<pir::dialect::SymbolicDim>("C2", 2, true, false, true, true);
-  pir::dialect::SymbolicDim sym_dim_s0 =
-      builder.Build<pir::dialect::SymbolicDim>(
+  builder.Build<pir::shape::SymbolicDimOp>("C2", 2, true, false, true, true);
+  pir::shape::SymbolicDimOp sym_dim_s0 =
+      builder.Build<pir::shape::SymbolicDimOp>(
           "S0", pir::ShapedTypeInterface::kDynamic, false, false, true, true);
-  pir::dialect::SymbolicDim sym_dim_s1 =
-      builder.Build<pir::dialect::SymbolicDim>(
+  pir::shape::SymbolicDimOp sym_dim_s1 =
+      builder.Build<pir::shape::SymbolicDimOp>(
           "S1", pir::ShapedTypeInterface::kDynamic, false, false, true, true);
-  pir::dialect::SymbolicDim sym_dim_s2 =
-      builder.Build<pir::dialect::SymbolicDim>(
+  pir::shape::SymbolicDimOp sym_dim_s2 =
+      builder.Build<pir::shape::SymbolicDimOp>(
           "S2", pir::ShapedTypeInterface::kDynamic, false, false, true, true);
 
   pir::Attribute attr_s0 = pir::StrAttribute::get(ctx, "S0");
@@ -476,15 +392,15 @@ TEST(shape_struct_test, shape_analysis) {
   auto attr_op5 = pir::ArrayAttribute::get(ctx, {attr_s2});
 
   tie_shape_op1->set_attribute(
-      pir::dialect::SymbolicDim::GetSymbolicDimAttrName(), attr_op1);
+      pir::shape::SymbolicDimOp::GetSymbolicDimAttrName(), attr_op1);
   tie_shape_op2->set_attribute(
-      pir::dialect::SymbolicDim::GetSymbolicDimAttrName(), attr_op2);
+      pir::shape::SymbolicDimOp::GetSymbolicDimAttrName(), attr_op2);
   tie_shape_op3->set_attribute(
-      pir::dialect::SymbolicDim::GetSymbolicDimAttrName(), attr_op3);
+      pir::shape::SymbolicDimOp::GetSymbolicDimAttrName(), attr_op3);
   tie_shape_op4->set_attribute(
-      pir::dialect::SymbolicDim::GetSymbolicDimAttrName(), attr_op4);
+      pir::shape::SymbolicDimOp::GetSymbolicDimAttrName(), attr_op4);
   tie_shape_op5->set_attribute(
-      pir::dialect::SymbolicDim::GetSymbolicDimAttrName(), attr_op5);
+      pir::shape::SymbolicDimOp::GetSymbolicDimAttrName(), attr_op5);
 
   pir::ShapeConstraintIRAnalysis shape_analysis(program.module_op());
   EXPECT_TRUE(shape_analysis.IsShapeEqual(value3, value4));

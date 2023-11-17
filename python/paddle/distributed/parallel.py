@@ -48,9 +48,12 @@ from paddle.distributed.fleet.base.private_helper_function import (
 from paddle.distributed.fleet.launch_utils import check_backend
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.framework import _set_expected_place
-from paddle.framework import base as imperative_base
-from paddle.framework import core, in_dynamic_mode
+from paddle.framework import (
+    _set_expected_place,
+    base as imperative_base,
+    core,
+    in_dynamic_mode,
+)
 from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
@@ -181,7 +184,6 @@ def sync_params_buffers(
             paddle.distributed.broadcast(
                 coalesced_var, src=src_rank, group=comm_group, sync_op=True
             )
-
         for coalesced_var, origin_vars, var_shapes in coalesced_vars:
             var_len = [np.prod(v_shape) for v_shape in var_shapes]
             paddle.base.framework._dygraph_tracer().trace_op(
@@ -685,6 +687,7 @@ class ParallelEnv:
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
         self._device_type = str(os.getenv("PADDLE_XCCL_BACKEND", ""))
+        self._pg_timeout = int(os.getenv("PADDLE_PG_TIMEOUT", "1800000"))
 
         # imperative only support one gpu or xpu
         if self._device_type != "":
@@ -848,6 +851,24 @@ class ParallelEnv:
                 The nrings is 1
         """
         return self._nrings
+
+    @property
+    def pg_timeout(self):
+        """
+        timeout of process group.
+
+        Its value is equal to the value of the environment variable ``PADDLE_PG_TIMEOUT`` . The default value is 30 minutes.
+
+        Examples:
+            .. code-block:: python
+
+                >>> # execute this command in terminal: export PADDLE_PG_TIMEOUT=1800000
+                >>> import paddle.distributed as dist
+
+                >>> env = dist.ParallelEnv()
+                >>> # the pg_timeout of process group 1800000
+        """
+        return self._pg_timeout
 
     # [aliases] Compatible with old method names
     local_rank = rank
@@ -1098,7 +1119,6 @@ def init_parallel_env():
         # TODO(mine): support XPU and other backends.
         if backend in ["nccl", 'xccl', 'bkcl']:
             core.CommContextManager.set_device_id(parallel_env.device_id)
-        paddle.distributed.barrier(group=group)
         return group
 
     node_num = {i.split(":")[0] for i in parallel_env.trainer_endpoints}

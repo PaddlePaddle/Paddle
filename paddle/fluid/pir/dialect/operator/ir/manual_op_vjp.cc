@@ -29,22 +29,28 @@ using IntArray = paddle::experimental::IntArray;
 
 std::vector<std::vector<pir::OpResult>> AddNOp::Vjp(
     pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs_,
+    const std::vector<std::vector<pir::OpResult>>& outputs,
     const std::vector<std::vector<pir::Value>>& out_grads,
     const std::vector<std::vector<bool>>& stop_gradients) {
-  AddNOp op_obj = op->dyn_cast<AddNOp>();
-
   VLOG(6) << "Prepare inputs of add_n_grad";
+  PADDLE_ENFORCE_EQ(
+      inputs_.size(),
+      1u,
+      platform::errors::InvalidArgument(
+          "addn op's inputs size should be 1 but now is %d", inputs_.size()));
+  PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      1u,
+      platform::errors::InvalidArgument(
+          "addn op's outputs size should be 1 but now is %d", outputs.size()));
   PADDLE_ENFORCE(
-      op_obj.inputs() != nullptr,
-      paddle::platform::errors::Fatal("addn op's inputs can't be null"));
-  pir::CombineOp combine_op_obj = op_obj.inputs()
-                                      .dyn_cast<pir::OpResult>()
-                                      .owner()
-                                      ->dyn_cast<pir::CombineOp>();
+      inputs_[0].size() != 0,
+      paddle::platform::errors::Fatal("addn op's inputs[0] can't be null"));
   std::vector<Tensor> inputs;
-  for (size_t idx = 0; idx < combine_op_obj.inputs().size(); idx++) {
+  for (size_t idx = 0; idx < inputs_[0].size(); idx++) {
     inputs.emplace_back(
-        std::make_shared<primitive::LazyTensor>(combine_op_obj.inputs()[idx]));
+        std::make_shared<primitive::LazyTensor>(inputs_[0][idx]));
   }
 
   Tensor out_grad(std::make_shared<primitive::LazyTensor>(out_grads[0][0]));
@@ -57,6 +63,274 @@ std::vector<std::vector<pir::OpResult>> AddNOp::Vjp(
       primitive::add_n_vjp(inputs, out_grad, stop_gradients);
 
   VLOG(6) << "Vjp prepare stop gradient of add_n_grad";
+
+  std::vector<std::vector<pir::OpResult>> res(tensor_res.size());
+  for (size_t i = 0; i < tensor_res.size(); ++i) {
+    res[i].resize(tensor_res[i].size());
+    for (size_t j = 0; j < tensor_res[i].size(); ++j) {
+      if (tensor_res[i][j].defined()) {
+        res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(
+                        tensor_res[i][j].impl())
+                        ->value()
+                        .dyn_cast<pir::OpResult>();
+      }
+    }
+  }
+  return res;
+}
+
+std::vector<std::vector<pir::OpResult>> ExpandOp::Vjp(
+    pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs_,
+    const std::vector<std::vector<pir::OpResult>>& outputs,
+    const std::vector<std::vector<pir::Value>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  PADDLE_ENFORCE_EQ(inputs_.size(),
+                    2,
+                    platform::errors::InvalidArgument(
+                        "expand op's inputs size should be 2, but now is %d.",
+                        inputs_.size()));
+  PADDLE_ENFORCE_EQ(outputs.size(),
+                    1,
+                    platform::errors::InvalidArgument(
+                        "expand op's outputs size should be 1, but now is %d.",
+                        outputs.size()));
+
+  VLOG(6) << "Prepare inputs of expand_grad";
+
+  Tensor x(std::make_shared<primitive::LazyTensor>(inputs_[0][0]));
+  Tensor out_grad(std::make_shared<primitive::LazyTensor>(out_grads[0][0]));
+
+  VLOG(6) << "Vjp prepare Prepare attributes of expand_grad";
+
+  Tensor shape(std::make_shared<primitive::LazyTensor>(inputs_[1][0]));
+
+  VLOG(6) << "Vjp prepare call expand's vjp inteface";
+
+  std::vector<std::vector<Tensor>> tensor_res =
+      primitive::expand_vjp(x, out_grad, shape, stop_gradients);
+
+  VLOG(6) << "Vjp prepare stop gradient of expand_grad";
+
+  std::vector<std::vector<pir::OpResult>> res(tensor_res.size());
+  for (size_t i = 0; i < tensor_res.size(); ++i) {
+    res[i].resize(tensor_res[i].size());
+    for (size_t j = 0; j < tensor_res[i].size(); ++j) {
+      if (tensor_res[i][j].defined()) {
+        res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(
+                        tensor_res[i][j].impl())
+                        ->value()
+                        .dyn_cast<pir::OpResult>();
+      }
+    }
+  }
+  return res;
+}
+
+std::vector<std::vector<pir::OpResult>> SigmoidDoubleGradOp::Vjp(
+    pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs_,
+    const std::vector<std::vector<pir::OpResult>>& outputs,
+    const std::vector<std::vector<pir::Value>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  PADDLE_ENFORCE_EQ(
+      inputs_.size(),
+      3,
+      platform::errors::InvalidArgument(
+          "sigmoid_double_grad op's inputs size should be 3, but now is %d.",
+          inputs_.size()));
+  PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      2,
+      platform::errors::InvalidArgument(
+          "sigmoid_double_grad op's outputs size should be 2, but now is %d.",
+          outputs.size()));
+
+  VLOG(6) << "Prepare inputs of sigmoid_triple_grad";
+
+  Tensor out(std::make_shared<primitive::LazyTensor>(inputs_[0][0]));
+  Tensor out_grad(std::make_shared<primitive::LazyTensor>(inputs_[1][0]));
+  Tensor grad_grad_x(std::make_shared<primitive::LazyTensor>(inputs_[2][0]));
+  Tensor grad_out_grad(
+      std::make_shared<primitive::LazyTensor>(out_grads[0][0]));
+  paddle::optional<Tensor> grad_grad_out_grad;
+  if (!IsEmptyValue(out_grads[1][0])) {
+    grad_grad_out_grad = paddle::make_optional<Tensor>(
+        Tensor(std::make_shared<primitive::LazyTensor>(out_grads[1][0])));
+  }
+
+  VLOG(6) << "Vjp prepare Prepare attributes of sigmoid_triple_grad";
+
+  VLOG(6) << "Vjp prepare call sigmoid_double_grad's vjp inteface";
+
+  std::vector<std::vector<Tensor>> tensor_res =
+      primitive::sigmoid_double_grad_vjp(out,
+                                         out_grad,
+                                         grad_grad_x,
+                                         grad_out_grad,
+                                         grad_grad_out_grad,
+                                         stop_gradients);
+
+  VLOG(6) << "Vjp prepare stop gradient of sigmoid_triple_grad";
+
+  std::vector<std::vector<pir::OpResult>> res(tensor_res.size());
+  for (size_t i = 0; i < tensor_res.size(); ++i) {
+    res[i].resize(tensor_res[i].size());
+    for (size_t j = 0; j < tensor_res[i].size(); ++j) {
+      if (tensor_res[i][j].defined()) {
+        res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(
+                        tensor_res[i][j].impl())
+                        ->value()
+                        .dyn_cast<pir::OpResult>();
+      }
+    }
+  }
+  return res;
+}
+
+std::vector<std::vector<pir::OpResult>> SigmoidDoubleGrad_Op::Vjp(
+    pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs_,
+    const std::vector<std::vector<pir::OpResult>>& outputs,
+    const std::vector<std::vector<pir::Value>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  PADDLE_ENFORCE_EQ(
+      inputs_.size(),
+      3,
+      platform::errors::InvalidArgument(
+          "sigmoid_double_grad op's inputs size should be 3, but now is %d.",
+          inputs_.size()));
+  PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      2,
+      platform::errors::InvalidArgument(
+          "sigmoid_double_grad op's outputs size should be 2, but now is %d.",
+          outputs.size()));
+
+  VLOG(6) << "Prepare inputs of sigmoid_triple_grad";
+
+  Tensor out(std::make_shared<primitive::LazyTensor>(inputs_[0][0]));
+  Tensor out_grad(std::make_shared<primitive::LazyTensor>(inputs_[1][0]));
+  Tensor grad_grad_x(std::make_shared<primitive::LazyTensor>(inputs_[2][0]));
+  Tensor grad_out_grad(
+      std::make_shared<primitive::LazyTensor>(out_grads[0][0]));
+  paddle::optional<Tensor> grad_grad_out_grad;
+  if (!IsEmptyValue(out_grads[1][0])) {
+    grad_grad_out_grad = paddle::make_optional<Tensor>(
+        Tensor(std::make_shared<primitive::LazyTensor>(out_grads[1][0])));
+  }
+
+  VLOG(6) << "Vjp prepare Prepare attributes of sigmoid_triple_grad";
+
+  VLOG(6) << "Vjp prepare call sigmoid_double_grad's vjp inteface";
+
+  std::vector<std::vector<Tensor>> tensor_res =
+      primitive::sigmoid_double_grad_vjp(out,
+                                         out_grad,
+                                         grad_grad_x,
+                                         grad_out_grad,
+                                         grad_grad_out_grad,
+                                         stop_gradients);
+
+  VLOG(6) << "Vjp prepare stop gradient of sigmoid_triple_grad";
+
+  std::vector<std::vector<pir::OpResult>> res(tensor_res.size());
+  for (size_t i = 0; i < tensor_res.size(); ++i) {
+    res[i].resize(tensor_res[i].size());
+    for (size_t j = 0; j < tensor_res[i].size(); ++j) {
+      if (tensor_res[i][j].defined()) {
+        res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(
+                        tensor_res[i][j].impl())
+                        ->value()
+                        .dyn_cast<pir::OpResult>();
+      }
+    }
+  }
+  return res;
+}
+
+std::vector<std::vector<pir::OpResult>> SigmoidGradOp::Vjp(
+    pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs_,
+    const std::vector<std::vector<pir::OpResult>>& outputs,
+    const std::vector<std::vector<pir::Value>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  PADDLE_ENFORCE_EQ(
+      inputs_.size(),
+      2,
+      platform::errors::InvalidArgument(
+          "sigmoid_grad op's inputs size should be 2, but now is %d.",
+          inputs_.size()));
+  PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      1,
+      platform::errors::InvalidArgument(
+          "sigmoid_grad op's outputs size should be 1, but now is %d.",
+          outputs.size()));
+
+  VLOG(6) << "Prepare inputs of sigmoid_double_grad";
+
+  Tensor out(std::make_shared<primitive::LazyTensor>(inputs_[0][0]));
+  Tensor fwd_grad_out(std::make_shared<primitive::LazyTensor>(inputs_[1][0]));
+  Tensor grad_x_grad(std::make_shared<primitive::LazyTensor>(out_grads[0][0]));
+
+  VLOG(6) << "Vjp prepare Prepare attributes of sigmoid_double_grad";
+
+  VLOG(6) << "Vjp prepare call sigmoid_grad's vjp inteface";
+
+  std::vector<std::vector<Tensor>> tensor_res = primitive::sigmoid_grad_vjp(
+      out, fwd_grad_out, grad_x_grad, stop_gradients);
+
+  VLOG(6) << "Vjp prepare stop gradient of sigmoid_double_grad";
+
+  std::vector<std::vector<pir::OpResult>> res(tensor_res.size());
+  for (size_t i = 0; i < tensor_res.size(); ++i) {
+    res[i].resize(tensor_res[i].size());
+    for (size_t j = 0; j < tensor_res[i].size(); ++j) {
+      if (tensor_res[i][j].defined()) {
+        res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(
+                        tensor_res[i][j].impl())
+                        ->value()
+                        .dyn_cast<pir::OpResult>();
+      }
+    }
+  }
+  return res;
+}
+
+std::vector<std::vector<pir::OpResult>> SigmoidGrad_Op::Vjp(
+    pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs_,
+    const std::vector<std::vector<pir::OpResult>>& outputs,
+    const std::vector<std::vector<pir::Value>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  PADDLE_ENFORCE_EQ(
+      inputs_.size(),
+      2,
+      platform::errors::InvalidArgument(
+          "sigmoid_grad op's inputs size should be 2, but now is %d.",
+          inputs_.size()));
+  PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      1,
+      platform::errors::InvalidArgument(
+          "sigmoid_grad op's outputs size should be 1, but now is %d.",
+          outputs.size()));
+
+  VLOG(6) << "Prepare inputs of sigmoid_double_grad";
+
+  Tensor out(std::make_shared<primitive::LazyTensor>(inputs_[0][0]));
+  Tensor fwd_grad_out(std::make_shared<primitive::LazyTensor>(inputs_[1][0]));
+  Tensor grad_x_grad(std::make_shared<primitive::LazyTensor>(out_grads[0][0]));
+
+  VLOG(6) << "Vjp prepare Prepare attributes of sigmoid_double_grad";
+
+  VLOG(6) << "Vjp prepare call sigmoid_grad_'s vjp inteface";
+
+  std::vector<std::vector<Tensor>> tensor_res = primitive::sigmoid_grad_vjp(
+      out, fwd_grad_out, grad_x_grad, stop_gradients);
+
+  VLOG(6) << "Vjp prepare stop gradient of sigmoid_double_grad";
 
   std::vector<std::vector<pir::OpResult>> res(tensor_res.size());
   for (size_t i = 0; i < tensor_res.size(); ++i) {

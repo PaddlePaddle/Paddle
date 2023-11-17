@@ -360,6 +360,100 @@ class TestBatchNormOpInference(unittest.TestCase):
             atol=atol,
         )
 
+    def check_with_place_without_scale_and_bias(
+        self, place, data_layout, dtype, shape
+    ):
+        epsilon = 0.00001
+        if len(shape) == 2:
+            x_shape = shape
+            c = x_shape[1]
+        else:
+            n, h, w, c = shape[0], shape[1], shape[2], shape[3]
+            if data_layout == "NHWC":
+                x_shape = [n, h, w, c]
+            elif data_layout == "NCHW":
+                x_shape = [n, c, h, w]
+            else:
+                raise ValueError("Unknown data layout.")
+        scale_shape = [c]
+
+        if dtype == np.uint16:
+            x_val = np.random.random_sample(x_shape).astype(np.float32)
+        else:
+            x_val = np.random.random_sample(x_shape).astype(dtype)
+        # generate some negative values to test case with relu fused
+        x_val = x_val - 0.5
+        scale_val = np.ones(scale_shape).astype(np.float32)
+        bias_val = np.zeros(scale_shape).astype(np.float32)
+
+        mean = np.zeros(scale_shape).astype(np.float32)
+        variance = np.ones(scale_shape).astype(np.float32)
+
+        if dtype == np.uint16:
+            y_out = _reference_testing(
+                x_val, scale_val, bias_val, mean, variance, epsilon, data_layout
+            ).astype(np.float32)
+            y_out = convert_float_to_uint16(y_out)
+        else:
+            y_out = _reference_testing(
+                x_val, scale_val, bias_val, mean, variance, epsilon, data_layout
+            ).astype(dtype)
+        if self.fuse_with_relu:
+            y_out = np.maximum(y_out, 0)
+
+        if dtype == np.uint16:
+            x_val = convert_float_to_uint16(x_val)
+
+        exe = paddle.static.Executor(place)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x_ = paddle.static.data(
+                name='x_val', shape=x_shape, dtype='float32'
+            )
+            mean_ = paddle.static.data(
+                name='mean', shape=scale_shape, dtype='float32'
+            )
+            variance_ = paddle.static.data(
+                name='variance', shape=scale_shape, dtype='float32'
+            )
+            y_tensor = paddle.nn.functional.batch_norm(
+                x_,
+                mean_,
+                variance_,
+                None,
+                None,
+                False,
+                data_format=data_layout,
+            )
+        y_tensor = exe.run(
+            main,
+            feed={'x_val': x_val, 'mean': mean, 'variance': variance},
+            fetch_list=[y_tensor],
+        )[0]
+
+        # check inference result
+        # since op is called by Executor, there is
+        # no need to transform y_tensor when data layout is "NHWC"
+        atol = 1e-3
+        if dtype == np.uint16:
+            y_tensor = convert_uint16_to_float(y_tensor)
+            y_out = convert_uint16_to_float(y_out)
+            atol = 1e-2
+        self.__assert_close(
+            y_tensor,
+            y_out,
+            "inference output are different at "
+            + str(place)
+            + ", "
+            + data_layout
+            + ", "
+            + str(np.dtype(dtype))
+            + str(np.array(y_tensor))
+            + str(y_out),
+            atol=atol,
+        )
+
     def test_check_output(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -371,6 +465,12 @@ class TestBatchNormOpInference(unittest.TestCase):
                     place, data_format, self.dtype, [2, 3, 4, 5]
                 )
                 self.check_with_place(place, data_format, self.dtype, [2, 3])
+                self.check_with_place_without_scale_and_bias(
+                    place, data_format, self.dtype, [2, 3, 4, 5]
+                )
+                self.check_with_place_without_scale_and_bias(
+                    place, data_format, self.dtype, [2, 3]
+                )
 
     def init_kernel_type(self):
         pass

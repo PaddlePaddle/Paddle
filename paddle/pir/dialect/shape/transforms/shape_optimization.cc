@@ -13,41 +13,41 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
-
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/infer_type_op_interface.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace pir {
 namespace {
-using PassPipelineRunner =
-    std::function<bool(pir::PassManager&, pir::ModuleOp)>;
 
 bool InsertTieShapeOnValue(pir::Value value,
                            pir::Builder& builder) {  // NOLINT
-  auto ty = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  auto type = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
-  if (!ty || ty.dims().size() == 0) return true;
-  std::vector<pir::Value> dimSizes;
-  for (int64_t dim = 0, rank = ty.dims().size(); dim < rank; ++dim) {
-    auto dimOp = builder.Build<pir::dialect::TensorDimOp>(value, dim);
-    dimSizes.push_back(dimOp.out());
+  if (!type || type.dims().size() == 0) return true;
+  std::vector<pir::Value> dim_sizes;
+  for (int64_t dim = 0, rank = type.dims().size(); dim < rank; ++dim) {
+    auto dim_op = builder.Build<shape::TensorDimOp>(value, dim);
+    dim_sizes.push_back(dim_op.out());
   }
-  builder.Build<pir::dialect::TieShapeOp>(value, dimSizes);
+  builder.Build<shape::TieShapeOp>(value, dim_sizes);
   return true;
 }
 
+// Forward declaration
 bool InsertTieShapeOnRegion(pir::Region* region);
 
 bool InsertTieShapeOnOperation(pir::Operation* op,
                                pir::Builder& builder) {  // NOLINT
-  // TODO(zhangbo63): skip more specialized Ops.
-  if (op->isa<pir::dialect::TieShapeOp>() || op->isa<pir::dialect::FuncOp>())
-    return true;
+  // TODO(zhangbopd): skip more specialized Ops.
+  if (op->isa<shape::TieShapeOp>() || op->isa<shape::FuncOp>()) return true;
 
   for (size_t i = 0; i < op->num_regions(); ++i) {
     if (!InsertTieShapeOnRegion(&(op->region(i)))) return false;
@@ -63,7 +63,7 @@ bool InsertTieShapeOnOperation(pir::Operation* op,
 bool InsertTieShapeOnBlock(pir::Block* block) {
   pir::Builder builder =
       pir::Builder(pir::IrContext::Instance(), block, block->begin());
-  // TODO(liujinnan): mapping block arguments
+  // TODO(zhangbopd): mapping block arguments
 
   std::vector<pir::Operation*> op_list;
   for (pir::Operation* op : *block) op_list.push_back(op);
@@ -74,18 +74,108 @@ bool InsertTieShapeOnBlock(pir::Block* block) {
 }
 
 bool InsertTieShapeOnRegion(pir::Region* region) {
-  for (pir::Block* block : *region) {
+  for (Block* block : *region) {
     if (!InsertTieShapeOnBlock(block)) return false;
   }
   return true;
 }
 
+struct ExpandShapeOfOpPattern : public OpRewritePattern<shape::ShapeOfOp> {
+  using OpRewritePattern<shape::ShapeOfOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(shape::ShapeOfOp op,
+                       PatternRewriter& rewriter) const override {
+    // TODO(zhangbopd): Uncomment
+    // auto type = op.out().type().dyn_cast<pir::DenseTensorType>();
+
+    // if (!type || !type.dyn_cast<ShapedTypeInterface>().HasStaticShape() ||
+    //     !type.dyn_cast<ShapedTypeInterface>().GetElementType().IsIndex())
+    //   return false;
+
+    // std::vector<Value> dim_sizes;
+    // for (int dim = 0, rank =
+    // type.dyn_cast<ShapedTypeInterface>().GetDyShape()[0];
+    //      dim < rank;
+    //      ++dim) {
+    //   dim_sizes.push_back(
+    //       rewriter.Build<shape::TensorDimOp>(op.input(), dim).out());
+    // }
+    // rewriter.ReplaceOpWithNewOp<shape::FromElementsOp>(op, dim_sizes);
+    return true;
+  }
+};
+
+// Fold dim of an operation that implements the InferShapedTypeOpInterface
+template <typename OpTy>
+struct DimOfShapedTypeOpInterfacePattern : public OpRewritePattern<OpTy> {
+  using OpRewritePattern<OpTy>::OpRewritePattern;
+
+  bool MatchAndRewrite(OpTy dim_op, PatternRewriter& rewriter) const override {
+    OpResult dim_value = dim_op.source().template dyn_cast<OpResult>();
+    if (!dim_value) return false;
+
+    auto shaped_type_op =
+        dim_value.owner()->dyn_cast<InferShapedTypeOpInterface>();
+
+    if (!shaped_type_op) return false;
+    // TODO(zhangbopd): Uncomment
+    // std::optional<int64_t> dim_index = dim_op.GetConstantIndex();
+    // if (!dim_index) return false;
+
+    // std::vector<Value> reified_result_shapes;
+    // if (!shaped_type_op.ReifyReturnTypeShapes(
+    //         rewriter, shaped_type_op->operands(), reified_result_shapes))
+    //   return false;
+
+    // if (reified_result_shapes.size() != shaped_type_op->num_results())
+    //   return false;
+
+    // Value result_shape = reified_result_shapes[dim_value.index()];
+    // auto result_shape_type = result_shape.type().dyn_cast<DenseTensorType>();
+    // auto shaped_type = result_shape_type.dyn_cast<ShapedTypeInterface>();
+    // if (!result_shape_type || !shaped_type.GetElementType().IsIntOrIndex())
+    //   return false;
+
+    // // TODO(zhangbopd): BuildOrFold required.
+    // std::vector<Value> indices;
+    // indices.push_back(rewriter.Build<shape::ConstantIndexOp>(*dim_index).out());
+    // Value new_value =
+    //     rewriter.Build<shape::ExtractOp>(result_shape, indices).out();
+
+    // if (!new_value.type().isa<IndexType>())
+    //   new_value =
+    //       rewriter.Build<shape::IndexCastOp>(rewriter.index_type(),
+    //       new_value)
+    //           .out();
+
+    // rewriter.ReplaceOp(dim_op, {new_value});
+    return true;
+  }
+};
+
 bool MaterializeShapeComputation(pir::ModuleOp m) {
   if (!InsertTieShapeOnRegion(&(m->region(0)))) return false;
-  // TODO(liujinnan): add rewitter pattern for reifyInferShape.
+  // TODO(zhangbopd): add rewitter pattern for reifyInferShape.
+  RewritePatternSet patterns(m.ir_context());
+
+  patterns.Add<ExpandShapeOfOpPattern,
+               DimOfShapedTypeOpInterfacePattern<shape::TensorDimOp>>(
+      patterns.ir_context());
+
+  IR_ENFORCE(ApplyPatternsGreedily(m, std::move(patterns)),
+             "fail to materialize shape computation\n");
   return true;
 }
 
+using PassPipelineRunner =
+    std::function<bool(pir::PassManager&, pir::ModuleOp)>;
+
+// Returns true if the type is possible to be a shape tensor type.
+// Shape tensor type :
+//    - rank-1 static-shaped tensor type
+//    - element type of the tensor is int or index
+//    - number of elements of the tensor < 32, supposing that the
+//      higiest possible rank is smaller than 32.
 bool IsCandidateShapeTensorType(Type type) {
   auto tensor_type = type.dyn_cast<DenseTensorType>();
   auto shaped_type = tensor_type.dyn_cast<ShapedTypeInterface>();
@@ -93,7 +183,7 @@ bool IsCandidateShapeTensorType(Type type) {
   return (tensor_type && tensor_type && shaped_type.GetRank() == 1 &&
           shaped_type.HasStaticShape() &&
           shaped_type.GetElementType().IsIntOrIndex() &&
-          shaped_type.GetShape()[0] < 32);
+          shaped_type.GetDyShape()[0] < 32);
 }
 
 class ShapeComputationIRAnalysis {
@@ -119,20 +209,15 @@ class ShapeComputationIRAnalysis {
   ModuleOp m_;
   SymbolicDimMgr& mgr_;
 
-  std::unordered_map<Value, SymbolicDim> value_to_sym_dim_;
+  std::unordered_map<Value, SymbolicDimOp> value_to_sym_dim_;
 
   // shape tensor is the 1D ranked tensor with int/index dtype.
-  std::unordered_map<Value, std::vector<SymbolicDim>> shape_tensor_to_sym_dims_;
+  std::unordered_map<Value, std::vector<SymbolicDimOp>>
+      shape_tensor_to_sym_dims_;
 
-  std::unordered_map<Value, std::vector<SymbolicDim>> dense_tensor_to_sym_dims_;
+  std::unordered_map<Value, std::vector<SymbolicDimOp>>
+      dense_tensor_to_sym_dims_;
 };
-
-// Returns true if the type is possible to be a shape tensor type.
-// Shape tensor type :
-//    - rank-1 static-shaped tensor type
-//    - element type of the tensor is int or index
-//    - number of elements of the tensor < 32, supposing that the
-//      higiest possible rank is smaller than 32.
 
 ShapeComputationIRAnalysis::ShapeComputationIRAnalysis(ModuleOp m,
                                                        SymbolicDimMgr& mgr)
@@ -163,7 +248,7 @@ bool ShapeComputationIRAnalysis::RunOnRegion(Region* region, func fn) {
 }
 
 bool ShapeComputationIRAnalysis::RunOnBlock(Block* block, func fn) {
-  // TODO(liujinnan): mapping block arguments
+  // TODO(zhangbopd): mapping block arguments
 
   std::vector<Operation*> op_list;
   for (Operation* op : *block) op_list.push_back(op);
@@ -181,37 +266,37 @@ bool ShapeComputationIRAnalysis::RunOnOperation(Operation* op, func fn) {
 }
 
 bool ShapeComputationIRAnalysis::BuildShapeOnOperation(Operation* op) {
-  if (op->isa<dialect::FuncOp>()) return true;
-  if (op->isa<dialect::TieShapeOp>()) {
+  if (op->isa<shape::FuncOp>()) return true;
+  if (op->isa<shape::TieShapeOp>()) {
     Value value = op->operand_source(0);
-    std::vector<SymbolicDim> symbols;
-    if (op->HasAttribute(SymbolicDim::GetSymbolicDimAttrName())) {
+    std::vector<SymbolicDimOp> symbols;
+    if (op->HasAttribute(SymbolicDimOp::GetSymbolicDimAttrName())) {
       auto attrs =
-          op->attribute<ArrayAttribute>(SymbolicDim::GetSymbolicDimAttrName())
+          op->attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName())
               .AsVector();
       for (Attribute attr : attrs) {
-        auto sym = mgr_.symbolTable().Lookup<SymbolicDim>(
+        auto sym = mgr_.symbolTable().Lookup<SymbolicDimOp>(
             attr.dyn_cast<StrAttribute>().AsString());
-        assert(sym);
-        SymbolicDim root = mgr_.GetRootSymbolicDim(sym);
+        IR_ENFORCE(sym);
+        SymbolicDimOp root = mgr_.GetRootSymbolicDim(sym);
         symbols.push_back(root);
       }
     } else {
       symbols = mgr_.CreateSymbolicDimsForRankedValue(value);
       std::vector<Attribute> attrs;
-      for (SymbolicDim sym : symbols) {
+      for (SymbolicDimOp sym : symbols) {
         Attribute rootSymbol =
             StrAttribute::get(m_->ir_context(), sym.GetSymName());
         attrs.push_back(rootSymbol);
       }
-      op->set_attribute(SymbolicDim::GetSymbolicDimAttrName(),
+      op->set_attribute(SymbolicDimOp::GetSymbolicDimAttrName(),
                         ArrayAttribute::get(m_->ir_context(), attrs));
     }
     dense_tensor_to_sym_dims_[value] = std::move(symbols);
     return true;
   }
-  for (size_t i = 0; i < op->num_results(); ++i) {
-    if (!BuildShapeOnValue(op->result(i))) return false;
+  for (auto& result : op->results()) {
+    if (!BuildShapeOnValue(result)) return false;
   }
   return true;
 }
@@ -219,12 +304,12 @@ bool ShapeComputationIRAnalysis::BuildShapeOnOperation(Operation* op) {
 bool ShapeComputationIRAnalysis::BuildShapeOnValue(Value value) {
   Type type = value.type();
   if (type.IsIntOrIndex()) {
-    SymbolicDim sym = mgr_.NewSymbolicDim();
+    SymbolicDimOp sym = mgr_.NewSymbolicDim();
     value_to_sym_dim_[value] = sym;
   } else if (IsCandidateShapeTensorType(type)) {
     auto shaped_type = type.dyn_cast<ShapedTypeInterface>();
-    std::vector<SymbolicDim> symbols;
-    for (size_t i = 0, d = shaped_type.GetShape()[0]; i < d; ++i)
+    std::vector<SymbolicDimOp> symbols;
+    for (size_t i = 0, d = shaped_type.GetDyShape()[0]; i < d; ++i)
       symbols.push_back(mgr_.NewSymbolicDim());
     shape_tensor_to_sym_dims_[value] = std::move(symbols);
   }
@@ -237,7 +322,7 @@ bool ShapeComputationIRAnalysis::ApplyOpConstraint(Operation* op) {
   IR_ENFORCE(ApplyTieShapeOpConstraint(op),
              "Fail to apply constraint for tie_shape op");
 
-  // TODO(zhangbo63): add more constraints
+  // TODO(zhangbopd): add more constraints
   return true;
 }
 
@@ -247,7 +332,7 @@ bool ShapeComputationIRAnalysis::ApplyIndexOpConstraint(Operation* op) {
   Type type = op->result(0).type();
   if (!type.IsIntOrIndex()) return true;
 
-  if (auto dim_op = op->dyn_cast<dialect::TensorDimOp>()) {
+  if (auto dim_op = op->dyn_cast<shape::TensorDimOp>()) {
     int64_t dim_index = dim_op.index()
                             .dyn_cast<OpResult>()
                             .owner()
@@ -267,12 +352,12 @@ bool ShapeComputationIRAnalysis::ApplyIndexOpConstraint(Operation* op) {
       return false;
     }
   }
-  // TODO(zhangbo63): add support for reifyInferShape. (e.g. mul/add)
+  // TODO(zhangbopd): add support for reifyInferShape. (e.g. mul/add)
   return true;
 }
 
 bool ShapeComputationIRAnalysis::ApplyTieShapeOpConstraint(Operation* op) {
-  if (auto tie_shape = op->dyn_cast<dialect::TieShapeOp>()) {
+  if (auto tie_shape = op->dyn_cast<shape::TieShapeOp>()) {
     auto& value = dense_tensor_to_sym_dims_[op->operand_source(0)];
     for (size_t idx = 0; idx < tie_shape.dims().size(); ++idx) {
       if (!mgr_.MapSymbolicDimEqual(value_to_sym_dim_[tie_shape.dims()[idx]],
@@ -285,7 +370,7 @@ bool ShapeComputationIRAnalysis::ApplyTieShapeOpConstraint(Operation* op) {
 }
 
 bool OptimizeShapeComputation(pir::ModuleOp m, PassPipelineRunner runner) {
-  // TODO(liujinnan): Do some Canonicalizer.
+  // TODO(zhangbopd): Do some Canonicalizer.
   pir::SymbolicDimMgr mgr(m);
   IR_ENFORCE(mgr.Load(),
              "SymbolicDimMgr Load failed in OptimizeShapeComputation.");

@@ -54,12 +54,12 @@ class IR_API OpBase {
 
   OpResult result(uint32_t index) const { return operation()->result(index); }
 
-  pir::Attribute attribute(const std::string &name) {
+  pir::Attribute attribute(const std::string &name) const {
     return operation()->attribute(name);
   }
 
   template <typename T>
-  T attribute(const std::string &name) {
+  T attribute(const std::string &name) const {
     return operation()->attribute<T>(name);
   }
 
@@ -141,6 +141,7 @@ class Op : public OpBase {
   using InterfaceList =
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
+  // TODO(zhangbopd): Use classof
   static ConcreteOp dyn_cast(Operation *op) {
     if (op && op->info().id() == TypeId::get<ConcreteOp>()) {
       return ConcreteOp(op);

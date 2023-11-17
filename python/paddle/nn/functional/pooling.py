@@ -171,9 +171,7 @@ def _expand_low_nd_padding(padding):
         padding = [0] + padding
     else:
         raise ValueError(
-            "The size of padding's dimmention should be 1 or 2. But got padding={}".format(
-                padding
-            )
+            f"The size of padding's dimmention should be 1 or 2. But got padding={padding}"
         )
     return padding
 
@@ -189,7 +187,7 @@ def avg_pool1d(
 ):
     """
     This API implements average pooling 1d operation,
-    See more details in :ref:`api_nn_pooling_AvgPool1d` .
+    See more details in :ref:`api_paddle_nn_AvgPool1d` .
 
     Args:
         x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
@@ -312,7 +310,7 @@ def avg_pool2d(
 ):
     """
     This API implements average pooling 2d operation.
-    See more details in :ref:`api_nn_pooling_AvgPool2d` .
+    See more details in :ref:`api_paddle_nn_AvgPool2d` .
 
     Args:
         x (Tensor): The input tensor of pooling operator which is a 4-D tensor with
@@ -445,7 +443,7 @@ def avg_pool3d(
 ):
     """
     This API implements average pooling 3d operation.
-    See more details in :ref:`api_nn_pooling_AvgPool3d` .
+    See more details in :ref:`api_paddle_nn_AvgPool3d` .
 
     Args:
         x (Tensor): The input tensor of pooling operator, which is a 5-D tensor with
@@ -572,7 +570,7 @@ def max_pool1d(
 ):
     """
     This API implements max pooling 1d opereation.
-    See more details in :ref:`api_nn_pooling_MaxPool1d` .
+    See more details in :ref:`api_paddle_nn_MaxPool1d` .
 
     Args:
         x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
@@ -1184,7 +1182,7 @@ def max_pool2d(
 ):
     """
     This API implements max pooling 2d operation.
-    See more details in :ref:`api_nn_pooling_MaxPool2d` .
+    See more details in :ref:`api_paddle_nn_MaxPool2d` .
 
     Args:
         x (Tensor): The input tensor of pooling operator which is a 4-D tensor with
@@ -1484,7 +1482,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
     Adaptive average pooling 1d operation on :attr:`x` according to :attr:`output_size`.
 
     Notes:
-        See more details in :ref:`api_nn_pooling_AdaptiveAvgPool1d` .
+        See more details in :ref:`api_paddle_nn_AdaptiveAvgPool1d` .
 
     Args:
         x (Tensor): The input Tensor of pooling, which is a 3-D tensor with shape :math:`[N, C, L]`, where :math:`N` is batch size, :math:`C` is the number of channels and :math:`L` is the length of the feature. The data type is float32 or float64.
@@ -1522,8 +1520,9 @@ def adaptive_avg_pool1d(x, output_size, name=None):
     pool_size = [1] + convert_to_list(output_size, 1, 'pool_size')
 
     x = unsqueeze(x, [2])
-    if in_dygraph_mode():
-        x = x._use_gpudnn(False)
+    if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
+            x = x._use_gpudnn(False)
         pool_out = _C_ops.pool2d(
             x,
             pool_size,
@@ -1779,8 +1778,9 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
         if output_size[2] is None:
             output_size[2] = in_w
 
-    if in_dygraph_mode():
-        x = x._use_gpudnn(False)
+    if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
+            x = x._use_gpudnn(False)
         return _C_ops.pool3d(
             x,
             output_size,
@@ -1825,7 +1825,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
 def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     """
     This API implements adaptive max pooling 1d operation.
-    See more details in :ref:`api_nn_pooling_AdaptiveMaxPool1d` .
+    See more details in :ref:`api_paddle_nn_AdaptiveMaxPool1d` .
 
     Args:
         x (Tensor): The input tensor of pooling operator, which is a 3-D tensor
@@ -1921,7 +1921,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
 def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
     """
     This operation applies a 2D adaptive max pooling on input tensor.
-    See more details in :ref:`api_nn_pooling_AdaptiveMaxPool2d` .
+    See more details in :ref:`api_paddle_nn_AdaptiveMaxPool2d` .
 
     Args:
         x (Tensor): The input tensor of adaptive max pool2d operator, which is a 4-D tensor. The data type can be float16, float32, float64, int32 or int64.
@@ -2000,14 +2000,13 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
                 "adaptive": True,
             },
         )
-        # return (pool_out, mask) if return_mask else pool_out
-        return pool_out
+        return (pool_out, mask) if return_mask else pool_out
 
 
 def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
     """
     This operation applies a 3D adaptive max pooling on input tensor.
-    See more details in :ref:`api_nn_pooling_AdaptiveMaxPool3d` .
+    See more details in :ref:`api_paddle_nn_AdaptiveMaxPool3d` .
 
     Args:
         x (Tensor): The input tensor of adaptive max pool3d operator, which is a 5-D tensor. The data type can be float32, float64.
