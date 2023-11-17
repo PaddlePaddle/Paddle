@@ -526,7 +526,7 @@ class Optimizer:
                                 )
                             )
                         self._learning_rate_map[
-                            framework.default_main_program()
+                            paddle.static.default_main_program()
                         ] = paddle._pir_ops.full(
                             [],
                             self._learning_rate,
@@ -762,7 +762,10 @@ class Optimizer:
         :return:
         """
         if program is None:
-            program = paddle.static.default_main_program()
+            if in_dygraph_mode():
+                program = framework.default_main_program()
+            else:
+                program = paddle.static.default_main_program()
         return self._learning_rate_map.get(program, None)
 
     def _append_optimize_op(self, block, param_and_grad):
