@@ -72,10 +72,22 @@ PARSE_PYTHON_C_TENSORS_TEMPLATE = (
     "    auto {} = {}(\"{}\", \"{}\", args, {}, {});\n"
 )
 
-CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_TEMPLATE = """
+CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_TEMPLATE = (
+    "    {} = {}(\"{}\", \"{}\", args, {}, {}, mesh);\n"
+)
+
+CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_WITH_SINGLE_TENSOR_TEMPLATE = """
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh{inputs})) {{
-      ConvertAllInputsToDistTensor(mesh{inputs});
+    if (InputsContainDistTensor(&mesh{input_names})) {{
+      ConvertAllInputsToDistTensor(mesh{input_single_tensor_names});
+      {optional_and_vector_convert_code}
+    }}
+"""
+
+CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_WITHOUT_SINGLE_TENSOR_TEMPLATE = """
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh{input_names})) {{
+      {optional_and_vector_convert_code}
     }}
 """
 
@@ -332,6 +344,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         # Generate Python-C Tensors Parsing Logic
         get_eager_tensor_str = ""
         input_names = ""
+        input_single_tensor_names = ""
         for name, (ttype, pos) in forward_inputs_position_map.items():
             input_names = input_names + ", " + name
             if forward_inplace_map and name in forward_inplace_map.keys():
@@ -373,6 +386,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                         )
                     )
                 else:
+                    input_single_tensor_names = (
+                        input_single_tensor_names + ", " + name
+                    )
                     get_eager_tensor_str += (
                         PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
                             name,
@@ -385,12 +401,50 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     )
         # No inputs, skip convert to DistTensor
         if len(input_names) > 0:
-            get_eager_tensor_str += (
-                CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_TEMPLATE.format(
-                    inputs=input_names
-                )
-            )
+            optional_and_vector_convert_code = ""
+            for name, (ttype, pos) in forward_inputs_position_map.items():
+                is_optional = name in optional_inputs
+                if IsVectorTensorType(ttype):
+                    if is_optional:
+                        optional_and_vector_convert_code += CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                            name,
+                            "GetOptionalTensorListFromArgs",
+                            forward_api_name,
+                            name,
+                            pos,
+                            "true",
+                        )
+                    else:
+                        optional_and_vector_convert_code += CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                            name,
+                            "GetTensorListFromArgs",
+                            forward_api_name,
+                            name,
+                            pos,
+                            "false",
+                        )
+                else:
+                    if is_optional:
+                        optional_and_vector_convert_code += CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                            name,
+                            "GetOptionalTensorFromArgs",
+                            forward_api_name,
+                            name,
+                            pos,
+                            "true",
+                        )
 
+            if len(input_single_tensor_names) > 0:
+                get_eager_tensor_str += CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_WITH_SINGLE_TENSOR_TEMPLATE.format(
+                    input_names=input_names,
+                    input_single_tensor_names=input_single_tensor_names,
+                    optional_and_vector_convert_code=optional_and_vector_convert_code,
+                )
+            else:
+                get_eager_tensor_str += CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_WITHOUT_SINGLE_TENSOR_TEMPLATE.format(
+                    input_names=input_names,
+                    optional_and_vector_convert_code=optional_and_vector_convert_code,
+                )
         if forward_inplace_map:
             for name, (ttype, pos) in forward_outputs_position_map.items():
                 if name in forward_inplace_map.values():
