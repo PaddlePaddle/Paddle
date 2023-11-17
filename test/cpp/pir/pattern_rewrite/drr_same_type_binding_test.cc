@@ -19,11 +19,11 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
-#include "paddle/pir/transforms/dead_code_elimination_pass.h"
 
 /* Source pattern:
                                        input1
@@ -284,31 +284,17 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
   builder.Build<paddle::dialect::FetchOp>(matmul_op6.out(), "out3", 2);
 }
 
-class DrrPatternRewritePass : public pir::Pass {
+class DrrPatternRewritePass : public pir::PatternRewritePass {
  public:
-  DrrPatternRewritePass() : pir::Pass("DrrPatternRewritePass", 1) {}
+  DrrPatternRewritePass()
+      : pir::PatternRewritePass("drr_pattern_rewrite_pass", 1) {}
 
-  bool Initialize(pir::IrContext *context) override {
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
     ps.Add(SameTypeBindingTestPattern().Build(context));
 
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
+    return ps;
   }
-
-  void Run(pir::Operation *op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
-  }
-
-  bool CanApplyOn(pir::Operation *op) const override {
-    return op->name() == "builtin.module" && op->num_regions() > 0;
-  }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
 TEST(DrrTest, drr_demo) {

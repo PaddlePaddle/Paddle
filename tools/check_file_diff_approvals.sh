@@ -345,6 +345,12 @@ if [ "${HAS_MODIFIED_STATIC_BUILD}" != "" ] && [ "${GIT_PR_ID}" != ""]; then
     check_approval 1 From00 zhiqiu
 fi
 
+HAS_MODIFIED_TARGET_FOR_AUTO_PARALLEL_CI=`git diff --name-only upstream/$BRANCH | grep "tools/auto_parallel/target_path_lists.sh" || true`
+if [ "${HAS_MODIFIED_TARGET_FOR_AUTO_PARALLEL_CI}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (zhiqiu(Recommend) or chenwhql) approval for file changes in tools/auto_parallel/target_path_lists.sh.\n"
+    check_approval 1 zhiqiu chenwhql
+fi
+
 HAS_MODIFIED_PY_FLUID=`git diff --name-only upstream/$BRANCH | grep "python/paddle/fluid" || true`
 if [ "${HAS_MODIFIED_PY_FLUID}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (zoooo0820(Recommend), or jeff41404) approval for file changes in python/paddle/fluid, because fluid API has been removed.\n"

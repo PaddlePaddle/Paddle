@@ -20,7 +20,9 @@ if(WITH_DISTRIBUTE)
   py_test_modules(test_layer_norm_rule MODULES test_layer_norm_rule)
   py_test_modules(test_slice_rule MODULES test_slice_rule)
   py_test_modules(test_flatten_rule MODULES test_flatten_rule)
+  py_test_modules(test_unsqueeze_rule MODULES test_unsqueeze_rule)
   py_test_modules(test_concat_rule MODULES test_concat_rule)
+  py_test_modules(test_where_rule MODULES test_where_rule)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

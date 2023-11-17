@@ -114,21 +114,6 @@ std::vector<paddle::Tensor> RunBackward(
 
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
-  std::queue<GradNodeBase*> force_sequential_nodes_forward_queue =
-      egr::Controller::Instance().GetForceSequentialNodes();
-  std::deque<GradNodeBase*> force_sequential_nodes_queue;
-  std::set<GradNodeBase*> force_sequential_nodes_set;
-  std::set<GradNodeBase*> ready_force_sequential_nodes;
-  auto force_sequential_nodes_size =
-      force_sequential_nodes_forward_queue.size();
-  for (size_t i = 0; i < force_sequential_nodes_size; ++i) {
-    force_sequential_nodes_set.insert(
-        force_sequential_nodes_forward_queue.front());
-    force_sequential_nodes_queue.push_front(
-        force_sequential_nodes_forward_queue.front());
-    force_sequential_nodes_forward_queue.pop();
-  }
-
   // *Gradient Hook should happen at node-level
   // *Inplace version check should perform at node-level
   // *Cross-batch accumulation happens at forward pass
@@ -236,6 +221,24 @@ std::vector<paddle::Tensor> RunBackward(
   // 3. Compute in_degree for each node
   std::unordered_map<GradNodeBase*, int> node_in_degree_map =
       getInDegreeMap(queue);
+
+  std::queue<GradNodeBase*> force_sequential_nodes_forward_queue =
+      egr::Controller::Instance().GetForceSequentialNodes();
+  std::deque<GradNodeBase*> force_sequential_nodes_queue;
+  std::set<GradNodeBase*> force_sequential_nodes_set;
+  std::set<GradNodeBase*> ready_force_sequential_nodes;
+  auto force_sequential_nodes_size =
+      force_sequential_nodes_forward_queue.size();
+  for (size_t i = 0; i < force_sequential_nodes_size; ++i) {
+    if (node_in_degree_map.count(
+            force_sequential_nodes_forward_queue.front())) {
+      force_sequential_nodes_set.insert(
+          force_sequential_nodes_forward_queue.front());
+      force_sequential_nodes_queue.push_front(
+          force_sequential_nodes_forward_queue.front());
+    }
+    force_sequential_nodes_forward_queue.pop();
+  }
 
   VLOG(5) << "Startup_ops's size is " << queue.size();
 
