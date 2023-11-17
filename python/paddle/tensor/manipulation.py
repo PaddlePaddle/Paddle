@@ -1017,7 +1017,64 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
 
     if inplace:
         return _C_ops.fill_diagonal_tensor_(x, y, offset, dim1, dim2)
-    return _C_ops.fill_diagonal_tensor(x, y, offset, dim1, dim2)
+
+    if in_dynamic_mode():
+        return _C_ops.fill_diagonal_tensor(x, y, offset, dim1, dim2)
+    else:
+        check_variable_and_dtype(
+            x,
+            'X',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'uint16',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            'paddle.tensor.manipulation.fill_diagonal_tensor',
+        )
+        check_variable_and_dtype(
+            y,
+            'Y',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'uint16',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            'paddle.tensor.manipulation.fill_diagonal_tensor',
+        )
+        helper = LayerHelper('fill_diagonal_tensor', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='fill_diagonal_tensor',
+            inputs={
+                'X': x,
+                'Y': y,
+            },
+            outputs={'Out': out},
+            attrs={
+                'offset': offset,
+                'dim1': dim1,
+                'dim2': dim2,
+            },
+        )
+        return out
 
 
 def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
@@ -5770,3 +5827,46 @@ def index_fill_(x, index, axis, value, name=None):
 
     """
     return _index_fill_impl(x, index, axis, value, True)
+
+
+def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
+    """
+    Embed the values of Tensor ``y`` into Tensor ``x`` along the diagonal elements
+    of Tensor ``x``, with respect to ``axis1`` and ``axis2``.
+
+    This function returns a tensor with fresh storage.
+
+    The argument ``offset`` controls which diagonal to consider:
+
+    - If ``offset`` = 0, it is the main diagonal.
+    - If ``offset`` > 0, it is above the main diagonal.
+    - If ``offset`` < 0, it is below the main diagonal.
+
+    Note:
+        ``y`` should have the same shape as :ref:`paddle.diagonal <api_paddle_diagonal>`.
+
+    Args:
+        x (Tensor): ``x`` is the original Tensor. Must be at least 2-dimensional.
+        y (Tensor): ``y`` is the Tensor to embed into ``x``
+        offset (int, optional): which diagonal to consider. Default: 0 (main diagonal).
+        axis1 (int, optional): first axis with respect to which to take diagonal. Default: 0.
+        axis2 (int, optional): second axis with respect to which to take diagonal. Default: 1.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, Tensor with diagonal embedeed with ``y``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.arange(6.0).reshape((2, 3))
+            >>> y = paddle.ones((2,))
+            >>> out = x.diagonal_scatter(y)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[1., 1., 2.],
+                    [3., 1., 5.]])
+
+    """
+    return fill_diagonal_tensor(x, y, offset, axis1, axis2, name)
