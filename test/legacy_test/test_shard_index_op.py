@@ -51,7 +51,7 @@ class TestShardIndexShardId0Op(OpTest):
         common_setup(self, 20, 2, 0, -1)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestShardIndexShardId1Op(OpTest):
@@ -59,7 +59,7 @@ class TestShardIndexShardId1Op(OpTest):
         common_setup(self, 20, 2, 1, -1)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestShardIndexIgnoreValueOp(OpTest):
@@ -67,7 +67,7 @@ class TestShardIndexIgnoreValueOp(OpTest):
         common_setup(self, 20, 2, 0, -2)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestShardIndexNotEvenlyDividedOp(OpTest):
@@ -75,7 +75,7 @@ class TestShardIndexNotEvenlyDividedOp(OpTest):
         common_setup(self, 15, 2, 1, -1)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 if __name__ == '__main__':

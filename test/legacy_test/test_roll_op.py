@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestRollOp(OpTest):
@@ -48,10 +49,10 @@ class TestRollOp(OpTest):
         self.axis = [0, -2]
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
 
 class TestRollOpCase2(TestRollOp):
@@ -108,10 +109,14 @@ class TestRollBF16OP(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_prim=True)
+        self.check_output_with_place(
+            self.place, check_prim=True, check_pir=True
+        )
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', check_prim=True, check_pir=True
+        )
 
 
 @unittest.skipIf(
@@ -128,10 +133,14 @@ class TestRollBF16OpCase2(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_prim=True)
+        self.check_output_with_place(
+            self.place, check_prim=True, check_pir=True
+        )
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', check_prim=True, check_pir=True
+        )
 
 
 @unittest.skipIf(
@@ -148,10 +157,14 @@ class TestRollBF16OpCase3(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_prim=True)
+        self.check_output_with_place(
+            self.place, check_prim=True, check_pir=True
+        )
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', check_prim=True, check_pir=True
+        )
 
 
 class TestRollAPI(unittest.TestCase):
@@ -160,18 +173,22 @@ class TestRollAPI(unittest.TestCase):
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
         )
 
+    @test_with_pir_api
     def test_roll_op_api(self):
         self.input_data()
 
         paddle.enable_static()
         # case 1:
-        with program_guard(Program(), Program()):
+        with program_guard(paddle.static.Program(), paddle.static.Program()):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
             x.desc.set_need_check_feed(False)
             z = paddle.roll(x, shifts=1)
-            exe = base.Executor(base.CPUPlace())
+            exe = paddle.static.Executor(base.CPUPlace())
             (res,) = exe.run(
-                feed={'x': self.data_x}, fetch_list=[z.name], return_numpy=False
+                paddle.static.default_main_program(),
+                feed={'x': self.data_x},
+                fetch_list=[z.name],
+                return_numpy=False,
             )
             expect_out = np.array(
                 [[9.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, 8.0]]
@@ -179,18 +196,21 @@ class TestRollAPI(unittest.TestCase):
             np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 2:
-        with program_guard(Program(), Program()):
+        with program_guard(paddle.static.Program(), paddle.static.Program()):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
             x.desc.set_need_check_feed(False)
             z = paddle.roll(x, shifts=1, axis=0)
-            exe = base.Executor(base.CPUPlace())
+            exe = paddle.static.Executor(base.CPUPlace())
             (res,) = exe.run(
-                feed={'x': self.data_x}, fetch_list=[z.name], return_numpy=False
+                paddle.static.default_main_program(),
+                feed={'x': self.data_x},
+                fetch_list=[z.name],
+                return_numpy=False,
             )
-        expect_out = np.array(
-            [[7.0, 8.0, 9.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
-        )
-        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+            expect_out = np.array(
+                [[7.0, 8.0, 9.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
+            )
+            np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
         self.input_data()
