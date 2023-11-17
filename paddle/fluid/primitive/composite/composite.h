@@ -75,8 +75,6 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     const std::string& data_layout,
     bool use_global_stats,
     bool trainable_statistics) {
-  VLOG(4) << "bn================================= begin";
-
   auto org_dtype = x.dtype();
   Tensor x_cast = x;
 
@@ -122,7 +120,6 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
   Tensor inv_std;
   Tensor run_mean_;
   Tensor run_var_;
-  VLOG(4) << "bn================================= 2";
   if (!use_run_stat) {
     batch_mean = mean_decomp<T>(x_cast, IntArray(reduce_axes), false);
     auto temp = mean_decomp<T>(x_cast * x_cast, IntArray(reduce_axes), false);
@@ -152,7 +149,6 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     run_mean_ = assign<T>(run_mean);
     run_var_ = assign<T>(run_var);
   }
-  VLOG(4) << "bn================================= 3";
   Tensor y;
   Tensor new_scale =
       scale ? scale.get()
@@ -173,7 +169,6 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
 
   auto batch_mean_ = assign<T>(batch_mean);
   auto inv_std_ = assign<T>(inv_std);
-  VLOG(4) << "bn================================= end";
   if (!use_run_stat) {
     return std::make_tuple(
         y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space);
