@@ -710,6 +710,7 @@ class TestMoveAxis(unittest.TestCase):
         self.assertEqual(out.shape, [2, 3])
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_error(self):
         x = paddle.randn([2, 3, 4, 5])
         # src must have the same number with dst
@@ -745,6 +746,7 @@ class TestTransposeDoubleGradCheck(unittest.TestCase):
     def transpose_wrapper(self, x):
         return paddle.transpose(x[0], [1, 0, 2])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -776,6 +778,7 @@ class TestTransposeTripleGradCheck(unittest.TestCase):
     def transpose_wrapper(self, x):
         return paddle.transpose(x[0], [1, 0, 2])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.

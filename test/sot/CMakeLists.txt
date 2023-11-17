@@ -10,6 +10,6 @@ foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${SOT_ENVS})
 endforeach()
 
-if(WIN32 AND NOT WITH_GPU)
+if(WIN32)
   set_tests_properties(test_sot_resnet50_backward PROPERTIES TIMEOUT 420)
 endif()

@@ -602,21 +602,23 @@
   backward : cross_entropy_with_softmax_grad
 
 - op : cummax
-  args : (Tensor x, int axis=-1, int dtype=3)
+  args : (Tensor x, int axis=-1, DataType dtype = DataType::INT64)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : CumWithIndicesInferMeta
   kernel :
     func : cummax
+    data_type : x
   backward : cummax_grad
 
 - op : cummin
-  args : (Tensor x, int axis=-1, int dtype=3)
+  args : (Tensor x, int axis=-1, DataType dtype = DataType::INT64)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : CumWithIndicesInferMeta
   kernel :
     func : cummin
+    data_type : x
   backward : cummin_grad
 
 - op : cumprod
@@ -1040,13 +1042,15 @@
 
 - op : gather_nd
   args : (Tensor x, Tensor index)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : GatherNdInferMeta
   kernel :
     func : gather_nd
     data_type : x
   backward : gather_nd_grad
+  data_transform :
+    skip_transform : index
 
 - op : gather_tree
   args : (Tensor ids, Tensor parents)
@@ -1246,6 +1250,8 @@
     data_type : x
   inplace : (x -> out)
   backward : index_put_grad
+  data_transform :
+    skip_transform : indices
 
 - op : index_sample
   args : (Tensor x, Tensor index)
@@ -1908,6 +1914,7 @@
   output : Tensor(size)
   infer_meta :
     func : NumelInferMeta
+    spmd_rule : NumelInferSpmd
   kernel :
     func : numel
     data_type : x
@@ -2302,16 +2309,6 @@
   optional : master_param, master_param_out
   inplace : (param -> param_out), (master_param -> master_param_out)
 
-- op : shadow_output
-  args : (Tensor x, str name)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel:
-    func : shadow_output
-    param : [x]
-
 - op : shape
   args : (Tensor input)
   output : Tensor(out)
@@ -2500,6 +2497,7 @@
   output : Tensor (out)
   infer_meta :
     func : StackInferMeta
+    spmd_rule : StackInferSpmd
   kernel :
     func : stack
   backward : stack_grad
@@ -2595,6 +2593,16 @@
   inplace: (x -> out)
   backward : thresholded_relu_grad
 
+- op : top_p_sampling
+  args : (Tensor x, Tensor ps, Tensor threshold, int seed=-1)
+  output : Tensor (out), Tensor(ids)
+  infer_meta :
+    func : TopPSamplingInferMeta
+  kernel :
+    func : top_p_sampling
+    data_type : x
+  optional : threshold
+
 - op : topk
   args : (Tensor x, Scalar(int) k = 1, int axis = -1, bool largest = true, bool sorted = true)
   output : Tensor(out), Tensor(indices)
@@ -2677,7 +2685,7 @@
   backward: uniform_inplace_grad
 
 - op : unique_consecutive
-  args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, int dtype = 5)
+  args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, DataType dtype = DataType::FLOAT32)
   output : Tensor(out), Tensor(index), Tensor(counts)
   infer_meta :
       func : UniqueConsecutiveInferMeta
@@ -2839,6 +2847,7 @@
   output : Tensor(out)
   infer_meta :
     func : WhereInferMeta
+    spmd_rule: WhereInferSpmd
   kernel :
     func : where
   inplace: (x -> out)

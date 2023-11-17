@@ -31,7 +31,7 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(print_ir);
 
 namespace details {
@@ -129,6 +129,7 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
 static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
                                   paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
+    VLOG(4) << "Share Tensor Into Scope: " << i;
     auto name = tensors[i].name();
     if (name == paddle::framework::kFakeVarName ||
         name == paddle::framework::kEmptyVarName) {
@@ -406,7 +407,7 @@ void print_collection(const T &t) {
 
 }  // namespace details
 
-inline void NewIRRunProgramAPI(
+inline void PirRunProgramAPI(
     const std::vector<paddle::Tensor> &x,
     const std::vector<paddle::Tensor> &params,
     std::vector<paddle::Tensor *> &out,                   // NOLINT
@@ -456,15 +457,19 @@ inline void NewIRRunProgramAPI(
 
   auto *forward_program =
       forward_global_block->GetParentOp()->GetParentProgram();
-  auto *backward_program =
-      backward_global_block->GetParentOp()->GetParentProgram();
 
   if (FLAGS_print_ir) {
     std::ostringstream print_stream;
     print_stream << "ForwardProgram is :\n";
     forward_program->Print(print_stream);
-    print_stream << "BackwardProgram is:\n";
-    backward_program->Print(print_stream);
+    if (!is_test) {
+      auto *backward_program =
+          backward_global_block->GetParentOp()->GetParentProgram();
+      print_stream << "BackwardProgram is:\n";
+      backward_program->Print(print_stream);
+    } else {
+      print_stream << "BackwardProgram is empty in test mode.\n";
+    }
     std::cout << "Program (fwd | bwd): \n" << print_stream.str() << std::endl;
   }
 
@@ -507,18 +512,17 @@ inline void NewIRRunProgramAPI(
         details::GetNameFromValue(forward_global_block, middle_values, false);
     auto skip_names_set =
         std::set<std::string>(skip_names.begin(), skip_names.end());
-    skip_names =
-        details::GetNameFromValue(forward_global_block, output_values, false);
-    skip_names_set.insert(skip_names.begin(), skip_names.end());
     auto no_need_buffer_values = PADDLE_GET_CONST(std::vector<::pir::Value>,
                                                   attrs.at("no_need_buffers"));
     auto no_need_buffer_names = details::GetNameFromValue(
         forward_global_block, no_need_buffer_values, false);
-    VLOG(4) << "start skip no need buffer vars with name:";
     for (auto &name : no_need_buffer_names) {
-      VLOG(4) << "Skip no need buffer vars with name:" << name;
+      VLOG(4) << "Find no need buffer vars with name:" << name;
       skip_names_set.erase(name);
     }
+    skip_names =
+        details::GetNameFromValue(forward_global_block, output_values, false);
+    skip_names_set.insert(skip_names.begin(), skip_names.end());
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
 
@@ -681,7 +685,7 @@ inline void RunProgramAPI(
     details::ShareTensorsIntoScope(params, global_inner_scope);
     // Step 2. create new interpretercore
 
-    if (FLAGS_enable_new_ir_in_executor) {
+    if (FLAGS_enable_pir_in_executor) {
       // build new ir program
       auto ir_program =
           paddle::framework::ConstructFowardIrProgram(forward_global_block,
@@ -835,7 +839,7 @@ inline void RunProgramGradAPI(
     VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
 
-    if (FLAGS_enable_new_ir_in_executor) {
+    if (FLAGS_enable_pir_in_executor) {
       auto res =
           paddle::framework::ConstructBackwardIrProgram(backward_global_block,
                                                         out_grad,
@@ -943,7 +947,7 @@ inline void RunProgramGradAPI(
   }
 }
 
-inline void NewIRRunProgramGradAPI(
+inline void PirRunProgramGradAPI(
     const std::vector<paddle::Tensor> &x,
     const std::vector<paddle::Tensor> &params,
     const std::vector<paddle::Tensor> &out_grad,
@@ -1213,7 +1217,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
             x.size(),
             x_grad_names.size()));
 
-    // TODO(dev): Need an elegant way to determine inforamtion of grad_tensor,
+    // TODO(dev): Need an elegant way to determine information of grad_tensor,
     // such as: name, tensor type(DenseTensor or SelectedRows).
     for (size_t i = 0; i < x.size(); i++) {
       if (x[i].is_dense_tensor()) {
@@ -1271,15 +1275,15 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   bool executed_{false};
 };
 
-class NewIRGradNodeRunProgram : public egr::GradNodeBase {
+class PirGradNodeRunProgram : public egr::GradNodeBase {
  public:
-  NewIRGradNodeRunProgram(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+  PirGradNodeRunProgram(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
       : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
 
-  ~NewIRGradNodeRunProgram() override {
+  ~PirGradNodeRunProgram() override {
     if (!executed_) {
       auto *out_scope_vec = &step_scope_;
-      VLOG(4) << "~NewIRGradNodeRunProgram";
+      VLOG(4) << "~PirGradNodeRunProgram";
       // Normally out_scope_vec.size() == 1. for safty, we add for-loop here.
       for (size_t i = 0; i < out_scope_vec->size(); ++i) {
         paddle::framework::Scope *global_inner_scope = out_scope_vec->at(i);
@@ -1298,9 +1302,9 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
                                   egr::kSlotSmallVectorSize> &grads,  // NOLINT
              bool create_graph UNUSED,
              bool is_new_grad UNUSED) override {
-    VLOG(3) << "Running Eager Backward Node: NewIRGradNodeRunProgram";
+    VLOG(3) << "Running Eager Backward Node: PirGradNodeRunProgram";
     paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
-        hooked_grads = NewIRGradNodeRunProgram::ApplyGradientHooks(grads);
+        hooked_grads = PirGradNodeRunProgram::ApplyGradientHooks(grads);
     PADDLE_ENFORCE_EQ(hooked_grads.size(),
                       1,
                       paddle::platform::errors::InvalidArgument(
@@ -1340,16 +1344,16 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
                           "The hooked_grads[0].size() and "
                           "out_grad_values.size() should be equal."));
 
-    NewIRRunProgramGradAPI(x_,
-                           params_,
-                           hooked_grads[0],
-                           middles_,
-                           outputs_,
-                           step_scope_,
-                           attrs_,
-                           x_grad_ptr,
-                           params_grad_ptr);
-    VLOG(3) << "End Eager Backward Node: NewIRGradNodeRunProgram";
+    PirRunProgramGradAPI(x_,
+                         params_,
+                         hooked_grads[0],
+                         middles_,
+                         outputs_,
+                         step_scope_,
+                         attrs_,
+                         x_grad_ptr,
+                         params_grad_ptr);
+    VLOG(3) << "End Eager Backward Node: PirGradNodeRunProgram";
 
     executed_ = true;
     return {x_grad, params_grad};
@@ -1434,8 +1438,8 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
   }
 
   std::shared_ptr<GradNodeBase> Copy() const override {
-    auto copied_node = std::shared_ptr<NewIRGradNodeRunProgram>(
-        new NewIRGradNodeRunProgram(*this));
+    auto copied_node = std::shared_ptr<PirGradNodeRunProgram>(
+        new PirGradNodeRunProgram(*this));
     return copied_node;
   }
 

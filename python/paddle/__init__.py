@@ -33,11 +33,12 @@ from .batch import batch
 # the illogical implement in the monkey-patch methods later.
 from .framework import monkey_patch_variable
 from .framework import monkey_patch_math_tensor
-from .pir import monkey_patch_opresult
+from .pir import monkey_patch_opresult, monkey_patch_program
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
 monkey_patch_opresult()
+monkey_patch_program()
 
 from .framework import (
     disable_signal_handler,
@@ -198,6 +199,9 @@ from .tensor.logic import (  # noqa: F401
 
 
 from .tensor.manipulation import (  # noqa: F401
+    atleast_1d,
+    atleast_2d,
+    atleast_3d,
     cast,
     cast_,
     concat,
@@ -254,6 +258,8 @@ from .tensor.manipulation import (  # noqa: F401
     unfold,
     masked_fill,
     masked_fill_,
+    index_fill,
+    index_fill_,
 )
 
 from .tensor.math import (  # noqa: F401
@@ -312,6 +318,8 @@ from .tensor.math import (  # noqa: F401
     square_,
     stanh,
     sum,
+    multigammaln,
+    multigammaln_,
     nan_to_num,
     nan_to_num_,
     nansum,
@@ -830,6 +838,9 @@ __all__ = [
     'logspace',
     'reshape',
     'reshape_',
+    'atleast_1d',
+    'atleast_2d',
+    'atleast_3d',
     'reverse',
     'nonzero',
     'CUDAPinnedPlace',
@@ -878,6 +889,8 @@ __all__ = [
     'renorm_',
     'take_along_axis',
     'put_along_axis',
+    'multigammaln',
+    'multigammaln_',
     'nan_to_num',
     'nan_to_num_',
     'heaviside',
@@ -913,4 +926,6 @@ __all__ = [
     'masked_fill_',
     'hypot',
     'hypot_',
+    'index_fill',
+    "index_fill_",
 ]
