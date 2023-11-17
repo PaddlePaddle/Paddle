@@ -360,23 +360,13 @@ void IRPassManager::CreatePasses(Argument *argument,
         pass->Set("quant_post_dynamic_weight_precision ", new int(0));
       }
     } else if (pass_name == "fc_xpu_fuse_pass") {
-      int gemm_compute_precision = argument->xpu_gemm_compute_precision();
-      pass->Set("gemm_compute_precision", new int(gemm_compute_precision));
-      VLOG(5) << "Fc GEMM Compute Type:" << gemm_compute_precision;
-
-      bool fc_per_channel = argument->xpu_fc_per_channel();
-      pass->Set("fc_per_channel", new bool(fc_per_channel));
-      VLOG(5) << "fc per channel:" << fc_per_channel;
-
-      int fc_compute_precision = argument->xpu_fc_compute_precision();
-      pass->Set("fc_compute_precision", new int(fc_compute_precision));
-      VLOG(5) << "fc compute precision:" << fc_compute_precision;
-    } else if (pass_name == "conv2d_xpu_fuse_pass") {
-      int conv_compute_precision = argument->xpu_conv_compute_precision();
-      pass->Set("conv_compute_precision", new int(conv_compute_precision));
-      VLOG(5) << "conv compute precision:" << conv_compute_precision;
+      int quant_post_dynamic_weight_precision =
+          argument->xpu_quant_post_dynamic_weight_precision();
+      pass->Set("quant_post_dynamic_weight_precision",
+                new int(quant_post_dynamic_weight_precision));
+      VLOG(5) << "quant post dynamic weight precision type:"
+              << quant_post_dynamic_weight_precision;
     }
-
     pre_pass = pass_name;
 
     passes_.emplace_back(std::move(pass));

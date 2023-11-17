@@ -525,7 +525,9 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   (*fusion_nodes_map)["bias"] = fusion_bias_node;
 
   int fc_compute_precision =
-      Has("fc_compute_precision") ? Get<int>("fc_compute_precision") : -1;
+      Has("quant_post_dynamic_weight_precision")
+          ? Get<int>("quant_post_dynamic_weight_precision")
+          : -1;
 
   VLOG(5) << "fc compute precision type:" << fc_compute_precision;
 
@@ -533,14 +535,29 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   Node* filter_max = nullptr;
   Node* scale_max = nullptr;
 
-  bool per_channel_quant =
-      Has("fc_per_channel") ? Get<bool>("fc_per_channel") : false;
+  struct XpuQuantPostDynamicWeightConfig {
+    bool per_channel;
+    int precision;
+  };
 
-  VLOG(5) << "per_channel_quant:" << per_channel_quant;
+  std::vector<XpuQuantPostDynamicWeightConfig> configs;
+  configs.clear();
+  configs.resize(3);
+
+  configs[0].per_channel = true;
+  configs[0].precision = 1;
+  configs[1].per_channel = false;
+  configs[1].precision = 1;
+  configs[2].per_channel = false;
+  configs[2].precision = 2;
+
+  configs.push_back(configs[0]);
+  configs.push_back(configs[1]);
+  configs.push_back(configs[2]);
 
   if (op_weights_precision != "int8") {
-    if (fc_compute_precision != 2) {
-      VLOG(5) << "fc compute type is int16";
+    if (fc_compute_precision == 0) {
+      VLOG(5) << "fc compute type is int16 with per_channel";
       PrepareWeight<float, int16_t>(graph,
                                     scope,
                                     block,
@@ -550,10 +567,23 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                     &scale_max,
                                     !transpose_w,
                                     weight_scale,
-                                    per_channel_quant);
+                                    configs[0].per_channel);
     }
-    if (fc_compute_precision == 2 && !per_channel_quant) {
-      VLOG(5) << "fc compute type is int31";
+    if (fc_compute_precision == 1) {
+      VLOG(5) << "fc compute type is int16 wit per tensor";
+      PrepareWeight<float, int16_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    configs[1].per_channel);
+    }
+    if (fc_compute_precision == 2) {
+      VLOG(5) << "fc compute type is int31 with per tesnor";
       PrepareWeight<float, float>(graph,
                                   scope,
                                   block,
@@ -563,20 +593,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                   &scale_max,
                                   !transpose_w,
                                   weight_scale,
-                                  per_channel_quant);
-    }
-    if (fc_compute_precision == 2 && per_channel_quant) {
-      VLOG(5) << "fc compute type is int16";
-      PrepareWeight<float, int16_t>(graph,
-                                    scope,
-                                    block,
-                                    mul_w_replicated_node,
-                                    &filter_intx,
-                                    &filter_max,
-                                    &scale_max,
-                                    !transpose_w,
-                                    weight_scale,
-                                    per_channel_quant);
+                                  configs[2].per_channel);
     }
   } else {
     VLOG(5) << "fc compute type is int8";
@@ -589,7 +606,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                   &scale_max,
                                   !transpose_w,
                                   weight_scale,
-                                  per_channel_quant);
+                                  false);
   }
   (*fusion_nodes_map)["w"] = filter_intx;
   (*fusion_nodes_map)["w_max"] = filter_max;

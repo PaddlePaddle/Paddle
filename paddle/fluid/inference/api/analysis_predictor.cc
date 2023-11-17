@@ -1623,10 +1623,6 @@ void AnalysisPredictor::PrepareArgument() {
       config_.xpu_config_.fc_autotune_file_writeback);
   argument_->SetXpuGemmComputePrecision(
       config_.xpu_config_.gemm_compute_precision);
-  argument_->SetXpuFcPerChannel(config_.xpu_config_.fc_per_channel);
-  argument_->SetXpuFcComputePrecision(config_.xpu_config_.fc_compute_precision);
-  argument_->SetXpuConvComputePrecision(
-      config_.xpu_config_.conv_compute_precision);
   argument_->SetXpuTransformerSoftmaxOptimizeLevel(
       config_.xpu_config_.transformer_softmax_optimize_level);
   argument_->SetXpuTransformerEncoderAdaptiveSeqlen(

@@ -118,16 +118,6 @@ struct PD_INFER_DECL XpuConfig {
   // Whether write new fc autotune info to fc_autotune_file.
   bool fc_autotune_file_writeback{false};
 
-  // Fc quant support per channel ways.
-  bool fc_per_channel{false};
-  // Fc compute precision. Optional values are 0(int8),1(int16),2(int31).
-  int fc_compute_precision{1};
-
-  // Conv quant support per channel ways.
-  bool conv_per_channel{false};
-  // Conv compute precision. Optional values are 0(int8),1(int16),2(int31).
-  int conv_compute_precision{1};
-
   // Gemm compute precision. Optional values are 0(int8),1(int16),2(int31).
   // Note: "gemm_compute_precision" has no effect on quanted ops of quant model
   // Note: Paddle-Lite only.

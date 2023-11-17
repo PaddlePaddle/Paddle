@@ -720,11 +720,6 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
   Node* scale_max = nullptr;
   bool per_channel_quant = false;
 
-  int conv_compute_precision =
-      Has("conv_compute_precision") ? Get<int>("conv_compute_precision") : -1;
-
-  VLOG(5) << "conv compute precision type:" << conv_compute_precision;
-
   if (op_weights_precision != "int8") {
     PrepareWeight<float, int16_t>(graph,
                                   scope,

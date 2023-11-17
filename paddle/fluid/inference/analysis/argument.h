@@ -333,9 +333,6 @@ struct Argument {
                       XpuFcAutotuneFileWriteback,
                       bool);
   DECL_ARGUMENT_FIELD(xpu_gemm_compute_precision, XpuGemmComputePrecision, int);
-  DECL_ARGUMENT_FIELD(xpu_fc_per_channel, XpuFcPerChannel, bool);
-  DECL_ARGUMENT_FIELD(xpu_fc_compute_precision, XpuFcComputePrecision, int);
-  DECL_ARGUMENT_FIELD(xpu_conv_compute_precision, XpuConvComputePrecision, int);
   DECL_ARGUMENT_FIELD(xpu_transformer_softmax_optimize_level,
                       XpuTransformerSoftmaxOptimizeLevel,
                       int);
