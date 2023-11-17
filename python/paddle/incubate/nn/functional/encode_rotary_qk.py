@@ -50,7 +50,7 @@ def encode_rotary_qk(
      """
     if in_dynamic_or_pir_mode():
 
-        return _C_ops.encode_rotary_qk(
+        return _C_ops.EncodeRotaryQkKernel(
              q,
              kv,
              rotary_emb,

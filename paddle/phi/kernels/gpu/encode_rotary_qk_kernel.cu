@@ -20,7 +20,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/common/datatype_traits.h"
 
-namespace phi{
+namespace {
 
 
 
@@ -99,10 +99,10 @@ __global__ void RotaryKernel(const T *input,
         output[right_idx] = res2;
       }
 }
-
-
+}
+namespace phi {
 template <typename T, typename Context>
-void RotaryQK(const Context& dev_ctx,
+void EncodeRotaryQkKernel(const Context& dev_ctx,
               const DenseTensor& q, 
               const DenseTensor& kv, 
               const DenseTensor& rotary_emb, 
@@ -111,34 +111,11 @@ void RotaryQK(const Context& dev_ctx,
               bool use_neox,
               DenseTensor* rotary_q_out,
               DenseTensor* rotary_kv_out) {
-    // switch (q.dtype()) {
-    //     case phi::dtype::float32: {
-    //         return LaunchRotaryQK<phi::dtype::float32>(
-    //             q, kv, rotary_emb, seq_lens, rotary_emb_dims, use_neox
-    //         );
-    //     }
-    //     case phi::dtype::float16: {
-    //         return LaunchRotaryQK<phi::dtype::float16>(
-    //             q, kv, rotary_emb, seq_lens, rotary_emb_dims, use_neox
-    //         );
-    //     }
-    //     case phi::dtype::bfloat16: {
-    //         return LaunchRotaryQK<phi::dtype::bfloat16>(
-    //             q, kv, rotary_emb, seq_lens, rotary_emb_dims, use_neox
-    //         );
-    //     }
-    //     default: {
-    //         PD_THROW(
-    //             "NOT supported data type. "
-    //             "Only bfloat16, float16 and float32 are supported. ");
-    //         break;
-    //     }
-    // }
+    
     dev_ctx.template Alloc<T>(rotary_q_out);
     dev_ctx.template Alloc<T>(rotary_kv_out);
     
     using DataType_ = typename PDDataTypeTraits<T>::DataType;
-    // seq_lens's shape is [batch ,1]
 
     const int32_t batch_size = q.dims()[0];
     const int32_t head_num = q.dims()[1];
@@ -228,9 +205,7 @@ void RotaryQK(const Context& dev_ctx,
 PD_REGISTER_KERNEL(encode_rotary_qk,
                    GPU,
                    ALL_LAYOUT,
-                   phi::RotaryQK,
+                   phi::EncodeRotaryQkKernel,
                    float,
-                   int32_t,
-                   bool,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
