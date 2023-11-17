@@ -1,4 +1,4 @@
-cc_test_old(
+paddle_test(
   type_test
   SRCS
   type_test.cc
@@ -6,28 +6,24 @@ cc_test_old(
   pir
   gtest
   op_dialect_vjp)
-cc_test_old(ir_attribute_test SRCS ir_attribute_test.cc DEPS pir gtest)
-cc_test_old(ir_value_test SRCS ir_value_test.cc DEPS pir gtest)
+paddle_test(ir_attribute_test SRCS ir_attribute_test.cc )
+paddle_test(ir_value_test SRCS ir_value_test.cc )
 paddle_test(
   ir_op_test
   SRCS
   ir_op_test.cc
   DEPS
-  pir
-  gtest
   test_dialect
   op_dialect_vjp)
-cc_test_old(ir_region_test SRCS ir_region_test.cc DEPS pir gtest)
-cc_test_old(ir_builder_test SRCS ir_builder_test.cc DEPS pir gtest)
-cc_test_old(
+paddle_test(ir_region_test SRCS ir_region_test.cc )
+paddle_test(ir_builder_test SRCS ir_builder_test.cc )
+paddle_test(
   ir_program_test
   SRCS
   ir_program_test.cc
   DEPS
   op_dialect_vjp
-  pir
-  phi
-  gtest)
+)
 
 cc_test_old(
   ir_infershape_test
