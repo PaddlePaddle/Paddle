@@ -395,6 +395,7 @@ class OpTest(unittest.TestCase):
         random.seed(124)
 
         cls._use_system_allocator = _set_use_system_allocator(True)
+        raise Exception("pasue")
 
     @classmethod
     def tearDownClass(cls):
