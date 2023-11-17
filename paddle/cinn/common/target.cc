@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #ifdef CINN_WITH_CUDA
+#include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <driver_types.h>
 #endif
@@ -20,6 +21,7 @@
 
 #include <sstream>
 
+#include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 
@@ -206,6 +208,18 @@ int GetMaxThreads() {
   return max_threads;
 }
 
+std::array<int, 3> GetCUDAMaxBlockDims() {
+  std::array<int, 3> ret;
+#ifdef CINN_WITH_CUDA
+  cudaDeviceProp prop;
+  CUDA_CALL(cudaGetDeviceProperties(&prop, 0));
+  ret[0] = prop.maxThreadsDim[0];
+  ret[1] = prop.maxThreadsDim[1];
+  ret[2] = prop.maxThreadsDim[2];
+#endif
+  return ret;
+}
+
 int GetMaxBlocks() {
   // cudaDeviceGetAttribute ( int* value, cudaDeviceAttr attr, int  device )
   int max_blocks = 1;
@@ -220,6 +234,18 @@ int GetMaxBlocks() {
   max_blocks *= num_sm;
 #endif
   return max_blocks;
+}
+
+std::array<int, 3> GetCUDAMaxGridDims() {
+  std::array<int, 3> ret;
+#ifdef CINN_WITH_CUDA
+  cudaDeviceProp prop;
+  CUDA_CALL(cudaGetDeviceProperties(&prop, 0));
+  ret[0] = prop.maxGridSize[0];
+  ret[1] = prop.maxGridSize[1];
+  ret[2] = prop.maxGridSize[2];
+#endif
+  return ret;
 }
 
 const Target &DefaultTarget() {
