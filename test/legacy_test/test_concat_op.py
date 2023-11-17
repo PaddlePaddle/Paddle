@@ -876,10 +876,7 @@ class TestConcatOpAutoParallel(OpTest):
         self.dtype = self.get_dtype()
         self.init_test_data()
         self.if_enable_cinn()
-        self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
-        self.input_specs = {
-            'X': [('x0', ["x", None]), ('x1', ["x", None]), ('x2', ["x", None])]
-        }
+        self.init_inputs()
         self.attrs = {'axis': self.axis}
         if self.axis < 0:
             self.actual_axis = self.axis + len(self.x0.shape)
@@ -896,36 +893,41 @@ class TestConcatOpAutoParallel(OpTest):
     def get_dtype(self):
         return "float64"
 
-    def test_check_output(self):
-        if self.dtype == np.uint16:
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_pir=True)
-        else:
-            self.check_output(check_pir=True, check_auto_parallel=True)
+    def init_inputs(self):
+        self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
+        self.input_specs = {
+            'X': [
+                ('x0', [None, None, 'x']),
+                ('x1', [None, None, 'x']),
+                ('x2', [None, None, 'x']),
+            ]
+        }
 
     def test_check_grad(self):
         self.check_grad(
-            ['x1'],
+            ['x0'],
             'Out',
-            check_prim=True,
-            check_pir=True,
-            check_prim_pir=True,
+            check_auto_parallel=True,
+        )
+        self.check_grad(
+            ['x0', 'x1', 'x2'],
+            'Out',
             check_auto_parallel=True,
         )
 
     def init_test_data(self):
         if self.dtype == np.uint16:
-            x0 = np.random.random((5, 1, 4, 5)).astype(np.float32)
+            x0 = np.random.random((16, 4, 4)).astype(np.float32)
             self.x0 = convert_float_to_uint16(x0)
-            x1 = np.random.random((5, 2, 4, 5)).astype(np.float32)
+            x1 = np.random.random((64, 4, 4)).astype(np.float32)
             self.x1 = convert_float_to_uint16(x1)
-            x2 = np.random.random((5, 3, 4, 5)).astype(np.float32)
+            x2 = np.random.random((16, 4, 4)).astype(np.float32)
             self.x2 = convert_float_to_uint16(x2)
         else:
-            self.x0 = np.random.random((10, 1, 4, 5)).astype(self.dtype)
-            self.x1 = np.random.random((10, 2, 4, 5)).astype(self.dtype)
-            self.x2 = np.random.random((10, 3, 4, 5)).astype(self.dtype)
-        self.axis = 1
+            self.x0 = np.random.random((16, 4, 4)).astype(self.dtype)
+            self.x1 = np.random.random((64, 4, 4)).astype(self.dtype)
+            self.x2 = np.random.random((16, 4, 4)).astype(self.dtype)
+        self.axis = 0
 
     def if_enable_cinn(self):
         pass

@@ -191,41 +191,34 @@ class AutoParallelForwardChecker:
         input_dict = {}
         eager_inputs = defaultdict(list)
         for name, item in self.inputs.items():
+            # such as inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
+            # inputs_specs = {"X": [("x0", ["x", None]), ("x1", ["x", None]), ("x2", ["x", None])]}
             if isinstance(item, list):
-                if not dist_mode or name not in self.input_specs:
-                    for tup in item:
-                        dtype = (
-                            "bfloat16"
-                            if OpTestUtils.is_bfloat16_type(tup[1].dtype)
-                            else tup[1].dtype
-                        )
-                        x = paddle.to_tensor(
-                            data=tup[1],
-                            stop_gradient=stop_gradient,
-                            dtype=dtype,
-                        )
+                for i in range(len(item)):
+                    dtype = (
+                        "bfloat16"
+                        if OpTestUtils.is_bfloat16_type(item[i][1].dtype)
+                        else item[i][1].dtype
+                    )
+                    x = paddle.to_tensor(
+                        data=item[i][1],
+                        stop_gradient=stop_gradient,
+                        dtype=dtype,
+                    )
+                    if not dist_mode or name not in self.input_specs:
                         eager_inputs[name].append(x)
-                        input_dict.update({str(tup[0]): x})
-                else:
-                    for i in range(len(item)):
-                        dtype = (
-                            "bfloat16"
-                            if OpTestUtils.is_bfloat16_type(item[i][1].dtype)
-                            else item[i][1].dtype
-                        )
+                        input_dict.update({str(item[i][0]): x})
+                    else:
                         x_dist_attr = dist.DistAttr(
                             mesh=self._mesh,
-                            sharding_specs=self.input_specs[name][i],
+                            sharding_specs=self.input_specs[name][i][1],
                         )
-                        x = paddle.to_tensor(
-                            data=item[i][1],
-                            stop_gradient=stop_gradient,
-                            dtype=dtype,
-                        )
-                        dist_x = dist.shard_tensor(x, x_dist_attr)
+                        dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
                         dist_x.stop_gradient = stop_gradient
                         eager_inputs[name].append(dist_x)
                         input_dict.update({str(item[i][0]): dist_x})
+            # inputs like this : inputs = {'X': x}
+            # inputs_specs = {"X": ["x", None]}
             else:
                 dtype = (
                     "bfloat16"
@@ -316,26 +309,61 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
         self.grad_outputs = grad_outputs
 
     def check(self):
-        self.eager_grad_desire = self.get_eager_desire()
+        (
+            self.eager_forward_desire,
+            self.eager_grad_desire,
+        ) = self.get_eager_desire()
         self.check_eager_auto_parallel()
 
     def check_eager_auto_parallel(self):
         with dygraph_guard():
-            actual_grad_ret = self.get_eager_desire(dist_mode=True)
+            actual_forward_res, actual_grad_res = self.get_eager_desire(
+                dist_mode=True
+            )
             # check eager auto parallel forward
-            if len(actual_grad_ret) != len(self.eager_grad_desire):
+            if len(actual_forward_res) != len(self.eager_forward_desire):
+                msg = (
+                    "The eager auto parallel out tensor nums is different with eager out tensor nums on {}."
+                    'eager auto parallel out tensor nums = {}, eager out tensor nums = {}. \n'.format(
+                        str(self.place),
+                        len(actual_forward_res),
+                        len(self.eager_forward_desire),
+                    )
+                )
+                raise RuntimeError(msg)
+            for i in range(len(actual_forward_res)):
+                np.testing.assert_allclose(
+                    actual_forward_res[i],
+                    self.eager_forward_desire[i],
+                    rtol=self.atol,
+                    atol=self.rtol,
+                    err_msg=(
+                        'Check eager auto parallel failed. Mismatch between eager auto parallel outputs '
+                        'and eager outputs on %s, the eager forward output tensor\'s index is : %d \n'
+                        'eager auto parallel output tensor:\n%s\n eager output tensor:\n%s\n'
+                        % (
+                            str(self.place),
+                            i,
+                            actual_forward_res[i],
+                            self.eager_forward_desire[i],
+                        )
+                    ),
+                )
+
+            # check eager auto parallel grad
+            if len(actual_grad_res) != len(self.eager_grad_desire):
                 msg = (
                     "The eager auto parallel grad out tensor nums is different with eager grad out tensor nums on {}."
                     'eager auto parallel grad out tensor nums = {}, eager grad out tensor nums = {}. \n'.format(
                         str(self.place),
-                        len(actual_grad_ret),
+                        len(actual_grad_res),
                         len(self.eager_grad_desire),
                     )
                 )
                 raise RuntimeError(msg)
-            for i in range(len(actual_grad_ret)):
+            for i in range(len(actual_grad_res)):
                 np.testing.assert_allclose(
-                    actual_grad_ret[i],
+                    actual_grad_res[i],
                     self.eager_grad_desire[i],
                     rtol=self.atol,
                     atol=self.rtol,
@@ -346,7 +374,7 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
                         % (
                             str(self.place),
                             i,
-                            actual_grad_ret[i],
+                            actual_grad_res[i],
                             self.eager_grad_desire[i],
                         )
                     ),
@@ -424,8 +452,10 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
                 args, len(inputs_sig)
             )
 
-            ret = _as_list(self.public_python_api(*args))
-            outputs_dict = self.get_output_dict(self.outputs, ret, outputs_sig)
+            forward_res = _as_list(self.public_python_api(*args))
+            outputs_dict = self.get_output_dict(
+                self.outputs, forward_res, outputs_sig
+            )
             ys = []
             if isinstance(self.output_names, list):
                 for output_name in self.output_names:
@@ -442,12 +472,19 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
             no_grad_vars = self.gen_no_grad_set(
                 var_dict={**inputs_dict, **outputs_dict}
             )
-            ret = paddle.grad(
+            grad_res = paddle.grad(
                 ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
             )
-            ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
+            forward_res = paddle.utils.map_structure(
+                lambda x: x.numpy(), forward_res
+            )
+            grad_res = paddle.utils.map_structure(lambda x: x.numpy(), grad_res)
             if OpTestUtils.is_bfloat16_type(self.dtype):
-                ret = paddle.utils.map_structure(
-                    lambda x: convert_uint16_to_float(x), ret
+                forward_res = paddle.utils.map_structure(
+                    lambda x: convert_uint16_to_float(x), forward_res
                 )
-        return ret
+                grad_res = paddle.utils.map_structure(
+                    lambda x: convert_uint16_to_float(x), grad_res
+                )
+
+        return forward_res, grad_res
