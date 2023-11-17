@@ -18,7 +18,7 @@ import paddle
 import paddle.distributed as dist
 
 
-class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
+class TestTriuSemiAutoParallel(SemiAutoParallelTestBase):
     def __init__(self):
         super().__init__()
 
@@ -64,4 +64,4 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
 
 
 if __name__ == '__main__':
-    TestSplitAndConcatSemiAutoParallel().run_test_case()
+    TestTriuSemiAutoParallel().run_test_case()
