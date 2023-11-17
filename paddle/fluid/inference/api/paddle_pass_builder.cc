@@ -226,6 +226,39 @@ const std::vector<std::string> kCINNCompilerPasses{
     "build_cinn_pass",
 };
 
+const std::vector<std::string> CpuBasicPasses{
+    "simplify_with_basic_ops_pass",  //
+    "layer_norm_fuse_pass",
+    "attention_lstm_fuse_pass",       //
+    "seqconv_eltadd_relu_fuse_pass",  //
+    // "seqpool_concat_fuse_pass",    //
+    "seqpool_cvm_concat_fuse_pass",  //
+    // "embedding_fc_lstm_fuse_pass", //
+    // TODO(wilber): fix correctness problem.
+    // "fc_lstm_fuse_pass",                    //
+    "mul_lstm_fuse_pass",                      //
+    "fc_gru_fuse_pass",                        //
+    "mul_gru_fuse_pass",                       //
+    "seq_concat_fc_fuse_pass",                 //
+    "gpu_cpu_squeeze2_matmul_fuse_pass",       //
+    "gpu_cpu_reshape2_matmul_fuse_pass",       //
+    "gpu_cpu_flatten2_matmul_fuse_pass",       //
+    "matmul_v2_scale_fuse_pass",               //
+    "gpu_cpu_map_matmul_v2_to_mul_pass",       //
+    "gpu_cpu_map_matmul_v2_to_matmul_pass",    //
+    "matmul_scale_fuse_pass",                  //
+    "gpu_cpu_map_matmul_to_mul_pass",          //
+    "fc_fuse_pass",                            //
+    "repeated_fc_relu_fuse_pass",              //
+    "squared_mat_sub_fuse_pass",               //
+    "conv_bn_fuse_pass",                       //
+    "conv_eltwiseadd_bn_fuse_pass",            //
+    "conv_transpose_bn_fuse_pass",             //
+    "conv_transpose_eltwiseadd_bn_fuse_pass",  //
+    "is_test_pass",                            //
+    "constant_folding_pass",
+};
+
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
     "map_op_to_another_pass",                                           //
@@ -309,36 +342,7 @@ void GpuPassStrategy::DisableMkldnnFcPasses() {
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
-  passes_.assign({"simplify_with_basic_ops_pass",  //
-                  "layer_norm_fuse_pass",
-                  "attention_lstm_fuse_pass",       //
-                  "seqconv_eltadd_relu_fuse_pass",  //
-                  // "seqpool_concat_fuse_pass",    //
-                  "seqpool_cvm_concat_fuse_pass",  //
-                  // "embedding_fc_lstm_fuse_pass", //
-                  // TODO(wilber): fix correctness problem.
-                  // "fc_lstm_fuse_pass",                    //
-                  "mul_lstm_fuse_pass",                      //
-                  "fc_gru_fuse_pass",                        //
-                  "mul_gru_fuse_pass",                       //
-                  "seq_concat_fc_fuse_pass",                 //
-                  "gpu_cpu_squeeze2_matmul_fuse_pass",       //
-                  "gpu_cpu_reshape2_matmul_fuse_pass",       //
-                  "gpu_cpu_flatten2_matmul_fuse_pass",       //
-                  "matmul_v2_scale_fuse_pass",               //
-                  "gpu_cpu_map_matmul_v2_to_mul_pass",       //
-                  "gpu_cpu_map_matmul_v2_to_matmul_pass",    //
-                  "matmul_scale_fuse_pass",                  //
-                  "gpu_cpu_map_matmul_to_mul_pass",          //
-                  "fc_fuse_pass",                            //
-                  "repeated_fc_relu_fuse_pass",              //
-                  "squared_mat_sub_fuse_pass",               //
-                  "conv_bn_fuse_pass",                       //
-                  "conv_eltwiseadd_bn_fuse_pass",            //
-                  "conv_transpose_bn_fuse_pass",             //
-                  "conv_transpose_eltwiseadd_bn_fuse_pass",  //
-                  "is_test_pass",                            //
-                  "constant_folding_pass"});
+  passes_.assign(CpuBasicPasses.begin(), CpuBasicPasses.end());
 
   use_gpu_ = false;
 }
@@ -389,6 +393,11 @@ void CpuPassStrategy::EnableMKLDNN() {
 #else
   use_mkldnn_ = false;
 #endif
+}
+
+void CpuPassStrategy::DisableMKLDNN() {
+  ClearPasses();
+  passes_.assign(CpuBasicPasses.begin(), CpuBasicPasses.end());
 }
 
 void CpuPassStrategy::EnableMkldnnQuantizer() {

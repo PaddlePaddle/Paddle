@@ -37,7 +37,7 @@
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/parser/ir_parser.h"
 #include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 using OperatorDialect = paddle::dialect::OperatorDialect;
 using ProgramDesc = paddle::framework::ProgramDesc;
@@ -320,7 +320,10 @@ TEST(OperatorDialectTest, WhileOpProgram) {
             if (body_body_id == 2) {
               EXPECT_TRUE(op2->isa<paddle::dialect::LessThanOp>());
             }
-            if (body_body_id == 3) {
+            if (body_body_id == 3 || body_body_id == 4) {
+              EXPECT_TRUE(op2->isa<paddle::dialect::AssignOp>());
+            }
+            if (body_body_id == 5) {
               EXPECT_TRUE(op2->isa<pir::YieldOp>());
             }
             body_body_id++;
@@ -329,7 +332,10 @@ TEST(OperatorDialectTest, WhileOpProgram) {
         if (body_id == 4) {
           EXPECT_TRUE(op1->isa<paddle::dialect::LessThanOp>());
         }
-        if (body_id == 5) {
+        if (body_id == 5 || body_id == 6) {
+          EXPECT_TRUE(op1->isa<paddle::dialect::AssignOp>());
+        }
+        if (body_id == 7) {
           EXPECT_TRUE(op1->isa<pir::YieldOp>());
         }
         body_id++;

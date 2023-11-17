@@ -27,14 +27,17 @@ class TestElementwiseApiForSemiAutoParallel:
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-
+        self._rtol = 1e-6
+        self._atol = 0.0
         paddle.seed(self._seed)
         np.random.seed(self._seed)
 
     def check_tensor_eq(self, a, b):
         np1 = a.numpy()
         np2 = b.numpy()
-        np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
+        np.testing.assert_allclose(
+            np1, np2, rtol=self._rtol, atol=self._atol, verbose=True
+        )
 
     def test_unary_body(self, x_shape, out_shape, x_specs, unary_func):
         x = paddle.randn(x_shape, self._dtype)
@@ -100,9 +103,9 @@ class TestElementwiseApiForSemiAutoParallel:
 
     def test_add_x_shard_broadcast(self):
         self.test_binary_body(
-            x_shape=[16, 32],
-            y_shape=[2, 16, 32],
-            out_shape=[2, 16, 32],
+            x_shape=[8, 16],
+            y_shape=[2, 8, 16],
+            out_shape=[2, 8, 16],
             x_specs=['x', None],
             y_specs=[None, None, None],
             binary_func=paddle.add,
@@ -163,6 +166,299 @@ class TestElementwiseApiForSemiAutoParallel:
             unary_func=F.relu,
         )
 
+    def test_maximum_x_shard(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None],
+            binary_func=paddle.maximum,
+        )
+
+    def test_maximum_x_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[2, 16, 32],
+            out_shape=[2, 16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None, None],
+            binary_func=paddle.maximum,
+        )
+
+    def test_maximum_x_y_shard(self):
+        if self._backend == "cpu":
+            return
+
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, 'x'],
+            binary_func=paddle.maximum,
+        )
+
+    def test_maximum_x_y_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[4, 16, 32],
+            y_shape=[16, 32],
+            out_shape=[4, 16, 32],
+            x_specs=['x', None, None],
+            y_specs=[None, None],
+            binary_func=paddle.maximum,
+        )
+
+    def test_multiply_x_shard(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None],
+            binary_func=paddle.multiply,
+        )
+
+    def test_multiply_x_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[2, 16, 32],
+            out_shape=[2, 16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None, None],
+            binary_func=paddle.multiply,
+        )
+
+    def test_multiply_x_y_shard(self):
+        if self._backend == "cpu":
+            return
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, 'x'],
+            binary_func=paddle.multiply,
+        )
+
+    def test_multiply_x_y_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[4, 6, 8],
+            y_shape=[6, 8],
+            out_shape=[4, 6, 8],
+            x_specs=['x', None, None],
+            y_specs=[None, None],
+            binary_func=paddle.multiply,
+        )
+
+    def test_divide_x_shard(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None],
+            binary_func=paddle.divide,
+        )
+
+    def test_divide_x_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[2, 16, 32],
+            out_shape=[2, 16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None, None],
+            binary_func=paddle.divide,
+        )
+
+    def test_divide_x_y_shard(self):
+        if self._backend == "cpu":
+            return
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, 'x'],
+            binary_func=paddle.divide,
+        )
+
+    def test_divide_x_y_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[2, 4, 6],
+            y_shape=[4, 6],
+            out_shape=[2, 4, 6],
+            x_specs=['x', None, None],
+            y_specs=[None, None],
+            binary_func=paddle.divide,
+        )
+
+    def test_bitwise_and_x_shard(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None],
+            binary_func=paddle.bitwise_and,
+        )
+
+    def test_bitwise_and_x_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[2, 16, 32],
+            out_shape=[2, 16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None, None],
+            binary_func=paddle.bitwise_and,
+        )
+
+    def test_bitwise_and_x_y_shard(self):
+        if self._backend == "cpu":
+            return
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, 'x'],
+            binary_func=paddle.bitwise_and,
+        )
+
+    def test_bitwise_and_x_y_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[4, 16, 32],
+            y_shape=[16, 32],
+            out_shape=[4, 16, 32],
+            x_specs=['x', None, None],
+            y_specs=[None, None],
+            binary_func=paddle.bitwise_and,
+        )
+
+    def test_elementwise_pow_x_shard(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None],
+            binary_func=paddle.pow,
+        )
+
+    def test_elementwise_pow_x_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[2, 16, 32],
+            out_shape=[2, 16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None, None],
+            binary_func=paddle.pow,
+        )
+
+    def test_elementwise_pow_x_y_shard(self):
+        if self._backend == "cpu":
+            return
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, 'x'],
+            binary_func=paddle.pow,
+        )
+
+    def test_elementwise_pow_x_y_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[4, 6, 8],
+            y_shape=[6, 8],
+            out_shape=[4, 6, 8],
+            x_specs=['x', None, None],
+            y_specs=[None, None],
+            binary_func=paddle.pow,
+        )
+
+    def test_equal_x_shard(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None],
+            binary_func=paddle.equal,
+        )
+
+    def test_equal_x_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[2, 16, 32],
+            out_shape=[2, 16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None, None],
+            binary_func=paddle.equal,
+        )
+
+    def test_equal_x_y_shard(self):
+        if self._backend == "cpu":
+            return
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, 'x'],
+            binary_func=paddle.equal,
+        )
+
+    def test_equal_x_y_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[2, 6, 4],
+            y_shape=[6, 4],
+            out_shape=[2, 6, 4],
+            x_specs=['x', None, None],
+            y_specs=[None, None],
+            binary_func=paddle.equal,
+        )
+
+    def test_exp_x_shard(self):
+        self.test_unary_body(
+            x_shape=[4, 16],
+            out_shape=[4, 16],
+            x_specs=['x', None],
+            unary_func=paddle.exp,
+        )
+
+    def test_rsqrt_x_shard(self):
+        self.test_unary_body(
+            x_shape=[4, 16],
+            out_shape=[4, 16],
+            x_specs=['x', None],
+            unary_func=paddle.rsqrt,
+        )
+
+    def test_silu_x_shard(self):
+        self.test_unary_body(
+            x_shape=[4, 16],
+            out_shape=[4, 16],
+            x_specs=['x', None],
+            unary_func=paddle.nn.functional.silu,
+        )
+
+    def test_sin_x_shard(self):
+        self.test_unary_body(
+            x_shape=[4, 16],
+            out_shape=[4, 16],
+            x_specs=['x', None],
+            unary_func=paddle.sin,
+        )
+
+    def test_cos_x_shard(self):
+        self.test_unary_body(
+            x_shape=[4, 16],
+            out_shape=[4, 16],
+            x_specs=['x', None],
+            unary_func=paddle.cos,
+        )
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -179,6 +475,27 @@ class TestElementwiseApiForSemiAutoParallel:
         self.test_sub_x_y_shard_broadcast()
         self.test_square_x_shard()
         self.test_relu_x_shard()
+        self.test_maximum_x_shard()
+        self.test_maximum_x_shard_broadcast()
+        self.test_maximum_x_y_shard()
+        self.test_maximum_x_y_shard_broadcast()
+        self.test_multiply_x_shard()
+        self.test_multiply_x_shard_broadcast()
+        self.test_multiply_x_y_shard()
+        self.test_multiply_x_y_shard_broadcast()
+        self.test_divide_x_shard()
+        self.test_divide_x_shard_broadcast()
+        self.test_divide_x_y_shard()
+        self.test_divide_x_y_shard_broadcast()
+        self.test_elementwise_pow_x_shard()
+        self.test_elementwise_pow_x_shard_broadcast()
+        self.test_elementwise_pow_x_y_shard()
+        self.test_elementwise_pow_x_y_shard_broadcast()
+        self.test_exp_x_shard()
+        self.test_rsqrt_x_shard()
+        self.test_silu_x_shard()
+        self.test_sin_x_shard()
+        self.test_cos_x_shard()
 
 
 if __name__ == '__main__':

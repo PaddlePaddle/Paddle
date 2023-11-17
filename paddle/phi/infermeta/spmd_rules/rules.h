@@ -16,18 +16,24 @@ limitations under the License. */
 
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 
+#include "paddle/phi/infermeta/spmd_rules/concat.h"
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/embedding.h"
 #include "paddle/phi/infermeta/spmd_rules/flatten.h"
 #include "paddle/phi/infermeta/spmd_rules/layer_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
+#include "paddle/phi/infermeta/spmd_rules/numel.h"
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
+#include "paddle/phi/infermeta/spmd_rules/slice.h"
 #include "paddle/phi/infermeta/spmd_rules/softmax.h"
 #include "paddle/phi/infermeta/spmd_rules/split.h"
+#include "paddle/phi/infermeta/spmd_rules/stack.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
+#include "paddle/phi/infermeta/spmd_rules/unsqueeze.h"
+#include "paddle/phi/infermeta/spmd_rules/where.h"
 
 /**
  * Design Notes:
@@ -69,7 +75,7 @@ PD_REGISTER_SPMD_RULE(
 
 // default data parallel rule
 PD_REGISTER_SPMD_RULE(
-    unsqueeze,
+    default_data_parallel,
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmdReverse));
 PD_REGISTER_SPMD_RULE(
@@ -82,6 +88,12 @@ PD_REGISTER_SPMD_RULE(
     replicated,
     PD_INFER_SPMD(phi::distributed::ReplicatedInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReplicatedInferSpmdReverse));
+
+// unsqueeze rule
+PD_REGISTER_SPMD_RULE(
+    unsqueeze,
+    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmdReverse));
 
 // elementwise unary rule
 PD_REGISTER_SPMD_RULE(
@@ -517,6 +529,15 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmd),
     PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmdReverse));
 
+// slice rule
+PD_REGISTER_SPMD_RULE(slice,
+                      PD_INFER_SPMD(phi::distributed::SliceInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::SliceInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(concat,
+                      PD_INFER_SPMD(phi::distributed::ConcatInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::ConcatInferSpmdReverse));
+
 // transpose rule
 PD_REGISTER_SPMD_RULE(
     transpose,
@@ -535,6 +556,10 @@ PD_REGISTER_SPMD_RULE(softmax,
 PD_REGISTER_SPMD_RULE(log_softmax,
                       PD_INFER_SPMD(phi::distributed::SoftmaxInferSpmd),
                       PD_INFER_SPMD(phi::distributed::SoftmaxInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(where,
+                      PD_INFER_SPMD(phi::distributed::WhereInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::WhereInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi

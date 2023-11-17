@@ -16,7 +16,9 @@
 
 #include <string>
 #include <unordered_map>
+#include "glog/logging.h"
 
+#include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/op_mapper.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/phi/common/data_type.h"
@@ -28,11 +30,34 @@ namespace hlir {
 namespace framework {
 namespace pir {
 
+// Mapping PaddleDialect Op into CINN AST Compute register Op
 const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.full", "fill_constant"},
     {"pd_op.sum", "reduce_sum"},
     {"pd_op.max", "reduce_max"},
-    {"pd_op.add", "elementwise_add"}};
+    {"pd_op.add", "elementwise_add"},
+    {"pd_op.subtract", "subtract"},
+    {"pd_op.divide", "divide"},
+    {"pd_op.elementwise_pow", "pow"},
+    {"pd_op.multiply", "elementwise_mul"},
+    {"cinn_op.reshape", "reshape"},
+    {"cinn_op.scale", "scale"},
+    {"cinn_op.broadcast", "broadcast_to"}};
+
+// Tagging PaddleDialect Op with REGITER_OP_MAPPER(OP)
+const std::unordered_set<std::string> CompatibleInfo::CINN_WHITE_OPS = {
+    "subtract",
+    "divide",
+    "broadcast_to",
+    "multiply",
+    "scale",
+    "elementwise_pow",
+    "reshape"};
+
+bool CompatibleInfo::IsSupportCinn(const ::pir::Operation& op) {
+  return CINN_WHITE_OPS.find(CompatibleInfo::OpName(op)) !=
+         CINN_WHITE_OPS.end();
+}
 
 std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
   std::string name = op.name();
@@ -49,8 +74,9 @@ std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
 }
 
 std::string CompatibleInfo::ValueName(const ::pir::Value& value) {
-  return CompatibleInfo::kNamePrefix +
-         std::to_string(std::hash<::pir::Value>()(value));
+  size_t hash_key = std::hash<::pir::Value>()(value);
+  return cinn::common::Context::Global().PrettyUniqName(
+      hash_key, CompatibleInfo::kNamePrefix);
 }
 
 std::string CompatibleInfo::OpFuncName(const ::pir::Operation& op) {
@@ -129,6 +155,30 @@ utils::Attribute CompatibleInfo::ConvertAttribute(
   } else if (src_attr.isa<paddle::dialect::DataTypeAttribute>()) {
     auto dtype = src_attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data();
     dst_attr = phi::DataTypeToString(dtype);
+  } else if (src_attr.isa<::pir::ArrayAttribute>()) {
+    auto attr_vec = src_attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
+    if (attr_vec.size() > 0) {
+      if (attr_vec[0].isa<::pir::Int32Attribute>()) {
+        std::vector<int> vec_int32;
+        for (auto vec_element : attr_vec) {
+          vec_int32.push_back(
+              vec_element.dyn_cast<::pir::Int32Attribute>().data());
+        }
+        dst_attr = vec_int32;
+
+      } else if (attr_vec[0].isa<::pir::Int64Attribute>()) {
+        std::vector<int64_t> vec_int64;
+        for (auto vec_element : attr_vec) {
+          vec_int64.push_back(
+              vec_element.dyn_cast<::pir::Int64Attribute>().data());
+        }
+
+        dst_attr = vec_int64;
+      } else {
+        LOG(FATAL)
+            << "only suuport int32 and int64 attribute in ArrayAttribute";
+      }
+    }
   } else {
     LOG(FATAL) << "unknown Attribute: " << src_attr;
   }
@@ -178,6 +228,23 @@ common::Type CompatibleInfo::ConvertIRType(::pir::Type type) {
   CASE_TYPE(BoolType, UI1)
 
   LOG(FATAL) << "unknown ir::Type " << type;
+}
+
+int CompatibleInfo::ShapeProduct(const std::vector<int>& shape) {
+  return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
+}
+
+OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
+  auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
+  const hlir::framework::Operator* cinn_op =
+      Operator::Get(CompatibleInfo::OpName(op));
+  CHECK(op_pattern_dict.Find(cinn_op));
+  return op_pattern_dict[cinn_op];
+}
+
+std::vector<int> CompatibleInfo::ValueShape(const ::pir::Value& value) {
+  auto& dim = value.type().dyn_cast<::pir::DenseTensorType>().dims();
+  return phi::vectorize<int>(dim);
 }
 
 }  // namespace pir

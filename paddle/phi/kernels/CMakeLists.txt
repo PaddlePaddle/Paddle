@@ -108,7 +108,8 @@ endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
   list(REMOVE_ITEM kernel_cu
-       "fusion/gpu/fused_scale_bias_relu_conv_bnstats_kernel.cu")
+       "fusion/gpu/fused_scale_bias_relu_conv_bn_kernel.cu"
+       "fusion/gpu/fused_scale_bias_add_relu_kernel.cu")
 endif()
 
 set(cc_search_pattern
@@ -140,6 +141,14 @@ file(
 
 if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
   list(FILTER kernel_cc EXCLUDE REGEX ".*_grad_kernel\\.cc$")
+endif()
+
+if(NOT
+   (WITH_AVX
+    AND AVX512F_FOUND
+    AND AVX512F_FLAG
+    AND WITH_MKL))
+  list(REMOVE_ITEM kernel_cc "fusion/cpu/self_dp_attention_kernel.cc")
 endif()
 
 file(

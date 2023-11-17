@@ -9,7 +9,7 @@
     param : [x, broadcast_axes]
 
 - op : reduce_max
-  args : (Tensor x, int64_t[] axis,  bool keep_dim)
+  args : (Tensor x, int64_t[] dim,  bool keep_dim)
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
@@ -17,9 +17,36 @@
     func : frobenius_norm
 
 - op : reduce_sum
-  args : (Tensor x, int64_t[] axis,  bool keep_dim)
+  args : (Tensor x, int64_t[] dim,  bool keep_dim)
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
   kernel :
     func : frobenius_norm
+
+- op : reshape
+  args : (Tensor x, int[] shape)
+  output : Tensor(out)
+  infer_meta :
+    func : ReshapeInferMeta
+  kernel :
+    func : reshape
+
+- op : scale
+  args : (Tensor x, float scale=1.0, float bias=0.0, bool bias_after_scale=true)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : scale
+
+- op : uniform_random
+  args : (int64_t[] shape,  float min, float max, int seed, DataType dtype, int diag_num = 0, int diag_step=0, float diag_val=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : CreateVecShapeInferMeta
+    param : [shape, dtype]
+  kernel :
+    func : full_int_array
+    param : [shape, dtype]

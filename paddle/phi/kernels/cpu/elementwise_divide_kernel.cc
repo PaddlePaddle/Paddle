@@ -64,5 +64,6 @@ PD_REGISTER_KERNEL(divide,
                    int16_t,
                    int,
                    int64_t,
+                   bool,
                    complex64,
                    complex128) {}
