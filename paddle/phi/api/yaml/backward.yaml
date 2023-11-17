@@ -2303,7 +2303,7 @@
     func : UnchangedInferMeta
     param : [out_grad]
   kernel :
-    func : standard_gamma
+    func : standard_gamma_grad
 
 - backward_op : stanh_grad
   forward : stanh(Tensor x, float scale_a, float scale_b) -> Tensor(out)

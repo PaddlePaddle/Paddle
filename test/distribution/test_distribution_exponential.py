@@ -243,12 +243,13 @@ class TestExponentialSample(unittest.TestCase):
 
     def test_rsample_backpropagation(self):
         sample_shape = (1000,)
-        self._paddle_expon.rate.stop_gradient = False
-        samples = self._paddle_expon.rsample(sample_shape)
-        grads = paddle.grad([samples], [self._paddle_expon.rate])
-        self.assertEqual(len(grads), 1)
-        self.assertEqual(grads[0].dtype, self._paddle_expon.rate.dtype)
-        self.assertEqual(grads[0].shape, self._paddle_expon.rate.shape)
+        with paddle.base.dygraph.guard(self.place):
+            self._paddle_expon.rate.stop_gradient = False
+            samples = self._paddle_expon.rsample(sample_shape)
+            grads = paddle.grad([samples], [self._paddle_expon.rate])
+            self.assertEqual(len(grads), 1)
+            self.assertEqual(grads[0].dtype, self._paddle_expon.rate.dtype)
+            self.assertEqual(grads[0].shape, self._paddle_expon.rate.shape)
 
 
 @parameterize.place(config.DEVICES)

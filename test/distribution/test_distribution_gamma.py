@@ -297,18 +297,23 @@ class TestGammaSample(unittest.TestCase):
 
     def test_rsample_backpropagation(self):
         sample_shape = (1000,)
-        self._paddle_gamma.concentration.stop_gradient = False
-        self._paddle_gamma.rate.stop_gradient = False
-        samples = self._paddle_gamma.rsample(sample_shape)
-        grads = paddle.grad(
-            [samples],
-            [self._paddle_gamma.concentration, self._paddle_gamma.rate],
-        )
-        self.assertEqual(len(grads), 2)
-        self.assertEqual(grads[0].dtype, self._paddle_gamma.concentration.dtype)
-        self.assertEqual(grads[0].shape, self._paddle_gamma.concentration.shape)
-        self.assertEqual(grads[1].dtype, self._paddle_gamma.rate.dtype)
-        self.assertEqual(grads[1].shape, self._paddle_gamma.rate.shape)
+        with paddle.base.dygraph.guard(self.place):
+            self._paddle_gamma.concentration.stop_gradient = False
+            self._paddle_gamma.rate.stop_gradient = False
+            samples = self._paddle_gamma.rsample(sample_shape)
+            grads = paddle.grad(
+                [samples],
+                [self._paddle_gamma.concentration, self._paddle_gamma.rate],
+            )
+            self.assertEqual(len(grads), 2)
+            self.assertEqual(
+                grads[0].dtype, self._paddle_gamma.concentration.dtype
+            )
+            self.assertEqual(
+                grads[0].shape, self._paddle_gamma.concentration.shape
+            )
+            self.assertEqual(grads[1].dtype, self._paddle_gamma.rate.dtype)
+            self.assertEqual(grads[1].shape, self._paddle_gamma.rate.shape)
 
 
 @parameterize.place(config.DEVICES)
