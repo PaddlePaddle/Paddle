@@ -168,7 +168,7 @@ class TestCinnSubGraphBase(unittest.TestCase):
     def eval(self, use_cinn):
         paddle.seed(2022)
         net = CINNSubGraphNet()
-        # net = apply_to_static(net, use_cinn)
+        net = apply_to_static(net, use_cinn)
         net.eval()
         out = net(self.x)
         return out
@@ -180,11 +180,11 @@ class TestCinnSubGraphBase(unittest.TestCase):
 
 
 class TestCinnSoftmax(TestCinnSubGraphBase):
-    def eval(self, use_cinn):
+    def train(self, use_cinn):
         paddle.seed(2022)
         net = CINNSoftmaxSubGraphNet()
         net = apply_to_static(net, use_cinn)
-        # net.eval()
+
         out = net(self.x, self.axis)
 
         loss = out.mean()
