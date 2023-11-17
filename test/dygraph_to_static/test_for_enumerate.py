@@ -17,7 +17,10 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir_exe_and_pir_api,
+)
 
 import paddle
 from paddle import base
@@ -25,7 +28,6 @@ from paddle.static import InputSpec
 
 
 # 0. for in range var.numpy()[0]
-@paddle.jit.to_static
 def for_in_range(x):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
     x = base.dygraph.to_variable(x)
@@ -35,7 +37,6 @@ def for_in_range(x):
 
 
 # 1. for iter list
-@paddle.jit.to_static
 def for_iter_list(x_array):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
     for x in x_array:
@@ -44,7 +45,6 @@ def for_iter_list(x_array):
 
 
 # 2. for enumerate list
-@paddle.jit.to_static
 def for_enumerate_list(x_array):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
     for i, x in enumerate(x_array):
@@ -53,7 +53,6 @@ def for_enumerate_list(x_array):
 
 
 # 3. for iter var.numpy()
-@paddle.jit.to_static
 def for_iter_var_numpy(x_array):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
     x_array = base.dygraph.to_variable(x_array)
@@ -63,7 +62,6 @@ def for_iter_var_numpy(x_array):
 
 
 # 4. for enumerate var.numpy()
-@paddle.jit.to_static
 def for_enumerate_var_numpy(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
@@ -75,7 +73,6 @@ def for_enumerate_var_numpy(x_array):
 
 
 # 5. for enumerate var.numpy() with start
-@paddle.jit.to_static
 def for_enumerate_var_numpy_with_start(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
@@ -87,7 +84,6 @@ def for_enumerate_var_numpy_with_start(x_array):
 
 
 # 6. for in range with break
-@paddle.jit.to_static
 def for_in_range_with_break(x):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
     x = base.dygraph.to_variable(x)
@@ -99,7 +95,6 @@ def for_in_range_with_break(x):
 
 
 # 7. for enumerate var.numpy() with break
-@paddle.jit.to_static
 def for_enumerate_var_numpy_with_break(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
@@ -113,7 +108,6 @@ def for_enumerate_var_numpy_with_break(x_array):
 
 
 # 8. for enumerate var.numpy() with continue
-@paddle.jit.to_static
 def for_enumerate_var_numpy_with_continue(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
@@ -127,7 +121,6 @@ def for_enumerate_var_numpy_with_continue(x_array):
 
 
 # 9. for enumerate var.numpy() with start & break
-@paddle.jit.to_static
 def for_enumerate_var_numpy_with_start_break(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
@@ -141,7 +134,6 @@ def for_enumerate_var_numpy_with_start_break(x_array):
 
 
 # 10. for enumerate var.numpy() with start & continue
-@paddle.jit.to_static
 def for_enumerate_var_numpy_with_start_continue(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
@@ -155,7 +147,6 @@ def for_enumerate_var_numpy_with_start_continue(x_array):
 
 
 # 11. for iter var
-@paddle.jit.to_static
 def for_iter_var(x_array):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
     x_array = base.dygraph.to_variable(x_array)
@@ -166,7 +157,6 @@ def for_iter_var(x_array):
 
 
 # 12. for enumerate var
-@paddle.jit.to_static
 def for_enumerate_var(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
@@ -178,7 +168,6 @@ def for_enumerate_var(x_array):
 
 
 # 13. for iter list[var]
-@paddle.jit.to_static
 def for_iter_var_list(x):
     # 1. prepare data, ref test_list.py
     x = base.dygraph.to_variable(x)
@@ -194,7 +183,6 @@ def for_iter_var_list(x):
 
 
 # 14. for enumerate list[var]
-@paddle.jit.to_static
 def for_enumerate_var_list(x):
     # 1. prepare data, ref test_list.py
     x = base.dygraph.to_variable(x)
@@ -212,7 +200,6 @@ def for_enumerate_var_list(x):
 
 
 # 15. for enumerate list[var] with a nested for range
-@paddle.jit.to_static
 def for_enumerate_var_with_nested_range(x_array):
     x = paddle.tensor.fill_constant([1], 'int32', 0)
     x_array = base.dygraph.to_variable(x_array)
@@ -223,7 +210,6 @@ def for_enumerate_var_with_nested_range(x_array):
 
 
 # 16. for iter var[idx]
-@paddle.jit.to_static
 def for_iter_var_idx(x_array):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
     x_array = base.dygraph.to_variable(x_array)
@@ -234,7 +220,6 @@ def for_iter_var_idx(x_array):
 
 
 # 17. for a,b,c in z: (a, b, c) is a tuple
-@paddle.jit.to_static
 def for_tuple_as_iter_var(x_array):
     x = paddle.to_tensor(x_array)
     z = paddle.to_tensor(np.array([[1, 2, 3], [1, 2, 3], [1, 2, 3]]))
@@ -252,7 +237,6 @@ def for_tuple_as_iter_var(x_array):
 
 
 # 18. for t in enumerate(collection): t is tuple of (idx, element)
-@paddle.jit.to_static
 def for_tuple_as_enumerate_iter(x_array):
     x = paddle.to_tensor(x_array)
     x_list = [x, x, x]
@@ -266,7 +250,6 @@ def for_tuple_as_enumerate_iter(x_array):
 
 
 # 19. for i, (a, b, c, d, e) in enumerate(collection): (a, b, c, d, e) is a tuple
-@paddle.jit.to_static
 def for_tuple_as_enumerate_value(x_array):
     x = paddle.to_tensor(x_array)
     x_list = [x, x, x]
@@ -305,7 +288,6 @@ class ForwardContainsForLayer(paddle.nn.Layer):
 
 
 # 21. for original list
-@paddle.jit.to_static
 def for_original_list():
     z = paddle.tensor.fill_constant([1], 'int32', 0)
     for x in [1, 2, 3]:
@@ -314,7 +296,6 @@ def for_original_list():
 
 
 # 22. for original tuple
-@paddle.jit.to_static
 def for_original_tuple():
     z = paddle.tensor.fill_constant([1], 'int32', 0)
     for x in (1, 2, 3):
@@ -323,9 +304,6 @@ def for_original_tuple():
 
 
 # 23. for zip error
-@paddle.jit.to_static(
-    input_spec=[InputSpec(shape=[None, 10]), InputSpec(shape=[None, 10])]
-)
 def for_zip_error(x, y):
     for i, j in zip(x, y):
         a = i + j
@@ -333,16 +311,12 @@ def for_zip_error(x, y):
 
 
 # 24. for zip
-@paddle.jit.to_static(
-    input_spec=[InputSpec(shape=[2, 10]), InputSpec(shape=[2, 10])]
-)
 def for_zip(x, y):
     for i, j in zip(x, y):
         a = i + j
     return x + y
 
 
-@paddle.jit.to_static
 def tensor_array_slice_in_enumerate():
     feats = {}
     feats['key'] = []
@@ -357,9 +331,9 @@ def tensor_array_slice_in_enumerate():
 class TestTransformBase(Dy2StTestBase):
     def setUp(self):
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
         self.set_input()
         self.set_test_func()
@@ -374,8 +348,8 @@ class TestTransformBase(Dy2StTestBase):
 
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
-        with base.dygraph.guard():
-            return self.dygraph_func(self.input)
+        self.dygraph_func = paddle.jit.to_static(self.dygraph_func)
+        return self.dygraph_func(self.input)
 
     def get_dygraph_output(self):
         return self._run(to_static=False)
@@ -402,8 +376,8 @@ class TestTransform(TestTransformBase):
 class TestTransformForOriginalList(TestTransform):
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
-        with base.dygraph.guard():
-            return self.dygraph_func()
+        self.dygraph_func = paddle.jit.to_static(self.dygraph_func)
+        return self.dygraph_func()
 
 
 class TestTransformError(TestTransformBase):
@@ -541,20 +515,14 @@ class TestForOriginalList(TestTransformForOriginalList):
         self.transformed_result_compare()
 
 
-class TestForOriginalTuple(TestTransformForOriginalList):
+class TestForOriginalTuple(TestForOriginalList):
     def set_test_func(self):
         self.dygraph_func = for_original_tuple
 
-    def test_transformed_result_compare(self):
-        self.transformed_result_compare()
 
-
-class TestSliceTensorArrayInEnumerate(TestTransformForOriginalList):
+class TestSliceTensorArrayInEnumerate(TestForOriginalList):
     def set_test_func(self):
         self.dygraph_func = tensor_array_slice_in_enumerate
-
-    def test_transformed_result_compare(self):
-        self.transformed_result_compare()
 
 
 class TestForZip(Dy2StTestBase):
@@ -564,14 +532,30 @@ class TestForZip(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_legacy_and_pir_exe_and_pir_api
     def test_for_zip_error(self):
         with self.assertRaises(RuntimeError):
             model_path = os.path.join(self.temp_dir.name, 'for_zip_error')
-            paddle.jit.save(for_zip_error, model_path)
+            paddle.jit.save(
+                paddle.jit.to_static(
+                    function=for_zip_error,
+                    input_spec=[
+                        InputSpec(shape=[None, 10]),
+                        InputSpec(shape=[None, 10]),
+                    ],
+                ),
+                model_path,
+            )
 
     def test_for_zip(self):
         model_path = os.path.join(self.temp_dir.name, 'for_zip')
-        paddle.jit.save(for_zip, model_path)
+        paddle.jit.save(
+            paddle.jit.to_static(
+                function=for_zip,
+                input_spec=[InputSpec(shape=[2, 10]), InputSpec(shape=[2, 10])],
+            ),
+            model_path,
+        )
 
 
 if __name__ == '__main__':
