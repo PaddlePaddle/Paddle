@@ -152,7 +152,7 @@ repos:
                 paddle/fluid/operators/CMakeLists.txt
             )$
 -   repo: https://github.com/PFCCLab/cmake-lint-paddle
-    rev: v1.5.0
+    rev: v1.5.1
     hooks:
     -   id: cmakelint
         args: [--config=./tools/codestyle/.cmakelintrc]
