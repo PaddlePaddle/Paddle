@@ -85,6 +85,7 @@ list(
   rnn_op.cc
   fill_constant_batch_size_like_op.cc
   sum_op.cc
+  bitwise_and_op.cc
   shape_op.cc
   fill_constant_op.cc
   fused_token_prune_op.cc
