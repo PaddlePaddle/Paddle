@@ -135,8 +135,6 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
               reshape<T>(inv_std, stats_shape);
     }
     run_mean_ = run_mean * momentum + batch_mean * (1. - momentum);
-    // run_var = run_var * momentum;
-    // run_mean = run_mean * momentum + batch_mean * (1. - momentum);
     run_var_ = run_var * momentum + batch_var * (1. - momentum);
   } else {
     batch_mean = full<T>(phi::vectorize(run_mean.dims()), 0, run_mean.dtype());
@@ -156,14 +154,12 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
   }
   VLOG(4) << "bn================================= 3";
   Tensor y;
-  auto scale_ptr = scale.get_ptr();
-  auto bias_ptr = bias.get_ptr();
   Tensor new_scale =
-      scale_ptr ? *scale_ptr
-                : full<T>(phi::vectorize(x_cast.dims()), 1, x_cast.dtype());
+      scale ? scale.get()
+            : full<T>(phi::vectorize(x_cast.dims()), 1, x_cast.dtype());
   Tensor new_bias =
-      bias_ptr ? *bias_ptr
-               : full<T>(phi::vectorize(x_cast.dims()), 0, x_cast.dtype());
+      bias ? bias.get()
+           : full<T>(phi::vectorize(x_cast.dims()), 0, x_cast.dtype());
   if (data_layout_ == DataLayout::kNHWC) {
     y = x_hat * new_scale + new_bias;
   } else {
