@@ -192,8 +192,8 @@ def standard_gamma(x, name=None):
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
             type='standard_gamma',
-            inputs={'X': x},
-            outputs={'Out': out},
+            inputs={'x': x},
+            outputs={'out': out},
             attrs={},
         )
         return out

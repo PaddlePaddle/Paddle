@@ -32,8 +32,8 @@ class TestStandardGammaOp1(OpTest):
         self.config()
 
         self.attrs = {}
-        self.inputs = {'X': np.full([2048, 1024], self.alpha, dtype=self.dtype)}
-        self.outputs = {'Out': np.ones([2048, 1024], dtype=self.dtype)}
+        self.inputs = {'x': np.full([2048, 1024], self.alpha, dtype=self.dtype)}
+        self.outputs = {'out': np.ones([2048, 1024], dtype=self.dtype)}
 
     def init_dtype(self):
         self.dtype = "float64"
@@ -43,8 +43,8 @@ class TestStandardGammaOp1(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X'],
-            'Out',
+            ['x'],
+            'out',
             user_defined_grads=[np.zeros([2048, 1024], dtype=self.dtype)],
             user_defined_grad_outputs=[
                 np.random.rand(2048, 1024).astype(self.dtype)
@@ -78,8 +78,8 @@ class TestStandardGammaBF16Op(OpTest):
         x = np.full([2048, 1024], self.alpha, dtype="float32")
         out = np.ones([2048, 1024], dtype="float32")
         self.attrs = {}
-        self.inputs = {'X': convert_float_to_uint16(x)}
-        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.inputs = {'x': convert_float_to_uint16(x)}
+        self.outputs = {'out': convert_float_to_uint16(out)}
 
     def config(self):
         self.alpha = 2.0
@@ -89,8 +89,8 @@ class TestStandardGammaBF16Op(OpTest):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
-            ['X'],
-            'Out',
+            ['x'],
+            'out',
             user_defined_grads=[np.zeros([2048, 1024], dtype="float32")],
             user_defined_grad_outputs=[
                 np.random.rand(2048, 1024).astype("float32")
