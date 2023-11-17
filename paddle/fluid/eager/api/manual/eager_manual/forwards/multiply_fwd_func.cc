@@ -313,22 +313,7 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
 
   // Node Creation
   if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
-        "multiply node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
-        1);
-
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
-
-    // Node Construction
-    auto grad_node =
-        std::shared_ptr<MultiplyGradNode>(new MultiplyGradNode(1, 2));
-
-    // SetAttributes if needed
-    grad_node->SetAttributeaxis(-1);
-    // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrapperx(x);
-    grad_node->SetTensorWrappery(y);
     // SetGradOutMeta & SetEdges
     grad_node->SetGradOutMeta(x, 0);
     grad_node->SetGradOutMeta(y, 1);
