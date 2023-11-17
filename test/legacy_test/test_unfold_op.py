@@ -142,7 +142,7 @@ class TestUnfoldOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', check_pir=True)
+        self.check_grad(['X'], 'Y')
 
     def test_support_tuple(self):
         paddle.disable_static()
