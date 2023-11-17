@@ -243,6 +243,7 @@ List<ShapeDialectTempDim> GenerateReciprocalConstraints(
     (*ret)->emplace_back(
         DimReciprocal<tOut<ShapeDialectTempDim>, tIn<ShapeDialectTensorDim>>{
             temp_dim, tensor_dim});
+    temp_dims->emplace_back(temp_dim);
   }
   return temp_dims;
 }
@@ -252,6 +253,7 @@ List<DimVar> CollectProductDimVarExceptIdx(
     const List<ShapeDialectTensorDim>& tensor_dims,
     const List<ShapeDialectTempDim>& temp_dims,
     std::size_t ignore_idx) {
+  CHECK_EQ(tensor_dims->size(), temp_dims->size());
   List<DimVar> ret{};
   for (const auto& tensor_dim : *tensor_dims) {
     ret->emplace_back(tensor_dim);
@@ -277,6 +279,8 @@ void GenerateProductEqualConstraints(const ::pir::Value& lhs_tensor,
       GenerateReciprocalConstraints(lhs_tensor_dims, ret);
   List<ShapeDialectTempDim> rhs_reciprocal_dims =
       GenerateReciprocalConstraints(rhs_tensor_dims, ret);
+  CHECK_EQ(lhs_reciprocal_dims->size(), lhs_tensor_dims->size());
+  CHECK_EQ(rhs_reciprocal_dims->size(), rhs_tensor_dims->size());
   for (std::size_t i = 0; i < lhs_tensor_dims->size(); ++i) {
     const List<DimVar> in_dim_vars =
         CollectProductDimVarExceptIdx(rhs_tensor_dims, lhs_reciprocal_dims, i);
@@ -309,6 +313,19 @@ std::string ToTxtString(const ShapeDialectTensorDim& tensor_dim) {
   ret += hlir::framework::pir::CompatibleInfo::ValueName(tensor_dim.tensor) +
          "[" + std::to_string(tensor_dim.axis) + "]";
   return ret;
+}
+
+std::string ToTxtStringImpl(const ShapeDialectTensorDim& dim) {
+  return ToTxtString(dim);
+}
+
+std::string ToTxtStringImpl(const ShapeDialectTempDim& dim) {
+  return std::string("temp_") + std::to_string(dim.value().unique_id());
+}
+
+std::string ToTxtString(const DimVar& dim_var) {
+  return std::visit([&](const auto& impl) { return ToTxtStringImpl(impl); },
+                    dim_var.variant());
 }
 
 void GenerateDimEqualConstraints(
@@ -517,7 +534,8 @@ std::unordered_map<DimVar, DimExpr> InferValuesImpl(
     const DimIndexExprInferContext* ctx) {
   std::unordered_map<DimVar, DimExpr> ret{};
   const auto& [out_temp_dim, in_tensor_dim] = dim_reciprocal.tuple();
-  ret.emplace(out_temp_dim.value(), ctx->GetValue(in_tensor_dim.value()));
+  ret.emplace(out_temp_dim.value(),
+              Reciprocal<DimExpr>(ctx->GetValue(in_tensor_dim.value())));
   return ret;
 }
 
@@ -548,7 +566,7 @@ std::unordered_map<DimVar, DimExpr> InferValuesImpl(
 std::unordered_map<DimVar, DimExpr> InferValues(
     const DimFunction* function, const DimIndexExprInferContext* ctx) {
   return std::visit(
-      [&](auto&& function) { return InferValuesImpl(function, ctx); },
+      [&](const auto& impl) { return InferValuesImpl(impl, ctx); },
       function->variant());
 }
 

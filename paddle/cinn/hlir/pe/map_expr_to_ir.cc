@@ -727,30 +727,30 @@ class MapExprToIrTranslator {
     return ir::Var("v_" + std::to_string(iterator.value().unique_id()));
   }
 
-  ir::Expr TranslateDimExprImpl(std::int64_t dim_expr) {
+  ir::Expr TranslateDimExprImpl(std::int64_t dim_expr) const {
     return ir::Expr(IteratorInt(dim_expr));
   }
 
-  ir::Expr TranslateDimExprImpl(const SymbolicDim& dim_expr) {
+  ir::Expr TranslateDimExprImpl(const SymbolicDim& dim_expr) const {
     // ADT_TODO(Hongyu Jia) : Replace to real SymbolicDimOp when pir is ready
     return ir::_Dim_::Make(
         std::string("sym_") + std::to_string(dim_expr.value().unique_id()),
         cinn::ir::SymbolicDimOp());
   }
 
-  ir::Expr TranslateDimExprImpl(const Negative<DimExpr>& dim_expr) {
+  ir::Expr TranslateDimExprImpl(const Negative<DimExpr>& dim_expr) const {
     const auto& [inner_dim_expr] = dim_expr.tuple();
     ir::Expr inner_expr = TranslateDimExpr(inner_dim_expr);
     return ir::Sub::Make(ir::Expr(0), inner_expr);
   }
 
-  ir::Expr TranslateDimExprImpl(const Reciprocal<DimExpr>& dim_expr) {
+  ir::Expr TranslateDimExprImpl(const Reciprocal<DimExpr>& dim_expr) const {
     const auto& [inner_dim_expr] = dim_expr.tuple();
     ir::Expr inner_expr = TranslateDimExpr(inner_dim_expr);
     return ir::Div::Make(ir::Expr(1), inner_expr);
   }
 
-  ir::Expr TranslateDimExprImpl(const Sum<DimExpr>& dim_expr) {
+  ir::Expr TranslateDimExprImpl(const Sum<DimExpr>& dim_expr) const {
     std::vector<ir::Expr> ir_exprs{};
     const auto& [exprs] = dim_expr.tuple();
     for (const auto& expr : *exprs) {
@@ -759,7 +759,7 @@ class MapExprToIrTranslator {
     return Accumulate(ir_exprs);
   }
 
-  ir::Expr TranslateDimExprImpl(const Product<DimExpr>& dim_expr) {
+  ir::Expr TranslateDimExprImpl(const Product<DimExpr>& dim_expr) const {
     std::vector<ir::Expr> ir_exprs{};
     const auto& [exprs] = dim_expr.tuple();
     for (const auto& expr : *exprs) {
@@ -768,7 +768,7 @@ class MapExprToIrTranslator {
     return Multiply(ir_exprs);
   }
 
-  ir::Expr TranslateDimExprImpl(const BroadcastedDim<DimExpr>& dim_expr) {
+  ir::Expr TranslateDimExprImpl(const BroadcastedDim<DimExpr>& dim_expr) const {
     LOG(FATAL) << "Not Supported yet";
   }
 

@@ -49,6 +49,36 @@ struct SimplifyOneOperand {
 };
 
 template <template <typename> class Op>
+struct SimplifyOneOperandTrait;
+
+template <template <typename> class Op>
+struct SimplifyUnitOneOperand {
+  using source_pattern_type = Op<DimExpr>;
+
+  DimExpr Rewrite(const DimExpr& expr) {
+    const auto& [operant] = expr.Get<Op<DimExpr>>().tuple();
+    if (operant.template Has<std::int64_t>() &&
+        operant.template Get<std::int64_t>() ==
+            SimplifyOneOperandTrait<Op>::unit) {
+      return DimExpr{SimplifyOneOperandTrait<Op>::unit};
+    } else {
+      return expr;
+    }
+    LOG(FATAL) << "Dead code";
+  }
+};
+
+template <>
+struct SimplifyOneOperandTrait<Negative> {
+  static constexpr std::int64_t unit = 0;
+};
+
+template <>
+struct SimplifyOneOperandTrait<Reciprocal> {
+  static constexpr std::int64_t unit = 1;
+};
+
+template <template <typename> class Op>
 struct SimplifyOperands {
   using source_pattern_type = Op<DimExpr>;
   DimExpr Rewrite(const DimExpr& expr) {
@@ -208,6 +238,7 @@ struct SortOperands {
   }
 
   bool IsSorted(const List<DimExpr>& operands) {
+    CHECK(!operands->empty());
     for (int i = 0; i < operands->size() - 1; ++i) {
       if (IsLhsBeforeRhs(operands->at(i + 1), operands->at(i))) {
         return false;
@@ -288,7 +319,7 @@ void VisitEachOperand(const DimExpr& expr, const DoEachT& DoEach) {
 }
 
 template <template <typename> class Op>
-bool HasNested(const auto& expr) {
+bool HasNested(const DimExpr& expr) {
   bool has_nested = false;
   VisitEachOperand<Op>(
       expr, [&](const DimExpr& operand, std::size_t depth, bool is_negative) {
@@ -343,12 +374,51 @@ template <template <typename> class Op>
 struct FoldOperandTrait;
 
 template <template <typename> class Op>
+size_t GetConstDimCount(const List<DimExpr>& exprs) {
+  std::size_t cnt = 0;
+  for (const auto& expr : *exprs) {
+    cnt += adt::Match<typename FoldOperandTrait<Op>::const_pattern>(expr);
+  }
+  return cnt;
+}
+
+template <template <typename> class Op>
+struct FoldUnitConstant {
+  using source_pattern_type = Op<DimExpr>;
+
+  DimExpr Rewrite(const DimExpr& expr) {
+    const auto [operands] = expr.Get<Op<DimExpr>>();
+    if (GetConstDimCount<Op>(operands) == 0) {
+      return expr;
+    }
+    List<DimExpr> ret_operands{};
+    for (const auto& operand : *operands) {
+      if (FoldOperandTrait<Op>::IsUnitDimExpr(operand)) {
+        continue;
+      } else {
+        ret_operands->emplace_back(operand);
+      }
+    }
+    if (ret_operands->empty()) {
+      FoldOperandTrait<Op>::MakeAndAppendDimExpr(
+          FoldOperandTrait<Op>::MakeUnit(), &ret_operands);
+    }
+    if (ret_operands->size() == 1) {
+      return ret_operands->at(0);
+    } else {
+      return Op<DimExpr>{ret_operands};
+    }
+    LOG(FATAL) << "Dead code.";
+  }
+};
+
+template <template <typename> class Op>
 struct FoldConstants {
   using source_pattern_type = Op<DimExpr>;
 
   DimExpr Rewrite(const DimExpr& expr) {
     const auto [operands] = expr.Get<Op<DimExpr>>();
-    if (GetConstDimCount(operands) <= 1) {
+    if (GetConstDimCount<Op>(operands) <= 1) {
       return expr;
     }
     List<DimExpr> ret_operands{};
@@ -362,11 +432,11 @@ struct FoldConstants {
       }
     }
     if (!FoldOperandTrait<Op>::IsUnit(const_dim)) {
-      FoldOperandTrait<Op>::MakeDimExpr(const_dim, &ret_operands);
+      FoldOperandTrait<Op>::MakeAndAppendDimExpr(const_dim, &ret_operands);
     }
     if (ret_operands->empty()) {
-      FoldOperandTrait<Op>::MakeDimExpr(FoldOperandTrait<Op>::MakeUnit(),
-                                        &ret_operands);
+      FoldOperandTrait<Op>::MakeAndAppendDimExpr(
+          FoldOperandTrait<Op>::MakeUnit(), &ret_operands);
     }
     if (ret_operands->size() == 1) {
       return ret_operands->at(0);
@@ -374,14 +444,6 @@ struct FoldConstants {
       return Op<DimExpr>{ret_operands};
     }
     LOG(FATAL) << "Dead code.";
-  }
-
-  size_t GetConstDimCount(const List<DimExpr>& exprs) {
-    std::size_t cnt = 0;
-    for (const auto& expr : *exprs) {
-      cnt += adt::Match<typename FoldOperandTrait<Op>::const_pattern>(expr);
-    }
-    return cnt;
   }
 };
 
@@ -396,7 +458,14 @@ struct FoldOperandTrait<Sum> {
     *value = *value + GetInteger(expr);
   }
   static bool IsUnit(const const_value_type& value) { return value == 0; }
-  static void MakeDimExpr(const const_value_type& value, List<DimExpr>* ret) {
+  static bool IsUnitDimExpr(const DimExpr& dim_expr) {
+    if (!dim_expr.Has<std::int64_t>()) {
+      return false;
+    }
+    return dim_expr.Get<std::int64_t>() == 0;
+  }
+  static void MakeAndAppendDimExpr(const const_value_type& value,
+                                   List<DimExpr>* ret) {
     (*ret)->emplace_back(value);
   }
 
@@ -466,11 +535,17 @@ struct FoldOperandTrait<Product> {
   static bool IsUnit(const const_value_type& value) {
     return value.first == 1 && value.second == 1;
   }
-  static void MakeDimExpr(const const_value_type& value, List<DimExpr>* ret) {
-    const auto& [num, dem] = value;
-    if (num != 1) {
-      (*ret)->emplace_back(num);
+  static bool IsUnitDimExpr(const DimExpr& dim_expr) {
+    if (!dim_expr.Has<std::int64_t>()) {
+      return false;
     }
+    return dim_expr.Get<std::int64_t>() == 1;
+  }
+  static void MakeAndAppendDimExpr(const const_value_type& value,
+                                   List<DimExpr>* ret) {
+    const auto& [num, dem] = value;
+    (*ret)->emplace_back(num);
+    CHECK_NE(dem, 0);
     if (dem != 1) {
       (*ret)->emplace_back(Reciprocal<DimExpr>{DimExpr{dem}});
     }
@@ -507,7 +582,14 @@ struct FoldOperandTrait<BroadcastedDim> {
     }
   }
   static bool IsUnit(const const_value_type& value) { return value == 1; }
-  static void MakeDimExpr(const const_value_type& value, List<DimExpr>* ret) {
+  static bool IsUnitDimExpr(const DimExpr& dim_expr) {
+    if (!dim_expr.Has<std::int64_t>()) {
+      return false;
+    }
+    return dim_expr.Get<std::int64_t>() == 1;
+  }
+  static void MakeAndAppendDimExpr(const const_value_type& value,
+                                   List<DimExpr>* ret) {
     (*ret)->emplace_back(value);
   }
   static bool IsInversedPair(const DimExpr& lhs, const DimExpr& rhs) {
@@ -541,7 +623,16 @@ struct FoldInversedPairToUnit {
     ret_operands->insert(ret_operands->end(),
                          std::next(operands->begin(), j + 1),
                          operands->end());
-    return Op<DimExpr>{ret_operands};
+    if (ret_operands->empty()) {
+      FoldOperandTrait<Op>::MakeAndAppendDimExpr(
+          FoldOperandTrait<Op>::MakeUnit(), &ret_operands);
+    }
+    if (ret_operands->size() == 1) {
+      return ret_operands->at(0);
+    } else {
+      return Op<DimExpr>{ret_operands};
+    }
+    LOG(FATAL) << "Dead code";
   }
 
   std::optional<SearchResult> SearchInversedPair(
@@ -675,6 +766,8 @@ DimExpr Simplify(const DimExpr& expr) {
     keep_rewrite = false;
     DoPass<SimplifyOneOperand<Negative>>(&keep_rewrite, &ret);
     DoPass<SimplifyOneOperand<Reciprocal>>(&keep_rewrite, &ret);
+    DoPass<SimplifyUnitOneOperand<Negative>>(&keep_rewrite, &ret);
+    DoPass<SimplifyUnitOneOperand<Reciprocal>>(&keep_rewrite, &ret);
     DoPass<SimplifyOperands<Sum>>(&keep_rewrite, &ret);
     DoPass<SimplifyOperands<Product>>(&keep_rewrite, &ret);
     DoPass<SimplifyOperands<BroadcastedDim>>(&keep_rewrite, &ret);
@@ -684,6 +777,9 @@ DimExpr Simplify(const DimExpr& expr) {
     DoPass<FlattenOperands<Sum>>(&keep_rewrite, &ret);
     DoPass<FlattenOperands<Product>>(&keep_rewrite, &ret);
     DoPass<FlattenOperands<BroadcastedDim>>(&keep_rewrite, &ret);
+    DoPass<FoldUnitConstant<Sum>>(&keep_rewrite, &ret);
+    DoPass<FoldUnitConstant<Product>>(&keep_rewrite, &ret);
+    DoPass<FoldUnitConstant<BroadcastedDim>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Sum>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Product>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<BroadcastedDim>>(&keep_rewrite, &ret);

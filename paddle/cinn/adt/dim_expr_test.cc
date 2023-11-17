@@ -48,6 +48,31 @@ TEST(Simplify, NumberSum) {
   ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 0);
 }
 
+TEST(Simplify, UnitReciprocal) {
+  DimExpr unit{Reciprocal<DimExpr>{DimExpr{1}}};
+
+  DimExpr simplified_dim_expr = SimplifyDimExpr(unit);
+  ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 1);
+}
+
+TEST(Simplify, UnitNegative) {
+  DimExpr unit{Negative<DimExpr>{DimExpr{0}}};
+
+  DimExpr simplified_dim_expr = SimplifyDimExpr(unit);
+  ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 0);
+}
+
+TEST(Simplify, NumberNaiveProduct) {
+  List<DimExpr> num_lists{DimExpr(5), DimExpr(5)};
+  DimExpr dim_expr{Product<DimExpr>{num_lists}};
+
+  DimExpr simplified_dim_expr = SimplifyDimExpr(dim_expr);
+  ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 25);
+}
+
 TEST(Simplify, NumberProduct) {
   List<DimExpr> num_lists{DimExpr(5), Reciprocal<DimExpr>(5)};
   DimExpr dim_expr{Product<DimExpr>{num_lists}};
@@ -70,11 +95,42 @@ TEST(Simplify, NestNumberSumProduct) {
 TEST(Simplify, NestNumberProductSum) {
   List<DimExpr> num_lists{DimExpr(5), Negative<DimExpr>(5)};
   List<DimExpr> product_lists{DimExpr(5), Sum<DimExpr>{num_lists}};
-  DimExpr dim_expr{Sum<DimExpr>{product_lists}};
+  DimExpr dim_expr{Product<DimExpr>{product_lists}};
 
   DimExpr simplified_dim_expr = SimplifyDimExpr(dim_expr);
   ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
   ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 0);
+}
+
+TEST(Simplify, SymbolicProduct) {
+  DimExpr sym = MakeSymbolic();
+  List<DimExpr> num_lists{DimExpr(1), sym};
+  DimExpr dim_expr{Product<DimExpr>{num_lists}};
+
+  DimExpr simplified_dim_expr = SimplifyDimExpr(dim_expr);
+  ASSERT_TRUE((simplified_dim_expr.Has<SymbolicDim>()));
+  ASSERT_TRUE((simplified_dim_expr == sym));
+}
+
+TEST(Simplify, SymbolicProductUnit) {
+  DimExpr sym = MakeSymbolic();
+  List<DimExpr> num_lists{Reciprocal<DimExpr>(sym), sym};
+  DimExpr dim_expr{Product<DimExpr>{num_lists}};
+
+  DimExpr simplified_dim_expr = SimplifyDimExpr(dim_expr);
+  ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 1);
+}
+
+TEST(Simplify, NestSymbolicProductSumUnit) {
+  DimExpr sym = MakeSymbolic();
+  List<DimExpr> sum_lists{DimExpr(6), Negative<DimExpr>{DimExpr(5)}};
+  List<DimExpr> product_lists = List<DimExpr>{Sum<DimExpr>{sum_lists}, sym};
+  DimExpr dim_expr{Product<DimExpr>{product_lists}};
+
+  DimExpr simplified_dim_expr = SimplifyDimExpr(dim_expr);
+  ASSERT_TRUE((simplified_dim_expr.Has<SymbolicDim>()));
+  ASSERT_TRUE((simplified_dim_expr == sym));
 }
 
 }  // namespace cinn::adt::test
