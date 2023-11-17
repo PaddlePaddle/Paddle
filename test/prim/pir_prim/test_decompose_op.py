@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle
 from paddle import pir
+from paddle.autograd.backward_utils import ValueDict
 from paddle.base import core
 from paddle.decomposition import decomp
 
@@ -32,7 +33,7 @@ def check_param_mappings(param_mappings):
 
 
 def get_pir_grad_var_to_var_map(param_mappings, old_ir_grad_var_to_var_map):
-    pir_grad_var_to_var_map = {}
+    pir_grad_var_to_var_map = ValueDict()
     for grad_var, var in old_ir_grad_var_to_var_map.items():
         if grad_var in param_mappings.keys():
             new_grad_var = param_mappings[grad_var][0]

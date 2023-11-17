@@ -428,6 +428,10 @@ def has_fetch_operations(
         that match the info contained in fetch_targets.
     """
 
+    from paddle.autograd.backward_utils import ValueSet
+
+    fetch_targets = ValueSet(fetch_targets)
+
     fetch_count = 0
     mismatch_count = 0
     for op in block.ops:
