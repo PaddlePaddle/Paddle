@@ -72,6 +72,10 @@ PARSE_PYTHON_C_TENSORS_TEMPLATE = (
     "    auto {} = {}(\"{}\", \"{}\", args, {}, {});\n"
 )
 
+PARSE_PYTHON_C_TENSOR_REF_TEMPLATE = (
+    "    auto& {} = {}(\"{}\", \"{}\", args, {}, {});\n"
+)
+
 CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_TEMPLATE = """
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh{inputs})) {{
@@ -374,7 +378,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     )
                 else:
                     get_eager_tensor_str += (
-                        PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                        PARSE_PYTHON_C_TENSOR_REF_TEMPLATE.format(
                             name,
                             "GetTensorFromArgs",
                             forward_api_name,
