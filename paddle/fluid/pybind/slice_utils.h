@@ -621,11 +621,6 @@ static paddle::Tensor dealWithAdvancedIndex(
 
 static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
                                             const paddle::Tensor& bool_index) {
-  PADDLE_ENFORCE_EQ(bool_index.is_dense_tensor(),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Now, Tensor in indexing only support DenseTensor."));
-
   PADDLE_ENFORCE(bool_index.shape().size() <= tensor.shape().size(),
                  platform::errors::InvalidArgument(
                      "The dims of bool index doesn't match indexed array, "
@@ -648,18 +643,8 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
     i++;
   }
 
-  bool idx_is_not_empty = phi::GetValue<bool>(
-      static_cast<phi::DenseTensor*>(any_ad_func(bool_index).impl().get()));
-
-  if (idx_is_not_empty) {
-    auto bool_2_idx = nonzero_ad_func(bool_index);
-    return gather_nd_ad_func(tensor, bool_2_idx);
-  } else {
-    std::vector<int> empty_shape(tensor_shape.begin() + i - 1,
-                                 tensor_shape.end());
-    empty_shape[0] = 0;
-    return empty_ad_func(empty_shape, tensor.dtype());
-  }
+  auto bool_2_idx = nonzero_ad_func(bool_index);
+  return gather_nd_ad_func(tensor, bool_2_idx);
 }
 
 static void ParseBoolAndBroadcastIndices(
