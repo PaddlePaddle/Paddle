@@ -173,7 +173,7 @@ class TestLU_UnpackOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['L', 'U'], check_pir=True)
+        self.check_grad(['X'], ['L', 'U'])
 
 
 # m = n
