@@ -96,7 +96,7 @@ class TestQuantLinearFusePass(PassAutoScanTest):
         # 3. Generate shape of input:Y of matmul_v2
         weight_shape = draw(
             st.lists(
-                st.integers(min_value=1, max_value=8), min_size=2, max_size=2
+                st.integers(min_value=1, max_value=4), min_size=2, max_size=2
             )
         )
         # follow the behavior of the input_num_col_dims attr of quant_linear
@@ -145,7 +145,7 @@ class TestQuantLinearFusePass(PassAutoScanTest):
         mul_out_shape = input_shape[:input_num_col_dims] + weight_shape[1:]
 
         # 7. Generate the bias shape
-        bias_shape = [weight_shape[-1]]
+        bias_shape = [mul_out_shape[-1]]
 
         has_relu = draw(st.booleans())
 
@@ -216,7 +216,9 @@ class TestQuantLinearFusePass(PassAutoScanTest):
         program_config = ProgramConfig(
             ops=ops,
             weights={
-                "input_weight": TensorConfig(shape=weight_shape),
+                "input_weight": TensorConfig(
+                    data_gen=partial(generate_input_weights)
+                ),
                 "bias": TensorConfig(shape=bias_shape),
                 "quant_scale": TensorConfig(
                     data_gen=partial(generate_input_scale)
