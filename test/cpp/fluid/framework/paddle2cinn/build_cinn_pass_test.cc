@@ -715,9 +715,9 @@ TEST(BuildCinnPassTest, TestSkipGcVars) {
 }  // namespace framework
 }  // namespace paddle
 
-// USE_PASS(build_cinn_pass);
-// USE_OP_ITSELF(mul);
-// USE_OP_ITSELF(relu);
-// USE_OP_ITSELF(elementwise_add);
-// USE_OP_ITSELF(relu_grad);
-// USE_OP_ITSELF(elementwise_add_grad);
+USE_PASS(build_cinn_pass);
+USE_OP_ITSELF(mul);
+USE_OP_ITSELF(relu);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(relu_grad);
+USE_OP_ITSELF(elementwise_add_grad);
