@@ -239,7 +239,7 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
     non_inplace_op_name = op_name.substr(0, op_name.size() - 1);
   }
 
-  std::set<framework::proto::VarType::Type> proto_type;
+  std::set<std::string> data_type;
   auto phi_kernels = phi::KernelFactory::Instance().kernels();
   for (auto& kernel_pair : phi_kernels) {
     auto fluid_op_name = phi::TransToFluidOpName(kernel_pair.first);
@@ -251,14 +251,9 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
     for (auto& info_pair : kernel_pair.second) {
       framework::OpKernelType kernel_type =
           framework::TransPhiKernelKeyToOpKernelType(info_pair.first);
-      proto_type.insert(kernel_type.data_type_);
+      data_type.insert(phi::DataTypeToString(
+          framework::TransToPhiDataType(kernel_type.data_type_)));
     }
-  }
-
-  std::set<std::string> data_type;
-  for (auto& iter : proto_type) {
-    data_type.insert(
-        phi::DataTypeToString(framework::TransToPhiDataType(iter)));
   }
 
   return data_type;
