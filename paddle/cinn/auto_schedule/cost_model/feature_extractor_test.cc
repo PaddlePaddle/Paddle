@@ -89,6 +89,7 @@ TEST(FeatureExtractor, SimpleAssign) {
   ASSERT_EQ(to_check[29], slog(3));
 }
 
+#ifdef CINN_WITH_CUDA
 TEST(FeatureExtractor, MatrixMultiply) {
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
@@ -162,6 +163,6 @@ TEST(FeatureExtractor, MatrixMultiply) {
   // GpuBind loop
   ASSERT_EQ(to_check[37], slog(out_loop));
 }
-
+#endif
 }  // namespace auto_schedule
 }  // namespace cinn

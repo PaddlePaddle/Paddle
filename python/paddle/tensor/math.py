@@ -42,52 +42,54 @@ from ..framework import (
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
 from .manipulation import cast, cast_
-from .ops import abs  # noqa: F401
-from .ops import abs_  # noqa: F401
-from .ops import acos  # noqa: F401
-from .ops import acos_  # noqa: F401
-from .ops import acosh  # noqa: F401
-from .ops import acosh_  # noqa: F401
-from .ops import asin  # noqa: F401
-from .ops import asin_  # noqa: F401
-from .ops import asinh  # noqa: F401
-from .ops import asinh_  # noqa: F401
-from .ops import atan  # noqa: F401
-from .ops import atan_  # noqa: F401
-from .ops import atanh  # noqa: F401
-from .ops import atanh_  # noqa: F401
-from .ops import ceil  # noqa: F401
-from .ops import ceil_  # noqa: F401
-from .ops import cos  # noqa: F401
-from .ops import cos_  # noqa: F401
-from .ops import cosh  # noqa: F401
-from .ops import cosh_  # noqa: F401
-from .ops import erf  # noqa: F401
-from .ops import erf_  # noqa: F401
-from .ops import exp  # noqa: F401
-from .ops import exp_  # noqa: F401
-from .ops import expm1  # noqa: F401
-from .ops import expm1_  # noqa: F401
-from .ops import floor  # noqa: F401
-from .ops import floor_  # noqa: F401
-from .ops import reciprocal  # noqa: F401
-from .ops import reciprocal_  # noqa: F401
-from .ops import round  # noqa: F401
-from .ops import round_  # noqa: F401
-from .ops import rsqrt  # noqa: F401
-from .ops import rsqrt_  # noqa: F401
-from .ops import sigmoid  # noqa: F401
-from .ops import sigmoid_  # noqa: F401
-from .ops import sin  # noqa: F401
-from .ops import sin_  # noqa: F401
-from .ops import sinh  # noqa: F401
-from .ops import sinh_  # noqa: F401
-from .ops import sqrt  # noqa: F401
-from .ops import sqrt_  # noqa: F401
-from .ops import square  # noqa: F401
-from .ops import square_  # noqa: F401
-from .ops import tan  # noqa: F401
-from .ops import tan_  # noqa: F401
+from .ops import (  # noqa: F401
+    abs,
+    abs_,
+    acos,
+    acos_,
+    acosh,
+    acosh_,
+    asin,
+    asin_,
+    asinh,
+    asinh_,
+    atan,
+    atan_,
+    atanh,
+    atanh_,
+    ceil,
+    ceil_,
+    cos,
+    cos_,
+    cosh,
+    cosh_,
+    erf,
+    erf_,
+    exp,
+    exp_,
+    expm1,
+    expm1_,
+    floor,
+    floor_,
+    reciprocal,
+    reciprocal_,
+    round,
+    round_,
+    rsqrt,
+    rsqrt_,
+    sigmoid,
+    sigmoid_,
+    sin,
+    sin_,
+    sinh,
+    sinh_,
+    sqrt,
+    sqrt_,
+    square,
+    square_,
+    tan,
+    tan_,
+)
 
 __all__ = []
 
@@ -412,7 +414,7 @@ def multiplex(inputs, index, name=None):
              [3., 4.]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multiplex(inputs, index)
     else:
         helper = LayerHelper('multiplex', **locals())
@@ -2126,7 +2128,7 @@ def mm(input, mat2, name=None):
 
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.matmul(input, mat2, False, False)
     else:
 
@@ -2404,7 +2406,7 @@ def renorm(x, p, axis, max_norm):
                 )
             )
         axis = axis + len(input_shape)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.renorm(x, p, axis, max_norm)
         return out
     else:
@@ -2476,7 +2478,7 @@ def inner(x, y, name=None):
 
 
     """
-    if x.size == 1 or y.size == 1:
+    if in_dynamic_mode() and (x.size == 1 or y.size == 1):
         return multiply(x, y)
     else:
         xshape = x.shape
@@ -2486,8 +2488,10 @@ def inner(x, y, name=None):
         nx = x.reshape((-1, xshape[-1]))
         ny = y.reshape((-1, yshape[-1]))
 
-        if in_dynamic_mode():
-            return _C_ops.matmul(nx, ny.T, False, False).reshape(dstshape)
+        if in_dynamic_or_pir_mode():
+            return _C_ops.matmul(
+                nx, paddle.transpose(ny, [1, 0]), False, False
+            ).reshape(dstshape)
         else:
 
             def __check_input(x, y):
@@ -2511,7 +2515,6 @@ def inner(x, y, name=None):
                         )
 
             __check_input(nx, ny)
-
             helper = LayerHelper('inner', **locals())
             out = helper.create_variable_for_type_inference(dtype=nx.dtype)
             helper.append_op(
@@ -2555,7 +2558,7 @@ def outer(x, y, name=None):
     nx = x.reshape((-1, 1))
     ny = y.reshape((1, -1))
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.matmul(nx, ny, False, False)
     else:
 
@@ -5417,7 +5420,7 @@ def rad2deg(x, name=None):
             57.29578018)
     """
     rad2deg_scale = 180 / np.pi
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.scale(x, rad2deg_scale, 0.0, True)
@@ -6627,7 +6630,7 @@ def nextafter(x, y, name=None):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.00000012, 1.99999988])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.nextafter(x, y)
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'nextafter')

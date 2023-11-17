@@ -275,6 +275,11 @@ else()
       SRCS ${paddle_pir_lib}
       DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
   endif()
+  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/libcommon.*)
+  copy(
+    inference_lib_dist
+    SRCS ${paddle_common_lib}
+    DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 endif()
 
 copy(

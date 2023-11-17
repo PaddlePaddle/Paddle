@@ -285,6 +285,7 @@ std::vector<pir::Value> GetOutsideOpInputs(
           phi::errors::PreconditionNotMet("input should be in name map"));
       input_ids->emplace(value, GetValueIds(value, value_exec_info));
       outside_op_inputs.push_back(value);
+      VLOG(6) << "GetOutsideOpInputs of " << value.impl();
     }
   }
   return outside_op_inputs;
