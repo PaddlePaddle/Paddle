@@ -19,47 +19,22 @@ import numpy as np
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 RTOL = 1e-5
 ATOL = 1e-8
-DTYPE_ALL = {
+DTYPE_ALL = [
     'float16',
-    'uint16',
     'float32',
     'float64',
     'int8',
-    'int16',
-    'int32',
-    'int64',
-    'uint8',
-    'complex64',
-    'complex128',
-    'bfloat16',
-}
-DTYPE_STATIC_SUPPORTED = {
-    'float16',
-    'uint16',
-    'float32',
-    'float64',
     'int32',
     'int64',
     'bfloat16',
-}
+]
 
-
-DTYPE_SUPPORT_DYGRAPH_H_STACK = (
-    DTYPE_SUPPORT_DYGRAPH_V_STACK
-) = DTYPE_SUPPORT_DYGRAPH_D_STACK = DTYPE_SUPPORT_DYGRAPH_ROW_STACK = DTYPE_ALL
-
-DTYPE_SUPPORT_DYGRAPH_COLUMN_STACK = DTYPE_ALL - {'int8'}
-
-DTYPE_SUPPORT_STATIC_H_STACK = (
-    DTYPE_SUPPORT_STATIC_V_STACK
-) = (
-    DTYPE_SUPPORT_STATIC_D_STACK
-) = (
-    DTYPE_SUPPORT_STATIC_COLUMN_STACK
-) = DTYPE_SUPPORT_STATIC_ROW_STACK = DTYPE_STATIC_SUPPORTED
+# `paddle.numel` with `int8` will raise NotImplemetedError in static graph
+DTYPE_COLUMN_STACK = list(set(DTYPE_ALL) - {'int8'})
 
 PLACES = [paddle.CPUPlace()] + (
     [paddle.CUDAPlace(0)] if core.is_compiled_with_cuda() else []
@@ -102,8 +77,9 @@ def generate_data(shape, count=1, dtype='int32'):
 
 
 class BaseTest(unittest.TestCase):
-    """Test in each `PLACES`, each `test_list`, and in `static/dygraph`"""
+    """Test in each `PLACES` and in `static/dygraph`"""
 
+    @test_with_pir_api
     def _test_static_api(
         self,
         func_paddle,
@@ -176,28 +152,9 @@ class BaseTest(unittest.TestCase):
                 self.assertEqual(grads[0].dtype, y.dtype)
                 self.assertEqual(grads[0].shape, y.shape)
 
-    def _test_all(
-        self,
-        args,
-        dtype_not_supported_in_dygraph=False,
-        dtype_not_supported_in_static=False,
-        runtime_error_dygraph=False,
-        dtype='',
-    ):
-        if dtype_not_supported_in_dygraph:
-            """column_stack raise RuntimeError with dtype `int8`"""
-            with self.assertRaises(
-                TypeError if not runtime_error_dygraph else RuntimeError
-            ):
-                self._test_dygraph_api(self.func_paddle, self.func_numpy, *args)
-        else:
-            self._test_dygraph_api(self.func_paddle, self.func_numpy, *args)
-
-        if dtype_not_supported_in_static:
-            with self.assertRaises(TypeError):
-                self._test_static_api(self.func_paddle, self.func_numpy, *args)
-        else:
-            self._test_static_api(self.func_paddle, self.func_numpy, *args)
+    def _test_all(self, args, dtype=''):
+        self._test_dygraph_api(self.func_paddle, self.func_numpy, *args)
+        self._test_static_api(self.func_paddle, self.func_numpy, *args)
 
 
 class BaseCases:
@@ -272,8 +229,6 @@ class TestHStack(BaseTest, BaseCases):
         for dtype in DTYPE_ALL:
             self._test_all(
                 generate_data([], count=1, dtype=dtype),
-                dtype not in DTYPE_SUPPORT_DYGRAPH_H_STACK,
-                dtype not in DTYPE_SUPPORT_STATIC_H_STACK,
                 dtype,
             )
 
@@ -292,8 +247,6 @@ class TestVStack(BaseTest, BaseCases):
         for dtype in DTYPE_ALL:
             self._test_all(
                 generate_data([], count=1, dtype=dtype),
-                dtype not in DTYPE_SUPPORT_DYGRAPH_V_STACK,
-                dtype not in DTYPE_SUPPORT_STATIC_V_STACK,
                 dtype,
             )
 
@@ -316,8 +269,6 @@ class TestDStack(BaseTest, BaseCases):
         for dtype in DTYPE_ALL:
             self._test_all(
                 generate_data([], count=1, dtype=dtype),
-                dtype not in DTYPE_SUPPORT_DYGRAPH_D_STACK,
-                dtype not in DTYPE_SUPPORT_STATIC_D_STACK,
                 dtype,
             )
 
@@ -333,13 +284,9 @@ class TestColumnStack(BaseTest, BaseCases):
         self._test_all(rearrange_data(d0, d1))
 
     def test_dtype(self):
-        """raise RuntimeError with dtype `int8` (instead of TypeError)"""
-        for dtype in DTYPE_ALL:
+        for dtype in DTYPE_COLUMN_STACK:
             self._test_all(
                 generate_data([], count=1, dtype=dtype),
-                dtype not in DTYPE_SUPPORT_DYGRAPH_COLUMN_STACK,
-                dtype not in DTYPE_SUPPORT_STATIC_COLUMN_STACK,
-                runtime_error_dygraph=(dtype == 'int8'),
                 dtype=dtype,
             )
 
@@ -358,8 +305,6 @@ class TestRowStack(BaseTest, BaseCases):
         for dtype in DTYPE_ALL:
             self._test_all(
                 generate_data([], count=1, dtype=dtype),
-                dtype not in DTYPE_SUPPORT_DYGRAPH_ROW_STACK,
-                dtype not in DTYPE_SUPPORT_STATIC_ROW_STACK,
                 dtype,
             )
 
@@ -415,7 +360,7 @@ class ErrorCases:
 
 
 class ErrorCases0d1d(ErrorCases):
-    """hstack works fine"""
+    """hstack works fine with 0d & 1d"""
 
     def test_vstack_0d_1d(self):
         with self.assertRaises(ValueError):

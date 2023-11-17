@@ -1979,7 +1979,54 @@ def stack(x, axis=0, name=None):
 
 def hstack(x, name=None):
     """
-    TODO(megemini)
+    Stacks all the input tensors ``x`` along horizontal axis.
+    All tensors must be of the same dtype.
+
+    Args:
+        x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
+            shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, The stacked tensor with same data type as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # hstack with 0-D tensors
+            >>> x1 = paddle.to_tensor(1.0)
+            >>> x2 = paddle.to_tensor(2.0)
+            >>> out = paddle.hstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1., 2.])
+
+            >>> # hstack with 1-D tensors
+            >>> x1 = paddle.to_tensor([1.0, 2.0])
+            >>> x2 = paddle.to_tensor([3.0, 4.0, 5.0])
+            >>> out = paddle.hstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1., 2., 3., 4., 5.])
+
+            >>> # hstack mix with 0-D & 1-D tensors
+            >>> x1 = paddle.to_tensor(1.0)
+            >>> x2 = paddle.to_tensor([3.0, 4.0, 5.0])
+            >>> out = paddle.hstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1., 3., 4., 5.])
+
+            >>> # hstack with 2-D tensors
+            >>> x1 = paddle.to_tensor([[1.0, 2.0]])
+            >>> x2 = paddle.to_tensor([[3.0, 4.0, 5.0]])
+            >>> out = paddle.hstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[1, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3., 4., 5.]])
+
     """
     arrays = paddle.atleast_1d(*x)
     if not isinstance(arrays, list):
@@ -1993,7 +2040,58 @@ def hstack(x, name=None):
 
 def vstack(x, name=None):
     """
-    TODO(megemini)
+    Stacks all the input tensors ``x`` along vertical axis.
+    All tensors must be of the same dtype.
+
+    Args:
+        x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
+            shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, The stacked tensor with same data type as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # vstack with 0-D tensors
+            >>> x1 = paddle.to_tensor(1.0)
+            >>> x2 = paddle.to_tensor(2.0)
+            >>> out = paddle.vstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1.],
+             [2.]])
+
+            >>> # vstack with 1-D tensors
+            >>> x1 = paddle.to_tensor([1.0, 2.0, 3.0])
+            >>> x2 = paddle.to_tensor([3.0, 4.0, 5.0])
+            >>> out = paddle.vstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [3., 4., 5.]])
+
+            >>> # vstack mix with 1-D & 2-D tensors
+            >>> x1 = paddle.to_tensor([1.0, 2.0, 3.0])
+            >>> x2 = paddle.to_tensor([[3.0, 4.0, 5.0]])
+            >>> out = paddle.vstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [3., 4., 5.]])
+
+            >>> # vstack with 2-D tensors
+            >>> x1 = paddle.to_tensor([[1.0, 2.0, 3.0]])
+            >>> x2 = paddle.to_tensor([[3.0, 4.0, 5.0]])
+            >>> out = paddle.vstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [3., 4., 5.]])
+
     """
     arrays = paddle.atleast_2d(*x)
     if not isinstance(arrays, list):
@@ -2004,7 +2102,48 @@ def vstack(x, name=None):
 
 def dstack(x, name=None):
     """
-    TODO(megemini)
+    Stacks all the input tensors ``x`` along depth axis.
+    All tensors must be of the same dtype.
+
+    Args:
+        x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
+            shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, The stacked tensor with same data type as input.
+
+    Examples:
+        .. code-block:: python
+            >>> import paddle
+
+            >>> # dstack with 0-D tensors
+            >>> x1 = paddle.to_tensor(1.0)
+            >>> x2 = paddle.to_tensor(2.0)
+            >>> out = paddle.dstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[1, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1., 2.]]])
+
+            >>> # dstack with 1-D tensors
+            >>> x1 = paddle.to_tensor([1.0, 2.0, 3.0])
+            >>> x2 = paddle.to_tensor([3.0, 4.0, 5.0])
+            >>> out = paddle.dstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[1, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1., 3.],
+              [2., 4.],
+              [3., 5.]]])
+
+            >>> # dstack with 3-D tensors
+            >>> x1 = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]]])
+            >>> x2 = paddle.to_tensor([[[3.0, 4.0], [5.0, 6.0]]])
+            >>> out = paddle.dstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[1, 2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1., 2., 3., 4.],
+              [3., 4., 5., 6.]]])
+
     """
     arrays = paddle.atleast_3d(*x)
     if not isinstance(arrays, list):
