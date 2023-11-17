@@ -102,7 +102,11 @@ WhileInstruction::WhileInstruction(size_t id,
   Scope* body_scope = &(parent_exe_info->GetScope()->NewScope());
   auto body_exe_info = parent_exe_info->NewChild(body_scope);
   for (size_t i = 0; i < body_block_->args_size(); ++i) {
-    auto var_name = "body_block_arg_" + std::to_string(i);
+    std::stringstream ss;
+    ss << this
+       << std::chrono::high_resolution_clock::now().time_since_epoch().count()
+       << "body_block_arg_";
+    auto var_name = ss.str() + std::to_string(i);
     body_scope->Var(var_name);
     body_exe_info->Add(body_block_->argument(i), var_name);
   }
@@ -121,6 +125,20 @@ WhileInstruction::WhileInstruction(size_t id,
     body_skip_gc_names_set.insert(body_inter_->GetNameByValue(value));
   }
   body_inter_->SetSkipGcVars(body_skip_gc_names_set);
+
+  if (VLOG_IS_ON(6)) {
+    std::stringstream body_outputs;
+    for (auto var_name : body_outputs_) {
+      body_outputs << " " << var_name;
+    }
+    VLOG(6) << "body_outputs include: " << body_outputs.str();
+
+    std::stringstream body_skip_gc_names;
+    for (auto var_name : body_skip_gc_names_) {
+      body_skip_gc_names << " " << var_name;
+    }
+    VLOG(6) << "body_skip_gc_names include: " << body_skip_gc_names.str();
+  }
 }
 
 void WhileInstruction::CopyInputsToOutputs() {
@@ -148,18 +166,25 @@ void WhileInstruction::GetValueFromBodyBlock() {
   for (size_t i = 0; i < outputs_.size(); ++i) {
     auto& out_var_name = body_outputs_[i + 1];
     auto* out_var = body_inter_->local_scope()->GetVar(out_var_name);
+    VLOG(6) << "share data from " << out_var_name << " -> " << i << " output";
     outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
         out_var->Get<phi::DenseTensor>());
+    VLOG(6) << "done";
   }
 }
 
 void WhileInstruction::Run() {
   CopyInputsToOutputs();
+  VLOG(6) << "while instruction start loop ...";
   while (GetCondData(cond_var_->Get<phi::DenseTensor>())) {
+    VLOG(6) << "while instruction pass args to body block";
     PassArgsToBodyBlock();
+    VLOG(6) << "while instruction interpretercore run";
     body_inter_->Run({}, false);
+    VLOG(6) << "while instruction get value form body block";
     GetValueFromBodyBlock();
   }
+  VLOG(6) << "while instruction run done";
 }
 
 }  // namespace framework

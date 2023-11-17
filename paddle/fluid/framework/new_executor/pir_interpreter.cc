@@ -188,7 +188,8 @@ PirInterpreter::PirInterpreter(
   value_exe_info_ = value_exe_info;
 
   std::stringstream ss;
-  ss << this;
+  ss << this
+     << std::chrono::high_resolution_clock::now().time_since_epoch().count();
   BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
