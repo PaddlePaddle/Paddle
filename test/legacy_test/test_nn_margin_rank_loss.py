@@ -118,7 +118,7 @@ def create_test_case(margin, reduction):
                     fetch_list=[result],
                 )
                 np.testing.assert_allclose(result_numpy, expected, rtol=1e-05)
-                self.assertTrue('loss' in result)
+                self.assertTrue('loss' in result.name)
 
         def run_dynamic_functional_api(self, place):
             paddle.disable_static(place)

@@ -804,7 +804,7 @@ def binary_cross_entropy_with_logits(
         one = _C_ops.full(
             [1],
             1.0,
-            logit._dtype if in_pir_mode() else logit.dtype,
+            logit.dtype,
             _current_expected_place(),
         )
 
