@@ -277,7 +277,7 @@ class TestGammaSample(unittest.TestCase):
                 self.assertTrue(data.shape == case.get('expect'))
 
     def test_sample(self):
-        sample_shape = (13000,)
+        sample_shape = (30000,)
         with paddle.static.program_guard(self.program):
             [data] = self.executor.run(
                 self.program,
@@ -300,7 +300,7 @@ class TestGammaSample(unittest.TestCase):
             )
 
     def test_rsample(self):
-        sample_shape = (13000,)
+        sample_shape = (30000,)
         with paddle.static.program_guard(self.program):
             [data] = self.executor.run(
                 self.program,
@@ -349,7 +349,7 @@ class TestGammaSampleKS(unittest.TestCase):
             }
 
     def test_sample(self):
-        sample_shape = (8000,)
+        sample_shape = (15000,)
         with paddle.static.program_guard(self.program):
             [samples] = self.executor.run(
                 self.program,
@@ -359,7 +359,7 @@ class TestGammaSampleKS(unittest.TestCase):
             self.assertTrue(self._kstest(samples))
 
     def test_rsample(self):
-        sample_shape = (8000,)
+        sample_shape = (15000,)
         with paddle.static.program_guard(self.program):
             [samples] = self.executor.run(
                 self.program,

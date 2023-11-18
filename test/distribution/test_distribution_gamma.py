@@ -250,7 +250,7 @@ class TestGammaSample(unittest.TestCase):
             )
 
     def test_sample(self):
-        sample_shape = (13000,)
+        sample_shape = (30000,)
         samples = self._paddle_gamma.sample(sample_shape)
         sample_values = samples.numpy()
         self.assertEqual(sample_values.dtype, self.rate.dtype)
@@ -273,7 +273,7 @@ class TestGammaSample(unittest.TestCase):
         )
 
     def test_rsample(self):
-        sample_shape = (13000,)
+        sample_shape = (30000,)
         samples = self._paddle_gamma.rsample(sample_shape)
         sample_values = samples.numpy()
         self.assertEqual(sample_values.dtype, self.rate.dtype)
@@ -337,12 +337,12 @@ class TestGammaSampleKS(unittest.TestCase):
         self._paddle_gamma = gamma.Gamma(concentration, rate)
 
     def test_sample_ks(self):
-        sample_shape = (8000,)
+        sample_shape = (15000,)
         samples = self._paddle_gamma.sample(sample_shape)
         self.assertTrue(self._kstest(samples))
 
     def test_rsample_ks(self):
-        sample_shape = (8000,)
+        sample_shape = (15000,)
         samples = self._paddle_gamma.rsample(sample_shape)
         self.assertTrue(self._kstest(samples))
 
