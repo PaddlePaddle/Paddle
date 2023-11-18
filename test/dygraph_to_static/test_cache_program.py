@@ -16,12 +16,14 @@ import unittest
 from collections import Counter
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir_exe_and_pir_api,
+)
 from test_fetch_feed import Linear, Pool2D
 
 import paddle
 from paddle import base
-from paddle.jit.api import to_static
 from paddle.jit.dy2static import convert_to_static
 
 
@@ -31,41 +33,41 @@ class TestCacheProgram(Dy2StTestBase):
         self.dygraph_class = Pool2D
         self.data = np.random.random((1, 2, 4, 4)).astype('float32')
 
+    @test_legacy_and_pir_exe_and_pir_api
     def test_cache(self):
         prev_ops, cur_ops = Counter(), Counter()
         prev_out, cur_out = None, None
-        with base.dygraph.guard(base.CPUPlace()):
-            static_net = self.dygraph_class()
-            for batch_id in range(self.batch_num):
-                out = static_net(paddle.to_tensor(self.data))
-                # Check outputs
-                prev_out = cur_out
-                cur_out = out
-                # Check forward ops
-                prev_ops = cur_ops
-                cur_ops = Counter(
-                    [op.type for op in base.default_main_program().block(0).ops]
+        static_net = self.dygraph_class()
+        for batch_id in range(self.batch_num):
+            out = static_net(paddle.to_tensor(self.data))
+            # Check outputs
+            prev_out = cur_out
+            cur_out = out
+            # Check forward ops
+            prev_ops = cur_ops
+            cur_ops = Counter(
+                [op.type for op in base.default_main_program().block(0).ops]
+            )
+            if batch_id > 0:
+                prev_out_numpy = (
+                    prev_out[0].numpy()
+                    if isinstance(prev_out, (tuple, list))
+                    else prev_out.numpy()
                 )
-                if batch_id > 0:
-                    prev_out_numpy = (
-                        prev_out[0].numpy()
-                        if isinstance(prev_out, (tuple, list))
-                        else prev_out.numpy()
-                    )
-                    cur_out_numpy = (
-                        cur_out[0].numpy()
-                        if isinstance(cur_out, (tuple, list))
-                        else cur_out.numpy()
-                    )
-                    np.testing.assert_allclose(
-                        prev_out_numpy,
-                        cur_out_numpy,
-                        rtol=1e-05,
-                        err_msg='Output in previous batch is {}\n Output in current batch is \n{}'.format(
-                            prev_out_numpy, cur_out_numpy
-                        ),
-                    )
-                    self.assertEqual(prev_ops, cur_ops)
+                cur_out_numpy = (
+                    cur_out[0].numpy()
+                    if isinstance(cur_out, (tuple, list))
+                    else cur_out.numpy()
+                )
+                np.testing.assert_allclose(
+                    prev_out_numpy,
+                    cur_out_numpy,
+                    rtol=1e-05,
+                    err_msg='Output in previous batch is {}\n Output in current batch is \n{}'.format(
+                        prev_out_numpy, cur_out_numpy
+                    ),
+                )
+                self.assertEqual(prev_ops, cur_ops)
 
 
 class TestCacheProgram2(TestCacheProgram):
@@ -90,23 +92,23 @@ class TestCacheProgramWithOptimizer(Dy2StTestBase):
     def train(self, to_static=False):
         paddle.jit.enable_to_static(to_static)
 
-        with base.dygraph.guard(base.CPUPlace()):
-            dygraph_net = self.dygraph_class()
-            adam = paddle.optimizer.Adam(
-                learning_rate=0.001, parameters=dygraph_net.parameters()
-            )
-            loss_data = []
-            for batch_id in range(self.batch_num):
-                input = base.dygraph.to_variable(self.data)
-                pred, avg_loss = dygraph_net(input)
+        dygraph_net = self.dygraph_class()
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.001, parameters=dygraph_net.parameters()
+        )
+        loss_data = []
+        for batch_id in range(self.batch_num):
+            input = base.dygraph.to_variable(self.data)
+            pred, avg_loss = dygraph_net(input)
 
-                loss_data.append(avg_loss.numpy())
-                avg_loss.backward()
-                adam.minimize(avg_loss)
-                dygraph_net.clear_gradients()
+            loss_data.append(avg_loss.numpy())
+            avg_loss.backward()
+            adam.minimize(avg_loss)
+            dygraph_net.clear_gradients()
 
         return loss_data
 
+    @test_legacy_and_pir_exe_and_pir_api
     def test_with_optimizer(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
@@ -125,6 +127,7 @@ def simple_func(x):
 
 
 class TestConvertWithCache(Dy2StTestBase):
+    @test_legacy_and_pir_exe_and_pir_api
     def test_cache(self):
         static_func = convert_to_static(simple_func)
         # Get transformed function from cache.
@@ -132,7 +135,6 @@ class TestConvertWithCache(Dy2StTestBase):
         self.assertTrue(id(static_func), id(cached_func))
 
 
-@to_static
 def sum_even_until_limit(max_len, limit):
     ret_sum = base.dygraph.to_variable(np.zeros(1).astype('int32'))
     for i in range(max_len):
@@ -156,12 +158,11 @@ def sum_under_while(limit):
 
 class TestToOutputWithCache(Dy2StTestBase):
     def test_output(self):
-        with base.dygraph.guard():
-            ret = sum_even_until_limit(80, 10)
-            self.assertEqual(ret.numpy(), 30)
+        ret = paddle.jit.to_static(sum_even_until_limit)(80, 10)
+        self.assertEqual(ret.numpy(), 30)
 
-            ret = to_static(sum_under_while)(100)
-            self.assertEqual(ret.numpy(), 5050)
+        ret = paddle.jit.to_static(sum_under_while)(100)
+        self.assertEqual(ret.numpy(), 5050)
 
 
 if __name__ == '__main__':
