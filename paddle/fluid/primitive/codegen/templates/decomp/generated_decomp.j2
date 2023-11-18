@@ -10,7 +10,9 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/op_base.h"
+#include "paddle/phi/core/flags.h"
 
+PHI_DECLARE_string(tensor_operants_mode);
 namespace paddle {
 namespace dialect {
 using IntArray = paddle::experimental::IntArray;
