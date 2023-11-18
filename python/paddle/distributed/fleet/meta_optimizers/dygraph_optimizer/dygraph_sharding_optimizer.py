@@ -129,12 +129,21 @@ class DygraphShardingOptimizer:
         self.comm_overlap = sharding_configs.comm_overlap
         comm_group = self._hcg.get_sharding_parallel_group()
 
-        if not self._pp_overlap and self.comm_overlap:
+        # if not self._pp_overlap and self.comm_overlap:
+        #     assert (
+        #         acc_steps > 0
+        #     ), "acc_steps should be larger than 0 when using comm_overlap in sharding"
+        #     self.register_reduce_overlap_hook(
+        #         comm_group, acc_steps, use_comm=True
+        #     )
+
+        if not self._pp_overlap:
             assert (
-                acc_steps > 0
+                acc_steps > 0 or not self.comm_overlap
             ), "acc_steps should be larger than 0 when using comm_overlap in sharding"
+
             self.register_reduce_overlap_hook(
-                comm_group, acc_steps, use_comm=True
+                comm_group, acc_steps, use_comm=self.comm_overlap
             )
 
     def _build_comm_buffers(
@@ -192,6 +201,9 @@ class DygraphShardingOptimizer:
             self.comm_buffers = self._build_comm_buffers(
                 comm_group, acc_steps, group_size
             )
+            # NOTE(shenliang03): Sort the comm_buffers by dst rank,
+            # it will improve the performance in reduce communicate
+            self.comm_buffers.sort(key=lambda x: x._dst)
 
         # Register backward hooks for each parameter in the buffer
         for buffer in self.comm_buffers:
@@ -290,42 +302,11 @@ class DygraphShardingOptimizer:
         if self._pp_overlap:
             return
 
-        if self.comm_overlap:
-            for buffer in self.comm_buffers:
-                buffer.scale_and_split_grads()
-            return
-
-        # TODO merge grad / nrank with dp
-        with framework.no_grad():
-            sharding_nrank = hcg.get_sharding_parallel_group().nranks
-            for param in parameter_list:
-                g_var = None
-                if param.trainable and (param._grad_ivar() is not None):
-                    g_var = param._grad_ivar()
-                if param.trainable and hasattr(param, "main_grad"):
-                    assert (
-                        param._grad_ivar() is None
-                    ), "param.grad should be None when using main_grad"
-                    g_var = param.main_grad
-                if g_var is not None:
-                    g_var.scale_(1.0 / sharding_nrank)
-                    param_rank = self._param2rank[param.name]
-                    if not g_shard_use_reduce:
-                        paddle.distributed.all_reduce(
-                            g_var,
-                            group=hcg.get_sharding_parallel_group(),
-                            sync_op=True,
-                        )
-                    else:
-                        # TODO(pangengzheng): change to reduce operation when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
-                        paddle.distributed.reduce(
-                            g_var,
-                            dst=hcg.get_sharding_parallel_group().ranks[
-                                param_rank
-                            ],
-                            group=hcg.get_sharding_parallel_group(),
-                            sync_op=True,
-                        )
+        for buffer in self.comm_buffers:
+            if not self.comm_overlap:
+                buffer._comm_grads()
+            buffer.scale_and_split_grads()
+        return
 
     def _sharding_sync_parameters(self):
         """
@@ -357,11 +338,6 @@ class DygraphShardingOptimizer:
     ):
         # NOTE in dygraph mode, the only different between step and minimize is that minimize
         # allow user to customize the parameters for updating on each step
-
-        if self.comm_overlap:
-            for buffer in self.comm_buffers:
-                buffer.scale_and_split_grads()
-
         assert (
             not self._using_param_groups
         ), "minimize() is not support if using param_groups"
