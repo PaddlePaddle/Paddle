@@ -21,6 +21,7 @@
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/comm_task_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_task.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
@@ -819,6 +820,7 @@ void ProcessGroupNCCL::BroadcastUniqueNCCLID(ncclUniqueId* nccl_id,
     const auto& nccl_id_wrapper = store_->get(store_key);
     std::memcpy(nccl_id, nccl_id_wrapper.data(), nccl_id_wrapper.size());
   }
+  place_to_group_key_[p2p_key] = store_key;
 }
 
 void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
@@ -859,6 +861,48 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   auto comm_ctx = std::make_unique<phi::GPUContext>(place);
   comm_ctx->set_nccl_comm(nccl_comm);
+
+  if (FLAGS_enable_async_trace) {
+    // gather global ranks in current group
+    int* gpu_global_rank = nullptr;
+    size_t gpu_global_rank_size = sizeof(int);
+    CUDA_CHECK(cudaMalloc(&gpu_global_rank, gpu_global_rank_size));
+
+    CUDA_CHECK(cudaMemcpy(gpu_global_rank,
+                          &global_rank_,
+                          gpu_global_rank_size,
+                          cudaMemcpyHostToDevice));
+
+    int* gpu_global_ranks = nullptr;
+    size_t gpu_global_ranks_size = num_ranks * sizeof(int);
+    CUDA_CHECK(cudaMalloc(&gpu_global_ranks, gpu_global_ranks_size));
+
+    NCCL_CHECK(phi::dynload::ncclAllGather(gpu_global_rank,
+                                           gpu_global_ranks,
+                                           1,
+                                           ncclInt,
+                                           nccl_comm,
+                                           comm_ctx->stream()));
+
+    std::vector<int> global_ranks(num_ranks);
+    CUDA_CHECK(cudaMemcpy(global_ranks.data(),
+                          gpu_global_ranks,
+                          gpu_global_ranks_size,
+                          cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaFree(gpu_global_rank));
+    CUDA_CHECK(cudaFree(gpu_global_ranks));
+
+    // store global_ranks in current group_key
+    std::once_flag flag;
+    std::call_once(flag, [this]() {
+      phi::distributed::CommContextManager::GetInstance().SetStore(store_);
+      phi::distributed::CommTaskManager::GetInstance().SetTimeout(pg_timeout_);
+    });
+
+    std::string group_key = place_to_group_key_.at(place_key);
+    phi::distributed::CommContextManager::GetInstance().AddGroupRanks(
+        group_key, global_ranks);
+  }
 
   auto* calc_ctx = static_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(place));
@@ -913,8 +957,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   if (!FLAGS_enable_async_trace) {
     fn(nccl_comm, nccl_stream);
   } else {
+    std::string group_key = place_to_group_key_.at(key);
     auto comm_task =
         std::make_shared<phi::distributed::NCCLCommTask>(place,
+                                                         group_key,
                                                          rank_,
                                                          size_,
                                                          gid_,
@@ -973,22 +1019,29 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
   bool is_batch_p2p = s_group_call_counter > 0;
   std::string key = "";
 
+  int p2p_nrank = 0;
   if (is_batch_p2p) {
     key = GetKeyFromPlace(place);
     p2p_rank = rank_;
     p2p_target_rank = peer;
+    p2p_nrank = GetSize();
   } else {
     int low_rank = rank_ < peer ? rank_ : peer;
     int high_rank = rank_ < peer ? peer : rank_;
     key = std::to_string(low_rank) + "->" + std::to_string(high_rank);
     p2p_rank = rank_ < peer ? 0 : 1;
     p2p_target_rank = 1 - p2p_rank;
+    p2p_nrank = 2;
   }
 
   platform::CUDADeviceGuard cuda_guard(place);
   if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
     CreateNCCLEnvCache(place, key, comm_type, p2p_rank);
   }
+  if (p2p_comm_seq_.find(key) == p2p_comm_seq_.end()) {
+    p2p_comm_seq_[key] = 0;
+  }
+  p2p_comm_seq_[key]++;
 
   if (!use_calc_stream) {
     SyncCalcStream(place, key);
@@ -1002,18 +1055,21 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
   auto nccl_comm = comm_ctx->nccl_comm();
   auto nccl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
 
+  std::string group_key = place_to_group_key_.at(key);
   auto comm_task =
       std::make_shared<phi::distributed::NCCLCommTask>(place,
-                                                       rank_,
-                                                       size_,
+                                                       group_key,
+                                                       p2p_rank,
+                                                       p2p_nrank,
                                                        gid_,
-                                                       comm_seq_,
+                                                       p2p_comm_seq_[key],
                                                        tensor.numel(),
                                                        sync_op,
                                                        use_calc_stream,
                                                        nccl_comm,
                                                        nccl_stream,
-                                                       comm_type);
+                                                       comm_type,
+                                                       pg_timeout_);
 
   if (!FLAGS_enable_async_trace) {
     fn(nccl_comm, nccl_stream, p2p_target_rank);

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <sstream>
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -83,6 +84,66 @@ inline std::string CommTypeToString(CommType CommType) {
       return "Unknown";
   }
   return "Unknown";
+}
+
+// convert vector to string, concatenate continuous intervals with `~`,
+// concatenate discontinuous intervals with `#` eg: [1,2,3,4,5,7,8,9] =>
+// 1~3#4#5#7~9
+inline std::string VectorToString(const std::vector<int>& vec) {
+  if (vec.empty()) {
+    return "";
+  }
+  if (vec.size() == 1) {
+    return std::to_string(vec[0]);
+  }
+
+  std::stringstream ss;
+  size_t i = 0;
+  int start_rank = vec[i];
+  for (; i < vec.size() - 1; ++i) {
+    if (vec[i] + 1 == vec[i + 1]) {
+      continue;
+    }
+    if (ss.rdbuf()->in_avail() != 0) {
+      ss << "#";
+    }
+    ss << start_rank;
+    if (start_rank != vec[i]) {
+      ss << "~";
+      ss << vec[i];
+    }
+    start_rank = vec[i + 1];
+  }
+
+  if (ss.rdbuf()->in_avail() != 0) {
+    ss << "#";
+  }
+  ss << start_rank;
+  if (start_rank != vec[i]) {
+    ss << "~";
+    ss << vec[i];
+  }
+
+  return ss.str();
+}
+
+inline void LogLongStr(const std::string prefix, const std::string& log) {
+  size_t max_log_size = 20000;
+  if (log.size() >= max_log_size) {
+    int log_count = log.size() / max_log_size + 1;
+    int index = 0;
+    int part = 0;
+    while (index + max_log_size < log.size()) {
+      LOG(INFO) << prefix << "part:" << part << "/" << log_count << ","
+                << log.substr(index, max_log_size) << std::endl;
+      index += max_log_size;
+      part++;
+    }
+    LOG(INFO) << prefix << "part:" << part << "/" << log_count << ","
+              << log.substr(index) << std::endl;
+  } else {
+    LOG(INFO) << prefix << "part:0/1," << log << std::endl;
+  }
 }
 
 }  //  namespace distributed
