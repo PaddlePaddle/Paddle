@@ -47,7 +47,10 @@ def find_output_shape(input_list):
 def make_inputs_outputs(input_shapes, dtype, is_bfloat16=False):
     """Automatically generate formatted inputs and outputs from input_shapes"""
     input_list = [
-        np.random.random(shape).astype(dtype) for shape in input_shapes
+        (np.random.random(shape) + 1j * np.random.random(shape)).astype(dtype)
+        if dtype == 'complex64' or dtype == 'complex128'
+        else np.random.random(shape).astype(dtype)
+        for shape in input_shapes
     ]
     output_shape = find_output_shape(input_list)
     output_list = [
@@ -99,7 +102,7 @@ class TestCPUBroadcastTensorsOp(OpTest):
         self.place = core.CPUPlace()
 
     def set_dtypes(self):
-        self.dtypes = ['float64']
+        self.dtypes = ['complex64']
 
     def setUp(self):
         self.op_type = "broadcast_tensors"
@@ -242,28 +245,45 @@ class TestBroadcastTensorsAPI(unittest.TestCase):
     def test_api(self):
         @test_with_pir_api
         def test_static():
-            inputs = [
-                paddle.static.data(
-                    shape=[-1, 4, 1, 4, 1], dtype='float32', name="x0"
-                ),
-                paddle.static.data(
-                    shape=[-1, 1, 4, 1, 4], dtype='float32', name="x1"
-                ),
-            ]
-            paddle.broadcast_tensors(inputs)
+            dtypes = ['float32', 'complex64', 'complex128']
+            for dtype in dtypes:
+                prog = paddle.static.Program()
+                startup_prog = paddle.static.Program()
+                with paddle.static.program_guard(prog, startup_prog):
+                    inputs = [
+                        paddle.static.data(
+                            shape=[-1, 4, 1, 4, 1], dtype=dtype, name="x0"
+                        ),
+                        paddle.static.data(
+                            shape=[-1, 1, 4, 1, 4], dtype=dtype, name="x1"
+                        ),
+                    ]
+                    paddle.broadcast_tensors(inputs)
 
         def test_dynamic():
             paddle.disable_static()
             try:
-                inputs = [
-                    paddle.to_tensor(
-                        np.random.random([4, 1, 4, 1]).astype("float32")
-                    ),
-                    paddle.to_tensor(
-                        np.random.random([1, 4, 1, 4]).astype("float32")
-                    ),
-                ]
-                paddle.broadcast_tensors(inputs)
+                dtypes = ['float32', 'complex64', 'complex128']
+                for dtype in dtypes:
+                    inputs = [
+                        paddle.to_tensor(
+                            np.random.random([4, 1, 4, 1]).astype(dtype)
+                            if dtype == 'float32'
+                            else (
+                                np.random.random([4, 1, 4, 1])
+                                + 1j * np.random.random([4, 1, 4, 1])
+                            ).astype(dtype)
+                        ),
+                        paddle.to_tensor(
+                            np.random.random([1, 4, 1, 4]).astype(dtype)
+                            if dtype == 'float32'
+                            else (
+                                np.random.random([1, 4, 1, 4])
+                                + 1j * np.random.random([1, 4, 1, 4])
+                            ).astype(dtype)
+                        ),
+                    ]
+                    paddle.broadcast_tensors(inputs)
             finally:
                 paddle.enable_static()
 
@@ -306,9 +326,21 @@ class TestRaiseBroadcastTensorsError(unittest.TestCase):
             ]
             paddle.broadcast_tensors(inputs)
 
+        def test_bcast_semantics_complex64():
+            inputs = [
+                paddle.static.data(
+                    shape=[-1, 1, 3, 1, 1], dtype='complex64', name="x11"
+                ),
+                paddle.static.data(
+                    shape=[-1, 1, 8, 1, 1], dtype='complex64', name="x12"
+                ),
+            ]
+            paddle.broadcast_tensors(inputs)
+
         self.assertRaises(TypeError, test_type)
         self.assertRaises(TypeError, test_dtype)
         self.assertRaises(TypeError, test_bcast_semantics)
+        self.assertRaises(TypeError, test_bcast_semantics_complex64)
 
 
 class TestRaiseBroadcastTensorsErrorDyGraph(unittest.TestCase):

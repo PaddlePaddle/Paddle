@@ -25,21 +25,29 @@ from paddle.base import Program, program_guard
 class TestUnbind(unittest.TestCase):
     def test_unbind(self):
         paddle.enable_static()
+        dtypes = ['float32', 'complex64', 'complex128']
+        for dtype in dtypes:
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
+                x_1 = paddle.static.data(shape=[2, 3], dtype=dtype, name='x_1')
+                [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
+                input_1 = np.random.random([2, 3]).astype(dtype)
+                if dtype == 'complex64' or dtype == 'complex128':
+                    input_1 = (
+                        np.random.random([2, 3]) + 1j * np.random.random([2, 3])
+                    ).astype(dtype)
+                axis = paddle.static.data(shape=[], dtype='int32', name='axis')
+                exe = base.Executor(place=base.CPUPlace())
 
-        x_1 = paddle.static.data(shape=[2, 3], dtype='float32', name='x_1')
-        [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
-        input_1 = np.random.random([2, 3]).astype("float32")
-        axis = paddle.static.data(shape=[], dtype='int32', name='axis')
-        exe = base.Executor(place=base.CPUPlace())
+                [res_1, res_2] = exe.run(
+                    base.default_main_program(),
+                    feed={"x_1": input_1, "axis": 0},
+                    fetch_list=[out_0, out_1],
+                )
 
-        [res_1, res_2] = exe.run(
-            base.default_main_program(),
-            feed={"x_1": input_1, "axis": 0},
-            fetch_list=[out_0, out_1],
-        )
-
-        np.testing.assert_array_equal(res_1, input_1[0, 0:100])
-        np.testing.assert_array_equal(res_2, input_1[1, 0:100])
+                np.testing.assert_array_equal(res_1, input_1[0, 0:100])
+                np.testing.assert_array_equal(res_2, input_1[1, 0:100])
 
     def test_unbind_static_fp16_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
@@ -65,39 +73,52 @@ class TestUnbind(unittest.TestCase):
                 np.testing.assert_array_equal(res[1], input[1, :])
 
     def test_unbind_dygraph(self):
-        with base.dygraph.guard():
-            np_x = np.random.random([2, 3]).astype("float32")
-            x = paddle.to_tensor(np_x)
-            x.stop_gradient = False
-            [res_1, res_2] = paddle.unbind(x, 0)
-            np.testing.assert_array_equal(res_1, np_x[0, 0:100])
-            np.testing.assert_array_equal(res_2, np_x[1, 0:100])
+        dtypes = ['float32', 'complex64', 'complex128']
+        for dtype in dtypes:
+            with base.dygraph.guard():
+                np_x = np.random.random([2, 3]).astype(dtype)
+                if dtype == 'complex64' or dtype == 'complex128':
+                    np_x = (
+                        np.random.random([2, 3]) + 1j * np.random.random([2, 3])
+                    ).astype(dtype)
+                x = paddle.to_tensor(np_x)
+                x.stop_gradient = False
+                [res_1, res_2] = paddle.unbind(x, 0)
+                np.testing.assert_array_equal(res_1, np_x[0, 0:100])
+                np.testing.assert_array_equal(res_2, np_x[1, 0:100])
 
-            out = paddle.add_n([res_1, res_2])
+                out = paddle.add_n([res_1, res_2])
 
-            np_grad = np.ones(x.shape, np.float32)
-            out.backward()
-            np.testing.assert_array_equal(x.grad.numpy(False), np_grad)
+                np_grad = np.ones(x.shape, dtype)
+                out.backward()
+                np.testing.assert_array_equal(x.grad.numpy(False), np_grad)
 
 
 class TestLayersUnbind(unittest.TestCase):
     def test_layers_unbind(self):
         paddle.enable_static()
+        dtypes = ['float32', 'complex64', 'complex128']
+        for dtype in dtypes:
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
+                x_1 = paddle.static.data(shape=[2, 3], dtype=dtype, name='x_1')
+                [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
+                input_1 = np.random.random([2, 3]).astype(dtype)
+                if dtype == 'complex64' or dtype == 'complex128':
+                    input_1 = (
+                        np.random.random([2, 3]) + 1j * np.random.random([2, 3])
+                    ).astype(dtype)
+                axis = paddle.static.data(shape=[], dtype='int32', name='axis')
+                exe = base.Executor(place=base.CPUPlace())
+                [res_1, res_2] = exe.run(
+                    base.default_main_program(),
+                    feed={"x_1": input_1, "axis": 0},
+                    fetch_list=[out_0, out_1],
+                )
 
-        x_1 = paddle.static.data(shape=[2, 3], dtype='float32', name='x_1')
-        [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
-        input_1 = np.random.random([2, 3]).astype("float32")
-        axis = paddle.static.data(shape=[], dtype='int32', name='axis')
-        exe = base.Executor(place=base.CPUPlace())
-
-        [res_1, res_2] = exe.run(
-            base.default_main_program(),
-            feed={"x_1": input_1, "axis": 0},
-            fetch_list=[out_0, out_1],
-        )
-
-        np.testing.assert_array_equal(res_1, input_1[0, 0:100])
-        np.testing.assert_array_equal(res_2, input_1[1, 0:100])
+                np.testing.assert_array_equal(res_1, input_1[0, 0:100])
+                np.testing.assert_array_equal(res_2, input_1[1, 0:100])
 
 
 class TestUnbindOp(OpTest):
@@ -201,6 +222,46 @@ class TestUnbindOp4(TestUnbindOp):
         self.out[1] = self.out[1].reshape((3, 2))
 
 
+class TestUnbindOp1_Complex64(TestUnbindOp1):
+    def get_dtype(self):
+        return np.complex64
+
+
+class TestUnbindOp2_Complex64(TestUnbindOp2):
+    def get_dtype(self):
+        return np.complex64
+
+
+class TestUnbindOp3_Complex64(TestUnbindOp3):
+    def get_dtype(self):
+        return np.complex64
+
+
+class TestUnbindOp4_Complex64(TestUnbindOp4):
+    def get_dtype(self):
+        return np.complex64
+
+
+class TestUnbindOp1_Complex128(TestUnbindOp1):
+    def get_dtype(self):
+        return np.complex128
+
+
+class TestUnbindOp2_Complex128(TestUnbindOp2):
+    def get_dtype(self):
+        return np.complex128
+
+
+class TestUnbindOp3_Complex128(TestUnbindOp3):
+    def get_dtype(self):
+        return np.complex128
+
+
+class TestUnbindOp4_Complex128(TestUnbindOp4):
+    def get_dtype(self):
+        return np.complex128
+
+
 class TestUnbindFP16Op(OpTest):
     def setUp(self):
         paddle.disable_static()
@@ -272,18 +333,21 @@ class TestUnbindBF16Op(OpTest):
 
 class TestUnbindAxisError(unittest.TestCase):
     def test_errors(self):
-        with program_guard(Program(), Program()):
-            x = paddle.static.data(shape=[2, 3], dtype='float32', name='x')
+        paddle.enable_static()
+        dtypes = ['float32', 'complex64', 'complex128']
+        for dtype in dtypes:
+            with program_guard(Program(), Program()):
+                x = paddle.static.data(shape=[2, 3], dtype=dtype, name='x')
 
-            def test_table_Variable():
-                tensor.unbind(input=x, axis=2.0)
+                def test_table_Variable():
+                    tensor.unbind(input=x, axis=2.0)
 
-            self.assertRaises(TypeError, test_table_Variable)
+                self.assertRaises(TypeError, test_table_Variable)
 
-            def test_invalid_axis():
-                tensor.unbind(input=x, axis=2)
+                def test_invalid_axis():
+                    tensor.unbind(input=x, axis=2)
 
-            self.assertRaises(ValueError, test_invalid_axis)
+                self.assertRaises(ValueError, test_invalid_axis)
 
 
 class TestUnbindBool(unittest.TestCase):
