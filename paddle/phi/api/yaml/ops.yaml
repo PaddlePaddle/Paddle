@@ -1914,6 +1914,7 @@
   output : Tensor(size)
   infer_meta :
     func : NumelInferMeta
+    spmd_rule : NumelInferSpmd
   kernel :
     func : numel
     data_type : x
@@ -2496,6 +2497,7 @@
   output : Tensor (out)
   infer_meta :
     func : StackInferMeta
+    spmd_rule : StackInferSpmd
   kernel :
     func : stack
   backward : stack_grad
@@ -2845,6 +2847,7 @@
   output : Tensor(out)
   infer_meta :
     func : WhereInferMeta
+    spmd_rule: WhereInferSpmd
   kernel :
     func : where
   inplace: (x -> out)

@@ -341,6 +341,7 @@
   infer_meta :
     func : UnchangedMultiInferMeta
     param : [x]
+    spmd_rule: ConcatGradInferSpmdDynamic
   kernel :
     func : concat_grad
     data_type : out_grad
@@ -2289,6 +2290,7 @@
   infer_meta :
     func : StackGradInferMeta
     param: [out_grad, axis]
+    spmd_rule : StackGradInferSpmd
   kernel :
     func : stack_grad
     param : [out_grad, axis]
@@ -2600,6 +2602,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, y]
+    spmd_rule: WhereGradInferSpmd
   kernel :
     func : where_grad
   no_need_buffer : x, y

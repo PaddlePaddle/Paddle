@@ -89,7 +89,9 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'fusion_squared_mat_sub',
     'fused_attention',
     'fused_feedforward',
+    'fc',
     'self_dp_attention',
+    'get_tensor_from_selected_rows',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -103,10 +105,12 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_embedding',
     'c_identity',
     'c_reduce_sum',
+    'c_reducescatter',
     'dpsgd',
     'embedding_grad_sparse',
     'fused_batch_norm_act_',
     'fused_bn_add_activation_',
+    'fused_elemwise_add_activation',
     'fused_scale_bias_relu_conv_bn',
     'fused_scale_bias_add_relu',
     'memcpy',

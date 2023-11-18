@@ -172,7 +172,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     // prepare op outputs
     std::vector<pir::Type> output_types;
     for (uint32_t i = 0; i < op->num_results(); i++) {
-      output_types.push_back(op->result_type(i));
+      output_types.push_back(op->result(i).type());
     }
 
     auto* temp_op =
