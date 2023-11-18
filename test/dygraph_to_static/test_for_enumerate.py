@@ -20,6 +20,7 @@ import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
     test_legacy_and_pir_exe_and_pir_api,
+    test_pir_api_only,
 )
 
 import paddle
@@ -277,7 +278,6 @@ class ForwardContainsForLayer(paddle.nn.Layer):
         self.high = 5
         self.low = 3
 
-    @paddle.jit.to_static
     def forward(self, x):
         # just for test case, x is useless in this method
         y = paddle.zeros([10, 2, 3])
@@ -336,7 +336,6 @@ class TestTransformBase(Dy2StTestBase):
             else paddle.CPUPlace()
         )
         self.set_input()
-        self.set_test_func()
 
     def set_input(self):
         self.input = [1, 2, 3]
@@ -395,6 +394,7 @@ class TestForInRange(TestTransform):
         self.dygraph_func = for_in_range
 
     def test_transformed_result_compare(self):
+        self.set_test_func()
         self.transformed_result_compare()
 
 
@@ -402,13 +402,20 @@ class TestForIterList(TestTransform):
     def set_test_func(self):
         self.dygraph_func = for_iter_list
 
+    @test_pir_api_only
     def test_transformed_result_compare(self):
+        self.set_test_func()
         self.transformed_result_compare()
 
 
 class TestForEnumerateSimple(TestForIterList):
     def set_test_func(self):
         self.dygraph_func = for_enumerate_list
+
+    # TODO(gouzil): temp ignore pir_api test
+    def test_transformed_result_compare(self):
+        self.set_test_func()
+        self.transformed_result_compare()
 
 
 class TestForInRangeWithBreak(TestForInRange):
@@ -424,6 +431,7 @@ class TestForIterVarNumpy(TestTransform):
         self.dygraph_func = for_iter_var_numpy
 
     def test_transformed_result_compare(self):
+        self.set_test_func()
         self.transformed_result_compare()
 
 
@@ -511,7 +519,9 @@ class TestForOriginalList(TestTransformForOriginalList):
     def set_test_func(self):
         self.dygraph_func = for_original_list
 
+    @test_legacy_and_pir_exe_and_pir_api
     def test_transformed_result_compare(self):
+        self.set_test_func()
         self.transformed_result_compare()
 
 
@@ -523,6 +533,11 @@ class TestForOriginalTuple(TestForOriginalList):
 class TestSliceTensorArrayInEnumerate(TestForOriginalList):
     def set_test_func(self):
         self.dygraph_func = tensor_array_slice_in_enumerate
+
+    # TODO(gouzil): temp ignore pir_api test
+    def test_transformed_result_compare(self):
+        self.set_test_func()
+        self.transformed_result_compare()
 
 
 class TestForZip(Dy2StTestBase):
