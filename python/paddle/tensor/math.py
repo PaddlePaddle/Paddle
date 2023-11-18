@@ -7033,7 +7033,9 @@ def combinations(x, r=2, with_replacement=False, name=None):
     if r == 0:
         return paddle.empty(shape=[0], dtype=x.dtype)
 
-    if r > x.shape[0]:
+    if (r > x.shape[0] and not with_replacement) or (
+        x.shape[0] == 0 and with_replacement
+    ):
         return paddle.empty(shape=[0, r], dtype=x.dtype)
 
     if r > 1:

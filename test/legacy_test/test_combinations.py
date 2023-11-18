@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import random
 import unittest
 from itertools import combinations, combinations_with_replacement
 
@@ -34,7 +34,10 @@ def convert_combinations_to_array(x, r=2, with_replacement=False):
     res = []
     for i in range(len(combs)):
         res.append(list(combs[i]))
-    return np.array(res).astype(x.dtype)
+    if len(res) != 0:
+        return np.array(res).astype(x.dtype)
+    else:
+        return np.empty((0, r))
 
 
 class TestCombinationsAPIBase(unittest.TestCase):
@@ -126,15 +129,22 @@ class TestCombinationsEmpty(unittest.TestCase):
         paddle.disable_static()
         for place in self.place:
             paddle.device.set_device(place)
-            a = paddle.to_tensor([1, 2, 3])
+            a = paddle.rand([3], dtype='float32')
             c = paddle.combinations(a, r=4)
-            expected = paddle.empty([0, 4])
+            expected = convert_combinations_to_array(a.numpy(), r=4)
             np.testing.assert_allclose(c, expected)
 
-            # test empty imput
-            a = paddle.empty([0])
-            c1 = paddle.combinations(a)
-            c2 = paddle.combinations(a, with_replacement=True)
-            expected = paddle.empty([0, 2])
-            np.testing.assert_allclose(c1, expected)
-            np.testing.assert_allclose(c2, expected)
+            # test empty input
+            a = paddle.empty([random.randint(0, 8)])
+            c1 = paddle.combinations(a, r=2)
+            c2 = paddle.combinations(a, r=2, with_replacement=True)
+            expected1 = convert_combinations_to_array(a.numpy(), r=2)
+            expected2 = convert_combinations_to_array(
+                a.numpy(), r=2, with_replacement=True
+            )
+            np.testing.assert_allclose(c1, expected1)
+            np.testing.assert_allclose(c2, expected2)
+
+
+if __name__ == '__main__':
+    unittest.main()
