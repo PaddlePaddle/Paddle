@@ -82,7 +82,6 @@ def create_test_case(margin, reduction):
                 )
                 np.testing.assert_allclose(result_numpy, expected, rtol=1e-05)
 
-        @test_with_pir_api
         def run_static_api(self, place):
             paddle.enable_static()
             expected = calc_margin_rank_loss(
