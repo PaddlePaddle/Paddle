@@ -35,6 +35,9 @@ from ...utils.tensor_fusion_helper import (
 
 g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
 g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 0))
+g_shard_sort_reduce_root = int(
+    os.environ.get("FLAGS_shard_sort_reduce_root", 1)
+)
 
 
 if g_shard_norm_align_dp:
@@ -194,8 +197,10 @@ class DygraphShardingOptimizer:
                 comm_group, acc_steps, group_size
             )
             # NOTE(shenliang03): Sort the comm_buffers by dst rank,
-            # it will improve the performance in reduce communicate
-            self.comm_buffers.sort(key=lambda x: x._dst)
+            # it will improve the performance in reduce communicate. Default
+            # g_shard_sort_reduce_root is True.
+            if g_shard_sort_reduce_root:
+                self.comm_buffers.sort(key=lambda x: x._dst)
 
         # Register backward hooks for each parameter in the buffer
         for buffer in self.comm_buffers:
