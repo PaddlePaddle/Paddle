@@ -35,9 +35,10 @@ from ...utils.tensor_fusion_helper import (
 
 g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
 g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 0))
+
 g_shard_sort_reduce_root = int(
     os.environ.get("FLAGS_shard_sort_reduce_root", 1)
-)
+)  # it will remove in the future
 
 
 if g_shard_norm_align_dp:
