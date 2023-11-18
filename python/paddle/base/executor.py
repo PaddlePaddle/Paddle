@@ -731,7 +731,7 @@ def _as_lodtensor(data, place, dtype=None):
                 raise TypeError(
                     "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
                     "this means the input data contains nested lists with different lengths. "
-                    "Please consider using 'base.create_lod_tensor' to convert it to a LoD-Tensor."
+                    "Please consider using 'base.create_lod_tensor' to convert it to a LoD-Tensor. data is {}, type is {}".format(str(data), type(data))
                 )
             data = data.astype(dtype)
         else:

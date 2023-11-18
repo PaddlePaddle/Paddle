@@ -431,10 +431,12 @@ class TestAtleastAsTensorMethod(unittest.TestCase):
     def test_as_tensor_method(self):
         input = 123
 
+        tensor = paddle.to_tensor(input)
+        
         for place in PLACES:
             paddle.disable_static(place)
 
-            tensor = paddle.to_tensor(input)
+            # tensor = paddle.to_tensor(input)
 
             out = tensor.atleast_1d()
             out_ref = np.atleast_1d(input)
