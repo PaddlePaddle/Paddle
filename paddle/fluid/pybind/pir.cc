@@ -31,6 +31,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
@@ -41,6 +42,7 @@
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
+#include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
@@ -49,6 +51,7 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
@@ -275,6 +278,14 @@ void BindBlock(py::module *m) {
             }
             return op_list;
           })
+      .def("__enter__",
+           [](Block &self) {
+             ApiBuilder::Instance().PushInsertionPoint({&self, self.end()});
+           })
+      .def("__exit__",
+           [](Block &self, py::object, py::object, py::object) {
+             ApiBuilder::Instance().PopInsertionPoint();
+           })
       .def(
           "remove_op",
           [](Block &self, Operation *op) {
@@ -479,7 +490,7 @@ void BindValue(py::module *m) {
 
   )DOC");
   g_ir_value_pytype = reinterpret_cast<PyTypeObject *>(value.ptr());
-  value
+  value.def(py::init<OpResult>())
       .def(
           "get_defining_op",
           [](const Value &self) -> pir::Operation * {
@@ -667,6 +678,7 @@ void BindOpResult(py::module *m) {
         The constructor of OpResult should not be invoked directly. OpResult can be automatically constructed
         when build network.
   )DOC");
+  py::implicitly_convertible<OpResult, Value>();
   g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
   op_result.def(
       "__init__",
@@ -1347,6 +1359,7 @@ void BindUtils(pybind11::module *m) {
   m->def("register_paddle_dialect", []() {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+    pir::IrContext::Instance()->GetOrRegisterDialect<pir::ControlFlowDialect>();
   });
   m->def(
       "translate_to_pir",
@@ -1498,6 +1511,7 @@ std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+
   pir::PassManager pass_manager(ctx);
   cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
 
@@ -1577,6 +1591,7 @@ void BindPir(pybind11::module *module) {
   BindUtils(&ir_module);
   BindIrPass(&ir_module);
   BindPassManager(&ir_module);
+  BindControlFlowApi(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
   BindOpsAPI(&ops_modules);
 }
