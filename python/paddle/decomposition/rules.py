@@ -62,7 +62,7 @@ def gelu(x, approximate):
         return out
 
 
-@register_decomp('pd_op.sqrt')
+# @register_decomp('pd_op.sqrt')
 def sqrt(x):
     """
     define composite rule of op sqrt

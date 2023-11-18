@@ -188,6 +188,29 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   return std::make_tuple(out, mean_, variance);
 }
 
+template <typename T>
+Tensor sqrt_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  bool need_cast =
+      org_dtype == phi::DataType::FLOAT16 || org_dtype == phi::DataType::UINT16;
+
+  Tensor x_cast;
+  auto x_dtype = org_dtype;
+  if (need_cast) {
+    x_cast = cast<T>(x, phi::DataType::FLOAT32);
+    x_dtype = phi::DataType::FLOAT32;
+  } else {
+    x_cast = x;
+  }
+
+  auto ans = elementwise_pow<T>(
+      x_cast, full<T>(phi::vectorize(x_cast.dims()), 0.5, x_dtype));
+  if (need_cast) {
+    ans = cast<T>(x, org_dtype);
+  }
+  return ans;
+}
+
 }  // namespace details
 
 }  // namespace primitive
