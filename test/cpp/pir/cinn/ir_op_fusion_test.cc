@@ -526,3 +526,73 @@ TEST(IROpFusionPass, softmax) {
 
   ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
 }
+
+TEST(IROpFusionPass, layer_norm2) {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ::pir::Program program_base(ctx);
+  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
+  auto inputs = BuildInput(&builder_base, {{128, 128, 768}, {768}, {768}});
+  ::pir::Program program(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
+  std::vector<int64_t> axes{-1};
+  auto num = builder
+                 .Build<paddle::dialect::FullOp>(std::vector<int64_t>{1},
+                                                 768.0,
+                                                 phi::DataType::FLOAT32,
+                                                 phi::CPUPlace())
+                 .result(0);
+  auto eps = builder
+                 .Build<paddle::dialect::FullOp>(std::vector<int64_t>{1},
+                                                 1e-5,
+                                                 phi::DataType::FLOAT32,
+                                                 phi::CPUPlace())
+                 .result(0);
+  auto sum = builder.Build<cinn::dialect::ReduceSumOp>(inputs[0], axes, true)
+                 .result(0);
+  std::vector<int64_t> all_axes{0, 1, 2};
+  std::vector<int64_t> out_shape1{128, 128, 1};
+  auto num1 =
+      builder.Build<cinn::dialect::BroadcastOp>(num, all_axes, out_shape1)
+          .result(0);
+  auto mean = builder.Build<paddle::dialect::DivideOp>(sum, num1).result(0);
+  auto power = builder.Build<paddle::dialect::MultiplyOp>(inputs[0], inputs[0])
+                   .result(0);
+  auto power_sum =
+      builder.Build<cinn::dialect::ReduceSumOp>(power, axes, true).result(0);
+  auto mean2 =
+      builder.Build<paddle::dialect::DivideOp>(power_sum, num1).result(0);
+  auto power_mean =
+      builder.Build<paddle::dialect::MultiplyOp>(mean, mean).result(0);
+  auto var =
+      builder.Build<paddle::dialect::SubtractOp>(mean2, power_mean).result(0);
+  std::vector<int64_t> out_shape2{128, 128, 768};
+  auto sub =
+      builder.Build<paddle::dialect::SubtractOp>(inputs[0], mean).result(0);
+  auto eps1 =
+      builder.Build<cinn::dialect::BroadcastOp>(eps, all_axes, out_shape2)
+          .result(0);
+  auto t1 = builder.Build<paddle::dialect::AddOp>(var, eps1).result(0);
+  auto t2 = builder.Build<paddle::dialect::SqrtOp>(t1).result(0);
+  auto t3 = builder.Build<paddle::dialect::DivideOp>(sub, t2).result(0);
+  auto scale =
+      builder.Build<cinn::dialect::BroadcastOp>(inputs[1], all_axes, out_shape2)
+          .result(0);
+  auto bias =
+      builder.Build<cinn::dialect::BroadcastOp>(inputs[2], all_axes, out_shape2)
+          .result(0);
+  auto t5 = builder.Build<paddle::dialect::MultiplyOp>(t3, scale).result(0);
+  builder.Build<paddle::dialect::MultiplyOp>(t5, bias).result(0);
+  builder.Build<cinn::dialect::ReshapeOp>(mean, std::vector<int>({-1}))
+      .result(0);
+  builder.Build<cinn::dialect::ReshapeOp>(mean2, std::vector<int>({-1}))
+      .result(0);
+
+  auto res =
+      cinn::dialect::ir::OpFusionPassInternal(std::vector<pir::Operation*>(
+          program.block()->begin(), program.block()->end()));
+  auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
+  ASSERT_EQ(new_group.size(), 1u);
+  ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
+}
