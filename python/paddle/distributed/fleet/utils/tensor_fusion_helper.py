@@ -264,7 +264,12 @@ class FusedCommBuffer:
         self._comm_group = comm_group
         self._release_grads = release_grads
 
-        self.use_main_grad = hasattr(self._params[0], "main_grad")
+        self.use_main_grad = all(
+            hasattr(param, "main_grad") for param in self._params
+        )
+        assert (
+            self.use_main_grad
+        ), "All parameters in FusedCommBuffer must have main_grad."
 
         self._task = None
         self._dtype = (
