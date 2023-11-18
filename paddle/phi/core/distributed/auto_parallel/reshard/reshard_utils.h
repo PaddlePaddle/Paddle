@@ -76,7 +76,7 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
   do {                                                                \
     if (phi::CPUContext::classof(dev_ctx)) {                          \
       VLOG(4) << "Call `" << #fn_name << "` in Resharding on CPU.";   \
-      PD_VISIT_BOOL_AND_FLOATING_AND_INTEGRAL_TYPES(                  \
+      PD_VISIT_FLOATING_AND_INTEGRAL_TYPES(                           \
           dtype, #fn_name, ([&] {                                     \
             fn_name<data_t>(static_cast<const CPUContext&>(*dev_ctx), \
                             __VA_ARGS__);                             \
