@@ -129,14 +129,6 @@ class DygraphShardingOptimizer:
         self.comm_overlap = sharding_configs.comm_overlap
         comm_group = self._hcg.get_sharding_parallel_group()
 
-        # if not self._pp_overlap and self.comm_overlap:
-        #     assert (
-        #         acc_steps > 0
-        #     ), "acc_steps should be larger than 0 when using comm_overlap in sharding"
-        #     self.register_reduce_overlap_hook(
-        #         comm_group, acc_steps, use_comm=True
-        #     )
-
         if not self._pp_overlap:
             assert (
                 acc_steps > 0 or not self.comm_overlap
