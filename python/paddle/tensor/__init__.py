@@ -138,6 +138,11 @@ from .manipulation import vsplit  # noqa: F401
 from .manipulation import squeeze  # noqa: F401
 from .manipulation import squeeze_  # noqa: F401
 from .manipulation import stack  # noqa: F401
+from .manipulation import hstack  # noqa: F401
+from .manipulation import vstack  # noqa: F401
+from .manipulation import dstack  # noqa: F401
+from .manipulation import column_stack  # noqa: F401
+from .manipulation import row_stack  # noqa: F401
 from .manipulation import strided_slice  # noqa: F401
 from .manipulation import unique  # noqa: F401
 from .manipulation import unique_consecutive  # noqa: F401
