@@ -28,7 +28,6 @@ import paddle.jit.dy2static as _jst
 from paddle import base
 from paddle.jit.dy2static.convert_call_func import CONVERSION_OPTIONS
 from paddle.jit.dy2static.utils import func_to_source_code
-from paddle.pir_utils import test_with_pir_api
 
 SEED = 2020
 np.random.seed(SEED)
@@ -294,7 +293,7 @@ class TestConvertPaddleAPI(Dy2StTestBase):
         bn = paddle.nn.SyncBatchNorm(2)
         paddle.jit.to_static(bn)
         self.assertNotIn("_jst.IfElse", bn.forward.code)
-        self.assertIn("if in_dynamic_mode()", bn.forward.code)
+        self.assertIn("if in_dynamic_or_pir_mode()", bn.forward.code)
 
     @test_ast_only
     @test_legacy_and_pir_api
