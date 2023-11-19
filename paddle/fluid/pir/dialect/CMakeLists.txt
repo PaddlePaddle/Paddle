@@ -72,40 +72,21 @@ execute_process(
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
     --dialect_name ${dialect_name} --op_def_h_file ${op_header_file_tmp}
     --op_def_cc_file ${op_source_file_tmp} --op_vjp_cc_file
-    ${op_vjp_source_file_tmp}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_header_file_tmp}
-          ${op_header_file}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_source_file_tmp}
-          ${op_source_file}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_vjp_source_file_tmp}
-          ${op_vjp_source_file})
+    ${op_vjp_source_file_tmp})
 
-# add_custom_command(
-#   OUTPUT ${op_header_file} ${op_source_file} ${op_vjp_source_file}
-#   COMMAND
-#     ${PYTHON_EXECUTABLE} ${op_gen_file} --op_yaml_files ${op_yaml_files}
-#     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
-#     --dialect_name ${dialect_name} --op_def_h_file ${op_header_file_tmp}
-#     --op_def_cc_file ${op_source_file_tmp} --op_vjp_cc_file
-#     ${op_vjp_source_file_tmp}
-#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_header_file_tmp}
-#           ${op_header_file}
-#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_source_file_tmp}
-#           ${op_source_file}
-#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_vjp_source_file_tmp}
-#           ${op_vjp_source_file}
-#   COMMENT
-#     "copy_if_different ${op_header_file} ${op_source_file} ${op_vjp_source_file}"
-#   DEPENDS ${op_gen_file}
-#           ${op_forward_yaml_file1}
-#           ${op_forward_yaml_file2}
-#           ${op_backward_yaml_file1}
-#           ${op_backward_yaml_file2}
-#           ${op_compat_yaml_file}
-#           ${op_yaml_file3}
-#           ${op_yaml_file4}
-#           ${op_yaml_file5}
-#   VERBATIM)
+set(generated_files_pd_op "${op_header_file}" "${op_source_file}"
+                          "${op_vjp_source_file}")
+foreach(generated_file ${generated_files_pd_op})
+  if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            "${generated_file}.tmp" "${generated_file}")
+    message("copy if different ${generated_file}.tmp ${generated_file}")
+  elseif(EXISTS "${generated_file}.tmp")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${generated_file}.tmp"
+                            "${generated_file}")
+    message("copy ${generated_file}.tmp ${generated_file}")
+  endif()
+endforeach()
 
 add_custom_target(
   op_header_and_source_gen ALL DEPENDS ${op_header_file} ${op_source_file}
@@ -125,34 +106,20 @@ execute_process(
     ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
     --api_def_h_file ${api_header_file_tmp} --api_def_cc_file
-    ${api_source_file_tmp}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp}
-          ${api_header_file}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
-          ${api_source_file})
+    ${api_source_file_tmp})
 
-# add_custom_command(
-#   OUTPUT ${api_header_file} ${api_source_file}
-#   COMMAND
-#     ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${op_yaml_files}
-#     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
-#     --api_def_h_file ${api_header_file_tmp} --api_def_cc_file
-#     ${api_source_file_tmp}
-#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp}
-#           ${api_header_file}
-#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
-#           ${api_source_file}
-#   COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
-#   DEPENDS ${api_gen_file}
-#           ${op_forward_yaml_file1}
-#           ${op_forward_yaml_file2}
-#           ${op_backward_yaml_file1}
-#           ${op_backward_yaml_file2}
-#           ${op_compat_yaml_file}
-#           ${op_yaml_file3}
-#           ${op_yaml_file4}
-#           ${op_yaml_file5}
-#   VERBATIM)
+set(generated_files_pd_api "${api_header_file}" "${api_source_file}")
+foreach(generated_file ${generated_files_pd_api})
+  if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            "${generated_file}.tmp" "${generated_file}")
+    message("copy if different ${generated_file}.tmp ${generated_file}")
+  elseif(EXISTS "${generated_file}.tmp")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${generated_file}.tmp"
+                            "${generated_file}")
+    message("copy ${generated_file}.tmp ${generated_file}")
+  endif()
+endforeach()
 
 add_custom_target(api_header_and_source_gen ALL DEPENDS ${api_header_file}
                                                         ${api_source_file})
@@ -170,34 +137,21 @@ execute_process(
     ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
     --python_c_def_h_file ${python_c_header_file_tmp} --python_c_def_cc_file
-    ${python_c_source_file_tmp}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${python_c_header_file_tmp}
-          ${python_c_header_file}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${python_c_source_file_tmp}
-          ${python_c_source_file})
+    ${python_c_source_file_tmp})
 
-# add_custom_command(
-#   OUTPUT ${python_c_header_file} ${python_c_source_file}
-#   COMMAND
-#     ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files ${op_yaml_files}
-#     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
-#     --python_c_def_h_file ${python_c_header_file_tmp} --python_c_def_cc_file
-#     ${python_c_source_file_tmp}
-#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${python_c_header_file_tmp}
-#           ${python_c_header_file}
-#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${python_c_source_file_tmp}
-#           ${python_c_source_file}
-#   COMMENT "copy_if_different ${python_c_header_file} ${python_c_source_file}"
-#   DEPENDS ${python_c_gen_file}
-#           ${op_forward_yaml_file1}
-#           ${op_forward_yaml_file2}
-#           ${op_backward_yaml_file1}
-#           ${op_backward_yaml_file2}
-#           ${op_compat_yaml_file}
-#           ${op_yaml_file3}
-#           ${op_yaml_file4}
-#           ${op_yaml_file5}
-#   VERBATIM)
+set(generated_files_python_c "${python_c_header_file}"
+                             "${python_c_source_file}")
+foreach(generated_file ${generated_files_python_c})
+  if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            "${generated_file}.tmp" "${generated_file}")
+    message("copy if different ${generated_file}.tmp ${generated_file}")
+  elseif(EXISTS "${generated_file}.tmp")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${generated_file}.tmp"
+                            "${generated_file}")
+    message("copy ${generated_file}.tmp ${generated_file}")
+  endif()
+endforeach()
 
 add_custom_target(static_op_function_gen ALL DEPENDS ${python_c_header_file}
                                                      ${python_c_source_file})
@@ -211,28 +165,20 @@ execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} ${ops_api_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
-    --ops_api_file ${ops_api_source_file_tmp}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${ops_api_source_file_tmp}
-          ${ops_api_source_file})
+    --ops_api_file ${ops_api_source_file_tmp})
 
-# add_custom_command(
-#   OUTPUT ${ops_api_source_file}
-#   COMMAND
-#     ${PYTHON_EXECUTABLE} ${ops_api_gen_file} --op_yaml_files ${op_yaml_files}
-#     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
-#     --ops_api_file ${ops_api_source_file_tmp}
-#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${ops_api_source_file_tmp}
-#           ${ops_api_source_file}
-#   COMMENT "copy_if_different ${ops_api_source_file}"
-#   DEPENDS ${ops_api_gen_file}
-#           ${op_forward_yaml_file1}
-#           ${op_forward_yaml_file2}
-#           ${op_backward_yaml_file1}
-#           ${op_backward_yaml_file2}
-#           ${op_compat_yaml_file}
-#           ${python_c_header_file}
-#           ${python_c_source_file}
-#   VERBATIM)
+set(generated_files_ops_api "${ops_api_source_file}")
+foreach(generated_file ${generated_files_ops_api})
+  if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            "${generated_file}.tmp" "${generated_file}")
+    message("copy if different ${generated_file}.tmp ${generated_file}")
+  elseif(EXISTS "${generated_file}.tmp")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${generated_file}.tmp"
+                            "${generated_file}")
+    message("copy ${generated_file}.tmp ${generated_file}")
+  endif()
+endforeach()
 
 add_custom_target(ops_api_gen ALL DEPENDS ${ops_api_source_file})
 
