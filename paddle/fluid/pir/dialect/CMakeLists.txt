@@ -1,5 +1,5 @@
-set(PD_DIALECT_BINARY_DIR
-    "${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir")
+set(PD_DIALECT_SOURCE_DIR
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir")
 
 # Generate pd_op_dialect files defining op using op_gen_file
 set(op_gen_parsed_yaml_file
@@ -48,13 +48,13 @@ set(op_yaml_files
 )
 set(op_namespace paddle,dialect)
 set(dialect_name pd_op)
-set(op_header_file ${PD_DIALECT_BINARY_DIR}/pd_op.h)
-set(op_source_file ${PD_DIALECT_BINARY_DIR}/pd_op.cc)
+set(op_header_file ${PD_DIALECT_SOURCE_DIR}/pd_op.h)
+set(op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op.cc)
 set(op_header_file_tmp ${op_header_file}.tmp)
 set(op_source_file_tmp ${op_source_file}.tmp)
 
-set(op_vjp_source_file ${PD_DIALECT_BINARY_DIR}/pd_op_vjp.cc)
-set(op_decomp_source_file ${PD_DIALECT_BINARY_DIR}/op_decomp.cc)
+set(op_vjp_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op_vjp.cc)
+set(op_decomp_source_file ${PD_DIALECT_SOURCE_DIR}/op_decomp.cc)
 set(op_vjp_source_file_tmp ${op_vjp_source_file}.tmp)
 
 execute_process(
@@ -66,8 +66,7 @@ execute_process(
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
           ${pd_op_backward_yaml_file} --output_path ${op_yaml_file4} --backward)
 
-add_custom_command(
-  OUTPUT ${op_header_file} ${op_source_file} ${op_vjp_source_file}
+execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} ${op_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
@@ -79,19 +78,35 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_source_file_tmp}
           ${op_source_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_vjp_source_file_tmp}
-          ${op_vjp_source_file}
-  COMMENT
-    "copy_if_different ${op_header_file} ${op_source_file} ${op_vjp_source_file}"
-  DEPENDS ${op_gen_file}
-          ${op_forward_yaml_file1}
-          ${op_forward_yaml_file2}
-          ${op_backward_yaml_file1}
-          ${op_backward_yaml_file2}
-          ${op_compat_yaml_file}
-          ${op_yaml_file3}
-          ${op_yaml_file4}
-          ${op_yaml_file5}
-  VERBATIM)
+          ${op_vjp_source_file})
+
+# add_custom_command(
+#   OUTPUT ${op_header_file} ${op_source_file} ${op_vjp_source_file}
+#   COMMAND
+#     ${PYTHON_EXECUTABLE} ${op_gen_file} --op_yaml_files ${op_yaml_files}
+#     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
+#     --dialect_name ${dialect_name} --op_def_h_file ${op_header_file_tmp}
+#     --op_def_cc_file ${op_source_file_tmp} --op_vjp_cc_file
+#     ${op_vjp_source_file_tmp}
+#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_header_file_tmp}
+#           ${op_header_file}
+#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_source_file_tmp}
+#           ${op_source_file}
+#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_vjp_source_file_tmp}
+#           ${op_vjp_source_file}
+#   COMMENT
+#     "copy_if_different ${op_header_file} ${op_source_file} ${op_vjp_source_file}"
+#   DEPENDS ${op_gen_file}
+#           ${op_forward_yaml_file1}
+#           ${op_forward_yaml_file2}
+#           ${op_backward_yaml_file1}
+#           ${op_backward_yaml_file2}
+#           ${op_compat_yaml_file}
+#           ${op_yaml_file3}
+#           ${op_yaml_file4}
+#           ${op_yaml_file5}
+#   VERBATIM)
+
 add_custom_target(
   op_header_and_source_gen ALL DEPENDS ${op_header_file} ${op_source_file}
                                        ${op_vjp_source_file})
@@ -100,13 +115,12 @@ set(api_gen_yaml_files
 )
 set(api_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/api_gen.py)
-set(api_header_file ${PD_DIALECT_BINARY_DIR}/pd_api.h)
-set(api_source_file ${PD_DIALECT_BINARY_DIR}/pd_api.cc)
+set(api_header_file ${PD_DIALECT_SOURCE_DIR}/pd_api.h)
+set(api_source_file ${PD_DIALECT_SOURCE_DIR}/pd_api.cc)
 set(api_header_file_tmp ${api_header_file}.tmp)
 set(api_source_file_tmp ${api_source_file}.tmp)
 
-add_custom_command(
-  OUTPUT ${api_header_file} ${api_source_file}
+execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
@@ -115,18 +129,30 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp}
           ${api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
-          ${api_source_file}
-  COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
-  DEPENDS ${api_gen_file}
-          ${op_forward_yaml_file1}
-          ${op_forward_yaml_file2}
-          ${op_backward_yaml_file1}
-          ${op_backward_yaml_file2}
-          ${op_compat_yaml_file}
-          ${op_yaml_file3}
-          ${op_yaml_file4}
-          ${op_yaml_file5}
-  VERBATIM)
+          ${api_source_file})
+
+# add_custom_command(
+#   OUTPUT ${api_header_file} ${api_source_file}
+#   COMMAND
+#     ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${op_yaml_files}
+#     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
+#     --api_def_h_file ${api_header_file_tmp} --api_def_cc_file
+#     ${api_source_file_tmp}
+#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp}
+#           ${api_header_file}
+#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
+#           ${api_source_file}
+#   COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
+#   DEPENDS ${api_gen_file}
+#           ${op_forward_yaml_file1}
+#           ${op_forward_yaml_file2}
+#           ${op_backward_yaml_file1}
+#           ${op_backward_yaml_file2}
+#           ${op_compat_yaml_file}
+#           ${op_yaml_file3}
+#           ${op_yaml_file4}
+#           ${op_yaml_file5}
+#   VERBATIM)
 
 add_custom_target(api_header_and_source_gen ALL DEPENDS ${api_header_file}
                                                         ${api_source_file})
@@ -139,8 +165,7 @@ set(python_c_source_file
 set(python_c_header_file_tmp ${python_c_header_file}.tmp)
 set(python_c_source_file_tmp ${python_c_source_file}.tmp)
 
-add_custom_command(
-  OUTPUT ${python_c_header_file} ${python_c_source_file}
+execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
@@ -149,18 +174,30 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${python_c_header_file_tmp}
           ${python_c_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${python_c_source_file_tmp}
-          ${python_c_source_file}
-  COMMENT "copy_if_different ${python_c_header_file} ${python_c_source_file}"
-  DEPENDS ${python_c_gen_file}
-          ${op_forward_yaml_file1}
-          ${op_forward_yaml_file2}
-          ${op_backward_yaml_file1}
-          ${op_backward_yaml_file2}
-          ${op_compat_yaml_file}
-          ${op_yaml_file3}
-          ${op_yaml_file4}
-          ${op_yaml_file5}
-  VERBATIM)
+          ${python_c_source_file})
+
+# add_custom_command(
+#   OUTPUT ${python_c_header_file} ${python_c_source_file}
+#   COMMAND
+#     ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files ${op_yaml_files}
+#     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
+#     --python_c_def_h_file ${python_c_header_file_tmp} --python_c_def_cc_file
+#     ${python_c_source_file_tmp}
+#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${python_c_header_file_tmp}
+#           ${python_c_header_file}
+#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${python_c_source_file_tmp}
+#           ${python_c_source_file}
+#   COMMENT "copy_if_different ${python_c_header_file} ${python_c_source_file}"
+#   DEPENDS ${python_c_gen_file}
+#           ${op_forward_yaml_file1}
+#           ${op_forward_yaml_file2}
+#           ${op_backward_yaml_file1}
+#           ${op_backward_yaml_file2}
+#           ${op_compat_yaml_file}
+#           ${op_yaml_file3}
+#           ${op_yaml_file4}
+#           ${op_yaml_file5}
+#   VERBATIM)
 
 add_custom_target(static_op_function_gen ALL DEPENDS ${python_c_header_file}
                                                      ${python_c_source_file})
@@ -170,24 +207,32 @@ set(ops_api_gen_file
 set(ops_api_source_file ${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/ops_api.cc)
 set(ops_api_source_file_tmp ${ops_api_source_file}.tmp)
 
-add_custom_command(
-  OUTPUT ${ops_api_source_file}
+execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} ${ops_api_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
     --ops_api_file ${ops_api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${ops_api_source_file_tmp}
-          ${ops_api_source_file}
-  COMMENT "copy_if_different ${ops_api_source_file}"
-  DEPENDS ${ops_api_gen_file}
-          ${op_forward_yaml_file1}
-          ${op_forward_yaml_file2}
-          ${op_backward_yaml_file1}
-          ${op_backward_yaml_file2}
-          ${op_compat_yaml_file}
-          ${python_c_header_file}
-          ${python_c_source_file}
-  VERBATIM)
+          ${ops_api_source_file})
+
+# add_custom_command(
+#   OUTPUT ${ops_api_source_file}
+#   COMMAND
+#     ${PYTHON_EXECUTABLE} ${ops_api_gen_file} --op_yaml_files ${op_yaml_files}
+#     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
+#     --ops_api_file ${ops_api_source_file_tmp}
+#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${ops_api_source_file_tmp}
+#           ${ops_api_source_file}
+#   COMMENT "copy_if_different ${ops_api_source_file}"
+#   DEPENDS ${ops_api_gen_file}
+#           ${op_forward_yaml_file1}
+#           ${op_forward_yaml_file2}
+#           ${op_backward_yaml_file1}
+#           ${op_backward_yaml_file2}
+#           ${op_compat_yaml_file}
+#           ${python_c_header_file}
+#           ${python_c_source_file}
+#   VERBATIM)
 
 add_custom_target(ops_api_gen ALL DEPENDS ${ops_api_source_file})
 
