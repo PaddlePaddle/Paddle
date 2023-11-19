@@ -47,13 +47,10 @@ pir::Operation *CreateDenseTensorOp(
       paddle::dialect::DenseTensorType::get(
           ctx, dtype, dims, data_layout, lod, offset)};
 
-  pir::Builder builder = pir::Builder(ctx);
-  pir::Operation *op =
-      builder.Build(op_inputs,
-                    CreateAttributeMap(attribute_names, attributes),
-                    op_output_types,
-                    pir::OpInfo());
-  return op;
+  return pir::Operation::Create(op_inputs,
+                                CreateAttributeMap(attribute_names, attributes),
+                                op_output_types,
+                                pir::OpInfo());
 }
 
 }  // namespace test

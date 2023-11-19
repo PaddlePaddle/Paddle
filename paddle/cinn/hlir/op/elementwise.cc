@@ -17,6 +17,7 @@
 #include <iostream>
 
 #include "absl/types/optional.h"
+#include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -107,6 +108,13 @@ std::vector<Type> InferDtypeForElementwise(
   return res;
 }
 
+void GenerateEquationsForElementwise(
+    cinn::adt::config::OpEquationContext *ctx) {
+  CHECK(ctx->GetInTensorsRanks().size() != 0)
+      << "The inputs is empty! Please check again.";
+  ctx->Equal(ctx->GetInIteratorTuple(0), ctx->GetOutIteratorTuple(0));
+}
+
 std::vector<Type> InferDtypeForElementwiseBool(
     const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
   CHECK(!inputs_type.empty())
@@ -157,23 +165,31 @@ std::shared_ptr<OpStrategy> StrategyForScale(
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
 
-        if (bias_after_scale) {
-          out = Compute(
-              A->shape,
-              [=](const std::vector<Expr> &indice) {
-                return ir::Cast::Make(A->type(), Expr(scale)) * A(indice) +
-                       ir::Cast::Make(A->type(), Expr(bias));
-              },
-              tensor_name);
-        } else {
-          out = Compute(
-              A->shape,
-              [=](const std::vector<Expr> &indice) {
-                return ir::Cast::Make(A->type(), Expr(scale)) *
-                       (A(indice) + ir::Cast::Make(A->type(), Expr(bias)));
-              },
-              tensor_name);
-        }
+        // Paddle upscale float16 or bfloat16 compute to float32,
+        // we made CINN consistent with this behavior of Paddle
+        bool should_upscale_fp32 =
+            A->type() == common::F16() || A->type() == common::BF16();
+
+        out = Compute(
+            A->shape,
+            [=](const std::vector<Expr> &indice) {
+              Expr cast_scale = should_upscale_fp32
+                                    ? Expr(scale)
+                                    : ir::Cast::Make(A->type(), Expr(scale));
+              Expr cast_bias = should_upscale_fp32
+                                   ? Expr(bias)
+                                   : ir::Cast::Make(A->type(), Expr(bias));
+              Expr cast_A_indice =
+                  should_upscale_fp32 ? ir::Cast::Make(common::F32(), A(indice))
+                                      : A(indice);
+              Expr add_result = bias_after_scale
+                                    ? cast_scale * cast_A_indice + cast_bias
+                                    : cast_scale * (cast_A_indice + cast_bias);
+              return should_upscale_fp32 ? ir::Cast::Make(A->type(), add_result)
+                                         : add_result;
+            },
+            tensor_name);
+
         auto stages = CreateStages({out});
         *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
       });
@@ -411,6 +427,11 @@ std::vector<Type> InferDtypeForFillConstant(
             << common::Type2Str(out_type);
   }
   return {out_type};
+}
+
+void GenerateEquationsForFillConstant(
+    cinn::adt::config::OpEquationContext *ctx) {
+  // Do nothing
 }
 
 std::vector<std::vector<std::string>> InferLayoutForFillConstant(
@@ -987,6 +1008,9 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))  \
       .set_attr("inferdtype",                                              \
                 MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))  \
+      .set_attr(                                                           \
+          "generate_equations",                                            \
+          MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementwise)) \
       .set_attr("inferlayout",                                             \
                 MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise)) \
       .set_attr<cinn::hlir::framework::OpPatternKind>(                     \
@@ -1108,6 +1132,9 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForFillConstant))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForFillConstant))
+      .set_attr(
+          "generate_equations",
+          MakeOpFunction(cinn::hlir::op::GenerateEquationsForFillConstant))
 #ifndef CINN_WITH_CUDA
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForFillConstant))

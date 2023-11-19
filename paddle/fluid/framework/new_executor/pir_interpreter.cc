@@ -63,8 +63,8 @@
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
-PHI_DECLARE_bool(enable_new_ir_in_executor_trace_run);
+PHI_DECLARE_bool(enable_pir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor_trace_run);
 
 namespace paddle {
 namespace framework {
@@ -188,7 +188,8 @@ PirInterpreter::PirInterpreter(
   value_exe_info_ = value_exe_info;
 
   std::stringstream ss;
-  ss << this;
+  ss << this
+     << std::chrono::high_resolution_clock::now().time_since_epoch().count();
   BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
@@ -274,17 +275,17 @@ void PirInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
     return;
   }
   // share op dependency
-  ir_dependency_builder_.ShareDependencyFrom(impl.GetNewIrDependencyBuilder());
+  ir_dependency_builder_.ShareDependencyFrom(impl.GetPirDependencyBuilder());
   dependecy_count_ = impl.GetDependencyCount();
   // share event analysis
-  ir_stream_analyzer_.ShareEventInfoFrom(impl.GetNewIrStreamAnalyzer());
+  ir_stream_analyzer_.ShareEventInfoFrom(impl.GetPirStreamAnalyzer());
   is_shared_results_build_ = true;
   VLOG(8) << "Share Build Results from InterpreterCore(" << &impl
           << ") to InterpreterCore(" << this << ")";
 }
 
-const interpreter::NewIrDependencyBuilder&
-PirInterpreter::GetNewIrDependencyBuilder() const {
+const interpreter::PirDependencyBuilder&
+PirInterpreter::GetPirDependencyBuilder() const {
   return ir_dependency_builder_;
 }
 
@@ -293,7 +294,7 @@ std::shared_ptr<std::vector<size_t>> PirInterpreter::GetDependencyCount()
   return dependecy_count_;
 }
 
-const interpreter::NewIrStreamAnalyzer& PirInterpreter::GetNewIrStreamAnalyzer()
+const interpreter::PirStreamAnalyzer& PirInterpreter::GetPirStreamAnalyzer()
     const {
   return ir_stream_analyzer_;
 }
@@ -425,7 +426,6 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.c_reduce_prod",
       "pd_op.c_reducescatter",
       "pd_op.c_broadcast",
-      "pd_op.c_broadcast_",
       "pd_op.c_scatter",
       "pd_op.partial_send",
       "pd_op.partial_recv",
@@ -439,7 +439,6 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.distributed_fused_lamb",
       "pd_op.margin_cross_entropy",
       "pd_op.sync_batch_norm",
-      "pd_op.sync_batch_norm_",
       "pd_op.data_norm",
       "pd_op.class_center_sample",
       "pd_op.all_to_all",
@@ -474,7 +473,6 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.global_gather_grad",
       "pd_op.distributed_fused_lamb_grad",
       "pd_op.margin_cross_entropy_grad",
-      "pd_op.margin_cross_entropy_grad_",
       "pd_op.sync_batch_norm_grad",
       "pd_op.data_norm_grad",
       "pd_op.class_center_sample_grad",
@@ -486,7 +484,77 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.p_send_grad",
       "pd_op.reduce_scatter_grad",
       "pd_op.all_reduce_grad",
-      "pd_op.reduce_grad"};
+      "pd_op.reduce_grad",
+      "pd_op.c_softmax_with_cross_entropy_",
+      "pd_op.c_allgather_",
+      "pd_op.c_allreduce_max_",
+      "pd_op.c_allreduce_min_",
+      "pd_op.c_allreduce_sum_",
+      "pd_op.c_allreduce_prod_",
+      "pd_op.c_reduce_max_",
+      "pd_op.c_reduce_min_",
+      "pd_op.c_reduce_prod_",
+      "pd_op.c_reducescatter_",
+      "pd_op.c_broadcast_",
+      "pd_op.c_scatter_",
+      "pd_op.partial_send_",
+      "pd_op.partial_recv_",
+      "pd_op.partial_allgather_",
+      "pd_op.recv_v2_",
+      "pd_op.send_v2_",
+      "pd_op.mp_allreduce_sum_",
+      "pd_op.barrier_",
+      "pd_op.alltoall_",
+      "pd_op.global_gather_",
+      "pd_op.distributed_fused_lamb_",
+      "pd_op.margin_cross_entropy_",
+      "pd_op.sync_batch_norm_",
+      "pd_op.data_norm_",
+      "pd_op.class_center_sample_",
+      "pd_op.all_to_all_",
+      "pd_op.dist_concat_",
+      "pd_op.all_gather_",
+      "pd_op.broadcast_",
+      "pd_op.p_recv_",
+      "pd_op.p_send_",
+      "pd_op.reduce_scatter_",
+      "pd_op.all_reduce_",
+      "pd_op.reduce_",
+      "pd_op.c_softmax_with_cross_entropy_grad_",
+      "pd_op.c_allgather_grad_",
+      "pd_op.c_allreduce_max_grad_",
+      "pd_op.c_allreduce_min_grad_",
+      "pd_op.c_allreduce_sum_grad_",
+      "pd_op.c_allreduce_prod_grad_",
+      "pd_op.c_reduce_max_grad_",
+      "pd_op.c_reduce_min_grad_",
+      "pd_op.c_reduce_prod_grad_",
+      "pd_op.c_reducescatter_grad_",
+      "pd_op.c_broadcast_grad_",
+      "pd_op.c_scatter_grad_",
+      "pd_op.partial_send_grad_",
+      "pd_op.partial_recv_grad_",
+      "pd_op.partial_allgather_grad_",
+      "pd_op.recv_v2_grad_",
+      "pd_op.send_v2_grad_",
+      "pd_op.mp_allreduce_sum_grad_",
+      "pd_op.barrier_grad_",
+      "pd_op.alltoall_grad_",
+      "pd_op.global_gather_grad_",
+      "pd_op.distributed_fused_lamb_grad_",
+      "pd_op.margin_cross_entropy_grad_",
+      "pd_op.sync_batch_norm_grad_",
+      "pd_op.data_norm_grad_",
+      "pd_op.class_center_sample_grad_",
+      "pd_op.all_to_all_grad_",
+      "pd_op.dist_concat_grad_",
+      "pd_op.all_gather_grad_",
+      "pd_op.broadcast_grad_",
+      "pd_op.p_recv_grad_",
+      "pd_op.p_send_grad_",
+      "pd_op.reduce_scatter_grad_",
+      "pd_op.all_reduce_grad_",
+      "pd_op.reduce_grad_"};
   int64_t nccl_op_num = 0;
   for (auto& ins : vec_instruction_base_) {
     if (nccl_op_set.count(ins->Name())) {
@@ -1069,7 +1137,8 @@ paddle::framework::FetchList PirInterpreter::Run(
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
@@ -1084,7 +1153,8 @@ paddle::framework::FetchList PirInterpreter::Run(
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       TraceRunImpl();
@@ -1096,39 +1166,20 @@ paddle::framework::FetchList PirInterpreter::Run(
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
+
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
-  if (FLAGS_enable_new_ir_in_executor) {
-    framework::FetchList fetch_res;
-
-    if (need_fetch) {
-      for (auto& var_name : fetch_var_names_) {
-        auto* var = inner_scope->FindVar(var_name);
-        VLOG(4) << "fetch " << var_name << "[" << var << "]";
-        fetch_res.push_back(var->Get<phi::DenseTensor>());
-      }
-    }
-
-    VLOG(4) << "get fetch list size: " << fetch_res.size();
-    return fetch_res;
-  } else {
-    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-    if (fetch_var) {
-      auto fetch_list =
-          std::move(*fetch_var->GetMutable<framework::FetchList>());
-#ifdef PADDLE_WITH_CUDA
-      if (platform::IsCUDAGraphCapturing()) {
-        PADDLE_ENFORCE_EQ(fetch_list.empty(),
-                          true,
-                          platform::errors::InvalidArgument(
-                              "Cannot fetch data when using CUDA Graph."));
-      }
-#endif
-      return fetch_list;
-    } else {
-      return {};
+  framework::FetchList fetch_res;
+  if (need_fetch) {
+    for (auto& var_name : fetch_var_names_) {
+      auto* var = inner_scope->FindVar(var_name);
+      VLOG(4) << "fetch " << var_name << "[" << var << "]";
+      fetch_res.push_back(var->Get<phi::DenseTensor>());
     }
   }
+
+  VLOG(4) << "get fetch list size: " << fetch_res.size();
+  return fetch_res;
 }
 
 FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
@@ -1160,7 +1211,8 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
@@ -1175,7 +1227,8 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       TraceRunImpl();
@@ -1187,38 +1240,21 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
-  // return Fetch Tensors
-  Scope* inner_scope = InnerScope();
-  if (FLAGS_enable_new_ir_in_executor) {
-    framework::FetchList fetch_res;
 
-    if (need_fetch) {
-      for (auto& var_name : fetch_var_names_) {
-        auto* var = inner_scope->FindVar(var_name);
-        VLOG(4) << "fetch " << var_name << "[" << var << "]";
-        fetch_res.push_back(var->Get<phi::DenseTensor>());
-      }
+  framework::FetchList fetch_res;
+  if (need_fetch) {
+    // return Fetch Tensors
+    Scope* inner_scope = InnerScope();
+
+    for (auto& var_name : fetch_var_names_) {
+      auto* var = inner_scope->FindVar(var_name);
+      VLOG(4) << "fetch " << var_name << "[" << var << "]";
+      fetch_res.push_back(var->Get<phi::DenseTensor>());
     }
+
     VLOG(4) << "get fetch list size: " << fetch_res.size();
-    return fetch_res;
-  } else {
-    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-    if (fetch_var && need_fetch) {
-      auto fetch_list =
-          std::move(*fetch_var->GetMutable<framework::FetchList>());
-#ifdef PADDLE_WITH_CUDA
-      if (platform::IsCUDAGraphCapturing()) {
-        PADDLE_ENFORCE_EQ(fetch_list.empty(),
-                          true,
-                          platform::errors::InvalidArgument(
-                              "Cannot fetch data when using CUDA Graph."));
-      }
-#endif
-      return fetch_list;
-    } else {
-      return {};
-    }
   }
+  return fetch_res;
 }
 
 void PirInterpreter::TraceRunImpl() {
@@ -1437,10 +1473,11 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
   platform::RecordEvent instruction_event(
       instr_node->Name(), platform::TracerEventType::Operator, 1);
 
-  SetDeviceId(instr_node->DeviceContext().GetPlace());
+  auto cur_place = instr_node->DeviceContext().GetPlace();
+  SetDeviceId(cur_place);
 
   try {
-    instr_node->WaitEvent(place_);
+    instr_node->WaitEvent(cur_place);
     VLOG(4) << "begin to run op " << instr_node->Name();
     VLOG(4) << "begin: " << __func__ << " OP id:" << instr_node->Id()
             << " name:" << instr_node->Name() << " type:"
@@ -1450,7 +1487,8 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                            ? "kGpuSync"
                            : "kGpuAsync"))
             << " runs on " << platform::GetCurrentThreadName();
-    VLOG(4) << place_ << " Before:"
+
+    VLOG(4) << cur_place << " Before:"
             << instr_node->DebugStringEx(scope_, value_exe_info_.get());
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
@@ -1472,14 +1510,15 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                              ? "kGpuSync"
                              : "kGpuAsync"))
               << " runs on " << platform::GetCurrentThreadName();
-      VLOG(4) << place_ << " After:"
+
+      VLOG(4) << cur_place << " After:"
               << instr_node->DebugStringEx(scope_, value_exe_info_.get());
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
-      memory::LogDeviceMemoryStats(place_, instr_node->Name());
+      memory::LogDeviceMemoryStats(cur_place, instr_node->Name());
     }
     VLOG(5) << "after run kernel";
-    instr_node->RecordEvent(place_);
+    instr_node->RecordEvent(cur_place);
   } catch (platform::EnforceNotMet& ex) {
     auto* op = instr_node->Operation();
     const std::vector<std::string> op_callstack_attr =

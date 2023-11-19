@@ -59,6 +59,10 @@ class IR_API Block {
   void clear();
   operator Region::iterator() { return position_; }
 
+  // Assign the operation underlying in position with parameter op,
+  // meanwhile, destroy the original operation.
+  void Assign(Iterator position, Operation *op);
+
   ///
   /// \brief Provide iterator interface to access Value use chain.
   ///

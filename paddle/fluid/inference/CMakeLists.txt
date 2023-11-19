@@ -110,7 +110,7 @@ if(NOT WIN32)
 endif()
 
 if(WITH_CRYPTO)
-  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} framework_io)
 endif()
 
 if(WITH_PSCORE)

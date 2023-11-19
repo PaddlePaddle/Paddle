@@ -21,8 +21,8 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
-#include "paddle/pir/core/builtin_op.h"
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
@@ -31,31 +31,48 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
+#include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
+#ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
+#include "paddle/cinn/hlir/framework/pir_compiler.h"
+#include "paddle/fluid/pir/transforms/build_cinn_pass.h"
+#endif
+
 namespace py = pybind11;
-using paddle::dialect::APIBuilder;
+using paddle::dialect::ApiBuilder;
+using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
+using pir::Attribute;
 using pir::Block;
 using pir::Operation;
 using pir::OpOperand;
@@ -67,12 +84,13 @@ using pir::Type;
 using pir::Value;
 using pybind11::return_value_policy;
 
-USE_PASS(dead_code_elimination_pass);
-USE_PASS(attention_fuse_pass);
-USE_PASS(fused_gemm_epilogue_pass);
-USE_PASS(fused_dropout_add_pass);
-USE_PASS(fused_linear_param_grad_add_pass);
-USE_PASS(inplace_pass);
+USE_PIR_PASS(dead_code_elimination_pass);
+USE_PIR_PASS(attention_fuse_pass);
+USE_PIR_PASS(fused_gemm_epilogue_pass);
+USE_PIR_PASS(fused_dropout_add_pass);
+USE_PIR_PASS(fused_linear_param_grad_add_pass);
+USE_PIR_PASS(inplace_pass);
+USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 
 PHI_DECLARE_bool(print_ir);
 
@@ -119,7 +137,8 @@ std::string GetValueInfo(Value v) {
 }
 
 void BindProgram(py::module *m) {
-  py::class_<Program, std::shared_ptr<Program>> program(*m, "Program", R"DOC(
+  py::class_<Program, std::shared_ptr<Program>> program(
+      *m, "Program", py::dynamic_attr(), R"DOC(
     Create Python Program. Program is an abstraction of model structure, divided into
     computational graphs and weights. The Program has a main block that stores the computational
     graphs.
@@ -224,6 +243,19 @@ void BindProgram(py::module *m) {
           });
 }
 
+void RefreshOpStopgradients(Operation *op) {
+  if (op->num_operands() == 0 || op->isa<pir::GetParameterOp>() ||
+      op->isa<paddle::dialect::UniformOp>()) {
+    return;
+  } else if (op->isa<pir::SliceOp>()) {
+    op->dyn_cast<pir::SliceOp>().RefreshStopGradients();
+  } else if (op->isa<pir::SplitOp>()) {
+    op->dyn_cast<pir::SplitOp>().RefreshStopGradients();
+  } else {
+    RefreshStopGradientsDefaultly(op);
+  }
+}
+
 void BindBlock(py::module *m) {
   py::class_<Block> block(*m, "Block", R"DOC(
     In IR, a Block has a list of Operation and can represent a sub computational graph.
@@ -246,6 +278,14 @@ void BindBlock(py::module *m) {
             }
             return op_list;
           })
+      .def("__enter__",
+           [](Block &self) {
+             ApiBuilder::Instance().PushInsertionPoint({&self, self.end()});
+           })
+      .def("__exit__",
+           [](Block &self, py::object, py::object, py::object) {
+             ApiBuilder::Instance().PopInsertionPoint();
+           })
       .def(
           "remove_op",
           [](Block &self, Operation *op) {
@@ -280,24 +320,30 @@ void BindBlock(py::module *m) {
               None
 
         )DOC")
-      .def("all_parameters", [](Block &self) -> py::list {
-        py::list param_list;
+      .def("all_parameters",
+           [](Block &self) -> py::list {
+             py::list param_list;
+             for (auto iter = self.begin(); iter != self.end(); iter++) {
+               auto op = *iter;
+               if (op->HasAttribute(kAttrIsPersisable)) {
+                 auto attrs = op->attribute(kAttrIsPersisable)
+                                  .dyn_cast<pir::ArrayAttribute>()
+                                  .AsVector();
+                 for (uint32_t i = 0; i < attrs.size(); i++) {
+                   bool is_persistable =
+                       attrs[i].dyn_cast<pir::BoolAttribute>().data();
+                   if (is_persistable) {
+                     param_list.append(op->result(i));
+                   }
+                 }
+               }
+             }
+             return param_list;
+           })
+      .def("refresh_stopgradient", [](Block &self) {
         for (auto iter = self.begin(); iter != self.end(); iter++) {
-          auto op = *iter;
-          if (op->HasAttribute(kAttrIsPersisable)) {
-            auto attrs = op->attribute(kAttrIsPersisable)
-                             .dyn_cast<pir::ArrayAttribute>()
-                             .AsVector();
-            for (uint32_t i = 0; i < attrs.size(); i++) {
-              bool is_persistable =
-                  attrs[i].dyn_cast<pir::BoolAttribute>().data();
-              if (is_persistable) {
-                param_list.append(op->result(i));
-              }
-            }
-          }
+          RefreshOpStopgradients(*iter);
         }
-        return param_list;
       });
 }
 
@@ -373,7 +419,7 @@ void BindOperation(py::module *m) {
              }
              return op_list;
            })
-      .def("get_output_intermediate_value",
+      .def("get_output_intermediate_status",
            [](Operation &self) -> py::list {
              py::list op_list;
              paddle::dialect::OpYamlInfoInterface yaml_interface =
@@ -444,7 +490,7 @@ void BindValue(py::module *m) {
 
   )DOC");
   g_ir_value_pytype = reinterpret_cast<PyTypeObject *>(value.ptr());
-  value
+  value.def(py::init<OpResult>())
       .def(
           "get_defining_op",
           [](const Value &self) -> pir::Operation * {
@@ -632,6 +678,7 @@ void BindOpResult(py::module *m) {
         The constructor of OpResult should not be invoked directly. OpResult can be automatically constructed
         when build network.
   )DOC");
+  py::implicitly_convertible<OpResult, Value>();
   g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
   op_result.def(
       "__init__",
@@ -727,6 +774,14 @@ void BindOpResult(py::module *m) {
                return false;
              }
            })
+      .def("is_dense_tensor_array_type",
+           [](OpResult &self) {
+             if (self.type().isa<DenseTensorArrayType>()) {
+               return true;
+             } else {
+               return false;
+             }
+           })
       .def("numel",
            [](OpResult &self) { return phi::product(GetOpResultDims(self)); })
       .def("replace_all_uses_with",
@@ -747,16 +802,16 @@ void BindOpResult(py::module *m) {
                                 /*default_value=*/true);
           })
       .def_property(
-          "is_persistable",
+          "persistable",
           [](OpResult &self) {
             return GetOpResultBoolAttr(self, kAttrIsPersisable);
           },
-          [](OpResult &self, bool is_persistable) {
+          [](OpResult &self, bool persistable) {
             // NOTE(Aurelius84): For other OpResult, set theirs
-            // is_persistable default value as false.
+            // persistable default value as false.
             SetOpResultBoolAttr(self,
                                 kAttrIsPersisable,
-                                is_persistable,
+                                persistable,
                                 /*default_value=*/false);
           })
       .def_property(
@@ -792,6 +847,15 @@ void BindType(py::module *m) {
         print_stream << self;
         return print_stream.str();
       });
+}
+
+void BindAttribute(py::module *m) {
+  py::class_<Attribute> ir_attr(*m, "Attribute", py::module_local());
+  ir_attr.def("__str__", [](Attribute &self) {
+    std::ostringstream print_stream;
+    print_stream << self;
+    return print_stream.str();
+  });
 }
 
 Operation *BuildOpFrom(
@@ -952,10 +1016,7 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
 
 using OpResultMap = std::unordered_map<pir::OpResult, pir::OpResult>;
 std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
-    const Program &program,
-    const std::vector<pir::OpResult> &op_result_forward_inputs,
-    const std::vector<pir::OpResult> &op_result_forward_params,
-    const std::vector<pir::OpResult> &op_result_forward_outputs) {
+    const Program &program) {
   // Limitation of this function:
   // 1. don't support Parameters.
   // 2. don't support Regions in operator.
@@ -972,6 +1033,47 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
         pair.second.dyn_cast<pir::OpResult>();
   }
   return std::make_pair(cloned_program, op_result_map);
+}
+
+void AppendSetParameter(Program *forward_program,
+                        const pir::OpResult &result,
+                        const std::string &name,
+                        size_t start_point) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+  pir::AttributeMap attribute_map = {
+      {"parameter_name", pir::StrAttribute::get(ctx, name)},
+  };
+  pir::Operation *operation =
+      pir::Operation::Create({result}, attribute_map, {}, op_info);
+  auto position = forward_program->block()->begin();
+  std::advance(position, start_point);
+  if (position == forward_program->block()->end()) {
+    forward_program->block()->push_back(operation);
+  } else {
+    forward_program->block()->insert(position, operation);
+  }
+}
+
+int AppendSetParameters(Program *forward_program,
+                        const std::vector<pir::OpResult> &outputs_op_result,
+                        int start_point,
+                        std::string name_prefix) {
+  int counter = 0;
+  std::unordered_set<pir::OpResult> added_op_result;
+
+  for (const auto &result : outputs_op_result) {
+    if (!added_op_result.count(result)) {
+      std::string parameter_name = name_prefix + std::to_string(counter);
+      AppendSetParameter(
+          forward_program, result, parameter_name, start_point + counter);
+      counter += 1;
+
+      added_op_result.insert(result);
+    }
+  }
+  // return the inserted op.
+  return counter;
 }
 
 SplitedResult SplitForwardBackward(
@@ -1079,11 +1181,34 @@ SplitedResult SplitForwardBackward(
     if (v.impl() == nullptr) {
       return;
     }
+    // NOTE(Aurelius84): we should skip insert SetParameterOp repeatly by
+    // calling SplitForwardBackward multi-times.
+    std::string parameter_name =
+        std::string("output_") + std::to_string(counter);
+    std::unordered_set<pir::Value> inserted_value;
+    for (auto it = forward_program->block()->rbegin();
+         it != forward_program->block()->rend();
+         ++it) {
+      auto *op = *it;
+      if (op->isa<pir::SetParameterOp>()) {
+        auto out_name =
+            op->attribute<pir::StrAttribute>("parameter_name").AsString();
+        if (out_name == parameter_name) {
+          VLOG(4) << out_name
+                  << " has been inserted SetParameterOp, skip it now.";
+          return;
+        }
+
+        inserted_value.insert(op->operand_source(0));
+      }
+    }
+
+    if (inserted_value.count(forward_value_map[v])) {
+      return;
+    }
     auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
     pir::AttributeMap attribute_map = {
-        {"parameter_name",
-         pir::StrAttribute::get(
-             ctx, std::string("output_") + std::to_string(counter))},
+        {"parameter_name", pir::StrAttribute::get(ctx, parameter_name)},
     };
     pir::Operation *operation = pir::Operation::Create(
         {forward_value_map[v]}, attribute_map, {}, op_info);
@@ -1213,22 +1338,31 @@ SplitedResult SplitForwardBackward(
 void BindUtils(pybind11::module *m) {
   m->def("clone_program", CloneProgram);
   m->def("split_program", SplitForwardBackward);
+  m->def("append_set_parameters", AppendSetParameters);
   m->def("fake_op_result", FakeOpResult);
   m->def("is_fake_op_result", IsFakeOpResult);
   m->def("set_global_program",
-         [](Program *program) { APIBuilder::Instance().SetProgram(program); });
+         [](Program *program) { ApiBuilder::Instance().SetProgram(program); });
+  m->def(
+      "cur_insertion_point",
+      []() { return ApiBuilder::Instance().insertion_point(); },
+      return_value_policy::reference);
+  m->def("set_insertion_point", [](const pir::InsertionPoint &insertion_point) {
+    ApiBuilder::Instance().set_insertion_point(insertion_point);
+  });
   m->def("set_insertion_point",
-         [](Operation *op) { APIBuilder::Instance().SetInsertionPoint(op); });
+         [](Operation *op) { ApiBuilder::Instance().set_insertion_point(op); });
   m->def("reset_insertion_point_to_start",
-         []() { APIBuilder::Instance().ResetInsertionPointToStart(); });
+         []() { ApiBuilder::Instance().ResetInsertionPointToStart(); });
   m->def("reset_insertion_point_to_end",
-         []() { APIBuilder::Instance().ResetInsertionPointToEnd(); });
+         []() { ApiBuilder::Instance().ResetInsertionPointToEnd(); });
   m->def("register_paddle_dialect", []() {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+    pir::IrContext::Instance()->GetOrRegisterDialect<pir::ControlFlowDialect>();
   });
   m->def(
-      "translate_to_new_ir",
+      "translate_to_pir",
       [](const ::paddle::framework::ProgramDesc &legacy_program) {
         std::shared_ptr<Program> ret =
             std::move(paddle::TranslateLegacyProgramToProgram(legacy_program));
@@ -1252,7 +1386,7 @@ void BindUtils(pybind11::module *m) {
 
                 >>> import os
                 >>> # Paddle will remove this flag in the next version
-                >>> pir_flag = 'FLAGS_enable_new_ir_in_executor'
+                >>> pir_flag = 'FLAGS_enable_pir_in_executor'
                 >>> os.environ[pir_flag] = 'True'
 
                 >>> import paddle
@@ -1271,9 +1405,9 @@ void BindUtils(pybind11::module *m) {
                 ...    y_s = paddle.matmul(x_s, x_s)
                 ...    z_s = paddle.add(y_s, y_s)
                 ...    k_s = paddle.tanh(z_s)
-                >>> newir_program = pir.translate_to_new_ir(main_program.desc)
+                >>> pir_program = pir.translate_to_pir(main_program.desc)
 
-                >>> print(newir_program)
+                >>> print(pir_program)
                 {
                  (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persisable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
                  (%1) = "pd_op.matmul" (%0, %0) {is_persisable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
@@ -1299,7 +1433,7 @@ void BindUtils(pybind11::module *m) {
         list[str] : List of unregistered operators in paddle dialect, the name is expressed by origin op name.
     )DOC");
   m->def(
-      "translate_to_new_ir_with_param_map",
+      "translate_to_pir_with_param_map",
       [](const framework::ProgramDesc &legacy_program) {
         auto ir_ctx = pir::IrContext::Instance();
         auto program = std::make_shared<pir::Program>(ir_ctx);
@@ -1327,7 +1461,7 @@ void BindUtils(pybind11::module *m) {
 
                 >>> import os
                 >>> # Paddle will remove this flag in the next version
-                >>> pir_flag = 'FLAGS_enable_new_ir_in_executor'
+                >>> pir_flag = 'FLAGS_enable_pir_in_executor'
                 >>> os.environ[pir_flag] = 'True'
 
                 >>> import paddle
@@ -1346,9 +1480,9 @@ void BindUtils(pybind11::module *m) {
                 ...     y_s = paddle.matmul(x_s, x_s)
                 ...     z_s = paddle.add(y_s, y_s)
                 ...     k_s = paddle.tanh(z_s)
-                >>> newir_program, mappings = pir.translate_to_new_ir_with_param_map(main_program.desc)
+                >>> pir_program, mappings = pir.translate_to_pir_with_param_map(main_program.desc)
 
-                >>> print(newir_program)
+                >>> print(pir_program)
                 {
                  (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persisable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
                  (%1) = "pd_op.matmul" (%0, %0) {is_persisable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
@@ -1359,9 +1493,46 @@ void BindUtils(pybind11::module *m) {
                 >>> print(mappings)
                 {'matmul_v2_0.tmp_0': [Value(define_op_name=pd_op.matmul, index=0, dtype=pd_op.tensor<4x4xf32>)], 'x': [Value(define_op_name=pd_op.data, index=0, dtype=pd_op.tensor<4x4xf32>)], 'tanh_0.tmp_0': [Value(define_op_name=pd_op.tanh, index=0, dtype=pd_op.tensor<4x4xf32>)], 'elementwise_add_0': [Value(define_op_name=pd_op.add, index=0, dtype=pd_op.tensor<4x4xf32>)]}
     )DOC");
+
+  m->def("clear_pir_compiler_manager", []() {
+#ifdef PADDLE_WITH_CINN
+    pybind11::gil_scoped_release release;
+    VLOG(4) << "clear PirCompilerManager and free PirCompiler resources.";
+    cinn::hlir::framework::PirCompilerManager::Instance().clear();
+#endif
+  });
 }
 
+// TODO(Aurelius84): Need consider to make an agreement about
+// what a Pass should receive and return. Existed Passes have
+// mutable and immutable interface.
+std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
+#ifdef PADDLE_WITH_CINN
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+
+  pir::PassManager pass_manager(ctx);
+  cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
+
+  pass_manager.AddPass(
+      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pass_manager.AddPass(pir::CreateBuildCinnPass());
+
+  pass_manager.Run(&forward_program);
+  VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
+  std::unique_ptr<pir::Program> new_program =
+      cinn::dialect::ir::CINNGroupLoweringPass(&forward_program);
+  VLOG(3) << "after CINNGroupLoweringPass, forward_program:\n" << *new_program;
+  return std::move(new_program);
+#endif
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Currently we only support CINN Pass for Pir under @to_static, please "
+      "compile PaddlePaddle with CINN"));
+}
 void BindIrPass(pybind11::module *m) {
+  m->def("apply_pir_pass", ApplyPirPass);
+
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",
                                                R"DOC(
@@ -1407,7 +1578,7 @@ void BindPassManager(pybind11::module *m) {
       .def("empty", &PassManager::Empty);
 }
 
-void BindPIR(pybind11::module *module) {
+void BindPir(pybind11::module *module) {
   auto ir_module = module->def_submodule("pir");
   BindProgram(&ir_module);
   BindBlock(&ir_module);
@@ -1416,9 +1587,11 @@ void BindPIR(pybind11::module *module) {
   BindOpOperand(&ir_module);
   BindOpResult(&ir_module);
   BindType(&ir_module);
+  BindAttribute(&ir_module);
   BindUtils(&ir_module);
   BindIrPass(&ir_module);
   BindPassManager(&ir_module);
+  BindControlFlowApi(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
   BindOpsAPI(&ops_modules);
 }

@@ -271,11 +271,19 @@ bool DrrRewritePattern::MatchFromOutputToInput(
         break;
       }
       // bfs producer_op of current_op
-      if (!drr_visited.count(drr_producer_op)) {
+      if (drr_visited.count(drr_producer_op) &&
+          ir_visited.count(ir_producer_op)) {
+        continue;
+      }
+      if (!drr_visited.count(drr_producer_op) &&
+          !ir_visited.count(ir_producer_op)) {
         drr_q.push(drr_producer_op);
         ir_q.push(ir_producer_op);
         drr_visited.insert(drr_producer_op);
         ir_visited.insert(ir_producer_op);
+      } else {
+        matched = false;
+        break;
       }
     }
     // binding output tensor of current_op
@@ -289,7 +297,13 @@ bool DrrRewritePattern::MatchFromOutputToInput(
   }
 
   if (matched) {
-    IR_ENFORCE(step == source_pattern_graph.CountOfOpCalls());
+    PADDLE_ENFORCE_EQ(
+        step,
+        source_pattern_graph.CountOfOpCalls(),
+        phi::errors::PreconditionNotMet(
+            "Pattern matching failed."
+            "The number of successful matches and the number of OpCalls in the "
+            "source pattern graph are not equal."));
   } else {
     return matched;
   }
@@ -331,9 +345,13 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
   MatchContextImpl res_match_ctx;
   // add input tensors info for res_match_ctx
   for (const auto& in_tensor : result_pattern_graph.input_tensors()) {
-    IR_ENFORCE(result_pattern_graph.id2owend_tensor().count(in_tensor),
-               "Drr input tensor [%s] must exists in result pattern graph.",
-               in_tensor);
+    PADDLE_ENFORCE_NE(
+        result_pattern_graph.id2owend_tensor().count(in_tensor),
+        0,
+        phi::errors::NotFound("Not found the input tensor."
+                              "Drr input tensor [%s] must exist in the result "
+                              "pattern graph to be obtained.",
+                              in_tensor));
     if (!result_pattern_graph.id2owend_tensor().at(in_tensor)->is_none()) {
       res_match_ctx.BindIrValue(
           in_tensor,
@@ -395,7 +413,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
           src_match_ctx.Operation(source_pattern_graph.owned_op_call()[0].get())
               .get();
       max_input_op_index = op_2_temp_program_index[source_patter_first_op];
-      rewriter.SetInsertionPoint(source_patter_first_op);
+      rewriter.set_insertion_point(source_patter_first_op);
     } else {
       rewriter.SetInsertionPointAfter(max_index_op);
     }
@@ -510,9 +528,13 @@ void DrrRewritePattern::DeleteSourcePatternOp(
 
   // Delete Operation with topo order from output tensors.
   for (const auto* op_call : deleted_ops) {
-    IR_ENFORCE(src_match_ctx.operation_map().count(op_call),
-               "Drr OpCall [%s] must exists in match context.",
-               op_call->name());
+    PADDLE_ENFORCE_NE(src_match_ctx.operation_map().count(op_call),
+                      0,
+                      phi::errors::NotFound(
+                          "Not found the OpCall."
+                          "Only Opcall [%s] that exist in match context can be "
+                          "deleted.",
+                          op_call->name()));
     auto* op = src_match_ctx.operation_map().at(op_call)->get();
     VLOG(6) << "Delete (" << op_call->name() << " @" << op_call << " :@" << op
             << ") in source_pattern_graph ";
