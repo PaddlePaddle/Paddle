@@ -1156,22 +1156,9 @@ def OpGenerator(
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
-            if op_name in decomp_interface_declare_gen_op_list:
-                op_interfaces = op_interfaces + [
-                    "paddle::dialect::DecompInterface"
-                ]
-                exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op);"
-            else:
-                op_interfaces = op_interfaces_tmp
-                exclusive_interface_str = exclusive_interface_str_tmp
-
             # =================================== #
-            #    gen interface/trait list str     #
+            #        gen trait list str           #
             # =================================== #
-            op_interfaces_str = ""
-            if len(op_interfaces) > 0:
-                op_interfaces_str = "," + ",".join(op_interfaces)
-
             if op_name[-1] == "_":
                 op_traits += ["paddle::dialect::InplaceTrait"]
 
@@ -1187,6 +1174,25 @@ def OpGenerator(
                 func_list = op_kernel_map['func']
 
             for kernel_func_name in func_list:
+                if (
+                    op_name in decomp_interface_declare_gen_op_list
+                    and kernel_func_name in decomp_interface_declare_gen_op_list
+                ):
+                    op_interfaces = op_interfaces + [
+                        "paddle::dialect::DecompInterface"
+                    ]
+                    exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op);"
+                else:
+                    op_interfaces = op_interfaces_tmp
+                    exclusive_interface_str = exclusive_interface_str_tmp
+
+                # =================================== #
+                #      gen interface list str         #
+                # =================================== #
+                op_interfaces_str = ""
+                if len(op_interfaces) > 0:
+                    op_interfaces_str = "," + ",".join(op_interfaces)
+
                 if len(func_list) == 1:
                     op_class_name = to_pascal_case(op_name) + "Op"
                     op_dialect_name = dialect_name + "." + op_name

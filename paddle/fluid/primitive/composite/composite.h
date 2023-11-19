@@ -195,20 +195,19 @@ Tensor sqrt_decomp(const Tensor& x) {
       org_dtype == phi::DataType::FLOAT16 || org_dtype == phi::DataType::UINT16;
 
   Tensor x_cast;
-  auto x_dtype = org_dtype;
   if (need_cast) {
     x_cast = cast<T>(x, phi::DataType::FLOAT32);
-    x_dtype = phi::DataType::FLOAT32;
   } else {
     x_cast = x;
   }
 
   auto ans = elementwise_pow<T>(
-      x_cast, full<T>(phi::vectorize(x_cast.dims()), 0.5, x_dtype));
+      x_cast, full<T>(phi::vectorize(x_cast.dims()), 0.5, x_cast.dtype()));
   if (need_cast) {
-    ans = cast<T>(x, org_dtype);
+    return cast<T>(ans, org_dtype);
+  } else {
+    return ans;
   }
-  return ans;
 }
 
 }  // namespace details
