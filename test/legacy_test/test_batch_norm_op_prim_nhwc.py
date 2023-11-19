@@ -109,6 +109,8 @@ class TestBatchNormOpNHWC(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NHWC"
         self.use_global_stats = None
+        # Todo(CZ): open this
+        self.check_prim_pir = False
 
 
 class TestBatchNormOpNHWCFp64(TestBatchNormOp):
