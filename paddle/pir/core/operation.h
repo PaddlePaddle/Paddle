@@ -66,7 +66,7 @@ class IR_API alignas(8) Operation final {
   }
   const AttributeMap &attributes() const { return attributes_; }
   template <typename T>
-  T attribute(const std::string &name) const {
+  T attribute(const std::string &name) {
     Attribute attr = attribute(name);
     IR_ENFORCE(attr.isa<T>(), "Attribute (%s) type is not right.", name);
     return attr.dyn_cast<T>();

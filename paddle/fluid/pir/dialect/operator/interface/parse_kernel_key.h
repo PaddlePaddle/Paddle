@@ -28,15 +28,15 @@ class ParseKernelKeyInterface
     : public pir::OpInterfaceBase<ParseKernelKeyInterface> {
  public:
   struct Concept {
-    explicit Concept(KernelKeyTuple (*parse_kernel_key)())
+    explicit Concept(KernelKeyTuple (*parse_kernel_key)(pir::Operation *op))
         : parse_kernel_key_(parse_kernel_key) {}
-    KernelKeyTuple (*parse_kernel_key_)();
+    KernelKeyTuple (*parse_kernel_key_)(pir::Operation *op);
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static KernelKeyTuple ParseKernelKey() {
-      return ConcreteOp::ParseKernelKey();
+    static KernelKeyTuple ParseKernelKey(pir::Operation *op) {
+      return ConcreteOp::ParseKernelKey(op);
     }
 
     Model() : Concept(ParseKernelKey) {}
@@ -46,14 +46,16 @@ class ParseKernelKeyInterface
   ParseKernelKeyInterface(pir::Operation *op, Concept *impl)
       : pir::OpInterfaceBase<ParseKernelKeyInterface>(op), impl_(impl) {}
 
-  KernelKeyTuple ParseKernelKey() { return impl_->parse_kernel_key_(); }
+  KernelKeyTuple ParseKernelKey(pir::Operation *op) {
+    return impl_->parse_kernel_key_(op);
+  }
 
  private:
   Concept *impl_;
 };
 
 // Register the ParseKernelKeyInterface for unique op.
-KernelKeyTuple UniqueOpParseKernelKey(const pir::Operation *op) {
+KernelKeyTuple UniqueOpParseKernelKey(pir::Operation *op) {
   DenseTensorType x_type =
       op->operand_source(0).type().dyn_cast<paddle::dialect::DenseTensorType>();
   phi::DataType dtype = TransToPhiDataType(x_type.dtype());

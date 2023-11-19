@@ -125,7 +125,7 @@ get_kernel_type_for_var_declare_template = """
 """
 
 parse_kernel_key_template = """
-  static std::tuple<phi::DataType, phi::Backend> ParseKernelKey();
+  static std::tuple<phi::DataType, phi::Backend> ParseKernelKey(pir::Operation *op);
 """
 
 # =====================================
