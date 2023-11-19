@@ -26,7 +26,6 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase
 from test_jit_save_load import train
 
 import paddle
@@ -263,7 +262,7 @@ class SimplePyLayerNetStopGrad(paddle.nn.Layer):
         return out
 
 
-class TestPyLayerBase(Dy2StTestBase):
+class TestPyLayerBase(unittest.TestCase):
     def setUp(self):
         self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
         self.to_static = False
@@ -513,7 +512,7 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         self._run_and_compare(input1, input2)
 
 
-class PyLayerTrainHelper(Dy2StTestBase):
+class PyLayerTrainHelper(unittest.TestCase):
     def setUp(self):
         self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
 
@@ -586,7 +585,7 @@ class TestTrainingPyLayer(PyLayerTrainHelper):
         )
 
 
-class TestPyLayerJitSaveLoad(Dy2StTestBase):
+class TestPyLayerJitSaveLoad(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_path = os.path.join(

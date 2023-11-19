@@ -16,6 +16,7 @@
 
 #include <limits.h>
 #include <memory>
+#include <stack>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -23,6 +24,7 @@
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
@@ -37,33 +39,164 @@ std::unordered_map<std::string, OpPatternKind> OpKindMap = {
     {"pd_op.multiply", OpPatternKind::kElementWise},
     {"pd_op.divide", OpPatternKind::kElementWise},
     {"pd_op.sqrt", OpPatternKind::kElementWise},
+    {"pd_op.rsqrt", OpPatternKind::kElementWise},
     {"pd_op.full", OpPatternKind::kElementWise},
     {"pd_op.relu", OpPatternKind::kElementWise},
     {"pd_op.exp", OpPatternKind::kElementWise},
     {"pd_op.sin", OpPatternKind::kElementWise},
     {"pd_op.cos", OpPatternKind::kElementWise},
+    {"pd_op.pow", OpPatternKind::kElementWise},
+    {"pd_op.elementwise_pow", OpPatternKind::kElementWise},
     {"pd_op.sum", OpPatternKind::kReduction},
+    {"cinn_op.reshape", OpPatternKind::kElementWise},
+    {"pd_op.cast", OpPatternKind::kElementWise},
+    {"pd_op.greater_than", OpPatternKind::kElementWise},
+    {"pd_op.greater_equal", OpPatternKind::kElementWise},
+    {"cinn_op.scale", OpPatternKind::kElementWise},
     {"cinn_op.reduce_sum", OpPatternKind::kReduction},
     {"cinn_op.reduce_max", OpPatternKind::kReduction},
     {"cinn_op.broadcast", OpPatternKind::kBroadcast},
-};
+    {"cinn_op.uniform_random", OpPatternKind::kElementWise}};
 
 OpPatternKind GetOpKind(const std::string& op_name) {
   auto found_it = OpKindMap.find(op_name);
   if (found_it == OpKindMap.end()) {
-    throw std::runtime_error("not support op yet in op kind map");
+    PADDLE_THROW(phi::errors::Unavailable(
+        "not support [%s] op yet in op kind map", op_name));
   }
 
   return found_it->second;
 }
 
+std::vector<pir::Operation*> GetProducerOpsReverseSort(
+    pir::Operation* op,
+    const std::unordered_map<pir::Operation*, size_t>& op2id) {
+  std::unordered_set<pir::Operation*> producers;
+
+  std::vector<pir::Operation*> vec_res;
+  for (auto& operand : op->operands()) {
+    if (!operand || !(operand.source())) {
+      continue;
+    }
+    auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
+
+    if (!op2id.count(source_op)) {
+      continue;
+    }
+    if (!producers.count(source_op)) {
+      producers.insert(source_op);
+      PADDLE_ENFORCE(
+          op2id.count(source_op),
+          phi::errors::PreconditionNotMet("source op MUST in op2id map"));
+      vec_res.emplace_back(source_op);
+    }
+  }
+
+  std::sort(vec_res.begin(),
+            vec_res.end(),
+            [&op2id](pir::Operation* a, pir::Operation* b) {
+              return op2id.at(a) > op2id.at(b);
+            });
+
+  return vec_res;
+}
+
+std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
+  std::unordered_set<pir::Operation*> producers;
+
+  for (auto& operand : op->operands()) {
+    if (!operand || !(operand.source())) {
+      continue;
+    }
+    auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
+    producers.insert(source_op);
+  }
+  return producers;
+}
+
+std::unordered_set<pir::Operation*> GetConsumerOps(
+    pir::Operation* op,
+    const std::unordered_map<pir::Operation*, size_t>& op2id) {
+  std::unordered_set<pir::Operation*> consumers;
+
+  for (auto& result : op->results()) {
+    for (auto it = result.use_begin(); it != result.use_end(); ++it) {
+      if (!op2id.count(it->owner())) {
+        continue;
+      }
+      consumers.insert(it->owner());
+    }
+  }
+  return consumers;
+}
+
+std::vector<pir::Operation*> TopologicalSort(
+    const std::vector<::pir::Operation*>& op_list) {
+  std::vector<pir::Operation*> sort_ops;
+  std::unordered_map<pir::Operation*, int> pending_count;
+  // step 1: initialize pending_cout for defined op
+  std::unordered_set<pir::Operation*> inner_set(op_list.begin(), op_list.end());
+
+  for (auto* op : op_list) {
+    int count = 0;
+    for (auto& operand : op->operands()) {
+      if (!operand || !(operand.source())) {
+        continue;
+      }
+
+      if (inner_set.count(operand.source().dyn_cast<pir::OpResult>().owner())) {
+        count++;
+      }
+    }
+
+    pending_count[op] = count;
+  }
+
+  std::stack<pir::Operation*> queue;
+  for (auto* op : op_list) {
+    VLOG(4) << op->name() << " pending_count: " << pending_count[op];
+    if (pending_count[op] == 0) {
+      queue.push(op);
+    }
+  }
+
+  while (!queue.empty()) {
+    auto* op = queue.top();
+    queue.pop();
+    VLOG(4) << "Pop Op: " << op->name();
+    sort_ops.push_back(op);
+
+    for (auto& result : op->results()) {
+      if (!result) {
+        continue;
+      }
+
+      for (auto it = result.use_begin(); it != result.use_end(); ++it) {
+        auto* next_op = (*it).owner();
+        if (!pending_count.count(next_op)) {
+          continue;
+        }
+        --pending_count[next_op];
+        if (pending_count[next_op] == 0) {
+          queue.push(next_op);
+        }
+      }
+    }
+  }
+
+  return sort_ops;
+}
+
 phi::DDim GetFirstInputShape(const ::pir::Operation* op) {
+  if (op->num_operands() == 0) {
+    return phi::DDim({});
+  }
   auto in = op->operand_source(0);
 
   return in.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
-phi::DDim GetValueShape(const ::pir::Value value) {
+phi::DDim GetValueShape(const ::pir::Value& value) {
   return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
@@ -87,10 +220,10 @@ bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
   }
 }
 
-int GetSharedSize(::pir::Operation* node) {
-  auto inshape = phi::vectorize<int64_t>(GetValueShape(node->result(0)));
+int GetSharedSize(::pir::Operation* op) {
+  auto inshape = phi::vectorize<int64_t>(GetValueShape(op->result(0)));
 
-  auto axes = GetVectorAttr(node, "axis");
+  auto axes = GetVectorAttr(op, "dim");
 
   if (WithoutLastDimInReduce(inshape, axes)) {
     int lane = 1;
@@ -145,48 +278,62 @@ using ConditionFunction =
 // code generation.
 class OpFusionPassHelper {
  public:
-  explicit OpFusionPassHelper(const std::vector<pir::Operation*>& op_list) {
+  explicit OpFusionPassHelper(
+      const std::vector<pir::Operation*>& op_list,
+      const std::vector<pir::Operation*>& output_op_list = {}) {
     // init fusion relation
     InitFusionRelation();
-    // filter node data, create group for each node
-    // auto nodes_inorder = std::get<0>(graph->topological_order());
+    // filter op data, create group for each op
+    // auto ops_inorder = std::get<0>(graph->topological_order());
 
     for (auto it = op_list.begin(); it != op_list.end(); ++it) {
       local_ops_.insert(*it);
     }
 
+    for (size_t i = 0; i < output_op_list.size(); ++i) {
+      output_ops_set_.insert(output_op_list[i]);
+    }
+
+    auto top_sort_list = TopologicalSort(op_list);
     int index = 0;
-    for (auto it = op_list.begin(); it != op_list.end(); ++it) {
-      auto node = *it;
-      if (node) {
-        nodes_.push_back(node);
+    std::stringstream ss;
+    ::pir::IrPrinter printer(ss);
+    for (auto it = top_sort_list.begin(); it != top_sort_list.end(); ++it) {
+      auto op = *it;
+      if (op) {
+        ops_.push_back(op);
+        printer.PrintOperation(op);
+        ss << "\n";
         auto group = std::make_shared<Group>();
         // init group
-        group->nodes.push_back(node);
-        group->nodes_set.insert(node);
-        group->output_nodes.insert(node);
-        // input node
+        group->ops.push_back(op);
+        group->ops_set.insert(op);
+        group->output_ops.insert(op);
+        // input op
 
-        for (size_t i = 0; i < node->num_operands(); ++i) {
-          auto input =
-              node->operand_source(i).dyn_cast<pir::OpResult>().owner();
+        for (size_t i = 0; i < op->num_operands(); ++i) {
+          auto input = op->operand_source(i).dyn_cast<pir::OpResult>().owner();
           if (input && (local_ops_.count(input))) {
-            group->input_nodes[input] = 1;
+            group->input_ops[input] = 1;
           }
         }
 
         // group type
-        group->op_pattern_kind = GetOpKind(node->name());
-        // use current node as master node for schedule
-        group->master_nodes.insert(node);
+        group->op_pattern_kind = GetOpKind(op->name());
+        // use current op as master op for schedule
+        group->master_ops.insert(op);
 
         // get opration unique id
         group->group_id = "id_" + std::to_string(index++);
-        fusion_groups_[node] = group;
+        fusion_groups_[op] = group;
       }
     }
-    // reverse node for output to input
-    std::reverse(nodes_.begin(), nodes_.end());
+
+    // reverse op for output to input
+    std::reverse(ops_.begin(), ops_.end());
+    for (size_t i = 0; i < top_sort_list.size(); ++i) {
+      op2id_[top_sort_list[i]] = i;
+    }
   }
 
   // return a vector of groups in topological order.
@@ -199,23 +346,23 @@ class OpFusionPassHelper {
     // find all fusion group.
     GroupList fusion_groups;
     std::unordered_set<Group*> groups_set;
-    for (auto node : nodes_) {
-      auto& group = fusion_groups_[node];
+    for (auto op : ops_) {
+      auto& group = fusion_groups_[op];
       if (!groups_set.count(group.get())) {
         groups_set.insert(group.get());
         fusion_groups.push_back(group);
-        // reverse nodes order to producer->consumer.
-        std::reverse(group->nodes.begin(), group->nodes.end());
+        // reverse ops order to producer->consumer.
+        std::reverse(group->ops.begin(), group->ops.end());
       }
     }
 
     // producer consumer
     for (auto& consumer : fusion_groups) {
-      for (auto& input_node : consumer->input_nodes) {
-        if (!local_ops_.count(input_node.first)) {
+      for (auto& input_op : consumer->input_ops) {
+        if (!local_ops_.count(input_op.first)) {
           continue;
         }
-        auto& producer = fusion_groups_[input_node.first];
+        auto& producer = fusion_groups_[input_op.first];
         consumer->mut_producer_groups()->insert(producer);
         producer->mut_consumer_groups()->insert(consumer);
       }
@@ -237,26 +384,28 @@ class OpFusionPassHelper {
 
  private:
   void DoOpFusion() {
-    for (auto consumer : nodes_) {
+    for (auto consumer : ops_) {
       auto consumer_kind = GetOpKind(consumer->name());
       // kNonFusible op can't fuse any other op.
-      if (consumer_kind == kNonFusible) {
+      if (consumer_kind == OpPatternKind::kNonFusible) {
         continue;
       }
 
       // fusion op for consumer
       auto consumer_fusion = fusion_groups_[consumer];  //
-      // check all linkin node
-      for (size_t i = 0; i < consumer->num_operands(); ++i) {
-        auto producer_data = consumer->operand_source(i);
+      // check all linkin op
+      // for (size_t i = 0; i < consumer->num_operands(); ++i) {
+      auto producer_list = GetProducerOpsReverseSort(consumer, op2id_);
+      for (size_t i = 0; i < producer_list.size(); ++i) {
+        // auto producer_data = consumer->operand_source(i);
 
-        auto producer = producer_data.dyn_cast<pir::OpResult>().owner();
+        auto producer = producer_list[i];
         if (!local_ops_.count(producer)) {
           continue;
         }
 
         // if producer is fused.
-        if (consumer_fusion->nodes_set.count(producer)) {
+        if (consumer_fusion->ops_set.count(producer)) {
           // VLOG(3) << "Op " << producer->id() << " is fused.";
           continue;
         }
@@ -266,7 +415,7 @@ class OpFusionPassHelper {
         }
         // kNonFusible op can't fuse any other op.
         auto producer_kind = GetOpKind(producer->name());
-        if (producer_kind == kNonFusible) {
+        if (producer_kind == OpPatternKind::kNonFusible) {
           continue;
         }
         // VLOG(3) << "Producer Op: " << producer->id()
@@ -274,23 +423,33 @@ class OpFusionPassHelper {
         //         << " -> Consumer Op: " << consumer->id()
         //         << ", Op Pattern: " << consumer_kind;
         bool can_fuse = true;
-        // checkout producer node outputs are all in fusion op
+        // checkout producer op outputs are all in fusion op
 
         // find all the op use by
         size_t producer_data_used_num = 0;
-        for (auto it = producer_data.use_begin(); it != producer_data.use_end();
-             ++it) {
-          auto consumer_node = it->owner();
+
+        auto consumer_list = GetConsumerOps(producer, op2id_);
+        // for (auto it = producer_data.use_begin(); it !=
+        // producer_data.use_end();
+        //      ++it) {
+        for (auto consumer_op : consumer_list) {
+          // auto consumer_op = it->owner();
+          if (consumer_op->name() == "cf.yield") {
+            continue;
+          }
           producer_data_used_num++;
-          // if fusion group can't find node, can't merge
-          if (consumer_fusion->nodes_set.find(consumer_node) ==
-              consumer_fusion->nodes_set.end()) {
+          // if fusion group can't find op, can't merge
+          if (consumer_fusion->ops_set.find(consumer_op) ==
+              consumer_fusion->ops_set.end()) {
             can_fuse = false;
             break;
           }
         }
 
-        if (!can_fuse || !CanFuse(producer, consumer)) continue;
+        if (!can_fuse || !CanFuse(producer, consumer)) {
+          continue;
+        }
+
         // VLOG(3) << "Fuse Op " << producer->id() << " into Op "
         //         << consumer->id();
 
@@ -300,39 +459,39 @@ class OpFusionPassHelper {
         //     producer->id() + "_" + consumer_fusion->group_id;
 
         consumer_fusion->group_id = consumer_fusion->group_id;
-        consumer_fusion->nodes.push_back(producer);
-        consumer_fusion->nodes_set.insert(producer);
-        consumer_fusion->input_nodes.erase(producer);
+        consumer_fusion->ops.push_back(producer);
+        consumer_fusion->ops_set.insert(producer);
+        consumer_fusion->input_ops.erase(producer);
         consumer_fusion->op_pattern_kind =
             static_cast<int>(consumer_fusion->op_pattern_kind) >
                     static_cast<int>(producer_kind)
                 ? consumer_fusion->op_pattern_kind
                 : producer_kind;
 
-        if (producer_kind == kReduction) {
-          consumer_fusion->master_nodes.insert(producer);
+        if (producer_kind == OpPatternKind::kReduction) {
+          consumer_fusion->master_ops.insert(producer);
         }
 
-        if (output_nodes_set_.count(producer)) {
+        if (output_ops_set_.count(producer)) {
           // VLOG(3) << "Insert Global Output Node : " << producer->id();
-          consumer_fusion->output_nodes.insert(producer);
+          consumer_fusion->output_ops.insert(producer);
         } else if (producer_data_used_num > 1 && producer->num_operands() > 0 &&
                    is_same_size(producer, consumer_fusion)) {
-          // producer is not a const value node.
-          consumer_fusion->internal_nodes.insert(producer);
+          // producer is not a const value op.
+          consumer_fusion->internal_ops.insert(producer);
         }
 
-        // fuse input node
+        // fuse input op
 
         auto producer_fusion = fusion_groups_[producer];
-        for (auto input_node : producer_fusion->input_nodes) {
-          if (consumer_fusion->input_nodes.count(input_node.first)) {
-            consumer_fusion->input_nodes[input_node.first] += input_node.second;
+        for (auto input_op : producer_fusion->input_ops) {
+          if (consumer_fusion->input_ops.count(input_op.first)) {
+            consumer_fusion->input_ops[input_op.first] += input_op.second;
           } else {
-            consumer_fusion->input_nodes.insert(input_node);
+            consumer_fusion->input_ops.insert(input_op);
           }
         }
-        // update node group
+        // update op group
         fusion_groups_[producer] = consumer_fusion;
       }
     }
@@ -344,119 +503,127 @@ class OpFusionPassHelper {
     {
       FusionRelation relation;
       // producer -> consumer
-      relation.op_kind = {kElementWise, kBroadcast, kReduction, kInjective};
+      relation.op_kind = {OpPatternKind::kElementWise,
+                          OpPatternKind::kBroadcast,
+                          OpPatternKind::kReduction,
+                          OpPatternKind::kInjective};
       // producer -> fusion
       relation.fusion_op_kind = {
           // horizontal or vertical relation(Elementwise + *Elementwise*). As
           // has same output shape, can always fuse.
-          {kElementWise, always_fuse},
+          {OpPatternKind::kElementWise, always_fuse},
           // must be horizontal, as Elementwise + Broadcast is left to fusion
           // merge pass.
-          {kBroadcast,
+          {OpPatternKind::kBroadcast,
            [](::pir::Operation* producer, const GroupPtr& consumer) -> bool {
              // NOTE, producer and consumer NEVER be same size
              if (is_same_size(producer, consumer)) {
                return true;
              }
 
-             // NOTE, original code is below, if produer is not output node,
+             // NOTE, original code is below, if produer is not output op,
              // result always be true
-             // !helper->output_nodes_set_.count(producer);
+             // !helper->output_ops_set_.count(producer);
              return true;
            }},
           // horizontal or vertical relation, check with same output shape with
           // horizontal relation or with last
           // successive dimension less than 1024 for gpu.
-          {kReduction, horizontal_or_vertical_reduce_relation},
+          {OpPatternKind::kReduction, horizontal_or_vertical_reduce_relation},
           // can be horizontal or can compute inline, check with same output
           // shape or can compute inline.
-          {kInjective, horizontal_or_can_inline},
+          {OpPatternKind::kInjective, horizontal_or_can_inline},
           // must be horizontal, check with same output shape.
-          {kOutFusible, is_same_shape}};
-      fusion_relation_map_[kElementWise] = std::move(relation);
+          {OpPatternKind::kOutFusible, is_same_shape}};
+      fusion_relation_map_[OpPatternKind::kElementWise] = std::move(relation);
     }
     // 2.kBroadcast as producer
     {
       FusionRelation relation;
       // producer -> consumer
-      relation.op_kind = {kElementWise, kReduction, kInjective};
+      relation.op_kind = {OpPatternKind::kElementWise,
+                          OpPatternKind::kReduction,
+                          OpPatternKind::kInjective};
       // producer -> fusion
       relation.fusion_op_kind = {
           // horizontal or vertical relation(Broadcast + *Elementwise*), check
           // with same output shape.
-          {kElementWise, is_same_size},
+          {OpPatternKind::kElementWise, is_same_size},
           // must be horizontal, as Broadcast + Broadcast is not allowed.
-          {kBroadcast, is_same_size},
+          {OpPatternKind::kBroadcast, is_same_size},
           // horizontal or vertical relation(Broadcast + Reduce).
-          {kReduction, horizontal_or_vertical_reduce_relation},
+          {OpPatternKind::kReduction, horizontal_or_vertical_reduce_relation},
           // can be horizontal or can compute inline, check with same output
           // shape or just one consumer.
-          {kInjective, horizontal_or_can_inline},
+          {OpPatternKind::kInjective, horizontal_or_can_inline},
           // must be horizontal, check with same output shape.
-          {kOutFusible, is_same_shape}};
-      fusion_relation_map_[kBroadcast] = std::move(relation);
+          {OpPatternKind::kOutFusible, is_same_shape}};
+      fusion_relation_map_[OpPatternKind::kBroadcast] = std::move(relation);
     }
     // 3.kReduction as producer
     {
       FusionRelation relation;
       // producer -> consumer
-      relation.op_kind = {kElementWise, kBroadcast};
+      relation.op_kind = {OpPatternKind::kElementWise,
+                          OpPatternKind::kBroadcast};
       // producer -> fusion
       relation.fusion_op_kind = {
           // horizontal or vertical relation(Reduce + Elementwise*), check
           // without last dimension in reduce.
-          {kElementWise, is_same_size},
+          {OpPatternKind::kElementWise, is_same_size},
           // must be horizontal relation, check with same output shape and
           // without last dimension in reduce.
-          {kBroadcast, reduce_fuse_broadcast},
+          {OpPatternKind::kBroadcast, reduce_fuse_broadcast},
           // must be horizontal relation and with same reduce attr.
-          {kReduction, reduce_fuse_reduce},
+          {OpPatternKind::kReduction, reduce_fuse_reduce},
           // no_fuse
-          {kInjective, no_fuse},
+          {OpPatternKind::kInjective, no_fuse},
           // can't fuse.
-          {kOutFusible, no_fuse}};
-      fusion_relation_map_[kReduction] = std::move(relation);
+          {OpPatternKind::kOutFusible, no_fuse}};
+      fusion_relation_map_[OpPatternKind::kReduction] = std::move(relation);
     }
     // 4.kInjective
     {
       FusionRelation relation;
       // producer -> consumer
-      relation.op_kind = {kElementWise, kInjective};
+      relation.op_kind = {OpPatternKind::kElementWise,
+                          OpPatternKind::kInjective};
       // producer -> fusion
       relation.fusion_op_kind = {
           // can be horizontal or vertical(Injective + Elementwise), check with
           // same output shape.
-          {kElementWise, is_same_size},
+          {OpPatternKind::kElementWise, is_same_size},
           // must be horizontal relation, check with same output shape.
-          {kBroadcast, horizontal_with_same_size},
+          {OpPatternKind::kBroadcast, horizontal_with_same_size},
           // left to fusion merge pass.
-          {kReduction, no_fuse},
+          {OpPatternKind::kReduction, no_fuse},
           // must be horizontal relation, check with same output shape.
-          {kInjective, horizontal_or_can_inline},
+          {OpPatternKind::kInjective, horizontal_or_can_inline},
           // can't fuse.
-          {kOutFusible, no_fuse},
+          {OpPatternKind::kOutFusible, no_fuse},
       };
-      fusion_relation_map_[kInjective] = std::move(relation);
+      fusion_relation_map_[OpPatternKind::kInjective] = std::move(relation);
     }
     // 5.kOutFusible
     {
       FusionRelation relation;
       // producer -> consumer
-      relation.op_kind = {kElementWise, kBroadcast};
+      relation.op_kind = {OpPatternKind::kElementWise,
+                          OpPatternKind::kBroadcast};
       // producer -> fusion
       relation.fusion_op_kind = {
           // horizontal or vertical relation, check has same shape.
-          {kElementWise, is_same_shape},
+          {OpPatternKind::kElementWise, is_same_shape},
           // it must be horizontal relation, check has same shape.
-          {kBroadcast, is_same_shape},
+          {OpPatternKind::kBroadcast, is_same_shape},
           // can't fuse.
-          {kReduction, no_fuse},
+          {OpPatternKind::kReduction, no_fuse},
           // must be horizontal relation, check has same shape.
-          {kInjective, is_same_shape},
+          {OpPatternKind::kInjective, is_same_shape},
           // can't fuse.
-          {kOutFusible, no_fuse},
+          {OpPatternKind::kOutFusible, no_fuse},
       };
-      fusion_relation_map_[kOutFusible] = std::move(relation);
+      fusion_relation_map_[OpPatternKind::kOutFusible] = std::move(relation);
     }
   }
 
@@ -469,15 +636,18 @@ class OpFusionPassHelper {
       VLOG(3) << "Call ConditionFunction, Producer Op Pattern : "
               << GetOpKind(producer->name()) << " , Consumer Group Pattern : "
               << consumer_group->op_pattern_kind;
+
       return relation.fusion_op_kind[consumer_group->op_pattern_kind](
           producer, fusion_groups_[consumer]);
     }
 
     return false;
   }
-  std::vector<::pir::Operation*> nodes_;
+  std::vector<::pir::Operation*> ops_;
   std::unordered_map<const ::pir::Operation*, GroupPtr> fusion_groups_;
-  std::unordered_set<const ::pir::Operation*> output_nodes_set_;
+  std::unordered_set<const ::pir::Operation*> output_ops_set_;
+
+  std::unordered_map<::pir::Operation*, size_t> op2id_;
 
   std::vector<std::shared_ptr<Group>> groups_;
 
@@ -492,17 +662,31 @@ class OpFusionPassHelper {
   std::unordered_map<OpPatternKind, FusionRelation> fusion_relation_map_;
 };
 
-GroupList OpFusionPassInternal(const std::vector<pir::Operation*>& op_list) {
+GroupList OpFusionPassInternal(
+    const std::vector<pir::Operation*>& op_list,
+    const std::vector<pir::Operation*>& output_op_list) {
   VLOG(3) << "OpFusionPass...!";
-  auto op_fusion_helper = OpFusionPassHelper(op_list);
+
+  auto op_fusion_helper = OpFusionPassHelper(op_list, output_op_list);
   auto res = op_fusion_helper();
 
-  for (size_t i = 0; i < res.size(); ++i) {
-    auto group = res[i];
+  if (VLOG_IS_ON(6)) {
+    std::stringstream ss;
+    ::pir::IrPrinter printer(ss);
+    for (size_t i = 0; i < res.size(); ++i) {
+      auto group = res[i];
+      ss << "group\t" << group->group_id << std::endl;
+      ss << "kind\t" << group->kind() << std::endl;
 
-    for (size_t j = 0; j < group->nodes.size(); ++j) {
+      for (auto op : group->ops) {
+        printer.PrintOperation(op);
+        ss << "\n";
+      }
     }
+    VLOG(6) << ss.str();
   }
+  VLOG(3) << "OpFusionPass Finish...!";
+
   VLOG(3) << "OpFusionPass Finish...!";
 
   return res;

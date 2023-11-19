@@ -17,7 +17,7 @@ from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from .. import _C_ops
 from ..base.data_feeder import check_variable_and_dtype
-from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
+from ..framework import LayerHelper, in_dynamic_or_pir_mode
 from .layer_function_generator import (
     add_sample_code,
     generate_activation_fn,
@@ -336,7 +336,7 @@ def asin(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.41151685, -0.20135793,  0.10016742,  0.30469266])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.asin(x)
     else:
         check_variable_and_dtype(
@@ -383,7 +383,7 @@ def asinh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.39003533, -0.19869010,  0.09983408,  0.29567307])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.asinh(x)
     else:
         check_variable_and_dtype(
@@ -430,7 +430,7 @@ def atan(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.38050640, -0.19739556,  0.09966865,  0.29145682])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.atan(x)
     else:
         check_variable_and_dtype(
@@ -477,7 +477,7 @@ def atanh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.42364895, -0.20273255,  0.10033534,  0.30951962])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.atanh(x)
     else:
         check_variable_and_dtype(
@@ -606,7 +606,7 @@ def cosh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.08107233, 1.02006674, 1.00500417, 1.04533851])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cosh(x)
     else:
         check_variable_and_dtype(
@@ -792,7 +792,7 @@ def reciprocal(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-2.50000000, -5.        ,  10.       ,  3.33333325])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.reciprocal(x)
     else:
         check_variable_and_dtype(
@@ -1010,7 +1010,7 @@ def sinh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.41075233, -0.20133601,  0.10016675,  0.30452031])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sinh(x)
     else:
         check_variable_and_dtype(
@@ -1147,7 +1147,7 @@ def tan(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.42279324, -0.20271003,  0.10033467,  0.30933627])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.tan(x)
     else:
         check_variable_and_dtype(

@@ -18,7 +18,14 @@ from functools import partial, reduce
 import paddle
 from paddle.base import core
 from paddle.base.backward import _infer_var_data_type_shape_
-from paddle.base.framework import Operator, Program, Variable, static_only
+from paddle.base.framework import (
+    Operator,
+    Program,
+    Variable,
+    in_pir_mode,
+    static_only,
+)
+from paddle.base.libpaddle.pir import build_if_op, cf_yield
 from paddle.common_ops_import import (
     LayerHelper,
     check_type,
@@ -1037,9 +1044,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
 
             if key in keys_of_fns:
                 raise ValueError(
-                    "The key in 'branch_fns' must be unique, but '{}' appears more than once.".format(
-                        key
-                    )
+                    f"The key in 'branch_fns' must be unique, but '{key}' appears more than once."
                 )
             else:
                 keys_of_fns.append(key)
@@ -1206,6 +1211,39 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                     )
                 return false_fn()
         return None
+
+    if in_pir_mode():
+        if_op = build_if_op(pred)
+        true_output = None
+        false_output = None
+        if true_fn is not None:
+            if not callable(true_fn):
+                raise TypeError(
+                    "The true_fn in cond must be callable, but received {}".format(
+                        type(true_fn).__name__
+                    )
+                )
+        with if_op.true_block():
+            true_output = true_fn()
+            if true_output is not None:
+                cf_yield(flatten(true_output))
+        if false_fn is not None:
+            if not callable(false_fn):
+                raise TypeError(
+                    "The false_fn in cond must be callable, but received {}".format(
+                        type(false_fn).__name__
+                    )
+                )
+        with if_op.false_block():
+            false_output = false_fn()
+            if false_output is not None:
+                cf_yield(flatten(false_output))
+
+        if true_output is None and false_output is None:
+            return None
+
+        if_op.update_output()
+        return if_op.results()
 
     check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
     check_type(name, "name", (str, type(None)), "base.layers.cond")

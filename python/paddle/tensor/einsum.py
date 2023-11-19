@@ -23,12 +23,14 @@ import opt_einsum
 from paddle import _C_ops
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
-from ..base.framework import in_dygraph_mode
+from ..base.framework import in_dynamic_or_pir_mode
 from ..base.layer_helper import LayerHelper
 from .linalg import matmul, transpose
 from .manipulation import reshape, squeeze, unsqueeze
-from .math import multiply
-from .math import sum as paddle_sum
+from .math import (
+    multiply,
+    sum as paddle_sum,
+)
 
 __all__ = []
 
@@ -832,7 +834,7 @@ def gen_einsum_op(equation, *operands):
     EinsumOp Python Interface:
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.einsum(operands, equation)[0]
     else:
         assert len(operands) <= 2, "Only support two operands in EinsumOp."

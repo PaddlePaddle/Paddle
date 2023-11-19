@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def meshgrid_wrapper(x):
@@ -41,10 +42,12 @@ class TestMeshgridOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], ['out0', 'out1'], check_prim=True)
+        self.check_grad(
+            ['x0'], ['out0', 'out1'], check_prim=True, check_pir=True
+        )
 
     def init_inputs_and_outputs(self):
         self.shape = self.get_x_shape()
@@ -122,19 +125,21 @@ class TestMeshgridOpBFP16OP(TestMeshgridOp):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
+        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['x0'], ['out0', 'out1'], check_prim=True
+            paddle.CUDAPlace(0),
+            ['x0'],
+            ['out0', 'out1'],
+            check_prim=True,
+            check_pir=True,
         )
 
 
 class TestMeshgridOp3(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
-        x = paddle.static.data(shape=[100], dtype='int32', name='x')
-        y = paddle.static.data(shape=[200], dtype='int32', name='y')
-
         input_1 = np.random.randint(
             0,
             100,
@@ -155,22 +160,24 @@ class TestMeshgridOp3(unittest.TestCase):
         out_2 = np.reshape(input_2, [1, 200])
         out_2 = np.broadcast_to(out_2, [100, 200])
 
-        exe = base.Executor(place=base.CPUPlace())
-        grid_x, grid_y = paddle.tensor.meshgrid(x, y)
-        res_1, res_2 = exe.run(
-            base.default_main_program(),
-            feed={'x': input_1, 'y': input_2},
-            fetch_list=[grid_x, grid_y],
-        )
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[100], dtype='int32', name='x')
+            y = paddle.static.data(shape=[200], dtype='int32', name='y')
+
+            exe = base.Executor(place=base.CPUPlace())
+            grid_x, grid_y = paddle.tensor.meshgrid(x, y)
+            res_1, res_2 = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': input_1, 'y': input_2},
+                fetch_list=[grid_x, grid_y],
+            )
         np.testing.assert_array_equal(res_1, out_1)
         np.testing.assert_array_equal(res_2, out_2)
 
 
 class TestMeshgridOp4(unittest.TestCase):
+    @test_with_pir_api
     def test_list_input(self):
-        x = paddle.static.data(shape=[100], dtype='int32', name='x')
-        y = paddle.static.data(shape=[200], dtype='int32', name='y')
-
         input_1 = np.random.randint(
             0,
             100,
@@ -191,23 +198,24 @@ class TestMeshgridOp4(unittest.TestCase):
         out_2 = np.reshape(input_2, [1, 200])
         out_2 = np.broadcast_to(out_2, [100, 200])
 
-        exe = base.Executor(place=base.CPUPlace())
-        grid_x, grid_y = paddle.tensor.meshgrid([x, y])
-        res_1, res_2 = exe.run(
-            base.default_main_program(),
-            feed={'x': input_1, 'y': input_2},
-            fetch_list=[grid_x, grid_y],
-        )
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[100], dtype='int32', name='x')
+            y = paddle.static.data(shape=[200], dtype='int32', name='y')
 
+            exe = base.Executor(place=base.CPUPlace())
+            grid_x, grid_y = paddle.tensor.meshgrid([x, y])
+            res_1, res_2 = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': input_1, 'y': input_2},
+                fetch_list=[grid_x, grid_y],
+            )
         np.testing.assert_array_equal(res_1, out_1)
         np.testing.assert_array_equal(res_2, out_2)
 
 
 class TestMeshgridOp5(unittest.TestCase):
+    @test_with_pir_api
     def test_tuple_input(self):
-        x = paddle.static.data(shape=[100], dtype='int32', name='x')
-        y = paddle.static.data(shape=[200], dtype='int32', name='y')
-
         input_1 = np.random.randint(
             0,
             100,
@@ -228,14 +236,17 @@ class TestMeshgridOp5(unittest.TestCase):
         out_2 = np.reshape(input_2, [1, 200])
         out_2 = np.broadcast_to(out_2, [100, 200])
 
-        exe = base.Executor(place=base.CPUPlace())
-        grid_x, grid_y = paddle.tensor.meshgrid((x, y))
-        res_1, res_2 = exe.run(
-            base.default_main_program(),
-            feed={'x': input_1, 'y': input_2},
-            fetch_list=[grid_x, grid_y],
-        )
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[100], dtype='int32', name='x')
+            y = paddle.static.data(shape=[200], dtype='int32', name='y')
 
+            exe = base.Executor(place=base.CPUPlace())
+            grid_x, grid_y = paddle.tensor.meshgrid((x, y))
+            res_1, res_2 = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': input_1, 'y': input_2},
+                fetch_list=[grid_x, grid_y],
+            )
         np.testing.assert_array_equal(res_1, out_1)
         np.testing.assert_array_equal(res_2, out_2)
 

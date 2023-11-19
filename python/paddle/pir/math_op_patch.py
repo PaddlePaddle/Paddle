@@ -180,7 +180,7 @@ def monkey_patch_opresult():
                 >>> with paddle.static.program_guard(startup_prog, main_prog):
                 ...     original_value = paddle.static.data(name = "new_value", shape=[2,2], dtype='float32')
                 ...     new_value = original_value.astype('int64')
-                ...     print("new value's dtype is: {}".format(new_value.dtype))
+                ...     print(f"new value's dtype is: {new_value.dtype}")
                 ...
                 new OpResult's dtype is: paddle.int64
 
@@ -289,7 +289,9 @@ def monkey_patch_opresult():
                 python_api == paddle.divide
             ) and self.dtype in _supported_int_dtype_:
                 self = paddle.cast(self, DataType.FLOAT32)
-                other_var = paddle.cast(other_var_opresult, DataType.FLOAT32)
+                other_var_opresult = paddle.cast(
+                    other_var_opresult, DataType.FLOAT32
+                )
 
             out = python_api(self, other_var_opresult)
             return out
@@ -305,6 +307,30 @@ def monkey_patch_opresult():
         __impl__.__name__ = method_name
         return __impl__
 
+    @property
+    def _size_(self):
+        """
+        Returns the number of elements for current OpResult, which is a int64 OpResult with shape [] .
+
+        Returns:
+            OpResult, the number of elements for current OpResult
+
+        Examples:
+            .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> startup_prog = paddle.static.Program()
+            >>> main_prog = paddle.static.Program()
+            >>> with paddle.static.program_guard(startup_prog, main_prog):
+            ...     x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
+            ...     (output_x,) = exe.run(main_program, fetch_list=[x.size])
+            ...     print(f"value's size is: {output_x}")
+            ...
+            value's size is: 24
+        """
+        return paddle.numel(self)
+
     import paddle
 
     opresult_methods = [
@@ -314,6 +340,7 @@ def monkey_patch_opresult():
         ('ndimension', ndimension),
         ('ndim', _ndim),
         ('astype', astype),
+        ('size', _size_),
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
