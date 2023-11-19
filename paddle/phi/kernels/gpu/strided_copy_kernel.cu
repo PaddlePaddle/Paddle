@@ -17,7 +17,8 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-bool VerifyThreadConfigurationParameters(const dim3& block, const dim3& grid) {
+bool VerifyStridedCopyThreadConfigurationParameters(const dim3& block,
+                                                    const dim3& grid) {
   return block.x <= 1024 && block.y <= 1024 && block.z <= 64 &&
          block.x * block.y * block.z <= 1024 &&
          block.x * block.y * block.z >= 96 && grid.y < 65536 && grid.z < 65536;
@@ -29,12 +30,8 @@ __global__ void StridedCopyCaseZeroFunc(
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
     T* output_data,
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride) {
-  int64_t input_offset = (blockIdx.z * gridDim.y * gridDim.x +
-                          blockIdx.y * gridDim.x + blockIdx.x) *
-                             blockDim.z * blockDim.y * blockDim.x +
-                         threadIdx.z * blockDim.y * blockDim.x +
-                         threadIdx.y * blockDim.x + threadIdx.x;
-  int64_t output_offset = input_offset;
+  int64_t input_offset = 0;
+  int64_t output_offset = 0;
   float coordinate[6] = {threadIdx.x,
                          threadIdx.y,
                          threadIdx.z,
@@ -90,7 +87,7 @@ bool LaunchStridedCopyCazeZeroKernel(
     grid.z = dims[rank - 6];
   }
 
-  if (!VerifyThreadConfigurationParameters(block, grid)) {
+  if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
     return false;
   }
 
@@ -134,8 +131,8 @@ __global__ void StridedCopyCaseOneFunc(
     const int64_t x_max) {
   int64_t x = blockIdx.x * blockDim.x + threadIdx.x;
   if (x < x_max) {
-    int64_t input_offset = (blockIdx.z * gridDim.y + blockIdx.y) * x_max + x;
-    int64_t output_offset = input_offset;
+    int64_t input_offset = 0;
+    int64_t output_offset = 0;
 
     int64_t reg_dims[6] = {
         dims[0], dims[1], dims[2], dims[3], dims[4], dims[5]};
@@ -271,7 +268,7 @@ bool LaunchStridedCopyCazeOneKernel(
     grid.z = dims[rank - 7] * dims[rank - 8] * dims[rank - 9];
   }
 
-  if (!VerifyThreadConfigurationParameters(block, grid)) {
+  if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
     return false;
   }
 
@@ -514,7 +511,7 @@ bool LaunchStrided2ContiguousCazeZeroKernel(
     grid.z = dims[rank - 6];
   }
 
-  if (!VerifyThreadConfigurationParameters(block, grid)) {
+  if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
     return false;
   }
 
@@ -698,7 +695,7 @@ bool LaunchStrided2ContiguousCazeOneKernel(
     grid.z = dims[rank - 7] * dims[rank - 8] * dims[rank - 9];
   }
 
-  if (!VerifyThreadConfigurationParameters(block, grid)) {
+  if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
     return false;
   }
 
@@ -919,7 +916,7 @@ bool LaunchContiguous2StridedCazeZeroKernel(
     grid.z = dims[rank - 6];
   }
 
-  if (!VerifyThreadConfigurationParameters(block, grid)) {
+  if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
     return false;
   }
 
@@ -1103,7 +1100,7 @@ bool LaunchContiguous2StridedCazeOneKernel(
     grid.z = dims[rank - 7] * dims[rank - 8] * dims[rank - 9];
   }
 
-  if (!VerifyThreadConfigurationParameters(block, grid)) {
+  if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
     return false;
   }
 
