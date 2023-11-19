@@ -28,15 +28,15 @@ class ParseKernelKeyInterface
     : public pir::OpInterfaceBase<ParseKernelKeyInterface> {
  public:
   struct Concept {
-    explicit Concept(KernelKeyTuple (*parse_kernel_key)(pir::Operation *op))
+    explicit Concept(KernelKeyTuple (*parse_kernel_key)())
         : parse_kernel_key_(parse_kernel_key) {}
-    KernelKeyTuple (*parse_kernel_key_)(pir::Operation *op);
+    KernelKeyTuple (*parse_kernel_key_)();
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static KernelKeyTuple ParseKernelKey(pir::Operation *op) {
-      return ConcreteOp::ParseKernelKey(op);
+    static KernelKeyTuple ParseKernelKey() {
+      return ConcreteOp::ParseKernelKey();
     }
 
     Model() : Concept(ParseKernelKey) {}
@@ -46,9 +46,7 @@ class ParseKernelKeyInterface
   ParseKernelKeyInterface(pir::Operation *op, Concept *impl)
       : pir::OpInterfaceBase<ParseKernelKeyInterface>(op), impl_(impl) {}
 
-  KernelKeyTuple ParseKernelKey(pir::Operation *op) {
-    return impl_->parse_kernel_key_(op);
-  }
+  KernelKeyTuple ParseKernelKey() { return impl_->parse_kernel_key_(); }
 
  private:
   Concept *impl_;
