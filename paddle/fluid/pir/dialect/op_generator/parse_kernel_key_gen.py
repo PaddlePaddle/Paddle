@@ -13,7 +13,7 @@
 # limitations under the License.
 
 OP_GET_KERNEL_TYPE_FOR_VAR_TEMPLATE = """
-std::tuple<phi::DataType, phi::Backend> ParseKernelKey() {{
+std::tuple<phi::DataType, phi::Backend> {op_name}::ParseKernelKey() {{
   VLOG(4) << "Parse kernel key for op: {op_name}";
   return {op_name}ParseKernelKey(operation());
 }}
