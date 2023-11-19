@@ -29,6 +29,7 @@ from op_interface_gen import (
 from op_kerneltype_gen import gen_kernel_type_for_var_str
 from op_member_func_gen import gen_op_get_inputs_outputs_str
 from op_verify_gen import gen_verify_func_str
+from parse_kernel_key_gen import gen_parse_kernel_key_str
 from vjp_interface_black_list import vjp_interface_black_list
 
 # import from paddle/fluid/primitive/code_gen/gen.py
@@ -61,6 +62,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
+#include "paddle/fluid/pir/dialect/operator/interface/parse_kernel_key.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
@@ -103,6 +105,7 @@ class {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
   {build_mutable_attr_is_input_attr_num_over_1}
   void VerifySig();
 {get_kernel_type_for_var_declare}
+{parse_kernel_key_declare}
 {get_inputs_and_outputs}
 {exclusive_interface}
 }};
@@ -119,6 +122,10 @@ get_kernel_type_for_var_declare_template = """
       const std::string& var_name,
         const phi::DataType& tensor_dtype,
         const phi::DataType& expected_kernel_dtype);
+"""
+
+parse_kernel_key_template = """
+  static std::tuple<phi::DataType, phi::Backend> ParseKernelKey();
 """
 
 # =====================================
@@ -1249,6 +1256,10 @@ def OpGenerator(
                         get_kernel_type_for_var_declare_template
                     )
 
+                parse_kernel_key_str = ""
+                if "paddle::dialect::ParseKernelKeyInterface" in op_interfaces:
+                    parse_kernel_key_str = parse_kernel_key_template
+
                 if op_infer_meta_map is not None:
                     (
                         build_args_with_muta_attr_not_input_for_declare,
@@ -1382,6 +1393,7 @@ def OpGenerator(
                         get_inputs_and_outputs=op_get_inputs_outputs_str,
                         exclusive_interface=exclusive_interface_str,
                         get_kernel_type_for_var_declare=get_kernel_type_for_var_declare_str,
+                        parse_kernel_key_declare=parse_kernel_key_str,
                     )
                     op_defined_str = ""
                 else:
@@ -1403,6 +1415,7 @@ def OpGenerator(
                         get_inputs_and_outputs=op_get_inputs_outputs_str,
                         exclusive_interface=exclusive_interface_str,
                         get_kernel_type_for_var_declare=get_kernel_type_for_var_declare_str,
+                        parse_kernel_key_declare=parse_kernel_key_str,
                     )
                     attribute_names_str = (
                         '"'
@@ -1575,6 +1588,13 @@ def OpGenerator(
                     )
 
                 # generate op GetKernelKeyForVar function str
+                parse_kernel_key_define_str = ''
+                if "paddle::dialect::ParseKernelKeyInterface" in op_interfaces:
+                    parse_kernel_key_define_str = gen_parse_kernel_key_str(
+                        op_class_name
+                    )
+
+                # generate op GetKernelKeyForVar function str
                 op_get_kernel_type_for_var_str = ''
                 if dialect_name == "pd_op":
                     op_get_kernel_type_for_var_str = (
@@ -1632,6 +1652,7 @@ def OpGenerator(
                     ops_defined_list.append(op_verify_str)
                     ops_defined_list.append(op_infer_meta_str)
                     ops_defined_list.append(op_get_kernel_type_for_var_str)
+                    ops_defined_list.append(parse_kernel_key_define_str)
 
                     # NOTE(chenxi67)skip if dialect_name==cinn
                     if dialect_name == "cinn":

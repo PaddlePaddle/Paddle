@@ -55,7 +55,7 @@ class ParseKernelKeyInterface
 };
 
 // Register the ParseKernelKeyInterface for unique op.
-KernelKeyTuple UniqueOpParseKernelKey(pir::Operation *op) {
+KernelKeyTuple UniqueOpParseKernelKey(const pir::Operation *op) {
   DenseTensorType x_type =
       op->operand_source(0).type().dyn_cast<paddle::dialect::DenseTensorType>();
   phi::DataType dtype = TransToPhiDataType(x_type.dtype());
