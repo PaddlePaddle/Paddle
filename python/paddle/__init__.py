@@ -260,6 +260,7 @@ from .tensor.manipulation import (  # noqa: F401
     masked_fill_,
     index_fill,
     index_fill_,
+    diagonal_scatter,
 )
 
 from .tensor.math import (  # noqa: F401
@@ -928,4 +929,5 @@ __all__ = [
     'hypot_',
     'index_fill',
     "index_fill_",
+    'diagonal_scatter',
 ]
