@@ -637,6 +637,8 @@ phi::KernelKey GetKernelKey(
     }
   }
 
+  // TODO(zhangbo): Add ParseKernelInterface
+
   if ((kernel_backend == phi::Backend::UNDEFINED ||
        kernel_dtype == phi::DataType::UNDEFINED) &&
       op->num_operands() > 0) {
@@ -666,8 +668,7 @@ phi::KernelKey GetKernelKey(
       // don't know how to select the kernel in the next of op that
       // uses data op outout as inputs. So, we need set kernel backend
       // manually.
-      auto op_res = op->operand_source(i).dyn_cast<pir::OpResult>();
-
+      auto op_res = input_tmp.dyn_cast<pir::OpResult>();
       if (!op_res) {
         continue;
       }

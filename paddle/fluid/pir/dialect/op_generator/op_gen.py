@@ -426,9 +426,18 @@ class OpInfoParser:
         # parse traits list
         self.traits_list = self.parse_op_traits()
 
+        # parse interfaces list
+        self.interfaces_list = self.parse_op_interfaces()
+
     def parse_op_traits(self):
         if 'traits' in self.op_yaml_item:
             return self.op_yaml_item['traits']
+        else:
+            return []
+
+    def parse_op_interfaces(self):
+        if 'interfaces' in self.op_yaml_item:
+            return self.op_yaml_item['interfaces']
         else:
             return []
 
@@ -1121,8 +1130,9 @@ def OpGenerator(
         op_inplace_map = op_info.inplace_map
         op_view_map = op_info.view_map
         op_data_transform_map = op_info.data_transform_map
-        op_interfaces = ["paddle::dialect::OpYamlInfoInterface"]
         op_traits = op_info.traits_list
+        op_interfaces = op_info.interfaces_list
+        op_interfaces += ["paddle::dialect::OpYamlInfoInterface"]
 
         if op_info.infer_meta_func:
             op_interfaces += ["paddle::dialect::InferMetaInterface"]
