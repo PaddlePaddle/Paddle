@@ -24,8 +24,8 @@ from paddle.pir_utils import test_with_pir_api
 RTOL = 1e-5
 ATOL = 1e-8
 
-PLACES = [paddle.CPUPlace()] + (
-    [paddle.CUDAPlace(0)] if core.is_compiled_with_cuda() else []
+PLACES = [('cpu', paddle.CPUPlace())] + (
+    [('gpu', paddle.CUDAPlace(0))] if core.is_compiled_with_cuda() else []
 )
 
 
@@ -159,8 +159,10 @@ class BaseTest(unittest.TestCase):
         names: list,
     ):
         """Test `static`, convert `Tensor` to `numpy array` before feed into graph"""
-        for place in PLACES:
+        for device, place in PLACES:
             paddle.enable_static()
+            paddle.set_device(device)
+
             for func, func_type in test_list:
                 with paddle.static.program_guard(paddle.static.Program()):
                     x = []
@@ -207,8 +209,10 @@ class BaseTest(unittest.TestCase):
         names: list,
     ):
         """Test `dygraph`, and check grads"""
-        for place in PLACES:
+        for device, place in PLACES:
             paddle.disable_static(place)
+            paddle.set_device(device)
+
             for func, func_type in test_list:
                 out = func(*inputs)
                 out_ref = func_ref(
@@ -431,10 +435,11 @@ class TestAtleastAsTensorMethod(unittest.TestCase):
     def test_as_tensor_method(self):
         input = 123
 
-        for place in PLACES:
+        for device, place in PLACES:
             paddle.disable_static(place)
+            paddle.set_device(device)
 
-            tensor = paddle.to_tensor(input)
+            tensor = paddle.to_tensor(input, place=place)
 
             out = tensor.atleast_1d()
             out_ref = np.atleast_1d(input)
