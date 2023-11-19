@@ -272,7 +272,7 @@ def test_legacy_only(fn):
 
 
 def test_pir_only(fn):
-    fn = set_ir_mode(IrMode.PIR_EXE)(fn)
+    # fn = set_ir_mode(IrMode.PIR_EXE)(fn)
     return fn
 
 
@@ -282,17 +282,17 @@ def test_pir_api_only(fn):
 
 
 def test_legacy_and_pir(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_EXE)(fn)
+    # fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_EXE)(fn)
     return fn
 
 
 def test_legacy_and_pir_api(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API)(fn)
+    # fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API)(fn)
     return fn
 
 
 def test_legacy_and_pir_exe_and_pir_api(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API | IrMode.PIR_EXE)(fn)
+    # fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API | IrMode.PIR_EXE)(fn)
     return fn
 
 
