@@ -14,22 +14,13 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
-#include "paddle/pir/core/program.h"
+#include <vector>
 
-namespace cinn {
-namespace dialect {
-namespace ir {
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
+#include "paddle/phi/core/distributed/type_defs.h"
 
-using GroupPtr = std::shared_ptr<Group>;
-using GroupList = std::vector<GroupPtr>;
-
-GroupList OpFusionPassInternal(
-    const std::vector<pir::Operation*>& op_list,
-    const std::vector<pir::Operation*>& output_op_list = {});
-
-GroupList GeneralFusionMergePassInternal(const GroupList& group_list);
-
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+namespace phi {
+namespace distributed {
+SpmdInfo CastInferSpmd(const DistMetaTensor& x, phi::DataType dtype);
+}
+}  // namespace phi
