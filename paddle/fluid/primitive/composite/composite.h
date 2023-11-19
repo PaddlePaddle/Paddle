@@ -188,26 +188,26 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   return std::make_tuple(out, mean_, variance);
 }
 
-template <typename T>
-Tensor bernoulli(const phi::DDim& xddim,
-                 paddle::DataType dtype,
-                 const paddle::Scalar& p,
-                 const int seed) {
-  auto new_dtype = dtype;
-  if (dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::UINT16) {
-    new_dtype = phi::DataType::FLOAT32;
-  }
+// template <typename T>
+// Tensor bernoulli(const phi::DDim& xddim,
+//                  paddle::DataType dtype,
+//                  const paddle::Scalar& p,
+//                  const int seed) {
+//   auto new_dtype = dtype;
+//   if (dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::UINT16) {
+//     new_dtype = phi::DataType::FLOAT32;
+//   }
 
-  // InitRandomTensor<T>()
-  auto tensor_var = RandomTensor<T>(xddim, place, low, high);
+//   // InitRandomTensor<T>()
+//   auto tensor_var = RandomTensor<T>(xddim, place, low, high);
 
-  Tensor out(std::make_shared<LazyTensor>(op_res));
+//   Tensor out(std::make_shared<LazyTensor>(op_res));
 
-  auto uniform_tensor = full<T>(phi::vectorize(xddim),
-                                utils::SampleUniformDouble(0.0, 1.0, seed),
-                                new_dtype);
-  return cast<T>(greater_equal<T>(uniform_tensor, p), dtype);
-}
+//   auto uniform_tensor = full<T>(phi::vectorize(xddim),
+//                                 utils::SampleUniformDouble(0.0, 1.0, seed),
+//                                 new_dtype);
+//   return cast<T>(greater_equal<T>(uniform_tensor, p), dtype);
+// }
 
 template <typename T>
 std::tuple<Tensor, Tensor> dropout_decomp(
@@ -226,10 +226,18 @@ std::tuple<Tensor, Tensor> dropout_decomp(
     upscale_in_train = true;
   }
 
-  pir::Value x_res = std::static_pointer_cast<LazyTensor>(p.impl())->value();
-  auto op_res = paddle::dialect::bernoulli(x_res);
-  auto mask = out(std::make_shared<LazyTensor>(op_res));
+  std::cout << "=============================" << std::endl;
+  std::cout << p.ToString() << std::endl;
+  // std::cout << string(p.dtype()) << std::endl;
+  // std::cout << p.data_ << std::endl;
+  std::cout << p.ToRawString() << std::endl;
+  std::cout << "=============================" << std::endl;
+
+  // pir::Value x_res = std::static_pointer_cast<LazyTensor>(p.impl())->value();
+  // auto op_res = paddle::dialect::bernoulli(x_res);
+  // auto mask = out(std::make_shared<LazyTensor>(op_res));
   // auto mask = paddle::dialect::bernoulli(p);
+  auto mask = full<T>(phi::vectorize(x.dims()), 1.0, org_dtype);
   auto ones = full<T>(phi::vectorize(x.dims()), 1.0, org_dtype);
 
   if (upscale_in_train) {
