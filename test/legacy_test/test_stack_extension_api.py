@@ -36,8 +36,8 @@ DTYPE_ALL = [
 # `paddle.numel` with `int8` will raise NotImplemetedError in static graph
 DTYPE_COLUMN_STACK = list(set(DTYPE_ALL) - {'int8'})
 
-PLACES = [paddle.CPUPlace()] + (
-    [paddle.CUDAPlace(0)] if core.is_compiled_with_cuda() else []
+PLACES = [('cpu', paddle.CPUPlace())] + (
+    [('gpu', paddle.CUDAPlace(0))] if core.is_compiled_with_cuda() else []
 )
 
 
@@ -92,7 +92,9 @@ class BaseTest(unittest.TestCase):
         """Test `static`, convert `Tensor` to `numpy array` before feed into graph"""
         paddle.enable_static()
 
-        for place in PLACES:
+        for device, place in PLACES:
+            paddle.set_device(device)
+
             program = paddle.static.Program()
             exe = paddle.static.Executor(place)
 
@@ -128,7 +130,9 @@ class BaseTest(unittest.TestCase):
         """Test `dygraph`, and check grads"""
         paddle.disable_static()
 
-        for place in PLACES:
+        for device, place in PLACES:
+            paddle.set_device(device)
+
             out = func_paddle(
                 [
                     paddle.to_tensor(inputs[i]).astype(dtypes[i])
