@@ -726,15 +726,12 @@ def _as_lodtensor(data, place, dtype=None):
         if np.isscalar(data):
             data = np.array(data).astype(dtype)
         elif isinstance(data, (list, tuple)):
-            
-            _ddd = str(data)
-
             data = np.array(data)
             if data.dtype == np.object_:
                 raise TypeError(
                     "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
                     "this means the input data contains nested lists with different lengths. "
-                    "Please consider using 'base.create_lod_tensor' to convert it to a LoD-Tensor. data is {}, {}, type is {}".format(_ddd, str(data), type(data))
+                    "Please consider using 'base.create_lod_tensor' to convert it to a LoD-Tensor."
                 )
             data = data.astype(dtype)
         else:

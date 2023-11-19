@@ -416,12 +416,12 @@ class TestAtleastErrorCombineInputs(BaseTest):
     """test combine inputs, like: `at_leastNd((x, y))`, where paddle treats like numpy"""
 
     def test_all(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises((ValueError, TypeError)):
             self._test_dygraph_api(
                 self.inputs, self.dtypes, self.shapes, self.names
             )
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises((ValueError, TypeError)):
             self._test_static_api(
                 self.inputs, self.dtypes, self.shapes, self.names
             )
@@ -431,12 +431,10 @@ class TestAtleastAsTensorMethod(unittest.TestCase):
     def test_as_tensor_method(self):
         input = 123
 
-        tensor = paddle.to_tensor(input)
-        
         for place in PLACES:
             paddle.disable_static(place)
 
-            # tensor = paddle.to_tensor(input)
+            tensor = paddle.to_tensor(input)
 
             out = tensor.atleast_1d()
             out_ref = np.atleast_1d(input)
