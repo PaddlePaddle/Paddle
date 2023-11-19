@@ -34,8 +34,9 @@ OperatorDialect::OperatorDialect(pir::IrContext *context)
 }
 
 void OperatorDialect::initialize() {
-  RegisterTypes<paddle::dialect::DenseTensorType>();
-  RegisterTypes<paddle::dialect::SelectedRowsType>();
+  RegisterTypes<paddle::dialect::DenseTensorType,
+                paddle::dialect::SelectedRowsType,
+                paddle::dialect::DenseTensorArrayType>();
 
   RegisterAttributes<paddle::dialect::IntArrayAttribute,
                      paddle::dialect::DataTypeAttribute,
@@ -60,7 +61,12 @@ void OperatorDialect::initialize() {
               paddle::dialect::AddNWithKernelOp,
               paddle::dialect::FusedGemmEpilogueOp,
               paddle::dialect::FusedGemmEpilogueGradOp,
-              paddle::dialect::SplitGradOp>();
+              paddle::dialect::SplitGradOp,
+              paddle::dialect::ExpandOp,
+              paddle::dialect::CreateArrayOp,
+              paddle::dialect::ArrayLengthOp,
+              paddle::dialect::ArrayReadOp,
+              paddle::dialect::ArrayWrite_Op>();
 
   RegisterInterfaces<ParameterConvertInterface>();
 }
@@ -83,6 +89,10 @@ void OperatorDialect::PrintType(pir::Type type, std::ostream &os) const {
       os << "x";
     }
     selected_rows_type.dtype().Print(os);
+    os << ">";
+  } else if (auto tensor_array_type = type.dyn_cast<DenseTensorArrayType>()) {
+    os << "tensor_array<";
+    tensor_array_type.dtype().Print(os);
     os << ">";
   }
 }

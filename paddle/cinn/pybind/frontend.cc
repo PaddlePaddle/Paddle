@@ -17,6 +17,7 @@
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 
+#include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/frontend/computation.h"
 #include "paddle/cinn/frontend/decomposer/use_decomposer.h"
@@ -201,6 +202,8 @@ void BindFrontend(pybind11::module *m) {
             }
 
             auto graph = Optimize(&self, fetch_ids, target, passes);
+
+            cinn::adt::TryGenerateMapExprFromGraph(graph);
 
             scope = hlir::framework::BuildScope(target, graph, scope);
             hlir::framework::CompilationContext context(graph, scope, target);

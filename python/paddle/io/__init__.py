@@ -30,6 +30,7 @@ from .dataloader import (
     WeightedRandomSampler,
     get_worker_info,
     random_split,
+    ConcatDataset,
 )
 from .reader import DataLoader
 
@@ -50,4 +51,5 @@ __all__ = [
     'random_split',
     'Subset',
     'SubsetRandomSampler',
+    'ConcatDataset',
 ]

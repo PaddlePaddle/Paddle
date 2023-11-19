@@ -49,16 +49,10 @@ TEST(shape_constraint_pass, materialize_and_build_shape) {
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
-  pir::Operation *op0 =
-      test::CreateDenseTensorOp(ctx,
-                                {pir::ShapedTypeInterface::kDynamic, 2},
-                                {"op0_attr"},
-                                {"create_dense_tensor_op0"});
-  pir::Operation *op1 =
-      test::CreateDenseTensorOp(ctx,
-                                {pir::ShapedTypeInterface::kDynamic, 2, 2},
-                                {"op1_attr"},
-                                {"create_dense_tensor_op1"});
+  pir::Operation *op0 = test::CreateDenseTensorOp(
+      ctx, {-1, 2}, {"op0_attr"}, {"create_dense_tensor_op0"});
+  pir::Operation *op1 = test::CreateDenseTensorOp(
+      ctx, {-1, 2, 2}, {"op1_attr"}, {"create_dense_tensor_op1"});
   program.block()->push_back(op0);
   program.block()->push_back(op1);
 
@@ -99,8 +93,8 @@ TEST(shape_constraint_pass, shape_computation_run) {
       {"op0_name"},
       pir::Int64Type::get(pir::IrContext::Instance()));
   program.block()->push_back(op0);
-  pir::Operation *op1 = test::CreateDenseTensorOp(
-      ctx, {pir::ShapedTypeInterface::kDynamic, 2}, {"op1_attr"}, {"op1_name"});
+  pir::Operation *op1 =
+      test::CreateDenseTensorOp(ctx, {-1, 2}, {"op1_attr"}, {"op1_name"});
   program.block()->push_back(op1);
 
   pir::PassManager pm(ctx);

@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import inspect
 import logging
 import os
 import unittest
 from enum import Flag, auto
 from functools import wraps
+from pathlib import Path
 
 import numpy as np
 
@@ -102,7 +104,7 @@ def to_sot_test(fn):
 
 def to_legacy_ir_test(fn):
     def impl(*args, **kwargs):
-        logger.info("[Program] running legacy ir")
+        logger.info("[LEGACY_IR] running legacy ir")
         return fn(*args, **kwargs)
 
     return impl
@@ -117,8 +119,8 @@ def to_pir_exe_test(fn):
             return
         with static.scope_guard(static.Scope()):
             with static.program_guard(static.Program()):
+                pir_flag = 'FLAGS_enable_pir_in_executor'
                 try:
-                    pir_flag = 'FLAGS_enable_pir_in_executor'
                     os.environ[pir_flag] = 'True'
                     set_flags({pir_flag: True})
                     ir_outs = fn(*args, **kwargs)
@@ -202,12 +204,6 @@ class Dy2StTestMeta(type):
             )
             # Generate all test cases
             for to_static_mode, ir_mode in to_static_with_ir_modes:
-                # NOTE(gouzil): Temporarily not supported SOT + PIR, link: https://github.com/PaddlePaddle/Paddle/pull/58630
-                if (
-                    to_static_mode == ToStaticMode.SOT
-                    and ir_mode == IrMode.PIR_API
-                ):
-                    continue
                 new_attrs[
                     Dy2StTestMeta.test_case_name(
                         fn_name, to_static_mode, ir_mode
@@ -270,8 +266,18 @@ def test_sot_only(fn):
     return fn
 
 
+def test_legacy_only(fn):
+    fn = set_ir_mode(IrMode.LEGACY_IR)(fn)
+    return fn
+
+
 def test_pir_only(fn):
     fn = set_ir_mode(IrMode.PIR_EXE)(fn)
+    return fn
+
+
+def test_pir_api_only(fn):
+    fn = set_ir_mode(IrMode.PIR_API)(fn)
     return fn
 
 
@@ -316,3 +322,26 @@ def show_all_test_cases(test_class):
         if attr.startswith("test"):
             fn = getattr(test_class, attr)
             logger.info(f"{attr}: {fn}")
+
+
+# Other utilities
+def import_module_from_path(module_name, module_path):
+    """A better way to import module from other directory than using sys.path.append"""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def import_legacy_test_utils():
+    test_root = Path(__file__).parent.parent
+    legacy_test_utils_path = test_root / "legacy_test/utils.py"
+    legacy_test_utils = import_module_from_path(
+        "legacy_test_utils", legacy_test_utils_path
+    )
+    return legacy_test_utils
+
+
+legacy_test_utils = import_legacy_test_utils()
+dygraph_guard = legacy_test_utils.dygraph_guard
+static_guard = legacy_test_utils.static_guard

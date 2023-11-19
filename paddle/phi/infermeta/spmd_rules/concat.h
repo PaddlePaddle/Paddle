@@ -30,5 +30,9 @@ SpmdInfo ConcatInferSpmdReverse(const std::vector<DistMetaTensor>& x,
 SpmdInfo ConcatInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
                                 const Scalar& axis);
 
+SpmdInfo ConcatGradInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
+                                    const DistMetaTensor& output_grad,
+                                    const Scalar& axis);
+
 }  // namespace distributed
 }  // namespace phi
