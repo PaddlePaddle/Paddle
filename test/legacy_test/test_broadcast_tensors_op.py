@@ -102,7 +102,7 @@ class TestCPUBroadcastTensorsOp(OpTest):
         self.place = core.CPUPlace()
 
     def set_dtypes(self):
-        self.dtypes = ['complex64']
+        self.dtypes = ['float64', 'complex64', 'complex128']
 
     def setUp(self):
         self.op_type = "broadcast_tensors"
