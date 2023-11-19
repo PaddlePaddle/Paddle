@@ -142,7 +142,7 @@ class TestSimpleNetForSemiAutoParallel:
         )
         # TODO: solve the derivation issue of AdamW
         # for _ in range(5):
-        for _ in range(1):
+        for _ in range(5):
             image, label = self.init_input_data()
             if shard_input:
                 image = dist.shard_tensor(

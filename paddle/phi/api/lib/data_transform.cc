@@ -714,6 +714,60 @@ ReshardApiInputToKernelInput(
   return paddle::none;
 }
 
+void ReshardInplaceOutputToOriginStatus(
+    phi::DeviceContext* dev_ctx,
+    Tensor& tensor,  // NOLINT
+    const phi::distributed::TensorDistAttr& dist_attr) {
+  auto tensor_in = tensor.impl();
+  if (tensor_in) {
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(tensor_in.get());
+    if (dist_tensor->initialized()) {
+      if (ReshardIsNeeded(dist_tensor->dist_attr(), dist_attr)) {
+        VLOG(6) << "ReshardInplaceOutput to origin dist_attr"
+                << ReshardDebugInfo(*dist_tensor, dist_attr);
+        auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
+                                                                   dist_attr);
+        func->Eval(dev_ctx, *dist_tensor, dist_attr, dist_tensor);
+      }
+    } else {
+      VLOG(6) << "ReshardInplaceOutputToOriginStatus has"
+              << " uninitialized DistTensor input " << tensor.name()
+              << ", just set its dist_attr from " << dist_tensor->dist_attr()
+              << " to " << dist_attr;
+      dist_tensor->unsafe_set_dist_attr(dist_attr);
+    }
+  }
+}
+
+void ReshardInplaceOutputToOriginStatus(
+    phi::DeviceContext* dev_ctx,
+    std::vector<Tensor>& tensors,  // NOLINT
+    const std::vector<phi::distributed::TensorDistAttr>& dist_attr) {
+  for (size_t i = 0; i < tensors.size(); i++) {
+    auto tensor_in = tensors[i].impl();
+    if (tensor_in) {
+      phi::distributed::DistTensor* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(tensor_in.get());
+      if (dist_tensor->initialized()) {
+        if (ReshardIsNeeded(dist_tensor->dist_attr(), dist_attr[i])) {
+          VLOG(6) << "ReshardInplaceOutput to origin dist_attr"
+                  << ReshardDebugInfo(*dist_tensor, dist_attr[i]);
+          auto* func = phi::distributed::ChooseProperReshardFunction(
+              *dist_tensor, dist_attr[i]);
+          func->Eval(dev_ctx, *dist_tensor, dist_attr[i], dist_tensor);
+        }
+      } else {
+        VLOG(6) << "ReshardInplaceOutputToOriginStatus has"
+                << " uninitialized DistTensor input " << tensors[i].name()
+                << ", just set its dist_attr from " << dist_tensor->dist_attr()
+                << " to " << dist_attr[i];
+        dist_tensor->unsafe_set_dist_attr(dist_attr[i]);
+      }
+    }
+  }
+}
+
 void ReshardOutputPartialAxisToReplicated(
     phi::DeviceContext* dev_ctx, phi::distributed::DistTensor* out_tensor) {
   if (out_tensor->dist_attr().is_partial()) {
