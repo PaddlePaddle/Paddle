@@ -70,7 +70,8 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
 
 DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
                        const ProcessMesh& process_mesh,
-                       const Placements& placements) {
+                       const Placements& placements)
+    : dims_(global_value->dims()), value_(std::make_shared<DenseTensor>()) {
   dist_tensor_meta_ = DistTensorMeta(
       process_mesh,
       placements,
