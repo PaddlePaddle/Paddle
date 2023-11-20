@@ -19,30 +19,30 @@ namespace common {
 
 std::array<int, 3> NVGPUDevInfo::GetMaxGridDims() const {
   std::array<int, 3> ret;
-  ret[0] = prop_->maxGridSize[0];
-  ret[1] = prop_->maxGridSize[1];
-  ret[2] = prop_->maxGridSize[2];
+  ret[0] = prop_.maxGridSize[0];
+  ret[1] = prop_.maxGridSize[1];
+  ret[2] = prop_.maxGridSize[2];
   return ret;
 }
 
 std::array<int, 3> NVGPUDevInfo::GetMaxBlockDims() const {
   std::array<int, 3> ret;
-  ret[0] = prop_->maxThreadsDim[0];
-  ret[1] = prop_->maxThreadsDim[1];
-  ret[2] = prop_->maxThreadsDim[2];
+  ret[0] = prop_.maxThreadsDim[0];
+  ret[1] = prop_.maxThreadsDim[1];
+  ret[2] = prop_.maxThreadsDim[2];
   return ret;
 }
 
 int NVGPUDevInfo::GetMultiProcessorCount() const {
-  return prop_->multiProcessorCount;
+  return prop_.multiProcessorCount;
 }
 
 int NVGPUDevInfo::GetMaxThreadsPerMultiProcessor() const {
-  return prop_->maxThreadsPerMultiProcessor;
+  return prop_.maxThreadsPerMultiProcessor;
 }
 
 int NVGPUDevInfo::GetMaxThreadsPerBlock() const {
-  return prop_->maxThreadsPerBlock;
+  return prop_.maxThreadsPerBlock;
 }
 
 }  // namespace common

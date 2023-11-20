@@ -28,7 +28,7 @@ struct GetDevType {
   using DevType = DevInfoBase;
 };
 
-// // Extra device should be added here
+// Extra device should be added here
 class NVGPUDevInfo;
 template <>
 struct GetDevType<Target::Arch::NVGPU> {
