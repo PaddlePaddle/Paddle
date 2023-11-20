@@ -557,15 +557,6 @@ phi::distributed::DistTensor* SetKernelDistOutput(
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(
           phi::DDim(), paddle::get<0>(dist_attr));
       out->set_impl(dist_t);
-    } else {
-      // TODO(GhostScreaming): Inplace output is initialized, just set its
-      // dist_attr
-      if (!paddle::get<0>(dist_attr).empty()) {
-        VLOG(3) << "Output is inplace Tensor, just set its dist_attr "
-                << "according to InferSPMD output result.";
-        static_cast<phi::distributed::DistTensor*>(out->impl().get())
-            ->unsafe_set_dist_attr(paddle::get<0>(dist_attr));
-      }
     }
     return static_cast<phi::distributed::DistTensor*>(out->impl().get());
   }

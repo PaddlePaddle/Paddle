@@ -418,20 +418,26 @@ SET_VECTOR_OUT_REPLICATED_DIST_ATTR_TEMPLATE = """
 """
 
 SET_SINGLE_OR_VECTOR_INPLACE_OUT_TEMPLATE = """
-    // Inplace output needs to reshard to origin status.
-    ReshardInplaceOutputToOriginStatus(dev_ctx, api_output, dist_out_attr);
+    // Set correct dist_attr for nplace output:
+    // If no_spmd_rules, reshard it to origin dist_attr,
+    // Or set correct spmd output dist_attr
+    SetInplaceOutputCorrectDistAttr(dev_ctx, api_output, {dist_out_attr}, {need_reshard});
 """
 SET_MULTI_SINGLE_OR_VECTOR_INPLACE_OUT_TEMPLATE = """
-    // Inplace output needs to reshard to origin status.
+    // Set correct dist_attr for nplace output:
+    // If no_spmd_rules, reshard it to origin dist_attr,
+    // Or set correct spmd output dist_attr
     auto& output_{idx} = std::get<{idx}>(api_output);
-    ReshardInplaceOutputToOriginStatus(dev_ctx, output_{idx}, dist_out_attr_{idx});
+    SetInplaceOutputCorrectDistAttr(dev_ctx, output_{idx}, {dist_out_attr}, {need_reshard});
 """
 
 SET_MULTI_SINGLE_OR_VECTOR_OPTIONAL_INPLACE_OUT_TEMPLATE = """
-    // Inplace output needs to reshard to origin status.
+    // Set correct dist_attr for nplace output:
+    // If no_spmd_rules, reshard it to origin dist_attr,
+    // Or set correct spmd output dist_attr
     auto& output_{idx} = std::get<{idx}>(api_output);
     if (output_{idx}) {{
-      ReshardInplaceOutputToOriginStatus(dev_ctx, *output_{idx}, dist_out_attr_{idx});
+      SetInplaceOutputCorrectDistAttr(dev_ctx, *output_{idx}, {dist_out_attr}, {need_reshard});
     }}
 """
 
@@ -870,6 +876,9 @@ class DistForwardAPI(ForwardAPI):
         return_type = self.get_return_type_with_intermediate(self.inplace_flag)
         output_creation_code = ""
         output_creation_code += "\n    phi::DeviceContext* dev_ctx = nullptr;"
+        has_spmd_rules = (
+            self.generate_infer_spmd or self.generate_general_infer_spmd
+        )
         if output_num == 1:
             # api output generate
             if self.need_to_generate_code_for_inplace_impl(0):
@@ -887,7 +896,10 @@ class DistForwardAPI(ForwardAPI):
             self.dist_output_args.append('dist_out')
             self.dense_output_args.append('dense_out')
             if self.outputs['types'][0] == 'Tensor':
-                if self.need_to_generate_code_for_inplace_impl(0):
+                if (
+                    self.need_to_generate_code_for_inplace_impl(0)
+                    and has_spmd_rules
+                ):
                     output_creation_code += SINGLE_INPLACE_OUT_DIST_ATTR
                 if self.infer_meta['spmd_rule'] is not None:
                     output_creation_code += SINGLE_OUT_CREATION_TEMPLATE
@@ -895,7 +907,10 @@ class DistForwardAPI(ForwardAPI):
                     output_creation_code += SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD
             elif self.outputs['types'][0] == 'std::vector<Tensor>':
                 # SetKernelDistOutput arg
-                if self.need_to_generate_code_for_inplace_impl(0):
+                if (
+                    self.need_to_generate_code_for_inplace_impl(0)
+                    and has_spmd_rules
+                ):
                     output_creation_code += VECTOR_INPLACE_OUT_DIST_ATTR
                 dist_output_arg = (
                     "spmd_info.second[0]"
@@ -905,19 +920,6 @@ class DistForwardAPI(ForwardAPI):
                 output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
                     dist_output_arg
                 )
-            # else:
-            #     self.vector_output_size_assertion_check()
-            #     if self.need_to_generate_code_for_inplace_impl(0):
-            #         output_creation_code += VECTOR_INPLACE_OUT_DIST_ATTR
-            #     if self.infer_meta['spmd_rule'] is not None:
-            #     # if self.generate_infer_spmd:
-            #         output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
-            #             size=self.outputs['out_size_expr'][0]
-            #         )
-            #     else:
-            #         output_creation_code += VECTOR_OUT_CREATION_TEMPLATE_NO_SPMD.format(
-            #             size=self.outputs['out_size_expr'][0]
-            #         )
         elif output_num > 1:
             # api output generate
             if self.inplace_flag:
@@ -948,14 +950,16 @@ class DistForwardAPI(ForwardAPI):
                             idx=i, out=get_out_code
                         )
                     else:
-                        if self.need_to_generate_code_for_inplace_impl(i):
+                        if (
+                            self.need_to_generate_code_for_inplace_impl(i)
+                            and has_spmd_rules
+                        ):
                             output_creation_code += (
                                 MULTI_SINGLE_INPLACE_OUT_DIST_ATTR.format(
                                     idx=i, out=get_out_code
                                 )
                             )
                         if self.infer_meta['spmd_rule'] is not None:
-                            # if self.generate_infer_spmd:
                             output_creation_code += (
                                 MULTI_SINGLE_OUT_CREATION_TEMPLATE.format(
                                     idx=i, out=get_out_code
@@ -980,7 +984,10 @@ class DistForwardAPI(ForwardAPI):
                             in_name=get_out_code,
                         )
                     else:
-                        if self.need_to_generate_code_for_inplace_impl(i):
+                        if (
+                            self.need_to_generate_code_for_inplace_impl(i)
+                            and has_spmd_rules
+                        ):
                             output_creation_code += (
                                 MULTI_VECTOR_INPLACE_OUT_DIST_ATTR.format(
                                     idx=i, in_name=get_out_code
@@ -1471,21 +1478,42 @@ class DistForwardAPI(ForwardAPI):
                 NONEED_TO_SET_DIST_ATTR_COMMENT_TEMPLATE.format(self.api)
             )
         # Inplace output should reshard to origin state.
-        for i, out_name in enumerate(self.dist_output_args):
-            if self.need_to_generate_code_for_inplace_impl(i):
-                if len(self.dist_output_args) > 1:
-                    if self.is_inplace_and_optional_output(i):
-                        set_out_dist_attr_code += SET_MULTI_SINGLE_OR_VECTOR_OPTIONAL_INPLACE_OUT_TEMPLATE.format(
-                            idx=i
-                        )
-                    else:
-                        set_out_dist_attr_code += SET_MULTI_SINGLE_OR_VECTOR_INPLACE_OUT_TEMPLATE.format(
-                            idx=i
-                        )
-                else:
-                    set_out_dist_attr_code += (
-                        SET_SINGLE_OR_VECTOR_INPLACE_OUT_TEMPLATE
+        if self.generate_infer_spmd or self.generate_general_infer_spmd:
+            for i, out_name in enumerate(self.dist_output_args):
+                if self.need_to_generate_code_for_inplace_impl(i):
+                    need_reshard = (
+                        "false" if self.generate_infer_spmd else "true"
                     )
+                    dist_out_attr = (
+                        f"spmd_info.second[{i}]"
+                        if self.generate_infer_spmd
+                        else f"dist_out_attr_{i}"
+                    )
+                    if len(self.dist_output_args) > 1:
+                        if self.is_inplace_and_optional_output(i):
+                            set_out_dist_attr_code += SET_MULTI_SINGLE_OR_VECTOR_OPTIONAL_INPLACE_OUT_TEMPLATE.format(
+                                idx=i,
+                                dist_out_attr=dist_out_attr,
+                                need_reshard=need_reshard,
+                            )
+                        else:
+                            set_out_dist_attr_code += SET_MULTI_SINGLE_OR_VECTOR_INPLACE_OUT_TEMPLATE.format(
+                                idx=i,
+                                dist_out_attr=dist_out_attr,
+                                need_reshard=need_reshard,
+                            )
+                    else:
+                        dist_out_attr = (
+                            "spmd_info.second[0]"
+                            if self.generate_infer_spmd
+                            else "dist_out_attr"
+                        )
+                        set_out_dist_attr_code += (
+                            SET_SINGLE_OR_VECTOR_INPLACE_OUT_TEMPLATE.format(
+                                dist_out_attr=dist_out_attr,
+                                need_reshard=need_reshard,
+                            )
+                        )
 
         return set_out_dist_attr_code
 
