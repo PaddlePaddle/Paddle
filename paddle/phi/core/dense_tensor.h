@@ -83,7 +83,7 @@ TEST_API  virtual ~DenseTensor();
  public:
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
-  static constexpr char* name() { return "DenseTensor"; }
+  static const char* name() { return "DenseTensor"; }
 
   /// \brief Returns the number of elements contained in tensor.
   /// \return The number of elements contained in tensor.
@@ -194,7 +194,7 @@ TEST_API  int64_t numel() const override;
   void set_storage_properties(
       std::unique_ptr<StorageProperties>&& storage_properties);
 
-  void clear() {
+  void clear() {   
     holder_.reset();
     meta_.offset = 0;
   }
