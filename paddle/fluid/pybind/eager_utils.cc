@@ -322,9 +322,7 @@ std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
 }
 
 std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(
-    PyObject* obj,
-    ssize_t arg_pos,
-    const phi::distributed::ProcessMesh* mesh = nullptr) {
+    PyObject* obj, ssize_t arg_pos, const phi::distributed::ProcessMesh* mesh) {
   std::vector<paddle::Tensor> result;
   const phi::distributed::ProcessMesh* local_mesh = mesh;
   int mesh_start_index = -1;
