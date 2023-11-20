@@ -232,10 +232,10 @@ class GroupShardedStage2(nn.Layer):
 
     def _grad_scale(self):
         """
-        1. scale grad/main_grad to support gradient merge 
+        1. scale main_grad to support gradient merge 
         2. Before the optimization, scale the gradients before allreduce of dp_group.
         """
-        # 1. scale grad/main_grad to support gradient merge 
+        # 1. scale main_grad to support gradient merge 
         # to fix stage2 bf16 O2 main_grad gradient merge bug
         for dtype in self._grad_storages.keys():
             if (
