@@ -429,14 +429,7 @@ class OpFusionPassHelper {
         size_t producer_data_used_num = 0;
 
         auto consumer_list = GetConsumerOps(producer, op2id_);
-        // for (auto it = producer_data.use_begin(); it !=
-        // producer_data.use_end();
-        //      ++it) {
         for (auto consumer_op : consumer_list) {
-          // auto consumer_op = it->owner();
-          if (consumer_op->name() == "cf.yield") {
-            continue;
-          }
           producer_data_used_num++;
           // if fusion group can't find op, can't merge
           if (consumer_fusion->ops_set.find(consumer_op) ==
