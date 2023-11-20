@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/encode_rotary_qk.h"
+#include "paddle/phi/kernels/encode_rotary_qk_kernel.h"
+
 
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
@@ -21,8 +22,6 @@
 #include "paddle/phi/common/datatype_traits.h"
 
 namespace {
-
-
 
 template <typename T>
 __global__ void NeoXRotaryKernel(const T *input,

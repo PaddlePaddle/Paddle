@@ -2930,11 +2930,19 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
       phi::errors::InvalidArgument(
           "The batch size of Query, Key, Value should be equal."));
 
+  PADDLE_ENFORCE_EQ((key_num_head == value_num_head),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The head number of Key, Value should be equal."));
+
   PADDLE_ENFORCE_EQ(
-      ((query_num_head == key_num_head) && (key_num_head == value_num_head)),
-      true,
-      phi::errors::InvalidArgument(
-          "The head number of Query, Key, Value should be equal."));
+      query_num_head % key_num_head,
+      0,
+      errors::InvalidArgument(
+          "The num_head of query must be divisible by the num_head of key, but "
+          "recived num_head of query is %d, and the num_head of key is %d",
+          query_num_head,
+          key_num_head));
 
   PADDLE_ENFORCE_EQ(query_head_size == key_head_size,
                     true,
@@ -3916,6 +3924,19 @@ void WhereInferMeta(const MetaTensor& condition,
   out->share_meta(x);
 }
 
+void WriteCacheKVInferMeta(const MetaTensor& input_k,
+                           const MetaTensor& input_v,
+                           const MetaTensor& cache_kv,
+                           const MetaTensor& sequence_lengths,
+                           MetaTensor* cache_kv_out) {
+  PADDLE_ENFORCE_EQ(sequence_lengths.dtype(),
+                    DataType::INT32,
+                    errors::InvalidArgument(
+                        "The dtype of sequence_lengths must be int, but got %d",
+                        sequence_lengths.dtype()));
+  cache_kv_out->share_meta(cache_kv);
+}
+
 void YoloLossInferMeta(const MetaTensor& x,
                        const MetaTensor& gt_box,
                        const MetaTensor& gt_label,
@@ -4270,6 +4291,18 @@ void  EncodeRotaryQKInferMeta(const MetaTensor& q,
    rotary_kv_out->share_meta(kv);
 }
 
+void  EncodeRotaryQKInferMeta(const MetaTensor& q,
+                               const MetaTensor& kv,
+                               const MetaTensor& rotary_emb,
+                               const MetaTensor& seq_lens,
+                               int rotary_emb_dims,
+                               bool use_neox,
+                               MetaTensor* rotary_q_out,
+                               MetaTensor* rotary_kv_out) {
+    rotary_q_out->share_meta(q);
+    rotary_kv_out->share_meta(kv);
+ }
+ 
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        const MetaTensor& cache_kv,
                                        const MetaTensor& bias,
@@ -4430,5 +4463,35 @@ void FullWithTensorInferMeta(const MetaTensor& shape,
   out->set_dtype(dtype);
 }
 
+void RebuildPaddingInferMeta(const MetaTensor& x,
+                             const MetaTensor& padding_offset,
+                             const MetaTensor& seq_lens,
+                             const MetaTensor& input_ids,
+                             MetaTensor* out) {
+  int bsz = seq_lens.dims()[0];
+  int dim_embed = x.dims()[1];
+  auto out_shape = phi::make_ddim({bsz, dim_embed});
+  out->set_dims(out_shape);
+  out->set_dtype(x.dtype());
+}
+void QkvTransposeSplitInferMeta(const MetaTensor& qkv,
+                                const MetaTensor& padding_offset,
+                                const MetaTensor& seq_lens,
+                                const MetaTensor& input_ids,
+                                int num_head,
+                                int head_size,
+                                MetaTensor* q_out,
+                                MetaTensor* k_out,
+                                MetaTensor* v_out) {
+  int bsz = static_cast<int>(seq_lens.dims()[0]);
+  int fused_hidden_size = static_cast<int>(qkv.dims()[1]);
+  int kv_num_head = (fused_hidden_size - num_head * head_size) / head_size / 2;
+  q_out->set_dims(phi::make_ddim({bsz, num_head, -1, head_size}));
+  q_out->set_dtype(qkv.dtype());
+  k_out->set_dims(phi::make_ddim({bsz, kv_num_head, -1, head_size}));
+  k_out->set_dtype(qkv.dtype());
+  v_out->set_dims(phi::make_ddim({bsz, kv_num_head, -1, head_size}));
+  v_out->set_dtype(qkv.dtype());
+}
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

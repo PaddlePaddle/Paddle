@@ -602,21 +602,23 @@
   backward : cross_entropy_with_softmax_grad
 
 - op : cummax
-  args : (Tensor x, int axis=-1, int dtype=3)
+  args : (Tensor x, int axis=-1, DataType dtype = DataType::INT64)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : CumWithIndicesInferMeta
   kernel :
     func : cummax
+    data_type : x
   backward : cummax_grad
 
 - op : cummin
-  args : (Tensor x, int axis=-1, int dtype=3)
+  args : (Tensor x, int axis=-1, DataType dtype = DataType::INT64)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : CumWithIndicesInferMeta
   kernel :
     func : cummin
+    data_type : x
   backward : cummin_grad
 
 - op : cumprod
@@ -1040,13 +1042,15 @@
 
 - op : gather_nd
   args : (Tensor x, Tensor index)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : GatherNdInferMeta
   kernel :
     func : gather_nd
     data_type : x
   backward : gather_nd_grad
+  data_transform :
+    skip_transform : index
 
 - op : gather_tree
   args : (Tensor ids, Tensor parents)
@@ -1246,6 +1250,8 @@
     data_type : x
   inplace : (x -> out)
   backward : index_put_grad
+  data_transform :
+    skip_transform : indices
 
 - op : index_sample
   args : (Tensor x, Tensor index)
@@ -1669,6 +1675,16 @@
     data_type : x
   backward : masked_select_grad
 
+- op : encode_rotary_qk
+  args : (Tensor q, Tensor kv, Tensor rotary_emb, Tensor seq_lens, int rotary_emb_dims, bool use_neox)
+  output : Tensor(rotary_q_out), Tensor(rotary_kv_out)
+  infer_meta :
+    func : EncodeRotaryQKInferMeta
+  kernel :
+    func : encode_rotary_qk
+    data_type : q
+  inplace : (q -> rotary_q_out), (kv -> rotary_kv_out)
+
 - op : matrix_nms
   args : (Tensor bboxes, Tensor scores, float score_threshold, int nms_top_k, int keep_top_k, float post_threshold=0., bool use_gaussian = false, float gaussian_sigma = 2., int background_label = 0, bool normalized = true)
   output : Tensor(out), Tensor(index), Tensor(roisnum)
@@ -2063,6 +2079,15 @@
     func : real
   backward : real_grad
 
+- op : rebuild_padding
+  args : (Tensor x, Tensor padding_offset, Tensor seq_lens, Tensor input_ids)
+  output: Tensor(out)
+  infer_meta:
+    func: RebuildPaddingInferMeta
+  kernel :
+    func : rebuild_padding
+    data_type : x
+
 - op : reciprocal
   args : (Tensor x)
   output : Tensor(out)
@@ -2311,16 +2336,6 @@
     support_trans_dtype : learning_rate
   optional : master_param, master_param_out
   inplace : (param -> param_out), (master_param -> master_param_out)
-
-- op : shadow_output
-  args : (Tensor x, str name)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel:
-    func : shadow_output
-    param : [x]
 
 - op : shape
   args : (Tensor input)
@@ -2605,6 +2620,16 @@
   inplace: (x -> out)
   backward : thresholded_relu_grad
 
+- op : top_p_sampling
+  args : (Tensor x, Tensor ps, Tensor threshold, int seed=-1)
+  output : Tensor (out), Tensor(ids)
+  infer_meta :
+    func : TopPSamplingInferMeta
+  kernel :
+    func : top_p_sampling
+    data_type : x
+  optional : threshold
+
 - op : topk
   args : (Tensor x, Scalar(int) k = 1, int axis = -1, bool largest = true, bool sorted = true)
   output : Tensor(out), Tensor(indices)
@@ -2687,7 +2712,7 @@
   backward: uniform_inplace_grad
 
 - op : unique_consecutive
-  args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, int dtype = 5)
+  args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, DataType dtype = DataType::FLOAT32)
   output : Tensor(out), Tensor(index), Tensor(counts)
   infer_meta :
       func : UniqueConsecutiveInferMeta
@@ -2854,6 +2879,16 @@
   inplace: (x -> out)
   backward : where_grad
 
+- op : write_cache_kv
+  args : (Tensor input_k, Tensor input_v, Tensor cache_kv, Tensor sequence_lengths)
+  output : Tensor (cache_kv_out)
+  infer_meta :
+    func : WriteCacheKVInferMeta
+  kernel :
+    func : write_cache_kv
+    data_type : cache_kv
+  inplace: (cache_kv -> cache_kv_out)
+
 - op : yolo_box
   args : (Tensor x, Tensor img_size, int[] anchors={}, int class_num = 1, float conf_thresh = 0.01, int downsample_ratio = 32, bool clip_bbox = true, float scale_x_y=1.0, bool iou_aware=false, float iou_aware_factor=0.5)
   output : Tensor(boxes), Tensor(scores)
@@ -2874,3 +2909,20 @@
   optional : gt_score
   intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
+
+- op : qkv_transpose_split
+  args : (Tensor qkv, Tensor padding_offset, Tensor seq_lens, Tensor input_ids, int num_head, int head_size)
+  output : Tensor (q_out), Tensor(k_out), Tensor(v_out)
+  infer_meta :
+    func : QkvTransposeSplitInferMeta
+  kernel :
+    func : qkv_transpose_split
+    data_type : qkv
+
+- op : fused_get_rotary_embedding
+  args : (Tensor input_ids, Tensor position_ids, Tensor head_dim_shape_tensor, int prompt_num, bool use_neox)
+  output : Tensor (rotary_embedding)
+  infer_meta :
+    func : FusedGetRotaryEmbeddingInferMeta
+  kernel :
+    func : fused_get_rotary_embedding

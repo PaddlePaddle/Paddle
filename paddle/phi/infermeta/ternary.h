@@ -202,6 +202,12 @@ void SendURecvInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaTensor* dst_count);
 
+void SparseMomentumInferMeta(const MetaTensor& param,
+                             const MetaTensor& learning_rate,
+                             const MetaTensor& velocity,
+                             MetaTensor* param_out,
+                             MetaTensor* velocity_out,
+                             MetaTensor* master_param_out);
 void SpectralNormInferMeta(const MetaTensor& weight,
                            const MetaTensor& u,
                            const MetaTensor& v,
@@ -231,5 +237,12 @@ void QuantLinearInferMeta(const MetaTensor& x,
                           float quant_max_bound,
                           float quant_min_bound,
                           MetaTensor* y);
+
+void FusedGetRotaryEmbeddingInferMeta(const MetaTensor& input_ids,
+                                      const MetaTensor& position_ids,
+                                      const MetaTensor& head_dim_shape_tensor,
+                                      int prompt_num,
+                                      bool use_neox,
+                                      MetaTensor* rotary_embedding);
 
 }  // namespace phi

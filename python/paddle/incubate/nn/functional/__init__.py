@@ -31,6 +31,10 @@ from .variable_length_memory_efficient_attention import (
 from .fused_rms_norm import fused_rms_norm
 from .fused_layer_norm import fused_layer_norm
 from .masked_multihead_attention import masked_multihead_attention
+from .write_cache_kv import write_cache_kv
+from .rebuild_padding import rebuild_padding
+from .qkv_transpose_split import qkv_transpose_split
+from .fused_get_rotary_embedding import fused_get_rotary_embedding
 from .encode_rotary_qk import encode_rotary_qk
 
 __all__ = [
@@ -49,4 +53,7 @@ __all__ = [
     "fused_layer_norm",
     "masked_multihead_attention",
     "encode_rotary_qk",
+    "write_cache_kv",
+    "encode_rotary_qk",
+    "rebuild_padding",
 ]

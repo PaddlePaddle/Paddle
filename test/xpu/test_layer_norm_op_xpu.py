@@ -44,6 +44,8 @@ def ref_layer_norm(x, scale, bias, epsilon, begin_norm_axis=1):
     if bias is not None:
         y = y + bias.reshape([1, right])
     x.shape, y.shape = x_shape, x_shape
+    mean.shape = x_shape[0:begin_norm_axis]
+    variance.shape = x_shape[0:begin_norm_axis]
     return y, mean, variance
 
 

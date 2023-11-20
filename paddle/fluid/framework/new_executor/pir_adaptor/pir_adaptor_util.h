@@ -56,9 +56,11 @@ class ValueExecutionInfo {
 
   Scope* GetScope() const { return scope_; }
 
-  void Add(::pir::Value value, std::string var_name);
+  void Add(::pir::Value value, const std::string& var_name);
 
-  void Rename(pir::Value value, std::string new_name, std::string orig_name);
+  void Rename(pir::Value value,
+              const std::string& new_name,
+              const std::string& orig_name);
 
   int GetIdByName(const std::string& name) const;
 
@@ -184,6 +186,9 @@ void BuildPhiContext(pir::Operation* op,
     auto var = inner_scope->FindVar(in_var_name);
     if (var->IsType<phi::DenseTensor>()) {
       const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
+      ctx->EmplaceBackInput(InType(tensor_in));
+    } else if (var->IsType<phi::TensorArray>()) {
+      const phi::TensorBase* tensor_in = &(var->Get<phi::TensorArray>());
       ctx->EmplaceBackInput(InType(tensor_in));
     } else if (var->IsType<VariableRefArray>()) {
       InListType inputs;
@@ -408,6 +413,13 @@ void BuildPhiContext(pir::Operation* op,
           &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
                 ->Get<phi::SelectedRows>()))));
       VLOG(8) << "ctx->EmplaceBackOutput SelectedRows: "
+              << value_exec_info.GetVarName(out_ptr);
+    } else if (out_ptr.type()
+                   .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+      ctx->EmplaceBackOutput(OutType(const_cast<phi::TensorArray*>(
+          &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
+                ->Get<phi::TensorArray>()))));
+      VLOG(8) << "ctx->EmplaceBackOutput TensorArray: "
               << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type().isa<pir::VectorType>()) {
       OutListType outputs;

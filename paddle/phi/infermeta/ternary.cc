@@ -579,7 +579,10 @@ void LayerNormInferMeta(const MetaTensor& x,
           x_dim.size()));
 
   auto matrix_dim = phi::flatten_to_2d(x_dim, begin_norm_axis);
-  int left = static_cast<int>(matrix_dim[0]);
+
+  // keep the axis size before normalization for shape of variance and mean
+  auto before_norm_dims = slice_ddim(x_dim, 0, begin_norm_axis);
+  // int left = static_cast<int>(matrix_dim[0]);
   int right = static_cast<int>(matrix_dim[1]);
   if (scale) {
     PADDLE_ENFORCE_EQ(scale.dims().size(),
@@ -644,11 +647,11 @@ void LayerNormInferMeta(const MetaTensor& x,
           ? phi::DataType::FLOAT32
           : x_dtype;
   if (mean) {
-    mean->set_dims({left});
+    mean->set_dims({before_norm_dims});
     mean->set_dtype(param_type);
   }
   if (variance) {
-    variance->set_dims({left});
+    variance->set_dims({before_norm_dims});
     variance->set_dtype(param_type);
   }
 }
@@ -1258,6 +1261,35 @@ void SendURecvInferMeta(const MetaTensor& x,
   }
 }
 
+void SparseMomentumInferMeta(const MetaTensor& param,
+                             const MetaTensor& learning_rate,
+                             const MetaTensor& velocity,
+                             MetaTensor* param_out,
+                             MetaTensor* velocity_out,
+                             MetaTensor* master_param_out) {
+  auto lr_dims = phi::product(learning_rate.dims());
+  PADDLE_ENFORCE_EQ(lr_dims != 0 && lr_dims == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Learning_rate should be a scalar. But Received "
+                        "LearningRate's dim [%s]",
+                        lr_dims));
+  auto param_dim = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dim,
+      velocity.dims(),
+      phi::errors::InvalidArgument(
+          "Param and Velocity of SparseMomentumOp should have the same "
+          "dimension. But received Param's dim [%s] and Velocity [%s].",
+          param_dim,
+          velocity.dims()));
+  param_out->set_dims(param_dim);
+  velocity_out->set_dims(param_dim);
+  if (master_param_out != nullptr) {
+    master_param_out->set_dims(param_dim);
+  }
+}
+
 void SpectralNormInferMeta(const MetaTensor& weight,
                            const MetaTensor& u,
                            const MetaTensor& v,
@@ -1492,6 +1524,19 @@ void QuantLinearInferMeta(const MetaTensor& x,
   y->set_dims(make_ddim(output_dims));
   y->share_lod(x);
   y->set_dtype(x.dtype());
+}
+
+void FusedGetRotaryEmbeddingInferMeta(const MetaTensor& input_ids,
+                                      const MetaTensor& position_ids,
+                                      const MetaTensor& head_dim_shape_tensor,
+                                      int prompt_num,
+                                      bool use_neox,
+                                      MetaTensor* rotary_embedding) {
+  const int64_t batch_size = static_cast<int>(position_ids.dims()[0]);
+  const int64_t max_seq_length = static_cast<int>(input_ids.dims()[1]);
+  const int64_t head_dim = static_cast<int>(head_dim_shape_tensor.dims()[0]);
+  rotary_embedding->set_dims(phi::make_ddim({2, batch_size, 1, max_seq_length, head_dim}));
+  rotary_embedding->set_dtype(DataType::FLOAT32);
 }
 
 }  // namespace phi

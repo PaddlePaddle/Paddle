@@ -50,7 +50,11 @@ def encode_rotary_qk(
      """
     if in_dynamic_or_pir_mode():
 
+<<<<<<< HEAD
         return _C_ops.EncodeRotaryQkKernel(
+=======
+        return _C_ops.encode_rotary_qk(
+>>>>>>> from_paddlenlp_custom_ops_2
              q,
              kv,
              rotary_emb,
@@ -88,4 +92,8 @@ def encode_rotary_qk(
          outputs=outputs_dict,
     )
 
+<<<<<<< HEAD
     return rotary_q_out, rotary_kv_out
+=======
+    return rotary_q_out, rotary_kv_out
+>>>>>>> from_paddlenlp_custom_ops_2

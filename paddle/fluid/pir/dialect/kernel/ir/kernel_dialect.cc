@@ -32,9 +32,9 @@ KernelDialect::KernelDialect(pir::IrContext *context)
 }
 
 void KernelDialect::initialize() {
-  RegisterTypes<paddle::dialect::AllocatedDenseTensorType>();
   RegisterTypes<paddle::dialect::AllocatedDenseTensorType,
-                paddle::dialect::AllocatedSelectedRowsType>();
+                paddle::dialect::AllocatedSelectedRowsType,
+                paddle::dialect::AllocatedDenseTensorArrayType>();
   RegisterOps<dialect::PhiKernelOp, dialect::LegacyKernelOp>();
   RegisterAttributes<paddle::dialect::KernelAttribute>();
 }
@@ -63,6 +63,14 @@ void KernelDialect::PrintType(pir::Type type, std::ostream &os) const {
       os << "x";
     }
     tensor_type.dtype().Print(os);
+    os << ">";
+  } else if (type.isa<AllocatedDenseTensorArrayType>()) {
+    AllocatedDenseTensorArrayType tensor_array_type =
+        type.dyn_cast<AllocatedDenseTensorArrayType>();
+
+    os << phi::AllocationTypeStr(tensor_array_type.place().GetType()) << "_";
+    os << "tensor_array<";
+    tensor_array_type.dtype().Print(os);
     os << ">";
   }
 }

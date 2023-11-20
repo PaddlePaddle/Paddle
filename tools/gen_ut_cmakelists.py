@@ -195,11 +195,11 @@ def _norm_dirs(dirs):
 
 def _process_run_type(run_type):
     rt = run_type.strip()
-    # completely match one of the strings: 'NIGHTLY', 'EXCLUSIVE', 'CINN', 'DIST', 'GPUPS', 'INFER', 'EXCLUSIVE:NIGHTLY' and 'DIST:NIGHTLY'
+    # completely match one of the strings: 'NIGHTLY', 'EXCLUSIVE', 'CINN', 'DIST', 'HYBRID', 'GPUPS', 'INFER', 'EXCLUSIVE:NIGHTLY' and 'DIST:NIGHTLY'
     assert re.compile(
-        "^(NIGHTLY|EXCLUSIVE|CINN|DIST|GPUPS|INFER|EXCLUSIVE:NIGHTLY|DIST:NIGHTLY)$"
+        "^(NIGHTLY|EXCLUSIVE|CINN|DIST|HYBRID|GPUPS|INFER|EXCLUSIVE:NIGHTLY|DIST:NIGHTLY)$"
     ).search(rt), (
-        f""" run_type must be one of 'NIGHTLY', 'EXCLUSIVE', 'CINN', 'DIST', 'GPUPS', 'INFER', 'EXCLUSIVE:NIGHTLY' and 'DIST:NIGHTLY'"""
+        f""" run_type must be one of 'NIGHTLY', 'EXCLUSIVE', 'CINN', 'DIST', 'HYBRID', 'GPUPS', 'INFER', 'EXCLUSIVE:NIGHTLY' and 'DIST:NIGHTLY'"""
         f"""but the run_type is {rt}"""
     )
     return rt

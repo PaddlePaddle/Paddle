@@ -18,7 +18,7 @@ import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir,
+    test_legacy_and_pir_exe_and_pir_api,
 )
 
 import paddle
@@ -171,7 +171,7 @@ class TestPrimForwardAndBackward(Dy2StTestBase):
 
 
 class TestBackend(Dy2StTestBase):
-    @test_legacy_and_pir
+    @test_legacy_and_pir_exe_and_pir_api
     def test_backend(self):
         x = paddle.randn([2, 4])
         out1 = self.forward(x, 'CINN')
