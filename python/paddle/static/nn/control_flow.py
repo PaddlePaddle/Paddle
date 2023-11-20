@@ -16,6 +16,7 @@ import warnings
 from functools import partial, reduce
 
 import paddle
+from paddle import _C_ops
 from paddle.base import core
 from paddle.base.backward import _infer_var_data_type_shape_
 from paddle.base.framework import (
@@ -1745,8 +1746,24 @@ def Print(
         ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
         'paddle.static.Print',
     )
+    message = message or ""
+    helper = LayerHelper('print', **locals())
 
-    helper = LayerHelper('print' + "_" + input.name, **locals())
+    if in_pir_mode():
+        return _C_ops.print(
+            input,
+            first_n,
+            message,
+            summarize,
+            print_tensor_name,
+            print_tensor_type,
+            print_tensor_shape,
+            print_tensor_layout,
+            print_tensor_lod,
+            print_phase.upper(),
+            True,
+        )
+
     output = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
         type='print',
