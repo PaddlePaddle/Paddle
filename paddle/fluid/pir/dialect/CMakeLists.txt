@@ -76,21 +76,7 @@ execute_process(
 
 set(generated_files_pd_op "${op_header_file}" "${op_source_file}"
                           "${op_vjp_source_file}")
-foreach(generated_file ${generated_files_pd_op})
-  if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
-    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                            "${generated_file}.tmp" "${generated_file}")
-    message("copy if different ${generated_file}.tmp ${generated_file}")
-  elseif(EXISTS "${generated_file}.tmp")
-    execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${generated_file}.tmp"
-                            "${generated_file}")
-    message("copy ${generated_file}.tmp ${generated_file}")
-  endif()
-endforeach()
 
-add_custom_target(
-  op_header_and_source_gen ALL DEPENDS ${op_header_file} ${op_source_file}
-                                       ${op_vjp_source_file})
 set(api_gen_yaml_files
     ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
 )
@@ -109,20 +95,7 @@ execute_process(
     ${api_source_file_tmp})
 
 set(generated_files_pd_api "${api_header_file}" "${api_source_file}")
-foreach(generated_file ${generated_files_pd_api})
-  if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
-    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                            "${generated_file}.tmp" "${generated_file}")
-    message("copy if different ${generated_file}.tmp ${generated_file}")
-  elseif(EXISTS "${generated_file}.tmp")
-    execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${generated_file}.tmp"
-                            "${generated_file}")
-    message("copy ${generated_file}.tmp ${generated_file}")
-  endif()
-endforeach()
 
-add_custom_target(api_header_and_source_gen ALL DEPENDS ${api_header_file}
-                                                        ${api_source_file})
 set(python_c_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/python_c_gen.py)
 set(python_c_header_file
@@ -141,20 +114,6 @@ execute_process(
 
 set(generated_files_python_c "${python_c_header_file}"
                              "${python_c_source_file}")
-foreach(generated_file ${generated_files_python_c})
-  if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
-    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                            "${generated_file}.tmp" "${generated_file}")
-    message("copy if different ${generated_file}.tmp ${generated_file}")
-  elseif(EXISTS "${generated_file}.tmp")
-    execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${generated_file}.tmp"
-                            "${generated_file}")
-    message("copy ${generated_file}.tmp ${generated_file}")
-  endif()
-endforeach()
-
-add_custom_target(static_op_function_gen ALL DEPENDS ${python_c_header_file}
-                                                     ${python_c_source_file})
 
 set(ops_api_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/ops_api_gen.py)
@@ -168,7 +127,10 @@ execute_process(
     --ops_api_file ${ops_api_source_file_tmp})
 
 set(generated_files_ops_api "${ops_api_source_file}")
-foreach(generated_file ${generated_files_ops_api})
+
+set(generated_files_pir ${generated_files_pd_op} ${generated_files_pd_api}
+                        ${generated_files_python_c} ${generated_files_ops_api})
+foreach(generated_file ${generated_files_pir})
   if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
     execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
                             "${generated_file}.tmp" "${generated_file}")
@@ -179,6 +141,15 @@ foreach(generated_file ${generated_files_ops_api})
     message("copy ${generated_file}.tmp ${generated_file}")
   endif()
 endforeach()
+
+add_custom_target(
+  op_header_and_source_gen ALL DEPENDS ${op_header_file} ${op_source_file}
+                                       ${op_vjp_source_file})
+add_custom_target(api_header_and_source_gen ALL DEPENDS ${api_header_file}
+                                                        ${api_source_file})
+
+add_custom_target(static_op_function_gen ALL DEPENDS ${python_c_header_file}
+                                                     ${python_c_source_file})
 
 add_custom_target(ops_api_gen ALL DEPENDS ${ops_api_source_file})
 
