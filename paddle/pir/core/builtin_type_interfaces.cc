@@ -21,8 +21,16 @@ Type ShapedTypeInterface::GetElementType() const {
   return impl_->get_element_type(*this);
 }
 
-pir::DDim ShapedTypeInterface::GetShape() const {
-  return impl_->get_shape(*this);
+std::vector<int64_t> ShapedTypeInterface::GetDyShape() const {
+  if (dy_shape_.size() == 0) {
+    auto ddim_vec = common::vectorize(impl_->get_shape(*this));
+    dy_shape_ = ddim_vec;
+    std::replace(dy_shape_.begin(),
+                 dy_shape_.end(),
+                 (int64_t)-1,
+                 ShapedTypeInterface::kDynamic);
+  }
+  return dy_shape_;
 }
 
 }  // namespace pir

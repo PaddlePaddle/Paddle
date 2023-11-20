@@ -14,6 +14,7 @@
 
 #pragma once
 #include <memory>
+#include <stack>
 
 #include "paddle/common/macros.h"
 #include "paddle/pir/core/builder.h"
@@ -55,6 +56,8 @@ class ApiBuilder {
   void set_insertion_point(const pir::InsertionPoint& insertion_point) {
     builder_->set_insertion_point(insertion_point);
   }
+  void PushInsertionPoint(const pir::InsertionPoint& insertion_point);
+  void PopInsertionPoint();
 
  private:
   ApiBuilder();
@@ -63,6 +66,7 @@ class ApiBuilder {
 
   pir::IrContext* ctx_;
   std::shared_ptr<pir::Builder> builder_;
+  std::stack<pir::InsertionPoint> insertion_point_stack_;
 };
 
 }  // namespace dialect

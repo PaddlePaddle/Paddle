@@ -23,12 +23,12 @@ Type GetElementTypeOrSelf(Type type) {
   return type;
 }
 
-bool VerifyCompatibleShape(const pir::DDim &lhs_shape,
-                           const pir::DDim &rhs_shape) {
+bool VerifyCompatibleShape(const std::vector<int64_t> &lhs_shape,
+                           const std::vector<int64_t> &rhs_shape) {
   if (lhs_shape.size() != rhs_shape.size()) return false;
 
-  for (auto dim1 : common::vectorize(lhs_shape)) {
-    for (auto dim2 : common::vectorize(rhs_shape)) {
+  for (auto dim1 : lhs_shape) {
+    for (auto dim2 : rhs_shape) {
       if (!ShapedTypeInterface::IsDynamic(dim1) &&
           !ShapedTypeInterface::IsDynamic(dim2) && dim1 != dim2)
         return false;
@@ -47,8 +47,8 @@ bool VerifyCompatibleShape(Type lhs_type, Type rhs_type) {
 
   if (!lhs_shaped_type.HasRank() || !rhs_shaped_type.HasRank()) return true;
 
-  return VerifyCompatibleShape(lhs_shaped_type.GetShape(),
-                               rhs_shaped_type.GetShape());
+  return VerifyCompatibleShape(lhs_shaped_type.GetDyShape(),
+                               rhs_shaped_type.GetDyShape());
 }
 
 bool VerifyCompatibleDims(const std::vector<int64_t> &dims) {

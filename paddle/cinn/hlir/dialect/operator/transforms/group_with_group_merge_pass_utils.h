@@ -184,11 +184,13 @@ static bool ReduceFuseReduce1(const OpGroupPtr& first,
   //   return false;
   // }
   std::unique_ptr<cinn::dialect::ir::OpNode> reducer_0 = nullptr;
-  first.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
-    if (!reducer_0 && op.kind() == OpPatternKind::kReduction) {
+  for (auto op : first.GetGroup()->CollectOps()) {
+    if (GetOpKind(op->name()) == OpPatternKind::kReduction) {
       reducer_0.reset(new cinn::dialect::ir::OpNode(op));
+      break;
     }
-  });
+  }
+
   CHECK(reducer_0) << "Can't find reduce op in group " << first.group_id();
 
   std::unique_ptr<cinn::dialect::ir::OpNode> reducer_1 = nullptr;
