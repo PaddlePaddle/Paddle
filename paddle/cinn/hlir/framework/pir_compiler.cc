@@ -29,9 +29,8 @@ std::unique_ptr<Program> PirCompiler::Build() {
   m_builder_.Clear();
   // NOTE(Aurelius84): Currently only support each op for one group
   std::vector<pir::GroupPtr> groups;
-  for (auto it = program_.block()->begin(); it != program_.block()->end();
-       ++it) {
-    std::vector<::pir::Operation*> ops = {*it};
+  for (auto& op : *program_.block()) {
+    std::vector<::pir::Operation*> ops = {&op};
     groups.push_back(std::make_shared<pir::Group>(ops));
   }
   VLOG(4) << "Groups size: " << groups.size();
@@ -166,7 +165,7 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
   auto scope = std::make_shared<Scope>();
 
   auto create_var = [&](::pir::Value value) {
-    if (!(value.type())) {
+    if (!(value) || !(value.type())) {
       return;
     }
     if (visited.count(value) > 0) return;
@@ -185,12 +184,12 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
     tensor->set_type(pir::CompatibleInfo::ConvertIRType(type_info.dtype()));
   };
 
-  for (auto it = program.block()->begin(); it != program.block()->end(); ++it) {
-    for (auto& oprand : (*it)->operands()) {
+  for (auto& op : *program.block()) {
+    for (auto oprand : op.operands()) {
       create_var(oprand.source());
     }
 
-    for (auto& result : (*it)->results()) {
+    for (auto result : op.results()) {
       create_var(result);
     }
   }
