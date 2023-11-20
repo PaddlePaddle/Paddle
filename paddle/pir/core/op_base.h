@@ -24,6 +24,7 @@
 namespace pir {
 class Builder;
 class IrPrinter;
+class Block;
 
 class IR_API OpBase {
  public:
@@ -45,6 +46,8 @@ class IR_API OpBase {
   uint32_t num_results() const { return operation()->num_results(); }
 
   uint32_t num_operands() const { return operation()->num_operands(); }
+
+  Block *parent() const { return operation()->GetParent(); }
 
   const AttributeMap &attributes() const { return operation()->attributes(); }
 

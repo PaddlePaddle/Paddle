@@ -1587,7 +1587,8 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
     const std::string& arg_name,
     PyObject* args,
     ssize_t arg_idx,
-    bool dispensable) {
+    bool dispensable,
+    const phi::distributed::ProcessMesh* mesh) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
 
   if (list == nullptr) {
@@ -1603,7 +1604,7 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
   }
 
   std::vector<paddle::Tensor*> result;
-  const phi::distributed::ProcessMesh* local_mesh = nullptr;
+  const phi::distributed::ProcessMesh* local_mesh = mesh;
   int mesh_start_index = -1;
 
   if (PyList_Check(list)) {
