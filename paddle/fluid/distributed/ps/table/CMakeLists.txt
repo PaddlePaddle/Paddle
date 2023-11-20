@@ -65,9 +65,9 @@ set_source_files_properties(
 set_source_files_properties(
   ctr_dymf_accessor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 set_source_files_properties(
-  memory_sparse_table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  memory_sparse_table.cc PROPERTIES COMPILE_FLAGS -D_GLIBCXX_USE_CXX11_ABI=0 ${DISTRIBUTE_COMPILE_FLAGS})
 set_source_files_properties(
-  ssd_sparse_table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  ssd_sparse_table.cc PROPERTIES COMPILE_FLAGS -D_GLIBCXX_USE_CXX11_ABI=0 ${DISTRIBUTE_COMPILE_FLAGS})
 set_source_files_properties(
   memory_sparse_geo_table.cc PROPERTIES COMPILE_FLAGS
                                         ${DISTRIBUTE_COMPILE_FLAGS})
