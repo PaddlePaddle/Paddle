@@ -137,7 +137,7 @@ if(WIN32)
   target_link_libraries(paddle_inference_shared phi)
 endif()
 set_target_properties(paddle_inference_shared PROPERTIES LINK_FLAGS
-                                                         "-Wl,-rpath,./")
+                                                         "-Wl,-rpath,$ORIGIN/")
 set_target_properties(paddle_inference_shared PROPERTIES OUTPUT_NAME
                                                          paddle_inference)
 if(NOT APPLE
