@@ -45,12 +45,12 @@ def fractional_rational_u(u, alpha, input, output):
     return u * max_u
 
 
-def fractional_start_index(ph, alpha, u):
-    return np.ceil(alpha * (ph + u) - 1)
+def fractional_start_index(idx, alpha, u):
+    return int(np.ceil(alpha * (idx + u) - 1))
 
 
-def fractional_end_index(ph, alpha, u):
-    return np.ceil(alpha * (ph + 1 + u) - 1)
+def fractional_end_index(idx, alpha, u):
+    return int(np.ceil(alpha * (idx + 1 + u) - 1))
 
 
 def max_pool3D_forward_naive(

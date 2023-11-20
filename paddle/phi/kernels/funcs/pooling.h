@@ -117,12 +117,12 @@ HOSTDEVICE inline float FractionalRationalU(float u,
   return u * max_u;
 }
 
-HOSTDEVICE inline int FractionalStartIndex(int ph, float alpha, float u) {
-  return static_cast<int>(ceil(alpha * (ph + u) - 1));
+HOSTDEVICE inline int FractionalStartIndex(int idx, float alpha, float u) {
+  return static_cast<int>(ceil(alpha * (idx + u) - 1));
 }
 
-HOSTDEVICE inline int FractionalEndIndex(int ph, float alpha, float u) {
-  return static_cast<int>(ceil(alpha * (ph + 1 + u) - 1));
+HOSTDEVICE inline int FractionalEndIndex(int idx, float alpha, float u) {
+  return static_cast<int>(ceil(alpha * (idx + 1 + u) - 1));
 }
 
 /*
