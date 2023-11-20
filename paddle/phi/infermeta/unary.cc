@@ -973,7 +973,7 @@ void EighInferMeta(const MetaTensor& x,
   out_w->set_dims(phi::make_ddim(values_dim));
   out_w->set_dtype(dtype::ToReal(x.dtype()));
   out_v->set_dims(input_dim);
-  out_v->set_dtype(dtype::ToReal(x.dtype()));
+  out_v->set_dtype(x.dtype());
 }
 
 void EigvalsInferMeta(const MetaTensor& x, MetaTensor* out, MetaConfig config) {
