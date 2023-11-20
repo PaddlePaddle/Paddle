@@ -19,10 +19,10 @@ import numpy as np
 import paddle
 
 
-# inputs, bins, range, weights, density
+# inputs, bins, ranges, weights, density
 class TestHistogramddAPI(unittest.TestCase):
     def setUp(self):
-        self.range = None
+        self.ranges = None
         self.weights = None
         self.density = False
 
@@ -62,12 +62,12 @@ class TestHistogramddAPI(unittest.TestCase):
                     x,
                     bins=self.bins,
                     weights=weights,
-                    range=self.range,
+                    ranges=self.ranges,
                     density=self.density,
                 )
             else:
                 out_0, out_1 = paddle.histogramdd(
-                    x, bins=self.bins, range=self.range, density=self.density
+                    x, bins=self.bins, ranges=self.ranges, density=self.density
                 )
             exe = paddle.static.Executor(self.place)
             if self.weights is not None:
@@ -100,7 +100,7 @@ class TestHistogramddAPI(unittest.TestCase):
             self.sample_dy,
             bins=self.bins,
             weights=self.weights_dy,
-            range=self.range,
+            ranges=self.ranges,
             density=self.density,
         )
 
@@ -120,7 +120,7 @@ class TestHistogramddAPICase1ForDensity(TestHistogramddAPI):
     def init_input(self):
         self.sample = np.array([[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]])
         self.bins = [2, 2]
-        self.range = [0.0, 1.0, 0.0, 1.0]
+        self.ranges = [0.0, 1.0, 0.0, 1.0]
         self.density = True
 
     def set_expect_output(self):
@@ -183,7 +183,7 @@ class TestHistogramddAPICase3ForMultiDimsNotDensity(TestHistogramddAPI):
         ]
 
 
-class TestHistogramddAPICase4ForRangeAndDensity(TestHistogramddAPI):
+class TestHistogramddAPICase4ForRangesAndDensity(TestHistogramddAPI):
     def init_input(self):
         # shape: [4,2,2]
         self.sample = np.array(
@@ -196,7 +196,7 @@ class TestHistogramddAPICase4ForRangeAndDensity(TestHistogramddAPI):
         )
         self.bins = [3, 4]
         # [leftmost_1, rightmost_1, leftmost_2, rightmost_2,..., leftmost_D, rightmost_D]
-        self.range = [1.0, 10.0, 1.0, 100.0]
+        self.ranges = [1.0, 10.0, 1.0, 100.0]
         self.density = True
 
     def set_expect_output(self):
@@ -213,7 +213,7 @@ class TestHistogramddAPICase4ForRangeAndDensity(TestHistogramddAPI):
         ]
 
 
-class TestHistogramddAPICase5ForRangeNotDensity(TestHistogramddAPI):
+class TestHistogramddAPICase5ForRangesNotDensity(TestHistogramddAPI):
     def init_input(self):
         # shape: [4,2,2]
         self.sample = np.array(
@@ -226,7 +226,7 @@ class TestHistogramddAPICase5ForRangeNotDensity(TestHistogramddAPI):
         )
         self.bins = [3, 4]
         # [leftmost_1, rightmost_1, leftmost_2, rightmost_2,..., leftmost_D, rightmost_D]
-        self.range = [1.0, 10.0, 1.0, 100.0]
+        self.ranges = [1.0, 10.0, 1.0, 100.0]
         # self.density = True
 
     def set_expect_output(self):
@@ -239,7 +239,7 @@ class TestHistogramddAPICase5ForRangeNotDensity(TestHistogramddAPI):
         ]
 
 
-class TestHistogramddAPICase6NotRangeAndDensityAndWeights(TestHistogramddAPI):
+class TestHistogramddAPICase6NotRangesAndDensityAndWeights(TestHistogramddAPI):
     def init_input(self):
         # shape: [4,2,2]
         self.sample = np.array(
@@ -252,7 +252,7 @@ class TestHistogramddAPICase6NotRangeAndDensityAndWeights(TestHistogramddAPI):
         )
         self.bins = [3, 4]
         # [leftmost_1, rightmost_1, leftmost_2, rightmost_2,..., leftmost_D, rightmost_D]
-        # self.range = [1., 10., 1., 100.]
+        # self.ranges = [1., 10., 1., 100.]
         self.density = True
         self.weights = np.array(
             [
@@ -278,7 +278,7 @@ class TestHistogramddAPICase6NotRangeAndDensityAndWeights(TestHistogramddAPI):
         ]
 
 
-class TestHistogramddAPICase7ForRangeAndDensityAndWeights(TestHistogramddAPI):
+class TestHistogramddAPICase7ForRangesAndDensityAndWeights(TestHistogramddAPI):
     def init_input(self):
         # shape: [4,2,2]
         self.sample = np.array(
@@ -291,7 +291,7 @@ class TestHistogramddAPICase7ForRangeAndDensityAndWeights(TestHistogramddAPI):
         )
         self.bins = [3, 4]
         # [leftmost_1, rightmost_1, leftmost_2, rightmost_2,..., leftmost_D, rightmost_D]
-        self.range = [1.0, 10.0, 1.0, 100.0]
+        self.ranges = [1.0, 10.0, 1.0, 100.0]
         self.density = True
         self.weights = np.array(
             [
@@ -463,7 +463,7 @@ class TestHistogramddAPICase9ForIntBin(TestHistogramddAPI):
         )
         self.bins = 5
         self.density = True
-        self.range = [1.0, 10.0, 1.0, 100.0]
+        self.ranges = [1.0, 10.0, 1.0, 100.0]
 
     def set_expect_output(self):
         self.expect_hist = np.array(
@@ -532,7 +532,7 @@ class TestHistogramddAPICase10ForTensorBin(TestHistogramddAPI):
         self.expect_edges = [[1.0, 2.0, 10.0, 15.0, 20.0], [0.0, 20.0, 100.0]]
 
 
-# histogramdd(sample, bins=10, range=None, density=False, weights=None, name=None):
+# histogramdd(sample, bins=10, ranges=None, density=False, weights=None, name=None):
 class TestHistogramddAPI_check_sample_type_error(TestHistogramddAPI):
     def test_error(self):
         sample = paddle.to_tensor([[False, True], [True, False]])
@@ -555,7 +555,7 @@ class TestHistogramddAPI_check_bins_type_error(TestHistogramddAPI):
             paddle.histogramdd(sample, bins=bins)
 
 
-class TestHistogramddAPI_check_range_type_error(TestHistogramddAPI):
+class TestHistogramddAPI_check_ranges_type_error(TestHistogramddAPI):
     def test_error(self):
         sample = paddle.to_tensor(
             [
@@ -565,9 +565,9 @@ class TestHistogramddAPI_check_range_type_error(TestHistogramddAPI):
                 [[13.0, 14.0], [15.0, 16.0]],
             ]
         )
-        range = 10
+        ranges = 10
         with self.assertRaises(TypeError):
-            paddle.histogramdd(sample, range=range)
+            paddle.histogramdd(sample, ranges=ranges)
 
 
 class TestHistogramddAPI_check_density_type_error(TestHistogramddAPI):
