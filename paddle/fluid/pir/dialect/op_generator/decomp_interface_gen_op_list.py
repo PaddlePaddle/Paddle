@@ -25,6 +25,7 @@ decomp_interface_declare_gen_op_list = [
     "relu",
     "softmax",
     "layer_norm",
+    "gelu",
     "sqrt",
 ]
 
@@ -37,6 +38,7 @@ decomp_interface_implementation_gen_op_list = [
     "relu",
     "softmax",
     "layer_norm",
+    "gelu",
     "sqrt",
 ]
 
