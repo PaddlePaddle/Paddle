@@ -49,8 +49,6 @@ Block::Iterator Block::erase(ConstIterator position) {
 }
 
 void Block::clear() {
-  IR_ENFORCE(TopoOrderCheck(ops_),
-             "Clear failed. The ops_ is not in topological order.");
   while (!empty()) {
     ops_.back()->Destroy();
     ops_.pop_back();
