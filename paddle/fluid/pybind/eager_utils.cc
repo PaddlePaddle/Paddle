@@ -107,6 +107,9 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
 }
 
 void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh) {
+  if (!x->defined()) {
+    return;
+  }
   if (x->is_dist_tensor()) {
     PADDLE_ENFORCE_EQ(
         std::dynamic_pointer_cast<phi::distributed::DistTensor>(x->impl())
