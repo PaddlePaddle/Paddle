@@ -54,6 +54,5 @@ __all__ = [
     "masked_multihead_attention",
     "encode_rotary_qk",
     "write_cache_kv",
-    "encode_rotary_qk",
     "rebuild_padding",
 ]
