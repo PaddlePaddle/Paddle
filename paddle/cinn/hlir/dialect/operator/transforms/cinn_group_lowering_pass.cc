@@ -141,9 +141,9 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
 
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
-    if ((*it)->isa<cinn::dialect::GroupOp>()) {
+    if (it->isa<cinn::dialect::GroupOp>()) {
       // GetOpList and Call cinn CodeGen
-      auto group_op = (*it)->dyn_cast<cinn::dialect::GroupOp>();
+      auto group_op = it->dyn_cast<cinn::dialect::GroupOp>();
 
       // op fusion
       auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
@@ -203,26 +203,26 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
     } else {
       std::vector<pir::Value> vec_ins;
 
-      for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-        if ((*it)->operand_source(i)) {
-          vec_ins.push_back(value_map.at((*it)->operand_source(i)));
+      for (size_t i = 0; i < it->num_operands(); ++i) {
+        if (it->operand_source(i)) {
+          vec_ins.push_back(value_map.at(it->operand_source(i)));
         } else {
-          vec_ins.push_back((*it)->operand_source(i));
+          vec_ins.push_back(it->operand_source(i));
         }
       }
 
       std::vector<pir::Type> vec_types;
-      for (size_t i = 0; i < (*it)->num_results(); ++i) {
-        vec_types.push_back((*it)->result(i).type());
+      for (size_t i = 0; i < it->num_results(); ++i) {
+        vec_types.push_back(it->result(i).type());
       }
 
-      ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo((*it)->name());
-      ::pir::Operation* op = ::pir::Operation::Create(
-          vec_ins, (*it)->attributes(), vec_types, info1);
+      ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo(it->name());
+      ::pir::Operation* op =
+          ::pir::Operation::Create(vec_ins, it->attributes(), vec_types, info1);
 
       ir_program->block()->push_back(op);
-      for (size_t i = 0; i < (*it)->num_results(); ++i) {
-        value_map[(*it)->result(i)] = op->result(i);
+      for (size_t i = 0; i < it->num_results(); ++i) {
+        value_map[it->result(i)] = op->result(i);
       }
     }
   }

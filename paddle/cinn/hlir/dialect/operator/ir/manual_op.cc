@@ -56,9 +56,11 @@ pir::Block *GroupOp::block() {
 }
 
 std::vector<pir::Operation *> GroupOp::ops() {
-  auto *inner_block = this->block();
-  return std::vector<pir::Operation *>(inner_block->begin(),
-                                       inner_block->end());
+  std::vector<pir::Operation *> rt_ops;
+  for (auto &op : *block()) {
+    rt_ops.push_back(&op);
+  }
+  return rt_ops;
 }
 
 void GroupOp::VerifySig() {}

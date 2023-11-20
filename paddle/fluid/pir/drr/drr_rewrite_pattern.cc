@@ -369,9 +369,9 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
 
   std::vector<std::vector<Operation*>> temp_program;
   std::unordered_map<Operation*, size_t> op_2_temp_program_index;
-  for (Operation* op : *rewriter.block()) {
-    op_2_temp_program_index[op] = temp_program.size();
-    temp_program.push_back({op});
+  for (auto& op : *rewriter.block()) {
+    op_2_temp_program_index[&op] = temp_program.size();
+    temp_program.push_back({&op});
   }
 
   // topo order visit result_pattern_graph

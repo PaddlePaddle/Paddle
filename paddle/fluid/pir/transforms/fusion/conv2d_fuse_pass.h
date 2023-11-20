@@ -12,18 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/core/verify.h"
-#include "paddle/pir/core/operation.h"
+#pragma once
+
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
+
 namespace pir {
-void Verify(Operation *op, bool verify_recursively) {
-  op->Verify();
-  if (!verify_recursively) return;
-  for (auto &region : *op) {
-    for (auto &block : region) {
-      for (auto &op_item : block) {
-        Verify(&op_item, verify_recursively);
-      }
-    }
-  }
-}
+
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateConv2dFusePass();
+
 }  // namespace pir
