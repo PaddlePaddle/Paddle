@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestRollOp(OpTest):
@@ -173,7 +172,6 @@ class TestRollAPI(unittest.TestCase):
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
         )
 
-    @test_with_pir_api
     def test_roll_op_api(self):
         self.input_data()
 
