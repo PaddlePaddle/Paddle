@@ -338,6 +338,30 @@ class Parallelizer:
         if self._strategy is None:
             return
 
+        # apply fused linear promotion pass
+        if (
+            self.is_train
+            and self._strategy.fused_promotion.fused_promotion
+            and self._strategy.fused_passes.enable
+        ):
+            amp_config = None
+            if self._strategy.amp.enable:
+                amp_config = copy.deepcopy(self._strategy.amp.to_dict())
+            config = {}
+            config["dist_context"] = self._dist_context
+            config["global_rank"] = rank
+            config["params_grads"] = params_grads
+            config["enable_sp"] = False
+            config["amp_level"] = (
+                amp_config['level'] if amp_config is not None else "o0"
+            )
+            fused_promotion_pass = new_pass(
+                "auto_parallel_fused_linear_promotion", config
+            )
+            fused_promotion_pass.apply(
+                [main_program], [startup_program], self._pass_context
+            )
+
         # data parallel optimization
         if self._strategy.dp_optimization.enable:
             config = copy.deepcopy(self._strategy.dp_optimization.to_dict())

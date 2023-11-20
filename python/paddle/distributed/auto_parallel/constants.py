@@ -144,6 +144,12 @@ DATASET = "dataset"
 set_field_default_config(DATASET, "enable", False)
 set_field_default_config(DATASET, "num_shards", 1)
 
+# #########################################
+# # offload configuration
+# #########################################
+FUSEDPROMOTION = "fused_promotion"
+set_field_default_config(FUSEDPROMOTION, "enable", True)
+
 #########################################
 # fused passes configuration
 #########################################
