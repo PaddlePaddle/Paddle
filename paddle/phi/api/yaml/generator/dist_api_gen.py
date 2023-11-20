@@ -898,7 +898,7 @@ class DistForwardAPI(ForwardAPI):
             if self.outputs['types'][0] == 'Tensor':
                 if (
                     self.need_to_generate_code_for_inplace_impl(0)
-                    and has_spmd_rules
+                    and self.generate_general_infer_spmd
                 ):
                     output_creation_code += SINGLE_INPLACE_OUT_DIST_ATTR
                 if self.infer_meta['spmd_rule'] is not None:
@@ -909,7 +909,7 @@ class DistForwardAPI(ForwardAPI):
                 # SetKernelDistOutput arg
                 if (
                     self.need_to_generate_code_for_inplace_impl(0)
-                    and has_spmd_rules
+                    and self.generate_general_infer_spmd
                 ):
                     output_creation_code += VECTOR_INPLACE_OUT_DIST_ATTR
                 dist_output_arg = (
@@ -952,7 +952,7 @@ class DistForwardAPI(ForwardAPI):
                     else:
                         if (
                             self.need_to_generate_code_for_inplace_impl(i)
-                            and has_spmd_rules
+                            and self.generate_general_infer_spmd
                         ):
                             output_creation_code += (
                                 MULTI_SINGLE_INPLACE_OUT_DIST_ATTR.format(
@@ -986,7 +986,7 @@ class DistForwardAPI(ForwardAPI):
                     else:
                         if (
                             self.need_to_generate_code_for_inplace_impl(i)
-                            and has_spmd_rules
+                            and self.generate_general_infer_spmd
                         ):
                             output_creation_code += (
                                 MULTI_VECTOR_INPLACE_OUT_DIST_ATTR.format(
@@ -1478,16 +1478,16 @@ class DistForwardAPI(ForwardAPI):
                 NONEED_TO_SET_DIST_ATTR_COMMENT_TEMPLATE.format(self.api)
             )
         # Inplace output should reshard to origin state.
-        if self.generate_infer_spmd or self.generate_general_infer_spmd:
+        if self.generate_infer_spmd:
             for i, out_name in enumerate(self.dist_output_args):
                 if self.need_to_generate_code_for_inplace_impl(i):
                     need_reshard = (
-                        "false" if self.generate_infer_spmd else "true"
+                        "true" if self.generate_general_infer_spmd else "false"
                     )
                     dist_out_attr = (
-                        f"spmd_info.second[{i}]"
-                        if self.generate_infer_spmd
-                        else f"dist_out_attr_{i}"
+                        f"dist_out_attr_{i}"
+                        if self.generate_general_infer_spmd
+                        else f"spmd_info.second[{i}]"
                     )
                     if len(self.dist_output_args) > 1:
                         if self.is_inplace_and_optional_output(i):
@@ -1504,9 +1504,9 @@ class DistForwardAPI(ForwardAPI):
                             )
                     else:
                         dist_out_attr = (
-                            "spmd_info.second[0]"
-                            if self.generate_infer_spmd
-                            else "dist_out_attr"
+                            "dist_out_attr"
+                            if self.generate_general_infer_spmd
+                            else "spmd_info.second[0]"
                         )
                         set_out_dist_attr_code += (
                             SET_SINGLE_OR_VECTOR_INPLACE_OUT_TEMPLATE.format(
