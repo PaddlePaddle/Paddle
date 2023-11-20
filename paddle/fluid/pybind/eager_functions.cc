@@ -937,6 +937,11 @@ static PyObject* eager_api_async_read(PyObject* self,
   auto& buffer = GetTensorFromArgs("async_read", "buffer", args, 3, false);
   auto& offset = GetTensorFromArgs("async_read", "offset", args, 4, false);
   auto& count = GetTensorFromArgs("async_read", "count", args, 5, false);
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, src, dst, index, buffer, offset, count)) {
+    ConvertAllInputsToDistTensor(mesh, src, dst, index, buffer, offset, count);
+  }
+
   {
     eager_gil_scoped_release guard;
     PADDLE_ENFORCE_EQ(
@@ -1111,6 +1116,10 @@ static PyObject* eager_api_async_write(PyObject* self,
   auto& dst = GetTensorFromArgs("async_write", "dst", args, 1, false);
   auto& offset = GetTensorFromArgs("async_write", "offset", args, 2, false);
   auto& count = GetTensorFromArgs("async_write", "count", args, 3, false);
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, src, dst, offset, count)) {
+    ConvertAllInputsToDistTensor(mesh, src, dst, offset, count);
+  }
   {
     eager_gil_scoped_release guard;
     PADDLE_ENFORCE_EQ(
