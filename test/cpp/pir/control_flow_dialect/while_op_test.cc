@@ -146,7 +146,7 @@ TEST(while_op_test, network_with_backward) {
   auto local_x_out_grad_arg = bwd_body_block->AddArgument(x.type());
   auto local_y_grad_arg = bwd_body_block->AddArgument(y.type());
 
-  auto pop_op = builder.Build<pir::TuplePushOp>(outlet);
+  auto pop_op = builder.Build<pir::TuplePopOp>(outlet);
   auto bwd_body_x_argument = pop_op.outlet_element(0);
 
   auto add_grad_op =

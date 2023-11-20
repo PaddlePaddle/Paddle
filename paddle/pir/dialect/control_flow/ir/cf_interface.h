@@ -85,4 +85,4 @@ class ContainerOpInterface : public OpInterfaceBase<ContainerOpInterface> {
 };
 }  // namespace pir
 
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::ContainerOpInterface)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ContainerOpInterface)

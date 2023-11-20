@@ -79,7 +79,7 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     WhileOp::name(),
     pir::StackCreateOp::name(),
     pir::TuplePushOp::name(),
-    pir::TuplePushOp::name(),
+    pir::TuplePopOp::name(),
     "cinn_runtime.jit_kernel"};
 
 static bool NeedFallBackCpu(const pir::Operation* op,
@@ -1046,7 +1046,7 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->isa<::pir::TuplePushOp>()) {
+  if (op_item->isa<::pir::TuplePopOp>()) {
     for (size_t i = 0; i < op_item->num_operands(); ++i) {
       auto cur_in = op_item->operand_source(i);
       auto new_in = GetNewInput(
@@ -1054,7 +1054,7 @@ void HandleForSpecialOp(
       vec_inputs.push_back(new_in);
     }
 
-    auto pop_back_op = op_item->dyn_cast<::pir::TuplePushOp>();
+    auto pop_back_op = op_item->dyn_cast<::pir::TuplePopOp>();
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       auto cur_inlet_element = pop_back_op.inlet_element(i);
       PADDLE_ENFORCE_EQ(map_value_pair->count(cur_inlet_element),

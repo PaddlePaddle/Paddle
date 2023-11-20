@@ -149,7 +149,7 @@ TEST(if_op_test, network_with_backward) {
   // construct the true block of if_grad
   builder.SetInsertionPointToStart(if_grad.true_block());
   auto pop_local1_z =
-      builder.Build<pir::TuplePushOp>(outlet_0).outlet_element(0);
+      builder.Build<pir::TuplePopOp>(outlet_0).outlet_element(0);
   auto local1_add_grad_op = builder.Build<AddGradOp>(pop_local1_z, y, out_grad);
   auto pop_local1_z_grad = local1_add_grad_op.x_grad(),
        local1_y_grad_0 = local1_add_grad_op.y_grad();
@@ -164,7 +164,7 @@ TEST(if_op_test, network_with_backward) {
   // construct the false block of if_grad
   builder.SetInsertionPointToStart(if_grad.false_block());
   auto pop_local2_z =
-      builder.Build<pir::TuplePushOp>(outlet_1).outlet_element(0);
+      builder.Build<pir::TuplePopOp>(outlet_1).outlet_element(0);
   auto local2_matmul_grad_op =
       builder.Build<MatmulGradOp>(pop_local2_z, y, out_grad);
   auto pop_local2_z_grad = local2_matmul_grad_op.x_grad(),
