@@ -29,6 +29,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_mapper.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/utils/optional.h"
 #include "paddle/utils/pybind.h"
@@ -38,15 +39,17 @@
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/distributed/auto_parallel/nd_mesh_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/p_to_r_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/r_to_p_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/s_to_s_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/same_status_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/nd_mesh_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_r_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_p_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_r_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
 #include "paddle/phi/core/enforce.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -87,6 +90,11 @@ using phi::distributed::auto_parallel::Machine;
 
 PyTypeObject *g_tensor_dist_attr_pytype = nullptr;
 PyTypeObject *g_dist_tensor_spec_pytype = nullptr;
+PyTypeObject *g_process_mesh_pytype = nullptr;
+PyTypeObject *g_placement_shard_pytype = nullptr;
+PyTypeObject *g_placement_replicated_pytype = nullptr;
+PyTypeObject *g_placement_partial_pytype = nullptr;
+
 constexpr const char *infer_spmd_string = "infer_spmd";
 
 static inline const ProcessMesh *get_tensor_process_mesh(
@@ -207,6 +215,10 @@ void BindAutoParallel(py::module *m) {
       *m, "SToSReshardFunction", ReshardFunction)
       .def(py::init<>());
 
+  py::class_<phi::distributed::PToSReshardFunction>(
+      *m, "PToSReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
   py::class_<phi::distributed::SameNdMeshReshardFunction>(
       *m, "SameNdMeshReshardFunction", ReshardFunction)
       .def(py::init<>());
@@ -215,36 +227,41 @@ void BindAutoParallel(py::module *m) {
       *m, "SameStatusReshardFunction", ReshardFunction)
       .def(py::init<>());
 
-  py::class_<ProcessMesh>(*m, "ProcessMesh")
-      .def(py::init<>())
-      .def(py::init<const std::vector<int64_t> &,
-                    const std::vector<int64_t> &,
-                    const std::vector<std::string> &>(),
-           py::arg("shape"),
-           py::arg("process_ids"),
-           py::arg("dim_names"))
-      .def_property_readonly("shape", &ProcessMesh::shape)
-      .def_property_readonly("process_ids", &ProcessMesh::process_ids)
-      .def_property_readonly("dim_names", &ProcessMesh::dim_names)
-      .def_property_readonly("size", &ProcessMesh::size)
-      .def_property_readonly("ndim", &ProcessMesh::ndim)
-      .def("dim_size",
-           static_cast<int64_t (ProcessMesh::*)(int64_t) const>(
-               &ProcessMesh::dim_size))
-      .def("dim_size",
-           static_cast<int64_t (ProcessMesh::*)(const std::string &) const>(
-               &ProcessMesh::dim_size))
-      .def("empty", &ProcessMesh::empty)
-      .def("contains", &ProcessMesh::contains)
-      .def(py::self == py::self)
-      .def(py::self != py::self)
-      .def("__copy__",
-           [](const ProcessMesh &self) { return ProcessMesh(self); })
-      .def(
-          "__deepcopy__",
-          [](const ProcessMesh &self, py::dict) { return ProcessMesh(self); },
-          py::arg("memo"))
-      .def("__str__", &ProcessMesh::to_string);
+  auto process_mesh =
+      py::class_<ProcessMesh>(*m, "ProcessMesh")
+          .def(py::init<>())
+          .def(py::init<const std::vector<int64_t> &,
+                        const std::vector<int64_t> &,
+                        const std::vector<std::string> &>(),
+               py::arg("shape"),
+               py::arg("process_ids"),
+               py::arg("dim_names"))
+          .def_property_readonly("shape", &ProcessMesh::shape)
+          .def_property_readonly("process_ids", &ProcessMesh::process_ids)
+          .def_property_readonly("dim_names", &ProcessMesh::dim_names)
+          .def_property_readonly("size", &ProcessMesh::size)
+          .def_property_readonly("ndim", &ProcessMesh::ndim)
+          .def("dim_size",
+               static_cast<int64_t (ProcessMesh::*)(int64_t) const>(
+                   &ProcessMesh::dim_size))
+          .def("dim_size",
+               static_cast<int64_t (ProcessMesh::*)(const std::string &) const>(
+                   &ProcessMesh::dim_size))
+          .def("empty", &ProcessMesh::empty)
+          .def("contains", &ProcessMesh::contains)
+          .def(py::self == py::self)
+          .def(py::self != py::self)
+          .def("__copy__",
+               [](const ProcessMesh &self) { return ProcessMesh(self); })
+          .def(
+              "__deepcopy__",
+              [](const ProcessMesh &self, py::dict) {
+                return ProcessMesh(self);
+              },
+              py::arg("memo"))
+          .def("__str__", &ProcessMesh::to_string);
+
+  g_process_mesh_pytype = reinterpret_cast<PyTypeObject *>(process_mesh.ptr());
 
   py::class_<DeviceCapability>(*m, "DeviceCapability")
       .def(py::init<>())
@@ -340,6 +357,65 @@ void BindAutoParallel(py::module *m) {
           },
           py::arg("memo"))
       .def("__str__", &DeviceMesh::to_string);
+
+  py::enum_<phi::ReduceType>(*m, "ReduceType")
+      .value("kRedSum", phi::ReduceType::kRedSum)
+      .value("kRedMax", phi::ReduceType::kRedMax)
+      .value("kRedMin", phi::ReduceType::kRedMin)
+      .value("kRedProd", phi::ReduceType::kRedProd)
+      .value("kRedAvg", phi::ReduceType::kRedAvg)
+      .value("kRedAny", phi::ReduceType::kRedAny)
+      .value("kRedAll", phi::ReduceType::kRedAll);
+
+  auto Placement =
+      py::class_<phi::distributed::Placement,
+                 std::shared_ptr<phi::distributed::Placement>>(*m, "Placement")
+          .def(py::init<>())
+          .def("is_shard",
+               &phi::distributed::Placement::is_shard,
+               py::arg("dim") = std::nullopt)
+          .def("is_replicated", &phi::distributed::Placement::is_replicated)
+          .def("is_partial", &phi::distributed::Placement::is_partial)
+          .def("__hash__", &phi::distributed::Placement::hash)
+          .def("__str__", &phi::distributed::Placement::to_string)
+          .def(py::self == py::self)
+          .def(py::self != py::self);
+
+  auto Shard = py::class_<phi::distributed::Shard,
+                          std::shared_ptr<phi::distributed::Shard>>(
+                   *m, "Shard", Placement)
+                   .def(py::init([](int64_t dim) {
+                     return std::make_shared<phi::distributed::Shard>(dim);
+                   }))
+                   .def("get_dim", &phi::distributed::Shard::get_dim)
+                   .def("__hash__", &phi::distributed::Shard::hash)
+                   .def("__str__", &phi::distributed::Shard::to_string)
+                   .def(py::self == py::self)
+                   .def(py::self != py::self);
+
+  auto Replicate = py::class_<phi::distributed::Replicate,
+                              std::shared_ptr<phi::distributed::Replicate>>(
+                       *m, "Replicate", Placement)
+                       .def(py::init<>())
+                       .def("__hash__", &phi::distributed::Replicate::hash)
+                       .def("__str__", &phi::distributed::Replicate::to_string)
+                       .def(py::self == py::self)
+                       .def(py::self != py::self);
+
+  auto Partial = py::class_<phi::distributed::Partial,
+                            std::shared_ptr<phi::distributed::Partial>>(
+                     *m, "Partial", Placement)
+                     .def(py::init<phi::ReduceType>(),
+                          py::arg("reduce_type") = phi::ReduceType::kRedSum)
+                     .def("__hash__", &phi::distributed::Partial::hash)
+                     .def("__str__", &phi::distributed::Partial::to_string)
+                     .def(py::self == py::self)
+                     .def(py::self != py::self);
+
+  g_placement_shard_pytype = reinterpret_cast<PyTypeObject *>(Shard.ptr());
+  g_placement_replicated_pytype =
+      reinterpret_cast<PyTypeObject *>(Replicate.ptr());
+  g_placement_partial_pytype = reinterpret_cast<PyTypeObject *>(Partial.ptr());
 
   py::class_<TensorDistAttr> py_dist_attr(*m, "TensorDistAttr");
   g_tensor_dist_attr_pytype =
@@ -490,6 +566,9 @@ void BindAutoParallel(py::module *m) {
           static_cast<std::map<std::string, TensorDistAttr> &(
               OperatorDistAttr::*)()>(&OperatorDistAttr::output_dist_attrs),
           &OperatorDistAttr::set_output_dist_attrs)
+      .def_property("run_time_us",
+                    &OperatorDistAttr::run_time_us,
+                    &OperatorDistAttr::set_run_time_us)
       .def("get_input_dist_attr",
            static_cast<TensorDistAttr &(
                OperatorDistAttr::*)(const std::string &)>(

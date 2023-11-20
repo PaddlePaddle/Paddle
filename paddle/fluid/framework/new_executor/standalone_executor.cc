@@ -83,19 +83,15 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       std::shared_ptr<::pir::Program> base_program = ir_program;
       auto block = base_program->block();
       for (auto it = block->begin(); it != block->end(); ++it) {
-        if ((*it)->isa<paddle::dialect::FetchOp>()) {
-          size_t index = (*it)
-                             ->attributes()
-                             .at("col")
-                             .dyn_cast<pir::Int32Attribute>()
-                             .data();
+        if (it->isa<paddle::dialect::FetchOp>()) {
+          size_t index =
+              it->attributes().at("col").dyn_cast<pir::Int32Attribute>().data();
 
           if (fetch_var_names_.size() < index + 1) {
             fetch_var_names_.resize(index + 1);
           }
 
-          fetch_var_names_[index] = (*it)
-                                        ->attributes()
+          fetch_var_names_[index] = it->attributes()
                                         .at("name")
                                         .dyn_cast<pir::StrAttribute>()
                                         .AsString() +
@@ -106,7 +102,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
       std::shared_ptr<pir::Program> shared_program = std::move(kernel_program);
-      plan_.UpdateIrProgram("job_" + std::to_string(job_idx), shared_program);
+      plan_.SetIrProgram("job_" + std::to_string(job_idx), shared_program);
 
       if (FLAGS_pir_apply_inplace_pass) {
         pir::PassManager pm(pir::IrContext::Instance(), 3);

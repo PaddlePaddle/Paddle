@@ -3,7 +3,7 @@ paddle_test(
   SRCS
   shape_op_test.cc
   DEPS
-  pd_op_dialect
+  op_dialect_vjp
   pir
   gtest)
 
@@ -12,7 +12,7 @@ paddle_test(
   SRCS
   shape_struct_test.cc
   DEPS
-  pd_op_dialect
+  op_dialect_vjp
   pir
   gtest)
 
@@ -22,7 +22,7 @@ paddle_test(
   constraint_pass_test.cc
   DEPS
   gtest
-  pd_op_dialect
+  op_dialect_vjp
   pir)
 
 set_tests_properties(constraint_pass_test

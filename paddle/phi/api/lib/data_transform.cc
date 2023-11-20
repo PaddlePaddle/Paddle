@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -601,12 +601,19 @@ void TransDataBackend(const phi::SelectedRows* tensor,
 
 /* ------------------ for auto parallel ----------------------- */
 
-static bool ReshardIsNeeded(
+static bool ReshardIsNeededWithPartial(
     const phi::distributed::TensorDistAttr& in_dist_attr,
     const phi::distributed::TensorDistAttr& out_dist_attr) {
   return (in_dist_attr.process_mesh() != out_dist_attr.process_mesh() ||
           in_dist_attr.dims_mapping() != out_dist_attr.dims_mapping() ||
           in_dist_attr.partial_status() != out_dist_attr.partial_status());
+}
+
+static bool ReshardIsNeeded(
+    const phi::distributed::TensorDistAttr& in_dist_attr,
+    const phi::distributed::TensorDistAttr& out_dist_attr) {
+  return (in_dist_attr.process_mesh() != out_dist_attr.process_mesh() ||
+          in_dist_attr.dims_mapping() != out_dist_attr.dims_mapping());
 }
 
 std::string ReshardDebugInfo(
@@ -634,7 +641,8 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
   if (tensor_in) {
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_in.get());
-    if (ReshardIsNeeded(dist_tensor->dist_attr(), tensor_dist_attr)) {
+    if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(),
+                                   tensor_dist_attr)) {
       VLOG(6) << "ApiIn to Replicated KernelIn - "
               << ReshardDebugInfo(*dist_tensor, tensor_dist_attr);
       auto* func = phi::distributed::ChooseProperReshardFunction(
@@ -656,7 +664,8 @@ ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
       true,
       phi::errors::PreconditionNotMet(
           "Arg must be a vector of TensorDistAttr"));
-  const auto& tensor_dist_attrs = paddle::get<1>(dist_attrs);
+  const auto& tensor_dist_attrs = PADDLE_GET_CONST(
+      std::vector<phi::distributed::TensorDistAttr>, dist_attrs);
 
   PADDLE_ENFORCE_EQ(tensors.size(),
                     tensor_dist_attrs.size(),
@@ -670,15 +679,16 @@ ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
     if (tensor_in) {
       phi::distributed::DistTensor* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(tensor_in.get());
-      if (ReshardIsNeeded(dist_tensor->dist_attr(), dist_attr)) {
+      if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(), dist_attr)) {
         VLOG(6) << "Vector ApiIn to Replicated KernelIn - "
                 << ReshardDebugInfo(*dist_tensor, dist_attr);
         auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
                                                                    dist_attr);
         out.push_back(func->Eval(dev_ctx, *dist_tensor, dist_attr));
+      } else {
+        out.push_back(
+            std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in));
       }
-      out.push_back(
-          std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in));
     } else {
       out.push_back(nullptr);
     }
@@ -755,6 +765,7 @@ void ReshardKernelOutputToApiOutput(
       // avoid add branch here
       // shallow copy dense tensor
       *dist_tensor->unsafe_mutable_value() = src_tensor->value();
+      dist_tensor->unsafe_set_dist_attr(src_tensor->dist_attr());
     }
   } else {
     VLOG(3) << "The output tensor is nullptr when call "

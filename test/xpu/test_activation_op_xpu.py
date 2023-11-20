@@ -1373,5 +1373,51 @@ support_types = get_xpu_op_support_types('cos')
 for stype in support_types:
     create_test_class(globals(), XPUTestCosOP, stype)
 
+
+class XPUTestRsqrtOP(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = "rsqrt"
+        self.use_dynamic_create_class = False
+
+    class XPUTestRsqrtBase(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "rsqrt"
+            self.dtype = self.in_type
+            self.init_config()
+            out = np.reciprocal(np.sqrt(self.x))
+
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': out}
+            self.attrs = {'use_xpu': True}
+
+        def init_config(self):
+            self.x = np.random.uniform(0.01, 4, [11, 17]).astype(self.dtype)
+
+    class XPUTestRsqrt_ZeroDim(XPUTestRsqrtBase):
+        def init_config(self):
+            self.x = np.random.uniform(0.01, 4, []).astype(self.dtype)
+
+    class XPUTestRsqrt2(XPUTestRsqrtBase):
+        def init_config(self):
+            self.x = np.random.uniform(0.01, 4, [1024, 8]).astype(self.dtype)
+
+    class XPUTestRsqrt3(XPUTestRsqrtBase):
+        def init_config(self):
+            self.x = np.random.uniform(0.01, 4, [4, 512, 15, 15]).astype(
+                self.dtype
+            )
+
+    class XPUTestRsqrt4(XPUTestRsqrtBase):
+        def init_config(self):
+            self.x = np.random.uniform(0.01, 4, [4, 256, 22, 22]).astype(
+                self.dtype
+            )
+
+
+support_types = get_xpu_op_support_types('rsqrt')
+for stype in support_types:
+    create_test_class(globals(), XPUTestRsqrtOP, stype)
+
+
 if __name__ == "__main__":
     unittest.main()

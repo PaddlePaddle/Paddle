@@ -16,8 +16,8 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/backends/context_pool.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
 
 namespace phi {
@@ -64,6 +64,47 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
     if (dist_attr.empty()) {
       LOG(WARNING) << "Try to construct a dist tensor with empty dist attr.";
     }
+    value_ = global_value;
+  }
+}
+
+DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
+                       const ProcessMesh& process_mesh,
+                       const Placements& placements)
+    : dims_(global_value->dims()), value_(std::make_shared<DenseTensor>()) {
+  dist_tensor_meta_ = DistTensorMeta(
+      process_mesh,
+      placements,
+      DenseTensorMeta(global_value->dtype(), global_value->dims()));
+
+  TensorDistAttr dist_attr(vectorize(dist_tensor_meta_.dims()));
+  dist_attr.set_process_mesh(dist_tensor_meta_.process_mesh());
+  dist_attr.set_dims_mapping(dist_tensor_meta_.dim_mapping());
+  dist_attr.mark_annotated("process_mesh");
+  dist_attr.mark_annotated("dims_mapping");
+  dist_attr_ = dist_attr;
+
+  // If the current rank doesn't in process_mesh, we should create an
+  // uninitialized tensor only with dist_tensor_meta_.
+  if (IsCurRankInMesh(process_mesh)) {
+    if (!dist_tensor_meta_.is_replicated()) {
+      // 1. create replicated global tensor
+      TensorDistAttr replicated_dist_attr(vectorize(global_value->dims()));
+      replicated_dist_attr.set_process_mesh(process_mesh);
+      DistTensor replicated_tensor(global_value, replicated_dist_attr);
+
+      // 2. reshard from replicated to other state
+      auto* func = ChooseProperReshardFunction(replicated_tensor, dist_attr);
+      auto* dev_ctx = DeviceContextPool::Instance().Get(global_value->place());
+      func->Eval(dev_ctx, replicated_tensor, dist_attr, this);
+    } else {
+      value_ = global_value;
+    }
+  } else {
+    // The following logic is illegal, and should be removed
+    // later. It exist temporary because the basic execution procedure is not
+    // ready, even sometimes we try to construct a DistTensor with empty
+    // DistAttr. Here we warning when the DistAttr is empty for debug use.
     value_ = global_value;
   }
 }

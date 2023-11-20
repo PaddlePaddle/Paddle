@@ -300,6 +300,9 @@ void BuildValue(pir::Value value,
     var->GetMutable<phi::DenseTensor>();
   } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     var->GetMutable<phi::SelectedRows>();
+  } else if (value.type()
+                 .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    var->GetMutable<phi::TensorArray>();
   } else if (value.type().isa<pir::VectorType>()) {
     auto tensor_array = var->GetMutable<VariableRefArray>();
     tensor_array->clear();
@@ -514,7 +517,8 @@ void HandleForInplaceOp(pir::Operation* op,
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
   paddle::dialect::OpYamlInfoParser yaml_parser(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-          ->get_op_info_());
+          ->get_op_info_(),
+      paddle::dialect::IsLegacyOp(op_name));
 
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value value = op->result(i);
@@ -557,33 +561,33 @@ void BuildScope(const pir::Block& block,
           << GenScopeTreeDebugInfo(
                  const_cast<Scope*>(value_exe_info->GetScope()->root()));
 
-  for (auto op : block) {
-    std::string op_name = op->name();
-    if (op->attributes().count("op_name")) {
-      op_name = op->attributes()
+  for (auto& op : block) {
+    std::string op_name = op.name();
+    if (op.attributes().count("op_name")) {
+      op_name = op.attributes()
                     .at("op_name")
                     .dyn_cast<pir::StrAttribute>()
                     .AsString();
     }
     VLOG(4) << "build op:" << op_name;
     if (SpecialOps.count(op_name)) {
-      HandleForSpecialOp(op, var_name_prefix, value_exe_info);
+      HandleForSpecialOp(&op, var_name_prefix, value_exe_info);
       continue;
     }
 
-    CheckInputVars(op, op_name, value_exe_info);
+    CheckInputVars(&op, op_name, value_exe_info);
 
-    if (op->num_results() < 1) continue;
-    if (op->attributes().count("is_inplace") != 0 &&
-        op->attributes()
+    if (op.num_results() < 1) continue;
+    if (op.attributes().count("is_inplace") != 0 &&
+        op.attributes()
             .at("is_inplace")
             .dyn_cast<pir::BoolAttribute>()
             .data()) {
-      HandleForInplaceOp(op, var_name_prefix, value_exe_info);
+      HandleForInplaceOp(&op, var_name_prefix, value_exe_info);
       continue;
     } else {
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        BuildValue(op->result(i), var_name_prefix, value_exe_info);
+      for (size_t i = 0; i < op.num_results(); ++i) {
+        BuildValue(op.result(i), var_name_prefix, value_exe_info);
       }
     }
   }
@@ -765,6 +769,13 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
               attribute.dyn_cast<pir::DoubleAttribute>().data());  // NOLINT
         }
         attr_map[name] = vec_double;
+      } else if (array_list[0].isa<pir::StrAttribute>()) {
+        std::vector<std::string> vec_string;
+        for (auto attribute : array_list) {
+          vec_string.push_back(
+              attribute.dyn_cast<pir::StrAttribute>().AsString());  // NOLINT
+        }
+        attr_map[name] = vec_string;
       } else {
         std::stringstream ss;
         val.Print(ss);
@@ -815,7 +826,6 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
           "pir::vector type"));
     }
   }
-
   auto& op_info = OpInfoMap::Instance().Get(fluid_op_name);
   auto ptr =
       op_info.Creator()(fluid_op_name, in_name_map, out_name_map, attr_map);
