@@ -64,6 +64,26 @@ class IR_API GetParameterOp : public pir::Op<GetParameterOp> {
 };
 
 ///
+/// \brief GetConstantOp: OpResult = GetConstantOp({StrAttribute,
+/// StrAttribute})
+///
+class IR_API GetConstantOp : public pir::Op<GetConstantOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "builtin.get_constant"; }
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const std::string &name,
+                    Type type);
+  void VerifySig() const;
+
+ private:
+  static void PassStopGradients(OperationArgument &argument);  // NOLINT
+};
+
+///
 /// \brief SetParameterOp: SetParameterOp(OpOperand, {StrAttribute,
 /// StrAttribute})
 ///
@@ -216,6 +236,7 @@ void RefreshStopGradientsDefaultly(Operation *Op);
 }  // namespace pir
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ModuleOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::GetConstantOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::GetParameterOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SetParameterOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ShadowOutputOp)

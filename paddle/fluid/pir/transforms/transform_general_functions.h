@@ -27,7 +27,7 @@ namespace pir {
 /**
  * @brief Get the name of pararmeter from a value.
  *
- * @note The value must be a output of a GetParameterOp.
+ * @note The value must be a output of a GetParameterOp or a GetConstantOp.
  *
  * @param pir::Value
  *

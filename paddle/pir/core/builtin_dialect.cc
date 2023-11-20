@@ -52,6 +52,7 @@ void BuiltinDialect::initialize() {
                      TypeAttribute>();
 
   RegisterOps<ModuleOp,
+              GetConstantOp,
               GetParameterOp,
               SetParameterOp,
               ShadowOutputOp,
