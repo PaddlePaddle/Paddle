@@ -1665,6 +1665,16 @@
     data_type : x
   backward : masked_select_grad
 
+- op : encode_rotary_qk
+  args : (Tensor q, Tensor kv, Tensor rotary_emb, Tensor seq_lens, int rotary_emb_dims, bool use_neox)
+  output : Tensor(rotary_q_out), Tensor(rotary_kv_out)
+  infer_meta :
+    func : EncodeRotaryQKInferMeta
+  kernel :
+    func : encode_rotary_qk
+    data_type : q
+  inplace : (q -> rotary_q_out), (kv -> rotary_kv_out)
+
 - op : matrix_nms
   args : (Tensor bboxes, Tensor scores, float score_threshold, int nms_top_k, int keep_top_k, float post_threshold=0., bool use_gaussian = false, float gaussian_sigma = 2., int background_label = 0, bool normalized = true)
   output : Tensor(out), Tensor(index), Tensor(roisnum)
