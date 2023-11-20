@@ -225,7 +225,7 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>)
 
 DenseTensor::DenseTensor(const LoD& lod) : DenseTensor() { meta_.lod = lod; }
 
-TEST_API void DenseTensor::set_lod(const LoD& lod) { meta_.lod = lod; }
+void DenseTensor::set_lod(const LoD& lod) { meta_.lod = lod; }
 
 LoD* DenseTensor::mutable_lod() { return &meta_.lod; }
 
