@@ -157,8 +157,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.shape)
                 index = paddle.static.data('Index', self.index_shape, "int64")
-                value = paddle.static.data('Value', self.value_shape)
-                out = paddle.put_along_axis(x, index, value, self.axis)
+                out = paddle.put_along_axis(x, index, self.value_np, self.axis)
                 exe = paddle.static.Executor(self.place[0])
                 res = exe.run(
                     feed={
@@ -168,12 +167,10 @@ class TestPutAlongAxisAPI(unittest.TestCase):
                     },
                     fetch_list=[out],
                 )
-
-            np.put_along_axis(
-                self.x_np, self.index_np, self.value_np, self.axis
-            )
-            # numpy put_along_axis is an inplace opearion.
-            out_ref = self.x_np
+            out_ref = copy.deepcopy(self.x_np)
+            for i in range(self.index_shape[0]):
+                for j in range(self.index_shape[1]):
+                    out_ref[self.index_np[i, j], j] = self.value_np
 
             for out in res:
                 np.testing.assert_allclose(out, out_ref, rtol=0.001)
@@ -186,24 +183,21 @@ class TestPutAlongAxisAPI(unittest.TestCase):
             paddle.disable_static(place)
             x_tensor = paddle.to_tensor(self.x_np)
             index_tensor = paddle.to_tensor(self.index_np)
-            value_tensor = paddle.to_tensor(self.value_np)
             out = paddle.put_along_axis(
-                x_tensor, index_tensor, value_tensor, self.axis
+                x_tensor, index_tensor, self.value_np, self.axis
             )
-            np.array(
-                np.put_along_axis(
-                    self.x_np, self.index_np, self.value_np, self.axis
-                )
-            )
-            out_ref = self.x_np
+            out_ref = copy.deepcopy(self.x_np)
+            for i in range(self.index_shape[0]):
+                for j in range(self.index_shape[1]):
+                    out_ref[self.index_np[i, j], j] = self.value_np
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
 
             # for ci coverage, numpy put_along_axis did not support argument of 'reduce'
             paddle.put_along_axis(
-                x_tensor, index_tensor, value_tensor, self.axis, 'mul'
+                x_tensor, index_tensor, self.value_np, self.axis, 'mul'
             )
             paddle.put_along_axis(
-                x_tensor, index_tensor, value_tensor, self.axis, 'add'
+                x_tensor, index_tensor, self.value_np, self.axis, 'add'
             )
 
             paddle.enable_static()
@@ -269,6 +263,122 @@ class TestPutAlongAxisAPICase3(TestPutAlongAxisAPI):
 
     def test_inplace_dygraph(self):
         pass
+
+
+class TestPutAlongAxisAPICase4(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.shape = [3, 5]
+        self.index1_shape = [1, 4]
+        self.index_np1 = np.array([[0, 1, 2, 0]]).astype('int64')
+        self.index2_shape = [2, 3]
+        self.index_np2 = np.array([[0, 1, 2], [0, 1, 4]]).astype('int64')
+        self.x_np = np.zeros((3, 5)).astype(np.float32)
+        self.value_shape = [2, 5]
+        self.value = (
+            np.arange(1, 11).reshape(self.value_shape).astype(np.float32)
+        )
+        self.place = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.x_np)
+            index_tensor1 = paddle.to_tensor(self.index_np1)
+            value_tensor = paddle.to_tensor(self.value)
+            out = paddle.put_along_axis(
+                x_tensor, index_tensor1, value_tensor, 0
+            )
+            out_ref = copy.deepcopy(self.x_np)
+            for i in range(self.index1_shape[0]):
+                for j in range(self.index1_shape[1]):
+                    out_ref[self.index_np1[i, j], j] = self.value[i, j]
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+
+            # for ci coverage, numpy put_along_axis did not support argument of 'reduce'
+            paddle.put_along_axis(
+                x_tensor, index_tensor1, value_tensor, 0, 'mul'
+            )
+            paddle.put_along_axis(
+                x_tensor, index_tensor1, value_tensor, 0, 'add'
+            )
+
+            index_tensor2 = paddle.to_tensor(self.index_np2)
+            out = paddle.put_along_axis(
+                x_tensor, index_tensor2, value_tensor, 1
+            )
+            out_ref = copy.deepcopy(self.x_np)
+            for i in range(self.index2_shape[0]):
+                for j in range(self.index2_shape[1]):
+                    out_ref[i, self.index_np2[i, j]] = self.value[i, j]
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+
+            # for ci coverage, numpy put_along_axis did not support argument of 'reduce'
+            paddle.put_along_axis(
+                x_tensor, index_tensor2, value_tensor, 1, 'mul'
+            )
+            paddle.put_along_axis(
+                x_tensor, index_tensor2, value_tensor, 1, 'add'
+            )
+
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+    @test_with_pir_api
+    def test_api_static(self):
+        paddle.enable_static()
+
+        def run(place):
+            with paddle.static.program_guard(paddle.static.Program()):
+                x1 = paddle.static.data('X', self.shape)
+                index1 = paddle.static.data('Index', self.index1_shape, "int64")
+                value_tensor = paddle.to_tensor(self.value)
+                out1 = paddle.put_along_axis(x1, index1, value_tensor, 0)
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    feed={
+                        'X': self.x_np,
+                        'Value': self.value,
+                        'Index': self.index_np1,
+                    },
+                    fetch_list=[out1],
+                )
+            out_ref = copy.deepcopy(self.x_np)
+            for i in range(self.index1_shape[0]):
+                for j in range(self.index1_shape[1]):
+                    out_ref[self.index_np1[i, j], j] = self.value[i, j]
+
+            for out in res:
+                np.testing.assert_allclose(out, out_ref, rtol=0.001)
+
+            with paddle.static.program_guard(paddle.static.Program()):
+                x2 = paddle.static.data('X', self.shape)
+                index2 = paddle.static.data('Index', self.index2_shape, "int64")
+                value_tensor = paddle.to_tensor(self.value)
+                out2 = paddle.put_along_axis(x2, index2, value_tensor, 1)
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    feed={
+                        'X': self.x_np,
+                        'Value': self.value,
+                        'Index': self.index_np2,
+                    },
+                    fetch_list=[out2],
+                )
+            out_ref = copy.deepcopy(self.x_np)
+            for i in range(self.index2_shape[0]):
+                for j in range(self.index2_shape[1]):
+                    out_ref[i, self.index_np2[i, j]] = self.value[i, j]
+
+            for out in res:
+                np.testing.assert_allclose(out, out_ref, rtol=0.001)
+
+        for place in self.place:
+            run(place)
 
 
 if __name__ == "__main__":

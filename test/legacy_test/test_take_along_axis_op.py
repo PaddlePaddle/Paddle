@@ -163,9 +163,17 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
             res = exe.run(
                 feed={'X': self.x_np, 'Index': self.index_np}, fetch_list=[out]
             )
-        out_ref = np.array(
-            np.take_along_axis(self.x_np, self.index_np, self.axis)
-        )
+        out_ref = np.zeros_like(self.index_np, dtype=self.x_np.dtype)
+        if self.axis == 0:
+            for i in range(self.index_shape[0]):
+                for j in range(self.index_shape[1]):
+                    out_ref[i, j] = self.x_np[self.index_np[i, j], j]
+        elif self.axis == 1:
+            for i in range(self.index_shape[0]):
+                for j in range(self.index_shape[1]):
+                    out_ref[i, j] = self.x_np[i, self.index_np[i, j]]
+        else:
+            return
         for out in res:
             np.testing.assert_allclose(out, out_ref, rtol=0.001)
 
@@ -174,9 +182,17 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
         x_tensor = paddle.to_tensor(self.x_np)
         self.index = paddle.to_tensor(self.index_np)
         out = paddle.take_along_axis(x_tensor, self.index, self.axis)
-        out_ref = np.array(
-            np.take_along_axis(self.x_np, self.index_np, self.axis)
-        )
+        out_ref = np.zeros_like(self.index_np, dtype=self.x_np.dtype)
+        if self.axis == 0:
+            for i in range(self.index_shape[0]):
+                for j in range(self.index_shape[1]):
+                    out_ref[i, j] = self.x_np[self.index_np[i, j], j]
+        elif self.axis == 1:
+            for i in range(self.index_shape[0]):
+                for j in range(self.index_shape[1]):
+                    out_ref[i, j] = self.x_np[i, self.index_np[i, j]]
+        else:
+            return
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
@@ -206,6 +222,19 @@ class TestTakeAlongAxisAPICase1(TestTakeAlongAxisAPI):
         self.x_np = np.random.random(self.shape).astype(np.float32)
         self.place = [paddle.CPUPlace()]
         self.axis = 0
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+
+class TestTakeAlongAxisAPICase2(TestTakeAlongAxisAPI):
+    def setUp(self):
+        np.random.seed(0)
+        self.shape = [2, 2]
+        self.index_shape = [1, 1]
+        self.index_np = np.array([[1]]).astype('int64')
+        self.x_np = np.random.random(self.shape).astype(np.float32)
+        self.place = [paddle.CPUPlace()]
+        self.axis = 1
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 

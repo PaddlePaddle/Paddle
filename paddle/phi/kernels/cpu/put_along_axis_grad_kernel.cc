@@ -60,10 +60,10 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
     value_grad->Resize(index.dims());
     dev_ctx.template Alloc<T>(value_grad);
     if (index_type == DataType::INT32) {
-      phi::funcs::cpu_gather_kernel<T, int32_t>(
+      phi::funcs::cpu_scatter_value_grad_kernel<T, int32_t>(
           out_grad, axis, index, *value_grad, dev_ctx);
     } else if (index_type == DataType::INT64) {
-      phi::funcs::cpu_gather_kernel<T, int64_t>(
+      phi::funcs::cpu_scatter_value_grad_kernel<T, int64_t>(
           out_grad, axis, index, *value_grad, dev_ctx);
     }
   }

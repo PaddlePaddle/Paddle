@@ -5150,24 +5150,30 @@ def take_along_axis(arr, indices, axis):
             >>> axis = 0
             >>> result = paddle.take_along_axis(x, index, axis)
             >>> print(result)
-            Tensor(shape=[1, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1, 2, 3]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[1]])
     """
     if len(arr.shape) != len(indices.shape):
         raise ValueError(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
-    broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-    if not broadcast_shape:
-        # if indices matrix have larger size than arr, arr should broadcast into indices shape.
-        broadcast_shape = indices.shape
+    for i in range(len(arr.shape)):
+        if i != axis and arr.shape[i] < indices.shape[i]:
+            raise RuntimeError(
+                "Size does not match at dimension {} expected index {} to be smaller than self {} apart from dimension {}".format(
+                    i, indices.shape, arr.shape, axis
+                )
+            )
+
+    axis_max_size = arr.shape[axis]
+    if not (indices < axis_max_size).all():
+        raise RuntimeError(
+            "one of element of indices is out of bounds for dimension {} with size {}".format(
+                axis, axis_max_size
+            )
+        )
     if in_dynamic_or_pir_mode():
-        indices = paddle.broadcast_to(indices, broadcast_shape)
-        broadcast_shape_list = list(broadcast_shape)
-        broadcast_shape_list[axis] = list(arr.shape)[axis]
-        broadcast_shape = tuple(broadcast_shape_list)
-        arr = paddle.broadcast_to(arr, broadcast_shape)
         return _C_ops.take_along_axis(arr, indices, axis)
     else:
         check_variable_and_dtype(
@@ -5187,11 +5193,6 @@ def take_along_axis(arr, indices, axis):
         check_variable_and_dtype(
             indices, 'index', ['int32', 'int64'], 'take_along_axis'
         )
-        indices = paddle.broadcast_to(indices, broadcast_shape)
-        broadcast_shape_list = list(broadcast_shape)
-        broadcast_shape_list[axis] = list(arr.shape)[axis]
-        broadcast_shape = tuple(broadcast_shape_list)
-        arr = paddle.broadcast_to(arr, broadcast_shape)
         helper = LayerHelper('take_along_axis', **locals())
         dtype = helper.input_dtype()
         result = helper.create_variable_for_type_inference(dtype)
@@ -5229,26 +5230,45 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
             >>> axis = 0
             >>> result = paddle.put_along_axis(x, index, value, axis)
             >>> print(result)
-            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[99, 99, 99],
-             [60, 40, 50]])
+            Tensor(shape=[2, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[99, 30, 20],
+                    [60, 40, 50]])
 
     """
     if len(arr.shape) != len(indices.shape):
         raise ValueError(
             "`indices` and `arr` must have the same number of dimensions!"
         )
+    if isinstance(values, (paddle.Tensor, paddle.pir.OpResult)):
+        if len(indices.shape) != len(values.shape):
+            raise ValueError(
+                "`indices` and `values` must have the same number of dimensions!"
+            )
+        for i in range(len(arr.shape)):
+            if (i != axis and arr.shape[i] < indices.shape[i]) or indices.shape[
+                i
+            ] > values.shape[i]:
+                raise RuntimeError(
+                    "Size does not match at dimension {} expected index {} to be smaller than self {} apart from dimension {} and to be smaller size than values {}".format(
+                        i, indices.shape, arr.shape, axis, values.shape
+                    )
+                )
+    else:
+        values = paddle.to_tensor(values).astype(arr.dtype)
+        elements = 1
+        for num in values.shape:
+            elements *= num
+        if elements == 1:  # paddle.pir.OpResult has no attribute 'size'
+            values = paddle.broadcast_to(values, indices.shape)
     axis = non_negative_axis(arr, axis)
-    broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-    if in_dynamic_or_pir_mode():
-        values = (
-            paddle.to_tensor(values)
-            if not isinstance(values, (paddle.Tensor, paddle.pir.OpResult))
-            else values
+    axis_max_size = arr.shape[axis]
+    if not (indices < axis_max_size).all():
+        raise RuntimeError(
+            "one of element of indices is out of bounds for dimension {} with size {}".format(
+                axis, axis_max_size
+            )
         )
-        if broadcast_shape:
-            indices = paddle.broadcast_to(indices, broadcast_shape)
-        values = paddle.broadcast_to(values, indices.shape)
+    if in_dynamic_or_pir_mode():
         return _C_ops.put_along_axis(arr, indices, values, axis, reduce)
     else:
         check_variable_and_dtype(
@@ -5268,9 +5288,6 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         check_variable_and_dtype(
             indices, 'index', ['int32', 'int64'], 'put_along_axis'
         )
-        if broadcast_shape:
-            indices = paddle.broadcast_to(indices, broadcast_shape)
-        values = paddle.broadcast_to(values, indices.shape)
         helper = LayerHelper('put_along_axis', **locals())
         dtype = helper.input_dtype()
         result = helper.create_variable_for_type_inference(dtype)
