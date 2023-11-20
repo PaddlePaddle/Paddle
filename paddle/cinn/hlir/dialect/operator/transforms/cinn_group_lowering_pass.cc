@@ -26,7 +26,9 @@
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 
 namespace cinn {
 namespace dialect {
@@ -123,6 +125,59 @@ std::vector<pir::Operation*> GetOutputOpList(
   return vec_res;
 }
 
+std::shared_ptr<pir::ShapeConstraintIRAnalysis> CreateShapeAnalysis(
+    const pir::Program* program) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+
+  auto shape_analysis =
+      std::make_shared<pir::MockShapeConstraintIRAnalysis>(ctx);
+  pir::SymbolicDimMgr& sym_dim_mgr = shape_analysis->symbolicDimMgr();
+
+  std::vector<pir::Value> candidate_values;
+
+  for (auto it = program->block()->begin(); it != program->block()->end();
+       ++it) {
+    if ((*it)->isa<paddle::dialect::DataOp>()) {
+      candidate_values.push_back((*it)->result(0));
+    }
+    if ((*it)->isa<cinn::dialect::GroupOp>()) {
+      auto group_op = (*it)->dyn_cast<cinn::dialect::GroupOp>();
+      for (auto* op : group_op.ops()) {
+        if (op->isa<paddle::dialect::ExpOp>()) {
+          candidate_values.push_back(op->result(0));
+        }
+
+        if (op->isa<paddle::dialect::SubtractOp>()) {
+          candidate_values.push_back(op->result(0));
+        }
+      }
+    }
+  }
+
+  std::vector<std::vector<pir::shape::SymbolicDimOp>> sym_vecs;
+
+  for (auto value : candidate_values) {
+    sym_vecs.push_back(
+        shape_analysis->GetOrCreateSymbolicDimsForRankedValue(value));
+  }
+
+  sym_dim_mgr.MapSymbolicDimEqual(sym_vecs[1][0], sym_vecs[2][0]);
+  sym_dim_mgr.MapSymbolicDimEqual(sym_vecs[1][0], sym_vecs[3][0]);
+
+  std::cout << sym_dim_mgr.IsSymbolicDimEqual(sym_vecs[1][0], sym_vecs[2][0])
+            << std::endl;
+  std::cout << sym_vecs[1][0].GetSymName() << std::endl;
+  std::cout << sym_vecs[1][1].GetSymName() << std::endl;
+  std::cout << sym_vecs[2][0].GetSymName() << std::endl;
+  std::cout << sym_vecs[2][1].GetSymName() << std::endl;
+
+  std::cout << sym_vecs[3][0].GetSymName() << std::endl;
+  std::cout << sym_vecs[3][1].GetSymName() << std::endl;
+
+  return shape_analysis;
+}
+
 std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 
@@ -139,20 +194,71 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
   auto target = cinn::common::DefaultNVGPUTarget();
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
 
+  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis =
+      CreateShapeAnalysis(program);
+
+  std::vector<pir::Value> test_values;
+
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
+    if ((*it)->isa<paddle::dialect::DataOp>()) {
+      test_values.push_back((*it)->result(0));
+    }
     if ((*it)->isa<cinn::dialect::GroupOp>()) {
       // GetOpList and Call cinn CodeGen
       auto group_op = (*it)->dyn_cast<cinn::dialect::GroupOp>();
+      for (auto* op : group_op.ops()) {
+        if (op->isa<paddle::dialect::ExpOp>()) {
+          test_values.push_back(op->result(0));
+        }
+        if (op->isa<paddle::dialect::SubtractOp>()) {
+          test_values.push_back(op->result(0));
+        }
+      }
+      // auto sym_vec0 =
+      // shape_analysis->GetOrCreateSymbolicDimsForRankedValue(test_values[0]);
+      auto sym_vec1 =
+          shape_analysis->GetOrCreateSymbolicDimsForRankedValue(test_values[1]);
+      auto sym_vec2 =
+          shape_analysis->GetOrCreateSymbolicDimsForRankedValue(test_values[2]);
+      auto sym_vec3 =
+          shape_analysis->GetOrCreateSymbolicDimsForRankedValue(test_values[3]);
+      VLOG(1) << "%1 %2 IsShapeEqual:"
+              << shape_analysis->IsShapeEqual(test_values[1], test_values[2]);
+      VLOG(1) << "%1 %3 IsShapeEqual: "
+              << shape_analysis->IsShapeEqual(test_values[1], test_values[3]);
+      VLOG(1) << "%2 %3 IsShapeEqual: "
+              << shape_analysis->IsShapeEqual(test_values[2], test_values[3]);
+      VLOG(1) << sym_vec1[0].GetSymName() << " == " << sym_vec2[0].GetSymName()
+              << " IsSymbolicDimEqual: "
+              << shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
+                     sym_vec1[0], sym_vec2[0]);
+      VLOG(1) << sym_vec1[0].GetSymName() << " == " << sym_vec3[0].GetSymName()
+              << " IsSymbolicDimEqual: "
+              << shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
+                     sym_vec1[0], sym_vec3[0]);
+      VLOG(1) << sym_vec1[1].GetSymName() << " == " << sym_vec2[1].GetSymName()
+              << " IsSymbolicDimEqual: "
+              << shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
+                     sym_vec1[1], sym_vec2[1]);
+      VLOG(1) << sym_vec2[0].GetSymName() << " == " << sym_vec3[0].GetSymName()
+              << " IsSymbolicDimEqual: "
+              << shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
+                     sym_vec2[0], sym_vec3[0]);
+      VLOG(1) << sym_vec2[0].GetSymName() << " == " << sym_vec3[1].GetSymName()
+              << " IsSymbolicDimEqual: "
+              << shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
+                     sym_vec2[0], sym_vec2[1]);
 
       // op fusion
       auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
           GetOpListNotIncludeYield(group_op.ops()),
-          GetOutputOpList(group_op.ops()));
+          GetOutputOpList(group_op.ops()),
+          shape_analysis);
 
       // fusion merge
-      auto group_list =
-          cinn::dialect::ir::GeneralFusionMergePassInternal(op_fusion);
+      auto group_list = cinn::dialect::ir::GeneralFusionMergePassInternal(
+          op_fusion, shape_analysis);
 
       // using yield op to sort
       std::unordered_map<::pir::Value, size_t> value2id;
@@ -165,6 +271,7 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         auto ir_compiler = std::make_shared<cinn::hlir::framework::PirCompiler>(
             *program, target, scope);
         hlir::framework::PirCompilerManager::Instance().insert(ir_compiler);
+        group->shape_analysis = shape_analysis;
         auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
         std::unordered_map<std::string, ::pir::Attribute> op_attrs{
             {cinn::dialect::JitKernelOp::kAttrName,

@@ -68,6 +68,12 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   /// \brief Get the shape of this type.
   ///
   std::vector<int64_t> GetDyShape() const;
+  DDim GetShape() const;
+
+  ///
+  /// \brief kDynamic
+  ///
+  static constexpr int64_t kDynamic = -1;
 
   ///
   /// \brief Check whether this type is ranked, currently return true.
