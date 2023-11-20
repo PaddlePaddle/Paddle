@@ -191,9 +191,8 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
 
         for (size_t i = 0; i < cinn_op->num_results(); ++i) {
           auto find_it = value2id.find(group->output_values[i]);
-          if (find_it == value2id.end()) {
-            value_map[group->output_values[i]] = cinn_op->result(i);
-          } else {
+          value_map[group->output_values[i]] = cinn_op->result(i);
+          if (find_it != value2id.end()) {
             value_map[group_op.result(find_it->second)] = cinn_op->result(i);
           }
         }
