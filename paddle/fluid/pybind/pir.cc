@@ -16,6 +16,7 @@
 #include <Python.h>
 #include <algorithm>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -31,6 +32,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
@@ -41,6 +43,7 @@
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
+#include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
@@ -49,6 +52,7 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
@@ -88,6 +92,7 @@ USE_PIR_PASS(fused_dropout_add_pass);
 USE_PIR_PASS(fused_linear_param_grad_add_pass);
 USE_PIR_PASS(inplace_pass);
 USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
+USE_PIR_PASS(conv2d_fuse_pass);
 
 PHI_DECLARE_bool(print_ir);
 
@@ -266,19 +271,26 @@ void BindBlock(py::module *m) {
           "program",
           [](Block &self) { return self.GetParentOp()->GetParentProgram(); },
           return_value_policy::reference)
-      .def_property_readonly(
-          "ops",
-          [](Block &self) -> py::list {
-            py::list op_list;
-            for (auto iter = self.begin(); iter != self.end(); iter++) {
-              op_list.append(*iter);
-            }
-            return op_list;
-          })
+      .def_property_readonly("ops",
+                             [](Block &self) -> py::list {
+                               py::list op_list;
+                               for (auto &op : self) {
+                                 op_list.append(&op);
+                               }
+                               return op_list;
+                             })
+      .def("__enter__",
+           [](Block &self) {
+             ApiBuilder::Instance().PushInsertionPoint({&self, self.end()});
+           })
+      .def("__exit__",
+           [](Block &self, py::object, py::object, py::object) {
+             ApiBuilder::Instance().PopInsertionPoint();
+           })
       .def(
           "remove_op",
           [](Block &self, Operation *op) {
-            auto op_iter = std::find(self.begin(), self.end(), op);
+            auto op_iter = std::find(self.begin(), self.end(), *op);
             self.erase(op_iter);
           },
           R"DOC(
@@ -312,17 +324,16 @@ void BindBlock(py::module *m) {
       .def("all_parameters",
            [](Block &self) -> py::list {
              py::list param_list;
-             for (auto iter = self.begin(); iter != self.end(); iter++) {
-               auto op = *iter;
-               if (op->HasAttribute(kAttrIsPersisable)) {
-                 auto attrs = op->attribute(kAttrIsPersisable)
+             for (auto &op : self) {
+               if (op.HasAttribute(kAttrIsPersisable)) {
+                 auto attrs = op.attribute(kAttrIsPersisable)
                                   .dyn_cast<pir::ArrayAttribute>()
                                   .AsVector();
                  for (uint32_t i = 0; i < attrs.size(); i++) {
                    bool is_persistable =
                        attrs[i].dyn_cast<pir::BoolAttribute>().data();
                    if (is_persistable) {
-                     param_list.append(op->result(i));
+                     param_list.append(op.result(i));
                    }
                  }
                }
@@ -330,8 +341,8 @@ void BindBlock(py::module *m) {
              return param_list;
            })
       .def("refresh_stopgradient", [](Block &self) {
-        for (auto iter = self.begin(); iter != self.end(); iter++) {
-          RefreshOpStopgradients(*iter);
+        for (auto &op : self) {
+          RefreshOpStopgradients(&op);
         }
       });
 }
@@ -479,7 +490,7 @@ void BindValue(py::module *m) {
 
   )DOC");
   g_ir_value_pytype = reinterpret_cast<PyTypeObject *>(value.ptr());
-  value
+  value.def(py::init<OpResult>())
       .def(
           "get_defining_op",
           [](const Value &self) -> pir::Operation * {
@@ -667,6 +678,7 @@ void BindOpResult(py::module *m) {
         The constructor of OpResult should not be invoked directly. OpResult can be automatically constructed
         when build network.
   )DOC");
+  py::implicitly_convertible<OpResult, Value>();
   g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
   op_result.def(
       "__init__",
@@ -732,6 +744,19 @@ void BindOpResult(py::module *m) {
                   "Currently, we can only get name of OpResult that "
                   "is "
                   "persistable"));
+            }
+          })
+      .def_property_readonly(
+          "id",
+          [](OpResult &self) {
+            if (self.impl() == nullptr) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Currently, we can only get id of OpResult whose impl "
+                  "is not nullptr"));
+            } else {
+              std::stringstream ss;
+              ss << std::hex << self.impl();
+              return ss.str();
             }
           })
       .def("initialized",
@@ -1012,7 +1037,7 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
   auto cloned_program = std::make_shared<Program>(ctx);
   std::unordered_map<pir::Value, pir::Value> value_map;
   for (auto &op : *program.block()) {
-    auto *cloned_op = BuildOpFrom(op, value_map);
+    auto *cloned_op = BuildOpFrom(&op, value_map);
     cloned_program->block()->push_back(cloned_op);
   }
   std::unordered_map<pir::OpResult, pir::OpResult> op_result_map;
@@ -1177,17 +1202,16 @@ SplitedResult SplitForwardBackward(
     for (auto it = forward_program->block()->rbegin();
          it != forward_program->block()->rend();
          ++it) {
-      auto *op = *it;
-      if (op->isa<pir::SetParameterOp>()) {
+      if (it->isa<pir::SetParameterOp>()) {
         auto out_name =
-            op->attribute<pir::StrAttribute>("parameter_name").AsString();
+            it->attribute<pir::StrAttribute>("parameter_name").AsString();
         if (out_name == parameter_name) {
           VLOG(4) << out_name
                   << " has been inserted SetParameterOp, skip it now.";
           return;
         }
 
-        inserted_value.insert(op->operand_source(0));
+        inserted_value.insert(it->operand_source(0));
       }
     }
 
@@ -1347,6 +1371,7 @@ void BindUtils(pybind11::module *m) {
   m->def("register_paddle_dialect", []() {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+    pir::IrContext::Instance()->GetOrRegisterDialect<pir::ControlFlowDialect>();
   });
   m->def(
       "translate_to_pir",
@@ -1498,6 +1523,7 @@ std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+
   pir::PassManager pass_manager(ctx);
   cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
 
@@ -1577,6 +1603,7 @@ void BindPir(pybind11::module *module) {
   BindUtils(&ir_module);
   BindIrPass(&ir_module);
   BindPassManager(&ir_module);
+  BindControlFlowApi(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
   BindOpsAPI(&ops_modules);
 }
