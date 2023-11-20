@@ -252,7 +252,7 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
     int64_t tid = 0;
     int64_t begin = 0;
     int64_t end = numel;
-    // #endif
+#endif
     for (int64_t i = begin; i < end; ++i) {
       MT value = static_cast<MT>(value_ptr[i]);
 
