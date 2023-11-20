@@ -1531,12 +1531,14 @@ std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
 
   pass_manager.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager.AddPass(pir::CreateBuildCinnPass());
 
   pass_manager.Run(&forward_program);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
   std::unique_ptr<pir::Program> new_program =
       cinn::dialect::ir::CINNGroupLoweringPass(&forward_program);
+
   VLOG(3) << "after CINNGroupLoweringPass, forward_program:\n" << *new_program;
   return std::move(new_program);
 #endif
