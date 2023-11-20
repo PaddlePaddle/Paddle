@@ -24,3 +24,10 @@ target_lists_for_hybrid_ci=(
     "paddle/phi/core/distributed"
     "test/auto_parallel"
 )
+
+target_lists_for_pir_ci=(
+    "paddle/fluid/framework/new_executor"
+    "paddle/fluid/pir/dialect"
+    "paddle/fluid/pir/transforms"
+    "paddle/pir"
+)

@@ -567,12 +567,12 @@ def unstack(x, axis=0, num=None):
     raised.
 
     Args:
-        x (Tensor): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64.
+        x (Tensor): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64, complex64, complex128.
         axis (int): The axis along which the input is unstacked.
         num (int|None): The number of output variables.
 
     Returns:
-        list(Tensor), The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
+        list(Tensor), The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64, complex64, complex128.
 
     Examples:
         .. code-block:: python
@@ -781,10 +781,16 @@ def crop(x, shape=None, offsets=None, name=None):
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'crop_tensor'
     )
     check_type(
-        shape, 'shape', (list, tuple, Variable, type(None)), 'crop_tensor'
+        shape,
+        'shape',
+        (list, tuple, Variable, type(None), paddle.pir.OpResult),
+        'crop_tensor',
     )
     check_type(
-        offsets, 'offsets', (list, tuple, Variable, type(None)), 'crop_tensor'
+        offsets,
+        'offsets',
+        (list, tuple, Variable, type(None), paddle.pir.OpResult),
+        'crop_tensor',
     )
 
     if offsets is None:
@@ -793,7 +799,7 @@ def crop(x, shape=None, offsets=None, name=None):
     if shape is None:
         shape = x.shape
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.crop(x, shape, offsets)
 
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -1017,7 +1023,64 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
 
     if inplace:
         return _C_ops.fill_diagonal_tensor_(x, y, offset, dim1, dim2)
-    return _C_ops.fill_diagonal_tensor(x, y, offset, dim1, dim2)
+
+    if in_dynamic_mode():
+        return _C_ops.fill_diagonal_tensor(x, y, offset, dim1, dim2)
+    else:
+        check_variable_and_dtype(
+            x,
+            'X',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'uint16',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            'paddle.tensor.manipulation.fill_diagonal_tensor',
+        )
+        check_variable_and_dtype(
+            y,
+            'Y',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'uint16',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            'paddle.tensor.manipulation.fill_diagonal_tensor',
+        )
+        helper = LayerHelper('fill_diagonal_tensor', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='fill_diagonal_tensor',
+            inputs={
+                'X': x,
+                'Y': y,
+            },
+            outputs={'Out': out},
+            attrs={
+                'offset': offset,
+                'dim1': dim1,
+                'dim2': dim2,
+            },
+        )
+        return out
 
 
 def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
@@ -1286,7 +1349,7 @@ def broadcast_tensors(input, name=None):
     """
 
     num_inputs = len(input)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.broadcast_tensors(input)
     else:
         check_type(input, 'input', (list, tuple), 'broadcast_tensors')
@@ -2607,9 +2670,31 @@ def unique(
     else:
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         out, indices, inverse, counts = _C_ops.unique(
             x, return_index, return_inverse, return_counts, axis, attr_dtype
+        )
+        outs = [out]
+        if return_index:
+            outs.append(indices)
+        if return_inverse:
+            outs.append(inverse)
+        if return_counts:
+            outs.append(counts)
+
+        if len(outs) == 1:
+            return outs[0]
+
+        return tuple(outs)
+    elif in_pir_mode():
+        out, indices, inverse, counts = _C_ops.unique(
+            x,
+            return_index,
+            return_inverse,
+            return_counts,
+            axis,
+            attr_dtype,
+            True,
         )
         outs = [out]
         if return_index:
@@ -3952,6 +4037,184 @@ def reshape_(x, shape, name=None):
                 f" got '{type(shape)}.'"
             )
 
+        return out
+
+
+def atleast_1d(*inputs, name=None):
+    """
+    Convert inputs to tensors and return the view with at least 1-dimension. Scalar inputs are converted,
+    one or high-dimensional inputs are preserved.
+
+    Args:
+        inputs (Tensor|list(Tensor)): One or more tensors. The data type is ``float16``, ``float32``, ``float64``, ``int16``, ``int32``, ``int64``, ``int8``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16`` or ``bool``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        One Tensor, if there is only one input.
+        List of Tensors, if there are more than one inputs.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # one input
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> out = paddle.atleast_1d(x)
+            >>> print(out)
+            Tensor(shape=[1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [123])
+
+            >>> # more than one inputs
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> y = paddle.to_tensor([1.23], dtype='float32')
+            >>> out = paddle.atleast_1d(x, y)
+            >>> print(out)
+            [Tensor(shape=[1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [123]), Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.23000002])]
+
+            >>> # more than 1-D input
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> y = paddle.to_tensor([[1.23]], dtype='float32')
+            >>> out = paddle.atleast_1d(x, y)
+            >>> print(out)
+            [Tensor(shape=[1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [123]), Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1.23000002]])]
+    """
+    out = []
+    for tensor in inputs:
+        tensor = paddle.to_tensor(tensor)
+        if tensor.dim() == 0:
+            result = tensor.reshape((1,))
+        else:
+            result = tensor
+        out.append(result)
+
+    if len(out) == 1:
+        return out[0]
+    else:
+        return out
+
+
+def atleast_2d(*inputs, name=None):
+    """
+    Convert inputs to tensors and return the view with at least 2-dimension. Two or high-dimensional inputs are preserved.
+
+    Args:
+        inputs (Tensor|list(Tensor)): One or more tensors. The data type is ``float16``, ``float32``, ``float64``, ``int16``, ``int32``, ``int64``, ``int8``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16`` or ``bool``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        One Tensor, if there is only one input.
+        List of Tensors, if there are more than one inputs.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # one input
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> out = paddle.atleast_2d(x)
+            >>> print(out)
+            Tensor(shape=[1, 1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[123]])
+
+            >>> # more than one inputs
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> y = paddle.to_tensor([1.23], dtype='float32')
+            >>> out = paddle.atleast_2d(x, y)
+            >>> print(out)
+            [Tensor(shape=[1, 1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[123]]), Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1.23000002]])]
+
+            >>> # more than 2-D input
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> y = paddle.to_tensor([[[1.23]]], dtype='float32')
+            >>> out = paddle.atleast_2d(x, y)
+            >>> print(out)
+            [Tensor(shape=[1, 1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[123]]), Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1.23000002]]])]
+    """
+    out = []
+    for tensor in inputs:
+        tensor = paddle.to_tensor(tensor)
+        if tensor.dim() == 0:
+            result = tensor.reshape((1, 1))
+        elif tensor.dim() == 1:
+            result = paddle.unsqueeze(tensor, axis=0)
+        else:
+            result = tensor
+        out.append(result)
+
+    if len(out) == 1:
+        return out[0]
+    else:
+        return out
+
+
+def atleast_3d(*inputs, name=None):
+    """
+    Convert inputs to tensors and return the view with at least 3-dimension. Three or high-dimensional inputs are preserved.
+
+    Args:
+        inputs (Tensor|list(Tensor)): One or more tensors. The data type is ``float16``, ``float32``, ``float64``, ``int16``, ``int32``, ``int64``, ``int8``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16`` or ``bool``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        One Tensor, if there is only one input.
+        List of Tensors, if there are more than one inputs.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # one input
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> out = paddle.atleast_3d(x)
+            >>> print(out)
+            Tensor(shape=[1, 1, 1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[[123]]])
+
+            >>> # more than one inputs
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> y = paddle.to_tensor([1.23], dtype='float32')
+            >>> out = paddle.atleast_3d(x, y)
+            >>> print(out)
+            [Tensor(shape=[1, 1, 1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[[123]]]), Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1.23000002]]])]
+
+            >>> # more than 3-D input
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> y = paddle.to_tensor([[[[1.23]]]], dtype='float32')
+            >>> out = paddle.atleast_3d(x, y)
+            >>> print(out)
+            [Tensor(shape=[1, 1, 1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[[123]]]), Tensor(shape=[1, 1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[1.23000002]]]])]
+    """
+    out = []
+    for tensor in inputs:
+        tensor = paddle.to_tensor(tensor)
+        if tensor.dim() == 0:
+            result = tensor.reshape((1, 1, 1))
+        elif tensor.dim() == 1:
+            result = paddle.unsqueeze(tensor, axis=[0, 2])
+        elif tensor.dim() == 2:
+            result = paddle.unsqueeze(tensor, axis=2)
+        else:
+            result = tensor
+        out.append(result)
+
+    if len(out) == 1:
+        return out[0]
+    else:
         return out
 
 
@@ -5592,3 +5855,46 @@ def index_fill_(x, index, axis, value, name=None):
 
     """
     return _index_fill_impl(x, index, axis, value, True)
+
+
+def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
+    """
+    Embed the values of Tensor ``y`` into Tensor ``x`` along the diagonal elements
+    of Tensor ``x``, with respect to ``axis1`` and ``axis2``.
+
+    This function returns a tensor with fresh storage.
+
+    The argument ``offset`` controls which diagonal to consider:
+
+    - If ``offset`` = 0, it is the main diagonal.
+    - If ``offset`` > 0, it is above the main diagonal.
+    - If ``offset`` < 0, it is below the main diagonal.
+
+    Note:
+        ``y`` should have the same shape as :ref:`paddle.diagonal <api_paddle_diagonal>`.
+
+    Args:
+        x (Tensor): ``x`` is the original Tensor. Must be at least 2-dimensional.
+        y (Tensor): ``y`` is the Tensor to embed into ``x``
+        offset (int, optional): which diagonal to consider. Default: 0 (main diagonal).
+        axis1 (int, optional): first axis with respect to which to take diagonal. Default: 0.
+        axis2 (int, optional): second axis with respect to which to take diagonal. Default: 1.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, Tensor with diagonal embedeed with ``y``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.arange(6.0).reshape((2, 3))
+            >>> y = paddle.ones((2,))
+            >>> out = x.diagonal_scatter(y)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[1., 1., 2.],
+                    [3., 1., 5.]])
+
+    """
+    return fill_diagonal_tensor(x, y, offset, axis1, axis2, name)

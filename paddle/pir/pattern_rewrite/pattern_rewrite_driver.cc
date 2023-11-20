@@ -47,8 +47,8 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
     matcher_.ApplyDefaultCostModel();
     if (config.strict_mode != pir::GreedyRewriteStrictness::AnyOp) {
       for (auto& block : region_) {
-        for (auto& op_item : *block) {
-          strict_mode_filtered_ops_.insert(op_item);
+        for (auto& op_item : block) {
+          strict_mode_filtered_ops_.insert(&op_item);
         }
       }
     }
@@ -67,8 +67,8 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
       worklist_map_.clear();
 
       for (auto& block_item : region_) {
-        for (auto& op_item : *block_item) {
-          worklist_.push_back(op_item);
+        for (auto& op_item : block_item) {
+          worklist_.push_back(&op_item);
         }
       }
       if (config_.use_top_down_traversal) {
@@ -138,8 +138,8 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
       for (uint32_t i = 0; i < op->num_regions(); ++i) {
         auto& region = op->region(i);
         for (auto& block : region) {
-          for (auto& op_item : *block) {
-            RemoveFromWorklist(op_item);
+          for (auto& op_item : block) {
+            RemoveFromWorklist(&op_item);
           }
         }
       }
