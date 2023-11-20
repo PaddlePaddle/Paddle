@@ -19,6 +19,7 @@ from .dataset import ComposeDataset
 from .dataset import ChainDataset
 from .dataset import random_split
 from .dataset import Subset
+from .dataset import ConcatDataset
 
 from .batch_sampler import BatchSampler
 from .batch_sampler import DistributedBatchSampler

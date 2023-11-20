@@ -101,7 +101,7 @@ TEST(CinnJitInstruction, Run) {
       auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
           *program, target, scope);
 
-      std::vector<::pir::Operation*> ops = {*it};
+      std::vector<::pir::Operation*> ops = {it};
       auto group = std::make_shared<cinn::hlir::framework::pir::Group>(ops);
       group->output_ops.insert(*it);
       auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
@@ -110,35 +110,35 @@ TEST(CinnJitInstruction, Run) {
            cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
       };
 
-      auto out_type = (*it)->result(0).type();
+      auto out_type = it->result(0).type();
 
       std::vector<pir::Value> vec_ins;
 
-      for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-        vec_ins.push_back(value_map.at((*it)->operand_source(i)));
+      for (size_t i = 0; i < it->num_operands(); ++i) {
+        vec_ins.push_back(value_map.at(it->operand_source(i)));
       }
 
       ::pir::Operation* cinn_op =
           ::pir::Operation::Create(vec_ins, op_attrs, {out_type}, op_info);
 
-      value_map[(*it)->result(0)] = cinn_op->result(0);
+      value_map[it->result(0)] = cinn_op->result(0);
 
       ir_program->block()->push_back(cinn_op);
     } else {
       std::vector<pir::Value> vec_ins;
 
-      for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-        vec_ins.push_back(value_map.at((*it)->operand_source(i)));
+      for (size_t i = 0; i < it->num_operands(); ++i) {
+        vec_ins.push_back(value_map.at(it->operand_source(i)));
       }
 
-      auto type1 = (*it)->result(0).type();
-      ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo((*it)->name());
-      ::pir::Operation* op = ::pir::Operation::Create(
-          vec_ins, (*it)->attributes(), {type1}, info1);
+      auto type1 = it->result(0).type();
+      ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo(it->name());
+      ::pir::Operation* op =
+          ::pir::Operation::Create(vec_ins, it->attributes(), {type1}, info1);
 
       ir_program->block()->push_back(op);
 
-      value_map[(*it)->result(0)] = op->result(0);
+      value_map[it->result(0)] = op->result(0);
     }
   }
 
