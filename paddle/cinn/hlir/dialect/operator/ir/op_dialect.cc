@@ -38,6 +38,7 @@ void OperatorDialect::initialize() {
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"  // NOLINT
       >();
   RegisterOp<GroupOp>();
+  RegisterOp<ConcatOp>();
   RegisterAttribute<GroupInfoAttribute>();
   RegisterAttribute<CUDAJITInfoAttribute>();
 }
