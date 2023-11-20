@@ -19,7 +19,11 @@
 namespace pir {
 void ControlFlowDialect::initialize() {
   RegisterTypes<StackType, InletType, OutletType>();
-  RegisterOps<YieldOp, CreateStackOp, PushBackOp, PopBackOp, HasElementsOp>();
+  RegisterOps<YieldOp,
+              StackCreateOp,
+              TuplePushOp,
+              TuplePushOp,
+              HasElementsOp>();
 }
 
 void ControlFlowDialect::PrintType(pir::Type type, std::ostream &os) const {
@@ -38,7 +42,7 @@ void ControlFlowDialect::PrintType(pir::Type type, std::ostream &os) const {
 
 void ControlFlowDialect::PrintOperation(pir::Operation *op,
                                         pir::IrPrinter &printer) const {
-  if (auto create_op = op->dyn_cast<CreateStackOp>()) {
+  if (auto create_op = op->dyn_cast<StackCreateOp>()) {
     create_op.Print(printer);
   } else {
     printer.PrintGeneralOperation(op);

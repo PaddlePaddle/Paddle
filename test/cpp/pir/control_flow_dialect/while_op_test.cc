@@ -98,7 +98,7 @@ TEST(while_op_test, network_with_backward) {
   // }
   auto cond_value = builder.Build<LessThanOp>(i, ten).out();
 
-  auto [stack, inlet, outlet] = builder.Build<pir::CreateStackOp>().out();
+  auto [stack, inlet, outlet] = builder.Build<pir::StackCreateOp>().out();
   (void)(stack);
   auto while_op =
       builder.Build<WhileOp>(cond_value, std::vector<pir::Value>{i, x});
@@ -116,7 +116,7 @@ TEST(while_op_test, network_with_backward) {
   // comput new condition value: new_i < new_ten
   auto new_cond_value = builder.Build<LessThanOp>(new_i, ten).out();
 
-  builder.Build<pir::PushBackOp>(
+  builder.Build<pir::TuplePushOp>(
       inlet, std::initializer_list<pir::Value>{body_x_argument});
 
   builder.Build<pir::YieldOp>(
@@ -146,7 +146,7 @@ TEST(while_op_test, network_with_backward) {
   auto local_x_out_grad_arg = bwd_body_block->AddArgument(x.type());
   auto local_y_grad_arg = bwd_body_block->AddArgument(y.type());
 
-  auto pop_op = builder.Build<pir::PopBackOp>(outlet);
+  auto pop_op = builder.Build<pir::TuplePushOp>(outlet);
   auto bwd_body_x_argument = pop_op.outlet_element(0);
 
   auto add_grad_op =
