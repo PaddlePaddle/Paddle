@@ -179,11 +179,13 @@ class TestRollAPI(unittest.TestCase):
 
         paddle.enable_static()
         # case 1:
-        with program_guard(paddle.static.Program(), paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
             x.desc.set_need_check_feed(False)
             z = paddle.roll(x, shifts=1)
-            exe = paddle.static.Executor(base.CPUPlace())
+            exe = paddle.static.Executor(paddle.CPUPlace())
             (res,) = exe.run(
                 paddle.static.default_main_program(),
                 feed={'x': self.data_x},
@@ -196,11 +198,13 @@ class TestRollAPI(unittest.TestCase):
             np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 2:
-        with program_guard(paddle.static.Program(), paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
             x.desc.set_need_check_feed(False)
             z = paddle.roll(x, shifts=1, axis=0)
-            exe = paddle.static.Executor(base.CPUPlace())
+            exe = paddle.static.Executor(paddle.CPUPlace())
             (res,) = exe.run(
                 paddle.static.default_main_program(),
                 feed={'x': self.data_x},

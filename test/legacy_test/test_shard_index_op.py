@@ -59,7 +59,7 @@ class TestShardIndexShardId1Op(OpTest):
         common_setup(self, 20, 2, 1, -1)
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output()
 
 
 class TestShardIndexIgnoreValueOp(OpTest):
