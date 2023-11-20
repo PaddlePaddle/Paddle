@@ -197,6 +197,40 @@ class TestReshardNdMesh:
 
         assert np.equal(out.shape, input_tensor.shape).all()
 
+    def test_partial_replicate_to_shard_replicated(self, dev_ctx):
+        paddle.seed(self._seeds)
+        a = paddle.randn(self._shape).astype(self._dtype)
+        in_shard_specs = [None for i in range(len(self._shape))]
+        out_shard_specs = [None for i in range(len(self._shape))]
+
+        dist_attr = dist.DistAttr(
+            mesh=self._mesh, sharding_specs=in_shard_specs
+        )
+        dist_attr._set_partial_dims([0])
+
+        out_shard_specs[0] = "x"
+        out_dist_attr = dist.DistAttr(
+            mesh=self._mesh, sharding_specs=out_shard_specs
+        )
+
+        input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+
+        reshard_func = core.SameNdMeshReshardFunction()
+        assert reshard_func.is_suitable(input_tensor, out_dist_attr)
+
+        out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
+
+        # check the value of input tensor
+        out_expected_local_tensor_list = paddle.split(
+            a, num_or_sections=self._mesh.shape[0], axis=0
+        )
+        index = dist.get_rank() % self._mesh.shape[0]
+        np.testing.assert_equal(
+            out._local_value().numpy(),
+            out_expected_local_tensor_list[index].numpy(),
+        )
+        assert np.equal(out.shape, input_tensor.shape).all()
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -210,6 +244,7 @@ class TestReshardNdMesh:
         self.test_shard_to_shard(dev_ctx)
         self.test_shard_partial_to_shard_replicated(dev_ctx)
         self.test_shard_partial_to_replicated(dev_ctx)
+        self.test_partial_replicate_to_shard_replicated(dev_ctx)
 
 
 if __name__ == '__main__':

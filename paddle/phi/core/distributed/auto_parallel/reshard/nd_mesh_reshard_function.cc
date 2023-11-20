@@ -19,6 +19,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_r_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
@@ -106,7 +107,8 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     const auto in_partial_status = in_dist_attr.partial_status();
     const auto& out_partial_status = out_dist_attr_orig.partial_status();
     for (const auto& kv : in_partial_status) {
-      if (out_partial_status.count(kv.first) != 0) {
+      if (out_partial_status.count(kv.first) != 0 ||
+          out_dist_attr_orig.is_shard(kv.first)) {
         continue;
       }
       VLOG(3) << "Step1: partial axis " << kv.first;
@@ -179,11 +181,13 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     }
   }
 
+  // replicated to partial
   // 3. Change replicated to partial
   if (out_dist_attr_orig.is_partial()) {
     const auto& in_partial_status = out->dist_attr().partial_status();
     const auto& out_partial_status = out_dist_attr_orig.partial_status();
     for (const auto& kv : out_partial_status) {
+      // no need partial -> partial
       if (in_partial_status.count(kv.first) != 0) {
         continue;
       }
@@ -216,11 +220,15 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     }
   }
 
-  // 4. Change replicated to shard
+  // 4. Change replicated/partial to shard
   for (int64_t i = first_diff_axis; i >= 0; --i) {
     int64_t out_mesh_axis = out_dist_attr_orig.dims_mapping()[i];
     if (out_mesh_axis != -1) {
-      VLOG(3) << "Step4: out_mesh axis " << out_mesh_axis;
+      const auto& in_partial_status = out->dist_attr().partial_status();
+      bool is_partial = in_partial_status.count(out_mesh_axis) != 0;
+
+      VLOG(3) << "Step4: out_mesh axis : " << out_mesh_axis
+              << "; paratial :" << is_partial;
       // 4.1 Calculate the dist_attr after this transform
       TensorDistAttr real_out_dist_attr(out->dist_attr());
       std::vector<int64_t> real_dims_mapping =
@@ -246,9 +254,13 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       // 4.5 Change from replicated to shard
       DistTensor tmp_result;
       SetDistProps(out, in_one_dim_dist_attr);
-      RToSReshardFunction func;
-      func.Eval(dev_ctx, *out, out_one_dim_dist_attr, &tmp_result);
-
+      if (is_partial) {
+        PToSReshardFunction func;
+        func.Eval(dev_ctx, *out, out_one_dim_dist_attr, &tmp_result);
+      } else {
+        RToSReshardFunction func;
+        func.Eval(dev_ctx, *out, out_one_dim_dist_attr, &tmp_result);
+      }
       // 4.6 Reset to the right dist attr
       SetValue(out, tmp_result.value());
       SetDistProps(out, real_out_dist_attr);
