@@ -789,6 +789,7 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
     def concat_wrapper(self, x):
         return paddle.concat(x)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -830,6 +831,7 @@ class TestConcatTripleGradCheck(unittest.TestCase):
     def concat_wrapper(self, x):
         return paddle.concat(x, 1)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -843,14 +845,14 @@ class TestConcatTripleGradCheck(unittest.TestCase):
         out = paddle.concat([data1, data2], 1)
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data2.shape).astype(dtype)
-        gradient_checker.double_grad_check(
+        gradient_checker.triple_grad_check(
             [data1, data2],
             out,
             x_init=[data1_arr, data2_arr],
             place=place,
             eps=eps,
         )
-        gradient_checker.double_grad_check_for_dygraph(
+        gradient_checker.triple_grad_check_for_dygraph(
             self.concat_wrapper,
             [data1, data2],
             out,

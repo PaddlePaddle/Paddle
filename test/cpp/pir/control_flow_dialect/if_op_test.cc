@@ -14,14 +14,24 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(less_than, CPU, ALL_LAYOUT);
 
 using namespace paddle::dialect;  // NOLINT
 
@@ -55,11 +65,7 @@ TEST(if_op_test, base) {
   auto full_op_2 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{3}, true, phi::DataType::BOOL);
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_2.out()});
-
-  std::stringstream ss;
-  program.Print(ss);
-
-  LOG(INFO) << ss.str();
+  LOG(INFO) << program;
 }
 
 TEST(if_op_test, build_by_block) {
@@ -96,16 +102,14 @@ TEST(if_op_test, build_by_block) {
   EXPECT_FALSE(false_block);
   EXPECT_EQ(full_op_2->GetParentProgram(), &program);
 
-  std::stringstream ss;
-  program.Print(ss);
-
-  LOG(INFO) << ss.str();
+  LOG(INFO) << program;
 }
 
 TEST(if_op_test, network_with_backward) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
 
   pir::Program program(ctx);
   pir::Block* block = program.block();
@@ -175,8 +179,7 @@ TEST(if_op_test, network_with_backward) {
 
   builder.SetInsertionPointToEnd(block);
 
-  std::stringstream ss;
-  program.Print(ss);
+  LOG(INFO) << program;
 
-  LOG(INFO) << ss.str();
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 }

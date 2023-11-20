@@ -397,6 +397,32 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
                 local_master_param_out[i], dist_master_param_out[i]
             )
 
+    # intermediate dygraph api test
+    def test_layer_norm_for_intermediate_dist_tensor(self):
+        x = np.random.random((2, 3, 10, 10)).astype("float32")
+        weight = np.random.random(300).astype("float32")
+        bias = np.random.random(300).astype("float32")
+
+        local_x, dist_x = self.create_local_and_dist_tensor_pair(x)
+        local_weight, dist_weight = self.create_local_and_dist_tensor_pair(
+            weight
+        )
+        local_bias, dist_bias = self.create_local_and_dist_tensor_pair(bias)
+
+        local_out = paddle.nn.functional.layer_norm(
+            local_x,
+            local_x.shape[1:],
+            local_weight,
+            local_bias,
+        )
+        dist_out = paddle.nn.functional.layer_norm(
+            dist_x,
+            dist_x.shape[1:],
+            dist_weight,
+            dist_bias,
+        )
+        self.check_tensor_eq(local_out, dist_out)
+
 
 if __name__ == "__main__":
     unittest.main()
