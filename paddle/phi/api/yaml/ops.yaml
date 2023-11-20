@@ -1655,16 +1655,6 @@
   optional : bias, src_mask, cum_offsets, sequence_lengths, rotary_tensor, beam_cache_offset, qkv_out_scale, out_shift, out_smooth
   inplace : (cache_kv -> cache_kv_out), (beam_cache_offset -> beam_cache_offset_out)
 
-- op : encode_rotary_qk
-  args : (Tensor q, Tensor kv, Tensor rotary_emb, Tensor seq_lens, int rotary_emb_dims, bool use_neox)
-  output : Tensor(rotary_q_out), Tensor(rotary_kv_out)
-  infer_meta :
-    func : EncodeRotaryQKInferMeta
-  kernel :
-    func : encode_rotary_qk
-    data_type : q
-  inplace : (q -> rotary_q_out), (kv -> rotary_kv_out)
-
 - op : masked_select
   args : (Tensor x, Tensor mask)
   output : Tensor (out)
