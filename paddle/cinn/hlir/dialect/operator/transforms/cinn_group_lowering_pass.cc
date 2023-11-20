@@ -145,9 +145,8 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
                         phi::errors::Unimplemented(
                             "Only support one group after group fusion"));
       for (auto group : group_list) {
-        auto ir_compiler = std::make_shared<cinn::hlir::framework::PirCompiler>(
+        auto ir_compiler = hlir::framework::PirCompilerManager::Create(
             *program, target, scope);
-        hlir::framework::PirCompilerManager::Instance().insert(ir_compiler);
         auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
         std::unordered_map<std::string, ::pir::Attribute> op_attrs{
             {cinn::dialect::JitKernelOp::kAttrName,

@@ -72,6 +72,16 @@ class PirCompilerManager {
     return instance;
   }
 
+  static std::shared_ptr<PirCompiler> Create(
+      const ::pir::Program& prog,
+      const Target& target,
+      const std::shared_ptr<Scope>& scope) {
+    std::shared_ptr<PirCompiler> compiler =
+        std::make_shared<PirCompiler>(prog, target, scope);
+    PirCompilerManager::Instance().insert(compiler);
+    return compiler;
+  }
+
   void insert(const std::shared_ptr<PirCompiler>& compiler) {
     compilers_.push_back(compiler);
   }
