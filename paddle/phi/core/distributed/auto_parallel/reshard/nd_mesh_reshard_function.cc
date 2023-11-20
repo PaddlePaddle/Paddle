@@ -181,13 +181,11 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     }
   }
 
-  // replicated to partial
   // 3. Change replicated to partial
   if (out_dist_attr_orig.is_partial()) {
     const auto& in_partial_status = out->dist_attr().partial_status();
     const auto& out_partial_status = out_dist_attr_orig.partial_status();
     for (const auto& kv : out_partial_status) {
-      // no need partial -> partial
       if (in_partial_status.count(kv.first) != 0) {
         continue;
       }
@@ -228,7 +226,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       bool is_partial = in_partial_status.count(out_mesh_axis) != 0;
 
       VLOG(3) << "Step4: out_mesh axis : " << out_mesh_axis
-              << "; paratial :" << is_partial;
+              << "; paratial state :" << is_partial;
       // 4.1 Calculate the dist_attr after this transform
       TensorDistAttr real_out_dist_attr(out->dist_attr());
       std::vector<int64_t> real_dims_mapping =
