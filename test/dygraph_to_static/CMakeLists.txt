@@ -22,7 +22,6 @@ set(TEST_EAGER_OPS
     test_resnet_pure_fp16
     test_se_resnet
     test_sentiment
-    test_seq2seq
     test_tsm
     test_word2vec
     test_yolov3
@@ -64,7 +63,6 @@ set_tests_properties(test_se_resnet PROPERTIES TIMEOUT 900)
 set_tests_properties(test_yolov3 PROPERTIES TIMEOUT 900 LABELS
                                             "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 120)
-set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 150)
 set_tests_properties(test_cycle_gan PROPERTIES TIMEOUT 150)
 set_tests_properties(test_bert PROPERTIES TIMEOUT 120)
 set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 120)
