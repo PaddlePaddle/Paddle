@@ -32,6 +32,7 @@ from .operators import (
     find_compatible_distributed_operator_impls,
     find_distributed_operator_impl_container,
 )
+from .operators.common import _gradient_sync_by_partial_ops
 from .process_group import get_world_process_group
 from .utils import (
     __no_shape_var_type__,
@@ -178,10 +179,6 @@ def _update_op_dims_mapping_and_distoperatorimpl(
     op_dist_attr = dist_op.dist_attr  #
     original_op_dist_attr = copy.deepcopy(op_dist_attr)  #
     updated = dist_op_container.update_dims_mapping(dist_op)
-    if updated and dist_op.serial_op.type in ["layer_norm", "reshape2"]:
-        print(dist_op.serial_op.type)
-        print("before update: ", original_op_dist_attr)
-        print("after update: ", dist_op.dist_attr)
     changed = updated or changed
     # TODO(ljz) remove the below code once we introduce general reshard to replace specifc distopimpls
     reverted = dist_op_container.mapping_to_dist_operator_impl(
@@ -214,15 +211,10 @@ class Completer:
         tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
             tensor_node
         )
-        varname = tensor_desc.name()
         assert tensor_dist_attr is not None
         if tensor_dist_attr.is_annotated("dims_mapping"):
-            if varname == "layer_norm_12.tmp_2":
-                print("layer_norm_12.tmp_2: return")
             return False
-        if varname == "layer_norm_12.tmp_2":
-            print("layer_norm_12.tmp_2: forward")
-            print("layer_norm_12.tmp_2 dist attr", tensor_dist_attr)
+
         tensor_dims_mapping = tensor_dist_attr.dims_mapping
         if fwd:
             dims_mapping_list = []
@@ -370,12 +362,6 @@ class Completer:
                         op_dist_attr.set_output_dims_mapping(
                             tensor_desc.name(), compatible_dims_mapping
                         )
-                    print(
-                        tensor_desc.name(),
-                        op_dims_mapping,
-                        compatible_dims_mapping,
-                        fwd,
-                    )
                     changed = True
 
         # step 2: Infer & Update dims mapping of op node using SPMD Rule.
@@ -515,18 +501,15 @@ class Completer:
                         )
                         if tensor_changed:
                             changed = True
-                            print("tensor changed count: ", count, is_fwd)
                     if node.is_op() and node.op() is not None:
                         op_changed = self._update_op_node_dims_mapping(
                             node, fwd=is_fwd
                         )
                         if op_changed:
                             changed = True
-                            print("op changed count: ", count, is_fwd)
                 graph_changed = self._update_dims_mapping_between_graphs()
                 if graph_changed:
                     changed = True
-                    print("graph changed count: ", count, is_fwd)
             count += 1
             if changed:
                 reach_fix_point = False
@@ -1545,14 +1528,6 @@ class Completer:
             grad_op_dist_attr.impl_idx = fwd_op_dist_attr.impl_idx
 
             # inference partial backward
-            __gradient_sync_by_partial_ops__ = [
-                "matmul_v2_grad",
-                "elementwise_add_grad",
-                "layer_norm_grad",
-                "lookup_table_v2",
-                # "conv",
-            ]
-
             def infer_backward_op_partial_status(
                 vars, grad_op, grad_op_dist_attr
             ):
@@ -1567,10 +1542,17 @@ class Completer:
                 ):
                     activation_grad = grad_op.input("Out@GRAD")[0]
                     param_grads.extend(grad_op.output("Y@GRAD"))
-                    len1 = len(vars[activation_grad].shape)
-                    len2 = len(vars[grad_op.input("Y")[0]].shape)
-                    if len1 > len2:
-                        broadcast_axis_indies = list(range(len1 - len2))
+                    act_ndim = len(vars[activation_grad].shape)
+                    param_ndim = len(vars[grad_op.output("Y@GRAD")[0]].shape)
+                    # TODO handle case where trans_x or trans_y is true
+                    # NOTE we regard axis m as broadcast axis since it is the contracting axis when calculate param grad.
+                    if param_ndim <= 2:
+                        if act_ndim > 1:
+                            broadcast_axis_indies = list(range(act_ndim - 1))
+                    elif act_ndim > param_ndim:
+                        broadcast_axis_indies = list(
+                            range(act_ndim - param_ndim)
+                        )
                 elif grad_op.type == "elementwise_add_grad":
                     activation_grad = grad_op.input("Out@GRAD")[0]
                     param_grads.extend(grad_op.output("Y@GRAD"))
@@ -1616,14 +1598,11 @@ class Completer:
                                         p_grad_name
                                     )
                                 )
-                                print(p_grad_name, str(grad_op))
                                 p_grad_dist_attr._set_partial_dims(
                                     [partial_dim]
                                 )
-                                print(p_grad_dist_attr)
-                                print(grad_op_dist_attr)
 
-            if grad_op.type in __gradient_sync_by_partial_ops__:
+            if grad_op.type in _gradient_sync_by_partial_ops:
                 infer_backward_op_partial_status(
                     vars, grad_op, grad_op_dist_attr
                 )
