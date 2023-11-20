@@ -22,6 +22,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/interface/parse_kernel_key.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -637,6 +638,15 @@ phi::KernelKey GetKernelKey(
     }
   }
 
+  // TODO(zhangbo): Add ParseKernelInterface
+  ParseKernelKeyInterface parse_kernel_key_interface =
+      op->dyn_cast<ParseKernelKeyInterface>();
+  if (parse_kernel_key_interface) {
+    auto parsed_key = parse_kernel_key_interface.ParseKernelKey(op);
+    kernel_dtype = std::get<0>(parsed_key);
+    kernel_backend = std::get<1>(parsed_key);
+  }
+
   if ((kernel_backend == phi::Backend::UNDEFINED ||
        kernel_dtype == phi::DataType::UNDEFINED) &&
       op->num_operands() > 0) {
@@ -666,8 +676,7 @@ phi::KernelKey GetKernelKey(
       // don't know how to select the kernel in the next of op that
       // uses data op outout as inputs. So, we need set kernel backend
       // manually.
-      auto op_res = op->operand_source(i).dyn_cast<pir::OpResult>();
-
+      auto op_res = input_tmp.dyn_cast<pir::OpResult>();
       if (!op_res) {
         continue;
       }
