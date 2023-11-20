@@ -82,15 +82,16 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
 }
 
 pir::Block *IfOp::true_block() {
-  pir::Region &true_region = (*this)->region(0);
-  if (true_region.empty()) true_region.emplace_back();
-  return true_region.front();
+  pir::Region &region = true_region();
+  if (region.empty()) region.emplace_back();
+  return region.front();
 }
 pir::Block *IfOp::false_block() {
-  pir::Region &false_region = (*this)->region(1);
-  if (false_region.empty()) false_region.emplace_back();
-  return false_region.front();
+  pir::Region &region = false_region();
+  if (region.empty()) region.emplace_back();
+  return region.front();
 }
+
 void IfOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();

@@ -77,6 +77,9 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     pir::YieldOp::name(),
     IfOp::name(),
     WhileOp::name(),
+    pir::CreateStackOp::name(),
+    pir::PushBackOp::name(),
+    pir::PopBackOp::name(),
     "cinn_runtime.jit_kernel"};
 
 static bool NeedFallBackCpu(const pir::Operation* op,
@@ -135,6 +138,15 @@ static phi::Backend DeriveBackend(const std::string& op,
     return phi::Backend::CPU;
   }
   return kernel_backend;
+}
+
+static phi::Backend ChooseInputBackend(const phi::Kernel& kernel,
+                                       size_t input_index,
+                                       phi::Backend default_backend) {
+  if (kernel.GetKernelRegisteredType() == phi::KernelRegisteredType::FUNCTION) {
+    return kernel.InputAt(input_index).backend;
+  }
+  return default_backend;
 }
 
 static std::set<std::string> GetInputsByDataOp(pir::Block* block) {
@@ -1017,6 +1029,45 @@ void HandleForSpecialOp(
     }
   }
 
+  if (op_item->isa<::pir::CreateStackOp>() ||
+      op_item->isa<::pir::PushBackOp>()) {
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      if (!cur_in) {
+        vec_inputs.emplace_back();
+        continue;
+      }
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      vec_inputs.push_back(new_in);
+    }
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      op_output_types.push_back(op_item->result(i).type());
+    }
+  }
+
+  if (op_item->isa<::pir::PopBackOp>()) {
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      vec_inputs.push_back(new_in);
+    }
+
+    auto pop_back_op = op_item->dyn_cast<::pir::PopBackOp>();
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      auto cur_inlet_element = pop_back_op.inlet_element(i);
+      PADDLE_ENFORCE_EQ(map_value_pair->count(cur_inlet_element),
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "[%d]'s output of [%s] op MUST be in map pair",
+                            i,
+                            op_item->name()));
+      auto new_inlet_element = map_value_pair->at(cur_inlet_element);
+
+      op_output_types.push_back(new_inlet_element.type());
+    }
+  }
   if (op_item->name() == "cinn_runtime.jit_kernel") {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
@@ -1049,7 +1100,7 @@ void HandleForSpecialOp(
       (*map_value_pair)[op_item->result(i)] = op->result(i);
     }
   }
-  VLOG(6) << "Deep copy a new builtin op: " << op_item->name();
+  VLOG(6) << "Deep copy a new special op: " << op_item->name();
 }
 
 std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
@@ -1194,12 +1245,10 @@ std::vector<pir::Value> BuildInputs(
         auto args_def = kernel.args_def();
         auto input_defs = args_def.input_defs();
 
-        auto dst_backend =
-            DeriveBackend(op_item->name(),
-                          place,
-                          op_info_parser,
-                          kernel.InputAt(tensor_param_index).backend,
-                          i);
+        auto input_backend = ChooseInputBackend(
+            kernel, tensor_param_index, kernel_key.backend());
+        auto dst_backend = DeriveBackend(
+            op_item->name(), place, op_info_parser, input_backend, i);
         VLOG(6) << "Infer kernel backend from input " << i << " of op "
                 << op_item->name();
 
@@ -1253,18 +1302,19 @@ std::vector<pir::Value> BuildInputs(
             auto args_def = kernel.args_def();
             auto input_defs = args_def.input_defs();
 
+            auto input_backend = ChooseInputBackend(
+                kernel, tensor_param_index, kernel_key.backend());
             bool need_trans =
                 (place.GetType() != phi::AllocationType::UNDEFINED) &&
                 (op_info_parser != nullptr &&
                  !op_info_parser->IsTensorAttribute(i)) &&
                 (paddle::experimental::NeedTransformPlace(
-                    place, kernel.InputAt(tensor_param_index).backend, {}));
+                    place, input_backend, {}));
             if (need_trans) {
               VLOG(6) << "need trans from " << place << " to "
                       << kernel_key.backend();
               // build memcopy op
-              auto out_place = phi::TransToPhiPlace(
-                  kernel.InputAt(tensor_param_index).backend);
+              auto out_place = phi::TransToPhiPlace(input_backend);
               pir::Type out_type;
               if (in_i_type.isa<AllocatedDenseTensorType>()) {
                 out_type = AllocatedDenseTensorType::get(
@@ -1317,12 +1367,10 @@ std::vector<pir::Value> BuildInputs(
         auto args_def = kernel.args_def();
         auto input_defs = args_def.input_defs();
 
-        auto dst_backend =
-            DeriveBackend(op_item->name(),
-                          place,
-                          op_info_parser,
-                          kernel.InputAt(tensor_param_index).backend,
-                          i);
+        auto input_backend = ChooseInputBackend(
+            kernel, tensor_param_index, kernel_key.backend());
+        auto dst_backend = DeriveBackend(
+            op_item->name(), place, op_info_parser, input_backend, i);
         VLOG(6) << "Infer kernel backend from input " << i << " of op ";
         bool need_trans =
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
@@ -1355,12 +1403,10 @@ std::vector<pir::Value> BuildInputs(
         auto args_def = kernel.args_def();
         auto input_defs = args_def.input_defs();
 
-        auto dst_backend =
-            DeriveBackend(op_item->name(),
-                          place,
-                          op_info_parser,
-                          kernel.InputAt(tensor_param_index).backend,
-                          i);
+        auto input_backend = ChooseInputBackend(
+            kernel, tensor_param_index, kernel_key.backend());
+        auto dst_backend = DeriveBackend(
+            op_item->name(), place, op_info_parser, input_backend, i);
         VLOG(6) << "Infer kernel backend from input " << i << " of op ";
         bool need_trans =
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&

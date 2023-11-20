@@ -1467,7 +1467,7 @@ def cross(x, y, axis=9, name=None):
              [0., 0., 0.],
              [0., 0., 0.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         axis = K_DEFAULT_DIM if axis is None else axis
         return _C_ops.cross(x, y, axis)
     else:
@@ -1680,7 +1680,7 @@ def bmm(x, y, name=None):
               [60., 60.]]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bmm(x, y)
     else:
         x_shape = x.shape
@@ -1738,7 +1738,7 @@ def histogram(input, bins=100, min=0, max=0, name=None):
             Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [0, 2, 1, 0])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.histogram(input, bins, min, max)
     else:
         helper = LayerHelper('histogram', **locals())
