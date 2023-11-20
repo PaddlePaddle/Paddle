@@ -141,9 +141,10 @@ def main():
     if args.multi_machine:
         multi_machine_dirs = os.listdir(args.log_dir)
         multi_machine_dirs = [
-            os.path.join(args.log_dir, f"machine{i}")
-            for i in range(len(multi_machine_dirs))
-            if os.path.isdir(os.path.join(args.log_dir, f"machine{i}"))
+            os.path.join(args.log_dir, d)
+            for d in multi_machine_dirs
+            if d.startswith("machine")
+            and os.path.isdir(os.path.join(args.log_dir, d))
         ]
         machine_num = len(multi_machine_dirs)
         for i, d in enumerate(multi_machine_dirs):
