@@ -20,7 +20,6 @@ import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
     test_legacy_and_pir_exe_and_pir_api,
-    test_pir_api_only,
 )
 
 import paddle
@@ -393,6 +392,8 @@ class TestForInRange(TestTransform):
     def set_test_func(self):
         self.dygraph_func = for_in_range
 
+    # @test_pir_api_only
+    # TODO(SigureMo): check issue in this ut tomorrow.
     def test_transformed_result_compare(self):
         self.set_test_func()
         self.transformed_result_compare()
@@ -402,7 +403,7 @@ class TestForIterList(TestTransform):
     def set_test_func(self):
         self.dygraph_func = for_iter_list
 
-    @test_pir_api_only
+    @test_legacy_and_pir_exe_and_pir_api
     def test_transformed_result_compare(self):
         self.set_test_func()
         self.transformed_result_compare()
@@ -411,11 +412,6 @@ class TestForIterList(TestTransform):
 class TestForEnumerateSimple(TestForIterList):
     def set_test_func(self):
         self.dygraph_func = for_enumerate_list
-
-    # TODO(gouzil): temp ignore pir_api test
-    def test_transformed_result_compare(self):
-        self.set_test_func()
-        self.transformed_result_compare()
 
 
 class TestForInRangeWithBreak(TestForInRange):
@@ -533,11 +529,6 @@ class TestForOriginalTuple(TestForOriginalList):
 class TestSliceTensorArrayInEnumerate(TestForOriginalList):
     def set_test_func(self):
         self.dygraph_func = tensor_array_slice_in_enumerate
-
-    # TODO(gouzil): temp ignore pir_api test
-    def test_transformed_result_compare(self):
-        self.set_test_func()
-        self.transformed_result_compare()
 
 
 class TestForZip(Dy2StTestBase):
