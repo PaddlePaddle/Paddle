@@ -155,9 +155,9 @@ static phi::Backend ChooseInputBackend(const phi::Kernel& kernel,
 
 static std::set<std::string> GetInputsByDataOp(pir::Block* block) {
   std::set<std::string> data_op_names;
-  for (auto op_item : *block) {
-    if (op_item->isa<DataOp>()) {
-      data_op_names.insert(op_item->attributes()
+  for (auto& op_item : *block) {
+    if (op_item.isa<DataOp>()) {
+      data_op_names.insert(op_item.attributes()
                                .at("name")
                                .dyn_cast<pir::StrAttribute>()
                                .AsString());
@@ -1619,10 +1619,10 @@ void ProcessBlock(
     std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
   auto inputs_by_data_op = GetInputsByDataOp(block);
 
-  for (auto op_item : *block) {
-    VLOG(6) << "op name " << op_item->name();
-    if ((op_item->isa<FeedOp>()) &&
-        inputs_by_data_op.count(op_item->attributes()
+  for (auto& op_item : *block) {
+    VLOG(6) << "op name " << op_item.name();
+    if ((op_item.isa<FeedOp>()) &&
+        inputs_by_data_op.count(op_item.attributes()
                                     .at("name")
                                     .dyn_cast<pir::StrAttribute>()
                                     .AsString())) {
@@ -1631,24 +1631,24 @@ void ProcessBlock(
     }
 
     // HandleSpecialOp
-    if (SpecialLowerOps.count(op_item->name())) {
-      VLOG(6) << "Handle Special Op: [" << op_item->name()
+    if (SpecialLowerOps.count(op_item.name())) {
+      VLOG(6) << "Handle Special Op: [" << op_item.name()
               << "] while lowering to kernel pass";
       HandleForSpecialOp(
-          place, op_item, new_block, ctx, map_op_pair, map_value_pair);
+          place, &op_item, new_block, ctx, map_op_pair, map_value_pair);
       continue;
     }
 
-    auto op_info_parser = GetOpYamlInfoParser(op_item);
-    auto kernel_name = GetKernelName(op_info_parser.get(), op_item);
+    auto op_info_parser = GetOpYamlInfoParser(&op_item);
+    auto kernel_name = GetKernelName(op_info_parser.get(), &op_item);
     auto kernel_key = GetKernelKey(
-        op_item, place, kernel_name, *map_value_pair, op_info_parser.get());
+        &op_item, place, kernel_name, *map_value_pair, op_info_parser.get());
     VLOG(6) << "kernel type " << kernel_key;
 
     // build output type
-    auto op_output_types = BuildOutputs(op_item, kernel_name, kernel_key, ctx);
+    auto op_output_types = BuildOutputs(&op_item, kernel_name, kernel_key, ctx);
     // build input
-    auto vec_inputs = BuildInputs(op_item,
+    auto vec_inputs = BuildInputs(&op_item,
                                   kernel_name,
                                   kernel_key,
                                   place,
@@ -1663,14 +1663,14 @@ void ProcessBlock(
                                        kernel_key,
                                        vec_inputs,
                                        op_output_types,
-                                       op_item,
+                                       &op_item,
                                        new_block,
                                        ctx,
                                        map_op_pair,
                                        map_value_pair);
 
     AddShadowFeedOpForDataOrFeed(
-        place, op_item, op, new_block, ctx, map_op_pair, map_value_pair);
+        place, &op_item, op, new_block, ctx, map_op_pair, map_value_pair);
   }
 }
 
