@@ -231,7 +231,8 @@ Variable* CreateVar(pir::Value value,
                     ValueExecutionInfo* value_exe_info) {
   pir::Operation* def_op = value.dyn_cast<pir::OpResult>().owner();
   bool is_persisable = false;
-  if (def_op->isa<::pir::GetParameterOp>() || def_op->isa<::pir::GetConstantOp>()) {
+  if (def_op->isa<::pir::GetParameterOp>() ||
+      def_op->isa<::pir::GetConstantOp>()) {
     is_persisable = true;
   } else if (def_op->HasAttribute(kAttrIsPersisable)) {
     is_persisable = def_op->attribute(kAttrIsPersisable)

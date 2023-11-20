@@ -163,9 +163,9 @@ const char *GetConstantOp::attributes_name[attributes_num] = {  // NOLINT
     "constant_name"};
 
 void GetConstantOp::Build(Builder &builder,
-                           OperationArgument &argument,
-                           const std::string &name,
-                           Type type) {
+                          OperationArgument &argument,
+                          const std::string &name,
+                          Type type) {
   argument.attributes[attributes_name[0]] =
       pir::StrAttribute::get(builder.ir_context(), name);
   argument.output_types.emplace_back(type);

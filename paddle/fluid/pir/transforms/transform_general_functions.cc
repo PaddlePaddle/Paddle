@@ -23,8 +23,8 @@
 
 namespace pir {
 
-std::string GetParameterNameFromValue(pir::Value value) { 
-  pir::Operation *owner = value.dyn_cast<OpResult>().owner();
+std::string GetParameterNameFromValue(pir::Value value) {
+  pir::Operation* owner = value.dyn_cast<OpResult>().owner();
   std::string name;
   if (owner->isa<GetParameterOp>()) {
     pir::GetParameterOp op = owner->dyn_cast<pir::GetParameterOp>();
@@ -32,21 +32,21 @@ std::string GetParameterNameFromValue(pir::Value value) {
     PADDLE_ENFORCE_NOT_NULL(
         program, phi::errors::InvalidArgument("Program should not be null."));
     name = op->attributes()
-              .at(op.attributes_name[0])
-              .dyn_cast<pir::StrAttribute>()
-              .AsString();
+               .at(op.attributes_name[0])
+               .dyn_cast<pir::StrAttribute>()
+               .AsString();
   } else if (owner->isa<GetConstantOp>()) {
     pir::GetConstantOp op = owner->dyn_cast<pir::GetConstantOp>();
     pir::Program* program = op->GetParentProgram();
     PADDLE_ENFORCE_NOT_NULL(
-      program, phi::errors::InvalidArgument("Program should not be null."));
+        program, phi::errors::InvalidArgument("Program should not be null."));
     name = op->attributes()
-              .at(op.attributes_name[0])
-              .dyn_cast<pir::StrAttribute>()
-              .AsString();
+               .at(op.attributes_name[0])
+               .dyn_cast<pir::StrAttribute>()
+               .AsString();
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-      "Value must be a weight from a GetParameter or a GetConstantOp op."));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Value must be a weight from a GetParameter or a GetConstantOp op."));
   }
   return name;
 }
