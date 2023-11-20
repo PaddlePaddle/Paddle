@@ -361,6 +361,15 @@ class Parallelizer:
             fused_promotion_pass.apply(
                 [main_program], [startup_program], self._pass_context
             )
+        # sequence parallel optimization
+        if self._strategy.sp_optimization.enable:
+            config = copy.deepcopy(self._strategy.sp_optimization.to_dict())
+            config["dist_context"] = self._dist_context
+            config["global_rank"] = rank
+            sp_pass = new_pass(
+                "auto_parallel_sequence_parallel_optimization", config
+            )
+            sp_pass.apply([main_program], [startup_program], self._pass_context)
 
         # data parallel optimization
         if self._strategy.dp_optimization.enable:

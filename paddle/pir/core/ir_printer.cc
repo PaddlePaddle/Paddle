@@ -181,15 +181,15 @@ void IrPrinter::PrintFullOperation(Operation* op) {
 }
 
 void IrPrinter::PrintRegion(const Region& region) {
-  for (auto block : region) {
+  for (auto& block : region) {
     PrintBlock(block);
   }
 }
 
-void IrPrinter::PrintBlock(const Block* block) {
+void IrPrinter::PrintBlock(const Block& block) {
   os << "{\n";
-  for (auto item : *block) {
-    PrintOperation(item);
+  for (auto& item : block) {
+    PrintOperation(&item);
     os << newline;
   }
   os << "}\n";
@@ -200,7 +200,7 @@ void IrPrinter::PrintValue(Value v) {
     os << "<<NULL VALUE>>";
     return;
   }
-  const void* key = static_cast<const void*>(v.impl());
+  const void* key = v.impl();
   auto ret = aliases_.find(key);
   if (ret != aliases_.end()) {
     os << ret->second;
@@ -310,6 +310,11 @@ void IrPrinter::PrintOpReturnType(Operation* op) {
       [this]() { this->os << ", "; });
 }
 
+void IrPrinter::AddValueAlias(Value v, const std::string& alias) {
+  const void* key = v.impl();
+  IR_ENFORCE(aliases_.find(key) == aliases_.end(), "Value already has alias");
+  aliases_[key] = alias;
+}
 void Dialect::PrintOperation(Operation* op, IrPrinter& printer) const {
   printer.PrintGeneralOperation(op);
 }

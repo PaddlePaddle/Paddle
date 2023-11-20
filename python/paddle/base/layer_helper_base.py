@@ -97,7 +97,9 @@ class LayerHelperBase:
                 name if name else None,
                 True,
             )
-        elif isinstance(value, (Variable, core.eager.Tensor)):
+        elif isinstance(
+            value, (Variable, core.eager.Tensor, paddle.pir.OpResult)
+        ):
             return value
         else:
             raise TypeError(

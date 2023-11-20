@@ -13,11 +13,10 @@ set(STANDALONE_EXECUTOR_DEPS
     interpretercore_garbage_collector
     workqueue
     op_dialect_vjp
-    pd_op_to_kernel_pass
+    pir_transforms
     pir_adaptor
     program_translator
     instruction_base
-    pd_inplace_pass
     pir
     plan)
 

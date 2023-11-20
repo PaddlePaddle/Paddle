@@ -148,6 +148,12 @@ class MPOptimizationConfig(BaseConfig):
         super().__init__(category, config_dict)
 
 
+class SPOptimizationConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.SP_OPTIMIZATION
+        super().__init__(category, config_dict)
+
+
 class Strategy(BaseConfig):
     """
     The `Strategy` object is used to configure the parallelization and optimization behaviors.
@@ -232,3 +238,6 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.MP_OPTIMIZATION, None)
         self.mp_optimization = MPOptimizationConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.SP_OPTIMIZATION, None)
+        self.sp_optimization = SPOptimizationConfig(config_dict)

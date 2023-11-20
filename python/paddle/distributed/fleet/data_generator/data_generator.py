@@ -156,13 +156,13 @@ class DataGenerator:
 
         Returns:
             Returns the data processed by the user.
-              The data format is list or tuple:
+            The data format is list or tuple:
             [(name, [feasign, ...]), ...]
-              or ((name, [feasign, ...]), ...)
+            or ((name, [feasign, ...]), ...)
 
             For example:
             [("words", [1926, 08, 17]), ("label", [1])]
-              or (("words", [1926, 08, 17]), ("label", [1]))
+            or (("words", [1926, 08, 17]), ("label", [1]))
 
         Note:
             The type of feasigns must be in int or float. Once the float
