@@ -302,7 +302,7 @@ int CustomGenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                                  void* workspace,
                                  cudaStream_t stream) TRT_NOEXCEPT {
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
-  // TODO(inference): generic plugin do not support INT8 precision now.
+  // TODO(inference): custom generic plugin do not support INT8 precision now.
   auto protoType2PhiType =
       [&](GenerateCustomGenericPluginDataType proto_type,
           nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
@@ -359,8 +359,8 @@ int CustomGenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                             place));
     (*tensor_inputs_)[i] = paddle::Tensor(
         std::make_shared<phi::DenseTensor>(input_alloc, input_meta));
+    kernel_ctx.EmplaceBackInput(std::move((*tensor_inputs_)[i]));
   }
-  kernel_ctx.EmplaceBackInputs(*tensor_inputs_);
 
   // output
   for (int i = 0; i < getNbOutputs(); i++) {
@@ -383,8 +383,9 @@ int CustomGenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                             place));
     (*tensor_outputs_)[i] = paddle::Tensor(
         std::make_shared<phi::DenseTensor>(output_alloc, output_meta));
+    kernel_ctx.EmplaceBackOutput(std::move((*tensor_outputs_)[i]));
   }
-  kernel_ctx.EmplaceBackOutputs(*tensor_outputs_);
+
   auto& op_meta_info_map = OpMetaInfoMap::Instance();
   const auto& meta_info_map = op_meta_info_map.GetMap();
   auto& op_info = meta_info_map.at(op_desc_.Type()).front();
@@ -435,6 +436,45 @@ int CustomGenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                                 OpMetaInfoHelper::GetInplaceMap(op_info));
   kernel_fn(&kernel_ctx);
   kernel_ctx.AssignInplaceOutputs();
+
+  // sync output tensor data into TensorRT output
+  auto* calc_outs = kernel_ctx.AllMutableOutput();
+  for (int i = 0; i < getNbOutputs(); i++) {
+    auto calc_out =
+        std::dynamic_pointer_cast<phi::DenseTensor>(calc_outs->at(i).impl());
+    if (reinterpret_cast<void*>(calc_out->data()) !=
+        reinterpret_cast<void*>(outputs[i])) {
+      LOG_FIRST_N(WARNING, 1)
+          << "You created new Tensor(s) in custom operator(s) to use as "
+             "output(s), "
+             "and we will do cudaMemcpy to the output(s) address needed by the "
+             "TensorRT plugin,"
+             "inplace operation is highly recommended for better performance.";
+      auto const& output_dims = output_desc[i].dims;
+      std::vector<int> output_shape;
+      for (int j = 0; j < output_dims.nbDims; j++)
+        output_shape.push_back(output_dims.d[j]);
+
+      int output_numel = 1;
+      for (int k : output_shape) output_numel *= k;
+
+      auto data_type_and_size =
+          protoType2PhiType(outputs_data_type_[i], data_type);
+      phi::DenseTensorMeta output_meta(data_type_and_size.first,
+                                       phi::make_ddim(output_shape));
+      std::shared_ptr<phi::Allocation> output_alloc(
+          new phi::Allocation(reinterpret_cast<void*>(outputs[i]),
+                              output_numel * data_type_and_size.second,
+                              place));
+      phi::DenseTensor dense_output =
+          std::move(phi::DenseTensor(output_alloc, output_meta));
+      cudaMemcpy(static_cast<void*>(dense_output.data()),
+                 static_cast<void*>(calc_out->data()),
+                 output_numel * data_type_and_size.second,
+                 cudaMemcpyDeviceToDevice);
+    }
+  }
+
   return cudaGetLastError() != cudaSuccess;
 }
 
