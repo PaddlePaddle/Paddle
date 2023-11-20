@@ -44,7 +44,7 @@ bool PyCheckTensor(PyObject* obj);
 void ShareTensor(PyObject* src, PyObject* dst);
 
 // Internal use only, to expose the Tensor type to Python.
-paddle::Tensor CastPyArg2Tensor(PyObject* obj, Py_ssize_t arg_pos);
+paddle::Tensor& CastPyArg2Tensor(PyObject* obj, Py_ssize_t arg_pos);
 
 // Internal use only, to expose the Tensor type to Python.
 PyObject* ToPyObject(const paddle::Tensor& value,

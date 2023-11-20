@@ -610,8 +610,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                 << " to CustomOpKernelContext. Add vector<Tensor> size = "
                 << ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
       } else {
-        paddle::Tensor& tensor =
-            std::move(CastPyArg2Tensor(obj, i + 1));  // NOLINT
+        paddle::Tensor& tensor = CastPyArg2Tensor(obj, i + 1);  // NOLINT
         ConvertAllInputsToDistTensor(mesh, tensor);
         ctx.EmplaceBackInput(tensor);
         VLOG(7) << "Custom operator add input " << input
