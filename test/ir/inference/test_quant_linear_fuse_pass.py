@@ -55,7 +55,9 @@ class TestQuantLinearFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         # for gpu
-        config = self.create_inference_config(use_gpu=True)
+        config = self.create_inference_config(
+            use_gpu=True, passes=["quant_linear_fuse_pass"]
+        )
         yield config, ["quant_linear"], (0.4, 0.3)
 
     def is_program_valid(self, prog_config):
@@ -254,7 +256,6 @@ class TestQuantLinearFusePass(PassAutoScanTest):
             quant=False,
             max_examples=100,
             passes=["quant_linear_fuse_pass"],
-            only_use_this_pass=True,
         )
 
 
