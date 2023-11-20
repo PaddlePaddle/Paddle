@@ -16,6 +16,7 @@
 #include <Python.h>
 #include <algorithm>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -744,6 +745,19 @@ void BindOpResult(py::module *m) {
                   "Currently, we can only get name of OpResult that "
                   "is "
                   "persistable"));
+            }
+          })
+      .def_property_readonly(
+          "id",
+          [](OpResult &self) {
+            if (self.impl() == nullptr) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Currently, we can only get id of OpResult whose impl "
+                  "is not nullptr"));
+            } else {
+              std::stringstream ss;
+              ss << std::hex << self.impl();
+              return ss.str();
             }
           })
       .def("initialized",
