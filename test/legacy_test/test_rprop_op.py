@@ -26,10 +26,8 @@ def rprop_wrapper(
     prev,
     learning_rate,
     master_param=None,
-    delta_min=1e-6,
-    delta_max=50,
-    eta_negative=0.5,
-    eta_positive=1.2,
+    learning_rate_range=np.array((1e-5, 50)).astype("float32"),
+    etas=np.array((0.5, 1.2)).astype("float32"),
     multi_precision=False,
 ):
     paddle._C_ops.rprop_(
@@ -38,10 +36,8 @@ def rprop_wrapper(
         prev,
         learning_rate,
         None,
-        delta_min,
-        delta_max,
-        eta_negative,
-        eta_positive,
+        learning_rate_range,
+        etas,
         False,
     )
 
@@ -65,8 +61,8 @@ class TestRpropOp(OpTest):
         np.multiply(prevs, 100, out=prevs)
         np.multiply(learning_rates, 100, out=learning_rates)
 
-        delta_min = 1e-6
-        delta_max = 50
+        learning_rate_min = 1e-5
+        learning_rate_max = 50
         eta_negative = 0.5
         eta_positive = 1.2
 
@@ -86,8 +82,8 @@ class TestRpropOp(OpTest):
             sign[np.less(sign, 0)] = eta_negative
             sign[np.equal(sign, 0)] = 1
             np.multiply(lr, sign, out=lr)
-            lr[np.less(lr, delta_min)] = delta_min
-            lr[np.greater(lr, delta_max)] = delta_max
+            lr[np.less(lr, learning_rate_min)] = learning_rate_min
+            lr[np.greater(lr, learning_rate_max)] = learning_rate_max
 
             grad = grad.copy()
             grad[np.equal(sign, eta_negative)] = 0
@@ -101,8 +97,10 @@ class TestRpropOp(OpTest):
         self.inputs = {
             "param": params,
             "grad": grads,
-            'prev': prevs,
+            "prev": prevs,
             "learning_rate": learning_rates,
+            "learning_rate_range": np.array((1e-5, 50)).astype("float32"),
+            "etas": np.array((0.5, 1.2)).astype("float32"),
         }
 
         self.outputs = {
@@ -111,16 +109,9 @@ class TestRpropOp(OpTest):
             "learning_rate_out": learning_rate_outs,
         }
 
-        self.attrs = {
-            'delta_min': delta_min,
-            'delta_max': delta_max,
-            'eta_negative': eta_negative,
-            'eta_positive': eta_positive,
-        }
-
     def conf(self):
-        self.h = 2
-        self.w = 3
+        self.h = 102
+        self.w = 105
 
     def test_check_output(self):
         self.check_output(check_pir=True)

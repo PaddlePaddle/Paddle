@@ -32,20 +32,18 @@ class Rprop(Optimizer):
 
     def __init__(
         self,
-        delta=0.01,
-        delta_min=1e-6,
-        delta_max=50,
+        learning_rate=0.01,
+        learning_rate_range=(1e-5, 50),
         parameters=None,
-        eta_negative=0.5,
-        eta_positive=1.2,
+        etas=(0.5, 1.2),
         grad_clip=None,
         multi_precision=False,
         name=None,
     ):
-        if delta is None:
+        if learning_rate is None:
             raise ValueError("learning_rate is not set")
         super().__init__(
-            learning_rate=delta,
+            learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=0.0,
             grad_clip=grad_clip,
@@ -55,16 +53,14 @@ class Rprop(Optimizer):
         self._multi_precision = multi_precision
         self._master_weights = {}
         self._prevs = []
-        self._lrs = []
-        self._delta_min = delta_min
-        self._delta_max = delta_max
-        self._eta_negative = eta_negative
-        self._eta_positive = eta_positive
+        self._learning_rates = []
+        self._learning_rate_range = learning_rate_range
+        self._etas = etas
         for p in parameters:
             prev = zeros_like(p)
             self._prevs.append(prev)
-            lr = p.new().resize_as_(p).fill_(delta)
-            self._lrs.append(lr)
+            lr = p.new().resize_as_(p).fill_(learning_rate)
+            self._learning_rates.append(lr)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -107,12 +103,10 @@ class Rprop(Optimizer):
                 param_and_grad[0],
                 param_and_grad[1],
                 self._prevs,
-                self._lrs,
+                self._learning_rates,
                 master_weight,
-                self._delta_min,
-                self._delta_max,
-                self._eta_negative,
-                self._eta_positive,
+                self._learning_rate_range,
+                self._etas,
                 find_master,
             )
 
@@ -122,29 +116,25 @@ class Rprop(Optimizer):
             # create the optimize op
 
             inputs = {
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                'Prev': self._prevs,
-                "LearningRate": self._lrs,
+                "param": param_and_grad[0],
+                "grad": param_and_grad[1],
+                "prev": self._prevs,
+                "learning_rate": self._learning_rates,
+                "learning_rate_range": self._learning_rate_range,
+                "etas": self._etas,
             }
 
             outputs = {
-                "ParamOut": param_and_grad[0],
-                "PrevOut": self._prevs,
-                "LearningRateOut": self._lrs,
+                "param_out": param_and_grad[0],
+                "prev_out": self._prevs,
+                "learning_rate_out": self._learning_rates,
             }
 
-            attrs = {
-                'delta_min': self._delta_min,
-                'delta_max': self._delta_max,
-                'eta_negative': self._eta_negative,
-                'eta_positive': self._eta_positive,
-                "multi_precision": find_master,
-            }
+            attrs = {"multi_precision": find_master}
 
             if find_master:
-                inputs["MasterParam"] = master_weight
-                outputs["MasterParamOut"] = master_weight
+                inputs["master_param"] = master_weight
+                outputs["master_param_out"] = master_weight
 
             rprop_op = block.append_op(
                 type=self.type,

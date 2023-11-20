@@ -27,10 +27,8 @@ void RpropKernelCPUImpl(const Context& dev_ctx,
                         const DenseTensor& grad,
                         const DenseTensor& prev,
                         const DenseTensor& learning_rate,
-                        float delta_min,
-                        float delta_max,
-                        float eta_negative,
-                        float eta_positive,
+                        const DenseTensor& learning_rate_range,
+                        const DenseTensor& etas,
                         DenseTensor* param_out,
                         DenseTensor* prev_out,
                         DenseTensor* learning_rate_out) {
@@ -39,6 +37,10 @@ void RpropKernelCPUImpl(const Context& dev_ctx,
   auto param_out_eigen = EigenVector<T>::Flatten(*param_out);
   auto prev_out_eigen = EigenVector<T>::Flatten(*prev_out);
   auto learning_rate_out_eigen = EigenVector<T>::Flatten(*learning_rate_out);
+  auto learning_rate_min = learning_rate_range.data<T>()[0];
+  auto learning_rate_max = learning_rate_range.data<T>()[1];
+  auto eta_negative = etas.data<T>()[0];
+  auto eta_positive = etas.data<T>()[1];
 
   DenseTensor* grad_tensor = new DenseTensor();
   grad_tensor->Resize(grad.dims());
@@ -82,13 +84,11 @@ void RpropKernelCPUImpl(const Context& dev_ctx,
 
   learning_rate_eigen = learning_rate_eigen * eta_eigen;
   T* learning_rate_data = learning_rate_tensor->data<T>();
-  T delta_max_data = static_cast<T>(delta_max);
-  T delta_min_data = static_cast<T>(delta_min);
   for (int i = 0, n = learning_rate_tensor->numel(); i < n; i++) {
-    if (learning_rate_data[i] > delta_max_data) {
-      learning_rate_data[i] = delta_max_data;
-    } else if (learning_rate_data[i] < delta_min_data) {
-      learning_rate_data[i] = delta_min_data;
+    if (learning_rate_data[i] > learning_rate_max) {
+      learning_rate_data[i] = learning_rate_max;
+    } else if (learning_rate_data[i] < learning_rate_min) {
+      learning_rate_data[i] = learning_rate_min;
     }
   }
 
@@ -110,10 +110,8 @@ void RpropKernel(const Context& dev_ctx,
                  const DenseTensor& prev,
                  const DenseTensor& learning_rate,
                  const paddle::optional<DenseTensor>& master_param UNUSED,
-                 float delta_min,
-                 float delta_max,
-                 float eta_negative,
-                 float eta_positive,
+                 const DenseTensor& learning_rate_range,
+                 const DenseTensor& etas,
                  bool multi_precision UNUSED,
                  DenseTensor* param_out,
                  DenseTensor* prev_out,
@@ -127,10 +125,8 @@ void RpropKernel(const Context& dev_ctx,
                                  grad,
                                  prev,
                                  learning_rate,
-                                 delta_min,
-                                 delta_max,
-                                 eta_negative,
-                                 eta_positive,
+                                 learning_rate_range,
+                                 etas,
                                  param_out,
                                  prev_out,
                                  learning_rate_out);

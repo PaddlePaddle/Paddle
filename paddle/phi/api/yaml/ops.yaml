@@ -2188,7 +2188,7 @@
   backward : round_grad
 
 - op : rprop_
-  args : (Tensor param, Tensor grad, Tensor prev, Tensor learning_rate, Tensor master_param, float delta_min, float delta_max, float eta_negative, float eta_positive, bool multi_precision=false)
+  args : (Tensor param, Tensor grad, Tensor prev, Tensor learning_rate, Tensor master_param, Tensor learning_rate_range, Tensor etas, bool multi_precision=false)
   output : Tensor(param_out), Tensor(prev_out), Tensor(learning_rate_out), Tensor(master_param_out)
   infer_meta :
     func : RpropInferMeta

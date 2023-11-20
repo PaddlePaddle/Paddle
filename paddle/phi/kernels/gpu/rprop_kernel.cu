@@ -29,19 +29,17 @@ __global__ void RpropKernelGPUImpl(const T* param,
                                    const T* prev,
                                    const T* learning_rate,
                                    const MT* master_param,
-                                   float delta_min,
-                                   float delta_max,
-                                   float eta_negative,
-                                   float eta_positive,
+                                   const T* learning_rate_range,
+                                   const T* etas,
                                    int num,
                                    T* param_out,
                                    T* prev_out,
                                    T* learning_rate_out,
                                    MT* master_param_out) {
-  MT delta_min_data = static_cast<MT>(delta_min);
-  MT delta_max_data = static_cast<MT>(delta_max);
-  MT eta_negative_data = static_cast<MT>(eta_negative);
-  MT eta_positive_data = static_cast<MT>(eta_positive);
+  MT learning_rate_min_data = static_cast<MT>(learning_rate_range[0]);
+  MT learning_rate_max_data = static_cast<MT>(learning_rate_range[1]);
+  MT eta_negative_data = static_cast<MT>(etas[0]);
+  MT eta_positive_data = static_cast<MT>(etas[1]);
   MT zero_data = static_cast<MT>(0);
   MT one_data = static_cast<MT>(1);
   MT negative_one_data = static_cast<MT>(-1);
@@ -62,10 +60,10 @@ __global__ void RpropKernelGPUImpl(const T* param,
     }
 
     learning_rate_data = learning_rate_data * eta_data;
-    if (learning_rate_data > delta_max_data) {
-      learning_rate_data = delta_max_data;
-    } else if (learning_rate_data < delta_min_data) {
-      learning_rate_data = delta_min_data;
+    if (learning_rate_data > learning_rate_max_data) {
+      learning_rate_data = learning_rate_max_data;
+    } else if (learning_rate_data < learning_rate_min_data) {
+      learning_rate_data = learning_rate_min_data;
     }
 
     MT grad_sign_data = zero_data;
@@ -94,10 +92,8 @@ void RpropKernel(const Context& dev_ctx,
                  const DenseTensor& prev,
                  const DenseTensor& learning_rate,
                  const paddle::optional<DenseTensor>& master_param,
-                 float delta_min,
-                 float delta_max,
-                 float eta_negative,
-                 float eta_positive,
+                 const DenseTensor& learning_rate_range,
+                 const DenseTensor& etas,
                  bool multi_precision,
                  DenseTensor* param_out,
                  DenseTensor* prev_out,
@@ -119,10 +115,8 @@ void RpropKernel(const Context& dev_ctx,
       prev.data<T>(),
       learning_rate.data<T>(),
       master_in_data,
-      delta_min,
-      delta_max,
-      eta_negative,
-      eta_positive,
+      learning_rate_range.data<T>(),
+      etas.data<T>(),
       param.numel(),
       dev_ctx.template Alloc<T>(param_out),
       dev_ctx.template Alloc<T>(prev_out),
