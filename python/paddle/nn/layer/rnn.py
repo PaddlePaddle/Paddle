@@ -1285,7 +1285,7 @@ class RNN(Layer):
         - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None.If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whose time step index are not less than the valid length are treated as paddings.
         - **kwargs**: Additional keyword arguments to pass to `forward` of the cell.
 
-    Returns:
+    Outputs:
         - **outputs** (Tensor|list|tuple): the output sequences. If `time_major` is True, the shape is `[time_steps, batch_size, hidden_size]`, else `[batch_size, time_steps, hidden_size]`.
         - **final_states** (Tensor|list|tuple): final states of the cell. Tensor or a possibly nested structure of tensors which has the same structure with intial state. Each tensor in final states has the same shape and dtype as the corresponding tensor in initial states.
 
