@@ -16,8 +16,8 @@
 
 #include <memory>
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_node.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_node.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 
 namespace cinn {
 namespace dialect {

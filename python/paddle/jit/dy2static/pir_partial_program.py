@@ -342,10 +342,10 @@ class PirPassContext:
             raise RuntimeError(
                 "Please install PaddlePaddle compiled with CINN while setting build_strategy.build_cinn_pass = True."
             )
-
-        fwd_program = paddle.base.libpaddle.pir.apply_pir_pass(
+        fwd_program = paddle.base.libpaddle.pir.clone_program(
             runable_program.forward_program
         )
+        paddle.base.libpaddle.pir.apply_pir_pass(fwd_program)
         in_out_values = cls._prepare_attr(fwd_program)
         return RunableProgram(fwd_program, in_out_values)
 
@@ -535,14 +535,14 @@ class PartialProgramLayer:
                 )
 
                 if self._build_strategy.build_cinn_pass:
-                    fwd = paddle.base.libpaddle.pir.apply_pir_pass(fwd)
+                    paddle.base.libpaddle.pir.apply_pir_pass(fwd)
 
                 bwd, _ = paddle.base.libpaddle.pir.clone_program(
                     backward_program
                 )
 
                 if self._build_strategy.build_cinn_pass:
-                    bwd = paddle.base.libpaddle.pir.apply_pir_pass(bwd)
+                    paddle.base.libpaddle.pir.apply_pir_pass(bwd)
 
                 return fwd, bwd
 

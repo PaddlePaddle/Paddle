@@ -62,7 +62,7 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
@@ -1515,10 +1515,7 @@ void BindUtils(pybind11::module *m) {
   });
 }
 
-// TODO(Aurelius84): Need consider to make an agreement about
-// what a Pass should receive and return. Existed Passes have
-// mutable and immutable interface.
-std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
+void ApplyPirPass(Program &forward_program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -1531,14 +1528,10 @@ std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager.AddPass(pir::CreateBuildCinnPass());
+  pass_manager.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
 
   pass_manager.Run(&forward_program);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
-  std::unique_ptr<pir::Program> new_program =
-      cinn::dialect::ir::CINNGroupLoweringPass(&forward_program);
-
-  VLOG(3) << "after CINNGroupLoweringPass, forward_program:\n" << *new_program;
-  return std::move(new_program);
 #endif
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "

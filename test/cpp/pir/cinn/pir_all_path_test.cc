@@ -20,7 +20,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -95,14 +95,13 @@ TEST(GroupOp, TestBuild) {
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
   CHECK_EQ(pm.Run(program.get()), true);
-
-  auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+      paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
   paddle::framework::Scope exe_scope;
 
@@ -203,14 +202,13 @@ TEST(GroupOp, TestBuildLayerNorm) {
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
   CHECK_EQ(pm.Run(program.get()), true);
-
-  auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+      paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
   paddle::framework::Scope exe_scope;
 
@@ -287,14 +285,13 @@ TEST(GroupOp, TestBuildDropout) {
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
   CHECK_EQ(pm.Run(program.get()), true);
-
-  auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+      paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
   paddle::framework::Scope exe_scope;
 
@@ -342,14 +339,13 @@ TEST(GroupOp, TestBuildScale) {
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
   CHECK_EQ(pm.Run(program.get()), true);
-
-  auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+      paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
   paddle::framework::Scope exe_scope;
 
@@ -406,14 +402,13 @@ TEST(GroupOp, TestBuildScaleTensor) {
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
   CHECK_EQ(pm.Run(program.get()), true);
-
-  auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+      paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
   paddle::framework::Scope exe_scope;
 
@@ -474,14 +469,13 @@ TEST(GroupOp, TestBuildPower) {
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
   CHECK_EQ(pm.Run(program.get()), true);
-
-  auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+      paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
   paddle::framework::Scope exe_scope;
 
@@ -598,14 +592,13 @@ TEST(GroupOp, TestBuildLayerNorm2) {
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
   CHECK_EQ(pm.Run(program.get()), true);
-
-  auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+      paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
   paddle::framework::Scope exe_scope;
 
@@ -661,15 +654,14 @@ TEST(GroupOp, TestBuildSum2Group) {
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
   CHECK_EQ(pm.Run(program.get()), true);
-
-  auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
-  res->Print(std::cout);
+  program->Print(std::cout);
   auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+      paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
   paddle::framework::Scope exe_scope;
 
