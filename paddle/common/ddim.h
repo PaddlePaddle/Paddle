@@ -68,7 +68,7 @@ inline void dynamic_dim_assign(const T1* in, T2* out, int n) {
  *
  * The number of dimensions must be between [1, 9].
  */
-class DDim {
+TEST_API class DDim {
  public:
   constexpr static int kMaxRank = 9;
 
@@ -221,7 +221,7 @@ TEST_API DDim make_ddim(const std::vector<int>& dims);
 TEST_API DDim make_ddim(std::initializer_list<int64_t> dims);
 
 template <typename T = int64_t>
-std::vector<T> vectorize(const DDim& ddim) {
+TEST_API std::vector<T> vectorize(const DDim& ddim) {
   if (ddim.size() == -1) {
     return std::vector<T>({0});
   }
@@ -233,7 +233,7 @@ std::vector<T> vectorize(const DDim& ddim) {
 
 TEST_API int64_t product(const DDim& ddim);
 
-bool contain_unknown_dim(const DDim& ddim);
+TEST_API bool contain_unknown_dim(const DDim& ddim);
 
 /**
  * \brief Slice a ddim
@@ -242,7 +242,7 @@ bool contain_unknown_dim(const DDim& ddim);
  * e.g.  DDim d = make_ddim({1,2,3,4,5});
  *       slice_ddim(d, 1, 3); ====> {2,3}
  */
-DDim slice_ddim(const DDim& dim, int begin, int end);
+TEST_API DDim slice_ddim(const DDim& dim, int begin, int end);
 
 /**
  * \brief What is the length of this dimension?
@@ -250,7 +250,7 @@ DDim slice_ddim(const DDim& dim, int begin, int end);
  * \param Dynamic dimension to inspect
  */
 
-int arity(const DDim& ddim);
+TEST_API int arity(const DDim& ddim);
 
 TEST_API std::ostream& operator<<(std::ostream&, const DDim&);
 
@@ -259,17 +259,19 @@ TEST_API std::ostream& operator<<(std::ostream&, const DDim&);
  * e.g., DDim d = mak_ddim({1, 2, 3, 4, 5, 6})
  *       flatten_to_3d(d, 2, 4); ===> {1*2, 3*4, 5*6} ===> {2, 12, 30}
  */
-DDim flatten_to_3d(const DDim& src, int num_row_dims, int num_col_dims);
+TEST_API DDim flatten_to_3d(const DDim& src,
+                            int num_row_dims,
+                            int num_col_dims);
 
 // Reshape a tensor to a matrix. The matrix's first dimension(column length)
 // will be the product of tensor's first `num_col_dims` dimensions.
-DDim flatten_to_2d(const DDim& src, int num_col_dims);
+TEST_API DDim flatten_to_2d(const DDim& src, int num_col_dims);
 
-DDim flatten_to_1d(const DDim& src);
+TEST_API DDim flatten_to_1d(const DDim& src);
 
-DDim stride(const DDim& ddim);
+TEST_API DDim stride(const DDim& ddim);
 
-DDim stride_numel(const DDim& ddim);
+TEST_API DDim stride_numel(const DDim& ddim);
 }  // namespace common
 
 namespace paddle {

@@ -128,7 +128,7 @@ void ThrowExceptionToPython(std::exception_ptr p) {
         PyErr_SetString(EnforceNotMetException, e.what());
         break;
     }
-  } catch (const paddle::PD_Exception& e) {
+  } catch (const common::PD_Exception& e) {
     PyErr_SetString(PyExc_OSError, e.what());
   }
 }
