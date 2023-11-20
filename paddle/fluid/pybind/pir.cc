@@ -270,15 +270,14 @@ void BindBlock(py::module *m) {
           "program",
           [](Block &self) { return self.GetParentOp()->GetParentProgram(); },
           return_value_policy::reference)
-      .def_property_readonly(
-          "ops",
-          [](Block &self) -> py::list {
-            py::list op_list;
-            for (auto iter = self.begin(); iter != self.end(); iter++) {
-              op_list.append(*iter);
-            }
-            return op_list;
-          })
+      .def_property_readonly("ops",
+                             [](Block &self) -> py::list {
+                               py::list op_list;
+                               for (auto &op : self) {
+                                 op_list.append(&op);
+                               }
+                               return op_list;
+                             })
       .def("__enter__",
            [](Block &self) {
              ApiBuilder::Instance().PushInsertionPoint({&self, self.end()});
@@ -290,7 +289,7 @@ void BindBlock(py::module *m) {
       .def(
           "remove_op",
           [](Block &self, Operation *op) {
-            auto op_iter = std::find(self.begin(), self.end(), op);
+            auto op_iter = std::find(self.begin(), self.end(), *op);
             self.erase(op_iter);
           },
           R"DOC(
@@ -324,17 +323,16 @@ void BindBlock(py::module *m) {
       .def("all_parameters",
            [](Block &self) -> py::list {
              py::list param_list;
-             for (auto iter = self.begin(); iter != self.end(); iter++) {
-               auto op = *iter;
-               if (op->HasAttribute(kAttrIsPersisable)) {
-                 auto attrs = op->attribute(kAttrIsPersisable)
+             for (auto &op : self) {
+               if (op.HasAttribute(kAttrIsPersisable)) {
+                 auto attrs = op.attribute(kAttrIsPersisable)
                                   .dyn_cast<pir::ArrayAttribute>()
                                   .AsVector();
                  for (uint32_t i = 0; i < attrs.size(); i++) {
                    bool is_persistable =
                        attrs[i].dyn_cast<pir::BoolAttribute>().data();
                    if (is_persistable) {
-                     param_list.append(op->result(i));
+                     param_list.append(op.result(i));
                    }
                  }
                }
@@ -342,8 +340,8 @@ void BindBlock(py::module *m) {
              return param_list;
            })
       .def("refresh_stopgradient", [](Block &self) {
-        for (auto iter = self.begin(); iter != self.end(); iter++) {
-          RefreshOpStopgradients(*iter);
+        for (auto &op : self) {
+          RefreshOpStopgradients(&op);
         }
       });
 }
@@ -1038,7 +1036,7 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
   auto cloned_program = std::make_shared<Program>(ctx);
   std::unordered_map<pir::Value, pir::Value> value_map;
   for (auto &op : *program.block()) {
-    auto *cloned_op = BuildOpFrom(op, value_map);
+    auto *cloned_op = BuildOpFrom(&op, value_map);
     cloned_program->block()->push_back(cloned_op);
   }
   std::unordered_map<pir::OpResult, pir::OpResult> op_result_map;
@@ -1203,17 +1201,16 @@ SplitedResult SplitForwardBackward(
     for (auto it = forward_program->block()->rbegin();
          it != forward_program->block()->rend();
          ++it) {
-      auto *op = *it;
-      if (op->isa<pir::SetParameterOp>()) {
+      if (it->isa<pir::SetParameterOp>()) {
         auto out_name =
-            op->attribute<pir::StrAttribute>("parameter_name").AsString();
+            it->attribute<pir::StrAttribute>("parameter_name").AsString();
         if (out_name == parameter_name) {
           VLOG(4) << out_name
                   << " has been inserted SetParameterOp, skip it now.";
           return;
         }
 
-        inserted_value.insert(op->operand_source(0));
+        inserted_value.insert(it->operand_source(0));
       }
     }
 
