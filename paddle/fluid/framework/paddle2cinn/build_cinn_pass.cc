@@ -27,6 +27,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/use_op_mappers.h"
+#include "paddle/fluid/framework/io/save_runtime_graph.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
@@ -37,10 +38,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/utils/flags.h"
 
 PD_DECLARE_string(allow_cinn_ops);
 PD_DECLARE_string(deny_cinn_ops);
+PHI_DECLARE_string(save_load_path);
+PHI_DECLARE_bool(save_tensor);
 
 namespace paddle {
 namespace framework {
@@ -768,7 +772,15 @@ void BuildCinnPass::ApplyImpl(Graph* graph) const {
   if (Has("is_inference_stage")) {
     is_inference_stage = Get<bool>("is_inference_stage");
   }
+  if (FLAGS_save_tensor) {
+    paddle::framework::ir_graph_print(
+        graph, FLAGS_save_load_path + "/origin_ir_graph/graph.pdtxt");
+  }
   SearchAllSubgraphs(graph, is_inference_stage);
+  if (FLAGS_save_tensor) {
+    paddle::framework::ir_graph_print(
+        graph, FLAGS_save_load_path + "/cinn_ir_graph/graph.pdtxt");
+  }
 }
 
 }  // namespace paddle2cinn
