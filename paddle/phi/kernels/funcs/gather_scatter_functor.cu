@@ -269,7 +269,7 @@ struct gpu_gather_scatter_functor {
                                        reduce_op);
     }
   }
-}  // struct gpu_gather_scatter_functor
+};  // struct gpu_gather_scatter_functor
 
 template <typename tensor_t, typename index_t>
 void gpu_gather_kernel(phi::DenseTensor self,
