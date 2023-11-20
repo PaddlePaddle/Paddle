@@ -17,8 +17,8 @@ limitations under the License. */
 #include <iostream>
 #include <sstream>
 
+#include "paddle/common/exception.h"
 #include "paddle/common/layout.h"
-#include "paddle/phi/api/ext/exception.h"
 
 namespace phi {
 namespace tests {

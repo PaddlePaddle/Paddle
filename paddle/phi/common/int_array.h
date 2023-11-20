@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/tensor_ref.h"
 
