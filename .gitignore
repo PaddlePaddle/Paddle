@@ -104,3 +104,5 @@ paddle/fluid/pir/dialect/operator/ir/pd_api.*
 paddle/fluid/pir/dialect/operator/ir/op_decomp.cc
 paddle/fluid/pir/dialect/operator/ir/pd_op_vjp.cc
 paddle/fluid/pir/dialect/operator/ir/pd_op.*
+paddle/cinn/hlir/dialect/generated/ops.parsed.yaml
+paddle/cinn/hlir/dialect/operator/ir/cinn_op.*
