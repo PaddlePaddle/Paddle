@@ -881,6 +881,7 @@ PYBIND11_MODULE(libpaddle, m) {
       [](const py::object &var_descs) {
         auto ret = GetEmpytyTensorsWithVarDesc(var_descs.ptr());
         auto obj = py::reinterpret_borrow<py::object>(ret);
+        Py_DECREF(ret);
         return obj;
       },
       py::arg("var_descs"));
@@ -890,6 +891,7 @@ PYBIND11_MODULE(libpaddle, m) {
       [](const py::object &op_results) {
         auto ret = GetEmpytyTensorsWithOpResult(op_results.ptr());
         auto obj = py::reinterpret_borrow<py::object>(ret);
+        Py_DECREF(ret);
         return obj;
       },
       py::arg("op_results"));
