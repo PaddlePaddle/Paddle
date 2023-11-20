@@ -244,7 +244,10 @@ class TestReshardNdMesh:
         self.test_shard_to_shard(dev_ctx)
         self.test_shard_partial_to_shard_replicated(dev_ctx)
         self.test_shard_partial_to_replicated(dev_ctx)
-        self.test_partial_replicate_to_shard_replicated(dev_ctx)
+
+        if self._backend == "gpu":
+            # reduce_scatter is not supported on CPU
+            self.test_partial_replicate_to_shard_replicated(dev_ctx)
 
 
 if __name__ == '__main__':
