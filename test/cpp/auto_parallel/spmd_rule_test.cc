@@ -950,8 +950,8 @@ TEST(WhereRule, Ctor) {
       t_dist_attr.set_process_mesh(process_mesh);
       t_dist_attr.set_dims_mapping(dim_mappings[i]);
       t_dist_attr.set_dynamic_dims({false, false, false});
-      auto input = phi::distributed::DistMetaTensor(phi::make_ddim(shapes[i]),
-                                                    t_dist_attr);
+      auto input = phi::distributed::DistMetaTensor(
+          common::make_ddim(shapes[i]), t_dist_attr);
       inputs.push_back(input);
     }
     return inputs;
@@ -989,7 +989,7 @@ TEST(Numel, Ctor) {
   t_dist_attr.set_dims_mapping(dims_mapping);
   t_dist_attr.set_dynamic_dims({false, false, false});
   auto input =
-      phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
   auto infered_dist_attrs = phi::distributed::NumelInferSpmd(input);
   EXPECT_EQ(infered_dist_attrs.first.size(), static_cast<size_t>(1));
   EXPECT_EQ(infered_dist_attrs.second.size(), static_cast<size_t>(1));
