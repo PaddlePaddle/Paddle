@@ -529,14 +529,10 @@ class CodeGen:
             or len(name_list) == 0
         ):
             return ''
-        data_type_candidates = None
-        if (
-            op_info.kernel_map is not None
-            and 'data_type' in op_info.kernel_map
-            and op_info.kernel_map['data_type'] is not None
-            and 'candidates' in op_info.kernel_map['data_type']
-        ):
+        try:
             data_type_candidates = op_info.kernel_map['data_type']['candidates']
+        except Exception:
+            data_type_candidates = None
         ret = ''
         if data_type_candidates is not None:
             for name in data_type_candidates:

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <glog/logging.h>
+#include <sstream>
 #include <unordered_set>
 
 #include "paddle/fluid/framework/phi_utils.h"
@@ -240,7 +241,7 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
   }
 
   std::set<std::string> data_type;
-  auto phi_kernels = phi::KernelFactory::Instance().kernels();
+  auto& phi_kernels = phi::KernelFactory::Instance().kernels();
   for (auto& kernel_pair : phi_kernels) {
     auto fluid_op_name = phi::TransToFluidOpName(kernel_pair.first);
     if (kernel_pair.first != op_name && fluid_op_name != op_name &&
@@ -264,12 +265,18 @@ void DoCheck(const pir::Value& value,
     std::string value_type = phi::DataTypeToString(dialect::TransToPhiDataType(
         value.type().dyn_cast<pir::DenseTensorType>().dtype()));
     if (expected_dtype.find(value_type) == expected_dtype.end()) {
+      std::ostringstream joined;
+      std::copy(expected_dtype.begin(),
+                expected_dtype.end(),
+                std::ostream_iterator<std::string>(joined, ","));
       PADDLE_THROW(phi::errors::InvalidArgument(
-          "Check data type error for op: %s, input: %s, and %s.dtype is %s",
+          "Check data type error for op: %s, input: %s, %s.dtype is %s, and "
+          "expected_dtype is %s",
           op_name,
           input_name,
           input_name,
-          value_type));
+          value_type,
+          joined.str()));
     }
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
