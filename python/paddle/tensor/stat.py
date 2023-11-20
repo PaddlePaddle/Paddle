@@ -21,6 +21,7 @@ from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
 from ..framework import LayerHelper, core
+from .manipulation import infer_broadcast_shape
 from .math import _get_reduce_axis_with_tensor
 from .search import where
 
@@ -568,13 +569,32 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
 
     # TODO(chenjianye): replace the for-loop to directly take elements.
     for index in indices:
+
+        def broadcast_shape(arr, indices, axis):
+            broadcast_shape = infer_broadcast_shape(arr, indices, axis)
+            if not broadcast_shape:
+                # if indices matrix have larger size than arr, arr should broadcast into indices shape.
+                broadcast_shape = indices.shape
+            indices = paddle.broadcast_to(indices, broadcast_shape)
+            broadcast_shape_list = list(broadcast_shape)
+            broadcast_shape_list[axis] = list(arr.shape)[axis]
+            broadcast_shape = tuple(broadcast_shape_list)
+            arr = paddle.broadcast_to(arr, broadcast_shape)
+            return arr, indices
+
         indices_below = paddle.floor(index).astype(paddle.int32)
         indices_upper = paddle.ceil(index).astype(paddle.int32)
+        sorted_tensor_below, indices_below = broadcast_shape(
+            sorted_tensor, indices_below, axis
+        )
+        sorted_tensor_upper, indices_upper = broadcast_shape(
+            sorted_tensor, indices_upper, axis
+        )
         tensor_upper = paddle.take_along_axis(
-            sorted_tensor, indices_upper, axis=axis
+            sorted_tensor_upper, indices_upper, axis=axis
         )
         tensor_below = paddle.take_along_axis(
-            sorted_tensor, indices_below, axis=axis
+            sorted_tensor_below, indices_below, axis=axis
         )
         weights = index - indices_below.astype('float64')
         out = paddle.lerp(
