@@ -29,27 +29,6 @@ namespace paddle {
 namespace dialect {
 
 const std::unordered_set<std::string> LegacyOpList = {
-    "pd_op.load_combine",
-    "pd_op.c_concat",
-    "pd_op.c_broadcast_",
-    "pd_op.c_sync_calc_stream_",
-    "pd_op.c_sync_comm_stream_",
-    "pd_op.fused_gemm_epilogue",
-    "pd_op.fused_gemm_epilogue_grad",
-    "pd_op.dpsgd",
-    "pd_op.send_v2",
-    "pd_op.recv_v2",
-    "pd_op.c_allreduce_sum",
-    "pd_op.c_allreduce_sum_",
-    "pd_op.c_reduce_sum",
-    "pd_op.c_reduce_sum_",
-    "pd_op.c_allreduce_max_",
-    "pd_op.c_allgather",
-    "pd_op.seed",
-    "pd_op.share_data",
-    "pd_op.sparse_momentum",
-    "pd_op.uniform_random_batch_size_like"};
-
     LoadCombineOp::name(),
     CConcatOp::name(),
     CBroadcast_Op::name(),
