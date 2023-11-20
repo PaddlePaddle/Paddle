@@ -1275,15 +1275,15 @@ void PrintValuesAndVariables(
     const std::unordered_map<pir::Value, std::string>& value_2_var_name,
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
-  for (const auto& op : block) {
+  for (auto& op : block) {
     std::stringstream ss;
     VLOG(6) << "-----------------------------";
-    op->Print(ss);
+    op.Print(ss);
     VLOG(6) << ss.str();
 
-    std::string op_name = op->name();
-    if (op->attributes().count("op_name")) {
-      op_name = op->attributes()
+    std::string op_name = op.name();
+    if (op.attributes().count("op_name")) {
+      op_name = op.attributes()
                     .at("op_name")
                     .dyn_cast<pir::StrAttribute>()
                     .AsString();
@@ -1295,9 +1295,9 @@ void PrintValuesAndVariables(
     // 1. output string
     std::string ret_value_str = "Value   : (";
     std::string ret_variable_str = "Variable: (";
-    if (!op->results().empty()) {
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        pir::Value out_value = op->result(i);
+    if (!op.results().empty()) {
+      for (size_t i = 0; i < op.num_results(); ++i) {
+        pir::Value out_value = op.result(i);
         if (value_2_var_name.count(out_value)) {
           // get Variable by Value
           auto& var_name = value_2_var_name.at(out_value);
@@ -1344,9 +1344,9 @@ void PrintValuesAndVariables(
     // 3. input string
     ret_value_str += "(";
     ret_variable_str += "(";
-    if (!op->operands().empty()) {
-      for (size_t i = 0; i < op->num_operands(); ++i) {
-        ::pir::Value in_value = op->operand(i).source();
+    if (!op.operands().empty()) {
+      for (size_t i = 0; i < op.num_operands(); ++i) {
+        ::pir::Value in_value = op.operand(i).source();
         if (value_2_var_name.count(in_value)) {
           // get Variable by Value
           auto& var_name = value_2_var_name.at(in_value);
