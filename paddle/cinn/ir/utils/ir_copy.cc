@@ -413,6 +413,10 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
                                           Visit(&op->schedule_block));
   }
 
+  Expr Visit(const ir::_Dim_* op) override {
+    return ir::_Dim_::Make(op->name, op->sym_dim);
+  }
+
 #define __(x__) Expr Visit(const ir::intrinsics::x__* op);
   INTRINSIC_KIND_FOR_EACH(__)
 #undef __

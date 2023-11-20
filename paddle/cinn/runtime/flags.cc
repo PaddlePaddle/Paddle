@@ -79,6 +79,15 @@ PD_DEFINE_string(
     StringFromEnv("FLAGS_cinn_custom_call_deny_ops", ""),
     "a blacklist of op are denied by MarkCustomCallOps pass, separated by ;");
 
+PD_DEFINE_bool(cinn_enable_map_expr,
+               BoolFromEnv("FLAGS_cinn_enable_map_expr", false),
+               "It controls whether to use cinn with map_expr");
+
+PD_DEFINE_bool(
+    cinn_map_expr_enable_schedule,
+    BoolFromEnv("FLAGS_cinn_map_expr_enable_schedule", false),
+    "It controls whether to use schedule and pass when enables map_expr");
+
 PD_DEFINE_bool(
     cinn_use_custom_call,
     BoolFromEnv("FLAGS_cinn_use_custom_call", true),
@@ -214,6 +223,10 @@ PD_DEFINE_double(cinn_infer_model_version,
                  DoubleFromEnv("FLAGS_cinn_infer_model_version", 2.0),
                  "Paddle has different model format in inference model. We use "
                  "a flag to load different versions.");
+
+PD_DEFINE_bool(cinn_use_cutlass,
+               BoolFromEnv("FLAGS_cinn_use_cutlass", false),
+               "Whether to use cutlass kernels");
 
 namespace cinn {
 namespace runtime {

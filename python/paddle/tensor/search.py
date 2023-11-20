@@ -358,7 +358,7 @@ def index_select(x, index, axis=0, name=None):
              [ 9. 10. 10.]]
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.index_select(x, index, axis)
     else:
         helper = LayerHelper("index_select", **locals())
@@ -607,7 +607,7 @@ def mode(x, axis=-1, keepdim=False, name=None):
              [2, 1]]))
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.mode(x, axis, keepdim)
     else:
         helper = LayerHelper("mode", **locals())
@@ -849,7 +849,7 @@ def index_sample(x, index):
              [1200 1100]]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.index_sample(x, index)
     else:
         helper = LayerHelper("index_sample", **locals())
@@ -913,12 +913,9 @@ def masked_select(x, mask, name=None):
             >>> print(out.numpy())
             [1. 5. 6. 9.]
     """
-
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.masked_select(x, mask)
-
     else:
-        helper = LayerHelper("masked_select", **locals())
         check_variable_and_dtype(
             x,
             'x',
@@ -928,6 +925,7 @@ def masked_select(x, mask, name=None):
         check_variable_and_dtype(
             mask, 'mask', ['bool'], 'paddle.tensor.search.masked_select'
         )
+        helper = LayerHelper("masked_select", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
             type='masked_select',
@@ -1232,3 +1230,70 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
     )
     indices.stop_gradient = True
     return values, indices
+
+
+def top_p_sampling(x, ps, threshold=None, seed=None, name=None):
+    """
+    Get the TopP scores and ids according to the cumulative threshold `ps`.
+
+    Args:
+        x(Tensor): A N-D Tensor with type float32, float16 and bfloat16.
+        ps(Tensor): A 1-D Tensor with type float32, float16 and bfloat16.
+            it is the cumulative probalitity threshold to limit low probality input.
+        threshold(Tensor): A 1-D Tensor with type float32, float16 and bfloat16.
+            it is the absolute probability threshold to limit input, it will take effect simultaneously with `ps`, if not set, the default value is 0.f.
+        seed(int, optional): the random seed,
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+
+            >>> paddle.device.set_device('gpu')
+            >>> paddle.seed(2023)
+            >>> x = paddle.randn([2,3])
+            >>> print(x)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+             [[-0.32012719, -0.07942779,  0.26011357],
+              [ 0.79003978, -0.39958701,  1.42184138]])
+            >>> paddle.seed(2023)
+            >>> ps = paddle.randn([2])
+            >>> print(ps)
+            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+             [-0.32012719, -0.07942779])
+            >>> value, index = paddle.tensor.top_p_sampling(x, ps)
+            >>> print(value)
+            Tensor(shape=[2, 1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+             [[0.26011357],
+              [1.42184138]])
+            >>> print(index)
+            Tensor(shape=[2, 1], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+             [[2],
+              [2]])
+    """
+
+    if seed is None:
+        seed = -1
+
+    if in_dynamic_mode():
+        return _C_ops.top_p_sampling(x, ps, threshold, seed)
+
+    inputs = {"x": x, "ps": ps, "threshold": threshold}
+    attrs = {"random_seed": seed}
+
+    helper = LayerHelper('top_p_sampling', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    ids = helper.create_variable_for_type_inference(dtype="int64")
+    helper.append_op(
+        type='top_p_sampling',
+        inputs=inputs,
+        outputs={'out': out, 'ids': ids},
+        attrs=attrs,
+    )
+    return out, ids
