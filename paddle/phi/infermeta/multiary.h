@@ -846,6 +846,15 @@ void MultiheadMatmulInferMeta(const MetaTensor& input,
                               const int head_number,
                               MetaTensor* out);
 
+void  EncodeRotaryQKInferMeta(const MetaTensor& q,
+                               const MetaTensor& kv,
+                               const MetaTensor& rotary_emb,
+                               const MetaTensor& seq_lens,
+                               int rotary_emb_dims,
+                               bool use_neox,
+                               MetaTensor* rotary_q_out,
+                               MetaTensor* rotary_kv_out);                             
+
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        const MetaTensor& cache_kv,
                                        const MetaTensor& bias,

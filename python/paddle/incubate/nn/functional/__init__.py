@@ -34,6 +34,7 @@ from .masked_multihead_attention import masked_multihead_attention
 from .write_cache_kv import write_cache_kv
 from .qkv_transpose_split import qkv_transpose_split
 from .fused_get_rotary_embedding import fused_get_rotary_embedding
+from .encode_rotary_qk import encode_rotary_qk
 
 __all__ = [
     'fused_multi_head_attention',
@@ -51,4 +52,5 @@ __all__ = [
     "fused_layer_norm",
     "masked_multihead_attention",
     "write_cache_kv",
+    "encode_rotary_qk",
 ]
