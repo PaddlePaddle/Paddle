@@ -51,6 +51,11 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
     Model() : Concept(GetElementType, GetShape) {}
   };
 
+  ///
+  /// \brief kDynamic
+  ///
+  static constexpr int64_t kDynamic = std::numeric_limits<int64_t>::min();
+
   ShapedTypeInterface(Type type, Concept *impl)
       : TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
 
@@ -62,7 +67,7 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   /// \brief Get the shape of this type.
   ///
-  DDim GetShape() const;
+  std::vector<int64_t> GetDyShape() const;
 
   ///
   /// \brief kDynamic
@@ -79,7 +84,7 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   int64_t GetRank() const {
     IR_ENFORCE((*this).HasRank(), "Cannot query rank of unranked shaped type.");
-    return (*this).GetShape().size();
+    return (*this).GetDyShape().size();
   }
 
   ///
@@ -91,19 +96,18 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   /// \brief Check whether the given shape has any size indicating a dynamic
   /// dimension.
   ///
-  static bool IsDynamicShape(DDim sizes) {
-    auto size_vec = vectorize(sizes);
-    return std::any_of(size_vec.begin(), size_vec.end(), [](int64_t size_vec) {
-      return IsDynamic(size_vec);
-    });
+  bool IsDynamicShape() const {
+    auto size_vec = (*this).GetDyShape();
+    return std::any_of(
+        size_vec.begin(), size_vec.end(), [](int64_t size_value) {
+          return IsDynamic(size_value);
+        });
   }
 
   ///
   /// \brief Check whether shape has any size indicating a dynamic dimension.
   ///
-  bool HasStaticShape() const {
-    return (*this).HasRank() && !IsDynamicShape((*this).GetShape());
-  }
+  bool HasStaticShape() const { return (*this).HasRank() && !IsDynamicShape(); }
 
   ///
   /// \brief Check whether the given dimension has a dynamic size.Aborts for
@@ -111,7 +115,7 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   bool IsDynamicDim(unsigned idx) const {
     IR_ENFORCE(idx < GetRank(), "Invalid index for shaped type.");
-    return ShapedTypeInterface::IsDynamic((*this).GetShape()[idx]);
+    return ShapedTypeInterface::IsDynamic((*this).GetDyShape()[idx]);
   }
 
   ///
@@ -119,7 +123,7 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   /// Aborts for unranked types.
   ///
   int64_t GetNumDynamicDims() const {
-    auto shape_vec = vectorize((*this).GetShape());
+    auto shape_vec = (*this).GetDyShape();
     return std::count_if(
         shape_vec.begin(), shape_vec.end(), ShapedTypeInterface::IsDynamic);
   }
@@ -130,11 +134,12 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   int64_t GetDimSize(unsigned idx) const {
     IR_ENFORCE(idx < GetRank(), "Invalid index for shaped type.");
-    return (*this).GetShape()[idx];
+    return (*this).GetDyShape()[idx];
   }
 
  private:
   Concept *impl_;
+  mutable std::vector<int64_t> dy_shape_;
 };
 
 }  // namespace pir

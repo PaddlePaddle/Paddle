@@ -156,6 +156,8 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   if (scale_ptr) {
     if (slice_shape != scale_ptr->shape()) {
       scale_cast = reshape<T>(*scale_ptr, slice_shape);
+    } else {
+      scale_cast = *scale_ptr;
     }
     if (need_cast) {
       scale_cast = cast<T>(scale_cast, phi::DataType::FLOAT32);
@@ -166,6 +168,8 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   if (bias_ptr) {
     if (slice_shape != bias_ptr->shape()) {
       bias_cast = reshape<T>(*bias_ptr, slice_shape);
+    } else {
+      bias_cast = *bias_ptr;
     }
     if (need_cast) {
       bias_cast = cast<T>(bias_cast, phi::DataType::FLOAT32);
@@ -182,6 +186,35 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   }
 
   return std::make_tuple(out, mean_, variance);
+}
+
+template <typename T>
+Tensor gelu_decomp(const Tensor& x, bool approximate) {
+  const double PM_2_SQRTPI = 1.12837916709551257390; /* 2/sqrt(pi) */
+  const double PM_SQRT1_2 = 0.70710678118654752440;  /* 1/sqrt(2) */
+
+  auto org_dtype = x.dtype();
+  auto half = full<T>(phi::vectorize(x.dims()), 0.5, org_dtype);
+  auto one = full<T>(phi::vectorize(x.dims()), 1.0, org_dtype);
+  if (approximate) {
+    // gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
+    auto kAlpha =
+        full<T>(phi::vectorize(x.dims()), PM_2_SQRTPI * PM_SQRT1_2, org_dtype);
+    auto GELU_CONSTANT = full<T>(phi::vectorize(x.dims()), 0.044715, org_dtype);
+    auto x_pow3 =
+        elementwise_pow<T>(x, full<T>(phi::vectorize(x.dims()), 3, org_dtype));
+    auto tanh_out = tanh<T>(kAlpha * (x + x_pow3 * GELU_CONSTANT));
+
+    auto res = x * half * (one + tanh_out);
+    return res;
+  } else {
+    // gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
+    auto M_SQRT1_2T = full<T>(phi::vectorize(x.dims()), PM_SQRT1_2, org_dtype);
+    auto erf_out = one + erf<T>(x * M_SQRT1_2T);
+
+    auto res = x * half * erf_out;
+    return res;
+  }
 }
 
 }  // namespace details

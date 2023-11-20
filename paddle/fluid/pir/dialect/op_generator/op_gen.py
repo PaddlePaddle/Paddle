@@ -218,7 +218,6 @@ PD_MANUAL_OP_LIST = {
     'expand',
 }
 
-
 attr_types_map = {
     'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
     'Scalar': ['paddle::dialect::ScalarAttribute', 'Scalar'],
@@ -419,6 +418,9 @@ class OpInfoParser:
         # parse forward input name list and attribute name list
         self.forward_input_name_list = self.parse_forward_input_name()
 
+        # parse forward output name list
+        self.forward_output_name_list = self.parse_forward_output_name()
+
         # parse traits list
         self.traits_list = self.parse_op_traits()
 
@@ -437,6 +439,20 @@ class OpInfoParser:
                 for input in inputs:
                     forward_input_name_list.append(input['name'])
                 return forward_input_name_list
+            else:
+                return None
+        else:
+            return None
+
+    def parse_forward_output_name(self):
+        if 'forward' in self.op_yaml_item:
+            forward_output_name_list = []
+            forward_map = self.op_yaml_item['forward']
+            if forward_map is not None:
+                outputs = forward_map['outputs']
+                for output in outputs:
+                    forward_output_name_list.append(output['name'])
+                return forward_output_name_list
             else:
                 return None
         else:
