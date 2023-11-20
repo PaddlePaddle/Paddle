@@ -104,14 +104,14 @@ void IfOp::Print(pir::IrPrinter &printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << "{";
-  for (auto item : *true_block()) {
+  for (auto &item : *true_block()) {
     os << "\n  ";
-    printer.PrintOperation(item);
+    printer.PrintOperation(&item);
   }
   os << "\n } else {";
-  for (auto item : *false_block()) {
+  for (auto &item : *false_block()) {
     os << "\n  ";
-    printer.PrintOperation(item);
+    printer.PrintOperation(&item);
   }
   os << "\n }";
 }
@@ -221,9 +221,9 @@ void WhileOp::Print(pir::IrPrinter &printer) {
       body_block()->args_end(),
       [&](pir::Value v) { printer.PrintValue(v); },
       [&]() { os << ", "; });
-  for (auto item : *body_block()) {
+  for (auto &item : *body_block()) {
     os << "\n  ";
-    printer.PrintOperation(item);
+    printer.PrintOperation(&item);
   }
   os << "\n }";
 }
