@@ -272,9 +272,11 @@ DDim stride(const DDim& ddim);
 DDim stride_numel(const DDim& ddim);
 }  // namespace common
 
-namespace paddle::framework {
+namespace paddle {
+namespace framework {
 using DDim = common::DDim;
 }
+}  // namespace paddle
 
 namespace phi {
 using DDim = common::DDim;
