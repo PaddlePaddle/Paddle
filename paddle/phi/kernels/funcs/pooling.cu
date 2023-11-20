@@ -14,12 +14,21 @@ limitations under the License. */
 
 #include <algorithm>
 #include <vector>
+#ifdef __NVCC__
+#include <curand_kernel.h>
+#endif
+#ifdef __HIPCC__
+#include <hiprand_kernel.h>
+#endif
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
+
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
+#include "paddle/phi/kernels/funcs/random.cuh"
 
 namespace phi {
 namespace funcs {
@@ -1934,9 +1943,28 @@ __global__ void KernelMaxPool2dWithIdx(const int nthreads,
   float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
   float u_height = 0, u_width = 0, u_depth = 0;
   if (fractional) {
-    std::uniform_real_distribution<float> dist(0, 1);
-    auto engine = phi::GetCPURandomEngine(0);
-    float u = dist(*engine);
+    // std::uniform_real_distribution<float> dist(0, 1);
+    // auto engine = phi::GetCPURandomEngine(0);
+    // float u = dist(*engine);
+
+    // auto gen_cuda = phi::DefaultCUDAGenerator(0);
+    // int seed = static_cast<int>(gen_cuda->Random64());
+    int seed = 0;
+
+    size_t thread_idx =
+        static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
+
+#if defined(__NVCC__)
+    curandStatePhilox4_32_10_t state;
+    curand_init(seed, thread_idx, 0, &state);
+#else
+    hiprandStatePhilox4_32_10_t state;
+    hiprand_init(seed, thread_idx, offset, &state);
+#endif
+
+    phi::funcs::uniform_distribution<float> dist;
+    float4 rand = dist(&state);
+    float u = (&rand.x)[0];
 
     alpha_height = static_cast<float>(input_height) / output_height;
     alpha_width = static_cast<float>(input_width) / output_width;
@@ -2080,9 +2108,28 @@ __global__ void KernelMaxPool2DWithIdxGrad(const int nthreads,
   float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
   float u_height = 0, u_width = 0, u_depth = 0;
   if (fractional) {
-    std::uniform_real_distribution<float> dist(0, 1);
-    auto engine = phi::GetCPURandomEngine(0);
-    float u = dist(*engine);
+    // std::uniform_real_distribution<float> dist(0, 1);
+    // auto engine = phi::GetCPURandomEngine(0);
+    // float u = dist(*engine);
+
+    // auto gen_cuda = phi::DefaultCUDAGenerator(0);
+    // int seed = static_cast<int>(gen_cuda->Random64());
+    int seed = 0;
+
+    size_t thread_idx =
+        static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
+
+#if defined(__NVCC__)
+    curandStatePhilox4_32_10_t state;
+    curand_init(seed, thread_idx, 0, &state);
+#else
+    hiprandStatePhilox4_32_10_t state;
+    hiprand_init(seed, thread_idx, offset, &state);
+#endif
+
+    phi::funcs::uniform_distribution<float> dist;
+    float4 rand = dist(&state);
+    float u = (&rand.x)[0];
 
     alpha_height = static_cast<float>(input_height) / output_height;
     alpha_width = static_cast<float>(input_width) / output_width;
@@ -2351,9 +2398,28 @@ __global__ void KernelMaxPool3DWithIdx(const int ncd,
   float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
   float u_height = 0, u_width = 0, u_depth = 0;
   if (fractional) {
-    std::uniform_real_distribution<float> dist(0, 1);
-    auto engine = phi::GetCPURandomEngine(0);
-    float u = dist(*engine);
+    // std::uniform_real_distribution<float> dist(0, 1);
+    // auto engine = phi::GetCPURandomEngine(0);
+    // float u = dist(*engine);
+
+    // auto gen_cuda = phi::DefaultCUDAGenerator(0);
+    // int seed = static_cast<int>(gen_cuda->Random64());
+    int seed = 0;
+
+    size_t thread_idx =
+        static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
+
+#if defined(__NVCC__)
+    curandStatePhilox4_32_10_t state;
+    curand_init(seed, thread_idx, 0, &state);
+#else
+    hiprandStatePhilox4_32_10_t state;
+    hiprand_init(seed, thread_idx, offset, &state);
+#endif
+
+    phi::funcs::uniform_distribution<float> dist;
+    float4 rand = dist(&state);
+    float u = (&rand.x)[0];
 
     alpha_depth = static_cast<float>(input_depth) / output_depth;
     alpha_height = static_cast<float>(input_height) / output_height;
