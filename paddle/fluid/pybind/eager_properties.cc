@@ -301,22 +301,23 @@ int tensor_properties_set_grad(TensorObject* self,
                                void* closure) {
   EAGER_TRY
   auto& src = CastPyArg2Tensor(value, 0);
+  PADDLE_ENFORCE(
       egr::EagerUtils::IsLeafTensor(self->tensor),
       paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
 
-      paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
-      PADDLE_ENFORCE(grad != nullptr,
-                     paddle::platform::errors::Fatal(
-                         "Detected NULL grad"
-                         "Please check if you have manually cleared"
-                         "the grad inside autograd_meta"));
-      const phi::distributed::ProcessMesh* mesh = nullptr;
-      if (InputsContainDistTensor(&mesh, src, self->tensor, *grad)) {
-        ConvertAllInputsToDistTensor(mesh, src, self->tensor, *grad);
-      }
-      grad->copy_(src, self->tensor.place(), true);
-      return 0;
-      EAGER_CATCH_AND_THROW_RETURN_NEG
+  paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
+  PADDLE_ENFORCE(grad != nullptr,
+                 paddle::platform::errors::Fatal(
+                     "Detected NULL grad"
+                     "Please check if you have manually cleared"
+                     "the grad inside autograd_meta"));
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, src, self->tensor, *grad)) {
+    ConvertAllInputsToDistTensor(mesh, src, self->tensor, *grad);
+  }
+  grad->copy_(src, self->tensor.place(), true);
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 int tensor_properties_set_grad_(TensorObject* self,
