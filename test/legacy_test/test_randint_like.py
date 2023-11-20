@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle.pir_utils import test_with_pir_api
-from paddle.static import Program, program_guard
 
 
 # Test python API
@@ -41,7 +40,9 @@ class TestRandintLikeAPI(unittest.TestCase):
     @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # results are from [-100, 100).
             x_bool = paddle.static.data(
                 name="x_bool", shape=[10, 12], dtype="bool"
@@ -61,7 +62,9 @@ class TestRandintLikeAPI(unittest.TestCase):
     @test_with_pir_api
     def test_static_api_with_int32(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x_int32 = paddle.static.data(
                 name="x_int32", shape=[10, 12], dtype="int32"
             )
@@ -84,7 +87,9 @@ class TestRandintLikeAPI(unittest.TestCase):
     @test_with_pir_api
     def test_static_api_with_int64(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x_int64 = paddle.static.data(
                 name="x_int64", shape=[10, 12], dtype="int64"
             )
@@ -104,7 +109,9 @@ class TestRandintLikeAPI(unittest.TestCase):
     def test_static_api_with_fp16(self):
         paddle.enable_static()
         if paddle.is_compiled_with_cuda():
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x_float16 = paddle.static.data(
                     name="x_float16", shape=[10, 12], dtype="float16"
                 )
@@ -125,7 +132,9 @@ class TestRandintLikeAPI(unittest.TestCase):
     @test_with_pir_api
     def test_static_api_with_float32(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x_float32 = paddle.static.data(
                 name="x_float32", shape=[10, 12], dtype="float32"
             )
@@ -146,7 +155,9 @@ class TestRandintLikeAPI(unittest.TestCase):
     @test_with_pir_api
     def test_static_api_with_float64(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x_float64 = paddle.static.data(
                 name="x_float64", shape=[10, 12], dtype="float64"
             )
@@ -200,7 +211,9 @@ class TestRandintLikeAPI(unittest.TestCase):
 
     def test_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x_bool = paddle.static.data(
                 name="x_bool", shape=[10, 12], dtype="bool"
             )
