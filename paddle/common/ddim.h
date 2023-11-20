@@ -269,9 +269,9 @@ TEST_API DDim flatten_to_2d(const DDim& src, int num_col_dims);
 
 TEST_API DDim flatten_to_1d(const DDim& src);
 
-TEST_API DDim stride(const DDim& ddim);
+DDim stride(const DDim& ddim);
 
-TEST_API DDim stride_numel(const DDim& ddim);
+DDim stride_numel(const DDim& ddim);
 }  // namespace common
 
 namespace paddle {
