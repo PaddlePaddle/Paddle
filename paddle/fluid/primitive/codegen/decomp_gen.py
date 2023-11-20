@@ -197,7 +197,7 @@ def gen(
         for attr_item in item["attrs"]:
             if attr_item["typename"] not in attr_types_map.keys():
                 raise TypeError
-            attr_item["mapped_type"] = attr_types_map[attr_item["typename"]][0]
+            attr_item["mapped_type"] = attr_types_map[attr_item["typename"]]
         for out_item in item["outputs"]:
             if out_item["typename"] not in output_type_map.keys():
                 name = out_item["typename"]

@@ -63,6 +63,123 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
 }
 
 template <typename T>
+std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
+    const Tensor& x,
+    const Tensor& run_mean,
+    const Tensor& run_var,
+    const paddle::optional<Tensor>& scale,
+    const paddle::optional<Tensor>& bias,
+    bool is_test,
+    float momentum,
+    float epsilon,
+    const std::string& data_layout,
+    bool use_global_stats,
+    bool trainable_statistics) {
+  auto org_dtype = x.dtype();
+  Tensor x_cast = x;
+
+  bool need_cast = org_dtype == phi::DataType::FLOAT16 ||
+                   org_dtype == phi::DataType::BFLOAT16;
+
+  if (need_cast) {
+    x_cast = cast<T>(x, phi::DataType::FLOAT32);
+  }
+
+  std::vector<int64_t> x_dim = common::vectorize<int64_t>(x_cast.dims());
+  int rank = x_dim.size();
+  DataLayout data_layout_ = phi::StringToDataLayout(data_layout);
+  int feature_axis;
+  if (data_layout_ == DataLayout::kNCHW) {
+    feature_axis = 1;
+  } else if (data_layout_ == DataLayout::kNHWC) {
+    feature_axis = rank - 1;
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Unknown storage order: %s", data_layout));
+  }
+  std::vector<int64_t> reduce_axes;
+  for (int i = 0; i < rank; ++i) {
+    if (i != feature_axis) {
+      reduce_axes.push_back(i);
+    }
+  }
+  std::vector<int64_t> stats_shape;
+  for (int i = 0; i < rank; ++i) {
+    if (find_value(reduce_axes, i) == false) {
+      stats_shape.push_back(x_dim[i]);
+    } else {
+      stats_shape.push_back(1);
+    }
+  }
+
+  Tensor half = full<T>(IntArray({1}), -0.5, x_cast.dtype());
+
+  bool use_run_stat = (is_test && (!trainable_statistics)) || use_global_stats;
+  Tensor x_hat;
+  Tensor batch_mean;
+  Tensor inv_std;
+  Tensor run_mean_;
+  Tensor run_var_;
+  if (!use_run_stat) {
+    batch_mean = mean_decomp<T>(x_cast, IntArray(reduce_axes), false);
+    auto temp = mean_decomp<T>(x_cast * x_cast, IntArray(reduce_axes), false);
+    auto batch_var = temp - batch_mean * batch_mean;
+    inv_std = elementwise_pow<T>((batch_var + epsilon), half);
+    if (data_layout_ == DataLayout::kNHWC) {
+      x_hat = (x_cast - batch_mean) * inv_std;
+    } else {
+      x_hat = (x_cast - reshape<T>(batch_mean, stats_shape)) *
+              reshape<T>(inv_std, stats_shape);
+    }
+    run_mean_ = run_mean * momentum + batch_mean * (1. - momentum);
+    run_var_ = run_var * momentum + batch_var * (1. - momentum);
+  } else {
+    batch_mean =
+        full<T>(common::vectorize(run_mean.dims()), 0, run_mean.dtype());
+    auto batch_var =
+        full<T>(common::vectorize(run_var.dims()), 0, run_var.dtype());
+    inv_std = elementwise_pow<T>((batch_var + epsilon), half);
+    if (data_layout_ == DataLayout::kNHWC) {
+      x_hat =
+          (x_cast - run_mean) * elementwise_pow<T>((run_var + epsilon), half);
+    } else {
+      x_hat = (x_cast - reshape<T>(run_mean, stats_shape)) *
+              elementwise_pow<T>((reshape<T>(run_var, stats_shape) + epsilon),
+                                 half);
+    }
+    run_mean_ = assign<T>(run_mean);
+    run_var_ = assign<T>(run_var);
+  }
+  Tensor y;
+  Tensor new_scale =
+      scale ? scale.get()
+            : full<T>(common::vectorize(x_cast.dims()), 1, x_cast.dtype());
+  Tensor new_bias =
+      bias ? bias.get()
+           : full<T>(common::vectorize(x_cast.dims()), 0, x_cast.dtype());
+  if (data_layout_ == DataLayout::kNHWC) {
+    y = x_hat * new_scale + new_bias;
+  } else {
+    y = x_hat * reshape<T>(new_scale, stats_shape) +
+        reshape<T>(new_bias, stats_shape);
+  }
+  if (need_cast) {
+    y = cast<T>(y, org_dtype);
+  }
+  Tensor reserve_space;
+
+  auto batch_mean_ = assign<T>(batch_mean);
+  auto inv_std_ = assign<T>(inv_std);
+  if (!use_run_stat) {
+    return std::make_tuple(
+        y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space);
+  } else {
+    return std::make_tuple(
+        y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space);
+  }
+}
+
+template <typename T>
 Tensor softmax_decomp(const Tensor& x, const int& axis) {
   auto org_dtype = x.dtype();
   auto x_tmp = x;
