@@ -87,7 +87,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
 
   std::vector<int64_t> x_dim = common::vectorize<int64_t>(x_cast.dims());
   int rank = x_dim.size();
-  DataLayout data_layout_ = phi::StringToDataLayout(data_layout);
+  DataLayout data_layout_ = common::StringToDataLayout(data_layout);
   int feature_axis;
   if (data_layout_ == DataLayout::kNCHW) {
     feature_axis = 1;
