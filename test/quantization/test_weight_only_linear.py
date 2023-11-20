@@ -95,13 +95,24 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
 
         self.bias = self.linear.bias
         self.weight = self.linear.weight
+        self.float_weight = self.linear.weight
         self.weight_scale = None
         self.weight, self.weight_scale = Q.weight_quantize(
-            self.weight,
+            self.float_weight.cuda()
+            if self.weight_dtype == "int8"
+            else self.weight.cpu(),
             algo="weight_only_int8"
             if self.weight_dtype == "int8"
             else "weight_only_int4",
         )
+        self.weight_cpu, self.weight_scale_cpu = Q.weight_quantize(
+            self.float_weight.cpu(),
+            algo="weight_only_int8"
+            if self.weight_dtype == "int8"
+            else "weight_only_int4",
+        )
+        np.testing.assert_allclose(self.weight, self.weight_cpu)
+        np.testing.assert_allclose(self.weight_scale, self.weight_scale_cpu)
 
     def get_linear_out(self):
         out = self.linear(self.x)
@@ -349,9 +360,9 @@ class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
         weight = paddle.rand(shape=(4096, 12288), dtype='float16')
 
         quant_weight, quant_scale = Q.weight_quantize(
-            x=weight, algo='weight_only_int8'
+            x=weight.cuda(), algo='weight_only_int8'
         )
-        dequant_weight = Q.weight_dequantize(quant_weight, quant_scale)
+        dequant_weight = Q.weight_dequantize(quant_weight.cuda(), quant_scale)
         np.testing.assert_allclose(weight, dequant_weight, rtol=1e-2, atol=1e-2)
 
         quant_out = Q.weight_only_linear(
