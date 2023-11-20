@@ -20,7 +20,7 @@
 namespace cinn {
 namespace ir {
 
-using SymbolicCondition = Expr;
+using SymbolicPredicate = Expr;
 
 /**
  * The base class used for scheduling fusion groups.
@@ -36,11 +36,17 @@ class GroupScheduler {
     schedule_block_graph_ = std::make_unique<ir::ScheduleBlockGraph>(*ir_sch_);
   }
 
+  static std::unique_ptr<GroupScheduler> Make(
+      ir::IRSchedule* ir_sch,
+      const std::unordered_set<std::string>& output_tensor_names,
+      const common::Target& target,
+      bool is_dy_shape = false);
+
   virtual ~GroupScheduler() = default;
 
   virtual void Schedule() = 0;
 
-  virtual std::vector<std::pair<SymbolicCondition, ir::Expr>> GetIRs() = 0;
+  virtual std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetIRs() = 0;
 
  protected:
   ir::IRSchedule* ir_sch_;

@@ -15,9 +15,13 @@
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 
 #include <absl/types/variant.h>
+#include "paddle/cinn/hlir/framework/pir/compilation_task.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/utils/multi_threading.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/builtin_type.h"
+
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
 namespace hlir {
@@ -80,22 +84,36 @@ std::vector<pir::CUDAJITInfo> PirCompiler::BuildCUDAJITInfo(
 
 std::unique_ptr<Program> PirCompiler::Build(
     const std::vector<pir::GroupPtr>& groups) {
-  auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
+  std::vector<std::unique_ptr<Instruction>> instructions(groups.size());
+  if (FLAGS_cinn_bucket_compile) {
+    for (int i = 0; i < groups.size(); ++i) {
+      group_compilation_contexts_.emplace_back(target_, groups[i], scope_);
+    }
+    auto worker_fn = [&](int index) {
+      CompilationTask task(&group_compilation_contexts_[index]);
+      task();
+      instructions[index] = task.BuildInstruction();
+    };
+    utils::parallel_run(
+        worker_fn, utils::SequenceDispatcher(0, groups.size()), -1);
+  } else {
+    auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
 
-  std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-  for (int i = 0; i < groups.size(); ++i) {
-    lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
+    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
+    for (int i = 0; i < groups.size(); ++i) {
+      lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
+    }
+
+    for (auto&& lowered_func : lowered_funcs) {
+      ProcessFunction(lowered_func);
+    }
+
+    compiler_ = backends::Compiler::Create(target_);
+    auto build_module = m_builder_.Build();
+    compiler_->Build(build_module, "");
+
+    instructions = BuildInstructions(groups);
   }
-
-  for (auto&& lowered_func : lowered_funcs) {
-    ProcessFunction(lowered_func);
-  }
-
-  compiler_ = backends::Compiler::Create(target_);
-  auto build_module = m_builder_.Build();
-  compiler_->Build(build_module, "");
-
-  auto instructions = BuildInstructions(groups);
 
   // TODO(Aurelius84): Instantiate all tensors on compile-time, which is
   // controlled by 'options.with_instantiate_variables' in GraphCompiler.

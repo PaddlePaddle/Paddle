@@ -57,7 +57,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                            device_module_builder.Build());
   }
 
- private:
+ protected:
   void Visit(const ir::_LoweredFunc_* op, Expr* expr) override {
     if (op->body.As<ir::Call>()) {
       host_module_builder.AddFunctionWithoutOptim(expr->as_lowered_func_ref());
@@ -137,9 +137,59 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     return fn + "_kernel";
   }
 
- private:
+ protected:
   ir::Module::Builder host_module_builder;
   ir::Module::Builder device_module_builder;
+};
+
+struct CollectBucketStrategyHostFunctionVisitor
+    : public CollectHostFunctionVisitor {
+  explicit CollectBucketStrategyHostFunctionVisitor(
+      const std::string& module_name)
+      : CollectHostFunctionVisitor(module_name),
+        kernel_args_(KERNEL_ARGS, type_of<void*>()),
+        kernel_args_num_(KERNEL_ARGS_NUM, type_of<int>()),
+        kernel_stream_(KERNEL_STREAM, type_of<void*>()) {}
+
+  std::tuple<ir::Module, ir::Module> operator()(Expr* expr) {
+    ir::IRMutator<>::Visit(expr, expr);
+    return std::make_tuple(host_module_builder.Build(),
+                           device_module_builder.Build());
+  }
+
+ private:
+  void Visit(const ir::_Module_* op, Expr* expr) {
+    CHECK_EQ(op->functions.size(), op->predicates.size());
+    for (int i = 0; i < op->functions.size(); ++i) {
+      ProcessLoweredFunc(op->functions[i], op->predicates[i]);
+    }
+
+    std::vector<ir::Argument> arguments = {
+        ir::Argument(kernel_args_, ir::Argument::IO::kOutput),
+        ir::Argument(kernel_args_num_, ir::Argument::IO::kInput),
+        ir::Argument(kernel_stream_, ir::Argument::IO::kOutput)};
+    ir::Expr host_func =
+        ir::_LoweredFunc_::Make(op->functions[0].as_lowered_func()->name,
+                                arguments,
+                                ir::Block::Make(buckets_),
+                                {});
+    host_module_builder.AddFunctionWithoutOptim(
+        host_func.as_lowered_func_ref());
+  }
+
+  void ProcessLoweredFunc(ir::Expr func, ir::Expr predicate);
+
+  Expr CreateDeviceFunction(ir::Expr expr, ir::Expr predicate);
+
+  inline std::string GenDeviceKernelName(const std::string& fn_name,
+                                         ir::Expr predicate);
+
+ private:
+  std::vector<ir::Expr> buckets_;
+
+  ir::Var kernel_args_;
+  ir::Var kernel_args_num_;
+  ir::Var kernel_stream_;
 };
 
 }  // namespace detail

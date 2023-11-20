@@ -51,7 +51,7 @@ class StaticShapeGroupScheduler : public GroupScheduler {
 
   void Schedule() override;
 
-  std::vector<std::pair<SymbolicCondition, ir::Expr>> GetIRs() override;
+  std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetIRs() override;
 
  private:
   // Automatically align loops for each ScheduleBlock.

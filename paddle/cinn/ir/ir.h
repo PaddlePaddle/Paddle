@@ -1002,6 +1002,7 @@ struct _Module_ : public ExprNode<_Module_> {
   std::vector<Expr> buffers;
   std::vector<Expr> functions;
   std::vector<Expr> submodules;
+  std::vector<Expr> predicates;
 
   static ir::Module Make(const std::string& name, Target target);
 
