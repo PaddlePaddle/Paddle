@@ -127,7 +127,7 @@ void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh) {
             "as it's not phi::DenseTensor.",
             x->name()));
     phi::distributed::TensorDistAttr dist_attr(
-        phi::vectorize(x->impl()->dims()));
+        common::vectorize(x->impl()->dims()));
     dist_attr.set_process_mesh(*mesh);
     auto dense_t = std::static_pointer_cast<phi::DenseTensor>(x->impl());
     x->set_impl(
