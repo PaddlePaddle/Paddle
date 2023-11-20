@@ -27,8 +27,8 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 class GapTestNet(paddle.nn.Layer):
     def __init__(self, gap_op):
         super().__init__()
-        self.grid_size = [1, 2, 3]
-        self.cnnseg_feature_dim = 1
+        self.test_attr1 = [1, 2, 3]
+        self.test_attr2 = 1
         self.linear = paddle.nn.Linear(96, 1)
         self.conv1 = paddle.nn.Conv2D(3, 6, kernel_size=3)
         self.conv2 = paddle.nn.Conv2D(6, 3, kernel_size=3)
@@ -37,7 +37,7 @@ class GapTestNet(paddle.nn.Layer):
     def forward(self, x):
         x = self.conv1(x)
         x = self.conv2(x)
-        x = self.gap(x, self.grid_size, self.cnnseg_feature_dim)
+        x = self.gap(x, self.test_attr1, self.test_attr2)
         x = paddle.flatten(x)
         x = self.linear(x)
         return x

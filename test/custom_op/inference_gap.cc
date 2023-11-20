@@ -40,7 +40,7 @@ std::vector<paddle::Tensor> paddle_gap_forward(
   auto out = paddle::empty(out_dims, x.dtype(), x.place());
   dim3 blockSize(ch);
   dim3 gridSize(batch);
-  if (x.dtype() == paddle::DataType::FLOAT32) {
+  if (x.is_gpu() && x.dtype() == paddle::DataType::FLOAT32) {
     const float* input = x.data<float>();
     float* output = out.data<float>();
     PD_DISPATCH_FLOATING_TYPES(
