@@ -152,6 +152,13 @@ SpmdInfo ReductionSumInferSpmdDynamic(const DistMetaTensor& x,
       x, axis.GetData(), keep_dim, static_cast<int>(ReduceType::kRedSum));
 }
 
+SpmdInfo ReductionMaxInferSpmdDynamic(const DistMetaTensor& x,
+                                      const IntArray& axis,
+                                      bool keep_dim) {
+  return ReductionInferSpmdBase(
+      x, axis.GetData(), keep_dim, static_cast<int>(ReduceType::kRedMax));
+}
+
 SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& out,
                                    const std::vector<int64_t>& axis,
