@@ -46,7 +46,7 @@ std::string GetTransposeOutputNotation(int input_ndim,
 SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
                             const std::vector<int>& perm) {
   // Step0: Verify input args based on transpose logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -98,8 +98,8 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& out,
                                    const std::vector<int>& perm) {
   // Step0: Verify input args based on transpose logic
-  auto x_shape = phi::vectorize(x.dims());
-  auto out_shape = phi::vectorize(out.dims());
+  auto x_shape = common::vectorize(x.dims());
+  auto out_shape = common::vectorize(out.dims());
   int x_ndim = x_shape.size();
   int out_ndim = out_shape.size();
   auto out_dist_attr_src = out.dist_attr();

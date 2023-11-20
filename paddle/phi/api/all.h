@@ -29,10 +29,10 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor_utils.h"
 
 // phi common headers
+#include "paddle/common/layout.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
 
 // original custom op headers

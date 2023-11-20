@@ -45,7 +45,8 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
   if (IsCurRankInMesh(dist_attr.process_mesh())) {
     if (!dist_attr.is_replicated()) {
       // 1. create replicated global tensor
-      TensorDistAttr replicated_dist_attr(vectorize(global_value->dims()));
+      TensorDistAttr replicated_dist_attr(
+          common::vectorize(global_value->dims()));
       replicated_dist_attr.set_process_mesh(dist_attr.process_mesh());
       DistTensor replicated_tensor(global_value, replicated_dist_attr);
 
@@ -76,7 +77,7 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
       placements,
       DenseTensorMeta(global_value->dtype(), global_value->dims()));
 
-  TensorDistAttr dist_attr(vectorize(dist_tensor_meta_.dims()));
+  TensorDistAttr dist_attr(common::vectorize(dist_tensor_meta_.dims()));
   dist_attr.set_process_mesh(dist_tensor_meta_.process_mesh());
   dist_attr.set_dims_mapping(dist_tensor_meta_.dim_mapping());
   dist_attr.mark_annotated("process_mesh");
@@ -88,7 +89,8 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
   if (IsCurRankInMesh(process_mesh)) {
     if (!dist_tensor_meta_.is_replicated()) {
       // 1. create replicated global tensor
-      TensorDistAttr replicated_dist_attr(vectorize(global_value->dims()));
+      TensorDistAttr replicated_dist_attr(
+          common::vectorize(global_value->dims()));
       replicated_dist_attr.set_process_mesh(process_mesh);
       DistTensor replicated_tensor(global_value, replicated_dist_attr);
 

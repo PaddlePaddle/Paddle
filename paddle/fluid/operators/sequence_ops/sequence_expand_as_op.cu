@@ -70,7 +70,7 @@ struct SequenceExpandAsFunctor<phi::GPUContext, T> {
                   const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
                   phi::DenseTensor *out) {
     int height = x.dims()[0];
-    int width = phi::product(x.dims()) / height;
+    int width = common::product(x.dims()) / height;
 
     const int kThreadsPerBlock = 1024;
     int thread_x = kThreadsPerBlock;
@@ -100,7 +100,7 @@ struct SequenceExpandAsGradFunctor<phi::GPUContext, T> {
                   const phi::Vector<size_t> &ref_lod, /*expand based lod*/
                   phi::DenseTensor *dx) {
     int height = dx->dims()[0];
-    int width = phi::product(dx->dims()) / height;
+    int width = common::product(dx->dims()) / height;
 
     const int kThreadsPerBlock = 1024;
     int thread_x = kThreadsPerBlock;

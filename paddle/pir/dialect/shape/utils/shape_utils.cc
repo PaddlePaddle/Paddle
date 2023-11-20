@@ -79,7 +79,8 @@ bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
     return false;
 
   if (lhs_type.HasStaticShape() && rhs_type.HasStaticShape()) {
-    return vectorize(lhs_type.GetShape()) == vectorize(rhs_type.GetShape());
+    return common::vectorize(lhs_type.GetShape()) ==
+           common::vectorize(rhs_type.GetShape());
   }
 
   auto lhs_it = value_to_sym_dims_.find(lhs);

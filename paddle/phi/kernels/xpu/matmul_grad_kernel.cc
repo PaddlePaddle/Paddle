@@ -114,8 +114,8 @@ void MatmulWithFlattenGradKernel(const Context& dev_ctx,
   auto y_matrix = y.dims().size() > 2 ? phi::ReshapeToMatrix(y, y_num_col_dims)
                                       : static_cast<const DenseTensor&>(y);
   DenseTensor dout_mat;
-  dout_mat.Resize({phi::flatten_to_2d(x.dims(), x_num_col_dims)[0],
-                   phi::flatten_to_2d(y.dims(), y_num_col_dims)[1]});
+  dout_mat.Resize({common::flatten_to_2d(x.dims(), x_num_col_dims)[0],
+                   common::flatten_to_2d(y.dims(), y_num_col_dims)[1]});
 
   if (x_grad != nullptr) {
     x_grad->set_lod(x.lod());

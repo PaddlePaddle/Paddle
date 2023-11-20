@@ -109,9 +109,9 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
         }
       }
     }
-    auto vec = phi::vectorize<int>(out_dims);
+    auto vec = common::vectorize<int>(out_dims);
     vec.insert(vec.begin() + axis, inx.size());  // NOLINT
-    out.Resize(phi::make_ddim(vec));
+    out.Resize(common::make_ddim(vec));
 
     LodTensorArray2LodTensorVector(scope, base_name, Input("X"), &names);
 
@@ -178,16 +178,16 @@ class LoDTensorArray2TensorOpInferShape : public framework::InferShapeBase {
     if (ctx->IsRuntime()) return;
     auto dims = ctx->GetInputDim("X");
     // if the shape is empty
-    if (dims == phi::make_ddim({0UL})) return;
+    if (dims == common::make_ddim({0UL})) return;
     // otherwise, suppose the shape of array is the shape of tensor in the
     // array, which is consistent with what tensor_array_read_write dose
     auto axis = ctx->Attrs().Get<int>("axis");
     auto use_stack = ctx->Attrs().Get<bool>("use_stack");
     if (use_stack) {
-      auto dim_vec = phi::vectorize<int>(dims);
+      auto dim_vec = common::vectorize<int>(dims);
       // use -1 for the stack dim size
       dim_vec.insert(dim_vec.begin() + axis, -1);
-      dims = phi::make_ddim(dim_vec);
+      dims = common::make_ddim(dim_vec);
     } else {
       // use -1 for the concat dim size
       dims[axis] = -1;

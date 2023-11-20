@@ -11,5 +11,5 @@ if(NOT WIN32)
   cc_test(
     test_c_tcp_store
     SRCS test_tcp_store.cc
-    DEPS phi)
+    DEPS phi common)
 endif()

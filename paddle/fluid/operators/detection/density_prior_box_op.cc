@@ -92,8 +92,8 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
       dim_vec[1] = input_dims[3];
       dim_vec[2] = static_cast<int64_t>(num_priors);
       dim_vec[3] = 4;
-      ctx->SetOutputDim("Boxes", phi::make_ddim(dim_vec));
-      ctx->SetOutputDim("Variances", phi::make_ddim(dim_vec));
+      ctx->SetOutputDim("Boxes", common::make_ddim(dim_vec));
+      ctx->SetOutputDim("Variances", common::make_ddim(dim_vec));
     } else if (ctx->IsRuntime()) {
       int64_t dim0 =
           static_cast<int64_t>(input_dims[2] * input_dims[3] * num_priors);

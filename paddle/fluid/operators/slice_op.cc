@@ -154,7 +154,7 @@ class SliceOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_DNNL
       auto input_data_type =
           framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-      auto vec_dims = phi::vectorize(in_tensor.dims());
+      auto vec_dims = common::vectorize(in_tensor.dims());
       bool all_zero_dims = std::all_of(
           vec_dims.cbegin(), vec_dims.cend(), [](int64_t i) { return i == 0; });
       if (!all_zero_dims && this->CanMKLDNNBeUsed(ctx, input_data_type)) {

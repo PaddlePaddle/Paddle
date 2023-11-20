@@ -18,10 +18,10 @@
 #include <functional>
 #include <string>
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/api/profiler/event.h"  // import EventRole, TODO(TIEXING): remove later
 #include "paddle/phi/api/profiler/trace_event.h"
 #include "paddle/phi/core/attribute.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace phi {
 

@@ -47,7 +47,7 @@ class GlobalScatterOp : public framework::OperatorWithKernel {
                           "But received input's dimension = %d.",
                           ndim_input));
 
-    framework::DDim out_dims = phi::make_ddim({-1, -1});
+    framework::DDim out_dims = common::make_ddim({-1, -1});
     ctx->SetOutputDim("Out", out_dims);
   }
 

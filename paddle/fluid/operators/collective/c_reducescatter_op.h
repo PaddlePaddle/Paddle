@@ -18,11 +18,11 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/collective/c_allreduce_op.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {

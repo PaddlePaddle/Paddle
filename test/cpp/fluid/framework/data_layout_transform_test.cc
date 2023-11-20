@@ -21,7 +21,7 @@ TEST(DataTransform, DataLayoutFunction) {
   auto place = paddle::platform::CPUPlace();
   phi::DenseTensor in = phi::DenseTensor();
   phi::DenseTensor out = phi::DenseTensor();
-  in.mutable_data<double>(phi::make_ddim({2, 3, 1, 2}), place);
+  in.mutable_data<double>(common::make_ddim({2, 3, 1, 2}), place);
   in.set_layout(phi::DataLayout::kNHWC);
 
   auto kernel_nhwc =
@@ -32,19 +32,19 @@ TEST(DataTransform, DataLayoutFunction) {
   paddle::framework::TransDataLayout(kernel_nhwc, kernel_ncwh, in, &out, place);
 
   EXPECT_TRUE(out.layout() == phi::DataLayout::kNCHW);
-  EXPECT_TRUE(out.dims() == phi::make_ddim({2, 2, 3, 1}));
+  EXPECT_TRUE(out.dims() == common::make_ddim({2, 2, 3, 1}));
 
   paddle::framework::TransDataLayout(kernel_ncwh, kernel_nhwc, in, &out, place);
 
   EXPECT_TRUE(in.layout() == phi::DataLayout::kNHWC);
-  EXPECT_TRUE(in.dims() == phi::make_ddim({2, 3, 1, 2}));
+  EXPECT_TRUE(in.dims() == common::make_ddim({2, 3, 1, 2}));
 }
 
 #ifdef PADDLE_WITH_DNNL
 TEST(DataTransformBf16, GetDataFromTensorDNNL) {
   auto place = paddle::platform::CPUPlace();
   phi::DenseTensor in = phi::DenseTensor();
-  in.mutable_data<paddle::platform::bfloat16>(phi::make_ddim({2, 3, 1, 2}),
+  in.mutable_data<paddle::platform::bfloat16>(common::make_ddim({2, 3, 1, 2}),
                                               place);
 
   void* in_data =
@@ -56,7 +56,7 @@ TEST(DataTransformBf16, GetDataFromTensorDNNL) {
 TEST(DataTransformInt32, GetDataFromTensorDNNL) {
   auto place = paddle::platform::CPUPlace();
   phi::DenseTensor in = phi::DenseTensor();
-  in.mutable_data<int32_t>(phi::make_ddim({2, 3, 1, 2}), place);
+  in.mutable_data<int32_t>(common::make_ddim({2, 3, 1, 2}), place);
 
   void* in_data =
       phi::funcs::GetDataFromTensor(in, dnnl::memory::data_type::s32);

@@ -265,7 +265,7 @@ void CooToDenseCPUKernel(const CPUContext& dev_ctx,
   const auto dense_dims = x.dims();
   const auto indices = x.indices();
   const auto values = x.values();
-  const auto indices_dims = phi::vectorize<int>(indices.dims());
+  const auto indices_dims = common::vectorize<int>(indices.dims());
   int64_t sparse_dim = indices_dims[0];
   if (indices_dims.size() == 1) {
     sparse_dim = 1;

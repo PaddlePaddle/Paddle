@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <cctype>
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 
-namespace phi {
+namespace common {
 
 // Note: The original design of paddle DataLayout is confusing.
 // It contains two levels of "layout", one is the data layout
@@ -132,10 +132,18 @@ inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
   return os;
 }
 
-}  // namespace phi
+}  // namespace common
+
+namespace pir {
+using DataLayout = common::DataLayout;
+}
+
+namespace phi {
+using DataLayout = common::DataLayout;
+}
 
 namespace paddle {
 // In order to be compatible with the original custom operator Tensor interface
-using DataLayout = phi::DataLayout;
+using DataLayout = common::DataLayout;
 
 }  // namespace paddle

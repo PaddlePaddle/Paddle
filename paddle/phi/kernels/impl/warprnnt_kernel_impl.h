@@ -313,7 +313,7 @@ void WarprnntKernel(const Context& dev_ctx,
       dev_ctx, warprnntgrad, static_cast<T>(0));
 
   // loss on cpu (B,)
-  auto loss_dims = phi::make_ddim({static_cast<int64_t>(B)});
+  auto loss_dims = common::make_ddim({static_cast<int64_t>(B)});
   DenseTensor warprnnt_loss;
   warprnnt_loss.Resize(loss_dims);
   T* warprnnt_loss_data = dev_ctx.template HostAlloc<T>(&warprnnt_loss);

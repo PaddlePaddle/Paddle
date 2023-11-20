@@ -164,7 +164,7 @@ void MaskedMatmulCsrGradKernel(const Context& dev_ctx,
   // dy{Dense} = x'{Dense} * dout{SparseCsr}
   // That is: dy'{Dense} = dout'{SparseCsr} * x{Dense}
   if (dy) {
-    std::vector<int> trans_dim_vec = phi::vectorize<int>(y.dims());
+    std::vector<int> trans_dim_vec = common::vectorize<int>(y.dims());
     size_t rank = trans_dim_vec.size();
     std::swap(trans_dim_vec[rank - 1], trans_dim_vec[rank - 2]);
     DenseTensor trans_dy = phi::Empty<T, Context>(dev_ctx, trans_dim_vec);

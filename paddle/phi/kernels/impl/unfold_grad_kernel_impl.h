@@ -52,8 +52,8 @@ void UnfoldGradKernel(const Context& ctx,
                                              paddings[3],
                                              strides[1]);
 
-  DDim x_shape = make_ddim({x_dims[1], x_dims[2], x_dims[3]});
-  DDim out_matrix_shape = make_ddim(
+  DDim x_shape = common::make_ddim({x_dims[1], x_dims[2], x_dims[3]});
+  DDim out_matrix_shape = common::make_ddim(
       {x_dims[1], kernel_sizes[0], kernel_sizes[1], out_height, out_width});
 
   phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;

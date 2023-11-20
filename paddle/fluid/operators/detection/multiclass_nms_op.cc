@@ -355,7 +355,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     auto index = ctx.Output<phi::DenseTensor>("Index");
     bool has_roisnum = ctx.HasInput("RoisNum") ? true : false;
     auto rois_num = ctx.Input<phi::DenseTensor>("RoisNum");
-    auto score_dims = phi::vectorize<int>(scores->dims());
+    auto score_dims = common::vectorize<int>(scores->dims());
     auto score_size = score_dims.size();
     auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
 

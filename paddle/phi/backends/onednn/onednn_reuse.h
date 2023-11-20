@@ -955,8 +955,8 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
                       const dnnl::post_ops& post_ops = dnnl::post_ops{})
       : OneDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
     use_broadcasting_hack = false;
-    const auto src_x_tz = vectorize(x->dims());
-    const auto src_y_tz = vectorize(y->dims());
+    const auto src_x_tz = common::vectorize(x->dims());
+    const auto src_y_tz = common::vectorize(y->dims());
     // if output tensor(z) is nullptr then we are computing into oneDNN
     // managed buffer
     auto rankdiff = x->dims().size() - y->dims().size();
@@ -966,7 +966,7 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
                             : (y->dims().size() == 0 ? std::vector<int64_t>{1}
                                                      : src_x_tz))
             : (out->dims().size() == 0 ? std::vector<int64_t>{1}
-                                       : vectorize(out->dims()));
+                                       : common::vectorize(out->dims()));
 
     auto src0_md = x->mem_desc();
     auto src1_md = y->mem_desc();
@@ -1133,8 +1133,9 @@ class BroadcastDataOneDNNHandler
                              float scale_y,
                              const std::vector<int64_t>& extended_x_dims)
       : OneDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
-    const auto src0_tz = out->dims().size() == 0 ? std::vector<int64_t>{1}
-                                                 : vectorize(out->dims());
+    const auto src0_tz = out->dims().size() == 0
+                             ? std::vector<int64_t>{1}
+                             : common::vectorize(out->dims());
     const auto src0_md = dnnl::memory::desc(
         src0_tz, OneDNNGetDataType<T>(), GetPlainOneDNNFormat(src0_tz.size()));
     const auto reshape_dims =
@@ -1181,7 +1182,7 @@ class PReluOneDNNHandler
                      const bool is_test)
       : OneDNNHandlerNoCachingT<T, dnnl::prelu_forward, dnnl::prelu_backward>(
             engine, cpu_place) {
-    auto weights_dims = vectorize(weights.dims());
+    auto weights_dims = common::vectorize(weights.dims());
     // weights must have same size as X only for "element" case
     if (weights.dims().size() != x.dims().size()) {
       auto new_weights_dims = std::vector<int64_t>(x.dims().size(), 1);
@@ -1382,7 +1383,7 @@ class BatchNormOneDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireScaleMemory(const DenseTensor* scale) {
-    auto scale_tz = vectorize(scale->dims());
+    auto scale_tz = common::vectorize(scale->dims());
     PADDLE_ENFORCE_EQ(
         scale_tz.size(),
         1,
@@ -1397,7 +1398,7 @@ class BatchNormOneDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireShiftMemory(const DenseTensor* shift) {
-    auto shift_tz = vectorize(shift->dims());
+    auto shift_tz = common::vectorize(shift->dims());
     PADDLE_ENFORCE_EQ(
         shift_tz.size(),
         1,
@@ -1517,8 +1518,8 @@ class PoolingOneDNNHandler
     auto onednn_paddings = ToOneDNNPadding(copied_paddings);
 
     const auto dt = ToOneDNNDataType(input->dtype());
-    const auto src_tz = vectorize(input->dims());
-    const auto dst_tz = vectorize(output->dims());
+    const auto src_tz = common::vectorize(input->dims());
+    const auto dst_tz = common::vectorize(output->dims());
     const auto dst_md = OneDNNMemDesc(dst_tz, dt, OneDNNMemoryFormat::any);
 
     if (ceil_mode) {
@@ -1606,9 +1607,9 @@ class PoolingOneDNNHandler
                            copied_strides,
                            copied_kernel_size);
 
-    auto src_tz = vectorize<int64_t>(in_x->dims());
-    auto diff_src_tz = vectorize<int64_t>(in_x_grad->dims());
-    auto diff_dst_tz = vectorize<int64_t>(out_grad->dims());
+    auto src_tz = common::vectorize<int64_t>(in_x->dims());
+    auto diff_src_tz = common::vectorize<int64_t>(in_x_grad->dims());
+    auto diff_dst_tz = common::vectorize<int64_t>(out_grad->dims());
 
     const auto dt = ToOneDNNDataType(in_x->dtype());
     auto dst_md = dnnl::memory::desc(diff_dst_tz, dt, OneDNNMemoryFormat::any);
@@ -1827,7 +1828,7 @@ static void SetOutMemDescWithUnsqueeze2FuseSupport(
     }
   }
   out->set_mem_desc(out_md.reshape(unsqueezed_op_tz));
-  out->Resize(make_ddim(unsqueezed_op_tz));
+  out->Resize(common::make_ddim(unsqueezed_op_tz));
 }
 
 static void SetOutMemDescWithReshape2FuseSupport(
@@ -1851,7 +1852,7 @@ static void SetOutMemDescWithReshape2FuseSupport(
   }
 
   out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
-  out->Resize(phi::make_ddim(fused_reshape2_shape));
+  out->Resize(common::make_ddim(fused_reshape2_shape));
 }
 
 }  // namespace funcs

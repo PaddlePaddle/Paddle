@@ -83,8 +83,8 @@ void ConcatKernel(const Context& dev_ctx,
       if (in->numel() == 0UL) {
         continue;
       }
-      auto in_stride = phi::stride_numel(in->dims());
-      auto out_stride = phi::stride_numel(out->dims());
+      auto in_stride = common::stride_numel(in->dims());
+      auto out_stride = common::stride_numel(out->dims());
       phi::funcs::StridedNumelCopyWithAxis<T, Context>(
           dev_ctx,
           axis,

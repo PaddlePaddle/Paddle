@@ -46,7 +46,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                                  phi::DenseTensor *input_tensor,
                                  const platform::Place &place) {
   VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
-  framework::DDim dims = phi::make_ddim(input_data.shape);
+  framework::DDim dims = common::make_ddim(input_data.shape);
   void *input_tensor_ptr = nullptr;
   if (input_data.dtype == DistModelDataType::INT64) {
     input_tensor_ptr = input_tensor->mutable_data<int64_t>(dims, place);
@@ -645,7 +645,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
 template <typename T>
 bool DistModel::FetchResult(const phi::DenseTensor &fetch,
                             DistModelTensor *output_data) {
-  auto shape = phi::vectorize(fetch.dims());
+  auto shape = common::vectorize(fetch.dims());
   output_data->shape.assign(shape.begin(), shape.end());
   const T *data = fetch.data<T>();
   int64_t num_elems = fetch.numel();

@@ -17,9 +17,9 @@
 #include <string>
 #include <vector>
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/tensor_ref.h"
 #include "paddle/utils/flat_hash_map.h"

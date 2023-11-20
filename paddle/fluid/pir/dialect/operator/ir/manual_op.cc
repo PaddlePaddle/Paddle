@@ -1699,7 +1699,7 @@ void ExpandOp::Build(pir::Builder &builder,
     shape = std::move(phi::IntArray(std::vector<int64_t>(shape_size, -2)));
     shape.SetFromTensor(true);
   } else if (shape_.type().isa<paddle::dialect::DenseTensorType>()) {
-    size_t shape_size = phi::product(
+    size_t shape_size = common::product(
         shape_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
     // In ExpandInferMeta use -2 to represent the element in expand_shape is a
     // var.

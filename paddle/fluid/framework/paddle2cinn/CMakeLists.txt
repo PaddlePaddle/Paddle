@@ -6,6 +6,7 @@ pass_library(
   subgraph_detector
   cinn_compiler
   phi
+  common
   enforce)
 
 pass_library(cinn_zero_tensor_trick_pass base)
@@ -17,7 +18,7 @@ cc_library(
 cc_library(
   transform_type
   SRCS transform_type.cc
-  DEPS phi enforce cinnapi)
+  DEPS phi common enforce cinnapi)
 cc_library(
   cinn_cache_key
   SRCS cinn_cache_key.cc

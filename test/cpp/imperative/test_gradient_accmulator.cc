@@ -40,7 +40,8 @@ TEST(Test__SelectedRowsMerge_Test, SelectedRowsMerge) {
   auto sr2 = std::make_shared<phi::SelectedRows>(rows, table_size);
 
   // initialize a sparse table 1
-  sr1->mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
+  sr1->mutable_value()->Resize(
+      common::make_ddim({table_size, embedding_width}));
   auto* data_sr1 = sr1->mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {
@@ -49,7 +50,8 @@ TEST(Test__SelectedRowsMerge_Test, SelectedRowsMerge) {
   }
 
   // initialize a sparse table 2
-  sr2->mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
+  sr2->mutable_value()->Resize(
+      common::make_ddim({table_size, embedding_width}));
   auto* data_sr2 = sr2->mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {
@@ -92,8 +94,8 @@ int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
   std::vector<int64_t> dims = {2, 5};
   auto* src = var1.GetMutable<phi::DenseTensor>();
   auto* dst = var2.GetMutable<phi::DenseTensor>();
-  src->Resize(phi::make_ddim(dims));
-  dst->Resize(phi::make_ddim(dims));
+  src->Resize(common::make_ddim(dims));
+  dst->Resize(common::make_ddim(dims));
   auto* src_mutable = src->mutable_data<T>(place1);
   auto* dst_mutable = dst->mutable_data<T>(place2);
 

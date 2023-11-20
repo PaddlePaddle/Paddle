@@ -114,7 +114,7 @@ void PD_MetaTensorSetDims(PD_MetaTensor *tensor,
   }
   auto cc_tensor = reinterpret_cast<phi::MetaTensor *>(tensor);
   std::vector<int> shape(dims, dims + ndims);
-  cc_tensor->set_dims(phi::make_ddim(shape));
+  cc_tensor->set_dims(common::make_ddim(shape));
 }
 
 void PD_MetaTensorSetDataType(PD_MetaTensor *tensor,

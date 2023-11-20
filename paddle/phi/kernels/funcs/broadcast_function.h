@@ -34,12 +34,12 @@ enum BroadcastType { kMixed = 1, kBroadcast = 2, kElementwise = 3 };
 template <typename OutT, typename Functor, int Arity, int NumOuts>
 struct BroadcastTypeClassifier {
   int64_t numel{0};
-  int broadcast_num{0};                   // Not used for XPU
-  bool all_elementwise{true};             // Not used for XPU
-  phi::Array<bool, Arity> use_broadcast;  // Not used for XPU
-  phi::Array<kps::details::BroadcastConfig, Arity> configs;
-  phi::Array<const _ptr_ char *__restrict__, Arity> ins_data;
-  phi::Array<_ptr_ OutT *, NumOuts> outs_data;
+  int broadcast_num{0};              // Not used for XPU
+  bool all_elementwise{true};        // Not used for XPU
+  Array<bool, Arity> use_broadcast;  // Not used for XPU
+  Array<kps::details::BroadcastConfig, Arity> configs;
+  Array<const _ptr_ char *__restrict__, Arity> ins_data;
+  Array<_ptr_ OutT *, NumOuts> outs_data;
 
   BroadcastTypeClassifier() {}
   BroadcastTypeClassifier(const std::vector<const DenseTensor *> &ins,
@@ -289,11 +289,11 @@ template <typename OutT,
           bool IsBoundary,
           int LoadType>
 __device__ void VectorizedBroadcastKernelImpl(
-    const phi::Array<const _ptr_ char *__restrict__, Arity> &ins,
-    phi::Array<_ptr_ OutT *, NumOuts> outs,
-    const phi::Array<bool, Arity> &use_broadcast,
+    const Array<const _ptr_ char *__restrict__, Arity> &ins,
+    Array<_ptr_ OutT *, NumOuts> outs,
+    const Array<bool, Arity> &use_broadcast,
     const uint32_t numel,
-    const phi::Array<kps::details::BroadcastConfig, Arity> &configs,
+    const Array<kps::details::BroadcastConfig, Arity> &configs,
     int num,
     int block_offset,
     int read_lens,
@@ -349,11 +349,11 @@ template <typename Functor,
           int VecSize,
           int LoadType>
 __global__ void VectorizedBroadcastKernel(
-    phi::Array<const _ptr_ char *__restrict__, Arity> ins,
-    phi::Array<_ptr_ OutT *, NumOuts> outs,
-    phi::Array<bool, Arity> use_broadcast,
+    Array<const _ptr_ char *__restrict__, Arity> ins,
+    Array<_ptr_ OutT *, NumOuts> outs,
+    Array<bool, Arity> use_broadcast,
     uint32_t numel,
-    phi::Array<kps::details::BroadcastConfig, Arity> configs,
+    Array<kps::details::BroadcastConfig, Arity> configs,
     int main_offset,
     int tail_tid,
     int read_lens,
@@ -580,7 +580,7 @@ static void SliceTensor(DenseTensor *x,
                         const DenseTensor *share,
                         const std::vector<int64_t> &out_compute_dims,
                         int64_t offset) {
-  auto new_dim = make_ddim(out_compute_dims);
+  auto new_dim = common::make_ddim(out_compute_dims);
   DenseTensorMeta meta(share->dtype(),
                        new_dim,
                        share->layout(),

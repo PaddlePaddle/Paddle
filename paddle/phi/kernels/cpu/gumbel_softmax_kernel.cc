@@ -34,7 +34,7 @@ struct GumbleNoiseGenerator<CPUContext, T> {
     std::uniform_real_distribution<T> dist(0.00001, 1);
     auto engine = ctx.GetGenerator()->GetCPUEngine();
     DenseTensor random_tensor;
-    random_tensor.Resize(make_ddim({size}));
+    random_tensor.Resize(common::make_ddim({size}));
     auto* random_data = ctx.template Alloc<T>(&random_tensor);
     for (int64_t i = 0; i < size; ++i) {
       random_data[i] = dist(*engine);

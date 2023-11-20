@@ -83,8 +83,8 @@ inline bool is_same_size(const std::shared_ptr<ir::Group>& first,
     return true;
   }
 
-  auto size_0 = phi::product(output_var_0);
-  auto size_1 = phi::product(output_var_1);
+  auto size_0 = ::common::product(output_var_0);
+  auto size_1 = ::common::product(output_var_1);
   return size_0 == size_1;
 }
 
@@ -144,11 +144,11 @@ inline bool honrizontal_elementwise_fuse_reduce(
 
   auto ele_node_shape =
       GetValueShape((*ele_group->master_ops.begin())->result(0));
-  int32_t size_ele = phi::product(ele_node_shape);
+  int32_t size_ele = ::common::product(ele_node_shape);
   // TODO(phlrain): seems extrame danger herem, why compare multi Master Node?
   for (auto* master : reduce_group->master_ops) {
     auto master_node_shape = GetValueShape(master->result(0));
-    int32_t size_master = phi::product(master_node_shape);
+    int32_t size_master = ::common::product(master_node_shape);
     if (size_ele == size_master) {
       return true;
     }
@@ -204,11 +204,11 @@ inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
     bool flag = true;
     auto first_node_shape =
         GetValueShape((*first->master_ops.begin())->result(0));
-    int32_t size_first = phi::product(first_node_shape);
+    int32_t size_first = ::common::product(first_node_shape);
 
     for (::pir::Operation* master : masters_in_consumers) {
       auto second_node_shape = GetValueShape(master->result(0));
-      int32_t size_second = phi::product(second_node_shape);
+      int32_t size_second = ::common::product(second_node_shape);
       if (size_first != size_second) {
         flag = false;
         break;
@@ -298,10 +298,10 @@ inline bool broadcast_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   // CHECK(reducer) << "Can't find reduce op in group " << second->group_id;
 
   auto input_shape = GetValueShape(reducer->operand_source(0));
-  auto input_size = phi::product(input_shape);
+  auto input_size = ::common::product(input_shape);
 
   auto output_shape = GetValueShape((*first->master_ops.begin())->result(0));
-  auto output_size = phi::product(output_shape);
+  auto output_size = ::common::product(output_shape);
 
   if (input_size == output_size) {
     return elementwise_fuse_reduce(first, second);
@@ -431,9 +431,9 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
     // First type conditions
     // Get some reduce information
     auto reducer_input_shape =
-        phi::vectorize(GetValueShape(reducer->operand_source(0)));
+        ::common::vectorize(GetValueShape(reducer->operand_source(0)));
     auto reducer_output_shape =
-        phi::vectorize(GetValueShape(reducer->result(0)));
+        ::common::vectorize(GetValueShape(reducer->result(0)));
     std::vector<int64_t> reduce_axes = GetVectorAttr(reducer, "dim");
 
     auto keep_dim = false;

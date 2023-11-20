@@ -396,10 +396,10 @@ class WhileGradOp : public framework::OperatorBase {
             auto shape = var_desc->GetShape();
             VLOG(8) << "Found uninitialized tensor " << outside_og_name
                     << " in step 0, fill it with 0.0f. dims="
-                    << phi::make_ddim(shape);
+                    << common::make_ddim(shape);
             framework::AttributeMap attrs;
             attrs["dtype"] = var_desc->GetDataType();
-            attrs["shape"] = phi::vectorize<int>(phi::make_ddim(shape));
+            attrs["shape"] = common::vectorize<int>(common::make_ddim(shape));
             attrs["value"] = 0.0f;
 
             auto var_name = outside_og_name;
@@ -540,7 +540,7 @@ class WhileGradOp : public framework::OperatorBase {
             framework::AttributeMap attrs;
             attrs["dtype"] =
                 framework::TransToProtoVarType(inside_tensor.dtype());
-            attrs["shape"] = phi::vectorize<int>(inside_tensor.dims());
+            attrs["shape"] = common::vectorize<int>(inside_tensor.dims());
             attrs["value"] = 0.0f;
 
             auto var_name = pg_ig_names[param_id];

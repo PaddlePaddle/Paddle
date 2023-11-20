@@ -167,11 +167,12 @@ Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor) {
              : ParseBackend(tensor);
 }
 
-DataLayout ParseLayout(DataLayout layout) { return layout; }
-DataLayout ParseLayout(const Tensor& tensor) { return tensor.layout(); }
+phi::DataLayout ParseLayout(phi::DataLayout layout) { return layout; }
+phi::DataLayout ParseLayout(const Tensor& tensor) { return tensor.layout(); }
 
-DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor) {
-  return layout != DataLayout::UNDEFINED ? layout : ParseLayout(tensor);
+phi::DataLayout ParseLayoutWithInputOrder(phi::DataLayout layout,
+                                          const Tensor& tensor) {
+  return layout != phi::DataLayout::UNDEFINED ? layout : ParseLayout(tensor);
 }
 
 }  // namespace experimental

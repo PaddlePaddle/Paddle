@@ -26,6 +26,7 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/cinn/common/target.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -35,7 +36,6 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/utils/flags.h"
 
@@ -258,7 +258,7 @@ TEST(CinnCompilerTest, Compile) {
   std::unordered_map<std::string, phi::DenseTensor> create_inputs;
   for (const auto& pair : inputs_info) {
     auto& tensor = create_inputs[pair.first];
-    tensor.Resize(phi::make_ddim(pair.second));
+    tensor.Resize(common::make_ddim(pair.second));
     tensor.mutable_data<float>(platform::CPUPlace());
   }
   std::map<std::string, const phi::DenseTensor*> input_tensors;

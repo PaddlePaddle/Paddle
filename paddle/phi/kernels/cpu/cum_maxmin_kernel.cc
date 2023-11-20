@@ -59,7 +59,7 @@ void ComputeImp(const DenseTensor& x,
   int64_t x_stride = compute_stride<int64_t>(axis, x.dims());
   int64_t values_stride = compute_stride<int64_t>(axis, out->dims());
   int64_t indices_stride = compute_stride<int64_t>(axis, indices->dims());
-  auto x_dim_vec = phi::vectorize<int>(x.dims());
+  auto x_dim_vec = common::vectorize<int>(x.dims());
   int x_dim_size = x_dim_vec[axis];
   BinaryFunction op;
 

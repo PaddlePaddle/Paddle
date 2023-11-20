@@ -133,7 +133,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     for (auto i = 0; i < global_count_len; ++i) {
       fwd_count += cpu_global_count_data[i];
     }
-    framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
+    framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
     int64_t* expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
     auto tot_experts = n_expert * nranks;
@@ -274,7 +274,7 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
     for (auto i = 0; i < global_count_len; ++i) {
       fwd_count += cpu_global_count_data[i];
     }
-    framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
+    framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
     int64_t* expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
     auto tot_experts = n_expert * nranks;

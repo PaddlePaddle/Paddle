@@ -64,7 +64,7 @@ std::vector<Tensor> PrepareInputs(const phi::Place& place) {
   auto& dev_ctx = *pool.Get(place);
 
   DenseTensor t;
-  t.Resize(phi::make_ddim({2, 4}));
+  t.Resize(common::make_ddim({2, 4}));
   t.mutable_data<float>(place);
   phi::funcs::set_constant(dev_ctx, &t, 2.);
 

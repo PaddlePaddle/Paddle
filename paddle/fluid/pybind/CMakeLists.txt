@@ -38,6 +38,7 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     phi
+    common
     pir_adaptor
     op_dialect_vjp
     program_translator
@@ -64,7 +65,8 @@ if(WITH_PSCORE)
   endif()
 endif()
 if(WITH_RPC)
-  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi)
+  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi
+                  common)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
@@ -348,7 +350,7 @@ if(WITH_PYTHON)
       add_custom_command(
         OUTPUT ${op_impl_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}
-        DEPENDS phi)
+        DEPENDS phi common)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/phi.dll)
     endif()
 
@@ -501,6 +503,7 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS backward)
     list(APPEND PYBIND_DEPS grad_node_info)
     list(APPEND PYBIND_DEPS phi)
+    list(APPEND PYBIND_DEPS common)
     list(APPEND PYBIND_DEPS final_dygraph_function)
     list(APPEND PYBIND_DEPS final_dygraph_node)
     list(APPEND PYBIND_DEPS dygraph_function)

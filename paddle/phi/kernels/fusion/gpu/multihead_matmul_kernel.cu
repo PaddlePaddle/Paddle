@@ -349,9 +349,9 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
 
   phi::DenseTensor temp_out_tensor;
   auto temp_out_dims =
-      phi::make_ddim({batch, seq_len, 3, head_number, head_size});
+      common::make_ddim({batch, seq_len, 3, head_number, head_size});
   temp_out_tensor.Resize(
-      {batch * seq_len, phi::product(temp_out_dims) / (batch * seq_len)});
+      {batch * seq_len, common::product(temp_out_dims) / (batch * seq_len)});
   auto *temp_out_data = dev_ctx.template Alloc<T>(
       &temp_out_tensor, temp_out_tensor.numel() * sizeof(T));
 

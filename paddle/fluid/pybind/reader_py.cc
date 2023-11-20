@@ -23,6 +23,7 @@
 
 #include "Python.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
@@ -30,7 +31,6 @@
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
@@ -56,7 +56,7 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShape(
 
   if (UNLIKELY(rank == 0)) {
     if (!target_shape.empty()) {  // Tensor rank = 0 but desc does not match
-      return phi::vectorize<int64_t>(tensor_shape);
+      return common::vectorize<int64_t>(tensor_shape);
     } else {
       return paddle::none;
     }
@@ -77,12 +77,12 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShape(
     tensor_shape[0] = split_size;
     if (target_shape[0] >= 0) {  // need check dim 0
       if (tensor_shape[0] != target_shape[0]) {
-        return phi::vectorize<int64_t>(tensor_shape);
+        return common::vectorize<int64_t>(tensor_shape);
       }
 
       if (remainder > 0) {
         tensor_shape[0] = remainder;
-        return phi::vectorize<int64_t>(tensor_shape);
+        return common::vectorize<int64_t>(tensor_shape);
       }
     }
   }
@@ -95,7 +95,7 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShape(
             "Tensor shape at dim %d must not be less than 0", idx));
     if (target_shape[idx] >= 0 &&
         tensor_shape[static_cast<int>(idx)] != target_shape[idx]) {
-      return phi::vectorize<int64_t>(tensor_shape);
+      return common::vectorize<int64_t>(tensor_shape);
     }
   }
 
@@ -152,7 +152,7 @@ class MultiDeviceFeedReader {
         pin_memory_(pin_memory) {
     std::vector<framework::DDim> dims;
     for (auto &shape : shapes) {
-      dims.push_back(phi::make_ddim(shape));
+      dims.push_back(common::make_ddim(shape));
     }
 
     auto first_reader = std::make_shared<reader::PyReader>(

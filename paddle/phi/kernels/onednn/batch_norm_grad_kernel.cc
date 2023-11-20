@@ -71,7 +71,7 @@ void BatchNormGradFunctor(const Context& dev_ctx,
   std::vector<int64_t> scale_tz;
   std::vector<int64_t> bias_tz;
   if (use_scale) {
-    scale_tz = vectorize<int64_t>(Scale->dims());
+    scale_tz = common::vectorize<int64_t>(Scale->dims());
     PADDLE_ENFORCE_EQ(
         scale_tz.size(),
         1,
@@ -80,7 +80,7 @@ void BatchNormGradFunctor(const Context& dev_ctx,
             scale_tz.size()));
   }
   if (use_bias) {
-    bias_tz = vectorize<int64_t>(Bias->dims());
+    bias_tz = common::vectorize<int64_t>(Bias->dims());
     PADDLE_ENFORCE_EQ(
         bias_tz.size(),
         1,

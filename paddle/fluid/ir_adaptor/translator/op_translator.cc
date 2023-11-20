@@ -940,7 +940,7 @@ pir::OpResult TranslateDropOutStateIn(pir::IrContext* ctx,
 
   pir::Builder builder(ctx, block);
   dialect::FullOp full_op = builder.Build<dialect::FullOp>(
-      phi::vectorize(tensor_type.dims()),
+      common::vectorize(tensor_type.dims()),
       0.0f,
       dialect::TransToPhiDataType(tensor_type.dtype()),
       phi::CPUPlace());
@@ -1291,7 +1291,7 @@ ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
   dialect::DenseTensorType tensor_type =
       type.dyn_cast<dialect::DenseTensorType>();
 
-  std::vector<int64_t> shape = phi::vectorize(tensor_type.dims());
+  std::vector<int64_t> shape = common::vectorize(tensor_type.dims());
 
   return std::make_tuple(shape, tensor_type, value);
 }
@@ -1376,7 +1376,7 @@ struct MulOpTranscriber : public OpTranscriber {
         builder.Build<dialect::ReshapeOp>(x_value, x_new_shape);
     pir::OpResult x_new = reshape_op_x.out();
     VLOG(6) << "[" << op_desc.Type() << "] x_shape change from "
-            << x_tensor_type.dims() << " to " << phi::make_ddim(x_new_shape);
+            << x_tensor_type.dims() << " to " << common::make_ddim(x_new_shape);
 
     std::vector<int64_t> y_new_shape(
         {std::max(std::accumulate(y_shape.begin(),
@@ -1394,7 +1394,7 @@ struct MulOpTranscriber : public OpTranscriber {
         builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
     pir::OpResult y_new = reshape_op_y.out();
     VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
-            << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
+            << y_tensor_type.dims() << " to " << common::make_ddim(y_new_shape);
 
     return {x_new, y_new};
   }
@@ -1442,7 +1442,7 @@ struct MulOpTranscriber : public OpTranscriber {
       pir::OpResult out_new = reshape_op_out.out().dyn_cast<pir::OpResult>();
       VLOG(6) << "[" << op_desc.Type() << "] out_shape change from "
               << out_tensor_type.dims() << " to "
-              << phi::make_ddim(out_new_shape);
+              << common::make_ddim(out_new_shape);
 
       param_map->PushValue(output_name,
                            VariableDefiningInfo(out_new, false, -1));
@@ -1539,7 +1539,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
         builder.Build<dialect::ReshapeOp>(x_value, x_new_shape);
     pir::OpResult x_new = reshape_op_x.out();
     VLOG(6) << "[" << op_desc.Type() << "] x_shape change from "
-            << x_tensor_type.dims() << " to " << phi::make_ddim(x_new_shape);
+            << x_tensor_type.dims() << " to " << common::make_ddim(x_new_shape);
 
     std::vector<int64_t> y_new_shape(
         {std::max(std::accumulate(y_shape.begin(),
@@ -1557,7 +1557,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
         builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
     pir::OpResult y_new = reshape_op_y.out();
     VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
-            << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
+            << y_tensor_type.dims() << " to " << common::make_ddim(y_new_shape);
 
     std::vector<int64_t> out_grad_new_shape(
         {x_new_shape.front(), y_new_shape.back()});
@@ -1567,7 +1567,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
     pir::OpResult out_grad_new = reshape_op_out_grad.out();
     VLOG(6) << "[" << op_desc.Type() << "] out_grad_shape change from "
             << out_grad_tensor_type.dims() << " to "
-            << phi::make_ddim(out_grad_new_shape);
+            << common::make_ddim(out_grad_new_shape);
 
     return {x_new, y_new, out_grad_new};
   }
@@ -1613,7 +1613,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
                  op_desc.Type(),
                  var_name.substr(0, 1));
       std::vector<int64_t> shape = var_desc->GetShape();
-      DenseTensorTypeStorage::Dim dim = phi::make_ddim(shape);
+      DenseTensorTypeStorage::Dim dim = common::make_ddim(shape);
 
       pir::OpResult value_res = operation->result(idx_in_op);
       auto reshape_op = builder.Build<dialect::ReshapeOp>(value_res, shape);
@@ -1976,7 +1976,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
                x_type);
     dialect::DenseTensorType x_tensor_type =
         x_type.dyn_cast<dialect::DenseTensorType>();
-    std::vector<int64_t> x_shape = phi::vectorize(x_tensor_type.dims());
+    std::vector<int64_t> x_shape = common::vectorize(x_tensor_type.dims());
 
     auto y_names = op_desc.Input("Y", true);
     IR_ENFORCE(y_names.size() == 1,
@@ -2007,7 +2007,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
                y_type);
     dialect::DenseTensorType y_tensor_type =
         y_type.dyn_cast<dialect::DenseTensorType>();
-    std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
+    std::vector<int64_t> y_shape = common::vectorize(y_tensor_type.dims());
 
     if (axis < 0) {
       axis += static_cast<int>(x_shape.size());
@@ -2035,7 +2035,8 @@ struct ElementwiseTranscriber : public OpTranscriber {
           builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
       y_new = reshape_op.out();
       VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
-              << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
+              << y_tensor_type.dims() << " to "
+              << common::make_ddim(y_new_shape);
     } else {
       auto shape_op = builder.Build<dialect::ShapeOp>(y_value);
       auto append_shape_op = builder.Build<dialect::FullIntArrayOp>(
@@ -2126,7 +2127,7 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
                y_type);
     dialect::DenseTensorType y_tensor_type =
         y_type.dyn_cast<dialect::DenseTensorType>();
-    std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
+    std::vector<int64_t> y_shape = common::vectorize(y_tensor_type.dims());
 
     pir::OpResult value = operation->result(idx_in_op);
     pir::Builder builder(ctx, operation->GetParent());
@@ -2346,7 +2347,7 @@ struct RandIntOpTranscriber : public OpTranscriber {
 
     pir::Type dtype = type_translator[var_type](ctx, *var);
     paddle::dialect::DenseTensorTypeStorage::Dim dim =
-        phi::make_ddim(var->GetShape());
+        common::make_ddim(var->GetShape());
     paddle::dialect::DenseTensorTypeStorage::DataLayout layout =
         paddle::dialect::DenseTensorTypeStorage::DataLayout::UNDEFINED;
     paddle::dialect::DenseTensorTypeStorage::LoD lod = {};

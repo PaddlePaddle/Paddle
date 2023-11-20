@@ -26,6 +26,7 @@
 #include "paddle/cinn/hlir/framework/tensor.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/intrinsic.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
@@ -42,7 +43,6 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/utils/string/string_helper.h"
@@ -267,12 +267,12 @@ void CinnLaunchContext::CheckTensorEquivalent(
                         "Variable(%s) not applied in cinn", var_name));
   // check dimension
   auto cinn_tensor = GetCinnTensorOfVar(var_name);
-  auto cinn_dims = phi::make_ddim(cinn_tensor->shape().data());
+  auto cinn_dims = common::make_ddim(cinn_tensor->shape().data());
   if (paddle_tensor.dims().size() == 0) {
     // VLOG when paddle inputs 0D-Tensor
     VLOG(4) << "Paddle inputs 0D-Tensor, CINN changes 0D-Tensor " << var_name
             << " to 1D-Tensor";
-    PADDLE_ENFORCE_EQ(phi::make_ddim({1}),
+    PADDLE_ENFORCE_EQ(common::make_ddim({1}),
                       cinn_dims,
                       phi::errors::PreconditionNotMet(
                           "Tensor's shape of variable(%s) are not consistent, "

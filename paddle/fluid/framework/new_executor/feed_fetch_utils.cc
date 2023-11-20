@@ -193,8 +193,8 @@ void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
           phi::errors::InvalidArgument(
               "phi::DenseTensor layout does not match, expected layout is %s, "
               "actual layout is %s.",
-              phi::DataLayoutToString(new_layout),
-              phi::DataLayoutToString(t->layout())));
+              common::DataLayoutToString(new_layout),
+              common::DataLayoutToString(t->layout())));
       if (rank > 0) {
         auto tensor_dims = t->dims();
         PADDLE_ENFORCE_EQ(tensor_dims.size(),

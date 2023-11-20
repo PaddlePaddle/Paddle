@@ -147,8 +147,8 @@ void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
                                     peer,
                                     nccl_comm_,
                                     stream));
-  VLOG(3) << "rank " << GetRank() << " send " << phi::product(in_tensor.dims())
-          << " to " << peer;
+  VLOG(3) << "rank " << GetRank() << " send "
+          << common::product(in_tensor.dims()) << " to " << peer;
 }
 
 void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
@@ -167,7 +167,7 @@ void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
                                     nccl_comm_,
                                     stream));
   VLOG(3) << "rank " << GetRank() << " recv "
-          << phi::product(out_tensor->dims()) << " from " << peer;
+          << common::product(out_tensor->dims()) << " from " << peer;
 }
 
 void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,

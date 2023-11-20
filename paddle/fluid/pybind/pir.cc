@@ -507,7 +507,7 @@ void BindValue(py::module *m) {
       .def("__repr__", &Value2String)
       .def_property(
           "shape",
-          [](Value &self) { return phi::vectorize(GetValueDims(self)); },
+          [](Value &self) { return common::vectorize(GetValueDims(self)); },
           [](Value &self, const std::vector<int> &shape) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set shape when building static graph"));
@@ -770,8 +770,9 @@ void BindOpResult(py::module *m) {
                return false;
              }
            })
-      .def("numel",
-           [](OpResult &self) { return phi::product(GetOpResultDims(self)); })
+      .def(
+          "numel",
+          [](OpResult &self) { return common::product(GetOpResultDims(self)); })
       .def("replace_all_uses_with",
            [](OpResult &self, OpResult &op_result) {
              self.ReplaceAllUsesWith(op_result);
@@ -804,7 +805,9 @@ void BindOpResult(py::module *m) {
           })
       .def_property(
           "shape",
-          [](OpResult &self) { return phi::vectorize(GetOpResultDims(self)); },
+          [](OpResult &self) {
+            return common::vectorize(GetOpResultDims(self));
+          },
           [](OpResult &self, const std::vector<int> &shape) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set shape when building static graph"));
@@ -1149,7 +1152,7 @@ SplitedResult SplitForwardBackward(
     }
     auto value_type = v.type().dyn_cast<DenseTensorType>();
     auto dtype = paddle::dialect::TransToPhiDataType(value_type.dtype());
-    auto shape = phi::vectorize(value_type.dims());
+    auto shape = common::vectorize(value_type.dims());
     auto place = phi::Place();
 
     paddle::dialect::DataOp op =

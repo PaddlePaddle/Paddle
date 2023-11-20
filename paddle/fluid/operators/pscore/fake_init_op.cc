@@ -21,7 +21,7 @@ class FakeInitInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "FakeInit");
     auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
-    ctx->SetOutputDim("Out", phi::make_ddim(shape));
+    ctx->SetOutputDim("Out", common::make_ddim(shape));
   }
 };
 
@@ -38,10 +38,10 @@ class FakeInitOp : public framework::OperatorBase {
 
     if (out_var.IsType<phi::DenseTensor>()) {
       tensor = out_var.GetMutable<phi::DenseTensor>();
-      tensor->Resize(phi::make_ddim(Attr<std::vector<int64_t>>("shape")));
+      tensor->Resize(common::make_ddim(Attr<std::vector<int64_t>>("shape")));
     } else if (out_var.IsType<phi::SelectedRows>()) {
       tensor = out_var.GetMutable<phi::SelectedRows>()->mutable_value();
-      tensor->Resize(phi::make_ddim(Attr<std::vector<int64_t>>("shape")));
+      tensor->Resize(common::make_ddim(Attr<std::vector<int64_t>>("shape")));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "fake init op's output only"

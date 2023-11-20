@@ -146,7 +146,7 @@ class Conv2DFusionOp : public framework::OperatorWithKernel {
                               (data_format == "NHWC" || data_format == "NDHWC");
     std::vector<int64_t> output_shape =
         ComputeOutputShape(ctx, data_format, channel_last);
-    ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
+    ctx->SetOutputDim("Output", common::make_ddim(output_shape));
     ctx->ShareLoD("Input", "Output");
 
     std::vector<int> split_channels =
@@ -164,22 +164,22 @@ class Conv2DFusionOp : public framework::OperatorWithKernel {
               "Attr(split_channels) = %u, the content = [%s].",
               ctx->Outputs("Outputs").size(),
               split_channels.size(),
-              phi::make_ddim(split_channels)));
+              common::make_ddim(split_channels)));
 
       int split_channels_sum = 0;
       std::vector<framework::DDim> output_shapes(split_channels.size());
       for (size_t i = 0; i < split_channels.size(); ++i) {
         split_channels_sum += split_channels[i];
         if (channel_last) {
-          output_shapes[i] = phi::make_ddim({output_shape[0],
-                                             output_shape[1],
-                                             output_shape[2],
-                                             split_channels[i]});
+          output_shapes[i] = common::make_ddim({output_shape[0],
+                                                output_shape[1],
+                                                output_shape[2],
+                                                split_channels[i]});
         } else {
-          output_shapes[i] = phi::make_ddim({output_shape[0],
-                                             split_channels[i],
-                                             output_shape[2],
-                                             output_shape[3]});
+          output_shapes[i] = common::make_ddim({output_shape[0],
+                                                split_channels[i],
+                                                output_shape[2],
+                                                output_shape[3]});
         }
       }
       int output_channels = output_shape[1];
@@ -272,7 +272,7 @@ class Conv2DFusionOp : public framework::OperatorWithKernel {
             in_dims.size(),
             in_dims,
             strides.size(),
-            phi::make_ddim(strides),
+            common::make_ddim(strides),
             in_dims.size() - stride_size));
 
     const auto input_channels =
@@ -317,20 +317,20 @@ class Conv2DFusionOp : public framework::OperatorWithKernel {
 
     framework::DDim in_data_dims;
     if (channel_last) {
-      in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = common::slice_ddim(in_dims, 1, in_dims.size() - 1);
     } else {
-      in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
+      in_data_dims = common::slice_ddim(in_dims, 2, in_dims.size());
     }
 
     framework::DDim filter_data_dims;
     if (channel_last) {
       filter_data_dims =
-          phi::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
+          common::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
     } else {
-      filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
+      filter_data_dims = common::slice_ddim(filter_dims, 2, filter_dims.size());
     }
 
-    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+    std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
     phi::UpdatePaddingAndDilation(
         &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 

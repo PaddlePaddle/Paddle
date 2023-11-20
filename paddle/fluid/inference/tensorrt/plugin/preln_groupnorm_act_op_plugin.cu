@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/plugin/preln_groupnorm_act_op_plugin.h"
 #include <cub/cub.cuh>
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {

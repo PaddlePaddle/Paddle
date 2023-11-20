@@ -689,7 +689,7 @@ static void parse_tensors(PyObject *obj,
     DistTensorSpec in = py::cast<DistTensorSpec>(PyList_GetItem(obj, i));
     VLOG(6) << "Vector emplace_back DistTensorSpec: " << in.to_string();
     ins.emplace_back(phi::distributed::DistMetaTensor(
-        phi::make_ddim(in.shape()), in.dist_attr()));
+        common::make_ddim(in.shape()), in.dist_attr()));
   }
   ctx->EmplaceBackInputs(ins);
 }
@@ -701,7 +701,7 @@ static void parse_tensor(PyObject *obj,
   DistTensorSpec in = py::cast<DistTensorSpec>(obj);
   VLOG(6) << "DistTensorSpec: " << in.to_string();
   ctx->EmplaceBackInput(phi::distributed::DistMetaTensor(
-      phi::make_ddim(in.shape()), in.dist_attr()));
+      common::make_ddim(in.shape()), in.dist_attr()));
 }
 
 // TODO(ljz) support other types

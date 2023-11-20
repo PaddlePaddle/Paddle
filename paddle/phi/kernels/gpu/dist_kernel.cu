@@ -134,7 +134,7 @@ void DistKernel(const Context& dev_ctx,
   if (xdim == y.dims()) {  // same shape
     auto n = x.numel();
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n);
-    intermediate.Resize(phi::make_ddim({config.block_per_grid.x}));
+    intermediate.Resize(common::make_ddim({config.block_per_grid.x}));
     T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
 
     std::vector<int64_t> axis_dims = {static_cast<int64_t>(-1)};

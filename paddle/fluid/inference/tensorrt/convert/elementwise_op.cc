@@ -33,7 +33,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
     if (Y_v && !engine_->with_dynamic_shape()) {
       // Y is weight
       auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
-      std::vector<int> dims_y = phi::vectorize<int>(Y_t->dims());
+      std::vector<int> dims_y = common::vectorize<int>(Y_t->dims());
       auto y_weight = engine_->GetTrtWeight(op_desc.Input("Y").front(), *Y_t);
 
       nvinfer1::Dims trt_dims_y;

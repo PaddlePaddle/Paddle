@@ -17,7 +17,7 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/phi/core/tensor_base.h"
+#include "paddle/common/ddim.h"
 #include "paddle/pir/core/cast_utils.h"
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/type.h"
@@ -26,7 +26,7 @@ namespace pir {
 
 class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
  public:
-  using DDim = phi::DDim;
+  using DDim = pir::DDim;
   using DataType = Type;
   struct Concept {
     /// Defined these methods with the interface.
@@ -92,7 +92,7 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   /// dimension.
   ///
   static bool IsDynamicShape(DDim sizes) {
-    auto size_vec = vectorize(sizes);
+    auto size_vec = common::vectorize(sizes);
     return std::any_of(size_vec.begin(), size_vec.end(), [](int64_t size_vec) {
       return IsDynamic(size_vec);
     });
@@ -119,7 +119,7 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   /// Aborts for unranked types.
   ///
   int64_t GetNumDynamicDims() const {
-    auto shape_vec = vectorize((*this).GetShape());
+    auto shape_vec = common::vectorize((*this).GetShape());
     return std::count_if(
         shape_vec.begin(), shape_vec.end(), ShapedTypeInterface::IsDynamic);
   }

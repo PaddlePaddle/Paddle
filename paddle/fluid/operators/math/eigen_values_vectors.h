@@ -132,13 +132,13 @@ struct MatrixEighFunctor<phi::CPUContext, T> {
             framework::TransToProtoVarType(input.dtype()))) {
       lrwork = std::max<int>(1, static_cast<int>(rwork_opt));
       rwork_data = rwork_tensor.mutable_data<ValueType>(
-          phi::make_ddim({lrwork}), ctx.GetPlace());
+          common::make_ddim({lrwork}), ctx.GetPlace());
     }
     phi::DenseTensor iwork_tensor, work_tensor;
-    auto *iwork_data = iwork_tensor.mutable_data<int>(phi::make_ddim({liwork}),
-                                                      ctx.GetPlace());
+    auto *iwork_data = iwork_tensor.mutable_data<int>(
+        common::make_ddim({liwork}), ctx.GetPlace());
     auto *work_data =
-        work_tensor.mutable_data<T>(phi::make_ddim({lwork}), ctx.GetPlace());
+        work_tensor.mutable_data<T>(common::make_ddim({lwork}), ctx.GetPlace());
 
     for (auto i = 0; i < batch_size; i++) {
       auto *value_data = out_value + i * values_stride;

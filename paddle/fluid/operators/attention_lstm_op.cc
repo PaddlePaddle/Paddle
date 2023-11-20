@@ -107,7 +107,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
             "Expected input(H0)'s dimension is 2. But received %d.",
             h_dims.size()));
     if (ctx->IsRuntime() ||
-        (phi::product(c_dims) > 0 && phi::product(h_dims) > 0)) {
+        (common::product(c_dims) > 0 && common::product(h_dims) > 0)) {
       PADDLE_ENFORCE_EQ(h_dims,
                         c_dims,
                         platform::errors::InvalidArgument(

@@ -678,7 +678,7 @@ class CBroadcastOpCustomDeviceKernel : public framework::OpKernel<T> {
                                        comm->GetXcclComm(),
                                        *stream);
       VLOG(3) << "rank " << comm->GetRank() << " invoke Bcast. received "
-              << phi::product(out->dims());
+              << common::product(out->dims());
     }
     out->set_lod(x->lod());
   }
@@ -956,7 +956,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
       for (auto i = 0; i < global_count_len; ++i) {
         fwd_count += cpu_global_count_data[i];
       }
-      framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
+      framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
       int64_t* expert_ptr = new int64_t[n_expert * nranks];
       expert_ptr[0] = 0;
       auto tot_experts = n_expert * nranks;
@@ -1038,7 +1038,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
       for (auto i = 0; i < global_count_len; ++i) {
         fwd_count += cpu_global_count_data[i];
       }
-      framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
+      framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
       int64_t* expert_ptr = new int64_t[n_expert * nranks];
       expert_ptr[0] = 0;
       auto tot_experts = n_expert * nranks;
@@ -1170,7 +1170,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
       for (auto i = 0; i < local_count_len; ++i) {
         fwd_count += cpu_local_count_data[i];
       }
-      framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
+      framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
       int64_t* expert_ptr = new int64_t[n_expert * nranks];
       expert_ptr[0] = 0;
       auto tot_experts = n_expert * nranks;
@@ -1250,7 +1250,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
       for (auto i = 0; i < local_count_len; ++i) {
         fwd_count += cpu_local_count_data[i];
       }
-      framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
+      framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
       int64_t* expert_ptr = new int64_t[n_expert * nranks];
       expert_ptr[0] = 0;
       auto tot_experts = n_expert * nranks;

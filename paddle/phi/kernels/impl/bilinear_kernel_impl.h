@@ -44,14 +44,14 @@ void BilinearKernel(const Context& ctx,
   // Input(X) multiplied by Input(Weight_i), the formula is:
   // left_mul = X Weight_i.
   DenseTensor left_mul;
-  left_mul.Resize(phi::make_ddim({batch_size, y_dim}));
+  left_mul.Resize(common::make_ddim({batch_size, y_dim}));
   ctx.template Alloc<T>(&left_mul);
   auto left_mul_mat = EigenMatrix<T>::From(left_mul);
 
   for (int i = 0; i < out_dim; ++i) {
     auto output_col_vec = output_mat.chip(i, 1);
     DenseTensor weight_mat =
-        weight.Slice(i, i + 1).Resize(phi::make_ddim({x_dim, y_dim}));
+        weight.Slice(i, i + 1).Resize(common::make_ddim({x_dim, y_dim}));
     phi::funcs::GetBlas<Context, T>(ctx).GEMM(CblasNoTrans,
                                               CblasNoTrans,
                                               batch_size,

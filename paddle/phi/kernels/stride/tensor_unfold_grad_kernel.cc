@@ -50,8 +50,8 @@ void TensorUnfoldGradKernel(const Context& dev_ctx,
                        phi::StridedCopyKernel<data_t, Context>(
                            dev_ctx,
                            out_grad,
-                           phi::vectorize<int64_t>(tmp.dims()),
-                           phi::vectorize<int64_t>(tmp.strides()),
+                           common::vectorize<int64_t>(tmp.dims()),
+                           common::vectorize<int64_t>(tmp.strides()),
                            tmp.offset(),
                            &tmp);
                      }));

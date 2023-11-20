@@ -46,7 +46,7 @@ class FusedGemmEpilogueXPUKernel : public framework::OpKernel<T> {
             << " , activation = " << activation;
 
     auto x_mat_dims =
-        phi::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
+        common::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
 
     // (M * K) * (K * N) for new api use
     // int64_t M = trans_x ? x_mat_dims[1] : x_mat_dims[0];
@@ -168,7 +168,7 @@ class FusedGemmEpilogueXPUGradKernel : public framework::OpKernel<T> {
     }
 
     auto x_mat_dims =
-        phi::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
+        common::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
     phi::XpuFcInfo info_forward;
     phi::GetFCInfo(x_mat_dims, y->dims(), trans_x, trans_y, &info_forward);
 

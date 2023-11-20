@@ -146,8 +146,8 @@ struct ConvArgsBase {
 
   template <typename T>
   phi::autotune::ConvCacheKey ConvertToConvCacheKey() const {
-    auto x_shape = phi::vectorize(x->dims());
-    auto w_shape = phi::vectorize(w->dims());
+    auto x_shape = common::vectorize(x->dims());
+    auto w_shape = common::vectorize(w->dims());
     VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape
              << ", strides=" << s << ", paddings=" << p << ", dilations=" << d
              << ", data=" << phi::CppTypeToDataType<T>::Type()

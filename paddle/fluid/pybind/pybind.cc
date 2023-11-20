@@ -639,7 +639,7 @@ static void inline CreateVariableIfNotExist(
         Py_DECREF(py_var_desc);
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
         auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
-        tensor_temp->Resize(phi::make_ddim(var_desc.GetShape()));
+        tensor_temp->Resize(common::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
             exe->GetPlace(),
             framework::TransToPhiDataType(var_desc.GetDataType()));
@@ -1019,8 +1019,8 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def(
       "broadcast_shape",
       [](const std::vector<int64_t> &x_dim, const std::vector<int64_t> &y_dim) {
-        return phi::vectorize(operators::details::BroadcastTwoDims(
-            phi::make_ddim(x_dim), phi::make_ddim(y_dim), -1));
+        return common::vectorize(operators::details::BroadcastTwoDims(
+            common::make_ddim(x_dim), common::make_ddim(y_dim), -1));
       });
 
   m.def(

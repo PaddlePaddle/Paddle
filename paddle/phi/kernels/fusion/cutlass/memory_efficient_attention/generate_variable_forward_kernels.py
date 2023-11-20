@@ -209,7 +209,7 @@ void  {NAME}({CPP_CLASS} default_fmha, Params &params, const phi::GPUContext& ct
   cutlass::Status status;
   size_t workspace_size = fmha.get_workspace_size(args);
   phi::DenseTensor workspace;
-  workspace.Resize(phi::make_ddim({{static_cast<int64_t>(workspace_size)}}));
+  workspace.Resize(common::make_ddim({{static_cast<int64_t>(workspace_size)}}));
   ctx.template Alloc<uint8_t>(&workspace);
   status = fmha.initialize(args, workspace.data<uint8_t>());
   if (status != cutlass::Status::kSuccess) {{

@@ -47,8 +47,9 @@ void SliceStridedKernel(const Context& ctx,
   phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(
       in_dims, new_axes, &starts, &ends, nullptr, nullptr);
 
-  std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
-  std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.strides());
+  std::vector<int64_t> output_dims = common::vectorize<int64_t>(input.dims());
+  std::vector<int64_t> output_stride =
+      common::vectorize<int64_t>(input.strides());
   int64_t output_offset = static_cast<int64_t>(input.offset());
 
   for (size_t i = 0; i < new_axes.size(); ++i) {

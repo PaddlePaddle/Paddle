@@ -467,7 +467,7 @@ class Pad2dOp : public framework::OperatorWithKernel {
       }
     }
 
-    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", common::make_ddim(out_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
@@ -499,7 +499,7 @@ class Pad2dOp : public framework::OperatorWithKernel {
       auto ar = paddle::framework::AttrReader(attrs);
       const std::string data_format = ar.Get<std::string>("data_format");
       return phi::KernelKey(tensor.place(),
-                            phi::StringToDataLayout(data_format),
+                            common::StringToDataLayout(data_format),
                             expected_kernel_type.dtype());
     }
 #endif

@@ -30,11 +30,11 @@ void DiagonalGradKernel(const Context& dev_ctx,
                         DenseTensor* in_grad) {
   const auto* dout = &out_grad;
   const T* dout_data = dout->data<T>();
-  auto dout_dim = vectorize(dout->dims());
+  auto dout_dim = common::vectorize(dout->dims());
 
   auto* dx = in_grad;
   T* dx_data = dev_ctx.template Alloc<T>(dx);
-  auto dx_dim = vectorize(dx->dims());
+  auto dx_dim = common::vectorize(dx->dims());
   auto dx_dim_size = dx_dim.size();
 
   const int64_t offset_ = offset;

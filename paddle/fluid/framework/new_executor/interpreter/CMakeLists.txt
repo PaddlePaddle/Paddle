@@ -31,6 +31,7 @@ set(INTERPRETER_DEPS
     scope
     glog
     phi
+    common
     ${DEVICE_EVENT_LIBS}
     glog)
 

@@ -118,13 +118,13 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
   const int& index_size = src_index.dims()[0];  // NOLINT
   auto out_dims = out->dims();
   int64_t memset_size = 1;
-  std::vector<int64_t> dims_ = phi::vectorize(out_dims);
+  std::vector<int64_t> dims_ = common::vectorize(out_dims);
   if (out_size <= 0) {
     dims_[0] = x.dims()[0];
   } else {
     dims_[0] = out_size;
   }
-  out->Resize(phi::make_ddim(dims_));
+  out->Resize(common::make_ddim(dims_));
   for (auto dim : dims_) {
     memset_size *= dim;
   }

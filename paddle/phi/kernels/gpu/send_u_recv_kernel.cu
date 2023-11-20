@@ -47,11 +47,11 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
     }
   } else {
     // Set out dim following out_size.
-    std::vector<int64_t> dims_ = phi::vectorize(out->dims());
+    std::vector<int64_t> dims_ = common::vectorize(out->dims());
     if (dims_.size() > 0) {
       dims_[0] = out_size;
     }
-    out->Resize(phi::make_ddim(dims_));
+    out->Resize(common::make_ddim(dims_));
     memset_size = out_size;
     for (int i = 1; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];

@@ -62,8 +62,8 @@ void GetLinearOp(const std::vector<T> &x,
   auto x_ptr = tensor_x->mutable_data<T>(ctx.GetPlace());
   auto y_ptr = tensor_y->mutable_data<T>(ctx.GetPlace());
   auto z_ptr = tensor_out->mutable_data<T>(ctx.GetPlace());
-  auto size_x = static_cast<size_t>(phi::product(x_dim));
-  auto size_y = static_cast<size_t>(phi::product(y_dim));
+  auto size_x = static_cast<size_t>(common::product(x_dim));
+  auto size_y = static_cast<size_t>(common::product(y_dim));
   auto size_z = x_dim[0] * x_dim[1] * y_dim[0];
   cudaMemcpy(x_ptr, x.data(), size_x * sizeof(T), cudaMemcpyHostToDevice);
   cudaMemcpy(y_ptr, y.data(), size_y * sizeof(T), cudaMemcpyHostToDevice);
@@ -158,8 +158,8 @@ void GetLinearOpGrad(const std::vector<T> &x_vec,
   auto dinput_ptr = tensor_dx->mutable_data<T>(ctx.GetPlace());
   auto dweight_ptr = tensor_dy->mutable_data<T>(ctx.GetPlace());
 
-  auto size_x = static_cast<size_t>(phi::product(x_dim));
-  auto size_y = static_cast<size_t>(phi::product(y_dim));
+  auto size_x = static_cast<size_t>(common::product(x_dim));
+  auto size_y = static_cast<size_t>(common::product(y_dim));
   auto size_z = x_dim[0] * x_dim[1] * y_dim[0];
   cudaMemcpy(x_ptr, x_vec.data(), size_x * sizeof(T), cudaMemcpyHostToDevice);
   cudaMemcpy(y_ptr, y_vec.data(), size_y * sizeof(T), cudaMemcpyHostToDevice);

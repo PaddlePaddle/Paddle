@@ -44,7 +44,7 @@ class ProximalGDOp : public framework::OperatorWithKernel {
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(
-        phi::product(lr_dim),
+        common::product(lr_dim),
         1,
         platform::errors::InvalidArgument(
             "Learning Rate should be a scalar. But received dimmensions:[%s]",

@@ -111,7 +111,7 @@ void RoiPoolKernel(const Context& dev_ctx,
                    DenseTensor* arg_max) {
   auto x_dims = x.dims();
   int batch_size = x_dims[0];
-  auto in_stride = phi::stride(x_dims);
+  auto in_stride = common::stride(x_dims);
   int channels = x_dims[1];
   int height = x_dims[2];
   int width = x_dims[3];

@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/temporal_shift_kernel.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -98,7 +98,7 @@ void TemporalShiftKernel(const Context& dev_ctx,
   auto* input = &x;
   auto* output = out;
   int t = seg_num;
-  const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_format_str);
 
   const int nt = input->dims()[0];
   const int c =
@@ -117,8 +117,8 @@ void TemporalShiftKernel(const Context& dev_ctx,
   const int c2 = static_cast<int>(c * 2 * shift_ratio);
 
   DDim out_dims =
-      (data_layout == DataLayout::kNCHW ? phi::make_ddim({nt, c, h, w})
-                                        : phi::make_ddim({nt, h, w, c}));
+      (data_layout == DataLayout::kNCHW ? common::make_ddim({nt, c, h, w})
+                                        : common::make_ddim({nt, h, w, c}));
   const T* input_data = input->data<T>();
   output->Resize(out_dims);
   T* output_data = dev_ctx.template Alloc<T>(output);

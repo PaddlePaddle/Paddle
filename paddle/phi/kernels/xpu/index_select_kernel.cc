@@ -41,7 +41,7 @@ void IndexSelectKernel(const Context& ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
   auto* in_data = x.data<T>();
-  std::vector<int> in_shape = phi::vectorize<int>(input_dim);
+  std::vector<int> in_shape = common::vectorize<int>(input_dim);
   int index_len = output->dims()[dim];
   T* out_data = ctx.template Alloc<T>(output);
   int r = 0;

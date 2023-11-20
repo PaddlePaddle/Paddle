@@ -1474,7 +1474,7 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
   auto* wk_data = wk_tensor->data<T>();
   auto* wv_data = wv_tensor->data<T>();
 
-  auto combined_w_dims = phi::make_ddim({3, num_head, dim_head, dim_embed});
+  auto combined_w_dims = common::make_ddim({3, num_head, dim_head, dim_embed});
 
   phi::DenseTensor tmp_combined_w_tensor;
   tmp_combined_w_tensor.Resize(combined_w_dims);
@@ -1516,7 +1516,7 @@ inline void QKVBiasProcess(phi::DenseTensor* bq_tensor,
   auto* bk_data = bk_tensor->data<T>();
   auto* bv_data = bv_tensor->data<T>();
 
-  auto combined_bias_dims = phi::make_ddim({3, num_head, dim_head});
+  auto combined_bias_dims = common::make_ddim({3, num_head, dim_head});
 
   phi::DenseTensor tmp_combined_bias_tensor;
   tmp_combined_bias_tensor.Resize(combined_bias_dims);
@@ -1590,7 +1590,7 @@ inline void QKVWeightsProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
   auto* dev_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
   auto* qkv_w_data = qkv_w_tensor->data<T>();
-  auto transpose_w_dims = phi::make_ddim({3, num_head, dim_head, dim_embed});
+  auto transpose_w_dims = common::make_ddim({3, num_head, dim_head, dim_embed});
 
   phi::DenseTensor tmp_transpose_w_tensor;
   tmp_transpose_w_tensor.Resize(transpose_w_dims);
@@ -1628,7 +1628,7 @@ inline void QKVBiasProcessFuseQKV(phi::DenseTensor* qkv_b_tensor,
   auto* dev_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
   auto* qkv_b_data = qkv_b_tensor->data<T>();
-  auto transpose_b_dims = phi::make_ddim({3, num_head, dim_head});
+  auto transpose_b_dims = common::make_ddim({3, num_head, dim_head});
 
   phi::DenseTensor tmp_transpose_b_tensor;
   tmp_transpose_b_tensor.Resize(transpose_b_dims);

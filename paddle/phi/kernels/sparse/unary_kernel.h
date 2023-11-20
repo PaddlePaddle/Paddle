@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/common/int_array.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 

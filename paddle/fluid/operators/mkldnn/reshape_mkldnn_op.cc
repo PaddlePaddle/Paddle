@@ -38,7 +38,7 @@ static std::vector<int> extract_shape(
   for (const auto& tensor : list_new_shape_tensor) {
     PADDLE_ENFORCE_EQ(
         tensor->dims(),
-        phi::make_ddim({1}),
+        common::make_ddim({1}),
         platform::errors::InvalidArgument(
             "If the element type of 'shape' in ReshapeOp is phi::DenseTensor, "
             "the element's shape must be [1]. But received the element's shape "
@@ -68,7 +68,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     framework::DDim x_dims, out_dims;
     InferInOutShape(ctx, x_dims, out_dims);
 
-    auto x_vec_dims = phi::vectorize(x_dims);
+    auto x_vec_dims = common::vectorize(x_dims);
 
     auto x_type = phi::funcs ::ToOneDNNDataType(x->dtype());
     phi::funcs::ReorderOneDNNHandler reorder_handler(
@@ -89,7 +89,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
 
     out->Resize(out_dims);
-    auto reshape_dims = out_dims.size() != 0 ? phi::vectorize(out_dims)
+    auto reshape_dims = out_dims.size() != 0 ? common::vectorize(out_dims)
                                              : std::vector<int64_t>{1};
     out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(reshape_dims));
   }
@@ -160,15 +160,15 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<phi::DenseTensor>("X");
     x_dims = x->dims();
     auto axes = ctx.Attr<int>("axis");
-    out_dims = phi::make_ddim(
+    out_dims = common::make_ddim(
         Flatten2Kernel<phi::CPUContext, float>::GetOutputShape(axes, x_dims));
   }
 
  protected:
   static framework::DDim ValidateShape(const std::vector<int>& shape,
                                        const framework::DDim& in_dims) {
-    const int64_t in_size = phi::product(in_dims);
-    auto in_dims_vec = phi::vectorize(in_dims);
+    const int64_t in_size = common::product(in_dims);
+    auto in_dims_vec = common::vectorize(in_dims);
     bool all_positive = std::all_of(in_dims_vec.cbegin(),
                                     in_dims_vec.cend(),
                                     [](int64_t i) { return i > 0; });
@@ -188,7 +188,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
             platform::errors::InvalidArgument(
                 "Only one dimension value of 'shape' in ReshapeOp can "
                 "be -1. But received shape = [%s], shape[%d] is also -1.",
-                phi::make_ddim(shape),
+                common::make_ddim(shape),
                 i));
         unk_dim_idx = i;
       } else if (shape[i] == copy_dim_val) {
@@ -200,7 +200,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
                 "the input tensor X's dimensions. "
                 "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
                 "X's dimensions = %d.",
-                phi::make_ddim(shape),
+                common::make_ddim(shape),
                 i,
                 in_dims,
                 in_dims.size()));
@@ -212,7 +212,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
                 "Each dimension value of 'shape' in ReshapeOp must not "
                 "be negative except one unknown dimension. "
                 "But received  shape = [%s], shape[%d] = %d.",
-                phi::make_ddim(shape),
+                common::make_ddim(shape),
                 i,
                 shape[i]));
       }
@@ -240,7 +240,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
                 "'shape' is [%s], known capacity of 'shape' is %d.",
                 in_dims,
                 in_size,
-                phi::make_ddim(shape),
+                common::make_ddim(shape),
                 capacity));
       } else {
         output_shape[unk_dim_idx] = -1;
@@ -258,11 +258,11 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
                 "[%s], the capacity of 'shape' is %d.",
                 in_dims,
                 in_size,
-                phi::make_ddim(shape),
+                common::make_ddim(shape),
                 capacity));
       }
     }
-    return phi::make_ddim(output_shape);
+    return common::make_ddim(output_shape);
   }
 };
 
@@ -284,8 +284,9 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
     framework::DDim dx_dims;
     InferOutputShapeInGrad(ctx, dx_dims);
 
-    auto dout_vec_dims = dout->dims().size() != 0 ? phi::vectorize(dout->dims())
-                                                  : std::vector<int64_t>{1};
+    auto dout_vec_dims = dout->dims().size() != 0
+                             ? common::vectorize(dout->dims())
+                             : std::vector<int64_t>{1};
 
     auto dout_type = phi::funcs::ToOneDNNDataType(dout->dtype());
     phi::funcs::ReorderOneDNNHandler reorder_handler(
@@ -305,8 +306,8 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
     astream.wait();
 
     dx->Resize(dx_dims);
-    const auto reshape_dims =
-        dx_dims.size() != 0 ? phi::vectorize(dx_dims) : std::vector<int64_t>{1};
+    const auto reshape_dims = dx_dims.size() != 0 ? common::vectorize(dx_dims)
+                                                  : std::vector<int64_t>{1};
     reorder_dst_memory_p->get_desc().reshape(reshape_dims);
   }
 
@@ -345,7 +346,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
       const framework::ExecutionContext& ctx,
       framework::DDim& dx_dims) const {  // NOLINT
     auto xshape_dims = ctx.Input<phi::DenseTensor>("XShape")->dims();
-    dx_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    dx_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
   }
 
   void InferShapeFlattenGradOp(const framework::ExecutionContext& ctx,

@@ -106,7 +106,7 @@ void FusedBatchNormAddActOp::InferShape(
 
   bool check = true;
   if ((!ctx->IsRuntime()) &&
-      (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
+      (common::product(scale_dim) <= 0 || common::product(bias_dim) <= 0)) {
     check = false;
   }
 

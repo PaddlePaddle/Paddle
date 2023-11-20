@@ -112,7 +112,7 @@ DenseTensor BatchDiag(const Context& dev_ctx, const DenseTensor& x, int batch) {
   for (int i = 0; i < num_dims - 1; ++i) {
     out_shape.push_back(x.dims()[i]);
   }
-  out.Resize(phi::make_ddim(out_shape));
+  out.Resize(common::make_ddim(out_shape));
   int order = x.dims()[num_dims - 1];
   int stride_out = order * order;
   int stride_in = order + 1;

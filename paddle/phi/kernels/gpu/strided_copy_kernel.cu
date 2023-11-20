@@ -21,11 +21,11 @@ namespace phi {
 template <typename T, size_t IN_RANK, size_t OUT_RANK>
 __global__ void StridedCopyFunc(
     const T* input_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_dims,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
+    Array<int64_t, phi::DDim::kMaxRank + 1> input_dims,
+    Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
     T* output_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_dims,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
+    Array<int64_t, phi::DDim::kMaxRank + 1> output_dims,
+    Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
     const int64_t numel) {
   int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
 #pragma unroll
@@ -51,11 +51,11 @@ __global__ void StridedCopyFunc(
 template <typename T, size_t IN_RANK>
 __global__ void Strided2ContiguousFunc(
     const T* input_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_dims,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
+    Array<int64_t, phi::DDim::kMaxRank + 1> input_dims,
+    Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
     T* output_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_dims,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
+    Array<int64_t, phi::DDim::kMaxRank + 1> output_dims,
+    Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
     const int64_t numel) {
   int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
 #pragma unroll
@@ -74,11 +74,11 @@ __global__ void Strided2ContiguousFunc(
 template <typename T, size_t OUT_RANK>
 __global__ void Contiguous2StridedFunc(
     const T* input_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_dims,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
+    Array<int64_t, phi::DDim::kMaxRank + 1> input_dims,
+    Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
     T* output_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_dims,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
+    Array<int64_t, phi::DDim::kMaxRank + 1> output_dims,
+    Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
     const int64_t numel) {
   int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
 #pragma unroll
@@ -102,8 +102,8 @@ void StridedCopyKernel(const Context& dev_ctx,
                        int64_t offset,
                        DenseTensor* out) {
   phi::DenseTensorMeta meta = input.meta();
-  meta.strides = phi::make_ddim(out_stride);
-  meta.dims = phi::make_ddim(dims);
+  meta.strides = common::make_ddim(out_stride);
+  meta.dims = common::make_ddim(dims);
   meta.offset = offset;
   out->set_meta(meta);
 
@@ -123,8 +123,8 @@ void StridedCopyKernel(const Context& dev_ctx,
 
   const T* input_data = input.data<T>();
   int input_rank = input.dims().size();
-  phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
-  phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
+  Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
+  Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
   for (int i = 0; i < input.dims().size(); i++) {
     input_dims[i] = input.dims()[i];
     input_stride[i] = input.strides()[i];
@@ -137,8 +137,8 @@ void StridedCopyKernel(const Context& dev_ctx,
                               "mutable data before call kernel."));
 
   int output_rank = meta.dims.size();
-  phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride;
-  phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_dims;
+  Array<int64_t, phi::DDim::kMaxRank + 1> output_stride;
+  Array<int64_t, phi::DDim::kMaxRank + 1> output_dims;
   for (int i = 0; i < meta.dims.size(); i++) {
     output_dims[i] = meta.dims[i];
     output_stride[i] = meta.strides[i];

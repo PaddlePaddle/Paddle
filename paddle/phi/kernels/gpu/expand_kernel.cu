@@ -29,7 +29,7 @@ void ExpandKernel(const Context& ctx,
                   DenseTensor* out) {
   auto expand_shape = shape.GetData();
   auto diff = expand_shape.size() - x.dims().size();
-  auto out_shape = phi::vectorize<int64_t>(x.dims());
+  auto out_shape = common::vectorize<int64_t>(x.dims());
   out_shape.insert(out_shape.begin(), diff, 1);
   for (size_t i = 0; i < out_shape.size(); ++i) {
     PADDLE_ENFORCE_NE(
@@ -69,7 +69,7 @@ void ExpandKernel(const Context& ctx,
     }
   }
 
-  out->Resize(phi::make_ddim(out_shape));
+  out->Resize(common::make_ddim(out_shape));
   ctx.template Alloc<T>(out);
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};

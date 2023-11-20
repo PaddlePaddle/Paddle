@@ -148,7 +148,8 @@ if(WIN32)
   nv_test(
     test_custom_plugin_creater
     SRCS test_custom_plugin_creater.cc
-    DEPS paddle_framework tensorrt_converter phi custom_operator init_phi)
+    DEPS paddle_framework tensorrt_converter phi common custom_operator
+         init_phi)
 elseif(WITH_CINN)
   nv_test(
     test_custom_plugin_creater
@@ -156,6 +157,7 @@ elseif(WITH_CINN)
     DEPS paddle_framework
          tensorrt_converter
          phi
+         common
          custom_operator
          init_phi
          fleet_executor
@@ -168,6 +170,7 @@ else()
     DEPS paddle_framework
          tensorrt_converter
          phi
+         common
          custom_operator
          init_phi
          fleet_executor

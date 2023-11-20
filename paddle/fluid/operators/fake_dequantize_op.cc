@@ -121,9 +121,9 @@ struct ChannelDequantizeFunctor<phi::CPUContext, T> {
         const T* scale_two = scales[1]->data<T>();
         for (int i = 0; i < batch_size; i++) {
           phi::DenseTensor one_batch_in = in->Slice(i, i + 1).Resize(
-              phi::slice_ddim(in->dims(), 1, in->dims().size()));
+              common::slice_ddim(in->dims(), 1, in->dims().size()));
           phi::DenseTensor one_batch_out = out->Slice(i, i + 1).Resize(
-              phi::slice_ddim(out->dims(), 1, out->dims().size()));
+              common::slice_ddim(out->dims(), 1, out->dims().size()));
           for (int j = 0; j < channel; j++) {
             T s = scale_one[j];
             phi::DenseTensor one_channel_in = one_batch_in.Slice(j, j + 1);

@@ -24,12 +24,12 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 #include "paddle/utils/optional.h"
@@ -222,7 +222,7 @@ class CudnnConvDescManager {
       phi::UpdatePaddingAndDilation(&paddings,
                                     &dilations,
                                     padding_algorithm,
-                                    make_ddim(in_data_dims),
+                                    common::make_ddim(in_data_dims),
                                     strides,
                                     ksize);
 
@@ -401,8 +401,8 @@ void ConvFusionKernel(const Context& ctx,
       paddings_t,
       dilations_t,
       padding_algorithm,
-      phi::vectorize<int>(input.dims()),
-      phi::vectorize<int>(filter.dims()),
+      common::vectorize<int>(input.dims()),
+      common::vectorize<int>(filter.dims()),
       strides,
       compute_format);
 
@@ -410,7 +410,7 @@ void ConvFusionKernel(const Context& ctx,
   const int input_rank = input.dims().size();
   auto unsys_pad_process = [&](const std::vector<int>& new_input_shape_vec,
                                const std::vector<int>& input_pad) {
-    DDim new_input_shape(make_ddim(new_input_shape_vec));
+    DDim new_input_shape(common::make_ddim(new_input_shape_vec));
     transformed_input.Resize(new_input_shape);
     ctx.template Alloc<T>(&transformed_input);
 
@@ -529,10 +529,10 @@ void ConvFusionKernel(const Context& ctx,
   };
 
   auto cudnn_cache_info = CudnnConvDescManager::Instance()->GetCudnnCacheInfo(
-      phi::vectorize<int>(transformed_input.dims()),
-      phi::vectorize<int>(filter.dims()),
+      common::vectorize<int>(transformed_input.dims()),
+      common::vectorize<int>(filter.dims()),
       b_dims,
-      phi::vectorize<int>(output->dims()),
+      common::vectorize<int>(output->dims()),
       conv_attr_cache->paddings,
       strides,
       conv_attr_cache->dilations,

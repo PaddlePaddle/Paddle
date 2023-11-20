@@ -62,7 +62,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
 
-    auto src_tz = phi::vectorize(input->dims());
+    auto src_tz = common::vectorize(input->dims());
 
     auto src_paddle_dt = input->dtype();
     auto dst_paddle_dt = with_shift ? DataType::UINT8 : src_paddle_dt;

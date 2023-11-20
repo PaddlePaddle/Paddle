@@ -79,7 +79,7 @@ inline void DealWithShapeOp(paddle::Tensor* out_tensor,
   for (int i = 0; i < dim_size; i++) {
     dims[i] = value[i];
   }
-  auto des_str = phi::DataLayoutToString(des_layout);
+  auto des_str = common::DataLayoutToString(des_layout);
   if (change_dim && des_str == "NCHW") {
     // NCHW -> NHWC
     VLOG(6) << "layout autotune get Shape from NCHW -> NHWC " << value[0] << " "
@@ -200,7 +200,7 @@ class EagerHeavilyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
                                                     std::string* layout)
       : op_name_(op_name), desired_layout_(DesiredLayout()) {
     VLOG(4) << "Heavily op: " << op_name << " layout " << *layout;
-    *layout = phi::DataLayoutToString(DesiredLayout());
+    *layout = common::DataLayoutToString(DesiredLayout());
   }
 
   paddle::Tensor TransInTensor(const std::string& in_name,
@@ -247,13 +247,13 @@ class EagerLightlyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
       const std::string& op_name) {
     VLOG(4) << "Lightly op : " << op_name;
     auto desired_layout = DesiredLayout();
-    final_layout_ = phi::DataLayoutToString(desired_layout);
+    final_layout_ = common::DataLayoutToString(desired_layout);
   }
 
   // transpose from desired to default
   paddle::Tensor TransInTensor(const std::string& in_name UNUSED,
                                const paddle::Tensor& in) {
-    std::string input_layout = phi::DataLayoutToString(in.layout());
+    std::string input_layout = common::DataLayoutToString(in.layout());
     auto default_layout = DefaultLayout();
     if (final_layout_ == input_layout && in.shape().size() == 4) {
       auto out_tensor = EagerTraceTransposeOp(phi::DataLayout::UNDEFINED, in);

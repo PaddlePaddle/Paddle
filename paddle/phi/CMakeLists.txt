@@ -42,7 +42,8 @@ set(PHI_DEPS
     eigen3
     xxhash
     cblas
-    utf8proc)
+    utf8proc
+    common)
 
 set(INFERENCE_DEPS phi_profiler_proto auto_parallel_proto)
 

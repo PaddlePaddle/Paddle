@@ -58,7 +58,7 @@ void PToSReshardFunction::Eval(DeviceContext* dev_ctx,
   DenseTensor in_reduce_scatter = in.value();
   std::vector<int> axis;
   if (out_split_axis != 0) {
-    for (size_t i = 0; i < vectorize(logical_ddim).size(); ++i) {
+    for (size_t i = 0; i < common::vectorize(logical_ddim).size(); ++i) {
       axis.emplace_back(i);
     }
     std::swap(axis[0], axis[out_split_axis]);

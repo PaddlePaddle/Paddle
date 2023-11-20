@@ -119,8 +119,8 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
                          bool trans_x,
                          bool trans_y) {
   // Step0: verify input args based on matmul logic
-  auto x_shape = phi::vectorize(x.dims());
-  auto y_shape = phi::vectorize(y.dims());
+  auto x_shape = common::vectorize(x.dims());
+  auto y_shape = common::vectorize(y.dims());
   int x_ndim = x_shape.size();
   int y_ndim = y_shape.size();
   auto x_dist_attr_src = x.dist_attr();
@@ -226,11 +226,11 @@ SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
                                 const DistMetaTensor& out,
                                 bool trans_x,
                                 bool trans_y) {
-  auto out_shape = phi::vectorize(out.dims());
+  auto out_shape = common::vectorize(out.dims());
   int out_ndim = out_shape.size();
 
-  auto x_shape = phi::vectorize(x.dims());
-  auto y_shape = phi::vectorize(y.dims());
+  auto x_shape = common::vectorize(x.dims());
+  auto y_shape = common::vectorize(y.dims());
   int x_ndim = x_shape.size();
   int y_ndim = y_shape.size();
   int max_ndim = std::max(x_ndim, y_ndim);

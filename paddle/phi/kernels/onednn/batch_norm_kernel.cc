@@ -98,7 +98,7 @@ void BatchNormKernel(const Context &dev_ctx,
   astream.wait();
 
   if (!global_stats) {
-    const unsigned int C = phi::vectorize(mean.dims())[0];
+    const unsigned int C = common::vectorize(mean.dims())[0];
 
     // mkldnn only compute stats for current batch
     // so we need compute momentum stats via Eigen lib

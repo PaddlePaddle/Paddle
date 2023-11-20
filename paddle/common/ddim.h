@@ -22,6 +22,10 @@
 #include "paddle/common/exception.h"
 #include "paddle/utils/test_macros.h"
 
+// TODO(zhangbopd): remove this header file after
+// move phi/core/enforce.h to commom/enforce.h
+#include "paddle/phi/core/enforce.h"
+
 namespace common {
 
 #define PADDLE_VISIT_DDIM_BASE(rank, callback) \
@@ -267,6 +271,18 @@ DDim stride(const DDim& ddim);
 
 DDim stride_numel(const DDim& ddim);
 }  // namespace common
+
+namespace paddle::framework {
+using DDim = common::DDim;
+}
+
+namespace phi {
+using DDim = common::DDim;
+}
+
+namespace pir {
+using DDim = common::DDim;
+}
 
 namespace std {
 template <>

@@ -337,7 +337,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
 
     // gamma/beta must be a 1-dimensional tensor of size on layer_norm
     auto layer_norm_x_mat_dims =
-        phi::flatten_to_2d(phi::make_ddim(x_shape), begin_norm_axis);
+        common::flatten_to_2d(common::make_ddim(x_shape), begin_norm_axis);
     auto* gamma_tensor =
         scope->FindVar(gamma->Name())->GetMutable<phi::DenseTensor>();
     VarDesc new_gamma_desc(patterns::PDNodeName("layer_norm_fuse", "Scale"));
@@ -349,7 +349,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     auto* new_gamma_node = g->CreateVarNode(&new_gamma_desc);
     auto* new_gamma_tensor =
         scope->Var(new_gamma_node->Name())->GetMutable<phi::DenseTensor>();
-    new_gamma_tensor->Resize(phi::make_ddim({layer_norm_x_mat_dims[1]}));
+    new_gamma_tensor->Resize(common::make_ddim({layer_norm_x_mat_dims[1]}));
     memcpy(new_gamma_tensor->mutable_data<float>(platform::CPUPlace()),
            gamma_tensor->mutable_data<float>(platform::CPUPlace()),
            layer_norm_x_mat_dims[1] * sizeof(float));
@@ -366,7 +366,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     auto* new_beta_tensor =
         scope->Var(new_beta_node->Name())->GetMutable<phi::DenseTensor>();
 
-    new_beta_tensor->Resize(phi::make_ddim({layer_norm_x_mat_dims[1]}));
+    new_beta_tensor->Resize(common::make_ddim({layer_norm_x_mat_dims[1]}));
     memcpy(new_beta_tensor->mutable_data<float>(platform::CPUPlace()),
            beta_tensor->mutable_data<float>(platform::CPUPlace()),
            layer_norm_x_mat_dims[1] * sizeof(float));

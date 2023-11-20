@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "test/cpp/fluid/elementwise/test_elementwise_op_grad_grad.h"
 
@@ -44,7 +44,7 @@ class TestElementwiseAddGradGradWithoutDDX
   using TestElementwiseOpGradGrad<T>::expected_outs_;
   using TestElementwiseOpGradGrad<T>::dims_;
   void ComputeExpectedOuts() override {
-    size_t numel = static_cast<size_t>(phi::product(dims_));
+    size_t numel = static_cast<size_t>(common::product(dims_));
     std::vector<T> dy(numel);
     std::vector<T> ddout(numel);
     for (size_t i = 0; i < numel; ++i) {

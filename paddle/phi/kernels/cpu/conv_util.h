@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 
 namespace phi {
 
@@ -25,7 +25,7 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
                                      const std::vector<T>& strides,
                                      const std::vector<T>& ksize) {
   // set padding size == data_dims.size() * 2
-  auto data_shape = vectorize<T>(data_dims);
+  auto data_shape = common::vectorize<T>(data_dims);
   if (static_cast<int>(paddings->size()) == data_dims.size()) {
     for (int i = 0; i < data_dims.size(); ++i) {
       T copy_pad = *(paddings->begin() + 2 * i);
@@ -41,7 +41,7 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
             "But received: padding's size is %d, padding is [%s]; input's "
             "dimension is %d, input's shape is [%s].",
             paddings->size(),
-            make_ddim(*paddings),
+            common::make_ddim(*paddings),
             data_dims.size(),
             data_dims));
   }

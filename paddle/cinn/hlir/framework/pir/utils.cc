@@ -244,7 +244,7 @@ OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
 
 std::vector<int> CompatibleInfo::ValueShape(const ::pir::Value& value) {
   auto& dim = value.type().dyn_cast<::pir::DenseTensorType>().dims();
-  return phi::vectorize<int>(dim);
+  return ::common::vectorize<int>(dim);
 }
 
 }  // namespace pir

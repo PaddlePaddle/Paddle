@@ -189,6 +189,7 @@ if(${len} GREATER_EQUAL 1)
       if(WITH_SHARED_IR)
         target_link_libraries(${test_name} $<TARGET_LINKER_FILE:pir>)
       endif()
+      target_link_libraries(${test_name} $<TARGET_LINKER_FILE:common>)
       add_dependencies(${test_name} ${paddle_lib} paddle_gtest_main_new)
       if(WITH_GPU)
         target_link_libraries(${test_name} ${CUDA_CUDART_LIBRARY}

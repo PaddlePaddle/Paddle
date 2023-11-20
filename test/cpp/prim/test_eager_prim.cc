@@ -38,7 +38,7 @@ TEST(EagerPrim, TanhBackwardTest) {
   FLAGS_tensor_operants_mode = "eager";
   paddle::prim::InitTensorOperants();
   // 2. pre
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor0 =
       eager_test::CreateTensorWithValue(ddim,
                                         paddle::platform::CPUPlace(),
@@ -95,7 +95,7 @@ TEST(EagerPrim, LogicalOperantsTest) {
   FLAGS_tensor_operants_mode = "eager";
   paddle::prim::InitTensorOperants();
   // 2. pre
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor0 =
       eager_test::CreateTensorWithValue(ddim,
                                         paddle::platform::CPUPlace(),
@@ -133,7 +133,7 @@ TEST(EagerPrim, CompareOperantsTest) {
   FLAGS_tensor_operants_mode = "eager";
   paddle::prim::InitTensorOperants();
   // 2. pre
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor0 =
       eager_test::CreateTensorWithValue(ddim,
                                         paddle::platform::CPUPlace(),

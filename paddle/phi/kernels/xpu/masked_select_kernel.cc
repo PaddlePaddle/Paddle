@@ -59,8 +59,8 @@ void MaskedSelectKernel(const Context& dev_ctx,
   out->Resize(out_dim);
   auto out_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
 
-  auto input_shape = vectorize<int>(input_dim);
-  auto mask_shape = vectorize<int>(mask_dim);
+  auto input_shape = common::vectorize<int>(input_dim);
+  auto mask_shape = common::vectorize<int>(mask_dim);
   if (input_dim.size() == 0) {
     input_shape = std::vector<int>({1});
   }

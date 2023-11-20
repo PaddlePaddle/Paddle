@@ -118,7 +118,7 @@ void DecodeJpegKernel(const Context& dev_ctx,
   int sz = widths[0] * heights[0];
 
   std::vector<int64_t> out_shape = {output_components, height, width};
-  out->Resize(phi::make_ddim(out_shape));
+  out->Resize(common::make_ddim(out_shape));
 
   T* data = dev_ctx.template Alloc<T>(out);
 

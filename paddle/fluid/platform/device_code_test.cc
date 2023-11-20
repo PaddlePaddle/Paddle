@@ -60,8 +60,8 @@ TEST(DeviceCode, cuda) {
   phi::DenseTensor cpu_z;
 
   float scale = 2;
-  auto dims =
-      phi::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
+  auto dims = common::make_ddim(
+      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = reinterpret_cast<phi::CPUContext*>(pool.Get(phi::CPUPlace()));
   cpu_x.Resize(dims);

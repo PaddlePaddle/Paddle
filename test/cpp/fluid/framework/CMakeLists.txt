@@ -39,7 +39,7 @@ cc_test(
 cc_test(
   lod_tensor_test
   SRCS lod_tensor_test.cc
-  DEPS phi lod_tensor memory)
+  DEPS phi common lod_tensor memory)
 
 if(WITH_GPU)
   nv_test(
@@ -61,7 +61,7 @@ cc_test(
 cc_test(
   threadpool_test
   SRCS threadpool_test.cc
-  DEPS phi)
+  DEPS phi common)
 
 cc_test(
   var_type_traits_test
@@ -87,12 +87,12 @@ if(WITH_GPU)
   nv_test(
     data_device_transform_test
     SRCS data_device_transform_test.cu
-    DEPS operator op_registry device_context phi scope)
+    DEPS operator op_registry device_context phi common scope)
 elseif(WITH_ROCM)
   hip_test(
     data_device_transform_test
     SRCS data_device_transform_test.cu
-    DEPS operator op_registry device_context phi scope)
+    DEPS operator op_registry device_context phi common scope)
 endif()
 
 if(WITH_GPU)
@@ -206,6 +206,7 @@ if(WITH_PSCORE)
            heter_server
            gloo_wrapper
            phi
+           common
            ${RPC_DEPS}
            graph_gpu_wrapper)
   else()
@@ -223,6 +224,7 @@ if(WITH_PSCORE)
            heter_server
            gloo_wrapper
            phi
+           common
            ${RPC_DEPS})
   endif()
 else()
@@ -274,7 +276,7 @@ cc_test_old(
 cc_test(
   infershape_utils_test
   SRCS infershape_utils_test.cc
-  DEPS infershape_utils phi)
+  DEPS infershape_utils phi common)
 
 if(WITH_TESTING AND TEST selected_rows_utils_test)
   set_tests_properties(selected_rows_utils_test PROPERTIES TIMEOUT 120)

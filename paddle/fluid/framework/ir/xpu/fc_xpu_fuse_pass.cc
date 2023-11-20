@@ -310,7 +310,8 @@ void FcXPUFusePass::CreateTheReplicatedWeights(
 
     VarDesc replicated_filter_desc(replicated_w_name);
     replicated_filter_desc.SetPersistable(true);
-    replicated_filter_desc.SetShape(vectorize(replicated_filter_tensor.dims()));
+    replicated_filter_desc.SetShape(
+        common::vectorize(replicated_filter_tensor.dims()));
     replicated_filter_desc.SetDataType(
         framework::TransToProtoVarType(replicated_filter_tensor.dtype()));
     graph->CreateVarNode(&replicated_filter_desc);

@@ -112,7 +112,7 @@ void PadOpKernel(const Context& dev_ctx,
   const auto& onednn_engine = dev_ctx.GetEngine();
   auto& astream = OneDNNContext::tls().get_stream();
 
-  std::vector<int64_t> x_tz = vectorize(x.dims());
+  std::vector<int64_t> x_tz = common::vectorize(x.dims());
   // due to the need of supporting NDHWC, inferring out shape
   // must be done inside the kernel
   std::vector<int64_t> out_tz(x_tz);
@@ -120,7 +120,7 @@ void PadOpKernel(const Context& dev_ctx,
   for (size_t i = 0; i < paddings.size() / 2; ++i) {
     out_tz[out_tz.size() - 1 - i] += paddings[2 * i] + paddings[2 * i + 1];
   }
-  out->Resize(make_ddim(out_tz));
+  out->Resize(common::make_ddim(out_tz));
 
   funcs::ReorderOneDNNHandler reorder_handler(
       x_tz, x.dtype(), funcs::ToOneDNNDataType(x.dtype()), onednn_engine);

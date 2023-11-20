@@ -549,7 +549,7 @@ void SetGetLoDLevelTestMain(std::string op_type) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   auto* x_var = scope.Var("x.0");
   auto* x = x_var->GetMutable<phi::DenseTensor>();
-  x->mutable_data<float>(phi::make_ddim({64}), place);
+  x->mutable_data<float>(common::make_ddim({64}), place);
   auto* out_var = scope.Var("out.0");
   out_var->GetMutable<phi::DenseTensor>();
 

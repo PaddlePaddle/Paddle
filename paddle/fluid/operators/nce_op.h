@@ -165,10 +165,10 @@ class NCEKernel : public framework::OpKernel<T> {
           (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
 
       sample_labels = &sample_labels_tmp;
-      sample_labels->Resize(phi::make_ddim(sample_out_dims));
+      sample_labels->Resize(common::make_ddim(sample_out_dims));
 
       sample_out = &sample_out_tmp;
-      sample_out->Resize(phi::make_ddim(sample_out_dims));
+      sample_out->Resize(common::make_ddim(sample_out_dims));
     } else {
       sample_labels = context.Output<phi::DenseTensor>("SampleLabels");
       sample_out = context.Output<phi::DenseTensor>("SampleLogits");

@@ -97,11 +97,11 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
     }
   } else {
     // Set out dim following out_size.
-    std::vector<int64_t> dims_ = phi::vectorize(src_dims);
+    std::vector<int64_t> dims_ = common::vectorize(src_dims);
     if (!dims_.empty()) {
       dims_[0] = out_size;
     }
-    out->Resize(phi::make_ddim(dims_));
+    out->Resize(common::make_ddim(dims_));
     memset_size = out_size;
     for (int i = 1; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];

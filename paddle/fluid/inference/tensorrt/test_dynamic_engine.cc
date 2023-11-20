@@ -15,11 +15,11 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "paddle/common/layout.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 #include "paddle/fluid/inference/tensorrt/plugin/spmm_plugin.h"
 #endif
@@ -86,7 +86,7 @@ class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
   void PrepareInputOutput(const std::vector<float> &input,
                           std::vector<int> output_shape) {
     paddle::framework::TensorFromVector(input, *ctx_, &input_);
-    output_.Resize(phi::make_ddim(output_shape));
+    output_.Resize(common::make_ddim(output_shape));
   }
   void PrepareShapeInput(const std::vector<int> &input) {
     paddle::framework::TensorFromVector(input, *ctx_, &shape_);
@@ -202,7 +202,7 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
   void PrepareInputOutput(const std::vector<float16> &input,
                           std::vector<int> output_shape) {
     paddle::framework::TensorFromVector(input, *ctx_, &input_);
-    output_.Resize(phi::make_ddim(output_shape));
+    output_.Resize(common::make_ddim(output_shape));
   }
 
   void GetOutput(std::vector<float> *output) {
@@ -377,7 +377,7 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
       paddle::framework::TensorFromVector(inputs[i], *ctx_, &inputs_[i]);
     }
     for (int i = 0; i < num_outputs; ++i) {
-      outputs_[i].Resize(phi::make_ddim(output_shapes[i]));
+      outputs_[i].Resize(common::make_ddim(output_shapes[i]));
     }
   }
 
@@ -573,7 +573,7 @@ class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
       paddle::framework::TensorFromVector(inputs[i], *ctx_, &inputs_[i]);
     }
     for (int i = 0; i < num_outputs; ++i) {
-      outputs_[i].Resize(phi::make_ddim(output_shapes[i]));
+      outputs_[i].Resize(common::make_ddim(output_shapes[i]));
     }
   }
 

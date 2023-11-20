@@ -45,7 +45,7 @@ void RepeatsTensor2IndexTensor(const Context& ctx,
     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
     offset += repeats_data[i];
   }
-  index->Resize(phi::make_ddim({index_size}));
+  index->Resize(common::make_ddim({index_size}));
 
   phi::TensorFromVector<RepeatsT>(index_vec, ctx, index);
 }

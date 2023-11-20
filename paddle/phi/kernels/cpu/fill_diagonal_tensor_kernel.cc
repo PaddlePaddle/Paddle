@@ -86,7 +86,7 @@ void FillDiagonalTensorKernel(const Context &ctx,
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
   auto out_dims = out->dims();
   auto matdims = y.dims();
-  auto fill_dims = phi::flatten_to_2d(matdims, matdims.size() - 1);
+  auto fill_dims = common::flatten_to_2d(matdims, matdims.size() - 1);
 
   std::array<int64_t, 2> new_dims;
   std::array<int64_t, 2> strides;

@@ -34,7 +34,7 @@ TEST(dist_tensor, constructor) {
   DDim dims({3, 4});
   DenseTensorMeta meta(dtype, dims);
 
-  auto dist_attr = TensorDistAttr(phi::vectorize(dims));
+  auto dist_attr = TensorDistAttr(common::vectorize(dims));
 
   std::vector<int64_t> mesh_shape = {1};
   std::vector<int64_t> process_ids = {0};

@@ -129,7 +129,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     // Now, all the inputs and outputs should be on the CPU memory.
     phi::DenseTensor emission_row_max;
     emission_row_max.mutable_data<T>(
-        phi::make_ddim({static_cast<int64_t>(batch_size), 1}),
+        common::make_ddim({static_cast<int64_t>(batch_size), 1}),
         platform::CPUPlace());
     auto& place =
         *ctx.template device_context<phi::CPUContext>().eigen_device();

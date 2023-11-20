@@ -320,7 +320,7 @@ TEST(float16, lod_tensor_on_gpu) {
   phi::DenseTensor dst_tensor;
 
   float16 *src_ptr =
-      src_tensor.mutable_data<float16>(phi::make_ddim({2, 2}), CPUPlace());
+      src_tensor.mutable_data<float16>(common::make_ddim({2, 2}), CPUPlace());
 
   float16 arr[4] = {
       float16(1.0f), float16(0.5f), float16(0.33333f), float16(0.0f)};

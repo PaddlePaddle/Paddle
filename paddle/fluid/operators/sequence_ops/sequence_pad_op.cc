@@ -52,11 +52,11 @@ class SequencePadOp : public framework::OperatorWithKernel {
                           "The rank of SequencePadOp Input(X) can't be less "
                           "than 2. But the rank we received is %d",
                           x_dims.size()));
-    auto time_step_dims = phi::slice_ddim(x_dims, 1, x_dims.size());
+    auto time_step_dims = common::slice_ddim(x_dims, 1, x_dims.size());
     auto pad_value_dims = ctx->GetInputDim("PadValue");
     PADDLE_ENFORCE_EQ(
-        pad_value_dims == phi::make_ddim({1}) ||
-            pad_value_dims == phi::make_ddim({}) ||
+        pad_value_dims == common::make_ddim({1}) ||
+            pad_value_dims == common::make_ddim({}) ||
             pad_value_dims == time_step_dims,
         true,
         platform::errors::InvalidArgument(
@@ -127,12 +127,12 @@ class SequencePadOp : public framework::OperatorWithKernel {
 
     std::vector<int> out_dims_vec{out_dim_0, padded_length};
     std::vector<int> len_dims_vec{out_dim_0};
-    auto time_step_dims_vec = phi::vectorize<int>(time_step_dims);
+    auto time_step_dims_vec = common::vectorize<int>(time_step_dims);
     out_dims_vec.insert(out_dims_vec.end(),
                         time_step_dims_vec.begin(),
                         time_step_dims_vec.end());
-    ctx->SetOutputDim("Out", phi::make_ddim(out_dims_vec));
-    ctx->SetOutputDim("Length", phi::make_ddim(len_dims_vec));
+    ctx->SetOutputDim("Out", common::make_ddim(out_dims_vec));
+    ctx->SetOutputDim("Length", common::make_ddim(len_dims_vec));
   }
 
  protected:

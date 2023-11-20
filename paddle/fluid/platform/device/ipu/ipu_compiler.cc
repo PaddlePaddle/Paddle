@@ -415,7 +415,7 @@ void Compiler::LowerConstants(const Scope* scope) {
       ConstantOpAttrVisitor visitor(tensor, dtype);
       auto value = op_desc->GetAttr("value");
       paddle::visit(visitor, value);
-      auto ddim = phi::make_ddim(shape);
+      auto ddim = common::make_ddim(shape);
       tensor->Resize(ddim);
 
       auto const_data = std::unique_ptr<popart::ConstVoidData>();

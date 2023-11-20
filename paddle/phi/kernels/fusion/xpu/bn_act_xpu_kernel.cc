@@ -33,7 +33,7 @@ void BNActXPUKernel(const Context& dev_ctx,
                     int act_type,
                     DenseTensor* y) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  const auto data_layout = phi::StringToDataLayout(data_layout_str);
+  const auto data_layout = common::StringToDataLayout(data_layout_str);
   PADDLE_ENFORCE_EQ(data_layout_str == "NCHW" || data_layout_str == "NHWC",
                     true,
                     phi::errors::InvalidArgument(

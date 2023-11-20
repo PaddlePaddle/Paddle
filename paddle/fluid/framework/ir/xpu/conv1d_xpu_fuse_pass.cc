@@ -473,7 +473,7 @@ int Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
         scope->GetVar(conv_filter->Name())->GetMutable<phi::DenseTensor>();
     auto filter_dims = filter_t->dims();
     auto original_f_dims =
-        phi::make_ddim({filter_dims[0], filter_dims[1], filter_dims[3]});
+        common::make_ddim({filter_dims[0], filter_dims[1], filter_dims[3]});
     filter_t->Resize(original_f_dims);
     filter_dims = original_f_dims;
     // conv_filter fp16 --> fp32

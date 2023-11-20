@@ -52,7 +52,7 @@ class IOUSimilarityOp : public framework::OperatorWithKernel {
             "The shape of Y is [M, 4], but got dimension = %d.", y_dims[1]));
 
     ctx->ShareLoD("X", /*->*/ "Out");
-    ctx->SetOutputDim("Out", phi::make_ddim({x_dims[0], y_dims[0]}));
+    ctx->SetOutputDim("Out", common::make_ddim({x_dims[0], y_dims[0]}));
   }
 };
 

@@ -249,11 +249,11 @@ void ComputeImpl(const Context& dev_ctx,
   auto* trust_ratio_div_norm_ptr = trust_ratio_div_norm_t.data<MT>();
 
   // DenseTensor p_norm_t;
-  // p_norm_t.Resize(phi::make_ddim({1}));
+  // p_norm_t.Resize(common::make_ddim({1}));
   // auto* p_norm_ptr = dev_ctx.template Alloc<MT>(&p_norm_t);
 
   // DenseTensor trust_ratio_div_norm_t;
-  // trust_ratio_div_norm_t.Resize(phi::make_ddim({1}));
+  // trust_ratio_div_norm_t.Resize(common::make_ddim({1}));
   // auto* trust_ratio_div_norm_ptr =
   //     dev_ctx.template Alloc<MT>(&trust_ratio_div_norm_t);
 

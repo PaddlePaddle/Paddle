@@ -107,7 +107,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
 #if defined(__NVCC__) || defined(__HIPCC__)
 
   auto output_dim = out_grad.dims();
-  auto stride_dim = phi::stride(input_dim);
+  auto stride_dim = common::stride(input_dim);
   int64_t stride = stride_dim[dim];
   int64_t size = output_dim[dim];
   int64_t delta = input_dim[dim] - size;
@@ -181,7 +181,7 @@ void RepeatInterleaveGradKernel(const Context& ctx,
   DenseTensor index;
 #if defined(__NVCC__) || defined(__HIPCC__)
   auto output_dim = out_grad.dims();
-  auto stride_dim = phi::stride(input_dim);
+  auto stride_dim = common::stride(input_dim);
   int64_t stride = stride_dim[dim];
   int64_t size = output_dim[dim];
   int64_t delta = input_dim[dim] - size;
@@ -201,7 +201,7 @@ void RepeatInterleaveGradKernel(const Context& ctx,
   for (int i = 0; i < x_grad->dims()[dim]; i++) {
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
-  index.Resize(phi::make_ddim({index_size}));
+  index.Resize(common::make_ddim({index_size}));
   phi::TensorFromVector<int>(index_vec, ctx, &index);
 
   const int* index_data = index.data<int>();

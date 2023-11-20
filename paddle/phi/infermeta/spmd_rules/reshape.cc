@@ -145,7 +145,7 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
   // Step0: Verify input args based on reshape logic
   VLOG(2) << "Debug Info for reshape";
   VLOG(2) << "shape: " << str_join(shape);
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
   int out_ndim = shape.size();
   auto x_dist_attr_src = x.dist_attr();
@@ -215,8 +215,8 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   VLOG(2) << "Debug Info for reshape_reverse";
   VLOG(2) << "shape: " << str_join(shape);
   // Step0: Verify input args based on reshape logic
-  auto x_shape = phi::vectorize(x.dims());
-  auto out_shape = phi::vectorize(out.dims());
+  auto x_shape = common::vectorize(x.dims());
+  auto out_shape = common::vectorize(out.dims());
   int x_ndim = x_shape.size();
   int out_ndim = out_shape.size();
   auto out_dist_attr_src = out.dist_attr();

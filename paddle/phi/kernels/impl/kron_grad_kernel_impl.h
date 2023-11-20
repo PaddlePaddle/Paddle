@@ -168,11 +168,11 @@ struct KronGradOpFunctor {
     const phi::DDim &dim_y = y.dims();
     const phi::DDim &dim_dout = dout.dims();
     const phi::DDim stride_x =
-        dim_x.size() == 0 ? phi::DDim(dim_x) : phi::stride(dim_x);
+        dim_x.size() == 0 ? phi::DDim(dim_x) : common::stride(dim_x);
     const phi::DDim stride_y =
-        dim_y.size() == 0 ? phi::DDim(dim_y) : phi::stride(dim_y);
+        dim_y.size() == 0 ? phi::DDim(dim_y) : common::stride(dim_y);
     const phi::DDim stride_dout =
-        dim_dout.size() == 0 ? phi::DDim(dim_dout) : phi::stride(dim_dout);
+        dim_dout.size() == 0 ? phi::DDim(dim_dout) : common::stride(dim_dout);
 
     const int64_t *p_stride_x = nullptr;
     const int64_t *p_stride_y = nullptr;

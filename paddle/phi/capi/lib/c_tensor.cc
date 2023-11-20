@@ -198,7 +198,7 @@ void PD_TensorSetDims(PD_Tensor* tensor,
   }
   auto cc_tensor = reinterpret_cast<phi::DenseTensor*>(tensor);
   std::vector<int> shape(dims, dims + ndims);
-  cc_tensor->Resize(phi::make_ddim(shape));
+  cc_tensor->Resize(common::make_ddim(shape));
 }
 
 void PD_TensorSetDataType(PD_Tensor* tensor,

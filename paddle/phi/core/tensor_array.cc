@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/tensor_array.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 

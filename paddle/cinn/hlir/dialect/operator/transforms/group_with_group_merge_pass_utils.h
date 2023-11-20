@@ -47,7 +47,7 @@ static bool IsSameSize(const OpGroupPtr& src, const OpGroupPtr& dst) {
   auto size_0 = src_master_node.outputs()[0].shape();
   auto size_1 = dst_master_node.outputs()[0].shape();
 
-  return phi::product(size_0) == phi::product(size_1);
+  return ::common::product(size_0) == ::common::product(size_1);
 }
 
 static std::unordered_set<cinn::dialect::ir::OpNode> GetInputOps(

@@ -227,7 +227,7 @@ void TestDataInterface() {
   std::vector<int64_t> rows = {0};
   std::shared_ptr<phi::SelectedRows> selected_rows =
       std::make_shared<phi::SelectedRows>(rows, 1);
-  selected_rows->mutable_value()->Resize(phi::make_ddim({1, 1}));
+  selected_rows->mutable_value()->Resize(common::make_ddim({1, 1}));
   selected_rows->mutable_value()->mutable_data<float>(phi::CPUPlace())[0] =
       static_cast<float>(10.0f);
   paddle::Tensor sr_tensor = paddle::Tensor(selected_rows);

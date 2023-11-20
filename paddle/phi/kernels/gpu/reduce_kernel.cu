@@ -52,7 +52,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   std::vector<int> reduce_dims =
       funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
 
-  auto update_dims = vectorize(x.dims());
+  auto update_dims = common::vectorize(x.dims());
   for (auto i : reduce_dims) {
     update_dims[i] = 1;
   }
@@ -60,7 +60,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   // make new tensor
   DenseTensor new_out_grad(out_grad.dtype());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(phi::make_ddim(update_dims));
+  new_out_grad.Resize(common::make_ddim(update_dims));
 
   // call ReduceGrad
   dev_ctx.Alloc(x_grad, x.dtype());
@@ -89,7 +89,7 @@ void ReduceMinGradKernel(const Context& dev_ctx,
   int dim_size = x.dims().size();
   auto reduce_dims =
       funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
-  auto update_dims = vectorize(x.dims());
+  auto update_dims = common::vectorize(x.dims());
   for (auto i : reduce_dims) {
     update_dims[i] = 1;
   }
@@ -97,11 +97,11 @@ void ReduceMinGradKernel(const Context& dev_ctx,
   // make new tensor of out and out_grad
   phi::DenseTensor new_out(out.type());
   new_out.ShareDataWith(out);
-  new_out.Resize(phi::make_ddim(update_dims));
+  new_out.Resize(common::make_ddim(update_dims));
 
   phi::DenseTensor new_out_grad(out_grad.type());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(phi::make_ddim(update_dims));
+  new_out_grad.Resize(common::make_ddim(update_dims));
 
   // make equal_out
   phi::DenseTensor* equal_out = new phi::DenseTensor();
@@ -134,7 +134,7 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   std::vector<int> reduce_dims =
       funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
 
-  auto update_dims = vectorize(x.dims());
+  auto update_dims = common::vectorize(x.dims());
   int reduce_num = 1;
   for (auto i : reduce_dims) {
     reduce_num *= (x.dims())[i];
@@ -144,7 +144,7 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   // make new tensor
   DenseTensor new_out_grad(out_grad.dtype());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(phi::make_ddim(update_dims));
+  new_out_grad.Resize(common::make_ddim(update_dims));
 
   // call BroadcastKernel
   dev_ctx.Alloc(x_grad, x.dtype());
@@ -172,7 +172,7 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
   int dim_size = x.dims().size();
   auto reduce_dims =
       funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
-  auto update_dims = vectorize(x.dims());
+  auto update_dims = common::vectorize(x.dims());
   for (auto i : reduce_dims) {
     update_dims[i] = 1;
   }
@@ -180,11 +180,11 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
   // make new tensor of out and out_grad
   phi::DenseTensor new_out(out.type());
   new_out.ShareDataWith(out);
-  new_out.Resize(phi::make_ddim(update_dims));
+  new_out.Resize(common::make_ddim(update_dims));
 
   phi::DenseTensor new_out_grad(out_grad.type());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(phi::make_ddim(update_dims));
+  new_out_grad.Resize(common::make_ddim(update_dims));
 
   // make equal_out
   phi::DenseTensor* equal_out = new phi::DenseTensor();

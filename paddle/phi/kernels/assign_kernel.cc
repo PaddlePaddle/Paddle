@@ -103,7 +103,7 @@ void AssignValueKernel(const Context& dev_ctx,
                                    dtype,
                                    template_dtype));
   CopyVectorToTensor<T>(dev_ctx, values, out);
-  out->Resize(phi::make_ddim(shape));
+  out->Resize(common::make_ddim(shape));
 }
 
 }  // namespace phi

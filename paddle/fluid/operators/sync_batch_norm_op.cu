@@ -51,7 +51,7 @@ void SyncBatchNormKernel(const Context& ctx,
 
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
-  const DataLayout layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout layout = common::StringToDataLayout(data_layout_str);
   bool test_mode = is_test && (!trainable_statistics);
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),

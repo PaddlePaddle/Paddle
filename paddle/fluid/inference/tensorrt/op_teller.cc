@@ -741,7 +741,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "affine_channel") {
       if (!desc.HasAttr("data_layout")) return false;
-      auto data_layout = phi::StringToDataLayout(
+      auto data_layout = common::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != phi::DataLayout::kNCHW) return false;
 
@@ -816,7 +816,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         if (!desc.HasAttr(attr)) return false;
       }
       if (desc.HasAttr("data_layout")) {
-        auto data_layout = phi::StringToDataLayout(
+        auto data_layout = common::StringToDataLayout(
             PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
         if (data_layout != phi::DataLayout::kNCHW &&
             data_layout != phi::DataLayout::kNHWC)
@@ -861,7 +861,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
-      auto data_layout = phi::StringToDataLayout(
+      auto data_layout = common::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != phi::DataLayout::kNCHW &&
           data_layout != phi::DataLayout::kNHWC)
@@ -928,7 +928,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
 
-      auto data_layout = phi::StringToDataLayout(
+      auto data_layout = common::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != phi::DataLayout::kNCHW &&
           data_layout != phi::DataLayout::kNHWC) {

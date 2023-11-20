@@ -87,7 +87,7 @@ class CudnnFrontendConvHelper {
       const phi::DenseTensor* tensor,
       int64_t id,
       cudnnTensorFormat_t layout_format) {
-    auto transformed_dims = phi::vectorize<int64_t>(tensor->dims());
+    auto transformed_dims = common::vectorize<int64_t>(tensor->dims());
     if (layout_format == CUDNN_TENSOR_NHWC) {
       transformed_dims =
           phi::backends::gpu::TransformDimOrder(transformed_dims);

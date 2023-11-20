@@ -105,7 +105,7 @@ static void LerpGradFunctionZero(const Context& ctx,
                                  const DenseTensor& out_grad,
                                  DenseTensor* x_grad,
                                  DenseTensor* y_grad) {
-  auto dim = make_ddim(std::vector<int64_t>(1, 1));
+  auto dim = common::make_ddim(std::vector<int64_t>(1, 1));
   auto eigen_w = phi::EigenTensor<T, 1>::From(weight, dim);
   auto eigen_dout = phi::EigenTensor<T, 1>::From(out_grad, dim);
 

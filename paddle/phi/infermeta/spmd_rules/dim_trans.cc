@@ -289,7 +289,7 @@ void GetUsedInputDim(DimTrans* dim_trans, std::set<int64_t>* seen_dims) {
 
 std::vector<std::vector<int64_t>> InferFromDimTrans(
     const DistMetaTensor& input, const std::vector<DimTrans*>& dim_trans) {
-  std::vector<int64_t> input_shape = phi::vectorize(input.dims());
+  std::vector<int64_t> input_shape = common::vectorize(input.dims());
   const std::vector<int64_t>& input_dims_mapping =
       input.dist_attr().dims_mapping();
   const ProcessMesh& mesh = input.dist_attr().process_mesh();

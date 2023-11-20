@@ -5,9 +5,9 @@ endif()
 proto_library(interceptor_message_proto SRCS interceptor_message.proto)
 
 if(WITH_ARM_BRPC)
-  set(BRPC_DEPS arm_brpc snappy phi glog)
+  set(BRPC_DEPS arm_brpc snappy phi common glog)
 elseif(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
-  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} zlib phi)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} zlib phi common)
 else()
   set(BRPC_DEPS "")
 endif()
@@ -43,6 +43,7 @@ cc_library(
        executor_gc_helper
        op_registry
        phi
+       common
        glog
        ${BRPC_DEPS})
 if(WITH_DISTRIBUTE)

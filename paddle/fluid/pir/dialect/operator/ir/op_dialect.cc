@@ -76,7 +76,7 @@ void OperatorDialect::PrintType(pir::Type type, std::ostream &os) const {
   os << '.';
   if (auto tensor_type = type.dyn_cast<DenseTensorType>()) {
     os << "tensor<";
-    for (auto d : phi::vectorize(tensor_type.dims())) {
+    for (auto d : common::vectorize(tensor_type.dims())) {
       pir::ShapedTypeInterface::IsDynamic(d) ? os << "?" : os << d;
       os << "x";
     }
@@ -84,7 +84,7 @@ void OperatorDialect::PrintType(pir::Type type, std::ostream &os) const {
     os << ">";
   } else if (auto selected_rows_type = type.dyn_cast<SelectedRowsType>()) {
     os << "selectedrows<";
-    for (auto d : phi::vectorize(selected_rows_type.dims())) {
+    for (auto d : common::vectorize(selected_rows_type.dims())) {
       os << d;
       os << "x";
     }
@@ -141,7 +141,7 @@ pir::Type OperatorDialect::ParseType(pir::IrParser &parser) {  // NOLINT
       break;
     }
   }
-  phi::DDim ddim = phi::make_ddim(dim);
+  phi::DDim ddim = common::make_ddim(dim);
   pir::Type dtype = parser.ParseType();
   std::vector<std::vector<size_t>> lod;
   std::vector<size_t> lodv;

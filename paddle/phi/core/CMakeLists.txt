@@ -15,7 +15,6 @@ collect_srcs(
   storage_properties.cc
   os_info.cc
   kernel_context.cc
-  ddim.cc
   tensor_base.cc
   allocator.cc
   tensor_meta.cc

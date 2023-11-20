@@ -420,7 +420,7 @@ void FusedFCElementwiseLayerNormKernel(
   auto w_dims = w.dims();
   int N = w_dims[1];
   int K = w_dims[0];
-  int M = phi::product(x.dims()) / K;
+  int M = common::product(x.dims()) / K;
 
   const T* x_data = x.data<T>();
   const T* w_data = w.data<T>();

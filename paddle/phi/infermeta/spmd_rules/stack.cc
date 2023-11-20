@@ -42,7 +42,7 @@ SpmdInfo StackInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
                  x.end(),
                  std::back_inserter(tensor_shapes),
                  [](const DistMetaTensor& meta) {
-                   return phi::vectorize<int64_t>(meta.dims());
+                   return common::vectorize<int64_t>(meta.dims());
                  });
   bool all_empty =
       std::all_of(tensor_shapes.begin(), tensor_shapes.end(), IsEmpty);

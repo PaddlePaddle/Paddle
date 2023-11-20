@@ -1,5 +1,6 @@
 set(eager_deps
     phi
+    common
     hook_utils
     utils
     global_utils
@@ -45,26 +46,27 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   cc_library(
     backward
     SRCS backward.cc
-    DEPS grad_tensor_holder utils autograd_meta grad_node_info phi)
+    DEPS grad_tensor_holder utils autograd_meta grad_node_info phi common)
 endif()
 
 cc_library(
   eager_nan_inf_utils
   SRCS nan_inf_utils.cc
-  DEPS phi nan_inf_utils enforce)
+  DEPS phi common nan_inf_utils enforce)
 cc_library(
   grad_node_info
   SRCS grad_node_info.cc
-  DEPS phi)
+  DEPS phi common)
 
 cc_library(
   autograd_meta
   SRCS autograd_meta.cc
-  DEPS phi)
+  DEPS phi common)
 cc_library(
   utils
   SRCS utils.cc
   DEPS phi
+       common
        global_utils
        layer
        proto_desc

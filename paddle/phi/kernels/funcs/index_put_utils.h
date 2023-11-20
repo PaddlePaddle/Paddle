@@ -15,12 +15,12 @@
 #pragma once
 
 #include <vector>
+#include "paddle/common/array.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/nonzero_kernel.h"
@@ -46,7 +46,7 @@ phi::DenseTensor GetReshapeAndExpandTensor(const Context& dev_ctx,
                                            const phi::DDim& res_dim,
                                            const phi::DDim& bd_dim,
                                            int index) {
-  std::vector<int64_t> before_dims = phi::vectorize(tensor.dims());
+  std::vector<int64_t> before_dims = common::vectorize(tensor.dims());
   std::vector<int64_t> mid_dims(res_dim.size(), 1);
 
   if (index == 0) {
@@ -58,13 +58,13 @@ phi::DenseTensor GetReshapeAndExpandTensor(const Context& dev_ctx,
   }
 
   phi::DenseTensor mid_tensor(tensor.dtype());
-  mid_tensor.Resize(phi::make_ddim(mid_dims));
+  mid_tensor.Resize(common::make_ddim(mid_dims));
   ReshapeInferKernel<Context>(dev_ctx, tensor, IntArray(mid_dims), &mid_tensor);
 
   phi::DenseTensor res_tensor(tensor.dtype());
   res_tensor.Resize(res_dim);
   ExpandKernel<T, Context>(
-      dev_ctx, mid_tensor, IntArray(phi::vectorize(res_dim)), &res_tensor);
+      dev_ctx, mid_tensor, IntArray(common::vectorize(res_dim)), &res_tensor);
   return res_tensor;
 }
 
@@ -86,7 +86,7 @@ std::vector<const phi::DenseTensor*> DealWithBoolIndices(
           phi::errors::InvalidArgument("the only bool tensor in indices should "
                                        "have number of dimension at least 1"));
       phi::DenseTensor nonzero_indices(phi::DataType::INT64);
-      nonzero_indices.Resize(phi::make_ddim({-1, rank}));
+      nonzero_indices.Resize(common::make_ddim({-1, rank}));
       NonZeroKernel<bool, Context>(dev_ctx, *indices_v[i], &nonzero_indices);
 
       if (nonzero_indices.numel() == 0) {
@@ -99,7 +99,7 @@ std::vector<const phi::DenseTensor*> DealWithBoolIndices(
       for (int i = 0; i < rank; ++i) {
         tmp_indices_v->emplace_back(
             DenseTensor(phi::DataType::INT64)
-                .Resize(phi::make_ddim({nonzero_indices.dims()[0]})));
+                .Resize(common::make_ddim({nonzero_indices.dims()[0]})));
       }
       for (int i = 0; i < rank; ++i) {
         integer_indices[i] = &((*tmp_indices_v)[i + tmp_ix]);
@@ -173,7 +173,7 @@ static phi::DDim BroadCastTensorsDims(
     }
     target_dims[target_rank - index - 1] = target_dim_size;
   }
-  return phi::make_ddim(target_dims);
+  return common::make_ddim(target_dims);
 }
 
 template <typename T, typename Context>
@@ -207,7 +207,7 @@ void DealWithIndices(const Context& dev_ctx,
                      std::vector<int64_t>* res_dim_v) {
   size_t total_dims = x.dims().size();
   if (int_indices_v.size() < total_dims) {
-    std::vector<int64_t> tmp_x_dims = phi::vectorize(x.dims());
+    std::vector<int64_t> tmp_x_dims = common::vectorize(x.dims());
     int len_bd_dim = bd_dim.size();
     res_dim_v->insert(res_dim_v->end(),
                       tmp_x_dims.begin() + int_indices_v.size(),
@@ -225,7 +225,7 @@ void DealWithIndices(const Context& dev_ctx,
     reshaped_indices_v.insert(
         reshaped_indices_v.end(), range_tensor_v.begin(), range_tensor_v.end());
 
-    phi::DDim res_dim = phi::make_ddim(*res_dim_v);
+    phi::DDim res_dim = common::make_ddim(*res_dim_v);
 
     for (size_t i = 0; i < reshaped_indices_v.size(); ++i) {
       tmp_res_indices_v->emplace_back(
@@ -261,7 +261,7 @@ void DealWithIndices(const Context& dev_ctx,
         ExpandKernel<int64_t, Context>(
             dev_ctx,
             int_indices_v_tmp[i],
-            IntArray(phi::vectorize<int64_t>(bd_dim)),
+            IntArray(common::vectorize<int64_t>(bd_dim)),
             &(*tmp_res_indices_v)[i]);
       } else {
         tmp_res_indices_v->emplace_back(int_indices_v_tmp[i]);
@@ -323,7 +323,7 @@ phi::DenseTensor GetRangeCudaTensor(const Context& dev_ctx,
                                     int64_t N,
                                     phi::DataType dtype) {
   phi::DenseTensor res(dtype);
-  res.Resize(phi::make_ddim({N}));
+  res.Resize(common::make_ddim({N}));
   DenseTensor* p_res = &res;
   T* out = dev_ctx.template Alloc<T>(p_res);
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
@@ -346,7 +346,7 @@ phi::DenseTensor GetRangeTensor(const Context& dev_ctx,
                                 int64_t N,
                                 phi::DataType dtype) {
   phi::DenseTensor res(dtype);
-  res.Resize(phi::make_ddim({N}));
+  res.Resize(common::make_ddim({N}));
   DenseTensor* p_res = &res;
   T* out = dev_ctx.template Alloc<T>(p_res);
   range_kernel<T>(N, out);

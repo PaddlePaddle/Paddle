@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {

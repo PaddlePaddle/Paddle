@@ -51,7 +51,7 @@ IrTensor& IrTensor::operator=(IrTensor&& other) noexcept {
   return *this;
 }
 
-int64_t IrTensor::numel() const { return phi::product(dims_); }
+int64_t IrTensor::numel() const { return common::product(dims_); }
 
 const phi::Place& IrTensor::place() const {
   IR_THROW("Don't use IrTensor::place method.");

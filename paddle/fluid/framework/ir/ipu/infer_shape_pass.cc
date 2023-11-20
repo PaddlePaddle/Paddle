@@ -14,12 +14,12 @@
 
 #include "paddle/fluid/framework/ir/ipu/infer_shape_pass.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace framework {
@@ -74,7 +74,7 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
       paddle::framework::InitializeVariable(ptr, var_desc->GetType());
 
       auto tensor = ptr->GetMutable<phi::DenseTensor>();
-      tensor->Resize(phi::make_ddim(var_desc->GetShape()));
+      tensor->Resize(common::make_ddim(var_desc->GetShape()));
     }
 
     // infer shape
@@ -94,7 +94,7 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
         for (int i = 0; i < it->second.size(); i++) {
           auto output_name = op_desc->Output(it->first)[i];
           auto dim = it->second[i]->GetMutable<phi::DenseTensor>()->dims();
-          auto new_shape = phi::vectorize(dim);
+          auto new_shape = common::vectorize(dim);
           for (auto output_node : node->outputs) {
             if (output_node->Name() == output_name) {
               output_node->Var()->SetShape(new_shape);

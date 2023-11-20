@@ -37,8 +37,8 @@ void RealGradStridedKernel(const Context& dev_ctx,
                        phi::StridedCopyKernel<data_t, Context>(
                            dev_ctx,
                            dout,
-                           phi::vectorize<int64_t>(tmp.dims()),
-                           phi::vectorize<int64_t>(tmp.strides()),
+                           common::vectorize<int64_t>(tmp.dims()),
+                           common::vectorize<int64_t>(tmp.strides()),
                            tmp.offset(),
                            &tmp);
                      }));
@@ -61,8 +61,8 @@ void ImagGradStridedKernel(const Context& dev_ctx,
                        phi::StridedCopyKernel<data_t, Context>(
                            dev_ctx,
                            dout,
-                           phi::vectorize<int64_t>(tmp.dims()),
-                           phi::vectorize<int64_t>(tmp.strides()),
+                           common::vectorize<int64_t>(tmp.dims()),
+                           common::vectorize<int64_t>(tmp.strides()),
                            tmp.offset(),
                            &tmp);
                      }));

@@ -81,7 +81,7 @@ void GetBinaryNotations(const std::vector<int64_t>& x_shape,
 
 SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
   // Step0: Verify Input Args Based on Elementwise Logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
   TensorDistAttr x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -127,9 +127,9 @@ SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
 SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
                                           const DistMetaTensor& out) {
   // Step0: Verify Input Args Based on Elementwise Logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
-  auto out_shape = phi::vectorize(out.dims());
+  auto out_shape = common::vectorize(out.dims());
   int out_ndim = out_shape.size();
   TensorDistAttr out_dist_attr = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr.dims_mapping();
@@ -181,9 +181,9 @@ SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
 SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
                                     const DistMetaTensor& y) {
   // Step0: Verify Input Args Based on Elementwise Logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
-  auto y_shape = phi::vectorize(y.dims());
+  auto y_shape = common::vectorize(y.dims());
   int y_ndim = y_shape.size();
   TensorDistAttr x_dist_attr_src = x.dist_attr();
   TensorDistAttr y_dist_attr_src = y.dist_attr();
@@ -251,11 +251,11 @@ SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
                                            const DistMetaTensor& y,
                                            const DistMetaTensor& out) {
   // Step0: Verify Input Args Based on Elementwise Logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
-  auto y_shape = phi::vectorize(y.dims());
+  auto y_shape = common::vectorize(y.dims());
   int y_ndim = y_shape.size();
-  auto out_shape = phi::vectorize(out.dims());
+  auto out_shape = common::vectorize(out.dims());
   int out_ndim = out_shape.size();
   int max_ndim = std::max(x_ndim, y_ndim);
   TensorDistAttr out_dist_attr = out.dist_attr();

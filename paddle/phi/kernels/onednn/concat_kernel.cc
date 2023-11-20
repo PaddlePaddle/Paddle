@@ -56,7 +56,7 @@ class ConcatOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
       srcs_md.push_back(input->mem_desc());
     }
 
-    auto dst_dims = vectorize<int64_t>(output->dims());
+    auto dst_dims = common::vectorize<int64_t>(output->dims());
 
     memory::desc dst_md = memory::desc(dst_dims, dt, OneDNNMemoryFormat::any);
 
@@ -104,7 +104,7 @@ void ConcatKernel(const Context& dev_ctx,
   auto multi_input = ReduceMultiInput(x);
   EnforceLayouts(multi_input);
 
-  auto out_dims_vec = vectorize(out->dims());
+  auto out_dims_vec = common::vectorize(out->dims());
   if (std::any_of(out_dims_vec.begin(), out_dims_vec.end(), [](int64_t i) {
         return i < 0;
       })) {

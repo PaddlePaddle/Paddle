@@ -88,7 +88,8 @@ TypeTranslator::TypeTranslator() {
 
          pir::Type dtype =
              this->operator[](var_desc.GetDataType())(ctx, var_desc);
-         DenseTensorTypeStorage::Dim dim = phi::make_ddim(var_desc.GetShape());
+         DenseTensorTypeStorage::Dim dim =
+             common::make_ddim(var_desc.GetShape());
          DenseTensorTypeStorage::DataLayout layout =
              DenseTensorTypeStorage::DataLayout::UNDEFINED;
          DenseTensorTypeStorage::LoD lod = {};
@@ -110,7 +111,8 @@ TypeTranslator::TypeTranslator() {
          pir::Type dtype =
              this->operator[](var_desc.GetDataType())(ctx, var_desc);
 
-         SelectedRowsTypeStorage::Dim dim = phi::make_ddim(var_desc.GetShape());
+         SelectedRowsTypeStorage::Dim dim =
+             common::make_ddim(var_desc.GetShape());
          SelectedRowsTypeStorage::DataLayout layout =
              SelectedRowsTypeStorage::DataLayout::UNDEFINED;
          SelectedRowsTypeStorage::LoD lod = {};

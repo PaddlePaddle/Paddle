@@ -15,10 +15,10 @@
 #pragma once
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace primitive {
@@ -123,7 +123,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
               i));
     }
   }
-  return phi::make_ddim(result);
+  return common::make_ddim(result);
 }
 
 static phi::DDim get_reduce_dims(const phi::DDim& x_dims,

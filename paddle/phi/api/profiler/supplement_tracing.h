@@ -18,8 +18,8 @@ limitations under the License. */
 #include <string>
 #include <utility>
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/core/attribute.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace phi {
 

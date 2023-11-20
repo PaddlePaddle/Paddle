@@ -25,8 +25,8 @@
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/lang/placeholder.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/phi/core/ddim.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 
@@ -55,7 +55,7 @@ bool IsInTensorMap(
 
 common::Type GetTensorDtype(const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto in_shape = phi::vectorize<int>(type_info.dims());
+  auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   return CompatibleInfo::ConvertIRType(dtype);
 }
@@ -74,7 +74,7 @@ common::Type GetTensorDtype(
 
 ir::Tensor GetTensor(const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto in_shape = phi::vectorize<int>(type_info.dims());
+  auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   std::string input_id = CompatibleInfo::ValueName(value);
   return lang::CreatePlaceHolder(
@@ -113,7 +113,7 @@ void CollectOutputInfo(::pir::Operation* op,
         out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
-    auto out_shape = phi::vectorize<int>(type_info.dims());
+    auto out_shape = ::common::vectorize<int>(type_info.dims());
     out_shapes->push_back(std::move(out_shape));
   }
 }

@@ -85,7 +85,7 @@ framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
       output_shape.push_back(in_dims[i]);
     }
   }
-  return phi::make_ddim(output_shape);
+  return common::make_ddim(output_shape);
 }
 
 template <typename DeviceContext, typename T>
@@ -119,7 +119,7 @@ class Squeeze2GradKernel : public framework::OpKernel<T> {
     // auto in_dims = d_x->dims();
 
     auto xshape_dims = ctx.Input<phi::DenseTensor>("XShape")->dims();
-    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);

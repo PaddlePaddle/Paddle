@@ -336,7 +336,7 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
       // auto dims = wq_tensor->dims();
       // combined_w_dims = [in,3,out]
       auto combined_w_dims =
-          phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
+          common::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
       auto* combined_w_desc = mul0_w->Var();
       combined_w_desc->SetShape(
           {wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});

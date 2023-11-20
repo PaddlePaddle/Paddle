@@ -140,3 +140,8 @@ class Array<T, 0> {
 };
 
 }  // namespace common
+
+namespace phi {
+template <typename T, size_t N>
+using Array = common::Array<T, N>;
+}  // namespace phi

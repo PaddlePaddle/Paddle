@@ -20,7 +20,7 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #endif
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 
 namespace phi {
 namespace kps {

@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/fusion.h"
 #include <unordered_set>
 #include <vector>
-#include "paddle/phi/common/layout.h"
+#include "paddle/common/layout.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -65,7 +65,7 @@ static phi::DDim BroadCastInferShape(const DDim x_dims,
                                   max_dim,
                                   axis);
 
-    return phi::make_ddim(out_dims_array);
+    return common::make_ddim(out_dims_array);
   }
   return x_dims;
 }
@@ -89,7 +89,7 @@ void AddActXPUInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
   out->share_lod(x);
-  out_max->set_dims(phi::make_ddim({6}));
+  out_max->set_dims(common::make_ddim({6}));
   out_max->set_dtype(x.dtype());
   out_max->set_layout(x.layout());
 }
@@ -219,7 +219,7 @@ void Conv1dXPUInferMeta(const MetaTensor& x,
   out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
-  out_max->set_dims(phi::make_ddim({6}));
+  out_max->set_dims(common::make_ddim({6}));
 }
 
 void Conv2dXPUInferMeta(const MetaTensor& x,
@@ -283,7 +283,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
           in_dims.size(),
           in_dims,
           strides.size(),
-          phi::make_ddim(strides),
+          common::make_ddim(strides),
           in_sub_stride_size));
 
   for (int i = 0; i < dilation_size; ++i) {
@@ -326,9 +326,10 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
   // update paddings and dilations accoring to padding_algorithm
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
-  DDim in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
-  DDim filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+  DDim in_data_dims = common::slice_ddim(in_dims, 2, in_dims.size());
+  DDim filter_data_dims =
+      common::slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(&paddings_vec,
                                 &dilations_vec,
                                 padding_algorithm,
@@ -347,7 +348,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
   }
   // set output and output max dims
   out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
-  out_max->set_dims(phi::make_ddim({6}));
+  out_max->set_dims(common::make_ddim({6}));
   out->set_dtype(out_dtype);
 }
 
@@ -371,7 +372,7 @@ void EmbeddingWithEltwiseAddXPUInferMeta(
 
   auto id_dims = ids[0]->dims();
   auto table_dims = tables[0]->dims();
-  out->set_dims(phi::make_ddim({id_dims[0], id_dims[1], table_dims[1]}));
+  out->set_dims(common::make_ddim({id_dims[0], id_dims[1], table_dims[1]}));
   out->set_dtype(tables[0]->dtype());
   out->set_layout(ids[0]->layout());
 }
@@ -400,7 +401,7 @@ void FcXPUInferMeta(const MetaTensor& x,
   out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
   out->set_dtype(out_dtype);
   out->set_layout(x.layout());
-  out_max->set_dims(phi::make_ddim({6}));
+  out_max->set_dims(common::make_ddim({6}));
   out_max->set_dtype(x.dtype());
   out_max->set_layout(x.layout());
 }
@@ -854,7 +855,7 @@ void FusedFeedForwardInferMeta(const MetaTensor& x,
     if (x_dim.size() > 1) {
       return x_dim;
     }
-    return make_ddim({1, x_dim[0]});
+    return common::make_ddim({1, x_dim[0]});
   };
 
   auto mat_dim_x =
@@ -881,7 +882,8 @@ void FusedFeedForwardInferMeta(const MetaTensor& x,
     dropout2_mask->set_dims(dim_x);
   }
 
-  auto mean_dim = phi::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
+  auto mean_dim =
+      common::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
   if (pre_layer_norm) {
     ln1_out->set_dims(dim_x);
     ln1_mean->set_dims(mean_dim);
@@ -1250,7 +1252,8 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
                         bias_dims,
                         y_dims));
 
-  auto x_mat_dims = phi::flatten_to_2d(x_dims, trans_x ? 1 : x_dims.size() - 1);
+  auto x_mat_dims =
+      common::flatten_to_2d(x_dims, trans_x ? 1 : x_dims.size() - 1);
 
   int K_from_x = static_cast<int>(trans_x ? x_mat_dims[0] : x_mat_dims[1]);
   int K_from_y = static_cast<int>(trans_y ? y_dims[1] : y_dims[0]);
@@ -1277,11 +1280,11 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
   } else {
     out_dims.push_back(y_dims[1]);
   }
-  out->set_dims(phi::make_ddim(out_dims));
+  out->set_dims(common::make_ddim(out_dims));
   out->set_dtype(x.dtype());
 
   if (reserve_space) {
-    reserve_space->set_dims(phi::make_ddim(out_dims));
+    reserve_space->set_dims(common::make_ddim(out_dims));
     reserve_space->set_dtype(x.dtype());
     if (activation == "none") {
       PADDLE_THROW(phi::errors::InvalidArgument(
@@ -1350,8 +1353,8 @@ void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
           dout_dims.size(),
           x_dims.size()));
 
-  auto dout_mat_dims = phi::flatten_to_2d(dout_dims, dout_dims.size() - 1);
-  auto x_mat_dims = phi::flatten_to_2d(x_dims, x_dims.size() - 1);
+  auto dout_mat_dims = common::flatten_to_2d(dout_dims, dout_dims.size() - 1);
+  auto x_mat_dims = common::flatten_to_2d(x_dims, x_dims.size() - 1);
 
   PADDLE_ENFORCE_EQ(
       dout_mat_dims[1],
@@ -1386,7 +1389,7 @@ void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
 
   if (bias_grad) {
     int64_t dbias_dim = trans_y ? y_dims[0] : y_dims[1];
-    bias_grad->set_dims(phi::make_ddim({dbias_dim}));
+    bias_grad->set_dims(common::make_ddim({dbias_dim}));
     bias_grad->set_dtype(y.dtype());
   }
 }
@@ -1522,7 +1525,7 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
                                   left_slice_out_dims_vector.data(),
                                   1,
                                   true);
-  auto left_slice_out_dims = phi::make_ddim(left_slice_out_dims_vector);
+  auto left_slice_out_dims = common::make_ddim(left_slice_out_dims_vector);
   auto grid_dims = grid.dims();
   auto left_add_out_dims =
       BroadCastInferShape(left_slice_out_dims, grid_dims, -1);
@@ -1544,7 +1547,7 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
                                   mid_slice_out_dims_vector.data(),
                                   1,
                                   true);
-  auto mid_slice_out_dims = phi::make_ddim(mid_slice_out_dims_vector);
+  auto mid_slice_out_dims = common::make_ddim(mid_slice_out_dims_vector);
   auto anchor_grid_dims = anchor_grid.dims();
   auto mid_mul_out_dims =
       BroadCastInferShape(mid_slice_out_dims, anchor_grid_dims, -1);
@@ -1562,7 +1565,7 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
                                   right_slice_out_dims_vector.data(),
                                   1,
                                   true);
-  auto right_slice_out_dims = phi::make_ddim(right_slice_out_dims_vector);
+  auto right_slice_out_dims = common::make_ddim(right_slice_out_dims_vector);
   // compute concat out_dims
   std::vector<phi::DDim> in_dims;
   in_dims.reserve(3);
@@ -1575,7 +1578,7 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
   out->set_dims(out_dim);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
-  out_max->set_dims(phi::make_ddim({6}));
+  out_max->set_dims(common::make_ddim({6}));
   out_max->set_dtype(x.dtype());
   out_max->set_layout(x.layout());
 }
@@ -1681,7 +1684,7 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
     x_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
   }
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, x_data_dims, strides, ksize);
 
@@ -1709,9 +1712,9 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
     output_shape.push_back(filter_dims[1] * groups);
   }
 
-  out->set_dims(make_ddim(output_shape));
+  out->set_dims(common::make_ddim(output_shape));
   out->set_dtype(x.dtype());
-  out_max->set_dims(phi::make_ddim({6}));
+  out_max->set_dims(common::make_ddim({6}));
 }
 
 void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
@@ -1790,7 +1793,7 @@ void BNActXPUInferMeta(const MetaTensor& x,
             x_dims));
   }
 
-  const DataLayout data_layout_str = phi::StringToDataLayout(data_layout);
+  const DataLayout data_layout_str = common::StringToDataLayout(data_layout);
 
   PADDLE_ENFORCE_GE(
       x_dims.size(),
@@ -1838,7 +1841,7 @@ void BNActXPUInferMeta(const MetaTensor& x,
 
   bool check = true;
   if ((!config.is_runtime) &&
-      (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
+      (common::product(scale_dim) <= 0 || common::product(bias_dim) <= 0)) {
     check = false;
   }
 
@@ -1986,9 +1989,10 @@ void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
   // get "HW" from "NHWC"
-  DDim in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
-  DDim filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+  DDim in_data_dims = common::slice_ddim(in_dims, 1, in_dims.size() - 1);
+  DDim filter_data_dims =
+      common::slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(&paddings_vec,
                                 &dilations_vec,
                                 padding_algorithm,
@@ -2007,7 +2011,7 @@ void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
   }
   out_shape.push_back(filter_dims[0]);
   // make shape for other outputs
-  auto c_dims = phi::make_ddim({filter_dims[0]});
+  auto c_dims = common::make_ddim({filter_dims[0]});
   // set output and output max dims
   out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
   out_running_mean->set_dims(c_dims);
@@ -2139,7 +2143,7 @@ void FusedEmbeddingEltWiseLayerNormInferMeta(
             hidden));
   }
 
-  auto dim_output = phi::make_ddim({batch, seq_len, hidden});
+  auto dim_output = common::make_ddim({batch, seq_len, hidden});
   out->set_dims(dim_output);
   out->share_lod(*ids[0]);
   out->set_dtype((*embs[0]).dtype());
@@ -2203,7 +2207,7 @@ void FusionTransposeFlattenConcatInferMeta(
   if (out_dims[concat_axis] < 0) {
     out_dims[concat_axis] = -1;
   }
-  out->set_dims(phi::make_ddim(out_dims));
+  out->set_dims(common::make_ddim(out_dims));
   out->set_dtype((*x[0]).dtype());
 }
 
@@ -2282,7 +2286,7 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
           x_dims.size(),
           x_dims));
 
-  auto x_mat_dims = phi::flatten_to_2d(x_dims, x_num_col_dims);
+  auto x_mat_dims = common::flatten_to_2d(x_dims, x_num_col_dims);
   PADDLE_ENFORCE_EQ(
       x_mat_dims[1],
       w_dims[0],
@@ -2303,13 +2307,13 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
   fc_out_dims.push_back(w_dims[1]);
 
   DDim y_dims = y.dims();
-  PADDLE_ENFORCE_EQ(phi::make_ddim(fc_out_dims),
+  PADDLE_ENFORCE_EQ(common::make_ddim(fc_out_dims),
                     y_dims,
                     phi::errors::InvalidArgument(
                         "The output's shape of fc is expected to be equal to "
                         "that of input Y. But received output's shape of fc "
                         "is %s, input Y's shape is %s.",
-                        phi::make_ddim(fc_out_dims),
+                        common::make_ddim(fc_out_dims),
                         y_dims));
 
   PADDLE_ENFORCE_LT(
@@ -2324,7 +2328,7 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
           y_dims.size(),
           y_dims));
 
-  auto y_mat_dim = phi::flatten_to_2d(y_dims, begin_norm_axis);
+  auto y_mat_dim = common::flatten_to_2d(y_dims, begin_norm_axis);
   int64_t dim_0 = y_mat_dim[0];
   int64_t dim_1 = y_mat_dim[1];
   if (scale) {
@@ -2472,13 +2476,13 @@ void FusionRepeatedFCReluInferMeta(const MetaTensor& x,
                           i,
                           w_dims[i].size()));
     PADDLE_ENFORCE_EQ(
-        phi::product(b_dims[i]),
+        common::product(b_dims[i]),
         w_dims[i][1],
         phi::errors::InvalidArgument(
             "The length of Bias must be equal with w_dims[1], but received "
             "product(b_dims[%d]) = %d, w_dims[%d][1] = %d.",
             i,
-            phi::product(b_dims[i]),
+            common::product(b_dims[i]),
             i,
             w_dims[i][1]));
   }
@@ -2561,7 +2565,7 @@ void FusionGRUInferMeta(const MetaTensor& x,
 
   DDim x_dims = x.dims();
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
-                        ? phi::flatten_to_2d(x_dims, 1)
+                        ? common::flatten_to_2d(x_dims, 1)
                         : x_dims;
   PADDLE_ENFORCE_EQ(
       x_mat_dims.size(),
@@ -2935,7 +2939,7 @@ void FCInferMeta(const MetaTensor& input,
   phi::funcs::FCOutputSize(
       in_dims, w_dims, output_dims, in_num_col_dims, padding_weights);
 
-  out->set_dims(phi::make_ddim(output_dims));
+  out->set_dims(common::make_ddim(output_dims));
   out->share_lod(input);
   out->set_dtype(input.dtype());
 }

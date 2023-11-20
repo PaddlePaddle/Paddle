@@ -146,12 +146,12 @@ inline void StridedMemcpyWithAxis0(
     const phi::DenseTensor& input,
     const std::vector<const phi::DenseTensor*>& shape_refer,
     std::vector<phi::DenseTensor*>* outputs) {
-  const phi::DDim in_stride = stride_numel(input.dims());
+  const phi::DDim in_stride = common::stride_numel(input.dims());
   const int axis = 0;
   size_t input_offset = 0;
 
   for (size_t i = 0; i < outputs->size(); ++i) {
-    auto out_stride = stride_numel(shape_refer[i]->dims());
+    auto out_stride = common::stride_numel(shape_refer[i]->dims());
     auto out = outputs->at(i);
     if (out != nullptr && out->initialized() && out->numel() > 0) {
       StridedNumelCopyWithAxis<T, Context>(dev_ctx,

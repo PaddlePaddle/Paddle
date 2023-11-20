@@ -30,9 +30,9 @@ namespace cub = hipcub;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #endif
+#include "paddle/common/layout.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/norm_utils.cu.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
@@ -412,7 +412,7 @@ void SyncBatchNormGradFunctor(
     DenseTensor *bias_grad) {
   double epsilon = static_cast<double>(epsilon_f);
 
-  const DataLayout layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout layout = common::StringToDataLayout(data_layout_str);
 
   const auto *d_y = &y_grad;
 

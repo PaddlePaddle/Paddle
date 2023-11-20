@@ -97,7 +97,7 @@ bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
 }
 
 int GetSharedSize(::pir::Operation* op) {
-  auto inshape = phi::vectorize<int64_t>(GetValueShape(op->result(0)));
+  auto inshape = ::common::vectorize<int64_t>(GetValueShape(op->result(0)));
 
   auto axes = GetVectorAttr(op, "dim");
 

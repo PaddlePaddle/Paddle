@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include <algorithm>
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
@@ -65,8 +65,8 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
   // if channel_last, transpose to channel_first
   DenseTensor x_transpose;
   DenseTensor dout_transpose;
-  std::vector<int> x_vec = vectorize<int>(x.dims());
-  std::vector<int> out_vec = vectorize<int>(dout.dims());
+  std::vector<int> x_vec = common::vectorize<int>(x.dims());
+  std::vector<int> out_vec = common::vectorize<int>(dout.dims());
   if (data_layout == GPUDNNDataLayout::kNHWC) {
     if (strides.size() == 2U) {
       std::vector<int> axis = {0, 3, 1, 2};
@@ -96,7 +96,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
   DDim x_data_dims;
   x_data_dims = slice_ddim(x_dims, 2, x_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, x_data_dims, strides, ksize);
 
@@ -121,7 +121,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
       x_pad[2 * i + 4 + 1] = paddings_[2 * i + 1] - padding_common[i];
     }
 
-    transformed_dout.Resize(make_ddim(new_dout_shape_vec));
+    transformed_dout.Resize(common::make_ddim(new_dout_shape_vec));
     ctx.template Alloc<T>(&transformed_dout);
 
     const int rank = x_transpose.dims().size();
@@ -154,7 +154,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 
   const T* x_data = x_transpose.data<T>();
   const T* dout_data = transformed_dout.data<T>();
-  out_vec = vectorize<int>(transformed_dout.dims());
+  out_vec = common::vectorize<int>(transformed_dout.dims());
 
   // ------------------- cudnn descriptors ---------------------
   GPUDNNDataLayout layout;
@@ -312,7 +312,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
       DenseTensor dx_transpose;
       DenseTensor dx_nchw;
       dx_nchw.ShareDataWith(*dx);
-      dx_nchw.Resize(make_ddim(x_vec));
+      dx_nchw.Resize(common::make_ddim(x_vec));
       if (strides.size() == 2U) {
         std::vector<int> axis = {0, 2, 3, 1};
         dx_transpose = Transpose<T, Context>(ctx, dx_nchw, axis);
@@ -483,13 +483,14 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
       transformed_dx_channel = *dx;
     }
   }
-  std::vector<int> out_vec = vectorize<int>(transformed_dout_channel.dims());
+  std::vector<int> out_vec =
+      common::vectorize<int>(transformed_dout_channel.dims());
 
   auto x_dims = transformed_x_channel.dims();
   auto filter_dims = filter.dims();
   DDim x_data_dims = slice_ddim(x_dims, 2, x_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, x_data_dims, strides, ksize);
 
@@ -527,10 +528,10 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
       input_pad[2 * i + 4] = paddings_[2 * i] - padding_common[i];
       input_pad[2 * i + 4 + 1] = paddings_[2 * i + 1] - padding_common[i];
     }
-    DDim new_input_shape(make_ddim(new_input_shape_vec));
+    DDim new_input_shape(common::make_ddim(new_input_shape_vec));
     transformed_x.Resize(new_input_shape);
     transformed_ddx.Resize(new_input_shape);
-    transformed_dout.Resize(make_ddim(new_output_grad_shape_vec));
+    transformed_dout.Resize(common::make_ddim(new_output_grad_shape_vec));
 
     ctx.template Alloc<T>(&transformed_x);
     ctx.template Alloc<T>(&transformed_ddx);
@@ -601,12 +602,12 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
   }
 
   if (!is_sys_pad) {
-    transformed_ddout_channel.Resize(make_ddim(transformed_out_vec));
+    transformed_ddout_channel.Resize(common::make_ddim(transformed_out_vec));
     ctx.template Alloc<T>(&transformed_ddout_channel);
   } else {
     ctx.template Alloc<T>(ddout);
     transformed_ddout_channel = *ddout;
-    transformed_ddout_channel.Resize(make_ddim(transformed_out_vec));
+    transformed_ddout_channel.Resize(common::make_ddim(transformed_out_vec));
   }
 
   const T* x_ = transformed_x.data<T>();

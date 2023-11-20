@@ -77,8 +77,8 @@ void IndexAddInner(const Context& ctx,
   VLOG(3) << "Index_Add_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; index_size: " << index_size;
 
-  output->Resize(phi::make_ddim({outer_nums, input_dim[axis], slice_size}));
-  add_value->Resize(phi::make_ddim({outer_nums, index_size, slice_size}));
+  output->Resize(common::make_ddim({outer_nums, input_dim[axis], slice_size}));
+  add_value->Resize(common::make_ddim({outer_nums, index_size, slice_size}));
   VLOG(3) << "output.dims: " << output->dims()
           << ", add_value.dims: " << add_value->dims();
 

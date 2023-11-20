@@ -191,7 +191,7 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
 
     VarDesc new_weights_desc(new_weights_name);
     new_weights_desc.SetPersistable(true);
-    new_weights_desc.SetShape(vectorize(new_weights->dims()));
+    new_weights_desc.SetShape(common::vectorize(new_weights->dims()));
     new_weights_desc.SetDataType(
         framework::TransToProtoVarType(new_weights->dtype()));
     auto* new_weights_node = graph->CreateVarNode(&new_weights_desc);

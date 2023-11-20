@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUDA
@@ -90,7 +91,7 @@ PADDLE_API Tensor from_blob(void* data,
   }
 
   auto meta =
-      phi::DenseTensorMeta(dtype, phi::make_ddim(shape.GetData()), layout);
+      phi::DenseTensorMeta(dtype, common::make_ddim(shape.GetData()), layout);
 
   size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
 

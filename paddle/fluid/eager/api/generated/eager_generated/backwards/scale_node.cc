@@ -107,7 +107,7 @@ void ScaleAPI(const paddle::Tensor& x,
       dense_tensor->dtype(), dense_tensor->dims(), dense_tensor->layout());
   auto place = dense_tensor->place();
   size_t bytes_size =
-      phi::product(dense_tensor->dims()) * SizeOf(dense_tensor->dtype());
+      common::product(dense_tensor->dims()) * SizeOf(dense_tensor->dtype());
   auto dense_out = std::make_shared<phi::DenseTensor>(
       paddle::memory::Alloc(place, bytes_size), std::move(tensor_meta));
   // Handle Device Context

@@ -41,7 +41,7 @@ TEST(Benchmark, EagerScaleCUDA) {
   eager_test::InitEnv(paddle::platform::CUDAPlace());
 
   for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
-    paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
+    paddle::framework::DDim ddim = common::make_ddim({2, 4, 4, 4});
     paddle::Tensor tensor =
         eager_test::CreateTensorWithValue(ddim,
                                           paddle::platform::CUDAPlace(),
@@ -83,7 +83,7 @@ TEST(Benchmark, EagerMatmulCUDA) {
   eager_test::InitEnv(place);
 
   for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
-    paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
+    paddle::framework::DDim ddimX = common::make_ddim({2, 2});
     paddle::Tensor X =
         eager_test::CreateTensorWithValue(ddimX,
                                           paddle::platform::CUDAPlace(),
@@ -93,7 +93,7 @@ TEST(Benchmark, EagerMatmulCUDA) {
                                           true);
     RetainGradForTensor(X);
 
-    paddle::framework::DDim ddimY = phi::make_ddim({2, 2});
+    paddle::framework::DDim ddimY = common::make_ddim({2, 2});
     paddle::Tensor Y =
         eager_test::CreateTensorWithValue(ddimY,
                                           paddle::platform::CUDAPlace(),
@@ -139,7 +139,7 @@ TEST(Benchmark, EagerIntermediateMatmulCUDA) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
-    paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
+    paddle::framework::DDim ddimX = common::make_ddim({2, 2});
     paddle::Tensor X =
         eager_test::CreateTensorWithValue(ddimX,
                                           paddle::platform::CUDAPlace(),
@@ -149,7 +149,7 @@ TEST(Benchmark, EagerIntermediateMatmulCUDA) {
                                           true);
     RetainGradForTensor(X);
 
-    paddle::framework::DDim ddimY = phi::make_ddim({2, 2});
+    paddle::framework::DDim ddimY = common::make_ddim({2, 2});
     paddle::Tensor Y =
         eager_test::CreateTensorWithValue(ddimY,
                                           paddle::platform::CUDAPlace(),
@@ -195,7 +195,7 @@ TEST(Benchmark, EagerIntermediateMLPCUDA) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
-    paddle::framework::DDim ddimX = phi::make_ddim({MLP_M, MLP_N});
+    paddle::framework::DDim ddimX = common::make_ddim({MLP_M, MLP_N});
     paddle::Tensor X =
         eager_test::CreateTensorWithValue(ddimX,
                                           paddle::platform::CUDAPlace(),
@@ -208,7 +208,7 @@ TEST(Benchmark, EagerIntermediateMLPCUDA) {
     std::vector<paddle::Tensor> Ws;
     std::vector<paddle::Tensor> Bs;
     for (size_t i = 0; i < MLP_NUM_LINEAR; i++) {
-      paddle::framework::DDim ddimW = phi::make_ddim({MLP_N, MLP_K});
+      paddle::framework::DDim ddimW = common::make_ddim({MLP_N, MLP_K});
       paddle::Tensor W =
           eager_test::CreateTensorWithValue(ddimW,
                                             paddle::platform::CUDAPlace(),
@@ -218,7 +218,7 @@ TEST(Benchmark, EagerIntermediateMLPCUDA) {
                                             true);
       RetainGradForTensor(W);
 
-      paddle::framework::DDim ddimB = phi::make_ddim({MLP_K});
+      paddle::framework::DDim ddimB = common::make_ddim({MLP_K});
       paddle::Tensor B =
           eager_test::CreateTensorWithValue(ddimB,
                                             paddle::platform::CUDAPlace(),

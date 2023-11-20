@@ -33,7 +33,7 @@ class CAllGatherOp : public framework::OperatorWithKernel {
     framework::DDim dim = ctx->GetInputDim("X");
     // 0D use stack/unstack while others use concat/split
     if (dim.size() == 0) {
-      dim = phi::make_ddim({nranks});
+      dim = common::make_ddim({nranks});
     } else {
       dim[0] = dim[0] * nranks;
       if (dim[0] < 0) dim[0] = -1;

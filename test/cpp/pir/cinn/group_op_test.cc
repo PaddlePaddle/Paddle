@@ -55,7 +55,7 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
   const float value_one = 1.0;
   const std::vector<int64_t> shape = {64, 128};
   auto group_op1 = builder.Build<cinn::dialect::GroupOp>(
-      CreateDenseTensorTypes(phi::make_ddim(shape)));
+      CreateDenseTensorTypes(common::make_ddim(shape)));
   pir::Block* block1 = group_op1.block();
   builder.SetInsertionPointToEnd(block1);
   auto full_op_x = builder.Build<paddle::dialect::FullOp>(
@@ -64,7 +64,7 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
 
   builder.SetInsertionPointToEnd(program->block());
   auto group_op2 = builder.Build<cinn::dialect::GroupOp>(
-      CreateDenseTensorTypes(phi::make_ddim(shape)));
+      CreateDenseTensorTypes(common::make_ddim(shape)));
   pir::Block* block2 = group_op2.block();
   builder.SetInsertionPointToEnd(block2);
 
@@ -167,7 +167,7 @@ std::shared_ptr<::pir::Program> BuildGroupProgramForLowering() {
       shape, value, phi::DataType::FLOAT32, phi::GPUPlace());
 
   auto group_op1 = builder.Build<cinn::dialect::GroupOp>(
-      CreateDenseTensorTypes(phi::make_ddim(shape)));
+      CreateDenseTensorTypes(common::make_ddim(shape)));
   pir::Block* block1 = group_op1.block();
   builder.SetInsertionPointToEnd(block1);
   auto sin = builder.Build<paddle::dialect::SinOp>(full_x->result(0));
@@ -178,7 +178,7 @@ std::shared_ptr<::pir::Program> BuildGroupProgramForLowering() {
 
   builder.SetInsertionPointToEnd(program->block());
   auto group_op2 = builder.Build<cinn::dialect::GroupOp>(
-      CreateDenseTensorTypes(phi::make_ddim(shape)));
+      CreateDenseTensorTypes(common::make_ddim(shape)));
   pir::Block* block2 = group_op2.block();
   builder.SetInsertionPointToEnd(block2);
   auto cos_op = builder.Build<paddle::dialect::CosOp>(full_y->result(0));
@@ -186,7 +186,7 @@ std::shared_ptr<::pir::Program> BuildGroupProgramForLowering() {
 
   builder.SetInsertionPointToEnd(program->block());
   auto group_op3 = builder.Build<cinn::dialect::GroupOp>(
-      CreateDenseTensorTypes(phi::make_ddim(shape)));
+      CreateDenseTensorTypes(common::make_ddim(shape)));
   pir::Block* block3 = group_op3.block();
   builder.SetInsertionPointToEnd(block3);
   auto add = builder.Build<paddle::dialect::AddOp>(group_op1->result(0),

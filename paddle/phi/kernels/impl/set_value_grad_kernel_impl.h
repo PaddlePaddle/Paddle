@@ -84,7 +84,7 @@ void SetValueGradImpl(const Context& dev_ctx,
                              axes.size(),
                              false);
 
-  DDim out_dims(phi::make_ddim(out_dims_vector));
+  DDim out_dims(common::make_ddim(out_dims_vector));
 
   std::vector<int> reverse_vector(starts_local.size(), 0);
   funcs::StridedSliceFunctor(starts_local.data(),

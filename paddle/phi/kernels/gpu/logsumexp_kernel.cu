@@ -57,8 +57,8 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
   auto* in_x = &x;
   auto* out_y = out;
 
-  auto outdim = phi::make_ddim(outdim_vec);
-  auto keeped_outdim = phi::make_ddim(keeped_outdim_vec);
+  auto outdim = common::make_ddim(outdim_vec);
+  auto keeped_outdim = common::make_ddim(keeped_outdim_vec);
   out->Resize(outdim);
   dev_ctx.template Alloc<T>(out_y);
 
@@ -128,7 +128,7 @@ void LogsumexpKernel(const Context& dev_ctx,
     }
   }
 
-  auto outdim = phi::make_ddim(outdim_vec);
+  auto outdim = common::make_ddim(outdim_vec);
   if (compute_size <= 1024) {
     if (perm.size() != xdim.size())
       perm.insert(perm.end(), axis_vec.begin(), axis_vec.end());
@@ -138,7 +138,7 @@ void LogsumexpKernel(const Context& dev_ctx,
         (axis_vec.size() == 1 && axis_vec[0] == xdim.size())) {
       transpose_x = x;
     } else {
-      transpose_x.Resize(make_ddim(transpose_shape));
+      transpose_x.Resize(common::make_ddim(transpose_shape));
       dev_ctx.template Alloc<T>(&transpose_x);
       phi::funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, perm, &transpose_x);
     }

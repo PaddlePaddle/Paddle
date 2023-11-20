@@ -32,8 +32,8 @@ static inline bool is_vector_rhs(const DenseTensor& input,
   auto y_dim = other.dims();
   auto x_dim_size = x_dim.size();
   auto y_dim_size = y_dim.size();
-  std::vector<int64_t> x_dims_vec = phi::vectorize(x_dim);
-  std::vector<int64_t> y_dims_vec = phi::vectorize(y_dim);
+  std::vector<int64_t> x_dims_vec = common::vectorize(x_dim);
+  std::vector<int64_t> y_dims_vec = common::vectorize(y_dim);
 
   std::vector<int64_t>::const_iterator f = x_dims_vec.begin();
   std::vector<int64_t>::const_iterator l = x_dims_vec.end() - 1;
@@ -88,8 +88,8 @@ static inline std::vector<int> convert_to_int_vec(std::vector<int64_t> a) {
 // broadcast the batch dimensions of tensor x and tensor y.
 static inline std::tuple<std::vector<int64_t>, std::vector<int64_t>>
 get_broadcast_dims(const Tensor& x, const Tensor& y) {
-  std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
-  std::vector<int64_t> y_dims_vec = phi::vectorize(y.dims());
+  std::vector<int64_t> x_dims_vec = common::vectorize(x.dims());
+  std::vector<int64_t> y_dims_vec = common::vectorize(y.dims());
   std::vector<int64_t>::const_iterator f1 = x_dims_vec.begin();
   std::vector<int64_t>::const_iterator l1 = x_dims_vec.end() - 2;
   std::vector<int64_t> x_dims_vec_cut(f1, l1);

@@ -1,4 +1,4 @@
-set(COMMON_API_TEST_DEPS phi)
+set(COMMON_API_TEST_DEPS phi common)
 
 if(WITH_GPU)
   nv_test(
@@ -8,11 +8,11 @@ if(WITH_GPU)
   nv_test(
     test_allocator
     SRCS test_allocator.cu
-    DEPS place device_context phi)
+    DEPS place device_context phi common)
   nv_test(
     test_cuda_stream
     SRCS test_cuda_stream.cu
-    DEPS phi)
+    DEPS phi common)
   nv_test(
     test_from_blob
     SRCS test_from_blob.cc
@@ -25,11 +25,11 @@ elseif(WITH_ROCM)
   hip_test(
     test_allocator
     SRCS test_allocator.cu
-    DEPS place device_context phi)
+    DEPS place device_context phi common)
   hip_test(
     test_cuda_stream
     SRCS test_cuda_stream.cu
-    DEPS phi)
+    DEPS phi common)
   hip_test(
     test_from_blob
     SRCS test_from_blob.cc

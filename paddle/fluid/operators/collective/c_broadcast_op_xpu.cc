@@ -97,7 +97,7 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
     }
 
     VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
-            << phi::product(out->dims());
+            << common::product(out->dims());
     out->Resize(x->dims());
     out->set_lod(x->lod());
 #else

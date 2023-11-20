@@ -538,7 +538,7 @@ std::string KernelSelectionErrorMessage(const std::string& kernel_name,
     backend_set.insert(
         paddle::experimental::BackendToString(kernel_key.backend()));
     all_kernel_key[paddle::experimental::BackendToString(kernel_key.backend()) +
-                   ", " + phi::DataLayoutToString(kernel_key.layout())]
+                   ", " + common::DataLayoutToString(kernel_key.layout())]
         .push_back(DataTypeToString(kernel_key.dtype()));
   }
   // 1. If target_key not supports target backend, output "Selected wrong

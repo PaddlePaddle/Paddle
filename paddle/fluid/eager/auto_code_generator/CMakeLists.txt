@@ -57,7 +57,7 @@ if(WIN32)
     add_custom_command(
       OUTPUT ${eager_generator_path}/phi.dll
       COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${eager_generator_path}
-      DEPENDS phi)
+      DEPENDS phi common)
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/phi.dll)
   endif()
 

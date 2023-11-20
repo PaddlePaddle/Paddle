@@ -198,9 +198,9 @@ void RoiAlignKernel(const Context& dev_ctx,
     return;
   }
 
-  auto in_stride = phi::stride(in_dims);
-  auto roi_stride = phi::stride(boxes.dims());
-  auto out_stride = phi::stride(out->dims());
+  auto in_stride = common::stride(in_dims);
+  auto roi_stride = common::stride(boxes.dims());
+  auto out_stride = common::stride(out->dims());
 
   const T* input_data = x.data<T>();
   DenseTensor roi_batch_id_list = Empty<int>(dev_ctx, {rois_num});

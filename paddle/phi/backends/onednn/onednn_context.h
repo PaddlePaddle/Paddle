@@ -17,8 +17,8 @@ limitations under the License. */
 #include <memory>
 #include <mutex>     // NOLINT
 #include "dnnl.hpp"  // NOLINT
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/attribute.h"
 #include "paddle/utils/test_macros.h"

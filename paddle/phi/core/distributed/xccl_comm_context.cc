@@ -122,8 +122,8 @@ void XCCLCommContext::Send(const phi::DenseTensor& in_tensor,
                               peer,
                               xccl_comm_,
                               stream);
-  VLOG(3) << "rank " << GetRank() << " send " << phi::product(in_tensor.dims())
-          << " to " << peer;
+  VLOG(3) << "rank " << GetRank() << " send "
+          << common::product(in_tensor.dims()) << " to " << peer;
 }
 
 void XCCLCommContext::Recv(phi::DenseTensor* out_tensor,
@@ -140,7 +140,7 @@ void XCCLCommContext::Recv(phi::DenseTensor* out_tensor,
                               xccl_comm_,
                               stream);
   VLOG(3) << "rank " << GetRank() << " recv "
-          << phi::product(out_tensor->dims()) << " from " << peer;
+          << common::product(out_tensor->dims()) << " from " << peer;
 }
 
 void XCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,

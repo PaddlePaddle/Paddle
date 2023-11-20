@@ -20,6 +20,7 @@
 #include <Eigen/SVD>
 #include <iostream>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/diag_op.h"
@@ -27,7 +28,6 @@
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
@@ -85,8 +85,8 @@ static std::vector<int> GetBroadcastShape(InTensors ins) {
   auto x_dim = ins[0]->dims();
   auto y_dim = ins[1]->dims();
   std::vector<int> broadcast_shape =
-      (x_dim.size() > y_dim.size() ? phi::vectorize<int>(x_dim)
-                                   : phi::vectorize<int>(y_dim));
+      (x_dim.size() > y_dim.size() ? common::vectorize<int>(x_dim)
+                                   : common::vectorize<int>(y_dim));
   int rank_min = std::min(x_dim.size(), y_dim.size());
   int rank_x = x_dim.size();
   int rank_y = y_dim.size();
@@ -301,10 +301,10 @@ struct DeviceIndependenceTensorOperations {
     phi::DenseTensor ret;
     auto a_dim = mat_a.dims();
     auto b_dim = mat_b.dims();
-    std::vector<int> x_vec = phi::vectorize<int>(a_dim);
+    std::vector<int> x_vec = common::vectorize<int>(a_dim);
     x_vec[x_vec.size() - 2] = a_dim[a_dim.size() - (trans_a ? 1 : 2)];
     x_vec[x_vec.size() - 1] = b_dim[b_dim.size() - (trans_b ? 2 : 1)];
-    ret.Resize(phi::make_ddim(x_vec));
+    ret.Resize(common::make_ddim(x_vec));
     ret.mutable_data<T>(context.GetPlace());
     auto blas = GetBlas();
     auto mat_a_discrib = phi::funcs::CreateMatrixDescriptor(a_dim, 0, trans_a);
@@ -318,7 +318,7 @@ struct DeviceIndependenceTensorOperations {
     // transpose the last two dimision
     phi::DenseTensor ret;
     auto x_dim = x.dims();
-    auto x_vec = phi::vectorize<int>(x_dim);
+    auto x_vec = common::vectorize<int>(x_dim);
     int rank = x_vec.size();
     std::swap(x_vec[rank - 1], x_vec[rank - 2]);
     std::vector<int> out_shape = x_vec;
@@ -328,7 +328,7 @@ struct DeviceIndependenceTensorOperations {
     }
     std::swap(axis[rank - 1], axis[rank - 2]);
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    ret.Resize(phi::make_ddim(x_vec));
+    ret.Resize(common::make_ddim(x_vec));
     ret.mutable_data<T>(context.GetPlace());
     switch (rank) {
       DITO_TRANSPOSE_RANK_CASE(2);
@@ -397,7 +397,7 @@ struct DeviceIndependenceTensorOperations {
     for (int i = 0; i < num_dims - 1; ++i) {
       out_shape.push_back(x.dims()[i]);
     }
-    out.Resize(phi::make_ddim(out_shape));
+    out.Resize(common::make_ddim(out_shape));
     int order = x.dims()[num_dims - 1];
     int stride_out = order * order;
     int stride_in = order + 1;
@@ -414,7 +414,7 @@ struct DeviceIndependenceTensorOperations {
                                   const phi::DenseTensor& y) {
     phi::DenseTensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
-    ret.Resize(phi::make_ddim(out_shape));
+    ret.Resize(common::make_ddim(out_shape));
     ElementwiseComputeEx<RealMulComplexFunctor<T>, DeviceContext, T>(
         context, &x, &y, -1, RealMulComplexFunctor<T>(), &ret);
     return ret;
@@ -432,7 +432,7 @@ struct DeviceIndependenceTensorOperations {
       out_vector.device(place) = x_vector / y_vector;
     } else {
       std::vector<int> out_shape = GetBroadcastShape({&x, &y});
-      ret.Resize(phi::make_ddim(out_shape));
+      ret.Resize(common::make_ddim(out_shape));
       ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
           context, &x, &y, -1, DivFunctor<T>(), &ret);
     }
@@ -442,7 +442,7 @@ struct DeviceIndependenceTensorOperations {
     // element wise add, support numpy broadcast.
     phi::DenseTensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
-    ret.Resize(phi::make_ddim(out_shape));
+    ret.Resize(common::make_ddim(out_shape));
     ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
         context, &x, &y, -1, AddFunctor<T>(), &ret);
     return ret;
@@ -450,7 +450,7 @@ struct DeviceIndependenceTensorOperations {
   phi::DenseTensor Mul(const phi::DenseTensor& x, const phi::DenseTensor& y) {
     phi::DenseTensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
-    ret.Resize(phi::make_ddim(out_shape));
+    ret.Resize(common::make_ddim(out_shape));
     ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(
         context, &x, &y, -1, MulFunctor<T>(), &ret);
     return ret;
@@ -476,7 +476,7 @@ struct DeviceIndependenceTensorOperations {
   phi::DenseTensor Sub(const phi::DenseTensor& x, const phi::DenseTensor& y) {
     phi::DenseTensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
-    ret.Resize(phi::make_ddim(out_shape));
+    ret.Resize(common::make_ddim(out_shape));
     if (platform::is_gpu_place(context.GetPlace())) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       // For GPU, there is no need to define XxxInverseFunctor and call
@@ -501,7 +501,7 @@ struct DeviceIndependenceTensorOperations {
     // don't copy data, only change the dims
     phi::DenseTensor out;
     out.ShareDataWith(x);
-    std::vector<int> out_shape = phi::vectorize<int>(x.dims());
+    std::vector<int> out_shape = common::vectorize<int>(x.dims());
     if (axis >= 0) {
       auto index = (out_shape.begin() + axis);
       out_shape.insert(index, 1);
@@ -509,12 +509,12 @@ struct DeviceIndependenceTensorOperations {
       auto index = (out_shape.end() + axis + 1);
       out_shape.insert(index, 1);
     }
-    out.Resize(phi::make_ddim(out_shape));
+    out.Resize(common::make_ddim(out_shape));
     return out;
   }
   phi::DenseTensor Fill(std::vector<int> shape, float fill_value) {
     phi::DenseTensor ret;
-    ret.Resize(phi::make_ddim(shape));
+    ret.Resize(common::make_ddim(shape));
     ret.mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();
     phi::funcs::SetConstant<DeviceContext, T>()(dev_ctx, &ret, T(fill_value));
@@ -535,7 +535,7 @@ struct DeviceIndependenceTensorOperations {
                          std::vector<int> ends) {
     phi::DenseTensor ret;
     std::vector<int> new_axes = axes;
-    std::vector<int> out_shape = phi::vectorize<int>(x.dims());
+    std::vector<int> out_shape = common::vectorize<int>(x.dims());
     size_t rank = out_shape.size();
     PADDLE_ENFORCE_EQ(
         axes.size(),
@@ -566,7 +566,7 @@ struct DeviceIndependenceTensorOperations {
       offset[new_axes[i]] = starts[i];
       extends[new_axes[i]] = ends[i] - starts[i];
     }
-    ret.Resize(phi::make_ddim(out_shape));
+    ret.Resize(common::make_ddim(out_shape));
     ret.mutable_data<T>(context.GetPlace());
     switch (rank) {
       DITO_SLICE_RANK_CASE(1);
@@ -596,7 +596,7 @@ struct DeviceIndependenceTensorOperations {
         x_rank,
         2,
         platform::errors::InvalidArgument("Rank must be at least 2."));
-    std::vector<int> out_shape = phi::vectorize<int>(x.dims());
+    std::vector<int> out_shape = common::vectorize<int>(x.dims());
     return CreateOpRunAndReturnTensor("tril_triu", inputs, attrs, out_shape);
   }
 
@@ -613,8 +613,8 @@ struct DeviceIndependenceTensorOperations {
     auto x_dims = x.dims();
     auto y_dims = y.dims();
     auto y_dims_n = y_dims.size();
-    std::vector<int64_t> x_dims_vec = phi::vectorize<int64_t>(x_dims);
-    std::vector<int64_t> y_dims_vec = phi::vectorize<int64_t>(y_dims);
+    std::vector<int64_t> x_dims_vec = common::vectorize<int64_t>(x_dims);
+    std::vector<int64_t> y_dims_vec = common::vectorize<int64_t>(y_dims);
     std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(),
                                         x_dims_vec.end() - 2);
     std::vector<int64_t> y_dims_vec_cut(y_dims_vec.begin(),
@@ -646,7 +646,7 @@ struct DeviceIndependenceTensorOperations {
     if (out_dims[axis_] < 0) {
       out_dims[axis_] = -1;
     }
-    std::vector<int> out_shape = phi::vectorize<int>(out_dims);
+    std::vector<int> out_shape = common::vectorize<int>(out_dims);
     return CreateOpRunAndReturnTensor("concat", inputs, attrs, out_shape);
   }
 
@@ -755,8 +755,8 @@ struct DeviceIndependenceTensorOperations {
     auto out_var = local_scope.Var("tmp_Out");  // return the Out
     // create Out phi::DenseTensor and allocat memory
     out_var->GetMutable<phi::DenseTensor>()->mutable_data<T>(
-        phi::make_ddim(out_shape), context.GetPlace());
-    // phi::make_ddim(out_shape)
+        common::make_ddim(out_shape), context.GetPlace());
+    // common::make_ddim(out_shape)
     framework::VariableNameMap op_inputs;
     int counter = 0;
     for (auto item : inputs) {
@@ -780,7 +780,7 @@ struct DeviceIndependenceTensorOperations {
     op->Run(local_scope, context.GetPlace());
     phi::DenseTensor out;
     out.ShareDataWith(*(out_var->GetMutable<phi::DenseTensor>()));
-    out.Resize(phi::make_ddim(out_shape));
+    out.Resize(common::make_ddim(out_shape));
     context.scope().DeleteScope(&local_scope);
     return out;
   }

@@ -31,7 +31,7 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   if (need_cast) {
     x_tmp = cast<T>(x, phi::DataType::FLOAT32);
   }
-  std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x_tmp.dims());
+  std::vector<int64_t> x_dim = common::vectorize<int64_t>(x_tmp.dims());
   int64_t axis_size = axis.size();
   int64_t x_dim_size = x_dim.size();
   auto axis_ = std::vector<int64_t>();
@@ -54,7 +54,7 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   }
   auto sum_x = sum<T>(x_tmp, IntArray(axis_), x_tmp.dtype(), keepdim);
   auto res =
-      sum_x / full<T>(phi::vectorize(sum_x.dims()), value, sum_x.dtype());
+      sum_x / full<T>(common::vectorize(sum_x.dims()), value, sum_x.dtype());
   if (need_cast) {
     return cast<T>(res, org_dtype);
   } else {
@@ -89,7 +89,7 @@ Tensor softmax_decomp(const Tensor& x, const int& axis) {
 
 template <typename T>
 Tensor relu_decomp(const Tensor& x) {
-  return maximum<T>(x, full<T>(phi::vectorize(x.dims()), 0.0, x.dtype()));
+  return maximum<T>(x, full<T>(common::vectorize(x.dims()), 0.0, x.dtype()));
 }
 
 template <typename T>
@@ -130,7 +130,7 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     x_cast = cast<T>(x_cast, phi::DataType::FLOAT32);
   }
 
-  auto x_dim = phi::vectorize<int64_t>(x.dims());
+  auto x_dim = common::vectorize<int64_t>(x.dims());
   for (size_t i = begin_norm_axis; i < x_dim.size(); i++) {
     axis.push_back(static_cast<int64_t>(i));
   }
@@ -141,7 +141,7 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   auto var_tmp3 = variance + epsilon;
   auto rsqrt_var = elementwise_pow<T>(
       var_tmp3,
-      full<T>(phi::vectorize(var_tmp3.dims()), -0.5, var_tmp3.dtype()));
+      full<T>(common::vectorize(var_tmp3.dims()), -0.5, var_tmp3.dtype()));
   auto out = difference * rsqrt_var;
 
   auto scale_ptr = scale.get_ptr();

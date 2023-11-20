@@ -427,7 +427,7 @@ inline void UpdatePadding(std::vector<T>* paddings,
                           const std::vector<T>& strides,
                           const std::vector<T>& kernel_size) {
   // set padding size == data_dims.size() * 2
-  auto data_shape = vectorize<T>(data_dims);
+  auto data_shape = common::vectorize<T>(data_dims);
   if (static_cast<int>(paddings->size()) == data_dims.size()) {
     for (int i = 0; i < data_dims.size(); ++i) {
       T copy_pad = *(paddings->begin() + 2 * i);

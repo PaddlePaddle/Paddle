@@ -28,7 +28,7 @@ using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo SliceInferSpmdBase(const DistMetaTensor& input,
                             const std::vector<int64_t>& axes) {
-  auto input_shape = phi::vectorize(input.dims());
+  auto input_shape = common::vectorize(input.dims());
   int input_ndim = input_shape.size();
   auto input_dist_attr_src = input.dist_attr();
   std::vector<int64_t> input_dims_mapping = input_dist_attr_src.dims_mapping();
@@ -98,11 +98,11 @@ SpmdInfo SliceInferSpmd(const DistMetaTensor& input,
 SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
                                    const DistMetaTensor& output,
                                    const std::vector<int64_t>& axes) {
-  auto output_shape = phi::vectorize(output.dims());
+  auto output_shape = common::vectorize(output.dims());
   int out_ndim = output_shape.size();
   auto out_dist_attr = output.dist_attr();
   int out_dims_mapping_size = out_dist_attr.dims_mapping().size();
-  auto input_shape = phi::vectorize(input.dims());
+  auto input_shape = common::vectorize(input.dims());
   int input_ndim = input_shape.size();
   auto input_dist_attr = input.dist_attr();
   std::vector<int64_t> input_dims_mapping = input_dist_attr.dims_mapping();
@@ -157,7 +157,7 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
   VLOG(4) << "SliceInferSpmdReverse:";
   VLOG(4) << "Einsum Notation: " << input_axes << "-->" << out_axes;
   VLOG(4) << "Output"
-          << " shape: [" << str_join(phi::vectorize(output.dims())) << "] "
+          << " shape: [" << str_join(common::vectorize(output.dims())) << "] "
           << "src_dims_mapping: ["
           << str_join(output.dist_attr().dims_mapping()) << "] "
           << "dst_dims_mapping: [" << str_join(out_dist_attr.dims_mapping())
@@ -197,10 +197,10 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
   auto out_dist_attr = out_grad.dist_attr();
   input_dist_attr = UnShardTensorDims(input_dist_attr, axes);
   out_dist_attr = UnShardTensorDims(out_dist_attr, axes);
-  auto output_shape = phi::vectorize(out_grad.dims());
+  auto output_shape = common::vectorize(out_grad.dims());
   int out_ndim = output_shape.size();
   int out_dims_mapping_size = out_dist_attr.dims_mapping().size();
-  auto input_shape = phi::vectorize(input.dims());
+  auto input_shape = common::vectorize(input.dims());
   int input_ndim = input_shape.size();
   std::vector<int64_t> input_dims_mapping = input_dist_attr.dims_mapping();
 

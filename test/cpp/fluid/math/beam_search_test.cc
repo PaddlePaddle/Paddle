@@ -32,7 +32,7 @@ void PrepareCPUTensors(phi::DenseTensor* ids,
   ids->set_lod(lod);
   scores->set_lod(lod);
 
-  auto dims = phi::make_ddim({4, 3});
+  auto dims = common::make_ddim({4, 3});
   ids->Resize(dims);
   scores->Resize(dims);
 
@@ -52,13 +52,13 @@ void PrepareCPUTensors(phi::DenseTensor* ids,
   }
 
   // pre_ids
-  pre_ids->Resize(phi::make_ddim({4, 1}));
+  pre_ids->Resize(common::make_ddim({4, 1}));
   for (int i = 0; i < 4; i++) {
     pre_ids->mutable_data<int64_t>(place)[i] = i + 1;
   }
 
   // pre_scores
-  pre_scores->Resize(phi::make_ddim({4, 1}));
+  pre_scores->Resize(common::make_ddim({4, 1}));
   for (int i = 0; i < 4; i++) {
     pre_scores->mutable_data<float>(place)[i] = 0.1 * (i + 1);  // NOLINT
   }

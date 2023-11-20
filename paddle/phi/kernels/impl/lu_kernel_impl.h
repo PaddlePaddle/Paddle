@@ -79,7 +79,7 @@ void SetValueCompute(const Context& dev_ctx,
       none_axes_cur++;
     }
 
-    slice_dims_for_assign = phi::make_ddim(slice_dims_with_none);
+    slice_dims_for_assign = common::make_ddim(slice_dims_with_none);
   }
 
   auto place = dev_ctx.GetPlace();
@@ -158,7 +158,7 @@ void SetValueCompute(const Context& dev_ctx,
         dev_ctx, slice_tensor, *value_tensor, SubFunctor<T>(), &slice_tensor);
   } else {
     DenseTensor value_t(dtype);
-    auto value_dims = phi::make_ddim(shape);
+    auto value_dims = common::make_ddim(shape);
     CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
     value_t.Resize(value_dims);
@@ -389,7 +389,7 @@ void arange(const Context& dev_ctx,
             int w,
             int batchsize = 1,
             int h = 1) {
-  tmp->Resize(phi::make_ddim({batchsize * w}));
+  tmp->Resize(common::make_ddim({batchsize * w}));
   dev_ctx.template HostAlloc<int32_t>(tmp);
   auto tmpdata = tmp->data<int32_t>();
   for (int b = 0; b < batchsize; b++) {
@@ -439,7 +439,7 @@ void LU_Unpack(const Context& dev_ctx,
   // set L's diagonal 1
   auto dim = std::min(H, W);
   DenseTensor rowtensor, rt_dev;
-  auto batchsize = product(phi::slice_ddim(udims, 0, udims.size() - 2));
+  auto batchsize = product(common::slice_ddim(udims, 0, udims.size() - 2));
 
   // if udims is [0, ..., H, W], it should be 0
   if (udims.size() == 2) batchsize = std::max(static_cast<int>(batchsize), 1);
@@ -477,7 +477,7 @@ void Unpack_Pivot(const Context& dev_ctx,
                   int h,
                   int w UNUSED) {
   auto dims = Pivot.dims();
-  auto Pdimvec = vectorize(dims);
+  auto Pdimvec = common::vectorize(dims);
   auto prank = Pdimvec.size();
   auto Pnum = dims[prank - 1];
   DenseTensor Pivot_cpu;
@@ -486,14 +486,14 @@ void Unpack_Pivot(const Context& dev_ctx,
   auto pdataptr = Pivot_cpu.data<int32_t>();
   Pdimvec[prank - 1] = h;
   Pdimvec.emplace_back(h);
-  auto Pdim = phi::make_ddim(Pdimvec);
+  auto Pdim = common::make_ddim(Pdimvec);
   P->Resize(Pdim);
   dev_ctx.template Alloc<T>(P);
   auto pdata = P->data<T>();
   phi::funcs::SetConstant<Context, T> setter;
   setter(dev_ctx, P, static_cast<T>(0));
 
-  auto batchsize = product(phi::slice_ddim(dims, 0, prank - 1));
+  auto batchsize = product(common::slice_ddim(dims, 0, prank - 1));
   if (prank == 1) batchsize = std::max(static_cast<int>(batchsize), 1);
 
   DenseTensor idt;
@@ -525,7 +525,7 @@ DenseTensor Transpose2DTo6D(const Context& dev_ctx, const DenseTensor& x) {
   // transpose the last two dimision
   DenseTensor ret;
   auto x_dim = x.dims();
-  auto x_vec = phi::vectorize<int>(x_dim);
+  auto x_vec = common::vectorize<int>(x_dim);
   int rank = x_vec.size();
 
   for (int i = 0; i < x_dim.size(); i++) {
@@ -542,7 +542,7 @@ DenseTensor Transpose2DTo6D(const Context& dev_ctx, const DenseTensor& x) {
     axis[i] = i;
   }
   std::swap(axis[rank - 1], axis[rank - 2]);
-  ret.Resize(phi::make_ddim(x_vec));
+  ret.Resize(common::make_ddim(x_vec));
   dev_ctx.template Alloc<T>(&ret);
   switch (rank) {
     case 2: {

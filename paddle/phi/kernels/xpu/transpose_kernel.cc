@@ -43,7 +43,7 @@ void TransposeKernel(const Context& dev_ctx,
     return;
   }
 
-  std::vector<int> x_dim_vec = phi::vectorize<int>(x.dims());
+  std::vector<int> x_dim_vec = common::vectorize<int>(x.dims());
   int r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                   reinterpret_cast<const XPUType*>(x.data<T>()),
                                   reinterpret_cast<XPUType*>(out->data<T>()),

@@ -8,6 +8,7 @@ if(WITH_TESTING AND NOT WIN32)
     WORKING_DIRECTORY "${CC_TESTS_DIR}")
   set(JIT_DEPS
       phi
+      common
       elementwise_add_op
       activation_op
       reduce_mean_op

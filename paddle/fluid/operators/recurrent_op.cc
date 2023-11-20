@@ -203,9 +203,9 @@ void RecurrentBase::LinkTensor(const framework::Scope &src_scope,
 // (seq_len, shape) -> return [seq_len] + list(shape)
 framework::DDim RecurrentBase::PrependDims(size_t seq_len,
                                            const framework::DDim &src) {
-  auto dims = phi::vectorize(src);
+  auto dims = common::vectorize(src);
   dims.insert(dims.begin(), static_cast<int64_t>(seq_len));
-  return phi::make_ddim(dims);
+  return common::make_ddim(dims);
 }
 
 RecurrentOp::RecurrentOp(const std::string &type,
@@ -253,9 +253,9 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
                                          phi::DenseTensor *inside) {
                              inside->ShareDataWith(outside.Slice(
                                  seq_offset, seq_offset + 1));  // NOLINT
-                             auto dims = phi::vectorize(inside->dims());
+                             auto dims = common::vectorize(inside->dims());
                              dims.erase(dims.begin());
-                             inside->Resize(phi::make_ddim(dims));
+                             inside->Resize(common::make_ddim(dims));
                            });
 
     if (has_state) {
@@ -383,9 +383,9 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
         [&](const phi::DenseTensor &outside, phi::DenseTensor *inside) {
           inside->ShareDataWith(
               outside.Slice(seq_offset, seq_offset + 1));  // NOLINT
-          auto dims = phi::vectorize(inside->dims());
+          auto dims = common::vectorize(inside->dims());
           dims.erase(dims.begin());
-          inside->Resize(phi::make_ddim(dims));
+          inside->Resize(common::make_ddim(dims));
         },
         true /*is_backward*/);
     auto og_set = List2Set(Inputs(kOutputGrads));
@@ -495,7 +495,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
           framework::AttributeMap attrs;
           attrs["dtype"] =
               framework::TransToProtoVarType(inside_tensor.dtype());
-          attrs["shape"] = phi::vectorize<int>(inside_tensor.dims());
+          attrs["shape"] = common::vectorize<int>(inside_tensor.dims());
           attrs["value"] = 0.0f;
 
           auto zero_op =

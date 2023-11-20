@@ -49,7 +49,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
 
-    auto x_tz = phi::vectorize<int64_t>(x->dims());
+    auto x_tz = common::vectorize<int64_t>(x->dims());
 
     const bool is_negative_input = ctx.Attr<bool>("is_negative_input");
     const bool bfloat16 = ctx.Attr<bool>("bfloat16");
