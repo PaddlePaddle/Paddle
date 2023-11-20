@@ -597,6 +597,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
                 extra_link_args.append('-lamdhip64')
             else:
                 extra_link_args.append('-lcudart')
+                extra_link_args.append('-lcuda')
 
         kwargs['extra_link_args'] = extra_link_args
 
