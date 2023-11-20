@@ -45,14 +45,17 @@ class  DenseTensor : public TensorBase,
   /// \brief Construct a dense tensor and allocate space.
   /// \param a The allocator used to allocate space.
   /// \param meta The meta data of dense tensor.
-  DenseTensor(Allocator* a, const DenseTensorMeta& meta);
+  
+DenseTensor(Allocator* a, const DenseTensorMeta& meta);
 
   /// \brief Construct a dense tensor and allocate space.
   /// \param a The allocator used to allocate space.
   /// \param meta The meta data of dense tensor.
-  DenseTensor(Allocator* a, DenseTensorMeta&& meta);
 
-  DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
+DenseTensor(Allocator* a, DenseTensorMeta&& meta);
+
+
+DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
               const DenseTensorMeta& meta);
 
   /// \brief Because dense tensor is a kind of container, we give a default
@@ -65,26 +68,26 @@ class  DenseTensor : public TensorBase,
   DenseTensor(DenseTensor&& other) = default;
 
   /// \brief DenseTensor shallow copy constructor.
-  DenseTensor(const DenseTensor& other);
+TEST_API  DenseTensor(const DenseTensor& other);
 
   /// \brief DenseTensor shallow copy assignment.
   DenseTensor& operator=(const DenseTensor& other);
 
   DenseTensor& operator=(DenseTensor&& other) noexcept;
 
-  DenseTensor();
+TEST_API  DenseTensor();
 
   /// \brief Destroy the tensor object and release exclusive resources.
-  virtual ~DenseTensor();
+TEST_API  virtual ~DenseTensor();
 
  public:
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
-  static const char* name() { return "DenseTensor"; }
+  static constexpr char* name() { return "DenseTensor"; }
 
   /// \brief Returns the number of elements contained in tensor.
   /// \return The number of elements contained in tensor.
-  int64_t numel() const override;
+TEST_API  int64_t numel() const override;
 
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
@@ -175,7 +178,7 @@ class  DenseTensor : public TensorBase,
   template <typename T>
   T* data();
 
-  void* data();
+  TEST_API  void* data();
 
   /// \brief Get whether the storage_properties is inited.
   /// \return The init status of storage_properties.
