@@ -5836,7 +5836,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
                 new_input, axes, starts_2, ends_2, infer_flags, []
             )
 
-            if x.dtype == paddle.bool:
+            if x.dtype == paddle.bool or x.dtype == core.DataType.BOOL:
                 return _C_ops.logical_xor(input_back, input_front)
             else:
                 return _C_ops.subtract(input_back, input_front)
