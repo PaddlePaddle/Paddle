@@ -24,6 +24,8 @@ std::shared_ptr<DistTensor> ReshardFunction::Eval(
     DeviceContext* dev_ctx,
     const DistTensor& in,
     const TensorDistAttr& out_dist_attr) {
+  paddle::platform::RecordEvent reshard_record_event(
+      Name(), paddle::platform::TracerEventType::OperatorInner, 1);
   std::shared_ptr<DistTensor> out = std::make_shared<DistTensor>();
   Eval(dev_ctx, in, out_dist_attr, out.get());
   return out;
