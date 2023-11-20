@@ -2019,6 +2019,34 @@ class Executor:
 
         self._pir_feed_data(program, feed, scope)
 
+        if hasattr(program, 'lr_scheduler'):
+            from paddle.optimizer.lr import LRScheduler
+
+            assert isinstance(
+                program.lr_scheduler, LRScheduler
+            ), "must be LRScheduler"
+
+            lr_scheduler = program.lr_scheduler
+            lr_value = lr_scheduler()
+            lr_var = program.lr_var
+
+            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+            tensor = core.get_variable_tensor(
+                global_scope(), lr_scheduler._var_name
+            )
+            # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
+            cpu_tensor = _as_lodtensor(data, core.CPUPlace())
+            if core.is_cuda_graph_capturing():
+                warnings.warn(
+                    "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
+                    "take any effect! Please set the learning rate manually before each batch!"
+                )
+            elif core.is_compiled_with_ipu():
+                # for ipu, tensor is allocated on cpu
+                tensor._copy_from(cpu_tensor, tensor._place())
+            else:
+                tensor._copy_from(cpu_tensor, self.place)
+
         ret = new_exe.run(list(feed.keys()), return_numpy)
         return ret
 
