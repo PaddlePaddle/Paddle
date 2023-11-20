@@ -73,6 +73,9 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
 };
 const std::unordered_set<std::string> SpecialLowerOps = {
     pir::CombineOp::name(),
+    pir::SetParameterOp::name(),
+    pir::GetParameterOp::name(),
+    pir::ShadowOutputOp::name(),
     pir::SliceOp::name(),
     pir::SplitOp::name(),
     pir::YieldOp::name(),
@@ -328,7 +331,6 @@ static pir::Type BuildDtypeTransferOutputType(pir::Type type,
 
 static pir::Type BuildOutputType(pir::Type type,
                                  const phi::Place& place,
-                                 phi::DataType data_type,
                                  pir::IrContext* ctx) {
   if (type.isa<DenseTensorType>()) {
     auto out_dtype = type.dyn_cast<DenseTensorType>().dtype();
@@ -948,8 +950,10 @@ void HandleForSpecialOp(
     HandleForWhileOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
     return;
   }
+
   std::vector<pir::Value> vec_inputs;
   std::vector<pir::Type> op_output_types;
+
   if (op_item->isa<::pir::CombineOp>()) {
     // Copy op inputs
     std::vector<pir::Type> vec_inner_types;
@@ -970,6 +974,11 @@ void HandleForSpecialOp(
 
     pir::Type t1 = pir::VectorType::get(ctx, vec_inner_types);
     op_output_types.push_back(t1);
+  }
+
+  if (op_item->isa<::pir::GetParameterOp>()) {
+    op_output_types.push_back(
+        BuildOutputType(op_item->result(0).type(), place, ctx));
   }
 
   if (op_item->isa<::pir::SliceOp>()) {
@@ -1023,7 +1032,8 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->isa<::pir::YieldOp>()) {
+  if (op_item->isa<::pir::YieldOp>() || op_item->isa<::pir::SetParameterOp>() ||
+      op_item->isa<::pir::ShadowOutputOp>()) {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
         auto cur_in = op_item->operand_source(i);
@@ -1077,6 +1087,7 @@ void HandleForSpecialOp(
       op_output_types.push_back(new_inlet_element.type());
     }
   }
+
   if (op_item->name() == "cinn_runtime.jit_kernel") {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
@@ -1136,12 +1147,9 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
 
   for (size_t i = 0; i < op_item->num_results(); ++i) {
     phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
-
-    phi::DataType out_phi_dtype = phi::DataType::UNDEFINED;
     if ((!UnchangeOutputOps.count(op_item->name())) &&
         (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
       out_place = phi::TransToPhiPlace(output_defs[i].backend);
-      out_phi_dtype = output_defs[i].dtype;
     }
 
     auto result_type = op_item->result(i).type();
@@ -1150,8 +1158,7 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
     } else if (result_type.isa<DenseTensorType>() ||
                result_type.isa<SelectedRowsType>() ||
                result_type.isa<DenseTensorArrayType>()) {
-      op_output_types.push_back(
-          BuildOutputType(result_type, out_place, out_phi_dtype, ctx));
+      op_output_types.push_back(BuildOutputType(result_type, out_place, ctx));
     } else if (result_type.isa<pir::VectorType>()) {
       std::vector<pir::Type> vec_inner_types;
       auto base_types = result_type.dyn_cast<pir::VectorType>().data();
@@ -1160,7 +1167,7 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
           if (base_type.isa<DenseTensorType>() ||
               base_type.isa<SelectedRowsType>()) {
             vec_inner_types.push_back(
-                BuildOutputType(base_type, out_place, out_phi_dtype, ctx));
+                BuildOutputType(base_type, out_place, ctx));
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
                 "only support dense tensor and selected rows in vector type "
@@ -1287,7 +1294,6 @@ std::vector<pir::Value> BuildInputs(
         // [ todo need update here, support combine data transfomer]
         // deal with pre combine op
         auto pre_define_op = cur_in.dyn_cast<pir::OpResult>().owner();
-
         if (pre_define_op->isa<::pir::CombineOp>()) {
           std::vector<pir::Value> inner_inputs;
           std::vector<pir::Type> types_in_vec;
@@ -1320,8 +1326,6 @@ std::vector<pir::Value> BuildInputs(
                 (paddle::experimental::NeedTransformPlace(
                     place, input_backend, {}));
             if (need_trans) {
-              VLOG(6) << "need trans from " << place << " to "
-                      << kernel_key.backend();
               // build memcopy op
               auto out_place = phi::TransToPhiPlace(input_backend);
               pir::Type out_type;
