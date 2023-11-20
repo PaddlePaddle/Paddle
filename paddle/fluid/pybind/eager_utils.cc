@@ -321,10 +321,12 @@ std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
   }
 }
 
-std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(PyObject* obj,
-                                                     ssize_t arg_pos) {
+std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(
+    PyObject* obj,
+    ssize_t arg_pos,
+    const phi::distributed::ProcessMesh* mesh = nullptr) {
   std::vector<paddle::Tensor> result;
-  const phi::distributed::ProcessMesh* local_mesh = nullptr;
+  const phi::distributed::ProcessMesh* local_mesh = mesh;
   int mesh_start_index = -1;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
