@@ -693,7 +693,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
 
           pir::Block* block = program_->block();
           pir::Block::Iterator insert_pos = std::find(
-              block->begin(), block->end(), defining_op_result.owner());
+              block->begin(), block->end(), *defining_op_result.owner());
 
           IR_ENFORCE(
               insert_pos != block->end(),
