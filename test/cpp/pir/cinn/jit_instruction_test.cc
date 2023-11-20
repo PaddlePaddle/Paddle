@@ -98,11 +98,12 @@ TEST(CinnJitInstruction, Run) {
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
     if (checking_cinn_ops.count((*it)->name())) {
+      auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
+          *program, target, scope);
+
       std::vector<::pir::Operation*> ops = {*it};
       auto group = std::make_shared<cinn::hlir::framework::pir::Group>(ops);
       group->output_ops.insert(*it);
-      auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
-          *program, target, scope);
       auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
       std::unordered_map<std::string, ::pir::Attribute> op_attrs{
           {cinn::dialect::JitKernelOp::kAttrName,
