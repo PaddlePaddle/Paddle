@@ -1,8 +1,8 @@
 # TODO(Aurelius84): pir_compiler depends on pd_op_dialect and could
 # not found under CINN_ONLY mode
 if(NOT CINN_ONLY)
-  set(CINN_DIALECT_BINARY_DIR
-      "${PADDLE_BINARY_DIR}/paddle/cinn/hlir/dialect/operator/ir")
+  set(CINN_DIALECT_SOURCE_DIR
+      "${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/operator/ir")
 
   # Generate cinn_op_dialect files defining op using op_gen_file
   set(cinn_op_gen_parsed_yaml_file
@@ -25,34 +25,36 @@ if(NOT CINN_ONLY)
 
   set(cinn_op_namespace cinn,dialect)
   set(cinn_op_dialect_name cinn_op)
-  set(cinn_op_header_file ${CINN_DIALECT_BINARY_DIR}/cinn_op.h)
-  set(cinn_op_source_file ${CINN_DIALECT_BINARY_DIR}/cinn_op.cc)
+  set(cinn_op_header_file ${CINN_DIALECT_SOURCE_DIR}/cinn_op.h)
+  set(cinn_op_source_file ${CINN_DIALECT_SOURCE_DIR}/cinn_op.cc)
   set(cinn_op_header_file_tmp ${cinn_op_header_file}.tmp)
   set(cinn_op_source_file_tmp ${cinn_op_source_file}.tmp)
 
-  add_custom_command(
-    OUTPUT ${cinn_op_parsed_yaml_file}
+  execute_process(
     COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
     COMMAND ${PYTHON_EXECUTABLE} ${cinn_op_gen_parsed_yaml_file} --op_yaml_path
-            ${cinn_op_yaml_file} --output_path ${cinn_op_parsed_yaml_file}
-    DEPENDS ${cinn_op_gen_parsed_yaml_file} ${cinn_op_yaml_file}
-    VERBATIM)
+            ${cinn_op_yaml_file} --output_path ${cinn_op_parsed_yaml_file})
 
-  add_custom_command(
-    OUTPUT ${cinn_op_header_file} ${cinn_op_source_file}
+  execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE} ${cinn_op_gen_file} --op_yaml_files
       ${cinn_op_parsed_yaml_files} --op_compat_yaml_file
       ${cinn_op_compat_yaml_file} --namespaces ${cinn_op_namespace}
       --dialect_name ${cinn_op_dialect_name} --op_def_h_file
-      ${cinn_op_header_file_tmp} --op_def_cc_file ${cinn_op_source_file_tmp}
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${cinn_op_header_file_tmp}
-            ${cinn_op_header_file}
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${cinn_op_source_file_tmp}
-            ${cinn_op_source_file}
-    DEPENDS ${cinn_op_gen_file} ${cinn_op_parsed_yaml_file}
-            ${cinn_op_compat_yaml_file}
-    VERBATIM)
+      ${cinn_op_header_file_tmp} --op_def_cc_file ${cinn_op_source_file_tmp})
+
+  set(generated_files_pd_op "${cinn_op_header_file} ${cinn_op_source_file}")
+  foreach(generated_file ${generated_files_pd_op})
+    if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
+      execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                              "${generated_file}.tmp" "${generated_file}")
+      message("copy if different ${generated_file}.tmp ${generated_file}")
+    elseif(EXISTS "${generated_file}.tmp")
+      execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${generated_file}.tmp"
+                              "${generated_file}")
+      message("copy ${generated_file}.tmp ${generated_file}")
+    endif()
+  endforeach()
 
   cinn_cc_library(
     cinn_op_dialect
@@ -64,5 +66,5 @@ if(NOT CINN_ONLY)
     DEPS
     op_dialect_vjp)
 
-  target_include_directories(cinn_op_dialect PRIVATE ${CINN_DIALECT_BINARY_DIR})
+  target_include_directories(cinn_op_dialect PRIVATE ${CINN_DIALECT_SOURCE_DIR})
 endif()
