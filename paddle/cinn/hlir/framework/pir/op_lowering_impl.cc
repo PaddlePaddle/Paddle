@@ -406,7 +406,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       arg_name_set.insert(tensor->buffer->name);
     }
   }
-
   if (!done_op_schedule) {
     std::unordered_set<std::string> args_set;
     for (auto arg : group_func_args) {

@@ -51,11 +51,6 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
     Model() : Concept(GetElementType, GetShape) {}
   };
 
-  ///
-  /// \brief kDynamic
-  ///
-  static constexpr int64_t kDynamic = std::numeric_limits<int64_t>::min();
-
   ShapedTypeInterface(Type type, Concept *impl)
       : TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
 
