@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_softmax_with_cross_entropy_op.h"
-#include <stdio.h>
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
@@ -45,64 +44,6 @@ static inline int64_t NumBlocks(const int64_t N) {
                   kNumMaxinumNumBlocks);
 }
 
-template <typename T>
-std::string PrintValue(const T& value) {
-  std::stringstream ss;
-  if (std::is_floating_point<T>::value) {
-    ss << std::showpoint;
-  }
-  ss << std::setprecision(std::numeric_limits<T>::max_digits10);
-
-  if (std::is_integral<T>::value) {
-    if (std::is_unsigned<T>::value) {
-      ss << static_cast<uint64_t>(value);
-    } else {
-      ss << static_cast<int64_t>(value);
-    }
-  } else {
-    ss << value;
-  }
-  return ss.str();
-}
-
-template <typename T>
-std::string DebugString(const phi::DenseTensor& tensor) {
-  // auto* src = tensor->data<T>();
-  phi::DenseTensor tmp;
-  framework::TensorCopySync(tensor, CPUPlace(), &tmp);
-
-  std::stringstream ss;
-  ss << "pir print data=[";
-  size_t numel = tmp.numel();
-  const T* data = tmp.data<T>();
-  size_t print_num = 20L;
-
-  if (numel <= 2 * print_num) {
-    for (size_t i = 0; i < numel; ++i) {
-      if (i > 0) {
-        ss << ", ";
-      }
-      ss << PrintValue(data[i]);
-    }
-  } else {
-    for (size_t i = 0; i < print_num; ++i) {
-      if (i > 0) {
-        ss << ", ";
-      }
-      ss << PrintValue(data[i]);
-    }
-    ss << ", ... , ";
-    for (size_t i = numel - print_num; i < numel; ++i) {
-      ss << PrintValue(data[i]);
-      if (i != numel - 1) {
-        ss << ", ";
-      }
-    }
-  }
-  ss << "]";
-  return ss.str();
-}
-
 template <typename T, typename IndexT>
 __global__ void MaskLabelByIndex(T* predicted_logits,
                                  const T* logit,
@@ -113,8 +54,6 @@ __global__ void MaskLabelByIndex(T* predicted_logits,
                                  const int64_t N,
                                  const int64_t D,
                                  const int nranks) {
-  // printf("start_index:%lld end_index:%lld N:%lld D:%lld\n", start_index,
-  // end_index, N, D);
   CUDA_KERNEL_LOOP_TYPE(i, N, int64_t) {
     auto real_label = label[i];
     PADDLE_ENFORCE(((real_label < D * nranks) && (real_label >= 0)) ||
@@ -127,11 +66,7 @@ __global__ void MaskLabelByIndex(T* predicted_logits,
                    static_cast<int64_t>(ignore_index),
                    static_cast<int64_t>(real_label));
 
-    // printf("i:%d start_index:%lld end_index:%lld N:%lld D:%lld\n", i,
-    // start_index, end_index, N, D);
     if (real_label >= start_index && real_label < end_index) {
-      // printf("in_if i:%d label:%u start_index:%lld end_index:%lld N:%lld
-      // D:%lld\n", i, real_label, start_index, end_index, N, D);
       predicted_logits[i] = logit[i * D + real_label - start_index];
     }
   }
@@ -168,8 +103,6 @@ __global__ void MaskLabelByIndexGrad(T* logits_grad,
     auto row = i / D;
     auto col = i % D;
     auto lbl = static_cast<int64_t>(labels[row]);
-    // printf("i:%lld label:%lld logits_grad_before:%f loss_grad:%f\n", i, lbl,
-    // logits_grad[i], loss_grad[row]);
     if (lbl == ignore_index) {
       logits_grad[i] = static_cast<T>(0.0);
     } else if ((col + start_index) == labels[row]) {
@@ -177,7 +110,6 @@ __global__ void MaskLabelByIndexGrad(T* logits_grad,
     } else {
       logits_grad[i] *= loss_grad[row];
     }
-    // printf("i:%lld label:%lld logits_grad:%f\n", i, lbl, logits_grad[i]);
   }
 }
 
@@ -209,10 +141,6 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     const int rid = ctx.Attr<int>("ring_id");
     const int nranks = ctx.Attr<int>("nranks");
     const int rank = ctx.Attr<int>("rank");
-    // std::cout << "****** logits *******" << std::endl;
-    // std::cout << DebugString<T>(*logits) << std::endl;
-    // std::cout << "****** labels *******" << std::endl;
-    // std::cout << DebugString<int64_t>(*labels) << std::endl;
 
     const auto& place = ctx.GetPlace();
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
@@ -242,13 +170,11 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
 
-      // stream = comm_ctx->GetStream();
       stream = dev_ctx.stream();
       VLOG(3) << "new comm_context_manager has ring_id " << rid;
     } else {  // old comm_context
       comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
-      // stream = comm->stream();
       stream = dev_ctx.stream();
       VLOG(3) << "old NCCLCommContext has ring_id " << rid;
     }
@@ -297,9 +223,6 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
           stream));
     }
 
-    // std::cout << "****** logits_max *******" << std::endl;
-    // std::cout << DebugString<T>(logits_max) << std::endl;
-
     // step 2, obtain logit - logit_max
     Eigen::DSizes<int, 2> batch_by_one(N, 1);
     Eigen::DSizes<int, 2> one_by_class(1, D);
@@ -324,7 +247,6 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     int threads = kNumCUDAThreads;
     const auto& label_type = framework::TransToProtoVarType(labels->dtype());
 
-    // printf("N:%d D:%d start:%d end:%d\n", N, D, start_index, end_index);
     if (label_type == framework::proto::VarType::INT32) {
       MaskLabelByIndex<T, int32_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
           predicted_logits.data<T>(),
@@ -410,18 +332,10 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
                                                      ignore_index,
                                                      N);
     }
-    // std::cout << "****** loss_2d *******" << std::endl;
-    // std::cout << DebugString<T>(loss_2d) << std::endl;
-    // std::cout << "****** predicted_logits *******" << std::endl;
-    // std::cout << DebugString<T>(predicted_logits) << std::endl;
-    // std::cout << "****** sun_exp *******" << std::endl;
-    // std::cout << DebugString<T>(sum_exp_logits) << std::endl;
 
     eigen_softmax.device(*dev_ctx.eigen_device()) =
         (eigen_softmax *
          eigen_sum_exp_logits.inverse().broadcast(one_by_class));
-    // std::cout << "****** softmax *******" << std::endl;
-    // std::cout << DebugString<T>(*softmax) << std::endl;
   }
 };
 
@@ -601,15 +515,6 @@ class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
     const int64_t start_index = rank * D;
     const int64_t end_index = start_index + D;
 
-    // std::cout << "****** logits_grad *******" << std::endl;
-    // std::cout << DebugString<T>(*logit_grad) << std::endl;
-    // std::cout << "****** softmax *******" << std::endl;
-    // std::cout << DebugString<T>(*softmax) << std::endl;
-    // std::cout << "****** loss_grad *******" << std::endl;
-    // std::cout << DebugString<T>(*loss_grad) << std::endl;
-    // std::cout << "****** labels *******" << std::endl;
-    // std::cout << DebugString<int64_t>(*labels) << std::endl;
-
     if (label_type == framework::proto::VarType::INT32) {
       MaskLabelByIndexGrad<T, int32_t>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(logit_grad_2d.data<T>(),
@@ -631,8 +536,6 @@ class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
                                                      D,
                                                      ignore_index);
     }
-    // std::cout << "****** logits_grad_final *******" << std::endl;
-    // std::cout << DebugString<T>(*logit_grad) << std::endl;
   }
 };
 
