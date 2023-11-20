@@ -572,6 +572,41 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, *(ctx.AllMutableInput()))) {
+    ctx.AllMutableInput()->clear();
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      const auto& input = inputs.at(i);
+      // Parse op_type first, so that use i + 1
+      PyObject* obj = PyTuple_GET_ITEM(args, i + 1);
+      // Emplace Py_None from python, this means optional inputs passed to C++,
+      // use one un-initialized tensor to indicate both Tensor and
+      // vector<Tensor> inputs.
+      if (obj == Py_None) {
+        VLOG(7) << "Custom operator add input " << input
+                << " to CustomOpKernelContext. Add un-initialized tensor "
+                   "because the optional input is None";
+        ctx.EmplaceBackInput(std::move(paddle::Tensor()));
+        continue;
+      }
+      if (paddle::framework::detail::IsDuplicableVar(input)) {
+        std::vector<paddle::Tensor> tensors =
+            std::move(CastPyArg2VectorOfTensor(obj, i + 1, mesh));  // NOLINT
+        ctx.EmplaceBackInputs(std::move(tensors));
+        VLOG(7) << "Custom operator add input " << input
+                << " to CustomOpKernelContext. Add vector<Tensor> size = "
+                << ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
+      } else {
+        paddle::Tensor& tensor =
+            std::move(CastPyArg2Tensor(obj, i + 1));  // NOLINT
+        ConvertAllInputsToDistTensor(mesh, tensor);
+        ctx.EmplaceBackInput(tensor);
+        VLOG(7) << "Custom operator add input " << input
+                << " to CustomOpKernelContext. Add Tensor for general case.";
+      }
+    }
+  }
+
   // Parse op_type and inputs first, so that use 1 + inputs.size() + i
   int attr_start_idx = static_cast<int>(1 + inputs.size());
   for (size_t i = 0; i < attrs.size(); ++i) {
