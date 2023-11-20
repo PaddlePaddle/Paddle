@@ -302,8 +302,8 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
   }
 }
 
-void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
-                                   paddle::Tensor &&paddle_tensor) {
+void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,     // NOLINT
+                                   paddle::Tensor &paddle_tensor) {  // NOLINT
   std::vector<int> shape;
   for (int i = 0; i < paddle_tensor.dims().size(); ++i) {
     shape.push_back(paddle_tensor.dims()[i]);  // NOLINT
