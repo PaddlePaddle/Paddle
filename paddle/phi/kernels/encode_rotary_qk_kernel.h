@@ -5,7 +5,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RotaryQK(const Context& dev_ctx,
+void EncodeRotaryQkKernel(const Context& dev_ctx,
               const DenseTensor& q, 
               const DenseTensor& kv, 
               const DenseTensor& rotary_emb, 
