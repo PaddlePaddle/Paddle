@@ -306,6 +306,28 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
 }
 
 template <typename T>
+Tensor sqrt_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  bool need_cast =
+      org_dtype == phi::DataType::FLOAT16 || org_dtype == phi::DataType::UINT16;
+
+  Tensor x_cast;
+  if (need_cast) {
+    x_cast = cast<T>(x, phi::DataType::FLOAT32);
+  } else {
+    x_cast = x;
+  }
+
+  auto ans = elementwise_pow<T>(
+      x_cast, full<T>(common::vectorize(x_cast.dims()), 0.5, x_cast.dtype()));
+  if (need_cast) {
+    return cast<T>(ans, org_dtype);
+  } else {
+    return ans;
+  }
+}
+
+template <typename T>
 Tensor gelu_decomp(const Tensor& x, bool approximate) {
   const double PM_2_SQRTPI = 1.12837916709551257390; /* 2/sqrt(pi) */
   const double PM_SQRT1_2 = 0.70710678118654752440;  /* 1/sqrt(2) */

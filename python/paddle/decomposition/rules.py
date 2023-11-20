@@ -36,25 +36,6 @@ def mean(x, axis, keepdim):
     return res
 
 
-@register_decomp('pd_op.sqrt')
-def sqrt(x):
-    """
-    define composite rule of op sqrt
-    res = pow(x, 0.5)
-    """
-    is_amp = False
-    from paddle.base.data_feeder import convert_dtype
-
-    dtype = convert_dtype(x.dtype)
-    if dtype in ["float16", "uint16"]:
-        is_amp = True
-        x = cast(x, "float32")
-
-    y = full(x.shape if len(x.shape) == 0 else [1], 0.5, x.dtype)
-    res = pow_composite(x, y)
-    return res if not is_amp else cast(res, dtype)
-
-
 @register_decomp('pd_op.rsqrt')
 def rsqrt(x):
     """define composite rule of op rsqrt."""

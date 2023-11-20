@@ -168,6 +168,7 @@ utils::Attribute CompatibleInfo::ConvertAttribute(
 
       } else if (attr_vec[0].isa<::pir::Int64Attribute>()) {
         std::vector<int64_t> vec_int64;
+        int index = 0;
         for (auto vec_element : attr_vec) {
           vec_int64.push_back(
               vec_element.dyn_cast<::pir::Int64Attribute>().data());
