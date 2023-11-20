@@ -291,7 +291,16 @@ class TestResnet(Dy2StTestBase):
 
             for batch_id, data in enumerate(data_loader()):
                 start_time = time.time()
-                img, label = data
+                img_, label = data
+
+                expected_place = paddle.framework._current_expected_place()
+                if img_.stop_gradient and not img_.place._equals(
+                    expected_place
+                ):
+                    img = img_._copy_to(expected_place, False)
+                    img.stop_gradient = True
+                else:
+                    img = img_
 
                 pred = resnet(img)
                 loss = paddle.nn.functional.cross_entropy(
