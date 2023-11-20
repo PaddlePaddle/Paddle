@@ -52,18 +52,6 @@ __skip_dims_mapping_op__ = [
 ]
 
 
-def log_program(dist_context, name=""):
-    import paddle
-
-    if paddle.distributed.get_rank() == 0:
-        if name in ["before_update", "after_update", "final"]:
-            from .dist_context import set_default_distributed_context
-
-            set_default_distributed_context(dist_context)
-        with open(f"./main_program_{name}.txt", "w+") as f:
-            f.write(str(dist_context.serial_main_program))
-
-
 def compute_compatible_dim_mapping(dim_mapping_list):
     """Compute the compatible dim mapping given a list of dim mapping."""
     if not dim_mapping_list:
@@ -995,8 +983,6 @@ class Completer:
             serial_main_program = self._dist_context.serial_main_program
         else:
             self._dist_context._serial_main_program = serial_main_program
-
-        log_program(self._dist_context, name="before_completion")
 
         if not is_naive_data_parallel(self._dist_context):
             self._dist_context.initialize(with_graph=True)
