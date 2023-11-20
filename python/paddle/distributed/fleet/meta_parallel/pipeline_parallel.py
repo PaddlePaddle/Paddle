@@ -178,7 +178,6 @@ class PipelineParallel(MetaParallelBase):
         self.pp_group = self._hcg.get_pipe_parallel_group()
 
         self.dp_group = self._hcg.get_data_parallel_group()
-        self.sharding_group = self._hcg.get_sharding_parallel_group()
 
         # fused sep and dp
         if self.use_sep_parallel:
@@ -240,10 +239,6 @@ class PipelineParallel(MetaParallelBase):
                 "After parsing, a new file 'pipeline_profile.json' will be generated. "
                 "Users can inspect this file by chrome://tracing website."
             )
-
-        assert (
-            not self._dp_comm_overlap and not self._sharding_comm_overlap
-        ), "Comm overlap is not supported now."
 
         if self._dp_comm_overlap:
             assert self.use_data_parallel and self.num_stages > 1
@@ -381,13 +376,6 @@ class PipelineParallel(MetaParallelBase):
                 else:
                     dst = -1
                 var_groups = assign_group_by_size(parameter_list, group_size)
-
-            for dst in fused_parameter_group:
-                parameter_list = fused_parameter_group[dst]
-                if not dp:
-                    # parse the relative dst rank to absolute dst rank for sharding
-                    dst = comm_group.ranks[dst]
-                var_groups = assign_group_by_size(parameter_list)
 
                 for group_idx, parameters in var_groups.items():
                     buffer = FusedCommBuffer(
@@ -628,11 +616,6 @@ class PipelineParallel(MetaParallelBase):
         self.lr_scheduler = lr_scheduler
         self._layers.train()
         self.register_sharding_comm_overlap_hook(optimizer)
-
-        if self._sharding_comm_overlap and len(self._comm_buffers) == 0:
-            self.register_allreduce_overlap_hook(
-                self._layers, self.sharding_group, self.accumulate_steps, False
-            )
 
         return data
 

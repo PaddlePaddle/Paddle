@@ -32,11 +32,6 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
 paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
                                   const paddle::Tensor& y);
 
-paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
-                                const paddle::Tensor& y);
-paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
-                                  const paddle::Tensor& y);
-
 std::tuple<paddle::Tensor,
            paddle::Tensor&,
            paddle::Tensor&,
