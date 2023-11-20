@@ -370,7 +370,8 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
     const std::string& arg_name,
     PyObject* args,
     ssize_t arg_idx,
-    bool dispensable = false);
+    bool dispensable = false,
+    const phi::distributed::ProcessMesh* mesh = nullptr);
 
 std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj);
 
