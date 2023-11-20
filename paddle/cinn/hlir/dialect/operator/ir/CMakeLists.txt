@@ -43,8 +43,8 @@ if(NOT CINN_ONLY)
       --dialect_name ${cinn_op_dialect_name} --op_def_h_file
       ${cinn_op_header_file_tmp} --op_def_cc_file ${cinn_op_source_file_tmp})
 
-  set(generated_files_pd_op "${cinn_op_header_file} ${cinn_op_source_file}")
-  foreach(generated_file ${generated_files_pd_op})
+  set(generated_files_cinn_op "${cinn_op_header_file}" "${cinn_op_source_file}")
+  foreach(generated_file ${generated_files_cinn_op})
     if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
       execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
                               "${generated_file}.tmp" "${generated_file}")
