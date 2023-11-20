@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def output_hist(out):
@@ -31,6 +32,7 @@ def output_hist(out):
 
 class TestBernoulliOp(OpTest):
     def setUp(self):
+        self.python_api = paddle.bernoulli
         self.op_type = "bernoulli"
         self.init_dtype()
         self.init_test_case()
@@ -46,7 +48,7 @@ class TestBernoulliOp(OpTest):
         self.out = np.zeros((1000, 784)).astype(self.dtype)
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]))
@@ -62,13 +64,12 @@ class TestBernoulliApi(unittest.TestCase):
         hist, prob = output_hist(out.numpy())
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
+    @test_with_pir_api
     def test_static(self):
         x = paddle.rand([1024, 1024])
         out = paddle.bernoulli(x)
         exe = paddle.static.Executor(paddle.CPUPlace())
-        out = exe.run(
-            paddle.static.default_main_program(), fetch_list=[out.name]
-        )
+        out = exe.run(paddle.static.default_main_program(), fetch_list=[out])
         hist, prob = output_hist(out[0])
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 

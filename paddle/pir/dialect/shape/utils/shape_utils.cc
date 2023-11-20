@@ -79,7 +79,7 @@ bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
     return false;
 
   if (lhs_type.HasStaticShape() && rhs_type.HasStaticShape()) {
-    return vectorize(lhs_type.GetShape()) == vectorize(rhs_type.GetShape());
+    return lhs_type.GetDyShape() == rhs_type.GetDyShape();
   }
 
   auto lhs_it = value_to_sym_dims_.find(lhs);
@@ -114,13 +114,13 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
         auto it = value_to_sym_dims_.find(value);
         if (!type || !type.HasRank()) return false;
         for (int idx : dim_idxs) {
-          if (type.GetShape()[idx] == ShapedTypeInterface::kDynamic) {
+          if (type.GetDyShape()[idx] == ShapedTypeInterface::kDynamic) {
             if (it == value_to_sym_dims_.end() ||
                 static_cast<int>(it->second.size()) <= idx)
               return false;
             prod.symbols.push_back(it->second[idx]);
           } else {
-            prod.factor *= type.GetShape()[idx];
+            prod.factor *= type.GetDyShape()[idx];
           }
         }
         return true;
