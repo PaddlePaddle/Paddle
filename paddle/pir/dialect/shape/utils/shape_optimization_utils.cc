@@ -49,9 +49,9 @@ bool CompareSymbolicDimProduct(SymbolicDimProduct& lhs,    // NOLINT
 }
 
 SymbolicDimMgr::SymbolicDimMgr(ModuleOp m) : m_(m) {
-  for (auto op : *(m.block())) {
-    if (op->isa<shape::FuncOp>()) {
-      symbol_table_ = SymbolTable(op);
+  for (auto& op : *(m.block())) {
+    if (op.isa<shape::FuncOp>()) {
+      symbol_table_ = SymbolTable(&op);
       return;
     }
   }
@@ -63,9 +63,9 @@ SymbolicDimMgr::SymbolicDimMgr(ModuleOp m) : m_(m) {
 bool SymbolicDimMgr::Load() {
   auto func_op = symbol_table_.getOp()->dyn_cast<shape::FuncOp>();
   IR_ENFORCE(func_op);
-  for (auto op : *(func_op.block())) {
-    symbol_table_.insert(op);
-    if (SymbolicDimOp sym_dim_op = op->dyn_cast<SymbolicDimOp>()) {
+  for (auto& op : *(func_op.block())) {
+    symbol_table_.insert(&op);
+    if (SymbolicDimOp sym_dim_op = op.dyn_cast<SymbolicDimOp>()) {
       symbol_dim_union_set_[sym_dim_op] = sym_dim_op;
       symbol_name_set_.insert(sym_dim_op.GetSymName());
     }
@@ -473,16 +473,16 @@ bool SymbolicDimMgr::Save() {
   };
 
   // TODO(zhangbopd): update attributes attached in DenseTensorType
-  for (auto op : *(m_.block())) {
-    if (!op->HasAttribute(SymbolicDimOp::GetSymbolicDimAttrName())) continue;
+  for (auto& op : *(m_.block())) {
+    if (!op.HasAttribute(SymbolicDimOp::GetSymbolicDimAttrName())) continue;
     auto attrs =
-        op->attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName());
+        op.attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName());
     auto symbolic_shape_attr =
         update_attrs(attrs, [&](const std::string& name) {
           return symbol_table_.Lookup<SymbolicDimOp>(name);
         });
-    op->set_attribute(SymbolicDimOp::GetSymbolicDimAttrName(),
-                      symbolic_shape_attr);
+    op.set_attribute(SymbolicDimOp::GetSymbolicDimAttrName(),
+                     symbolic_shape_attr);
   }
   if (!UpdateProductEqualityMap()) {
     return false;
@@ -499,10 +499,10 @@ bool SymbolicDimMgr::Save() {
         used_symbol_names.push_back(sym.GetSymName());
     }
   };
-  for (auto op : *(m_.block())) {
-    if (!op->HasAttribute(SymbolicDimOp::GetSymbolicDimAttrName())) continue;
+  for (auto& op : *(m_.block())) {
+    if (!op.HasAttribute(SymbolicDimOp::GetSymbolicDimAttrName())) continue;
     auto attrs =
-        op->attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName());
+        op.attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName());
     collect_used_symbols(attrs);
   }
   auto func_op = symbol_table_.getOp()->dyn_cast<shape::FuncOp>();
@@ -559,14 +559,14 @@ bool SymbolicDimMgr::Save() {
     name_to_symbol[name] = op;
   }
 
-  for (auto op : *(m_.block())) {
-    if (!op->HasAttribute(SymbolicDimOp::GetSymbolicDimAttrName())) continue;
+  for (auto& op : *(m_.block())) {
+    if (!op.HasAttribute(SymbolicDimOp::GetSymbolicDimAttrName())) continue;
     auto attrs =
-        op->attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName());
+        op.attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName());
     auto symbolic_shape_attr = update_attrs(
         attrs, [&](const std::string& name) { return name_to_symbol[name]; });
-    op->set_attribute(SymbolicDimOp::GetSymbolicDimAttrName(),
-                      symbolic_shape_attr);
+    op.set_attribute(SymbolicDimOp::GetSymbolicDimAttrName(),
+                     symbolic_shape_attr);
   }
 
   // TODO(zhangbopd): update attributes attached to values.
@@ -579,11 +579,11 @@ bool SymbolicDimMgr::SaveShapeConstraintGraph() {
   IR_ENFORCE(func_op);
   auto op_it = func_op.block()->rbegin();
   while (op_it != func_op.block()->rend()) {
-    if (((*op_it)->isa<shape::SymbolicDimOp>()) ||
-        ((*op_it)->isa<shape::TieShapeOp>()))
+    if ((op_it->isa<shape::SymbolicDimOp>()) ||
+        (op_it->isa<shape::TieShapeOp>()))
       op_it++;
     else
-      op_it = decltype(op_it)(func_op.block()->erase(*(*op_it)));
+      op_it = decltype(op_it)(func_op.block()->erase(*op_it));
   }
 
   // save product equal predicate
