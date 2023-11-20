@@ -29,7 +29,10 @@
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
+
+PD_DECLARE_bool(cinn_enable_map_expr);
 
 namespace cinn {
 namespace optim {
@@ -461,6 +464,9 @@ struct SimplifyCastMutator : public ir::IRMutator<> {
 }  // namespace
 
 void Simplify(Expr* expr) {
+  if (FLAGS_cinn_enable_map_expr) {
+    return;
+  }
   VLOG(3) << "Begin Simplify " << *expr;
   SimplifyCastMutator()(expr);
   SimplifyRampMutator()(expr);

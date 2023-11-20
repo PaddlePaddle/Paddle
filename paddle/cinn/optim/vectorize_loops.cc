@@ -32,7 +32,10 @@
 #include "paddle/cinn/ir/utils/ir_replace.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/unroll_loops.h"
+#include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/functional.h"
+
+PD_DECLARE_bool(cinn_enable_map_expr);
 
 namespace cinn {
 namespace optim {
@@ -978,6 +981,9 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
 };
 
 void VectorizeLoops(Expr *expr, const Target &target) {
+  if (FLAGS_cinn_enable_map_expr) {
+    return;
+  }
   return VectorizeLoops_(target)(expr);
 }
 

@@ -577,8 +577,7 @@ class MapExprToIrTranslator {
 
   ir::Expr GetLoopSize(const LoopDescriptor& ld) const {
     const auto& [_, loop_size] = ld.tuple();
-    CHECK(loop_size.Has<std::int64_t>());
-    return ir::Expr{IteratorInt(loop_size.Get<std::int64_t>())};
+    return TranslateDimExpr(loop_size);
   }
 
   std::tuple<ir::ForType, ir::VectorizeInfo, ir::BindInfo>
@@ -732,10 +731,12 @@ class MapExprToIrTranslator {
   }
 
   ir::Expr TranslateDimExprImpl(const SymbolicDim& dim_expr) const {
-    // ADT_TODO(Hongyu Jia) : Replace to real SymbolicDimOp when pir is ready
-    return ir::_Dim_::Make(
-        std::string("sym_") + std::to_string(dim_expr.value().unique_id()),
-        cinn::ir::SymbolicDimOp());
+    return ir::Var{std::string("sym_") +
+                   std::to_string(dim_expr.value().unique_id())};
+    // ADT_TODO(Hongyu Jia) : Replace to real SymbolicDimOp when pir is ready?
+    // return ir::_Dim_::Make(
+    //     std::string("sym_") + std::to_string(dim_expr.value().unique_id()),
+    //     cinn::ir::SymbolicDimOp());
   }
 
   ir::Expr TranslateDimExprImpl(const Negative<DimExpr>& dim_expr) const {
@@ -779,6 +780,14 @@ class MapExprToIrTranslator {
         dim_expr.variant());
   }
 
+  // ADT_TODO(Hongyu Jia) : Directly return BI iterator maybe a little tricky
+  using BroadcastedSymbolicIterator = BroadcastedIterator<Value, SymbolicDim>;
+  ir::Expr TranslateBI(const Value& value) const {
+    const auto& [iterator, symbolic_dim] =
+        value.Get<BroadcastedIterator<Value, DimExpr>>().tuple();
+    return TranslateIterator(iterator);
+  }
+
   ir::Expr TranslateTensorIterator(const Value& value) const {
     if (Match<IndexDotValueOfList>(value)) {
       return TranslateIndexDotValueOfList(value);
@@ -788,6 +797,8 @@ class MapExprToIrTranslator {
       return TranslateIterator(value);
     } else if (Match<DimExpr>(value)) {
       return TranslateDimExpr(value);
+    } else if (Match<BroadcastedSymbolicIterator>(value)) {
+      return TranslateBI(value);
     } else {
       LOG(FATAL) << "Not supported yet! " << ToTxtString(value);
     }
