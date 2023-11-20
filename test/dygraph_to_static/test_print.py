@@ -15,7 +15,10 @@
 import unittest
 
 import numpy
-from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir_exe_and_pir_api,
+)
 
 import paddle
 
@@ -103,7 +106,7 @@ class TestPrintVariable(TestPrintBase):
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_variable
 
-    @test_legacy_and_pir
+    @test_legacy_and_pir_exe_and_pir_api
     def test_transformed_static_result(self):
         self.get_dygraph_output()
         self.get_static_output()
