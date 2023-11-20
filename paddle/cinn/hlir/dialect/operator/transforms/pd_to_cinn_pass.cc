@@ -124,6 +124,7 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
           mul_in, op->operand_source(1));
 
       rewriter.ReplaceAllUsesWith(op.result(0), mul_op.result(0));
+      rewriter.EraseOp(op);
     }
 
     return true;
@@ -222,11 +223,7 @@ class ConcatOpPattern
   bool MatchAndRewrite(paddle::dialect::ConcatOp op,
                        pir::PatternRewriter &rewriter) const override {
     auto axis_gen_op = op->operand_source(1).dyn_cast<pir::OpResult>().owner();
-    std::cerr << "concat op\n";
-    std::cerr << axis_gen_op->name() << std::endl;
     if (auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>()) {
-      std::cerr << "is full\n";
-
       int axis = phi::Scalar(full_op.attribute("value")
                                  .dyn_cast<::pir::FloatAttribute>()
                                  .data())
