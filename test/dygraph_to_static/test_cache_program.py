@@ -18,6 +18,7 @@ from collections import Counter
 import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
+    test_ast_only,
     test_legacy_and_pir_exe_and_pir_api,
 )
 from test_fetch_feed import Linear, Pool2D
@@ -34,10 +35,11 @@ class TestCacheProgram(Dy2StTestBase):
         self.data = np.random.random((1, 2, 4, 4)).astype('float32')
 
     @test_legacy_and_pir_exe_and_pir_api
+    @test_ast_only
     def test_cache(self):
         prev_ops, cur_ops = Counter(), Counter()
         prev_out, cur_out = None, None
-        static_net = self.dygraph_class()
+        static_net = paddle.jit.to_static(self.dygraph_class())
         for batch_id in range(self.batch_num):
             out = static_net(paddle.to_tensor(self.data))
             # Check outputs
@@ -45,9 +47,22 @@ class TestCacheProgram(Dy2StTestBase):
             cur_out = out
             # Check forward ops
             prev_ops = cur_ops
-            cur_ops = Counter(
-                [op.type for op in base.default_main_program().block(0).ops]
-            )
+
+            if paddle.framework.use_pir_api():
+                cur_ops = Counter(
+                    [
+                        op.name()
+                        for op in static_net.forward.concrete_program.main_program.global_block().ops
+                    ]
+                )
+
+            else:
+                cur_ops = Counter(
+                    [
+                        op.type
+                        for op in static_net.forward.concrete_program.main_program.global_block().ops
+                    ]
+                )
             if batch_id > 0:
                 prev_out_numpy = (
                     prev_out[0].numpy()
@@ -92,19 +107,19 @@ class TestCacheProgramWithOptimizer(Dy2StTestBase):
     def train(self, to_static=False):
         paddle.jit.enable_to_static(to_static)
 
-        dygraph_net = self.dygraph_class()
+        static_net = paddle.jit.to_static(self.dygraph_class())
         adam = paddle.optimizer.Adam(
-            learning_rate=0.001, parameters=dygraph_net.parameters()
+            learning_rate=0.001, parameters=static_net.parameters()
         )
         loss_data = []
         for batch_id in range(self.batch_num):
-            input = base.dygraph.to_variable(self.data)
-            pred, avg_loss = dygraph_net(input)
+            input = paddle.to_tensor(self.data)
+            pred, avg_loss = static_net(input)
 
             loss_data.append(avg_loss.numpy())
             avg_loss.backward()
             adam.minimize(avg_loss)
-            dygraph_net.clear_gradients()
+            static_net.clear_gradients()
 
         return loss_data
 
