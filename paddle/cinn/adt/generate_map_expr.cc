@@ -191,10 +191,6 @@ std::shared_ptr<IGroup> MakeIGroup(const AnchorGroup& igroup_spec) {
   std::shared_ptr<const EquationFunctionConstantsProvider> constants_provider{
       new NaiveEquationFunctionConstantsProvider{
           igroup_spec.op_stmts, igroup_spec.EquationCtx4OpStmt}};
-  VLOG(1) << "IGroup spec.size() = " << igroup_spec.op_stmts->size();
-  for (std::size_t i = 0; i < igroup_spec.op_stmts->size(); ++i) {
-    VLOG(1) << "OpStmt = " << ToTxtString(igroup_spec.op_stmts->at(i));
-  }
   std::shared_ptr<DirectionEquationGenerator> direction_equation_generator{
       new NaiveBidirectionEquationGenerator{igroup_spec.op_stmts,
                                             igroup_spec.EquationCtx4OpStmt}};

@@ -71,9 +71,9 @@ struct EmbeddingCPUFunctor {
       }
     }
 
-    // #if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
-    // #pragma omp parallel for
-    // #endif
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#pragma omp parallel for
+#endif
 
     for (int64_t i = 0; i < ids_numel; ++i) {
       if (padding_idx_ != kNoPadding && ids[i] == padding_idx_) {
