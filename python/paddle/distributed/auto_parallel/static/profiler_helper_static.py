@@ -40,11 +40,12 @@ def parse_args():
     all_devices = ",".join([str(i) for i in range(device_count)])
     parser.add_argument("--devices", type=str, default=all_devices)
     parser.add_argument("--log_dir", type=str, required=True)
+    parser.add_argument("--multi_machine", action="store_true")
     args = parser.parse_args()
     return args
 
 
-def process_job_log(log_data, device_id):
+def process_job_log(log_data, device_id, multi_machine_idx=-1):
     log_pattern = r'.*?Profiler Info: Job \((\d+)\), type = (\w+), micro_batch_id = (\d+), job_start_time = (\d+.\d+), job_end_time = (\d+.\d+)'
     matches = re.findall(log_pattern, log_data)
     events = []
@@ -66,13 +67,22 @@ def process_job_log(log_data, device_id):
             step_start_time = start_time
         step_end_time = end_time
 
+        tid_name = (
+            "GPU" + str(device_id)
+            if multi_machine_idx == -1
+            else "GPU"
+            + str(device_id)
+            + "(machine:"
+            + str(multi_machine_idx)
+            + ")"
+        )
         event_start = {
             "name": job_type + "_" + str(job_id),
             "cat": job_type,
             "ph": "B",
             "ts": start_time,
             "pid": 0,
-            "tid": "GPU" + str(device_id),
+            "tid": tid_name,
         }
         event_end = {
             "name": job_type + "_" + str(job_id),
@@ -80,7 +90,7 @@ def process_job_log(log_data, device_id):
             "ph": "E",
             "pid": 0,
             "ts": end_time,
-            "tid": "GPU" + str(device_id),
+            "tid": tid_name,
         }
         if job_type in color_map:
             event_start["cname"] = color_map[job_type]
@@ -100,29 +110,47 @@ def main():
     all_events = []
     step_infos = []
     start_step = 0
+    machine_num = 1
 
-    for device_id in args.devices.split(","):
-        _logger.info(f"Process device {device_id}")
-        device_id = int(device_id)
-        log_file = os.path.join(args.log_dir, "workerlog." + str(device_id))
-        with open(log_file, "r") as f:
-            log_data = f.read()
+    def process_one_machine_log(log_dir, multi_machine_idx=-1):
+        for device_id in args.devices.split(","):
+            _logger.info(f"Process device {device_id}")
+            device_id = int(device_id)
+            log_file = os.path.join(log_dir, "workerlog." + str(device_id))
+            with open(log_file, "r") as f:
+                log_data = f.read()
 
-        start_step_pattern = (
-            r'.*?Schedule Profiler start at step (\d+) and end at step.*'
-        )
-        start_step_match = re.findall(start_step_pattern, log_data)
-        start_step = (
-            int(start_step_match[0]) if len(start_step_match) > 0 else 0
-        )
+            start_step_pattern = (
+                r'.*?Schedule Profiler start at step (\d+) and end at step.*'
+            )
+            start_step_match = re.findall(start_step_pattern, log_data)
+            start_step = (
+                int(start_step_match[0]) if len(start_step_match) > 0 else 0
+            )
 
-        events, step_times = process_job_log(log_data, device_id)
-        all_events.extend(events)
-        for i, info in enumerate(step_times):
-            if len(step_infos) <= i:
-                step_infos.append([float("inf"), float("-inf")])
-            step_infos[i][0] = min(step_infos[i][0], info[0])
-            step_infos[i][1] = max(step_infos[i][1], info[1])
+            events, step_times = process_job_log(
+                log_data, device_id, multi_machine_idx
+            )
+            all_events.extend(events)
+            for i, info in enumerate(step_times):
+                if len(step_infos) <= i:
+                    step_infos.append([float("inf"), float("-inf")])
+                step_infos[i][0] = min(step_infos[i][0], info[0])
+                step_infos[i][1] = max(step_infos[i][1], info[1])
+
+    if args.multi_machine:
+        multi_machine_dirs = os.listdir(args.log_dir)
+        multi_machine_dirs = [
+            os.path.join(args.log_dir, f"machine{i}")
+            for i in range(len(multi_machine_dirs))
+            if os.path.isdir(os.path.join(args.log_dir, f"machine{i}"))
+        ]
+        machine_num = len(multi_machine_dirs)
+        for i, d in enumerate(multi_machine_dirs):
+            _logger.info(f"Process machine {i}")
+            process_one_machine_log(d, i)
+    else:
+        process_one_machine_log(args.log_dir)
 
     for i, info in enumerate(step_infos):
         start_time = info[0]
@@ -170,24 +198,41 @@ def main():
             }
         ]
     )
-    for i in range(len(args.devices.split(","))):
-        all_events.extend(
-            [
-                {
-                    "args": {"name": f"GPU:{i}"},
-                    "cat": "__metadata",
-                    "name": "thread_name",
-                    "ph": "M",
-                    "pid": 0,
-                    "tid": i + 2334,
-                    "ts": 0,
-                }
-            ]
-        )
+
+    for i in range(machine_num):
+        for j in range(len(args.devices.split(","))):
+            if machine_num > 1:
+                name = f"GPU:{j}(machine:{i})"
+                tid = i * len(args.devices.split(",")) + j + 2334
+            else:
+                name = f"GPU:{j}"
+                tid = j + 2334
+            all_events.extend(
+                [
+                    {
+                        "args": {"name": name},
+                        "cat": "__metadata",
+                        "name": "thread_name",
+                        "ph": "M",
+                        "pid": 0,
+                        "tid": tid,
+                        "ts": 0,
+                    }
+                ]
+            )
+
     json_str = json.dumps({"traceEvents": all_events})
-    for i in range(len(args.devices.split(","))):
-        json_str = json_str.replace('"Step"', '2333')
-        json_str = json_str.replace(f'"GPU{i}"', f'{i + 2334}')
+    json_str = json_str.replace('"Step"', '2333')
+
+    for i in range(machine_num):
+        for j in range(len(args.devices.split(","))):
+            if machine_num > 1:
+                json_str = json_str.replace(
+                    f'"GPU{j}(machine:{i})"',
+                    f'{i * len(args.devices.split(",")) + j + 2334}',
+                )
+            else:
+                json_str = json_str.replace(f'"GPU{j}"', f'{j + 2334}')
 
     with open(save_path, "w") as f:
         f.write(json_str)
