@@ -331,19 +331,7 @@ def launch():
 
         # copy training script args
         if ctx.args.training_script.endswith('.py'):
-            if os.environ.get("WITH_COVERAGE") == "ON":
-                entrypoint = [
-                    sys.executable,
-                    "-m",
-                    "coverage",
-                    "run",
-                    "--branch",
-                    "-p",
-                    "-u",
-                    ctx.args.training_script,
-                ]
-            else:
-                entrypoint = [sys.executable, "-u", ctx.args.training_script]
+            entrypoint = [sys.executable, "-u", ctx.args.training_script]
         else:
             entrypoint = [ctx.args.training_script]
         entrypoint.extend(ctx.args.training_script_args)

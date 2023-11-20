@@ -20,10 +20,18 @@ import sys
 import unittest
 import warnings
 from collections import defaultdict
+from contextlib import contextmanager
 from copy import copy
 
 import numpy as np
-from auto_parallel_test_gen import gen_auto_parallel_test_file
+from auto_parallel_op_test import (
+    dump_test_info,
+    gen_auto_parallel_test_file,
+    get_subprocess_command,
+    get_subprocess_runtime_envs,
+    get_test_info_and_generated_test_path,
+    run_subprocess,
+)
 from op import Operator
 from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
 from testsuite import append_input_output, append_loss_ops, create_op, set_input
@@ -377,22 +385,30 @@ def convert_uint16_to_float(in_list):
     return np.reshape(out, in_list.shape)
 
 
-class AutoParallelTestGuard:
-    def __init__(self, test_info_path, generated_test_file_path):
-        self.test_info_path = test_info_path
-        self.generated_test_file_path = generated_test_file_path
-
-    def __enter__(self):
-        test_info_file = open(self.test_info_path, 'wb')
-        test_info_file.close()
-        generated_test_file = open(self.generated_test_file_path, 'wb')
-        generated_test_file.close()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if os.path.exists(self.test_info_path):
-            os.remove(self.test_info_path)
-        if os.path.exists(self.generated_test_file_path):
-            os.remove(self.generated_test_file_path)
+@contextmanager
+def auto_parallel_test_guard(test_info_path, generated_test_file_path):
+    test_info_file, generated_test_file = None, None
+    if os.path.exists(test_info_path):
+        raise OSError(
+            f"{test_info_path} which stores test info should not exist. Please delete it firstly."
+        )
+    if os.path.exists(generated_test_file_path):
+        raise OSError(
+            f"{generated_test_file_path} which stores test code should not exist. Please delete it firstly."
+        )
+    test_info_file = open(test_info_path, "wb")
+    generated_test_file = open(generated_test_file_path, "wb")
+    try:
+        yield
+    finally:
+        if test_info_file is not None:
+            test_info_file.close()
+        if generated_test_file is not None:
+            generated_test_file.close()
+        if os.path.exists(test_info_path):
+            os.remove(test_info_path)
+        if os.path.exists(generated_test_file_path):
+            os.remove(generated_test_file_path)
 
 
 class OpTest(unittest.TestCase):
@@ -2553,102 +2569,32 @@ class OpTest(unittest.TestCase):
             return
 
         if check_auto_parallel:
-            import pathlib
-            import pickle
-            import sys
-            import uuid
-
-            test_class_name = self.__class__.__name__
-            suffixes = str(uuid.uuid4())
-            current_path = str(pathlib.Path(__file__).resolve().parents[0])
-            forward_test_info_path = f"{current_path}/{test_class_name}_{self.op_type}_forward_info_{suffixes}.pkl"
-            generated_forward_test_path = f"{current_path}/{test_class_name}_{self.op_type}_forward_test_{suffixes}.py"
-            with AutoParallelTestGuard(
+            (
+                forward_test_info_path,
+                generated_forward_test_path,
+            ) = get_test_info_and_generated_test_path(
+                self.__class__.__name__, self.op_type, backward=False
+            )
+            with auto_parallel_test_guard(
                 forward_test_info_path, generated_forward_test_path
             ):
-                file = open(
-                    forward_test_info_path,
-                    "wb",
+                dump_test_info(
+                    self, place, forward_test_info_path, backward=False
                 )
-                test_info = {}
-                test_info["op_type"] = self.op_type
-                test_info["python_api"] = self.python_api
-                test_info["dtype"] = self.dtype
-                test_info["input_specs"] = self.input_specs
-                test_info["inputs"] = self.inputs
-                test_info["attrs"] = self.attrs
-                test_info["outputs"] = self.outputs
-                if isinstance(place, paddle.base.libpaddle.CPUPlace):
-                    test_info["place"] = "cpu"
-                if isinstance(place, paddle.base.libpaddle.CUDAPlace):
-                    test_info["place"] = "gpu"
-                test_info["python_out_sig"] = (
-                    self.python_out_sig
-                    if hasattr(self, "python_out_sig")
-                    else None
-                )
-                pickle.dump(test_info, file)
-                file.close()
                 # code gen for auto parallel forward test
                 gen_auto_parallel_test_file(
                     check_grad=False,
                     test_info_path=forward_test_info_path,
                     test_file_path=generated_forward_test_path,
                 )
-                import subprocess
-                import time
-
-                python_interp = sys.executable
-                runtime_envs = os.environ
-                if (
-                    "CUDA_VISIBLE_DEVICES" not in runtime_envs
-                    or len(runtime_envs["CUDA_VISIBLE_DEVICES"].split(",")) < 2
-                ):
-                    runtime_envs.update({"CUDA_VISIBLE_DEVICES": "0,1"})
-                print(
-                    "CUDA_VISIBLE_DEVICES", runtime_envs["CUDA_VISIBLE_DEVICES"]
+                runtime_envs = get_subprocess_runtime_envs(place)
+                start_command = get_subprocess_command(
+                    runtime_envs["CUDA_VISIBLE_DEVICES"],
+                    generated_forward_test_path,
+                    log_dir=self.log_dir if hasattr(self, "log_dir") else None,
                 )
-                if test_info["place"] == "cpu":
-                    runtime_envs.update({"backend": "cpu"})
-                if test_info["place"] == "gpu":
-                    runtime_envs.update({"backend": "gpu"})
-                devices = runtime_envs["CUDA_VISIBLE_DEVICES"]
-                if hasattr(self, "log_dir"):
-                    if os.path.isabs(self.log_dir):
-                        abs_log_dir = self.log_dir
-                    else:
-                        abs_log_dir = (
-                            current_path + '/' + self.log_dir[2:]
-                            if self.log_dir.startswith("./")
-                            else current_path + '/' + self.log_dir
-                        )
-                    start_command = f"{python_interp} -m paddle.distributed.launch --devices {devices} --log_dir {abs_log_dir}  {generated_forward_test_path}"
-                else:
-                    start_command = f"{python_interp} -m paddle.distributed.launch --devices {devices} {generated_forward_test_path}"
-                start_command_list = start_command.strip().split()
-                print("start_command_list", start_command_list)
-                try:
-                    t1 = time.time()
-                    _launcher = subprocess.run(
-                        start_command_list,
-                        env=runtime_envs,
-                        timeout=120,
-                        check=True,
-                    )
-                    t2 = time.time()
-                    print("运行进程耗时", t2 - t1)
-                except subprocess.TimeoutExpired as err:
-                    raise TimeoutError(
-                        "Timeout while running command {}, try to set a longer period, {} is not enough.".format(
-                            err.cmd, err.timeout
-                        )
-                    )
-                except subprocess.CalledProcessError as err:
-                    raise RuntimeError(
-                        "Error occurs when running this test case. The return code of command {} is {}".format(
-                            err.cmd, err.returncode
-                        )
-                    )
+                print("start_command", start_command)
+                run_subprocess(start_command, runtime_envs, timeout=120)
 
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
@@ -3080,108 +3026,43 @@ class OpTest(unittest.TestCase):
             return
 
         if check_auto_parallel:
-            import pathlib
-            import pickle
-            import sys
-            import uuid
-
-            test_class_name = self.__class__.__name__
-            suffixes = str(uuid.uuid4())
-            current_path = str(pathlib.Path(__file__).resolve().parents[0])
-            grad_test_info_path = f"{current_path}/{test_class_name}_{self.op_type}_grad_info_{suffixes}.pkl"
-            generated_grad_test_path = f"{current_path}/{test_class_name}_{self.op_type}_grad_test_{suffixes}.py"
-            with AutoParallelTestGuard(
+            (
+                grad_test_info_path,
+                generated_grad_test_path,
+            ) = get_test_info_and_generated_test_path(
+                self.__class__.__name__, self.op_type, backward=True
+            )
+            with auto_parallel_test_guard(
                 grad_test_info_path, generated_grad_test_path
             ):
-                file = open(
-                    grad_test_info_path,
-                    "wb",
-                )
-                test_info = {}
-                test_info["op_type"] = self.op_type
-                test_info["python_api"] = self.python_api
-                test_info["dtype"] = self.dtype
-                test_info["input_specs"] = self.input_specs
-                test_info["inputs"] = self.inputs
-                test_info["attrs"] = self.attrs
-                test_info["outputs"] = self.outputs
-                if isinstance(place, paddle.base.libpaddle.CPUPlace):
-                    test_info["place"] = "cpu"
-                if isinstance(place, paddle.base.libpaddle.CUDAPlace):
-                    test_info["place"] = "gpu"
-                test_info["python_out_sig"] = (
-                    self.python_out_sig
-                    if hasattr(self, "python_out_sig")
-                    else None
-                )
-                test_info["inputs_to_check"] = inputs_to_check
-                test_info["output_names"] = output_names
-                test_info["no_grad_set"] = no_grad_set
-                test_info[
+                backward_extra_test_info = {}
+                backward_extra_test_info["inputs_to_check"] = inputs_to_check
+                backward_extra_test_info["output_names"] = output_names
+                backward_extra_test_info["no_grad_set"] = no_grad_set
+                backward_extra_test_info[
                     "user_defined_grad_outputs"
                 ] = user_defined_grad_outputs
-                pickle.dump(test_info, file)
-                file.close()
+                dump_test_info(
+                    self,
+                    place,
+                    grad_test_info_path,
+                    backward=True,
+                    backward_extra_test_info=backward_extra_test_info,
+                )
                 # code gen for auto parallel grad test
                 gen_auto_parallel_test_file(
                     check_grad=True,
                     test_info_path=grad_test_info_path,
                     test_file_path=generated_grad_test_path,
                 )
-                import subprocess
-                import time
-
-                python_interp = sys.executable
-                runtime_envs = os.environ
-                if (
-                    "CUDA_VISIBLE_DEVICES" not in runtime_envs
-                    or len(runtime_envs["CUDA_VISIBLE_DEVICES"].split(",")) < 2
-                ):
-                    runtime_envs.update({"CUDA_VISIBLE_DEVICES": "0,1"})
-                print(
-                    "CUDA_VISIBLE_DEVICES", runtime_envs["CUDA_VISIBLE_DEVICES"]
+                runtime_envs = get_subprocess_runtime_envs(place)
+                start_command = get_subprocess_command(
+                    runtime_envs["CUDA_VISIBLE_DEVICES"],
+                    generated_grad_test_path,
+                    log_dir=self.log_dir if hasattr(self, "log_dir") else None,
                 )
-                if test_info["place"] == "cpu":
-                    runtime_envs.update({"backend": "cpu"})
-                if test_info["place"] == "gpu":
-                    runtime_envs.update({"backend": "gpu"})
-                devices = runtime_envs["CUDA_VISIBLE_DEVICES"]
-                if hasattr(self, "log_dir"):
-                    if os.path.isabs(self.log_dir):
-                        abs_log_dir = self.log_dir
-                    else:
-                        abs_log_dir = (
-                            current_path + '/' + self.log_dir[2:]
-                            if self.log_dir.startswith("./")
-                            else current_path + '/' + self.log_dir
-                        )
-                    start_command = f"{python_interp} -m paddle.distributed.launch --devices {devices} --log_dir {abs_log_dir}  {generated_grad_test_path}"
-                else:
-                    start_command = f"{python_interp} -m paddle.distributed.launch --devices {devices} {generated_grad_test_path}"
-                start_command_list = start_command.strip().split()
-                print("start_command_list", start_command_list)
-                try:
-                    t1 = time.time()
-                    _launcher = subprocess.run(
-                        start_command_list,
-                        env=runtime_envs,
-                        timeout=120,
-                        check=True,
-                    )
-                    t2 = time.time()
-                    print("运行进程耗时", t2 - t1)
-                except subprocess.TimeoutExpired as err:
-                    raise TimeoutError(
-                        "Timeout while running command {}, try to set a longer period, {} is not enough.".format(
-                            err.cmd, err.timeout
-                        )
-                    )
-                except subprocess.CalledProcessError as err:
-                    raise RuntimeError(
-                        "Error occurs when running this test case. The return code of command {} is {}".format(
-                            err.cmd, err.returncode
-                        )
-                    )
+                print("start_command", start_command)
+                run_subprocess(start_command, runtime_envs, timeout=120)
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else {}
         op_outputs = self.outputs if hasattr(self, "outputs") else {}

@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import pathlib
+import pickle
+import subprocess
+import sys
+import uuid
 from collections import defaultdict
 
 import numpy as np
@@ -20,6 +26,221 @@ from utils import dygraph_guard
 
 import paddle
 import paddle.distributed as dist
+
+IMPORT_PACKAGE_TEMPLATE = """
+
+import pathlib
+import pickle
+import sys
+"""
+
+IMPORT_FORWARD_TEST_CLASS_TEMPLATE = """
+
+sys.path.append(
+    str(pathlib.Path(__file__).resolve().parents[0] / 'test/legacy_test')
+)
+from auto_parallel_op_test import AutoParallelForwardChecker
+"""
+
+IMPORT_GRAD_TEST_CLASS_TEMPLATE = """
+
+sys.path.append(
+    str(pathlib.Path(__file__).resolve().parents[0] / 'test/legacy_test')
+)
+from auto_parallel_op_test import AutoParallelGradChecker
+"""
+
+LOAD_TEST_INFO_TEMPLATE = """
+
+def dump_test_info(test_info_path):
+    with open(test_info_path, "rb") as f:
+        test_info = pickle.load(f)
+    return test_info
+"""
+
+FORWARD_TEST_FUNCTION_TEMPLATE = """
+
+def run_forward_check(test_info):
+    auto_parallel_forward_checker = AutoParallelForwardChecker(
+        test_info["op_type"],
+        test_info["python_api"],
+        test_info["dtype"],
+        test_info["input_specs"],
+        test_info["inputs"],
+        test_info["attrs"],
+        test_info["outputs"],
+        test_info["place"],
+        test_info["python_out_sig"],
+    )
+    auto_parallel_forward_checker.check()
+"""
+
+GRAD_TEST_FUNCTION_TEMPLATE = """
+
+def run_grad_check(test_info):
+    auto_parallel_forward_checker = AutoParallelGradChecker(
+        test_info["op_type"],
+        test_info["python_api"],
+        test_info["dtype"],
+        test_info["input_specs"],
+        test_info["inputs"],
+        test_info["attrs"],
+        test_info["outputs"],
+        test_info["place"],
+        test_info["inputs_to_check"],
+        test_info["output_names"],
+        test_info["user_defined_grad_outputs"],
+        test_info["python_out_sig"],
+    )
+    auto_parallel_forward_checker.check()
+"""
+
+TEST_BODY_TEMPLATE = """
+
+if __name__ == "__main__":
+    test_info = dump_test_info('{test_info_path}')
+    {run_test}
+"""
+
+
+def gen_import_packages(check_grad):
+    import_code = ''
+    import_code += IMPORT_PACKAGE_TEMPLATE
+    import_code += (
+        IMPORT_FORWARD_TEST_CLASS_TEMPLATE
+        if not check_grad
+        else IMPORT_GRAD_TEST_CLASS_TEMPLATE
+    )
+    return import_code
+
+
+def gen_auto_parallel_test_file(check_grad, test_info_path, test_file_path):
+    test_code = ''
+    test_code += gen_import_packages(check_grad)
+    test_code += LOAD_TEST_INFO_TEMPLATE.format(test_info_path=test_info_path)
+    test_code += (
+        GRAD_TEST_FUNCTION_TEMPLATE
+        if check_grad
+        else FORWARD_TEST_FUNCTION_TEMPLATE
+    )
+    run_test_str = (
+        "run_grad_check(test_info)"
+        if check_grad
+        else "run_forward_check(test_info)"
+    )
+    test_code += TEST_BODY_TEMPLATE.format(
+        test_info_path=test_info_path, run_test=run_test_str
+    )
+    with open(test_file_path, "w") as f:
+        f.write(test_code)
+
+
+def get_test_info_and_generated_test_path(
+    test_class_name, op_type, backward=False
+):
+    suffixes = str(uuid.uuid4())
+    current_path = str(pathlib.Path(__file__).resolve().parents[0])
+    forward_or_backward = "forward" if not backward else "backward"
+    test_info_path = f"{current_path}/{test_class_name}_{op_type}_{forward_or_backward}_info_{suffixes}.pkl"
+    generated_test_path = f"{current_path}/{test_class_name}_{op_type}_{forward_or_backward}_test_{suffixes}.py"
+    return test_info_path, generated_test_path
+
+
+def check_auto_parallel_info(op_test):
+    assert hasattr(
+        op_test, 'python_api'
+    ), "If you want to check auto parallel, please set python_api in setUp function."
+    assert hasattr(
+        op_test, 'input_specs'
+    ), "If you want to check auto parallel, please set input_specs in setUp function."
+
+
+def dump_test_info(
+    op_test,
+    place,
+    test_info_path,
+    backward=False,
+    backward_extra_test_info=None,
+):
+    check_auto_parallel_info(op_test)
+    test_info = {}
+    with open(test_info_path, "wb") as f:
+        test_info["op_type"] = op_test.op_type
+        test_info["python_api"] = op_test.python_api
+        test_info["dtype"] = op_test.dtype
+        test_info["input_specs"] = op_test.input_specs
+        test_info["inputs"] = op_test.inputs
+        test_info["attrs"] = op_test.attrs if hasattr(op_test, "attrs") else {}
+        test_info["outputs"] = op_test.outputs
+        if isinstance(place, paddle.base.libpaddle.CPUPlace):
+            test_info["place"] = "cpu"
+        if isinstance(place, paddle.base.libpaddle.CUDAPlace):
+            test_info["place"] = "gpu"
+        test_info["python_out_sig"] = (
+            op_test.python_out_sig
+            if hasattr(op_test, "python_out_sig")
+            else None
+        )
+        if backward:
+            test_info["inputs_to_check"] = backward_extra_test_info[
+                "inputs_to_check"
+            ]
+            test_info["output_names"] = backward_extra_test_info["output_names"]
+            test_info["no_grad_set"] = backward_extra_test_info["no_grad_set"]
+            test_info["user_defined_grad_outputs"] = backward_extra_test_info[
+                "user_defined_grad_outputs"
+            ]
+        pickle.dump(test_info, f)
+
+
+def get_subprocess_runtime_envs(place):
+    runtime_envs = os.environ
+    if (
+        "CUDA_VISIBLE_DEVICES" not in runtime_envs
+        or len(runtime_envs["CUDA_VISIBLE_DEVICES"].split(",")) < 2
+    ):
+        runtime_envs.update({"CUDA_VISIBLE_DEVICES": "0,1"})
+        if isinstance(place, paddle.base.libpaddle.CPUPlace):
+            runtime_envs.update({"backend": "cpu"})
+        if isinstance(place, paddle.base.libpaddle.CUDAPlace):
+            runtime_envs.update({"backend": "gpu"})
+    return runtime_envs
+
+
+def get_subprocess_command(devices, test_file_path, log_dir=None):
+    if log_dir:
+        if os.path.isabs(log_dir):
+            abs_log_dir = log_dir
+        else:
+            abs_log_dir = os.path.abspath(log_dir)
+        start_command = f"{sys.executable} -m paddle.distributed.launch --devices {devices} --log_dir {abs_log_dir}  {test_file_path}"
+    else:
+        start_command = f"{sys.executable} -m paddle.distributed.launch --devices {devices} {test_file_path}"
+    return start_command
+
+
+def run_subprocess(start_command, env, timeout):
+    start_command_list = start_command.strip().split()
+    try:
+        _launcher = subprocess.run(
+            start_command_list,
+            env=env,
+            timeout=timeout,
+            check=True,
+        )
+    except subprocess.TimeoutExpired as err:
+        raise TimeoutError(
+            "Timeout while running command {}, try to set a longer period, {} is not enough.".format(
+                err.cmd, err.timeout
+            )
+        )
+    except subprocess.CalledProcessError as err:
+        raise RuntimeError(
+            "Error occurs when running this test case. The return code of command {} is {}".format(
+                err.cmd, err.returncode
+            )
+        )
+
 
 TOLERANCE = {
     np.dtype('float64'): {"rtol": 1e-15, "atol": 0},
