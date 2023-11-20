@@ -22,35 +22,45 @@
 
 namespace cinn {
 namespace common {
+
+template <Target::Arch arch>
+struct GetDevType {
+  using DevType = DevInfoBase;
+};
+
+// // Extra device should be added here
+class NVGPUDevInfo;
+template <>
+struct GetDevType<Target::Arch::NVGPU> {
+  using DevType = NVGPUDevInfo;
+};
+
 template <Target::Arch arch>
 class DevInfoMgr final {
  private:
-  explicit DevInfoMgr(int device_num = 0);
+  explicit DevInfoMgr(int device_num = 0) : device_num_(device_num) {
+    impl_ = std::make_unique<typename GetDevType<arch>::DevType>(device_num);
+  }
+
   std::unique_ptr<DevInfoBase> impl_;
   int device_num_;
 
-  template <Target::Arch arch>
-  struct GetRetType {
-    using RetType = DevInfoBase;
-  };
-
  public:
-  static DevInfoMgr<arch> GetDevInfo(int device_num = 0);
+  static DevInfoMgr<arch> GetDevInfo(int device_num = 0) {
+    return DevInfoMgr(device_num);
+  }
 
-  using RetType = GetRetType<arch>::RetType;
+  using RetType = typename GetDevType<arch>::DevType;
+
   const RetType* operator->() const {
-    CHECK(!std::is_void<RET_TYPE>()) << "Current device can't be recognized!\n";
-    return dynamic_cast<const RET_TYPE*>(impl_.get());
+    CHECK(!std::is_void<RetType>()) << "Current device can't be recognized!\n";
+    return dynamic_cast<const RetType*>(impl_.get());
   }
   RetType* operator->() {
-    CHECK(!std::is_void<RET_TYPE>()) << "Current device can't be recognized!\n";
-    return dynamic_cast<RET_TYPE*>(impl_.get());
+    CHECK(!std::is_void<RetType>()) << "Current device can't be recognized!\n";
+    return dynamic_cast<RetType*>(impl_.get());
   }
 };
-
-// Extra device should be added here
-template <>
-struct DevInfoMgr<Target::Arch::NVGPU>::GetRetType<Target::Arch::NVGPU>;
 
 }  // namespace common
 }  // namespace cinn
