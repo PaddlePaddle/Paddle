@@ -108,6 +108,7 @@ class PADDLE_API CustomOpKernelContext {
   CustomOpKernelContext() = default;
 
   void EmplaceBackInput(Tensor&& input);
+  void EmplaceBackInput(const Tensor& input);
   void EmplaceBackInputs(const std::vector<Tensor>& inputs);
   void EmplaceBackOutput(Tensor&& output);
   void EmplaceBackOutputs(const std::vector<Tensor>& outputs);
