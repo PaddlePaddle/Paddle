@@ -97,7 +97,7 @@ TEST(CinnJitInstruction, Run) {
   std::unordered_map<pir::Value, pir::Value> value_map;
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
-    if (checking_cinn_ops.count((*it)->name())) {
+    if (checking_cinn_ops.count(it->name())) {
       auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
           *program, target, scope);
 
