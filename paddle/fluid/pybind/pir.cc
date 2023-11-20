@@ -92,6 +92,7 @@ USE_PIR_PASS(fused_dropout_add_pass);
 USE_PIR_PASS(fused_linear_param_grad_add_pass);
 USE_PIR_PASS(inplace_pass);
 USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
+USE_PIR_PASS(conv2d_fuse_pass);
 
 PHI_DECLARE_bool(print_ir);
 
