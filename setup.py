@@ -38,10 +38,10 @@ from setuptools.dist import Distribution
 # check python
 python_version = platform.python_version()
 version_detail = sys.version_info
-version = version_detail[0] + version_detail[1] / 10
-env_version = os.getenv("PY_VERSION")
+version = str(version_detail[0]) + '.' + str(version_detail[1]) 
+env_version = str(os.getenv("PY_VERSION"))
 
-if version < 3.7:
+if version_detail < (3, 7):
     raise RuntimeError(
         f"Paddle only supports Python version >= 3.7 now,"
         f"you are using Python {python_version}"
