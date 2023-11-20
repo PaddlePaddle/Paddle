@@ -19,7 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
-from paddle.base import core
+from paddle.base import Program, core, program_guard
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -175,49 +175,50 @@ class TestRollAPI(unittest.TestCase):
 
     @test_with_pir_api
     def test_roll_op_api_case1(self):
-        self.input_data()
         paddle.enable_static()
-        # case 1:
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
-            x.desc.set_need_check_feed(False)
+            data_x = np.array(
+                [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
+            ).astype('float32')
             z = paddle.roll(x, shifts=1)
             exe = paddle.static.Executor(paddle.CPUPlace())
             (res,) = exe.run(
                 paddle.static.default_main_program(),
-                feed={'x': self.data_x},
+                feed={'x': data_x},
                 fetch_list=[z.name],
                 return_numpy=False,
             )
             expect_out = np.array(
                 [[9.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, 8.0]]
             )
-            np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
         paddle.disable_static()
 
+    @test_with_pir_api
     def test_roll_op_api_case2(self):
-        self.input_data()
         paddle.enable_static()
-        # case 2:
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
-            x.desc.set_need_check_feed(False)
+            data_x = np.array(
+                [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
+            ).astype('float32')
             z = paddle.roll(x, shifts=1, axis=0)
             exe = paddle.static.Executor(paddle.CPUPlace())
             (res,) = exe.run(
                 paddle.static.default_main_program(),
-                feed={'x': self.data_x},
+                feed={'x': data_x},
                 fetch_list=[z.name],
                 return_numpy=False,
             )
             expect_out = np.array(
                 [[7.0, 8.0, 9.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
             )
-            np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
         paddle.disable_static()
 
     def test_dygraph_api(self):
@@ -242,24 +243,27 @@ class TestRollAPI(unittest.TestCase):
         )
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
+    @test_with_pir_api
     def test_roll_op_false(self):
-        self.input_data()
-
         def test_axis_out_range():
+            paddle.enable_static()
             with paddle.static.program_guard(
-                paddle.static.Program()(), paddle.static.Program()()
+                paddle.static.Program(), paddle.static.Program()
             ):
                 x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
-                x.desc.set_need_check_feed(False)
+                data_x = np.array(
+                    [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
+                ).astype('float32')
                 z = paddle.roll(x, shifts=1, axis=10)
                 exe = base.Executor(base.CPUPlace())
                 (res,) = exe.run(
-                    feed={'x': self.data_x},
+                    feed={'x': data_x},
                     fetch_list=[z.name],
                     return_numpy=False,
                 )
 
         self.assertRaises(ValueError, test_axis_out_range)
+        paddle.disable_static()
 
     def test_shifts_as_tensor_dygraph(self):
         with base.dygraph.guard():
@@ -272,9 +276,7 @@ class TestRollAPI(unittest.TestCase):
             np.testing.assert_allclose(out, expected_out, rtol=1e-05)
 
     def test_shifts_as_tensor_static(self):
-        with paddle.static.program_guard(
-            paddle.static.Program()(), paddle.static.Program()()
-        ):
+        with program_guard(Program(), Program()):
             x = paddle.arange(9).reshape([3, 3]).astype('float32')
             shape = paddle.shape(x)
             shifts = shape // 2
