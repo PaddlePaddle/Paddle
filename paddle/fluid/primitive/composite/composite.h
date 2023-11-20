@@ -189,23 +189,6 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
 }
 
 template <typename T>
-Tensor bernoulli(const phi::DDim& xddim,
-                 paddle::DataType dtype,
-                 const paddle::Scalar& p,
-                 const int seed) {
-  auto new_dtype = dtype;
-  if (dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::UINT16) {
-    new_dtype = phi::DataType::FLOAT32;
-  }
-
-  auto tensor_var = RandomTensor<T>(xddim, CPUPlace(), 0.0, 1.0);
-  auto uniform_tensor = cast<T>(tensor_var, new_dtype);
-  auto p_tensor = full<T>(phi::vectorize(xddim), p, new_dtype);
-
-  return cast<T>(greater_equal<T>(uniform_tensor, p_tensor), dtype);
-}
-
-template <typename T>
 std::tuple<Tensor, Tensor> dropout_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& seed_tensor,
@@ -215,27 +198,44 @@ std::tuple<Tensor, Tensor> dropout_decomp(
     const int seed,
     bool fix_seed) {
   auto org_dtype = x.dtype();
-  Tensor x_cast = x;
-
   bool upscale_in_train = false;
   if (mode.compare("upscale_in_train") == 0) {
     upscale_in_train = true;
   }
 
-  // p.to<uint64_t>()
-  auto mask = paddle::dialect::bernoulli(p);
-  // auto mask = full<T>(phi::vectorize(x.dims()), 1.0, org_dtype);
-  auto ones_p = full<T>(phi::vectorize(x.dims()), 1.0 - p, org_dtype);
+  int seed_tmp = 0;
+  if (fix_seed) {
+    seed_tmp = seed;
+  }
 
+  auto dtype_tmp = org_dtype;
+  if (org_dtype == phi::DataType::FLOAT16 ||
+      org_dtype == phi::DataType::UINT16) {
+    dtype_tmp = phi::DataType::FLOAT32;
+  }
+
+  auto uniform_tensor =
+      uniform<T>(phi::vectorize(x.dims()), dtype_tmp, 0.0, 1.0, seed_tmp);
+  auto mask =
+      cast<T>(greater_equal<T>(uniform_tensor,
+                               full<T>(phi::vectorize(x.dims()), p, dtype_tmp)),
+              org_dtype);
+  auto ones_p =
+      full<T>(phi::vectorize(x.dims()), 1.0 - p.to<float>(), org_dtype);
   if (upscale_in_train) {
     if (is_test) {
       // inference: out = input
       return std::make_tuple(x, cast<T>(mask, phi::DataType::UINT8));
     } else {
       // train: out = input * mask / ( 1.0 - p )
-      // Process p=1. for avoid devide zero error (x*mask/(1.0-p))
-      auto ans = divide<T>(x * mask, ones_p);
-      return std::make_tuple(ans, cast<T>(mask, phi::DataType::UINT8));
+      if (p.to<float>() == 1.0) {
+        // Process p=1. for avoid devide zero error (x*mask/(1.0-p))
+        auto zero = full<T>(phi::vectorize(x.dims()), 0.0, org_dtype);
+        return std::make_tuple(x * zero, cast<T>(zero, phi::DataType::UINT8));
+      } else {
+        auto ans = divide<T>(x * mask, ones_p);
+        return std::make_tuple(ans, cast<T>(mask, phi::DataType::UINT8));
+      }
     }
   } else {
     if (is_test) {
