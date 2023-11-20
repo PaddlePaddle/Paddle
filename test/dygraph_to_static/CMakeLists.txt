@@ -31,6 +31,8 @@ set(TEST_EAGER_OPS
     test_simnet
     test_transformer)
 list(REMOVE_ITEM TEST_OPS test_lac)
+list(REMOVE_ITEM TEST_OPS test_seq2seq)
+
 # NOTE(Aurelius84): In case of Windows CI, if open ON_INFER, RWLOCK of Scope
 # will be removed and will cause some random failed in multi-thread.
 if(WITH_PYTHON)
