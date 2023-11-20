@@ -149,6 +149,24 @@ def monkey_patch_tensor():
             static_var = Parameter(**attr_kwargs)
         else:
             static_var = Variable(**attr_kwargs)
+
+        if self.dist_attr is not None:  # import for shard tensor api
+            import paddle.distributed as dist
+            from paddle.distributed.auto_parallel.static.utils import (
+                convert_to_shard_spec,
+            )
+
+            dist_attr = dist.DistAttr(
+                mesh=self.dist_attr.process_mesh,
+                sharding_specs=convert_to_shard_spec(
+                    self.dist_attr.dims_mapping, self.dist_attr.process_mesh
+                ),
+            )
+            static_var = dist.shard_tensor(
+                static_var,
+                stop_gradient=static_var.stop_gradient,
+                dist_attr=dist_attr,
+            )
         return static_var
 
     # TODO(jiabin): move this to cplusplus end if we find some performance issue on it
