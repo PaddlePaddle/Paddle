@@ -588,8 +588,9 @@ class DygraphShardingOptimizerV2:
             self._comm_buffer_list.sort(key=lambda x: x._dst)
 
         assert (
-            self.pp_overlap or acc_steps > 0
+            not self.comm_overlap or acc_steps > 0
         ), "acc_steps should be larger than 0 when using comm_overlap in sharding"
+
         assert (
             not self.pp_overlap or not self.comm_overlap
         ), "pp_overlap and comm_overlap should not be True at the same time"
