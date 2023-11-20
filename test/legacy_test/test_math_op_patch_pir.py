@@ -427,6 +427,23 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 (output_x,) = exe.run(main_program, fetch_list=[x.size])
                 self.assertEqual(output_x, 24)
 
+    def test_clone(self):
+        x_np = np.random.random(size=[100, 10]).astype('float64')
+        with paddle.pir_utils.IrGuard():
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x = paddle.static.data(
+                    name='x', shape=[100, 10], dtype="float64"
+                )
+                a = x.clone()
+                (a_np,) = exe.run(
+                    main_program,
+                    feed={"x": x_np},
+                    fetch_list=[a],
+                )
+                np.testing.assert_array_equal(x_np, a_np)
+                self.assertNotEqual(id(x), id(a))
+
     def test_math_exists(self):
         with paddle.pir_utils.IrGuard():
             a = paddle.static.data(name='a', shape=[1], dtype='float32')
