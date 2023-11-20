@@ -31,20 +31,10 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
                   const DenseTensor& input,
                   const DenseTensor& segments,
                   DenseTensor* output,
-                  DenseTensor* summed,
+                  DenseTensor* index UNUSED,
                   const std::string pooltype = "SUM") {
     const IndexT* segment_ids = segments.data<IndexT>();
-    std::cout << "00000000" << std::endl;
-    auto summed_ids = dev_ctx.Alloc<int64_t>(summed, 0);
-    std::cout << "11111111" << std::endl;
     auto curent_id = segment_ids[0];
-    if (pooltype == "MEAN") {
-      summed->Resize(phi::make_ddim(
-          std::vector<int64_t>{segment_ids[segments.numel() - 1] + 1, 1}));
-      summed_ids =
-          dev_ctx.Alloc<int64_t>(summed, summed->numel() * sizeof(int64_t));
-    }
-    std::cout << "22222222" << std::endl;
     int64_t last_idx = 0;
     int64_t w = input.numel() / input.dims()[0];
     auto& place = *dev_ctx.eigen_device();
@@ -72,7 +62,6 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
       auto reduce_dim = Eigen::array<int, 1>({{0}});
       if (pooltype == "MEAN") {
         out_e.device(place) = in_e.mean(reduce_dim);
-        summed_ids[curent_id] = h;
       } else if (pooltype == "SUM") {
         out_e.device(place) = in_e.sum(reduce_dim);
       } else if (pooltype == "MAX") {
