@@ -232,9 +232,26 @@ class GroupShardedStage2(nn.Layer):
 
     def _grad_scale(self):
         """
-        Before the optimization, scale the gradients before allreduce of dp_group.
+        1. scale grad/main_grad to support gradient merge 
+        2. Before the optimization, scale the gradients before allreduce of dp_group.
         """
+        # 1. scale grad/main_grad to support gradient merge 
+        # to fix stage2 bf16 O2 main_grad gradient merge bug
+        for dtype in self._grad_storages.keys():
+            if (
+                not self._offload
+                and self._rank in self._grad_storages[dtype].keys()
+            ):
+                self._grad_storages[dtype][self._rank].buffer.scale_(
+                    self._world_size_scaling
+                )
+        with paddle.no_grad():
+            for param in self._trainable_params:
+                if param.name in self._param_grads:
+                    if hasattr(param, "main_grad") and param.main_grad is not None:
+                        param.main_grad.scale_(self._world_size_scaling)
 
+        # 2. Before the optimization, scale the gradients before allreduce of dp_group.
         if self._dp_group is None or self._dp_group.nranks <= 1:
             return
         else:
@@ -379,9 +396,8 @@ class GroupShardedStage2(nn.Layer):
     def _get_scaled_grad_fn(self, param):
         @paddle.autograd.no_grad()
         def scale(grad):
-            if hasattr(param, "main_grad"):
-                param.main_grad.scale_(self._world_size_scaling)
-            else:
+            # only scale grad, main_grad scale will be done in _grad_scale func
+            if not hasattr(param, "main_grad"):
                 if grad is not None and grad._is_initialized():
                     grad.scale_(self._world_size_scaling)
                 else:
