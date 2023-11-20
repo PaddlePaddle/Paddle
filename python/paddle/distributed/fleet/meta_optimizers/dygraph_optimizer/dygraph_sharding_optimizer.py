@@ -267,10 +267,15 @@ class DygraphShardingOptimizer:
     def reduce_gradients(self, parameter_list, hcg):
         # TODO merge grad / nrank with dp
         logger.debug("sharding start gradients sync")
-        if self.comm_overlap:
+        if self.comm_overlap and self.tensor_fusion:
             for buffer in self._comm_buffers:
                 buffer.scale_grads()
             return
+        elif self.comm_overlap:
+            with framework.no_grad():
+                for comm_buffer in self._comm_buffers:
+                    comm_buffer._comm_grads()
+                    comm_buffer.scale_grads()
         with framework.no_grad():
             sharding_nrank = hcg.get_sharding_parallel_group().nranks
             for param in parameter_list:
