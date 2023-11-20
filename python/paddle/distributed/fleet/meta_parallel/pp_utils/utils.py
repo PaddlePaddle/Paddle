@@ -16,15 +16,6 @@
 import paddle
 from paddle import _legacy_C_ops
 
-alignment = {
-    "gpu": 256,
-}
-align = {
-    paddle.float16.value: 2,
-    paddle.bfloat16.value: 2,
-    paddle.float32.value: 4,
-}
-
 __all__ = []
 
 
