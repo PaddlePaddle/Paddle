@@ -52,9 +52,9 @@ elif env_version is None:
 
 elif env_version != version:
     warnings.warn(
-        f"You set PY_VERSION={env_version}, but"
-        f"your current python environment is {version}"
-        f"we will use your current python version to execute"
+        f"You set PY_VERSION={env_version}, but "
+        f"your current python environment is {version} "
+        f"we will use your current python version to execute."
     )
     os.environ["PY_VERSION"] = python_version
 
