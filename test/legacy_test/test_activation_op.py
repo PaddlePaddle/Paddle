@@ -2691,6 +2691,8 @@ class TestGelu(TestActivation):
         self.public_python_api = paddle.nn.functional.gelu
         self.init_dtype()
         self.init_shape()
+        # Todo: Under float64, only this accuracy is currently supported, for further processing
+        self.fw_comp_rtol = 1e-7
         approximate = False
         np.random.seed(2048)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -2713,7 +2715,7 @@ class TestGelu(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True, check_prim_pir=False)
+        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
