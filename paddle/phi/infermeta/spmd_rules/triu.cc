@@ -175,11 +175,5 @@ SpmdInfo TrilTriuInferSpmdReverse(const DistMetaTensor& x,
                                   bool lower) {
   return TriuInferSpmdReverseBase(x, out);
 }
-
-SpmdInfo TrilTriuGradInferSpmd(const DistMetaTensor& out_grd,
-                               int diagonal,
-                               bool lower) {
-  return TriuGradInferSpmdBase(out_grd);
-}
 }  // namespace distributed
 }  // namespace phi

@@ -650,7 +650,6 @@
   output : Tensor(out)
   infer_meta :
     func : TrilTriuInferMeta
-    spmd_rule: TrilTriuInferSpmd
   kernel :
     func : tril_triu
   backward : tril_triu_grad

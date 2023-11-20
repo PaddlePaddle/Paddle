@@ -19,7 +19,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 
@@ -42,10 +41,5 @@ SpmdInfo TrilTriuInferSpmdReverse(const DistMetaTensor& x,
                                   const DistMetaTensor& out,
                                   int diagonal = 0,
                                   bool lower = false);
-
-SpmdInfo TrilTriuGradInferSpmd(const DistMetaTensor& out_grd,
-                               int diagonal,
-                               bool lower = false);
-
 }  // namespace distributed
 }  // namespace phi

@@ -38,7 +38,7 @@ class TestTriuSPMDRule(unittest.TestCase):
         tensor_dist_attr.process_mesh = self.process_mesh
         return DistTensorSpec(self.shape, tensor_dist_attr)
 
-    def test_infer_forward(self):
+    def test_triu_forward(self):
         input = self.build_input()
         rule = core.get_phi_spmd_rule("triu")
         infered_dist_attrs = rule.infer_forward(input, 0)
@@ -49,10 +49,32 @@ class TestTriuSPMDRule(unittest.TestCase):
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1, -1])
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, -1])
 
-    def test_infer_reverse(self):
+    def test_triu_reverse(self):
         input = self.build_input()
         rule = core.get_phi_spmd_rule("triu")
         infered_dist_attrs = rule.infer_backward(input, input, 0)
+        infered_input_dist_attrs = infered_dist_attrs[0]
+        self.assertEqual(len(infered_input_dist_attrs), 1)
+        infered_output_dist_attrs = infered_dist_attrs[1]
+        self.assertEqual(len(infered_output_dist_attrs), 1)
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1, -1])
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, -1])
+
+    def test_tril_triu_forward(self):
+        input = self.build_input()
+        rule = core.get_phi_spmd_rule("tril_triu")
+        infered_dist_attrs = rule.infer_forward(input, 0, False)
+        infered_input_dist_attrs = infered_dist_attrs[0]
+        self.assertEqual(len(infered_input_dist_attrs), 1)
+        infered_output_dist_attrs = infered_dist_attrs[1]
+        self.assertEqual(len(infered_output_dist_attrs), 1)
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1, -1])
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, -1])
+
+    def test_tril_triu_reverse(self):
+        input = self.build_input()
+        rule = core.get_phi_spmd_rule("tril_triu")
+        infered_dist_attrs = rule.infer_backward(input, input, 0, False)
         infered_input_dist_attrs = infered_dist_attrs[0]
         self.assertEqual(len(infered_input_dist_attrs), 1)
         infered_output_dist_attrs = infered_dist_attrs[1]
