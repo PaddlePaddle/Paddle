@@ -20,6 +20,7 @@ from paddle.base.framework import Variable
 from paddle.distribution import distribution
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import multinomial
+from paddle.tensor.manipulation import infer_broadcast_shape
 
 
 class Categorical(distribution.Distribution):
@@ -310,17 +311,23 @@ class Categorical(distribution.Distribution):
             ).reshape(value.shape, name=name)
         else:
             if len(value.shape) == 1:
-                return paddle.take_along_axis(
-                    self._prob,
-                    paddle.reshape(
-                        value,
-                        (len(self._prob.shape) - 1) * [1] + [-1],
-                        name=name,
-                    ),
-                    axis=-1,
+                indices = paddle.reshape(
+                    value,
+                    (len(self._prob.shape) - 1) * [1] + [-1],
+                    name=name,
                 )
             else:
-                return paddle.take_along_axis(self._prob, value, axis=-1)
+                indices = value
+            broadcast_shape = infer_broadcast_shape(self._prob, indices, -1)
+            if not broadcast_shape:
+                # if indices matrix have larger size than arr, arr should broadcast into indices shape.
+                broadcast_shape = indices.shape
+            indices = paddle.broadcast_to(indices, broadcast_shape)
+            broadcast_shape_list = list(broadcast_shape)
+            broadcast_shape_list[-1] = list(self._prob.shape)[-1]
+            broadcast_shape = tuple(broadcast_shape_list)
+            arr = paddle.broadcast_to(self._prob, broadcast_shape)
+            return paddle.take_along_axis(arr, indices, axis=-1)
 
     def log_prob(self, value):
         """Log probabilities of the given category. Refer to ``probs`` method.
