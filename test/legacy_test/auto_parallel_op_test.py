@@ -142,8 +142,14 @@ def get_test_info_and_generated_test_path(
     suffixes = str(uuid.uuid4())
     current_path = str(pathlib.Path(__file__).resolve().parents[0])
     forward_or_backward = "forward" if not backward else "backward"
-    test_info_path = f"{current_path}/{test_class_name}_{op_type}_{forward_or_backward}_info_{suffixes}.pkl"
-    generated_test_path = f"{current_path}/{test_class_name}_{op_type}_{forward_or_backward}_test_{suffixes}.py"
+    test_info_path = os.path.join(
+        current_path,
+        f"{test_class_name}_{op_type}_{forward_or_backward}_info_{suffixes}.pkl",
+    )
+    generated_test_path = os.path.join(
+        current_path,
+        f"{test_class_name}_{op_type}_{forward_or_backward}_test_{suffixes}.py",
+    )
     return test_info_path, generated_test_path
 
 
