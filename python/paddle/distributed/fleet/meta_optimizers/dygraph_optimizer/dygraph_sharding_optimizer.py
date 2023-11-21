@@ -569,21 +569,65 @@ class DygraphShardingOptimizerV2:
             'pp_configs'
         ].release_gradients
 
-        self._build_comm_buffers()
         self._set_inner_opt_attr('_parameter_list', self._local_parameter_list)
         self._set_inner_opt_attr('_param_groups', self._local_parameter_list)
 
-    def _build_comm_buffers(self, group_size=256 * 1024 * 1024):
+        sharding_configs = strategy.hybrid_configs["sharding_configs"]
+        acc_steps = sharding_configs.accumulate_steps
+        comm_group = self._hcg.get_sharding_parallel_group()
+
+        self.comm_overlap = sharding_configs.comm_overlap
+
+        self._build_comm_buffers(
+            comm_group, acc_steps, group_size=128 * 1024 * 1024
+        )
+        # NOTE(shenliang03): Sort the comm_buffers by dst rank,
+        # it will improve the performance in reduce communicate. Default
+        # g_shard_sort_reduce_root is True.
+        if g_shard_sort_reduce_root:
+            self._comm_buffer_list.sort(key=lambda x: x._dst)
+
+        assert (
+            not self.comm_overlap or acc_steps > 0
+        ), "acc_steps should be larger than 0 when using comm_overlap in sharding"
+
+        assert (
+            not self.pp_overlap or not self.comm_overlap
+        ), "pp_overlap and comm_overlap should not be True at the same time"
+
+        if not self.pp_overlap and self.comm_overlap:
+            self.register_reduce_overlap_hook(use_comm=True)
+
+    def register_reduce_overlap_hook(self, use_comm):
+        # Register backward hooks for each parameter in the buffer
+        for buffer in self._comm_buffer_list:
+            for param in buffer._params:
+                # Directly register the hook function with necessary parameters
+                param._register_backward_hook(
+                    self._create_backward_hook(buffer, param, use_comm)
+                )
+
+    def _create_backward_hook(self, buffer, param, use_comm):
+        """Creates a backward hook function for autograd."""
+
+        @paddle.autograd.no_grad()
+        def fused_allreduce(*_):
+            # Directly add gradient to the buffer
+            buffer.add_grad(param, use_comm=use_comm)
+
+        return fused_allreduce
+
+    def _build_comm_buffers(self, comm_group, acc_steps, group_size):
         if self.pp_overlap:
             return
 
-        comm_group = self._hcg.get_sharding_parallel_group()
         var_groups = assign_group_by_size(self._parameter_list, group_size)
         for group_idx, parameters in var_groups.items():
             buffer = FusedCommBuffer(
                 group_idx,
                 parameters,
                 comm_group,
+                acc_steps,
                 act=HOOK_ACTION.REDUCE_SCATTER,
                 release_grads=self.pp_release_grads,
             )
@@ -625,15 +669,16 @@ class DygraphShardingOptimizerV2:
         return parameter_list
 
     def reduce_gradients(self, parameter_list, hcg):
-        # TODO merge grad / nrank with dp
         with framework.no_grad():
-            for comm_buffer in self._comm_buffer_list:
-                if self.pp_release_grads and comm_buffer.grad_storage is None:
-                    for param in comm_buffer.params:
-                        comm_buffer._copy_grad_to_buffer(param)
+            for buffer in self._comm_buffer_list:
+                if self.pp_release_grads and buffer.grad_storage is None:
+                    for param in buffer.params:
+                        buffer._copy_grad_to_buffer(param)
 
-                comm_buffer._comm_grads()
-                comm_buffer.scale_and_split_grads()
+                if not self.comm_overlap:
+                    buffer._comm_grads()
+
+                buffer.scale_and_split_grads()
 
     def _sharding_sync_parameters(self):
         """
