@@ -808,7 +808,9 @@ class _StandaloneExecutor:
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, feed_names, return_numpy=True):
+    def run(
+        self, feed_names, return_numpy=True, enable_job_schedule_profiler=False
+    ):
         """
         Args:
             feed_names(list): This parameter represents the input names of the model.
@@ -818,7 +820,9 @@ class _StandaloneExecutor:
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
         """
-        tensors = self._new_exe.run(feed_names)._move_to_list()
+        tensors = self._new_exe.run(
+            feed_names, enable_job_schedule_profiler
+        )._move_to_list()
         if return_numpy:
             tensors = as_numpy(tensors, copy=True)
             if not get_flags("FLAGS_enable_pir_in_executor")[
@@ -1200,6 +1204,8 @@ class Executor:
         self._fleet_executor_with_standalone = False
 
         self.op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
+
+        self.enable_job_schedule_profiler = False
 
     def _is_optimizer_op(self, op):
         return self.op_role_key in op.attr_names and int(
@@ -1921,7 +1927,11 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            ret = new_exe.run(list(feed.keys()), return_numpy)
+            ret = new_exe.run(
+                list(feed.keys()),
+                return_numpy,
+                self.enable_job_schedule_profiler,
+            )
             set_flags(stored_flag)
             return ret
 

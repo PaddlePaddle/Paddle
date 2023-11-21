@@ -22,11 +22,15 @@
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/map_expr_ctx.h"
 #include "paddle/cinn/adt/match.h"
+#include "paddle/cinn/adt/no_inline_translator.h"
 #include "paddle/cinn/adt/print.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/runtime/flags.h"
+
+PD_DECLARE_bool(cinn_enable_map_expr_inline);
 
 namespace cinn::adt {
 
@@ -34,7 +38,7 @@ namespace {
 
 using IteratorInt = std::int32_t;
 using Node2LoweredFuncs =
-    std::unordered_map<hlir::framework::Node*, std::vector<ir::LoweredFunc>>;
+    std::unordered_map<::pir::Operation*, std::vector<ir::LoweredFunc>>;
 
 using TensorIteratorExpr4TensorT =
     std::function<adt::List<adt::TensorIteratorExpr>(const adt::Tensor&)>;
@@ -65,9 +69,9 @@ class MapExprToIrTranslator {
   }
 
  private:
-  ir::Expr GetStoreExprForOp(const hlir::framework::Node* op) const {
+  ir::Expr GetStoreExprForOp(const ::pir::Operation* op) const {
     const auto& iter =
-        node2lowered_funcs_->find(const_cast<hlir::framework::Node*>(op));
+        node2lowered_funcs_->find(const_cast<::pir::Operation*>(op));
     CHECK(iter != node2lowered_funcs_->end());
     const auto& lowered_funcs = iter->second;
     CHECK_EQ(lowered_funcs.size(), 1);
@@ -81,9 +85,9 @@ class MapExprToIrTranslator {
   }
 
   ir::Expr GetStoreExprForOp(
-      tReduceInit<const hlir::framework::Node*> op) const {
-    const auto& iter = node2lowered_funcs_->find(
-        const_cast<hlir::framework::Node*>(op.value()));
+      const tReduceInit<const ::pir::Operation*>& op) const {
+    const auto& iter =
+        node2lowered_funcs_->find(const_cast<::pir::Operation*>(op.value()));
     CHECK(iter != node2lowered_funcs_->end());
     const auto& lowered_funcs = iter->second;
     CHECK_EQ(lowered_funcs.size(), 1);
@@ -96,9 +100,9 @@ class MapExprToIrTranslator {
   }
 
   ir::Expr GetStoreExprForOp(
-      tReduceAcc<const hlir::framework::Node*> op) const {
-    const auto& iter = node2lowered_funcs_->find(
-        const_cast<hlir::framework::Node*>(op.value()));
+      const tReduceAcc<const ::pir::Operation*>& op) const {
+    const auto& iter =
+        node2lowered_funcs_->find(const_cast<::pir::Operation*>(op.value()));
     CHECK(iter != node2lowered_funcs_->end());
     const auto& lowered_funcs = iter->second;
     CHECK_EQ(lowered_funcs.size(), 1);
@@ -209,7 +213,12 @@ class MapExprToIrTranslator {
   }
 
   InlineStmt ConvertToInlineStmt(const InternalStmt& internal_stmt) const {
-    return InlineTranslator<MapStmt, OpCall, Tensor>::Call(internal_stmt);
+    if (FLAGS_cinn_enable_map_expr_inline) {
+      return InlineTranslator<MapStmt, OpCall, Tensor>::Call(internal_stmt);
+    } else {
+      return NoInlineTranslator<MapStmt, OpCall, Tensor>::Call(internal_stmt);
+    }
+    LOG(FATAL) << "Dead code";
   }
 
   std::optional<ir::Expr> TranslateOpExprImpl(
@@ -242,8 +251,61 @@ class MapExprToIrTranslator {
         op_expr.variant());
   }
 
+  std::optional<ir::Expr> MakeLoadExpr(
+      const ir::Expr& input_expr,
+      const List<OpExpr>& op_expr_children,
+      const IterExprs4TensorT& IterExprs4Tensor) const {
+    ir::Expr store_rvalue = ir::ir_utils::IRCopy(input_expr);
+    CHECK_EQ(store_rvalue->operands.size(), 0);
+    CHECK_EQ(op_expr_children->size(), 1);
+    store_rvalue.As<ir::Load>()->indices =
+        TranslateTensorIndex(op_expr_children->at(0), IterExprs4Tensor);
+    return store_rvalue;
+  }
+
+  std::optional<ir::Expr> MakeCallExpr(
+      const ir::Expr& input_expr,
+      const List<OpExpr>& op_expr_children,
+      const IterExprs4TensorT& IterExprs4Tensor) const {
+    ir::Expr store_rvalue = ir::ir_utils::IRCopy(input_expr);
+    CHECK_EQ(store_rvalue->operands.size(), 0);
+    CHECK(!op_expr_children->empty());
+    CHECK_EQ((store_rvalue.As<ir::Call>()->read_args.size()),
+             (op_expr_children->size()));
+    for (int i = 0; i < op_expr_children->size(); ++i) {
+      const auto& opt_operant = TranslateOpExpr(
+          op_expr_children->at(i), std::nullopt, IterExprs4Tensor);
+      if (opt_operant.has_value()) {
+        store_rvalue.As<ir::Call>()->read_args.at(i) = opt_operant.value();
+      } else {
+        store_rvalue.As<ir::Call>()->read_args.at(i).As<ir::Load>()->indices =
+            TranslateTensorIndex(op_expr_children->at(i), IterExprs4Tensor);
+      }
+    }
+    return store_rvalue;
+  }
+
+  std::optional<ir::Expr> MakeGeneralExpr(
+      const ir::Expr& input_expr,
+      const List<OpExpr>& op_expr_children,
+      const IterExprs4TensorT& IterExprs4Tensor) const {
+    ir::Expr store_rvalue = ir::ir_utils::IRCopy(input_expr);
+    CHECK_EQ(store_rvalue->operands.size(), op_expr_children->size());
+    for (int i = 0; i < op_expr_children->size(); ++i) {
+      const auto& opt_operant = TranslateOpExpr(
+          op_expr_children->at(i), std::nullopt, IterExprs4Tensor);
+      if (opt_operant.has_value()) {
+        store_rvalue->operands.at(i) = opt_operant.value();
+      } else {
+        store_rvalue->operands.at(i).As<ir::Load>()->indices =
+            TranslateTensorIndex(op_expr_children->at(i), IterExprs4Tensor);
+      }
+    }
+    return store_rvalue;
+  }
+
   std::optional<ir::Expr> TranslateOpCallImpl(
-      const hlir::framework::Node* op,
+      const ::pir::Operation*,
       const OpCall<OpExpr>& op_expr,
       const std::optional<Tensor>& opt_output_tensor,
       const IterExprs4TensorT& IterExprs4Tensor) const {
@@ -253,23 +315,13 @@ class MapExprToIrTranslator {
     ir::Expr store_rvalue = store_expr.value().As<ir::Store>()->value;
 
     if (store_rvalue.As<ir::Load>()) {
-      CHECK_EQ(store_rvalue->operands.size(), 0);
-      CHECK_EQ(op_expr_children->size(), 1);
-      store_rvalue.As<ir::Load>()->indices =
-          TranslateTensorIndex(op_expr_children->at(0), IterExprs4Tensor);
+      return MakeLoadExpr(store_rvalue, op_expr_children, IterExprs4Tensor);
+    } else if (store_rvalue.As<ir::Call>()) {
+      return MakeCallExpr(store_rvalue, op_expr_children, IterExprs4Tensor);
     } else {
       if (!op_expr_children->empty()) {
-        CHECK_EQ(store_rvalue->operands.size(), op_expr_children->size());
-        for (int i = 0; i < op_expr_children->size(); ++i) {
-          const auto& opt_operant = TranslateOpExpr(
-              op_expr_children->at(i), std::nullopt, IterExprs4Tensor);
-          if (opt_operant.has_value()) {
-            store_rvalue->operands.at(i) = opt_operant.value();
-          } else {
-            store_rvalue->operands.at(i).As<ir::Load>()->indices =
-                TranslateTensorIndex(op_expr_children->at(i), IterExprs4Tensor);
-          }
-        }
+        return MakeGeneralExpr(
+            store_rvalue, op_expr_children, IterExprs4Tensor);
       } else {
         // Do nothing
       }
@@ -278,7 +330,7 @@ class MapExprToIrTranslator {
   }
 
   std::optional<ir::Expr> TranslateOpCallImpl(
-      const tReduceInit<const hlir::framework::Node*>& op,
+      const tReduceInit<const ::pir::Operation*>&,
       const OpCall<OpExpr>& op_expr,
       const std::optional<Tensor>& opt_output_tensor,
       const IterExprs4TensorT& IterExprs4Tensor) const {
@@ -294,7 +346,7 @@ class MapExprToIrTranslator {
   }
 
   std::optional<ir::Expr> TranslateOpCallImpl(
-      const tReduceAcc<const hlir::framework::Node*>& op,
+      const tReduceAcc<const ::pir::Operation*>&,
       const OpCall<OpExpr>& op_expr,
       const std::optional<Tensor>& opt_output_tensor,
       const IterExprs4TensorT& IterExprs4Tensor) const {
