@@ -1759,10 +1759,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       VLOG(3) << "bitwise_and is not supported when TensorRT < 8.4";
       return false;
 #endif
-      if (!with_dynamic_shape) {
-        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
-        return false;
-      }
       auto x_var_name = desc.Input("X")[0];
       auto y_var_name = desc.Input("Y")[0];
       auto* block = desc.Block();
