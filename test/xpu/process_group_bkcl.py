@@ -63,7 +63,7 @@ class TestProcessGroupFp32(unittest.TestCase):
         sum_result = tensor_x + tensor_y
         if pg.rank() == 0:
             task = dist.all_reduce(tensor_x)
-            np.testing.asser_array_equal(tensor_x, sum_result)
+            np.testing.assert_array_equal(tensor_x, sum_result)
         else:
             task = dist.all_reduce(tensor_y)
             np.testing.assert_array_equal(tensor_y, sum_result)
