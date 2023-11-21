@@ -39,7 +39,7 @@ class TestDirichletOp(OpTest):
         self.outputs = {'Out': np.zeros(self.sample_shape)}
 
     def test_check_output(self):
-        self.check_output_customized(self._hypothesis_testing)
+        self.check_output_customized(self._hypothesis_testing, check_pir=True)
 
     def _hypothesis_testing(self, outs):
         self.assertEqual(outs[0].shape, self.sample_shape)
@@ -73,7 +73,7 @@ class TestDirichletFP16Op(OpTest):
         self.outputs = {'Out': np.zeros(self.sample_shape).astype(self.dtype)}
 
     def test_check_output(self):
-        self.check_output_customized(self._hypothesis_testing)
+        self.check_output_customized(self._hypothesis_testing, check_pir=True)
 
     def _hypothesis_testing(self, outs):
         self.assertEqual(outs[0].shape, self.sample_shape)
@@ -119,7 +119,7 @@ class TestDirichletBF16Op(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place_customized(
-            self._hypothesis_testing, place=core.CUDAPlace(0)
+            self._hypothesis_testing, place=core.CUDAPlace(0), check_pir=True
         )
 
     def _hypothesis_testing(self, outs):

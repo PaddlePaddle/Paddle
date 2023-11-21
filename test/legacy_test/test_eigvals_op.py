@@ -19,6 +19,7 @@ from op_test import OpTest
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.set_printoptions(threshold=np.inf)
 
@@ -271,6 +272,7 @@ class TestEigvalsAPI(unittest.TestCase):
         np_outs = np_eigvals(self.batch_input)
         self.verify_output(paddle_outs, np_outs)
 
+    @test_with_pir_api
     def run_static(self, place):
         paddle.enable_static()
         with paddle.static.program_guard(
