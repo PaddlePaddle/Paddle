@@ -716,7 +716,6 @@ class FusedLinearPromotionPass(PassBase):
         """
         if is_first_rank:
             return
-        print(f"+++++ len params_grads: {len(params_grads)}")
         deleted_bias_grads_names = []
         to_delete_params_grads = []
         for id, (param, grad) in enumerate(params_grads):
@@ -782,7 +781,6 @@ class FusedLinearPromotionPass(PassBase):
 
         for id in reversed(to_delete_params_grads):
             del params_grads[id]
-        print(f"+++++ len params_grads: {len(params_grads)}")
         return
 
     def _transform_startup_program(
