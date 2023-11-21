@@ -23,8 +23,7 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-// TODO(Aurelius84): Need abstract this logic to implement Proxy for
-// the co-existance with GraphCompiler.
+// TODO(Aurelius84): Clear usless Build Interface.
 std::unique_ptr<Program> PirCompiler::Build() {
   m_builder_.Clear();
   // NOTE(Aurelius84): Currently only support each op for one group
@@ -32,7 +31,9 @@ std::unique_ptr<Program> PirCompiler::Build() {
   for (auto it = program_.block()->begin(); it != program_.block()->end();
        ++it) {
     std::vector<::pir::Operation*> ops = {*it};
-    groups.push_back(std::make_shared<pir::Group>(ops));
+    auto group = std::make_shared<pir::Group>(ops);
+    group->output_ops.insert(*it);
+    groups.push_back(group);
   }
   VLOG(4) << "Groups size: " << groups.size();
   return std::move(Build(groups));
