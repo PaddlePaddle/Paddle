@@ -36,8 +36,8 @@ __global__ void CEmbedding(T* out,
                            const int64_t N,
                            const int64_t start_idx,
                            const int64_t end_idx,
-                           const int64_t vocab_size,
-                           const int64_t limit) {
+                           const int64_t limit,
+                           const int64_t vocab_size) {
   CUDA_KERNEL_LOOP(i, limit) {
     size_t row = i / columns;
     size_t col = i % columns;
@@ -90,9 +90,9 @@ void CEmbeddingKernel(const Context& ctx,
                                                D,
                                                N,
                                                start_index,
-                                               vocab_size,
                                                end_idx,
-                                               limit);
+                                               limit,
+                                               vocab_size);
 
   } else if (index_type == phi::DataType::INT64) {
     CEmbedding<T, int64_t>
@@ -103,9 +103,9 @@ void CEmbeddingKernel(const Context& ctx,
                                                D,
                                                N,
                                                start_index,
-                                               vocab_size,
                                                end_idx,
-                                               limit);
+                                               limit,
+                                               vocab_size);
   } else {
     PADDLE_THROW(phi::errors::Unavailable(
         "GPU c_embedding ids only support int32 or int64."));
