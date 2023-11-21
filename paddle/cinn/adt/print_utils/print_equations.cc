@@ -18,6 +18,8 @@
 #include <string>
 
 #include "paddle/cinn/adt/equation_function.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/pir/core/operation.h"
 
 namespace cinn::adt {
 
@@ -28,14 +30,16 @@ std::string ToTxtString(const tDim<UniqueId>& constant) {
   return "dim_" + std::to_string(constant_unique_id);
 }
 
-std::string OpImpl(const hlir::framework::Node* op) { return op->op()->name; }
-
-std::string OpImpl(const tReduceInit<const hlir::framework::Node*>& op) {
-  return op.value()->op()->name + "_init";
+std::string OpImpl(const ::pir::Operation* op) {
+  return hlir::framework::pir::CompatibleInfo::OpName(*op);
 }
 
-std::string OpImpl(const tReduceAcc<const hlir::framework::Node*>& op) {
-  return op.value()->op()->name + "_acc";
+std::string OpImpl(const tReduceInit<const ::pir::Operation*>& op) {
+  return OpImpl(op.value()) + "_init";
+}
+
+std::string OpImpl(const tReduceAcc<const ::pir::Operation*>& op) {
+  return OpImpl(op.value()) + "_acc";
 }
 
 }  // namespace

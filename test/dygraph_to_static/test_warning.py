@@ -21,7 +21,6 @@ import paddle
 from paddle.static.nn import cond
 
 
-@paddle.jit.to_static
 def fun1():
     a = paddle.to_tensor(1)
     b = paddle.to_tensor(2)

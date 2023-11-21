@@ -26,7 +26,11 @@
 #include "paddle/cinn/adt/print.h"
 #include "paddle/cinn/adt/schedule_descriptor.h"
 #include "paddle/cinn/adt/tree.h"
+#include "paddle/cinn/hlir/framework/pir/group.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/value.h"
 
 #include "glog/logging.h"
 
@@ -84,79 +88,65 @@ using LoopDescriptor4IterVarT = std::function<LoopDescriptor(const Iterator&)>;
 using AnchorTensor = Variable;
 using FakeOpPlaceHolders = List<FakeOpPlaceHolder>;
 
-Op MakeOp(const hlir::framework::Node* op) { return {op}; }
+Op MakeOp(const ::pir::Operation* op) { return {op}; }
 
 template <typename DoEachT>
-void VisitEachInputTensor(const hlir::framework::Node* op,
-                          const DoEachT& DoEach) {
-  for (const auto& graph_edge : op->inlinks_in_order()) {
-    DoEach(graph_edge->source()->safe_as<hlir::framework::NodeData>());
+void VisitEachInputTensor(const ::pir::Operation* op, const DoEachT& DoEach) {
+  for (std::size_t i = 0; i < op->num_operands(); ++i) {
+    DoEach(op->operand_source(i));
   }
 }
 
-List<Arg> MakeOpStmtInputList(const hlir::framework::Node* op,
-                              const hlir::framework::Graph* graph) {
+List<Arg> MakeOpStmtInputList(const ::pir::Operation* op) {
   List<Arg> ret{};
 
-  VisitEachInputTensor(op, [&](const auto* tensor) {
-    ret->emplace_back(adapter::Tensor{tensor, graph});
+  VisitEachInputTensor(op, [&](const ::pir::Value& tensor) {
+    ret->emplace_back(adapter::Tensor{tensor});
   });
 
   return ret;
 }
 
 template <typename DoEachT>
-void VisitEachOutputTensor(const hlir::framework::Node* op,
-                           const DoEachT& DoEach) {
-  for (const auto& graph_edge : op->outlinks_in_order()) {
-    DoEach(graph_edge->sink()->safe_as<hlir::framework::NodeData>());
+void VisitEachOutputTensor(const ::pir::Operation* op, const DoEachT& DoEach) {
+  for (std::size_t i = 0; i < op->num_results(); ++i) {
+    DoEach(const_cast<::pir::Operation*>(op)->result(i));
   }
 }
 
-List<Arg> MakeOpStmtOutputList(const hlir::framework::Node* op,
-                               const hlir::framework::Graph* graph) {
+List<Arg> MakeOpStmtOutputList(const ::pir::Operation* op) {
   List<Arg> ret{};
 
-  VisitEachOutputTensor(op, [&](const auto* tensor) {
-    ret->emplace_back(adapter::Tensor{tensor, graph});
+  VisitEachOutputTensor(op, [&](const ::pir::Value& tensor) {
+    ret->emplace_back(adapter::Tensor{tensor});
   });
 
   return ret;
 }
 
 template <typename DoEachT>
-void VisitEachOpStmt(
-    const std::shared_ptr<hlir::framework::Graph::Group>& group,
-    const DoEachT& DoEach) {
-  // Note
-  for (const auto* op : group->CollectNodes()) {
-    DoEach(OpStmt{MakeOp(op),
-                  MakeOpStmtInputList(op, group->graph_),
-                  MakeOpStmtOutputList(op, group->graph_)});
+void VisitEachOpStmt(const std::shared_ptr<hlir::framework::pir::Group>& group,
+                     const DoEachT& DoEach) {
+  for (const auto* op : group->CollectOps()) {
+    DoEach(
+        OpStmt{MakeOp(op), MakeOpStmtInputList(op), MakeOpStmtOutputList(op)});
   }
 }
 
-hlir::framework::OpPatternKind GetOpPatternKind(
-    const hlir::framework::Node* node) {
-  static const hlir::framework::OpValueType<hlir::framework::OpPatternKind>&
-      op_pattern_dict =
-          hlir::framework::Operator::GetAttrs<hlir::framework::OpPatternKind>(
-              "OpPattern");
-  auto kind = op_pattern_dict[node->op()];
-  return kind;
+hlir::framework::OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
+  return hlir::framework::pir::CompatibleInfo::OpKind(*node);
 }
 
 bool CollectRewritedReductionOpStmts(const OpStmt& op_stmt, List<OpStmt>* ret) {
   const auto& [op, inputs, outputs] = op_stmt.tuple();
-  CHECK(op.Has<const hlir::framework::Node*>());
-  if (GetOpPatternKind(op.Get<const hlir::framework::Node*>()) ==
+  CHECK(op.Has<const ::pir::Operation*>());
+  if (GetOpPatternKind(op.Get<const ::pir::Operation*>()) ==
       hlir::framework::OpPatternKind::kReduction) {
-    tReduceInit<const hlir::framework::Node*> init_op{
-        op.Get<const hlir::framework::Node*>()};
+    tReduceInit<const ::pir::Operation*> init_op{
+        op.Get<const ::pir::Operation*>()};
     (*ret)->emplace_back(OpStmt{init_op, List<Arg>{}, outputs});
 
-    tReduceAcc<const hlir::framework::Node*> acc_op{
-        op.Get<const hlir::framework::Node*>()};
+    tReduceAcc<const pir::Operation*> acc_op{op.Get<const ::pir::Operation*>()};
     (*ret)->emplace_back(OpStmt{acc_op, inputs, outputs});
     return true;
   } else {
@@ -172,7 +162,7 @@ void CollectRewritedOpStmts(const OpStmt& op_stmt, List<OpStmt>* ret) {
 }
 
 List<OpStmt> MakeOpStmts(
-    const std::shared_ptr<hlir::framework::Graph::Group>& group) {
+    const std::shared_ptr<hlir::framework::pir::Group>& group) {
   List<OpStmt> ret{};
 
   VisitEachOpStmt(group, [&](const auto& op_stmt) {
@@ -213,7 +203,7 @@ std::shared_ptr<IGroup> MakeIGroup(const AnchorGroup& igroup_spec) {
 }
 
 std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
-    const std::shared_ptr<hlir::framework::Graph::Group>& group) {
+    const std::shared_ptr<hlir::framework::pir::Group>& group) {
   std::vector<std::shared_ptr<IGroup>> ret{};
 
   List<OpStmt> op_stmts = MakeOpStmts(group);
@@ -227,7 +217,7 @@ std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
 }
 
 std::shared_ptr<KGroup> GenerateKGroups(
-    const std::shared_ptr<hlir::framework::Graph::Group>& group,
+    const std::shared_ptr<hlir::framework::pir::Group>& group,
     const std::vector<std::shared_ptr<IGroup>>& igroups) {
   CHECK_EQ(igroups.size(), 1);
   return std::make_shared<KGroup>(group, igroups);
@@ -343,36 +333,34 @@ Tensor GetAnchorTensor(const std::shared_ptr<IGroup>& igroup) {
 }
 
 template <typename DoEachT>
-void VisitInputTensor(const hlir::framework::Graph::Group& group,
+void VisitInputTensor(const hlir::framework::pir::Group& group,
                       const DoEachT& DoEach) {
-  for (const auto* node_data : group.GetInputNodeDatas()) {
-    DoEach(node_data, group.graph_);
+  for (const ::pir::Value& node_data : group.GetInputOpValues()) {
+    DoEach(node_data);
   }
 }
 
 template <typename DoEachT>
-void VisitOutputTensor(const hlir::framework::Graph::Group& group,
+void VisitOutputTensor(const hlir::framework::pir::Group& group,
                        const DoEachT& DoEach) {
-  for (const auto& node_data : group.GetOutputNodeDatas()) {
-    DoEach(node_data, group.graph_);
+  for (const ::pir::Value& node_data : group.GetOutputOpValues()) {
+    DoEach(node_data);
   }
 }
 
 List<Tensor> MakeInputTensors(const std::shared_ptr<KGroup>& kgroup) {
   List<Tensor> ret{};
-  VisitInputTensor(*kgroup->cinn_group(),
-                   [&](const auto* node_data, const auto* graph) {
-                     ret->emplace_back(adapter::Tensor{node_data, graph});
-                   });
+  VisitInputTensor(*kgroup->cinn_group(), [&](const ::pir::Value& node_data) {
+    ret->emplace_back(adapter::Tensor{node_data});
+  });
   return ret;
 }
 
 List<Tensor> MakeOutputTensors(const std::shared_ptr<KGroup>& kgroup) {
   List<Tensor> ret{};
-  VisitOutputTensor(*kgroup->cinn_group(),
-                    [&](const auto* node_data, const auto* graph) {
-                      ret->emplace_back(adapter::Tensor{node_data, graph});
-                    });
+  VisitOutputTensor(*kgroup->cinn_group(), [&](const ::pir::Value& node_data) {
+    ret->emplace_back(adapter::Tensor{node_data});
+  });
   return ret;
 }
 
@@ -437,7 +425,7 @@ MapExpr GenerateMapExpr(const std::shared_ptr<KGroup>& kgroup) {
 }  // namespace
 
 MapExpr GenerateMapExpr(
-    const std::shared_ptr<hlir::framework::Graph::Group>& group) {
+    const std::shared_ptr<hlir::framework::pir::Group>& group) {
   const auto& igroups = GenerateIGroups(group);
 
   const auto& kgroup = GenerateKGroups(group, igroups);
@@ -445,18 +433,26 @@ MapExpr GenerateMapExpr(
   return GenerateMapExpr(kgroup);
 }
 
-namespace {}  // namespace
-
 void TryGenerateMapExprFromGraph(
-    const std::shared_ptr<cinn::hlir::framework::Graph>& graph) {
+    const hlir::framework::pir::GroupList& groups) {
   if (!FLAGS_cinn_enable_map_expr) {
     return;
   }
-  for (const auto& fusion_group : graph->fusion_groups) {
+  for (const auto& fusion_group : groups) {
     const auto& map_expr = GenerateMapExpr(fusion_group);
     VLOG(1) << ToTxtString(map_expr, fusion_group->group_id);
     fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));
   }
+}
+
+void TryGenerateMapExprFromGroup(
+    const std::shared_ptr<hlir::framework::pir::Group>& fusion_group) {
+  if (!FLAGS_cinn_enable_map_expr) {
+    return;
+  }
+  const auto& map_expr = GenerateMapExpr(fusion_group);
+  VLOG(1) << ToTxtString(map_expr, fusion_group->group_id);
+  fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));
 }
 
 }  // namespace cinn::adt

@@ -12,3 +12,14 @@
     data_type : dtype
     backend : place
   support_tensor : [start, end, step]
+
+- op : unique
+  args : (Tensor x, bool return_index=false, bool return_inverse=false, bool return_counts=false, int[] axis={}, DataType dtype=DataType::INT64, bool is_sorted=false)
+  output : Tensor(out), Tensor(indices), Tensor(inverse), Tensor(counts)
+  optional : indices, counts
+  infer_meta :
+    func : UniqueRawInferMeta
+  kernel :
+    func : unique
+    data_type : x
+  interfaces : paddle::dialect::ParseKernelKeyInterface
