@@ -106,6 +106,7 @@ from .pooling import (  # noqa: F401
     MaxUnPool1D,
     MaxUnPool2D,
     MaxUnPool3D,
+    LPPool2D,
 )
 from .vision import ChannelShuffle, PixelShuffle, PixelUnshuffle  # noqa: F401
 
