@@ -27,6 +27,9 @@ import paddle
 from paddle import set_flags, static
 from paddle.base import core
 from paddle.jit.api import sot_mode_guard
+from paddle.jit.sot.opcode_translator.executor.executor_cache import (
+    OpcodeExecutorCache,
+)
 from paddle.jit.sot.utils.envs import min_graph_size_guard
 
 """
@@ -101,8 +104,11 @@ def to_sot_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
         logger.info("[SOT] running SOT")
+
+        OpcodeExecutorCache().clear()
         with sot_mode_guard(True):
-            fn(*args, **kwargs)
+            with min_graph_size_guard(0):
+                fn(*args, **kwargs)
 
     return impl
 
@@ -114,7 +120,9 @@ def to_sot_mgs10_test(fn):
 
     @wraps(fn)
     def impl(*args, **kwargs):
-        logger.info("[SOT] running SOT")
+        logger.info("[SOT_MGS10] running SOT")
+
+        OpcodeExecutorCache().clear()
         with sot_mode_guard(True):
             with min_graph_size_guard(10):
                 fn(*args, **kwargs)
