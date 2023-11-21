@@ -122,9 +122,19 @@ inline bool IsInvalid(pir::Value value) {
   return true;
 }
 
+Variable* CreateVar(pir::Value value,
+                    const std::string& var_name_prefix,
+                    bool force_persisable,
+                    ValueExecutionInfo* value_exe_info);
+
 void BuildScope(const pir::Block& block,
                 const std::string& var_name_prefix,
                 ValueExecutionInfo* value_exe_info = nullptr);
+
+void DeepCopyVariable(const Variable* src_var,
+                      Variable* dst_var,
+                      ValueExecutionInfo* value_exe_info,
+                      uint32_t stack_size);
 
 void BuildRuntimeContext(pir::Operation* op,
                          const ValueExecutionInfo& value_exec_info,

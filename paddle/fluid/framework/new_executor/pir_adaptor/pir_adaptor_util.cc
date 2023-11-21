@@ -556,94 +556,10 @@ void HandleForSpecialOp(pir::Operation* op,
       auto while_op_out_value = while_op->result(i);
       BuildValue(while_op_out_value, var_name_prefix, value_exe_info);
     }
-  } else if (op->isa<pir::StackCreateOp>()) {
-    VLOG(6) << "Handle for create_stack op";
-    auto create_stack_op = op->dyn_cast<pir::StackCreateOp>();
-    auto stack_value = create_stack_op.stack();
-    Variable* var =
-        CreateVar(stack_value, var_name_prefix, false, value_exe_info);
-    var->GetMutable<VariableRefArray>();
-  } else if (op->isa<pir::TuplePushOp>()) {
-    // else if (op->isa<pir::PushBackOp>()) {
-    //   VLOG(6) << "Handle for push_back op";
-    //   auto push_back_op = op->dyn_cast<pir::PushBackOp>();
-    //   auto stack_value = push_back_op.stack();
-    //   auto& value_2_var_name = value_exe_info->GetValue2VarName();
-    //   PADDLE_ENFORCE_EQ(
-    //       value_2_var_name.find(inlet_value) != value_2_var_name.end(),
-    //       true,
-    //       phi::errors::NotFound(
-    //           "inlet input of PushBackOp not in value2var_name map"));
-    //   auto var_array =
-    //       value_exe_info->GetScope()->FindVar(value_2_var_name.at(stack_value));
-    //   auto ref_array = var_array->GetMutable<VariableRefArray>();
-
-    //   for (size_t i = 0; i < push_back_op.num_elements(); ++i) {
-    //     auto inlet_element = push_back_op.inlet_element(i);
-    //     Variable* var = value_exe_info->GetScope()->FindVar(
-    //         value_2_var_name.at(inlet_element));
-    //     ref_array->emplace_back(var);
-    //   }
-    // } else if (op->isa<pir::PopBackOp>()) {
-    //   VLOG(6) << "Handle for pop_back op";
-    //   auto pop_back_op = op->dyn_cast<pir::PopBackOp>();
-    //   auto stack_value = pop_back_op.stack();
-
-    //   auto& value_2_var_name = value_exe_info->GetValue2VarName();
-    //   auto var_array =
-    //       value_exe_info->GetScope()->FindVar(value_2_var_name.at(stack_value));
-    //   auto ref_array = var_array->GetMutable<VariableRefArray>();
-
-    //   for (size_t i = 0; i < pop_back_op.num_elements(); ++i) {
-    //     auto inlet_element = pop_back_op.inlet_element(i);
-    //     auto var = ref_array->pop_back();
-    //   }
-    // }
-
-    // deep copy
-
-    VLOG(6) << "Handle for push_back op";
-    auto push_back_op = op->dyn_cast<pir::TuplePushOp>();
-    auto stack_value = push_back_op.container();
-    auto& value_2_var_name = value_exe_info->GetValue2VarName();
-    PADDLE_ENFORCE_EQ(
-        value_2_var_name.find(stack_value) != value_2_var_name.end(),
-        true,
-        phi::errors::NotFound(
-            "stack input of PushBackOp not in value2varname map"));
-    auto var_array =
-        value_exe_info->GetScope()->FindVar(value_2_var_name.at(stack_value));
-    auto ref_array = var_array->GetMutable<VariableRefArray>();
-
-    for (size_t i = push_back_op.tuple_size() - 1; i >= 0; ++i) {
-      auto inlet_element = push_back_op.inlet_element(i);
-      Variable* var = value_exe_info->GetScope()->FindVar(
-          value_2_var_name.at(inlet_element));
-
-      uint32_t stack_size = push_back_op.tuple_size();
-      std::string new_name =
-          "copy_" + stack_size + '_' + value_exe_info->GetVarName(var);
-      auto copy_var = value_exe_info->GetScope()->Var(new_name);
-      DeepCopyVariable(var, copy_var, value_exe_info, stack_size);
-      ref_array->emplace_back(copy_var);
-    }
-  } else if (op->isa<pir::TuplePopOp>()) {
-    VLOG(6) << "Handle for pop_back op";
-    auto pop_back_op = op->dyn_cast<pir::TuplePopOp>();
-    auto stack_value = pop_back_op.container();
-
-    auto& value_2_var_name = value_exe_info->GetValue2VarName();
-    auto var_array =
-        value_exe_info->GetScope()->FindVar(value_2_var_name.at(stack_value));
-    auto ref_array = var_array->GetMutable<VariableRefArray>();
-
-    for (size_t i = 0; i < pop_back_op.tuple_size(); ++i) {
-      auto var = ref_array->back();
-      ref_array->pop_back();
-      // auto inlet_element = pop_back_op.inlet_element(i);
-      // auto inlet_var =
-      // value_exe_info->GetScope()->FindVar(value_2_var_name.at(inlet_element));
-    }
+  } else if (op->isa<pir::StackCreateOp>() || op->isa<pir::TuplePushOp>() ||
+             op->isa<pir::TuplePopOp>()) {
+    VLOG(6) << "Handle for StackCreateOp/TuplePushOp/TuplePopOp, skip create "
+               "var while build scope";
   }
 }
 

@@ -32,9 +32,11 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -42,9 +44,13 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
+
 #include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/stack_create_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/tuple_pop_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/tuple_push_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/while_instruction.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
@@ -55,6 +61,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -643,8 +651,24 @@ void PirInterpreter::BuildInstruction() {
         continue;
       }
     } else if (op.dialect()->name() == "cf") {
-      VLOG(6) << "skip process cf dialect op: " << op.name();
-      continue;
+      if (op.isa<pir::StackCreateOp>()) {
+        vec_instruction_base_.emplace_back(
+            std::make_unique<StackCreateInstruction>(
+                op_idx++, place_, &op, value_exe_info_.get()));
+      } else if (op.isa<pir::TuplePushOp>()) {
+        vec_instruction_base_.emplace_back(
+            std::make_unique<TuplePushInstruction>(
+                op_idx++, place_, &op, value_exe_info_.get()));
+      } else if (op.isa<pir::TuplePopOp>()) {
+        vec_instruction_base_.emplace_back(
+            std::make_unique<TuplePopInstruction>(
+                op_idx++, place_, &op, value_exe_info_.get()));
+      } else if (op.isa<pir::HasElementsOp>()) {
+        VLOG(0) << "ToDo: HasElementsInstruction";
+      } else {
+        VLOG(6) << "skip process cf dialect op: " << op.name();
+        continue;
+      }
     } else if (op.dialect()->name() == "pd_op") {
       if (op.isa<paddle::dialect::IfOp>()) {
         vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
