@@ -69,8 +69,10 @@ float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos);
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos);
 std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
                                                        ssize_t arg_pos);
-std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(PyObject* obj,
-                                                     ssize_t arg_pos);
+std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(
+    PyObject* obj,
+    ssize_t arg_pos,
+    const phi::distributed::ProcessMesh* mesh = nullptr);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
 phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
