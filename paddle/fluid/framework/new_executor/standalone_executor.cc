@@ -249,17 +249,6 @@ std::shared_ptr<framework::ProgramDesc> StandaloneExecutor::RunProfile(
                                      1);
 
   // in profiling run, there can be one and only one job ("default")
-  const auto& job = plan_.JobList()[0];
-
-  std::map<std::string, size_t> type_to_first_id;
-  if (!is_interpretercore_build_result_shared_) {
-    type_to_first_id[job->Type()] = 0;
-    is_interpretercore_build_result_shared_ = true;
-  }
-
-  VLOG(6) << "Run profiling job (0), type = " << job->Type()
-          << ", micro_batch_id =" << job->MicroBatchId();
-
   interpretercores_[0]->Run(
       feed_names, /*need_fetch = */ false, /*enable_op_profiling = */ true);
 

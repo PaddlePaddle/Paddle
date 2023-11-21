@@ -15,7 +15,6 @@
 import copy
 import logging
 import os
-import sys
 import threading
 import warnings
 from functools import reduce
@@ -2417,8 +2416,10 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
     # tensors and network parameters and feed fake data into them.
     scope = core.Scope()
 
+    logger = get_logger(log_level=logging.INFO)
+
     def _analyze_graph_and_collect_all_vars_with_zero_in_degree():
-        var_info = {}
+        var_in_degree = {}
 
         def _collect_op_input_var_names(op: Operator):
             input_var_names = []
@@ -2441,30 +2442,14 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
                     # we can ensure that vars with zero in-degree are dangling vars
                     # and they should be created manually before program executes.
                     continue
-                if out_var_name not in var_info:
-                    var_info[out_var_name] = {
-                        'in-degree': 0,
-                        'out-degree': 0,
-                        'remarks': '',
-                    }
-                var_info[out_var_name]['in-degree'] += 1
-
-        def _record_op_input_vars_out_degree(in_var_names):
-            for in_var_name in in_var_names:
-                if in_var_name not in var_info:
-                    var_info[in_var_name] = {
-                        'in-degree': 0,
-                        'out-degree': 0,
-                        'remarks': '',
-                    }
-                var_info[in_var_name]['out-degree'] += 1
+                var_in_degree[out_var_name] += 1
 
         def _filter_vars_with_zero_in_degree_and_ignore_feed_fetch_vars():
             filtered_vars = []
-            for var_name in var_info:
+            for var_name in var_in_degree:
                 if var_name in ['feed', 'fetch']:
                     continue
-                if var_info[var_name]['in-degree'] == 0:
+                if var_in_degree[var_name] == 0:
                     filtered_vars.append(var_name)
             return filtered_vars
 
@@ -2477,11 +2462,13 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
             input_var_names, output_var_names = _collect_op_input_var_names(
                 op
             ), _collect_op_output_var_names(op)
-            _record_op_input_vars_out_degree(input_var_names)
+            for var_name in input_var_names + output_var_names:
+                if var_name not in var_in_degree:
+                    var_in_degree[var_name] = 0
             _record_op_output_vars_in_degree(input_var_names, output_var_names)
         return _filter_vars_with_zero_in_degree_and_ignore_feed_fetch_vars()
 
-    def _alloc_and_fill_var_and_return_created_tensor(var_name):
+    def _alloc_and_fill_var(var_name):
         supported_var_dtypes = [
             "paddle.float16",
             "paddle.float32",
@@ -2502,7 +2489,7 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
                 str(var_dtype), ", ".join(supported_var_dtypes)
             )
         )
-        sys.stdout.write(
+        logger.info(
             '[+] var: "{}", shape={}, dtype="{}".\n'.format(
                 var_name, str(var_shape), str(var_dtype)
             )
@@ -2546,21 +2533,19 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
                 out_var_name = op.desc.output('Out')[0]
                 in_var_name = op.desc.input('X')[0]  # this is usually "feed"
                 input_index = op.desc.attr('col')
-                new_tensor = _alloc_and_fill_var_and_return_created_tensor(
-                    out_var_name
-                )
+                new_tensor = _alloc_and_fill_var(out_var_name)
                 core.set_feed_variable(
                     scope, new_tensor, in_var_name, input_index
                 )
                 feed_names.append(out_var_name)
         if not has_feed_op:
-            sys.stdout.write(
+            logger.info(
                 "WARNING: program does not have any feed op.\n"
             ) if verbose else None
         return feed_names
 
     for var_name in _analyze_graph_and_collect_all_vars_with_zero_in_degree():
-        _alloc_and_fill_var_and_return_created_tensor(var_name)
+        _alloc_and_fill_var(var_name)
     feed_names = _configure_feed_ops_and_return_feed_names()
 
     # build a simple plan from program and run profiling
@@ -2604,6 +2589,7 @@ def measure_real_op_cost_wrt_program_and_place(
     Description
     -----------
     Measuring real op run time (us) with respect to the given "program" and "place".
+
     Parameters
     -----------
     @param program: paddle.static.Program
@@ -2624,12 +2610,13 @@ def measure_real_op_cost_wrt_program_and_place(
         0 = turn off, don't output anything,
         1 = output profiling message only,
         2 = output profiling and debug message.
+
     Returns
     -----------
-    Returns profiling report (as Python string). This API will write op run time
-    directly into program object. For example, to retrieve the run time for the first
-    op in program, use:
+    Nothing to return. This API will write op run time directly into program object.
+    For example, to retrieve the run time for the first op in program, use:
     >>> program.global_block().ops[0].dist_attr.run_time_us
+
     Note
     -----------
     Not all ops support runtime profiling. Currently communication ops do not support
@@ -2637,6 +2624,7 @@ def measure_real_op_cost_wrt_program_and_place(
     if an op supports runtime profiling, use:
     >>> check_if_op_supports_runtime_profiling(op)
     where "op" is an instance of "paddle.base.framework.Operator".
+
     Example
     -----------
     * Profiling a simple program from scratch:
@@ -2659,23 +2647,16 @@ def measure_real_op_cost_wrt_program_and_place(
         '"program" should be a instance of "paddle.base.framework.Program" but got type "%s".'
         % type(program).__name__
     )
-    valid_place = False
     supported_places = [
         paddle.CPUPlace,
         paddle.CUDAPlace,
-        paddle.IPUPlace,
-        paddle.XPUPlace,
-        paddle.CUDAPinnedPlace,
-        paddle.CustomPlace,
     ]
-    for supported_place in supported_places:
-        if isinstance(place, supported_place):
-            valid_place = True
-    if not valid_place:
-        raise AssertionError(
-            'Invalid place given. "place" should be one of the following: %s.'
-            % str(supported_places)
-        )
+    assert any(
+        isinstance(place, supported_place)
+        for supported_place in supported_places
+    ), 'Invalid place given ({}). "place" should be one of the following: {}.'.format(
+        str(place), str(supported_places)
+    )
     assert isinstance(run_iters, int) and run_iters >= 1, (
         'Invalid parameter run_iters set. run_iters '
         'should be an integer >= 1.'
@@ -2689,17 +2670,6 @@ def measure_real_op_cost_wrt_program_and_place(
         warnings.warn(
             'run_iters was set to 1, profile_strategy will not work and profiling results '
             'might be inaccurate.'
-        )
-
-    # check if num_micro_batches == 1
-    num_micro_batches = (
-        program._pipeline_opt["standalone_opt"]["num_micro_batches"]
-        if (program._pipeline_opt and "standalone_opt" in program._pipeline_opt)
-        else 1
-    )
-    if num_micro_batches != 1:
-        raise RuntimeError(
-            'Expected num_micro_batches==1, got %d.' % num_micro_batches
         )
 
     # run profiling multiple times and record op run time of each run
@@ -2718,10 +2688,6 @@ def measure_real_op_cost_wrt_program_and_place(
                 keep = 1 if run_iters // 2 < 1 else run_iters // 2
                 op_runtime_us_final = np.mean(
                     sorted(prof_results[op_id])[:keep]
-                )
-            else:
-                raise RuntimeError(
-                    'unknwon profile_strategy "%s" given.' % profile_strategy
                 )
         if (
             op_runtime_us_final is not None

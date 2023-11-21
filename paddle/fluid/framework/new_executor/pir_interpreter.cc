@@ -1190,10 +1190,8 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
                               bool need_fetch,
                               bool enable_op_profiling) {
   if (enable_op_profiling) {
-    // currently new ir does not support op runtime profiling, throw an
-    // exception here.
     PADDLE_THROW(phi::errors::Unimplemented(
-        "Currently new IR does not support op runtime profiling feature."));
+        "Currently PIR does not support op runtime profiling feature."));
   }
 
   SetDeviceId(place_);

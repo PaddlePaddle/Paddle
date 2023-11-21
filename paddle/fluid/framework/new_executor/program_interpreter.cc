@@ -999,8 +999,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
       // (as they don't exist in block desc) and are set to an invalid default
       // value (uint64_max), and doesn't have op_dist_attr pointer. So adding a
       // if statement to check.
-      if (op->Id() < block_.OpSize())
-        // make sure op index is valid before getting its dist attr pointer
+      if (op->Id() != UINT64_MAX)
         op_dist_attr = block_.Op(op->Id())->MutableDistAttr();
       uint64_t _start = Tick();
       SyncDevice();

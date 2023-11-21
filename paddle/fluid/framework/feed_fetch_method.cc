@@ -34,28 +34,16 @@ void SetVariable(Scope* scope,
                  const phi::DenseTensor& input,
                  const std::string& var_name) {
   bool is_new_var = (scope->FindVar(var_name) == nullptr);
-  // For any new var that is waiting to be created, we are sure it is a
-  // DenseTensor as indicated by parameter list ("const phi::DenseTensor&
-  // input"), but if a var already exists, we need to check if it is a
-  // DenseTensor, if not, throw an error.
   auto target_var = scope->Var(var_name);
-  if (is_new_var) {
-    auto val = target_var->GetMutable<phi::DenseTensor>();
-    val->ShareDataWith(input);
-    val->set_lod(input.lod());
-  } else {
-    if (!target_var->IsType<phi::DenseTensor>()) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "The variable you want to set is not a phi::DenseTensor, but here "
-          "you tried to convert its type to phi::DenseTensor. Aborted."));
-    } else {
-      // it is a DenseTensor, everything is fine, just need to update its value.
-      target_var->Clear();
-      auto val = target_var->GetMutable<phi::DenseTensor>();
-      val->ShareDataWith(input);
-      val->set_lod(input.lod());
-    }
+  if (!is_new_var && !target_var->IsType<phi::DenseTensor>()) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The variable you want to set is not a phi::DenseTensor, but here "
+        "you tried to convert its type to phi::DenseTensor."));
   }
+  target_var->Clear();
+  auto val = target_var->GetMutable<phi::DenseTensor>();
+  val->ShareDataWith(input);
+  val->set_lod(input.lod());
 }
 
 void SetFeedVariable(Scope* scope,
