@@ -997,6 +997,29 @@ TEST(Numel, Ctor) {
   check_partial_dims(infered_dist_attrs.second[0], {0});
 }
 
+TEST(Triu, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  std::vector<int64_t> shape = {16, 16, 16};
+  std::vector<int64_t> dims_mapping = {0, -1, 1};
+
+  auto t_dist_attr = TensorDistAttr();
+  t_dist_attr.set_process_mesh(process_mesh);
+  t_dist_attr.set_dims_mapping(dims_mapping);
+  t_dist_attr.set_dynamic_dims({false, false, false});
+  auto input =
+      phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
+  auto infered_dist_attrs = phi::distributed::TriuGradInferSpmd(input, 0);
+  EXPECT_EQ(infered_dist_attrs.first.size(), static_cast<size_t>(1));
+  EXPECT_EQ(infered_dist_attrs.second.size(), static_cast<size_t>(1));
+  check_dim_mapping(infered_dist_attrs.first[0], {0, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[0], {0, -1, -1});
+  check_partial_dims(infered_dist_attrs.second[0], {});
+}
+
 TEST(LayerNorm, Ctor) {
   using phi::distributed::PartialStatus;
   std::vector<int64_t> mesh_shape = {2, 2};

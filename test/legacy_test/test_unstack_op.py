@@ -116,6 +116,54 @@ class TestStackOp6(TestUnStackOpBase):
         self.axis = 2
 
 
+class TestStackOp3_Complex64(TestStackOp3):
+    def initParameters(self):
+        self.dtype = np.complex64
+        self.axis = -1
+
+
+class TestStackOp4_complex64(TestStackOp4):
+    def initParameters(self):
+        self.dtype = np.complex64
+        self.axis = -3
+
+
+class TestStackOp5_complex64(TestStackOp5):
+    def initParameters(self):
+        self.dtype = np.complex64
+        self.axis = 1
+
+
+class TestStackOp6_complex64(TestStackOp6):
+    def initParameters(self):
+        self.dtype = np.complex64
+        self.axis = 2
+
+
+class TestStackOp3_Complex128(TestStackOp3):
+    def initParameters(self):
+        self.dtype = np.complex128
+        self.axis = -1
+
+
+class TestStackOp4_complex128(TestStackOp4):
+    def initParameters(self):
+        self.dtype = np.complex128
+        self.axis = -3
+
+
+class TestStackOp5_complex128(TestStackOp5):
+    def initParameters(self):
+        self.dtype = np.complex128
+        self.axis = 1
+
+
+class TestStackOp6_complex128(TestStackOp6):
+    def initParameters(self):
+        self.dtype = np.complex128
+        self.axis = 2
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
@@ -186,14 +234,31 @@ class TestUnstackZeroInputOp(unittest.TestCase):
     def unstack_zero_input_static(self):
         paddle.enable_static()
 
-        array = np.array([], dtype=np.float32)
-        x = paddle.to_tensor(np.reshape(array, [0]), dtype='float32')
-        paddle.unstack(x, axis=1)
+        dtypes = ['float32', 'complex64', 'complex128']
+        for dtype in dtypes:
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
+                data = np.random.random([0]).astype(dtype)
+                if dtype == 'complex64' or dtype == 'complex128':
+                    data = (
+                        np.random.random([0]) + 1j * np.random.random([0])
+                    ).astype(dtype)
+                x = paddle.static.data(shape=[0], dtype=dtype, name='x')
+                paddle.unstack(x, axis=1)
 
     def unstack_zero_input_dynamic(self):
-        array = np.array([], dtype=np.float32)
-        x = paddle.to_tensor(np.reshape(array, [0]), dtype='float32')
-        paddle.unstack(x, axis=1)
+        paddle.disable_static()
+        dtypes = ['float32', 'complex64', 'complex128']
+        for dtype in dtypes:
+            with base.dygraph.guard():
+                data = np.random.random([0]).astype(dtype)
+                if dtype == 'complex64' or dtype == 'complex128':
+                    data = (
+                        np.random.random([0]) + 1j * np.random.random([0])
+                    ).astype(dtype)
+                x = base.dygraph.to_variable(data)
+                paddle.unstack(x, axis=1)
 
     def test_type_error(self):
         paddle.disable_static()

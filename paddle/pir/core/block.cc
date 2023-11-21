@@ -43,8 +43,8 @@ Block::Iterator Block::insert(ConstIterator iterator, Operation *op) {
 }
 
 Block::Iterator Block::erase(ConstIterator position) {
-  IR_ENFORCE((*position)->GetParent() == this, "iterator not own this block.");
-  (*position)->Destroy();
+  IR_ENFORCE(position->GetParent() == this, "iterator not own this block.");
+  position->Destroy();
   return ops_.erase(position);
 }
 
@@ -56,19 +56,19 @@ void Block::clear() {
 }
 
 void Block::Assign(Iterator position, Operation *op) {
-  IR_ENFORCE((*position)->GetParent() == this, "position not own this block.");
-  (*position)->Destroy();
-  (*position) = op;
+  IR_ENFORCE(position->GetParent() == this, "position not own this block.");
+  position->Destroy();
+  position.set_underlying_pointer(op);
   op->SetParent(this, position);
 }
 
 Operation *Block::Take(Operation *op) {
   IR_ENFORCE(op && op->GetParent() == this, "iterator not own this block.");
-  ops_.erase(*op);
+  ops_.erase(Iterator(*op));
   return op;
 }
 
-void Block::SetParent(Region *parent, Region::iterator position) {
+void Block::SetParent(Region *parent, Region::Iterator position) {
   parent_ = parent;
   position_ = position;
 }
