@@ -25,6 +25,7 @@ decomp_interface_declare_gen_op_list = [
     "relu",
     "softmax",
     "layer_norm",
+    "gelu",
 ]
 
 # come into effect in generated file op_decomp.cc
@@ -36,6 +37,7 @@ decomp_interface_implementation_gen_op_list = [
     "relu",
     "softmax",
     "layer_norm",
+    "gelu",
 ]
 
 
