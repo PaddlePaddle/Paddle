@@ -158,7 +158,6 @@ class DygraphShardingOptimizer:
         """
         should clear grad for all parameters in model
         """
-        #
         for p in self._parameter_list:
             if hasattr(p, "main_grad") and p.main_grad is not None:
                 assert p._grad_ivar() is None
