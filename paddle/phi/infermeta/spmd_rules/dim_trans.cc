@@ -85,7 +85,7 @@ std::string Flatten::to_string() {
 
 Split::Split() : DimTrans(DimTrans::Type::SPLIT) { input_dim_trans_ = nullptr; }
 
-Split::Split(const std::shared_ptr<DimTrans>& dim,
+Split::Split(const std::shared_ptr<DimTrans> dim,
              const std::vector<int64_t>& shape,
              int64_t id)
     : DimTrans(DimTrans::Type::SPLIT) {
@@ -100,7 +100,7 @@ const std::shared_ptr<DimTrans>& Split::input() const {
   return input_dim_trans_;
 }
 
-void Split::set_input(const std::shared_ptr<DimTrans>& dim) {
+void Split::set_input(const std::shared_ptr<DimTrans> dim) {
   input_dim_trans_ = dim;
 }
 
@@ -135,7 +135,7 @@ std::shared_ptr<DimTrans> make_flatten(
   return ptr;
 }
 
-std::shared_ptr<DimTrans> make_split(const std::shared_ptr<DimTrans>& dim,
+std::shared_ptr<DimTrans> make_split(const std::shared_ptr<DimTrans> dim,
                                      const std::vector<int64_t>& shape,
                                      int64_t id) {
   PADDLE_ENFORCE_GT(shape.size(),
@@ -180,7 +180,7 @@ std::shared_ptr<DimTrans> make_split(const std::shared_ptr<DimTrans>& dim,
 // flattened input axis. For the split transformation,
 // only the leftmost split axis in output will return its input.
 std::shared_ptr<DimTrans> GetDimTrans(
-    const std::shared_ptr<DimTrans>& dim_trans,
+    const std::shared_ptr<DimTrans> dim_trans,
     std::vector<std::vector<bool>>* shardable,
     std::set<int64_t>* seen_dims,
     const std::vector<int64_t>& input_shape,
@@ -266,7 +266,7 @@ std::shared_ptr<DimTrans> GetDimTrans(
   return ret_dim_trans;
 }
 
-void GetUsedInputDim(const std::shared_ptr<DimTrans>& dim_trans,
+void GetUsedInputDim(const std::shared_ptr<DimTrans> dim_trans,
                      std::set<int64_t>* seen_dims) {
   if (dim_trans->type() == DimTrans::Type::INPUTDIM) {
     std::shared_ptr<InputDim> input =

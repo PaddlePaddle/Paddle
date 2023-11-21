@@ -111,7 +111,7 @@ class Split : public DimTrans {
  public:
   Split();
 
-  Split(const std::shared_ptr<DimTrans>& dim,
+  Split(const std::shared_ptr<DimTrans> dim,
         const std::vector<int64_t>& shape,
         int64_t id);
 
@@ -119,7 +119,7 @@ class Split : public DimTrans {
 
   const std::shared_ptr<DimTrans>& input() const;
 
-  void set_input(const std::shared_ptr<DimTrans>& dim);
+  void set_input(const std::shared_ptr<DimTrans> dim);
 
   int64_t split_id() const;
 
@@ -137,7 +137,7 @@ class Split : public DimTrans {
 std::shared_ptr<DimTrans> make_flatten(
     const std::vector<std::shared_ptr<DimTrans>>& dims = {});
 
-std::shared_ptr<DimTrans> make_split(const std::shared_ptr<DimTrans>& dim,
+std::shared_ptr<DimTrans> make_split(const std::shared_ptr<DimTrans> dim,
                                      const std::vector<int64_t>& shape = {},
                                      int64_t id = 0);
 
