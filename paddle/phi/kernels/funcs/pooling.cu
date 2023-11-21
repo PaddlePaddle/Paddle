@@ -1937,26 +1937,20 @@ __global__ void KernelMaxPool2dWithIdx(const int nthreads,
                                        const int padding_width,
                                        bool adaptive,
                                        bool fractional,
+                                       uint64_t seed,
+                                       uint64_t offset,
                                        T1* output_data,
                                        T2* mask_data,
                                        FastDivModForPooling divmods) {
   float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
   float u_height = 0, u_width = 0, u_depth = 0;
   if (fractional) {
-    // std::uniform_real_distribution<float> dist(0, 1);
-    // auto engine = phi::GetCPURandomEngine(0);
-    // float u = dist(*engine);
-
-    // auto gen_cuda = phi::DefaultCUDAGenerator(0);
-    // int seed = static_cast<int>(gen_cuda->Random64());
-    int seed = 0;
-
     size_t thread_idx =
         static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
 
 #if defined(__NVCC__)
     curandStatePhilox4_32_10_t state;
-    curand_init(seed, thread_idx, 0, &state);
+    curand_init(seed, thread_idx, offset, &state);
 #else
     hiprandStatePhilox4_32_10_t state;
     hiprand_init(seed, thread_idx, offset, &state);
@@ -2103,25 +2097,19 @@ __global__ void KernelMaxPool2DWithIdxGrad(const int nthreads,
                                            const int padding_width,
                                            bool adaptive,
                                            bool fractional,
+                                           uint64_t seed,
+                                           uint64_t offset,
                                            T1* input_grad,
                                            FastDivModForPooling divmods) {
   float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
   float u_height = 0, u_width = 0, u_depth = 0;
   if (fractional) {
-    // std::uniform_real_distribution<float> dist(0, 1);
-    // auto engine = phi::GetCPURandomEngine(0);
-    // float u = dist(*engine);
-
-    // auto gen_cuda = phi::DefaultCUDAGenerator(0);
-    // int seed = static_cast<int>(gen_cuda->Random64());
-    int seed = 0;
-
     size_t thread_idx =
         static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
 
 #if defined(__NVCC__)
     curandStatePhilox4_32_10_t state;
-    curand_init(seed, thread_idx, 0, &state);
+    curand_init(seed, thread_idx, offset, &state);
 #else
     hiprandStatePhilox4_32_10_t state;
     hiprand_init(seed, thread_idx, offset, &state);
@@ -2272,6 +2260,14 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
       int blocks = (nthreads + thread_num - 1) / thread_num;
       dim3 threads(thread_num, 1);
       dim3 grid(blocks, 1);
+
+      // generate seed for fractional pool
+      auto gen_cuda = context.GetGenerator();
+      constexpr int increment_offset = 1 * 4;  // one seed with multiple of 4
+      auto seed_offset = gen_cuda->IncrementOffset(increment_offset);
+      uint64_t seed = seed_offset.first;
+      uint64_t offset = seed_offset.second;
+
       KernelMaxPool2dWithIdx<T1, T2>
           <<<grid, threads, 0, context.stream()>>>(nthreads,
                                                    input_data,
@@ -2288,6 +2284,8 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                    padding_width,
                                                    adaptive,
                                                    fractional,
+                                                   seed,
+                                                   offset,
                                                    output_data,
                                                    mask_data,
                                                    pool_divmods);
@@ -2336,6 +2334,14 @@ class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
 
     auto pool_divmods =
         FastDivModForPooling(input_channels, input_width, input_height);
+
+    // generate seed for fractional pool
+    auto gen_cuda = context.GetGenerator();
+    constexpr int increment_offset = 1 * 4;  // one seed with multiple of 4
+    auto seed_offset = gen_cuda->IncrementOffset(increment_offset);
+    uint64_t seed = seed_offset.first;
+    uint64_t offset = seed_offset.second;
+
     KernelMaxPool2DWithIdxGrad<T1, T2>
         <<<grid, threads, 0, context.stream()>>>(nthreads,
                                                  output_grad_data,
@@ -2353,6 +2359,8 @@ class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
                                                  padding_width,
                                                  adaptive,
                                                  fractional,
+                                                 seed,
+                                                 offset,
                                                  input_grad_data,
                                                  pool_divmods);
   }
@@ -2392,26 +2400,20 @@ __global__ void KernelMaxPool3DWithIdx(const int ncd,
                                        const int padding_width,
                                        bool adaptive,
                                        bool fractional,
+                                       uint64_t seed,
+                                       uint64_t offset,
                                        T1* output_data,
                                        T2* mask_data,
                                        FastDivModForPooling3D divmods_output) {
   float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
   float u_height = 0, u_width = 0, u_depth = 0;
   if (fractional) {
-    // std::uniform_real_distribution<float> dist(0, 1);
-    // auto engine = phi::GetCPURandomEngine(0);
-    // float u = dist(*engine);
-
-    // auto gen_cuda = phi::DefaultCUDAGenerator(0);
-    // int seed = static_cast<int>(gen_cuda->Random64());
-    int seed = 0;
-
     size_t thread_idx =
         static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
 
 #if defined(__NVCC__)
     curandStatePhilox4_32_10_t state;
-    curand_init(seed, thread_idx, 0, &state);
+    curand_init(seed, thread_idx, offset, &state);
 #else
     hiprandStatePhilox4_32_10_t state;
     hiprand_init(seed, thread_idx, offset, &state);
@@ -2614,6 +2616,13 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
     auto pool_divmods_output = FastDivModForPooling3D(
         input_channels, output_width, output_height, output_depth);
 
+    // generate seed for fractional pool
+    auto gen_cuda = context.GetGenerator();
+    constexpr int increment_offset = 1 * 4;  // one seed with multiple of 4
+    auto seed_offset = gen_cuda->IncrementOffset(increment_offset);
+    uint64_t seed = seed_offset.first;
+    uint64_t offset = seed_offset.second;
+
     KernelMaxPool3DWithIdx<T1, T2>
         <<<grid, threads, 0, context.stream()>>>(ncd,
                                                  input_data,
@@ -2635,6 +2644,8 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                  padding_width,
                                                  adaptive,
                                                  fractional,
+                                                 seed,
+                                                 offset,
                                                  output_data,
                                                  mask_data,
                                                  pool_divmods_output);
