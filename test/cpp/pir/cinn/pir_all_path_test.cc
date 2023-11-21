@@ -505,22 +505,22 @@ std::shared_ptr<::pir::Program> BuildLayerNorm2Program() {
   std::vector<int64_t> axes{-1};
   auto x =
       builder
-          .Build<paddle::dialect::DataOp>("x",
-                                          std::vector<int64_t>({128, 128, 768}),
+          .Build<paddle::dialect::FullOp>(std::vector<int64_t>({128, 128, 768}),
+                                          1.0,
                                           phi::DataType::FLOAT32,
                                           phi::GPUPlace())
           .result(0);
 
   auto bias = builder
-                  .Build<paddle::dialect::DataOp>("bias",
-                                                  std::vector<int64_t>({768}),
+                  .Build<paddle::dialect::FullOp>(std::vector<int64_t>({768}),
+                                                  1.0,
                                                   phi::DataType::FLOAT32,
                                                   phi::GPUPlace())
                   .result(0);
 
   auto scale = builder
-                   .Build<paddle::dialect::DataOp>("scale",
-                                                   std::vector<int64_t>({768}),
+                   .Build<paddle::dialect::FullOp>(std::vector<int64_t>({768}),
+                                                   1.0,
                                                    phi::DataType::FLOAT32,
                                                    phi::GPUPlace())
                    .result(0);
