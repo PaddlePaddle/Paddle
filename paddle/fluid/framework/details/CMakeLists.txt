@@ -382,7 +382,6 @@ set(IR_PASS_DEPS
 
 if(WITH_CINN)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} paddle2cinn)
-  set(IR_PASS_DEPS ${IR_PASS_DEPS} paddle2cinn)
 endif()
 
 if(NOT APPLE
