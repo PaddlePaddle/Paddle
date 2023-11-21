@@ -100,7 +100,12 @@ phi::KernelKey GetConcatExpectedKernelType(
     }
   }
   if (inputs.size() > 64) {
-    op_ptr->SetDnnFallback(true);
+    int cur_batch_size = !inputs[0]->lod().empty()
+                             ? inputs[0]->lod()[0].size() - 1
+                             : inputs[0]->dims()[0];
+    if (cur_batch_size < 1000) {
+      op_ptr->SetDnnFallback(true);
+    }
   }
   if (flag == 0) {
     PADDLE_THROW(platform::errors::InvalidArgument(
