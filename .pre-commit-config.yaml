@@ -70,14 +70,6 @@ repos:
     hooks:
     -   id: ruff
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
--   repo: local
-    hooks:
-    -   id: pylint-doc-string
-        name: pylint
-        description: Check python docstring style using docstring_checker.
-        entry: bash ./tools/codestyle/pylint_pre_commit.hook
-        language: system
-        files: \.(py)$
 # For C++ files
 -   repo: local
     hooks:
