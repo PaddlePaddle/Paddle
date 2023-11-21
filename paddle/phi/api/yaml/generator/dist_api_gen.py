@@ -1157,9 +1157,7 @@ class DistForwardAPI(ForwardAPI):
             trans_flag=trans_flag,
         )
 
-        input_name_tensor_map[input_name].append(
-            (f'input_{input_name}_vec', True)
-        )
+        input_name_tensor_map[input_name].append((f'input_{input_name}', True))
 
         return input_tensor_code
 
