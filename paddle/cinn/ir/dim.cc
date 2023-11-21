@@ -18,6 +18,8 @@
 namespace cinn {
 namespace ir {
 
+using pir::shape::SymbolicDimOp;
+
 const _Dim_* Dim::operator->() const { return As<_Dim_>(); }
 _Dim_* Dim::operator->() { return As<_Dim_>(); }
 

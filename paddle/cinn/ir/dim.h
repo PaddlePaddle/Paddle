@@ -15,20 +15,13 @@
 #pragma once
 
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/pir/dialect/shape/ir/shape_op.h"
 
 namespace cinn {
 namespace ir {
 
 struct _Dim_;
-
-// This fake class is to pass the CI, and will be replaced by
-// pir::shape::SymbolicDimOp when pir is completely integrated.
-class SymbolicDimOp {
- public:
-  const std::string GetSymName() const { return ""; }
-  int64_t GetDimSize() const { return 0; }
-  bool IsDynamic() const { return false; }
-};
+using pir::shape::SymbolicDimOp;
 
 //! Wrapper for _Dim_
 class Dim : public IrNodeRef {
@@ -49,7 +42,6 @@ class Dim : public IrNodeRef {
 struct _Dim_ : ExprNode<_Dim_> {
   //! The name of this struct.
   std::string name;
-  // (TODO: zhangzheng) Replace this fake class by pir::shape::SymbolicDimOp
   SymbolicDimOp sym_dim;
   Expr dim_expr;
 
