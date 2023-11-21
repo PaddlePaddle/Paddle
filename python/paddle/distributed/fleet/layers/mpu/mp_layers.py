@@ -217,7 +217,12 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
     @staticmethod
     def backward(ctx, dy):
         x, weight, bias = ctx.saved_tensor()
-        dx = paddle.matmul(dy, weight, transpose_y=True)
+        if dy.dtype == weight.dtype:
+            dx = paddle.matmul(dy, weight, transpose_y=True)
+        else:
+            dx = paddle.matmul(
+                dy, paddle.cast(weight, dtype=dy.dtype), transpose_y=True
+            )
         op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
         task = ctx.model_parallel_group.process_group.all_reduce(
             dx, op_type, sync_op=False
