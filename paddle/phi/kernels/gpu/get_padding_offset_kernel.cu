@@ -69,7 +69,7 @@ __global__ void GetCumOffsetKernel(int *token_num,
 
 namespace phi {
 
-__global__ void GetPaddingOffsetKernel(int32_t *padding_offset,
+__global__ void GetPaddingOffsetKernel(int *padding_offset,
                                        int *cum_offsets_out,
                                        const int *cum_offsets,
                                        const int *seq_lens,
@@ -113,7 +113,7 @@ void GetPaddingOffset(const Context &dev_ctx,
   // 从 GPU 复制 token_num 到 CPU 内存
   DenseTensor cpu_token_num;
   cpu_token_num.Resize(token_num.dims());
-  auto token_num_size = sizeof(int64_t) * token_num.numel();
+  auto token_num_size = sizeof(int) * token_num.numel();
   phi::memory_utils::Copy(token_num.place(),
                           cpu_token_num.data<int64_t>(),
                           paddle::CPUPlace(),
