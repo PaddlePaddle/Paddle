@@ -175,7 +175,7 @@ class MultivariateNormal(distribution.Distribution):
         Return:
             Tensor: indicator for lower triangular matrix
         """
-        tril = value.tril()
+        tril = paddle.tril(value)
         is_lower_triangular = paddle.cast(
             (tril == value).reshape(
                 value.shape[:-2]

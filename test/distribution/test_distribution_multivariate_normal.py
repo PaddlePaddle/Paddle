@@ -91,10 +91,10 @@ class TestMVN(unittest.TestCase):
         sample_variance = samples.var(axis=0)
 
         np.testing.assert_allclose(
-            sample_mean, self._dist.mean, atol=0.05, rtol=0.40
+            sample_mean, self._dist.mean, atol=0.00, rtol=0.40
         )
         np.testing.assert_allclose(
-            sample_variance, self._dist.variance, atol=0.05, rtol=0.40
+            sample_variance, self._dist.variance, atol=0.00, rtol=0.40
         )
 
     def _np_variance(self):
@@ -126,7 +126,7 @@ class TestMVN(unittest.TestCase):
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'loc', 'covariance_matrix', 'value'),
+    (parameterize.TEST_CASE_NAME, 'loc', 'precision_matrix', 'value'),
     [
         (
             'value-same-shape',
@@ -146,18 +146,19 @@ class TestMVNProbs(unittest.TestCase):
     def setUp(self):
         self._dist = MultivariateNormal(
             loc=self.loc,
-            covariance_matrix=paddle.to_tensor(self.covariance_matrix),
+            precision_matrix=paddle.to_tensor(self.precision_matrix),
         )
+        self.cov = np.linalg.inv(self.precision_matrix)
 
     def test_prob(self):
         if len(self.value.shape) <= 1:
             scipy_pdf = scipy.stats.multivariate_normal.pdf(
-                self.value, self.loc, self.covariance_matrix
+                self.value, self.loc, self.cov
             )
         else:
             scipy_pdf = np.apply_along_axis(
                 lambda i: scipy.stats.multivariate_normal.pdf(
-                    i, self.loc, self.covariance_matrix
+                    i, self.loc, self.cov
                 ),
                 axis=1,
                 arr=self.value,
@@ -172,12 +173,12 @@ class TestMVNProbs(unittest.TestCase):
     def test_log_prob(self):
         if len(self.value.shape) <= 1:
             scipy_logpdf = scipy.stats.multivariate_normal.logpdf(
-                self.value, self.loc, self.covariance_matrix
+                self.value, self.loc, self.cov
             )
         else:
             scipy_logpdf = np.apply_along_axis(
                 lambda i: scipy.stats.multivariate_normal.logpdf(
-                    i, self.loc, self.covariance_matrix
+                    i, self.loc, self.cov
                 ),
                 axis=1,
                 arr=self.value,
@@ -192,14 +193,14 @@ class TestMVNProbs(unittest.TestCase):
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'mu_1', 'sig_1', 'mu_2', 'sig_2'),
+    (parameterize.TEST_CASE_NAME, 'mu_1', 'tril_1', 'mu_2', 'tril_2'),
     [
         (
             'one-batch',
             parameterize.xrand((2,), dtype='float32', min=-2, max=2),
-            np.array([[2.0, 1.0], [1.0, 2.0]]),
+            np.array([[2.0, 0.0], [1.0, 2.0]]),
             parameterize.xrand((2,), dtype='float32', min=-2, max=2),
-            np.array([[3.0, 2.0], [2.0, 3.0]]),
+            np.array([[3.0, 0.0], [2.0, 3.0]]),
         )
     ],
 )
@@ -208,11 +209,11 @@ class TestMVNKL(unittest.TestCase):
         paddle.disable_static()
         self._dist1 = MultivariateNormal(
             loc=paddle.to_tensor(self.mu_1),
-            covariance_matrix=paddle.to_tensor(self.sig_1),
+            scale_tril=paddle.to_tensor(self.tril_1),
         )
         self._dist2 = MultivariateNormal(
             loc=paddle.to_tensor(self.mu_2),
-            covariance_matrix=paddle.to_tensor(self.sig_2),
+            scale_tril=paddle.to_tensor(self.tril_2),
         )
 
     def test_kl_divergence(self):
