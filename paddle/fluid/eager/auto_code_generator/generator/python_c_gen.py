@@ -72,6 +72,10 @@ PARSE_PYTHON_C_TENSORS_TEMPLATE = (
     "    auto {} = {}(\"{}\", \"{}\", args, {}, {});\n"
 )
 
+PARSE_PYTHON_C_TENSOR_REF_TEMPLATE = (
+    "    auto& {} = {}(\"{}\", \"{}\", args, {}, {});\n"
+)
+
 CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_TEMPLATE = (
     "    {} = {}(\"{}\", \"{}\", args, {}, {}, mesh);\n"
 )
@@ -390,7 +394,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                         input_single_tensor_names + ", " + name
                     )
                     get_eager_tensor_str += (
-                        PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                        PARSE_PYTHON_C_TENSOR_REF_TEMPLATE.format(
                             name,
                             "GetTensorFromArgs",
                             forward_api_name,
