@@ -53,8 +53,7 @@ MAIN_DIST_BRANCH_TEMPLATE = """
       // 4. Select Kernel{}
       // 5. Reshard Input{}\n
       // 6. PrepareData (DataTransform & Prepare Dense Input){}
-      // RecordOpInfoSupplement
-      {}
+      // RecordOpInfoSupplement{}
       // 7. Infer Local DenseTensor Meta{}
       // 8. DenseTensor Kernel Call{}
     }}\n
