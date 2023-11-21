@@ -18,12 +18,7 @@ from paddle.framework import LayerHelper, in_dynamic_mode
 
 
 def qkv_transpose_split(
-    qkv,
-    padding_offset,
-    seq_lens,
-    input_ids,
-    num_head,
-    head_size
+    qkv, padding_offset, seq_lens, input_ids, num_head, head_size
 ):
     r"""
     Apply QkvTransposeSplitKernel kernel.
@@ -60,21 +55,15 @@ def qkv_transpose_split(
         'input_ids': input_ids,
     }
 
-    q_out = helper.create_variable_for_type_inference(
-        dtype=qkv.dtype
-    )
-    k_out = helper.create_variable_for_type_inference(
-        dtype=qkv.dtype
-    )
-    v_out = helper.create_variable_for_type_inference(
-        dtype=qkv.dtype
-    )
+    q_out = helper.create_variable_for_type_inference(dtype=qkv.dtype)
+    k_out = helper.create_variable_for_type_inference(dtype=qkv.dtype)
+    v_out = helper.create_variable_for_type_inference(dtype=qkv.dtype)
 
     outputs_dict = {
         'q_out': q_out,
         'k_out': k_out,
         'v_out': v_out,
-        }
+    }
 
     helper.append_op(
         type='qkv_transpose_split',

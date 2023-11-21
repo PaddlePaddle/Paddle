@@ -13,17 +13,12 @@
 # limitations under the License.
 
 
-from paddle import _C_ops
-from paddle import core
+from paddle import _C_ops, core
 from paddle.framework import LayerHelper, in_dynamic_mode
 
 
 def fused_get_rotary_embedding(
-    input_ids,
-    position_ids,
-    head_dim_shape_tensor,
-    prompt_num,
-    use_neox
+    input_ids, position_ids, head_dim_shape_tensor, prompt_num, use_neox
 ):
     r"""
     Apply FusedGetRotaryEmbeddingKernel kernel.
@@ -43,11 +38,7 @@ def fused_get_rotary_embedding(
     """
     if in_dynamic_mode():
         return _C_ops.fused_get_rotary_embedding(
-            input_ids,
-            position_ids,
-            head_dim_shape_tensor,
-            prompt_num,
-            use_neox
+            input_ids, position_ids, head_dim_shape_tensor, prompt_num, use_neox
         )
 
     helper = LayerHelper('fused_get_rotary_embedding', **locals())
@@ -64,7 +55,7 @@ def fused_get_rotary_embedding(
 
     outputs_dict = {
         'rotary_embedding': rotary_embedding,
-        }
+    }
 
     helper.append_op(
         type='fused_get_rotary_embedding',
@@ -76,4 +67,4 @@ def fused_get_rotary_embedding(
         },
     )
 
-    return (rotary_embedding)
+    return rotary_embedding

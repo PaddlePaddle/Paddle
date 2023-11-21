@@ -55,4 +55,6 @@ __all__ = [
     "encode_rotary_qk",
     "write_cache_kv",
     "rebuild_padding",
+    "fused_get_rotary_embedding",
+    "qkv_transpose_split",
 ]

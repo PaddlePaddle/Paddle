@@ -20,14 +20,14 @@ namespace phi {
 
 template <typename T, typename Context>
 void QkvTransposeSplitKernel(const Context& dev_ctx,
-                        const DenseTensor& qkv,
-                        const DenseTensor& padding_offset,
-                        const DenseTensor& seq_lens,
-                        const DenseTensor& input_ids,
-                        int num_head,
-                        int head_size,
-                        DenseTensor* q_out,
-                        DenseTensor* k_out,
-                        DenseTensor* v_out);
+                             const DenseTensor& qkv,
+                             const DenseTensor& padding_offset,
+                             const DenseTensor& seq_lens,
+                             const DenseTensor& input_ids,
+                             int num_head,
+                             int head_size,
+                             DenseTensor* q_out,
+                             DenseTensor* k_out,
+                             DenseTensor* v_out);
 
 }  // namespace phi

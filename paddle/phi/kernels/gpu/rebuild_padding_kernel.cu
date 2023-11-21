@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "paddle/phi/kernels/rebuild_padding_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
@@ -37,13 +38,13 @@ namespace phi {
 constexpr int VEC_16B = 16;
 
 template <typename T, int VecSize>
-__global__ void RebuildPaddingKernel(T *output_data,
-                                     const T *input_data,
-                                     const int *cum_offsets,
-                                     const int *seq_lens,
-                                     const int max_seq_len,
-                                     const int dim_embed,
-                                     const int elem_nums) {
+__global__ void RebuildPaddingKernelImpl(T *output_data,
+                                         const T *input_data,
+                                         const int *cum_offsets,
+                                         const int *seq_lens,
+                                         const int max_seq_len,
+                                         const int dim_embed,
+                                         const int elem_nums) {
   using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
   const int global_idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -83,7 +84,7 @@ void RebuildPaddingKernel(const Context &dev_ctx,
   const int grid_size = (pack_num + blocksize - 1) / blocksize;
 
   // 调用 CUDA 内核
-  RebuildPaddingKernel<T, PackSize><<<grid_size, blocksize, 0, cu_stream>>>(
+  RebuildPaddingKernelImpl<T, PackSize><<<grid_size, blocksize, 0, cu_stream>>>(
       reinterpret_cast<T *>(output->data<T>()),
       reinterpret_cast<const T *>(x.data<T>()),
       padding_offset.data<int>(),
@@ -92,7 +93,9 @@ void RebuildPaddingKernel(const Context &dev_ctx,
       dim_embed,
       elem_nums);
 }
+
 }  // namespace phi
+
 PD_REGISTER_KERNEL(rebuild_padding,
                    GPU,
                    ALL_LAYOUT,
