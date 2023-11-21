@@ -45,13 +45,13 @@ using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 template <typename T, typename Context>
 void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
                                     const DenseTensor &x,
-                                    const DenseTensor &y,
-                                    const DenseTensor &y_grad,
                                     const DenseTensor &scale,
                                     const DenseTensor &bias,
+                                    const DenseTensor &y,
                                     const DenseTensor &saved_mean,
                                     const DenseTensor &saved_variance,
                                     const DenseTensor &reserve_space,
+                                    const DenseTensor &y_grad,
                                     float momentum,
                                     float epsilon,
                                     const std::string &act_type,
@@ -59,11 +59,7 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
                                     DenseTensor *z_grad,
                                     DenseTensor *scale_grad,
                                     DenseTensor *bias_grad) {
-#if CUDNN_VERSION < 7401
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "The fused_bn_add_activation operator is not supported on GPU "
-      "when CUDNN version < 7.4.1"));
-#endif
+#if defined(PADDLE_WITH_CUDA) and CUDNN_VERSION >= 7401
   bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
   PADDLE_ENFORCE_EQ(is_gpu_place,
                     true,
@@ -208,6 +204,11 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
       phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "The fused_bn_add_activation operator is not supported on GPU "
+      "when CUDNN version < 7.4.1"));
+#endif
 }
 
 }  // namespace fusion

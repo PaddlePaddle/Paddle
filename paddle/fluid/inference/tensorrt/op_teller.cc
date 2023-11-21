@@ -324,12 +324,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto* block = desc.Block();
       if (block) {
         auto* filter_var_desc = block->FindVar(desc.Input("Filter")[0]);
-        if (!filter_var_desc->Persistable() && !use_explicit_quantization) {
+        if (!filter_var_desc->Persistable()) {
 #if IS_TRT_VERSION_GE(8600)
 #else
           LOG(INFO)
               << "Trt below 8.6 not support conv2d's filter is a intermedoate "
-                 "tensor in conv2d op, please upgarde your TenroRT.";
+                 "tensor in conv2d op, please upgarde your TensorRT.";
           return false;
 #endif
         }
@@ -2198,11 +2198,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         for (auto x : dim) {
           if (x == 0 || (x + input_shape.size() == 0)) return false;
         }
-
-      } else {
-        if (PADDLE_GET_CONST(bool, desc.GetAttr("reduce_all")) &&
-            !PADDLE_GET_CONST(bool, desc.GetAttr("keep_dim")))
-          return false;
       }
 
       auto dtype = x_var_desc->GetDataType();

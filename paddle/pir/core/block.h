@@ -20,8 +20,8 @@
 #include "paddle/pir/core/block_argument.h"
 #include "paddle/pir/core/block_operand.h"
 #include "paddle/pir/core/dll_decl.h"
+#include "paddle/pir/core/iterator.h"
 #include "paddle/pir/core/region.h"
-#include "paddle/pir/core/use_iterator.h"
 
 namespace pir {
 class Operation;
@@ -30,9 +30,11 @@ class IR_API Block {
   using OpListType = std::list<Operation *>;
 
  public:
-  using Iterator = OpListType::iterator;
-  using ReverseIterator = OpListType::reverse_iterator;
-  using ConstIterator = OpListType::const_iterator;
+  using Iterator = PointerListIterator<Operation>;
+  using ConstIterator = PointerListConstIterator<Operation>;
+
+  using ReverseIterator = std::reverse_iterator<Iterator>;
+  using ConstReverseIterator = std::reverse_iterator<ConstIterator>;
 
   Block() = default;
   ~Block();
@@ -47,6 +49,8 @@ class IR_API Block {
   ConstIterator end() const { return ops_.end(); }
   Iterator begin() { return ops_.begin(); }
   Iterator end() { return ops_.end(); }
+  ConstReverseIterator rbegin() const { return ops_.rbegin(); }
+  ConstReverseIterator rend() const { return ops_.rend(); }
   ReverseIterator rbegin() { return ops_.rbegin(); }
   ReverseIterator rend() { return ops_.rend(); }
 
@@ -57,7 +61,11 @@ class IR_API Block {
   Iterator insert(ConstIterator iterator, Operation *op);
   Iterator erase(ConstIterator position);
   void clear();
-  operator Region::iterator() { return position_; }
+  operator Region::Iterator() { return position_; }
+
+  // Assign the operation underlying in position with parameter op,
+  // meanwhile, destroy the original operation.
+  void Assign(Iterator position, Operation *op);
 
   ///
   /// \brief Provide iterator interface to access Value use chain.
@@ -79,11 +87,15 @@ class IR_API Block {
   ///
   using BlockArgListType = std::vector<BlockArgument>;
   using ArgsIterator = BlockArgListType::iterator;
+  using ConstArgsIterator = BlockArgListType::const_iterator;
 
   ArgsIterator args_begin() { return arguments_.begin(); }
   ArgsIterator args_end() { return arguments_.end(); }
+  ConstArgsIterator args_begin() const { return arguments_.begin(); }
+  ConstArgsIterator args_end() const { return arguments_.end(); }
   bool args_empty() const { return arguments_.empty(); }
   uint32_t args_size() const { return arguments_.size(); }
+  const BlockArgListType &args() const { return arguments_; }
   BlockArgument argument(uint32_t index) { return arguments_[index]; }
   Type argument_type(uint32_t index) const { return arguments_[index].type(); }
   void ClearArguments();
@@ -104,7 +116,7 @@ class IR_API Block {
 
   // Allow access to 'SetParent'.
   friend class Region;
-  void SetParent(Region *parent, Region::iterator position);
+  void SetParent(Region *parent, Region::Iterator position);
 
   // Take out corresponding Operation and its ownershipe.
   friend class Operation;
@@ -113,7 +125,7 @@ class IR_API Block {
   static bool TopoOrderCheck(const OpListType &op_list);
 
  private:
-  Region::iterator position_;
+  Region::Iterator position_;
   BlockOperand first_use_;
   OpListType ops_;              // owned
   BlockArgListType arguments_;  // owned

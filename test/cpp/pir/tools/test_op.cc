@@ -29,7 +29,7 @@ void BranchOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddSuccessor(target);
 }
 
-void BranchOp::Verify() const {
+void BranchOp::VerifySig() const {
   IR_ENFORCE((*this)->num_successors() == 1u,
              "successors number must equal to 1.");
   IR_ENFORCE((*this)->successor(0), "successor[0] can't be nullptr");
@@ -45,7 +45,7 @@ void Operation1::Build(pir::Builder &builder,               // NOLINT
   argument.AddOutput(builder.float32_type());
   argument.AddAttributes(attributes);
 }
-void Operation1::Verify() const {
+void Operation1::VerifySig() const {
   auto &attributes = this->attributes();
   if (attributes.count("op1_attr1") == 0 ||
       !attributes.at("op1_attr1").isa<pir::StrAttribute>()) {

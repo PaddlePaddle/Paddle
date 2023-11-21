@@ -69,14 +69,14 @@ class AddOp : public pir::Op<AddOp> {
   static const char *name() { return "test.add"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
-  void Verify();
+  void VerifySig();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::OpResult l_operand,
                     pir::OpResult r_operand,
                     pir::Type sum_type);
 };
-void AddOp::Verify() {
+void AddOp::VerifySig() {
   if (num_operands() != 2) {
     throw("The size of inputs must be equal to 2.");
   }
@@ -104,10 +104,8 @@ struct CountOpAnalysis {
     LOG(INFO) << "In CountOpAnalysis, op is " << container_op->name() << "\n";
     for (size_t i = 0; i < container_op->num_regions(); ++i) {
       auto &region = container_op->region(i);
-      for (auto block : region) {
-        for (auto it = block->begin(); it != block->end(); ++it) {
-          ++count;
-        }
+      for (auto &block : region) {
+        count += block.size();
       }
     }
 

@@ -26,9 +26,12 @@ import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
 from paddle.base.executor import _to_name_str
 from paddle.distributed import fleet
-from paddle.framework import IrGraph
-from paddle.framework import _current_expected_place as _get_device
-from paddle.framework import core, in_dynamic_mode
+from paddle.framework import (
+    IrGraph,
+    _current_expected_place as _get_device,
+    core,
+    in_dynamic_mode,
+)
 from paddle.metric import Metric
 from paddle.static import InputSpec, Operator, Variable, global_scope
 
@@ -729,7 +732,7 @@ class Engine:
     def _plan(self, mode):
         if self._planned_mode is None:
             self._planned_mode = mode
-        else:
+        elif self._strategy.auto_mode != "semi":
             self._init_dist_context(mode)
 
         self._planners[mode] = Planner(mode, self._dist_contexts[mode])
@@ -822,6 +825,15 @@ class Engine:
             self.program_helper.init(
                 dist_main_program, self._place, dist_context
             )
+            # The model's instance variables (not paramters), used in forward function,
+            # have been initialized when initialize model in dynamic mode.
+            if self._model and len(self._model.buffers()) > 0:
+                for buffer in self._model.buffers():
+                    scope_var = global_scope().find_var(buffer.name)
+                    buffer_tensor = global_scope().var(buffer.name).get_tensor()
+                    if scope_var and buffer_tensor._is_initialized():
+                        continue
+                    buffer_tensor.set(buffer.numpy(), self._place)
 
         if self._executor is None:
             self._executor = paddle.static.Executor(self._place)
@@ -938,11 +950,10 @@ class Engine:
         """
         self._mode = 'train'
 
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            train_data, train_sample_split, batch_size
-        )
-
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                train_data, train_sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1123,51 +1134,77 @@ class Engine:
 
         """
         self._mode = 'eval'
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            valid_data, valid_sample_split, batch_size
-        )
 
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                valid_data, valid_sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
 
-        micro_batch_size = self._validate_batch_size(batch_size)
-        valid_dataloader = self._prepare_dataloader_from_generator(
-            dataset=valid_data,
-            capacity=70,
-            iterable=False,
-            batch_size=micro_batch_size,
-            steps_per_epoch=steps,
-            collate_fn=collate_fn,
-        )
+        if auto_utils.use_new_executor():
+            local_batch_size = self._validate_batch_size(batch_size)
+            valid_dataloader = self._prepare_dataloader(
+                valid_data,
+                return_list=False,
+                batch_size=local_batch_size,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = len(valid_dataloader) if steps is None else steps
+        else:
+            micro_batch_size = self._validate_batch_size(batch_size)
+            valid_dataloader = self._prepare_dataloader_from_generator(
+                dataset=valid_data,
+                capacity=70,
+                iterable=False,
+                batch_size=micro_batch_size,
+                steps_per_epoch=steps,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = valid_dataloader._steps
+            local_batch_size = micro_batch_size
+            if self._strategy.pipeline.enable:
+                local_batch_size = micro_batch_size * self._acc_steps
 
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
         cbks = config_callbacks(
             callbacks,
             engine=self,
-            batch_size=micro_batch_size,
+            batch_size=local_batch_size,
             log_freq=log_freq,
             verbose=verbose,
             metrics=self._metrics_name(),
         )
 
-        eval_steps = valid_dataloader._steps
+        eval_steps = steps_per_epoch
         cbks.on_begin(
             'eval', {'steps': eval_steps, 'metrics': self._metrics_name()}
         )
         logs = {}
-        for step, _ in enumerate(valid_dataloader):
-            cbks.on_batch_begin('eval', step, logs)
+        for step, batch in enumerate(valid_dataloader):
+            if auto_utils.use_new_executor():
+                batches = self._validate_batch(batch)
+            else:
+                batches = [{}]
+
             try:
-                outs = self._executor.run(
-                    self.main_program,
-                    fetch_list=fetch_names,
-                    use_program_cache=self._strategy.use_cache,
-                    return_numpy=self._strategy.return_numpy,
-                )
+                for micro_batch in batches:
+                    cbks.on_batch_begin('eval', step, logs)
+                    outs = self._executor.run(
+                        self.main_program,
+                        feed=micro_batch,
+                        fetch_list=fetch_names,
+                        use_program_cache=self._strategy.use_cache,
+                        return_numpy=self._strategy.return_numpy,
+                    )
             except core.EOFException:
+                break
+
+            if steps_per_epoch and step >= steps_per_epoch:
+                if not auto_utils.use_new_executor():
+                    valid_dataloader._reset()
                 break
             logs = self._prepare_logger(
                 outs, None, step, None, fetch_names, fetch_indices, self._mode
@@ -1231,42 +1268,65 @@ class Engine:
                 >>> engine.predict(valid_dataset, batch_size=64)
         """
         self._mode = 'predict'
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            test_data, test_sample_split, batch_size
-        )
 
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                test_data, test_sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
 
-        micro_batch_size = self._validate_batch_size(batch_size)
-        test_dataloader = self._prepare_dataloader_from_generator(
-            dataset=test_data,
-            capacity=70,
-            iterable=False,
-            batch_size=micro_batch_size,
-            steps_per_epoch=steps,
-            collate_fn=collate_fn,
-        )
+        if auto_utils.use_new_executor():
+            local_batch_size = self._validate_batch_size(batch_size)
+            test_dataloader = self._prepare_dataloader(
+                test_data,
+                return_list=False,
+                batch_size=local_batch_size,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = len(test_dataloader) if steps is None else steps
+        else:
+            micro_batch_size = self._validate_batch_size(batch_size)
+            test_dataloader = self._prepare_dataloader_from_generator(
+                dataset=test_data,
+                capacity=70,
+                iterable=False,
+                batch_size=micro_batch_size,
+                steps_per_epoch=steps,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = test_dataloader._steps
 
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
         outputs = []
         cbks = config_callbacks(callbacks, engine=self, verbose=verbose)
-        test_steps = test_dataloader._steps
+        test_steps = steps_per_epoch
         cbks.on_begin('predict', {'steps': test_steps})
         logs = {}
-        for step, _ in enumerate(test_dataloader):
-            cbks.on_batch_begin('predict', step, logs)
+        for step, batch in enumerate(test_dataloader):
+            if auto_utils.use_new_executor():
+                batches = self._validate_batch(batch)
+            else:
+                batches = [{}]
+
             try:
-                outs = self._executor.run(
-                    self.main_program,
-                    fetch_list=fetch_names,
-                    use_program_cache=self._strategy.use_cache,
-                    return_numpy=self._strategy.return_numpy,
-                )
+                for micro_batch in batches:
+                    cbks.on_batch_begin('predict', step, logs)
+                    outs = self._executor.run(
+                        self.main_program,
+                        feed=micro_batch,
+                        fetch_list=fetch_names,
+                        use_program_cache=self._strategy.use_cache,
+                        return_numpy=self._strategy.return_numpy,
+                    )
             except core.EOFException:
+                break
+
+            if steps_per_epoch and step >= steps_per_epoch:
+                if not auto_utils.use_new_executor():
+                    test_dataloader._reset()
                 break
             logs = self._prepare_logger(
                 outs, None, step, None, fetch_names, fetch_indices, self._mode
@@ -1281,7 +1341,7 @@ class Engine:
         dataset,
         batch_size=1,
         shuffle=False,
-        drop_last=False,
+        drop_last=True,
         collate_fn=None,
         num_workers=0,
         use_buffer_reader=True,
@@ -1297,11 +1357,10 @@ class Engine:
         if mode is not None:
             self.to_mode(mode)
 
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            dataset, sample_split, batch_size
-        )
-
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                dataset, sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1342,11 +1401,11 @@ class Engine:
     ):
         if mode is not None:
             self.to_mode(mode)
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            dataset, sample_split, batch_size
-        )
 
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                dataset, sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1451,7 +1510,7 @@ class Engine:
         return_list=True,
         batch_size=1,
         shuffle=False,
-        drop_last=False,
+        drop_last=True,
         collate_fn=None,
         num_workers=0,
         use_buffer_reader=True,
@@ -1630,9 +1689,7 @@ class Engine:
                     )
                 if spec.name is None:
                     raise ValueError(
-                        "Requires Input[{}].name != None, but receive `None` with {}.".format(
-                            i, spec
-                        )
+                        f"Requires Input[{i}].name != None, but receive `None` with {spec}."
                     )
                 if self._acc_steps > 1:
                     shape = list(spec.shape)

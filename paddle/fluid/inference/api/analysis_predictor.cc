@@ -98,6 +98,24 @@
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_NVTX
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
+#endif
+
+#include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/transforms/constant_folding_pass.h"
+#include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
+#include "paddle/phi/core/flags.h"
+#include "paddle/pir/pass/pass_manager.h"
+
+PHI_DECLARE_bool(enable_pir_in_executor);
+PHI_DECLARE_bool(pir_apply_inplace_pass);
+
 namespace paddle {
 namespace {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -330,19 +348,44 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
 }
 }  // namespace
 
+AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
+    : config_(config) {
+  if (config_.shape_range_info_collected()) {
+    config_.SwitchIrOptim(false);
+  }
+  if (config_.new_executor_enabled()) {
+    config_.EnableMemoryOptim(false);
+    if (FLAGS_enable_pir_in_executor) {
+      config_.SwitchIrOptim(false);
+    }
+  }
+  int trt_identifier = config_.trt_engine_memory_sharing_identifier_;
+  if (trt_identifier > 0) {
+    // NOTE(liuyuanle): For convenience, we set the id of the predictor to
+    // negative sharing_identifier directly. In the future, this may affect
+    // the meaning of negative predictor id.
+    predictor_id_ = -trt_identifier;
+    LOG(WARNING)
+        << "Since the engine context memory of multiple predictors "
+           "is enabled in Paddle-TRT, we set the id of these predictors to "
+           "negative sharing_identifier you specified : "
+        << predictor_id_;
+  } else {
+    predictor_id_ = inference::GetUniqueId();
+  }
+}
+
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
     const std::shared_ptr<framework::ProgramDesc> &program) {
   VLOG(3) << "Predictor::init()";
+#ifdef PADDLE_WITH_NVTX
   if (config_.with_profile_) {
     LOG(WARNING) << "Profiler is activated, which might affect the performance";
-    auto tracking_device = config_.use_gpu() ? platform::ProfilerState::kAll
-                                             : platform::ProfilerState::kCPU;
-    platform::EnableProfiler(tracking_device);
-  } else {
-    VLOG(2) << "Profiler is deactivated, and no profiling report will be "
-               "generated.";
+    platform::CudaProfilerStart();
+    platform::NvprofEnableRecordEvent();
   }
+#endif
 
   if (!status_is_cloned_) {
     root_predictor_id_ = predictor_id_;
@@ -518,6 +561,16 @@ void AnalysisPredictor::InitDeviceContexts() {
           auto &instance = memory::allocation::AllocatorFacade::Instance();
           auto *xpu_context =
               new InferXPUContext(place_, config_.xpu_config().context_gm_size);
+          xpu_context->SetConvAutotuneInfo(
+              config_.xpu_config_.conv_autotune_file,
+              config_.xpu_config_.conv_autotune_level,
+              config_.xpu_config_.conv_autotune_file_writeback,
+              place_);
+          xpu_context->SetFcAutotuneInfo(
+              config_.xpu_config_.fc_autotune_file,
+              config_.xpu_config_.fc_autotune_level,
+              config_.xpu_config_.fc_autotune_file_writeback,
+              place_);
           xpu_context->SetAllocator(instance.GetAllocator(place_).get());
           xpu_context->SetGenerator(
               phi::DefaultXPUGenerator(place_.GetDeviceId()).get());
@@ -701,6 +754,50 @@ bool AnalysisPredictor::PrepareExecutor() {
 
   executor_->Prepare(
       sub_scope_, *inference_program_, 0, config_.use_feed_fetch_ops_);
+
+  if (config_.new_executor_enabled()) {
+    framework::interpreter::ExecutionConfig execution_config;
+    execution_config.create_local_scope = false;
+    execution_config.used_for_inference = true;
+    auto input_names = GetInputNames();
+    execution_config.skip_gc_vars.insert(input_names.begin(),
+                                         input_names.end());
+    auto output_names = GetOutputNames();
+    execution_config.skip_gc_vars.insert(output_names.begin(),
+                                         output_names.end());
+
+    if (FLAGS_enable_pir_in_executor) {
+      pir_program_ = std::move(
+          paddle::TranslateLegacyProgramToProgram(*inference_program_));
+
+      ::pir::PassManager pm_for_op_program(::pir::IrContext::Instance(), 2);
+      // TODO(liuyuanle): Uncomment constant_folding_pass after fix it
+      // pm_for_op_program.AddPass(::pir::CreateConstantFoldingPass(sub_scope_));
+      pm_for_op_program.AddPass(::pir::CreateConv2dFusePass());
+      pm_for_op_program.AddPass(::pir::CreateDeadCodeEliminationPass());
+      pm_for_op_program.AddPass(
+          ::pir::CreateReplaceFetchWithShadowOutputPass());
+      // pm_for_op_program.EnableIRPrinting();
+      pm_for_op_program.Run(pir_program_.get());
+
+      pir_program_ = std::move(
+          paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_));
+
+      ::pir::PassManager pm_for_kernel_program(::pir::IrContext::Instance(), 3);
+      if (FLAGS_pir_apply_inplace_pass) {
+        pm_for_kernel_program.AddPass(::pir::CreateInplacePass());
+      }
+      pm_for_kernel_program.AddPass(
+          ::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
+      pm_for_kernel_program.Run(pir_program_.get());
+
+      executor_->PrepareInterpreterCore(
+          sub_scope_, *pir_program_, execution_config);
+    } else {
+      executor_->PrepareInterpreterCore(
+          sub_scope_, *inference_program_, execution_config);
+    }
+  }
 
   if (config_.enable_memory_optim_) {
     auto *pass_res_info =
@@ -1082,8 +1179,6 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   if (config_.use_mkldnn_) MkldnnPreSet(inputs);
 #endif
   VLOG(3) << "Predictor::predict";
-  inference::Timer timer;
-  timer.tic();
   // set feed variable
   framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
   PADDLE_ENFORCE_NOT_NULL(
@@ -1107,17 +1202,19 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     HookCollectShapeRangeInfo();
   }
 
-  // Run the inference program
-  // if share variables, we need not create variables
-  executor_->Run();
+  if (config_.new_executor_enabled()) {
+    executor_->RunInterpreterCore();
+  } else {
+    // Run the inference program
+    // if share variables, we need not create variables
+    executor_->Run();
+  }
 
   // get fetch variable
   if (!GetFetch(output_data, scope)) {
     LOG(ERROR) << "fail to get fetches";
     return false;
   }
-
-  VLOG(3) << "predict cost: " << timer.toc() << "ms";
 
   // All the containers in the scope will be hold in inference, but the
   // operators assume that the container will be reset after each batch.
@@ -1147,6 +1244,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
 bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
                             std::vector<paddle::Tensor> *outputs) {
   inference::DisplayMemoryInfo(place_, "before run");
+  if (private_context_) {
+    paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+  }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPreSet(inputs);
@@ -1175,9 +1275,13 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     HookCollectShapeRangeInfo();
   }
 
-  // Run the inference program
-  // if share variables, we need not create variables
-  executor_->Run();
+  if (config_.new_executor_enabled()) {
+    executor_->RunInterpreterCore();
+  } else {
+    // Run the inference program
+    // if share variables, we need not create variables
+    executor_->Run();
+  }
 
   inference::DisplayMemoryInfo(place_, "after run");
 
@@ -1187,19 +1291,16 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     return false;
   }
 
-  // All the containers in the scope will be hold in inference, but the
-  // operators assume that the container will be reset after each batch.
-  // Here is a bugfix, collect all the container variables, and reset then to a
-  // bool; the next time, the operator will call MutableData and construct a new
-  // container again, so that the container will be empty for each batch.
-  if (sub_scope_) {
-    tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
-  }
-  tensor_array_batch_cleaner_.ResetNoTensorVars();
+  // Fix TensorArray reuse not cleaned bug.
+  tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
+  tensor_array_batch_cleaner_.ResetTensorArray();
 
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
+  if (private_context_) {
+    paddle::platform::DeviceContextPool::SetDeviceContexts(nullptr);
+  }
 #ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPostReset();
 #endif
@@ -1425,6 +1526,7 @@ void AnalysisPredictor::PrepareArgument() {
         config_.trt_use_explicit_quantization_);
     argument_->SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
     argument_->SetTensorRtOptimizationLevel(config_.trt_optimization_level_);
+    argument_->SetTensorRtOpsRunFloat(config_.trt_ops_run_float_);
   }
 
   if (config_.dlnne_enabled()) {
@@ -1468,7 +1570,7 @@ void AnalysisPredictor::PrepareArgument() {
         config_.NNAdapter().nnadapter_subgraph_partition_config_path);
     std::vector<std::string> buffer_keys;
     std::vector<std::vector<char>> buffer_vals;
-    for (auto it : config_.NNAdapter().nnadapter_model_cache_buffers) {
+    for (auto const &it : config_.NNAdapter().nnadapter_model_cache_buffers) {
       buffer_keys.emplace_back(it.first);
       buffer_vals.emplace_back(it.second);
     }
@@ -1884,7 +1986,7 @@ std::map<std::string, std::vector<int64_t>>
 AnalysisPredictor::GetInputTensorShape() {
   std::map<std::string, std::vector<int64_t>> input_shapes;
   std::vector<std::string> names = GetInputNames();
-  for (std::string name : names) {
+  for (std::string const &name : names) {
     auto *var = inference_program_->Block(0).FindVar(name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
@@ -1943,7 +2045,7 @@ std::map<std::string, std::vector<int64_t>>
 AnalysisPredictor::GetOutputTensorShape() {
   std::map<std::string, std::vector<int64_t>> output_shapes;
   std::vector<std::string> names = GetOutputNames();
-  for (std::string name : names) {
+  for (std::string const &name : names) {
     auto *var = inference_program_->Block(0).FindVar(name);
     PADDLE_ENFORCE_NOT_NULL(var,
                             platform::errors::PreconditionNotMet(
@@ -2093,11 +2195,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     VLOG(3) << "ZeroCopyRun will use the fleet executor.";
-    inference::Timer timer;
-    timer.tic();
     fleet_exe_->Run(config_.dist_config().carrier_id());
-    VLOG(3) << "Fleet executor inf runs once use: "
-            << std::to_string(timer.toc()) << "ms";
     return true;
   }
 #endif
@@ -2154,7 +2252,11 @@ bool AnalysisPredictor::ZeroCopyRun() {
   }
 #endif
 
-  executor_->Run();
+  if (config_.new_executor_enabled()) {
+    executor_->RunInterpreterCore();
+  } else {
+    executor_->Run();
+  }
   inference::DisplayMemoryInfo(place_, "after run");
 
 #ifdef PADDLE_WITH_XPU
@@ -2363,7 +2465,7 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
          decltype(min_data) max_data,
          decltype(min_data) opt_data,
          decltype(shape_info_) shape_data) {
-        for (auto it : shape_data) {
+        for (auto const &it : shape_data) {
           auto name = it.first;
           auto shapes = it.second;
 
@@ -2606,10 +2708,12 @@ AnalysisPredictor::~AnalysisPredictor() {  // NOLINT
     SaveTrtCalibToDisk();
   }
 #endif
+#ifdef PADDLE_WITH_NVTX
   if (config_.with_profile_) {
-    platform::DisableProfiler(platform::EventSortingKey::kTotal,
-                              "./profile.log");
+    platform::NvprofDisableRecordEvent();
+    platform::CudaProfilerStop();
   }
+#endif
   if (sub_scope_) {
     if (framework::global_transfer_scope_key().find(sub_scope_) !=
         framework::global_transfer_scope_key().end()) {
@@ -3219,6 +3323,13 @@ void InternalUtils::SetTransformerMaskid(
     paddle_infer::Config *c, const std::string &tensorrt_transformer_maskid) {
 #ifdef PADDLE_WITH_CUDA
   c->tensorrt_transformer_maskid_ = tensorrt_transformer_maskid;
+#endif
+}
+
+void InternalUtils::DisableTensorRtHalfOps(
+    paddle_infer::Config *c, const std::unordered_set<std::string> &ops) {
+#ifdef PADDLE_WITH_CUDA
+  c->trt_ops_run_float_ = ops;
 #endif
 }
 

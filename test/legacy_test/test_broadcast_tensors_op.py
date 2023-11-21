@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 random.seed(2021)
 
@@ -135,7 +136,7 @@ class TestCPUBroadcastTensorsOp(OpTest):
     def test_check_output(self):
         self.run_dual_test(
             self.check_output_with_place,
-            {"place": self.place},
+            {"place": self.place, "check_pir": True},
         )
 
     def test_check_grad_normal(self):
@@ -145,6 +146,7 @@ class TestCPUBroadcastTensorsOp(OpTest):
                 "place": self.place,
                 "inputs_to_check": ['x0', 'x1'],
                 "output_names": ['out0', 'out1'],
+                "check_pir": True,
             },
         )
         self.run_triple_in_test(
@@ -153,6 +155,7 @@ class TestCPUBroadcastTensorsOp(OpTest):
                 "place": self.place,
                 "inputs_to_check": ['x0', 'x1', 'x2'],
                 "output_names": ['out0', 'out1', "out2"],
+                "check_pir": True,
             },
         )
 
@@ -209,7 +212,7 @@ class TestBroadcastTensorsBF16Op(OpTest):
     def test_check_output(self):
         self.run_dual_test(
             self.check_output_with_place,
-            {"place": self.place},
+            {"place": self.place, "check_pir": True},
         )
 
     def test_check_grad_normal(self):
@@ -220,6 +223,7 @@ class TestBroadcastTensorsBF16Op(OpTest):
                 "inputs_to_check": ['x0', 'x1'],
                 "output_names": ['out0', 'out1'],
                 "check_dygraph": False,
+                "check_pir": True,
             },
         )
         self.run_triple_in_test(
@@ -229,12 +233,14 @@ class TestBroadcastTensorsBF16Op(OpTest):
                 "inputs_to_check": ['x0', 'x1', 'x2'],
                 "output_names": ['out0', 'out1', 'out2'],
                 "check_dygraph": False,
+                "check_pir": True,
             },
         )
 
 
 class TestBroadcastTensorsAPI(unittest.TestCase):
     def test_api(self):
+        @test_with_pir_api
         def test_static():
             inputs = [
                 paddle.static.data(

@@ -33,14 +33,37 @@ class GroupOp : public pir::Op<GroupOp> {
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::Type> &output_types);
 
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    std::unique_ptr<pir::Block> &&block);
+
   pir::Block *block();
   std::vector<pir::Operation *> ops();
 
-  void Verify();
+  void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT
+};
+
+class IR_API ConcatOp : public pir::Op<ConcatOp> {
+ public:
+  using Op::Op;
+
+  static const char *name() { return "cinn_op.concat"; }
+
+  static constexpr uint32_t attributes_num = 1;
+
+  static const char *attributes_name[attributes_num];
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Value> &inputs,
+                    int axis);
+
+  void VerifySig() const {}
 };
 
 }  // namespace dialect
 }  // namespace cinn
 
 IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)

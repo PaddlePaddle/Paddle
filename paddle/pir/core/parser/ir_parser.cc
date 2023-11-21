@@ -77,13 +77,13 @@ Type IrParser::ParseType() {
     return builder->int16_type();
   } else if (type_val == "i32") {
     ConsumeToken();
-    return Int32Type::get(ctx);
+    return builder->int32_type();
   } else if (type_val == "i64") {
     ConsumeToken();
     return Int64Type::get(ctx);
   } else if (type_val == "index") {
     ConsumeToken();
-    return IndexType::get(ctx);
+    return builder->index_type();
   } else if (type_val == "c64") {
     ConsumeToken();
     return builder->complex64_type();
@@ -95,12 +95,15 @@ Type IrParser::ParseType() {
     ConsumeAToken("[");
     std::vector<Type> vec_type;
     Token vec_type_token = PeekToken();
+    if (vec_type_token.val_ == "]") {
+      ConsumeAToken("]");
+    }
     while (vec_type_token.val_ != "]") {
       Type cur_type = ParseType();
       vec_type.push_back(cur_type);
       vec_type_token = ConsumeToken();
     }
-    return VectorType::get(ctx, vec_type);
+    return builder->vec_type(vec_type);
   } else {
     IR_ENFORCE(type_val.find('.') != std::string::npos,
                "No function parsing " + type_val + " exists!" +
@@ -138,12 +141,20 @@ Attribute IrParser::ParseAttribute() {
     ConsumeAToken("Float");
     ConsumeAToken(")");
     std::string val = ConsumeToken().val_;
+    if (val == "-") {
+      ConsumeAToken("inf");
+      float neg_inf = -std::numeric_limits<float>::infinity();
+      return builder->float_attr(neg_inf);
+    } else if (val == "inf") {
+      float pos_inf = std::numeric_limits<float>::infinity();
+      return builder->float_attr(pos_inf);
+    }
     return builder->float_attr(static_cast<float>(atof(val.c_str())));
   } else if (attribute_type == "Double") {
     ConsumeAToken("Double");
     ConsumeAToken(")");
     std::string val = ConsumeToken().val_;
-    return builder->double_attr(atof(val.c_str()));
+    return builder->double_attr(std::stod(val.c_str()));
   } else if (attribute_type == "Int32") {
     ConsumeAToken("Int32");
     ConsumeAToken(")");

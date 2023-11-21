@@ -419,7 +419,7 @@ void SendBroadCastCommID(std::vector<std::string> servers,
 
   // connect with server
   std::vector<int> connects;
-  for (auto server : servers) {
+  for (auto const& server : servers) {
     VLOG(3) << "connecting endpoint: " << server;
     int conn = ConnectAddr(server, head);
     connects.push_back(conn);

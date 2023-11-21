@@ -15,8 +15,12 @@
 from paddle import _C_ops, version
 from paddle.base.data_feeder import check_dtype
 from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.framework import (
+    LayerHelper,
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+)
 from paddle.device.cuda import get_device_capability
-from paddle.framework import LayerHelper, in_dynamic_mode
 
 
 def weight_quantize(x, algo="weight_only_int8", arch=None):
@@ -192,7 +196,7 @@ def weight_only_linear(
             'weight': [weight],
             'weight_scale': [weight_scale],
         }
-        if bias:
+        if bias is not None:
             inputs["bias"] = [bias]
         attrs = {'weight_dtype': weight_dtype, 'arch': arch}
 
@@ -245,7 +249,7 @@ def llm_int8_linear(
             ...    print(out.shape)
             [1, 2, 32]
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.llm_int8_linear(x, weight, bias, weight_scale, threshold)
         return out
     else:

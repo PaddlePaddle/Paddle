@@ -49,7 +49,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
                         bool flatten,
-                        int dtype,
+                        DataType dtype,
                         MetaTensor* out,
                         MetaConfig config = MetaConfig());
 
@@ -58,6 +58,8 @@ void ArgsortInferMeta(const MetaTensor& input,
                       bool descending,
                       MetaTensor* output,
                       MetaTensor* indices);
+
+void ArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void AsRealInferMeta(const MetaTensor& input, MetaTensor* output);
 
@@ -88,6 +90,11 @@ void CheckNumericsInferMeta(const MetaTensor& tensor,
                             MetaTensor* values);
 
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
+
+void CINNBroadcastInferMeta(const MetaTensor& x,
+                            const std::vector<int64_t>& axes,
+                            const std::vector<int64_t>& out_shape,
+                            MetaTensor* output);
 
 void ClassCenterSampleInferMeta(const MetaTensor& label,
                                 int num_classes,
@@ -132,13 +139,18 @@ void CumScalarAxisInferMeta(const MetaTensor& x,
 
 void CumWithIndicesInferMeta(const MetaTensor& x,
                              int axis,
-                             int dtype,
+                             DataType dtype,
                              MetaTensor* out,
                              MetaTensor* indices);
 
 void DecodeJpegInferMeta(const MetaTensor& x,
                          const std::string& mode,
                          MetaTensor* out);
+
+void DeQuantizeXPUInferMeta(const MetaTensor& x,
+                            DataType out_dtype,
+                            float scale,
+                            MetaTensor* y);
 
 void DiagEmbedInferMeta(
     const MetaTensor& x, int offset, int dim1, int dim2, MetaTensor* out);
@@ -448,6 +460,11 @@ void QrInferMeta(const MetaTensor& x,
                  MetaTensor* q,
                  MetaTensor* r);
 
+void QuantizeXPUInferMeta(const MetaTensor& x,
+                          DataType out_dtype,
+                          float scale,
+                          MetaTensor* y);
+
 void WeightQuantizeInferMeta(const MetaTensor& x,
                              const std::string& algo,
                              const int32_t arch,
@@ -702,7 +719,7 @@ void UniqueConsecutiveInferMeta(const MetaTensor& x,
                                 bool return_inverse,
                                 bool return_counts,
                                 const std::vector<int>& axis,
-                                int dtype,
+                                DataType dtype,
                                 MetaTensor* out,
                                 MetaTensor* index,
                                 MetaTensor* counts);

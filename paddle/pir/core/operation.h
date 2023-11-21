@@ -58,6 +58,8 @@ class IR_API alignas(8) Operation final {
 
   Dialect *dialect() const;
 
+  bool operator==(const Operation &other) const { return this == &other; }
+
   ///
   /// \brief op attribute related public interfaces
   ///
@@ -82,14 +84,15 @@ class IR_API alignas(8) Operation final {
   /// \brief op ouput related public interfaces
   ///
   uint32_t num_results() const { return num_results_; }
-  OpResult result(uint32_t index) { return op_result_impl(index); }
+  OpResult result(uint32_t index) const { return op_result_impl(index); }
+  Type result_type(uint32_t index) const { return result(index).type(); }
   std::vector<OpResult> results();
 
   ///
   /// \brief op input related public interfaces
   ///
   uint32_t num_operands() const { return num_operands_; }
-  OpOperand operand(uint32_t index) { return op_operand_impl(index); }
+  OpOperand operand(uint32_t index) const { return op_operand_impl(index); }
   std::vector<OpOperand> operands();
   Value operand_source(uint32_t index) const;
   std::vector<Value> operands_source() const;
@@ -106,9 +109,15 @@ class IR_API alignas(8) Operation final {
   ///
   /// \brief region related public interfaces
   ///
+  using Iterator = Region *;
+  using ConstIterator = const Region *;
   uint32_t num_regions() const { return num_regions_; }
   Region &region(unsigned index);
   const Region &region(unsigned index) const;
+  ConstIterator begin() const { return regions_; }
+  ConstIterator end() const { return regions_ + num_regions_; }
+  Iterator begin() { return regions_; }
+  Iterator end() { return regions_ + num_regions_; }
 
   ///
   /// \brief parent related public interfaces
@@ -124,6 +133,16 @@ class IR_API alignas(8) Operation final {
   void Print(std::ostream &os);
   pir::OpInfo info() const { return info_; }
   std::string name() const;
+
+  ///
+  /// \brief Remove this operation from its parent block and delete it.
+  ///
+  void Erase();
+
+  ///
+  /// \brief Returns true if this operation has no uses.
+  ///
+  bool use_empty();
 
   template <typename T>
   T dyn_cast() {
@@ -166,12 +185,10 @@ class IR_API alignas(8) Operation final {
             uint32_t num_successors);
 
   int32_t ComputeOpResultOffset(uint32_t index) const;
-  detail::OpResultImpl *op_result_impl(uint32_t index);
-  const detail::OpResultImpl *op_result_impl(uint32_t index) const;
+  detail::OpResultImpl *op_result_impl(uint32_t index) const;
 
   int32_t ComputeOpOperandOffset(uint32_t index) const;
-  detail::OpOperandImpl *op_operand_impl(uint32_t index);
-  const detail::OpOperandImpl *op_operand_impl(uint32_t index) const;
+  detail::OpOperandImpl *op_operand_impl(uint32_t index) const;
 
   template <typename To, typename Enabler = void>
   struct CastUtil {

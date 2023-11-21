@@ -36,32 +36,39 @@ class DataArray:
         """
         Convert DataArray to numpy array
         """
-        cinn_dtype_to_np_dtype = {
+        np_dtype = "unk"
+        if self.dtype.is_bfloat16():
             # numpy has no 'bfloat16', we use uint16 to hold bfloat16 data, same to Paddle
-            BFloat16(): "uint16",
-            BFloat16(): "bfloat16",
-            Float16(): "float16",
-            Float(32): "float32",
-            Float(64): "float64",
-            Int(8): "int8",
-            Int(16): "int16",
-            Int(32): "int32",
-            Int(64): "int64",
-            UInt(8): "uint8",
-            # numpy has no 'bfloat16', we use uint16 to hold bfloat16 data, same to Paddle
-            # "UInt(16): uint16"
-            UInt(32): "uint32",
-            UInt(64): "uint64",
-            Bool(): "bool",
-        }
-        for cinn_dtype, np_dtype in cinn_dtype_to_np_dtype.items():
-            if isinstance(self.dtype, cinn_dtype):
-                np_arr = np.empty(self.shape, np_dtype)
-                assert np_arr.flags["C_CONTIGUOUS"]
-                self.data.copy_to(np_arr)
-                return np_arr
+            np_dtype = "uint16"
+        elif self.dtype.is_float16():
+            np_dtype = "float16"
+        elif self.dtype.is_float(32, common.Type.specific_type_t.UNK):
+            np_dtype = "float32"
+        elif self.dtype.is_float(64, common.Type.specific_type_t.UNK):
+            np_dtype = "float64"
+        elif self.dtype.is_int(8):
+            np_dtype = "int8"
+        elif self.dtype.is_int(16):
+            np_dtype = "int16"
+        elif self.dtype.is_int(32):
+            np_dtype = "int32"
+        elif self.dtype.is_int(64):
+            np_dtype = "int64"
+        elif self.dtype.is_uint(8):
+            np_dtype = "uint8"
+        elif self.dtype.is_uint(32):
+            np_dtype = "uint32"
+        elif self.dtype.is_uint(64):
+            np_dtype = "uint64"
+        elif self.dtype.is_bool():
+            np_dtype = "bool"
+        else:
+            raise TypeError(f"no support {self.dtype} in CINN")
 
-        raise TypeError(f"no support {self._dtype} in CINN")
+        np_arr = np.empty(self.shape, np_dtype)
+        assert np_arr.flags["C_CONTIGUOUS"]
+        self.data.copy_to(np_arr)
+        return np_arr
 
     @staticmethod
     def from_numpy(np_array, target=common.DefaultHostTarget()):

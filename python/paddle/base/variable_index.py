@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
 import warnings
+from functools import reduce
 
 import numpy as np
 
@@ -224,7 +224,8 @@ def replace_ellipsis(var, item):
     item_remove_var = [
         ele
         for ele in item
-        if not isinstance(ele, (Variable, np.ndarray)) and ele is not None
+        if not isinstance(ele, (Variable, paddle.pir.OpResult, np.ndarray))
+        and ele is not None
     ]
     ell_count = item_remove_var.count(Ellipsis)
     if ell_count == 0:
@@ -270,7 +271,7 @@ def replace_none(item):
 def is_integer_or_scalar_tensor(ele):
     from .framework import Variable
 
-    if isinstance(ele, int):
+    if type(ele) is int:
         return True
     elif isinstance(ele, Variable):
         # NOTE(zoooo0820): For compatibility, if FLAGS_set_to_1d is set to True,
@@ -284,6 +285,9 @@ def is_integer_or_scalar_tensor(ele):
                 return True
         if len(ele.shape) == 0 and ele.dtype != paddle.bool:
             return True
+    elif isinstance(ele, paddle.pir.OpResult):
+        if len(ele.shape) == 0 and ele.dtype != paddle.base.libpaddle.BOOL:
+            return True
     return False
 
 
@@ -291,6 +295,11 @@ def is_bool_tensor(ele):
     from .framework import Variable
 
     if isinstance(ele, Variable) and ele.dtype == paddle.bool:
+        return True
+    elif (
+        isinstance(ele, paddle.pir.OpResult)
+        and ele.dtype == paddle.base.libpaddle.BOOL
+    ):
         return True
     return False
 
@@ -303,7 +312,7 @@ def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
             attr, dtype="int64"
         )
         for i, dim in enumerate(attr):
-            if isinstance(dim, Variable):
+            if isinstance(dim, (Variable, paddle.pir.OpResult)):
                 attrs[attr_name].append(-1)
                 infer_flags[i] = -1
             else:
@@ -335,14 +344,10 @@ def get_value_for_bool_tensor(var, item):
     empty_shape = [0] + list(var.shape[i:])
 
     def idx_not_empty(var, item):
-        from ..tensor import gather_nd
+        bool_2_idx = paddle.nonzero(item)
+        return paddle.gather_nd(var, bool_2_idx)
 
-        bool_2_idx = paddle.nonzero(item == True)
-        return gather_nd(var, bool_2_idx)
-
-    from paddle.static.nn import cond
-
-    return cond(
+    return paddle.static.nn.cond(
         item.any(),
         lambda: idx_not_empty(var, item),
         lambda: paddle.empty(empty_shape, var.dtype),
@@ -475,7 +480,7 @@ def _setitem_impl_(var, item, value):
         else:
             raise IndexError(
                 "Valid index accept int, slice, ellipsis, None, list of bool, Variable, "
-                "but received {}.".format(slice_item)
+                f"but received {slice_item}."
             )
 
         axes.append(dim)
@@ -487,9 +492,7 @@ def _setitem_impl_(var, item, value):
     if slice_info.indexes:
         if len(slice_info.indexes) != len(item):
             raise IndexError(
-                "Valid index accept int or slice or ellipsis or list, but received {}.".format(
-                    item
-                )
+                f"Valid index accept int or slice or ellipsis or list, but received {item}."
             )
         return slice_info.set_item(var, value)
     attrs = {
@@ -690,7 +693,8 @@ def parse_index(x, indices):
     )
 
     estimated_dim = 0
-    for dim, slice_item in enumerate(indices):
+    dim = 0
+    for i, slice_item in enumerate(indices):
         start, end, step = None, None, None
         if is_integer_or_scalar_tensor(slice_item):
             if (
@@ -715,21 +719,22 @@ def parse_index(x, indices):
             start = slice_item
             step = 1
             end = slice_item + 1 if slice_item != -1 else MAX_INTEGER
+            dim += 1
         elif isinstance(slice_item, bool):
             # single bool is advanced-indexing
             none_axes.append(dim)
-            estimated_dim += 1
             advanced_index[estimated_dim] = (
                 estimated_dim,
-                paddle.to_tensor(slice_item),
+                paddle.to_tensor([slice_item]),
             )
             has_advanced_index = True
+            estimated_dim += 1
         elif isinstance(slice_item, slice):
             start = slice_item.start
             end = slice_item.stop
             step = slice_item.step
             estimated_dim += 1
-
+            dim += 1
             if start is None and end is None and step is None:
                 continue
 
@@ -757,10 +762,13 @@ def parse_index(x, indices):
 
             has_advanced_index = True
             estimated_dim += 1
-
+            dim += 1
         elif isinstance(slice_item, paddle.base.Variable):
             # In this case, the Variable is not 0-dim Tensor and will be treated as advanced-indexing.
-            if slice_item.dtype == paddle.bool:
+            if (
+                slice_item.dtype == paddle.bool
+                or slice_item.dtype == paddle.base.libpaddle.BOOL
+            ):
                 if slice_item.ndim == 0:
                     # 0-D bool Tensor, same as single PY-bool.
                     none_axes.append(dim)
@@ -774,7 +782,24 @@ def parse_index(x, indices):
             advanced_index[estimated_dim] = (estimated_dim, slice_item)
             has_advanced_index = True
             estimated_dim += 1
+            dim += 1
+        elif isinstance(slice_item, paddle.pir.OpResult):
+            # In this case, the Variable is not 0-dim Tensor and will be treated as advanced-indexing.
+            if slice_item.dtype == paddle.pir.core.DataType.BOOL:
+                if slice_item.ndim == 0:
+                    # 0-D bool Tensor, same as single PY-bool.
+                    none_axes.append(dim)
 
+                elif slice_item.shape[0] != x.shape[dim]:
+                    raise IndexError(
+                        "The shape of boolean index {} did not match indexed tensor {} along axis {}".format(
+                            slice_item.shape[0], x.shape[dim], dim
+                        )
+                    )
+            advanced_index[estimated_dim] = (estimated_dim, slice_item)
+            has_advanced_index = True
+            estimated_dim += 1
+            dim += 1
         else:
             raise IndexError(
                 "Valid index accept int / bool / slice / ellipsis / list / Tuple / Ndarray / Tensor, but received {}.".format(
@@ -785,10 +810,15 @@ def parse_index(x, indices):
             starts.append(start)
             ends.append(end)
             steps.append(step)
-            axes.append(dim)
+            axes.append(dim - 1)
             use_strided_slice = (
                 True
-                if (isinstance(step, paddle.base.Variable) or step != 1)
+                if (
+                    isinstance(
+                        step, (paddle.base.Variable, paddle.pir.OpResult)
+                    )
+                    or step != 1
+                )
                 else use_strided_slice
             )
     return (
@@ -846,6 +876,7 @@ def _setitem_static(x, indices, values):
     StartsTensorList = None
     EndsTensorList = None
     StepsTensorList = None
+    shape = None
 
     if paddle.utils._contain_var(starts):
         StartsTensorList = paddle.utils._convert_to_tensor_list(starts)
@@ -890,14 +921,29 @@ def _setitem_static(x, indices, values):
 
         # step3.1: Only basic indexing, use OP set_value to set value.
         if paddle.in_dynamic_mode():
-            return paddle._legacy_C_ops.set_value_(
-                x,
-                value_tensor,
-                StartsTensorList,
-                EndsTensorList,
-                StepsTensorList,
-                *itertools.chain.from_iterable(attrs.items()),
-            )
+            if value_tensor is None:
+                return paddle._C_ops.set_value_(
+                    x,
+                    starts,
+                    ends,
+                    steps,
+                    axes,
+                    decrease_axes,
+                    none_axes,
+                    shape,
+                    values,
+                )
+            else:
+                return paddle._C_ops.set_value_with_tensor_(
+                    x,
+                    value_tensor,
+                    starts,
+                    ends,
+                    steps,
+                    axes,
+                    decrease_axes,
+                    none_axes,
+                )
         else:
             helper = paddle.base.layer_helper.LayerHelper(
                 'set_value', **locals()
@@ -1032,7 +1078,7 @@ def get_tensor_with_basic_indexing(
         )
         attrs['infer_flags'] = infer_flags
 
-        from . import in_dynamic_or_pir_mode
+        from . import in_dynamic_or_pir_mode, in_pir_mode
 
         if in_dynamic_or_pir_mode():
             if "StartsTensorList" in inputs.keys():
@@ -1052,6 +1098,13 @@ def get_tensor_with_basic_indexing(
                 if len(decrease_axes) > 0:
                     out = paddle._C_ops.squeeze(out, decrease_axes)
             else:
+                if in_pir_mode():
+                    if isinstance(st, (list, tuple)):
+                        if paddle.utils._contain_var(st):
+                            st = paddle.utils.get_int_tensor_list(st)
+                    if isinstance(end, (list, tuple)):
+                        if paddle.utils._contain_var(end):
+                            end = paddle.utils.get_int_tensor_list(end)
                 out = paddle._C_ops.slice(
                     x,
                     axes,
@@ -1159,10 +1212,16 @@ def _getitem_static(x, indices):
             adjusted_advanced_index = parse_bool_and_broadcast_indices(
                 adjusted_advanced_index
             )
-            advanced_index_tensor = paddle.stack(
-                adjusted_advanced_index, axis=-1
-            )
-            out = paddle.gather_nd(transed_tensor, advanced_index_tensor)
+
+            if len(adjusted_advanced_index) > 1:
+                advanced_index_tensor = paddle.stack(
+                    adjusted_advanced_index, axis=-1
+                )
+                out = paddle.gather_nd(transed_tensor, advanced_index_tensor)
+            else:
+                out = paddle.gather_nd(
+                    transed_tensor, adjusted_advanced_index[0].unsqueeze(-1)
+                )
 
         if pos_of_new_dim != 0:
             perm = (

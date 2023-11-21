@@ -18,12 +18,12 @@
     func: fused_feedforward_grad
   optional: linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln1_out, ln1_mean, ln1_variance, ln2_scale, ln2_bias, ln2_mean, ln2_variance, dropout2_out, ln1_scale_grad, ln1_bias_grad, ln2_scale_grad, ln2_bias_grad,  linear2_bias_grad
 
-- backward_op : set_value_grad
-  args : (Tensor out_grad, Tensor values, int64_t[] starts, int64_t[] ends, int64_t[] steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
-  output : Tensor(x_grad), Tensor(values_grad)
+- backward_op: fused_elemwise_add_activation_grad
+  forward: fused_elemwise_add_activation(Tensor x, Tensor y, str[] functor_list, float scale=0.0, int axis=-1, bool save_intermediate_out=false) -> Tensor(out), Tensor(intermediate_out)
+  args: (Tensor x, Tensor y, Tensor out, Tensor intermediate_out, Tensor out_grad, str[] functor_list, float scale=0.0, int axis=-1, bool save_intermediate_out=false)
+  output: Tensor(x_grad), Tensor(y_grad)
   infer_meta:
-    func: SetValueGradInferMeta
-    param: [out_grad, values]
+    func: FusedElemwiseAddActivationGradInferMeta
   kernel:
-    func: set_value_grad
-    param: [out_grad, starts, ends, steps, axes, decrease_axes, none_axes]
+    func: fused_elemwise_add_activation_grad
+  optional : x, intermediate_out

@@ -38,21 +38,33 @@ void OperatorDialect::initialize() {
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"  // NOLINT
       >();
   RegisterOp<GroupOp>();
+  RegisterOp<ConcatOp>();
   RegisterAttribute<GroupInfoAttribute>();
+  RegisterAttribute<CUDAJITInfoAttribute>();
 }
 
 void OperatorDialect::PrintType(pir::Type type, std::ostream &os) const {}
 
 void OperatorDialect::PrintAttribute(pir::Attribute attr,
                                      std::ostream &os) const {
-  os << "(" << attr.dialect().name();
-  os << '.';
-  if (auto group_info_attr = attr.dyn_cast<GroupInfoAttribute>()) {
-    const GroupInfo &data = group_info_attr.data();
-    os << "GroupInfo)"
-       << "[" << data.fn_name << "]";
+  if (attr.isa<GroupInfoAttribute>()) {
+    os << "(" << attr.dialect().name();
+    os << '.';
+    if (auto group_info_attr = attr.dyn_cast<GroupInfoAttribute>()) {
+      const GroupInfo &data = group_info_attr.data();
+      os << "GroupInfo)"
+         << "[" << data.fn_name << "]";
+    }
+    { os << "<#AttrNotImplemented>"; }
+  } else if (attr.isa<CUDAJITInfoAttribute>()) {
+    auto cuda_jit_info = attr.dyn_cast<CUDAJITInfoAttribute>();
+
+    os << "(" << cuda_jit_info.data().fn_ptr;
+    os << ')';
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "cinn dialect only support GrupInfo and CUDAJITInfo"));
   }
-  { os << "<#AttrNotImplemented>"; }
 }
 
 void OperatorDialect::PrintOperation(pir::Operation *op,

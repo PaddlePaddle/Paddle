@@ -12,13 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import re
+import warnings
+from contextlib import contextmanager
 
 import paddle
 from paddle.autograd.py_layer import PyLayerMeta
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import _convert_into_variable, in_to_static_mode
 from paddle.base.framework import Variable, core, default_main_program
+from paddle.pir import OpResult
+from paddle.static.amp.fp16_utils import AmpOptions
 
 from .py_layer import StaticPyLayer
 from .utils import (
@@ -33,7 +39,7 @@ __all__ = []
 
 
 def convert_attr(x, attr):
-    if isinstance(x, Variable) and attr == "size":
+    if isinstance(x, (Variable, OpResult)) and attr == "size":
         return x.size()
     else:
         return getattr(x, attr)
@@ -52,6 +58,17 @@ def convert_load(x):
             return StaticPyLayer(x)
 
         # get the new output of the var
+        if isinstance(x, OpResult):
+            cur_block = default_main_program().current_block()
+
+            from paddle.jit.pir_dy2static.parameter_recorder import (
+                _global_inplace_map,
+            )
+
+            new_var = _global_inplace_map.get(cur_block.program, id(x))
+            if new_var is not None:
+                return new_var
+
         if isinstance(x, Variable):
             cur_block = default_main_program().current_block()
 
@@ -65,11 +82,14 @@ def convert_load(x):
             if new_var is not None:
                 return new_var
 
+        if x is paddle.amp.auto_cast:
+            return convert_auto_cast
+
     return x
 
 
 def indexable(x, code=None):
-    if isinstance(x, Variable):
+    if isinstance(x, (Variable, OpResult)):
         return x
     elif hasattr(x, '__iter__'):
         return list(x)
@@ -83,7 +103,7 @@ def indexable(x, code=None):
 
 def unpack_by_structure(target, structure):
     """unified unpack interface for paddle and python."""
-    if isinstance(target, Variable):
+    if isinstance(target, (Variable, OpResult)):
         return _unpack_by_structure_paddle(target, structure)
     else:
         return _unpack_by_structure_python(target, structure)
@@ -130,7 +150,7 @@ def convert_while_loop(
     # NOTE: It may be slower if cond is very expensive, but usually cond is just O(1).
     # If loop_vars is changed during cond callable, then it causes bug, but current logical_and/logical_not/... doesn't change the loop_vars.
     pred = cond()
-    if isinstance(pred, Variable):
+    if isinstance(pred, (Variable, OpResult)):
         _run_paddle_while(
             cond, body, getter, setter, return_name_ids, push_pop_names
         )
@@ -195,7 +215,7 @@ def _run_paddle_while(
 def _run_py_while(cond, body, getter, setter):
     while True:
         pred = cond()
-        if isinstance(pred, Variable):
+        if isinstance(pred, (Variable, OpResult)):
             raise Dygraph2StaticException(
                 "python while pred change from bool to variable."
             )
@@ -229,11 +249,11 @@ def convert_logical_and(x_func, y_func):
         if `x>1` is False, `y<1` should NOT be run.
     """
     x_value = x_func()
-    if not isinstance(x_value, Variable):
+    if not isinstance(x_value, (Variable, OpResult)):
         return _run_py_logical_and(lambda: x_value, y_func)
 
     y_value = y_func()
-    if not isinstance(y_value, Variable):
+    if not isinstance(y_value, (Variable, OpResult)):
         return _run_py_logical_and(lambda: y_value, lambda: x_value)
 
     return _run_paddle_logical_and(x_value, y_value)
@@ -247,7 +267,7 @@ def _run_paddle_logical_and(x, y):
 
 def _run_py_logical_and(x_func, y_func):
     x_value = x_func()
-    assert not isinstance(x_value, Variable)
+    assert not isinstance(x_value, (Variable, OpResult))
 
     # NOTE(liym27):
     #  1. Returns y_func() if x_value is False;
@@ -280,11 +300,11 @@ def convert_logical_or(x_func, y_func):
         if `x>1` is True, `y<1` should NOT be run.
     """
     x_value = x_func()
-    if not isinstance(x_value, Variable):
+    if not isinstance(x_value, (Variable, OpResult)):
         return _run_py_logical_or(lambda: x_value, y_func)
 
     y_value = y_func()
-    if not isinstance(y_value, Variable):
+    if not isinstance(y_value, (Variable, OpResult)):
         return _run_py_logical_or(lambda: y_value, lambda: x_value)
 
     return _run_paddle_logical_or(x_value, y_value)
@@ -298,7 +318,7 @@ def _run_paddle_logical_or(x, y):
 
 def _run_py_logical_or(x_func, y_func):
     x_value = x_func()
-    assert not isinstance(x_value, Variable)
+    assert not isinstance(x_value, (Variable, OpResult))
 
     # NOTE(liym27):
     #  1. Returns y_func() if x_value is False;
@@ -317,7 +337,7 @@ def convert_logical_not(x):
         A python bool variable or a bool Tensor.
     """
 
-    if isinstance(x, Variable):
+    if isinstance(x, (Variable, OpResult)):
         return _run_paddle_logical_not(x)
     else:
         return _run_py_logical_not(x)
@@ -357,7 +377,7 @@ def convert_ifelse(
         ``true_fn()`` if the predicate ``pred`` is true else ``false_fn()`` .
 
     """
-    if isinstance(pred, Variable):
+    if isinstance(pred, (Variable, OpResult)):
         out = _run_paddle_cond(
             pred,
             true_fn,
@@ -428,15 +448,11 @@ def _run_paddle_cond(
             "Unsupported return type of true_fn and false_fn in cond", str(e)
         ):
             raise Dygraph2StaticException(
-                "Your if/else have different return type. TODO: add link to modifty. {}".format(
-                    str(e)
-                )
+                f"Your if/else have different return type. TODO: add link to modifty. {str(e)}"
             )
         if re.search("Incompatible return values of", str(e)):
             raise Dygraph2StaticException(
-                "Your if/else have different number of return value. TODO: add link to modifty. {}".format(
-                    str(e)
-                )
+                f"Your if/else have different number of return value. TODO: add link to modifty. {str(e)}"
             )
         raise e
     get_args = lambda: helper.get(return_name_ids)
@@ -460,7 +476,7 @@ def _remove_no_value_return_var(out):
         align_ret = out[0]
         if isinstance(align_ret, tuple):
             for index, item in enumerate(align_ret):
-                if isinstance(item, Variable) and (
+                if isinstance(item, (Variable, OpResult)) and (
                     RETURN_NO_VALUE_VAR_NAME in item.name
                 ):
                     # return None
@@ -473,7 +489,7 @@ def _remove_no_value_return_var(out):
                     break
 
         for index, item in enumerate(processed_out):
-            if isinstance(item, Variable) and (
+            if isinstance(item, (Variable, OpResult)) and (
                 RETURN_NO_VALUE_VAR_NAME in item.name
             ):
                 processed_out = processed_out[:index]
@@ -540,7 +556,7 @@ def convert_len(var):
           operations are added in `len` transformation, such as appending
           `shape_op` in var.block.
     """
-    if isinstance(var, Variable):
+    if isinstance(var, (Variable, OpResult)):
         assert var.ndim > 0, "len() of a 0-D tensor is wrong"
         if var.type in [
             core.VarDesc.VarType.LOD_TENSOR,
@@ -560,14 +576,14 @@ def convert_len(var):
                 % type(var)
             )
     else:
-        if isinstance(var, VariableTuple):
+        if isinstance(var, (VariableTuple)):
             return var.__len__()
         return len(var)
 
 
 def convert_zip(*args):
     for i, arg in enumerate(args):
-        if isinstance(arg, Variable) and arg.shape[0] == -1:
+        if isinstance(arg, (Variable, OpResult)) and arg.shape[0] == -1:
             raise RuntimeError(
                 "Not support zip(tensor, ...) when tensor.shape[0] == -1, "
                 f"but found args[{str(i)}].shape[0] == -1 in 'zip'"
@@ -586,7 +602,7 @@ class VariableTuple:
     def __init__(self, var, start=0):
         self.var = var
         self.len = convert_len(var)
-        if isinstance(self.len, Variable):
+        if isinstance(self.len, (Variable, OpResult)):
             self.rag = paddle.arange(start, start + self.len, 1, paddle.int64)
         else:
             self.rag = range(start, start + self.len)
@@ -599,14 +615,14 @@ class VariableTuple:
 
 
 def convert_enumerate(*args):
-    has_variable = any(isinstance(x, Variable) for x in args)
+    has_variable = any(isinstance(x, (Variable, OpResult)) for x in args)
     if has_variable:
         return VariableTuple(*args)
     return enumerate(*args)
 
 
 def convert_range(*args):
-    has_variable = any(isinstance(x, Variable) for x in args)
+    has_variable = any(isinstance(x, (Variable, OpResult)) for x in args)
     if has_variable:
         if len(args) == 1:
             return paddle.arange(0, args[0], 1, paddle.int64)
@@ -631,7 +647,7 @@ def convert_shape(x):
 
     #  (2) if x.shape does not contains -1, return lsit(x.shape) directly
 
-    if isinstance(x, Variable):
+    if isinstance(x, (Variable, OpResult)):
         values = list(x.shape)
         if has_negative(values):
             shape_tensor = paddle.shape(x)
@@ -670,7 +686,7 @@ def convert_shape_compare(left, *args):
         args_len % 2 == 0
     ), "Illegal input for convert_shape_compare, *args should be op(str), var, op(str), var ..."
     num_cmp = args_len // 2
-    if isinstance(left, Variable):
+    if isinstance(left, (Variable, OpResult)):
 
         def reduce_compare(x, op_str, y):
             element_wise_result = eval("x " + op_str + " y")
@@ -715,14 +731,14 @@ def convert_shape_compare(left, *args):
 
 
 def cast_bool_if_necessary(var):
-    assert isinstance(var, Variable)
+    assert isinstance(var, (Variable, OpResult))
     if convert_dtype(var.dtype) not in ['bool']:
         var = paddle.cast(var, dtype="bool")
     return var
 
 
 def convert_var_dtype(var, dtype):
-    if isinstance(var, Variable):
+    if isinstance(var, (Variable, OpResult)):
         src_dtype = convert_dtype(var.dtype)
         assert src_dtype in [
             'bool',
@@ -739,9 +755,7 @@ def convert_var_dtype(var, dtype):
             'bool',
             'int',
             'float',
-        ], "The casted target dtype is {}, which is not supported in type casting.".format(
-            dtype
-        )
+        ], f"The casted target dtype is {dtype}, which is not supported in type casting."
         cast_map = {
             'bool': 'bool',
             'int': 'int32',
@@ -756,7 +770,7 @@ def convert_assert(cond, message=""):
     """
     A function representation of a Python ``assert`` statement.
     """
-    if isinstance(cond, Variable):
+    if isinstance(cond, (Variable, OpResult)):
         cond = paddle.cast(cond, "bool")
         # NOTE: message is not used because Paddle Assert has no corresponding parameter to use.
         from paddle.static.nn.control_flow import Assert
@@ -772,7 +786,7 @@ def convert_print(*objects, sep=' ', end='\n', file=None, flush=False):
     at compile time and only print the Tensor values at runtime.
     """
     for obj in objects:
-        if isinstance(obj, Variable):
+        if isinstance(obj, (Variable, OpResult)):
             paddle.static.Print(obj)
     print(*objects, sep=sep, end=end, file=file, flush=flush)
 
@@ -789,7 +803,7 @@ def convert_pop(target, *args):
         A item poped from target.
     """
 
-    is_variable = isinstance(target, Variable)
+    is_variable = isinstance(target, (Variable, OpResult))
     if is_variable:
         is_tensor_array = target.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
 
@@ -797,6 +811,39 @@ def convert_pop(target, *args):
         return _run_paddle_pop(target, *args)
     else:
         return _run_python_pop(target, *args)
+
+
+@contextmanager
+def convert_auto_cast(
+    enable=True,
+    custom_white_list=None,
+    custom_black_list=None,
+    level='O1',
+    dtype='float16',
+    use_promote=True,
+):
+    from .program_translator import ProgramTranslator
+
+    warnings.warn(
+        "paddle.amp.auto_cast is an experimental features in auto parallel."
+        + "This will take no effect in normal dy2static."
+    )
+
+    amp_records = ProgramTranslator.get_instance()._amp_records
+    main_program = paddle.static.default_main_program()
+    current_block_idx = main_program.current_block_idx
+    current_block = main_program.current_block()
+    start_op_idx = len(current_block.ops)
+    amp_options = AmpOptions(
+        enable, custom_white_list, custom_black_list, level, dtype, use_promote
+    )
+    yield
+    end_op_idx = len(current_block.ops)
+    if current_block_idx not in amp_records:
+        amp_records[current_block_idx] = []
+    amp_records[current_block_idx].append(
+        (amp_options, start_op_idx, end_op_idx)
+    )
 
 
 def _run_paddle_pop(array, *args):

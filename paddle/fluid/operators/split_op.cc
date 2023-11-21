@@ -65,12 +65,12 @@ class SplitOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
       Variable *var =
           PADDLE_GET_CONST(Variable *, ctx->GetInputVarPtrs("AxisTensor")[0]);
-      axis_final = std::move(framework::MakePhiScalarFromVar(*var));
+      axis_final = framework::MakePhiScalarFromVar(*var);
     } else if (!ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
-      axis_final = std::move(phi::Scalar(-1));
+      axis_final = phi::Scalar(-1);
       axis_final.SetFromTensor(true);
     } else {
-      axis_final = std::move(phi::Scalar(axis));
+      axis_final = phi::Scalar(axis);
     }
 
     // Construct sections_final
