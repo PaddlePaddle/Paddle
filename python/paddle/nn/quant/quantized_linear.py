@@ -15,12 +15,25 @@
 from paddle import _C_ops, version
 from paddle.base.data_feeder import check_dtype
 from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.device.cuda import get_device_capability
 from paddle.framework import (
     LayerHelper,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
 )
-from paddle.device.cuda import get_device_capability
+
+
+def _get_arch_info():
+    # Get SMVersion from device.
+    cuda_version = version.cuda()
+    if cuda_version is not None and cuda_version != 'False':
+        major, minor = get_device_capability()
+        arch = int(major * 10 + minor)
+        return arch
+    else:
+        raise ValueError(
+            "Paddle is not compiled with CUDA, we cannot get SMVersion from device, please try to compile Paddle with CUDA"
+        )
 
 
 def weight_quantize(x, algo="weight_only_int8", arch=None):
@@ -52,15 +65,7 @@ def weight_quantize(x, algo="weight_only_int8", arch=None):
             [32]
     """
     if arch is None:
-        # Get SMVersion from device.
-        cuda_version = version.cuda()
-        if cuda_version is not None and cuda_version != 'False':
-            major, minor = get_device_capability()
-            arch = int(major * 10 + minor)
-        else:
-            raise ValueError(
-                "Paddle is not compiled with CUDA, we cannot get SMVersion from device, please try to compile Paddle with CUDA"
-            )
+        arch = _get_arch_info()
 
     assert (
         arch == 70 or arch == 80
@@ -164,15 +169,7 @@ def weight_only_linear(
             [1, 2, 32]
     """
     if arch is None:
-        # Get SMVersion from device.
-        cuda_version = version.cuda()
-        if cuda_version is not None and cuda_version != 'False':
-            major, minor = get_device_capability()
-            arch = int(major * 10 + minor)
-        else:
-            raise ValueError(
-                "Paddle is not compiled with CUDA, we cannot get SMVersion from device, please try to compile Paddle with CUDA"
-            )
+        arch = _get_arch_info()
 
     assert (
         arch == 70 or arch == 80
