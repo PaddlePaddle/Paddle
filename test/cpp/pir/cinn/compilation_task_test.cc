@@ -58,6 +58,7 @@ ProgramInfo BuildProgram(std::vector<int64_t> input_shape) {
 }
 
 TEST(CompilationTask, Basic) {
+  FLAGS_cinn_bucket_compile = true;
   auto prog_info = BuildProgram({4096, 128});
   std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
   LOG(INFO) << program->block()->size();
