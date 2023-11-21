@@ -28,6 +28,9 @@ class SemiAutoParallelTestBase:
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
     def check_tensor_eq(self, a, b):
+        if a is None:
+            assert b is None
+            return
         np1 = a.numpy()
         np2 = b.numpy()
         np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
@@ -92,8 +95,9 @@ class SemiAutoParallelTestBase:
         assert len(flat_inputs_specs) == len(flat_inputs_shape)
 
         for shape, spec in zip(flat_inputs_shape, flat_inputs_specs):
-            input_np = np.random.random(size=shape).astype(self._dtype)
+            input_np = np.random.random(size=shape).astype("float32")
             input = paddle.to_tensor(input_np)
+            input = paddle.cast(input, self._dtype).detach()
             input.stop_gradient = False
             input_dist_attr = dist.DistAttr(
                 mesh=self._mesh, sharding_specs=spec
@@ -124,8 +128,9 @@ class SemiAutoParallelTestBase:
             assert len(flat_out) == len(flat_dist_out)
             for output, dist_output in zip(flat_out, flat_dist_out):
                 self.check_tensor_eq(out, dist_out)
-                output.backward()
-                dist_output.backward()
+                if out is not None:
+                    output.backward()
+                    dist_output.backward()
 
             for x, dist_x in zip(flat_inputs, flat_dist_inputs):
                 self.check_tensor_eq(x.grad, dist_x.grad)

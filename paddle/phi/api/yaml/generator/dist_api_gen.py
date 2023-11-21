@@ -707,6 +707,14 @@ class DistForwardAPI(ForwardAPI):
                     input_args_code += "meta_dist_input_" + param + ", "
                 elif (
                     self.inputs['input_info'][param]
+                    == "const paddle::optional<Tensor>&"
+                ):
+                    input_decl_code += (
+                        OPTIONAL_SINGLE_DIST_META_IN_TEMPLATE.format(name=param)
+                    )
+                    input_args_code += "meta_dist_input_" + param + ", "
+                elif (
+                    self.inputs['input_info'][param]
                     == "const std::vector<Tensor>&"
                 ):
                     input_decl_code += VECTOR_DIST_META_IN_TEMPLATE.format(
@@ -826,7 +834,10 @@ class DistForwardAPI(ForwardAPI):
             # kernel output generate
             self.dist_output_args.append('dist_out')
             self.dense_output_args.append('dense_out')
-            if self.outputs['types'][0] == 'Tensor':
+            if (
+                self.outputs['types'][0] == 'Tensor'
+                or self.outputs['types'][0] == 'const paddle::optional<Tensor>'
+            ):
                 if self.infer_meta['spmd_rule'] is not None:
                     output_creation_code += SINGLE_OUT_CREATION_TEMPLATE
                 else:
