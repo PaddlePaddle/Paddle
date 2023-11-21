@@ -40,10 +40,10 @@ void GroupOp::Build(pir::Builder &builder,             // NOLINT
                     std::unique_ptr<pir::Block> &&block) {
   VLOG(4) << "Start build GroupOp";
   if (block && !block->empty()) {
-    IR_ENFORCE(block->back()->isa<pir::YieldOp>());
-    auto *op = block->back();
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      argument.AddOutput(op->operand(i).type());
+    IR_ENFORCE(block->back().isa<pir::YieldOp>());
+    auto &op = block->back();
+    for (size_t i = 0; i < op.num_operands(); ++i) {
+      argument.AddOutput(op.operand(i).type());
     }
   }
   argument.AddRegion()->push_back(block.release());

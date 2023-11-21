@@ -175,7 +175,7 @@ TEST(PirCompier, CompileSoftmax) {
 
   std::vector<pir::Type> vec_types;
 
-  vec_types.push_back(groups[0]->ops.back()->result(0).type());
+  vec_types.push_back(groups[0]->ops.back().result(0).type());
 
   std::string jit_op_name = cinn::dialect::JitKernelOp::name();
   ::pir::OpInfo op_info = ctx->GetRegisteredOpInfo(jit_op_name);

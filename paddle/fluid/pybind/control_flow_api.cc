@@ -27,8 +27,10 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/pir/core/block.h"
 #include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 namespace py = pybind11;
@@ -37,7 +39,10 @@ using paddle::dialect::IfOp;
 using pir::Block;
 using pir::Builder;
 using pir::Operation;
+using pir::Program;
 using pir::Region;
+using pir::StackCreateOp;
+using pir::TuplePushOp;
 using pir::Type;
 using pir::Value;
 using pir::YieldOp;
@@ -142,12 +147,49 @@ std::vector<Value> GetUsedExternalValue(const Operation& op) {
   return used_values;
 }
 
+void ModifyFwdControlflowBlock(Block* block) {
+  PADDLE_ENFORCE_NOT_NULL(
+      block,
+      paddle::platform::errors::InvalidArgument(
+          "The block used to hook local value can't be nullptr"));
+  auto& builder = *(ApiBuilder::Instance().GetBuilder());
+  Program* program = block->parent_program();
+  PADDLE_ENFORCE_NOT_NULL(
+      program,
+      paddle::platform::errors::InvalidArgument(
+          "The block used to hook local value must belong to a program"));
+
+  auto original_position = builder.insertion_point();
+
+  builder.SetInsertionPointToStart(program->block());
+  auto inlet = builder.Build<StackCreateOp>().inlet();
+  auto iter = block->end();
+  if (!block->empty() && block->back().isa<YieldOp>()) {
+    --iter;
+  }
+  std::vector<Value> local_values;
+  for (auto arg_value : block->args()) {
+    local_values.push_back(arg_value);
+  }
+  for (auto& op : *block) {
+    for (auto result_value : op.results()) {
+      local_values.push_back(result_value);
+    }
+  }
+  builder.set_insertion_point(block, iter);
+  builder.Build<TuplePushOp>(inlet, local_values);
+  builder.set_insertion_point(original_position);
+}
+
 }  // namespace
 
 namespace paddle {
 namespace pybind {
 void BindControlFlowApi(py::module* m) {
   m->def("get_used_external_value", GetUsedExternalValue);
+  m->def("modify_fwd_control_flow_block", ModifyFwdControlflowBlock);
+  m->def("cvt_to_if_op",
+         [](Operation& op) { return PyIfOp(op.dyn_cast<IfOp>()); });
   BindIfOp(m);
 }
 }  // namespace pybind
