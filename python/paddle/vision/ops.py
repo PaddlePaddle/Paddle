@@ -188,7 +188,7 @@ def yolo_loss(
             ...                                    scale_x_y=1.)
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         loss = _C_ops.yolo_loss(
             x,
             gt_box,
@@ -365,7 +365,7 @@ def yolo_box(
             ...                                             clip_bbox=True,
             ...                                             scale_x_y=1.)
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         boxes, scores = _C_ops.yolo_box(
             x,
             img_size,
@@ -510,7 +510,7 @@ def prior_box(
             max_sizes = [max_sizes]
         cur_max_sizes = max_sizes
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         step_w, step_h = steps
         if max_sizes is None:
             max_sizes = []

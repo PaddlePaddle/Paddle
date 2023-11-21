@@ -94,6 +94,7 @@ inline bool is_same_size(::pir::Operation* producer,
   auto master_op = consumer->master_ops.begin();
   auto producer_shape = GetValueShape(producer->result(0));
   auto consumer_shape = GetValueShape((*master_op)->result(0));
+
   if (producer_shape == consumer_shape) {
     return true;
   }
@@ -244,7 +245,8 @@ inline bool horizontal_or_vertical_reduce_relation(
     }
   }
 
-  auto op_shape = phi::vectorize<int64_t>(GetFirstInputShape(producer));
+  auto op_shape = phi::vectorize<int64_t>(GetValueShape(producer->result(0)));
+  // auto op_shape = phi::vectorize<int64_t>(GetFirstInputShape(producer));
   auto op_size = std::accumulate(
       op_shape.begin(), op_shape.end(), 1, std::multiplies<int>());
   auto reduce_size = std::accumulate(
@@ -281,6 +283,7 @@ inline bool horizontal_or_vertical_reduce_relation(
 inline bool horizontal_or_can_inline(::pir::Operation* producer,
                                      const std::shared_ptr<Group>& consumer) {
   // horizontal relation.
+  return true;
   if (is_horizontal_relation(producer, consumer)) {
     if (is_same_size(producer, consumer)) {
       return true;
@@ -288,7 +291,7 @@ inline bool horizontal_or_can_inline(::pir::Operation* producer,
       // if do broadcast, check can compute inline.
       // return helper->output_ops_set_.count(producer) == 0;
       // TODO(phlrain): support output op set check
-      return false;
+      return true;
     }
   }
   // vertical relation: 1.can compute inline

@@ -131,6 +131,8 @@ ProgramInfo BuildSoftmax() {
                                                 divide.owner()})));
   groups[0]->output_ops.insert(groups[0]->ops.back());
 
+  groups[0]->op_pattern_kind = cinn::hlir::framework::kReduction;
+
   return {program, groups};
 }
 
