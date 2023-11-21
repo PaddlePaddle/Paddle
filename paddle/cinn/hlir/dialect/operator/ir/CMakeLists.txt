@@ -64,5 +64,5 @@ if(NOT CINN_ONLY)
     DEPS
     op_dialect_vjp)
 
-  target_include_directories(cinn_op_dialect PRIVATE ${CINN_DIALECT_BINARY_DIR})
+  target_include_directories(cinn_op_dialect PUBLIC ${CINN_DIALECT_BINARY_DIR})
 endif()
