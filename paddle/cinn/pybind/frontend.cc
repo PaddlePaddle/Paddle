@@ -17,6 +17,7 @@
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 
+#include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/frontend/computation.h"
 #include "paddle/cinn/frontend/decomposer/use_decomposer.h"

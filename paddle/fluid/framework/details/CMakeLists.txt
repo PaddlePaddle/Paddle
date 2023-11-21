@@ -308,6 +308,7 @@ cc_test(
        memory
        device_context
        broadcast_op_handle)
+
 cc_test_old(
   gather_op_test
   SRCS
@@ -380,8 +381,8 @@ set(IR_PASS_DEPS
     delete_dropout_op_pass)
 
 if(WITH_CINN)
-  set(IR_PASS_DEPS ${IR_PASS_DEPS} build_cinn_pass)
-  set(IR_PASS_DEPS ${IR_PASS_DEPS} cinn_zero_tensor_trick_pass)
+  set(IR_PASS_DEPS ${IR_PASS_DEPS} paddle2cinn)
+  set(IR_PASS_DEPS ${IR_PASS_DEPS} paddle2cinn)
 endif()
 
 if(NOT APPLE

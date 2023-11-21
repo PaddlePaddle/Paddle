@@ -16,15 +16,17 @@
 
 #include <vector>
 #include "glog/logging.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/op_base.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 namespace cinn {
 namespace dialect {
 
 const char *GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
+const char *ConcatOp::attributes_name[GroupOp::attributes_num] = {"axis"};
 
 void GroupOp::Build(pir::Builder &builder,
                     pir::OperationArgument &argument,
@@ -54,9 +56,11 @@ pir::Block *GroupOp::block() {
 }
 
 std::vector<pir::Operation *> GroupOp::ops() {
-  auto *inner_block = this->block();
-  return std::vector<pir::Operation *>(inner_block->begin(),
-                                       inner_block->end());
+  std::vector<pir::Operation *> rt_ops;
+  for (auto &op : *block()) {
+    rt_ops.push_back(&op);
+  }
+  return rt_ops;
 }
 
 void GroupOp::VerifySig() {}
@@ -77,7 +81,56 @@ void GroupOp::Print(pir::IrPrinter &printer) {
   os << " \n }";
 }
 
+void ConcatOp::Build(pir::Builder &builder,             // NOLINT
+                     pir::OperationArgument &argument,  // NOLINT
+                     const std::vector<pir::Value> &inputs,
+                     int axis) {
+  VLOG(4) << "Start build ConcatOp";
+
+  argument.inputs = inputs;
+  std::vector<pir::Type> inputs_type(inputs.size());
+
+  IR_ENFORCE(inputs.size() > 0);
+
+  auto first_ele =
+      inputs[0].type().dyn_cast<paddle::dialect::DenseTensorType>();
+  phi::DDim out_dims = first_ele.dims();
+
+  if (axis < 0) {
+    axis += out_dims.size();
+  }
+
+  for (size_t idx = 0; idx < inputs.size(); ++idx) {
+    inputs_type[idx] = inputs[idx].type();
+
+    if (idx > 0) {
+      auto dim_i = inputs[idx]
+                       .type()
+                       .dyn_cast<paddle::dialect::DenseTensorType>()
+                       .dims();
+
+      out_dims[axis] += dim_i[axis];
+    }
+  }
+
+  auto out_type =
+      paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(),
+                                            first_ele.dtype(),
+                                            out_dims,
+                                            first_ele.data_layout(),
+                                            first_ele.lod(),
+                                            first_ele.offset());
+
+  argument.output_types.emplace_back(out_type);
+
+  PassStopGradientsDefaultly(argument);
+
+  argument.AddAttribute(
+      "axis", pir::Int32Attribute::get(pir::IrContext::Instance(), axis));
+}
+
 }  // namespace dialect
 }  // namespace cinn
 
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)

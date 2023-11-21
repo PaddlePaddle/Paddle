@@ -26,6 +26,7 @@
 #include "paddle/cinn/hlir/framework/node.h"
 
 namespace cinn {
+
 namespace hlir {
 namespace framework {
 
@@ -59,6 +60,8 @@ class Graph : public cinn::common::Graph {
   std::vector<std::vector<Node*>> groups;
   struct Group {
     Group() = default;
+    Group(const Group&) = delete;
+    Group(Group&&) = delete;
 
     explicit Group(const Graph* graph) : graph_(graph) {}
 
@@ -109,7 +112,7 @@ class Graph : public cinn::common::Graph {
       }
     };
 
-    std::vector<Node*> CollectNodes() {
+    std::vector<Node*> CollectNodes() const {
       if (fused_sub_groups.size()) {
         std::vector<Node*> tmp_nodes;
         for (auto& group : fused_sub_groups) {
@@ -144,8 +147,8 @@ class Graph : public cinn::common::Graph {
       return node_set;
     }
 
-    std::unordered_set<NodeData*> GetInputNodeDatas();
-    std::unordered_set<NodeData*> GetOutputNodeDatas();
+    std::unordered_set<NodeData*> GetInputNodeDatas() const;
+    std::unordered_set<NodeData*> GetOutputNodeDatas() const;
 
     std::string GetFuncName() { return "fn_" + group_id + unique_id; }
 

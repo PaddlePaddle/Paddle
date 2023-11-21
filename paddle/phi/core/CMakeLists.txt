@@ -40,5 +40,3 @@ collect_srcs(
   kernel_registry.cc
   tensor_utils.cc
   utils/type_info.cc)
-
-cc_library(ddim SRCS ddim.cc)

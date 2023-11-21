@@ -17,8 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import base
+from paddle import base, static
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestDiffOp(unittest.TestCase):
@@ -77,6 +78,7 @@ class TestDiffOp(unittest.TestCase):
         self.setUp()
         self.func_dygraph()
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
@@ -107,10 +109,11 @@ class TestDiffOp(unittest.TestCase):
                         dtype=self.append.dtype,
                     )
 
-                exe = base.Executor(place)
+                exe = static.Executor(place)
                 out = paddle.diff(
                     x, n=self.n, axis=self.axis, prepend=prepend, append=append
                 )
+
                 fetches = exe.run(
                     feed={
                         "input": self.input,
@@ -239,6 +242,7 @@ class TestDiffOpPreAppendAxis(TestDiffOp):
 
 
 class TestDiffOpFp16(TestDiffOp):
+    @test_with_pir_api
     def test_fp16_with_gpu(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
@@ -259,7 +263,6 @@ class TestDiffOpFp16(TestDiffOp):
                     append=self.append,
                 )
                 fetches = exe.run(
-                    paddle.static.default_main_program(),
                     feed={
                         "input": input,
                     },

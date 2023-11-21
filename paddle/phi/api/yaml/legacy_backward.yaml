@@ -193,6 +193,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   kernel :
     func : divide_grad
   composite : divide_grad(x, y, out, out_grad, axis, x_grad, y_grad)
@@ -226,6 +227,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param: [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   composite : elementwise_pow_grad(x, y, out_grad, x_grad, y_grad)
   kernel :
     func : elementwise_pow_grad
@@ -363,9 +365,10 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param: [x, y]
+    spmd_rule: ElementwiseBinaryGradInferSpmd
   kernel :
     func : maximum_grad
-  composite : maximum_grad(x, y, out_grad, axis, x_grad, y_grad)
+  composite : maximum_grad(x, y, out_grad, x_grad, y_grad)
 
 - backward_op : mean_double_grad
   forward: mean_grad (Tensor x, Tensor grad_out, IntArray axis={},  bool keepdim=false, bool reduce_all = false) -> Tensor(grad_x)
@@ -439,6 +442,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   kernel :
     func : multiply_grad
   composite: multiply_grad(x, y, out_grad, axis, x_grad, y_grad)
@@ -606,6 +610,28 @@
     func : rrelu_grad
     data_type : x
 
+- backward_op : set_value_grad
+  forward : set_value (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [out_grad]
+  kernel:
+    func: assign
+    param: [out_grad]
+
+- backward_op : set_value_with_tensor_grad
+  forward: set_value_with_tensor (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes) -> Tensor(out)
+  args : (Tensor values,Tensor out_grad, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
+  output : Tensor(x_grad), Tensor(values_grad)
+  infer_meta:
+    func: SetValueGradInferMeta
+    param: [out_grad, values]
+  kernel:
+    func: set_value_grad
+    param: [out_grad, starts, ends, steps, axes, decrease_axes, none_axes]
+
 - backward_op : slice_double_grad
   forward : slice_grad (Tensor input, Tensor grad_out, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(grad_input)
   args : (Tensor grad_input_grad, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
@@ -619,6 +645,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [input]
+    spmd_rule: SliceGradInferSpmdDynamic
   kernel :
     func : slice_grad
   composite: slice_grad(input, out_grad, axes, starts, ends, infer_flags, decrease_axis, input_grad)
@@ -657,6 +684,7 @@
   infer_meta :
     func : GeneralUnaryGradInferMeta
     param : [x]
+    spmd_rule : StridedSliceGradInferSpmdDynamic
   kernel :
     func : strided_slice_grad
   no_need_buffer : x
@@ -796,6 +824,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out_grad]
+    spmd_rule : TriuGradInferSpmd
   kernel :
     func : triu_grad
 

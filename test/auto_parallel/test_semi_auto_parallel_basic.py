@@ -27,8 +27,10 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
         self._changeable_envs = {"backend": ["cpu", "gpu"]}
 
     def test_matmul_api(self):
+        default_envs = self._default_envs
+        default_envs["NVIDIA_TF32_OVERRIDE"] = "0"
         envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
+            default_envs, self._changeable_envs
         )
         for envs in envs_list:
             self.run_test_case(
@@ -46,6 +48,16 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
+    def test_concat_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_concat.py",
+                user_defined_envs=envs,
+            )
+
     def test_reduction_api(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
@@ -56,6 +68,16 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
+    def test_bitwise_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            {"dtype": "int32", "seed": "2023"}, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_bitwise.py",
+                user_defined_envs=envs,
+            )
+
     def test_several_replicated_spmd_api(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
@@ -63,6 +85,56 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
         for envs in envs_list:
             self.run_test_case(
                 "semi_auto_parallel_for_replicated_spmd.py",
+                user_defined_envs=envs,
+            )
+
+    def test_add_n_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_add_n.py",
+                user_defined_envs=envs,
+            )
+
+    def test_cast_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_cast.py",
+                user_defined_envs=envs,
+            )
+
+    def test_custom_relu_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_custom_relu.py",
+                user_defined_envs=envs,
+            )
+
+    def test_custom_embedding_grad_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_embedding_grad.py",
+                user_defined_envs=envs,
+            )
+
+    def test_triu_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_triu.py",
                 user_defined_envs=envs,
             )
 

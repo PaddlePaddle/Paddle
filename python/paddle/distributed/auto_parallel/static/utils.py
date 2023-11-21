@@ -42,6 +42,15 @@ __no_shape_var_type__ = [
 ]
 
 __not_naive_data_parallel_op__ = ["expand_v2"]
+_g_gradient_clip_ops = [
+    "sum",
+    "sqrt",
+    "fill_constant",
+    "elementwise_max",
+    "elementwise_div",
+    "stack",
+    "reduce_sum",
+]
 
 
 def get_logger(log_level, name="auto_parallel"):
@@ -1316,11 +1325,11 @@ def naive_set_dist_op_attr_for_program_by_mesh(
     new_op_dist_attr = OperatorDistAttr()
 
     for input_varname in new_op.desc.input_arg_names():
-        var = ctx.serial_main_program.global_block().var(input_varname)
+        var = new_op.block.var(input_varname)
         mapping = ctx.get_tensor_dist_attr_for_program(var).dims_mapping
         new_op_dist_attr.set_input_dims_mapping(input_varname, mapping)
     for output_varname in new_op.desc.output_arg_names():
-        var = ctx.serial_main_program.global_block().var(output_varname)
+        var = new_op.block.var(output_varname)
         mapping = ctx.get_tensor_dist_attr_for_program(var).dims_mapping
         new_op_dist_attr.set_output_dims_mapping(output_varname, mapping)
 
@@ -1823,7 +1832,15 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
 
 
 def is_recompute_op(op):
-    return op.has_attr('op_namescope') and "/auto_parallel/rc" in op.attr(
+    return (
+        op.has_attr('op_namescope')
+        and "/auto_parallel/rc" in op.attr('op_namescope')
+        and 'exclude_rc' not in op.attr('op_namescope')
+    )
+
+
+def is_recompute_exclude_op(op):
+    return op.has_attr('op_namescope') and 'exclude_rc' in op.attr(
         'op_namescope'
     )
 
@@ -1931,6 +1948,10 @@ def validate_opt(optimizer):
     if optimizer is not None:
         optimizer._parameter_list = None
         optimizer._param_groups = None
+        if optimizer._grad_clip and isinstance(
+            optimizer._grad_clip, paddle.nn.ClipGradByGlobalNorm
+        ):
+            optimizer._grad_clip._async_add_n = True
     return optimizer
 
 

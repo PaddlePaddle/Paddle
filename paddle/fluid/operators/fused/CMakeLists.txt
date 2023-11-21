@@ -8,12 +8,10 @@ register_operators(
   fused_bn_activation_op
   conv_fusion_op
   fusion_conv_inception_op
-  self_dp_attention_op
   skip_layernorm_op
   yolo_box_head_op
   yolo_box_post_op
   fusion_group_op
-  fusion_gru_op
   fusion_lstm_op
   fused_bn_add_activation_op
   fused_attention_op
@@ -27,18 +25,7 @@ register_operators(
   fused_gate_attention_op
   resnet_basic_block_op)
 
-# fusion_gru_op does not have CUDA kernel
-op_library(fusion_gru_op)
 op_library(fusion_lstm_op)
-if(WITH_AVX
-   AND AVX512F_FOUND
-   AND AVX512F_FLAG
-   AND WITH_MKL)
-  op_library(self_dp_attention_op)
-  set_target_properties(
-    self_dp_attention_op
-    PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized -mfma ${AVX512F_FLAG}")
-endif()
 
 if(WITH_XPU)
   op_library(resnet_basic_block_op)

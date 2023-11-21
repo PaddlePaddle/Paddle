@@ -19,10 +19,14 @@ gather_srcs(
   arithmatic.cc
   cas.cc
   union_find.cc
-  python_interpreter_guard.cc)
+  python_interpreter_guard.cc
+  dev_info_manager.cc
+  nvgpu_dev_info.cc)
 
 message(STATUS "srcs: ${cinnapi_src}")
 
+cinn_cc_test(test_equation_graph_topo_walker SRCS
+             equation_graph_topo_walker_test.cc DEPS gtest glog)
 cinn_cc_test(test_dfs_walker SRCS dfs_walker_test.cc DEPS gtest glog)
 cinn_cc_test(test_dfs_topo_walker SRCS dfs_topo_walker_test.cc DEPS gtest glog)
 cinn_cc_test(test_is_reachable_predicator SRCS is_reachable_predicator_test.cc

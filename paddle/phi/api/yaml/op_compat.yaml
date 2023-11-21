@@ -1033,6 +1033,20 @@
   extra :
     attrs : [int round_type = 1]
 
+- op : fc
+  inputs :
+    input : Input
+    w : W
+    bias : Bias
+  outputs :
+    out : Out
+  attrs :
+    scale_in : Scale_in
+    scale_weights : Scale_weights
+    scale_out : Scale_out
+  extra :
+    [bool @ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@ = true]
+
 - op : feed
   outputs: {out: Out}
 
@@ -1263,8 +1277,6 @@
     scale : Scale
   outputs :
     out : Out
-  attrs :
-    epsilon : epsilon
 
 - op : fused_fc_elementwise_layernorm
   inputs :
@@ -1278,11 +1290,6 @@
     out : Out
     mean : Mean
     variance : Variance
-  attrs :
-    x_num_col_dims : x_num_col_dims
-    activation_type : activation_type
-    epsilon : epsilon
-    begin_norm_axis : begin_norm_axis
 
 - op : fused_feedforward
   backward: fused_feedforward_grad
@@ -1332,15 +1339,60 @@
   extra :
     attrs : [str data_format = "AnyLayout"]
 
+- op : fusion_gru
+  inputs :
+    x : X
+    h0 : H0
+    weight_x : WeightX
+    weight_h : WeightH
+    bias : Bias
+  outputs :
+    reordered_h0 : ReorderedH0
+    xx : XX
+    batched_input : BatchedInput
+    batched_out : BatchedOut
+    hidden : Hidden
+  attrs :
+    scale_data : Scale_data
+    shift_data : Shift_data
+    scale_weights : Scale_weights
+
+- op : fusion_repeated_fc_relu
+  inputs :
+    x : X
+    w : W
+    bias : Bias
+  outputs :
+    relu_out : ReluOut
+    out : Out
+
+- op : fusion_seqconv_eltadd_relu
+  inputs :
+    x : X
+    filter : Filter
+    bias : Bias
+  outputs :
+    out : Out
+    col_mat : ColMat
+  attrs :
+    context_length : contextLength
+    context_start : contextStart
+    context_stride : contextStride
+
+- op : fusion_seqexpand_concat_fc
+  inputs :
+    x : X
+    fc_weight : FCWeight
+    fc_bias : FCBias
+  outputs :
+    out : Out
+    fc_out : FCOut
+
 - op : fusion_transpose_flatten_concat
   inputs :
     x : X
   outputs :
     out : Out
-  attrs :
-    trans_axis : trans_axis
-    flatten_axis : flatten_axis
-    concat_axis : concat_axis
 
 - op : gather
   backward : gather_grad
@@ -1851,6 +1903,10 @@
 
 - op : matmul_with_flatten (mul)
   backward : matmul_with_flatten_grad (mul_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, float scale_x = 1.0f, 'float[] scale_y = {1.0f}',
              float scale_out = 1.0f, bool force_fp32_output = false]
@@ -2440,6 +2496,24 @@
   attrs :
     repeats : Repeats
 
+- op : repeat_interleave
+  backward : repeat_interleave_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    {repeats : Repeats, axis : dim}
+
+- op : repeat_interleave_with_tensor_index
+  backward : repeat_interleave_with_tensor_index_grad
+  inputs :
+    {x : X, repeats: RepeatTensor}
+  outputs:
+    out : Out
+  attrs:
+    axis : dim
+
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)
   inputs:
@@ -2573,6 +2647,12 @@
   outputs :
     {out : Out, summed_ids : SummedIds}
 
+- op : self_dp_attention
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : selu
   backward : selu_grad
   inputs :
@@ -2619,10 +2699,6 @@
     sgd_ : GetSgdExpectedKernelType
   extra :
     attrs : [bool use_mkldnn=false]
-
-- op : shadow_output
-  inputs: {x: x}
-  outputs: {out: out}
 
 - op : shape
   inputs :
@@ -2878,6 +2954,7 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
 
 - op : sum (reduce_sum)
   backward : sum_grad (reduce_sum_grad), sum_double_grad
@@ -3220,6 +3297,12 @@
   outputs :
     out: Out
 
+- op: c_reducescatter
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_sync_calc_stream
   inputs :
     x : X
@@ -3253,6 +3336,23 @@
     {input: Input}
   outputs:
     {out: Out}
+
+- op: fused_elemwise_add_activation
+  backward: fused_elemwise_add_activation_grad
+  inputs :
+    {x: X, y: Y}
+  outputs :
+    {out : Out, intermediate_out : IntermediateOut}
+
+- op: fusion_squared_mat_sub
+  inputs :
+    x : X
+    y : Y
+  outputs :
+    squared_x : SquaredX
+    squared_y : SquaredY
+    squared_xy : SquaredXY
+    out : Out
 
 - op: get_tensor_from_selected_rows
   inputs :
@@ -3353,6 +3453,16 @@
     {x: X, label: Label}
   outputs :
     out : Out
+
+- op: sparse_momentum
+  inputs :
+    {param: Param, grad: Grad, velocity: Velocity, index: Index, axis: Axis, learning_rate: LearningRate,master_param: MasterParam}
+  outputs :
+    {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+  scalar:
+   axis:
+     datatype : int
+     tensor_name : Axis
 
 - op: squared_l2_norm
   backward: squared_l2_norm_grad

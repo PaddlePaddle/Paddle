@@ -67,24 +67,27 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
   // x[0:begin_norm_axis], only the first axis of x can
   // be sharded
   std::string x_axes(x_ndim, '1');
-  x_axes[0] = alphabet[0];
+  std::string mean_axes(begin_norm_axis, '1');
+  std::string variance_axes(begin_norm_axis, '1');
+  // allow axis before begin_norm_axis be sharded
+  for (int i = 0; i < begin_norm_axis; ++i) {
+    x_axes[i] = alphabet[i];
+    mean_axes[i] = alphabet[i];
+    variance_axes[i] = alphabet[i];
+  }
+  // x_axes[0] = alphabet[0];
   std::string scale_axes(1, x_axes[x_ndim - 1]);
   std::string bias_axes(1, x_axes[x_ndim - 1]);
 
   // get output notation
   std::string out_axes = x_axes;
-  std::string mean_axes(1, '1'), variance_axes(1, '1');
-  if (begin_norm_axis > 0) {
-    mean_axes[0] = out_axes[0];
-    variance_axes[0] = out_axes[0];
-  }
 
   // Step2: Sharding Propogation
   // Step2.1: merge input sharding
   // As the mean and variance in outputs are `flattened` from
   // x[0:begin_norm_axis], only the first axis can be sharded,
   // the axes 1 to begin_norm_axis-1 are set to be replicated.
-  std::fill(x_dims_mapping.begin() + 1, x_dims_mapping.end(), -1);
+  std::fill(x_dims_mapping.begin() + begin_norm_axis, x_dims_mapping.end(), -1);
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{x_axes, x_dims_mapping}});
 
@@ -199,16 +202,18 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
   // the axes after norm_axis should be replicated,
   // so set their notation to '1'.
   std::string x_axes(x_ndim, '1');
-  x_axes[0] = alphabet[0];
+  std::string mean_axes(begin_norm_axis, '1');
+  std::string variance_axes(begin_norm_axis, '1');
+  // allow axis before begin_norm_axis be sharded
+  for (int i = 0; i < begin_norm_axis; ++i) {
+    x_axes[i] = alphabet[i];
+    mean_axes[i] = alphabet[i];
+    variance_axes[i] = alphabet[i];
+  }
+
   std::string scale_axes(1, x_axes[x_ndim - 1]);
   std::string bias_axes(1, x_axes[x_ndim - 1]);
-
   std::string out_axes = x_axes;
-  std::string mean_axes(1, '1'), variance_axes(1, '1');
-  if (begin_norm_axis > 0) {
-    mean_axes[0] = out_axes[0];
-    variance_axes[0] = out_axes[0];
-  }
 
   // Step2: Sharding Propogation
   // For the axes after norm_axis in both input and output tensors,
@@ -275,7 +280,7 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
   }
   VLOG(4) << std::endl;
 
-  return {input_dist_attrs, output_dist_attrs};
+  return {ToArgDistAttr(input_dist_attrs), ToArgDistAttr(output_dist_attrs)};
 }
 
 }  // namespace distributed

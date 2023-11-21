@@ -200,12 +200,22 @@ execute_process(
     --api_source_path ${strings_api_source_file_tmp})
 
 # generate dygraph(intermediate) api
-execute_process(
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${im_api_gen_file} --api_yaml_path ${api_yaml_file}
-    ${legacy_api_yaml_file} --sparse_api_yaml_path ${sparse_api_yaml_file}
-    --dygraph_api_header_path ${dygraph_api_header_file_tmp}
-    --dygraph_api_source_path ${dygraph_api_source_file_tmp})
+if(WITH_DISTRIBUTE)
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${im_api_gen_file} --api_yaml_path ${api_yaml_file}
+      ${legacy_api_yaml_file} --sparse_api_yaml_path ${sparse_api_yaml_file}
+      --dygraph_api_header_path ${dygraph_api_header_file_tmp}
+      --dygraph_api_source_path ${dygraph_api_source_file_tmp}
+      --gen_dist_branch)
+else()
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${im_api_gen_file} --api_yaml_path ${api_yaml_file}
+      ${legacy_api_yaml_file} --sparse_api_yaml_path ${sparse_api_yaml_file}
+      --dygraph_api_header_path ${dygraph_api_header_file_tmp}
+      --dygraph_api_source_path ${dygraph_api_source_file_tmp})
+endif()
 
 # generate tensor and tensor operants file
 message("create or copy auto-geneated tensor files")

@@ -7,7 +7,7 @@ if(NOT CINN_ONLY)
     cinn_group_lowering_pass.cc
     tensor_node.cc
     DEPS
-    pd_op_dialect
+    op_dialect_vjp
     pir_compiler
     cinn_runtime_dialect)
 
@@ -18,5 +18,14 @@ if(NOT CINN_ONLY)
     DEPS
     drr
     cinn_op_dialect
-    pd_op_dialect)
+    op_dialect_vjp)
+
+  cinn_cc_library(
+    add_broadcast_to_elementwise_pass
+    SRCS
+    add_broadcast_to_elementwise_pass.cc
+    DEPS
+    pir
+    cinn_op_dialect
+    op_dialect_vjp)
 endif()

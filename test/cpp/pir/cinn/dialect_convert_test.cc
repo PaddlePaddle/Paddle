@@ -26,7 +26,6 @@
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
-#include "paddle/pir/transforms/dead_code_elimination_pass.h"
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp full_input_op =
@@ -70,13 +69,13 @@ TEST(DrrTest, reduce_sum) {
 
   auto it = program.block()->begin();
 
-  CHECK_EQ((*it)->isa<paddle::dialect::FullOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<cinn::dialect::ReduceSumOp>(), true);
+  CHECK_EQ(it->isa<cinn::dialect::ReduceSumOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<paddle::dialect::ReluOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::ReluOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<paddle::dialect::ExpOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::ExpOp>(), true);
 }
 
 TEST(DrrTest, reduce_max) {
@@ -92,11 +91,11 @@ TEST(DrrTest, reduce_max) {
 
   auto it = program.block()->begin();
 
-  CHECK_EQ((*it)->isa<paddle::dialect::FullOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<cinn::dialect::ReduceMaxOp>(), true);
+  CHECK_EQ(it->isa<cinn::dialect::ReduceMaxOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<paddle::dialect::ReluOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::ReluOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<paddle::dialect::ExpOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::ExpOp>(), true);
 }

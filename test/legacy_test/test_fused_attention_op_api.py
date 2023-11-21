@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.incubate.nn.layer.fused_transformer import FusedMultiHeadAttention
-from paddle.static import Program
+from paddle.pir_utils import test_with_pir_api
 
 
 def fc(x, weight):
@@ -553,9 +553,12 @@ class TestFusedAttentionAPI(unittest.TestCase):
             ln_2_bias,
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
-        with paddle.static.program_guard(Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
             (
                 out,
                 qkv_weight,

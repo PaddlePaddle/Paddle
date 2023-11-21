@@ -28,7 +28,7 @@
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 
@@ -87,9 +87,9 @@ TEST(GroupOp, TestBuild) {
   LOG(INFO) << program->block()->size();
   std::vector<uint32_t> op_num = {2, 5};
   int i = 0;
-  for (auto* sub_op : *(program->block())) {
-    EXPECT_TRUE(sub_op->isa<cinn::dialect::GroupOp>());
-    EXPECT_EQ(sub_op->dyn_cast<cinn::dialect::GroupOp>().ops().size(),
+  for (auto& sub_op : *(program->block())) {
+    EXPECT_TRUE(sub_op.isa<cinn::dialect::GroupOp>());
+    EXPECT_EQ(sub_op.dyn_cast<cinn::dialect::GroupOp>().ops().size(),
               op_num[i]);
     ++i;
   }
@@ -142,9 +142,9 @@ TEST(GroupOp, TestBuildByBlock) {
   LOG(INFO) << program->block()->size();
   std::vector<uint32_t> op_num = {2, 5};
   int i = 0;
-  for (auto* sub_op : *(program->block())) {
-    EXPECT_TRUE(sub_op->isa<cinn::dialect::GroupOp>());
-    EXPECT_EQ(sub_op->dyn_cast<cinn::dialect::GroupOp>().ops().size(),
+  for (auto& sub_op : *(program->block())) {
+    EXPECT_TRUE(sub_op.isa<cinn::dialect::GroupOp>());
+    EXPECT_EQ(sub_op.dyn_cast<cinn::dialect::GroupOp>().ops().size(),
               op_num[i]);
     ++i;
   }

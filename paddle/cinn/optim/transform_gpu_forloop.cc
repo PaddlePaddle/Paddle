@@ -396,7 +396,7 @@ class ReplaceLoopVarToGpu : public ir::IRMutator<> {
     auto bind_info = for_ir->bind_info();
 
     std::string var_name = "";
-    if (bind_info.offset == 0)
+    if (bind_info.offset <= 0)
       var_name = "x";
     else if (bind_info.offset == 1)
       var_name = "y";

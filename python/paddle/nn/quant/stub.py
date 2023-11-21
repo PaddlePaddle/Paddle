@@ -14,7 +14,7 @@
 
 """ Define stub used in quantization."""
 
-from paddle.nn import Layer
+from ..layer.layers import Layer
 
 
 class Stub(Layer):

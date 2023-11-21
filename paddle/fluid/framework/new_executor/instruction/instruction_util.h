@@ -54,5 +54,6 @@ std::vector<pir::Value> GetOutsideOpInputs(
     const ValueExecutionInfo& value_exec_info,
     std::unordered_map<pir::Value, std::vector<int>>* input_ids);
 
+bool GetCondData(const phi::DenseTensor& cond);
 }  // namespace framework
 }  // namespace paddle
