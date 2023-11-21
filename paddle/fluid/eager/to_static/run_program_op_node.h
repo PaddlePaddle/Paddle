@@ -688,9 +688,6 @@ inline void RunProgramAPI(
     details::ShareTensorsIntoScope(params, global_inner_scope);
     // Step 2. create new interpretercore
 
-    std::cout << "[debug]" << FLAGS_enable_pir_in_executor << std::endl;
-    std::cout << "[debug]" << FLAGS_enable_pir_with_pt_in_dy2st << std::endl;
-
     bool in_pir_pt_mode = FLAGS_enable_pir_with_pt_in_dy2st;
     if (attrs.count("in_pir_pt_mode")) {
       in_pir_pt_mode = PADDLE_GET_CONST(bool, attrs.at("in_pir_pt_mode"));
@@ -849,9 +846,6 @@ inline void RunProgramGradAPI(
         1);
     VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
-
-    std::cout << "[debug]" << FLAGS_enable_pir_in_executor << std::endl;
-    std::cout << "[debug]" << FLAGS_enable_pir_with_pt_in_dy2st << std::endl;
 
     bool in_pir_pt_mode = FLAGS_enable_pir_with_pt_in_dy2st;
     if (attrs.count("in_pir_pt_mode")) {

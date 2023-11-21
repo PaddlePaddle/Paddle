@@ -769,8 +769,10 @@ class PartialProgramLayer:
         is_prim_enabled = (
             core._is_fwd_prim_enabled() or core._is_bwd_prim_enabled()
         )
-        in_pir_pt_mode = in_pir_pt_mode or is_prim_enabled
-        attrs.extend(('in_pir_pt_mode', in_pir_pt_mode))
+        in_cinn_backend = self._backend == "CINN"
+        if is_prim_enabled or in_cinn_backend:
+            in_pir_pt_mode = False
+        attrs.extend(['in_pir_pt_mode', in_pir_pt_mode])
 
         return attrs
 
