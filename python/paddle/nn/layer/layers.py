@@ -735,7 +735,7 @@ class Layer:
         Parameters:
             shape(list): Shape of the parameter. The data type in the list must be int.
             attr(ParamAttr, optional): Parameter attribute of weight. Please refer to :ref:`api_paddle_ParamAttr`. Default: None.
-            dtype(str| core.VarDesc.VarType, optional): Data type of this parameter.
+            dtype(str, optional): Data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16". Default: "float32".
             is_bias(bool, optional): if this is a bias parameter. Default: False.
