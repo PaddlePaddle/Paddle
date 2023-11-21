@@ -900,7 +900,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         return input_name_tensor_map, input_tensor_code
 
     def generate_record_op_info_supplement(
-        self, input_name_tensor_map, code_indent=''
+        self, input_name_tensor_map, code_indent='', in_auto_parallel=False
     ):
         record_op_info_supplement_str = f"""
 {code_indent}  if(phi::RecordOpInfoSupplement::IsEnabled()){{"""
@@ -1010,7 +1010,10 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             for input_tensor, is_vector in input_name_tensor_map[input_name]:
                 if is_vector:
                     input_tensor_truncate = input_tensor[:-4]
-                    if input_name in self.inplace_map.values():
+                    if (
+                        input_name in self.inplace_map.values()
+                        or in_auto_parallel
+                    ):
                         input_tensor_truncate = input_tensor
 
                     if input_name in self.optional_vars:

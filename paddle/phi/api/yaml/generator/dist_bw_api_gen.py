@@ -32,9 +32,9 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     if (rank_is_in_current_mesh){{
       // 5. Select Kernel{}
       // 6. Reshard Input{}\n
+      // 7. PrepareData (DataTransform & Prepare Dense Input){}
       // RecordOpInfoSupplement
       {}
-      // 7. PrepareData (DataTransform & Prepare Dense Input){}
       // 8. Infer Local DenseTensor Meta{}
       // 9. DenseTensor Kernel Call{}
     }}
@@ -305,7 +305,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
         ) = self.generate_prepare_data_code()
         record_op_info_supplement_code = (
             self.generate_record_op_info_supplement(
-                input_name_tensor_map, '    '
+                input_name_tensor_map, '    ', True
             )
         )
         infer_meta_code = self.generate_infer_meta_code()

@@ -1107,7 +1107,7 @@ class DistForwardAPI(ForwardAPI):
             trans_flag=trans_flag,
         )
         input_name_tensor_map[input_name].append(
-            (f'input_{input_name}_vec', True)
+            (f'dense_input_{input_name}_vec', True)
         )
 
         return input_tensor_code
@@ -1422,7 +1422,7 @@ class DistForwardAPI(ForwardAPI):
         ) = self.generate_prepare_data_code()
         record_op_info_supplement_code = (
             self.generate_record_op_info_supplement(
-                input_name_tensor_map, '    '
+                input_name_tensor_map, '    ', True
             )
         )
         infer_meta_code = self.generate_infer_meta_code()
