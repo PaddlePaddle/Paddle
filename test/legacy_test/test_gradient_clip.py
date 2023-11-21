@@ -159,6 +159,133 @@ class TestGradientClip(unittest.TestCase):
         pass
 
 
+class TestPirGradientClipByGlobalNorm(TestGradientClip):
+    def init(self):
+        self.clip_norm = 0.2
+
+    def check_clip_result(self, out, out_clip):
+        global_norm = 0
+        for v in out:
+            global_norm += np.sum(np.square(v))
+        global_norm = np.sqrt(global_norm)
+        scale = self.clip_norm / np.maximum(self.clip_norm, global_norm)
+        res = []
+        for i in range(len(out)):
+            out[i] = scale * out[i]
+
+        for u, v in zip(out, out_clip):
+            np.testing.assert_allclose(
+                u,
+                v,
+                rtol=1e-05,
+                atol=1e-08,
+                err_msg=f'gradient clip by global norm has wrong results!, \nu={u}\nv={v}\ndiff={u - v}',
+            )
+
+    def _run(self, place, dtype='float32'):
+        paddle.seed(2023)
+        prog = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(
+            main_program=prog, startup_program=startup_program
+        ):
+            image = paddle.static.data(
+                name="a", shape=[-1, 784], dtype='float32'
+            )
+            label = paddle.static.data(name="b", shape=[-1, 1], dtype='int64')
+            hidden_linear = paddle.nn.Linear(784, 32)
+            if dtype != 'float32':
+                image_cast = paddle.cast(image, dtype)
+                hidden = paddle.nn.functional.relu(hidden_linear(image_cast))
+            else:
+                hidden = paddle.nn.functional.relu(hidden_linear(image))
+
+            predict_linear = paddle.nn.Linear(32, 10)
+            predict = paddle.nn.functional.softmax(predict_linear(hidden))
+
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
+            avg_cost = paddle.mean(cost)
+
+            grad_list = paddle.autograd.ir_backward.grad(
+                avg_cost, prog.global_block().all_parameters()
+            )
+
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=3
+            )
+            exe = base.Executor(place)
+            exe.run(startup_program)
+            data = next(train_reader())
+            a = np.array([i[0] for i in data]).astype('float32')
+            b = np.array([i[1] for i in data]).reshape(3, 1).astype('int64')
+            out = exe.run(prog, feed={'a': a, 'b': b}, fetch_list=grad_list)
+            return out
+
+    def _run_clip(self, place, dtype='float32'):
+        paddle.seed(2023)
+        prog = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(
+            main_program=prog, startup_program=startup_program
+        ):
+            image = paddle.static.data(
+                name="a", shape=[-1, 784], dtype='float32'
+            )
+            label = paddle.static.data(name="b", shape=[-1, 1], dtype='int64')
+            hidden_linear = paddle.nn.Linear(784, 32)
+            if dtype != 'float32':
+                image_cast = paddle.cast(image, dtype)
+                hidden = paddle.nn.functional.relu(hidden_linear(image_cast))
+            else:
+                hidden = paddle.nn.functional.relu(hidden_linear(image))
+
+            predict_linear = paddle.nn.Linear(32, 10)
+            predict = paddle.nn.functional.softmax(predict_linear(hidden))
+
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
+            avg_cost = paddle.mean(cost)
+
+            params = prog.global_block().all_parameters()
+            grad_list = paddle.autograd.ir_backward.grad(avg_cost, params)
+
+            p_g_clip = self.clip_gradient(list(zip(params, grad_list)))
+
+            grad_clip_list = [elem[1] for elem in p_g_clip]
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=3
+            )
+            exe = base.Executor(place)
+            exe.run(startup_program)
+            data = next(train_reader())
+            a = np.array([i[0] for i in data]).astype('float32')
+            b = np.array([i[1] for i in data]).reshape(3, 1).astype('int64')
+            out_clip = exe.run(
+                prog, feed={'a': a, 'b': b}, fetch_list=grad_clip_list
+            )
+            return out_clip
+
+    def check_gradient_clip(self, place, dtype='float32'):
+        out = self._run(place, dtype)
+        out_clip = self._run_clip(place, dtype)
+        self.check_clip_result(out, out_clip)
+
+    def test_new_gradient_clip(self):
+        def func(params_grads):
+            clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=self.clip_norm)
+            return clip(params_grads)
+
+        self.clip_gradient = func
+        with paddle.pir_utils.IrGuard():
+            self.check_gradient_clip(base.CPUPlace())
+
+    def check_sparse_gradient_clip(self, place):
+        pass
+
+
 class TestGradientClipByGlobalNorm(TestGradientClip):
     def init(self):
         self.clip_norm = 0.2

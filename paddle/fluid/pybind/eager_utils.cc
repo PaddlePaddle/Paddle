@@ -38,6 +38,8 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_bool(check_nan_inf);
@@ -63,6 +65,10 @@ extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
 extern PyTypeObject* g_jit_function_pytype;
 extern PyTypeObject* g_tensor_dist_attr_pytype;
+extern PyTypeObject* g_process_mesh_pytype;
+extern PyTypeObject* g_placement_shard_pytype;
+extern PyTypeObject* g_placement_replicated_pytype;
+extern PyTypeObject* g_placement_partial_pytype;
 
 int TensorDtype2NumpyDtype(phi::DataType dtype) {
   switch (dtype) {
@@ -97,6 +103,38 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
           "Unknow phi::DataType, the int value = %d.",
           static_cast<int>(dtype)));
       return 0;
+  }
+}
+
+void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh) {
+  if (!x->defined()) {
+    return;
+  }
+  if (x->is_dist_tensor()) {
+    PADDLE_ENFORCE_EQ(
+        std::dynamic_pointer_cast<phi::distributed::DistTensor>(x->impl())
+            ->dist_attr()
+            .process_mesh(),
+        *mesh,
+        platform::errors::InvalidArgument(
+            "Input %s has different mesh. However all inputs should "
+            "have the same mesh.",
+            x->name()));
+    return;
+  } else {
+    PADDLE_ENFORCE_EQ(
+        phi::DenseTensor::classof(x->impl().get()),
+        true,
+        platform::errors::InvalidArgument(
+            "Failed to convert input %s impl to phi::distributed::DistTensor "
+            "as it's not phi::DenseTensor.",
+            x->name()));
+    phi::distributed::TensorDistAttr dist_attr(
+        phi::vectorize(x->impl()->dims()));
+    dist_attr.set_process_mesh(*mesh);
+    auto dense_t = std::static_pointer_cast<phi::DenseTensor>(x->impl());
+    x->set_impl(
+        std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr));
   }
 }
 
@@ -286,16 +324,31 @@ std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
   }
 }
 
-std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(PyObject* obj,
-                                                     ssize_t arg_pos) {
+std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(
+    PyObject* obj, ssize_t arg_pos, const phi::distributed::ProcessMesh* mesh) {
   std::vector<paddle::Tensor> result;
+  const phi::distributed::ProcessMesh* local_mesh = mesh;
+  int mesh_start_index = -1;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
       if (PyObject_TypeCheck(item, p_tensor_type)) {
-        result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+        paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(item)->tensor;
+        if (local_mesh) {
+          ConvertToDistTensor(&tensor, local_mesh);
+        } else {
+          if (tensor.defined() && tensor.is_dist_tensor()) {
+            local_mesh =
+                &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                      tensor.impl())
+                      ->dist_attr()
+                      .process_mesh());
+            mesh_start_index = i;
+          }
+        }
+        result.emplace_back(tensor);
       } else if (item == Py_None) {
         // emplace empty Tensor for None
         result.emplace_back();
@@ -308,13 +361,34 @@ std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(PyObject* obj,
             i));
       }
     }
+    for (Py_ssize_t i = 0; i < mesh_start_index; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_TypeCheck(item, p_tensor_type)) {
+        paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(item)->tensor;
+        ConvertToDistTensor(&tensor, local_mesh);
+        result[i] = tensor;
+      }
+    }
   } else if (PyTuple_Check(obj)) {
     Py_ssize_t len = PyTuple_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
       if (PyObject_TypeCheck(item, p_tensor_type)) {
-        result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+        paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(item)->tensor;
+        if (local_mesh) {
+          ConvertToDistTensor(&tensor, local_mesh);
+        } else {
+          if (tensor.defined() && tensor.is_dist_tensor()) {
+            local_mesh =
+                &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                      tensor.impl())
+                      ->dist_attr()
+                      .process_mesh());
+            mesh_start_index = i;
+          }
+        }
+        result.emplace_back(tensor);
       } else if (item == Py_None) {
         // emplace empty Tensor for None
         result.emplace_back();
@@ -325,6 +399,14 @@ std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(PyObject* obj,
             arg_pos + 1,
             reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
             i));
+      }
+    }
+    for (Py_ssize_t i = 0; i < mesh_start_index; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_TypeCheck(item, p_tensor_type)) {
+        paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(item)->tensor;
+        ConvertToDistTensor(&tensor, local_mesh);
+        result[i] = tensor;
       }
     }
   } else if (obj == Py_None) {
@@ -601,6 +683,27 @@ TensorDistAttr CastPyArg2DistAttr(PyObject* obj, ssize_t arg_pos) {
 #endif
 }
 
+using phi::distributed::ProcessMesh;
+ProcessMesh CastPyArg2ProcessMesh(PyObject* obj, ssize_t arg_pos) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  if (PyObject_IsInstance(obj,
+                          reinterpret_cast<PyObject*>(g_process_mesh_pytype))) {
+    return ::pybind11::handle(obj).cast<ProcessMesh>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "ProcessMesh, but got %s",
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "The parsing of `ProcessMesh` is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
+#endif
+}
+
 phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_framework_tensor_pytype)) {
     return ::pybind11::handle(obj).cast<phi::DenseTensor>();
@@ -663,6 +766,48 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
         "list or tuple, but got %s",
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return result;
+}
+
+using phi::distributed::Partial;
+using phi::distributed::Placement;
+using phi::distributed::Placements;
+using phi::distributed::Replicate;
+using phi::distributed::Shard;
+Placements CastPyArg2VectorOfPlacement(PyObject* obj, ssize_t arg_pos) {
+  Placements result;
+  auto check_and_emplace = [&](PyObject* item, ssize_t i) {
+    if (PyObject_TypeCheck(item, g_placement_shard_pytype)) {
+      result.emplace_back(
+          std::make_shared<Shard>(::pybind11::handle(item).cast<Shard>()));
+    } else if (PyObject_TypeCheck(item, g_placement_replicated_pytype)) {
+      result.emplace_back(std::make_shared<Replicate>(
+          ::pybind11::handle(item).cast<Replicate>()));
+    } else if (PyObject_TypeCheck(item, g_placement_partial_pytype)) {
+      result.emplace_back(
+          std::make_shared<Partial>(::pybind11::handle(item).cast<Partial>()));
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "argument (position %d) must be list of Placement, but got %s at pos "
+          "%d",
+          arg_pos + 1,
+          reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+          i));
+    }
+  };
+
+  if (PyList_Check(obj) || PyTuple_Check(obj)) {
+    Py_ssize_t len = PyObject_Size(obj);
+    for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* item =
+          PyList_Check(obj) ? PyList_GetItem(obj, i) : PyTuple_GetItem(obj, i);
+      check_and_emplace(item, i);
+    }
+  } else if (obj == Py_None) {
+    return {};
+  } else {
+    check_and_emplace(obj, 0);
   }
   return result;
 }
@@ -963,6 +1108,43 @@ PyObject* ToPyObject(const phi::distributed::TensorDistAttr* value) {
 #endif
 }
 
+PyObject* ToPyObject(const phi::distributed::ProcessMesh* value) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "ProcessMesh to PyObject is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
+#endif
+}
+
+PyObject* ToPyObject(const phi::distributed::Placement& value) {
+  auto obj = ::pybind11::cast(value);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
+PyObject* ToPyObject(const phi::distributed::Placements& values) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  PyObject* result = PyList_New((Py_ssize_t)values.size());
+
+  for (size_t i = 0; i < values.size(); i++) {
+    auto& value = values[i];
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(*value));
+  }
+
+  return result;
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "Placements to PyObject is not supported in the current "
+      "PaddlePaddle, please recompile and install PaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
+#endif
+}
+
 PyObject* ToPyObject(const phi::SelectedRows* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
@@ -1065,7 +1247,8 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     const std::string& arg_name,
     PyObject* args,
     ssize_t arg_idx,
-    bool dispensable) {
+    bool dispensable,
+    const phi::distributed::ProcessMesh* mesh) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
 
   if (PyTuple_Check(obj)) {
@@ -1084,6 +1267,10 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
   }
 
   if (PyObject_TypeCheck(obj, p_tensor_type)) {
+    if (mesh) {
+      ConvertToDistTensor(&(reinterpret_cast<TensorObject*>(obj)->tensor),
+                          mesh);
+    }
     return paddle::make_optional<paddle::Tensor>(
         reinterpret_cast<TensorObject*>(obj)->tensor);
   } else {
@@ -1148,11 +1335,13 @@ paddle::Tensor& GetTensorFromArgs(const std::string& op_type,
   return GetTensorFromPyObject(op_type, arg_name, obj, arg_idx, dispensable);
 }
 
-std::vector<paddle::Tensor> GetTensorListFromArgs(const std::string& op_type,
-                                                  const std::string& arg_name,
-                                                  PyObject* args,
-                                                  ssize_t arg_idx,
-                                                  bool dispensable) {
+std::vector<paddle::Tensor> GetTensorListFromArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable,
+    const phi::distributed::ProcessMesh* mesh) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
 
   if (list == nullptr) {
@@ -1168,6 +1357,8 @@ std::vector<paddle::Tensor> GetTensorListFromArgs(const std::string& op_type,
   }
 
   std::vector<paddle::Tensor> result;
+  const phi::distributed::ProcessMesh* local_mesh = nullptr;
+  int mesh_start_index = -1;
 
   if (PyList_Check(list)) {
     Py_ssize_t len = PyList_Size(list);
@@ -1181,8 +1372,27 @@ std::vector<paddle::Tensor> GetTensorListFromArgs(const std::string& op_type,
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
-      result.emplace_back(
-          reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor);
+      paddle::Tensor& tensor =
+          reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor;
+      if (local_mesh) {
+        ConvertToDistTensor(&tensor, local_mesh);
+      } else {
+        if (tensor.defined() && tensor.is_dist_tensor()) {
+          local_mesh =
+              &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                    tensor.impl())
+                    ->dist_attr()
+                    .process_mesh());
+          mesh_start_index = i;
+        }
+      }
+      result.emplace_back(tensor);
+    }
+    for (Py_ssize_t i = 0; i < mesh_start_index; i++) {
+      paddle::Tensor& tensor =
+          reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor;
+      ConvertToDistTensor(&tensor, local_mesh);
+      result[i] = tensor;
     }
   } else if (PyTuple_Check(list)) {
     Py_ssize_t len = PyTuple_Size(list);
@@ -1196,8 +1406,27 @@ std::vector<paddle::Tensor> GetTensorListFromArgs(const std::string& op_type,
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
-      result.emplace_back(
-          reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor);
+      paddle::Tensor& tensor =
+          reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor;
+      if (local_mesh) {
+        ConvertToDistTensor(&tensor, local_mesh);
+      } else {
+        if (tensor.defined() && tensor.is_dist_tensor()) {
+          local_mesh =
+              &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                    tensor.impl())
+                    ->dist_attr()
+                    .process_mesh());
+          mesh_start_index = i;
+        }
+      }
+      result.emplace_back(tensor);
+    }
+    for (Py_ssize_t i = 0; i < mesh_start_index; i++) {
+      paddle::Tensor& tensor =
+          reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor;
+      ConvertToDistTensor(&tensor, local_mesh);
+      result[i] = tensor;
     }
   } else if (list == Py_None) {
     return {};
@@ -1219,7 +1448,8 @@ paddle::optional<std::vector<paddle::Tensor>> GetOptionalTensorListFromArgs(
     const std::string& arg_name,
     PyObject* args,
     ssize_t arg_idx,
-    bool dispensable) {
+    bool dispensable,
+    const phi::distributed::ProcessMesh* mesh) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
 
   if (list == nullptr || list == Py_None) {
@@ -1235,6 +1465,8 @@ paddle::optional<std::vector<paddle::Tensor>> GetOptionalTensorListFromArgs(
   }
 
   std::vector<paddle::Tensor> result;
+  const phi::distributed::ProcessMesh* local_mesh = nullptr;
+  int mesh_start_index = -1;
 
   if (PyList_Check(list)) {
     Py_ssize_t len = PyList_Size(list);
@@ -1248,8 +1480,27 @@ paddle::optional<std::vector<paddle::Tensor>> GetOptionalTensorListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
-      result.emplace_back(
-          reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor);
+      paddle::Tensor& tensor =
+          reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor;
+      if (local_mesh) {
+        ConvertToDistTensor(&tensor, local_mesh);
+      } else {
+        if (tensor.defined() && tensor.is_dist_tensor()) {
+          local_mesh =
+              &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                    tensor.impl())
+                    ->dist_attr()
+                    .process_mesh());
+          mesh_start_index = i;
+        }
+      }
+      result.emplace_back(tensor);
+    }
+    for (Py_ssize_t i = 0; i < mesh_start_index; i++) {
+      paddle::Tensor& tensor =
+          reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor;
+      ConvertToDistTensor(&tensor, local_mesh);
+      result[i] = tensor;
     }
   } else if (PyTuple_Check(list)) {
     Py_ssize_t len = PyTuple_Size(list);
@@ -1263,8 +1514,27 @@ paddle::optional<std::vector<paddle::Tensor>> GetOptionalTensorListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
-      result.emplace_back(
-          reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor);
+      paddle::Tensor& tensor =
+          reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor;
+      if (local_mesh) {
+        ConvertToDistTensor(&tensor, local_mesh);
+      } else {
+        if (tensor.defined() && tensor.is_dist_tensor()) {
+          local_mesh =
+              &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                    tensor.impl())
+                    ->dist_attr()
+                    .process_mesh());
+          mesh_start_index = i;
+        }
+      }
+      result.emplace_back(tensor);
+    }
+    for (Py_ssize_t i = 0; i < mesh_start_index; i++) {
+      paddle::Tensor& tensor =
+          reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor;
+      ConvertToDistTensor(&tensor, local_mesh);
+      result[i] = tensor;
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -1319,7 +1589,8 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
     const std::string& arg_name,
     PyObject* args,
     ssize_t arg_idx,
-    bool dispensable) {
+    bool dispensable,
+    const phi::distributed::ProcessMesh* mesh) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
 
   if (list == nullptr) {
@@ -1335,6 +1606,8 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
   }
 
   std::vector<paddle::Tensor*> result;
+  const phi::distributed::ProcessMesh* local_mesh = mesh;
+  int mesh_start_index = -1;
 
   if (PyList_Check(list)) {
     Py_ssize_t len = PyList_Size(list);
@@ -1347,8 +1620,27 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
-      result.emplace_back(
-          &(reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor));
+      paddle::Tensor* tensor =
+          &(reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor);
+      if (local_mesh) {
+        ConvertToDistTensor(tensor, local_mesh);
+      } else {
+        if (tensor->defined() && tensor->is_dist_tensor()) {
+          local_mesh =
+              &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                    tensor->impl())
+                    ->dist_attr()
+                    .process_mesh());
+          mesh_start_index = i;
+        }
+      }
+      result.emplace_back(tensor);
+    }
+    for (Py_ssize_t i = 0; i < mesh_start_index; i++) {
+      paddle::Tensor* tensor =
+          &(reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor);
+      ConvertToDistTensor(tensor, local_mesh);
+      result[i] = tensor;
     }
   } else if (PyTuple_Check(list)) {
     Py_ssize_t len = PyTuple_Size(list);
@@ -1361,8 +1653,27 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
-      result.emplace_back(
-          &(reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor));
+      paddle::Tensor* tensor =
+          &(reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor);
+      if (local_mesh) {
+        ConvertToDistTensor(tensor, local_mesh);
+      } else {
+        if (tensor->defined() && tensor->is_dist_tensor()) {
+          local_mesh =
+              &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                    tensor->impl())
+                    ->dist_attr()
+                    .process_mesh());
+          mesh_start_index = i;
+        }
+      }
+      result.emplace_back(tensor);
+    }
+    for (Py_ssize_t i = 0; i < mesh_start_index; i++) {
+      paddle::Tensor* tensor =
+          &(reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor);
+      ConvertToDistTensor(tensor, local_mesh);
+      result[i] = tensor;
     }
   } else if (list == Py_None) {
     return {};
@@ -1381,7 +1692,8 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
 
 std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj) {
   std::vector<paddle::Tensor*> result;
-
+  const phi::distributed::ProcessMesh* local_mesh = nullptr;
+  int mesh_start_index = -1;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     if (len == 0) {
@@ -1389,8 +1701,27 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj) {
           platform::errors::InvalidArgument("The list of Tensor is empty."));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
-      result.emplace_back(
-          &(reinterpret_cast<TensorObject*>(PyList_GetItem(obj, i))->tensor));
+      paddle::Tensor* tensor =
+          &(reinterpret_cast<TensorObject*>(PyList_GetItem(obj, i))->tensor);
+      if (local_mesh) {
+        ConvertToDistTensor(tensor, local_mesh);
+      } else {
+        if (tensor->defined() && tensor->is_dist_tensor()) {
+          local_mesh =
+              &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                    tensor->impl())
+                    ->dist_attr()
+                    .process_mesh());
+          mesh_start_index = i;
+        }
+      }
+      result.emplace_back(tensor);
+    }
+    for (Py_ssize_t i = 0; i < mesh_start_index; i++) {
+      paddle::Tensor* tensor =
+          &(reinterpret_cast<TensorObject*>(PyList_GetItem(obj, i))->tensor);
+      ConvertToDistTensor(tensor, local_mesh);
+      result[i] = tensor;
     }
   } else if (PyTuple_Check(obj)) {
     Py_ssize_t len = PyTuple_Size(obj);
@@ -1399,8 +1730,27 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj) {
           platform::errors::InvalidArgument("The tuple of Tensor is empty."));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
-      result.emplace_back(
-          &(reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, i))->tensor));
+      paddle::Tensor* tensor =
+          &(reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, i))->tensor);
+      if (local_mesh) {
+        ConvertToDistTensor(tensor, local_mesh);
+      } else {
+        if (tensor->defined() && tensor->is_dist_tensor()) {
+          local_mesh =
+              &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                    tensor->impl())
+                    ->dist_attr()
+                    .process_mesh());
+          mesh_start_index = i;
+        }
+      }
+      result.emplace_back(tensor);
+    }
+    for (Py_ssize_t i = 0; i < mesh_start_index; i++) {
+      paddle::Tensor* tensor =
+          &(reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, i))->tensor);
+      ConvertToDistTensor(tensor, local_mesh);
+      result[i] = tensor;
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -1415,13 +1765,29 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj) {
 std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
                                                       bool allow_none) {
   std::vector<paddle::Tensor> result;
+  const phi::distributed::ProcessMesh* local_mesh = nullptr;
+  int mesh_start_index = -1;
+
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
       if (PyObject_TypeCheck(item, p_tensor_type)) {
-        result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+        paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(item)->tensor;
+        if (local_mesh) {
+          ConvertToDistTensor(&tensor, local_mesh);
+        } else {
+          if (tensor.defined() && tensor.is_dist_tensor()) {
+            local_mesh =
+                &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                      tensor.impl())
+                      ->dist_attr()
+                      .process_mesh());
+            mesh_start_index = i;
+          }
+        }
+        result.emplace_back(tensor);
       } else if (allow_none && (item == Py_None)) {
         VLOG(4) << "Got None in Tensor list: " << i;
         result.emplace_back();
@@ -1433,13 +1799,34 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
             i));
       }
     }
+    for (Py_ssize_t i = 0; i < mesh_start_index; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_TypeCheck(item, p_tensor_type)) {
+        paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(item)->tensor;
+        ConvertToDistTensor(&tensor, local_mesh);
+        result.emplace_back(tensor);
+      }
+    }
   } else if (PyTuple_Check(obj)) {
     Py_ssize_t len = PyTuple_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
       if (PyObject_TypeCheck(item, p_tensor_type)) {
-        result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+        paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(item)->tensor;
+        if (local_mesh) {
+          ConvertToDistTensor(&tensor, local_mesh);
+        } else {
+          if (tensor.defined() && tensor.is_dist_tensor()) {
+            local_mesh =
+                &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                      tensor.impl())
+                      ->dist_attr()
+                      .process_mesh());
+            mesh_start_index = i;
+          }
+        }
+        result.emplace_back(tensor);
       } else if (allow_none && (item == Py_None)) {
         VLOG(4) << "Got None in Tensor list: " << i;
         result.emplace_back();
@@ -1449,6 +1836,14 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
             "list of Tensor, but got %s at pos %d",
             reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
             i));
+      }
+    }
+    for (Py_ssize_t i = 0; i < mesh_start_index; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_TypeCheck(item, p_tensor_type)) {
+        paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(item)->tensor;
+        ConvertToDistTensor(&tensor, local_mesh);
+        result.emplace_back(tensor);
       }
     }
   } else {
@@ -2004,7 +2399,7 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
 /* ------------------ for auto parallel ----------------------- */
 
 void DistTensorTypeParser::operator()(const Tensor& x) {
-  if (x.is_dist_tensor()) {
+  if (x.defined() && x.is_dist_tensor()) {
     *mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(x.impl())
                   ->dist_attr()
                   .process_mesh());
@@ -2014,7 +2409,7 @@ void DistTensorTypeParser::operator()(const Tensor& x) {
 
 void DistTensorTypeParser::operator()(const paddle::optional<Tensor>& x) {
   if (x) {
-    if (x.get_ptr()->is_dist_tensor()) {
+    if (x.get_ptr()->defined() && x.get_ptr()->is_dist_tensor()) {
       *mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                     x.get_ptr()->impl())
                     ->dist_attr()
@@ -2027,7 +2422,7 @@ void DistTensorTypeParser::operator()(const paddle::optional<Tensor>& x) {
 void DistTensorTypeParser::operator()(const std::vector<Tensor>& x) {
   if (!x.empty()) {
     for (auto& t : x) {
-      if (t.is_dist_tensor()) {
+      if (t.defined() && t.is_dist_tensor()) {
         *mesh =
             &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
                   ->dist_attr()
@@ -2044,7 +2439,7 @@ void DistTensorTypeParser::operator()(
   if (x) {
     if (!(x.get_ptr()->empty())) {
       for (auto& t : *(x.get_ptr())) {
-        if (t.is_dist_tensor()) {
+        if (t.defined() && t.is_dist_tensor()) {
           *mesh = &(
               std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
                   ->dist_attr()
@@ -2057,34 +2452,7 @@ void DistTensorTypeParser::operator()(
   }
 }
 
-void DistTensorConverter::convert(Tensor* x) {
-  if (x->is_dist_tensor()) {
-    PADDLE_ENFORCE_EQ(
-        std::dynamic_pointer_cast<phi::distributed::DistTensor>(x->impl())
-            ->dist_attr()
-            .process_mesh(),
-        *mesh,
-        platform::errors::InvalidArgument(
-            "Input %s has different mesh. However all inputs should "
-            "have the same mesh.",
-            x->name()));
-    return;
-  } else {
-    PADDLE_ENFORCE_EQ(
-        phi::DenseTensor::classof(x->impl().get()),
-        true,
-        platform::errors::InvalidArgument(
-            "Failed to convert input %s impl to phi::distributed::DistTensor "
-            "as it's not phi::DenseTensor.",
-            x->name()));
-    phi::distributed::TensorDistAttr dist_attr(
-        phi::vectorize(x->impl()->dims()));
-    dist_attr.set_process_mesh(*mesh);
-    auto dense_t = std::static_pointer_cast<phi::DenseTensor>(x->impl());
-    x->set_impl(
-        std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr));
-  }
-}
+void DistTensorConverter::convert(Tensor* x) { ConvertToDistTensor(x, mesh); }
 
 void DistTensorConverter::operator()(Tensor* x) {
   DistTensorConverter::convert(x);

@@ -16,9 +16,17 @@ import warnings
 from functools import partial, reduce
 
 import paddle
+from paddle import _C_ops
 from paddle.base import core
 from paddle.base.backward import _infer_var_data_type_shape_
-from paddle.base.framework import Operator, Program, Variable, static_only
+from paddle.base.framework import (
+    Operator,
+    Program,
+    Variable,
+    in_pir_mode,
+    static_only,
+)
+from paddle.base.libpaddle.pir import build_if_op, cf_yield
 from paddle.common_ops_import import (
     LayerHelper,
     check_type,
@@ -1205,6 +1213,39 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                 return false_fn()
         return None
 
+    if in_pir_mode():
+        if_op = build_if_op(pred)
+        true_output = None
+        false_output = None
+        if true_fn is not None:
+            if not callable(true_fn):
+                raise TypeError(
+                    "The true_fn in cond must be callable, but received {}".format(
+                        type(true_fn).__name__
+                    )
+                )
+        with if_op.true_block():
+            true_output = true_fn()
+            if true_output is not None:
+                cf_yield(flatten(true_output))
+        if false_fn is not None:
+            if not callable(false_fn):
+                raise TypeError(
+                    "The false_fn in cond must be callable, but received {}".format(
+                        type(false_fn).__name__
+                    )
+                )
+        with if_op.false_block():
+            false_output = false_fn()
+            if false_output is not None:
+                cf_yield(flatten(false_output))
+
+        if true_output is None and false_output is None:
+            return None
+
+        if_op.update_output()
+        return if_op.results()
+
     check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
     check_type(name, "name", (str, type(None)), "base.layers.cond")
     helper = LayerHelper('cond', **locals())
@@ -1705,8 +1746,24 @@ def Print(
         ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
         'paddle.static.Print',
     )
+    message = message or ""
+    helper = LayerHelper('print', **locals())
 
-    helper = LayerHelper('print' + "_" + input.name, **locals())
+    if in_pir_mode():
+        return _C_ops.print(
+            input,
+            first_n,
+            message,
+            summarize,
+            print_tensor_name,
+            print_tensor_type,
+            print_tensor_shape,
+            print_tensor_layout,
+            print_tensor_lod,
+            print_phase.upper(),
+            True,
+        )
+
     output = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
         type='print',

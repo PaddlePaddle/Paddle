@@ -243,6 +243,29 @@ void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
                                  MetaTensor* fmha_out_grad,
                                  MetaTensor* out_linear_out_grad);
 
+void FusedElemwiseAddActivationInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const std::vector<std::string>& functor_list,
+    float scale,
+    int axis,
+    bool save_intermediate_out,
+    MetaTensor* out,
+    MetaTensor* intermediate_out);
+
+void FusedElemwiseAddActivationGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const MetaTensor& out,
+    const MetaTensor& intermediate_out,
+    const MetaTensor& out_grad,
+    const std::vector<std::string>& functor_list,
+    float scale,
+    int axis,
+    bool save_intermediate_out,
+    MetaTensor* x_grad,
+    MetaTensor* y_grad);
+
 void FusedFeedForwardInferMeta(const MetaTensor& x,
                                const MetaTensor& dropout1_seed,
                                const MetaTensor& dropout2_seed,
@@ -584,4 +607,19 @@ void SelfDPAttenInferMeta(const MetaTensor& x,
                           const float alpha,
                           const int head_number,
                           MetaTensor* out);
+
+void FCInferMeta(const MetaTensor& input,
+                 const MetaTensor& w,
+                 const MetaTensor& bias,
+                 const int in_num_col_dims,
+                 const std::string& activation_type,
+                 const bool use_mkldnn,
+                 const bool padding_weights,
+                 const bool use_quantizer,
+                 const std::string& mkldnn_data_type,
+                 const float scale_in,
+                 const std::vector<float>& sclae_weights,
+                 const float scale_out,
+                 const bool force_fp32_output,
+                 MetaTensor* out);
 }  // namespace phi

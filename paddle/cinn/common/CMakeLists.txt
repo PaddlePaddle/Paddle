@@ -19,7 +19,9 @@ gather_srcs(
   arithmatic.cc
   cas.cc
   union_find.cc
-  python_interpreter_guard.cc)
+  python_interpreter_guard.cc
+  dev_info_manager.cc
+  nvgpu_dev_info.cc)
 
 message(STATUS "srcs: ${cinnapi_src}")
 

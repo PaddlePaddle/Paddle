@@ -124,8 +124,7 @@ TEST(shape_op, tie_shape_op) {
 
   pir::Builder builder = pir::Builder(ctx, program.block());
 
-  auto op = test::CreateDenseTensorOp(
-      ctx, {pir::ShapedTypeInterface::kDynamic, 2}, {"op_attr"}, {"op_name"});
+  auto op = test::CreateDenseTensorOp(ctx, {-1, 2}, {"op_attr"}, {"op_name"});
   pir::OpResult res = op->result(0);
 
   pir::shape::TieShapeOp tie_shape_op =
@@ -176,8 +175,8 @@ TEST(shape_op, tensor_dim_op) {
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   pir::Builder builder = pir::Builder(ctx, program.block());
 
-  pir::Operation *op = test::CreateDenseTensorOp(
-      ctx, {pir::ShapedTypeInterface::kDynamic, 2}, {"op_attr"}, {"op_name"});
+  pir::Operation *op =
+      test::CreateDenseTensorOp(ctx, {-1, 2}, {"op_attr"}, {"op_name"});
   pir::OpResult res_dense_tensor_value = op->result(0);
 
   pir::shape::TensorDimOp tensor_dim_op0 =
@@ -210,8 +209,7 @@ TEST(shape_op, shape_of_op) {
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   pir::Builder builder = pir::Builder(ctx, program.block());
 
-  auto op = test::CreateDenseTensorOp(
-      ctx, {pir::ShapedTypeInterface::kDynamic, 2}, {"op_attr"}, {"op_name"});
+  auto op = test::CreateDenseTensorOp(ctx, {-1, 2}, {"op_attr"}, {"op_name"});
   pir::OpResult res = op->result(0);
 
   pir::shape::ShapeOfOp shape_of_op = builder.Build<pir::shape::ShapeOfOp>(res);

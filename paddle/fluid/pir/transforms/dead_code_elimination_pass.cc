@@ -38,6 +38,10 @@ class DeadCodeEliminationPattern : public pir::RewritePattern {
 
   bool Match(pir::Operation* op) const override {
     if (op->HasTrait<pir::SideEffectTrait>()) return false;
+
+    if (op->isa<paddle::dialect::DataOp>()) {
+      return false;
+    }
     return op->use_empty();
   }
 

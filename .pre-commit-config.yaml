@@ -56,10 +56,6 @@ repos:
     hooks:
     -   id: black
         files: (.*\.(py|pyi|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
--   repo: https://github.com/pycqa/isort
-    rev: 5.11.5
-    hooks:
-    -   id: isort
 -   repo: https://github.com/PyCQA/flake8
     rev: 5.0.4
     hooks:
@@ -155,8 +151,8 @@ repos:
             (?x)^(
                 paddle/fluid/operators/CMakeLists.txt
             )$
--   repo: https://github.com/cmake-lint/cmake-lint
-    rev: 1.4.2
+-   repo: https://github.com/PFCCLab/cmake-lint-paddle
+    rev: v1.5.1
     hooks:
     -   id: cmakelint
         args: [--config=./tools/codestyle/.cmakelintrc]

@@ -129,6 +129,7 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
 static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
                                   paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
+    VLOG(4) << "Share Tensor Into Scope: " << i;
     auto name = tensors[i].name();
     if (name == paddle::framework::kFakeVarName ||
         name == paddle::framework::kEmptyVarName) {
@@ -180,30 +181,30 @@ static auto GetNameFromValue(const ::pir::Block *block,
                              bool is_input) {
   // we use name here, later value is used directly.
   std::unordered_map<::pir::Value, std::string> value2name;
-  for (auto *op : *block) {
+  for (auto &op : *block) {
     std::string name;
-    if (is_input && op->name() == "pd_op.data") {
+    if (is_input && op.name() == "pd_op.data") {
       name =
-          op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
-      value2name[op->results()[0].Value::impl()] = name;
-    } else if (!is_input && op->name() == "builtin.set_parameter") {
-      name = op->attributes()
+          op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
+      value2name[op.results()[0].Value::impl()] = name;
+    } else if (!is_input && op.name() == "builtin.set_parameter") {
+      name = op.attributes()
                  .at("parameter_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
-      value2name[op->operand(0).source()] = name;
-    } else if (!is_input && op->name() == "builtin.shadow_output") {
-      name = op->attributes()
+      value2name[op.operand(0).source()] = name;
+    } else if (!is_input && op.name() == "builtin.shadow_output") {
+      name = op.attributes()
                  .at("output_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
-      value2name[op->operand(0).source()] = name;
-    } else if (is_input && op->name() == "builtin.get_parameter") {
-      name = op->attributes()
+      value2name[op.operand(0).source()] = name;
+    } else if (is_input && op.name() == "builtin.get_parameter") {
+      name = op.attributes()
                  .at("parameter_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
-      value2name[op->result(0).Value::impl()] = name;
+      value2name[op.result(0).Value::impl()] = name;
     }
   }
   std::vector<std::string> names;
@@ -511,18 +512,17 @@ inline void PirRunProgramAPI(
         details::GetNameFromValue(forward_global_block, middle_values, false);
     auto skip_names_set =
         std::set<std::string>(skip_names.begin(), skip_names.end());
-    skip_names =
-        details::GetNameFromValue(forward_global_block, output_values, false);
-    skip_names_set.insert(skip_names.begin(), skip_names.end());
     auto no_need_buffer_values = PADDLE_GET_CONST(std::vector<::pir::Value>,
                                                   attrs.at("no_need_buffers"));
     auto no_need_buffer_names = details::GetNameFromValue(
         forward_global_block, no_need_buffer_values, false);
-    VLOG(4) << "start skip no need buffer vars with name:";
     for (auto &name : no_need_buffer_names) {
-      VLOG(4) << "Skip no need buffer vars with name:" << name;
+      VLOG(4) << "Find no need buffer vars with name:" << name;
       skip_names_set.erase(name);
     }
+    skip_names =
+        details::GetNameFromValue(forward_global_block, output_values, false);
+    skip_names_set.insert(skip_names.begin(), skip_names.end());
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
 
@@ -1217,7 +1217,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
             x.size(),
             x_grad_names.size()));
 
-    // TODO(dev): Need an elegant way to determine inforamtion of grad_tensor,
+    // TODO(dev): Need an elegant way to determine information of grad_tensor,
     // such as: name, tensor type(DenseTensor or SelectedRows).
     for (size_t i = 0; i < x.size(); i++) {
       if (x[i].is_dense_tensor()) {
