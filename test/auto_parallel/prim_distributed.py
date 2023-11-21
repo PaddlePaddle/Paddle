@@ -21,6 +21,7 @@ from paddle.distributed.fleet import auto
 from paddle.io import Dataset
 
 paddle.enable_static()
+paddle.disable_signal_handler()
 
 global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
 PP_MESH_0 = auto.ProcessMesh([0])
