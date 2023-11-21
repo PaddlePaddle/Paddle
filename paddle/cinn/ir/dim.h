@@ -32,6 +32,8 @@ class Dim : public IrNodeRef {
 
   operator Expr() const { return Expr(ptr()); }
 
+  Dim(const std::string& name, const SymbolicDimOp& sym_dim);
+
   const _Dim_* operator->() const;
   _Dim_* operator->();
 };
@@ -60,5 +62,7 @@ struct _Dim_ : ExprNode<_Dim_> {
   static const IrNodeTy _node_type_ = IrNodeTy::_Dim_;
 };
 
+// std::vector<Dim> SymbolicDimToDim(const std::string& name,
+//                                   const std::vector<SymbolicDimOp>& sym_vec);
 }  // namespace ir
 }  // namespace cinn
