@@ -246,9 +246,10 @@ class GroupShardedStage2(nn.Layer):
                 not self._offload
                 and self._rank in self._grad_storages[dtype].keys()
             ):
-                self._grad_storages[dtype][self._rank].buffer.scale_(
-                    self._world_size_scaling
-                )
+                if self.use_main_grad and param.main_grad is not None:
+                    self._grad_storages[dtype][self._rank].buffer.scale_(
+                        self._world_size_scaling
+                    )
                 if need_dp_scale:    
                     self._grad_storages[dtype][self._rank].buffer.scale_(
                         scale=dp_scale_factor
