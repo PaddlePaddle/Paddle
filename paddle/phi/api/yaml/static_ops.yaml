@@ -585,6 +585,16 @@
   optional : sequence_length, dropout_state_out
   intermediate : reserve
 
+- op : shadow_output
+  args : (Tensor x, str name)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel:
+    func : shadow_output
+    param : [x]
+
 - op : share_buffer
   args : (Tensor[] x, bool[] share_dims_and_dtype={})
   output : Tensor[](out){x.size()}, Tensor[](xout){x.size()}

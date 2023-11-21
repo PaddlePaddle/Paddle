@@ -309,6 +309,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       arg_name_set.insert(tensor->buffer->name);
     }
   }
+
   if (!done_op_schedule) {
     std::unordered_set<std::string> args_set;
     for (auto arg : group_func_args) {
@@ -575,7 +576,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
         LoopAssignReduce(
             ir_sch, op, greducer, this->target_, tensor_map, tmp_tensor_info);
       }
-    } else {
+    } else if (master) {
       VLOG(3) << "Before assign node " << op_name
               << " into horizontal link reducer, ir is:\n"
               << ir_sch.GetModule().GetExprs().at(0);
