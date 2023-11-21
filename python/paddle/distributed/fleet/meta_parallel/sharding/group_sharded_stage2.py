@@ -385,7 +385,7 @@ class GroupShardedStage2(nn.Layer):
     def _get_scaled_grad_fn(self, param):
         @paddle.autograd.no_grad()
         def scale(grad):
-            # do gradient scale separately
+            # do gradient scale separately 
             # For grad scale, we need to do it in the backward hook due to fp16 may overflow if we first add grad and then scale
             # For main_grad scale, we do scale in the optimizer.
             if not hasattr(param, "main_grad"):
