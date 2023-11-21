@@ -24,14 +24,9 @@
 #include "paddle/cinn/adt/tags.h"
 #include "paddle/cinn/adt/tree.h"
 
-namespace cinn {
-namespace hlir {
-namespace framework {
-class Node;
-class NodeData;
-}  // namespace framework
-}  // namespace hlir
-}  // namespace cinn
+namespace pir {
+class Operation;
+}
 
 namespace cinn {
 namespace adt {
@@ -82,7 +77,7 @@ inline std::size_t GetHashValueImpl(const TempStorage& temp_storage) {
   return hash_value;
 }
 
-// SSAShadowTensor = (tSSAShadow Name, const Graph::NodeData*)
+// SSAShadowTensor = (tSSAShadow Name, adapter::Tensor)
 class SSAShadowTensor final : public Tuple<tSSAShadow<Name>, adapter::Tensor> {
  public:
   using Tuple<tSSAShadow<Name>, adapter::Tensor>::Tuple;
@@ -102,11 +97,13 @@ DEFINE_ADT_UNION(Tensor, adapter::Tensor, SSAShadowTensor, TempStorage);
 OVERRIDE_UNION_GET_HASH_VALUE(Tensor);
 OVERLOAD_OPERATOR_EQ_NE(Tensor, UnionEqual);
 
-// Op = const Node*
+// Op = const pir::Operation*
+//    | tReduceInit<const pir::Operation*>
+//    | tReduceAcc<const pir::Operation*>
 DEFINE_ADT_UNION(Op,
-                 const hlir::framework::Node*,
-                 tReduceInit<const hlir::framework::Node*>,
-                 tReduceAcc<const hlir::framework::Node*>);
+                 const ::pir::Operation*,
+                 tReduceInit<const ::pir::Operation*>,
+                 tReduceAcc<const ::pir::Operation*>);
 
 using Arg = Tensor;
 

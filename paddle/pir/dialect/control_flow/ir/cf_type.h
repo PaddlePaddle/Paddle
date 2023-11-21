@@ -19,7 +19,14 @@
 #include "paddle/pir/core/type_base.h"
 
 namespace pir {
-class IR_API StackType : public Type::TypeBase<StackType, Type, TypeStorage> {
+
+class IR_API ContainerType : public Type {
+  using Type::Type;
+  static bool classof(Type);
+};
+
+class IR_API StackType
+    : public Type::TypeBase<StackType, ContainerType, TypeStorage> {
  public:
   using Base::Base;
 };
@@ -36,6 +43,7 @@ class IR_API OutletType : public Type::TypeBase<OutletType, Type, TypeStorage> {
 
 }  // namespace pir
 
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ContainerType)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::StackType)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::InletType)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::OutletType)

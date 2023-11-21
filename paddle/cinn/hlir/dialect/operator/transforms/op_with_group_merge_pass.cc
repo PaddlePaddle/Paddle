@@ -52,7 +52,11 @@ std::unordered_map<std::string, OpPatternKind> OpKindMap = {
     {"pd_op.cast", OpPatternKind::kElementWise},
     {"pd_op.greater_than", OpPatternKind::kElementWise},
     {"pd_op.greater_equal", OpPatternKind::kElementWise},
+    {"pd_op.transpose", OpPatternKind::kInjective},
+    {"pd_op.gather_nd", OpPatternKind::kInjective},
     {"cinn_op.scale", OpPatternKind::kElementWise},
+    {"cinn_op.concat", OpPatternKind::kInjective},
+    {"cinn_op.slice", OpPatternKind::kInjective},
     {"cinn_op.reduce_sum", OpPatternKind::kReduction},
     {"cinn_op.reduce_max", OpPatternKind::kReduction},
     {"cinn_op.broadcast", OpPatternKind::kBroadcast},
@@ -429,14 +433,7 @@ class OpFusionPassHelper {
         size_t producer_data_used_num = 0;
 
         auto consumer_list = GetConsumerOps(producer, op2id_);
-        // for (auto it = producer_data.use_begin(); it !=
-        // producer_data.use_end();
-        //      ++it) {
         for (auto consumer_op : consumer_list) {
-          // auto consumer_op = it->owner();
-          if (consumer_op->name() == "cf.yield") {
-            continue;
-          }
           producer_data_used_num++;
           // if fusion group can't find op, can't merge
           if (consumer_fusion->ops_set.find(consumer_op) ==
