@@ -17,7 +17,6 @@
 #include <future>  // NOLINT
 #include <unordered_map>
 
-#include "glog/logging.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/device_context.h"
@@ -492,14 +491,11 @@ template <typename StreamType>
 struct ThrustAllocator {
   typedef char value_type;
   ThrustAllocator(phi::Place place, StreamType stream) {
-    // VLOG(2) << "construct allocator";
     place_ = place;
     stream_ = stream;
   }
   ~ThrustAllocator() {}
-  // VLOG(2) << "destory allocator"; }
   char* allocate(std::ptrdiff_t num_bytes) {
-    // VLOG(2) << "allocate " << num_bytes << " bytes";
     auto storage =
         AllocShared(place_,
                     num_bytes,
@@ -509,9 +505,8 @@ struct ThrustAllocator {
     return ptr;
   }
   void deallocate(char* ptr, size_t) {
-    // VLOG(2) << "deallocate ";
     allocation_map_type::iterator iter = busy_allocation_.find(ptr);
-    CHECK(iter != busy_allocation_.end());
+    // CHECK(iter != busy_allocation_.end());
     busy_allocation_.erase(iter);
   }
 

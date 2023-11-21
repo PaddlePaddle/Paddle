@@ -173,13 +173,14 @@ void HogwildWorker::OffLoadVarInfo::CopyInputs(const Scope *root,
   if (!cast_vars.empty()) {
     for (auto &obj : cast_vars) {
       auto src_var = root->FindLocalVar(obj.second);
-      PADDLE_ENFORCE(src_var != nullptr,
-                     "root scope not found var name=%s",
-                     obj.second.c_str());
+      PADDLE_ENFORCE_NE(src_var,
+                        nullptr,
+                        "root scope not found var name=%s",
+                        obj.second.c_str());
       auto &src_tensor = src_var->Get<phi::DenseTensor>();
       auto dest_var = scope->FindLocalVar(obj.first);
-      PADDLE_ENFORCE(
-          dest_var != nullptr, "dest name=%s is nullptr", obj.first.c_str());
+      PADDLE_ENFORCE_NE(
+          dest_var, nullptr, "dest name=%s is nullptr", obj.first.c_str());
       auto *dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
       auto dtype = framework::TransToProtoVarType(dest_tensor->dtype());
       framework::TransDataType(src_tensor, dtype, dest_tensor);
@@ -191,12 +192,12 @@ void HogwildWorker::OffLoadVarInfo::CopyInputs(const Scope *root,
   }
   for (auto &name : copy_vars) {
     auto src_var = root->FindLocalVar(name);
-    PADDLE_ENFORCE(
-        src_var != nullptr, "root scope not found var name=%s", name.c_str());
+    PADDLE_ENFORCE_NE(
+        src_var, nullptr, "root scope not found var name=%s", name.c_str());
     auto &src_tensor = src_var->Get<phi::DenseTensor>();
     auto dest_var = scope->FindLocalVar(name);
-    PADDLE_ENFORCE(
-        dest_var != nullptr, "dest name=%s is nullptr", name.c_str());
+    PADDLE_ENFORCE_NE(
+        dest_var, nullptr, "dest name=%s is nullptr", name.c_str());
     auto *dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
     copyer->Copy(src_tensor, place, dest_tensor);
   }
@@ -545,8 +546,8 @@ size_t HogwildWorker::AdjustOffloadOps(const ProgramDesc &program) {
           continue;
         }
         auto dest_var = thread_scope_->Var(name);  // init local var
-        PADDLE_ENFORCE(
-            dest_var != nullptr, "init var error name=%s", name.c_str());
+        PADDLE_ENFORCE_NE(
+            dest_var, nullptr, "init var error name=%s", name.c_str());
         offload_vars_[op.get()].copy_vars.push_back(name);
         // nccl broadcast param
         if (is_offload_communication_) {

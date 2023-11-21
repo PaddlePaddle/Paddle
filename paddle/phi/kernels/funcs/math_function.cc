@@ -161,7 +161,8 @@ struct TensorSetConstantEx {
       : tensor_(tensor), value_(value), place_(place) {}
   template <typename T>
   void apply() const {
-    auto* data = tensor_->mutable_data<T>(place_);
+    auto* ctx = phi::DeviceContextPool::Instance().Get(place_);
+    auto data = ctx->Alloc<T>(tensor_);
     int numel = tensor_->numel();
     const T* num = reinterpret_cast<const T*>(value_);
     bool is_cpu_place = place_.GetType() == phi::AllocationType::CPU;
@@ -225,7 +226,8 @@ struct TensorSetConstantXPU {
       : context_(context), tensor_(tensor), value_(value), place_(place) {}
   template <typename T>
   void apply() const {
-    auto* data = tensor_->mutable_data<T>(place_);
+    auto* ctx = phi::DeviceContextPool::Instance().Get(place_);
+    auto data = ctx->Alloc<T>(tensor_);
     int numel = tensor_->numel();
     using XPUInTDType = typename XPUTensorTrait<T>::Type;
     float num = static_cast<float>(*reinterpret_cast<const T*>(value_));
@@ -245,36 +247,6 @@ struct TensorSetConstantXPU {
   phi::DenseTensor* tensor_;
   const void* value_;
   phi::Place place_;
-};
-
-struct TensorSetConstantXPU {
-  TensorSetConstantXPU(const paddle::platform::DeviceContext& context,
-                       phi::DenseTensor* tensor,
-                       const void* value,
-                       paddle::platform::Place place)
-      : context_(context), tensor_(tensor), value_(value), place_(place) {}
-  template <typename T>
-  void apply() const {
-    auto* data = tensor_->mutable_data<T>(place_);
-    int numel = tensor_->numel();
-    using XPUInTDType = typename XPUTensorTrait<T>::Type;
-    float num = static_cast<float>(*reinterpret_cast<const T*>(value_));
-    auto dev_ctx = reinterpret_cast<const phi::XPUContext*>(&context_);
-    int ret = xpu::constant(dev_ctx->x_context(),
-                            reinterpret_cast<XPUInTDType*>(data),
-                            numel,
-                            static_cast<XPUInTDType>(num));
-    PADDLE_ENFORCE_EQ(
-        ret,
-        XPU_SUCCESS,
-        phi::errors::External("XPU CONSTANT API return wrong value[%d %s].",
-                              ret,
-                              XPUAPIErrorMsg[ret]));
-  }
-  const paddle::platform::DeviceContext& context_;
-  phi::DenseTensor* tensor_;
-  const void* value_;
-  paddle::platform::Place place_;
 };
 #endif
 

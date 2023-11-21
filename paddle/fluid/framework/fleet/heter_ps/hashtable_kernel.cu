@@ -80,11 +80,6 @@ __global__ void insert_kernel(Table* table,
   if (i < len) {
     kv.first = keys[i];
     kv.second = vals[i];
-    /*
-    auto real = kv.second;
-    auto expect = (kv.first / 8) % 2;
-    PADDLE_ENFORCE(real == expect, "error, real:%u, expect:%u", real, expect);
-    */
     auto it = table->insert(kv, op, &local_num);
     assert(it != table->end() && "error: insert fails: table is full");
   }
@@ -156,12 +151,6 @@ __global__ void search_ranks_kernel(Table* table,
     auto it = table->find(keys[i]);
     if (it != table->end()) {
       vals[i] = it->second;
-      /*
-      auto real = vals[i];
-      auto expect = (keys[i] / 8) % 2;
-      PADDLE_ENFORCE(real == expect,
-              "error, real:%u, expect:%u", real, expect);
-      */
     }
   }
 }
@@ -318,13 +307,6 @@ __global__ void get_key_values_kernel(Table* table,
   if (threadIdx.x < local_num) {
     d_keys[global_num + threadIdx.x] = local_key[threadIdx.x];
     d_vals[global_num + threadIdx.x] = local_val[threadIdx.x];
-    /*
-    uint32_t real = d_vals[global_num + threadIdx.x];
-    uint32_t expect = (d_keys[global_num + threadIdx.x] / 8) % 2;
-    PADDLE_ENFORCE(real == expect,
-            "error, key:%lu real:%u expect:%u",
-            local_key[threadIdx.x], real, expect);
-    */
   }
 }
 
