@@ -1143,6 +1143,7 @@
   output : Tensor(out)
   infer_meta :
     func : TriuInferMeta
+    spmd_rule : TriuInferSpmd
   kernel :
     func : triu
   inplace: (x -> out)
