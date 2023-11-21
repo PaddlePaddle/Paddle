@@ -780,6 +780,7 @@ def find_files(pattern, root, recursive=False):
 headers = (
     # paddle level api headers (high level api, for both training and inference)
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/common')) +  # paddle common headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api')) +  # phi unify api header
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/ext')) +  # custom op api
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include')) +  # phi api

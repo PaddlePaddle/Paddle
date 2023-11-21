@@ -1258,6 +1258,9 @@ def get_headers():
         + list(  # phi api
             find_files('*.h', paddle_source_dir + '/paddle/phi/common')
         )
+        + list(  # common api
+            find_files('*.h', paddle_source_dir + '/paddle/common')
+        )
         # phi level api headers (low level api, for training only)
         + list(  # phi extension header
             find_files('*.h', paddle_source_dir + '/paddle/phi')

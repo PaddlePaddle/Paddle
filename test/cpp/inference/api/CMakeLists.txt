@@ -1445,6 +1445,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
         SRCS
         api_impl_tester.cc
         DEPS
+        common
         paddle_inference_shared
         ARGS
         --word2vec_dirname=${WORD2VEC_MODEL_DIR}
