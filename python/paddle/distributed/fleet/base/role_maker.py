@@ -27,10 +27,6 @@ from paddle.distributed.fleet.base.private_helper_function import (
 
 from ...backup_env import getenv_or_backup
 
-from ...backup_env import getenv_or_backup
-
-from ...backup_env import getenv_or_backup
-
 __all__ = []
 
 
