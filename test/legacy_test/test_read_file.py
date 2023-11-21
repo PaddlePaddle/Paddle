@@ -20,6 +20,7 @@ import cv2
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 from paddle.vision.ops import decode_jpeg, read_file
 
 
@@ -62,6 +63,7 @@ class TestReadFile(unittest.TestCase):
     def test_read_file_decode_jpeg_dynamic(self):
         self.read_file_decode_jpeg()
 
+    @test_with_pir_api
     def test_read_file_decode_jpeg_static(self):
         paddle.enable_static()
         self.read_file_decode_jpeg()

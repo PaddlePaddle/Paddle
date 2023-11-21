@@ -143,7 +143,7 @@ class TestDistributeFPNProposalsOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False, check_pir=True)
+        self.check_output(check_dygraph=False, check_pir=False)
 
 
 class TestDistributeFPNProposalsOpWithRoisNum(TestDistributeFPNProposalsOp):

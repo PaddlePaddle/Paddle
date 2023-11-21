@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.initializer as I
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestDeformConv2D(TestCase):
@@ -108,6 +109,7 @@ class TestDeformConv2D(TestCase):
 
         self.mask = np.random.uniform(-1, 1, self.mask_shape).astype(self.dtype)
 
+    @test_with_pir_api
     def static_graph_case_dcn(self):
         main = paddle.static.Program()
         start = paddle.static.Program()
@@ -320,6 +322,7 @@ class TestDeformConv2DFunctional(TestCase):
 
         self.mask = np.random.uniform(-1, 1, self.mask_shape).astype(self.dtype)
 
+    @test_with_pir_api
     def static_graph_case_dcn(self):
         main = paddle.static.Program()
         start = paddle.static.Program()
