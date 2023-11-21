@@ -688,6 +688,21 @@ struct BindInfo {
     return offset >= 0 && offset < 3 &&
            (for_type == ForType::GPUThread || for_type == ForType::GPUBlock);
   }
+
+  friend std::ostream& operator<<(std::ostream& os, const BindInfo& bind_info) {
+    CHECK(bind_info.valid()) << "Make invalid BindInfo to stream";
+    char axis_name = 'x' + bind_info.offset;
+    std::string prefix =
+        bind_info.for_type == ForType::GPUBlock ? "blockIdx." : "threadIdx.";
+    os << prefix + axis_name;
+    return os;
+  }
+
+  operator std::string() const {
+    std::ostringstream os;
+    os << *this;
+    return os.str();
+  }
 };
 
 struct ForBase {
