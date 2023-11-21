@@ -52,7 +52,7 @@ void GroupOp::Build(pir::Builder &builder,             // NOLINT
 pir::Block *GroupOp::block() {
   pir::Region &region = (*this)->region(0);
   if (region.empty()) region.emplace_back();
-  return region.front();
+  return &region.front();
 }
 
 std::vector<pir::Operation *> GroupOp::ops() {

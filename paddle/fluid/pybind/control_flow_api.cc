@@ -147,7 +147,7 @@ std::vector<Value> GetUsedExternalValue(const Operation& op) {
   return used_values;
 }
 
-void ModifyFwdControlflowBlock(Block* block) {
+void BuildPipeForBlock(Block* block) {
   PADDLE_ENFORCE_NOT_NULL(
       block,
       paddle::platform::errors::InvalidArgument(
@@ -187,7 +187,7 @@ namespace paddle {
 namespace pybind {
 void BindControlFlowApi(py::module* m) {
   m->def("get_used_external_value", GetUsedExternalValue);
-  m->def("modify_fwd_control_flow_block", ModifyFwdControlflowBlock);
+  m->def("build_pipe_for_block", BuildPipeForBlock);
   m->def("cvt_to_if_op",
          [](Operation& op) { return PyIfOp(op.dyn_cast<IfOp>()); });
   BindIfOp(m);

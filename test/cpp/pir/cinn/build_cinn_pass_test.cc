@@ -60,9 +60,8 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   LOG(INFO) << "after pass: " << *origin_program;
 
   CHECK_EQ(origin_program->block()->size(), 1u);
-  pir::Operation* group_op = origin_program->block()->front();
-  pir::Block* group_block =
-      group_op->dyn_cast<cinn::dialect::GroupOp>().block();
+  pir::Operation& group_op = origin_program->block()->front();
+  pir::Block* group_block = group_op.dyn_cast<cinn::dialect::GroupOp>().block();
   CHECK_EQ(group_block->size(), 6u);
 
   std::vector<std::string> op_names = {
@@ -219,7 +218,7 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
   LOG(INFO) << "after pass: " << *origin_program;
 
   CHECK_EQ(origin_program->block()->size(), 6u);
-  pir::Operation* group_op = origin_program->block()->front();
+  pir::Operation* group_op = &origin_program->block()->front();
   pir::Block* group_block =
       group_op->dyn_cast<cinn::dialect::GroupOp>().block();
   CHECK_EQ(group_block->size(), 3u);
@@ -234,7 +233,7 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
     CHECK_EQ(op.name(), op_names_front[index++]);
   }
 
-  group_op = origin_program->block()->back();
+  group_op = &origin_program->block()->back();
   group_block = group_op->dyn_cast<cinn::dialect::GroupOp>().block();
   CHECK_EQ(group_block->size(), 2u);
 

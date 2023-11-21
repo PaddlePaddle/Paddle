@@ -16,9 +16,9 @@ import unittest
 
 import paddle
 from paddle.base.libpaddle.pir import (
+    build_pipe_for_block,
     cvt_to_if_op,
     get_used_external_value,
-    modify_fwd_control_flow_block,
 )
 
 paddle.enable_static()
@@ -63,7 +63,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
         if_op = cvt_to_if_op(out[0].get_defining_op())
         true_block = if_op.true_block()
         self.assertEqual(len(true_block), 3)
-        modify_fwd_control_flow_block(true_block)
+        build_pipe_for_block(true_block)
         self.assertEqual(len(true_block), 4)
 
 

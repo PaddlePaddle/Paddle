@@ -54,14 +54,15 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
   if (false_block && !false_block->empty() &&
       false_block->back().isa<pir::YieldOp>()) {
     auto &op = false_block->back();
-    PADDLE_ENFORCE_EQ(op.num_operands(),
+    auto size = op.num_operands();
+    PADDLE_ENFORCE_EQ(size,
                       argument.output_types.size(),
                       phi::errors::PreconditionNotMet(
                           "The output size of true block and false block must "
                           "be equal. but they are %u and %u, respectively",
                           argument.output_types.size(),
-                          op.num_operands()));
-    for (size_t i = 0; i < op.num_operands(); ++i) {
+                          size));
+    for (size_t i = 0; i < size; ++i) {
       PADDLE_ENFORCE_EQ(
           op.operand(i).type(),
           argument.output_types[i],
@@ -160,8 +161,8 @@ void IfOp::VerifyRegion() {
 
     auto &true_last_op = (*this)->region(0).front().back();
     auto &false_last_op = (*this)->region(1).front().back();
-    PADDLE_ENFORCE_EQ(true_last_op.isa<pir::YieldOp>(),
-                      true,
+    PADDLE_ENFORCE_EQ(true,
+                      true_last_op.isa<pir::YieldOp>(),
                       phi::errors::PreconditionNotMet(
                           "The last of true block must be YieldOp"));
     PADDLE_ENFORCE_EQ(true_last_op.num_operands(),
@@ -169,8 +170,8 @@ void IfOp::VerifyRegion() {
                       phi::errors::PreconditionNotMet(
                           "The size of last of true block op's input must be "
                           "equal to IfOp's outputs num."));
-    PADDLE_ENFORCE_EQ(false_last_op.isa<pir::YieldOp>(),
-                      true,
+    PADDLE_ENFORCE_EQ(true,
+                      false_last_op.isa<pir::YieldOp>(),
                       phi::errors::PreconditionNotMet(
                           "The last of false block must be YieldOp"));
     PADDLE_ENFORCE_EQ(false_last_op.num_operands(),
