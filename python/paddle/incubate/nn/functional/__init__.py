@@ -58,4 +58,6 @@ __all__ = [
     "write_cache_kv",
     "rebuild_padding",
     "get_padding_offset",
+    "fused_get_rotary_embedding",
+    "qkv_transpose_split",
 ]
