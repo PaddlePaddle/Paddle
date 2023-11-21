@@ -990,7 +990,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
             from paddle.base.libpaddle import DataType
 
             dtype = DataType.INT64
-    elif not isinstance(dtype, core.VarDesc.VarType):
+    elif not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
