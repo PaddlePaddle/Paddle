@@ -31,7 +31,7 @@ import astor
 import numpy as np
 
 import paddle
-from paddle import base  # noqa: F401
+from paddle import base, get_flags, set_flags  # noqa: F401
 from paddle.base import backward, core, framework, unique_name
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.layer_helper import LayerHelper
@@ -1485,6 +1485,24 @@ def is_builtin(func, name=None):
         return True
     else:
         return False
+
+
+@signature_safe_contextmanager
+def pir_switch_guard(backend):
+    pir_dy2st_flag = 'FLAGS_enable_pir_with_pt_in_dy2st'
+    origin_status = get_flags(pir_dy2st_flag)[pir_dy2st_flag]
+    status = True
+    if backend == 'CINN':
+        status = False
+    is_prim_enabled = core._is_fwd_prim_enabled() or core._is_bwd_prim_enabled()
+    if is_prim_enabled:
+        status = False
+    try:
+        if not status:
+            set_flags({pir_dy2st_flag: False})
+            yield
+    finally:
+        set_flags({pir_dy2st_flag: origin_status})
 
 
 @signature_safe_contextmanager
