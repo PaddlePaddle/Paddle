@@ -93,8 +93,6 @@ RUN mkdir /opt/conda && ./${CONDA_FILE} -b -f -p "/opt/conda" && rm -rf ${CONDA_
 ENV PATH=/opt/conda/bin:${PATH}
 RUN conda init bash && conda install -n base jupyter jupyterlab
 
-# install pylint and pre-commit
-RUN /opt/conda/bin/pip install pre-commit pylint pytest astroid isort protocol PyGithub
 
 # install Paddle requirement
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
