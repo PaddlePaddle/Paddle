@@ -1497,10 +1497,10 @@ def pir_switch_guard(backend):
     is_prim_enabled = core._is_fwd_prim_enabled() or core._is_bwd_prim_enabled()
     if is_prim_enabled:
         status = False
+    if not status:
+        set_flags({pir_dy2st_flag: False})
     try:
-        if not status:
-            set_flags({pir_dy2st_flag: False})
-            yield
+        yield
     finally:
         set_flags({pir_dy2st_flag: origin_status})
 
