@@ -21,7 +21,7 @@ from paddle.distribution import distribution
 
 
 class ContinuousBernoulli(distribution.Distribution):
-    r"""The Continuous Bernoulli distribution with probability parameter: `probability`.
+    r"""The Continuous Bernoulli distribution with parameter: `probability` characterizing the shape of the density function.
 
     Mathematical details
 
