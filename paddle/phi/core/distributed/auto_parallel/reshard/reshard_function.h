@@ -43,6 +43,8 @@ class ReshardFunction {
                     const TensorDistAttr& out_dist_attr,
                     DistTensor* out) = 0;
 
+  virtual std::string Name() { return "ReshardBase"; }
+
  protected:
   void SetValue(DistTensor* tensor, const DenseTensor& value);
   void SetDistProps(DistTensor* tensor,

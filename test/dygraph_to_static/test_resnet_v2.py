@@ -197,7 +197,6 @@ class ResNet(paddle.nn.Layer):
             ),
         )
 
-    @paddle.jit.to_static
     def forward(self, inputs):
         y = self.conv(inputs)
         y = self.pool2d_max(y)
@@ -280,7 +279,7 @@ class TestResnet(Dy2StTestBase):
             dataset, batch_size=batch_size, drop_last=True
         )
 
-        resnet = ResNet()
+        resnet = paddle.jit.to_static(ResNet())
         optimizer = optimizer_setting(parameter_list=resnet.parameters())
 
         for epoch in range(epoch_num):
@@ -348,7 +347,7 @@ class TestResnet(Dy2StTestBase):
     def predict_dygraph(self, data):
         paddle.jit.enable_to_static(False)
         paddle.disable_static(place)
-        resnet = ResNet()
+        resnet = paddle.jit.to_static(ResNet())
 
         model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
         resnet.set_dict(model_dict)

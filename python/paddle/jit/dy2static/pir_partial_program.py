@@ -551,9 +551,17 @@ class PartialProgramLayer:
                 fwd, _ = paddle.base.libpaddle.pir.clone_program(
                     forward_program
                 )
+
+                if self._build_strategy.build_cinn_pass:
+                    fwd = paddle.base.libpaddle.pir.apply_pir_pass(fwd)
+
                 bwd, _ = paddle.base.libpaddle.pir.clone_program(
                     backward_program
                 )
+
+                if self._build_strategy.build_cinn_pass:
+                    bwd = paddle.base.libpaddle.pir.apply_pir_pass(bwd)
+
                 return fwd, bwd
 
             train_program.apply_pir_program_pass(pass_fn)
