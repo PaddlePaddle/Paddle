@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/map_expr_ctx.h"
 #include "paddle/cinn/ir/ir.h"
 
 namespace cinn::common {
