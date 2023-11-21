@@ -54,6 +54,7 @@ from auto_parallel_op_test import AutoParallelGradChecker
 LOAD_TEST_INFO_TEMPLATE = """
 
 def dump_test_info(test_info_path):
+    print("open path", test_info_path)
     with open(test_info_path, "rb") as f:
         test_info = pickle.load(f)
     return test_info
@@ -99,7 +100,8 @@ def run_grad_check(test_info):
 TEST_BODY_TEMPLATE = """
 
 if __name__ == "__main__":
-    test_info = dump_test_info('{test_info_path}')
+    print("dump path", r'{test_info_path}')
+    test_info = dump_test_info(r'{test_info_path}')
     {run_test}
 """
 
@@ -140,17 +142,18 @@ def get_test_info_and_generated_test_path(
     test_class_name, op_type, backward=False
 ):
     suffixes = str(uuid.uuid4())
-    current_path = str(pathlib.Path(__file__).resolve().parents[0])
+    current_path = pathlib.Path(__file__).resolve().parents[0]
     forward_or_backward = "forward" if not backward else "backward"
-    test_info_path = os.path.join(
-        current_path,
-        f"{test_class_name}_{op_type}_{forward_or_backward}_info_{suffixes}.pkl",
+    test_info_path = (
+        current_path
+        / f"{test_class_name}_{op_type}_{forward_or_backward}_info_{suffixes}.pkl"
     )
-    generated_test_path = os.path.join(
-        current_path,
-        f"{test_class_name}_{op_type}_{forward_or_backward}_test_{suffixes}.py",
+    generated_test_path = (
+        current_path
+        / f"{test_class_name}_{op_type}_{forward_or_backward}_test_{suffixes}.py"
     )
-    return test_info_path, generated_test_path
+    print("str(test_info_path)", str(test_info_path))
+    return str(test_info_path), str(generated_test_path)
 
 
 def check_auto_parallel_info(op_test):
