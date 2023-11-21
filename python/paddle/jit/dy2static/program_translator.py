@@ -65,7 +65,6 @@ from .utils import (
     input_specs_compatible,
     is_paddle_func,
     make_hashable,
-    pir_switch_guard,
     prim_or_cinn_is_enabled,
     type_name,
     unwrap,
@@ -717,16 +716,14 @@ class SymbolicStaticFunction(StaticFunction):
 
         build_strategy = self._kwargs.get("build_strategy", None)
         backend = self._kwargs.get("backend", None)
-        with pir_switch_guard(backend):
-            traced_fun = symbolic_translate(
-                self._dygraph_function,
-                build_strategy=build_strategy,
-                backend=backend,
-            )
-            if self._class_instance is not None:
-                args = (self._class_instance,) + args
-            ret = traced_fun(*args, **kwargs)
-        return ret
+        traced_fun = symbolic_translate(
+            self._dygraph_function,
+            build_strategy=build_strategy,
+            backend=backend,
+        )
+        if self._class_instance is not None:
+            args = (self._class_instance,) + args
+        return traced_fun(*args, **kwargs)
 
     @property
     def code(self):

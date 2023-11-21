@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <iostream>
+
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
@@ -686,7 +688,15 @@ inline void RunProgramAPI(
     details::ShareTensorsIntoScope(params, global_inner_scope);
     // Step 2. create new interpretercore
 
-    if (FLAGS_enable_pir_in_executor || FLAGS_enable_pir_with_pt_in_dy2st) {
+    std::cout << "[debug]" << FLAGS_enable_pir_in_executor << std::endl;
+    std::cout << "[debug]" << FLAGS_enable_pir_with_pt_in_dy2st << std::endl;
+
+    bool in_pir_pt_mode = FLAGS_enable_pir_with_pt_in_dy2st;
+    if (attrs.count("in_pir_pt_mode")) {
+      in_pir_pt_mode = PADDLE_GET_CONST(bool, attrs.at("in_pir_pt_mode"));
+    }
+
+    if (FLAGS_enable_pir_in_executor || in_pir_pt_mode) {
       // build new ir program
       auto ir_program =
           paddle::framework::ConstructFowardIrProgram(forward_global_block,
@@ -840,7 +850,15 @@ inline void RunProgramGradAPI(
     VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
 
-    if (FLAGS_enable_pir_in_executor || FLAGS_enable_pir_with_pt_in_dy2st) {
+    std::cout << "[debug]" << FLAGS_enable_pir_in_executor << std::endl;
+    std::cout << "[debug]" << FLAGS_enable_pir_with_pt_in_dy2st << std::endl;
+
+    bool in_pir_pt_mode = FLAGS_enable_pir_with_pt_in_dy2st;
+    if (attrs.count("in_pir_pt_mode")) {
+      in_pir_pt_mode = PADDLE_GET_CONST(bool, attrs.at("in_pir_pt_mode"));
+    }
+
+    if (FLAGS_enable_pir_in_executor || in_pir_pt_mode) {
       auto res =
           paddle::framework::ConstructBackwardIrProgram(backward_global_block,
                                                         out_grad,

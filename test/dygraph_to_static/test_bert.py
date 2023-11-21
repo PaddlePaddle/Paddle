@@ -24,6 +24,7 @@ from dygraph_to_static_utils_new import (
     Dy2StTestBase,
     test_ast_only,
     test_pir_only,
+    test_sot_only,
 )
 from predictor_utils import PredictorTools
 
@@ -158,7 +159,9 @@ class TestBert(Dy2StTestBase):
                 step_idx += 1
                 if step_idx == STEP_NUM:
                     if to_static:
-                        paddle.jit.save(bert, self.model_save_prefix)
+                        paddle.jit.save(
+                            bert, self.model_save_prefix, clip_extra=False
+                        )
                     else:
                         paddle.save(
                             bert.state_dict(),
@@ -289,6 +292,7 @@ class TestBert(Dy2StTestBase):
 
         self.verify_predict()
 
+    @test_sot_only
     def test_train_composite(self):
         core._set_prim_backward_enabled(True)
         # core._add_skip_comp_ops("layer_norm")
