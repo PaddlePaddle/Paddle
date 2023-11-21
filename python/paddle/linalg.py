@@ -12,33 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .tensor import inverse as inv  # noqa: F401
+from .tensor import inverse as inv
 from .tensor.linalg import (
-    cholesky,  # noqa: F401
-    cholesky_solve,  # noqa: F401
-    cond,  # noqa: F401
-    corrcoef,  # noqa: F401
-    cov,  # noqa: F401
-    det,  # noqa: F401
-    eig,  # noqa: F401
-    eigh,  # noqa: F401
-    eigvals,  # noqa: F401
-    eigvalsh,  # noqa: F401
-    householder_product,  # noqa: F401
+    cholesky,
+    cholesky_solve,
+    cond,
+    corrcoef,
+    cov,
+    det,
+    eig,
+    eigh,
+    eigvals,
+    eigvalsh,
+    householder_product,
     lstsq,
-    lu,  # noqa: F401
-    lu_unpack,  # noqa: F401
-    matrix_power,  # noqa: F401
-    matrix_rank,  # noqa: F401
-    multi_dot,  # noqa: F401
-    norm,  # noqa: F401
-    pca_lowrank,  # noqa: F401
-    pinv,  # noqa: F401
-    qr,  # noqa: F401
-    slogdet,  # noqa: F401
-    solve,  # noqa: F401
-    svd,  # noqa: F401
-    triangular_solve,  # noqa: F401
+    lu,
+    lu_unpack,
+    matrix_power,
+    matrix_rank,
+    multi_dot,
+    norm,
+    pca_lowrank,
+    pinv,
+    qr,
+    slogdet,
+    solve,
+    svd,
+    triangular_solve,
 )
 
 __all__ = [
