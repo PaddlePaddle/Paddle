@@ -15,6 +15,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/match_context.h"
@@ -108,21 +109,54 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
     auto output_shape = GetOutputShape(x_dims, y_dims);
     if (!IsSameDim(x_dims, output_shape)) {
       // add broadcast to input 0
-      auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
-          op->operand_source(0),
-          GetBroadcastAxis(x_dims, output_shape),
-          output_shape);
+      if (auto full_op = op->operand_source(0)
+                             .dyn_cast<pir::OpResult>()
+                             .owner()
+                             ->dyn_cast<paddle::dialect::FullOp>()) {
+        auto new_full = rewriter->Build<paddle::dialect::FullOp>(
+            output_shape,
+            full_op->attribute("value").dyn_cast<pir::FloatAttribute>().data(),
+            full_op->attribute("dtype")
+                .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                .data(),
+            full_op->attribute("place")
+                .dyn_cast<paddle::dialect::PlaceAttribute>()
+                .data());
+        op->operand(0).set_source(new_full->result(0));
+      } else {
+        auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
+            op->operand_source(0),
+            GetBroadcastAxis(x_dims, output_shape),
+            output_shape);
 
-      op->operand(0).set_source(new_transpose_op->result(0));
+        op->operand(0).set_source(new_transpose_op->result(0));
+      }
     }
 
     if (!IsSameDim(y_dims, output_shape)) {
-      auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
-          op->operand_source(1),
-          GetBroadcastAxis(y_dims, output_shape),
-          output_shape);
+      if (auto full_op = op->operand_source(1)
+                             .dyn_cast<pir::OpResult>()
+                             .owner()
+                             ->dyn_cast<paddle::dialect::FullOp>()) {
+        auto new_full = rewriter->Build<paddle::dialect::FullOp>(
+            output_shape,
+            full_op->attribute("value").dyn_cast<pir::FloatAttribute>().data(),
+            full_op->attribute("dtype")
+                .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                .data(),
+            full_op->attribute("place")
+                .dyn_cast<paddle::dialect::PlaceAttribute>()
+                .data());
 
-      op->operand(1).set_source(new_transpose_op->result(0));
+        op->operand(1).set_source(new_full->result(0));
+      } else {
+        auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
+            op->operand_source(1),
+            GetBroadcastAxis(y_dims, output_shape),
+            output_shape);
+
+        op->operand(1).set_source(new_transpose_op->result(0));
+      }
     }
 
     return true;

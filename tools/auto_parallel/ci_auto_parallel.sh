@@ -21,7 +21,6 @@ mkdir -p /workspace/case_logs
 export log_path=/workspace/case_logs
 export case_list=()
 
-# Insatll paddlepaddle-gpu
 install_paddle(){
     echo -e "\033[31m ---- Install paddlepaddle-gpu  \033"
     python -m pip install --user ${paddle} --force-reinstall --no-dependencies;
@@ -30,7 +29,15 @@ install_paddle(){
 
 get_diff_TO_case(){
 cd ${paddle_dir}
-let last_num=${#target_lists_for_hybrid_ci[@]}-1
+# get the location of "test/auto_parallel" in target_lists_for_hybrid_ci
+count=0  
+for element in "${target_lists_for_hybrid_ci[@]}";do
+  if [[ "$element" == "test/auto_parallel" ]]; then  
+    test_num=$count
+    break
+  fi
+  count=$((count+1))
+done
 for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{print $NF}'`;do
     arr_file_name=(${file_name//// })
     dir1=${arr_file_name[0]}
@@ -39,25 +46,32 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
     dir4=${arr_file_name[3]}
     file_item=$dir1/$dir2/$dir3/$dir4
     echo "file_name:"${file_name}, "path:"${file_item}
-    if [ ! -f ${file_name} ];then # 针对pr删掉文件
+    if [ ! -f ${file_name} ];then # deleting files for PR
         continue
     elif [[ ${file_name##*.} == "md" ]] || [[ ${file_name##*.} == "rst" ]] || [[ ${dir1} == "docs" ]];then
         continue
     else
         for ((i=0; i<${#target_lists_for_hybrid_ci[@]}; i++)); do
-            if [[ $i != ${last_num} ]] && [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
-                case_list[${#case_list[*]}]=gpt-3
+            if [[ $i != ${test_num} ]] && [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
+                case_list[${#case_list[*]}]=gpt-3_auto
                 case_list[${#case_list[*]}]=unit_test
                 break
-            elif [[ $i == ${last_num} ]] && [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
+            elif [[ $i == ${test_num} ]] && [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=unit_test
                 break
             else
                 continue
             fi
         done
+        for ((i=0; i<${#target_lists_for_pir_ci[@]}; i++)); do
+            if [[ ${file_item} == *${target_lists_for_pir_ci[i]}* ]];then
+                case_list[${#case_list[*]}]=gpt-3_auto_pir
+                break
+            else
+                continue
+            fi
+        done
     fi
-
 done
 }
 
@@ -65,7 +79,7 @@ print_info(){
 if [ $1 -ne 0 ];then
     EXCODE=2
     if [ ! -f ${log_path}/$2 ];then
-        echo -e "\033[31m run CI FAIL \033"
+        echo -e "\033[31m run $2 CI FAIL \033"
     else
         mv ${log_path}/$2 ${log_path}/$2_FAIL.log
         echo -e "\033[31m ${log_path}/$2_FAIL \033"
@@ -73,32 +87,39 @@ if [ $1 -ne 0 ];then
     fi
     exit $EXCODE
 else
-    echo -e "\033[32m run CI SUCCESS \033"
+    echo -e "\033[32m run $3 CI SUCCESS \033"
 fi
 }
 
-get_diff_TO_case # 获取待执行case列表
-case_list=($(awk -v RS=' ' '!a[$1]++' <<< ${case_list[*]}))  # 去重并将结果存储回原列表
+# Get the list of pending cases
+get_diff_TO_case
+# Remove duplicates and store the results back to the original list
+case_list=($(awk -v RS=' ' '!a[$1]++' <<< ${case_list[*]}))
 if [[ ${#case_list[*]} -ne 0 ]];then
     echo -e "\033[31m =======CI Check case========= \033"
     echo -e "\033[31m ---- case_list length: ${#case_list[*]}, cases: ${case_list[*]} \033"
+    echo -e "\033[31m ============================= \033"
     set +e
-    echo -e "\033[31m ---- start run case  \033"
     
     # Install paddle
     install_paddle
     case_num=1
+    export FLAGS_before_hook=0
     for case in ${case_list[*]};do
         echo -e "\033[31m ---- running case $case_num/${#case_list[*]}: ${case} \033"
-        if [[ ${case} == "gpt-3" ]];then
-            echo -e "\033[31m ---- running case gpt-3 auto \033"
-            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh
-            print_info $? `ls -lt ${log_path} | grep gpt | head -n 1 | awk '{print $9}'`
+        if [[ ${case} == "gpt-3_auto" ]];then
+            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh case_list_auto $FLAGS_before_hook
+            export FLAGS_before_hook=1
+            print_info $? `ls -lt ${log_path} | grep "gpt" | grep -v "pir" | head -n 1 | awk '{print $9}'` ${case}
+            let case_num++
+        elif [[ ${case} == "gpt-3_auto_pir" ]];then
+            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh case_list_auto_pir $FLAGS_before_hook
+            export FLAGS_before_hook=1
+            print_info $? `ls -lt ${log_path} | grep "pir" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         elif [[ ${case} == "unit_test" ]];then
-            echo -e "\033[31m ---- running case unit_test \033"
             bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh
-            print_info $? `ls -lt ${log_path} | grep test | head -n 1 | awk '{print $9}'`
+            print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         else
             echo -e "\033[31m ---- no ${case} \033"
@@ -110,7 +131,7 @@ if [[ ${#case_list[*]} -ne 0 ]];then
     if [ ! -f *FAIL* ];then
         FF=0
         EXCODE=0
-        echo -e "\033[32m ---- case Success \033"
+        echo -e "\033[32m ---- all case Success \033"
     else
         FF=`ls *FAIL*|wc -l`
         EXCODE=2

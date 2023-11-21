@@ -66,7 +66,7 @@ bool InsertTieShapeOnBlock(pir::Block* block) {
   // TODO(zhangbopd): mapping block arguments
 
   std::vector<pir::Operation*> op_list;
-  for (pir::Operation* op : *block) op_list.push_back(op);
+  for (auto& op : *block) op_list.push_back(&op);
   for (pir::Operation* op : op_list) {
     if (!InsertTieShapeOnOperation(op, builder)) return false;
   }
@@ -74,8 +74,8 @@ bool InsertTieShapeOnBlock(pir::Block* block) {
 }
 
 bool InsertTieShapeOnRegion(pir::Region* region) {
-  for (Block* block : *region) {
-    if (!InsertTieShapeOnBlock(block)) return false;
+  for (auto& block : *region) {
+    if (!InsertTieShapeOnBlock(&block)) return false;
   }
   return true;
 }
@@ -241,8 +241,8 @@ bool ShapeComputationIRAnalysis::Run() {
 }
 
 bool ShapeComputationIRAnalysis::RunOnRegion(Region* region, func fn) {
-  for (Block* block : *region) {
-    if (!RunOnBlock(block, fn)) return false;
+  for (auto& block : *region) {
+    if (!RunOnBlock(&block, fn)) return false;
   }
   return true;
 }
@@ -251,7 +251,7 @@ bool ShapeComputationIRAnalysis::RunOnBlock(Block* block, func fn) {
   // TODO(zhangbopd): mapping block arguments
 
   std::vector<Operation*> op_list;
-  for (Operation* op : *block) op_list.push_back(op);
+  for (auto& op : *block) op_list.push_back(&op);
   for (Operation* op : op_list) {
     if (!RunOnOperation(op, fn)) return false;
   }

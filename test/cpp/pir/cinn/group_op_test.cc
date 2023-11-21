@@ -87,9 +87,9 @@ TEST(GroupOp, TestBuild) {
   LOG(INFO) << program->block()->size();
   std::vector<uint32_t> op_num = {2, 5};
   int i = 0;
-  for (auto* sub_op : *(program->block())) {
-    EXPECT_TRUE(sub_op->isa<cinn::dialect::GroupOp>());
-    EXPECT_EQ(sub_op->dyn_cast<cinn::dialect::GroupOp>().ops().size(),
+  for (auto& sub_op : *(program->block())) {
+    EXPECT_TRUE(sub_op.isa<cinn::dialect::GroupOp>());
+    EXPECT_EQ(sub_op.dyn_cast<cinn::dialect::GroupOp>().ops().size(),
               op_num[i]);
     ++i;
   }
@@ -142,9 +142,9 @@ TEST(GroupOp, TestBuildByBlock) {
   LOG(INFO) << program->block()->size();
   std::vector<uint32_t> op_num = {2, 5};
   int i = 0;
-  for (auto* sub_op : *(program->block())) {
-    EXPECT_TRUE(sub_op->isa<cinn::dialect::GroupOp>());
-    EXPECT_EQ(sub_op->dyn_cast<cinn::dialect::GroupOp>().ops().size(),
+  for (auto& sub_op : *(program->block())) {
+    EXPECT_TRUE(sub_op.isa<cinn::dialect::GroupOp>());
+    EXPECT_EQ(sub_op.dyn_cast<cinn::dialect::GroupOp>().ops().size(),
               op_num[i]);
     ++i;
   }

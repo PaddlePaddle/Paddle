@@ -14,19 +14,25 @@
 
 #pragma once
 
+#include <vector>
+
 #include "paddle/cinn/adt/m_expr.h"
-#include "paddle/cinn/adt/m_ir.h"
-#include "paddle/cinn/hlir/framework/graph.h"
+
+namespace cinn::hlir::framework::pir {
+
+struct Group;
+using GroupList = std::vector<std::shared_ptr<Group>>;
+
+}  // namespace cinn::hlir::framework::pir
 
 namespace cinn::adt {
 
-class IGroup;
-class KGroup;
-
 MapExpr GenerateMapExpr(
-    const std::shared_ptr<cinn::hlir::framework::Graph::Group>& group);
+    const std::shared_ptr<hlir::framework::pir::Group>& group);
 
-void TryGenerateMapExprFromGraph(
-    const std::shared_ptr<cinn::hlir::framework::Graph>& graph);
+void TryGenerateMapExprFromGraph(const hlir::framework::pir::GroupList& groups);
+
+void TryGenerateMapExprFromGroup(
+    const std::shared_ptr<hlir::framework::pir::Group>& fusion_group);
 
 }  // namespace cinn::adt

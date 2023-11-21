@@ -28,6 +28,7 @@
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/dy_schedule/ir_schedule.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -364,9 +365,19 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
   CHECK(thread_axes.count(thread_axis))
       << "thread_axis " << thread_axis << " is not supported";
   int offset = thread_axis.back() - 'x';
+  const std::array<int, 3> kMaxBlockDims = common::GetCUDAMaxBlockDims();
+  const std::array<int, 3> kMaxGridDims = common::GetCUDAMaxGridDims();
+  auto check_offset = [&](const char& c) -> bool {
+    auto extent = loop.As<ir::For>()->extent.as_int32();
+    return extent <= (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);
+  };
   if (thread_axis[0] == 'b') {
+    CHECK(check_offset(thread_axis[0]))
+        << "Invalid Bind! The extent of loop is out of range on grid size!\n";
     MutateForType(loop, ForType::GPUBlock, offset);
   } else {
+    CHECK(check_offset(thread_axis[0]))
+        << "Invalid Bind! The extent of loop is out of range on block size!\n";
     MutateForType(loop, ForType::GPUThread, offset);
   }
 }

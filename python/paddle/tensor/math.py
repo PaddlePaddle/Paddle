@@ -15,6 +15,7 @@
 math functions
 """
 
+import math
 
 import numpy as np
 
@@ -414,7 +415,7 @@ def multiplex(inputs, index, name=None):
              [3., 4.]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multiplex(inputs, index)
     else:
         helper = LayerHelper('multiplex', **locals())
@@ -1946,7 +1947,7 @@ def add_n(inputs, name=None):
 
     Args:
         inputs (Tensor|list[Tensor]|tuple[Tensor]):  A Tensor or a list/tuple of Tensors. The shape and data type of the list/tuple elements should be consistent.
-            Input can be multi-dimensional Tensor, and data types can be: float32, float64, int32, int64.
+            Input can be multi-dimensional Tensor, and data types can be: float32, float64, int32, int64, complex64, complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1985,6 +1986,8 @@ def add_n(inputs, name=None):
                             'int32',
                             'int64',
                             'uint16',
+                            'complex64',
+                            'complex128',
                         ],
                         'add_n',
                     )
@@ -1992,7 +1995,16 @@ def add_n(inputs, name=None):
             check_variable_and_dtype(
                 inputs,
                 "inputs",
-                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+                [
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'uint16',
+                    'complex64',
+                    'complex128',
+                ],
                 'add_n',
             )
 
@@ -2406,7 +2418,7 @@ def renorm(x, p, axis, max_norm):
                 )
             )
         axis = axis + len(input_shape)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.renorm(x, p, axis, max_norm)
         return out
     else:
@@ -4946,7 +4958,7 @@ def conj(x, name=None):
              [(4-4j), (5-5j), (6-6j)]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.conj(x)
     else:
         check_variable_and_dtype(
@@ -5068,6 +5080,57 @@ def lgamma_(x, name=None):
     """
     if in_dynamic_mode():
         return _C_ops.lgamma_(x)
+
+
+def multigammaln(x, p, name=None):
+    """
+    This function computes the log of multivariate gamma, also sometimes called the generalized gamma.
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64, uint16.
+        p (int): The dimension of the space of integration.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): The values of the log multivariate gamma at the given tensor x.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([2.5, 3.5, 4, 6.5, 7.8, 10.23, 34.25])
+            >>> p = 2
+            >>> out = paddle.multigammaln(x, p)
+            >>> print(out)
+            Tensor(shape=[7], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.85704780  , 2.46648574  , 3.56509781  , 11.02241898 , 15.84497833 ,
+                    26.09257698 , 170.68318176])
+    """
+    assert p >= 1, (
+        "The p must be greater than or equal to 1, "
+        "But received p is %s.\n" % p
+    )
+    c = 0.25 * p * (p - 1) * math.log(math.pi)
+    b = 0.5 * paddle.arange(start=(1 - p), end=1, step=1, dtype=x.dtype)
+    return paddle.sum(paddle.lgamma(x.unsqueeze(-1) + b), axis=-1) + c
+
+
+@inplace_apis_in_dygraph_only
+def multigammaln_(x, p, name=None):
+    r"""
+    Inplace version of ``multigammaln_`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_multigammaln`.
+    """
+    assert p >= 1, (
+        "The p must be greater than or equal to 1, "
+        "But received p is %s.\n" % p
+    )
+    c = 0.25 * p * (p - 1) * math.log(math.pi)
+    c = paddle.to_tensor(c, dtype=x.dtype)
+    b = 0.5 * paddle.arange(start=(1 - p), end=1, step=1, dtype=x.dtype)
+    paddle.assign((x.unsqueeze(-1) + b).lgamma_().sum(-1).add_(c), x)
+    return x
 
 
 def neg(x, name=None):
@@ -5420,7 +5483,7 @@ def rad2deg(x, name=None):
             57.29578018)
     """
     rad2deg_scale = 180 / np.pi
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.scale(x, rad2deg_scale, 0.0, True)
@@ -5800,7 +5863,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         dtype = x.dtype
         axes = [axis]
         infer_flags = [1 for i in range(len(axes))]
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             has_pend = False
             input_list = []
             if prepend is not None and append is not None:
@@ -5837,7 +5900,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
                 new_input, axes, starts_2, ends_2, infer_flags, []
             )
 
-            if x.dtype == paddle.bool:
+            if x.dtype == paddle.bool or x.dtype == core.DataType.BOOL:
                 return _C_ops.logical_xor(input_back, input_front)
             else:
                 return _C_ops.subtract(input_back, input_front)
@@ -6630,7 +6693,7 @@ def nextafter(x, y, name=None):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.00000012, 1.99999988])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.nextafter(x, y)
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'nextafter')
