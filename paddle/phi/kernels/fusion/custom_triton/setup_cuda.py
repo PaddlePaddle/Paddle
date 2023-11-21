@@ -59,5 +59,6 @@ setup(
             ]
             + gencode_flags,
         },
+        extra_link_args = ["-lcuda"]
     ),
 )
