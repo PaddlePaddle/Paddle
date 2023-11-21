@@ -28,6 +28,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
