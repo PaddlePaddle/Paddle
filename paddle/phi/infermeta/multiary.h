@@ -846,14 +846,14 @@ void MultiheadMatmulInferMeta(const MetaTensor& input,
                               const int head_number,
                               MetaTensor* out);
 
-void  EncodeRotaryQKInferMeta(const MetaTensor& q,
-                              const MetaTensor& kv,
-                              const MetaTensor& rotary_emb,
-                              const MetaTensor& seq_lens,
-                              int rotary_emb_dims,
-                              bool use_neox,
-                              MetaTensor* rotary_q_out,
-                              MetaTensor* rotary_kv_out);                             
+void EncodeRotaryQKInferMeta(const MetaTensor& q,
+                             const MetaTensor& kv,
+                             const MetaTensor& rotary_emb,
+                             const MetaTensor& seq_lens,
+                             int rotary_emb_dims,
+                             bool use_neox,
+                             MetaTensor* rotary_q_out,
+                             MetaTensor* rotary_kv_out);
 
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        const MetaTensor& cache_kv,
@@ -897,5 +897,12 @@ void QkvTransposeSplitInferMeta(const MetaTensor& qkv,
                                 MetaTensor* q_out,
                                 MetaTensor* k_out,
                                 MetaTensor* v_out);
+void GetPaddingOffsetInferMeta(const MetaTensor& input_ids,
+                               const MetaTensor& cum_offsets,
+                               const MetaTensor& token_num,
+                               const MetaTensor& seq_len,
+                               MetaTensor* x_remove_padding,
+                               MetaTensor* cum_offsets_out,
+                               MetaTensor* padding_offset);
 
 }  // namespace phi

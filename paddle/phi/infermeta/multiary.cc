@@ -4279,18 +4279,18 @@ void MultiheadMatmulInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
   out->share_lod(input);
 }
-void  EncodeRotaryQKInferMeta(const MetaTensor& q,
-                              const MetaTensor& kv,
-                              const MetaTensor& rotary_emb,
-                              const MetaTensor& seq_lens,
-                              int rotary_emb_dims,
-                              bool use_neox,
-                              MetaTensor* rotary_q_out,
-                              MetaTensor* rotary_kv_out) {
-   rotary_q_out->share_meta(q);
-   rotary_kv_out->share_meta(kv);
+void EncodeRotaryQKInferMeta(const MetaTensor& q,
+                             const MetaTensor& kv,
+                             const MetaTensor& rotary_emb,
+                             const MetaTensor& seq_lens,
+                             int rotary_emb_dims,
+                             bool use_neox,
+                             MetaTensor* rotary_q_out,
+                             MetaTensor* rotary_kv_out) {
+  rotary_q_out->share_meta(q);
+  rotary_kv_out->share_meta(kv);
 }
- 
+
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        const MetaTensor& cache_kv,
                                        const MetaTensor& bias,
@@ -4480,6 +4480,22 @@ void QkvTransposeSplitInferMeta(const MetaTensor& qkv,
   k_out->set_dtype(qkv.dtype());
   v_out->set_dims(phi::make_ddim({bsz, kv_num_head, -1, head_size}));
   v_out->set_dtype(qkv.dtype());
+}
+
+void GetPaddingOffsetInferMeta(const MetaTensor& input_ids,
+                               const MetaTensor& cum_offsets,
+                               const MetaTensor& token_num,
+                               const MetaTensor& seq_len,
+                               MetaTensor* x_remove_padding,
+                               MetaTensor* cum_offsets_out,
+                               MetaTensor* padding_offset) {
+  int bsz = input_ids.dims()[0];
+  x_remove_padding->set_dims(phi::make_ddim({-1}));
+  x_remove_padding->set_dtype(input_ids.dtype());
+  cum_offsets_out->set_dims(phi::make_ddim({bsz}));
+  cum_offsets_out->set_dtype(seq_len.dtype());
+  padding_offset->set_dims(phi::make_ddim({-1}));
+  padding_offset->set_dtype(seq_len.dtype());
 }
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);
