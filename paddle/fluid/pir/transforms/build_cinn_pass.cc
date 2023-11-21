@@ -184,11 +184,11 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
   std::vector<pir::Operation*> sort_ops;
   std::unordered_map<pir::Operation*, int> pending_count;
   // step 1: initialize pending_cout for defined op
-  for (auto* op : *block) {
-    if (pending_count.find(op) == pending_count.end()) {
-      pending_count[op] = 0;
+  for (auto& op : *block) {
+    if (pending_count.find(&op) == pending_count.end()) {
+      pending_count[&op] = 0;
     }
-    for (auto& operand : op->operands()) {
+    for (auto operand : op.operands()) {
       if (!operand || !(operand.source())) {
         continue;
       }
@@ -202,10 +202,10 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
   }
 
   std::queue<pir::Operation*> queue;
-  for (auto* op : *block) {
-    VLOG(4) << op->name() << " pending_count: " << pending_count[op];
-    if (pending_count[op] == 0) {
-      queue.push(op);
+  for (auto& op : *block) {
+    VLOG(4) << op.name() << " pending_count: " << pending_count[&op];
+    if (pending_count[&op] == 0) {
+      queue.push(&op);
     }
   }
 
@@ -328,8 +328,8 @@ class CinnSubgraphDetector {
       : block_(block), op_classifier_(classifier) {
     sort_ops_ = InverselyTopologicalSort(block_);
     size_t index = 0;
-    for (auto* op : *block) {
-      op2id_[op] = index++;
+    for (auto& op : *block) {
+      op2id_[&op] = index++;
     }
   }
 
@@ -649,7 +649,7 @@ void ReplaceWithGroupOp(pir::Block* block,
   auto new_group_op = builder.Build<cinn::dialect::GroupOp>(output_types);
   pir::Block* group_block = new_group_op.block();
 
-  for (auto* op : group_ops) {
+  for (auto op : group_ops) {
     op->MoveTo(group_block, group_block->begin());
   }
 

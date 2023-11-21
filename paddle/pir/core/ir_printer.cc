@@ -181,15 +181,15 @@ void IrPrinter::PrintFullOperation(Operation* op) {
 }
 
 void IrPrinter::PrintRegion(const Region& region) {
-  for (auto block : region) {
+  for (auto& block : region) {
     PrintBlock(block);
   }
 }
 
-void IrPrinter::PrintBlock(const Block* block) {
+void IrPrinter::PrintBlock(const Block& block) {
   os << "{\n";
-  for (auto item : *block) {
-    PrintOperation(item);
+  for (auto& item : block) {
+    PrintOperation(&item);
     os << newline;
   }
   os << "}\n";
