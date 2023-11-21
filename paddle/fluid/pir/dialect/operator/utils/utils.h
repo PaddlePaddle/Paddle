@@ -135,5 +135,25 @@ bool IsEmptyValue(const pir::Value& value);
 
 std::vector<int64_t> GetInt64Vector(const pir::Attribute& attr);
 
+phi::DataType GetValueDataType(const pir::Value& value);
+
+phi::DataType GetPromoteType(
+    const std::string& op_name,
+    const std::vector<std::vector<pir::Value>>& amp_tensors_vector,
+    const phi::DataType& amp_dtype);
+
+pir::Value Cast(const pir::Value& input, const phi::DataType& dst_dtype);
+
+bool NeedCast(const pir::Value& value, const phi::DataType& dst_dtype);
+
+pir::Value PirAmpAutoCast(const std::string& input_name,
+                          const pir::Value& input,
+                          const phi::DataType& dst_dtype,
+                          const std::string& op_name);
+
+phi::DataType GetAmpDestDtype(
+    const std::string& op_name,
+    const std::vector<std::vector<pir::Value>>& amp_values_vector);
+
 }  // namespace dialect
 }  // namespace paddle

@@ -14,7 +14,11 @@
 
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include <unordered_set>
+#include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 
 namespace paddle {
 namespace dialect {
@@ -221,6 +225,173 @@ std::vector<int64_t> GetInt64Vector(const pir::Attribute& attr) {
   }
 
   return vec_int64;
+}
+
+phi::DataType GetValueDataType(const pir::Value& value) {
+  if (value.type().isa<DenseTensorType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<DenseTensorType>().dtype());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get dtype for dense "
+        "tensor."));
+  }
+}
+
+phi::DataType GetPromoteType(
+    const std::string& op_name,
+    const std::vector<std::vector<pir::Value>>& amp_values_vector,
+    const phi::DataType& amp_dtype) {
+  auto dst_type = amp_dtype;
+  // only consider the dtype of input(X).
+  if (op_name == "batch_norm" || op_name == "layer_norm" ||
+      op_name == "sync_batch_norm" ||
+      op_name == "moving_average_abs_max_scale") {
+    if (GetValueDataType(amp_values_vector[0][0]) == phi::DataType::FLOAT32) {
+      dst_type = phi::DataType::FLOAT32;
+    }
+    return dst_type;
+  }
+
+  if (egr::Controller::Instance().GetCurrentTracer()->GetAmpDtype() ==
+      "float16") {
+    if (op_name == "fused_attention") {
+      for (size_t i = 0; i < amp_values_vector.size(); i++) {
+        if (i != 3 || i != 4 || i != 9 || i != 10) {
+          if (GetValueDataType(amp_values_vector[i][0]) ==
+              phi::DataType::FLOAT32) {
+            dst_type = phi::DataType::FLOAT32;
+            return dst_type;
+          }
+        }
+      }
+    } else if (op_name == "fused_feedforward") {
+      for (size_t i = 0; i < amp_values_vector.size(); i++) {
+        if (i != 7 || i != 8 || i != 9 || i != 10) {
+          if (GetValueDataType(amp_values_vector[i][0]) ==
+              phi::DataType::FLOAT32) {
+            dst_type = phi::DataType::FLOAT32;
+            return dst_type;
+          }
+        }
+      }
+    }
+  }
+
+  for (const auto& values : amp_values_vector) {
+    for (const auto& value : values) {
+      if (GetValueDataType(value) == phi::DataType::FLOAT32) {
+        dst_type = GetValueDataType(value);
+        break;
+      }
+    }
+  }
+
+  return dst_type;
+}
+
+pir::Value Cast(const pir::Value& input, const phi::DataType& dst_dtype) {
+  paddle::imperative::AutoCastGuard guard(
+      egr::Controller::Instance().GetCurrentTracer(),
+      paddle::imperative::AmpLevel::O0);
+  return paddle::dialect::cast(input, dst_dtype);
+}
+
+bool NeedCast(const pir::Value& value, const phi::DataType& dst_dtype) {
+  auto data_type = GetValueDataType(value);
+  if ((data_type == phi::DataType::FLOAT32 ||
+       data_type == phi::DataType::FLOAT16 ||
+       data_type == phi::DataType::BFLOAT16) &&
+      (data_type != dst_dtype)) {
+    return true;
+  }
+  return false;
+}
+
+pir::Value PirAmpAutoCast(const std::string& input_name,
+                          const pir::Value& input,
+                          const phi::DataType& dst_dtype,
+                          const std::string& op_name) {
+  VLOG(6) << "AMP AmpAutoCasts:"
+          << " input(" << input_name << " to dst_dtype("
+          << phi::DataTypeToString(dst_dtype) << ").";
+  if ((op_name == "batch_norm" || op_name == "layer_norm" ||
+       op_name == "sync_batch_norm" || op_name == "weight_only_linear") &&
+      input_name != "x") {
+    return input;
+  }
+
+  if (dst_dtype == phi::DataType::FLOAT16) {
+    if (op_name == "run_program") {
+      return input;
+    }
+    if ((op_name == "fused_attention" || op_name == "fused_feedforward")) {
+      if (input_name == "LnScale" || input_name == "LnBias" ||
+          input_name == "Ln2Scale" || input_name == "Ln2Bias" ||
+          input_name == "Ln1Scale" || input_name == "Ln1Bias") {
+        return input;
+      }
+    }
+  }
+  if (NeedCast(input, dst_dtype)) {
+    VLOG(6) << "Input : " << input_name << "NeedCast";
+    return Cast(input, dst_dtype);
+  }
+  return input;
+}
+
+phi::DataType GetAmpDestDtype(
+    const std::string& op_name,
+    const std::vector<std::vector<pir::Value>>& amp_values_vector) {
+  auto amp_level = egr::Controller::Instance().GetAMPLevel();
+  auto amp_setting_dtype =
+      egr::Controller::Instance().GetCurrentTracer()->GetAmpPhiDtype();
+  auto dst_type = amp_setting_dtype;
+
+  bool use_promote = true;
+  if (amp_level == paddle::imperative::AmpLevel::O2) {
+    use_promote =
+        egr::Controller::Instance().GetCurrentTracer()->GetUsePromote();
+  }
+
+  if (use_promote) {
+    if (paddle::imperative::AmpOperators::Instance()
+            .GetMutableAllowOps()
+            ->count(op_name)) {
+      dst_type = amp_setting_dtype;
+    } else if (paddle::imperative::AmpOperators::Instance()
+                   .GetMutableBlockOps()
+                   ->count(op_name)) {
+      dst_type = phi::DataType::FLOAT32;
+    } else {
+      if (amp_level == paddle::imperative::AmpLevel::OD) {
+        dst_type = phi::DataType::FLOAT32;
+      } else {
+        dst_type =
+            GetPromoteType(op_name, amp_values_vector, amp_setting_dtype);
+      }
+    }
+  } else {
+    // use_promote can be set to false only for O2 training.
+    if (paddle::imperative::AmpOperators::Instance()
+            .GetMutableBlockOps()
+            ->count(op_name)) {
+      dst_type = phi::DataType::FLOAT32;
+    }
+  }
+
+  if (dst_type == amp_setting_dtype &&
+      (paddle::imperative::AmpOperators::Instance()
+           .GetMutableUnsupportedOps(amp_setting_dtype)
+           ->count(op_name))) {
+    dst_type = phi::DataType::FLOAT32;
+  }
+
+  // dst_type = GetDtypeWithPlace(op_name, amp_values_vector, dst_type);
+  VLOG(6) << "AMP GetAmpDestDtype:"
+          << " op(" << op_name << ") amp_dtype(" << dst_type << ") amp_level("
+          << static_cast<int>(amp_level) << ").";
+  return dst_type;
 }
 
 }  // namespace dialect

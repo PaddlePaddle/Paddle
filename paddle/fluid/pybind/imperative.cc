@@ -642,8 +642,13 @@ void BindImperative(py::module *m_ptr) {
   m.def("_dygraph_debug_level", []() { return imperative::GetDebugLevel(); });
   m.def("_switch_tracer",
         [](const std::shared_ptr<imperative::Tracer> &tracer) {
-          egr::Controller::Instance().SetCurrentTracer(tracer);
-          imperative::SetCurrentTracer(tracer);
+          if (tracer == nullptr) {
+            egr::Controller::Instance().SetInDynamicMode(false);
+            imperative::SetInDynamicMode(false);
+          } else {
+            egr::Controller::Instance().SetCurrentTracer(tracer);
+            imperative::SetCurrentTracer(tracer);
+          }
         });
   py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
       .def("create_program_desc",
@@ -677,6 +682,9 @@ void BindImperative(py::module *m_ptr) {
       .def_property("_has_grad",
                     &imperative::Tracer::HasGrad,
                     &imperative::Tracer::SetHasGrad)
+      .def_property("_in_dynamic_mode",
+                    &imperative::Tracer::GetInDynamicMode,
+                    &imperative::Tracer::SetInDynamicMode)
       .def_property(
           "_expected_place",
           [](const imperative::Tracer &self) -> py::object {

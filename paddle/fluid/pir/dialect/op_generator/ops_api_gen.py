@@ -50,7 +50,7 @@ void BindOpsAPI(pybind11::module *module) {{
 
 FUNCTION_IMPL_TEMPLATE = """
 static PyObject *{name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
-  if (egr::Controller::Instance().GetCurrentTracer() == nullptr) {{
+  if (!egr::Controller::Instance().GetInDynamicMode()) {{
     VLOG(6) << "Call static_api_{name}";
     return static_api_{name}(self, args, kwargs);
   }} else {{

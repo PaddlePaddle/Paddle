@@ -56,6 +56,8 @@ thread_local AmpLevel Tracer::amp_level_ = AmpLevel::O0;
 
 thread_local phi::DataType Tracer::amp_dtype_ = phi::DataType::FLOAT32;
 
+thread_local bool Tracer::in_dynamic_mode_ = true;
+
 static thread_local std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
 TEST_API void Tracer::DisableLayoutAutoTune() { use_layout_autotune_ = false; }
@@ -617,6 +619,11 @@ std::string Tracer::GetAmpDtype() const {
 }
 
 phi::DataType Tracer::GetAmpPhiDtype() const { return amp_dtype_; }
+
+void Tracer::SetInDynamicMode(bool value) const { in_dynamic_mode_ = value; }
+
+bool Tracer::GetInDynamicMode() const { return in_dynamic_mode_; }
+
 bool Tracer::ComputeRequiredGrad(const NameTensorMap& ins,
                                  const NameTensorMap& outs,
                                  bool trace_backward) {

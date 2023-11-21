@@ -105,31 +105,31 @@ set(api_source_file ${PD_DIALECT_BINARY_DIR}/pd_api.cc)
 set(api_header_file_tmp ${api_header_file}.tmp)
 set(api_source_file_tmp ${api_source_file}.tmp)
 
-add_custom_command(
-  OUTPUT ${api_header_file} ${api_source_file}
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${op_yaml_files}
-    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
-    --api_def_h_file ${api_header_file_tmp} --api_def_cc_file
-    ${api_source_file_tmp}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp}
-          ${api_header_file}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
-          ${api_source_file}
-  COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
-  DEPENDS ${api_gen_file}
-          ${op_forward_yaml_file1}
-          ${op_forward_yaml_file2}
-          ${op_backward_yaml_file1}
-          ${op_backward_yaml_file2}
-          ${op_compat_yaml_file}
-          ${op_yaml_file3}
-          ${op_yaml_file4}
-          ${op_yaml_file5}
-  VERBATIM)
+# add_custom_command(
+#   OUTPUT ${api_header_file} ${api_source_file}
+#   COMMAND
+#     ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${op_yaml_files}
+#     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
+#     --api_def_h_file ${api_header_file_tmp} --api_def_cc_file
+#     ${api_source_file_tmp}
+#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp}
+#           ${api_header_file}
+#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
+#           ${api_source_file}
+#   COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
+#   DEPENDS ${api_gen_file}
+#           ${op_forward_yaml_file1}
+#           ${op_forward_yaml_file2}
+#           ${op_backward_yaml_file1}
+#           ${op_backward_yaml_file2}
+#           ${op_compat_yaml_file}
+#           ${op_yaml_file3}
+#           ${op_yaml_file4}
+#           ${op_yaml_file5}
+#   VERBATIM)
 
-add_custom_target(api_header_and_source_gen ALL DEPENDS ${api_header_file}
-                                                        ${api_source_file})
+# add_custom_target(api_header_and_source_gen ALL DEPENDS ${api_header_file}
+#                                                         ${api_source_file})
 set(python_c_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/python_c_gen.py)
 set(python_c_header_file
@@ -202,7 +202,7 @@ list(
 
 set(op_dialect_srcs ${op_dialect_srcs} ${op_source_file} ${api_source_file})
 
-set(op_dialect_deps phi phi_utils pir type_info)
+set(op_dialect_deps phi phi_utils pir type_info amp global_utils)
 
 cc_library(
   op_dialect

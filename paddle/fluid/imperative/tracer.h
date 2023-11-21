@@ -169,6 +169,10 @@ class Tracer {
 
   phi::DataType GetAmpPhiDtype() const;
 
+  void SetInDynamicMode(bool value) const;
+
+  bool GetInDynamicMode() const;
+
   TEST_API void DisableLayoutAutoTune();
 
   TEST_API void EnableLayoutAutoTune();
@@ -198,6 +202,7 @@ class Tracer {
   static thread_local bool use_promote_;
   static thread_local AmpLevel amp_level_;
   static thread_local phi::DataType amp_dtype_;
+  static thread_local bool in_dynamic_mode_;
 };
 
 // To access static variable current_tracer
