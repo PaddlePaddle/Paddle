@@ -155,9 +155,9 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     for (auto group : group_list) {
       auto ir_compiler = std::make_shared<cinn::hlir::framework::PirCompiler>(
           *program, target, scope);
-        if (FLAGS_cinn_enable_map_expr) {
-          adt::TryGenerateMapExprFromGroup(group);
-        }
+      if (FLAGS_cinn_enable_map_expr) {
+        cinn::adt::TryGenerateMapExprFromGroup(group);
+      }
 
       auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
       std::unordered_map<std::string, ::pir::Attribute> op_attrs{
