@@ -1182,6 +1182,7 @@ std::unordered_set<std::string> GetSpecialOpNames() {
       "builtin.get_parameter",
       "pd_op.data",
       "builtin.shadow_output",
+      "builtin.constant_tensor",
   };
 }
 

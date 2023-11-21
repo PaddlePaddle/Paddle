@@ -65,6 +65,7 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     pir::SetParameterOp::name(),
     pir::GetParameterOp::name(),
     pir::ShadowOutputOp::name(),
+    pir::ConstantTensorOp::name(),
     FeedOp::name(),
     DataOp::name(),
     ArrayLengthOp::name(),
@@ -77,6 +78,7 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     pir::YieldOp::name(),
     IfOp::name(),
     WhileOp::name(),
+    pir::ConstantTensorOp::name(),
     "cinn_runtime.jit_kernel"};
 
 static bool NeedFallBackCpu(const pir::Operation* op,

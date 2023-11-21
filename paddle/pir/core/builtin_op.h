@@ -211,6 +211,28 @@ class IR_API ConstantOp : public Op<ConstantOp, ConstantLikeTrait> {
   Attribute value() const;
 };
 
+///
+/// \brief ConstantTensorOp
+///
+class IR_API ConstantTensorOp : public Op<ConstantTensorOp, ConstantLikeTrait> {
+ public:
+  using Op::Op;
+  static const char *name() { return "builtin.constant_tensor"; }
+
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    Attribute value,
+                    Type output_type);
+
+  void VerifySig() const;
+  OpResult out() { return result(0); }
+  Attribute value() const;
+  std::string tensor_name() const;
+};
+
 void PassStopGradientsDefaultly(OperationArgument &argument);  // NOLINT
 void RefreshStopGradientsDefaultly(Operation *Op);
 }  // namespace pir
@@ -224,3 +246,4 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SliceOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SplitOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ConstantLikeTrait)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ConstantOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ConstantTensorOp)

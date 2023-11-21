@@ -58,6 +58,7 @@ void BuiltinDialect::initialize() {
               CombineOp,
               SliceOp,
               SplitOp,
+              ConstantTensorOp,
               ConstantOp>();
 }
 
