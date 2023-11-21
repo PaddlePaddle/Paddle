@@ -487,7 +487,10 @@ def convert_shape_to_list(shape):
     Convert shape(list, tuple, variable) to list in imperative mode
     """
     if isinstance(shape, (list, tuple)):
-        shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
+        shape = [
+            x.item(0) if isinstance(x, (Variable, paddle.pir.OpResult)) else x
+            for x in shape
+        ]
     else:
         if in_dygraph_mode():
             shape = shape.astype(int).tolist()
