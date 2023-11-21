@@ -32,7 +32,7 @@ std::size_t GetTensorNumel(const Tensor& tensor) {
   return tensor.Get<adapter::Tensor>().GetNumel();
 }
 
-const std::vector<int32_t>& GetTensorShape(const Tensor& tensor) {
+std::vector<int32_t> GetTensorShape(const Tensor& tensor) {
   CHECK(tensor.Has<adapter::Tensor>());
   return tensor.Get<adapter::Tensor>().GetShape();
 }
@@ -44,7 +44,7 @@ List<LoopSize> KGroup::GetDefaultScheduleSizes(
   List<LoopSize> ret{};
 
   const Tensor& tensor = igroup->anchor_tensor();
-  const auto tensor_shape = GetTensorShape(tensor);
+  const std::vector<int32_t> tensor_shape = GetTensorShape(tensor);
   for (int32_t dim : tensor_shape) {
     ret->emplace_back(LoopSize{dim});
   }

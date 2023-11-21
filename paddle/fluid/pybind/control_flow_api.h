@@ -15,12 +15,6 @@
 #pragma once
 
 #include <pybind11/pybind11.h>
-#include <vector>
-
-#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/pir/core/op_result.h"
 
 namespace paddle {
 namespace pybind {

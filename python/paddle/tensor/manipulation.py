@@ -781,10 +781,16 @@ def crop(x, shape=None, offsets=None, name=None):
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'crop_tensor'
     )
     check_type(
-        shape, 'shape', (list, tuple, Variable, type(None)), 'crop_tensor'
+        shape,
+        'shape',
+        (list, tuple, Variable, type(None), paddle.pir.OpResult),
+        'crop_tensor',
     )
     check_type(
-        offsets, 'offsets', (list, tuple, Variable, type(None)), 'crop_tensor'
+        offsets,
+        'offsets',
+        (list, tuple, Variable, type(None), paddle.pir.OpResult),
+        'crop_tensor',
     )
 
     if offsets is None:
@@ -793,7 +799,7 @@ def crop(x, shape=None, offsets=None, name=None):
     if shape is None:
         shape = x.shape
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.crop(x, shape, offsets)
 
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -2664,9 +2670,31 @@ def unique(
     else:
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         out, indices, inverse, counts = _C_ops.unique(
             x, return_index, return_inverse, return_counts, axis, attr_dtype
+        )
+        outs = [out]
+        if return_index:
+            outs.append(indices)
+        if return_inverse:
+            outs.append(inverse)
+        if return_counts:
+            outs.append(counts)
+
+        if len(outs) == 1:
+            return outs[0]
+
+        return tuple(outs)
+    elif in_pir_mode():
+        out, indices, inverse, counts = _C_ops.unique(
+            x,
+            return_index,
+            return_inverse,
+            return_counts,
+            axis,
+            attr_dtype,
+            True,
         )
         outs = [out]
         if return_index:

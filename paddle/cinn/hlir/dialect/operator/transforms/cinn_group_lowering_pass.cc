@@ -18,6 +18,7 @@
 
 #include <unordered_map>
 
+#include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
@@ -25,8 +26,11 @@
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
+#include "paddle/cinn/runtime/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+
+PD_DECLARE_bool(cinn_enable_map_expr);
 
 namespace cinn {
 namespace dialect {
@@ -141,9 +145,9 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
 
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
-    if ((*it)->isa<cinn::dialect::GroupOp>()) {
+    if (it->isa<cinn::dialect::GroupOp>()) {
       // GetOpList and Call cinn CodeGen
-      auto group_op = (*it)->dyn_cast<cinn::dialect::GroupOp>();
+      auto group_op = it->dyn_cast<cinn::dialect::GroupOp>();
 
       // op fusion
       auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
@@ -165,6 +169,9 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         auto ir_compiler = std::make_shared<cinn::hlir::framework::PirCompiler>(
             *program, target, scope);
         hlir::framework::PirCompilerManager::Instance().insert(ir_compiler);
+        if (FLAGS_cinn_enable_map_expr) {
+          adt::TryGenerateMapExprFromGroup(group);
+        }
         auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
         std::unordered_map<std::string, ::pir::Attribute> op_attrs{
             {cinn::dialect::JitKernelOp::kAttrName,
@@ -191,9 +198,8 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
 
         for (size_t i = 0; i < cinn_op->num_results(); ++i) {
           auto find_it = value2id.find(group->output_values[i]);
-          if (find_it == value2id.end()) {
-            value_map[group->output_values[i]] = cinn_op->result(i);
-          } else {
+          value_map[group->output_values[i]] = cinn_op->result(i);
+          if (find_it != value2id.end()) {
             value_map[group_op.result(find_it->second)] = cinn_op->result(i);
           }
         }
@@ -204,26 +210,26 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
     } else {
       std::vector<pir::Value> vec_ins;
 
-      for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-        if ((*it)->operand_source(i)) {
-          vec_ins.push_back(value_map.at((*it)->operand_source(i)));
+      for (size_t i = 0; i < it->num_operands(); ++i) {
+        if (it->operand_source(i)) {
+          vec_ins.push_back(value_map.at(it->operand_source(i)));
         } else {
-          vec_ins.push_back((*it)->operand_source(i));
+          vec_ins.push_back(it->operand_source(i));
         }
       }
 
       std::vector<pir::Type> vec_types;
-      for (size_t i = 0; i < (*it)->num_results(); ++i) {
-        vec_types.push_back((*it)->result(i).type());
+      for (size_t i = 0; i < it->num_results(); ++i) {
+        vec_types.push_back(it->result(i).type());
       }
 
-      ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo((*it)->name());
-      ::pir::Operation* op = ::pir::Operation::Create(
-          vec_ins, (*it)->attributes(), vec_types, info1);
+      ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo(it->name());
+      ::pir::Operation* op =
+          ::pir::Operation::Create(vec_ins, it->attributes(), vec_types, info1);
 
       ir_program->block()->push_back(op);
-      for (size_t i = 0; i < (*it)->num_results(); ++i) {
-        value_map[(*it)->result(i)] = op->result(i);
+      for (size_t i = 0; i < it->num_results(); ++i) {
+        value_map[it->result(i)] = op->result(i);
       }
     }
   }
