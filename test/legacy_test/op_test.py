@@ -2569,32 +2569,39 @@ class OpTest(unittest.TestCase):
             return
 
         if check_auto_parallel:
-            (
-                forward_test_info_path,
-                generated_forward_test_path,
-            ) = get_test_info_and_generated_test_path(
-                self.__class__.__name__, self.op_type, backward=False
-            )
-            with auto_parallel_test_guard(
-                forward_test_info_path, generated_forward_test_path
+            if (
+                isinstance(place, paddle.base.libpaddle.CUDAPlace)
+                and paddle.device.cuda.device_count() < 2
             ):
-                dump_test_info(
-                    self, place, forward_test_info_path, backward=False
-                )
-                # code gen for auto parallel forward test
-                gen_auto_parallel_test_file(
-                    check_grad=False,
-                    test_info_path=forward_test_info_path,
-                    test_file_path=generated_forward_test_path,
-                )
-                runtime_envs = get_subprocess_runtime_envs(place)
-                start_command = get_subprocess_command(
-                    runtime_envs["CUDA_VISIBLE_DEVICES"],
+                pass
+            else:
+                (
+                    forward_test_info_path,
                     generated_forward_test_path,
-                    log_dir=self.log_dir if hasattr(self, "log_dir") else None,
+                ) = get_test_info_and_generated_test_path(
+                    self.__class__.__name__, self.op_type, backward=False
                 )
-                print("start_command", start_command)
-                run_subprocess(start_command, runtime_envs, timeout=120)
+                with auto_parallel_test_guard(
+                    forward_test_info_path, generated_forward_test_path
+                ):
+                    dump_test_info(
+                        self, place, forward_test_info_path, backward=False
+                    )
+                    # code gen for auto parallel forward test
+                    gen_auto_parallel_test_file(
+                        check_grad=False,
+                        test_info_path=forward_test_info_path,
+                        test_file_path=generated_forward_test_path,
+                    )
+                    runtime_envs = get_subprocess_runtime_envs(place)
+                    start_command = get_subprocess_command(
+                        runtime_envs["CUDA_VISIBLE_DEVICES"],
+                        generated_forward_test_path,
+                        log_dir=self.log_dir
+                        if hasattr(self, "log_dir")
+                        else None,
+                    )
+                    run_subprocess(start_command, runtime_envs, timeout=120)
 
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
@@ -3026,43 +3033,52 @@ class OpTest(unittest.TestCase):
             return
 
         if check_auto_parallel:
-            (
-                grad_test_info_path,
-                generated_grad_test_path,
-            ) = get_test_info_and_generated_test_path(
-                self.__class__.__name__, self.op_type, backward=True
-            )
-            with auto_parallel_test_guard(
-                grad_test_info_path, generated_grad_test_path
+            if (
+                isinstance(place, paddle.base.libpaddle.CUDAPlace)
+                and paddle.device.cuda.device_count() < 2
             ):
-                backward_extra_test_info = {}
-                backward_extra_test_info["inputs_to_check"] = inputs_to_check
-                backward_extra_test_info["output_names"] = output_names
-                backward_extra_test_info["no_grad_set"] = no_grad_set
-                backward_extra_test_info[
-                    "user_defined_grad_outputs"
-                ] = user_defined_grad_outputs
-                dump_test_info(
-                    self,
-                    place,
+                pass
+            else:
+                (
                     grad_test_info_path,
-                    backward=True,
-                    backward_extra_test_info=backward_extra_test_info,
-                )
-                # code gen for auto parallel grad test
-                gen_auto_parallel_test_file(
-                    check_grad=True,
-                    test_info_path=grad_test_info_path,
-                    test_file_path=generated_grad_test_path,
-                )
-                runtime_envs = get_subprocess_runtime_envs(place)
-                start_command = get_subprocess_command(
-                    runtime_envs["CUDA_VISIBLE_DEVICES"],
                     generated_grad_test_path,
-                    log_dir=self.log_dir if hasattr(self, "log_dir") else None,
+                ) = get_test_info_and_generated_test_path(
+                    self.__class__.__name__, self.op_type, backward=True
                 )
-                print("start_command", start_command)
-                run_subprocess(start_command, runtime_envs, timeout=120)
+                with auto_parallel_test_guard(
+                    grad_test_info_path, generated_grad_test_path
+                ):
+                    backward_extra_test_info = {}
+                    backward_extra_test_info[
+                        "inputs_to_check"
+                    ] = inputs_to_check
+                    backward_extra_test_info["output_names"] = output_names
+                    backward_extra_test_info["no_grad_set"] = no_grad_set
+                    backward_extra_test_info[
+                        "user_defined_grad_outputs"
+                    ] = user_defined_grad_outputs
+                    dump_test_info(
+                        self,
+                        place,
+                        grad_test_info_path,
+                        backward=True,
+                        backward_extra_test_info=backward_extra_test_info,
+                    )
+                    # code gen for auto parallel grad test
+                    gen_auto_parallel_test_file(
+                        check_grad=True,
+                        test_info_path=grad_test_info_path,
+                        test_file_path=generated_grad_test_path,
+                    )
+                    runtime_envs = get_subprocess_runtime_envs(place)
+                    start_command = get_subprocess_command(
+                        runtime_envs["CUDA_VISIBLE_DEVICES"],
+                        generated_grad_test_path,
+                        log_dir=self.log_dir
+                        if hasattr(self, "log_dir")
+                        else None,
+                    )
+                    run_subprocess(start_command, runtime_envs, timeout=120)
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else {}
         op_outputs = self.outputs if hasattr(self, "outputs") else {}

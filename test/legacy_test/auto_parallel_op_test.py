@@ -17,6 +17,7 @@ import pathlib
 import pickle
 import subprocess
 import sys
+import tempfile
 import uuid
 from collections import defaultdict
 
@@ -213,9 +214,9 @@ def get_subprocess_command(devices, test_file_path, log_dir=None):
             abs_log_dir = log_dir
         else:
             abs_log_dir = os.path.abspath(log_dir)
-        start_command = f"{sys.executable} -m paddle.distributed.launch --devices {devices} --log_dir {abs_log_dir}  {test_file_path}"
     else:
-        start_command = f"{sys.executable} -m paddle.distributed.launch --devices {devices} {test_file_path}"
+        abs_log_dir = tempfile.TemporaryDirectory().name
+    start_command = f"{sys.executable} -m paddle.distributed.launch --devices {devices} --log_dir {abs_log_dir}  {test_file_path}"
     return start_command
 
 
