@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
