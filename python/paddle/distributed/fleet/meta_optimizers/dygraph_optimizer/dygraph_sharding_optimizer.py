@@ -138,7 +138,7 @@ class DygraphShardingOptimizer:
 
         assert (
             not self.comm_overlap or self._use_fuse_gradients
-        ), "If you use comm overlap in sharding, you should set g_shard_fused_gradient to True"
+        ), "If you use comm overlap in sharding, you should set FLAGS_shard_fused_gradient to True"
 
         if self._use_fuse_gradients:
             # Build communication buffers once and store them
@@ -578,8 +578,11 @@ class DygraphShardingOptimizerV2:
 
         self.comm_overlap = sharding_configs.comm_overlap
 
+        # NOTE(shenliang03): `group_size` will affect the result of the parameter fuse,
+        # which in turn affects save/load. Therefore, it is best not to modify 256MB
+        # to prevent compatibility issues.
         self._build_comm_buffers(
-            comm_group, acc_steps, group_size=128 * 1024 * 1024
+            comm_group, acc_steps, group_size=256 * 1024 * 1024
         )
         # NOTE(shenliang03): Sort the comm_buffers by dst rank,
         # it will improve the performance in reduce communicate. Default
