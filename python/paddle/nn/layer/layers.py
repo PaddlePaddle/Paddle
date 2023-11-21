@@ -347,7 +347,7 @@ class Layer:
         dtype(str, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
-                Default: "float32".
+                Default: "float32"
 
     Returns:
         None
@@ -735,7 +735,7 @@ class Layer:
         Parameters:
             shape(list): Shape of the parameter. The data type in the list must be int.
             attr(ParamAttr, optional): Parameter attribute of weight. Please refer to :ref:`api_paddle_ParamAttr`. Default: None.
-            dtype(str | core.VarDesc.VarType, optional): Data type of this parameter.
+            dtype(str| core.VarDesc.VarType, optional): Data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16". Default: "float32".
             is_bias(bool, optional): if this is a bias parameter. Default: False.
@@ -793,11 +793,11 @@ class Layer:
         Create Tensor for this layer.
 
         Parameters:
-            name(str, optional): name of the tensor. Please refer to :ref:`api_guide_Name` . Default: None.
+            name(str, optional): name of the tensor. Please refer to :ref:`api_guide_Name` . Default: None
 
-            persistable(bool, optional): if set this tensor persistable. Default: False.
+            persistable(bool, optional): if set this tensor persistable. Default: False
 
-            dtype(str, optional): data type of this parameter. If set str, it can be "bool", "float16", "float32", "float64","int8", "int16", "int32", "int64", "uint8" or "uint16". If set None, it will be "float32". Default: None.
+            dtype(str, optional): data type of this parameter. If set str, it can be "bool", "float16", "float32", "float64","int8", "int16", "int32", "int64", "uint8" or "uint16". If set None, it will be "float32". Default: None
 
         Returns:
             Tensor, created Tensor.
@@ -849,7 +849,7 @@ class Layer:
             dtype(str, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
-                If set None, it will be "float32". Default: None.
+                If set None, it will be "float32". Default: float32.
 
         Returns:
             Tensor, created Tensor.
@@ -894,9 +894,6 @@ class Layer:
 
         Returns a list of all Parameters from current layer and its sub-layers.
 
-        Parameters:
-            include_self(bool, optional): whether or not to include this layer. If True, this layer is include. Default: False.
-
         Returns:
             list of Tensor, a list of Parameters.
 
@@ -932,7 +929,7 @@ class Layer:
             dtype(str|paddle.dtype|numpy.dtype): target data type of layer.
                 If set str, it can be "bool", "bfloat16", "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8", "complex64", "complex128".
-                Default: None.
+                Default: None
 
         Returns:
             Layer, self
@@ -1675,7 +1672,7 @@ class Layer:
 
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
             params[name] = value
-        elif isinstance(value, paddle.pir.OpResult) and value.persistable:
+        elif isinstance(value, paddle.pir.OpResult) and value.is_persistable:
             if params is None:
                 raise ValueError("super().__init__() should be called first")
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
@@ -1977,9 +1974,9 @@ class Layer:
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
-            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None.
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
+            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
 
         Retruns:
             dict: a dict contains all the parameters and persistable buffers.
