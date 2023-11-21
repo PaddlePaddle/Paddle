@@ -52,14 +52,14 @@ void BuiltinDialect::initialize() {
                      TypeAttribute>();
 
   RegisterOps<ModuleOp,
-              GetConstantOp,
               GetParameterOp,
               SetParameterOp,
               ShadowOutputOp,
               CombineOp,
               SliceOp,
               SplitOp,
-              ConstantOp>();
+              ConstantOp,
+              ConstantTensorOp>();
 }
 
 }  // namespace pir

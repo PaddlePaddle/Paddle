@@ -159,42 +159,6 @@ void GetParameterOp::VerifySig() const {
   IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
 }
 
-const char *GetConstantOp::attributes_name[attributes_num] = {  // NOLINT
-    "constant_name"};
-
-void GetConstantOp::Build(Builder &builder,
-                           OperationArgument &argument,
-                           const std::string &name,
-                           Type type) {
-  argument.attributes[attributes_name[0]] =
-      pir::StrAttribute::get(builder.ir_context(), name);
-  argument.output_types.emplace_back(type);
-  PassStopGradients(argument);
-}
-
-void GetConstantOp::PassStopGradients(OperationArgument &argument) {
-  std::vector<pir::Attribute> outs_stop_gradient(
-      1, pir::BoolAttribute::get(pir::IrContext::Instance(), false));
-  argument.AddAttribute(
-      kStopGradientAttrName,
-      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
-}
-
-void GetConstantOp::VerifySig() const {
-  VLOG(4) << "Verifying inputs, outputs and attributes for: GetConstantOp.";
-  // Verify inputs:
-  IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
-
-  // Verify if attributes contain attribute name in attributes_name:
-  auto &attributes = this->attributes();
-  auto iter = attributes.find("constant_name");
-  IR_ENFORCE(iter != attributes.end() && iter->second.isa<StrAttribute>(),
-             "Type of attribute: constant_name is not right.");
-
-  // Verify outputs type:
-  IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
-}
-
 const char *SetParameterOp::attributes_name[attributes_num] = {  // NOLINT
     "parameter_name"};
 
@@ -531,10 +495,45 @@ void ConstantOp::VerifySig() const {
 
 Attribute ConstantOp::value() const { return attributes().at("value"); }
 
+const char *ConstantTensorOp::attributes_name[attributes_num] = {  // NOLINT
+    "value"};
+
+void ConstantTensorOp::Build(Builder &builder,
+                             OperationArgument &argument,
+                             const std::string &name,
+                             Type type) {
+  argument.attributes[attributes_name[0]] =
+      pir::StrAttribute::get(builder.ir_context(), name);
+  argument.output_types.emplace_back(type);
+  PassStopGradients(argument);
+}
+
+void ConstantTensorOp::PassStopGradients(OperationArgument &argument) {
+  std::vector<pir::Attribute> outs_stop_gradient(
+      1, pir::BoolAttribute::get(pir::IrContext::Instance(), false));
+  argument.AddAttribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
+}
+
+void ConstantTensorOp::VerifySig() const {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: ConstantTensorOp.";
+  // Verify inputs:
+  IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
+
+  // Verify if attributes contain attribute name in attributes_name:
+  auto &attributes = this->attributes();
+  auto iter = attributes.find("value");
+  IR_ENFORCE(iter != attributes.end() && iter->second.isa<StrAttribute>(),
+             "Type of attribute: value is not right.");
+
+  // Verify outputs type:
+  IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
+}
+
 }  // namespace pir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ModuleOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::GetConstantOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::GetParameterOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SetParameterOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ShadowOutputOp)
@@ -543,3 +542,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(pir::SliceOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantLikeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantTensorOp)

@@ -46,41 +46,23 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
             "params_sync_among_devices_pass should run on module op."));
     auto* block = module_op.block();
     for (auto& inner_op : *block) {
-      if (inner_op.attributes().count("op_name") == 0) {
-        continue;
-      }
-      auto op_name = inner_op.attributes()
-                         .at("op_name")
-                         .dyn_cast<pir::StrAttribute>()
-                         .AsString();
-      if (op_name == pir::GetParameterOp::name()) {
-        auto use_op = pir::GetUseOpsForOutput(&inner_op, 0).front();
-        phi::KernelKey kernel_key;
-        if (use_op->attributes().count("kernel_key")) {
-          kernel_key = use_op->attributes()
-                           .at("kernel_key")
-                           .dyn_cast<paddle::dialect::KernelAttribute>()
-                           .data();
-        }
-        // TODO(liuyuanle): When the kernel_key doesn't exist？
-        if (use_op->attributes().count("kernel_key") &&
-            kernel_key.backend() != phi::Backend::CPU) {
-          std::string param_name = inner_op.attributes()
-                                       .at("parameter_name")
-                                       .dyn_cast<pir::StrAttribute>()
-                                       .AsString();
-          auto* param_var = scope_->FindVar(param_name);
-          if (param_var->IsType<phi::DenseTensor>()) {
-            auto* param_tensor = param_var->GetMutable<phi::DenseTensor>();
-            paddle::platform::CPUPlace cpu_place;
-            phi::DenseTensor temp_tensor;
-            temp_tensor.Resize(param_tensor->dims());
-            paddle::framework::TensorCopySync(
-                *param_tensor, cpu_place, &temp_tensor);
-            param_tensor->clear();
-            paddle::framework::TensorCopySync(
-                temp_tensor, place_, param_tensor);
-          }
+      if (inner_op.isa<pir::GetParameterOp>()) {
+        pir::GetParameterOp get_parameter_op =
+            inner_op.dyn_cast<pir::GetParameterOp>();
+        auto param_name = get_parameter_op.attributes()
+                              .at(get_parameter_op.attributes_name[0])
+                              .dyn_cast<pir::StrAttribute>()
+                              .AsString();
+        auto* param_var = scope_->FindVar(param_name);
+        if (param_var->IsType<phi::DenseTensor>()) {
+          auto* param_tensor = param_var->GetMutable<phi::DenseTensor>();
+          paddle::platform::CPUPlace cpu_place;
+          phi::DenseTensor temp_tensor;
+          temp_tensor.Resize(param_tensor->dims());
+          paddle::framework::TensorCopySync(
+              *param_tensor, cpu_place, &temp_tensor);
+          param_tensor->clear();
+          paddle::framework::TensorCopySync(temp_tensor, place_, param_tensor);
         }
       }
     }
