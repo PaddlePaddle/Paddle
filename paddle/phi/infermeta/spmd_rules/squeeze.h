@@ -16,17 +16,32 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 
 namespace phi {
 namespace distributed {
 
-SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
-                          const std::vector<int64_t>& axis);
+SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x, const IntArray& axis);
 
 SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
                                  const DistMetaTensor& out,
-                                 const std::vector<int64_t>& axis);
+                                 const IntArray& axis);
+
+SpmdInfo SqueezeGradInferSpmd(const DistMetaTensor& xshape,
+                              const DistMetaTensor& out_grad,
+                              const IntArray& axis = {});
+
+SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
+                            const std::vector<int64_t>& axis);
+
+SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
+                                   const DistMetaTensor& out,
+                                   const std::vector<int64_t>& axis);
+
+SpmdInfo UnsqueezeGradInferSpmd(const DistMetaTensor& xshape,
+                                const DistMetaTensor& out_grad,
+                                const IntArray& axis = {});
 }  // namespace distributed
 }  // namespace phi

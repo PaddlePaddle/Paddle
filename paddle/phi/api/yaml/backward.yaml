@@ -2280,7 +2280,12 @@
   output : Tensor(x_grad)
   infer_meta :
     func : KernelWithXShapeInferMeta
+<<<<<<< HEAD
     param: [xshape, out_grad]
+=======
+    param: [xshape]
+    spmd_rule : SqueezeGradInferSpmd
+>>>>>>> add squeeze/unsqueeze backward spmd rules
   kernel :
     func : squeeze_grad
     data_type : out_grad
@@ -2525,7 +2530,8 @@
   output : Tensor(x_grad)
   infer_meta :
     func : KernelWithXShapeInferMeta
-    param: [xshape, out_grad]
+    param: [xshape]
+    spmd_rule : UnsqueezeGradInferSpmd
   kernel :
     func : unsqueeze_grad
     param : [xshape, out_grad]
