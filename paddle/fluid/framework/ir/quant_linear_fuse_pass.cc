@@ -209,8 +209,10 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
           input_scale_tensor.data<phi::dtype::float16>();
       input_scale = static_cast<float>(input_scale_data[0]);
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented("%d is not supported.",
-                                                   input_scale_tensor.dtype()));
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport type. The type of 'Scale' in quantize_linear op is "
+          "expected to be float32 or float16, but the current type is %d",
+          input_scale_tensor.dtype()));
     }
     // Get in_num_col_dims
     int in_num_col_dims = quantize_linear_op_x->Var()->GetShape().size() - 1;
