@@ -1212,10 +1212,16 @@ def _getitem_static(x, indices):
             adjusted_advanced_index = parse_bool_and_broadcast_indices(
                 adjusted_advanced_index
             )
-            advanced_index_tensor = paddle.stack(
-                adjusted_advanced_index, axis=-1
-            )
-            out = paddle.gather_nd(transed_tensor, advanced_index_tensor)
+
+            if len(adjusted_advanced_index) > 1:
+                advanced_index_tensor = paddle.stack(
+                    adjusted_advanced_index, axis=-1
+                )
+                out = paddle.gather_nd(transed_tensor, advanced_index_tensor)
+            else:
+                out = paddle.gather_nd(
+                    transed_tensor, adjusted_advanced_index[0].unsqueeze(-1)
+                )
 
         if pos_of_new_dim != 0:
             perm = (

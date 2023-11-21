@@ -28,7 +28,7 @@ using GroupList = std::vector<std::shared_ptr<Group>>;
 namespace cinn::adt {
 
 MapExpr GenerateMapExpr(
-    const std::shared_ptr<cinn::hlir::framework::pir::Group>& group);
+    const std::shared_ptr<hlir::framework::pir::Group>& group);
 
 void TryGenerateMapExprFromGraph(const hlir::framework::pir::GroupList& groups);
 

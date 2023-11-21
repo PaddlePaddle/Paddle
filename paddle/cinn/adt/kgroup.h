@@ -25,6 +25,12 @@ struct Group;
 
 }  // namespace cinn::hlir::framework::pir
 
+namespace cinn::hlir::framework::pir {
+
+struct Group;
+
+}  // namespace cinn::hlir::framework::pir
+
 namespace cinn::adt {
 
 class IGroup;

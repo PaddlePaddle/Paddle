@@ -232,14 +232,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
     apply_op_schedule = false;
     apply_group_schedule = false;
   }
-  VLOG(1) << "FLAGS_cinn_enable_map_expr_schedule = "
+  VLOG(4) << "FLAGS_cinn_enable_map_expr_schedule = "
           << FLAGS_cinn_enable_map_expr_schedule;
-  VLOG(1) << "apply_op_schedule = " << apply_op_schedule;
-  VLOG(1) << "apply_group_schedule = " << apply_group_schedule;
+  VLOG(4) << "apply_op_schedule = " << apply_op_schedule;
+  VLOG(4) << "apply_group_schedule = " << apply_group_schedule;
 
   LowerOpsForMapExpr(group, ops, group_func_arg_tensors, tensor_map);
 
-  VLOG(1) << "Begin MapExprToIr";
+  VLOG(4) << "Begin MapExprToIr";
   ir::Expr func_body = adt::MapExprToIr(group->map_expr_ctx(), target_);
 
   // 2.Do group schedule.
