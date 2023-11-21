@@ -93,6 +93,26 @@ class TestReductionApiForSemiAutoParallel:
             op_func=paddle.mean,
         )
 
+    def test_max_x_shard(self):
+        self.test_body(
+            x_shape=[4, 8, 6],
+            out_shape=[4, 6],
+            x_specs=['x', None, None],
+            axis=1,
+            keepdim=False,
+            op_func=paddle.max,
+        )
+
+    def test_max_x_shard_on_axis(self):
+        self.test_body(
+            x_shape=[4, 8, 6],
+            out_shape=[4, 6],
+            x_specs=[None, 'x', None],
+            axis=1,
+            keepdim=False,
+            op_func=paddle.max,
+        )
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -105,6 +125,8 @@ class TestReductionApiForSemiAutoParallel:
         self.test_sum_x_shard_on_axis()
         self.test_sum_x_shard_on_axis_keepdim()
         self.test_mean_x_shard()
+        self.test_max_x_shard()
+        self.test_max_x_shard_on_axis()
 
 
 if __name__ == '__main__':
