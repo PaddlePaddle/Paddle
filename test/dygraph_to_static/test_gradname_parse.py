@@ -112,7 +112,7 @@ class TestTanhHighOrderGrad(Dy2StTestBase):
 
 def matmul_high_order_grad(x, y):
     z = paddle.matmul(x, y)
-    g = paddle.grad(z, [x, y], create_graph=True)
+    g = paddle.grad(z, [x, y], create_graph=True, allow_unused=True)
     return g[0]
 
 

@@ -51,6 +51,7 @@ class TestInplaceAssign(Dy2StTestBase):
         y.mean().backward()
         np.testing.assert_array_equal(x.grad.numpy(), np.array([2.0]))
 
+    # TODO: check this
     @test_legacy_and_pir
     def test_case2(self):
         def func(a, x):
