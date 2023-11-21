@@ -980,7 +980,7 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
             >>> print(x.tolist())
             [[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         if len(x.shape) == 2:
             return _C_ops.fill_diagonal_(x, value, offset, wrap)
         return _C_ops.fill_diagonal_(x, value, offset, True)
@@ -1015,9 +1015,11 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
     if len(y.shape) == 1:
         y = y.reshape([1, -1])
 
-    if inplace:
-        return _C_ops.fill_diagonal_tensor_(x, y, offset, dim1, dim2)
-    return _C_ops.fill_diagonal_tensor(x, y, offset, dim1, dim2)
+    if in_dynamic_or_pir_mode():
+        if inplace:
+            return _C_ops.fill_diagonal_tensor_(x, y, offset, dim1, dim2)
+        else:
+            return _C_ops.fill_diagonal_tensor(x, y, offset, dim1, dim2)
 
 
 def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
