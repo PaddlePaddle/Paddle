@@ -32,6 +32,8 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     if (rank_is_in_current_mesh){{
       // 5. Select Kernel{}
       // 6. Reshard Input{}\n
+      // RecordOpInfoSupplement
+      {}
       // 7. PrepareData (DataTransform & Prepare Dense Input){}
       // 8. Infer Local DenseTensor Meta{}
       // 9. DenseTensor Kernel Call{}
@@ -291,18 +293,39 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
         # if no tensor input, do not genetate auto parallel branch
         if len(self.inputs['names']) == 0:
             return ""
+        infer_spmd_code = self.generate_infer_spmd_code()
+        output_creation_code = self.generate_output_creation_code()
+        infer_global_shape_code = self.generate_infer_global_shape_code()
+        output_dist_attr_setting = self.generate_output_dist_attr_setting()
+        kernel_selection_code = self.generate_kernel_selection_code()
+        reshard_input_code = self.generate_reshard_input_code()
+        (
+            prepare_data_code,
+            input_name_tensor_map,
+        ) = self.generate_prepare_data_code()
+        record_op_info_supplement_code = (
+            self.generate_record_op_info_supplement(
+                input_name_tensor_map, '    '
+            )
+        )
+        infer_meta_code = self.generate_infer_meta_code()
+        kernel_call_code = self.generate_kernel_call_code()
+        reshard_output_code = self.generate_reshard_output_code()
+        return_code = self.generate_return_code()
+
         return MAIN_DIST_BRANCH_TEMPLATE.format(
-            self.generate_infer_spmd_code(),
-            self.generate_output_creation_code(),
-            self.generate_infer_global_shape_code(),
-            self.generate_output_dist_attr_setting(),
-            self.generate_kernel_selection_code(),
-            self.generate_reshard_input_code(),
-            self.generate_prepare_data_code(),
-            self.generate_infer_meta_code(),
-            self.generate_kernel_call_code(),
-            self.generate_reshard_output_code(),
-            self.generate_return_code(),
+            infer_spmd_code,
+            output_creation_code,
+            infer_global_shape_code,
+            output_dist_attr_setting,
+            kernel_selection_code,
+            reshard_input_code,
+            prepare_data_code,
+            record_op_info_supplement_code,
+            infer_meta_code,
+            kernel_call_code,
+            reshard_output_code,
+            return_code,
         )
 
 

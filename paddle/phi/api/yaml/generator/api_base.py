@@ -899,41 +899,12 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
         return input_name_tensor_map, input_tensor_code
 
-    def get_kernel_args(self, kernel_tensor_type=None, code_indent=''):
-        dense_input_trans_map = {
-            'const Tensor&': 'const phi::DenseTensor&',
-            'const std::vector<Tensor>&': 'const std::vector<const phi::DenseTensor*>&',
-            'const paddle::optional<Tensor&>': 'paddle::optional<const phi::DenseTensor&>',
-            'const paddle::optional<Tensor>&': 'const paddle::optional<phi::DenseTensor>&',
-            'const paddle::optional<std::vector<Tensor>>&': 'const paddle::optional<std::vector<const phi::DenseTensor*>>&',
-        }
-        dense_out_trans_map = {
-            'Tensor': 'phi::DenseTensor*',
-            'std::vector<Tensor>': 'std::vector<phi::DenseTensor*>',
-        }
-        sr_input_trans_map = {
-            'const Tensor&': 'const phi::SelectedRows&',
-            'const paddle::optional<Tensor>&': 'const paddle::optional<phi::SelectedRows>&',
-        }
-        sr_out_trans_map = {'Tensor': 'phi::SelectedRows*'}
-        input_names = self.inputs['names']
-        input_infos = self.inputs['input_info']
-        kernel_args_type_list = ['const phi::DeviceContext&']
-
-        attr_names = self.attrs['names']
-        kernel_param = self.kernel['param']
-        if kernel_param is None:
-            kernel_param = input_names + attr_names
-
-        input_name_tensor_map, input_tensor_code = self.gene_input(
-            kernel_tensor_type, code_indent
-        )
-
-        input_tensor_code = (
-            input_tensor_code
-            + f"""
+    def generate_record_op_info_supplement(
+        self, input_name_tensor_map, code_indent=''
+    ):
+        record_op_info_supplement_str = f"""
 {code_indent}  if(phi::RecordOpInfoSupplement::IsEnabled()){{"""
-        )
+
         single_tensor_names = []
         list_tensor_names = []
         for input_name, input_tensors in input_name_tensor_map.items():
@@ -946,8 +917,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             else:
                 list_tensor_names.append(input_name)
         if not single_tensor_names:
-            input_tensor_code = (
-                input_tensor_code
+            record_op_info_supplement_str = (
+                record_op_info_supplement_str
                 + f"""
 {code_indent}     std::vector<std::pair<const char*, std::vector<phi::DDim>>> input_shapes;"""
             )
@@ -955,84 +926,84 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             for input_name in single_tensor_names:
                 if input_name in self.optional_vars:
                     input_tensors = input_name_tensor_map[input_name]
-                    input_tensor_code = (
-                        input_tensor_code
+                    record_op_info_supplement_str = (
+                        record_op_info_supplement_str
                         + f"""
 {code_indent}     std::vector<phi::DDim> {input_name}_record_shapes;"""
                     )
                     for input_tensor, _ in input_tensors:
-                        input_tensor_code = (
-                            input_tensor_code
+                        record_op_info_supplement_str = (
+                            record_op_info_supplement_str
                             + f"""
 {code_indent}     if({input_tensor}){{
 {code_indent}       {input_name}_record_shapes.push_back((*{input_tensor}).dims());
 {code_indent}     }}"""
                         )
 
-            input_tensor_code = (
-                input_tensor_code
+            record_op_info_supplement_str = (
+                record_op_info_supplement_str
                 + f"""
 {code_indent}     std::vector<std::pair<const char*, std::vector<phi::DDim>>> input_shapes{{"""
             )
             for input_name in single_tensor_names[:-1]:
                 if input_name in self.optional_vars:
-                    input_tensor_code = (
-                        input_tensor_code
+                    record_op_info_supplement_str = (
+                        record_op_info_supplement_str
                         + f"""
 {code_indent}     {{"{input_name}", {input_name}_record_shapes}},"""
                     )
                 else:
-                    input_tensor_code = (
-                        input_tensor_code
+                    record_op_info_supplement_str = (
+                        record_op_info_supplement_str
                         + f"""
 {code_indent}     {{"{input_name}", {{"""
                     )
                     input_tensors = input_name_tensor_map[input_name]
                     for input_tensor, _ in input_tensors[:-1]:
-                        input_tensor_code = (
-                            input_tensor_code
+                        record_op_info_supplement_str = (
+                            record_op_info_supplement_str
                             + f"""
 {code_indent}     (*{input_tensor}).dims(),"""
                         )
-                    input_tensor_code = (
-                        input_tensor_code
+                    record_op_info_supplement_str = (
+                        record_op_info_supplement_str
                         + f"""
 {code_indent}     (*{input_tensors[-1][0]}).dims()}}}},"""
                     )
             if single_tensor_names[-1] in self.optional_vars:
-                input_tensor_code = (
-                    input_tensor_code
+                record_op_info_supplement_str = (
+                    record_op_info_supplement_str
                     + f"""
 {code_indent}     {{"{single_tensor_names[-1]}",
 {code_indent}     {single_tensor_names[-1]}_record_shapes}}}};"""
                 )
             else:
-                input_tensor_code = (
-                    input_tensor_code
+                record_op_info_supplement_str = (
+                    record_op_info_supplement_str
                     + f"""
 {code_indent}     {{"{single_tensor_names[-1]}", {{"""
                 )
                 input_tensors = input_name_tensor_map[single_tensor_names[-1]]
                 for input_tensor, _ in input_tensors[:-1]:
-                    input_tensor_code = (
-                        input_tensor_code
+                    record_op_info_supplement_str = (
+                        record_op_info_supplement_str
                         + f"""
 {code_indent}     (*{input_tensor}).dims(),"""
                     )
-                input_tensor_code = (
-                    input_tensor_code
+                record_op_info_supplement_str = (
+                    record_op_info_supplement_str
                     + f"""
 {code_indent}     (*{input_tensors[-1][0]}).dims()}}}}}};"""
                 )
         if list_tensor_names:
-            input_tensor_code = (
-                input_tensor_code
+            record_op_info_supplement_str = (
+                record_op_info_supplement_str
                 + f"""
 {code_indent}     std::vector<phi::DDim> ddims_vec;"""
             )
         for input_name in list_tensor_names:
-            input_tensor_code = (
-                input_tensor_code
+            record_op_info_supplement_str = (
+                record_op_info_supplement_str
                 + f"""
 {code_indent}     ddims_vec.clear();"""
             )
@@ -1043,8 +1014,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                         input_tensor_truncate = input_tensor
 
                     if input_name in self.optional_vars:
-                        input_tensor_code = (
-                            input_tensor_code
+                        record_op_info_supplement_str = (
+                            record_op_info_supplement_str
                             + f"""
 {code_indent}     if ({input_tensor_truncate}){{
 {code_indent}       ddims_vec.reserve({input_tensor_truncate}->size());
@@ -1054,8 +1025,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}     }}"""
                         )
                     else:
-                        input_tensor_code = (
-                            input_tensor_code
+                        record_op_info_supplement_str = (
+                            record_op_info_supplement_str
                             + f"""
 {code_indent}     ddims_vec.reserve({input_tensor_truncate}.size());
 {code_indent}     for (size_t i = 0; i < {input_tensor_truncate}.size(); ++i) {{
@@ -1063,30 +1034,30 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}     }}"""
                         )
                 else:
-                    input_tensor_code = (
-                        input_tensor_code
+                    record_op_info_supplement_str = (
+                        record_op_info_supplement_str
                         + f"""
                   ddims_vec.emplace_back((*{input_tensor}).dims());
 {code_indent}     """
                     )
-            input_tensor_code = (
-                input_tensor_code
+            record_op_info_supplement_str = (
+                record_op_info_supplement_str
                 + f"""
 {code_indent}     input_shapes.emplace_back("{input_name}", ddims_vec);"""
             )
 
-        input_tensor_code += f"""
+        record_op_info_supplement_str += f"""
 {code_indent}     phi::AttributeMap attrs;"""
 
         for attr_name in self.attrs['names']:
             if 'IntArray' in self.attrs['attr_info'][attr_name][0]:
-                input_tensor_code += f"""
+                record_op_info_supplement_str += f"""
 {code_indent}     attrs["{attr_name}"] = {attr_name}.GetData();"""
             elif 'vector<phi::Scalar>' in self.attrs['attr_info'][attr_name][0]:
-                input_tensor_code += f"""
+                record_op_info_supplement_str += f"""
 {code_indent}     attrs["{attr_name}"] = "";"""  # TODO(kuizhiqing)
             elif 'Scalar' in self.attrs['attr_info'][attr_name][0]:
-                input_tensor_code += f"""
+                record_op_info_supplement_str += f"""
 {code_indent}    switch ({attr_name}.dtype()) {{
 {code_indent}      case DataType::FLOAT32:
 {code_indent}          attrs["{attr_name}"] = static_cast<float>({attr_name}.to<float>());
@@ -1136,15 +1107,54 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             elif 'Place' in self.attrs['attr_info'][attr_name][0]:
                 pass  # no need
             else:
-                input_tensor_code += f"""
+                record_op_info_supplement_str += f"""
 {code_indent}     attrs["{attr_name}"] = {attr_name};"""
 
-        input_tensor_code = (
-            input_tensor_code
+        record_op_info_supplement_str = (
+            record_op_info_supplement_str
             + f"""
 {code_indent}     phi::RecordOpInfoSupplement("{self.api}", input_shapes, attrs);
 {code_indent}  }}"""
         )
+        return record_op_info_supplement_str
+
+    def get_kernel_args(self, kernel_tensor_type=None, code_indent=''):
+        dense_input_trans_map = {
+            'const Tensor&': 'const phi::DenseTensor&',
+            'const std::vector<Tensor>&': 'const std::vector<const phi::DenseTensor*>&',
+            'const paddle::optional<Tensor&>': 'paddle::optional<const phi::DenseTensor&>',
+            'const paddle::optional<Tensor>&': 'const paddle::optional<phi::DenseTensor>&',
+            'const paddle::optional<std::vector<Tensor>>&': 'const paddle::optional<std::vector<const phi::DenseTensor*>>&',
+        }
+        dense_out_trans_map = {
+            'Tensor': 'phi::DenseTensor*',
+            'std::vector<Tensor>': 'std::vector<phi::DenseTensor*>',
+        }
+        sr_input_trans_map = {
+            'const Tensor&': 'const phi::SelectedRows&',
+            'const paddle::optional<Tensor>&': 'const paddle::optional<phi::SelectedRows>&',
+        }
+        sr_out_trans_map = {'Tensor': 'phi::SelectedRows*'}
+        input_names = self.inputs['names']
+        input_infos = self.inputs['input_info']
+        kernel_args_type_list = ['const phi::DeviceContext&']
+
+        attr_names = self.attrs['names']
+        kernel_param = self.kernel['param']
+        if kernel_param is None:
+            kernel_param = input_names + attr_names
+
+        input_name_tensor_map, input_tensor_code = self.gene_input(
+            kernel_tensor_type, code_indent
+        )
+
+        input_tensor_code = (
+            input_tensor_code
+            + self.generate_record_op_info_supplement(
+                input_name_tensor_map, code_indent
+            )
+        )
+
         kernel_args = ["*dev_ctx"]
         for param in kernel_param:
             if param in input_names:

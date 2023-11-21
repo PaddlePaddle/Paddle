@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import collections
 import re
 
 import yaml
@@ -52,6 +53,8 @@ MAIN_DIST_BRANCH_TEMPLATE = """
       // 4. Select Kernel{}
       // 5. Reshard Input{}\n
       // 6. PrepareData (DataTransform & Prepare Dense Input){}
+      // RecordOpInfoSupplement
+      {}
       // 7. Infer Local DenseTensor Meta{}
       // 8. DenseTensor Kernel Call{}
     }}\n
@@ -339,9 +342,16 @@ VECTOR_OUTPUT_NAME_TEMPLATE = """
 TUPLE_OUTPUT_NAME_TEMPLATE = """
 """
 KERNEL_CALL_TEMPLATE = """
+      phi::RecordEvent* kernel_record_event = nullptr;
+      if(phi::RecordEvent::IsEnabled()){{
+        kernel_record_event = new phi::RecordEvent(\"{} dist compute\", phi::TracerEventType::OperatorInner, 1);
+      }}
       using kernel_signature = {};
       auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
       (*kernel_fn)({}, {});
+      if(kernel_record_event != nullptr){{
+        delete kernel_record_event;
+      }}
 """
 
 # TODO(GhostScreaming): Some operators generate shape info in runtime,
@@ -1058,10 +1068,7 @@ class DistForwardAPI(ForwardAPI):
 
         return input_reshard_code
 
-    def generate_single_dense_input(
-        self,
-        input_name,
-    ):
+    def generate_single_dense_input(self, input_name, input_name_tensor_map):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
         input_names = self.inputs['names']
@@ -1082,13 +1089,11 @@ class DistForwardAPI(ForwardAPI):
                 idx=kernel_param.index(input_name),
                 trans_flag=trans_flag,
             )
+        input_name_tensor_map[input_name].append((f'input_{input_name}', False))
 
         return input_tensor_code
 
-    def generate_vector_dense_input(
-        self,
-        input_name,
-    ):
+    def generate_vector_dense_input(self, input_name, input_name_tensor_map):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
         input_names = self.inputs['names']
@@ -1101,12 +1106,14 @@ class DistForwardAPI(ForwardAPI):
             idx=kernel_param.index(input_name),
             trans_flag=trans_flag,
         )
+        input_name_tensor_map[input_name].append(
+            (f'input_{input_name}_vec', True)
+        )
 
         return input_tensor_code
 
     def generate_optional_single_dense_input(
-        self,
-        input_name,
+        self, input_name, input_name_tensor_map
     ):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
@@ -1130,12 +1137,12 @@ class DistForwardAPI(ForwardAPI):
                     trans_flag=trans_flag,
                 )
             )
+        input_name_tensor_map[input_name].append((f'input_{input_name}', False))
 
         return input_tensor_code
 
     def generate_optional_vector_dense_input(
-        self,
-        input_name,
+        self, input_name, input_name_tensor_map
     ):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
@@ -1150,6 +1157,10 @@ class DistForwardAPI(ForwardAPI):
             trans_flag=trans_flag,
         )
 
+        input_name_tensor_map[input_name].append(
+            (f'input_{input_name}_vec', True)
+        )
+
         return input_tensor_code
 
     def generate_prepare_data_code(self) -> str:
@@ -1158,6 +1169,7 @@ class DistForwardAPI(ForwardAPI):
         kernel_param = self.kernel['param']
         if kernel_param is None:
             kernel_param = input_names + attr_names
+        input_name_tensor_map = collections.defaultdict(list)
         input_tensor_code = ""
         for i, input_name in enumerate(input_names):
             # set input code
@@ -1168,7 +1180,7 @@ class DistForwardAPI(ForwardAPI):
                 if api_tensor_type in self.gene_dist_input_func.keys():
                     input_tensor_code += self.gene_dist_input_func[
                         api_tensor_type
-                    ][phi_tensor_type](input_name)
+                    ][phi_tensor_type](input_name, input_name_tensor_map)
                 else:
                     # do nothing
                     pass
@@ -1200,7 +1212,7 @@ class DistForwardAPI(ForwardAPI):
                                 )
                             )
 
-        return input_tensor_code
+        return input_tensor_code, input_name_tensor_map
 
     def generate_infer_meta_code(self) -> str:
         input_names = self.inputs['names']
@@ -1351,6 +1363,7 @@ class DistForwardAPI(ForwardAPI):
         kernel_signature = "void(*)(" + ", ".join(kernel_args_type_list) + ")"
 
         result = KERNEL_CALL_TEMPLATE.format(
+            self.api,
             kernel_signature,
             ", ".join(input_args),
             ", ".join(self.dense_output_args),
@@ -1397,17 +1410,38 @@ class DistForwardAPI(ForwardAPI):
         # if no tensor input, do not genetate auto parallel branch
         if len(self.inputs['names']) == 0:
             return ""
+
+        infer_spmd_code = self.generate_infer_spmd_code()
+        output_creation_code = self.generate_output_creation_code()
+        infer_global_shape_code = self.generate_infer_global_shape_code()
+        kernel_selection_code = self.generate_kernel_selection_code()
+        reshard_input_code = self.generate_reshard_input_code()
+        (
+            prepare_data_code,
+            input_name_tensor_map,
+        ) = self.generate_prepare_data_code()
+        record_op_info_supplement_code = (
+            self.generate_record_op_info_supplement(
+                input_name_tensor_map, '    '
+            )
+        )
+        infer_meta_code = self.generate_infer_meta_code()
+        kernel_call_code = self.generate_kernel_call_code()
+        output_dist_attr_setting = self.generate_output_dist_attr_setting()
+        return_code = self.generate_return_code()
+
         return MAIN_DIST_BRANCH_TEMPLATE.format(
-            self.generate_infer_spmd_code(),
-            self.generate_output_creation_code(),
-            self.generate_infer_global_shape_code(),
-            self.generate_kernel_selection_code(),
-            self.generate_reshard_input_code(),
-            self.generate_prepare_data_code(),
-            self.generate_infer_meta_code(),
-            self.generate_kernel_call_code(),
-            self.generate_output_dist_attr_setting(),
-            self.generate_return_code(),
+            infer_spmd_code,
+            output_creation_code,
+            infer_global_shape_code,
+            kernel_selection_code,
+            reshard_input_code,
+            prepare_data_code,
+            record_op_info_supplement_code,
+            infer_meta_code,
+            kernel_call_code,
+            output_dist_attr_setting,
+            return_code,
         )
 
     def check_argument_whether_support_auto_parallel(self):
