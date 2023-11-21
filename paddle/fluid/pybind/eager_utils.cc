@@ -1031,38 +1031,6 @@ PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
   return result;
 }
 
-PyObject* ToPyObject(const std::vector<paddle::Tensor*>& value,
-                     bool return_py_none_if_not_initialize) {
-#ifdef _WIN32
-  PyGILState_STATE gstate = PyGILState_Ensure();
-#endif
-  PyObject* result = PyList_New((Py_ssize_t)value.size());
-#ifdef _WIN32
-  PyGILState_Release(gstate);
-#endif
-
-  for (size_t i = 0; i < value.size(); i++) {
-    if (!value[i]->initialized() && return_py_none_if_not_initialize) {
-      Py_INCREF(Py_None);
-      PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), Py_None);
-    } else {
-      PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
-      if (obj) {
-        auto v = reinterpret_cast<TensorObject*>(obj);
-        new (&(v->tensor)) paddle::Tensor();
-        v->tensor = *value[i];
-        value[i]->~Tensor();
-      } else {
-        PADDLE_THROW(platform::errors::Fatal(
-            "tp_alloc return null, can not new a PyObject."));
-      }
-      PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), obj);
-    }
-  }
-
-  return result;
-}
-
 PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
                      bool return_py_none_if_not_initialize) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
@@ -1893,9 +1861,9 @@ paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj) {
   return reinterpret_cast<TensorObject*>(obj)->tensor;
 }
 
-paddle::Tensor* CreateTensorFromVarDesc(
+paddle::Tensor CreateTensorFromVarDesc(
     const paddle::framework::VarDesc& var_desc) {
-  auto tensor = new paddle::Tensor();
+  auto tensor = paddle::Tensor();
 
   auto dtype = var_desc.GetDataType();
   std::vector<int64_t> dims = var_desc.GetShape();
@@ -1903,8 +1871,8 @@ paddle::Tensor* CreateTensorFromVarDesc(
   auto var_type = var_desc.GetType();
 
   auto ddims = phi::make_ddim(dims);
-  tensor->set_name(var_desc.Name());
-  auto autograd_meta = egr::EagerUtils::autograd_meta(tensor);
+  tensor.set_name(var_desc.Name());
+  auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);
   autograd_meta->SetStopGradient(var_desc.StopGradient());
 
@@ -1924,11 +1892,11 @@ paddle::Tensor* CreateTensorFromVarDesc(
           phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
                                ddims));
     }
-    tensor->set_impl(dense_tensor);
+    tensor.set_impl(dense_tensor);
   } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
     std::shared_ptr<phi::SelectedRows> selected_rows_tensor =
         std::make_shared<phi::SelectedRows>();
-    tensor->set_impl(selected_rows_tensor);
+    tensor.set_impl(selected_rows_tensor);
   }
 
   if (!autograd_meta->GetMutableGradNode()) {
@@ -1940,8 +1908,8 @@ paddle::Tensor* CreateTensorFromVarDesc(
 }
 
 PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args) {
-  std::vector<paddle::Tensor*> result;
-  std::unordered_map<std::string, paddle::Tensor*> out_tensor_map;
+  std::vector<paddle::Tensor> result;
+  std::unordered_map<std::string, paddle::Tensor> out_tensor_map;
 
   auto var_desc_list = PyTuple_GetItem(args, 0);
 
@@ -1952,7 +1920,7 @@ PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args) {
           PyList_GetItem(var_desc_list, i));
       auto var_name = var_desc.Name();
       if (out_tensor_map.find(var_name) == out_tensor_map.end()) {
-        paddle::Tensor* tensor = CreateTensorFromVarDesc(var_desc);
+        paddle::Tensor tensor = CreateTensorFromVarDesc(var_desc);
         out_tensor_map[var_name] = tensor;
         result.emplace_back(tensor);
       } else {
@@ -1966,7 +1934,7 @@ PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args) {
           PyTuple_GetItem(var_desc_list, i));
       auto var_name = var_desc.Name();
       if (out_tensor_map.find(var_name) == out_tensor_map.end()) {
-        paddle::Tensor* tensor = CreateTensorFromVarDesc(var_desc);
+        paddle::Tensor tensor = CreateTensorFromVarDesc(var_desc);
         out_tensor_map[var_name] = tensor;
         result.emplace_back(tensor);
       } else {
@@ -1982,12 +1950,12 @@ PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args) {
   return ToPyObject(result);
 }
 
-paddle::Tensor* CreateTensorFromOpResult(const pir::OpResult& op_result) {
-  auto tensor = new paddle::Tensor();
+paddle::Tensor CreateTensorFromOpResult(const pir::OpResult& op_result) {
+  auto tensor = paddle::Tensor();
 
   auto dims = phi::vectorize(GetOpResultDims(op_result));
   auto ddims = phi::make_ddim(dims);
-  auto autograd_meta = egr::EagerUtils::autograd_meta(tensor);
+  auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);
   autograd_meta->SetStopGradient(
       GetOpResultBoolAttr(op_result, kAttrStopGradients));
@@ -2008,11 +1976,11 @@ paddle::Tensor* CreateTensorFromOpResult(const pir::OpResult& op_result) {
           std::make_shared<phi::Allocation>(),
           phi::DenseTensorMeta(dtype, ddims));
     }
-    tensor->set_impl(dense_tensor);
+    tensor.set_impl(dense_tensor);
   } else if (op_result.type().isa<paddle::dialect::SelectedRowsType>()) {
     std::shared_ptr<phi::SelectedRows> selected_rows_tensor =
         std::make_shared<phi::SelectedRows>();
-    tensor->set_impl(selected_rows_tensor);
+    tensor.set_impl(selected_rows_tensor);
   }
 
   if (!autograd_meta->GetMutableGradNode()) {
@@ -2024,8 +1992,8 @@ paddle::Tensor* CreateTensorFromOpResult(const pir::OpResult& op_result) {
 }
 
 PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args) {
-  std::vector<paddle::Tensor*> result;
-  std::unordered_map<pir::OpResult, paddle::Tensor*> out_tensor_map;
+  std::vector<paddle::Tensor> result;
+  std::unordered_map<pir::OpResult, paddle::Tensor> out_tensor_map;
 
   auto op_result_list = PyTuple_GetItem(args, 0);
 
@@ -2035,7 +2003,7 @@ PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args) {
       auto op_result =
           PyObjectCast<pir::OpResult>(PyList_GetItem(op_result_list, i));
       if (out_tensor_map.find(op_result) == out_tensor_map.end()) {
-        paddle::Tensor* tensor = CreateTensorFromOpResult(op_result);
+        paddle::Tensor tensor = CreateTensorFromOpResult(op_result);
         out_tensor_map[op_result] = tensor;
         result.emplace_back(tensor);
       } else {
@@ -2048,7 +2016,7 @@ PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args) {
       auto op_result =
           PyObjectCast<pir::OpResult>(PyTuple_GetItem(op_result_list, i));
       if (out_tensor_map.find(op_result) == out_tensor_map.end()) {
-        paddle::Tensor* tensor = CreateTensorFromOpResult(op_result);
+        paddle::Tensor tensor = CreateTensorFromOpResult(op_result);
         out_tensor_map[op_result] = tensor;
         result.emplace_back(tensor);
       } else {
