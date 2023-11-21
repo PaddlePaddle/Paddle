@@ -45,6 +45,7 @@ setup(
     ext_modules=CUDAExtension(
         sources=[
             "./matmul.cu",
+            "./fmha_triton.cu",
         ] + generated_cu,
         extra_compile_args={
             "cc": ["-lcuda"],

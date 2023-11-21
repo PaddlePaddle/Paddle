@@ -1,6 +1,6 @@
 
 # clone triton and generate
-rm -rf generated
+rm -rf generated 
 git clone https://github.com/openai/triton.git
 cd triton
 git reset --hard 2217bd2f5c271009f50ab2d2a639bbbb407a2650
@@ -22,10 +22,39 @@ python3.8  ${compile_file}     \
 -o ${matmul_dir}/matmul_kernel_fp16     \
 --out-name matmul_kernel_fp16     \
 -w 8     -ns 3     \
--s "*fp16:16, *fp16:16, *fp16:16, i32:16,i32:16,i32:16, i32:16,i32:1,i32:16,i32:1,i32:16,i32:1, 128,256,64,8,2"     \
+-s "*fp16:16, *fp16:16, *fp16:16, i32,i32,i32, i32,i32:1,i32,i32:1,i32,i32:1, 128,256,64,8,2"     \
 -g "(M+127)/128 * (N+255)/256, 1, 1"
 
 python3.8  ${link_file}  ${matmul_dir}/*.h -o ${matmul_dir}/../matmul_fp16
+
+
+
+fmha_dir=/zhoukangkang/2023-04-26SM80/Paddle/paddle/phi/kernels/fusion/custom_triton/generated/aot/fmha/fp16
+mkdir -p ${fmha_dir}
+
+python3.8  ${compile_file}     \
+fmha_triton.py     \
+-n fused_attention_kernel   \
+-o ${fmha_dir}/fmha_fp16     \
+--out-name fmha_kernel_fp16     \
+-w 4  -ns 2     \
+-s "*fp16:16, *fp32:16, *fp32:16, *fp16:16, *fp16:16, *fp16:16, fp32, i32, i32, i32, 128, 128, 128" \
+-g "(seq_len + 127) / 128, batch_size * num_heads, 1"
+
+python3.8  ${link_file}  ${fmha_dir}/*.h -o ${fmha_dir}/../fmha_fp16
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # mv the .c file to .cu file
@@ -37,8 +66,8 @@ done
 
 # 安装triton算子和运行单元测试
 
-# python3.8 setup_cuda.py install
-# python3.8 test.py
+python3.8 setup_cuda.py install
+#python3.8 test.py
 
 
 
