@@ -12,29 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/cinn/adt/adt.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/cinn/adt/adapter_tensor.h"
+#include "glog/logging.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 
 namespace cinn::adt::adapter {
 
-struct Tensor final {
-  ::pir::Value node_data;
+std::size_t Tensor::GetRank() const {
+  return cinn::hlir::framework::pir::CompatibleInfo::ValueShape(node_data)
+      .size();
+}
 
-  bool operator==(const Tensor& other) const {
-    return this->node_data == other.node_data;
+std::vector<int32_t> Tensor::GetShape() const {
+  std::vector<int32_t> ret{};
+  for (int dim_size :
+       cinn::hlir::framework::pir::CompatibleInfo::ValueShape(node_data)) {
+    ret.emplace_back(dim_size);
   }
+  return ret;
+}
 
-  std::size_t GetRank() const;
-
-  std::vector<int32_t> GetShape() const;
-
-  std::size_t GetNumel() const;
-};
-
-inline std::size_t GetHashValueImpl(const Tensor& tensor) {
-  return std::hash<::pir::Value>()(tensor.node_data);
+std::size_t Tensor::GetNumel() const {
+  std::size_t ret = 1;
+  for (int dim_size :
+       cinn::hlir::framework::pir::CompatibleInfo::ValueShape(node_data)) {
+    ret = ret * dim_size;
+  }
+  return ret;
 }
 
 }  // namespace cinn::adt::adapter
