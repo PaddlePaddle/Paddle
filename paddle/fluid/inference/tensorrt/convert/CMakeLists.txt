@@ -159,7 +159,6 @@ elseif(WITH_CINN)
          custom_operator
          init_phi
          fleet_executor
-         cinn_compiler
          python)
 else()
   nv_test(

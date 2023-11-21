@@ -969,7 +969,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
                 >>> import paddle
                 >>> paddle.enable_static()
