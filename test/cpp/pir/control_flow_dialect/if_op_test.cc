@@ -14,28 +14,20 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
-<<<<<<< HEAD
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/scope.h"
-=======
->>>>>>> efdbd8b20cf8e545d269adb36d3b0df9e7b304a1
-    #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-<<<<<<< HEAD
-    #include "paddle/phi/common/place.h"
-=======
->>>>>>> efdbd8b20cf8e545d269adb36d3b0df9e7b304a1
-    #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_op.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
-    PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
@@ -193,7 +185,6 @@ TEST(if_op_test, network_with_backward) {
   LOG(INFO) << program;
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-<<<<<<< HEAD
 
   auto place = paddle::platform::CPUPlace();
   paddle::framework::Scope scope;
@@ -204,6 +195,4 @@ TEST(if_op_test, network_with_backward) {
   //   test_core.SetSkipGcVars({out_name});
 
   //   test_core.Run({});
-=======
->>>>>>> efdbd8b20cf8e545d269adb36d3b0df9e7b304a1
 }
