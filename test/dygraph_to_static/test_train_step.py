@@ -17,7 +17,10 @@ import unittest
 from functools import partial
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir,
+)
 
 import paddle
 

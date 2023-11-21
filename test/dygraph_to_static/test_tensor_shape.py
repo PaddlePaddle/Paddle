@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
-    compare_legacy_with_pir,
     test_ast_only,
+    test_legacy_and_pir_exe_and_pir_api,
 )
 
 import paddle
@@ -239,9 +239,9 @@ class TestTensorShapeBasic(Dy2StTestBase):
     def setUp(self):
         self.input = np.ones(5).astype("int32")
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
         self._set_input_spec()
         self._set_expected_op_num()
@@ -254,22 +254,19 @@ class TestTensorShapeBasic(Dy2StTestBase):
         self.input_spec = [paddle.static.InputSpec(shape=[5], dtype="int32")]
 
     def _run(self, to_static):
-        with base.dygraph.guard():
-            if to_static:
-                res = paddle.jit.to_static(self.dygraph_func)(
-                    self.input
-                ).numpy()
-            else:
-                res = self.dygraph_func(self.input).numpy()
-            return res
+        if to_static:
+            res = paddle.jit.to_static(self.dygraph_func)(self.input).numpy()
+        else:
+            res = self.dygraph_func(self.input).numpy()
+        return res
 
     def get_dygraph_output(self):
         return self._run(to_static=False)
 
-    @compare_legacy_with_pir
     def get_static_output(self):
         return self._run(to_static=True)
 
+    @test_legacy_and_pir_exe_and_pir_api
     def test_transformed_static_result(self):
         static_res = self.get_static_output()
         dygraph_res = self.get_dygraph_output()
@@ -618,6 +615,7 @@ def dyfunc_with_static_convert_var_shape(x):
 
 class TestFindStatiConvertVarShapeSuffixVar(Dy2StTestBase):
     @test_ast_only
+    @test_legacy_and_pir_exe_and_pir_api
     def test(self):
         x_spec = paddle.static.InputSpec(shape=[None, 10])
         func = paddle.jit.to_static(dyfunc_with_if_2, input_spec=[x_spec])

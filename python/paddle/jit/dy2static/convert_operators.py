@@ -39,8 +39,10 @@ __all__ = []
 
 
 def convert_attr(x, attr):
-    if isinstance(x, (Variable, OpResult)) and attr == "size":
+    if isinstance(x, Variable) and attr == "size":
         return x.size()
+    elif isinstance(x, OpResult) and attr == "size":
+        return x.size
     else:
         return getattr(x, attr)
 
