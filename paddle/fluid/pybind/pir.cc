@@ -1532,10 +1532,11 @@ void ApplyPirPass(Program &forward_program) {  // NOLINT
 
   pass_manager.Run(&forward_program);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
-#endif
+#else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
       "compile PaddlePaddle with CINN"));
+#endif
 }
 void BindIrPass(pybind11::module *m) {
   m->def("apply_pir_pass", ApplyPirPass);

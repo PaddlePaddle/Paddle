@@ -137,11 +137,19 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
     auto target = cinn::common::DefaultNVGPUTarget();
     auto* program = group_op->GetParentProgram();
+    VLOG(4) << "Before GroupOpPattern: " << *program;
     // TODO(Aurelius84): Remove scope after cleaning PirCompiler usless Build
     // Interface
     auto scope = std::make_shared<cinn::hlir::framework::Scope>();
 
     VLOG(4) << "start Lowering Group Op: " << group_op;
+    // using yield op to sort
+    std::unordered_map<::pir::Value, size_t> value2id;
+    auto yeild_op = group_op.ops().back();
+    for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
+      value2id[yeild_op->operand_source(i)] = i;
+    }
+    std::unordered_map<pir::Value, pir::Value> value_map;
 
     // op fusion
     auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
@@ -167,6 +175,11 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
 
       // Generate jit kernel op input and output
       auto vec_ins = GetBlockOutsideInput(group->ops);
+      for (size_t i = 0; i < vec_ins.size(); ++i) {
+        if (value_map.find(vec_ins[i]) != value_map.end()) {
+          vec_ins[i] = value_map.at(vec_ins[i]);
+        }
+      }
 
       std::vector<pir::Type> vec_types;
       for (size_t i = 0; i < group->output_values.size(); ++i) {
@@ -176,10 +189,16 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
       auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
           vec_ins, op_attrs, vec_types);
       for (size_t i = 0; i < jit_kernel_op.num_results(); ++i) {
-        rewriter.ReplaceAllUsesWith(group->output_values[i],
-                                    jit_kernel_op.result(i));
+        auto find_it = value2id.find(group->output_values[i]);
+        if (find_it != value2id.end()) {
+          rewriter.ReplaceAllUsesWith(group_op.result(find_it->second),
+                                      jit_kernel_op.result(i));
+        }
+        value_map[group->output_values[i]] = jit_kernel_op.result(i);
       }
     }
+    value_map.clear();
+    VLOG(4) << "Before GroupOpPattern.EraseOp: " << *program;
     rewriter.EraseOp(group_op);
     return true;
   }

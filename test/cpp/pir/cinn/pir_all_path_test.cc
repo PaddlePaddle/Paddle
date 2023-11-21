@@ -727,14 +727,13 @@ TEST(GroupOp, TestBuildConcat) {
 
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.AddPass(pir::CreateBuildCinnPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
   CHECK_EQ(pm.Run(program.get()), true);
-
-  auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+      paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
   paddle::framework::Scope exe_scope;
 
