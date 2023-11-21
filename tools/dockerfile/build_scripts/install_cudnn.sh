@@ -82,6 +82,7 @@ elif [[ "$1" == "cudnn896" && "$VERSION" == "12.0" ]]; then
   tar xJvf cudnn-linux-x86_64-8.9.6.50_cuda12-archive.tar.xz && \
   cd cudnn-linux-x86_64-8.9.6.50_cuda12-archive && \
   cp -r include /usr && \
+  cp -r lib/libcudnn* /usr/lib/x86_64-linux-gnu && \
   cp -r lib /usr && cd ../ && \
   rm -f cudnn-linux-x86_64-8.9.6.50_cuda12-archive.tar.xz && \
   rm -rf cudnn-linux-x86_64-8.9.6.50_cuda12-archive
