@@ -3726,18 +3726,18 @@ def cdist(
     )
 
 
-def householder_product(A, tau, name=None):
+def householder_product(x, tau, name=None):
     r"""
 
     Computes the first n columns of a product of Householder matrices.
 
-    This function can get the vector :math:`\omega_{i}` from matrix `A`(m x n), the :math:`i-1` elements are zeros, and the i-th is `1`, the rest of the elements are from i-th column of `A`.
+    This function can get the vector :math:`\omega_{i}` from matrix `x`(m x n), the :math:`i-1` elements are zeros, and the i-th is `1`, the rest of the elements are from i-th column of `x`.
     And with the vector `tau` can calculate the first n columns of a product of Householder matrices.
 
     :math:`H_i = I_m - \tau_i \omega_i \omega_i^H`
 
     Args:
-        A (Tensor): A tensor with shape (*, m, n) where * is zero or more batch dimensions.
+        x (Tensor): A tensor with shape (*, m, n) where * is zero or more batch dimensions.
         tau (Tensor): A tensor with shape (*, k) where * is zero or more batch dimensions.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -3750,12 +3750,12 @@ def householder_product(A, tau, name=None):
         .. code-block:: python
 
             >>> import paddle
-            >>> A = paddle.to_tensor([[-1.1280,  0.9012, -0.0190],
+            >>> x = paddle.to_tensor([[-1.1280,  0.9012, -0.0190],
             ...         [ 0.3699,  2.2133, -1.4792],
             ...         [ 0.0308,  0.3361, -3.1761],
             ...         [-0.0726,  0.8245, -0.3812]])
             >>> tau = paddle.to_tensor([1.7497, 1.1156, 1.7462])
-            >>> Q = paddle.linalg.householder_product(A, tau)
+            >>> Q = paddle.linalg.householder_product(x, tau)
             >>> Q
             Tensor(shape=[4, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                    [[-0.74969995, -0.02181768,  0.31115776],
@@ -3765,7 +3765,7 @@ def householder_product(A, tau, name=None):
     """
 
     check_dtype(
-        A.dtype,
+        x.dtype,
         'x',
         [
             'float32',
@@ -3787,26 +3787,26 @@ def householder_product(A, tau, name=None):
         'householder_product',
     )
     assert (
-        A.dtype == tau.dtype
-    ), "The input A must have the same dtype with input tau.\n"
+        x.dtype == tau.dtype
+    ), "The input x must have the same dtype with input tau.\n"
     assert (
-        len(A.shape) >= 2
+        len(x.shape) >= 2
         and len(tau.shape) >= 1
-        and len(A.shape) == len(tau.shape) + 1
+        and len(x.shape) == len(tau.shape) + 1
     ), (
-        "The input A must have more than 2 dimensions, and input tau must have more than 1 dimension,"
-        "and the dimension of A is 1 larger than the dimension of tau\n"
+        "The input x must have more than 2 dimensions, and input tau must have more than 1 dimension,"
+        "and the dimension of x is 1 larger than the dimension of tau\n"
     )
     assert (
-        A.shape[-2] >= A.shape[-1]
-    ), "The rows of input A must be greater than or equal to the columns of input A.\n"
+        x.shape[-2] >= x.shape[-1]
+    ), "The rows of input x must be greater than or equal to the columns of input x.\n"
     assert (
-        A.shape[-1] >= tau.shape[-1]
-    ), "The last dim of A must be greater than tau.\n"
-    for idx, _ in enumerate(A.shape[:-2]):
+        x.shape[-1] >= tau.shape[-1]
+    ), "The last dim of x must be greater than tau.\n"
+    for idx, _ in enumerate(x.shape[:-2]):
         assert (
-            A.shape[idx] == tau.shape[idx]
-        ), "The input A must have the same batch dimensions with input tau.\n"
+            x.shape[idx] == tau.shape[idx]
+        ), "The input x must have the same batch dimensions with input tau.\n"
 
     def _norm(x):
         ret = paddle.to_tensor(0, dtype=x.dtype)
@@ -3814,19 +3814,19 @@ def householder_product(A, tau, name=None):
             ret += x[i] * x[i]
         return ret
 
-    def _householder_product(A, tau):
-        m, n = A.shape[-2:]
+    def _householder_product(x, tau):
+        m, n = x.shape[-2:]
         k = tau.shape[-1]
-        Q = paddle.eye(m).astype(A.dtype)
+        Q = paddle.eye(m).astype(x.dtype)
         for i in range(min(k, n)):
-            w = A[i:, i]
+            w = x[i:, i]
             if in_dynamic_mode():
                 w[0] = 1
             else:
                 w = paddle.static.setitem(w, 0, 1)
             w = w.reshape([-1, 1])
             if in_dynamic_mode():
-                if A.dtype in [paddle.complex128, paddle.complex64]:
+                if x.dtype in [paddle.complex128, paddle.complex64]:
                     Q[:, i:] = Q[:, i:] - (
                         Q[:, i:] @ w @ paddle.conj(w).T * tau[i]
                     )
@@ -3837,26 +3837,26 @@ def householder_product(A, tau, name=None):
                     Q,
                     (slice(None), slice(i, None)),
                     Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
-                    if A.dtype in [paddle.complex128, paddle.complex64]
+                    if x.dtype in [paddle.complex128, paddle.complex64]
                     else Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i]),
                 )
         return Q[:, :n]
 
-    if len(A.shape) == 2:
-        return _householder_product(A, tau)
-    m, n = A.shape[-2:]
-    org_A_shape = A.shape
+    if len(x.shape) == 2:
+        return _householder_product(x, tau)
+    m, n = x.shape[-2:]
+    org_x_shape = x.shape
     org_tau_shape = tau.shape
-    A = A.reshape((-1, org_A_shape[-2], org_A_shape[-1]))
+    x = x.reshape((-1, org_x_shape[-2], org_x_shape[-1]))
     tau = tau.reshape((-1, org_tau_shape[-1]))
-    n_batch = A.shape[0]
-    out = paddle.zeros([n_batch, m, n], dtype=A.dtype)
+    n_batch = x.shape[0]
+    out = paddle.zeros([n_batch, m, n], dtype=x.dtype)
     for i in range(n_batch):
         if in_dynamic_mode():
-            out[i] = _householder_product(A[i], tau[i])
+            out[i] = _householder_product(x[i], tau[i])
         else:
             out = paddle.static.setitem(
-                out, i, _householder_product(A[i], tau[i])
+                out, i, _householder_product(x[i], tau[i])
             )
-    out = out.reshape(org_A_shape)
+    out = out.reshape(org_x_shape)
     return out

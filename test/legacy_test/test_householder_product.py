@@ -19,68 +19,68 @@ import numpy as np
 import paddle
 
 
-def geqrf(A):
-    def _geqrf(A):
-        m, n = A.shape
-        tau = np.zeros([n, 1], dtype=A.dtype)
+def geqrf(x):
+    def _geqrf(x):
+        m, n = x.shape
+        tau = np.zeros([n, 1], dtype=x.dtype)
         for i in range(min(n, m)):
-            alpha = A[i, i]
-            normx = np.linalg.norm(A[min(i + 1, m) :, i])
-            beta = np.linalg.norm(A[i:, i])
-            if A.dtype in [np.complex64, np.complex128]:
+            alpha = x[i, i]
+            normx = np.linalg.norm(x[min(i + 1, m) :, i])
+            beta = np.linalg.norm(x[i:, i])
+            if x.dtype in [np.complex64, np.complex128]:
                 s = 1 if alpha < 0 else -1
             else:
-                alphar = A[i, i].real
+                alphar = x[i, i].real
                 s = 1 if alphar < 0 else -1
             u1 = alpha - s * beta
-            w = A[i:, i] / u1
+            w = x[i:, i] / u1
             w[0] = 1
-            A[i + 1 :, i] = w[1 : m - i + 1]
+            x[i + 1 :, i] = w[1 : m - i + 1]
             if normx == 0:
                 tau[i] = 0
             else:
                 tau[i] = -s * u1 / beta
-                A[i, i] = s * beta
+                x[i, i] = s * beta
             w = w.reshape([-1, 1])
-            if A.dtype in [np.complex64, np.complex128]:
-                A[i:, i + 1 :] = A[i:, i + 1 :] - (tau[i] * w) @ (
-                    np.conj(w).T @ A[i:, i + 1 :]
+            if x.dtype in [np.complex64, np.complex128]:
+                x[i:, i + 1 :] = x[i:, i + 1 :] - (tau[i] * w) @ (
+                    np.conj(w).T @ x[i:, i + 1 :]
                 )
             else:
-                A[i:, i + 1 :] = A[i:, i + 1 :] - (tau[i] * w) @ (
-                    w.T @ A[i:, i + 1 :]
+                x[i:, i + 1 :] = x[i:, i + 1 :] - (tau[i] * w) @ (
+                    w.T @ x[i:, i + 1 :]
                 )
-        return A, tau[: min(m, n)].reshape(-1)
+        return x, tau[: min(m, n)].reshape(-1)
 
-    if len(A.shape) == 2:
-        return _geqrf(A)
-    m, n = A.shape[-2:]
-    org_A_shape = A.shape
-    A = A.reshape((-1, A.shape[-2], A.shape[-1]))
-    n_batch = A.shape[0]
-    out = np.zeros([n_batch, m, n], dtype=A.dtype)
-    taus = np.zeros([n_batch, min(m, n)], dtype=A.dtype)
-    org_taus_shape = list(org_A_shape[:-2]) + [min(m, n)]
+    if len(x.shape) == 2:
+        return _geqrf(x)
+    m, n = x.shape[-2:]
+    org_x_shape = x.shape
+    x = x.reshape((-1, x.shape[-2], x.shape[-1]))
+    n_batch = x.shape[0]
+    out = np.zeros([n_batch, m, n], dtype=x.dtype)
+    taus = np.zeros([n_batch, min(m, n)], dtype=x.dtype)
+    org_taus_shape = list(org_x_shape[:-2]) + [min(m, n)]
     for i in range(n_batch):
-        out[i], t = _geqrf(A[i])
+        out[i], t = _geqrf(x[i])
         taus[i, :] = t.reshape(-1)
-    return out.reshape(org_A_shape), taus.reshape(org_taus_shape)
+    return out.reshape(org_x_shape), taus.reshape(org_taus_shape)
 
 
-def ref_qr(A):
-    def _ref_qr(A):
-        q, _ = np.linalg.qr(A)
+def ref_qr(x):
+    def _ref_qr(x):
+        q, _ = np.linalg.qr(x)
         return q
 
-    if len(A.shape) == 2:
-        return _ref_qr(A)
-    m, n = A.shape[-2:]
-    org_shape = A.shape
-    A = A.reshape((-1, A.shape[-2], A.shape[-1]))
-    n_batch = A.shape[0]
+    if len(x.shape) == 2:
+        return _ref_qr(x)
+    m, n = x.shape[-2:]
+    org_shape = x.shape
+    x = x.reshape((-1, x.shape[-2], x.shape[-1]))
+    n_batch = x.shape[0]
     out = np.zeros([n_batch, m, n])
     for i in range(n_batch):
-        out[i] = _ref_qr(A[i])
+        out[i] = _ref_qr(x[i])
     return out.reshape(org_shape)
 
 
