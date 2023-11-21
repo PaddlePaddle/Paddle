@@ -1,9 +1,7 @@
 
 
-
-
-
-
+OpenAI Triton为专用领域的编程语言与编译器，巧妙地在硬件算子性能和开发效率之间达到了均衡。
+Paddle提供了简单的示例，展示了如何将用户编写的Trtion自定义算子，接入Paddle。
 
 # 如何添加一个Triton算子
 
@@ -12,18 +10,7 @@
 
 用Python文件写好一个triton算子，借助于triton的aot工具，可以编译出cubin kernel。
 
-python3.8  triton/python/triton/tools/compile.py     \
-/zhoukangkang/triton/python/tutorials/03-matrix-multiplication-paddle.py     \
--n matmul_kernel   \
--o aot/fp16/matmul_kernel_fp16     \
---out-name matmul_kernel_fp16     \
--w 4     -ns 2     \
--s "*fp16:16, *fp16:16, *fp16:16,i32,i32,i32,i32,i32,i32,i32,i32,i32,128,256,64,8,2"     \
--g "(M+127)/128 * (N+255)/256, 1, 1"
 
 
-
-
-python3.8 triton/python/triton/tools/link.py aot/fp16/*.h -o aot/matmul_kernel_fp16
 
 

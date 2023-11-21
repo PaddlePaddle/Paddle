@@ -16,7 +16,7 @@ std::vector<paddle::Tensor> TritonMatMul(const paddle::Tensor& a,
     auto dev_b = b.data<phi::dtype::float16>();
     auto dev_c = c_out.data<phi::dtype::float16>();
 
-    auto status = matmul_kernel_fp16(a.stream(), 
+    auto status = matmul_kernel_fp16(c_out.stream(), 
     (CUdeviceptr)(dev_a), (CUdeviceptr)(dev_b), (CUdeviceptr)(dev_c),
     m,n,k,
     k,1,
