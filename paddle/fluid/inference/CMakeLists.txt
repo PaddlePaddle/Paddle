@@ -110,7 +110,7 @@ if(NOT WIN32)
 endif()
 
 if(WITH_CRYPTO)
-  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} framework_io)
 endif()
 
 if(WITH_PSCORE)
@@ -136,7 +136,8 @@ if(WIN32)
                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   target_link_libraries(paddle_inference_shared phi)
 endif()
-
+set_target_properties(paddle_inference_shared PROPERTIES LINK_FLAGS
+                                                         "-Wl,-rpath,$ORIGIN/")
 set_target_properties(paddle_inference_shared PROPERTIES OUTPUT_NAME
                                                          paddle_inference)
 if(NOT APPLE
