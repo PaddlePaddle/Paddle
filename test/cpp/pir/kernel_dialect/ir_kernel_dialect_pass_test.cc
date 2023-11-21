@@ -93,12 +93,14 @@ pir::AttributeMap CreateAttributeMap(std::vector<std::string> attribute_names,
   return attr_map;
 }
 
+
+
 TEST(kernel_dialect, legacy_op_test) {
   // (1) Init environment.
 
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Program program((ctx));
-
+  
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   phi::KernelKey kernel_key(
       phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
@@ -108,7 +110,7 @@ TEST(kernel_dialect, legacy_op_test) {
   pir::OperationArgument argument(kernel_op_info);
   argument.attributes = CreateAttributeMap({"op_name", "kernel_name"},
                                            {"pd_op.kernel_op", "kernel_op"},
-                                           "kernel_key",
+                                           "kernel_key", 
                                            kernel_key);
 
   pir::Operation* op = pir::Operation::Create(std::move(argument));

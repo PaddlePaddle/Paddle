@@ -45,7 +45,7 @@ class IR_API IrContext {
   ///
   /// \brief Initializes a new instance of IrContext.
   ///
-  static IrContext *Instance();
+  TEST_API static IrContext *Instance();
 
   IrContext();
   ~IrContext();
@@ -96,7 +96,7 @@ class IR_API IrContext {
   /// \return The storage uniquer used for constructing AttributeStorage
   /// instances.
   ///
-  StorageManager &attribute_storage_manager();
+  TEST_API StorageManager &attribute_storage_manager();
 
   ///
   /// \brief Get registered AbstractAttribute from IrContext.
@@ -135,7 +135,7 @@ class IR_API IrContext {
   /// \return The dialect of the DialectT class in the context.
   ///
   template <typename DialectT>
-  DialectT *GetOrRegisterDialect() {
+  TEST_API DialectT *GetOrRegisterDialect() {
     return static_cast<DialectT *>(
         GetOrRegisterDialect(DialectT::name(), [this]() {
           DialectT *dialect = new DialectT(this);

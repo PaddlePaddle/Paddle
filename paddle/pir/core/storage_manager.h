@@ -123,7 +123,7 @@ class IR_API StorageManager {
   }
 
  private:
-  StorageBase *GetParametricStorageImpl(
+  TEST_API StorageBase *GetParametricStorageImpl(
       TypeId type_id,
       std::size_t hash_value,
       std::function<bool(const StorageBase *)> equal_func,

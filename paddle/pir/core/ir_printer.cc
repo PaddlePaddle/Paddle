@@ -316,7 +316,7 @@ void IrPrinter::AddValueAlias(Value v, const std::string& alias) {
   aliases_[key] = alias;
 }
 
-TEST_API void Dialect::PrintOperation(Operation* op, IrPrinter& printer) const {
+void Dialect::PrintOperation(Operation* op, IrPrinter& printer) const {
   printer.PrintGeneralOperation(op);
 }
 

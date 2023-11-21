@@ -18,9 +18,9 @@
 #include "paddle/utils/test_macros.h"
 
 namespace pir {
-TEST_API IrContext *Attribute::ir_context() const { return dialect().ir_context(); }
+IrContext *Attribute::ir_context() const { return dialect().ir_context(); }
 
-TEST_API TypeId Attribute::type_id() {
+TypeId Attribute::type_id() {
   return storage_ ? storage_->abstract_attribute().type_id() : TypeId();
 }
 

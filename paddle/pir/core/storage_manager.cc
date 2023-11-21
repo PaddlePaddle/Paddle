@@ -70,7 +70,7 @@ StorageManager::StorageManager() = default;
 
 StorageManager::~StorageManager() = default;
 
-TEST_API StorageManager::StorageBase *StorageManager::GetParametricStorageImpl(
+StorageManager::StorageBase *StorageManager::GetParametricStorageImpl(
     TypeId type_id,
     std::size_t hash_value,
     std::function<bool(const StorageBase *)> equal_func,

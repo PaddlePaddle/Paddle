@@ -30,7 +30,7 @@ class Dialect;
 /// \brief Unified interface of the Attribute class. Derivation of all Attribute
 /// classes only derives interfaces, not members.
 ///
-class IR_API Attribute {
+class IR_API  Attribute {
  public:
   using Storage = AttributeStorage;
 
@@ -56,7 +56,7 @@ class IR_API Attribute {
   ///
   /// \brief Some Attribute attribute acquisition interfaces.
   ///
-  TypeId type_id();
+  TEST_API TypeId type_id();
 
   const AbstractAttribute &abstract_attribute();
 
@@ -64,7 +64,7 @@ class IR_API Attribute {
 
   const Dialect &dialect() const;
 
-  IrContext *ir_context() const;
+  TEST_API IrContext *ir_context() const;
 
   /// @brief print attribute
   /// @param os

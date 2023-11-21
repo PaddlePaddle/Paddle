@@ -67,7 +67,7 @@ class IR_API Type {
   ///
   /// \brief Some type attribute acquisition interfaces.
   ///
-  TypeId type_id();
+  TEST_API TypeId type_id();
 
   ///
   /// \brief Support PointerLikeTypeTraits.

@@ -69,7 +69,7 @@ class IR_API AbstractAttribute {
   /// \param ctx The IrContext.
   /// \return The AbstractAttribute instance whose TypeId is type_id.
   ///
-  static const AbstractAttribute &lookup(TypeId type_id, IrContext *ctx);
+  TEST_API static const AbstractAttribute &lookup(TypeId type_id, IrContext *ctx);
 
  private:
   ///

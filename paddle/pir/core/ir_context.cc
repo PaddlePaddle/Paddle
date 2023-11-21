@@ -183,8 +183,8 @@ class  IrContextImpl {
   pir::SpinLock destructor_lock_;
 };
 
-TEST_API IrContext *IrContext::Instance() {
-  TEST_API static IrContext context;
+IrContext *IrContext::Instance() {
+  static IrContext context;
   return &context;
 }
 
@@ -196,16 +196,16 @@ IrContext::IrContext() : impl_(new IrContextImpl()) {
   VLOG(4) << "==============================================";
 
   impl_->bfp16_type = TypeManager::get<BFloat16Type>(this);
-  impl_->fp16_type = TypeManager::get<Float16Type>(this);
-  impl_->fp32_type = TypeManager::get<Float32Type>(this);
-  impl_->fp64_type = TypeManager::get<Float64Type>(this);
+  impl_->fp16_type =  TypeManager::get<Float16Type>(this);
+  impl_->fp32_type =  TypeManager::get<Float32Type>(this);
+  impl_->fp64_type =  TypeManager::get<Float64Type>(this);
   impl_->uint8_type = TypeManager::get<UInt8Type>(this);
-  impl_->int8_type = TypeManager::get<Int8Type>(this);
+  impl_->int8_type =  TypeManager::get<Int8Type>(this);
   impl_->int16_type = TypeManager::get<Int16Type>(this);
   impl_->int32_type = TypeManager::get<Int32Type>(this);
   impl_->int64_type = TypeManager::get<Int64Type>(this);
   impl_->index_type = TypeManager::get<IndexType>(this);
-  impl_->bool_type = TypeManager::get<BoolType>(this);
+  impl_->bool_type =  TypeManager::get<BoolType>(this);
   impl_->complex64_type = TypeManager::get<Complex64Type>(this);
   impl_->complex128_type = TypeManager::get<Complex128Type>(this);
 }
@@ -233,7 +233,7 @@ void IrContext::RegisterAbstractAttribute(
   }
 }
 
-TEST_API StorageManager &IrContext::attribute_storage_manager() {
+StorageManager &IrContext::attribute_storage_manager() {
   return impl().registed_attribute_storage_manager_;
 }
 
@@ -245,7 +245,7 @@ AbstractAttribute *IrContext::GetRegisteredAbstractAttribute(TypeId id) {
   return nullptr;
 }
 
-TEST_API Dialect *IrContext::GetOrRegisterDialect(
+Dialect *IrContext::GetOrRegisterDialect(
     const std::string &dialect_name, std::function<Dialect *()> constructor) {
   VLOG(4) << "Try to get or register a Dialect of: [name=" << dialect_name
           << "].";
@@ -274,6 +274,7 @@ Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
   LOG(WARNING) << "No dialect registered for " << dialect_name;
   return nullptr;
 }
+
 
 void IrContext::RegisterAbstractType(pir::TypeId type_id,
                                      AbstractType &&abstract_type) {
@@ -324,7 +325,7 @@ const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
   return *abstract_type;
 }
 
-TEST_API const AbstractAttribute &AbstractAttribute::lookup(TypeId type_id,
+const AbstractAttribute &AbstractAttribute::lookup(TypeId type_id,
                                                    IrContext *ctx) {
   AbstractAttribute *abstract_attribute =
       ctx->impl().GetAbstractAttribute(type_id);
@@ -344,7 +345,7 @@ Float64Type Float64Type::get(IrContext *ctx) { return ctx->impl().fp64_type; }
 
 Int16Type Int16Type::get(IrContext *ctx) { return ctx->impl().int16_type; }
 
-TEST_API Int32Type Int32Type::get(IrContext *ctx) { return ctx->impl().int32_type; }
+Int32Type Int32Type::get(IrContext *ctx) { return ctx->impl().int32_type; }
 
 Int64Type Int64Type::get(IrContext *ctx) { return ctx->impl().int64_type; }
 

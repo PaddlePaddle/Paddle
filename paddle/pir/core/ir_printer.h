@@ -49,7 +49,7 @@ class IR_API IrPrinter : public BasicIrPrinter {
   void PrintProgram(const Program* program);
 
   /// @brief dispatch to custom printer function or PrintGeneralOperation
-  void PrintOperation(Operation* op);
+  TEST_API void PrintOperation(Operation* op);
   /// @brief print operation itself without its regions
   void PrintGeneralOperation(Operation* op);
   /// @brief print operation and its regions

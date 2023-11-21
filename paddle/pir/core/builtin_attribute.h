@@ -19,7 +19,7 @@
 #include "paddle/pir/core/utils.h"
 
 namespace pir {
-class IR_API BoolAttribute : public Attribute {
+class IR_API  BoolAttribute : public Attribute {
  public:
   using Attribute::Attribute;
 
@@ -82,7 +82,7 @@ class IR_API PointerAttribute : public Attribute {
   void* data() const;
 };
 
-class IR_API TypeAttribute : public Attribute {
+class IR_API TEST_API TypeAttribute : public Attribute {
  public:
   using Attribute::Attribute;
 
@@ -101,9 +101,9 @@ class IR_API StrAttribute : public Attribute {
 
   std::string AsString() const;
 
-  size_t size() const;
+  TEST_API size_t size() const;
 
-  static StrAttribute get(IrContext* ctx, const std::string& value);
+  TEST_API static StrAttribute get(IrContext* ctx, const std::string& value);
 };
 
 class IR_API ArrayAttribute : public Attribute {
