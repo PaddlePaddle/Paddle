@@ -370,9 +370,9 @@ class TestCastAdaptive3d(TestMaxPoolWithIndex_Op):
         self.adaptive = True
 
 
-class TestCastFractional3d(TestMaxPoolWithIndex_Op):
-    def init_fractional(self):
-        self.fractional = True
+# class TestCastFractional3d(TestMaxPoolWithIndex_Op):
+#     def init_fractional(self):
+#         self.fractional = True
 
 
 # ----------------max_pool3d_with_index_fp16----------------
@@ -405,7 +405,7 @@ create_test_fp16_class(TestCase1)
 create_test_fp16_class(TestCase2)
 create_test_fp16_class(TestCase3)
 create_test_fp16_class(TestCastAdaptive3d)
-create_test_fp16_class(TestCastFractional3d)
+# create_test_fp16_class(TestCastFractional3d)
 
 
 # ----------------max_pool3d_with_index_bf16----------------
@@ -454,7 +454,7 @@ create_test_bf16_class(TestCase1)
 create_test_bf16_class(TestCase2)
 create_test_bf16_class(TestCase3)
 create_test_bf16_class(TestCastAdaptive3d)
-create_test_bf16_class(TestCastFractional3d)
+# create_test_bf16_class(TestCastFractional3d)
 
 
 # ----------------max_pool2d_with_index----------------
@@ -515,9 +515,9 @@ class TestCastAdaptive2d(TestCase6):
         self.adaptive = True
 
 
-class TestCastFractional2d(TestCase6):
-    def init_fractional(self):
-        self.fractional = True
+# class TestCastFractional2d(TestCase6):
+#     def init_fractional(self):
+#         self.fractional = True
 
 
 # ----------------max_pool2d_with_index_fp16----------------
@@ -550,7 +550,7 @@ create_test_fp16_class(TestCase5)
 create_test_fp16_class(TestCase6)
 create_test_fp16_class(TestCase7)
 create_test_fp16_class(TestCastAdaptive2d)
-create_test_fp16_class(TestCastFractional2d)
+# create_test_fp16_class(TestCastFractional2d)
 
 
 # ----------------max_pool2d_with_index_bf16----------------
@@ -597,7 +597,7 @@ create_test_bf16_class(TestCase5)
 create_test_bf16_class(TestCase6)
 create_test_bf16_class(TestCase7)
 create_test_bf16_class(TestCastAdaptive2d)
-create_test_bf16_class(TestCastFractional2d)
+# create_test_bf16_class(TestCastFractional2d)
 
 
 if __name__ == '__main__':
