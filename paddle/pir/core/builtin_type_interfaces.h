@@ -54,7 +54,7 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   /// \brief kDynamic
   ///
-  static constexpr int64_t kDynamic = std::numeric_limits<int64_t>::min();
+  static constexpr int64_t kDynamic = -1;
 
   ShapedTypeInterface(Type type, Concept *impl)
       : TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
@@ -69,11 +69,6 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   std::vector<int64_t> GetDyShape() const;
   DDim GetShape() const;
-
-  ///
-  /// \brief kDynamic
-  ///
-  static constexpr int64_t kDynamic = -1;
 
   ///
   /// \brief Check whether this type is ranked, currently return true.

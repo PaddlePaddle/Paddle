@@ -31,6 +31,20 @@ Operation PlaceholderOp::Make(const std::string &name,
   return Operation(n);
 }
 
+Operation PlaceholderOp::Make(const std::string &name,
+                              const std::vector<Dim> &sym_shape,
+                              Type dtype) {
+  auto n = make_shared<PlaceholderOp>();
+  n->name = name;
+  n->sym_shape = sym_shape;
+  n->shape.reserve(sym_shape.size());
+  for (int i = 0; i < sym_shape.size(); i++) {
+    n->shape[i] = sym_shape[i]->dim_expr;
+  }
+  n->set_type(dtype);
+  return Operation(n);
+}
+
 const char *PlaceholderOp::func_type() const { return "placeholder_op"; }
 
 const char *ComputeOp::func_type() const { return "compute_op"; }

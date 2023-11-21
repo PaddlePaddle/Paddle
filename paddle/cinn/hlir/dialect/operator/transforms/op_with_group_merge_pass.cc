@@ -281,7 +281,8 @@ class OpFusionPassHelper {
   explicit OpFusionPassHelper(
       const std::vector<pir::Operation*>& op_list,
       const std::vector<pir::Operation*>& output_op_list = {},
-      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis)
+      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis =
+          nullptr)
       : shape_analysis_(shape_analysis) {
     // init fusion relation
     InitFusionRelation();
