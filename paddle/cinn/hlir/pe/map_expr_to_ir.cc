@@ -30,6 +30,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 
@@ -453,6 +454,16 @@ class MapExprToIrTranslator {
     VisitEachIteratorValue(op_expr, DoEach);
   }
 
+  bool IsExprVisited(const std::vector<ir::Expr>& visited_exprs,
+                     const ir::Expr& expr) const {
+    for (const auto& visit_expr : visited_exprs) {
+      if (ir::ir_utils::IRCompare(visit_expr, expr)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   IterExprs4TensorT MakeGetterIterExprs4Tensor(
       const OpExprStmt& op_expr_stmt,
       std::vector<std::pair<ir::Var, ir::Expr>>* binding_var2value) const {
@@ -467,8 +478,14 @@ class MapExprToIrTranslator {
         // Do nothing
       }
     });
+    std::vector<ir::Expr> visited_expr{};
     for (const auto& [_, pair] : value2var_expr) {
-      binding_var2value->push_back(pair);
+      if (!IsExprVisited(visited_expr, pair.second)) {
+        binding_var2value->push_back(pair);
+        visited_expr.push_back(pair.second);
+      } else {
+        // Do nothing
+      }
     }
     return [value2var_expr, this](const Tensor& tensor) {
       const List<Value>& iterator_values = TensorIteratorExpr4Tensor(tensor);
