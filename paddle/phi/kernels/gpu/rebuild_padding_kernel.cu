@@ -17,24 +17,7 @@
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 namespace {
-template <typename T>
-__global__ void RebuildPaddingKernel(T *output_data,
-                                     const T *input_data,
-                                     const int *padding_offset,
-                                     const int dim_embed) {
-  const int tid = threadIdx.x;
-  const int bid = blockIdx.x;
-  const int dst_seq_id = bid + padding_offset[bid];
-  const int src_seq_id = bid;
 
-  for (int i = tid; i < dim_embed; i += blockDim.x) {
-    output_data[dst_seq_id * dim_embed + i] =
-        input_data[src_seq_id * dim_embed + i];
-  }
-}
-}  // namespace
-
-namespace phi {
 constexpr int VEC_16B = 16;
 
 template <typename T, int VecSize>
@@ -60,6 +43,10 @@ __global__ void RebuildPaddingKernelImpl(T *output_data,
   }
 }
 
+}  // namespace
+
+namespace phi {
+
 template <typename T, typename Context>
 void RebuildPaddingKernel(const Context &dev_ctx,
                           const DenseTensor &x,
@@ -68,8 +55,6 @@ void RebuildPaddingKernel(const Context &dev_ctx,
                           const DenseTensor &input_ids,
                           DenseTensor *output) {
   dev_ctx.template Alloc<T>(output);
-
-  auto cu_stream = dev_ctx.stream();
 
   // 获取输入张量的维度信息
   const int token_num = x.dims()[0];
@@ -84,14 +69,15 @@ void RebuildPaddingKernel(const Context &dev_ctx,
   const int grid_size = (pack_num + blocksize - 1) / blocksize;
 
   // 调用 CUDA 内核
-  RebuildPaddingKernelImpl<T, PackSize><<<grid_size, blocksize, 0, cu_stream>>>(
-      reinterpret_cast<T *>(output->data<T>()),
-      reinterpret_cast<const T *>(x.data<T>()),
-      padding_offset.data<int>(),
-      seq_lens.data<int>(),
-      input_ids.dims()[1],
-      dim_embed,
-      elem_nums);
+  RebuildPaddingKernelImpl<T, PackSize>
+      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+          reinterpret_cast<T *>(output->data<T>()),
+          reinterpret_cast<const T *>(x.data<T>()),
+          padding_offset.data<int>(),
+          seq_lens.data<int>(),
+          input_ids.dims()[1],
+          dim_embed,
+          elem_nums);
 }
 
 }  // namespace phi
