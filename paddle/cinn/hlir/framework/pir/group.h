@@ -19,6 +19,7 @@
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/value.h"
 
 namespace cinn {
 namespace hlir {
@@ -52,7 +53,7 @@ struct Group {
   // output ops of the group.
   std::unordered_set<::pir::Operation*> output_ops;
   // op pattern kind.
-  OpPatternKind op_pattern_kind{kReduction};
+  OpPatternKind op_pattern_kind{kElementWise};
   // internal op, the output is used by multi-op.
   // internal op can't use compute inline, should use buffer.
   std::unordered_set<::pir::Operation*> internal_ops;
@@ -67,6 +68,7 @@ struct Group {
   // for op lowering.
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
+  std::vector<::pir::Value> output_values;
   std::string fn_name{""};
 
   struct SharedGroupHasher {

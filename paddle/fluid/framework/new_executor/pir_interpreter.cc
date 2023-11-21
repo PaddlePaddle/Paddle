@@ -188,7 +188,8 @@ PirInterpreter::PirInterpreter(
   value_exe_info_ = value_exe_info;
 
   std::stringstream ss;
-  ss << this;
+  ss << this
+     << std::chrono::high_resolution_clock::now().time_since_epoch().count();
   BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
@@ -636,27 +637,32 @@ void PirInterpreter::BuildInstruction() {
   size_t op_idx = 0;
   for (auto& op : *ir_block_) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
-    if (op->dialect()->name() == "builtin") {
-      if (interpreter::GetSpecialOpNames().count(op->name())) {
-        VLOG(6) << "skip process builtin dialect op: " << op->name();
+    if (op.dialect()->name() == "builtin") {
+      if (interpreter::GetSpecialOpNames().count(op.name())) {
+        VLOG(6) << "skip process builtin dialect op: " << op.name();
         continue;
       }
-    } else if (op->dialect()->name() == "cf") {
-      VLOG(6) << "skip process cf dialect op: " << op->name();
+    } else if (op.dialect()->name() == "cf") {
+      VLOG(6) << "skip process cf dialect op: " << op.name();
       continue;
-    } else if (op->dialect()->name() == "pd_op") {
-      if (op->isa<paddle::dialect::IfOp>()) {
+    } else if (op.dialect()->name() == "pd_op") {
+      if (op.isa<paddle::dialect::IfOp>()) {
         vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
-            op_idx++, place_, op, value_exe_info_.get()));
-      } else if (op->isa<paddle::dialect::WhileOp>()) {
-        vec_instruction_base_.emplace_back(std::make_unique<WhileInstruction>(
-            op_idx++, place_, op, scope_, local_scope_, value_exe_info_.get()));
+            op_idx++, place_, &op, value_exe_info_.get()));
+      } else if (op.isa<paddle::dialect::WhileOp>()) {
+        vec_instruction_base_.emplace_back(
+            std::make_unique<WhileInstruction>(op_idx++,
+                                               place_,
+                                               &op,
+                                               scope_,
+                                               local_scope_,
+                                               value_exe_info_.get()));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Now only support pd_kernel and cinn dialect."));
       }
-    } else if (op->dialect()->name() == "pd_kernel") {
-      auto op_name = op->attributes()
+    } else if (op.dialect()->name() == "pd_kernel") {
+      auto op_name = op.attributes()
                          .at("op_name")
                          .dyn_cast<::pir::StrAttribute>()
                          .AsString();
@@ -666,19 +672,19 @@ void PirInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (op->isa<paddle::dialect::LegacyKernelOp>()) {
+      if (op.isa<paddle::dialect::LegacyKernelOp>()) {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(
-                op_idx++, place_, op, *(value_exe_info_.get())));
+                op_idx++, place_, &op, *(value_exe_info_.get())));
       } else {
         vec_instruction_base_.emplace_back(
             std::make_unique<PhiKernelInstruction>(
-                op_idx++, place_, op, *(value_exe_info_.get())));
+                op_idx++, place_, &op, *(value_exe_info_.get())));
       }
 #ifdef PADDLE_WITH_CINN
-    } else if (op->dialect()->name() == "cinn_runtime") {
+    } else if (op.dialect()->name() == "cinn_runtime") {
       vec_instruction_base_.emplace_back(std::make_unique<CinnJitInstruction>(
-          op_idx++, place_, op, *(value_exe_info_.get())));
+          op_idx++, place_, &op, *(value_exe_info_.get())));
 #endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
