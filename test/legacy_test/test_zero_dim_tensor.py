@@ -25,6 +25,7 @@ from decorator_helper import prog_scope
 
 import paddle
 import paddle.nn.functional as F
+from paddle.pir_utils import test_with_pir_api
 
 unary_api_list = [
     paddle.nn.functional.elu,
@@ -5565,6 +5566,7 @@ class TestNoBackwardAPI(unittest.TestCase):
         out = paddle.randn(self.shape)
         self.assertEqual(out.shape, [2, 3, 4])
 
+    @test_with_pir_api
     def test_randint_and_randint_like(self):
         out = paddle.randint(-10, 10, [])
         self.assertEqual(out.shape, [])
@@ -5808,6 +5810,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
 
+    @test_with_pir_api
     def test_randint_and_randint_like(self):
         out1 = paddle.randint(-10, 10, [])
         out2 = paddle.randint_like(out1, -10, 10)
