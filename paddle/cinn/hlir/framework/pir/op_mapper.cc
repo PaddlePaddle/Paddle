@@ -25,9 +25,7 @@ namespace pir {
 
 namespace {
 
-void AppendAttrForReduceOp(const ::pir::Operation& op,
-                           utils::AttributeMap& attrs) {  // NOLINT
-  auto attr = op.attributes().at("dim");
+std::vector<int> GetVec32FromVec64Attr(::pir::Attribute attr) {
   auto attr_vec = attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
 
   std::vector<int> dim;
@@ -35,45 +33,62 @@ void AppendAttrForReduceOp(const ::pir::Operation& op,
     dim.push_back(vec_element.dyn_cast<::pir::Int64Attribute>().data());
   }
 
-  attrs["dim"] = dim;
+  return dim;
+}
+
+void AppendAttrForReduceOp(const ::pir::Operation& op,
+                           utils::AttributeMap& attrs) {  // NOLINT
+  auto attr = op.attributes().at("dim");
+  attrs["dim"] = GetVec32FromVec64Attr(attr);
+}
+
+void AppendAttrForTransposeOp(const ::pir::Operation& op,
+                              utils::AttributeMap& attrs) {  // NOLINT
+  auto attr = op.attributes().at("perm");
+
+  auto attr_vec = attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
+
+  std::vector<int> dim;
+  for (auto vec_element : attr_vec) {
+    dim.push_back(vec_element.dyn_cast<::pir::Int32Attribute>().data());
+  }
+
+  attrs["axis"] = dim;
 }
 
 void AppendAttrForUniformOp(const ::pir::Operation& op,
                             utils::AttributeMap& attrs) {  // NOLINT
   auto attr = op.attributes().at("shape");
-  auto attr_vec = attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
 
-  std::vector<int> shape;
-  for (auto vec_element : attr_vec) {
-    shape.push_back(vec_element.dyn_cast<::pir::Int64Attribute>().data());
-  }
-
-  attrs["shape"] = shape;
+  attrs["shape"] = GetVec32FromVec64Attr(attr);
   attrs["dtype"] = "float32";
 }
 
 void AppendAttrForBoadcastToOp(const ::pir::Operation& op,
                                utils::AttributeMap& attrs) {  // NOLINT
   auto axes_attr = op.attributes().at("broadcast_axes");
-  auto attr_vec = axes_attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
-
-  std::vector<int> axis;
-  for (auto vec_element : attr_vec) {
-    axis.push_back(vec_element.dyn_cast<::pir::Int64Attribute>().data());
-  }
-
-  attrs["broadcast_axes"] = axis;
+  attrs["broadcast_axes"] = GetVec32FromVec64Attr(axes_attr);
 
   auto out_shape_attr = op.attributes().at("out_shape");
-  auto out_shape_attr_vec =
-      out_shape_attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
+  attrs["out_shape"] = GetVec32FromVec64Attr(out_shape_attr);
+}
 
-  std::vector<int> out_shape;
-  for (auto vec_element : out_shape_attr_vec) {
-    out_shape.push_back(vec_element.dyn_cast<::pir::Int64Attribute>().data());
-  }
+void AppendAttrForSliceOp(const ::pir::Operation& op,
+                          utils::AttributeMap& attrs) {  // NOLINT
+  auto axes_attr = op.attributes().at("axes");
+  attrs["axes"] = GetVec32FromVec64Attr(axes_attr);
 
-  attrs["out_shape"] = out_shape;
+  auto starts_attr = op.attributes().at("starts");
+  attrs["starts"] = GetVec32FromVec64Attr(starts_attr);
+
+  auto ends_attr = op.attributes().at("ends");
+  attrs["ends"] = GetVec32FromVec64Attr(ends_attr);
+
+  auto infer_flags_attr = op.attributes().at("infer_flags");
+  attrs["infer_flags"] = GetVec32FromVec64Attr(infer_flags_attr);
+
+  auto decrease_axis_attr = op.attributes().at("decrease_axis");
+  attrs["decrease_axis"] = GetVec32FromVec64Attr(decrease_axis_attr);
 }
 
 }  // namespace
@@ -86,6 +101,9 @@ void AppendAttrForBoadcastToOp(const ::pir::Operation& op,
 #define REGISTER_ATTR_RULE(OP, func) \
   attr_funcs_[cinn::dialect::OP::name()] = func;
 
+#define REGISTER_PD_ATTR_RULE(OP, func) \
+  attr_funcs_[paddle::dialect::OP::name()] = func;
+
 void OpMapper::RegisterMapRules() {
   // max(x, dim) -> reduce_max(x)
   REGISTER_OPERAND_RULE(MaxOp, 0);
@@ -96,6 +114,8 @@ void OpMapper::RegisterMapRules() {
   REGISTER_ATTR_RULE(ReduceSumOp, AppendAttrForReduceOp);
   REGISTER_ATTR_RULE(BroadcastOp, AppendAttrForBoadcastToOp);
   REGISTER_ATTR_RULE(UniformRandomOp, AppendAttrForUniformOp);
+  REGISTER_PD_ATTR_RULE(TransposeOp, AppendAttrForTransposeOp);
+  REGISTER_ATTR_RULE(SliceOp, AppendAttrForSliceOp);
 }
 
 }  // namespace pir

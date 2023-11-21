@@ -14,22 +14,28 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+=======
+>>>>>>> efdbd8b20cf8e545d269adb36d3b0df9e7b304a1
+    #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/kernel_registry.h"
+<<<<<<< HEAD
+    #include "paddle/phi/common/place.h"
+=======
+>>>>>>> efdbd8b20cf8e545d269adb36d3b0df9e7b304a1
+    #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
-PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+    PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
@@ -120,8 +126,8 @@ TEST(if_op_test, network_with_backward) {
   auto x = builder.Build<FullOp>(std::vector<int64_t>{2, 2}, 1.0f).out();
   auto y = builder.Build<FullOp>(std::vector<int64_t>{2, 2}, 2.0f).out();
   auto cond = builder.Build<LessThanOp>(x, y).out();
-  auto [stack_0, inlet_0, outlet_0] = builder.Build<pir::CreateStackOp>().out();
-  auto [stack_1, inlet_1, outlet_1] = builder.Build<pir::CreateStackOp>().out();
+  auto [stack_0, inlet_0, outlet_0] = builder.Build<pir::StackCreateOp>().out();
+  auto [stack_1, inlet_1, outlet_1] = builder.Build<pir::StackCreateOp>().out();
   (void)(stack_0);
   (void)(stack_1);
 
@@ -130,15 +136,15 @@ TEST(if_op_test, network_with_backward) {
   builder.SetInsertionPointToStart(if_op.true_block());
   auto local1_z = builder.Build<AddOp>(x, y).out();
   auto local1_w = builder.Build<AddOp>(local1_z, y).out();
-  builder.Build<pir::PushBackOp>(inlet_0,
-                                 std::initializer_list<pir::Value>{local1_z});
+  builder.Build<pir::TuplePushOp>(inlet_0,
+                                  std::initializer_list<pir::Value>{local1_z});
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{local1_w});
 
   builder.SetInsertionPointToStart(if_op.false_block());
   auto local2_z = builder.Build<MatmulOp>(x, y).out();
   auto local2_w = builder.Build<MatmulOp>(local2_z, y).out();
-  builder.Build<pir::PushBackOp>(inlet_1,
-                                 std::initializer_list<pir::Value>{local2_z});
+  builder.Build<pir::TuplePushOp>(inlet_1,
+                                  std::initializer_list<pir::Value>{local2_z});
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{local2_w});
 
   builder.SetInsertionPointToEnd(block);
@@ -151,7 +157,8 @@ TEST(if_op_test, network_with_backward) {
 
   // construct the true block of if_grad
   builder.SetInsertionPointToStart(if_grad.true_block());
-  auto pop_local1_z = builder.Build<pir::PopBackOp>(outlet_0).outlet_element(0);
+  auto pop_local1_z =
+      builder.Build<pir::TuplePopOp>(outlet_0).outlet_element(0);
   auto local1_add_grad_op = builder.Build<AddGradOp>(pop_local1_z, y, out_grad);
   auto pop_local1_z_grad = local1_add_grad_op.x_grad(),
        local1_y_grad_0 = local1_add_grad_op.y_grad();
@@ -165,7 +172,8 @@ TEST(if_op_test, network_with_backward) {
 
   // construct the false block of if_grad
   builder.SetInsertionPointToStart(if_grad.false_block());
-  auto pop_local2_z = builder.Build<pir::PopBackOp>(outlet_1).outlet_element(0);
+  auto pop_local2_z =
+      builder.Build<pir::TuplePopOp>(outlet_1).outlet_element(0);
   auto local2_matmul_grad_op =
       builder.Build<MatmulGradOp>(pop_local2_z, y, out_grad);
   auto pop_local2_z_grad = local2_matmul_grad_op.x_grad(),
@@ -185,6 +193,7 @@ TEST(if_op_test, network_with_backward) {
   LOG(INFO) << program;
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+<<<<<<< HEAD
 
   auto place = paddle::platform::CPUPlace();
   paddle::framework::Scope scope;
@@ -195,4 +204,6 @@ TEST(if_op_test, network_with_backward) {
   //   test_core.SetSkipGcVars({out_name});
 
   //   test_core.Run({});
+=======
+>>>>>>> efdbd8b20cf8e545d269adb36d3b0df9e7b304a1
 }

@@ -17,6 +17,7 @@
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/core/op_trait.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_interface.h"
 
 namespace pir {
 class IR_API YieldOp : public Op<YieldOp, SideEffectTrait> {
@@ -31,37 +32,14 @@ class IR_API YieldOp : public Op<YieldOp, SideEffectTrait> {
                     const std::vector<Value> &Value);
   void VerifySig() {}
 };
-class PushBackOp;
-class PopBackOp;
-class IR_API CreateStackOp : public Op<CreateStackOp> {
+
+///
+/// \brief Push a value tuple to a container.
+///
+class IR_API TuplePushOp : public Op<TuplePushOp, SideEffectTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "cf.create_stack"; }
-  static constexpr uint32_t attributes_num = 0;
-  static constexpr const char **attributes_name = nullptr;
-  static void Build(Builder &builder,              // NOLINT
-                    OperationArgument &argument);  // NOLINT
-  void VerifySig();
-
-  Value stack() { return result(0); }
-  Value inlet() { return result(1); }
-  Value outlet() { return result(2); }
-  std::tuple<Value, Value, Value> out() { return {stack(), inlet(), outlet()}; }
-
-  size_t stack_size();
-  uint32_t num_elements();
-  Value inlet_element(size_t index);
-  Value outlet_element(size_t index);
-  PushBackOp push_op();
-  PopBackOp pop_op();
-
-  void Print(pir::IrPrinter &printer);  // NOLINT
-};
-
-class IR_API PushBackOp : public Op<PushBackOp, SideEffectTrait> {
- public:
-  using Op::Op;
-  static const char *name() { return "cf.push_back"; }
+  static const char *name() { return "cf.tuple_push"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
 
@@ -75,23 +53,25 @@ class IR_API PushBackOp : public Op<PushBackOp, SideEffectTrait> {
                     std::initializer_list<Value> element_list);
   void VerifySig();
 
-  Value stack() { return create_op().stack(); }
+  Value container() { return container_interface().container(); }
   Value inlet() { return operand_source(0); }
-  Value outlet() { return create_op().outlet(); }
-  size_t stack_size();
+  Value outlet() { return container_interface().outlet(); }
   uint32_t num_elements() { return num_operands() - 1u; }
+  size_t tuple_size();
   Value inlet_element(size_t index) { return operand_source(index + 1u); }
   Value outlet_element(size_t index) {
-    return create_op().outlet_element(index);
+    return container_interface().outlet_element(index);
   }
-  CreateStackOp create_op() { return inlet().defining_op<CreateStackOp>(); }
-  PopBackOp pop_op();
+  ContainerOpInterface container_interface() {
+    return inlet().defining_op<ContainerOpInterface>();
+  }
+  TuplePopOp tuple_pop_op();
 };
 
-class IR_API PopBackOp : public Op<PopBackOp> {
+class IR_API TuplePopOp : public Op<TuplePopOp, SideEffectTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "cf.pop_back"; }
+  static const char *name() { return "cf.tuple_pop"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
 
@@ -100,16 +80,19 @@ class IR_API PopBackOp : public Op<PopBackOp> {
                     Value outlet);
   void VerifySig();
 
-  Value stack() { return create_op().stack(); }
-  Value inlet() { return create_op().inlet(); }
+  Value container() { return container_interface().container(); }
+  Value inlet() { return container_interface().inlet(); }
   Value outlet() { return operand_source(0); }
-
-  size_t stack_size() { return num_results(); }
   uint32_t num_elements() { return create_op().num_elements(); }
-  Value inlet_element(size_t index) { return push_op().inlet_element(index); }
+  size_t tuple_size() { return num_results(); }
+  Value inlet_element(size_t index) {
+    return tuple_push_op().inlet_element(index);
+  }
   Value outlet_element(size_t index) { return result(index); }
-  CreateStackOp create_op() { return outlet().defining_op<CreateStackOp>(); }
-  PushBackOp push_op() { return create_op().push_op(); }
+  ContainerOpInterface container_interface() {
+    return outlet().defining_op<ContainerOpInterface>();
+  }
+  TuplePushOp tuple_push_op() { return container_interface().tuple_push_op(); }
 };
 
 class IR_API HasElementsOp : public Op<HasElementsOp> {
@@ -125,11 +108,34 @@ class IR_API HasElementsOp : public Op<HasElementsOp> {
   void VerifySig();
   Value out() { return result(0); }
 };
+class IR_API StackCreateOp : public Op<StackCreateOp, ContainerOpInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "cf.stack_create"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+  static void Build(Builder &builder,              // NOLINT
+                    OperationArgument &argument);  // NOLINT
+  void VerifySig();
 
+  Value container() { return result(0); }
+  Value stack() { return result(0); }
+  Value inlet() { return result(1); }
+  Value outlet() { return result(2); }
+  std::tuple<Value, Value, Value> out() { return {stack(), inlet(), outlet()}; }
+
+  size_t tuple_size();
+  Value inlet_element(size_t index);
+  Value outlet_element(size_t index);
+  TuplePushOp tuple_push_op();
+  TuplePopOp tuple_pop_op();
+
+  void Print(pir::IrPrinter &printer);  // NOLINT
+};
 }  // namespace pir
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::YieldOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::CreateStackOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::PushBackOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::PopBackOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::StackCreateOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::TuplePushOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::TuplePopOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::HasElementsOp);
