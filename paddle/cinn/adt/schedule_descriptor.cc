@@ -23,7 +23,7 @@ namespace cinn::adt {
 
 namespace {
 
-const std::vector<int32_t>& GetTensorShape(const Tensor& tensor) {
+std::vector<int32_t> GetTensorShape(const Tensor& tensor) {
   CHECK(tensor.Has<adapter::Tensor>());
   return tensor.Get<adapter::Tensor>().GetShape();
 }
@@ -50,7 +50,7 @@ LoopDescriptors MakeNaiveScheduleDescriptor(
   const Tensor& tensor = igroup->anchor_tensor();
 
   List<LoopDescriptor> ret{};
-  const auto tensor_shape = GetTensorShape(tensor);
+  const std::vector<int32_t> tensor_shape = GetTensorShape(tensor);
   for (int32_t dim : tensor_shape) {
     ret->emplace_back(LoopDescriptor{Temporal{}, dim});
   }

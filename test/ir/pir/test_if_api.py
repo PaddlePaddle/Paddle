@@ -15,6 +15,7 @@
 import unittest
 
 import paddle
+from paddle.base.libpaddle.pir import get_used_external_value
 
 paddle.enable_static()
 
@@ -39,11 +40,11 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             x = paddle.static.data(name="x", shape=[6, 1], dtype="float32")
             y = paddle.static.data(name="y", shape=[6, 1], dtype="float32")
             out = paddle.static.nn.cond(x < y, lambda: x + y, lambda: x - y)
-        self.assertEqual(
-            out[0].get_defining_op().name(),
-            "pd_op.if",
-        )
+        if_op = out[0].get_defining_op()
+        self.assertEqual(if_op.name(), "pd_op.if")
         self.assertEqual(len(out), 1)
+        value_list = get_used_external_value(if_op)
+        print(value_list)
 
     def test_if_with_multiple_output(self):
         main_program = paddle.static.Program()

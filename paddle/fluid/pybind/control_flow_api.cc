@@ -19,26 +19,38 @@
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
+#include <unordered_set>
+#include <vector>
 
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/pir/core/op_result.h"
+#include "paddle/pir/core/operation.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
+using paddle::dialect::IfOp;
+using pir::Block;
+using pir::Builder;
+using pir::Operation;
+using pir::Region;
+using pir::Type;
+using pir::Value;
 using pir::YieldOp;
 using pybind11::return_value_policy;
 
-namespace paddle {
-namespace pybind {
-
-class PyIfOp : public dialect::IfOp {
+namespace {
+class PyIfOp : public IfOp {
  public:
-  explicit PyIfOp(dialect::IfOp if_op);
+  explicit PyIfOp(IfOp if_op);
   void UpdateOutput();
 };
 
-PyIfOp::PyIfOp(dialect::IfOp if_op) : IfOp(if_op) {
+PyIfOp::PyIfOp(IfOp if_op) : IfOp(if_op) {
   PADDLE_ENFORCE_NOT_NULL(
       if_op,
       paddle::platform::errors::InvalidArgument(
@@ -50,32 +62,31 @@ void PyIfOp::UpdateOutput() {
       *this,
       paddle::platform::errors::InvalidArgument(
           "The if_op in PyIfOp used to update output can't be nullptr"));
-  auto block = (*this)->GetParent();
+  auto block = parent();
   PADDLE_ENFORCE_NOT_NULL(block,
                           paddle::platform::errors::InvalidArgument(
                               "The parent block of if_op which used to update "
                               "output can't be nullptr"));
-  pir::Block::Iterator iter = **this;
-  pir::Builder builder(ir_context(), false);
-  auto new_if_op = builder.Build<dialect::IfOp>(
+  Block::Iterator iter = **this;
+  Builder builder(ir_context(), false);
+  auto new_if_op = builder.Build<IfOp>(
       cond(), true_region().TakeBack(), false_region().TakeBack());
   block->Assign(iter, new_if_op);
   IfOp::operator=(new_if_op);
   VerifyRegion();
 }
 
-PyIfOp BuildPyIfOp(pir::Value cond) {
-  return PyIfOp(
-      dialect::ApiBuilder::Instance().GetBuilder()->Build<dialect::IfOp>(
-          cond, std::vector<pir::Type>{}));
+PyIfOp BuildPyIfOp(Value cond) {
+  return PyIfOp(ApiBuilder::Instance().GetBuilder()->Build<IfOp>(
+      cond, std::vector<Type>{}));
 }
 
-void BindIfOp(py::module *m) {
+void BindIfOp(py::module* m) {
   m->def("build_if_op", BuildPyIfOp);
   m->def("cf_yield", [](py::list inputs) {
-    std::vector<pir::Value> input_values;
+    std::vector<Value> input_values;
     for (auto input : inputs) {
-      input_values.push_back(input.cast<pir::Value>());
+      input_values.push_back(input.cast<Value>());
     }
     ApiBuilder::Instance().GetBuilder()->Build<YieldOp>(input_values);
   });
@@ -87,7 +98,7 @@ void BindIfOp(py::module *m) {
   if_op.def("true_block", &PyIfOp::true_block, return_value_policy::reference)
       .def("false_block", &PyIfOp::false_block, return_value_policy::reference)
       .def("update_output", &PyIfOp::UpdateOutput)
-      .def("results", [](PyIfOp &self) -> py::list {
+      .def("results", [](PyIfOp& self) -> py::list {
         py::list op_list;
         for (uint32_t i = 0; i < self->num_results(); i++) {
           op_list.append(self.result(i));
@@ -95,6 +106,49 @@ void BindIfOp(py::module *m) {
         return op_list;
       });
 }
-void BindControlFlowApi(py::module *m) { BindIfOp(m); }
+
+void GetUsedExternalValueImpl(
+    std::unordered_set<Value>& defined_values,  // NOLINT
+    std::vector<Value>& used_values,            // NOLINT
+    const Operation& op) {
+  for (size_t index = 0; index < op.num_operands(); ++index) {
+    Value value = op.operand_source(index);
+    if (defined_values.find(value) == defined_values.end()) {
+      used_values.push_back(value);
+      defined_values.insert(value);
+    }
+  }
+  for (auto& region : op) {
+    for (auto& block : region) {
+      for (auto value : block.args()) {
+        defined_values.insert(value);
+      }
+    }
+    for (auto& block : region) {
+      for (auto& inner_op : block) {
+        GetUsedExternalValueImpl(defined_values, used_values, inner_op);
+      }
+    }
+  }
+  for (size_t index = 0; index < op.num_results(); ++index) {
+    defined_values.insert(op.result(index));
+  }
+}
+
+std::vector<Value> GetUsedExternalValue(const Operation& op) {
+  std::unordered_set<Value> defined_values{nullptr};
+  std::vector<Value> used_values;
+  GetUsedExternalValueImpl(defined_values, used_values, op);
+  return used_values;
+}
+
+}  // namespace
+
+namespace paddle {
+namespace pybind {
+void BindControlFlowApi(py::module* m) {
+  m->def("get_used_external_value", GetUsedExternalValue);
+  BindIfOp(m);
+}
 }  // namespace pybind
 }  // namespace paddle
