@@ -579,7 +579,7 @@ class DygraphShardingOptimizerV2:
         self.comm_overlap = sharding_configs.comm_overlap
 
         self._build_comm_buffers(
-            comm_group, acc_steps, group_size=128 * 1024 * 1024
+            comm_group, acc_steps, group_size=256 * 1024 * 1024
         )
         # NOTE(shenliang03): Sort the comm_buffers by dst rank,
         # it will improve the performance in reduce communicate. Default
