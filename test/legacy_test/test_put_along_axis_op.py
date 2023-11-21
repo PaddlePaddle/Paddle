@@ -61,7 +61,7 @@ class TestPutAlongAxisOp(OpTest):
         self.x_shape = (10, 10, 10)
         self.value_type = "float64"
         self.value = np.array([99]).astype(self.value_type)
-        self.index_type = "int32"
+        self.index_type = "int64"
         self.index = np.array([[[0]]]).astype(self.index_type)
         self.axis = 1
         self.axis_type = "int64"
@@ -379,6 +379,36 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
 
         for place in self.place:
             run(place)
+
+    def test_error(self):
+        tensorx = paddle.to_tensor([[1, 2, 3], [4, 5, 6]]).astype("float32")
+        indices = paddle.to_tensor([1]).astype("int32")
+        values = paddle.to_tensor([2])
+        # len(arr.shape) != len(indices.shape)
+        try:
+            res = paddle.put_along_axis(tensorx, indices, 1.0, 0)
+        except Exception as error:
+            self.assertIsInstance(error, ValueError)
+        indices = paddle.to_tensor([[1]]).astype("int32")
+        # len(values.shape) != len(indices.shape)
+        try:
+            res = paddle.put_along_axis(tensorx, indices, values, 0)
+        except Exception as error:
+            self.assertIsInstance(error, ValueError)
+        indices = paddle.to_tensor(
+            [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]
+        ).astype("int32")
+        # indices too large
+        try:
+            res = paddle.put_along_axis(tensorx, indices, 1.0, 0)
+        except Exception as error:
+            self.assertIsInstance(error, RuntimeError)
+        indices = paddle.to_tensor([[10]]).astype("int32")
+        # the element of indices out of range
+        try:
+            res = paddle.put_along_axis(tensorx, indices, 1.0, 0)
+        except Exception as error:
+            self.assertIsInstance(error, RuntimeError)
 
 
 if __name__ == "__main__":

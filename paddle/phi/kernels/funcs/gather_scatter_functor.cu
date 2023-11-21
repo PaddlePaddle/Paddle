@@ -58,19 +58,19 @@ template <typename tensor_t,
           typename index_t,
           typename func_t,
           bool is_scatter_like = true>
-__global__ void GatherScatterAssignGPUKernel(tensor_t* self_data,
-                                             int dim,
-                                             const index_t* index_data,
-                                             tensor_t* src_data,
-                                             int select_dim_size,
-                                             int self_select_dim_size,
-                                             int src_select_dim_size,
-                                             int64_t outer_dim_size,
-                                             int64_t outer_dim_size_self,
-                                             int64_t outer_dim_size_src,
-                                             int64_t numel,
-                                             int64_t numel_data,
-                                             const func_t& reduce_op) {
+__global__ void ScatterAssignGPUKernel(tensor_t* self_data,
+                                       int dim,
+                                       const index_t* index_data,
+                                       tensor_t* src_data,
+                                       int select_dim_size,
+                                       int self_select_dim_size,
+                                       int src_select_dim_size,
+                                       int64_t outer_dim_size,
+                                       int64_t outer_dim_size_self,
+                                       int64_t outer_dim_size_src,
+                                       int64_t numel,
+                                       int64_t numel_data,
+                                       const func_t& reduce_op) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
   extern __shared__ int thread_ids[];
@@ -131,19 +131,19 @@ template <typename tensor_t,
           typename index_t,
           typename func_t,
           bool is_scatter_like = true>
-__global__ void GatherScatterAddOrMulGPUKernel(tensor_t* self_data,
-                                               int dim,
-                                               const index_t* index_data,
-                                               tensor_t* src_data,
-                                               int select_dim_size,
-                                               int self_select_dim_size,
-                                               int src_select_dim_size,
-                                               int64_t outer_dim_size,
-                                               int64_t outer_dim_size_self,
-                                               int64_t outer_dim_size_src,
-                                               int64_t numel,
-                                               int64_t numel_data,
-                                               const func_t& reduce_op) {
+__global__ void GatherScatterGPUKernel(tensor_t* self_data,
+                                       int dim,
+                                       const index_t* index_data,
+                                       tensor_t* src_data,
+                                       int select_dim_size,
+                                       int self_select_dim_size,
+                                       int src_select_dim_size,
+                                       int64_t outer_dim_size,
+                                       int64_t outer_dim_size_self,
+                                       int64_t outer_dim_size_src,
+                                       int64_t numel,
+                                       int64_t numel_data,
+                                       const func_t& reduce_op) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
   int64_t i, j, k;  // The i, j, k here is the index of the 3 layers loop
@@ -234,11 +234,10 @@ struct gpu_gather_scatter_functor {
     int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
     int64_t grid = (n + block - 1) / block;
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
-    if (method_name == "gather_out_gpu" ||
-        method_name == "scatter_assign_gpu") {
+    if (method_name == "scatter_assign_gpu") {
       int shared_mem_size =
           is_scatter_like ? sizeof(int) * self_size : sizeof(int) * index_size;
-      GatherScatterAssignGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
+      ScatterAssignGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
           <<<grid, block, shared_mem_size, stream>>>(self_data,
                                                      dim,
                                                      index_data,
@@ -253,7 +252,7 @@ struct gpu_gather_scatter_functor {
                                                      self_size,
                                                      reduce_op);
     } else {
-      GatherScatterAddOrMulGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
+      GatherScatterGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
           <<<grid, block, 0, stream>>>(self_data,
                                        dim,
                                        index_data,
