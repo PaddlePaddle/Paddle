@@ -59,6 +59,7 @@ PRIM_VJP = [
     'sum_grad',
     'cast_grad',
     'add_grad',
+    'subtract_grad',
     'multiply_grad',
     'elementwise_pow_grad',
     'reshape_grad',
@@ -73,6 +74,7 @@ PRIM_VJP = [
     'gather_nd_grad',
     'pad_grad',
     'max_grad',
+    'maximum_grad',
     'slice_grad',
     'tile_grad',
 ]  # vjp list of primitive op

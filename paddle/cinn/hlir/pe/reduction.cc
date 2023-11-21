@@ -1082,20 +1082,20 @@ std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
   CHECK_NOTNULL(tensor.as_tensor());
   if (op.As<ir::Add>()) {
     return "cinn_block_reduce_sum" +
-           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal";
+           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Mul>()) {
     return "cinn_block_reduce_prod" +
-           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal";
+           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Max>()) {
     return "cinn_block_reduce_max" +
-           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal";
+           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Min>()) {
     return "cinn_block_reduce_min" +
-           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal";
+           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::And>()) {
-    return "cinn_block_reduce_all_internal";
+    return "cinn_block_reduce_all_internal_shm";
   } else if (op.As<ir::Or>()) {
-    return "cinn_block_reduce_any_internal";
+    return "cinn_block_reduce_any_internal_shm";
   } else {
     LOG(FATAL) << "Reduce type: " << op << " Not supported yet!";
   }

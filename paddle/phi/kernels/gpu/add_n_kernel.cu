@@ -87,16 +87,10 @@ void AddNKernel(const Context &dev_ctx,
   };
   auto *out_ptr = dev_ctx.template Alloc<T>(out);
   bool in_place = false;
+
   if (x.size() > 0 && x[0]->initialized() && DenseTensor::classof(x[0])) {
     if ((static_cast<const DenseTensor *>(x[0]))->data() == out->data()) {
       in_place = true;
-    }
-  }
-
-  if (!in_place && in_num >= 1 && DenseTensor::classof(x[0])) {
-    auto &in_0_tensor = *(static_cast<const DenseTensor *>(x[0]));
-    if (in_0_tensor.numel() > 0) {
-      in_place = (in_0_tensor.data<T>() == out_ptr);
     }
   }
 
@@ -240,7 +234,9 @@ PD_REGISTER_KERNEL(add_n,
                    int,
                    phi::dtype::bfloat16,
                    phi::dtype::float16,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(add_n_array,
                    GPU,
@@ -251,4 +247,6 @@ PD_REGISTER_KERNEL(add_n_array,
                    int,
                    phi::dtype::bfloat16,
                    phi::dtype::float16,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

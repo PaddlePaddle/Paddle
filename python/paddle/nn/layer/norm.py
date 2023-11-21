@@ -532,7 +532,7 @@ class GroupNorm(Layer):
             )
 
     def forward(self, input):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.group_norm(
                 input,
                 self.weight,

@@ -21,8 +21,8 @@ import paddle
 class TestAddnOp(unittest.TestCase):
     def setUp(self):
         np.random.seed(20)
-        l = 32
-        self.x_np = np.random.random([l, 16, 256])
+        self.l = 32
+        self.x_np = np.random.random([self.l, 16, 256])
 
     def check_main(self, x_np, dtype, axis=None):
         paddle.disable_static()
@@ -33,10 +33,10 @@ class TestAddnOp(unittest.TestCase):
             x.append(val)
         y = paddle.add_n(x)
         x_g = paddle.grad(y, x)
-        y_np = y.numpy().astype('float32')
+        y_np = y.numpy().astype(dtype)
         x_g_np = []
         for val in x_g:
-            x_g_np.append(val.numpy().astype('float32'))
+            x_g_np.append(val.numpy().astype(dtype))
         paddle.enable_static()
         return y_np, x_g_np
 
@@ -53,11 +53,17 @@ class TestAddnOp(unittest.TestCase):
     def test_add_n_api(self):
         if not paddle.is_compiled_with_cuda():
             return
+        dtypes = ['float32', 'complex64', 'complex128']
+        for dtyte in dtypes:
+            if dtyte == 'complex64' or dtyte == 'complex128':
+                self.x_np = (
+                    np.random.random([self.l, 16, 256])
+                    + 1j * np.random.random([self.l, 16, 256])
+                ).astype(dtyte)
 
-        y_np_32, x_g_np_32 = self.check_main(self.x_np, 'float32')
-        y_np_gt = np.sum(self.x_np, axis=0).astype('float32')
-
-        np.testing.assert_allclose(y_np_32, y_np_gt, rtol=1e-06)
+            y_np_32, x_g_np_32 = self.check_main(self.x_np, dtyte)
+            y_np_gt = np.sum(self.x_np, axis=0).astype(dtyte)
+            np.testing.assert_allclose(y_np_32, y_np_gt, rtol=1e-06)
 
 
 if __name__ == "__main__":
