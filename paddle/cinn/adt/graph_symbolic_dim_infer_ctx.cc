@@ -466,7 +466,9 @@ SymbolicDim GetOrNewSymbolicDim(
 
 std::unordered_map<DimVar, const DimExpr> MakeEquationStartExpr(
     const cinn::hlir::framework::pir::Group* group,
-    const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis) {
+    const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis,
+    std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>*
+        map_expr_symbolic2dialect_symbolic) {
   std::unordered_map<DimVar, const DimExpr> ret{};
   std::unordered_set<std::string> output_names = GetAllOutputNames(group->ops);
   List<::pir::Value> feed_tensors = GetFeedList(group->ops, output_names);
@@ -484,6 +486,9 @@ std::unordered_map<DimVar, const DimExpr> MakeEquationStartExpr(
             tensor_dim, tensor_dim2symbolic_Dim, shape_analysis);
         CHECK(ret.emplace(tensor_dim, symbolic_dim).second);
         CHECK(tensor_dim2symbolic_Dim.emplace(tensor_dim, symbolic_dim).second);
+        map_expr_symbolic2dialect_symbolic->emplace(
+            symbolic_dim,
+            GetSymbolicDimOp4TensorDim(tensor_dim, shape_analysis));
       } else {
         LOG(FATAL) << "Dead code. Invalid tensor shape = " << shape.at(i);
       }
@@ -653,7 +658,8 @@ void GraphSymbolicDimInferCtx::InitTensorDimExpr() {
   DimFunctions dim_functions =
       BuildGraphShapeDialectConstraints(group_, group_->shape_analysis);
   std::unordered_map<DimVar, const DimExpr> equation_start =
-      MakeEquationStartExpr(group_, group_->shape_analysis);
+      MakeEquationStartExpr(
+          group_, group_->shape_analysis, &map_expr_symbolic2dialect_symbolic_);
 
   tensor2dim_exprs_ =
       SolveShapeDialectConstraints(group_, dim_functions, equation_start);

@@ -135,8 +135,8 @@ std::shared_ptr<pir::ShapeConstraintIRAnalysis> CreateShapeAnalysis(
 
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
-    if ((*it)->isa<cinn::dialect::GroupOp>()) {
-      auto group_op = (*it)->dyn_cast<cinn::dialect::GroupOp>();
+    if ((*it).isa<cinn::dialect::GroupOp>()) {
+      auto group_op = (*it).dyn_cast<cinn::dialect::GroupOp>();
       for (auto* op : group_op.ops()) {
         if (op->isa<paddle::dialect::ExpOp>()) {
           exp_sym_vec = shape_analysis->GetOrCreateSymbolicDimsForRankedValue(
@@ -149,8 +149,8 @@ std::shared_ptr<pir::ShapeConstraintIRAnalysis> CreateShapeAnalysis(
         }
       }
     }
-    if ((*it)->isa<paddle::dialect::DataOp>()) {
-      auto op = (*it)->dyn_cast<paddle::dialect::DataOp>();
+    if ((*it).isa<paddle::dialect::DataOp>()) {
+      auto op = (*it).dyn_cast<paddle::dialect::DataOp>();
       datas_sym_vec.emplace_back(
           shape_analysis->GetOrCreateSymbolicDimsForRankedValue(op->result(0)));
     }

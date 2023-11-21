@@ -21,6 +21,8 @@
 #include "paddle/cinn/adt/dim_expr.h"
 #include "paddle/cinn/utils/type_defs.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/pir/dialect/shape/ir/shape_op.h"
+
 namespace pir {
 class Operation;
 class SymbolicDimMgr;
@@ -52,12 +54,19 @@ class GraphSymbolicDimInferCtx {
     return iter->second;
   }
 
+  const std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>&
+  map_expr_symbolic2dialect_symbolic() const {
+    return map_expr_symbolic2dialect_symbolic_;
+  }
+
  private:
   void InitTensorDimExpr();
 
   const cinn::hlir::framework::pir::Group* group_;
   std::unordered_map<::pir::Value, std::vector<std::optional<DimExpr>>>
       tensor2dim_exprs_;
+  std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>
+      map_expr_symbolic2dialect_symbolic_;
 };
 
 }  // namespace cinn::adt::config

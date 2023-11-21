@@ -31,6 +31,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/pir/dialect/shape/ir/shape_op.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr_inline);
 
@@ -51,11 +52,15 @@ using LoopDescriptor4LoopIteratorT =
 
 class MapExprToIrTranslator {
  public:
-  explicit MapExprToIrTranslator(const MapExpr& map_expr,
-                                 const Node2LoweredFuncs& node2lowered_funcs,
-                                 const common::Target& target)
+  explicit MapExprToIrTranslator(
+      const MapExpr& map_expr,
+      const Node2LoweredFuncs& node2lowered_funcs,
+      const std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>&
+          map_expr_symbolic2dialect_symbolic,
+      const common::Target& target)
       : map_expr_(map_expr),
         node2lowered_funcs_(&node2lowered_funcs),
+        map_expr_symbolic2dialect_symbolic_(map_expr_symbolic2dialect_symbolic),
         target_(target) {
     const auto& [anchored_map_stmts, _0, _1] = map_expr.tuple();
     CHECK_EQ(anchored_map_stmts->size(), 1);
@@ -731,12 +736,9 @@ class MapExprToIrTranslator {
   }
 
   ir::Expr TranslateDimExprImpl(const SymbolicDim& dim_expr) const {
-    return ir::Var{std::string("sym_") +
-                   std::to_string(dim_expr.value().unique_id())};
-    // ADT_TODO(Hongyu Jia) : Replace to real SymbolicDimOp when pir is ready?
-    // return ir::_Dim_::Make(
-    //     std::string("sym_") + std::to_string(dim_expr.value().unique_id()),
-    //     cinn::ir::SymbolicDimOp());
+    CHECK_GT(map_expr_symbolic2dialect_symbolic_.count(dim_expr), 0);
+    return ir::Var{
+        map_expr_symbolic2dialect_symbolic_.at(dim_expr).GetSymName()};
   }
 
   ir::Expr TranslateDimExprImpl(const Negative<DimExpr>& dim_expr) const {
@@ -818,6 +820,8 @@ class MapExprToIrTranslator {
   const common::Target target_;
   TensorIteratorExpr4TensorT TensorIteratorExpr4Tensor;
   LoopDescriptor4LoopIteratorT LoopDescriptor4LoopIterator;
+  std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>
+      map_expr_symbolic2dialect_symbolic_;
 };
 
 }  // namespace
@@ -825,8 +829,10 @@ class MapExprToIrTranslator {
 ir::Expr MapExprToIr(const MapExprCtx& map_expr_ctx,
                      const common::Target& target) {
   const auto& expr =
-      MapExprToIrTranslator(
-          map_expr_ctx.map_expr(), map_expr_ctx.node2lowered_funcs(), target)
+      MapExprToIrTranslator(map_expr_ctx.map_expr(),
+                            map_expr_ctx.node2lowered_funcs(),
+                            map_expr_ctx.map_expr_symbolic2dialect_symbolic(),
+                            target)
           .Translate();
   VLOG(1) << "Finish MapExprToIr\n" << expr;
   return expr;

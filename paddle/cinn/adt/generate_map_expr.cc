@@ -464,7 +464,10 @@ void TryGenerateMapExprFromGraph(
         std::make_unique<config::GraphSymbolicDimInferCtx>(fusion_group.get()));
     const auto& map_expr = GenerateMapExpr(fusion_group);
     VLOG(1) << ToTxtString(map_expr, fusion_group->group_id);
-    fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));
+    fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(
+        map_expr,
+        fusion_group->graph_symbolic_dim_infer_ctx()
+            ->map_expr_symbolic2dialect_symbolic()));
   }
 }
 
@@ -477,7 +480,10 @@ void TryGenerateMapExprFromGroup(
       std::make_unique<config::GraphSymbolicDimInferCtx>(fusion_group.get()));
   const auto& map_expr = GenerateMapExpr(fusion_group);
   VLOG(1) << ToTxtString(map_expr, fusion_group->group_id);
-  fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));
+  fusion_group->set_map_expr_ctx(
+      std::make_shared<MapExprCtx>(map_expr,
+                                   fusion_group->graph_symbolic_dim_infer_ctx()
+                                       ->map_expr_symbolic2dialect_symbolic()));
 }
 
 }  // namespace cinn::adt
