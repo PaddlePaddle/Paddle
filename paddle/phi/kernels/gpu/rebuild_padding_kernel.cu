@@ -28,7 +28,7 @@ __global__ void RebuildPaddingKernelImpl(T *output_data,
                                          const int max_seq_len,
                                          const int dim_embed,
                                          const int elem_nums) {
-  using LoadT = AlignedVector<T, VecSize>;
+  using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT src_vec;
   const int global_idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (int i = global_idx * VecSize; i < elem_nums;
@@ -38,8 +38,8 @@ __global__ void RebuildPaddingKernelImpl(T *output_data,
     int seq_id = seq_lens[bi] - 1;
     const int ori_token_idx = bi * max_seq_len - cum_offsets[bi] + seq_id;
     const int src_offset = ori_token_idx * dim_embed + bias_idx;
-    Load<T, VecSize>(&input_data[src_offset], &src_vec);
-    Store<T, VecSize>(src_vec, &output_data[i]);
+    phi::Load<T, VecSize>(&input_data[src_offset], &src_vec);
+    phi::Store<T, VecSize>(src_vec, &output_data[i]);
   }
 }
 
