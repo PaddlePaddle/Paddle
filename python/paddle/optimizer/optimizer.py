@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 import paddle.autograd as imperative_base
 from paddle import _C_ops
+from paddle._pir_ops import get_parameter, set_parameter
 from paddle.base import core
 from paddle.base.framework import (
     Variable,
@@ -453,29 +454,63 @@ class Optimizer:
             if isinstance(self._learning_rate, LRScheduler):
                 lr_var = self._global_learning_rate()
                 # only create global lr_var once
-                if not isinstance(lr_var, framework.Variable):
+                if in_pir_mode():
+                    startup_program = paddle.static.default_startup_program()
+                    main_program = paddle.static.default_main_program()
+
                     lr_name = unique_name.generate('learning_rate')
-                    self._learning_rate._var_name = lr_name
-                    lr_var = self.helper.create_global_variable(
-                        name=lr_name,
-                        shape=[],
-                        persistable=True,
-                        stop_gradient=True,
-                        dtype=_lr_dtype,
+                    # startup program  insert && set_parameter
+                    lr_value = float(self._learning_rate())
+                    with paddle.static.program_guard(startup_program):
+                        initializer = paddle.nn.initializer.Constant(
+                            value=lr_value
+                        )
+                        paramete_meta = paddle.pir.core.ParameterMeta(
+                            [], _lr_dtype
+                        )
+                        init_result = initializer(
+                            paramete_meta, startup_program.global_block()
+                        )
+                        init_result.persistable = True
+                        set_parameter(init_result, lr_name)
+                    main_program.move_parameters_from(startup_program)
+
+                    if not isinstance(lr_var, paddle.pir.OpResult):
+                        self._learning_rate._var_name = lr_name
+                        with paddle.static.program_guard(main_program):
+                            param = get_parameter(lr_name, _lr_dtype, [])
+                        param.stop_gradient = True
+                        param.persistable = True
+                        main_program.lr_scheduler = self._learning_rate
+                        main_program.lr_var = param
+                        self._learning_rate_map[main_program] = param
+
+                else:
+                    if not isinstance(lr_var, framework.Variable):
+                        lr_name = unique_name.generate('learning_rate')
+                        self._learning_rate._var_name = lr_name
+                        lr_var = self.helper.create_global_variable(
+                            name=lr_name,
+                            shape=[],
+                            persistable=True,
+                            stop_gradient=True,
+                            dtype=_lr_dtype,
+                        )
+                        main_prog = framework.default_main_program()
+                        main_prog.lr_scheduler = self._learning_rate
+                        main_prog.lr_var = lr_var
+
+                        self._learning_rate_map[
+                            framework.default_main_program()
+                        ] = lr_var
+
+                    lr_value = float(self._learning_rate())
+                    self.helper.set_variable_initializer(
+                        lr_var,
+                        initializer=paddle.nn.initializer.Constant(
+                            value=lr_value
+                        ),
                     )
-                    main_prog = framework.default_main_program()
-                    main_prog.lr_scheduler = self._learning_rate
-                    main_prog.lr_var = lr_var
-
-                    self._learning_rate_map[
-                        framework.default_main_program()
-                    ] = lr_var
-
-                lr_value = float(self._learning_rate())
-                self.helper.set_variable_initializer(
-                    lr_var,
-                    initializer=paddle.nn.initializer.Constant(value=lr_value),
-                )
             elif isinstance(self._learning_rate, float):
                 # only create global lr_var once
                 lr = self._global_learning_rate()
@@ -491,7 +526,7 @@ class Optimizer:
                                 )
                             )
                         self._learning_rate_map[
-                            framework.default_main_program()
+                            paddle.static.default_main_program()
                         ] = paddle._pir_ops.full(
                             [],
                             self._learning_rate,
@@ -727,7 +762,10 @@ class Optimizer:
         :return:
         """
         if program is None:
-            program = framework.default_main_program()
+            if in_dygraph_mode():
+                program = framework.default_main_program()
+            else:
+                program = paddle.static.default_main_program()
         return self._learning_rate_map.get(program, None)
 
     def _append_optimize_op(self, block, param_and_grad):

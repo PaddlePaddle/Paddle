@@ -358,7 +358,7 @@ def index_select(x, index, axis=0, name=None):
              [ 9. 10. 10.]]
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.index_select(x, index, axis)
     else:
         helper = LayerHelper("index_select", **locals())
@@ -849,7 +849,7 @@ def index_sample(x, index):
              [1200 1100]]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.index_sample(x, index)
     else:
         helper = LayerHelper("index_sample", **locals())

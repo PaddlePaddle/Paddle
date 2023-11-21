@@ -19,8 +19,10 @@ from simple_nets import init_data, simple_fc_net
 
 import paddle
 from paddle import base
+from paddle.autograd.ir_backward import grad
 from paddle.base import core
-from paddle.base.framework import switch_main_program
+from paddle.framework import in_dynamic_or_pir_mode
+from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 paddle.enable_static()
@@ -39,54 +41,81 @@ class TestPrintOpCPU(unittest.TestCase):
         x.stop_gradient = False
         paddle.static.Print(input=x, **kargs)
         loss = paddle.mean(x)
-        paddle.static.append_backward(loss=loss)
+
+        if in_dynamic_or_pir_mode():
+            dx = grad(loss, [x])
+        else:
+            paddle.static.append_backward(loss=loss)
         return loss
 
+    @test_with_pir_api
     def test_forward(self):
-        switch_main_program(Program())
-        printed = self.build_network(True, print_phase='forward')
-        exe = paddle.static.Executor(self.place)
-        outs = exe.run(
-            feed={'x': self.x_tensor}, fetch_list=[printed], return_numpy=False
-        )
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            printed = self.build_network(True, print_phase='forward')
+            exe = paddle.static.Executor(self.place)
+            outs = exe.run(
+                feed={'x': self.x_tensor},
+                fetch_list=[printed],
+                return_numpy=False,
+            )
 
+    @test_with_pir_api
     def test_backward(self):
-        switch_main_program(Program())
-        loss = self.build_network(False, print_phase='backward')
-        exe = paddle.static.Executor(self.place)
-        outs = exe.run(
-            feed={'x': self.x_tensor}, fetch_list=[loss], return_numpy=False
-        )
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            loss = self.build_network(False, print_phase='backward')
+            exe = paddle.static.Executor(self.place)
+            outs = exe.run(
+                feed={'x': self.x_tensor}, fetch_list=[loss], return_numpy=False
+            )
 
+    @test_with_pir_api
     def test_all_parameters(self):
-        x = paddle.static.data('x', shape=[-1, 3], dtype='float32', lod_level=1)
-        x.stop_gradient = False
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog, paddle.static.Program()):
+            x = paddle.static.data(
+                'x', shape=[-1, 3], dtype='float32', lod_level=1
+            )
+            x.stop_gradient = False
 
-        for print_tensor_name in [True, False]:
-            for print_tensor_type in [True, False]:
-                for print_tensor_shape in [True, False]:
-                    for print_tensor_lod in [True, False]:
-                        paddle.static.Print(
-                            input=x,
-                            print_tensor_name=print_tensor_name,
-                            print_tensor_type=print_tensor_type,
-                            print_tensor_shape=print_tensor_shape,
-                            print_tensor_lod=print_tensor_lod,
-                        )
-        loss = paddle.mean(x)
-        paddle.static.append_backward(loss=loss)
-        exe = paddle.static.Executor(self.place)
-        outs = exe.run(
-            feed={'x': self.x_tensor}, fetch_list=[loss], return_numpy=False
-        )
+            for print_tensor_name in [True, False]:
+                for print_tensor_type in [True, False]:
+                    for print_tensor_shape in [True, False]:
+                        for print_tensor_lod in [True, False]:
+                            paddle.static.Print(
+                                input=x,
+                                print_tensor_name=print_tensor_name,
+                                print_tensor_type=print_tensor_type,
+                                print_tensor_shape=print_tensor_shape,
+                                print_tensor_lod=print_tensor_lod,
+                            )
+            loss = paddle.mean(x)
+            if in_dynamic_or_pir_mode():
+                dx = grad(loss, [x])
+            else:
+                paddle.static.append_backward(loss=loss)
+            exe = paddle.static.Executor(self.place)
+            outs = exe.run(
+                feed={'x': self.x_tensor}, fetch_list=[loss], return_numpy=False
+            )
 
+    @test_with_pir_api
     def test_no_summarize(self):
-        switch_main_program(Program())
-        printed = self.build_network(True, summarize=-1, print_phase='forward')
-        exe = paddle.static.Executor(self.place)
-        outs = exe.run(
-            feed={'x': self.x_tensor}, fetch_list=[printed], return_numpy=False
-        )
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            printed = self.build_network(
+                True, summarize=-1, print_phase='forward'
+            )
+            exe = paddle.static.Executor(self.place)
+            outs = exe.run(
+                feed={'x': self.x_tensor},
+                fetch_list=[printed],
+                return_numpy=False,
+            )
 
 
 class TestPrintOpError(unittest.TestCase):
@@ -137,6 +166,8 @@ class TestPrintOpBackward(unittest.TestCase):
         feed_dict = {"image": img, "label": label}
         exe.run(binary, feed_dict)
 
+    # fc is not supported in pir
+    # @test_with_pir_api
     def test_fw_bw(self):
         if paddle.is_compiled_with_cuda():
             self.check_backward(use_cuda=True)

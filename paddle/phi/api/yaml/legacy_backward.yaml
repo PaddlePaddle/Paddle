@@ -824,6 +824,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out_grad]
+    spmd_rule : TriuGradInferSpmd
   kernel :
     func : triu_grad
 
