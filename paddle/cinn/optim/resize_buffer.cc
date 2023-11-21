@@ -229,7 +229,7 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
   }
 
  private:
-  const std::unordered_map<std::string, std::vector<ir::Expr>>
+  const std::unordered_map<std::string, std::vector<ir::Expr>>&
       buffer_name_to_shape_;
 };
 
