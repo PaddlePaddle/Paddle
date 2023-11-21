@@ -150,6 +150,11 @@ static PyObject* eager_api_run_backward(PyObject* self,
   auto tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
   bool retain_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2);
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, tensors, grad_tensors)) {
+    tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0, mesh);
+    grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1, mesh);
+  }
   {
     eager_gil_scoped_release guard;
     egr::Backward(tensors, grad_tensors, retain_graph);
@@ -170,6 +175,15 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
   auto only_inputs = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 5), 5);
   auto allow_unused = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 6), 6);
   auto no_grad_vars = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 7), 7);
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(
+          &mesh, tensors, inputs, grad_tensors, no_grad_vars)) {
+    tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0, mesh);
+    inputs = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1, mesh);
+    grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 2), 2, mesh);
+    no_grad_vars = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 7), 7, mesh);
+  }
+
   std::vector<paddle::Tensor> result;
   {
     eager_gil_scoped_release guard;

@@ -107,6 +107,9 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
 }
 
 void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh) {
+  if (!x->defined()) {
+    return;
+  }
   if (x->is_dist_tensor()) {
     PADDLE_ENFORCE_EQ(
         std::dynamic_pointer_cast<phi::distributed::DistTensor>(x->impl())
@@ -321,10 +324,10 @@ std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
   }
 }
 
-std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(PyObject* obj,
-                                                     ssize_t arg_pos) {
+std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(
+    PyObject* obj, ssize_t arg_pos, const phi::distributed::ProcessMesh* mesh) {
   std::vector<paddle::Tensor> result;
-  const phi::distributed::ProcessMesh* local_mesh = nullptr;
+  const phi::distributed::ProcessMesh* local_mesh = mesh;
   int mesh_start_index = -1;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
@@ -2396,7 +2399,7 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
 /* ------------------ for auto parallel ----------------------- */
 
 void DistTensorTypeParser::operator()(const Tensor& x) {
-  if (x.is_dist_tensor()) {
+  if (x.defined() && x.is_dist_tensor()) {
     *mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(x.impl())
                   ->dist_attr()
                   .process_mesh());
@@ -2406,7 +2409,7 @@ void DistTensorTypeParser::operator()(const Tensor& x) {
 
 void DistTensorTypeParser::operator()(const paddle::optional<Tensor>& x) {
   if (x) {
-    if (x.get_ptr()->is_dist_tensor()) {
+    if (x.get_ptr()->defined() && x.get_ptr()->is_dist_tensor()) {
       *mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                     x.get_ptr()->impl())
                     ->dist_attr()
@@ -2419,7 +2422,7 @@ void DistTensorTypeParser::operator()(const paddle::optional<Tensor>& x) {
 void DistTensorTypeParser::operator()(const std::vector<Tensor>& x) {
   if (!x.empty()) {
     for (auto& t : x) {
-      if (t.is_dist_tensor()) {
+      if (t.defined() && t.is_dist_tensor()) {
         *mesh =
             &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
                   ->dist_attr()
@@ -2436,7 +2439,7 @@ void DistTensorTypeParser::operator()(
   if (x) {
     if (!(x.get_ptr()->empty())) {
       for (auto& t : *(x.get_ptr())) {
-        if (t.is_dist_tensor()) {
+        if (t.defined() && t.is_dist_tensor()) {
           *mesh = &(
               std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
                   ->dist_attr()
