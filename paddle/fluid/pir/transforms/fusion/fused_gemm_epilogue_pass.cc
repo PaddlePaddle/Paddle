@@ -55,96 +55,6 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
   }
 };
 
-class FusedLinearBiasFirstPattern
-    : public pir::drr::DrrPatternBase<FusedLinearBiasFirstPattern> {
- public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
-                                {{"transpose_x", pat.Attr("trans_x")},
-                                 {"transpose_y", pat.Attr("trans_y")}});
-    const auto &add = pat.Op(paddle::dialect::AddOp::name());
-
-    pat.Tensor("tmp") = matmul(pat.Tensor("x"), pat.Tensor("w"));
-    pat.Tensor("out") = add(pat.Tensor("bias"), pat.Tensor("tmp"));
-
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
-      return (match_ctx.Tensor("w").Shape().size() == 2 &&
-              match_ctx.Tensor("x").Shape().size() >= 2 &&
-              match_ctx.Tensor("bias").Shape().size() == 1);
-    });
-
-    pir::drr::ResultPattern res = pat.ResultPattern();
-    const auto &act_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
-          return "none";
-        });
-    const auto &fused_gemm_epilogue =
-        res.Op(paddle::dialect::FusedGemmEpilogueOp::name(),
-               {{{"trans_x", pat.Attr("trans_x")},
-                 {"trans_y", pat.Attr("trans_y")},
-                 {"activation", act_attr}}});
-    fused_gemm_epilogue(
-        {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
-        {&res.Tensor("out")});
-  }
-};
-
-class FusedLinearBiasFirstGradPattern
-    : public pir::drr::DrrPatternBase<FusedLinearBiasFirstGradPattern> {
- public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
-                                {{"transpose_x", pat.Attr("trans_x")},
-                                 {"transpose_y", pat.Attr("trans_y")}});
-    const auto &matmul_grad = pat.Op(paddle::dialect::MatmulGradOp::name(),
-                                     {{"transpose_x", pat.Attr("trans_x")},
-                                      {"transpose_y", pat.Attr("trans_y")}});
-    const auto &add = pat.Op(paddle::dialect::AddOp::name());
-    const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name());
-
-    pat.Tensor("tmp") = matmul(pat.Tensor("x"), pat.Tensor("w"));
-    pat.Tensor("out") = add(pat.Tensor("bias"), pat.Tensor("tmp"));
-    add_grad({&pat.Tensor("bias"), &pat.Tensor("tmp"), &pat.Tensor("out_grad")},
-             {&pat.Tensor("bias_grad"), &pat.Tensor("tmp_grad")});
-    matmul_grad({&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("tmp_grad")},
-                {&pat.Tensor("x_grad"), &pat.Tensor("w_grad")});
-
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
-      return (match_ctx.Tensor("w").Shape().size() == 2 &&
-              match_ctx.Tensor("x").Shape().size() >= 2 &&
-              match_ctx.Tensor("bias").Shape().size() == 1);
-    });
-
-    pir::drr::ResultPattern res = pat.ResultPattern();
-    const auto &act_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
-          return "none";
-        });
-    const auto &fused_gemm_epilogue =
-        res.Op(paddle::dialect::FusedGemmEpilogueOp::name(),
-               {{{"trans_x", pat.Attr("trans_x")},
-                 {"trans_y", pat.Attr("trans_y")},
-                 {"activation", act_attr}}});
-    const auto &fused_gemm_epilogue_grad =
-        res.Op(paddle::dialect::FusedGemmEpilogueGradOp::name(),
-               {{{"trans_x", pat.Attr("trans_x")},
-                 {"trans_y", pat.Attr("trans_y")},
-                 {"activation_grad", act_attr}}});
-    fused_gemm_epilogue(
-        {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
-        {&res.Tensor("out")});
-    fused_gemm_epilogue_grad({&res.Tensor("x"),
-                              &res.Tensor("w"),
-                              &res.NoneTensor(),
-                              &res.Tensor("out_grad")},
-                             {&res.Tensor("x_grad"),
-                              &res.Tensor("w_grad"),
-                              &res.Tensor("bias_grad")});
-  }
-};
-
 class FusedLinearGradPattern
     : public pir::drr::DrrPatternBase<FusedLinearGradPattern> {
  public:
@@ -443,8 +353,6 @@ class FusedGemmEpiloguePass : public pir::PatternRewritePass {
     pir::RewritePatternSet ps(context);
     ps.Add(FusedLinearGradPattern().Build(context));
     ps.Add(FusedLinearPattern().Build(context));
-    ps.Add(FusedLinearBiasFirstPattern().Build(context));
-    ps.Add(FusedLinearBiasFirstGradPattern().Build(context));
     ps.Add(FusedLinearGeluPattern().Build(context));
     ps.Add(FusedLinearReluPattern().Build(context));
     ps.Add(FusedLinearGeluGradPattern().Build(context));
