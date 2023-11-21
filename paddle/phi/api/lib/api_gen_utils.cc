@@ -571,7 +571,7 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     out->reserve(out_size);
   }
   for (size_t i = 0; i < out_size; ++i) {
-    if (out->at(i).impl() == nullptr) {
+    if (out->size() != out_size) {
       auto dist_t = std::make_shared<phi::distributed::DistTensor>();
       out->emplace_back();
       out->back().set_impl(dist_t);
