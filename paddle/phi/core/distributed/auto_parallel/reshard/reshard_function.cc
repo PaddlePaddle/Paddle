@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 
+#include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
@@ -24,6 +25,8 @@ std::shared_ptr<DistTensor> ReshardFunction::Eval(
     DeviceContext* dev_ctx,
     const DistTensor& in,
     const TensorDistAttr& out_dist_attr) {
+  phi::RecordEvent reshard_record_event(
+      Name(), phi::TracerEventType::OperatorInner, 1);
   std::shared_ptr<DistTensor> out = std::make_shared<DistTensor>();
   Eval(dev_ctx, in, out_dist_attr, out.get());
   return out;

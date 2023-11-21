@@ -92,6 +92,7 @@ USE_PIR_PASS(fused_dropout_add_pass);
 USE_PIR_PASS(fused_linear_param_grad_add_pass);
 USE_PIR_PASS(inplace_pass);
 USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
+USE_PIR_PASS(conv2d_fuse_pass);
 
 PHI_DECLARE_bool(print_ir);
 
@@ -1528,12 +1529,14 @@ std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
 
   pass_manager.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager.AddPass(pir::CreateBuildCinnPass());
 
   pass_manager.Run(&forward_program);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
   std::unique_ptr<pir::Program> new_program =
       cinn::dialect::ir::CINNGroupLoweringPass(&forward_program);
+
   VLOG(3) << "after CINNGroupLoweringPass, forward_program:\n" << *new_program;
   return std::move(new_program);
 #endif
