@@ -283,7 +283,6 @@ inline bool horizontal_or_vertical_reduce_relation(
 inline bool horizontal_or_can_inline(::pir::Operation* producer,
                                      const std::shared_ptr<Group>& consumer) {
   // horizontal relation.
-  return true;
   if (is_horizontal_relation(producer, consumer)) {
     if (is_same_size(producer, consumer)) {
       return true;
@@ -291,7 +290,7 @@ inline bool horizontal_or_can_inline(::pir::Operation* producer,
       // if do broadcast, check can compute inline.
       // return helper->output_ops_set_.count(producer) == 0;
       // TODO(phlrain): support output op set check
-      return true;
+      return false;
     }
   }
   // vertical relation: 1.can compute inline

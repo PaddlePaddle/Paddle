@@ -70,7 +70,7 @@ class IR_API OpBase {
 
   void VerifyRegion() {}
 
- private:
+ protected:
   Operation *operation_;  // Not owned
 };
 

@@ -467,5 +467,6 @@ void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
   DistTensorConverter(mesh).apply(&args...);
 }
 
+void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh);
 }  // namespace pybind
 }  // namespace paddle
