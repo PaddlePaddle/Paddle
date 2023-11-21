@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 from test_collective_base_xpu import TestCollectiveRunnerBase, runtime_main
 
 import paddle
@@ -26,18 +24,18 @@ paddle.enable_static()
 class TestCollectiveAllGather(TestCollectiveRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
-        self.dtype = os.getenv("DATA_TYPE")
 
-    def get_model(self, main_prog, startup_program):
+    def get_model(self, main_prog, startup_program, dtype=None):
+        dtype = "float32" if dtype is None else dtype
         ring_id = 0
         nranks = 2
         with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
-                name="tindata", shape=[10, 1000], dtype=self.dtype
+                name="tindata", shape=[10, 1000], dtype=dtype
             )
             toutdata = main_prog.current_block().create_var(
                 name="outofgather",
-                dtype=self.dtype,
+                dtype=dtype,
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
                 stop_gradient=False,
