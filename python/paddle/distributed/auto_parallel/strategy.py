@@ -82,7 +82,7 @@ class RecomputeConfig(BaseConfig):
         super().__init__(category, config_dict)
 
 
-class FusedPromotion(BaseConfig):
+class FusedPromotionConfig(BaseConfig):
     def __init__(self, config_dict=None):
         category = constants.FUSEDPROMOTION
         super().__init__(category, config_dict)
@@ -231,7 +231,7 @@ class Strategy(BaseConfig):
         self.fused_passes = FusedPassesConfig(config_dict)
 
         config_dict = self._config_dict.get(constants.FUSEDPROMOTION, None)
-        self.fused_passes = FusedPromotion(config_dict)
+        self.fused_promotion = FusedPromotionConfig(config_dict)
 
         config_dict = self._config_dict.get(constants.DP_OPTIMIZATION, None)
         self.dp_optimization = DPOptimizationConfig(config_dict)

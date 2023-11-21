@@ -348,9 +348,10 @@ class Parallelizer:
             )
             sp_pass.apply([main_program], [startup_program], self._pass_context)
 
+        # apply fused linear promotion pass
         if (
             self.is_train
-            # and self._strategy.fused_promotion.fused_promotion
+            and self._strategy.fused_promotion.enable
             and self._strategy.fused_passes.enable
         ):
             amp_config = None

@@ -41,7 +41,7 @@ _supported_optimizer_type = [
 ]
 
 FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
-    # amp_level == 'o0' or 'o2'
+    # amp_level == 'o2' or 'o3'
     {
         "forward": ["matmul_v2", "c_allreduce_sum", "elementwise_add"],
         "backward": ["elementwise_add_grad", "matmul_v2_grad"],
@@ -150,6 +150,12 @@ class FusedLinearPromotionPass(PassBase):
             self._dist_context
         )
 
+        # TODO(lizhiyu): We the TP with DP is ready, add this support.
+        if self._enable_dp and self._enable_sp:
+            logger.warning(
+                "Don't support the case of enable_dp and enable_sp because the TP parallelism not ready, skip this pass"
+            )
+
         pattern_offset = 4 if self._is_amp_o1 else 0
         if self._enable_sp:
             if self._enable_dp:
@@ -182,9 +188,13 @@ class FusedLinearPromotionPass(PassBase):
             forward_segments,
             backward_segments,
         ) = self._get_forward_backward_op_segments(main_program)
-
+        if len(forward_segments) == 0 or len(backward_segments) == 0:
+            logger.warning(
+                "No forward and backward op segments, skip this pass"
+            )
+            return
         # 3 transform the forward ops
-        logger.info(f"before main_program: {main_program}")
+        logger.debug(f"before main_program: {main_program}")
         rename_var_names_map, deleted_bias_names = self._transform_forward(
             main_program,
             forward_segments,
@@ -193,6 +203,7 @@ class FusedLinearPromotionPass(PassBase):
             self._enable_sp,
             self._is_amp_o1,
         )
+
         # 4 transform the backward ops
         self._transform_backward(
             main_program,
@@ -201,6 +212,7 @@ class FusedLinearPromotionPass(PassBase):
             self._is_first_rank,
             self._enable_sp,
         )
+
         # 5. transform the optimizer ops
         self._transform_opt(
             main_program,
@@ -210,7 +222,8 @@ class FusedLinearPromotionPass(PassBase):
             self._is_amp_o1,
         )
         logger.info(f"deleted_bias_names: {deleted_bias_names}")
-        logger.info(f"after main_program: {main_program}")
+        logger.debug(f"after main_program: {main_program}")
+
         # 6. transform the startup program
         self._transform_startup_program(
             startup_program, deleted_bias_names, self._is_first_rank
@@ -218,37 +231,32 @@ class FusedLinearPromotionPass(PassBase):
 
     def _is_tp_sp_first_rank(self, dist_context, rank):
         for process_mesh in dist_context.process_meshes:
-            if len(process_mesh._shape) == 1:
+            inner_mesh = process_mesh.mesh
+            inner_mesh_shape = inner_mesh.shape
+            if len(inner_mesh_shape) == 1:
                 return rank == min(process_mesh.process_ids)
-            else:
-                inner_mesh = process_mesh.mesh
-                inner_mesh_shape = inner_mesh.shape
-                if len(inner_mesh.shape) == 2:
-                    for id0 in range(inner_mesh_shape[0]):
-                        if rank == min(inner_mesh[id0, :]):
+            elif len(inner_mesh.shape) == 2:
+                for id0 in range(inner_mesh_shape[0]):
+                    if rank == min(inner_mesh[id0, :]):
+                        return True
+            elif len(inner_mesh.shape) == 3:
+                for id0 in range(inner_mesh_shape[0]):
+                    for id1 in range(inner_mesh_shape[1]):
+                        if rank == min(inner_mesh[id0, id1, :]):
                             return True
-                elif len(inner_mesh.shape) == 3:
-                    for id0 in range(inner_mesh_shape[0]):
-                        for id1 in range(inner_mesh_shape[1]):
-                            if rank == min(inner_mesh[id0, id1, :]):
-                                return True
-                else:
-                    raise ValueError("inner mesh shape is not supported")
+            else:
+                raise ValueError("inner mesh shape is not supported")
         return False
 
     def _is_enable_dp_mp(self, dist_context):
         for process_mesh in dist_context.process_meshes:
-            if len(process_mesh._shape) == 1:
-                return False, False
+            inner_mesh = process_mesh.mesh
+            inner_mesh_shape = inner_mesh.shape
+            if len(inner_mesh_shape) == 1:
+                return False, inner_mesh_shape[0] > 1
             else:
-                inner_mesh = process_mesh.mesh
-                inner_mesh_shape = inner_mesh.shape
-                if len(inner_mesh.shape) == 2:  # Dp * Mp
-                    return inner_mesh_shape[0] > 1, inner_mesh_shape[1] > 1
-                elif len(inner_mesh.shape) == 3:
-                    return inner_mesh_shape[-2] > 1, inner_mesh_shape[-1] > 1
-                else:
-                    raise ValueError("inner mesh shape is not supported")
+                # DP * MP
+                return inner_mesh_shape[-2] > 1, inner_mesh_shape[-1] > 1
         return False, False
 
     def _is_enable_sp(self, main_program):
@@ -341,6 +349,9 @@ class FusedLinearPromotionPass(PassBase):
                     )
             else:
                 pass
+        assert len(forward_segments) >= len(
+            backward_segmnets
+        ), "The number of forward segments should be not shorter than the number of backward segments."
         logger.info(f"forward_segments: {forward_segments}")
         logger.info(f"backward_segmnets: {backward_segmnets}")
         return forward_segments, backward_segmnets
@@ -374,7 +385,9 @@ class FusedLinearPromotionPass(PassBase):
             origin_matmul_op = global_block.ops[forward_segment[0]]
             origin_comm_op = global_block.ops[forward_segment[0] + 1]
             origin_add_op = global_block.ops[forward_segment[1] - 1]
-            origin_cast_op = global_block.ops[forward_segment[1] - 2]
+            origin_cast_op = (
+                global_block.ops[forward_segment[1] - 2] if is_amp_o1 else None
+            )
             origin_matmul_output_name = origin_matmul_op.output_arg_names[0]
             origin_comm_input_name = origin_comm_op.input_arg_names[0]
             assert (
@@ -446,11 +459,9 @@ class FusedLinearPromotionPass(PassBase):
                     origin_matmul_output_name
                 )  # We can remove the origin_matmul_output now.
                 global_block._remove_var(origin_add_output_name)
-                # rename_vars_map[origin_add_output_name] = new_add_op_output_name
                 new_add_op._rename_output(
                     origin_add_output_name, new_add_op_output_name
                 )
-                # rename input of new_add_op
                 rename_vars_map[
                     origin_add_op.input_arg_names[0]
                 ] = origin_matmul_output_new_name
@@ -486,8 +497,12 @@ class FusedLinearPromotionPass(PassBase):
                             new_add_op.input_arg_names[1]
                         )
             else:
-                origin_add_output_name = origin_add_op.output_arg_names[0]
+                origin_add_output_name = origin_add_op.output_arg_names[
+                    0
+                ]  # We can remove the origin_matmul_output now.
                 global_block._remove_var(origin_add_output_name)
+                global_block._remove_var(origin_matmul_output_name)
+
             # 4. deal comm op
             # The input of c_allreduce_sum only be used once, so we don't need add it in the rename_vars_map
             if is_first_rank:
@@ -606,7 +621,6 @@ class FusedLinearPromotionPass(PassBase):
                     )
                     new_comm_op.desc.copy_from(orgin_comm_op.desc)
                     # rename input and output
-                    # TODO(lizhiyu): The input and ouput of all_gather may not suitable.
                     new_comm_op._rename_input(
                         orgin_comm_op.input_arg_names[0],
                         add_grad_op.input_arg_names[0],
@@ -617,11 +631,14 @@ class FusedLinearPromotionPass(PassBase):
                     )
                     matmul_grad_op._rename_input(
                         matmul_grad_op.input_arg_names[0],
-                        add_grad_op.output_arg_names[1],
+                        add_grad_op.output_arg_names[0],
                     )
+
                     global_block._remove_op(
-                        segment[-1]
-                    )  # origin idx is segment[-1] - 1
+                        segment[-1] - 1
+                    )  # remove origin comm_op
+                    global_block._remove_op(segment[0] + 3)  # scale
+                    global_block._remove_op(segment[0] + 2)  # c_allreduce_sum
                 global_block._sync_with_cpp()
         else:  # not is_first_rank_in tp or sp
             # need to delete the grad op assosiated with the deleted bias var
@@ -645,25 +662,22 @@ class FusedLinearPromotionPass(PassBase):
             else:
                 for segment in reversed(backward_segments):
                     add_grad_op = global_block.ops[segment[0]]
-                    orgin_comm_op = global_block.ops[segment[-1] - 1]
+                    orgin_comm_op = global_block.ops[segment[-1] - 2]
                     rename_var_names_map[
                         add_grad_op.output_arg_names[0]
                     ] = add_grad_op.input_arg_names[0]
-                    global_block._remove_var(add_grad_op.output_arg_names[0])
                     orgin_comm_op._rename_input(
                         orgin_comm_op.input_arg_names[0],
-                        add_grad_op.output_arg_names[0],
+                        add_grad_op.input_arg_names[0],
                     )
+                    global_block._remove_var(add_grad_op.output_arg_names[0])
+
                     to_delete_grad_of_param.append(
                         add_grad_op.output_arg_names[1]
                     )
-
                     # remove 'elementwise_add_grad' 'c_allreduce_sum' 'scale'
-                    global_block._remove_op(
-                        segment[0] + 3
-                    )  # elementwise_add_grad
-                    global_block._remove_op(segment[0] + 2)  # c_allreduce_sum
-                    global_block._remove_op(segment[0] + 1)  # scale
+                    global_block._remove_op(segment[0] + 2)  # scale
+                    global_block._remove_op(segment[0] + 1)  # c_allreduce_sum
                     # remove vars and op
                     if self._enable_dp:  # DP
                         c_all_reduce_op = global_block.ops[segment[1]]
@@ -702,7 +716,7 @@ class FusedLinearPromotionPass(PassBase):
         """
         if is_first_rank:
             return
-
+        print(f"+++++ len params_grads: {len(params_grads)}")
         deleted_bias_grads_names = []
         to_delete_params_grads = []
         for id, (param, grad) in enumerate(params_grads):
@@ -765,9 +779,10 @@ class FusedLinearPromotionPass(PassBase):
         for id in to_delete_op_ids:
             global_block._remove_op(id)
         main_program.global_block()._sync_with_cpp()
-        if not is_first_rank:
-            for id in reversed(to_delete_params_grads):
-                del params_grads[id]
+
+        for id in reversed(to_delete_params_grads):
+            del params_grads[id]
+        print(f"+++++ len params_grads: {len(params_grads)}")
         return
 
     def _transform_startup_program(
@@ -775,23 +790,24 @@ class FusedLinearPromotionPass(PassBase):
     ):
         """
         Delete the vars and ops assosiated with deleted_bias_names in startup program.
-        TODO(lizhiyu): If the amp-o2, there are extra variables to delete, such as 'opt_linear_1.b_0_fp32_master_0'.
         """
         logger.debug(f"Before transform startup_program: {startup_program}")
         cur_glock = startup_program.global_block()
         to_delete_op_ids = []
-        to_delete_extra_vars = []
+        to_delete_extra_vars = (
+            []
+        )  # for variables assosiated with deleted_bias_names in amp-o2, such as 'opt_linear_1.b_0_fp32_master_0'
         for id, op in enumerate(cur_glock.ops):
             if not is_first_rank:
                 output_var = op.output_arg_names[0]
                 if output_var in deleted_bias_names:
                     to_delete_op_ids.append(id)
-                input_vars = op.input_arg_names
-                if len(input_vars) > 0 and input_vars[0] in deleted_bias_names:
-                    if id not in to_delete_op_ids:
-                        to_delete_op_ids.append(id)
-                    if len(op.output_arg_names) == 1:
-                        to_delete_extra_vars.append(op.output_arg_names[0])
+                else:
+                    for var_name in deleted_bias_names:
+                        if var_name in output_var:
+                            to_delete_op_ids.append(id)
+                            if output_var not in to_delete_extra_vars:
+                                to_delete_extra_vars.append(output_var)
             else:
                 if op.type == "c_broadcast":
                     input_vars = op.input_arg_names
