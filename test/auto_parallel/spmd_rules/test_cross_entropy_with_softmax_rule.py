@@ -187,6 +187,34 @@ class TestCrossEntropyWithSoftmaxSPMDRule(unittest.TestCase):
             )
         self.attrs['axis'] = -1
 
+        # Normalized axis, use_softmax=False
+        self.attrs['axis'] = 1
+        self.attrs['use_softmax'] = False
+        self.x_dist_tensor_spec.set_dims_mapping([1, -1, 0])
+        self.lable_dist_tensor_spec.set_dims_mapping([-1, -1, -1])
+        result_dist_attrs = self.rule1.infer_forward(
+            self.x_dist_tensor_spec,
+            self.lable_dist_tensor_spec,
+            self.attrs['soft_label'],
+            self.attrs['use_softmax'],
+            self.attrs['numeric_stable_mode'],
+            self.attrs['ignore_index'],
+            self.attrs['axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [1, -1, 0])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [1, -1, 0])
+
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [1, -1, 0]
+        )  # loss
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, []
+        )  # softmax_out
+        self.attrs['axis'] = -1
+
     def test_cross_entropy_with_softmax_infer_backward(self):
         # GPT DP case
         # [1, 0, -1], [1, 0, -1] (softmax_out, loss) -->
