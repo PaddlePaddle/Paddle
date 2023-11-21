@@ -4489,6 +4489,29 @@ void GetPaddingOffsetInferMeta(const MetaTensor& input_ids,
                                MetaTensor* x_remove_padding,
                                MetaTensor* cum_offsets_out,
                                MetaTensor* padding_offset) {
+  // 确保 input_ids 是 int64_t 类型
+  PADDLE_ENFORCE_EQ(
+      input_ids.dtype(),
+      phi::DataType::INT64,
+      phi::errors::InvalidArgument("input_ids must be of type int64_t"));
+
+  // 确保 cum_offsets 是 int 类型
+  PADDLE_ENFORCE_EQ(
+      cum_offsets.dtype(),
+      phi::DataType::INT32,
+      phi::errors::InvalidArgument("cum_offsets must be of type int"));
+
+  // 确保 token_num 是 int64_t 类型
+  PADDLE_ENFORCE_EQ(
+      token_num.dtype(),
+      phi::DataType::INT64,
+      phi::errors::InvalidArgument("token_num must be of type int64_t"));
+
+  // 确保 seq_len 是 int 类型
+  PADDLE_ENFORCE_EQ(
+      seq_len.dtype(),
+      phi::DataType::INT32,
+      phi::errors::InvalidArgument("seq_len must be of type int"));
   int bsz = input_ids.dims()[0];
   x_remove_padding->set_dims(phi::make_ddim({-1}));
   x_remove_padding->set_dtype(input_ids.dtype());
