@@ -284,6 +284,11 @@ void PirInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
           << ") to InterpreterCore(" << this << ")";
 }
 
+std::tuple<double, double> PirInterpreter::InterpreterRunTime() {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "PirInterpreter::InterpreterRunTime is not implemented."));
+}
+
 const interpreter::PirDependencyBuilder&
 PirInterpreter::GetPirDependencyBuilder() const {
   return ir_dependency_builder_;
@@ -1188,7 +1193,8 @@ paddle::framework::FetchList PirInterpreter::Run(
 }
 
 FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
-                              bool need_fetch) {
+                              bool need_fetch,
+                              bool enable_job_schedule_profiler) {
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
