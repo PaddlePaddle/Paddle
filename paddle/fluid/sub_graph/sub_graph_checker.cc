@@ -365,7 +365,7 @@ void SubGraphChecker::AppendGetParameter(
 }
 
 void SubGraphChecker::AppendFetchOp(pir::Block* block,
-                                    std::vector<std::string> fetch_names,
+                                    std::vector<std::string>* fetch_names,
                                     const std::string& prefix) {
   for (auto op : *block) {
     if (op->isa<paddle::dialect::FetchOp>()) {
