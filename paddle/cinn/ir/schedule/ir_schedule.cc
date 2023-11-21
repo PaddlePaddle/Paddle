@@ -357,6 +357,7 @@ void StScheduleImpl::Unroll(const Expr& loop) {
 }
 
 void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
+#ifdef CINN_WITH_CUDA
   static std::set<std::string> thread_axes = {"blockIdx.x",
                                               "blockIdx.y",
                                               "blockIdx.z",
@@ -383,6 +384,7 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
         << "Invalid Bind! The extent of loop is out of range on block size!\n";
     MutateForType(loop, ForType::GPUThread, offset);
   }
+#endif
 }
 
 // The struct used to mutate new rfactor forloop and its' schedule block.

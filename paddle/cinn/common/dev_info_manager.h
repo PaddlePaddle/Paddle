@@ -16,6 +16,7 @@
 
 #include <memory>
 
+#include "paddle/cinn/common/dev_info_base.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/nvgpu_dev_info.h"
 #include "paddle/cinn/common/target.h"
