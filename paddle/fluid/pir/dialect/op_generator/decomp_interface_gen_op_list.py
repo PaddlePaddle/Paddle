@@ -19,28 +19,30 @@
 # come into effect in generated file pd_op.h
 # manual decomp interface declare are located in manual_op.h
 decomp_interface_declare_gen_op_list = [
-    "batch_norm",
-    "mean",
-    "squeeze",
     "add_n",
-    "relu",
-    "softmax",
-    "layer_norm",
+    "batch_norm",
     "gelu",
+    "layer_norm",
+    "mean",
+    "relu",
+    "rsqrt",
+    "softmax",
     "sqrt",
+    "squeeze",
 ]
 
 # come into effect in generated file op_decomp.cc
 # manual decomp interface implementation are located in manual_op_decomp.cc
 decomp_interface_implementation_gen_op_list = [
-    "mean",
-    "squeeze",
     "add_n",
-    "relu",
-    "softmax",
-    "layer_norm",
     "gelu",
+    "layer_norm",
+    "mean",
+    "relu",
+    "rsqrt",
+    "softmax",
     "sqrt",
+    "squeeze",
 ]
 
 

@@ -17,41 +17,6 @@ from .primitives import *  # noqa: F403
 from .register import register_decomp
 
 
-def mean(x, axis, keepdim):
-    """define composite rule of op mean"""
-    x_shape = x.shape
-    if axis in (None, []):
-        axis = tuple(range(0, len(x_shape)))
-    axes = (axis,) if isinstance(axis, int) else axis
-    sum_x = sum(x, axis=axes, keepdim=keepdim)
-    value_to_fill = 1
-    for axis in axes:
-        value_to_fill *= x_shape[axis]
-    norm = fill_constant(
-        shape=[],
-        value=value_to_fill,
-        dtype=sum_x.dtype,
-    )
-    res = sum_x / norm
-    return res
-
-
-@register_decomp('pd_op.rsqrt')
-def rsqrt(x):
-    """define composite rule of op rsqrt."""
-    # rsqrt(x) = x^(-0.5)
-    is_amp = False
-    from paddle.base.data_feeder import convert_dtype
-
-    dtype = convert_dtype(x.dtype)
-    if dtype in ["float16", "uint16"]:
-        is_amp = True
-        x = cast(x, "float32")
-    y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
-    res = pow_composite(x, y)
-    return res if not is_amp else cast(res, dtype)
-
-
 @register_decomp('pd_op.pow')
 def pow_composite(x, y):
     """

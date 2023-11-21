@@ -209,6 +209,28 @@ Tensor relu_decomp(const Tensor& x) {
 }
 
 template <typename T>
+Tensor rsqrt_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  bool need_cast =
+      org_dtype == phi::DataType::FLOAT16 || org_dtype == phi::DataType::UINT16;
+
+  Tensor x_cast;
+  if (need_cast) {
+    x_cast = cast<T>(x, phi::DataType::FLOAT32);
+  } else {
+    x_cast = x;
+  }
+
+  auto ans = elementwise_pow<T>(
+      x_cast, full<T>(phi::vectorize(x_cast.dims()), -0.5, x_cast.dtype()));
+  if (need_cast) {
+    return cast<T>(ans, org_dtype);
+  } else {
+    return ans;
+  }
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
                                           const IntArray& axis) {
   auto axis_ = process_dims(x, axis.GetData());
