@@ -201,25 +201,25 @@ void SetInplaceOutputCorrectDistAttr(
     phi::DeviceContext* dev_ctx,
     Tensor& tensor,  // NOLINT
     const phi::distributed::TensorDistAttr& dist_attr,
-    bool need_reshard = true);
+    bool use_general_spmd_rule = true);
 
 void SetInplaceOutputCorrectDistAttr(
     phi::DeviceContext* dev_ctx,
     Tensor& tensor,  // NOLINT
     const phi::distributed::ArgDistAttr& dist_attr,
-    bool need_reshard = true);
+    bool use_general_spmd_rule = true);
 
 void SetInplaceOutputCorrectDistAttr(
     phi::DeviceContext* dev_ctx,
     std::vector<Tensor>& tensors,  // NOLINT
     const std::vector<phi::distributed::TensorDistAttr>& dist_attr,
-    bool need_reshard = true);
+    bool use_general_spmd_rule = true);
 
 void SetInplaceOutputCorrectDistAttr(
     phi::DeviceContext* dev_ctx,
     std::vector<Tensor>& tensors,  // NOLINT
     const phi::distributed::ArgDistAttr& dist_attr,
-    bool need_reshard = true);
+    bool use_general_spmd_rule = true);
 
 void ReshardOutputPartialAxisToReplicated(
     phi::DeviceContext* dev_ctx, phi::distributed::DistTensor* out_tensor);

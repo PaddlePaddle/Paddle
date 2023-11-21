@@ -726,14 +726,14 @@ void SetInplaceOutputCorrectDistAttr(
     phi::DeviceContext* dev_ctx,
     Tensor& tensor,  // NOLINT
     const phi::distributed::TensorDistAttr& dist_attr,
-    bool need_reshard) {
+    bool use_general_spmd_rule) {
   auto tensor_in = tensor.impl();
   if (tensor_in) {
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_in.get());
     if (dist_tensor->initialized()) {
       if (ReshardIsNeeded(dist_tensor->dist_attr(), dist_attr)) {
-        if (need_reshard) {
+        if (use_general_spmd_rule) {
           VLOG(6) << "SetInplaceOutputCorrectDistAttr Reshard inplace output"
                   << " to origin dist_attr "
                   << ReshardDebugInfo(*dist_tensor, dist_attr);
@@ -762,20 +762,20 @@ void SetInplaceOutputCorrectDistAttr(
     phi::DeviceContext* dev_ctx,
     Tensor& tensor,  // NOLINT
     const phi::distributed::ArgDistAttr& dist_attr,
-    bool need_reshard) {
+    bool use_general_spmd_rule) {
   PADDLE_ENFORCE_EQ(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
       true,
       phi::errors::PreconditionNotMet("Arg must be a TensorDistAttr"));
   SetInplaceOutputCorrectDistAttr(
-      dev_ctx, tensor, paddle::get<0>(dist_attr), need_reshard);
+      dev_ctx, tensor, paddle::get<0>(dist_attr), use_general_spmd_rule);
 }
 
 void SetInplaceOutputCorrectDistAttr(
     phi::DeviceContext* dev_ctx,
     std::vector<Tensor>& tensors,  // NOLINT
     const std::vector<phi::distributed::TensorDistAttr>& dist_attr,
-    bool need_reshard) {
+    bool use_general_spmd_rule) {
   for (size_t i = 0; i < tensors.size(); i++) {
     auto tensor_in = tensors[i].impl();
     if (tensor_in) {
@@ -783,7 +783,7 @@ void SetInplaceOutputCorrectDistAttr(
           static_cast<phi::distributed::DistTensor*>(tensor_in.get());
       if (dist_tensor->initialized()) {
         if (ReshardIsNeeded(dist_tensor->dist_attr(), dist_attr[i])) {
-          if (need_reshard) {
+          if (use_general_spmd_rule) {
             VLOG(6) << "SetInplaceOutputCorrectDistAttr Reshard inplace output"
                     << " to origin dist_attr "
                     << ReshardDebugInfo(*dist_tensor, dist_attr[i]);
@@ -813,7 +813,7 @@ void SetInplaceOutputCorrectDistAttr(
     phi::DeviceContext* dev_ctx,
     std::vector<Tensor>& tensors,  // NOLINT
     const phi::distributed::ArgDistAttr& dist_attr,
-    bool need_reshard) {
+    bool use_general_spmd_rule) {
   PADDLE_ENFORCE_EQ(
       paddle::holds_alternative<std::vector<phi::distributed::TensorDistAttr>>(
           dist_attr),
@@ -821,7 +821,7 @@ void SetInplaceOutputCorrectDistAttr(
       phi::errors::PreconditionNotMet(
           "Arg must be a vector of TensorDistAttr"));
   SetInplaceOutputCorrectDistAttr(
-      dev_ctx, tensors, paddle::get<1>(dist_attr), need_reshard);
+      dev_ctx, tensors, paddle::get<1>(dist_attr), use_general_spmd_rule);
 }
 
 void ReshardOutputPartialAxisToReplicated(
