@@ -363,7 +363,7 @@ def is_empty(x, name=None):
             False)
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.is_empty(x)
     else:
         check_variable_and_dtype(

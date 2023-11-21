@@ -562,6 +562,9 @@ void EagerUtils::FillZeroForEmptyOptionalGradOutput(
     std::vector<paddle::Tensor>* output_grads,
     const std::vector<GradSlotMeta>& grad_output_metas) {
   for (size_t i = 0; i < output_grads->size(); i++) {
+    if (grad_output_metas[i].IsStopGradient()) {
+      continue;
+    }
     paddle::Tensor& grad = (*output_grads)[i];
     if (!grad.initialized() && grad_output_metas[i].HasTensorMeta()) {
       if (grad.defined() && grad.is_selected_rows()) {

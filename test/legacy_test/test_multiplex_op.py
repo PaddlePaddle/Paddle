@@ -45,19 +45,25 @@ class TestMultiplexOp(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['x1', 'x2', 'x3', 'x4'], 'Out')
+        self.check_grad(['x1', 'x2', 'x3', 'x4'], 'Out', check_pir=True)
 
     def test_check_grad_ignore_x1(self):
-        self.check_grad(['x2', 'x3', 'x4'], 'Out', no_grad_set=set('x1'))
+        self.check_grad(
+            ['x2', 'x3', 'x4'], 'Out', no_grad_set=set('x1'), check_pir=True
+        )
 
     def test_check_grad_ignore_x1_x2(self):
-        self.check_grad(['x3', 'x4'], 'Out', no_grad_set={'x1', 'x2'})
+        self.check_grad(
+            ['x3', 'x4'], 'Out', no_grad_set={'x1', 'x2'}, check_pir=True
+        )
 
     def test_check_grad_ignore_x3(self):
-        self.check_grad(['x1', 'x2', 'x4'], 'Out', no_grad_set=set('x3'))
+        self.check_grad(
+            ['x1', 'x2', 'x4'], 'Out', no_grad_set=set('x3'), check_pir=True
+        )
 
 
 class TestMultiplexOpError(unittest.TestCase):

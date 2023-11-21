@@ -109,6 +109,7 @@ phi::DenseTensor ReshardXToReplicated(
     phi::distributed::TensorDistAttr dist_attr(dist_tensor->dist_attr());
     std::vector<int64_t> dims_mapping(dist_tensor->dims().size(), -1);
     dist_attr.set_dims_mapping(dims_mapping);
+    dist_attr.clean_partial_status();
 
     // reshard to replicate dist tensor
     auto* func =
@@ -568,10 +569,18 @@ static PyObject* tensor_method__is_initialized(TensorObject* self,
 static PyObject* tensor_method__is_dense_tensor_hold_allocation(
     TensorObject* self, PyObject* args, PyObject* kwargs) {
   EAGER_TRY
-  auto dense_tensor =
-      std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-  if (dense_tensor) {
-    return ToPyObject(dense_tensor->IsInitialized());
+  if (!self->tensor.defined()) {
+    return ToPyObject(false);
+  }
+  if (self->tensor.is_dense_tensor()) {
+    return ToPyObject(
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl())
+            ->IsInitialized());
+  } else if (self->tensor.is_dist_tensor()) {
+    return ToPyObject(
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->value()
+            .IsInitialized());
   } else {
     return ToPyObject(false);
   }
@@ -1305,7 +1314,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   EAGER_TRY
   PyObject* _index = PyTuple_GET_ITEM(args, 0);
   VLOG(4) << "Call _getitem_index_not_tensor";
-  std::vector<int> slice_axes, slice_starts, slice_ends, slice_strides,
+  std::vector<int64_t> slice_axes, slice_starts, slice_ends, slice_strides,
       decrease_axis, none_axes, infer_flags;
   std::vector<int64_t> list_select_idxs;
   // if index is a list, list_select_flag will be true
@@ -1352,26 +1361,25 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
         break;
       }
     }
-    std::vector<int64_t> slice_axes_tmp(slice_axes.begin(), slice_axes.end());
-    std::vector<int64_t> infer_flags_tmp(infer_flags.begin(),
-                                         infer_flags.end());
-    std::vector<int64_t> decrease_axis_tmp(decrease_axis.begin(),
-                                           decrease_axis.end());
 
     if (op_type == "slice") {
       eager_gil_scoped_release guard;
       out = slice_ad_func(self->tensor,
-                          slice_axes_tmp,
+                          slice_axes,
                           slice_starts,
                           slice_ends,
-                          infer_flags_tmp,
-                          decrease_axis_tmp);
+                          infer_flags,
+                          decrease_axis);
     } else if (op_type == "strided_slice") {
       eager_gil_scoped_release guard;
-      out = strided_slice_ad_func(
-          self->tensor, slice_axes, slice_starts, slice_ends, slice_strides);
-      if (!decrease_axis_tmp.empty()) {
-        out = squeeze_ad_func(out, decrease_axis_tmp);
+      std::vector<int> slice_axes_tmp(slice_axes.begin(), slice_axes.end());
+      out = strided_slice_ad_func(self->tensor,
+                                  slice_axes_tmp,
+                                  slice_starts,
+                                  slice_ends,
+                                  slice_strides);
+      if (!decrease_axis.empty()) {
+        out = squeeze_ad_func(out, decrease_axis);
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -1606,7 +1614,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
   // TODO(liym27): Try not to call TensorToPyArray because it always
   // copys data to cpu place, which reduces performance.
   if (parse_index) {
-    std::vector<int> axes, starts, ends, steps, decrease_axes, none_axes,
+    std::vector<int64_t> axes, starts, ends, steps, decrease_axes, none_axes,
         infer_flags;
     std::vector<int64_t> list_select_idxs;
     // if index is a list, list_select_flag will be true
@@ -1623,13 +1631,6 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
                        &list_select_idxs,
                        &list_select_flag);
 
-    framework::AttributeMap attrs = {{"axes", axes},
-                                     {"starts", starts},
-                                     {"ends", ends},
-                                     {"steps", steps},
-                                     {"decrease_axes", decrease_axes},
-                                     {"none_axes", none_axes}};
-
     if (egr::Controller::Instance().HasGrad()) {
       PADDLE_ENFORCE_EQ(
           egr::EagerUtils::IsLeafTensor(self->tensor) &&
@@ -1642,6 +1643,8 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
     }
 
     paddle::Tensor value_tensor;
+    std::vector<phi::Scalar> values;
+    std::vector<int64_t> shape = std::vector<int64_t>{1};
 
     if (PyCheckTensor(value_obj)) {
       value_tensor = reinterpret_cast<TensorObject*>(value_obj)->tensor;
@@ -1705,25 +1708,20 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
           PyComplex_Check(value_obj)) {
         if (self->tensor.dtype() == phi::DataType::FLOAT32 ||
             self->tensor.dtype() == phi::DataType::FLOAT16) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<float>()};
+          values = std::vector<phi::Scalar>{value_obj_tmp.cast<float>()};
         } else if (self->tensor.dtype() == phi::DataType::FLOAT64) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<double>()};
+          values = std::vector<phi::Scalar>{value_obj_tmp.cast<double>()};
         } else if (self->tensor.dtype() == phi::DataType::INT32) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<int32_t>()};
+          values = std::vector<phi::Scalar>{value_obj_tmp.cast<int32_t>()};
         } else if (self->tensor.dtype() == phi::DataType::INT64) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<int64_t>()};
+          values = std::vector<phi::Scalar>{value_obj_tmp.cast<int64_t>()};
         } else if (self->tensor.dtype() == phi::DataType::BOOL) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<bool>()};
+          values = std::vector<phi::Scalar>{value_obj_tmp.cast<bool>()};
         } else if (self->tensor.dtype() == phi::DataType::COMPLEX64) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+          values = std::vector<phi::Scalar>{
               value_obj_tmp.cast<std::complex<float>>()};
         } else if (self->tensor.dtype() == phi::DataType::COMPLEX128) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+          values = std::vector<phi::Scalar>{
               value_obj_tmp.cast<std::complex<double>>()};
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
@@ -1733,8 +1731,6 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
               "float16, "
               "please check the type of tensor."));
         }
-        attrs["shape"] = std::vector<int64_t>{1};
-
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Value type error. The assign value allows "
@@ -1747,25 +1743,46 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       // Release gil and do tracing
       py::gil_scoped_release release;
       // use inplace set_value_ operator
-      if (value_tensor.initialized() &&
-          (self->tensor.dtype() != value_tensor.dtype())) {
-        if (egr::Controller::Instance().GetAMPLevel() !=
-            paddle::imperative::AmpLevel::O0) {
-          paddle::small_vector<std::vector<paddle::Tensor>,
-                               egr::kSlotSmallVectorSize>
-              tmps = {{self->tensor}, {value_tensor}};
-          auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
-          self->tensor = egr::EagerAmpAutoCast(
-              self->tensor.name(), self->tensor, amp_dtype, "set_value");
-          value_tensor = egr::EagerAmpAutoCast(
-              value_tensor.name(), value_tensor, amp_dtype, "set_value");
-        }
+      if (value_tensor.initialized()) {
         if (self->tensor.dtype() != value_tensor.dtype()) {
-          value_tensor = cast_ad_func(value_tensor, self->tensor.dtype());
+          if (egr::Controller::Instance().GetAMPLevel() !=
+              paddle::imperative::AmpLevel::O0) {
+            paddle::small_vector<std::vector<paddle::Tensor>,
+                                 egr::kSlotSmallVectorSize>
+                tmps = {{self->tensor}, {value_tensor}};
+            auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
+            self->tensor = egr::EagerAmpAutoCast(
+                self->tensor.name(), self->tensor, amp_dtype, "set_value");
+            value_tensor = egr::EagerAmpAutoCast(
+                value_tensor.name(), value_tensor, amp_dtype, "set_value");
+          }
+          if (self->tensor.dtype() != value_tensor.dtype()) {
+            value_tensor = cast_ad_func(value_tensor, self->tensor.dtype());
+          }
         }
+        const phi::distributed::ProcessMesh* mesh = nullptr;
+        if (InputsContainDistTensor(&mesh, self->tensor, value_tensor)) {
+          ConvertAllInputsToDistTensor(mesh, self->tensor, value_tensor);
+        }
+        self->tensor = set_value_with_tensor__ad_func(self->tensor,
+                                                      value_tensor,
+                                                      starts,
+                                                      ends,
+                                                      steps,
+                                                      axes,
+                                                      decrease_axes,
+                                                      none_axes);
+      } else {
+        self->tensor = set_value__ad_func(self->tensor,
+                                          starts,
+                                          ends,
+                                          steps,
+                                          axes,
+                                          decrease_axes,
+                                          none_axes,
+                                          shape,
+                                          values);
       }
-      self->tensor = set_value__dygraph_function(
-          self->tensor, value_tensor, {}, {}, {}, attrs);
     }
     if (PyCheckTensor(value_obj)) {
       // pass the stop_gradient from value to tensor.

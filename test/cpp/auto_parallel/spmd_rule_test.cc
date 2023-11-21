@@ -362,11 +362,11 @@ TEST(LayerNormSPMDRule, Ctor) {
   check_dim_mapping(infered_dist_attrs.first[1], {-1});
   check_dim_mapping(infered_dist_attrs.first[2], {-1});
   check_dim_mapping(infered_dist_attrs.second[0], {1, -1, -1});
-  check_dim_mapping(infered_dist_attrs.second[1], {1});
-  check_dim_mapping(infered_dist_attrs.second[2], {1});
+  check_dim_mapping(infered_dist_attrs.second[1], {1, -1});
+  check_dim_mapping(infered_dist_attrs.second[2], {1, -1});
   VLOG(4) << "test1 done.";
 
-  // ijk[1, 0, -1],k[0],k[0] --> ijk[1, -1, -1],z[1],z[1],
+  // ijk[1, 0, -1],k[0],k[0] --> ijk[1, -1, -1],z[1, 0],z[1, 0],
   // begin_norm_axis=2
   begin_norm_axis = 2;
   x_dist_attr.set_dims_mapping({1, 0, -1});
@@ -381,15 +381,15 @@ TEST(LayerNormSPMDRule, Ctor) {
                                            {epsilon, begin_norm_axis});
   infered_dist_attrs = layer_norm_rule.InferForward(ctx);
 
-  check_dim_mapping(infered_dist_attrs.first[0], {1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[0], {1, 0, -1});
   check_dim_mapping(infered_dist_attrs.first[1], {-1});
   check_dim_mapping(infered_dist_attrs.first[2], {-1});
-  check_dim_mapping(infered_dist_attrs.second[0], {1, -1, -1});
-  check_dim_mapping(infered_dist_attrs.second[1], {1});
-  check_dim_mapping(infered_dist_attrs.second[2], {1});
+  check_dim_mapping(infered_dist_attrs.second[0], {1, 0, -1});
+  check_dim_mapping(infered_dist_attrs.second[1], {1, 0});
+  check_dim_mapping(infered_dist_attrs.second[2], {1, 0});
   VLOG(4) << "test2 done.";
 
-  // ijk[0, -1, -1],y[-1],y[1] --> ijk[0, 1, -1], i[0], i[0], y=jk,
+  // ijk[0, -1, -1],y[-1],y[1] --> ijk[0, -1, -1], i[0], i[0], y=jk,
   // begin_norm_axis=1
   begin_norm_axis = 1;
   x_dist_attr.set_dims_mapping({0, -1, -1});
@@ -769,6 +769,43 @@ TEST(ConcatRule, Ctor) {
   check_dim_mapping(infered_dist_attrs.second[0], {-1, 1, 0});
   check_partial_dims(infered_dist_attrs.second[0], {});
 
+  auto build_output = [&](const TensorDistAttr& t_dist_attr,
+                          const std::vector<int64_t>& shape) {
+    return phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
+  };
+
+  auto& output_dist_attr =
+      PADDLE_GET_CONST(TensorDistAttr, infered_dist_attrs.second[0]);
+  auto output = build_output(output_dist_attr, {22, 16, 16});
+  // test reverse
+  auto infered_reverse_attrs =
+      phi::distributed::ConcatInferSpmdReverse(inputs, output, 0);
+  auto& inputs_infer1_reverse = PADDLE_GET_CONST(
+      std::vector<TensorDistAttr>, infered_reverse_attrs.first[0]);
+  for (auto e : inputs_infer1_reverse) {
+    check_dim_mapping(e, {-1, 1, 0});
+    check_partial_dims(e, {});
+  }
+  check_dim_mapping(infered_reverse_attrs.second[0],
+                    output_dist_attr.dims_mapping());
+  // test grad
+  auto infered_grad_attrs =
+      phi::distributed::ConcatGradInferSpmdDynamic(inputs, output, 0);
+  auto& inputs_infer1_grad = PADDLE_GET_CONST(std::vector<TensorDistAttr>,
+                                              infered_grad_attrs.first[0]);
+  for (auto e : inputs_infer1_grad) {
+    check_dim_mapping(e, {-1, 1, 0});
+    check_partial_dims(e, {});
+  }
+  check_dim_mapping(infered_grad_attrs.first[1],
+                    output_dist_attr.dims_mapping());
+  auto& infered_grad = PADDLE_GET_CONST(std::vector<TensorDistAttr>,
+                                        infered_grad_attrs.second[0]);
+  for (auto e : infered_grad) {
+    check_dim_mapping(e, {-1, 1, 0});
+    check_partial_dims(e, {});
+  }
+
   // test 2，force replicate along concat axis
   inputs = build_inputs();
   infered_dist_attrs = phi::distributed::ConcatInferSpmd(inputs, 1);
@@ -788,6 +825,201 @@ TEST(ConcatRule, Ctor) {
   check_dim_mapping(infered_dist_attrs.second[0], {1, -1, 0});
   check_partial_dims(infered_dist_attrs.second[0], {});
 }
+
+TEST(StackRule, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  int input_size = 3;
+  std::vector<int64_t> input_shape = {16, 8, 4};
+  std::vector<std::vector<int64_t>> dim_mappings = {
+      {-1, 0, 1}, {-1, 1, 0}, {-1, -1, 0}};
+  std::vector<std::vector<int64_t>> partial_status = {{}, {}, {1}};
+
+  auto build_inputs = [&] {
+    std::vector<phi::distributed::DistMetaTensor> inputs;
+    for (int i = 0; i < input_size; i++) {
+      auto t_dist_attr = TensorDistAttr();
+      t_dist_attr.set_process_mesh(process_mesh);
+      t_dist_attr.set_dims_mapping(dim_mappings[i]);
+      t_dist_attr.set_dynamic_dims({false, false, false});
+      auto input = phi::distributed::DistMetaTensor(phi::make_ddim(input_shape),
+                                                    t_dist_attr);
+      inputs.push_back(input);
+    }
+    return inputs;
+  };
+
+  auto build_output = [&](const TensorDistAttr& t_dist_attr, int stack_dim) {
+    std::vector<int64_t> output_shape;
+    std::transform(input_shape.begin(),
+                   input_shape.begin() + stack_dim,
+                   std::back_inserter(output_shape),
+                   [](int64_t x) { return x; });
+    output_shape.push_back(input_size);
+    std::transform(input_shape.begin() + stack_dim,
+                   input_shape.end(),
+                   std::back_inserter(output_shape),
+                   [](int64_t x) { return x; });
+    return phi::distributed::DistMetaTensor(phi::make_ddim(output_shape),
+                                            t_dist_attr);
+  };
+
+  // test 1, inputs are aligned according to cost,
+  auto inputs = build_inputs();
+  auto infered_dist_attrs = phi::distributed::StackInferSpmd(inputs, 0);
+  // list of tensor => sigle tensor
+  EXPECT_EQ(infered_dist_attrs.first.size(), static_cast<size_t>(1));
+  EXPECT_EQ(infered_dist_attrs.second.size(), static_cast<size_t>(1));
+  EXPECT_TRUE(
+      paddle::holds_alternative<std::vector<phi::distributed::TensorDistAttr>>(
+          infered_dist_attrs.first[0]));
+  EXPECT_TRUE(paddle::holds_alternative<phi::distributed::TensorDistAttr>(
+      infered_dist_attrs.second[0]));
+  auto& inputs_infer1 = PADDLE_GET_CONST(std::vector<TensorDistAttr>,
+                                         infered_dist_attrs.first[0]);
+  for (auto e : inputs_infer1) {
+    check_dim_mapping(e, {-1, 1, 0});
+    check_partial_dims(e, {});
+  }
+  check_dim_mapping(infered_dist_attrs.second[0], {-1, -1, 1, 0});
+  check_partial_dims(infered_dist_attrs.second[0], {});
+
+  auto output_dist_attr =
+      PADDLE_GET_CONST(TensorDistAttr, infered_dist_attrs.second[0]);
+  auto output = build_output(output_dist_attr, 0);
+  // test reverse
+  auto infered_reverse_attrs =
+      phi::distributed::StackInferSpmdReverse(inputs, output, 0);
+  auto& inputs_infer1_reverse = PADDLE_GET_CONST(
+      std::vector<TensorDistAttr>, infered_reverse_attrs.first[0]);
+  for (auto e : inputs_infer1_reverse) {
+    check_dim_mapping(e, {-1, 1, 0});
+    check_partial_dims(e, {});
+  }
+  check_dim_mapping(infered_reverse_attrs.second[0],
+                    output_dist_attr.dims_mapping());
+  // test grad
+  auto infered_grad_attrs = phi::distributed::StackGradInferSpmd(output, 0);
+  check_dim_mapping(infered_grad_attrs.first[0],
+                    output_dist_attr.dims_mapping());
+  auto& infered_grad = PADDLE_GET_CONST(std::vector<TensorDistAttr>,
+                                        infered_grad_attrs.second[0]);
+  for (auto e : infered_grad) {
+    check_dim_mapping(e, {-1, 1, 0});
+    check_partial_dims(e, {});
+  }
+
+  // test 2，force replicate along concat axis
+  inputs = build_inputs();
+  infered_dist_attrs = phi::distributed::StackInferSpmd(inputs, 1);
+  // list of tensor => sigle tensor
+  EXPECT_EQ(infered_dist_attrs.first.size(), static_cast<size_t>(1));
+  EXPECT_EQ(infered_dist_attrs.second.size(), static_cast<size_t>(1));
+  EXPECT_TRUE(
+      paddle::holds_alternative<std::vector<phi::distributed::TensorDistAttr>>(
+          infered_dist_attrs.first[0]));
+  EXPECT_TRUE(paddle::holds_alternative<phi::distributed::TensorDistAttr>(
+      infered_dist_attrs.second[0]));
+  auto& inputs_infer2 = PADDLE_GET_CONST(std::vector<TensorDistAttr>,
+                                         infered_dist_attrs.first[0]);
+  for (auto e : inputs_infer2) {
+    check_dim_mapping(e, {-1, 1, 0});
+    check_partial_dims(e, {});
+  }
+  check_dim_mapping(infered_dist_attrs.second[0], {-1, -1, 1, 0});
+  check_partial_dims(infered_dist_attrs.second[0], {});
+}
+
+TEST(WhereRule, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  std::vector<std::vector<int64_t>> shapes = {{16, 16, 16}, {16, 16}, {16}};
+  std::vector<std::vector<int64_t>> dim_mappings = {{-1, 0, -1}, {-1, 0}, {-1}};
+
+  auto build_inputs = [&] {
+    std::vector<phi::distributed::DistMetaTensor> inputs;
+    for (int i = 0; i < 3; i++) {
+      auto t_dist_attr = TensorDistAttr();
+      t_dist_attr.set_process_mesh(process_mesh);
+      t_dist_attr.set_dims_mapping(dim_mappings[i]);
+      t_dist_attr.set_dynamic_dims({false, false, false});
+      auto input = phi::distributed::DistMetaTensor(phi::make_ddim(shapes[i]),
+                                                    t_dist_attr);
+      inputs.push_back(input);
+    }
+    return inputs;
+  };
+
+  auto inputs = build_inputs();
+  auto infered_dist_attrs = phi::distributed::WhereGradInferSpmd(
+      inputs[0], inputs[1], inputs[2], inputs[0]);
+
+  EXPECT_EQ(infered_dist_attrs.first.size(), static_cast<size_t>(4));
+  EXPECT_EQ(infered_dist_attrs.second.size(), static_cast<size_t>(2));
+
+  check_dim_mapping(infered_dist_attrs.first[0], {-1, 0, -1});
+  check_dim_mapping(infered_dist_attrs.first[1], {0, -1});
+  check_dim_mapping(infered_dist_attrs.first[2], {-1});
+  check_dim_mapping(infered_dist_attrs.first[3], {-1, 0, -1});
+
+  check_dim_mapping(infered_dist_attrs.second[0], {0, -1});
+  check_partial_dims(infered_dist_attrs.second[0], {});
+  check_dim_mapping(infered_dist_attrs.second[1], {-1});
+  check_partial_dims(infered_dist_attrs.second[1], {0});
+}
+
+TEST(Numel, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  std::vector<int64_t> shape = {16, 16, 16};
+  std::vector<int64_t> dims_mapping = {-1, 0, -1};
+
+  auto t_dist_attr = TensorDistAttr();
+  t_dist_attr.set_process_mesh(process_mesh);
+  t_dist_attr.set_dims_mapping(dims_mapping);
+  t_dist_attr.set_dynamic_dims({false, false, false});
+  auto input =
+      phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
+  auto infered_dist_attrs = phi::distributed::NumelInferSpmd(input);
+  EXPECT_EQ(infered_dist_attrs.first.size(), static_cast<size_t>(1));
+  EXPECT_EQ(infered_dist_attrs.second.size(), static_cast<size_t>(1));
+  check_dim_mapping(infered_dist_attrs.first[0], dims_mapping);
+  check_dim_mapping(infered_dist_attrs.second[0], {});
+  check_partial_dims(infered_dist_attrs.second[0], {0});
+}
+
+TEST(Triu, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  std::vector<int64_t> shape = {16, 16, 16};
+  std::vector<int64_t> dims_mapping = {0, -1, 1};
+
+  auto t_dist_attr = TensorDistAttr();
+  t_dist_attr.set_process_mesh(process_mesh);
+  t_dist_attr.set_dims_mapping(dims_mapping);
+  t_dist_attr.set_dynamic_dims({false, false, false});
+  auto input =
+      phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
+  auto infered_dist_attrs = phi::distributed::TriuGradInferSpmd(input, 0);
+  EXPECT_EQ(infered_dist_attrs.first.size(), static_cast<size_t>(1));
+  EXPECT_EQ(infered_dist_attrs.second.size(), static_cast<size_t>(1));
+  check_dim_mapping(infered_dist_attrs.first[0], {0, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[0], {0, -1, -1});
+  check_partial_dims(infered_dist_attrs.second[0], {});
+}
+
 TEST(Util, Ctor) {
   // test equal test not equal
   using phi::distributed::PartialStatus;
