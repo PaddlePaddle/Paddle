@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import logging
 
 from paddle.distributed.auto_parallel.static.utils import (
@@ -40,13 +41,20 @@ _supported_optimizer_type = [
 ]
 
 FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
+    # amp_level == 'o0' or 'o2'
     {
         "forward": ["matmul_v2", "c_allreduce_sum", "elementwise_add"],
         "backward": ["elementwise_add_grad", "matmul_v2_grad"],
     },
     {
-        "forward": ["matmul_v2", "c_reduce_scatter", "elementwise_add"],
-        "backward": ["elementwise_add_grad", "c_allgather", "matmul_v2_grad"],
+        "forward": ["matmul_v2", "c_reducescatter", "elementwise_add"],
+        "backward": [
+            "elementwise_add_grad",
+            "c_allreduce_sum",
+            "scale",
+            "c_allgather",
+            "matmul_v2_grad",
+        ],
     },
     {
         "forward": ["matmul_v2", "c_allreduce_sum", "elementwise_add"],
@@ -58,7 +66,22 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
         ],
     },
     {
-        "forward": ["matmul_v2", "c_reduce_scatter", "elementwise_add"],
+        "forward": ["matmul_v2", "c_reducescatter", "elementwise_add"],
+        "backward": [
+            "elementwise_add_grad",
+            "c_allreduce_sum",
+            "scale",
+            "c_allgather",
+            "matmul_v2_grad",
+        ],
+    },
+    # amp_level == 'o1'
+    {
+        "forward": ["matmul_v2", "c_allreduce_sum", "cast", "elementwise_add"],
+        "backward": ["elementwise_add_grad", "matmul_v2_grad"],
+    },
+    {
+        "forward": ["matmul_v2", "c_reducescatter", "cast", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
             "c_allreduce_sum",
@@ -69,14 +92,6 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
     },
     {
         "forward": ["matmul_v2", "c_allreduce_sum", "cast", "elementwise_add"],
-        "backward": ["elementwise_add_grad", "matmul_v2_grad"],
-    },
-    {
-        "forward": ["matmul_v2", "c_reduce_scatter", "cast", "elementwise_add"],
-        "backward": ["elementwise_add_grad", "c_allgather", "matmul_v2_grad"],
-    },
-    {
-        "forward": ["matmul_v2", "c_allreduce_sum", "cast", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
             "c_allreduce_sum",
@@ -85,7 +100,7 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
         ],
     },
     {
-        "forward": ["matmul_v2", "c_reduce_scatter", "cast", "elementwise_add"],
+        "forward": ["matmul_v2", "c_reducescatter", "cast", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
             "c_allreduce_sum",
@@ -126,9 +141,9 @@ class FusedLinearPromotionPass(PassBase):
     def _apply_single_impl(self, main_program, startup_program, context):
         self._dist_context = self.get_attr("dist_context")
         self._global_rank = int(self.get_attr("global_rank"))
-        self._enable_sp = self.get_attr("enable_sp")
         self._params_grads = self.get_attr("params_grads")
         self._amp_level = self.get_attr("amp_level")
+        self._enable_sp = self.get_attr("enable_sp")
         self._is_amp_o1 = self._amp_level == 'o1'
         self._source_patterns = {}
         self._enable_dp, self._enable_mp = self._is_enable_dp_mp(
@@ -169,6 +184,7 @@ class FusedLinearPromotionPass(PassBase):
         ) = self._get_forward_backward_op_segments(main_program)
 
         # 3 transform the forward ops
+        logger.info(f"before main_program: {main_program}")
         rename_var_names_map, deleted_bias_names = self._transform_forward(
             main_program,
             forward_segments,
@@ -194,6 +210,7 @@ class FusedLinearPromotionPass(PassBase):
             self._is_amp_o1,
         )
         logger.info(f"deleted_bias_names: {deleted_bias_names}")
+        logger.info(f"after main_program: {main_program}")
         # 6. transform the startup program
         self._transform_startup_program(
             startup_program, deleted_bias_names, self._is_first_rank
@@ -234,21 +251,22 @@ class FusedLinearPromotionPass(PassBase):
                     raise ValueError("inner mesh shape is not supported")
         return False, False
 
-    def _reset_op_dist_attr(self, op, new_var_name, is_input=True):
-        """
-        Reset the dist_attr of the input and output of the operator.
-        """
-        op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)
-        var_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
-            self._main_block.var(new_var_name)
-        )
-        assert (
-            op_dist_attr is not None
-        ), f"Reset op {op.desc.type()}'s dist_attr, but its dist_attr is None"
-        if is_input:
-            op_dist_attr.set_input_dist_attr(new_var_name, var_dist_attr)
-        if not is_input:
-            op_dist_attr.set_output_dist_attr(new_var_name, var_dist_attr)
+    def _is_enable_sp(self, main_program):
+        for op in main_program.global_block().ops:
+            forward_has_scatter_reduce_op = False
+            backward_has_all_gather_op = False
+            if (
+                int(op.desc.attr('op_role')) == 0
+                and op.type == 'c_reducescatter'
+            ):  # forward
+                forward_has_scatter_reduce_op = True
+            elif (
+                int(op.desc.attr('op_role')) == 1 and op.type == 'c_allgather'
+            ):  # backward
+                backward_has_all_gather_op = True
+            if forward_has_scatter_reduce_op and backward_has_all_gather_op:
+                return True
+        return False
 
     def _get_forward_backward_op_segments(self, main_program):
         """
@@ -277,9 +295,13 @@ class FusedLinearPromotionPass(PassBase):
                     if ops[new_id].type != op_name:
                         return False
                     new_id += 1
-                for input_name in (ops[new_id - 1].input_arg_names)[1:]:
-                    if input_name not in forward_matmul_inputs:
-                        return False
+                matmul_grad_input_names = ops[new_id - 1].input_arg_names
+                # for refined-recompute
+                if (
+                    matmul_grad_input_names[1] not in forward_matmul_inputs
+                    and matmul_grad_input_names[2] not in forward_matmul_inputs
+                ):
+                    return False
                 return True
 
         global_block = main_program.global_block()
@@ -576,7 +598,7 @@ class FusedLinearPromotionPass(PassBase):
                 for segment in reversed(backward_segments):
                     add_grad_op = global_block.ops[segment[0]]
                     matmul_grad_op = global_block.ops[segment[-1] - 1]
-                    origin_comm_op_id = segment[-2]
+                    origin_comm_op_id = segment[-1] - 2
                     orgin_comm_op = global_block.ops[origin_comm_op_id]
                     new_comm_op = global_block._insert_op(
                         segment[0],
@@ -597,7 +619,9 @@ class FusedLinearPromotionPass(PassBase):
                         matmul_grad_op.input_arg_names[0],
                         add_grad_op.output_arg_names[1],
                     )
-                    global_block._remove_op(segment[-2] + 1)
+                    global_block._remove_op(
+                        segment[-1]
+                    )  # origin idx is segment[-1] - 1
                 global_block._sync_with_cpp()
         else:  # not is_first_rank_in tp or sp
             # need to delete the grad op assosiated with the deleted bias var
@@ -619,28 +643,27 @@ class FusedLinearPromotionPass(PassBase):
                     global_block._remove_op(segment[0])
                 global_block._sync_with_cpp()
             else:
-                # place the comm_op(c_allgather) before the elementwise_add_grad
                 for segment in reversed(backward_segments):
                     add_grad_op = global_block.ops[segment[0]]
-                    matmul_grad_op = global_block.ops[segment[-1] - 1]
-                    origin_comm_op_id = segment[-2]
-                    orgin_comm_op = global_block.ops[origin_comm_op_id]
-                    new_comm_op = global_block._insert_op(
-                        segment[0],
-                        type="nop",
-                    )
-                    new_comm_op.desc.copy_from(orgin_comm_op.desc)
-                    new_comm_op._rename_input(
-                        orgin_comm_op.input_arg_names[0],
-                        add_grad_op.input_arg_names[0],
-                    )
-                    matmul_grad_op._rename_input(
-                        matmul_grad_op.input_arg_names[0],
-                        new_comm_op.output_arg_names[0],
-                    )
-                    global_block._remove_op(segment[-2] + 1)
+                    orgin_comm_op = global_block.ops[segment[-1] - 1]
+                    rename_var_names_map[
+                        add_grad_op.output_arg_names[0]
+                    ] = add_grad_op.input_arg_names[0]
                     global_block._remove_var(add_grad_op.output_arg_names[0])
-                    global_block._remove_var(add_grad_op.output_arg_names[1])
+                    orgin_comm_op._rename_input(
+                        orgin_comm_op.input_arg_names[0],
+                        add_grad_op.output_arg_names[0],
+                    )
+                    to_delete_grad_of_param.append(
+                        add_grad_op.output_arg_names[1]
+                    )
+
+                    # remove 'elementwise_add_grad' 'c_allreduce_sum' 'scale'
+                    global_block._remove_op(
+                        segment[0] + 3
+                    )  # elementwise_add_grad
+                    global_block._remove_op(segment[0] + 2)  # c_allreduce_sum
+                    global_block._remove_op(segment[0] + 1)  # scale
                     # remove vars and op
                     if self._enable_dp:  # DP
                         c_all_reduce_op = global_block.ops[segment[1]]
