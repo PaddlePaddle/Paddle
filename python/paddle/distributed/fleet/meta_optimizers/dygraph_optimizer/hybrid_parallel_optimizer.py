@@ -199,6 +199,7 @@ class HybridParallelClipGrad:
             + global_norm_not_dist_bf16
             + global_norm_not_dist_fp32
         )
+
         self._global_norm(global_norm_var_dist, global_norm_var_not_dist)
 
         global_norm_var_fp32 = paddle.sqrt(
