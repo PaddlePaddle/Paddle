@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 
+#include "paddle/phi/infermeta/spmd_rules/cast.h"
 #include "paddle/phi/infermeta/spmd_rules/concat.h"
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
@@ -32,6 +33,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/split.h"
 #include "paddle/phi/infermeta/spmd_rules/stack.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
+#include "paddle/phi/infermeta/spmd_rules/triu.h"
 #include "paddle/phi/infermeta/spmd_rules/unsqueeze.h"
 #include "paddle/phi/infermeta/spmd_rules/where.h"
 
@@ -560,6 +562,15 @@ PD_REGISTER_SPMD_RULE(log_softmax,
 PD_REGISTER_SPMD_RULE(where,
                       PD_INFER_SPMD(phi::distributed::WhereInferSpmd),
                       PD_INFER_SPMD(phi::distributed::WhereInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(triu,
+                      PD_INFER_SPMD(phi::distributed::TriuInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::TriuInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    tril_triu,
+    PD_INFER_SPMD(phi::distributed::TrilTriuInferSpmd),
+    PD_INFER_SPMD(phi::distributed::TrilTriuInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi
