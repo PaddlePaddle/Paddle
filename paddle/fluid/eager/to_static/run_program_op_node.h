@@ -205,7 +205,7 @@ static auto GetNameFromValue(const ::pir::Block *block,
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
       value2name[op.result(0).Value::impl()] = name;
-    } else if (is_input && op->name() == "builtin.get_constant") {
+    } else if (is_input && op.name() == "builtin.get_constant") {
       name = op.attributes()
                  .at("constant_name")
                  .dyn_cast<pir::StrAttribute>()
