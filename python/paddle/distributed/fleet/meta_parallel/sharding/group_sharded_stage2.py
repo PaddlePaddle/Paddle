@@ -240,14 +240,15 @@ class GroupShardedStage2(nn.Layer):
         need_dp_scale = self._dp_group is not None and self._dp_group.nranks > 1
         if need_dp_scale:
             dp_scale_factor = 1.0 / (self._dp_group.nranks)
+        # print(f"needd_dp_scale: {need_dp_scale}")
         # Scale grad storages
         for dtype in self._grad_storages.keys():
             if (
                 not self._offload
                 and self._rank in self._grad_storages[dtype].keys()
             ):
-                if self.use_main_grad and param.main_grad is not None:
-                    self._grad_storages[dtype][self._rank].buffer.scale_(
+                # if self.use_main_grad and param.main_grad is not None:
+                self._grad_storages[dtype][self._rank].buffer.scale_(
                         self._world_size_scaling
                     )
                 if need_dp_scale:    
@@ -263,6 +264,9 @@ class GroupShardedStage2(nn.Layer):
                         if need_dp_scale:
                             param.main_grad.scale_(scale=dp_scale_factor)
                     elif param.grad is not None:
+                        assert param.grad is not None
+                        assert param.grad._is_initialized()
+                        param.grad.scale_(self._world_size_scaling)
                         if need_dp_scale:
                             param.grad.scale_(scale=dp_scale_factor)
 
@@ -386,13 +390,15 @@ class GroupShardedStage2(nn.Layer):
     def _get_scaled_grad_fn(self, param):
         @paddle.autograd.no_grad()
         def scale(grad):
-            # do gradient scale separately 
+            # do gradient scale separately
             # For grad scale, we need to do it in the backward hook due to fp16 may overflow if we first add grad and then scale
             # For main_grad scale, we do scale in the optimizer.
             if not hasattr(param, "main_grad"):
                 if grad is not None and grad._is_initialized():
+                    # print('x'*10)
                     grad.scale_(self._world_size_scaling)
                 else:
+                    # print('y'*10)
                     assert param.grad is not None
                     assert param.grad._is_initialized()
                     param.grad.scale_(self._world_size_scaling)
@@ -531,7 +537,7 @@ class GroupShardedStage2(nn.Layer):
             return
 
         for index, param in enumerate(self._trainable_params):
-            param._register_grad_hook(self._get_scaled_grad_fn(param))
+            # param._register_grad_hook(self._get_scaled_grad_fn(param))
 
             dst_rank = self._trainable_param2rank[param.name]
 
