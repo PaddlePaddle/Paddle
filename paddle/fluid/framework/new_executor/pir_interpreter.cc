@@ -80,7 +80,8 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
       scope_(scope),
       ir_block_(ir_block),
       ir_stream_analyzer_(place),
-      fetch_var_names_(fetch_var_names) {
+      fetch_var_names_(fetch_var_names),
+      enable_job_schedule_profiler_(false) {
   VLOG(4) << "PirInterpreter(): " << this << " on " << place_;
 
   static_build_ = FLAGS_new_executor_static_build &&
@@ -128,6 +129,10 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
   ss << this
      << std::chrono::high_resolution_clock::now().time_since_epoch().count();
   BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
+
+#if defined(PADDLE_WITH_CUDA)
+  calculate_stream_timer_ = std::make_unique<phi::CalculateStreamTimer>(place);
+#endif
 }
 
 PirInterpreter::PirInterpreter(
@@ -285,8 +290,12 @@ void PirInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
 }
 
 std::tuple<double, double> PirInterpreter::InterpreterRunTime() {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "PirInterpreter::InterpreterRunTime is not implemented."));
+  double start_time = 0, end_time = 0;
+#if defined(PADDLE_WITH_CUDA)
+  start_time = calculate_stream_timer_->StartTime();
+  end_time = calculate_stream_timer_->EndTime();
+#endif
+  return std::make_tuple(start_time, end_time);
 }
 
 const interpreter::PirDependencyBuilder&
@@ -1097,7 +1106,10 @@ void PirInterpreter::ConstructEventForJitInput() {
 paddle::framework::FetchList PirInterpreter::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
-    bool need_fetch) {
+    bool need_fetch,
+    bool enable_job_schedule_profiler) {
+  enable_job_schedule_profiler_ = enable_job_schedule_profiler;
+
   auto FeedInput = [&] {
     VLOG(4) << "Feed inputs";
     for (size_t i = 0; i < feed_names.size(); ++i) {
@@ -1190,6 +1202,8 @@ paddle::framework::FetchList PirInterpreter::Run(
 FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
                               bool need_fetch,
                               bool enable_job_schedule_profiler) {
+  enable_job_schedule_profiler_ = enable_job_schedule_profiler;
+
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -1300,6 +1314,20 @@ void PirInterpreter::TraceRunInstructionList(
 
   exception_holder_.Clear();
 
+  if (enable_job_schedule_profiler_) {
+    for (int i = trace_execute_order_.size() - 1; i >= 0; --i) {
+      auto instr_id = trace_execute_order_[i];
+      std::string op_name = vec_instruction_base_.at(instr_id)->Name();
+      op_name = op_name.substr(op_name.find_first_of(".") + 1);
+      if (!interpreter::IsCommunicationOp(op_name)) {
+        VLOG(3) << "Last calculated op type: "
+                << vec_instruction_base_.at(instr_id)->Name();
+        last_calculate_instr_id_ = instr_id;
+        break;
+      }
+    }
+  }
+
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
     if ((*dependecy_count_)[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
@@ -1314,6 +1342,17 @@ void PirInterpreter::TraceRunInstructionList(
     VLOG(6) << "Run InstructionBase " << instr_node->Name() << "[" << instr_id
             << "]";
     RunInstructionBase(instr_node);
+
+#if defined(PADDLE_WITH_CUDA)
+    if (enable_job_schedule_profiler_) {
+      if (instr_id == last_calculate_instr_id_ &&
+          calculate_stream_timer_->IsStarted()) {
+        VLOG(3) << "Stop calculated stream timer from op: "
+                << instr_node->Name();
+        calculate_stream_timer_->Stop();
+      }
+    }
+#endif
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";
@@ -1343,6 +1382,18 @@ void PirInterpreter::MultiThreadRunInstructionList(
   }
 
   exception_holder_.Clear();
+
+  if (enable_job_schedule_profiler_) {
+    for (int i = vec_instr.size() - 1; i >= 0; --i) {
+      std::string op_name = vec_instr.at(i)->Name();
+      op_name = op_name.substr(op_name.find_first_of(".") + 1);
+      if (!interpreter::IsCommunicationOp(op_name)) {
+        VLOG(3) << "Last calculated op type: " << op_name;
+        last_calculate_instr_id_ = vec_instr.at(i)->Id();
+        break;
+      }
+    }
+  }
 
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
     if ((*dependecy_count_)[i] == 0) {
@@ -1429,6 +1480,17 @@ void PirInterpreter::RunInstructionBaseAsync(size_t instr_id) {
 
     RunInstructionBase(instr_node);
 
+#if defined(PADDLE_WITH_CUDA)
+    if (enable_job_schedule_profiler_) {
+      if (instr_id == last_calculate_instr_id_ &&
+          calculate_stream_timer_->IsStarted()) {
+        VLOG(3) << "Stop calculated stream timer from op: "
+                << instr_node->Name();
+        calculate_stream_timer_->Stop();
+      }
+    }
+#endif
+
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";
       if (exception_notifier_ != nullptr) {
@@ -1484,6 +1546,18 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
 
   try {
     instr_node->WaitEvent(cur_place);
+#if defined(PADDLE_WITH_CUDA)
+    if (enable_job_schedule_profiler_) {
+      std::string op_name = instr_node->Name();
+      op_name = op_name.substr(op_name.find_first_of(".") + 1);
+      if (!calculate_stream_timer_->IsStarted() &&
+          !interpreter::IsCommunicationOp(op_name)) {
+        VLOG(3) << "Start calculated stream timer from op: "
+                << instr_node->Name();
+        calculate_stream_timer_->Start();
+      }
+    }
+#endif
     VLOG(4) << "begin to run op " << instr_node->Name();
     VLOG(4) << "begin: " << __func__ << " OP id:" << instr_node->Id()
             << " name:" << instr_node->Name() << " type:"

@@ -66,6 +66,8 @@ class AsyncWorkQueue {
   std::unique_ptr<WorkQueueGroup> queue_group_;
 };
 
+bool IsCommunicationOp(const std::string& op_name);
+
 bool IsCommunicationOp(const OperatorBase* op);
 
 bool IsCommunicationOp(const Instruction& instr);

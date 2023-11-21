@@ -48,7 +48,8 @@ class InterpreterCore {
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       const std::vector<phi::DenseTensor>& feed_tensors,
-      bool need_fetch = true);
+      bool need_fetch = true,
+      bool enable_job_schedule_profiler = false);
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true,

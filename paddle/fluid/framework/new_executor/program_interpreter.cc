@@ -218,7 +218,10 @@ void ProgramInterpreter::Build(
 FetchList ProgramInterpreter::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
-    bool need_fetch) {
+    bool need_fetch,
+    bool enable_job_schedule_profiler) {
+  enable_job_schedule_profiler_ = enable_job_schedule_profiler;
+
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 

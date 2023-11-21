@@ -205,7 +205,9 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     if (FLAGS_enable_pir_in_executor) {
       interpretercores_[job_idx]->Run(feed_names,
                                       splited_feeds[job->MicroBatchId()],
-                                      /*need_fetch = */ false);
+                                      /*need_fetch = */ false,
+                                      /*enable_job_schedule_profiler = */
+                                      enable_job_schedule_profiler);
 
       FetchTensors(job->FetchVarNames(),
                    fetch_var_names_,

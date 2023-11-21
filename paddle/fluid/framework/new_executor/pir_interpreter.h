@@ -18,6 +18,10 @@
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 #include "paddle/pir/core/value.h"
 
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/phi/kernels/autotune/gpu_timer.h"
+#endif
+
 namespace ir {
 class Block;
 }  // namespace ir
@@ -52,7 +56,8 @@ class PirInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       const std::vector<phi::DenseTensor>& feed_tensors,
-      bool need_fetch = true) override;
+      bool need_fetch = true,
+      bool enable_job_schedule_profiler = false) override;
 
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
@@ -232,6 +237,12 @@ class PirInterpreter : public InterpreterBaseImpl {
   // Note(zhangbo): set_parameter_op's input and get_parameter_op's output
   // belongs to a parameter and cannot GC.
   std::unordered_set<std::string> parameter_var_names_;
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  std::unique_ptr<phi::CalculateStreamTimer> calculate_stream_timer_;
+#endif
+  size_t last_calculate_instr_id_;
+  bool enable_job_schedule_profiler_;
 };
 
 }  // namespace framework
