@@ -3844,6 +3844,9 @@ def histogramdd(
 
     check_type(density, 'density', bool, 'histogramdd')
 
+    #     import pdb
+    #     pdb.set_trace()
+
     __check_x(x)
     # weights
     __check_weights(x, weights)
@@ -3852,7 +3855,7 @@ def histogramdd(
     N = reshaped_input.shape[0]
     reshaped_weights = None
     if weights is not None:
-        weights = weights.astype('float32')
+        weights = weights.astype(x.dtype)
         reshaped_weights = weights.reshape([N])
         assert reshaped_weights.shape[0] == N, (
             "The size of weight must be %d" % N
@@ -3860,7 +3863,7 @@ def histogramdd(
     # ranges
     __check_ranges(D, ranges)
     if ranges is None:
-        ranges = paddle.zeros([D, 2], dtype=paddle.float32)
+        ranges = paddle.zeros([D, 2], dtype=x.dtype)
         maxv = paddle.max(reshaped_input, axis=0).reshape([-1])
         minv = paddle.min(reshaped_input, axis=0).reshape([-1])
 
@@ -3871,7 +3874,7 @@ def histogramdd(
             ranges = paddle.static.setitem(ranges, (slice(None), 0), minv)
             ranges = paddle.static.setitem(ranges, (slice(None), 1), maxv)
     else:
-        ranges = paddle.to_tensor(ranges, dtype=paddle.float32).reshape([D, 2])
+        ranges = paddle.to_tensor(ranges, dtype=x.dtype).reshape([D, 2])
     # bins to edges
     edges = []
     hist_shape = []
@@ -3887,7 +3890,7 @@ def histogramdd(
                 raise ValueError(
                     "The type of %d-th element in bins list must be int." % idx
                 )
-            e = paddle.linspace(r[0], r[1], bins[idx] + 1, 'float32')
+            e = paddle.linspace(r[0], r[1], bins[idx] + 1, x.dtype)
             edges.append(e)
             dedges.append(e.diff())
     elif isinstance(
@@ -3919,7 +3922,9 @@ def histogramdd(
                 index_list, (i, on_edge), index_list[i][on_edge] - 1
             )
     index_list = tuple(index_list)
-    lut = paddle.arange(paddle.to_tensor(hist_shape).prod()).reshape(hist_shape)
+    lut = paddle.arange(
+        paddle.to_tensor(hist_shape).prod(),
+    ).reshape(hist_shape)
     flattened_index = lut[index_list]
     hist = paddle.bincount(
         flattened_index,
@@ -3927,7 +3932,7 @@ def histogramdd(
         minlength=paddle.to_tensor(hist_shape).prod(),
     )
     hist = hist.reshape(hist_shape)
-    hist = hist.astype('float32')
+    hist = hist.astype(x.dtype)
 
     core = D * (slice(1, -1),)
     hist = hist[core]

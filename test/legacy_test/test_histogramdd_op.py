@@ -19,6 +19,17 @@ import numpy as np
 import paddle
 
 
+def ref_histogramdd(x, bins, ranges, weights, density):
+    D = x.shape[-1]
+    x = x.reshape(-1, D)
+    if ranges is not None:
+        ranges = np.array(ranges, dtype=x.dtype).reshape(D, 2).tolist()
+    if weights is not None:
+        weights = weights.reshape(-1)
+    ref_hist, ref_edges = np.histogramdd(x, bins, ranges, density, weights)
+    return ref_hist, ref_edges
+
+
 # inputs, bins, ranges, weights, density
 class TestHistogramddAPI(unittest.TestCase):
     def setUp(self):
@@ -35,18 +46,18 @@ class TestHistogramddAPI(unittest.TestCase):
         )
 
     def init_input(self):
-        self.sample = np.array([[0.0, 1.0], [1.0, 0.0], [2.0, 0.0], [2.0, 2.0]])
+        # self.sample = np.array([[0.0, 1.0], [1.0, 0.0], [2.0, 0.0], [2.0, 2.0]])
+        self.sample = np.random.randn(
+            4,
+            2,
+        ).astype(np.float64)
         self.bins = [3, 3]
-        self.weights = np.array([1.0, 2.0, 4.0, 8.0])
+        self.weights = np.array([1.0, 2.0, 4.0, 8.0], dtype=self.sample.dtype)
 
-    def set_expect_output(self):  # pytorch output as expect_hist/expect_edges
-        self.expect_hist = np.array(
-            [[0.0, 1.0, 0.0], [2.0, 0.0, 0.0], [4.0, 0.0, 8.0]]
+    def set_expect_output(self):
+        self.expect_hist, self.expect_edges = ref_histogramdd(
+            self.sample, self.bins, self.ranges, self.weights, self.density
         )
-        self.expect_edges = [
-            [0.00000000, 0.66666669, 1.33333325, 2.00000000],
-            [0.00000000, 0.66666669, 1.33333325, 2.00000000],
-        ]
 
     def test_static_api(self):
         paddle.enable_static()
@@ -81,16 +92,20 @@ class TestHistogramddAPI(unittest.TestCase):
                 )
 
             hist_out, edges_out = res[0], res[1:]
-
-            np.testing.assert_allclose(hist_out, self.expect_hist, atol=1e-8)
+            np.testing.assert_allclose(
+                hist_out,
+                self.expect_hist,
+            )
             for idx, edge_out in enumerate(edges_out):
-                edge_out = edge_out
                 expect_edge = np.array(self.expect_edges[idx])
-                np.testing.assert_allclose(edge_out, expect_edge, atol=1e-8)
+                np.testing.assert_allclose(
+                    edge_out,
+                    expect_edge,
+                )
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
-        self.sample_dy = paddle.to_tensor(self.sample)
+        self.sample_dy = paddle.to_tensor(self.sample, dtype=self.sample.dtype)
         self.weights_dy = None
         if self.weights is not None:
             self.weights_dy = paddle.to_tensor(self.weights)
@@ -104,11 +119,17 @@ class TestHistogramddAPI(unittest.TestCase):
             density=self.density,
         )
 
-        np.testing.assert_allclose(hist.numpy(), self.expect_hist, atol=1e-8)
+        np.testing.assert_allclose(
+            hist.numpy(),
+            self.expect_hist,
+        )
         for idx, edge in enumerate(edges):
             edge = edge.numpy()
             expect_edge = np.array(self.expect_edges[idx])
-            np.testing.assert_allclose(edge, expect_edge, atol=1e-8)
+            np.testing.assert_allclose(
+                edge,
+                expect_edge,
+            )
 
         paddle.enable_static()
 
@@ -118,138 +139,78 @@ class TestHistogramddAPI(unittest.TestCase):
 
 class TestHistogramddAPICase1ForDensity(TestHistogramddAPI):
     def init_input(self):
-        self.sample = np.array([[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]])
+        # self.sample = np.array([[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]])
+        self.sample = np.random.randn(4, 2).astype(np.float64)
         self.bins = [2, 2]
         self.ranges = [0.0, 1.0, 0.0, 1.0]
         self.density = True
 
     def set_expect_output(self):
-        self.expect_hist = np.array([[2.0, 0.0], [0.0, 2.0]])
-        self.expect_edges = [
-            [0.00000000, 0.50000000, 1.00000000],
-            [0.00000000, 0.50000000, 1.00000000],
-        ]
+        self.expect_hist, self.expect_edges = ref_histogramdd(
+            self.sample, self.bins, self.ranges, self.weights, self.density
+        )
 
 
 class TestHistogramddAPICase2ForMultiDimsAndDensity(TestHistogramddAPI):
     def init_input(self):
         # shape: [4,2,2]
-        self.sample = np.array(
-            [
-                [[1.0, 2.0], [3.0, 4.0]],
-                [[5.0, 6.0], [7.0, 8.0]],
-                [[9.0, 10.0], [11.0, 12.0]],
-                [[13.0, 14.0], [15.0, 16.0]],
-            ]
-        )
+        self.sample = np.random.randn(4, 2, 2).astype(np.float64)
         self.bins = [3, 4]
         self.density = True
 
     def set_expect_output(self):
-        self.expect_hist = np.array(
-            [
-                [0.01530612, 0.00765306, 0.00000000, 0.00000000],
-                [0.00000000, 0.00765306, 0.00765306, 0.00000000],
-                [0.00000000, 0.00000000, 0.00765306, 0.01530612],
-            ]
+        self.expect_hist, self.expect_edges = ref_histogramdd(
+            self.sample, self.bins, self.ranges, self.weights, self.density
         )
-        self.expect_edges = [
-            [1.00000000, 5.66666651, 10.33333397, 15.00000000],
-            [2.00000000, 5.50000000, 9.00000000, 12.50000000, 16.00000000],
-        ]
 
 
 class TestHistogramddAPICase3ForMultiDimsNotDensity(TestHistogramddAPI):
     def init_input(self):
         # shape: [4,2,2]
-        self.sample = np.array(
-            [
-                [[1.0, 2.0], [3.0, 4.0]],
-                [[5.0, 6.0], [7.0, 8.0]],
-                [[9.0, 10.0], [11.0, 12.0]],
-                [[13.0, 14.0], [15.0, 16.0]],
-            ]
-        )
+        self.sample = np.random.randn(4, 2, 2).astype(np.float64)
         self.bins = [3, 4]
         # self.density = True
 
     def set_expect_output(self):
-        self.expect_hist = np.array(
-            [[2.0, 1.0, 0.0, 0.0], [0.0, 1.0, 1.0, 0.0], [0.0, 0.0, 1.0, 2.0]]
+        self.expect_hist, self.expect_edges = ref_histogramdd(
+            self.sample, self.bins, self.ranges, self.weights, self.density
         )
-        self.expect_edges = [
-            [1.00000000, 5.66666651, 10.33333397, 15.00000000],
-            [2.00000000, 5.50000000, 9.00000000, 12.50000000, 16.00000000],
-        ]
 
 
 class TestHistogramddAPICase4ForRangesAndDensity(TestHistogramddAPI):
     def init_input(self):
         # shape: [4,2,2]
-        self.sample = np.array(
-            [
-                [[1.0, 2.0], [3.0, 4.0]],
-                [[5.0, 6.0], [7.0, 8.0]],
-                [[9.0, 10.0], [11.0, 12.0]],
-                [[13.0, 14.0], [15.0, 16.0]],
-            ]
-        )
+        self.sample = np.random.randn(4, 2, 2).astype(np.float64)
         self.bins = [3, 4]
         # [leftmost_1, rightmost_1, leftmost_2, rightmost_2,..., leftmost_D, rightmost_D]
         self.ranges = [1.0, 10.0, 1.0, 100.0]
         self.density = True
 
     def set_expect_output(self):
-        self.expect_hist = np.array(
-            [
-                [0.00538721, 0.00000000, 0.00000000, 0.00000000],
-                [0.00269360, 0.00000000, 0.00000000, 0.00000000],
-                [0.00538721, 0.00000000, 0.00000000, 0.00000000],
-            ]
+        self.expect_hist, self.expect_edges = ref_histogramdd(
+            self.sample, self.bins, self.ranges, self.weights, self.density
         )
-        self.expect_edges = [
-            [1.0, 4.0, 7.0, 10.0],
-            [1.00000000, 25.75000000, 50.50000000, 75.25000000, 100.00000000],
-        ]
 
 
 class TestHistogramddAPICase5ForRangesNotDensity(TestHistogramddAPI):
     def init_input(self):
         # shape: [4,2,2]
-        self.sample = np.array(
-            [
-                [[1.0, 2.0], [3.0, 4.0]],
-                [[5.0, 6.0], [7.0, 8.0]],
-                [[9.0, 10.0], [11.0, 12.0]],
-                [[13.0, 14.0], [15.0, 16.0]],
-            ]
-        )
+        self.sample = np.random.randn(4, 2, 2).astype(np.float64)
         self.bins = [3, 4]
         # [leftmost_1, rightmost_1, leftmost_2, rightmost_2,..., leftmost_D, rightmost_D]
         self.ranges = [1.0, 10.0, 1.0, 100.0]
         # self.density = True
 
     def set_expect_output(self):
-        self.expect_hist = np.array(
-            [[2.0, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0], [2.0, 0.0, 0.0, 0.0]]
+        self.expect_hist, self.expect_edges = ref_histogramdd(
+            self.sample, self.bins, self.ranges, self.weights, self.density
         )
-        self.expect_edges = [
-            [1.0, 4.0, 7.0, 10.0],
-            [1.00000000, 25.75000000, 50.50000000, 75.25000000, 100.00000000],
-        ]
 
 
 class TestHistogramddAPICase6NotRangesAndDensityAndWeights(TestHistogramddAPI):
     def init_input(self):
         # shape: [4,2,2]
-        self.sample = np.array(
-            [
-                [[1.0, 2.0], [3.0, 4.0]],
-                [[5.0, 6.0], [7.0, 8.0]],
-                [[9.0, 10.0], [11.0, 12.0]],
-                [[13.0, 14.0], [15.0, 16.0]],
-            ]
-        )
+        self.sample = np.random.randn(4, 2, 2).astype(np.float64)
         self.bins = [3, 4]
         # [leftmost_1, rightmost_1, leftmost_2, rightmost_2,..., leftmost_D, rightmost_D]
         # self.ranges = [1., 10., 1., 100.]
@@ -260,35 +221,20 @@ class TestHistogramddAPICase6NotRangesAndDensityAndWeights(TestHistogramddAPI):
                 [3.0, 4.0],
                 [5.0, 6.0],
                 [7.0, 8.0],
-            ]
+            ],
+            dtype=self.sample.dtype,
         )
 
     def set_expect_output(self):
-        self.expect_hist = np.array(
-            [
-                [0.00510204, 0.00510204, 0.00000000, 0.00000000],
-                [0.00000000, 0.00680272, 0.00850340, 0.00000000],
-                [0.00000000, 0.00000000, 0.01020408, 0.02551021],
-            ]
+        self.expect_hist, self.expect_edges = ref_histogramdd(
+            self.sample, self.bins, self.ranges, self.weights, self.density
         )
-
-        self.expect_edges = [
-            [1.00000000, 5.66666651, 10.33333397, 15.00000000],
-            [2.00000000, 5.50000000, 9.00000000, 12.50000000, 16.00000000],
-        ]
 
 
 class TestHistogramddAPICase7ForRangesAndDensityAndWeights(TestHistogramddAPI):
     def init_input(self):
         # shape: [4,2,2]
-        self.sample = np.array(
-            [
-                [[1.0, 2.0], [3.0, 4.0]],
-                [[5.0, 6.0], [7.0, 8.0]],
-                [[9.0, 10.0], [11.0, 12.0]],
-                [[13.0, 14.0], [15.0, 16.0]],
-            ]
-        )
+        self.sample = np.random.randn(4, 2, 2).astype(np.float64)
         self.bins = [3, 4]
         # [leftmost_1, rightmost_1, leftmost_2, rightmost_2,..., leftmost_D, rightmost_D]
         self.ranges = [1.0, 10.0, 1.0, 100.0]
@@ -299,34 +245,20 @@ class TestHistogramddAPICase7ForRangesAndDensityAndWeights(TestHistogramddAPI):
                 [3.0, 4.0],
                 [5.0, 6.0],
                 [7.0, 8.0],
-            ]
+            ],
+            dtype=self.sample.dtype,
         )
 
     def set_expect_output(self):
-        self.expect_hist = np.array(
-            [
-                [0.00269360, 0.00000000, 0.00000000, 0.00000000],
-                [0.00269360, 0.00000000, 0.00000000, 0.00000000],
-                [0.00808081, 0.00000000, 0.00000000, 0.00000000],
-            ]
+        self.expect_hist, self.expect_edges = ref_histogramdd(
+            self.sample, self.bins, self.ranges, self.weights, self.density
         )
-        self.expect_edges = [
-            [1.0, 4.0, 7.0, 10.0],
-            [1.00000000, 25.75000000, 50.50000000, 75.25000000, 100.00000000],
-        ]
 
 
 class TestHistogramddAPICase8MoreInnermostDim(TestHistogramddAPI):
     def init_input(self):
         # shape: [4,2,4]
-        self.sample = np.array(
-            [
-                [[1.0, 2.0, 6.0, 12.0], [3.0, 4.0, 7, 12.0]],
-                [[5.0, 6.0, 3.0, 8.0], [7.0, 8.0, 1.0, 7.0]],
-                [[9.0, 10.0, 9.0, 4.0], [11.0, 12.0, 8.0, 5.0]],
-                [[13.0, 14.0, 10.0, 9.0], [15.0, 16.0, 5.0, 2.0]],
-            ]
-        )
+        self.sample = np.random.randn(4, 2, 4).astype(np.float64)
         self.bins = [1, 2, 3, 4]
         # [leftmost_1, rightmost_1, leftmost_2, rightmost_2,..., leftmost_D, rightmost_D]
         self.density = False
@@ -336,45 +268,20 @@ class TestHistogramddAPICase8MoreInnermostDim(TestHistogramddAPI):
                 [3.0, 4.0],
                 [5.0, 6.0],
                 [7.0, 8.0],
-            ]
+            ],
+            dtype=self.sample.dtype,
         )
 
     def set_expect_output(self):
-        self.expect_hist = np.array(
-            [
-                [
-                    [
-                        [0.0, 0.0, 7.0, 0.0],
-                        [0.0, 0.0, 0.0, 1.0],
-                        [0.0, 0.0, 0.0, 2.0],
-                    ],
-                    [
-                        [0.0, 0.0, 0.0, 0.0],
-                        [8.0, 0.0, 0.0, 0.0],
-                        [5.0, 6.0, 7.0, 0.0],
-                    ],
-                ]
-            ]
+        self.expect_hist, self.expect_edges = ref_histogramdd(
+            self.sample, self.bins, self.ranges, self.weights, self.density
         )
-        self.expect_edges = [
-            [1.0, 15.0],
-            [2.0, 9.0, 16.0],
-            [1.0, 4.0, 7.0, 10.0],
-            [2.00000000, 4.50000000, 7.00000000, 9.50000000, 12.00000000],
-        ]
 
 
 class TestHistogramddAPICase8MoreInnermostDimAndDensity(TestHistogramddAPI):
     def init_input(self):
         # shape: [4,2,4]
-        self.sample = np.array(
-            [
-                [[1.0, 2.0, 6.0, 12.0], [3.0, 4.0, 7, 12.0]],
-                [[5.0, 6.0, 3.0, 8.0], [7.0, 8.0, 1.0, 7.0]],
-                [[9.0, 10.0, 9.0, 4.0], [11.0, 12.0, 8.0, 5.0]],
-                [[13.0, 14.0, 10.0, 9.0], [15.0, 16.0, 5.0, 2.0]],
-            ]
-        )
+        self.sample = np.random.randn(4, 2, 4).astype(np.float64)
         self.bins = [1, 2, 3, 4]
         # [leftmost_1, rightmost_1, leftmost_2, rightmost_2,..., leftmost_D, rightmost_D]
         self.density = True
@@ -384,135 +291,51 @@ class TestHistogramddAPICase8MoreInnermostDimAndDensity(TestHistogramddAPI):
                 [3.0, 4.0],
                 [5.0, 6.0],
                 [7.0, 8.0],
-            ]
+            ],
+            dtype=self.sample.dtype,
         )
 
     def set_expect_output(self):
-        self.expect_hist = np.array(
-            [
-                [
-                    [
-                        [
-                            0.00000000e00,
-                            0.00000000e00,
-                            2.64550268e-04,
-                            0.00000000e00,
-                        ],
-                        [
-                            0.00000000e00,
-                            0.00000000e00,
-                            0.00000000e00,
-                            3.77928955e-05,
-                        ],
-                        [
-                            0.00000000e00,
-                            0.00000000e00,
-                            0.00000000e00,
-                            7.55857909e-05,
-                        ],
-                    ],
-                    [
-                        [
-                            0.00000000e00,
-                            0.00000000e00,
-                            0.00000000e00,
-                            0.00000000e00,
-                        ],
-                        [
-                            3.02343164e-04,
-                            0.00000000e00,
-                            0.00000000e00,
-                            0.00000000e00,
-                        ],
-                        [
-                            1.88964477e-04,
-                            2.26757373e-04,
-                            2.64550268e-04,
-                            0.00000000e00,
-                        ],
-                    ],
-                ]
-            ]
+        self.expect_hist, self.expect_edges = ref_histogramdd(
+            self.sample, self.bins, self.ranges, self.weights, self.density
         )
-        self.expect_edges = [
-            [1.0, 15.0],
-            [2.0, 9.0, 16.0],
-            [1.0, 4.0, 7.0, 10.0],
-            [2.00000000, 4.50000000, 7.00000000, 9.50000000, 12.00000000],
-        ]
 
 
 class TestHistogramddAPICase9ForIntBin(TestHistogramddAPI):
     def init_input(self):
         # shape: [4,2,2]
-        self.sample = np.array(
-            [
-                [[1.0, 2.0], [3.0, 4.0]],
-                [[5.0, 6.0], [7.0, 8.0]],
-                [[9.0, 10.0], [11.0, 12.0]],
-                [[13.0, 14.0], [15.0, 16.0]],
-            ]
-        )
+        self.sample = np.random.randn(4, 2, 2).astype(np.float64)
         self.weights = np.array(
             [
                 [1.0, 2.0],
                 [3.0, 4.0],
                 [5.0, 6.0],
                 [7.0, 8.0],
-            ]
+            ],
+            dtype=self.sample.dtype,
         )
         self.bins = 5
         self.density = True
         self.ranges = [1.0, 10.0, 1.0, 100.0]
 
     def set_expect_output(self):
-        self.expect_hist = np.array(
-            [
-                [0.00187056, 0.00000000, 0.00000000, 0.00000000, 0.00000000],
-                [0.00374112, 0.00000000, 0.00000000, 0.00000000, 0.00000000],
-                [0.00561167, 0.00000000, 0.00000000, 0.00000000, 0.00000000],
-                [0.00748223, 0.00000000, 0.00000000, 0.00000000, 0.00000000],
-                [0.00935279, 0.00000000, 0.00000000, 0.00000000, 0.00000000],
-            ]
+        self.expect_hist, self.expect_edges = ref_histogramdd(
+            self.sample, self.bins, self.ranges, self.weights, self.density
         )
-        self.expect_edges = [
-            [
-                1.00000000,
-                2.79999995,
-                4.59999990,
-                6.40000010,
-                8.19999981,
-                10.00000000,
-            ],
-            [
-                1.00000000,
-                20.79999924,
-                40.59999847,
-                60.40000153,
-                80.19999695,
-                100.00000000,
-            ],
-        ]
 
 
 class TestHistogramddAPICase10ForTensorBin(TestHistogramddAPI):
     def init_input(self):
         # shape: [4,2,2]
-        self.sample = np.array(
-            [
-                [[1.0, 2.0], [3.0, 4.0]],
-                [[5.0, 6.0], [7.0, 8.0]],
-                [[9.0, 10.0], [11.0, 12.0]],
-                [[13.0, 14.0], [15.0, 16.0]],
-            ]
-        )
+        self.sample = np.random.randn(4, 2, 2).astype(np.float64)
         self.weights = np.array(
             [
                 [1.0, 2.0],
                 [3.0, 4.0],
                 [5.0, 6.0],
                 [7.0, 8.0],
-            ]
+            ],
+            dtype=self.sample.dtype,
         )
         self.bins = (
             np.array([1.0, 2.0, 10.0, 15.0, 20.0]),
@@ -521,15 +344,23 @@ class TestHistogramddAPICase10ForTensorBin(TestHistogramddAPI):
         self.density = True
 
     def set_expect_output(self):
-        self.expect_hist = np.array(
-            [
-                [0.00138889, 0.00000000],
-                [0.00243056, 0.00000000],
-                [0.00361111, 0.00000000],
-                [0.00222222, 0.00000000],
-            ]
+        self.expect_hist, self.expect_edges = ref_histogramdd(
+            self.sample, self.bins, self.ranges, self.weights, self.density
         )
-        self.expect_edges = [[1.0, 2.0, 10.0, 15.0, 20.0], [0.0, 20.0, 100.0]]
+
+
+class TestHistogramddAPICase10ForFloat32(TestHistogramddAPI):
+    def init_input(self):
+        # self.sample = np.array([[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]])
+        self.sample = np.random.randn(4, 2).astype(np.float32)
+        self.bins = [2, 2]
+        self.ranges = [0.0, 1.0, 0.0, 1.0]
+        self.density = True
+
+    def set_expect_output(self):
+        self.expect_hist, self.expect_edges = ref_histogramdd(
+            self.sample, self.bins, self.ranges, self.weights, self.density
+        )
 
 
 # histogramdd(sample, bins=10, ranges=None, density=False, weights=None, name=None):
@@ -612,7 +443,9 @@ class TestHistogramddAPI_sample_weights_shape_dismatch_error(
                 [[13.0, 14.0], [15.0, 16.0]],
             ]
         )
-        weights = paddle.to_tensor([2.0, 3.0, 4.0])  # shape: [3,]
+        weights = paddle.to_tensor(
+            [2.0, 3.0, 4.0], dtype=self.sample.dtype
+        )  # shape: [3,]
         with self.assertRaises(AssertionError):
             paddle.histogramdd(sample, weights=weights)
 
