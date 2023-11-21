@@ -51,6 +51,8 @@ class StaticShapeGroupScheduler : public GroupScheduler {
 
   void Schedule() override;
 
+  void MapExprSchedule();
+
   std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetIRs() override;
 
  private:

@@ -20,11 +20,6 @@
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/match.h"
 
-namespace cinn::hlir::framework {
-class Node;
-class NodeData;
-}  // namespace cinn::hlir::framework
-
 namespace cinn::adt {
 
 DEFINE_ADT_TAG(tPointer);

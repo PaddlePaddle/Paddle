@@ -143,6 +143,13 @@ void StaticShapeGroupScheduler::Schedule() {
 #endif
 }
 
+void StaticShapeGroupScheduler::MapExprSchedule() {
+  DoComputeInline();
+#ifdef CINN_WITH_CUDA
+  AllocateStorage();
+#endif
+}
+
 std::vector<std::pair<SymbolicPredicate, ir::Expr>>
 StaticShapeGroupScheduler::GetIRs() {
   return {{Expr(1), ir_sch_->GetModule().GetExprs()[0]}};
