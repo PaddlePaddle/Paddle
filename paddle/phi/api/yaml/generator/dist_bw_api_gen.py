@@ -36,7 +36,7 @@ MAIN_DIST_BRANCH_TEMPLATE = """
       // 8. Infer Local DenseTensor Meta{}
       // 9. DenseTensor Kernel Call{}
     }}
-    // 10. Reshard Partial Output to Replicated (Temporary){}\n
+    // 10. Reshard Kernel Output to API output{}\n
     // 11. Return
     {}
   }}

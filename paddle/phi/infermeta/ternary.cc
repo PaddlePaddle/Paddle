@@ -579,7 +579,10 @@ void LayerNormInferMeta(const MetaTensor& x,
           x_dim.size()));
 
   auto matrix_dim = phi::flatten_to_2d(x_dim, begin_norm_axis);
-  int left = static_cast<int>(matrix_dim[0]);
+
+  // keep the axis size before normalization for shape of variance and mean
+  auto before_norm_dims = slice_ddim(x_dim, 0, begin_norm_axis);
+  // int left = static_cast<int>(matrix_dim[0]);
   int right = static_cast<int>(matrix_dim[1]);
   if (scale) {
     PADDLE_ENFORCE_EQ(scale.dims().size(),
@@ -644,11 +647,11 @@ void LayerNormInferMeta(const MetaTensor& x,
           ? phi::DataType::FLOAT32
           : x_dtype;
   if (mean) {
-    mean->set_dims({left});
+    mean->set_dims({before_norm_dims});
     mean->set_dtype(param_type);
   }
   if (variance) {
-    variance->set_dims({left});
+    variance->set_dims({before_norm_dims});
     variance->set_dtype(param_type);
   }
 }
