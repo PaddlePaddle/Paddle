@@ -159,13 +159,15 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   int mask_ndim = mask_shape.size();
   auto mask_dist_attr = attn_mask.dist_attr();
   int mask_dims_mapping_size = mask_dist_attr.dims_mapping().size();
-  PADDLE_ENFORCE_EQ(
-      mask_ndim,
-      mask_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor q's rank [%d] and Its "
-                                   "dims_mapping size [%d] are not matched.",
-                                   mask_ndim,
-                                   mask_dims_mapping_size));
+  if (!IsEmpty(mask_shape)) {
+    PADDLE_ENFORCE_EQ(
+        mask_ndim,
+        mask_dims_mapping_size,
+        phi::errors::InvalidArgument("The Tensor mask's rank [%d] and Its "
+                                     "dims_mapping size [%d] are not matched.",
+                                     mask_ndim,
+                                     mask_dims_mapping_size));
+  }
 
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
   int used_axes_index = 0;

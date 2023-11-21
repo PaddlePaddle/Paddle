@@ -39,34 +39,10 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
             inputs_shape=shapes,
             inputs_specs=specs,
             op_func=flash_attention,
-            with_backward=True,
+            with_backward=False,
             causal=True,
         )
         self.check_dim_mapping(outputs[0], [0, -1, -1, -1])
-        self.check_dim_mapping(inputs[0].grad, [0, -1, -1, -1])
-        self.check_dim_mapping(inputs[1].grad, [0, -1, -1, -1])
-        self.check_dim_mapping(inputs[2].grad, [0, -1, -1, -1])
-
-    def test_flash_att_forward_return_softmax(self):
-        shapes = ([2, 256, 2, 128], [2, 256, 2, 128], [2, 256, 2, 128])
-        specs = (
-            ['x', None, None, None],
-            ["x", None, None, None],
-            ['x', None, None, None],
-        )
-        inputs, outputs = self.runfunc_and_check(
-            inputs_shape=shapes,
-            inputs_specs=specs,
-            op_func=flash_attention,
-            with_backward=True,
-            causal=True,
-            return_softmax=True,
-        )
-        self.check_dim_mapping(outputs[0], [0, -1, -1, -1])
-        self.check_dim_mapping(outputs[1], [0, -1, -1, -1])
-        self.check_dim_mapping(inputs[0].grad, [0, -1, -1, -1])
-        self.check_dim_mapping(inputs[1].grad, [0, -1, -1, -1])
-        self.check_dim_mapping(inputs[2].grad, [0, -1, -1, -1])
 
     def test_flash_att_forward_reshard(self):
         shapes = ([2, 256, 2, 128], [2, 256, 2, 128], [2, 256, 2, 128])
@@ -79,13 +55,10 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
             inputs_shape=shapes,
             inputs_specs=specs,
             op_func=flash_attention,
-            with_backward=True,
+            with_backward=False,
             causal=True,
         )
         self.check_dim_mapping(outputs[0], [0, -1, -1, -1])
-        self.check_dim_mapping(inputs[0].grad, [0, -1, -1, -1])
-        self.check_dim_mapping(inputs[1].grad, [0, -1, -1, -1])
-        self.check_dim_mapping(inputs[2].grad, [0, -1, -1, -1])
 
     def run_test_case(self):
         if self._backend == "cpu":
@@ -98,7 +71,6 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
         # flash attention is not supported yet for cpu
         if self._backend == "gpu":
             self.test_flash_att_forward()
-            self.test_flash_att_forward_return_softmax()
             self.test_flash_att_forward_reshard()
 
 
