@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/dialect/operator/ir/meta_tensor.h"
+#include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 
 #include "paddle/pir/core/enforce.h"
 
 namespace paddle {
 namespace dialect {
-IrMetaTensor::IrMetaTensor(phi::DataType dtype,
-                           const phi::DDim& dims,
-                           phi::DataLayout layout,
-                           const LoD& lod,
-                           size_t offset)
+IrTensor::IrTensor(phi::DataType dtype,
+                   const phi::DDim& dims,
+                   phi::DataLayout layout,
+                   const LoD& lod,
+                   size_t offset)
     : dims_(dims), dtype_(dtype), layout_(layout), lod_(lod), offset_(offset) {}
 
-IrMetaTensor::IrMetaTensor(const IrMetaTensor& other) {
+IrTensor::IrTensor(const IrTensor& other) {
   dims_ = other.dims();
   dtype_ = other.dtype();
   layout_ = other.layout();
@@ -33,7 +33,7 @@ IrMetaTensor::IrMetaTensor(const IrMetaTensor& other) {
   offset_ = other.offset();
 }
 
-IrMetaTensor& IrMetaTensor::operator=(const IrMetaTensor& other) {
+IrTensor& IrTensor::operator=(const IrTensor& other) {
   dims_ = other.dims();
   dtype_ = other.dtype();
   layout_ = other.layout();
@@ -42,7 +42,7 @@ IrMetaTensor& IrMetaTensor::operator=(const IrMetaTensor& other) {
   return *this;
 }
 
-IrMetaTensor& IrMetaTensor::operator=(IrMetaTensor&& other) noexcept {
+IrTensor& IrTensor::operator=(IrTensor&& other) noexcept {
   dims_ = std::move(other.dims());
   dtype_ = other.dtype();
   layout_ = other.layout();
@@ -51,17 +51,17 @@ IrMetaTensor& IrMetaTensor::operator=(IrMetaTensor&& other) noexcept {
   return *this;
 }
 
-int64_t IrMetaTensor::numel() const { return phi::product(dims_); }
+int64_t IrTensor::numel() const { return phi::product(dims_); }
 
-const phi::Place& IrMetaTensor::place() const {
-  IR_THROW("Don't use IrMetaTensor::place method.");
+const phi::Place& IrTensor::place() const {
+  IR_THROW("Don't use IrTensor::place method.");
 }
 
-void* IrMetaTensor::AllocateFrom(phi::Allocator* allocator,
-                                 phi::DataType dtype,
-                                 size_t requested_size,
-                                 bool fake_alloc) {
-  IR_THROW("Don't use IrMetaTensor::AllocateFrom method.");
+void* IrTensor::AllocateFrom(phi::Allocator* allocator,
+                             phi::DataType dtype,
+                             size_t requested_size,
+                             bool fake_alloc) {
+  IR_THROW("Don't use IrTensor::AllocateFrom method.");
 }
 
 }  // namespace dialect

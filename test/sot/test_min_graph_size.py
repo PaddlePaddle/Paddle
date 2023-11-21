@@ -46,6 +46,16 @@ def case_call(x):
     return x
 
 
+def call_with_kwargs_inner(x):
+    return paddle.to_tensor(x.numpy())
+
+
+def call_with_kwargs(x):
+    y = call_with_kwargs_inner(x=x)
+    x += y
+    return x
+
+
 def case_all(x, vars):
     x = x + 1
     for y in vars:
@@ -81,6 +91,11 @@ class TestMinGraphSize(TestCaseBase):
         x = paddle.to_tensor(1)
         layer = CustomLayer()
         self.assert_results(layer.forward, x)
+
+    @min_graph_size_guard(10)
+    def test_call_with_kwargs(self):
+        x = paddle.to_tensor(1)
+        self.assert_results(call_with_kwargs, x)
 
 
 if __name__ == "__main__":

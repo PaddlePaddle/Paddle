@@ -74,8 +74,8 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
       pir::YieldOp::name(),
   };
   int index = 0;
-  for (auto iter : *group_block) {
-    CHECK_EQ(iter->name(), op_names[index++]);
+  for (auto& op : *group_block) {
+    CHECK_EQ(op.name(), op_names[index++]);
   }
 }
 
@@ -121,8 +121,8 @@ TEST(BuildCinnPassTest, NoOpSupportCinn) {
       paddle::dialect::UnsqueezeOp::name(),
   };
   int index = 0;
-  for (auto iter : *origin_program->block()) {
-    CHECK_EQ(iter->name(), op_names[index++]);
+  for (auto& op : *origin_program->block()) {
+    CHECK_EQ(op.name(), op_names[index++]);
   }
 }
 
@@ -175,8 +175,8 @@ TEST(BuildCinnPassTest, OneCinnSubgraph) {
       pir::YieldOp::name(),
   };
   int index = 0;
-  for (auto iter : *group_block) {
-    CHECK_EQ(iter->name(), op_names[index++]);
+  for (auto& op : *group_block) {
+    CHECK_EQ(op.name(), op_names[index++]);
   }
 }
 
@@ -230,8 +230,8 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
       pir::YieldOp::name(),
   };
   int index = 0;
-  for (auto iter : *group_block) {
-    CHECK_EQ(iter->name(), op_names_front[index++]);
+  for (auto& op : *group_block) {
+    CHECK_EQ(op.name(), op_names_front[index++]);
   }
 
   group_op = origin_program->block()->back();
@@ -243,7 +243,7 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
       pir::YieldOp::name(),
   };
   index = 0;
-  for (auto iter : *group_block) {
-    CHECK_EQ(iter->name(), op_names_back[index++]);
+  for (auto& op : *group_block) {
+    CHECK_EQ(op.name(), op_names_back[index++]);
   }
 }

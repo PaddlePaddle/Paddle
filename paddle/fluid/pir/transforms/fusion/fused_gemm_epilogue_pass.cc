@@ -342,11 +342,12 @@ class FusedLinearReluGradPattern
   }
 };
 
-class FusedGemmEpiloguePass : public pir::Pass {
+class FusedGemmEpiloguePass : public pir::PatternRewritePass {
  public:
-  FusedGemmEpiloguePass() : pir::Pass("fused_gemm_epilogue_pass", 2) {}
+  FusedGemmEpiloguePass()
+      : pir::PatternRewritePass("fused_gemm_epilogue_pass", 2) {}
 
-  bool Initialize(pir::IrContext *context) override {
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
     ps.Add(FusedLinearGradPattern().Build(context));
     ps.Add(FusedLinearPattern().Build(context));
@@ -355,23 +356,8 @@ class FusedGemmEpiloguePass : public pir::Pass {
     ps.Add(FusedLinearGeluGradPattern().Build(context));
     ps.Add(FusedLinearReluGradPattern().Build(context));
 
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
+    return ps;
   }
-
-  void Run(pir::Operation *op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
-  }
-
-  bool CanApplyOn(pir::Operation *op) const override {
-    return op->name() == "builtin.module" && op->num_regions() > 0;
-  }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
 }  // namespace

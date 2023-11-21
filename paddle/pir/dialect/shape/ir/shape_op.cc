@@ -251,9 +251,9 @@ void FuncOp::Print(IrPrinter &printer) {
   auto &os = printer.os;
   os << " shape.func () ";
   os << "{";
-  for (auto item : *block()) {
+  for (auto &item : *block()) {
     os << "\n  ";
-    printer.PrintOperation(item);
+    printer.PrintOperation(&item);
   }
   os << "\n }";
 }
