@@ -504,7 +504,8 @@ if(NOT WITH_GPU
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
-  list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bnstats_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bn_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_add_relu_op)
 endif()
 
 # Some ops need to check results when gc is enabled
@@ -923,7 +924,7 @@ set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
 set_tests_properties(test_cross_entropy2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy_loss PROPERTIES TIMEOUT 180)
 set_tests_properties(test_gru_unit_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 200)
+set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 250)
 set_tests_properties(test_empty_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_transformer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_div_op PROPERTIES TIMEOUT 120)

@@ -53,6 +53,7 @@ from ..utils import (
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
+    ParallelMode,
     copy_op_without_infer_shape,
     gradient_synchronization,
     is_parameter_related,
@@ -456,6 +457,9 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                         'use_model_parallel': True,
                         OP_ROLE_KEY: OpRole.Backward,
                     },
+                )
+                c_allreduce_sum_op._set_attr(
+                    'op_namescope', '/' + ParallelMode.TensorParallel
                 )
                 set_comm_op_dist_attr_for_program(
                     c_allreduce_sum_op,
@@ -1165,6 +1169,9 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                 'use_model_parallel': True,
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
+        )
+        c_allreduce_sum_op._set_attr(
+            'op_namescope', '/' + ParallelMode.TensorParallel
         )
 
         # set dist op's dist_attr with serial op's dist_attr
@@ -1922,6 +1929,9 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
         )
+        c_allreduce_sum_op._set_attr(
+            'op_namescope', '/' + ParallelMode.TensorParallel
+        )
 
         # set dist op's dist_attr with serial op's dist_attr
         matmulv2_op_dist_attr = OperatorDistAttr()
@@ -2654,6 +2664,9 @@ class DistributedMulImpl1(DistributedOperatorImpl):
                 'use_model_parallel': True,
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
+        )
+        c_allreduce_sum_op._set_attr(
+            'op_namescope', '/' + ParallelMode.TensorParallel
         )
 
         # set dist op's dist_attr with serial op's dist_attr

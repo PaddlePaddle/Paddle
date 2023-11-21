@@ -38,11 +38,21 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.add", "elementwise_add"},
     {"pd_op.subtract", "subtract"},
     {"pd_op.divide", "divide"},
+    {"pd_op.elementwise_pow", "pow"},
+    {"pd_op.multiply", "elementwise_mul"},
+    {"cinn_op.reshape", "reshape"},
+    {"cinn_op.scale", "scale"},
     {"cinn_op.broadcast", "broadcast_to"}};
 
 // Tagging PaddleDialect Op with REGITER_OP_MAPPER(OP)
 const std::unordered_set<std::string> CompatibleInfo::CINN_WHITE_OPS = {
-    "subtract", "divide", "broadcast_to", "multiply"};
+    "subtract",
+    "divide",
+    "broadcast_to",
+    "multiply",
+    "scale",
+    "elementwise_pow",
+    "reshape"};
 
 bool CompatibleInfo::IsSupportCinn(const ::pir::Operation& op) {
   return CINN_WHITE_OPS.find(CompatibleInfo::OpName(op)) !=
@@ -158,6 +168,7 @@ utils::Attribute CompatibleInfo::ConvertAttribute(
 
       } else if (attr_vec[0].isa<::pir::Int64Attribute>()) {
         std::vector<int64_t> vec_int64;
+        int index = 0;
         for (auto vec_element : attr_vec) {
           vec_int64.push_back(
               vec_element.dyn_cast<::pir::Int64Attribute>().data());

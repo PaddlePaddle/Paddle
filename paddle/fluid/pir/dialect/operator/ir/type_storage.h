@@ -107,5 +107,57 @@ struct SelectedRowsTypeStorage : public pir::TypeStorage {
   size_t offset_;
 };
 
+struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
+  using DataLayout = phi::DataLayout;
+  ///
+  /// \brief Declare ParamKey according to parameter type.
+  ///
+  using ParamKey = std::tuple<pir::Type, phi::DataLayout>;
+
+  DenseTensorArrayTypeStorage(const pir::Type& dtype,
+                              const phi::DataLayout& layout)
+      : dtype_(dtype), layout_(layout) {}
+
+  ///
+  /// \brief Each derived TypeStorage must define a Construct method, which
+  /// StorageManager uses to construct a derived TypeStorage.
+  ///
+  static DenseTensorArrayTypeStorage* Construct(const ParamKey& key) {
+    return new DenseTensorArrayTypeStorage(std::get<0>(key), std::get<1>(key));
+  }
+
+  ///
+  /// \brief Each derived TypeStorage must provide a HashValue method.
+  ///
+  static std::size_t HashValue(const ParamKey& key) {
+    std::size_t hash_value = 317;
+    // hash dtype
+    hash_value =
+        pir::hash_combine(hash_value, std::hash<pir::Type>()(std::get<0>(key)));
+    // hash layout
+    hash_value = pir::hash_combine(
+        hash_value,
+        std::hash<std::underlying_type<phi::DataLayout>::type>()(
+            static_cast<std::underlying_type<phi::DataLayout>::type>(
+                std::get<1>(key))));
+    return hash_value;
+  }
+
+  ///
+  /// \brief Each derived TypeStorage needs to overload operator==.
+  ///
+  bool operator==(const ParamKey& key) const {
+    return ParamKey(dtype_, layout_) == key;
+  }
+
+  ParamKey GetAsKey() const { return ParamKey(dtype_, layout_); }
+
+  ///
+  /// \brief DenseTensorTypeStorage include five parameters: dtype, layout
+  ///
+  pir::Type dtype_;
+  phi::DataLayout layout_;
+};
+
 }  // namespace dialect
 }  // namespace paddle

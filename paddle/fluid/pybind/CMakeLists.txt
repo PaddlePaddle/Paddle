@@ -41,8 +41,9 @@ set(PYBIND_DEPS
     pir_adaptor
     op_dialect_vjp
     program_translator
-    transform
+    pir_transforms
     pir
+    common
     new_profiler
     jit_layer
     jit_property
@@ -52,7 +53,8 @@ set(PYBIND_DEPS
     auto_parallel)
 
 if(WITH_CINN)
-  set(PYBIND_DEPS ${PYBIND_DEPS} transform op_with_group_merge_pass)
+  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass
+                  add_broadcast_to_elementwise_pass pd_to_cinn_pass)
 endif()
 
 if(WITH_PSCORE)
@@ -120,6 +122,7 @@ set(PYBIND_SRCS
     inference_api.cc
     ops_api.cc
     static_op_function.cc
+    control_flow_api.cc
     pir.cc
     graph.cc
     bind_fleet_executor.cc
@@ -190,7 +193,7 @@ if(WITH_GLOO)
 endif()
 
 if(WITH_CRYPTO)
-  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_crypto)
+  set(PYBIND_DEPS ${PYBIND_DEPS} framework_io)
   set(PYBIND_SRCS ${PYBIND_SRCS} crypto.cc)
 endif()
 
@@ -357,6 +360,11 @@ if(WITH_PYTHON)
         DEPENDS pir)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/ir.dll)
     endif()
+
+    # add_custom_command(
+    #   OUTPUT ${op_impl_path}/common.dll COMMAND ${CMAKE_COMMAND} -E copy
+    #                                             ${COMMON_LIB} ${op_impl_path})
+    # list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/common.dll)
 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
       add_custom_command(

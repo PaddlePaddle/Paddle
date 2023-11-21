@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/phi/api/lib/data_type_set.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/type_traits.h"
@@ -137,6 +138,29 @@ void KLDivInferMeta(const MetaTensor& x,
     out->set_dims(phi::make_ddim({}));
   }
   out->set_dtype(x.dtype());
+}
+
+void ArrayWriteInferMeta(const MetaTensor& array,
+                         const MetaTensor& x,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  out->set_dtype(array.dtype());
+  out->set_layout(array.layout());
+}
+
+void ArrayReadInferMeta(const MetaTensor& array,
+                        const Scalar& i,
+                        MetaTensor* out,
+                        MetaConfig config) {
+  if (!config.is_runtime) {
+    out->set_dims({-1});
+  } else {
+    double index = i.to<int64_t>();
+    out->set_dims(array.dims(index));
+    out->share_lod(array, index);
+  }
+  out->set_dtype(array.dtype());
+  out->set_layout(array.layout());
 }
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
@@ -1244,8 +1268,14 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
   } else {
     out->set_dims(x.dims());
   }
-
-  out->set_dtype(x.dtype());
+  // dtype need promote when meet input dtype with more precision
+  paddle::experimental::DataTypeSet dtype_set{x.dtype()};
+  dtype_set = dtype_set | paddle::experimental::DataTypeSet(y.dtype());
+  DataType promote_result = PromoteTypes(dtype_set);
+  if (promote_result == DataType::UNDEFINED) {
+    promote_result = x.dtype();
+  }
+  out->set_dtype(promote_result);
   out->set_layout(x.layout());
   out->share_lod(x);
 }
@@ -2846,6 +2876,27 @@ void TriangularSolveInferMeta(const MetaTensor& x,
   out->set_dtype(y.dtype());
   out->set_layout(y.layout());
   out->share_lod(y);
+}
+
+void TopPSamplingInferMeta(const MetaTensor& x,
+                           const MetaTensor& ps,
+                           const MetaTensor& threshold,
+                           int random_seed,
+                           MetaTensor* out,
+                           MetaTensor* ids) {
+  auto x_dims = x.dims();
+  auto ps_dims = ps.dims();
+  PADDLE_ENFORCE_EQ(x_dims[0],
+                    ps_dims[0],
+                    phi::errors::InvalidArgument(
+                        "The x_dims[0] must be equal to ps_dims[0] "
+                        "But received x_dims[0] = %d and ps_dims[0] = %d.",
+                        x_dims[0],
+                        ps_dims[0]));
+  ids->set_dims(phi::make_ddim({x_dims[0], 1}));
+  ids->set_dtype(DataType::INT64);
+  out->set_dims(phi::make_ddim({x_dims[0], 1}));
+  out->set_dtype(x.dtype());
 }
 
 void LstsqInferMeta(const MetaTensor& x,
