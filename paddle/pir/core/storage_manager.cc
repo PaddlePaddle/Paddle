@@ -18,7 +18,7 @@
 #include <unordered_map>
 
 #include "paddle/pir/core/enforce.h"
-
+#include "paddle/utils/test_macros.h"
 namespace pir {
 // This is a structure for creating, caching, and looking up Storage of
 // parametric types.
@@ -70,7 +70,7 @@ StorageManager::StorageManager() = default;
 
 StorageManager::~StorageManager() = default;
 
-StorageManager::StorageBase *StorageManager::GetParametricStorageImpl(
+TEST_API StorageManager::StorageBase *StorageManager::GetParametricStorageImpl(
     TypeId type_id,
     std::size_t hash_value,
     std::function<bool(const StorageBase *)> equal_func,

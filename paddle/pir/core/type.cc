@@ -20,7 +20,7 @@
 namespace pir {
 IrContext *Type::ir_context() const { return dialect().ir_context(); }
 
-TypeId Type::type_id() { return storage_->abstract_type().type_id(); }
+TEST_API TypeId Type::type_id() { return storage_->abstract_type().type_id(); }
 
 const AbstractType &Type::abstract_type() { return storage_->abstract_type(); }
 

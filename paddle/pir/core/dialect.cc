@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #include "paddle/pir/core/dialect.h"
-
+#include "paddle/utils/test_macros.h"
 namespace pir {
-Dialect::Dialect(std::string name, pir::IrContext *context, pir::TypeId id)
+TEST_API Dialect::Dialect(std::string name, pir::IrContext *context, pir::TypeId id)
     : name_(std::move(name)), context_(context), id_(id) {}
 
-Dialect::~Dialect() = default;
+TEST_API Dialect::~Dialect() = default;
 
 void Dialect::RegisterInterface(std::unique_ptr<DialectInterface> interface) {
   VLOG(4) << "Register interface into dialect" << std::endl;

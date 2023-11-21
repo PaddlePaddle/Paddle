@@ -315,7 +315,8 @@ void IrPrinter::AddValueAlias(Value v, const std::string& alias) {
   IR_ENFORCE(aliases_.find(key) == aliases_.end(), "Value already has alias");
   aliases_[key] = alias;
 }
-void Dialect::PrintOperation(Operation* op, IrPrinter& printer) const {
+
+TEST_API void Dialect::PrintOperation(Operation* op, IrPrinter& printer) const {
   printer.PrintGeneralOperation(op);
 }
 

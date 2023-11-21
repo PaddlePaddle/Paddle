@@ -27,7 +27,7 @@
 namespace pir {
 // The implementation class of the IrContext class, cache registered
 // AbstractType, TypeStorage, AbstractAttribute, AttributeStorage, Dialect.
-class IrContextImpl {
+class  IrContextImpl {
  public:
   IrContextImpl() = default;
 
@@ -183,8 +183,8 @@ class IrContextImpl {
   pir::SpinLock destructor_lock_;
 };
 
-IrContext *IrContext::Instance() {
-  static IrContext context;
+TEST_API IrContext *IrContext::Instance() {
+  TEST_API static IrContext context;
   return &context;
 }
 
@@ -233,7 +233,7 @@ void IrContext::RegisterAbstractAttribute(
   }
 }
 
-StorageManager &IrContext::attribute_storage_manager() {
+TEST_API StorageManager &IrContext::attribute_storage_manager() {
   return impl().registed_attribute_storage_manager_;
 }
 
@@ -245,7 +245,7 @@ AbstractAttribute *IrContext::GetRegisteredAbstractAttribute(TypeId id) {
   return nullptr;
 }
 
-Dialect *IrContext::GetOrRegisterDialect(
+TEST_API Dialect *IrContext::GetOrRegisterDialect(
     const std::string &dialect_name, std::function<Dialect *()> constructor) {
   VLOG(4) << "Try to get or register a Dialect of: [name=" << dialect_name
           << "].";
@@ -324,7 +324,7 @@ const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
   return *abstract_type;
 }
 
-const AbstractAttribute &AbstractAttribute::lookup(TypeId type_id,
+TEST_API const AbstractAttribute &AbstractAttribute::lookup(TypeId type_id,
                                                    IrContext *ctx) {
   AbstractAttribute *abstract_attribute =
       ctx->impl().GetAbstractAttribute(type_id);
@@ -344,7 +344,7 @@ Float64Type Float64Type::get(IrContext *ctx) { return ctx->impl().fp64_type; }
 
 Int16Type Int16Type::get(IrContext *ctx) { return ctx->impl().int16_type; }
 
-Int32Type Int32Type::get(IrContext *ctx) { return ctx->impl().int32_type; }
+TEST_API Int32Type Int32Type::get(IrContext *ctx) { return ctx->impl().int32_type; }
 
 Int64Type Int64Type::get(IrContext *ctx) { return ctx->impl().int64_type; }
 

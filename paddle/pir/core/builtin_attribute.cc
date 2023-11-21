@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/core/builtin_attribute.h"
-
+#include "paddle/utils/test_macros.h"
 namespace pir {
 
 bool BoolAttribute::data() const { return storage()->data(); }
@@ -30,16 +30,16 @@ int64_t Int64Attribute::data() const { return storage()->data(); }
 
 void* PointerAttribute::data() const { return storage()->data(); }
 
-Type TypeAttribute::data() const { return storage()->data(); }
+TEST_API Type TypeAttribute::data() const { return storage()->data(); }
 
 bool StrAttribute::operator<(const StrAttribute& right) const {
   return storage() < right.storage();
 }
 std::string StrAttribute::AsString() const { return storage()->AsString(); }
 
-size_t StrAttribute::size() const { return storage()->size(); }
+TEST_API size_t StrAttribute::size() const { return storage()->size(); }
 
-StrAttribute StrAttribute::get(pir::IrContext* ctx, const std::string& value) {
+TEST_API StrAttribute StrAttribute::get(pir::IrContext* ctx, const std::string& value) {
   return AttributeManager::get<StrAttribute>(ctx, value);
 }
 

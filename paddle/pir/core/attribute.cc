@@ -15,11 +15,12 @@
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/attribute_base.h"
 #include "paddle/pir/core/dialect.h"
+#include "paddle/utils/test_macros.h"
 
 namespace pir {
-IrContext *Attribute::ir_context() const { return dialect().ir_context(); }
+TEST_API IrContext *Attribute::ir_context() const { return dialect().ir_context(); }
 
-TypeId Attribute::type_id() {
+TEST_API TypeId Attribute::type_id() {
   return storage_ ? storage_->abstract_attribute().type_id() : TypeId();
 }
 
