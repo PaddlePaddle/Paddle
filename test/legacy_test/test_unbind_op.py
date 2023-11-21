@@ -41,11 +41,6 @@ class TestUnbind(unittest.TestCase):
         with paddle.static.program_guard(prog, startup_prog):
             x_1 = paddle.static.data(shape=[2, 3], dtype=self.dtype, name='x_1')
             [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
-            # input_1 = np.random.random([2, 3]).astype(self.dtype)
-            # if self.dtype == 'complex64' or self.dtype == 'complex128':
-            #     input_1 = (
-            #         np.random.random([2, 3]) + 1j * np.random.random([2, 3])
-            #     ).astype(self.dtype)
             axis = paddle.static.data(shape=[], dtype='int32', name='axis')
             exe = base.Executor(place=base.CPUPlace())
 
