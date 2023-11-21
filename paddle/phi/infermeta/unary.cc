@@ -2230,6 +2230,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                bool global_pooling,
                                bool adaptive,
                                bool fractional,
+                               float random_u,
                                MetaTensor* out,
                                MetaTensor* mask,
                                MetaConfig config) {

@@ -61,6 +61,7 @@ def max_pool3D_forward_naive(
     global_pool=False,
     adaptive=False,
     fractional=False,
+    random_u=None,
 ):
     N, C, D, H, W = x.shape
     if global_pool:
@@ -87,8 +88,7 @@ def max_pool3D_forward_naive(
     input_width = W
     output_width = W_out
     if fractional:
-        np.random.seed(2023)
-        u = np.random.uniform()
+        u = random_u
 
         alpha_depth = input_depth / output_depth
         alpha_height = input_height / output_height
@@ -171,6 +171,7 @@ def max_pool2D_forward_naive(
     global_pool=False,
     adaptive=False,
     fractional=False,
+    random_u=None,
 ):
     N, C, H, W = x.shape
     if global_pool:
@@ -192,8 +193,7 @@ def max_pool2D_forward_naive(
     input_width = W
     output_width = W_out
     if fractional:
-        np.random.seed(2023)
-        u = np.random.uniform()
+        u = random_u
 
         alpha_height = input_height / output_height
         alpha_width = input_width / output_width
@@ -253,9 +253,17 @@ def max_pool3d_with_index_wapper(
     global_pooling=False,
     adaptive=False,
     fractional=False,
+    random_u=None,
 ):
     return paddle._C_ops.max_pool3d_with_index(
-        x, kernel_size, strides, paddings, global_pooling, adaptive, fractional
+        x,
+        kernel_size,
+        strides,
+        paddings,
+        global_pooling,
+        adaptive,
+        fractional,
+        random_u,
     )
 
 
@@ -285,6 +293,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
             self.global_pool,
             self.adaptive,
             self.fractional,
+            self.random_u,
         )
         mask = mask.astype("int32")
         if self.is_bfloat16_op():
@@ -299,6 +308,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
             'global_pooling': self.global_pool,
             'adaptive': self.adaptive,
             'fractional': self.fractional,
+            'random_u': self.random_u,
         }
 
         if self.is_bfloat16_op():
@@ -339,6 +349,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
 
     def init_fractional(self):
         self.fractional = False
+        self.random_u = None
 
 
 class TestCase1(TestMaxPoolWithIndex_Op):
@@ -370,9 +381,10 @@ class TestCastAdaptive3d(TestMaxPoolWithIndex_Op):
         self.adaptive = True
 
 
-# class TestCastFractional3d(TestMaxPoolWithIndex_Op):
-#     def init_fractional(self):
-#         self.fractional = True
+class TestCastFractional3d(TestMaxPoolWithIndex_Op):
+    def init_fractional(self):
+        self.fractional = True
+        self.random_u = 0.3
 
 
 # ----------------max_pool3d_with_index_fp16----------------
@@ -405,7 +417,7 @@ create_test_fp16_class(TestCase1)
 create_test_fp16_class(TestCase2)
 create_test_fp16_class(TestCase3)
 create_test_fp16_class(TestCastAdaptive3d)
-# create_test_fp16_class(TestCastFractional3d)
+create_test_fp16_class(TestCastFractional3d)
 
 
 # ----------------max_pool3d_with_index_bf16----------------
@@ -454,7 +466,7 @@ create_test_bf16_class(TestCase1)
 create_test_bf16_class(TestCase2)
 create_test_bf16_class(TestCase3)
 create_test_bf16_class(TestCastAdaptive3d)
-# create_test_bf16_class(TestCastFractional3d)
+create_test_bf16_class(TestCastFractional3d)
 
 
 # ----------------max_pool2d_with_index----------------
@@ -466,9 +478,17 @@ def max_pool2d_with_index_wapper(
     global_pooling=False,
     adaptive=False,
     fractional=False,
+    random_u=None,
 ):
     return paddle._C_ops.max_pool2d_with_index(
-        x, kernel_size, strides, paddings, global_pooling, adaptive, fractional
+        x,
+        kernel_size,
+        strides,
+        paddings,
+        global_pooling,
+        adaptive,
+        fractional,
+        random_u,
     )
 
 
@@ -515,9 +535,10 @@ class TestCastAdaptive2d(TestCase6):
         self.adaptive = True
 
 
-# class TestCastFractional2d(TestCase6):
-#     def init_fractional(self):
-#         self.fractional = True
+class TestCastFractional2d(TestCase6):
+    def init_fractional(self):
+        self.fractional = True
+        self.random_u = 0.3
 
 
 # ----------------max_pool2d_with_index_fp16----------------
@@ -550,7 +571,7 @@ create_test_fp16_class(TestCase5)
 create_test_fp16_class(TestCase6)
 create_test_fp16_class(TestCase7)
 create_test_fp16_class(TestCastAdaptive2d)
-# create_test_fp16_class(TestCastFractional2d)
+create_test_fp16_class(TestCastFractional2d)
 
 
 # ----------------max_pool2d_with_index_bf16----------------
@@ -597,7 +618,7 @@ create_test_bf16_class(TestCase5)
 create_test_bf16_class(TestCase6)
 create_test_bf16_class(TestCase7)
 create_test_bf16_class(TestCastAdaptive2d)
-# create_test_bf16_class(TestCastFractional2d)
+create_test_bf16_class(TestCastFractional2d)
 
 
 if __name__ == '__main__':

@@ -1146,9 +1146,12 @@ class FractionalMaxPool2D(Layer):
     TODO(megemini)
     """
 
-    def __init__(self, output_size, return_mask=False, name=None):
+    def __init__(
+        self, output_size, random_u=None, return_mask=False, name=None
+    ):
         super().__init__()
         self._output_size = output_size
+        self._random_u = random_u
         self._return_mask = return_mask
         self._name = name
 
@@ -1156,6 +1159,7 @@ class FractionalMaxPool2D(Layer):
         return F.fractional_max_pool2d(
             x,
             output_size=self._output_size,
+            random_u=self._random_u,
             return_mask=self._return_mask,
             name=self._name,
         )
@@ -1171,9 +1175,12 @@ class FractionalMaxPool3D(Layer):
     TODO(megemini)
     """
 
-    def __init__(self, output_size, return_mask=False, name=None):
+    def __init__(
+        self, output_size, random_u=None, return_mask=False, name=None
+    ):
         super().__init__()
         self._output_size = output_size
+        self._random_u = random_u
         self._return_mask = return_mask
         self._name = name
 
@@ -1181,6 +1188,7 @@ class FractionalMaxPool3D(Layer):
         return F.fractional_max_pool3d(
             x,
             output_size=self._output_size,
+            random_u=self._random_u,
             return_mask=self._return_mask,
             name=self._name,
         )

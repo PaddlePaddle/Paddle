@@ -193,6 +193,7 @@ void MaxPoolWithIndexRawKernel(const Context& ctx,
                                bool global_pooling,
                                bool adaptive,
                                bool fractional,
+                               float random_u,
                                DenseTensor* out,
                                DenseTensor* mask) {
   std::vector<int> paddings_ = paddings;
@@ -215,6 +216,7 @@ void MaxPoolWithIndexRawKernel(const Context& ctx,
                      paddings_,
                      adaptive,
                      fractional,
+                     random_u,
                      out,
                      mask);
     } break;
@@ -227,6 +229,7 @@ void MaxPoolWithIndexRawKernel(const Context& ctx,
                      paddings_,
                      adaptive,
                      fractional,
+                     random_u,
                      out,
                      mask);
     } break;
@@ -276,6 +279,7 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
                               bool global_pooling,
                               bool adaptive,
                               bool fractional,
+                              float random_u,
                               DenseTensor* out,
                               DenseTensor* mask) {
   MaxPoolWithIndexRawKernel<Context, T>(ctx,
@@ -286,6 +290,7 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
                                         global_pooling,
                                         adaptive,
                                         fractional,
+                                        random_u,
                                         out,
                                         mask);
 }
@@ -327,6 +332,7 @@ void MaxPool3dWithIndexKernel(const Context& ctx,
                               bool global_pooling,
                               bool adaptive,
                               bool fractional,
+                              float random_u,
                               DenseTensor* out,
                               DenseTensor* mask) {
   MaxPoolWithIndexRawKernel<Context, T>(ctx,
@@ -337,6 +343,7 @@ void MaxPool3dWithIndexKernel(const Context& ctx,
                                         global_pooling,
                                         adaptive,
                                         fractional,
+                                        random_u,
                                         out,
                                         mask);
 }

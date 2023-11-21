@@ -1572,6 +1572,7 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
                   const std::vector<int>& paddings,
                   bool adaptive,
                   bool fractional,
+                  float random_u,
                   DenseTensor* output,
                   DenseTensor* mask) {
     const int batch_size = static_cast<int>(input.dims()[0]);
@@ -1596,9 +1597,14 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
     float alpha_height = 0, alpha_width = 0;
     float u_height = 0, u_width = 0;
     if (fractional) {
-      std::uniform_real_distribution<float> dist(0, 1);
-      auto engine = phi::GetCPURandomEngine(0);
-      float u = dist(*engine);
+      float u = 0;
+      if (random_u == 0) {
+        std::uniform_real_distribution<float> dist(0, 1);
+        auto engine = phi::GetCPURandomEngine(0);
+        u = dist(*engine);
+      } else {
+        u = random_u;
+      }
 
       alpha_height = static_cast<float>(input_height) / output_height;
       alpha_width = static_cast<float>(input_width) / output_width;
@@ -1680,6 +1686,7 @@ class MaxPool2dWithIndexGradFunctor<CPUContext, T1, T2> {
                   const std::vector<int>& paddings UNUSED,
                   bool adaptive UNUSED,
                   bool fractional UNUSED,
+                  float random_u UNUSED,
                   DenseTensor* input_grad) {
     const int batch_size = static_cast<int>(input_grad->dims()[0]);
     const int input_height = static_cast<int>(input_grad->dims()[2]);
@@ -1732,6 +1739,7 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
                   const std::vector<int>& paddings,
                   bool adaptive,
                   bool fractional,
+                  float random_u,
                   DenseTensor* output,
                   DenseTensor* mask) {
     const int batch_size = static_cast<int>(input.dims()[0]);
@@ -1761,9 +1769,14 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
     float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
     float u_height = 0, u_width = 0, u_depth = 0;
     if (fractional) {
-      std::uniform_real_distribution<float> dist(0, 1);
-      auto engine = phi::GetCPURandomEngine(0);
-      float u = dist(*engine);
+      float u = 0;
+      if (fractional) {
+        std::uniform_real_distribution<float> dist(0, 1);
+        auto engine = phi::GetCPURandomEngine(0);
+        u = dist(*engine);
+      } else {
+        u = random_u;
+      }
 
       alpha_depth = static_cast<float>(input_depth) / output_depth;
       alpha_height = static_cast<float>(input_height) / output_height;
@@ -1867,6 +1880,7 @@ class MaxPool3dWithIndexGradFunctor<CPUContext, T1, T2> {
                   const std::vector<int>& paddings UNUSED,
                   bool adaptive UNUSED,
                   bool fractional UNUSED,
+                  float random_u UNUSED,
                   DenseTensor* input_grad) {
     const int batch_size = static_cast<int>(input_grad->dims()[0]);
     const int input_depth = static_cast<int>(input_grad->dims()[2]);

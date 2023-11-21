@@ -632,7 +632,7 @@ def max_pool1d(
     if in_dygraph_mode():
         if return_mask:
             pool_out = _C_ops.max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False, False
+                x, kernel_size, stride, padding, False, False, False, 0.0
             )
             return (
                 (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
@@ -1259,7 +1259,7 @@ def max_pool2d(
     if in_dynamic_or_pir_mode():
         if return_mask:
             output = _C_ops.max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False, False
+                x, kernel_size, stride, padding, False, False, False, 0.0
             )
             return output if return_mask else output[0]
         else:
@@ -1426,7 +1426,7 @@ def max_pool3d(
     if in_dygraph_mode():
         if return_mask:
             output = _C_ops.max_pool3d_with_index(
-                x, kernel_size, stride, padding, False, False, False
+                x, kernel_size, stride, padding, False, False, False, 0.0
             )
             return output if return_mask else output[0]
         else:
@@ -1877,7 +1877,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     x = unsqueeze(x, [2])
     if in_dygraph_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, pool_size, [1, 1], [0, 0], False, True, False
+            x, pool_size, [1, 1], [0, 0], False, True, False, 0.0
         )
         return (
             (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
@@ -1971,7 +1971,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
             output_size[1] = in_w
     if in_dygraph_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, output_size, [1, 1], [0, 0], False, True, False
+            x, output_size, [1, 1], [0, 0], False, True, False, 0.0
         )
         return pool_out if return_mask else pool_out[0]
     else:
@@ -2063,7 +2063,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
     if in_dygraph_mode():
         # By default, strides is [1,1,1] and paddings is [0, 0, 0]
         pool_out = _C_ops.max_pool3d_with_index(
-            x, output_size, [1, 1, 1], [0, 0, 0], False, True, False
+            x, output_size, [1, 1, 1], [0, 0, 0], False, True, False, 0.0
         )
         return pool_out if return_mask else pool_out[0]
     else:
@@ -2096,11 +2096,21 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
         return (pool_out, mask) if return_mask else pool_out
 
 
-def fractional_max_pool2d(x, output_size, return_mask=False, name=None):
+def fractional_max_pool2d(
+    x, output_size, random_u=None, return_mask=False, name=None
+):
     """
     TODO(megemini)
     """
     _check_input(x, 4)
+
+    if random_u is None:
+        random_u = 0.0
+    else:
+        if random_u <= 0 or random_u >= 1:
+            raise ValueError(
+                "The param `random_u` should be a `float` in (0, 1)."
+            )
 
     in_h, in_w = x.shape[2:4]
     if isinstance(output_size, int):
@@ -2114,7 +2124,7 @@ def fractional_max_pool2d(x, output_size, return_mask=False, name=None):
 
     if in_dygraph_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, output_size, [1, 1], [0, 0], False, False, True
+            x, output_size, [1, 1], [0, 0], False, False, True, float(random_u)
         )
         return pool_out if return_mask else pool_out[0]
     else:
@@ -2124,6 +2134,13 @@ def fractional_max_pool2d(x, output_size, return_mask=False, name=None):
             x, 'x', ['float32', 'float64'], 'fractional_max_pool2d'
         )
         check_type(return_mask, 'return_mask', bool, 'fractional_max_pool2d')
+
+        check_variable_and_dtype(
+            random_u,
+            'random_u',
+            ['float32', 'float64'],
+            'fractional_max_pool2d',
+        )
 
         helper = LayerHelper(l_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -2140,17 +2157,28 @@ def fractional_max_pool2d(x, output_size, return_mask=False, name=None):
                 "pooling_type": 'max',
                 "ksize": output_size,
                 "fractional": True,
+                "random_u": float(random_u),
             },
         )
 
         return (pool_out, mask) if return_mask else pool_out
 
 
-def fractional_max_pool3d(x, output_size, return_mask=False, name=None):
+def fractional_max_pool3d(
+    x, output_size, random_u=None, return_mask=False, name=None
+):
     """
     TODO(megemini)
     """
     _check_input(x, 5)
+
+    if random_u is None:
+        random_u = 0.0
+    else:
+        if random_u <= 0 or random_u >= 1:
+            raise ValueError(
+                "The param `random_u` should be a `float` in (0, 1)."
+            )
 
     in_l, in_h, in_w = x.shape[2:5]
     if isinstance(output_size, int):
@@ -2167,7 +2195,14 @@ def fractional_max_pool3d(x, output_size, return_mask=False, name=None):
     if in_dygraph_mode():
         # By default, strides is [1,1,1] and paddings is [0, 0, 0]
         pool_out = _C_ops.max_pool3d_with_index(
-            x, output_size, [1, 1, 1], [0, 0, 0], False, False, True
+            x,
+            output_size,
+            [1, 1, 1],
+            [0, 0, 0],
+            False,
+            False,
+            True,
+            float(random_u),
         )
         return pool_out if return_mask else pool_out[0]
     else:
@@ -2177,6 +2212,13 @@ def fractional_max_pool3d(x, output_size, return_mask=False, name=None):
             x, 'x', ['float32', 'float64'], 'fractional_max_pool3d'
         )
         check_type(return_mask, 'return_mask', bool, 'fractional_max_pool3d')
+
+        check_variable_and_dtype(
+            random_u,
+            'random_u',
+            ['float32', 'float64'],
+            'fractional_max_pool2d',
+        )
 
         helper = LayerHelper(l_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -2193,6 +2235,7 @@ def fractional_max_pool3d(x, output_size, return_mask=False, name=None):
                 "pooling_type": 'max',
                 "ksize": output_size,
                 "fractional": True,
+                "random_u": float(random_u),
             },
         )
 

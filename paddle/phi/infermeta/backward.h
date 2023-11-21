@@ -309,6 +309,7 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    bool global_pooling,
                                    bool adaptive,
                                    bool fractional,
+                                   float random_u,
                                    MetaTensor* dx);
 
 void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,

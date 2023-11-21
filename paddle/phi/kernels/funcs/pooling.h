@@ -348,6 +348,7 @@ class MaxPool2dWithIndexFunctor {
                   const std::vector<int>& paddings,
                   bool adaptive,
                   bool fractional,
+                  float random_u,
                   DenseTensor* output,
                   DenseTensor* mask);
 };
@@ -363,6 +364,7 @@ class MaxPool2dWithIndexGradFunctor {
                   const std::vector<int>& paddings,
                   bool adaptive,
                   bool fractional,
+                  float random_u,
                   DenseTensor* input_grad);
 };
 
@@ -376,6 +378,7 @@ class MaxPool3dWithIndexFunctor {
                   const std::vector<int>& paddings,
                   bool adaptive,
                   bool fractional,
+                  float random_u,
                   DenseTensor* output,
                   DenseTensor* mask);
 };
@@ -391,6 +394,7 @@ class MaxPool3dWithIndexGradFunctor {
                   const std::vector<int>& paddings,
                   bool adaptive,
                   bool fractional,
+                  float random_u,
                   DenseTensor* input_grad);
 };
 

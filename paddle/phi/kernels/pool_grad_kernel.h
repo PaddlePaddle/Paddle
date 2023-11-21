@@ -97,6 +97,7 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                   bool global_pooling,
                                   bool adaptive,
                                   bool fracional,
+                                  float random_u,
                                   DenseTensor* dx);
 
 template <typename T, typename Context>
@@ -144,6 +145,7 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                   bool global_pooling,
                                   bool adaptive,
                                   bool fracional,
+                                  float random_u,
                                   DenseTensor* dx);
 
 }  // namespace phi

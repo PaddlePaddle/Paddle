@@ -151,6 +151,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& ctx,
                                    bool global_pooling,
                                    bool adaptive,
                                    bool fractional,
+                                   float random_u,
                                    DenseTensor* dx) {
   std::vector<int> paddings_ = paddings;
   std::vector<int> kernel_size_ = kernel_size;
@@ -177,6 +178,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& ctx,
                         paddings_,
                         adaptive,
                         fractional,
+                        random_u,
                         dx);
       } break;
       case 3: {
@@ -189,6 +191,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& ctx,
                         paddings_,
                         adaptive,
                         fractional,
+                        random_u,
                         dx);
       } break;
       default: {
@@ -278,6 +281,7 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                   bool global_pooling,
                                   bool adaptive,
                                   bool fractional,
+                                  float random_u,
                                   DenseTensor* dx) {
   MaxPoolWithIndexGradRawKernel<Context, T>(ctx,
                                             x,
@@ -289,6 +293,7 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                             global_pooling,
                                             adaptive,
                                             fractional,
+                                            random_u,
                                             dx);
 }
 
@@ -335,6 +340,7 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                   bool global_pooling,
                                   bool adaptive,
                                   bool fractional,
+                                  float random_u,
                                   DenseTensor* dx) {
   MaxPoolWithIndexGradRawKernel<Context, T>(ctx,
                                             x,
@@ -346,6 +352,7 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                             global_pooling,
                                             adaptive,
                                             fractional,
+                                            random_u,
                                             dx);
 }
 
