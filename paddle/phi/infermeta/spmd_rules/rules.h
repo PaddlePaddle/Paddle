@@ -23,14 +23,17 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/flatten.h"
 #include "paddle/phi/infermeta/spmd_rules/layer_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
+#include "paddle/phi/infermeta/spmd_rules/numel.h"
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
 #include "paddle/phi/infermeta/spmd_rules/slice.h"
 #include "paddle/phi/infermeta/spmd_rules/softmax.h"
 #include "paddle/phi/infermeta/spmd_rules/split.h"
+#include "paddle/phi/infermeta/spmd_rules/stack.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
 #include "paddle/phi/infermeta/spmd_rules/unsqueeze.h"
+#include "paddle/phi/infermeta/spmd_rules/where.h"
 
 /**
  * Design Notes:
@@ -553,6 +556,10 @@ PD_REGISTER_SPMD_RULE(softmax,
 PD_REGISTER_SPMD_RULE(log_softmax,
                       PD_INFER_SPMD(phi::distributed::SoftmaxInferSpmd),
                       PD_INFER_SPMD(phi::distributed::SoftmaxInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(where,
+                      PD_INFER_SPMD(phi::distributed::WhereInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::WhereInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi

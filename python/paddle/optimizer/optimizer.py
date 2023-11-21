@@ -323,6 +323,11 @@ class Optimizer:
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
+                # save scale value for xpu
+                if core.is_compiled_with_xpu():
+                    state_dict[
+                        var_tmp.name + ".SCALE_VALUE"
+                    ] = var_tmp.get_tensor().get_xpu_scale_value()
         # if has master weight and then save master weight
         if hasattr(self, "_master_weights"):
             if len(self._master_weights) != 0:
@@ -382,8 +387,15 @@ class Optimizer:
                 assert (
                     var_tmp.name in state_dict
                 ), f"optimizer Tensor {var_tmp.name} not found"
+
                 var = var_tmp.value()
                 tensor = var.get_tensor()
+                # load scale value for xpu
+                if core.is_compiled_with_xpu():
+                    tensor.set_xpu_scale_value(
+                        state_dict.get(var_tmp.name + ".SCALE_VALUE", -1.0)
+                    )
+
                 model_np = np.array(tensor)
 
                 load_para = state_dict[var_tmp.name]
@@ -729,15 +741,17 @@ class Optimizer:
         param = param_and_grad[0]
         if hasattr(param, 'optimize_attr'):
             param_lr = param.optimize_attr['learning_rate']
-            if type(param_lr) == Variable:
+            if isinstance(param_lr, (Variable, paddle.pir.OpResult)):
                 return param_lr
             else:
                 if param_lr == 1.0:
                     return self._global_learning_rate()
                 else:
-                    with default_main_program()._lr_schedule_guard(
+                    with paddle.static.default_main_program()._lr_schedule_guard(
                         is_with_opt=True
-                    ), framework.name_scope('scale_with_param_lr'):
+                    ), framework.name_scope(
+                        'scale_with_param_lr'
+                    ):
                         return self._global_learning_rate() * param_lr
         else:
             return self._global_learning_rate()
@@ -746,12 +760,14 @@ class Optimizer:
         if param.name in self._master_weights:
             var = self._master_weights[param.name]
         else:
-            assert isinstance(self.helper, LayerHelper)
             var_name = self._gen_master_weight_var_name(param)
-            if framework.in_dygraph_mode():
+            if in_pir_mode():
+                var = paddle.cast(param, 'float32')
+            elif framework.in_dygraph_mode():
                 var = paddle.cast(param, 'float32')
                 var.name = var_name
             else:
+                assert isinstance(self.helper, LayerHelper)
                 var = paddle.static.create_global_var(
                     name=var_name,
                     shape=param.shape,
@@ -904,6 +920,14 @@ class Optimizer:
                         var_name in self._accumulators_holder
                     ), f"Optimizer set error, {var_name} should in state dict"
                     var.set_value(self._accumulators_holder.pop(var_name))
+
+                    # load scale value for xpu
+                    if core.is_compiled_with_xpu():
+                        var.get_tensor().set_xpu_scale_value(
+                            self._accumulators_holder.get(
+                                var_name + ".SCALE_VALUE", -1.0
+                            )
+                        )
 
         self._accumulators[name][param.name] = var
         return var
@@ -1484,7 +1508,7 @@ class Optimizer:
 
         assert regularization_term is not None
 
-        if framework.in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.add_n([grad, regularization_term])
         else:
             new_grad = grad

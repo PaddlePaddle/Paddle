@@ -310,4 +310,27 @@ if(WITH_GPU)
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   endforeach()
 
+  # adt test
+  file(
+    GLOB CINN_ADT_TEST
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "adt/test_*.py")
+  set(EXCLUDE_ADT_TEST test_add_inline)
+
+  foreach(adt_test_name ${EXCLUDE_ADT_TEST})
+    list(REMOVE_ITEM CINN_ADT_TEST adt/${adt_test_name}.py)
+  endforeach()
+
+  foreach(adt_test_name ${CINN_ADT_TEST})
+    string(REGEX REPLACE ".py" "" adt_test_name ${adt_test_name})
+    add_test(
+      NAME ${adt_test_name}
+      COMMAND
+        ${CMAKE_COMMAND} -E env
+        PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
+        FLAGS_cinn_enable_map_expr=True python3
+        ${CMAKE_CURRENT_SOURCE_DIR}/${adt_test_name}.py
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  endforeach()
+
 endif()

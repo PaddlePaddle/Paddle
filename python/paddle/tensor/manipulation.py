@@ -1286,7 +1286,7 @@ def broadcast_tensors(input, name=None):
     """
 
     num_inputs = len(input)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.broadcast_tensors(input)
     else:
         check_type(input, 'input', (list, tuple), 'broadcast_tensors')
@@ -1591,9 +1591,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, A tensor with the contents of the input tensor, with input \
-                  axes flattened by indicated start axis and end axis. \
-                  A Tensor with data type same as input x.
+        Tensor, A tensor with the contents of the input tensor, whose input axes are flattened by indicated :attr:`start_axis` and :attr:`end_axis`, and data type is the same as input :attr:`x`.
 
     Examples:
 
@@ -3857,6 +3855,8 @@ def reshape(x, shape, name=None):
                 'int64',
                 'bool',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'reshape',
         )
@@ -3865,7 +3865,7 @@ def reshape(x, shape, name=None):
         )
         if isinstance(shape, (list, tuple)):
             if paddle.utils._contain_var(shape):
-                new_shape = paddle.utils._convert_to_tensor_list(shape)
+                new_shape = paddle.utils.get_int_tensor_list(shape)
             else:
                 new_shape = get_attr_shape(shape)
             out = _C_ops.reshape(x, new_shape)
@@ -4999,10 +4999,10 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         )
     axis = non_negative_axis(arr, axis)
     broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         values = (
             paddle.to_tensor(values)
-            if not isinstance(values, paddle.Tensor)
+            if not isinstance(values, (paddle.Tensor, paddle.pir.OpResult))
             else values
         )
         if broadcast_shape:

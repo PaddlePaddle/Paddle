@@ -51,6 +51,7 @@ class _BufferRange_;
 class BufferRange;
 class ScheduleBlock;
 class ScheduleBlockRealize;
+class Dim;
 
 // clang-format off
 #define NODETY_PRIMITIVE_TYPE_FOR_EACH(macro__) \
@@ -113,6 +114,7 @@ class ScheduleBlockRealize;
   macro__(_BufferRange_)                    \
   macro__(ScheduleBlock)                    \
   macro__(ScheduleBlockRealize)             \
+  macro__(_Dim_)                            \
 
 
 #define NODETY_FORALL(__m)              \

@@ -140,7 +140,8 @@ bool IsSupportCinn(pir::Operation* op) {
   if (op->isa<paddle::dialect::FullOp>()) {
     auto out = op->result(0);
     // return IsSuportCinn( out.first_use().owern() )
-    if (out.first_use().owner()->isa<paddle::dialect::UniformOp>()) {
+    if (out.use_count() > 0 &&
+        out.first_use().owner()->isa<paddle::dialect::UniformOp>()) {
       return false;
     }
   }

@@ -1011,7 +1011,7 @@ struct _Module_ : public ExprNode<_Module_> {
 };
 
 /**
- * \brief PrimitiveNode holds the contept of Primitive in CINN.
+ * \brief PrimitiveNode holds the concept of Primitive in CINN.
  * A Primitive is a basic Call to some Expr function, it is introduced to create
  * several level of coarsed-grained IR nodes for better IR optimization and
  * hardware adaption.

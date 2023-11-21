@@ -310,6 +310,22 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
                                  y.dist_attr()));
   };
 
+  auto confirm_dist_attr_with_arg_same_fn = [&](const ArgDistAttr& x_dist_attr,
+                                                const ArgDistAttr& y_dist_attr,
+                                                const char* debug_msg) {
+    const auto& x_single_dist_attr = get_attr(x_dist_attr);
+    const auto& y_single_dist_attr = get_attr(y_dist_attr);
+    PADDLE_ENFORCE_EQ(
+        DistAttrsAreBasicallyEqual(x_single_dist_attr, y_single_dist_attr),
+        true,
+        phi::errors::Unavailable("The matmul grad infer spmd `%s` verify "
+                                 "error: left dist attr is %s, "
+                                 "right dist attr is %s.",
+                                 debug_msg,
+                                 x_single_dist_attr,
+                                 y_single_dist_attr));
+  };
+
   // TODO(chenweihang): Now for the case where the forward input generates
   // an intermediate value through Reshard, because the intermediate value
   // is destroyed after the forward calculation is completed, the x and y
@@ -343,6 +359,9 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
       confirm_dist_attr_same_fn(
           dy_spmd_info.first[0], out_grad, "trans x&y: dy-out_grad");
       confirm_dist_attr_same_fn(dy_spmd_info.first[1], x, "trans x&y: dy-x");
+      return {
+          {dy_spmd_info.first[1], dx_spmd_info.first[0], dx_spmd_info.first[1]},
+          {dx_spmd_info.second[0], dy_spmd_info.second[0]}};
     } else {
       // X'Y: dX = YG', dY = XG
       dx_spmd_info =
@@ -355,6 +374,9 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
       confirm_dist_attr_same_fn(dy_spmd_info.first[0], x, "trans x: dy-x");
       confirm_dist_attr_same_fn(
           dy_spmd_info.first[1], out_grad, "trans x: dy-out_grad");
+      return {
+          {dy_spmd_info.first[0], dx_spmd_info.first[0], dx_spmd_info.first[1]},
+          {dx_spmd_info.second[0], dy_spmd_info.second[0]}};
     }
   } else {
     if (trans_y) {
@@ -369,25 +391,25 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
       confirm_dist_attr_same_fn(
           dy_spmd_info.first[0], out_grad, "trans y: dy-out_grad");
       confirm_dist_attr_same_fn(dy_spmd_info.first[1], x, "trans y: dy-x");
+      return {
+          {dy_spmd_info.first[1], dx_spmd_info.first[1], dx_spmd_info.first[0]},
+          {dx_spmd_info.second[0], dy_spmd_info.second[0]}};
     } else {
       // XY: dX = GY', dY = X'G
       dx_spmd_info =
           MatmulInferSpmd(out_grad, y, /*trans_x=*/false, /*trans_y=*/true);
       dy_spmd_info =
           MatmulInferSpmd(x, out_grad, /*trans_x=*/true, /*trans_y=*/false);
-      confirm_dist_attr_same_fn(
-          dx_spmd_info.first[0], out_grad, "no trans: dx-out_grad");
       confirm_dist_attr_same_fn(dx_spmd_info.first[1], y, "no trans: dx-y");
       confirm_dist_attr_same_fn(dy_spmd_info.first[0], x, "no trans: dy-x");
-      confirm_dist_attr_same_fn(
-          dy_spmd_info.first[1], out_grad, "no trans: dy-out_grad");
+      confirm_dist_attr_with_arg_same_fn(dx_spmd_info.first[0],
+                                         dy_spmd_info.first[1],
+                                         "no trans: dy-out_grad");
+      return {
+          {dy_spmd_info.first[0], dx_spmd_info.first[1], dx_spmd_info.first[0]},
+          {dx_spmd_info.second[0], dy_spmd_info.second[0]}};
     }
   }
-
-  // Here we assume that the input dist attr is unchanged after inference,
-  // and only return the gradient dist attr
-  return {{x.dist_attr(), y.dist_attr(), out_grad.dist_attr()},
-          {dx_spmd_info.second[0], dy_spmd_info.second[0]}};
 }
 
 }  // namespace distributed

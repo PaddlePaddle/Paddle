@@ -49,11 +49,19 @@ void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   VLOG(3) << "Call RToPReshardFunction Eval";
   const auto& out_process_mesh = out_dist_attr.process_mesh();
   int64_t local_rank = GetCurRankCoordInMesh(out_process_mesh)[0];
-  IntArray shape(in.dims().Get(), in.dims().size());
+  const auto& in_reduce_type = out_dist_attr.partial_status().at(0);
 
   if (local_rank != 0) {
-    // reset the physical tensor to zero
-    RESHARD_FUNCTOR(dev_ctx, Full, in.dtype(), shape, 0, GetMutableTensor(out));
+    if (in_reduce_type == ReduceType::kRedAvg) {
+      // assign the input value to output
+      RESHARD_FUNCTOR_WITHOUT_DTYPE(
+          dev_ctx, Assign, in.value(), GetMutableTensor(out));
+    } else {
+      // reset the physical tensor to zero
+      IntArray shape(in.local_dims().Get(), in.local_dims().size());
+      RESHARD_FUNCTOR(
+          dev_ctx, Full, in.dtype(), shape, 0, GetMutableTensor(out));
+    }
   } else {
     // assign the input value to output
     RESHARD_FUNCTOR_WITHOUT_DTYPE(
