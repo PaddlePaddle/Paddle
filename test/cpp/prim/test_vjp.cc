@@ -44,9 +44,9 @@ namespace framework {
 
 pir::Operation* GetOpFromProgram(const std::string& op_name,
                                  const pir::Program& program) {
-  for (auto op : *(program.block())) {
-    if (op->name() == op_name) {
-      return op;
+  for (auto& op : *(program.block())) {
+    if (op.name() == op_name) {
+      return &op;
     }
   }
   return nullptr;

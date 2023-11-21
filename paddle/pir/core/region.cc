@@ -30,15 +30,15 @@ Block *Region::emplace_back() {
 
 void Region::push_front(Block *block) { insert(blocks_.begin(), block); }
 
-Region::iterator Region::insert(const_iterator position, Block *block) {
-  Region::iterator iter = blocks_.insert(position, block);
+Region::Iterator Region::insert(ConstIterator position, Block *block) {
+  Region::Iterator iter = blocks_.insert(position, block);
   block->SetParent(this, iter);
   return iter;
 }
 
-Region::iterator Region::erase(const_iterator position) {
-  IR_ENFORCE((*position)->GetParent() == this, "iterator not own this region.");
-  delete *position;
+Region::Iterator Region::erase(ConstIterator position) {
+  IR_ENFORCE(position->GetParent() == this, "iterator not own this region.");
+  delete position;
   return blocks_.erase(position);
 }
 
