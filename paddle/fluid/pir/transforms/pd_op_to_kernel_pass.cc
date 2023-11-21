@@ -565,6 +565,33 @@ static phi::Backend GetKernelBackendByYaml(
   return kernel_backend;
 }
 
+std::unique_ptr<OpYamlInfoParser> GetOpYamlInfoParser(pir::Operation* op) {
+  OpYamlInfoInterface op_info_interface = op->dyn_cast<OpYamlInfoInterface>();
+
+  std::unique_ptr<OpYamlInfoParser> op_info_parser(nullptr);
+  if (op_info_interface) {
+    op_info_parser = std::make_unique<OpYamlInfoParser>(
+        op_info_interface.GetOpInfo(), IsLegacyOp(op->name()));
+  }
+
+  return op_info_parser;
+}
+
+std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
+                          pir::Operation* op_item) {
+  std::string kernel_fn_str;
+  if (op_info_parser != nullptr) {
+    kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func;
+  }
+
+  if (op_item->isa<AddN_Op>() || op_item->isa<AddNWithKernelOp>()) {
+    if (op_item->result(0).type().isa<SelectedRowsType>()) {
+      kernel_fn_str = "add_n_sr";
+    }
+  }
+  return kernel_fn_str;
+}
+
 phi::KernelKey GetKernelKey(
     pir::Operation* op,
     const phi::Place& place,
@@ -1032,8 +1059,7 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->isa<::pir::YieldOp>() || op_item->isa<::pir::SetParameterOp>() ||
-      op_item->isa<::pir::ShadowOutputOp>()) {
+  if (op_item->isa<::pir::YieldOp>() || op_item->isa<::pir::ShadowOutputOp>()) {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
         auto cur_in = op_item->operand_source(i);
@@ -1043,6 +1069,56 @@ void HandleForSpecialOp(
         }
         auto new_in = GetNewInput(
             cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        vec_inputs.push_back(new_in);
+      }
+    }
+  }
+
+  if (op_item->isa<::pir::SetParameterOp>()) {
+    if (op_item->num_operands() > 0) {
+      for (size_t i = 0; i < op_item->num_operands(); ++i) {
+        auto cur_in = op_item->operand_source(i);
+        if (!cur_in) {
+          vec_inputs.emplace_back();
+          continue;
+        }
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        // NOTE(zhangbo): parameter place is equal to exe place.
+        if (new_in.type().isa<AllocatedDenseTensorType>()) {
+          auto in_place =
+              new_in.type().dyn_cast<AllocatedDenseTensorType>().place();
+          auto dst_backend = phi::TransToPhiBackend(place);
+          bool need_trans =
+              (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
+              (paddle::experimental::NeedTransformPlace(
+                  in_place, dst_backend, {}));
+          if (need_trans) {
+            VLOG(6) << "need trans from " << in_place << " to " << dst_backend;
+            // build memcopy op
+            auto out_place = phi::TransToPhiPlace(dst_backend);
+            auto new_in_alloc_type =
+                new_in.type().dyn_cast<AllocatedDenseTensorType>();
+            auto out_type =
+                AllocatedDenseTensorType::get(ctx,
+                                              out_place,
+                                              new_in_alloc_type.dtype(),
+                                              new_in_alloc_type.dims(),
+                                              new_in_alloc_type.data_layout(),
+                                              new_in_alloc_type.lod(),
+                                              new_in_alloc_type.offset());
+            auto op_info_parser = GetOpYamlInfoParser(op_item);
+            auto kernel_name = GetKernelName(op_info_parser.get(), op_item);
+            auto kernel_key = GetKernelKey(op_item,
+                                           place,
+                                           kernel_name,
+                                           *map_value_pair,
+                                           op_info_parser.get());
+            VLOG(6) << "kernel type " << kernel_key;
+            new_in = AddPlaceTransferOp(
+                new_in, out_type, in_place, out_place, kernel_key, block);
+          }
+        }
         vec_inputs.push_back(new_in);
       }
     }
@@ -1530,33 +1606,6 @@ void AddShadowFeedOpForDataOrFeed(
       }
     }
   }
-}
-
-std::unique_ptr<OpYamlInfoParser> GetOpYamlInfoParser(pir::Operation* op) {
-  OpYamlInfoInterface op_info_interface = op->dyn_cast<OpYamlInfoInterface>();
-
-  std::unique_ptr<OpYamlInfoParser> op_info_parser(nullptr);
-  if (op_info_interface) {
-    op_info_parser = std::make_unique<OpYamlInfoParser>(
-        op_info_interface.GetOpInfo(), IsLegacyOp(op->name()));
-  }
-
-  return op_info_parser;
-}
-
-std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
-                          pir::Operation* op_item) {
-  std::string kernel_fn_str;
-  if (op_info_parser != nullptr) {
-    kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func;
-  }
-
-  if (op_item->isa<AddN_Op>() || op_item->isa<AddNWithKernelOp>()) {
-    if (op_item->result(0).type().isa<SelectedRowsType>()) {
-      kernel_fn_str = "add_n_sr";
-    }
-  }
-  return kernel_fn_str;
 }
 
 pir::Operation* BuildKernelOp(
