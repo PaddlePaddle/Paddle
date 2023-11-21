@@ -168,6 +168,9 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
                                         )
                                     },
                                     outputs=["batch_norm_out"],
+                                    no_cast_list=list(
+                                        dics_intputs[num_input].keys()
+                                    ),
                                 )
 
                                 yield program_config

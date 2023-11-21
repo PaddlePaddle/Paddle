@@ -29,6 +29,7 @@ from op_interface_gen import (
 from op_kerneltype_gen import gen_kernel_type_for_var_str
 from op_member_func_gen import gen_op_get_inputs_outputs_str
 from op_verify_gen import gen_verify_func_str
+from parse_kernel_key_gen import gen_parse_kernel_key_str
 from vjp_interface_black_list import vjp_interface_black_list
 
 # import from paddle/fluid/primitive/code_gen/gen.py
@@ -61,6 +62,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
+#include "paddle/fluid/pir/dialect/operator/interface/parse_kernel_key.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
@@ -103,6 +105,7 @@ class {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
   {build_mutable_attr_is_input_attr_num_over_1}
   void VerifySig();
 {get_kernel_type_for_var_declare}
+{parse_kernel_key_declare}
 {get_inputs_and_outputs}
 {exclusive_interface}
 }};
@@ -119,6 +122,10 @@ get_kernel_type_for_var_declare_template = """
       const std::string& var_name,
         const phi::DataType& tensor_dtype,
         const phi::DataType& expected_kernel_dtype);
+"""
+
+parse_kernel_key_template = """
+  static std::tuple<phi::DataType, phi::Backend> ParseKernelKey(pir::Operation *op);
 """
 
 # =====================================
@@ -217,7 +224,6 @@ PD_MANUAL_OP_LIST = {
     'split_grad',
     'expand',
 }
-
 
 attr_types_map = {
     'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
@@ -419,12 +425,24 @@ class OpInfoParser:
         # parse forward input name list and attribute name list
         self.forward_input_name_list = self.parse_forward_input_name()
 
+        # parse forward output name list
+        self.forward_output_name_list = self.parse_forward_output_name()
+
         # parse traits list
         self.traits_list = self.parse_op_traits()
+
+        # parse interfaces list
+        self.interfaces_list = self.parse_op_interfaces()
 
     def parse_op_traits(self):
         if 'traits' in self.op_yaml_item:
             return self.op_yaml_item['traits']
+        else:
+            return []
+
+    def parse_op_interfaces(self):
+        if 'interfaces' in self.op_yaml_item:
+            return self.op_yaml_item['interfaces']
         else:
             return []
 
@@ -437,6 +455,20 @@ class OpInfoParser:
                 for input in inputs:
                     forward_input_name_list.append(input['name'])
                 return forward_input_name_list
+            else:
+                return None
+        else:
+            return None
+
+    def parse_forward_output_name(self):
+        if 'forward' in self.op_yaml_item:
+            forward_output_name_list = []
+            forward_map = self.op_yaml_item['forward']
+            if forward_map is not None:
+                outputs = forward_map['outputs']
+                for output in outputs:
+                    forward_output_name_list.append(output['name'])
+                return forward_output_name_list
             else:
                 return None
         else:
@@ -1117,8 +1149,9 @@ def OpGenerator(
         op_inplace_map = op_info.inplace_map
         op_view_map = op_info.view_map
         op_data_transform_map = op_info.data_transform_map
-        op_interfaces = ["paddle::dialect::OpYamlInfoInterface"]
         op_traits = op_info.traits_list
+        op_interfaces = op_info.interfaces_list
+        op_interfaces += ["paddle::dialect::OpYamlInfoInterface"]
 
         if op_info.infer_meta_func:
             op_interfaces += ["paddle::dialect::InferMetaInterface"]
@@ -1152,22 +1185,9 @@ def OpGenerator(
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
-            if op_name in decomp_interface_declare_gen_op_list:
-                op_interfaces = op_interfaces + [
-                    "paddle::dialect::DecompInterface"
-                ]
-                exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op);"
-            else:
-                op_interfaces = op_interfaces_tmp
-                exclusive_interface_str = exclusive_interface_str_tmp
-
             # =================================== #
-            #    gen interface/trait list str     #
+            #        gen trait list str           #
             # =================================== #
-            op_interfaces_str = ""
-            if len(op_interfaces) > 0:
-                op_interfaces_str = "," + ",".join(op_interfaces)
-
             if op_name[-1] == "_":
                 op_traits += ["paddle::dialect::InplaceTrait"]
 
@@ -1183,6 +1203,25 @@ def OpGenerator(
                 func_list = op_kernel_map['func']
 
             for kernel_func_name in func_list:
+                if (
+                    op_name in decomp_interface_declare_gen_op_list
+                    and kernel_func_name in decomp_interface_declare_gen_op_list
+                ):
+                    op_interfaces = op_interfaces + [
+                        "paddle::dialect::DecompInterface"
+                    ]
+                    exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op);"
+                else:
+                    op_interfaces = op_interfaces_tmp
+                    exclusive_interface_str = exclusive_interface_str_tmp
+
+                # =================================== #
+                #      gen interface list str         #
+                # =================================== #
+                op_interfaces_str = ""
+                if len(op_interfaces) > 0:
+                    op_interfaces_str = "," + ",".join(op_interfaces)
+
                 if len(func_list) == 1:
                     op_class_name = to_pascal_case(op_name) + "Op"
                     op_dialect_name = dialect_name + "." + op_name
@@ -1234,6 +1273,10 @@ def OpGenerator(
                     get_kernel_type_for_var_declare_str = (
                         get_kernel_type_for_var_declare_template
                     )
+
+                parse_kernel_key_str = ""
+                if "paddle::dialect::ParseKernelKeyInterface" in op_interfaces:
+                    parse_kernel_key_str = parse_kernel_key_template
 
                 if op_infer_meta_map is not None:
                     (
@@ -1368,6 +1411,7 @@ def OpGenerator(
                         get_inputs_and_outputs=op_get_inputs_outputs_str,
                         exclusive_interface=exclusive_interface_str,
                         get_kernel_type_for_var_declare=get_kernel_type_for_var_declare_str,
+                        parse_kernel_key_declare=parse_kernel_key_str,
                     )
                     op_defined_str = ""
                 else:
@@ -1389,6 +1433,7 @@ def OpGenerator(
                         get_inputs_and_outputs=op_get_inputs_outputs_str,
                         exclusive_interface=exclusive_interface_str,
                         get_kernel_type_for_var_declare=get_kernel_type_for_var_declare_str,
+                        parse_kernel_key_declare=parse_kernel_key_str,
                     )
                     attribute_names_str = (
                         '"'
@@ -1561,6 +1606,13 @@ def OpGenerator(
                     )
 
                 # generate op GetKernelKeyForVar function str
+                parse_kernel_key_define_str = ''
+                if "paddle::dialect::ParseKernelKeyInterface" in op_interfaces:
+                    parse_kernel_key_define_str = gen_parse_kernel_key_str(
+                        op_class_name
+                    )
+
+                # generate op GetKernelKeyForVar function str
                 op_get_kernel_type_for_var_str = ''
                 if dialect_name == "pd_op":
                     op_get_kernel_type_for_var_str = (
@@ -1617,6 +1669,7 @@ def OpGenerator(
                     ops_defined_list.append(op_verify_str)
                     ops_defined_list.append(op_infer_meta_str)
                     ops_defined_list.append(op_get_kernel_type_for_var_str)
+                    ops_defined_list.append(parse_kernel_key_define_str)
 
                     # NOTE(chenxi67)skip if dialect_name==cinn
                     if dialect_name == "cinn":

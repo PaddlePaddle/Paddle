@@ -18,6 +18,7 @@
 
 #include <unordered_map>
 
+#include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
@@ -25,10 +26,13 @@
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
+#include "paddle/cinn/runtime/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
+
+PD_DECLARE_bool(cinn_enable_map_expr);
 
 namespace cinn {
 namespace dialect {
@@ -125,11 +129,11 @@ std::shared_ptr<pir::ShapeConstraintIRAnalysis> CreateShapeAnalysis(
 
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
-    if ((*it)->isa<paddle::dialect::DataOp>()) {
-      candidate_values.push_back((*it)->result(0));
+    if (it->isa<paddle::dialect::DataOp>()) {
+      candidate_values.push_back(it->result(0));
     }
-    if ((*it)->isa<cinn::dialect::GroupOp>()) {
-      auto group_op = (*it)->dyn_cast<cinn::dialect::GroupOp>();
+    if (it->isa<cinn::dialect::GroupOp>()) {
+      auto group_op = it->dyn_cast<cinn::dialect::GroupOp>();
       for (auto* op : group_op.ops()) {
         if (op->isa<paddle::dialect::ExpOp>()) {
           candidate_values.push_back(op->result(0));
@@ -165,6 +169,19 @@ std::shared_ptr<pir::ShapeConstraintIRAnalysis> CreateShapeAnalysis(
   return shape_analysis;
 }
 
+std::vector<pir::Operation*> GetOutputOpList(
+    const std::vector<pir::Operation*>& op_list) {
+  std::vector<pir::Operation*> vec_res;
+  auto yield_op = op_list.back();
+
+  for (size_t i = 0; i < yield_op->num_operands(); ++i) {
+    vec_res.push_back(
+        yield_op->operand(i).source().dyn_cast<pir::OpResult>().owner());
+  }
+
+  return vec_res;
+}
+
 std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 
@@ -188,12 +205,14 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
 
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
-    if ((*it)->isa<paddle::dialect::DataOp>()) {
-      test_values.push_back((*it)->result(0));
+    if (it->isa<paddle::dialect::DataOp>()) {
+      test_values.push_back(it->result(0));
     }
-    if ((*it)->isa<cinn::dialect::GroupOp>()) {
+
+    if (it->isa<cinn::dialect::GroupOp>()) {
       // GetOpList and Call cinn CodeGen
-      auto group_op = (*it)->dyn_cast<cinn::dialect::GroupOp>();
+      auto group_op = it->dyn_cast<cinn::dialect::GroupOp>();
+
       for (auto* op : group_op.ops()) {
         if (op->isa<paddle::dialect::ExpOp>()) {
           test_values.push_back(op->result(0));
@@ -239,21 +258,29 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
 
       // op fusion
       auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
-          GetOpListNotIncludeYield(group_op.ops()), shape_analysis);
+          GetOpListNotIncludeYield(group_op.ops()),
+          GetOutputOpList(group_op.ops()),
+          shape_analysis);
 
       // fusion merge
       auto group_list = cinn::dialect::ir::GeneralFusionMergePassInternal(
           op_fusion, shape_analysis);
 
-      PADDLE_ENFORCE_EQ(group_list.size(),
-                        1u,
-                        phi::errors::Unimplemented(
-                            "Only support one group after group fusion"));
+      // using yield op to sort
+      std::unordered_map<::pir::Value, size_t> value2id;
+      auto yeild_op = group_op.ops().back();
+      for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
+        value2id[yeild_op->operand_source(i)] = i;
+      }
+
       for (auto group : group_list) {
         auto ir_compiler = std::make_shared<cinn::hlir::framework::PirCompiler>(
             *program, target, scope);
         hlir::framework::PirCompilerManager::Instance().insert(ir_compiler);
         group->shape_analysis = shape_analysis;
+        if (FLAGS_cinn_enable_map_expr) {
+          adt::TryGenerateMapExprFromGroup(group);
+        }
         auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
         std::unordered_map<std::string, ::pir::Attribute> op_attrs{
             {cinn::dialect::JitKernelOp::kAttrName,
@@ -268,26 +295,22 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
           vec_new_ins.push_back(value_map.at(vec_ins[i]));
         }
 
-        // using yield op to sort
-        std::unordered_map<::pir::Value, size_t> value2id;
-        auto yeild_op = group_op.ops().back();
-        for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
-          value2id[yeild_op->operand_source(i)] = i;
-        }
-
         std::unordered_map<size_t, size_t> codegen2orig;
 
         std::vector<pir::Type> vec_types;
         for (size_t i = 0; i < group->output_values.size(); ++i) {
           vec_types.push_back(group->output_values[i].type());
-          codegen2orig[value2id.at(group->output_values[i])] = i;
         }
 
         ::pir::Operation* cinn_op =
             ::pir::Operation::Create(vec_new_ins, op_attrs, vec_types, op_info);
 
-        for (size_t i = 0; i < group_op.num_results(); ++i) {
-          value_map[group_op.result(i)] = cinn_op->result(codegen2orig.at(i));
+        for (size_t i = 0; i < cinn_op->num_results(); ++i) {
+          auto find_it = value2id.find(group->output_values[i]);
+          value_map[group->output_values[i]] = cinn_op->result(i);
+          if (find_it != value2id.end()) {
+            value_map[group_op.result(find_it->second)] = cinn_op->result(i);
+          }
         }
 
         ir_program->block()->push_back(cinn_op);
@@ -296,26 +319,26 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
     } else {
       std::vector<pir::Value> vec_ins;
 
-      for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-        if ((*it)->operand_source(i)) {
-          vec_ins.push_back(value_map.at((*it)->operand_source(i)));
+      for (size_t i = 0; i < it->num_operands(); ++i) {
+        if (it->operand_source(i)) {
+          vec_ins.push_back(value_map.at(it->operand_source(i)));
         } else {
-          vec_ins.push_back((*it)->operand_source(i));
+          vec_ins.push_back(it->operand_source(i));
         }
       }
 
       std::vector<pir::Type> vec_types;
-      for (size_t i = 0; i < (*it)->num_results(); ++i) {
-        vec_types.push_back((*it)->result(i).type());
+      for (size_t i = 0; i < it->num_results(); ++i) {
+        vec_types.push_back(it->result(i).type());
       }
 
-      ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo((*it)->name());
-      ::pir::Operation* op = ::pir::Operation::Create(
-          vec_ins, (*it)->attributes(), vec_types, info1);
+      ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo(it->name());
+      ::pir::Operation* op =
+          ::pir::Operation::Create(vec_ins, it->attributes(), vec_types, info1);
 
       ir_program->block()->push_back(op);
-      for (size_t i = 0; i < (*it)->num_results(); ++i) {
-        value_map[(*it)->result(i)] = op->result(i);
+      for (size_t i = 0; i < it->num_results(); ++i) {
+        value_map[it->result(i)] = op->result(i);
       }
     }
   }

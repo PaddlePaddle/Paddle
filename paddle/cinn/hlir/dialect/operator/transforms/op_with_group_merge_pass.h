@@ -27,6 +27,7 @@ using GroupList = std::vector<GroupPtr>;
 
 GroupList OpFusionPassInternal(
     const std::vector<pir::Operation*>& op_list,
+    const std::vector<pir::Operation*>& output_op_list = {},
     const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis =
         nullptr);
 
