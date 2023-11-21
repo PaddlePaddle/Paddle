@@ -14,6 +14,11 @@
 
 #include "paddle/pir/dialect/control_flow/ir/cf_type.h"
 
+namespace pir {
+bool ContainerType::classof(Type type) { return StackType::classof(type); }
+
+}  // namespace pir
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ContainerType)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::StackType)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::InletType)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::OutletType)

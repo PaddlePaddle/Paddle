@@ -561,33 +561,33 @@ void BuildScope(const pir::Block& block,
           << GenScopeTreeDebugInfo(
                  const_cast<Scope*>(value_exe_info->GetScope()->root()));
 
-  for (auto op : block) {
-    std::string op_name = op->name();
-    if (op->attributes().count("op_name")) {
-      op_name = op->attributes()
+  for (auto& op : block) {
+    std::string op_name = op.name();
+    if (op.attributes().count("op_name")) {
+      op_name = op.attributes()
                     .at("op_name")
                     .dyn_cast<pir::StrAttribute>()
                     .AsString();
     }
     VLOG(4) << "build op:" << op_name;
     if (SpecialOps.count(op_name)) {
-      HandleForSpecialOp(op, var_name_prefix, value_exe_info);
+      HandleForSpecialOp(&op, var_name_prefix, value_exe_info);
       continue;
     }
 
-    CheckInputVars(op, op_name, value_exe_info);
+    CheckInputVars(&op, op_name, value_exe_info);
 
-    if (op->num_results() < 1) continue;
-    if (op->attributes().count("is_inplace") != 0 &&
-        op->attributes()
+    if (op.num_results() < 1) continue;
+    if (op.attributes().count("is_inplace") != 0 &&
+        op.attributes()
             .at("is_inplace")
             .dyn_cast<pir::BoolAttribute>()
             .data()) {
-      HandleForInplaceOp(op, var_name_prefix, value_exe_info);
+      HandleForInplaceOp(&op, var_name_prefix, value_exe_info);
       continue;
     } else {
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        BuildValue(op->result(i), var_name_prefix, value_exe_info);
+      for (size_t i = 0; i < op.num_results(); ++i) {
+        BuildValue(op.result(i), var_name_prefix, value_exe_info);
       }
     }
   }

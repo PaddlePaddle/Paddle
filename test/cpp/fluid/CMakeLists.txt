@@ -73,7 +73,7 @@ cc_test(
   SRCS save_load_combine_op_test.cc
   DEPS save_combine_op load_combine_op)
 if(WITH_CINN)
-  set(CINN_DEPS cinn_compiler python)
+  set(CINN_DEPS python)
 endif()
 if(WITH_GPU)
   nv_test(
@@ -118,7 +118,6 @@ if(WITH_CINN)
     DEPS
     executor
     fleet_executor
-    cinn_compiler
     recurrent_op_helper
     recurrent_op
     elementwise_add_op
