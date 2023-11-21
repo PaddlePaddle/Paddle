@@ -19,7 +19,7 @@ from paddle import pir
 from paddle.autograd import ir_backward
 from paddle.base.core import (
     call_decomp,
-    decomp_ops_list_contain_unused_output,
+    decomp_ops_contain_unused_output,
     has_decomp,
 )
 from paddle.base.libpaddle.pir import Block, Operation, Program
@@ -37,22 +37,20 @@ def _build_tensor_tuple(xs):
 
 
 def _analyse_decomp_results(orig_outs, decomp_outs, op):
-    intermediate_status = op.get_output_intermediate_status()
-    assert len(orig_outs) == len(decomp_outs) == len(intermediate_status)
+    assert len(orig_outs) == len(decomp_outs)
     res = []
-    for org_item, new_item, value in zip(
-        orig_outs, decomp_outs, intermediate_status
-    ):
-        if isinstance(org_item, pir.OpResult):
-            if value and op.name() in decomp_ops_list_contain_unused_output:
-                assert new_item[0] is None
+    for idx, value in enumerate(decomp_outs):
+        if isinstance(orig_outs[idx], pir.OpResult):
+            if (
+                op.name() in decomp_ops_contain_unused_output.keys()
+                and idx in decomp_ops_contain_unused_output[op.name()]
+            ):
+                assert value[0] is None
             else:
-                assert len(new_item) == 1 and isinstance(
-                    new_item[0], pir.OpResult
-                )
-            res.append(new_item[0])
+                assert len(value) == 1 and isinstance(value[0], pir.OpResult)
+            res.append(value[0])
         else:
-            res.append(new_item)
+            res.append(value)
     return res
 
 
@@ -278,10 +276,18 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
                 _check_op_results(
                     op_name, orig_outs, new_outs, orig_vars, dst_vars
                 )
-                if op.name() in decomp_ops_list_contain_unused_output:
-                    orig_outs[0].replace_all_uses_with(new_outs[0])
+                if op.name() in decomp_ops_contain_unused_output.keys():
+                    for idx in range(len(orig_outs)):
+                        if (
+                            idx
+                            not in decomp_ops_contain_unused_output[op.name()]
+                        ):
+                            orig_outs[idx].replace_all_uses_with(new_outs[idx])
                 else:
-                    op.replace_all_uses_with(new_outs)
+                    if op.name() in decomp_ops_contain_unused_output.keys():
+                        orig_outs[0].replace_all_uses_with(new_outs[0])
+                    else:
+                        op.replace_all_uses_with(new_outs)
                 block.remove_op(op)
 
                 if temp_op is not None:
