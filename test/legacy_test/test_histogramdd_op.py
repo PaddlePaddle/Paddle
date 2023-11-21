@@ -371,7 +371,7 @@ class TestHistogramddAPI_check_sample_type_error(TestHistogramddAPI):
             paddle.histogramdd(sample)
 
 
-class TestHistogramddAPI_check_bins_type_error(TestHistogramddAPI):
+class TestHistogramddAPI_check_bins_element_error(TestHistogramddAPI):
     def test_error(self):
         sample = paddle.to_tensor(
             [
@@ -466,6 +466,21 @@ class TestHistogramddAPI_sample_weights_type_dismatch_error(TestHistogramddAPI):
         )  # float64
         with self.assertRaises(AssertionError):
             paddle.histogramdd(sample, weights=weights)
+
+
+class TestHistogramddAPI_check_bins_type_error(TestHistogramddAPI):
+    def test_error(self):
+        sample = paddle.to_tensor(
+            [
+                [[1.0, 2.0], [3.0, 4.0]],
+                [[5.0, 6.0], [7.0, 8.0]],
+                [[9.0, 10.0], [11.0, 12.0]],
+                [[13.0, 14.0], [15.0, 16.0]],
+            ]
+        )
+        bins = 2.0
+        with self.assertRaises(ValueError):
+            paddle.histogramdd(sample, bins=bins)
 
 
 if __name__ == '__main__':
