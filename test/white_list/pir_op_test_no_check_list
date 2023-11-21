@@ -1,3 +1,4 @@
 test_exponential_op
 test_randint_op
+test_uniform_random_bf16_op
 test_seed_op
