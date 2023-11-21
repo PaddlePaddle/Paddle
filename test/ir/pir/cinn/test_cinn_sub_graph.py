@@ -184,7 +184,6 @@ class TestCinnSoftmax(TestCinnSubGraphBase):
         paddle.seed(2022)
         net = CINNSoftmaxSubGraphNet()
         net = apply_to_static(net, use_cinn)
-
         out = net(self.x, self.axis)
 
         loss = out.mean()

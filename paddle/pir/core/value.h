@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/pir/core/iterator.h"
 #include "paddle/pir/core/op_operand.h"
 #include "paddle/pir/core/type.h"
-#include "paddle/pir/core/use_iterator.h"
 
 namespace pir {
 class Operation;
