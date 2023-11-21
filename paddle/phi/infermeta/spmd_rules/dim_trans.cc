@@ -181,12 +181,12 @@ std::shared_ptr<DimTrans> make_split(const std::shared_ptr<DimTrans> dim,
 // only the leftmost split axis in output will return its input.
 std::shared_ptr<DimTrans> GetDimTrans(
     const std::shared_ptr<DimTrans> dim_trans,
-    std::vector<std::vector<bool>>* shardable,
-    std::set<int64_t>* seen_dims,
     const std::vector<int64_t>& input_shape,
     const std::vector<int64_t>& mesh_shape,
     const std::vector<int64_t>& input_dims_mapping,
-    const std::set<int64_t>& sharded_input_dims) {
+    const std::set<int64_t>& sharded_input_dims,
+    std::vector<std::vector<bool>>* shardable,
+    std::set<int64_t>* seen_dims) {
   DimTrans::Type type = dim_trans->type();
   std::shared_ptr<DimTrans> ret_dim_trans;
 
@@ -213,12 +213,12 @@ std::shared_ptr<DimTrans> GetDimTrans(
       }
 
       GetDimTrans(input,
-                  shardable,
-                  seen_dims,
                   input_shape,
                   mesh_shape,
                   input_dims_mapping,
-                  sharded_input_dims);
+                  sharded_input_dims,
+                  shardable,
+                  seen_dims);
     }
 
     std::shared_ptr<DimTrans> dim0 = inputs[0];
@@ -232,12 +232,12 @@ std::shared_ptr<DimTrans> GetDimTrans(
   } else if (type == DimTrans::Type::SPLIT) {
     std::shared_ptr<Split> split = std::dynamic_pointer_cast<Split>(dim_trans);
     std::shared_ptr<DimTrans> dim = GetDimTrans(split->input(),
-                                                shardable,
-                                                seen_dims,
                                                 input_shape,
                                                 mesh_shape,
                                                 input_dims_mapping,
-                                                sharded_input_dims);
+                                                sharded_input_dims,
+                                                shardable,
+                                                seen_dims);
     int64_t ret_size = split->local_splitted_shape_value();
 
     if (split->split_id() == 0) {
@@ -324,12 +324,12 @@ std::vector<std::vector<int64_t>> InferFromDimTrans(
   std::vector<int64_t> dim_map_src2tgt(ndim, -1);
   for (int64_t i = 0, n = static_cast<int64_t>(dim_trans.size()); i < n; i++) {
     std::shared_ptr<DimTrans> dim = GetDimTrans(dim_trans[i],
-                                                &shardable,
-                                                &seen_input_dims,
                                                 input_shape,
                                                 mesh_shape,
                                                 input_dims_mapping,
-                                                sharded_input_dims);
+                                                sharded_input_dims,
+                                                &shardable,
+                                                &seen_input_dims);
     if (dim != nullptr && dim->type() == DimTrans::Type::INPUTDIM) {
       std::shared_ptr<InputDim> inputdim =
           std::dynamic_pointer_cast<InputDim>(dim);
