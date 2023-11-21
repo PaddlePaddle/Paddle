@@ -334,8 +334,18 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
   // so it cannot be handled correctly in the backward for the time being
   // For this case, we uniformly transition the input to the Replicated state.
   auto fwd_spmd_info = MatmulInferSpmd(x, y, trans_x, trans_y);
-  if (x.dist_attr() != get_attr(fwd_spmd_info.first[0]) ||
-      y.dist_attr() != get_attr(fwd_spmd_info.first[1])) {
+  auto infer_x_dist_attr = get_attr(fwd_spmd_info.first[0]);
+  auto infer_y_dist_attr = get_attr(fwd_spmd_info.first[1]);
+  auto is_dist_attr_equal = [&](const TensorDistAttr& dist_attr,
+                                const ArgDistAttr& arg_dist_attr) -> bool {
+    auto infer_dist_attr = get_attr(arg_dist_attr);
+    return (dist_attr.process_mesh() != infer_dist_attr.process_mesh() ||
+            dist_attr.dims_mapping() != infer_dist_attr.dims_mapping() ||
+            dist_attr.partial_status() != infer_dist_attr.partial_status());
+  };
+
+  if (is_dist_attr_equal(x.dist_attr(), fwd_spmd_info.first[0]) ||
+      is_dist_attr_equal(y.dist_attr(), fwd_spmd_info.first[1])) {
     auto x_r_dist_attr = GetReplicatedDistAttr(x.dist_attr());
     auto y_r_dist_attr = GetReplicatedDistAttr(y.dist_attr());
     return {{x_r_dist_attr,
