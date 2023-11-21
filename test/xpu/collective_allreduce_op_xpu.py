@@ -26,7 +26,6 @@ paddle.enable_static()
 class TestCollectiveAllReduce(TestCollectiveRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
-        self.dtype = os.getenv("DTYPE")
 
     def get_model(self, main_prog, startup_program, dtype=None):
         dtype = "float32" if dtype is None else dtype
