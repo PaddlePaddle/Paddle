@@ -19,9 +19,11 @@
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/op_base.h"
 
+PHI_DECLARE_string(tensor_operants_mode);
 // TODO(chenzhuo)
 // this file will be generated in pd_op_decomp.cc
 
