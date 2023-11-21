@@ -14,7 +14,7 @@
 
 import unittest
 
-from test_parallel_dygraph_dataparallel import TestMultipleXpus
+from xpu.test_parallel_dygraph_dataparallel import TestMultipleXpus
 
 
 class TestProcessGroup(TestMultipleXpus):
