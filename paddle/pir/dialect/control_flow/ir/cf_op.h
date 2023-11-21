@@ -56,7 +56,7 @@ class IR_API TuplePushOp : public Op<TuplePushOp, SideEffectTrait> {
   Value container() { return container_interface().container(); }
   Value inlet() { return operand_source(0); }
   Value outlet() { return container_interface().outlet(); }
-  uint32_t num_elements() { return num_operands() - 1u; }
+
   size_t tuple_size();
   Value inlet_element(size_t index) { return operand_source(index + 1u); }
   Value outlet_element(size_t index) {
@@ -83,7 +83,7 @@ class IR_API TuplePopOp : public Op<TuplePopOp, SideEffectTrait> {
   Value container() { return container_interface().container(); }
   Value inlet() { return container_interface().inlet(); }
   Value outlet() { return operand_source(0); }
-  uint32_t num_elements() { return create_op().num_elements(); }
+
   size_t tuple_size() { return num_results(); }
   Value inlet_element(size_t index) {
     return tuple_push_op().inlet_element(index);
