@@ -155,6 +155,7 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
     def abs_wrapper(self, x):
         return paddle.abs(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -182,6 +183,7 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
 
 
 class TestReluDoubleGradCheck(unittest.TestCase):
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -211,6 +213,7 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
     def leaky_relu_wrapper(self, x):
         return paddle.nn.functional.leaky_relu(x[0], negative_slope=0.2)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -245,6 +248,7 @@ class TestELUDoubleGradCheck(unittest.TestCase):
     def elu_wrapper(self, x):
         return paddle.nn.functional.elu(x[0], alpha=0.2)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 4, 4]
@@ -279,6 +283,7 @@ class TestCELUDoubleGradCheck(unittest.TestCase):
     def celu_wrapper(self, x):
         return paddle.nn.functional.celu(x[0], alpha=0.2)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 4, 4]
@@ -313,6 +318,7 @@ class TestSoftplusDoubleGradCheck(unittest.TestCase):
     def softplus_wrapper(self, x):
         return F.softplus(x[0], beta=1, threshold=20)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 4, 4]
@@ -348,6 +354,7 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
     def sqrt_wrapper(self, x):
         return paddle.sqrt(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -380,6 +387,7 @@ class TestRsqrtDoubleGradCheck(unittest.TestCase):
     def rsqrt_wrapper(self, x):
         return paddle.rsqrt(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -412,6 +420,7 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
     def square_wrapper(self, x):
         return paddle.square(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -444,6 +453,7 @@ class TestLogDoubleGradCheck(unittest.TestCase):
     def log_wrapper(self, x):
         return paddle.log(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -476,6 +486,7 @@ class TestSinDoubleGradCheck(unittest.TestCase):
     def sin_wrapper(self, x):
         return paddle.sin(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -506,6 +517,7 @@ class TestCosDoubleGradCheck(unittest.TestCase):
     def cos_wrapper(self, x):
         return paddle.cos(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -594,6 +606,7 @@ class TestSinTripleGradCheck(unittest.TestCase):
     def sin_wrapper(self, x):
         return paddle.sin(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -624,6 +637,7 @@ class TestPowTripleGradCheck1(unittest.TestCase):
     def pow_wrapper(self, x):
         return paddle.pow(x[0], 1)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -653,6 +667,7 @@ class TestPowTripleGradCheck2(unittest.TestCase):
     def pow_wrapper(self, x):
         return paddle.pow(x[0], 2)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -682,6 +697,7 @@ class TestPowTripleGradCheck3(unittest.TestCase):
     def pow_wrapper(self, x):
         return paddle.pow(x[0], 4)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -711,6 +727,7 @@ class TestCosTripleGradCheck(unittest.TestCase):
     def cos_wrapper(self, x):
         return paddle.cos(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]

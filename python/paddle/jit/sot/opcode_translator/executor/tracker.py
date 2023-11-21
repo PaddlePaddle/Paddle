@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import builtins
+import dis
 import sys
 from typing import TYPE_CHECKING
 
@@ -247,6 +248,54 @@ class ConstTracker(Tracker):
 
     def need_guard(self) -> bool:
         return False
+
+
+class BinaryOperatorTracker(Tracker):
+    def __init__(
+        self, operator: str, operands: list[VariableBase], addition=None
+    ):
+        """
+        addition is for the case that the operator is "COMPARE_OP", which represents the dis.cmp_op's index.
+        """
+        super().__init__(operands, False)
+        assert len(operands) == 2, "Currently only support binary operator."
+        self.operands = operands
+        self.operator = operator
+        self.addition = addition
+
+    def gen_instructions(self, codegen: PyCodeGen):
+        for operand in self.operands:
+            operand.tracker.gen_instructions(codegen)
+        self.gen_operator_instr(codegen)
+
+    def gen_operator_instr(self, codegen: PyCodeGen):
+        if self.operator == "COMPARE_OP":
+            codegen.gen_compare(self.addition)
+        else:
+            codegen.gen_operator(self.operator)
+
+    def get_operator_symbol(self):
+        if self.operator == "COMPARE_OP":
+            return dis.cmp_op[self.addition]
+        return {
+            "BINARY_ADD": "+",
+            "BINARY_SUBTRACT": "-",
+            "BINARY_MUL": "*",
+            "BINARY_POWER": "**",
+        }[self.operator]
+
+    def trace_value_from_frame(self):
+        sub_exprs = [x.tracker.trace_value_from_frame() for x in self.operands]
+        sub_frees = [x.free_vars for x in sub_exprs]
+        expr = f"({{}} {self.get_operator_symbol()} {{}})"
+        return StringifyExpression(
+            expr,
+            list(sub_exprs),
+            union_free_vars(*list(sub_frees)),
+        )
+
+    def __repr__(self) -> str:
+        return f"BinaryOperatorTracker(operator={self.operator})"
 
 
 class GetAttrTracker(Tracker):

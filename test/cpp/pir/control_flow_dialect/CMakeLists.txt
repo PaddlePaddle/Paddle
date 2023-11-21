@@ -5,7 +5,9 @@ paddle_test(
   DEPS
   pir
   op_dialect_vjp
-)
+  pir_transforms
+  op_dialect
+  gtest)
 
 paddle_test(
   while_op_test
@@ -14,4 +16,7 @@ paddle_test(
   DEPS
   pir
   op_dialect_vjp
-)
+  pir_transforms
+  op_dialect
+  gtest)
+
