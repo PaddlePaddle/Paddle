@@ -21,11 +21,15 @@
 namespace {
 template <typename T1, typename T2>
 void ConvertTensorType(phi::DenseTensor* tensor) {
+  auto* dev_ctx = static_cast<phi::CPUContext*>(
+      paddle::platform::DeviceContextPool::Instance().Get(
+          paddle::platform::CPUPlace()));
   phi::DenseTensor tmp_tensor;
   tmp_tensor.set_type(phi::CppTypeToDataType<T2>::Type());
   tmp_tensor.Resize(tensor->dims());
-  auto* tmp_data = tmp_tensor.mutable_data<T2>(paddle::platform::CPUPlace());
-  auto* data = tensor->mutable_data<T1>(paddle::platform::CPUPlace());
+  auto* tmp_data = dev_ctx->template HostAlloc<T2>(
+      &tmp_tensor, sizeof(T2) * tmp_tensor.numel());
+  auto* data = tensor->data<T1>();
   for (int i = 0; i < tensor->numel(); i++) {
     tmp_data[i] = static_cast<T2>(data[i]);
   }
