@@ -849,7 +849,7 @@ class Layer:
             dtype(str, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
-                If set None, it will be "float32". Default: float32.
+                If set None, it will be "float32". Default: None.
 
         Returns:
             Tensor, created Tensor.
@@ -895,7 +895,7 @@ class Layer:
         Returns a list of all Parameters from current layer and its sub-layers.
 
         Parameters:
-            include_sublayers (bool, optional) - Whether to return the parameters of the sublayer.
+            include_sublayers (bool, optional): Whether to return the parameters of the sublayer.
                 If True, the returned list contains the parameters of the sublayer.
                 Default: True.
 
