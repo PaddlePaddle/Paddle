@@ -90,7 +90,8 @@
 #
 #   paddle_test(example SRCS example_test.cc)
 #
-
+# including binary directory for generated headers.
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 # including io directory for inference lib paddle_api.h
 include_directories("${PADDLE_SOURCE_DIR}/paddle/fluid/framework/io")
 
