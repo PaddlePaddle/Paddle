@@ -94,13 +94,13 @@ TEST(PatternRewrite, broadcast_elementwise) {
 
   auto it = program.block()->begin();
 
-  CHECK_EQ((*it)->isa<paddle::dialect::FullOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<paddle::dialect::FullOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<cinn::dialect::BroadcastOp>(), true);
+  CHECK_EQ(it->isa<cinn::dialect::BroadcastOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<paddle::dialect::AddOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::AddOp>(), true);
 }
 
 TEST(PatternRewrite, broadcast_elementwise_both) {
@@ -120,15 +120,15 @@ TEST(PatternRewrite, broadcast_elementwise_both) {
 
   auto it = program.block()->begin();
 
-  CHECK_EQ((*it)->isa<paddle::dialect::FullOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<paddle::dialect::FullOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<cinn::dialect::BroadcastOp>(), true);
+  CHECK_EQ(it->isa<cinn::dialect::BroadcastOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<cinn::dialect::BroadcastOp>(), true);
+  CHECK_EQ(it->isa<cinn::dialect::BroadcastOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<paddle::dialect::AddOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::AddOp>(), true);
 }
 
 TEST(PatternRewrite, broadcast_elementwise_sub_both) {
@@ -148,13 +148,13 @@ TEST(PatternRewrite, broadcast_elementwise_sub_both) {
 
   auto it = program.block()->begin();
 
-  CHECK_EQ((*it)->isa<paddle::dialect::FullOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<paddle::dialect::FullOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<cinn::dialect::BroadcastOp>(), true);
+  CHECK_EQ(it->isa<cinn::dialect::BroadcastOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<cinn::dialect::BroadcastOp>(), true);
+  CHECK_EQ(it->isa<cinn::dialect::BroadcastOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<paddle::dialect::SubtractOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::SubtractOp>(), true);
 }

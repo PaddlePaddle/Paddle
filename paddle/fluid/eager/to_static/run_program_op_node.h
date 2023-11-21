@@ -181,30 +181,30 @@ static auto GetNameFromValue(const ::pir::Block *block,
                              bool is_input) {
   // we use name here, later value is used directly.
   std::unordered_map<::pir::Value, std::string> value2name;
-  for (auto *op : *block) {
+  for (auto &op : *block) {
     std::string name;
-    if (is_input && op->name() == "pd_op.data") {
+    if (is_input && op.name() == "pd_op.data") {
       name =
-          op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
-      value2name[op->results()[0].Value::impl()] = name;
-    } else if (!is_input && op->name() == "builtin.set_parameter") {
-      name = op->attributes()
+          op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
+      value2name[op.results()[0].Value::impl()] = name;
+    } else if (!is_input && op.name() == "builtin.set_parameter") {
+      name = op.attributes()
                  .at("parameter_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
-      value2name[op->operand(0).source()] = name;
-    } else if (!is_input && op->name() == "builtin.shadow_output") {
-      name = op->attributes()
+      value2name[op.operand(0).source()] = name;
+    } else if (!is_input && op.name() == "builtin.shadow_output") {
+      name = op.attributes()
                  .at("output_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
-      value2name[op->operand(0).source()] = name;
-    } else if (is_input && op->name() == "builtin.get_parameter") {
-      name = op->attributes()
+      value2name[op.operand(0).source()] = name;
+    } else if (is_input && op.name() == "builtin.get_parameter") {
+      name = op.attributes()
                  .at("parameter_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
-      value2name[op->result(0).Value::impl()] = name;
+      value2name[op.result(0).Value::impl()] = name;
     }
   }
   std::vector<std::string> names;
