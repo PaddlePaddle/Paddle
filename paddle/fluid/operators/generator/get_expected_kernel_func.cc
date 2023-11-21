@@ -99,6 +99,9 @@ phi::KernelKey GetConcatExpectedKernelType(
       break;
     }
   }
+  if (inputs.size() > 64) {
+    op_ptr->SetDnnFallback(true);
+  }
   if (flag == 0) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "All Inputs of Concat OP are Empty!"));
