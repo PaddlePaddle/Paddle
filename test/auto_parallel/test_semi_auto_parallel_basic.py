@@ -26,7 +26,6 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
         self._default_envs = {"dtype": "float32", "seed": "2023"}
         self._changeable_envs = {"backend": ["cpu", "gpu"]}
 
-    """
     def test_matmul_api(self):
         default_envs = self._default_envs
         default_envs["NVIDIA_TF32_OVERRIDE"] = "0"
@@ -118,7 +117,6 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 "semi_auto_parallel_for_custom_relu.py",
                 user_defined_envs=envs,
             )
-    """
 
     def test_flash_attention_api(self):
         envs_list = test_base.gen_product_envs_list(
