@@ -13,59 +13,28 @@
 // limitations under the License.
 
 #pragma once
-#include "glog/logging.h"
 
 #include "paddle/cinn/adt/adt.h"
-#include "paddle/cinn/hlir/framework/graph.h"
-#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/pir/core/value.h"
 
 namespace cinn::adt::adapter {
 
 struct Tensor final {
-  const hlir::framework::NodeData* node_data;
-  const hlir::framework::Graph* graph;
+  ::pir::Value node_data;
 
   bool operator==(const Tensor& other) const {
-    return this->node_data == other.node_data && this->graph == other.graph;
+    return this->node_data == other.node_data;
   }
 
-  std::size_t GetRank() const {
-    const auto& shape_dict =
-        graph->GetAttrs<absl::flat_hash_map<std::string, utils::ShapeType>>(
-            "infershape");
-    CHECK(shape_dict.count(node_data->id()))
-        << "Can't find " << node_data->id() << " 's shape!";
-    return shape_dict.at(node_data->id()).size();
-  }
+  std::size_t GetRank() const;
 
-  const std::vector<int32_t>& GetShape() const {
-    const auto& shape_dict =
-        graph->GetAttrs<absl::flat_hash_map<std::string, utils::ShapeType>>(
-            "infershape");
-    CHECK(shape_dict.count(node_data->id()))
-        << "Can't find " << node_data->id() << " 's shape!";
-    return shape_dict.at(node_data->id());
-  }
+  std::vector<int32_t> GetShape() const;
 
-  std::size_t GetNumel() const {
-    const auto& shape_dict =
-        graph->GetAttrs<absl::flat_hash_map<std::string, utils::ShapeType>>(
-            "infershape");
-    CHECK(shape_dict.count(node_data->id()))
-        << "Can't find " << node_data->id() << " 's shape!";
-    std::vector<int32_t> shape = shape_dict.at(node_data->id());
-    std::size_t ret = 1;
-    for (int32_t dim_size : shape) {
-      ret = ret * dim_size;
-    }
-    return ret;
-  }
+  std::size_t GetNumel() const;
 };
 
 inline std::size_t GetHashValueImpl(const Tensor& tensor) {
-  return hash_combine(
-      std::hash<const hlir::framework::NodeData*>()(tensor.node_data),
-      std::hash<const hlir::framework::Graph*>()(tensor.graph));
+  return std::hash<::pir::Value>()(tensor.node_data);
 }
 
 }  // namespace cinn::adt::adapter
