@@ -17,7 +17,7 @@
 namespace phi {
 KernelSignature CEmbeddingOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "c_embedding", {"W", "Ids"}, {"start_index"}, {"vocab_size"}, {"Out"});
+      "c_embedding", {"W", "Ids"}, {"start_index", "vocab_size"}, {"Out"});
 }
 
 KernelSignature CEmbeddingGradOpArgumentMapping(
