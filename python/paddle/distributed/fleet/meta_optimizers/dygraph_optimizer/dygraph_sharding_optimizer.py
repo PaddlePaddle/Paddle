@@ -606,7 +606,7 @@ class DygraphShardingOptimizerV2:
         self._use_pipelie_parallel = strategy.hybrid_configs["pp_degree"] > 1
         assert not (
             self._use_pipelie_parallel and self.comm_overlap
-        ), "You shoule not use pipelie parallel and comm_overlap at the same time"
+        ), "You should not use pipelie parallel and comm_overlap at the same time"
 
         if not self.pp_overlap and self.comm_overlap:
             self.register_reduce_overlap_hook(use_comm=True)
