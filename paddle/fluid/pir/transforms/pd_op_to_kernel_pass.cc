@@ -78,9 +78,9 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     pir::YieldOp::name(),
     IfOp::name(),
     WhileOp::name(),
-    pir::CreateStackOp::name(),
-    pir::PushBackOp::name(),
-    pir::PopBackOp::name(),
+    pir::StackCreateOp::name(),
+    pir::TuplePushOp::name(),
+    pir::TuplePopOp::name(),
     "cinn_runtime.jit_kernel"};
 
 static bool NeedFallBackCpu(const pir::Operation* op,
@@ -1038,8 +1038,8 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->isa<::pir::CreateStackOp>() ||
-      op_item->isa<::pir::PushBackOp>()) {
+  if (op_item->isa<::pir::StackCreateOp>() ||
+      op_item->isa<::pir::TuplePushOp>()) {
     for (size_t i = 0; i < op_item->num_operands(); ++i) {
       auto cur_in = op_item->operand_source(i);
       if (!cur_in) {
@@ -1055,7 +1055,7 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->isa<::pir::PopBackOp>()) {
+  if (op_item->isa<::pir::TuplePopOp>()) {
     for (size_t i = 0; i < op_item->num_operands(); ++i) {
       auto cur_in = op_item->operand_source(i);
       auto new_in = GetNewInput(
@@ -1063,7 +1063,7 @@ void HandleForSpecialOp(
       vec_inputs.push_back(new_in);
     }
 
-    auto pop_back_op = op_item->dyn_cast<::pir::PopBackOp>();
+    auto pop_back_op = op_item->dyn_cast<::pir::TuplePopOp>();
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       auto cur_inlet_element = pop_back_op.inlet_element(i);
       PADDLE_ENFORCE_EQ(map_value_pair->count(cur_inlet_element),

@@ -12,13 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/dialect/control_flow/ir/cf_type.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_interface.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 namespace pir {
-bool ContainerType::classof(Type type) { return StackType::classof(type); }
+TuplePushOp ContainerOpInterface::tuple_push_op() {
+  auto value = inlet();
+  IR_ENFORCE(value.HasOneUse(),
+             "The inlet value of container op can only be used once.");
+  return value.first_use().owner()->dyn_cast<TuplePushOp>();
+}
+TuplePopOp ContainerOpInterface::tuple_pop_op() {
+  auto value = outlet();
+  IR_ENFORCE(value.HasOneUse(),
+             "The outlet value of container op can only be used once.");
+  return value.first_use().owner()->dyn_cast<TuplePopOp>();
+}
 
 }  // namespace pir
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::ContainerType)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::StackType)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::InletType)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::OutletType)
+
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ContainerOpInterface)
