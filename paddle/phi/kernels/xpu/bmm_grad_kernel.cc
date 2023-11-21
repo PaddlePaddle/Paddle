@@ -26,18 +26,12 @@ void MatMul(const Context& dev_ctx,
             bool trans_b,
             DenseTensor* out) {
   using XPUT = typename XPUTypeTrait<T>::Type;
+  auto xpu_ctx = dev_ctx.x_context();
   dev_ctx.template Alloc<T>(out);
-  xpu::Context* xpu_ctx = dev_ctx.x_context();
-  int fccal_type = FCCalcType<XPUT>();
-  if (fccal_type == XPUFCCalcType::FC_INT32) {
-    MatMulXPUFunction<T, int32_t>(a, b, out, trans_a, trans_b, xpu_ctx);
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
-    MatMulXPUFunction<T, float>(a, b, out, trans_a, trans_b, xpu_ctx);
-  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
-    MatMulXPUFunction<T, int_with_ll_t>(a, b, out, trans_a, trans_b, xpu_ctx);
-  } else {
-    MatMulXPUFunction<T, int16_t>(a, b, out, trans_a, trans_b, xpu_ctx);
-  }
+  int fccal_type = FCCalcType<XPUT>(xpu_ctx);
+  PD_VISIT_XPU_QUANT_TYPES(XPUT, fccal_type, "matmul", [&] {
+    MatMulXPUFunction<T, TGEMM>(a, b, out, trans_a, trans_b, xpu_ctx);
+  });
 }
 
 template <typename T, typename Context>

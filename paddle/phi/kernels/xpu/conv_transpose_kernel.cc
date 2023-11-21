@@ -76,122 +76,39 @@ void Conv2dTransposeKernel(const Context& ctx,
   const int img_xh = static_cast<int>(out->dims()[2]);
   const int img_xw = static_cast<int>(out->dims()[3]);
 
-  int fccal_type = FCCalcType<XPUT>();
-  if (fccal_type == XPUFCCalcType::FC_INT32) {
-    int r = xpu::conv2d_transpose_v2<float, float, float, int32_t>(
-        ctx.x_context(),
-        x.data<float>(),
-        filter.data<float>(),
-        out->data<float>(),
-        batch_size,
-        img_yc,
-        img_xh,
-        img_xw,
-        img_xc,
-        ksize,
-        strides,
-        paddings_,
-        dilations_,
-        groups,
-        nullptr,
-        nullptr,
-        nullptr,
-        true);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
-    int r = xpu::conv2d_transpose_v2<float, float, float, float>(
-        ctx.x_context(),
-        x.data<float>(),
-        filter.data<float>(),
-        out->data<float>(),
-        batch_size,
-        img_yc,
-        img_xh,
-        img_xw,
-        img_xc,
-        ksize,
-        strides,
-        paddings_,
-        dilations_,
-        groups,
-        nullptr,
-        nullptr,
-        nullptr,
-        true);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
-  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
-    if (output_size.size()) {
-      VLOG(4) << "int_with_ll quantization is not supported when output_size "
-                 "is specified, "
-              << "use int31 instead";
-      int r = xpu::conv2d_transpose_v2<float, float, float, int32_t>(
-          ctx.x_context(),
-          x.data<float>(),
-          filter.data<float>(),
-          out->data<float>(),
-          batch_size,
-          img_yc,
-          img_xh,
-          img_xw,
-          img_xc,
-          ksize,
-          strides,
-          paddings_,
-          dilations_,
-          groups,
-          nullptr,
-          nullptr,
-          nullptr,
-          true);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
-    } else {
-      // xpu::conv2d_transpose_v2 do not support int_with_ll now
-      // use xpu::conv2d_transpose
-      int img_yh = static_cast<int>(x.dims()[2]);
-      int img_yw = static_cast<int>(x.dims()[3]);
-      int r = xpu::conv2d_transpose<float, float, float, int_with_ll_t>(
-          ctx.x_context(),
-          x.data<float>(),
-          filter.data<float>(),
-          out->data<float>(),
-          batch_size,
-          img_yc,
-          img_yh,
-          img_yw,
-          img_xc,
-          ksize,
-          strides,
-          paddings_,
-          dilations_,
-          groups,
-          nullptr,
-          nullptr,
-          nullptr,
-          true);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose");
-    }
-  } else {
-    int r = xpu::conv2d_transpose_v2<XPUT, XPUT, XPUT, int16_t>(
-        ctx.x_context(),
-        reinterpret_cast<const XPUT*>(x.data<T>()),
-        reinterpret_cast<const XPUT*>(filter.data<T>()),
-        reinterpret_cast<XPUT*>(out->data<T>()),
-        batch_size,
-        img_yc,
-        img_xh,
-        img_xw,
-        img_xc,
-        ksize,
-        strides,
-        paddings_,
-        dilations_,
-        groups,
-        nullptr,
-        nullptr,
-        nullptr,
-        true);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
-  }
+  auto x_data = reinterpret_cast<const XPUT*>(x.data<T>());
+  auto filter_data = reinterpret_cast<const XPUT*>(filter.data<T>());
+  auto out_data = reinterpret_cast<XPUT*>(out->data<T>());
+
+  int fccal_type = FCCalcType<XPUT>(ctx.x_context());
+  PD_VISIT_XPU_QUANT_TYPES(XPUT, fccal_type, "conv2d_transpose", [&] {
+    // conv2d_transpose_v2 do not support int_with_ll quantization, fallback to
+    // int.
+    using RealTGEMM =
+        typename std::conditional<std::is_same<TGEMM, int_with_ll_t>::value,
+                                  int,
+                                  TGEMM>::type;
+    int ret =
+        xpu::conv2d_transpose_v2<XPUT, XPUT, XPUT, RealTGEMM>(ctx.x_context(),
+                                                              x_data,
+                                                              filter_data,
+                                                              out_data,
+                                                              batch_size,
+                                                              img_yc,
+                                                              img_xh,
+                                                              img_xw,
+                                                              img_xc,
+                                                              ksize,
+                                                              strides,
+                                                              paddings_,
+                                                              dilations_,
+                                                              groups,
+                                                              nullptr,
+                                                              nullptr,
+                                                              nullptr,
+                                                              true);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "conv2d_transpose_v2");
+  });
 }
 template <typename T, typename Context>
 void DepthwiseConv2dTransposeKernel(const Context& ctx,

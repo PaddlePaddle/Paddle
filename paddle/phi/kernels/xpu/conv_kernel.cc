@@ -87,70 +87,9 @@ void ConvKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
     filter_data_ptr = reinterpret_cast<const XPUT*>(filter_data_tmp);
   }
-
-  int fccal_type = FCCalcType<XPUT>();
-  if (fccal_type == XPUFCCalcType::FC_INT32) {
-    int r = xpu::conv2d<XPUT, XPUT, XPUT, int>(dev_ctx.x_context(),
-                                               input_data,
-                                               filter_data_ptr,
-                                               output_data,
-                                               batch_size,
-                                               img_c,
-                                               img_h,
-                                               img_w,
-                                               f,
-                                               ksize,
-                                               strides,
-                                               paddings,
-                                               dilations,
-                                               groups,
-                                               nullptr,
-                                               nullptr,
-                                               nullptr,
-                                               is_nchw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d");
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
-    int r = xpu::conv2d<XPUT, XPUT, XPUT, float>(dev_ctx.x_context(),
-                                                 input_data,
-                                                 filter_data_ptr,
-                                                 output_data,
-                                                 batch_size,
-                                                 img_c,
-                                                 img_h,
-                                                 img_w,
-                                                 f,
-                                                 ksize,
-                                                 strides,
-                                                 paddings,
-                                                 dilations,
-                                                 groups,
-                                                 nullptr,
-                                                 nullptr,
-                                                 nullptr,
-                                                 is_nchw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d");
-  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
-    int r = xpu::conv2d<XPUT, XPUT, XPUT, int_with_ll_t>(dev_ctx.x_context(),
-                                                         input_data,
-                                                         filter_data_ptr,
-                                                         output_data,
-                                                         batch_size,
-                                                         img_c,
-                                                         img_h,
-                                                         img_w,
-                                                         f,
-                                                         ksize,
-                                                         strides,
-                                                         paddings,
-                                                         dilations,
-                                                         groups,
-                                                         nullptr,
-                                                         nullptr,
-                                                         nullptr,
-                                                         is_nchw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d");
-  } else {
-    int r = xpu::conv2d<XPUT, XPUT, XPUT, int16_t>(dev_ctx.x_context(),
+  XPUFCCalcType fccal_type = FCCalcType<XPUT>(dev_ctx.x_context());
+  PD_VISIT_XPU_QUANT_TYPES(XPUT, fccal_type, "conv2d", [&] {
+    int ret = xpu::conv2d<XPUT, XPUT, XPUT, TGEMM>(dev_ctx.x_context(),
                                                    input_data,
                                                    filter_data_ptr,
                                                    output_data,
@@ -168,8 +107,8 @@ void ConvKernel(const Context& dev_ctx,
                                                    nullptr,
                                                    nullptr,
                                                    is_nchw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d");
-  }
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "conv2d");
+  });
 }
 
 template <typename T, typename Context>
@@ -257,74 +196,9 @@ void Conv3DKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
     filter_data_ptr = reinterpret_cast<const XPUT*>(filter_data_tmp);
   }
-
-  int fccal_type = FCCalcType<XPUT>();
-  if (fccal_type == XPUFCCalcType::FC_INT32) {
-    int r = xpu::conv3d<XPUT, XPUT, XPUT, int>(dev_ctx.x_context(),
-                                               input_data,
-                                               filter_data_ptr,
-                                               output_data,
-                                               batch_size,
-                                               img_c,
-                                               img_d,
-                                               img_h,
-                                               img_w,
-                                               f,
-                                               ksize,
-                                               strides,
-                                               paddings,
-                                               dilations,
-                                               groups,
-                                               nullptr,
-                                               nullptr,
-                                               nullptr,
-                                               is_ncdhw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d");
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
-    int r = xpu::conv3d<XPUT, XPUT, XPUT, float>(dev_ctx.x_context(),
-                                                 input_data,
-                                                 filter_data_ptr,
-                                                 output_data,
-                                                 batch_size,
-                                                 img_c,
-                                                 img_d,
-                                                 img_h,
-                                                 img_w,
-                                                 f,
-                                                 ksize,
-                                                 strides,
-                                                 paddings,
-                                                 dilations,
-                                                 groups,
-                                                 nullptr,
-                                                 nullptr,
-                                                 nullptr,
-                                                 is_ncdhw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d");
-
-  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
-    int r = xpu::conv3d<XPUT, XPUT, XPUT, int_with_ll_t>(dev_ctx.x_context(),
-                                                         input_data,
-                                                         filter_data_ptr,
-                                                         output_data,
-                                                         batch_size,
-                                                         img_c,
-                                                         img_d,
-                                                         img_h,
-                                                         img_w,
-                                                         f,
-                                                         ksize,
-                                                         strides,
-                                                         paddings,
-                                                         dilations,
-                                                         groups,
-                                                         nullptr,
-                                                         nullptr,
-                                                         nullptr,
-                                                         is_ncdhw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d");
-  } else {
-    int r = xpu::conv3d<XPUT, XPUT, XPUT, int16_t>(dev_ctx.x_context(),
+  XPUFCCalcType fccal_type = FCCalcType<XPUT>(dev_ctx.x_context());
+  PD_VISIT_XPU_QUANT_TYPES(XPUT, fccal_type, "conv3d", [&] {
+    int ret = xpu::conv3d<XPUT, XPUT, XPUT, TGEMM>(dev_ctx.x_context(),
                                                    input_data,
                                                    filter_data_ptr,
                                                    output_data,
@@ -343,10 +217,9 @@ void Conv3DKernel(const Context& dev_ctx,
                                                    nullptr,
                                                    nullptr,
                                                    is_ncdhw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d");
-  }
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "conv3d");
+  });
 }
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
