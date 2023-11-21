@@ -648,6 +648,12 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
   }
 
   auto bool_2_idx = nonzero_ad_func(bool_index);
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, tensor, bool_2_idx)) {
+    ConvertAllInputsToDistTensor(mesh, tensor, bool_2_idx);
+  }
+
   return gather_nd_ad_func(tensor, bool_2_idx);
 }
 
@@ -662,6 +668,8 @@ static void ParseBoolAndBroadcastIndices(
     }
   }
   if (advanced_index->size() > 1) {
+    // Here advanced_index has been checked ContainDistTensor
+    // and transed in dealWithAdvancedIndex
     auto broadcasted_index = broadcast_tensors_ad_func(*advanced_index);
     advanced_index->assign(broadcasted_index.begin(), broadcasted_index.end());
   }

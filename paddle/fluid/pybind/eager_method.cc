@@ -1550,6 +1550,14 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
       // unsqueeze
       transed_advanced_index_tensor = unsqueeze_ad_func(transed_index[0], {-1});
     }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, transed_tensor, transed_advanced_index_tensor)) {
+      ConvertAllInputsToDistTensor(
+          mesh, transed_tensor, transed_advanced_index_tensor);
+    }
+
     out = gather_nd_ad_func(transed_tensor, transed_advanced_index_tensor);
   }
 
@@ -1857,16 +1865,20 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
     // TODO(zoooo0820) 1.Using inplace version index_put
     //                  2.Remove following code after backward bug fixed.
     transed_sub_tensor = assign_ad_func(transed_sub_tensor);
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self->tensor, transed_sub_tensor, value_tensor)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self->tensor, transed_sub_tensor, value_tensor);
+    }
+
     transed_sub_tensor =
         index_put_ad_func(transed_sub_tensor, transed_index, value_tensor);
 
     paddle::Tensor transback_sub_tensor =
         transpose_ad_func(transed_sub_tensor, trans_back_dim);
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self->tensor, transback_sub_tensor)) {
-      ConvertAllInputsToDistTensor(mesh, self->tensor, transback_sub_tensor);
-    }
     self->tensor = set_value_with_tensor__ad_func(self->tensor,
                                                   transback_sub_tensor,
                                                   slice_starts,
