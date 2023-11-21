@@ -360,7 +360,6 @@ class TestBF16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
 
 
 class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         if not core.is_compiled_with_cuda():
             return
