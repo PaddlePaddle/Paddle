@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from utils import IS_MAC, extra_compile_args, paddle_includes
+from utils import extra_compile_args, paddle_includes
 
-from paddle.utils.cpp_extension import CppExtension, CUDAExtension, setup
+from paddle.utils.cpp_extension import CUDAExtension, setup
 
-# Mac-CI don't support GPU
-Extension = CppExtension if IS_MAC else CUDAExtension
-sources = ['inference_gap.cc']
-if not IS_MAC:
-    sources.append('inference_gap.cu')
-    extra_compile_args["cxx"] = ["-DPADDLE_WITH_CUDA", "-DPADDLE_WITH_TENSORRT"]
+Extension = CUDAExtension
+sources = ['inference_gap.cc', 'inference_gap.cu']
+extra_compile_args["cxx"] = ["-DPADDLE_WITH_CUDA", "-DPADDLE_WITH_TENSORRT"]
 
 setup(
     name='gap_op_setup',
