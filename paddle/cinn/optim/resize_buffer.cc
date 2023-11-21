@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/cinn/optim/resize_buffer.h"
 
 #include <unordered_map>
@@ -22,6 +21,7 @@
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace optim {
@@ -30,20 +30,35 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
  public:
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
+  void Visit(const ir::IfThenElse* op, Expr* expr) override {
+    CHECK(expr->As<ir::IfThenElse>());
+
+    const ir::IfThenElse* if_ir = expr->As<ir::IfThenElse>();
+    const ir::LT* less_than_ir = if_ir->condition.As<ir::LT>();
+    if (less_than_ir != nullptr) {
+      std::stringstream oss;
+      oss << less_than_ir->a();
+      std::string var_name = oss.str();
+      if (utils::Startswith(var_name, "blockIdx") ||
+          utils::Startswith(var_name, "threadIdx")) {
+        var_name_to_extent_[var_name] = less_than_ir->b();
+      }
+    }
+    ir::IRMutator<>::Visit(op, expr);
+  }
+
   // Visit for and collect extent
   void Visit(const ir::For* op, Expr* expr) override {
     CHECK(expr->As<ir::For>());
     ir::For* for_ir = expr->As<ir::For>();
     std::string var_name = for_ir->loop_var->name;
     Expr extent = for_ir->extent;
-    if (extent.is_constant()) {
-      var_name_to_extent_[var_name] = extent.as_int32();
-      if (for_ir->is_binded()) {
-        const ir::BindInfo& bind_info = for_ir->bind_info();
-        if (bind_info.valid()) {
-          std::string bind_var_str = static_cast<std::string>(bind_info);
-          var_name_to_extent_[bind_var_str] = extent.as_int32();
-        }
+    var_name_to_extent_[var_name] = extent;
+    if (for_ir->is_binded()) {
+      const ir::BindInfo& bind_info = for_ir->bind_info();
+      if (bind_info.valid()) {
+        std::string bind_var_str = static_cast<std::string>(bind_info);
+        var_name_to_extent_[bind_var_str] = extent;
       }
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -74,7 +89,7 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
       const std::string& var_name = iter_vars[i]->name;
       VLOG(6) << "Analyzing var_name = " << var_name
               << ", expression = " << iter_values[i];
-      int bind_value = MaxIndexRange(iter_values[i]);
+      Expr bind_value = MaxIndexRange(iter_values[i]);
 
       VLOG(6) << "Get extent of " << var_name
               << ", bind_value = " << bind_value;
@@ -93,8 +108,8 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
 
     std::vector<ir::Expr> indice_extent;
     for (int i = 0; i < indices.size(); ++i) {
-      int simplified_idx_extent = MaxIndexRange(indices[i]);
-      indice_extent.push_back(ir::Expr(simplified_idx_extent));
+      Expr simplified_idx_extent = MaxIndexRange(indices[i]);
+      indice_extent.push_back(simplified_idx_extent);
     }
 
     std::string buffer_name = tensor->buffer->name;
@@ -105,11 +120,16 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
         buffer_name_to_indice_extent[buffer_name] = indice_extent;
       } else if (indice_extent.size() == stored_indice_extent.size()) {
         for (int i = 0; i < indice_extent.size(); ++i) {
-          int stored_extent = stored_indice_extent[i].as_int32();
-          int cur_extent = indice_extent[i].as_int32();
-          if (cur_extent > stored_extent) {
-            stored_indice_extent[i] = ir::Expr(cur_extent);
+          if (stored_indice_extent[i].is_constant() &&
+              indice_extent[i].is_constant()) {
+            int stored_extent = stored_indice_extent[i].as_int32();
+            int cur_extent = indice_extent[i].as_int32();
+            if (cur_extent > stored_extent) {
+              stored_indice_extent[i] = ir::Expr(cur_extent);
+            }
           }
+          // if there indice extent is not constant, which means dynamic shape
+          // we don't change the value now.
         }
       }
     } else {
@@ -122,43 +142,23 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
   // A recursion function to calculate the max index range
   // The index may contain some vars like index = 8 * i / j, where we know the
   // range of i, j, we search all values to get the max index range
-  int MaxIndexRange(const ir::Expr& index) {
+  Expr MaxIndexRange(const ir::Expr& index) {
     ir::Expr copy = ir::ir_utils::IRCopy(index);
     std::vector<ir::Expr> vars = ir::ir_utils::CollectIRNodesInOrder(
         copy, [](const ir::Expr* expr) { return expr->As<ir::_Var_>(); });
 
-    int max_range = 1;
-
-    // using recursion funcitons index range.
-    std::function<void(ir::Expr, int)> compute_range =
-        [&](ir::Expr index, int num_replaced_var) {
-          ir::Var var = vars[num_replaced_var].as_var_ref();
-          CHECK(var_name_to_extent_.count(var->name))
-              << "Index used a loop var " << var->name << " not in loop";
-          int extent = var_name_to_extent_.at(var->name);
-
-          for (int idx = extent - 1; idx < extent; ++idx) {
-            ir::Expr tmp = ir::ir_utils::IRCopy(index);
-            ReplaceVarWithExpr(&tmp, var, Expr(idx));
-            ++num_replaced_var;
-            if (num_replaced_var >= vars.size()) {
-              ir::Expr simplify = common::AutoSimplify(tmp);
-              ir::Expr range = common::AutoSimplify(simplify);
-              // TODO(zhhsplendid): consider dynamic shape case
-              CHECK(range.is_constant())
-                  << "Range is not constant when AnalyzeTensorRange";
-              max_range = std::max(max_range, range.as_int32() + 1);
-            } else {
-              compute_range(tmp, num_replaced_var);
-            }
-            --num_replaced_var;
-          }
-        };
-
-    if (vars.size()) {
-      compute_range(copy, 0);
+    // We only use the maximal of var, which may not be the maximal of index
+    // mathmetically, but it works for current CINN.
+    //
+    // We may add better computation of MaxIndexRange if we need
+    for (int i = 0; i < vars.size(); ++i) {
+      Expr max_var_value = ir::Sub::Make(
+          var_name_to_extent_.at(vars[i].as_var_ref()->name), ir::Expr(1));
+      ReplaceVarWithExpr(&copy, vars[i], max_var_value);
     }
-    return max_range;
+    ir::Expr tmp = ir::Add::Make(copy, ir::Expr(1));
+    ir::Expr simplify = common::AutoSimplify(tmp);
+    return simplify;
   }
 
  public:
@@ -166,7 +166,7 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
       buffer_name_to_indice_extent;
 
  private:
-  std::unordered_map<std::string, int> var_name_to_extent_;
+  std::unordered_map<std::string, ir::Expr> var_name_to_extent_;
 };
 
 class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
@@ -184,15 +184,6 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
     ResizeTensor(&tensor);
     ir::IRMutator<>::Visit(op, expr);
   }
-
-  /*
-  void Visit(const ir::Load* op, Expr* expr) override {
-    ir::Load* load = expr->As<ir::Load>();
-    ir::Tensor tensor = load->tensor.as_tensor_ref();
-    ResizeTensor(&tensor);
-    ir::IRMutator<>::Visit(op, expr);
-  }
-  */
 
   void Visit(const ir::Load* op, Expr* expr) override {
     auto load = expr->As<ir::Load>();
@@ -225,8 +216,8 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
     if (!buffer.defined() || buffer->memory_type == ir::MemoryType::Heap) {
       return;
     }
-    std::string buffer_name = buffer->name;
-    if (buffer_name_to_shape_.count(buffer->name)) {
+    const std::string& buffer_name = buffer->name;
+    if (buffer_name_to_shape_.count(buffer_name)) {
       const std::vector<ir::Expr>& analyzed_shape =
           buffer_name_to_shape_.at(buffer_name);
       VLOG(6) << "Replacing shape of tensor " << (*tensor_ptr)->name
@@ -238,7 +229,7 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
   }
 
  private:
-  const std::unordered_map<std::string, std::vector<ir::Expr>>&
+  const std::unordered_map<std::string, std::vector<ir::Expr>>
       buffer_name_to_shape_;
 };
 
@@ -249,6 +240,7 @@ void ResizeBufferToMaxVarRange(ir::Expr* expr) {
   ResizeBufferFromAnalyzedRange resize_functor(
       analyze_functor.buffer_name_to_indice_extent);
   resize_functor(expr);
+  VLOG(6) << "After ResizeBufferToMaxVarRange, Expr = \n" << *expr;
 }
 
 }  // namespace optim
