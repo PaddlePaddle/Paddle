@@ -679,7 +679,7 @@ void ProcessGroupNCCL::GetStoreKey(const std::string& place_key,
   } else {
     *store_key = "nccl_ids/" + std::to_string(gid_) + "/" + place_key;
   }
-  place_to_group_key_[p2p_key] = store_key;
+  place_to_group_key_[place_key] = store_key;
 }
 
 void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
