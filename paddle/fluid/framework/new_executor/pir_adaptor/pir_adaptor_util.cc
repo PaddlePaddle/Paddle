@@ -31,6 +31,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/enforce.h"
@@ -41,6 +42,8 @@
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/utils.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_type.h"
 
 #include "glog/logging.h"
 
@@ -211,18 +214,22 @@ int ValueExecutionInfo::GetVarId(const Variable* var) const {
   }
   return -1;
 }
-
-const std::unordered_set<std::string> SpecialOps = {"pd_op.feed",
-                                                    "pd_op.fetch",
-                                                    "builtin.combine",
-                                                    "builtin.set_parameter",
-                                                    "builtin.get_parameter",
-                                                    "builtin.slice",
-                                                    "builtin.split",
-                                                    "pd_op.data",
-                                                    "builtin.shadow_output",
-                                                    "pd_op.if",
-                                                    "pd_op.while"};
+const std::unordered_set<std::string> SpecialOps = {
+    paddle::dialect::FeedOp::name(),
+    paddle::dialect::FetchOp::name(),
+    paddle::dialect::DataOp::name(),
+    pir::CombineOp::name(),
+    pir::SliceOp::name(),
+    pir::SplitOp::name(),
+    pir::SetParameterOp::name(),
+    pir::GetParameterOp::name(),
+    pir::ShadowOutputOp::name(),
+    paddle::dialect::IfOp::name(),
+    paddle::dialect::WhileOp::name(),
+    pir::CreateStackOp::name(),
+    pir::PushBackOp::name(),
+    pir::PopBackOp::name(),
+};
 
 Variable* CreateVar(pir::Value value,
                     const std::string& var_name_prefix,
@@ -276,6 +283,54 @@ void CheckInputVars(pir::Operation* op,
                 op_name));
       }
     }
+  }
+}
+
+void DeepCopyVariable(Variable* src_var,
+                      Variable* dst_var,
+                      ValueExecutionInfo* value_exe_info,
+                      uint32_t stack_size) {
+  auto place = platform::CPUPlace();
+
+  if (src_var->IsType<phi::DenseTensor>()) {
+    auto* tmp_grad_tensor = dst_var->GetMutable<phi::DenseTensor>();
+    auto& src_tensor = src_var->Get<phi::DenseTensor>();
+    tmp_grad_tensor->set_lod(src_tensor.lod());
+    framework::TensorCopy(src_tensor, place, tmp_grad_tensor);
+  } else if (src_var->IsType<phi::SelectedRows>()) {
+    auto* tmp_grad_slr = dst_var->GetMutable<phi::SelectedRows>();
+    auto& src_slr = src_var->Get<phi::SelectedRows>();
+    tmp_grad_slr->set_rows(src_slr.rows());
+    tmp_grad_slr->set_height(src_slr.height());
+
+    auto& src_t = src_slr.value();
+    auto* dst_t = tmp_grad_slr->mutable_value();
+    framework::TensorCopy(src_t, place, dst_t);
+  } else if (src_var->IsType<phi::TensorArray>()) {
+    auto src_tensor_array = src_var->Get<phi::TensorArray>();
+    auto* dst_tensor_array = dst_var->GetMutable<phi::TensorArray>();
+    dst_tensor_array->clear();
+    for (auto src_tensor : src_tensor_array) {
+      phi::DenseTensor* tmp_dst_tensor = new phi::DenseTensor();
+      framework::TensorCopy(src_tensor, place, tmp_dst_tensor);
+      dst_tensor_array->push_back(*tmp_dst_tensor);
+    }
+  } else if (src_var->IsType<VariableRefArray>()) {
+    auto src_ref_array = src_var->Get<VariableRefArray>();
+    auto* dst_ref_array = dst_var->GetMutable<VariableRefArray>();
+    dst_ref_array->clear();
+    for (auto src_ref_var : src_ref_array) {
+      std::string new_name =
+          "copy_" + stack_size + '_' + value_exe_info->GetVarName(src_ref_var);
+      auto tmp_dst_var = value_exe_info->GetScope()->Var(new_name);
+      DeepCopyVariable(src_ref_var, tmp_dst_var, value_exe_info, stack_size);
+      ref_array->emplace_back(tmp_dst_var);
+    }
+
+  } else {
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
+        "Output only support DenseTensorType "
+        "or SelectedRowsType or TensorArrayType or VariableRefArrayType"));
   }
 }
 
@@ -335,7 +390,7 @@ void HandleForSpecialOp(pir::Operation* op,
         op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   }
 
-  if (op_name == "pd_op.fetch") {
+  if (op->isa<paddle::dialect::FetchOp>()) {
     // fetch is a very special op, with no output
     auto fetch_src_name =
         op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
@@ -347,7 +402,8 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->result(0);
 
     value_exe_info->Add(value, fetch_var_name);
-  } else if (op_name == "pd_op.feed" || op_name == "pd_op.data") {
+  } else if (op->isa<paddle::dialect::FeedOp>() ||
+             op->isa<paddle::dialect::DataOp>()) {
     VLOG(6) << "Handle for" << op_name;
     auto value = op->result(0);
     VLOG(6) << "link feed output to feed in variable"
@@ -361,7 +417,7 @@ void HandleForSpecialOp(pir::Operation* op,
                        "The variable %s shoud exist", name));
 
     value_exe_info->Add(value, name);
-  } else if (op_name == "builtin.combine") {
+  } else if (op->isa<pir::CombineOp>()) {
     auto out_value = op->result(0);
 
     Variable* var = nullptr;
@@ -385,7 +441,7 @@ void HandleForSpecialOp(pir::Operation* op,
       tensor_array->emplace_back(
           value_exe_info->GetScope()->FindVar(value_2_var_name.at(value)));
     }
-  } else if (op_name == "builtin.set_parameter") {
+  } else if (op->isa<pir::SetParameterOp>()) {
     VLOG(6) << "Handle for builtin.set_parameter:";
     auto param_name = op->attributes()
                           .at("parameter_name")
@@ -410,7 +466,7 @@ void HandleForSpecialOp(pir::Operation* op,
     }
 
     value_exe_info->Rename(value, param_name, orig_name);
-  } else if (op_name == "builtin.shadow_output") {
+  } else if (op->isa<pir::ShadowOutputOp>()) {
     VLOG(6) << "Handle for builtin.shadow_ouptut";
     auto var_name = op->attributes()
                         .at("output_name")
@@ -429,7 +485,7 @@ void HandleForSpecialOp(pir::Operation* op,
     VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
 
     value_exe_info->Rename(value, var_name, orig_name);
-  } else if (op_name == "builtin.get_parameter") {
+  } else if (op->isa<pir::GetParameterOp>()) {
     VLOG(6) << "Handle for builtin.get_parameter:";
     auto param_name = op->attributes()
                           .at("parameter_name")
@@ -438,7 +494,7 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->result(0);
 
     value_exe_info->Add(value, param_name);
-  } else if (op_name == "builtin.slice") {
+  } else if (op->isa<pir::SliceOp>()) {
     VLOG(6) << "Handle for builtin.slice";
     auto out_value = op->result(0);
     auto in_value = op->operand_source(0);
@@ -463,7 +519,7 @@ void HandleForSpecialOp(pir::Operation* op,
     std::string var_name =
         value_exe_info->GetVar2VarName().at(variable_array[index]);
     value_exe_info->AddValue2VarName(out_value, var_name);
-  } else if (op_name == "builtin.split") {
+  } else if (op->isa<pir::SplitOp>()) {
     VLOG(6) << "Handle for builtin.split";
     auto in_value = op->operand_source(0);
     PADDLE_ENFORCE_EQ(value_exe_info->GetValue2VarName().count(in_value),
@@ -487,18 +543,106 @@ void HandleForSpecialOp(pir::Operation* op,
           value_exe_info->GetVar2VarName().at(variable_array[idx]);
       value_exe_info->AddValue2VarName(out_value, var_name);
     }
-  } else if (op_name == "pd_op.if") {
+  } else if (op->isa<paddle::dialect::IfOp>()) {
     auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
     for (size_t i = 0; i < if_op->num_results(); ++i) {
       auto if_op_out_value = if_op->result(i);
       BuildValue(if_op_out_value, var_name_prefix, value_exe_info);
     }
-  } else if (op_name == "pd_op.while") {
+  } else if (op->isa<paddle::dialect::WhileOp>()) {
     auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
 
     for (size_t i = 0; i < while_op->num_results(); ++i) {
       auto while_op_out_value = while_op->result(i);
       BuildValue(while_op_out_value, var_name_prefix, value_exe_info);
+    }
+  } else if (op->isa<pir::CreateStackOp>()) {
+    VLOG(6) << "Handle for create_stack op";
+    auto create_stack_op = op->dyn_cast<pir::CreateStackOp>();
+    auto stack_value = create_stack_op.stack();
+    Variable* var =
+        CreateVar(stack_value, var_name_prefix, false, value_exe_info);
+    var->GetMutable<VariableRefArray>();
+  } else if (op->isa<pir::PushBackOp>()) {
+    // else if (op->isa<pir::PushBackOp>()) {
+    //   VLOG(6) << "Handle for push_back op";
+    //   auto push_back_op = op->dyn_cast<pir::PushBackOp>();
+    //   auto stack_value = push_back_op.stack();
+    //   auto& value_2_var_name = value_exe_info->GetValue2VarName();
+    //   PADDLE_ENFORCE_EQ(
+    //       value_2_var_name.find(inlet_value) != value_2_var_name.end(),
+    //       true,
+    //       phi::errors::NotFound(
+    //           "inlet input of PushBackOp not in value2var_name map"));
+    //   auto var_array =
+    //       value_exe_info->GetScope()->FindVar(value_2_var_name.at(stack_value));
+    //   auto ref_array = var_array->GetMutable<VariableRefArray>();
+
+    //   for (size_t i = 0; i < push_back_op.num_elements(); ++i) {
+    //     auto inlet_element = push_back_op.inlet_element(i);
+    //     Variable* var = value_exe_info->GetScope()->FindVar(
+    //         value_2_var_name.at(inlet_element));
+    //     ref_array->emplace_back(var);
+    //   }
+    // } else if (op->isa<pir::PopBackOp>()) {
+    //   VLOG(6) << "Handle for pop_back op";
+    //   auto pop_back_op = op->dyn_cast<pir::PopBackOp>();
+    //   auto stack_value = pop_back_op.stack();
+
+    //   auto& value_2_var_name = value_exe_info->GetValue2VarName();
+    //   auto var_array =
+    //       value_exe_info->GetScope()->FindVar(value_2_var_name.at(stack_value));
+    //   auto ref_array = var_array->GetMutable<VariableRefArray>();
+
+    //   for (size_t i = 0; i < pop_back_op.num_elements(); ++i) {
+    //     auto inlet_element = pop_back_op.inlet_element(i);
+    //     auto var = ref_array->pop_back();
+    //   }
+    // }
+
+    // deep copy
+
+    VLOG(6) << "Handle for push_back op";
+    auto push_back_op = op->dyn_cast<pir::PushBackOp>();
+    auto stack_value = push_back_op.stack();
+    auto& value_2_var_name = value_exe_info->GetValue2VarName();
+    PADDLE_ENFORCE_EQ(
+        value_2_var_name.find(inlet_value) != value_2_var_name.end(),
+        true,
+        phi::errors::NotFound(
+            "inlet input of PushBackOp not in value2var_name map"));
+    auto var_array =
+        value_exe_info->GetScope()->FindVar(value_2_var_name.at(stack_value));
+    auto ref_array = var_array->GetMutable<VariableRefArray>();
+
+    for (size_t i = push_back_op.num_elements() - 1; i >= 0; ++i) {
+      auto inlet_element = push_back_op.inlet_element(i);
+      Variable* var = value_exe_info->GetScope()->FindVar(
+          value_2_var_name.at(inlet_element));
+
+      std::string new_name =
+          var_name_prefix + "_inner_var_" +
+          std::to_string(value_exe_info->GetVar2VarName().size());
+      auto copy_var = value_exe_info->GetScope()->Var(new_name);
+      uint32_t stack_size = push_back_op.stack_size();
+      DeepCopyVariable(var, copy_var, value_exe_info, stack_size);
+      ref_array->emplace_back(copy_var);
+    }
+  } else if (op->isa<pir::PopBackOp>()) {
+    VLOG(6) << "Handle for pop_back op";
+    auto pop_back_op = op->dyn_cast<pir::PopBackOp>();
+    auto stack_value = pop_back_op.stack();
+
+    auto& value_2_var_name = value_exe_info->GetValue2VarName();
+    auto var_array =
+        value_exe_info->GetScope()->FindVar(value_2_var_name.at(stack_value));
+    auto ref_array = var_array->GetMutable<VariableRefArray>();
+
+    for (size_t i = 0; i < pop_back_op.num_elements(); ++i) {
+      ref_array->pop_back();
+      // auto inlet_element = pop_back_op.inlet_element(i);
+      // auto inlet_var =
+      // value_exe_info->GetScope()->FindVar(value_2_var_name.at(inlet_element));
     }
   }
 }

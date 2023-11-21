@@ -51,6 +51,8 @@ void CreateStackOp::VerifySig() {
   VLOG(4) << "End Verifying for CreateStackOp.";
 }
 size_t CreateStackOp::stack_size() { return push_op().stack_size(); }
+
+uint32_t CreateStackOp::num_elements() { return push_op().num_elements(); }
 Value CreateStackOp::inlet_element(size_t index) {
   return push_op().inlet_element(index);
 }

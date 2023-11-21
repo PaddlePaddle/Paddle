@@ -49,6 +49,7 @@ class IR_API CreateStackOp : public Op<CreateStackOp> {
   std::tuple<Value, Value, Value> out() { return {stack(), inlet(), outlet()}; }
 
   size_t stack_size();
+  uint32_t num_elements();
   Value inlet_element(size_t index);
   Value outlet_element(size_t index);
   PushBackOp push_op();
@@ -78,6 +79,7 @@ class IR_API PushBackOp : public Op<PushBackOp, SideEffectTrait> {
   Value inlet() { return operand_source(0); }
   Value outlet() { return create_op().outlet(); }
   size_t stack_size();
+  uint32_t num_elements() { return num_operands() - 1u; }
   Value inlet_element(size_t index) { return operand_source(index + 1u); }
   Value outlet_element(size_t index) {
     return create_op().outlet_element(index);
@@ -103,6 +105,7 @@ class IR_API PopBackOp : public Op<PopBackOp> {
   Value outlet() { return operand_source(0); }
 
   size_t stack_size() { return num_results(); }
+  uint32_t num_elements() { return create_op().num_elements(); }
   Value inlet_element(size_t index) { return push_op().inlet_element(index); }
   Value outlet_element(size_t index) { return result(index); }
   CreateStackOp create_op() { return outlet().defining_op<CreateStackOp>(); }

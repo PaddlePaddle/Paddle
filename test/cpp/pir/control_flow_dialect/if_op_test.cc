@@ -14,11 +14,14 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_op.h"
@@ -182,4 +185,14 @@ TEST(if_op_test, network_with_backward) {
   LOG(INFO) << program;
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+
+  auto place = paddle::platform::CPUPlace();
+  paddle::framework::Scope scope;
+
+  paddle::framework::InterpreterCore test_core(
+      place, {}, kernel_program->block(), &scope);
+
+  //   test_core.SetSkipGcVars({out_name});
+
+  //   test_core.Run({});
 }
