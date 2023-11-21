@@ -78,11 +78,13 @@ cc_binary(
   SRCS
   switch_server_test.cc
   DEPS
-  executor
-  scope
-  proto_desc
-  generated_op
-  heter_listen_and_serv_op
+  # executor
+  # scope
+  # proto_desc
+  # generated_op
+  # heter_listen_and_serv_op
+  heter_client
+  heter_server
   ${RPC_DEPS}
   ${DISTRIBUTE_DEPS}
   phi)

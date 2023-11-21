@@ -650,6 +650,7 @@ int32_t MemorySparseTable::Save_v2(const std::string &dirname,
   // int32 may overflow need to change return value
   return 0;
 }
+#endif
 
 int32_t MemorySparseTable::SavePatch(const std::string &path, int save_param) {
   if (!_config.enable_revert()) {
@@ -739,7 +740,6 @@ int32_t MemorySparseTable::SavePatch(const std::string &path, int save_param) {
             << ", feasign size: " << feasign_size_all;
   return 0;
 }
-#endif
 
 int64_t MemorySparseTable::CacheShuffle(
     const std::string &path,
