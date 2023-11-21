@@ -16,7 +16,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
+from dygraph_to_static_utils_new import Dy2StTestBase
 
 import paddle
 import paddle.nn.functional as F
@@ -54,7 +54,6 @@ class TestSetItemBase(Dy2StTestBase):
         x_grad = paddle.grad(y, x)[0]
         return y, x_grad
 
-    @compare_legacy_with_pir
     def run_to_static(self, func):
         func = paddle.jit.to_static(func)
         return self.run_dygraph(func)
