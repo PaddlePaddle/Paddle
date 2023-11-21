@@ -135,10 +135,15 @@ class DygraphShardingOptimizer:
         self.comm_overlap = sharding_configs.comm_overlap
         comm_group = self._hcg.get_sharding_parallel_group()
         self._use_fuse_gradients = g_shard_fused_gradient
+        self._use_pipelie_parallel = strategy.hybrid_configs["pp_degree"] > 1
 
         assert (
             not self.comm_overlap or self._use_fuse_gradients
         ), "If you use comm overlap in sharding, you should set FLAGS_shard_fused_gradient to True"
+
+        assert not (
+            self._use_pipelie_parallel and self._use_fuse_gradients
+        ), "You can not use pipelie parallel and fused gradient at the same time"
 
         if self._use_fuse_gradients:
             # Build communication buffers once and store them
@@ -597,6 +602,11 @@ class DygraphShardingOptimizerV2:
         assert (
             not self.pp_overlap or not self.comm_overlap
         ), "pp_overlap and comm_overlap should not be True at the same time"
+
+        self._use_pipelie_parallel = strategy.hybrid_configs["pp_degree"] > 1
+        assert not (
+            self._use_pipelie_parallel and self.comm_overlap
+        ), "You shoule not use pipelie parallel and comm_overlap at the same time"
 
         if not self.pp_overlap and self.comm_overlap:
             self.register_reduce_overlap_hook(use_comm=True)
