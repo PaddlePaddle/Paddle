@@ -1654,9 +1654,11 @@ paddle::Tensor* CreateTensorFromVarDesc(
   return tensor;
 }
 
-PyObject* GetEmpytyTensorsWithVarDesc(PyObject* var_desc_list) {
+PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args) {
   std::vector<paddle::Tensor*> result;
   std::unordered_map<std::string, paddle::Tensor*> out_tensor_map;
+
+  auto var_desc_list = PyTuple_GetItem(args, 0);
 
   if (PyList_Check(var_desc_list)) {
     Py_ssize_t len = PyList_Size(var_desc_list);
@@ -1692,7 +1694,6 @@ PyObject* GetEmpytyTensorsWithVarDesc(PyObject* var_desc_list) {
         "%s",
         (reinterpret_cast<PyTypeObject*>(var_desc_list->ob_type))->tp_name));
   }
-
   return ToPyObject(result);
 }
 
@@ -1737,9 +1738,11 @@ paddle::Tensor* CreateTensorFromOpResult(const pir::OpResult& op_result) {
   return tensor;
 }
 
-PyObject* GetEmpytyTensorsWithOpResult(PyObject* op_result_list) {
+PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args) {
   std::vector<paddle::Tensor*> result;
   std::unordered_map<pir::OpResult, paddle::Tensor*> out_tensor_map;
+
+  auto op_result_list = PyTuple_GetItem(args, 0);
 
   if (PyList_Check(op_result_list)) {
     Py_ssize_t len = PyList_Size(op_result_list);
@@ -2428,6 +2431,25 @@ void DistTensorConverter::operator()(paddle::optional<std::vector<Tensor>>* x) {
         }
       }
     }
+  }
+}
+
+static PyMethodDef EagerUtilMethods[] = {
+    {"create_empty_tensors_with_var_descs",
+     (PyCFunction)(void (*)(void))GetEmpytyTensorsWithVarDesc,
+     METH_VARARGS,
+     "GetEmpytyTensorsWithVarDesc"},
+    {"create_empty_tensors_with_op_results",
+     (PyCFunction)(void (*)(void))GetEmpytyTensorsWithOpResult,
+     METH_VARARGS,
+     "GetEmpytyTensorsWithOpResult."},
+    {nullptr, nullptr, 0, nullptr}};
+
+void BindEagerUtils(PyObject* module) {
+  if (PyModule_AddFunctions(module, EagerUtilMethods) < 0) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Init Paddle error in BindEagerUtils(PyModule_AddFunctions)."));
+    return;
   }
 }
 

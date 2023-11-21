@@ -388,9 +388,9 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
                                                       bool allow_none = false);
 paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj);
 
-PyObject* GetEmpytyTensorsWithVarDesc(PyObject* var_desc_list);
+PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args);
 
-PyObject* GetEmpytyTensorsWithOpResult(PyObject* op_result_list);
+PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args);
 
 // end of Slice related methods
 
@@ -477,6 +477,8 @@ void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
       platform::errors::InvalidArgument("Input mesh should not be nullptr."));
   DistTensorConverter(mesh).apply(&args...);
 }
+
+void BindEagerUtils(PyObject* module);
 
 }  // namespace pybind
 }  // namespace paddle
