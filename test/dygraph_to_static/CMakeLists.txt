@@ -91,7 +91,7 @@ foreach(ITEST ${DISABLE_PIR_PT_MODES})
   endif()
 endforeach()
 
-if(NOT WIN32)
+if(WIN32)
   set(WIN_DISABLE_PIR_PT_MODES test_jit_setitem test_program_translator
                                test_cache_program)
   foreach(ITEST ${WIN_DISABLE_PIR_PT_MODES})
