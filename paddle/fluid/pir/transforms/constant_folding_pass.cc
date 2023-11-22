@@ -104,7 +104,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       rewriter.ReplaceAllUsesWith(op->result(0), get_parameter_op->result(0));
     } else {
       auto get_constant_op = rewriter.Build<pir::ConstantTensorOp>(
-          pir::StrAttribute::get(ir_context(), output_var_name), op->result(0).type());
+          pir::StrAttribute::get(ir_context(), output_var_name),
+          op->result(0).type());
       get_constant_op->set_attribute(
           kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
 

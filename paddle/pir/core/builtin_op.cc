@@ -497,7 +497,8 @@ Attribute ConstantOp::value() const { return attributes().at("value"); }
 
 void ConstantTensorOp::VerifySig() const {
   ConstantOp::VerifySig();
-  IR_ENFORCE(value().dyn_cast<pir::StrAttribute>(), "Type of value must be strattribute");
+  IR_ENFORCE(value().dyn_cast<pir::StrAttribute>(),
+             "Type of value must be strattribute");
 }
 
 ConstantTensorOp ConstantTensorOp::dyn_cast(Operation *op) {
