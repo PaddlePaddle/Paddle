@@ -26,6 +26,9 @@ class TestSemiAutoParallelShardOptimizer:
         self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
+    def check_tensor_eq(self, a, b, rtol=1e-05, atol=0, verbose=True):
+        np.testing.assert_allclose(a, b, rtol=rtol, atol=atol, verbose=verbose)
+
     def get_single_card_rst(self):
         paddle.seed(self._seed)
         linear = paddle.nn.Linear(10, 10)
@@ -57,8 +60,8 @@ class TestSemiAutoParallelShardOptimizer:
             opt.clear_grad()
         assert linear.bias.is_dist()
         assert linear.weight.is_dist()
-        np.testing.assert_allclose(self.weight, linear.weight.numpy())
-        np.testing.assert_allclose(self.bias, linear.bias.numpy())
+        self.check_tensor_eq(self.weight, linear.weight.numpy())
+        self.check_tensor_eq(self.bias, linear.bias.numpy())
 
     def shard_fn(self, layer_name, layer, process_mesh):
         layer.weight = dist.shard_tensor(
@@ -93,8 +96,8 @@ class TestSemiAutoParallelShardOptimizer:
                     else:
                         assert opt._accumulators[key][k].shape == [10]
                         assert opt._accumulators[key][k]._local_shape == [5]
-        np.testing.assert_allclose(self.weight, linear.weight.numpy())
-        np.testing.assert_allclose(self.bias, linear.bias.numpy())
+        self.check_tensor_eq(self.weight, linear.weight.numpy())
+        self.check_tensor_eq(self.bias, linear.bias.numpy())
 
     def test_adamw_shard_optimizer(self, stage1=False):
         paddle.seed(self._seed)
@@ -152,8 +155,8 @@ class TestSemiAutoParallelShardOptimizer:
         assert linear.weight._local_shape == [5, 10]
         for k, v in opt._master_weights.items():
             assert v.is_dist()
-        np.testing.assert_allclose(self.weight, linear.weight.numpy())
-        np.testing.assert_allclose(self.bias, linear.bias.numpy())
+        self.check_tensor_eq(self.weight, linear.weight.numpy())
+        self.check_tensor_eq(self.bias, linear.bias.numpy())
 
     def run_test_case(self):
         if self._backend == "cpu":
