@@ -39,10 +39,11 @@
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle_mkldnn_quantizer_config.h"  // NOLINT
 #endif
-
+#ifdef PADDLE_WITH_XBYAK
+#include "xbyak/xbyak_util.h"
+#endif
 namespace paddle {
 
 class AnalysisPredictor;
@@ -1302,9 +1303,50 @@ struct PD_INFER_DECL AnalysisConfig {
   std::unordered_set<std::string> trt_ops_run_float_;
 
 #ifdef PADDLE_WITH_DNNL
-  bool use_mkldnn_{
-      phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) ? true
-                                                                       : false};
+#ifdef PADDLE_WITH_XBYAK
+  bool SupportAVX2() {
+    using namespace Xbyak::util;  // NOLINT
+    Xbyak::util::Cpu cpu;
+    return cpu.has(Cpu::tAVX2);
+  }
+#else
+  bool SupportAVX2() {
+#ifdef _WIN32
+#define cpuid(reg, x) __cpuidex(reg, x, 0)
+#else
+#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) &&  \
+    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS) && \
+    !defined(PADDLE_WITH_LOONGARCH)
+#include <cpuid.h>
+    inline void cpuid(int reg[4], int x) {
+      __cpuid_count(x, 0, reg[0], reg[1], reg[2], reg[3]);
+    }
+#endif
+#endif
+
+#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) &&  \
+    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS) && \
+    !defined(PADDLE_WITH_LOONGARCH)
+    std::array<int, 4> reg;
+    cpuid(reg.data(), 0);
+    int nIds = reg[0];
+    if (nIds >= 0x00000001) {
+      // EAX = 1
+      cpuid(reg.data(), 0x00000001);
+      // AVX: ECX Bit 28
+    }
+    if (nIds >= 0x00000007) {
+      // EAX = 7
+      cpuid(reg.data(), 0x00000007);
+      // AVX2: EBX Bit 5
+      int avx2_mask = (1 << 5);
+      return (reg[1] & avx2_mask) != 0;
+    }
+#endif
+    return false;
+  }
+#endif
+  bool use_mkldnn_{SupportAVX2() ? true : false};
 #else
   bool use_mkldnn_{false};
 #endif
