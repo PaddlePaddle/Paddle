@@ -38,7 +38,6 @@ TEST(ZeroCopyTensor, uint8) {
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir);
-  config.SwitchUseFeedFetchOps(false);
   config.EnableProfile();
   config.DisableGlogInfo();
 

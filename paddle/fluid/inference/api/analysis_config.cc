@@ -540,7 +540,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
-  CP_MEMBER(use_feed_fetch_ops_);
   CP_MEMBER(ir_debug_);
   CP_MEMBER(specify_input_name_);
 
@@ -1145,7 +1144,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << with_glog_info_;
 
   ss << enable_ir_optim_;
-  ss << use_feed_fetch_ops_;
   ss << ir_debug_;
 
   ss << specify_input_name_;
