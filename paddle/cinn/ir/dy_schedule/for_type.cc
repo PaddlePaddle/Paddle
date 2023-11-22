@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/cinn/common/dev_info_manager.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/dy_schedule/ir_schedule.h"
 
@@ -33,7 +34,34 @@ void DyScheduleImpl::Vectorize(const Expr& loop, int factor) {
 void DyScheduleImpl::Unroll(const Expr& loop) { CINN_NOT_IMPLEMENTED; }
 
 void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
-  CINN_NOT_IMPLEMENTED;
+#ifdef CINN_WITH_CUDA
+  static std::set<std::string> thread_axes = {"blockIdx.x",
+                                              "blockIdx.y",
+                                              "blockIdx.z",
+                                              "threadIdx.x",
+                                              "threadIdx.y",
+                                              "threadIdx.z"};
+  CHECK(thread_axes.count(thread_axis))
+      << "thread_axis " << thread_axis << " is not supported";
+  int offset = thread_axis.back() - 'x';
+  auto cur_dev_info =
+      common::DevInfoMgr<common::Target::Arch::NVGPU>::GetDevInfo(0);
+  const std::array<int, 3> kMaxBlockDims = cur_dev_info->GetMaxBlockDims();
+  const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
+  auto check_offset = [&](const char& c) -> bool {
+    auto extent = loop.As<ir::For>()->extent.as_int32();
+    return extent <= (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);
+  };
+  if (thread_axis[0] == 'b') {
+    CHECK(check_offset(thread_axis[0]))
+        << "Invalid Bind! The extent of loop is out of range on grid size!\n";
+    MutateForType(loop, ForType::GPUBlock, offset);
+  } else {
+    CHECK(check_offset(thread_axis[0]))
+        << "Invalid Bind! The extent of loop is out of range on block size!\n";
+    MutateForType(loop, ForType::GPUThread, offset);
+  }
+#endif
 }
 
 }  // namespace ir
