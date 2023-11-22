@@ -1829,6 +1829,8 @@
     func : multiplex
     data_type : inputs
   backward : multiplex_grad
+  data_transform :
+    skip_transform : index
 
 - op : mv
   args : (Tensor x, Tensor vec)

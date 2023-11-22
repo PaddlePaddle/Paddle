@@ -1538,7 +1538,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        x (Tensor): The input tensor with data type float32/double/int32/int64_t.
+        x (Tensor): The input tensor with data type float32/double/int32/int64_t/complex64/complex128.
         pad (Tensor|list[int]|tuple[int]): The padding size with data type int.
             If mode is ``'constant'`` and length of pad is twice as length of x dimension, then x will
             be padded from the first  dimension to the last dimension.
