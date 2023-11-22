@@ -22,6 +22,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/interface/parse_kernel_key.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -77,9 +78,9 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     pir::YieldOp::name(),
     IfOp::name(),
     WhileOp::name(),
-    pir::CreateStackOp::name(),
-    pir::PushBackOp::name(),
-    pir::PopBackOp::name(),
+    pir::StackCreateOp::name(),
+    pir::TuplePushOp::name(),
+    pir::TuplePopOp::name(),
     "cinn_runtime.jit_kernel"};
 
 static bool NeedFallBackCpu(const pir::Operation* op,
@@ -637,6 +638,15 @@ phi::KernelKey GetKernelKey(
     }
   }
 
+  // TODO(zhangbo): Add ParseKernelInterface
+  ParseKernelKeyInterface parse_kernel_key_interface =
+      op->dyn_cast<ParseKernelKeyInterface>();
+  if (parse_kernel_key_interface) {
+    auto parsed_key = parse_kernel_key_interface.ParseKernelKey(op);
+    kernel_dtype = std::get<0>(parsed_key);
+    kernel_backend = std::get<1>(parsed_key);
+  }
+
   if ((kernel_backend == phi::Backend::UNDEFINED ||
        kernel_dtype == phi::DataType::UNDEFINED) &&
       op->num_operands() > 0) {
@@ -666,8 +676,7 @@ phi::KernelKey GetKernelKey(
       // don't know how to select the kernel in the next of op that
       // uses data op outout as inputs. So, we need set kernel backend
       // manually.
-      auto op_res = op->operand_source(i).dyn_cast<pir::OpResult>();
-
+      auto op_res = input_tmp.dyn_cast<pir::OpResult>();
       if (!op_res) {
         continue;
       }
@@ -1029,8 +1038,8 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->isa<::pir::CreateStackOp>() ||
-      op_item->isa<::pir::PushBackOp>()) {
+  if (op_item->isa<::pir::StackCreateOp>() ||
+      op_item->isa<::pir::TuplePushOp>()) {
     for (size_t i = 0; i < op_item->num_operands(); ++i) {
       auto cur_in = op_item->operand_source(i);
       if (!cur_in) {
@@ -1046,7 +1055,7 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->isa<::pir::PopBackOp>()) {
+  if (op_item->isa<::pir::TuplePopOp>()) {
     for (size_t i = 0; i < op_item->num_operands(); ++i) {
       auto cur_in = op_item->operand_source(i);
       auto new_in = GetNewInput(
@@ -1054,7 +1063,7 @@ void HandleForSpecialOp(
       vec_inputs.push_back(new_in);
     }
 
-    auto pop_back_op = op_item->dyn_cast<::pir::PopBackOp>();
+    auto pop_back_op = op_item->dyn_cast<::pir::TuplePopOp>();
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       auto cur_inlet_element = pop_back_op.inlet_element(i);
       PADDLE_ENFORCE_EQ(map_value_pair->count(cur_inlet_element),
