@@ -22,7 +22,8 @@ from paddle.distribution import distribution
 
 
 class MultivariateNormal(distribution.Distribution):
-    r"""The Multivariate Normal distribution with parameter: `loc` and any one of the following parameters: `covariance_matrix`, `precision_matrix`, `scale_tril`.
+    r"""The Multivariate Normal distribution is a type multivariate continuous distribution defined on the real set, with parameter: `loc` and any one
+    of the following parameters characterizing the variance: `covariance_matrix`, `precision_matrix`, `scale_tril`.
 
     Mathematical details
 
@@ -34,8 +35,9 @@ class MultivariateNormal(distribution.Distribution):
 
     In the above equation:
 
-    * :math:`loc = \mu`: is the mean.
-    * :math:`covariance_matrix = \Sigma`: is the covariance matrix.
+    * :math:`X`: is a k-dim random vector.
+    * :math:`loc = \mu`: is the k-dim mean vector.
+    * :math:`covariance_matrix = \Sigma`: is the k-by-k covariance matrix.
 
     Args:
         loc(int|float|np.ndarray|Tensor): The mean of Multivariate Normal distribution. The data type of `loc` will be convert to float32.
@@ -274,18 +276,26 @@ class MultivariateNormal(distribution.Distribution):
         )
 
     def sample(self, shape=()):
-        """Generate Multivariate Normal samples of the specified shape.
+        """Generate Multivariate Normal samples of the specified shape. The final shape would be ``sample_shape + batch_shape + event_shape``.
 
         Args:
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor, A tensor with prepended dimensions shape. The data type is float32.
+            Tensor, Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`. The data type is float32.
         """
         with paddle.no_grad():
             return self.rsample(shape)
 
     def rsample(self, shape=()):
+        """Generate Multivariate Normal samples of the specified shape. The final shape would be ``sample_shape + batch_shape + event_shape``.
+
+        Args:
+            shape (Sequence[int], optional): Prepended shape of the generated samples.
+
+        Returns:
+            Tensor, Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`. The data type is float32.
+        """
         if not isinstance(shape, Iterable):
             raise TypeError('sample shape must be Iterable object.')
         output_shape = self._extend_shape(shape)
@@ -335,7 +345,7 @@ class MultivariateNormal(distribution.Distribution):
 
         .. math::
 
-            \mathcal{H}(X) = - \int_{x \in \Omega} p(x) \log{p(x)} dx
+            \mathcal{H}(X) = \frac{n}{2} \log(2\pi) + \log {\det A} + \frac{n}{2}
 
         In the above equation:
 
@@ -359,13 +369,13 @@ class MultivariateNormal(distribution.Distribution):
             return H.expand(self._batch_shape)
 
     def kl_divergence(self, other):
-        r"""The KL-divergence between two poisson distributions.
+        r"""The KL-divergence between two poisson distributions with the same `batch_shape` and `event_shape`.
 
         The probability density function (pdf) is
 
         .. math::
 
-            KL\_divergence(\mu_1, \Sigma_1, \mu_2, \Sigma_2) = \int_x p_1(x) \log{\frac{p_1(x)}{p_2(x)}} dx
+            KL\_divergence(\lambda_1, \lambda_2) = \log(\det A_2) - \log(\det A_1) -\frac{n}{2} +\frac{1}{2}[tr [\Sigma_2^{-1} \Sigma_1] + (\mu_1 - \mu_2)^{\intercal} \Sigma_2^{-1}  (\mu_1 - \mu_2)]
 
         Args:
             other (MultivariateNormal): instance of Multivariate Normal.

@@ -22,6 +22,9 @@ from paddle.distribution import distribution
 
 class ContinuousBernoulli(distribution.Distribution):
     r"""The Continuous Bernoulli distribution with parameter: `probability` characterizing the shape of the density function.
+    The Continuous Bernoulli distribution is defined on [0, 1], and it can be viewed as a continuous version of the Bernoulli distribution.
+
+    [1] Loaiza-Ganem, G., & Cunningham, J. P. The continuous Bernoulli: fixing a pervasive error in variational autoencoders. 2019.
 
     Mathematical details
 
@@ -33,20 +36,26 @@ class ContinuousBernoulli(distribution.Distribution):
 
     In the above equation:
 
-    * :math:`probability = \lambda`: is the probability.
-    * :math: `C(\lambda) =
-            \left\{
-            \begin{aligned}
-            &2 & \text{ if $\lambda = \frac{1}{2}$} \\
-            &\frac{2\tanh^{-1}(1-2\lambda)}{1 - 2\lambda} & \text{ otherwise}
-            \end{aligned}
-            \right.`
     * :math:`x`: is continuous between 0 and 1
+    * :math:`probability = \lambda`: is the probability.
+    * :math:`C(\lambda)`: is the normalizing constant factor
+
+    .. math::
+
+        C(\lambda) =
+        \left\{
+        \begin{aligned}
+        &2 & \text{ if $\lambda = \frac{1}{2}$} \\
+        &\frac{2\tanh^{-1}(1-2\lambda)}{1 - 2\lambda} & \text{ otherwise}
+        \end{aligned}
+        \right.
 
     Args:
-        probability(int|float|np.ndarray|Tensor): The probability of Continuous Bernoulli distribution, which characterize the shape of the pdf.
-                                The data type of `probability` will be convert to float32.
-        eps(float): Specify the bandwith of the unstable calculation region near 0.5
+        probability(int|float|np.ndarray|Tensor): The probability of Continuous Bernoulli distribution between [0, 1],
+                    which characterize the shape of the pdf. The data type of `probability` will be convert to float32.
+        eps(float): Specify the bandwith of the unstable calculation region near 0.5. The unstable calculation region
+                    would be [0.5 - eps, 0.5 + eps], where the calculation is approximated by talyor expansion. The
+                    default value is 1e-4.
 
     Examples:
         .. code-block:: python
@@ -232,25 +241,25 @@ class ContinuousBernoulli(distribution.Distribution):
         )
 
     def sample(self, shape=()):
-        """Generate Continuous Bernoulli samples of the specified shape.
+        """Generate Continuous Bernoulli samples of the specified shape. The final shape would be ``sample_shape + batch_shape``.
 
         Args:
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor, A tensor with prepended dimensions shape. The data type is float32.
+            Tensor, Sampled data with shape `sample_shape` + `batch_shape`. The data type is float32.
         """
         with paddle.no_grad():
             return self.rsample(shape)
 
     def rsample(self, shape=()):
-        """Generate Continuous Bernoulli samples of the specified shape.
+        """Generate Continuous Bernoulli samples of the specified shape. The final shape would be ``sample_shape + batch_shape``.
 
         Args:
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor, A tensor with prepended dimensions shape. The data type is float32.
+            Tensor, Sampled data with shape `sample_shape` + `batch_shape`. The data type is float32.
         """
         if not isinstance(shape, Iterable):
             raise TypeError('sample shape must be Iterable object.')
@@ -300,7 +309,7 @@ class ContinuousBernoulli(distribution.Distribution):
 
         .. math::
 
-            \mathcal{H}(X) = - \int_{x \in \Omega} p(x) \log{p(x)} dx
+            \mathcal{H}(X) = -\log C + \left[ \log (1 - \lambda) -\log \lambda \right] \mathbb{E}(X)  - \log(1 - \lambda)
 
         In the above equation:
 
@@ -319,7 +328,18 @@ class ContinuousBernoulli(distribution.Distribution):
         )
 
     def cdf(self, value):
-        """Cumulative distribution function
+        r"""Cumulative distribution function
+
+        .. math::
+
+            {   P(X \le t; \lambda) =
+                F(t;\lambda) =
+                \left\{
+                \begin{aligned}
+                &t & \text{ if $\lambda = \frac{1}{2}$} \\
+                &\frac{\lambda^t (1 - \lambda)^{1 - t} + \lambda - 1}{2\lambda - 1} & \text{ otherwise}
+                \end{aligned}
+                \right. }
 
         Args:
             value (Tensor): The input tensor.
@@ -351,13 +371,23 @@ class ContinuousBernoulli(distribution.Distribution):
         )
 
     def icdf(self, value):
-        """Inverse cumulative distribution function
+        r"""Inverse cumulative distribution function
+
+        .. math::
+
+            {   F^{-1}(x;\lambda) =
+                \left\{
+                \begin{aligned}
+                &x & \text{ if $\lambda = \frac{1}{2}$} \\
+                &\frac{\log(1+(\frac{2\lambda - 1}{1 - \lambda})x)}{\log(\frac{\lambda}{1-\lambda})} & \text{ otherwise}
+                \end{aligned}
+                \right. }
 
         Args:
             value (Tensor): The input tensor, meaning the quantile.
 
         Returns:
-            Tensor: p-value of the quantile. The data type is same with :attr:`value` .
+            Tensor: the value of the r.v. corresponding to the quantile. The data type is same with :attr:`value` .
         """
         value = paddle.cast(value, dtype=self.dtype)
         if not self._check_constraint(value):
@@ -376,13 +406,13 @@ class ContinuousBernoulli(distribution.Distribution):
         )
 
     def kl_divergence(self, other):
-        r"""The KL-divergence between two Continuous Bernoulli distributions.
+        r"""The KL-divergence between two Continuous Bernoulli distributions with the same `batch_shape`.
 
         The probability density function (pdf) is
 
         .. math::
 
-            KL\_divergence(\lambda_1, \lambda_2) = \int_x p_1(x) \log{\frac{p_1(x)}{p_2(x)}} dx
+            KL\_divergence(\lambda_1, \lambda_2) = - H - \{\log C_2 + [\log \lambda_2 -  \log (1-\lambda_2)]  \mathbb{E}_1(X) +  \log (1-\lambda_2)  \}
 
         Args:
             other (ContinuousBernoulli): instance of Continuous Bernoulli.
