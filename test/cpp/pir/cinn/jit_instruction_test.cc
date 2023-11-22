@@ -109,7 +109,7 @@ TEST(CinnJitInstruction, Run) {
       compiler_list.push_back(ir_compiler);
       std::unordered_map<std::string, ::pir::Attribute> op_attrs{
           {cinn::dialect::JitKernelOp::kAttrName,
-           cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
+           cinn::dialect::CINNKernelInfoAttribute::get(ctx, fn_ptr_res[0])},
       };
 
       auto out_type = it->result(0).type();

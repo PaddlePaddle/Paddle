@@ -41,10 +41,11 @@ class JitKernelOp : public ::pir::Op<JitKernelOp> {
   static const char* name() { return "cinn_runtime.jit_kernel"; }
   // TODO(Aurelius84): Think deeply what should contains
   static constexpr uint32_t attributes_num = 1;
-  static constexpr char* kAttrName = "jit_info";
+  static constexpr char* kAttrName = "kernel_info";
   static const char* attributes_name[attributes_num];
 
-  const hlir::framework::pir::CUDAJITInfo& cuda_jit_info();
+  // convert JitKernelOp to CINNKernelInfo use attrs above
+  const hlir::framework::pir::CINNKernelInfo& cinn_kernel_info();
 
   void VerifySig();
 };
