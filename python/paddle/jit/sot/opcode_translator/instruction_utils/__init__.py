@@ -26,6 +26,7 @@ from .instruction_utils import (  # noqa: F401
     relocate_jump_target,
     replace_instr,
     reset_offset,
+    print_instrs,
 )
 from .opcode_analysis import (  # noqa: F401
     Space,

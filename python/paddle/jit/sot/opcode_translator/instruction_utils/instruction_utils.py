@@ -385,6 +385,10 @@ def instrs_info(instrs, mark=None, range=None):
     return ret
 
 
+def print_instrs(instrs, mark=None, range=None):
+    print("\n".join(instrs_info(instrs, mark, range)))
+
+
 def calc_stack_effect(instr: Instruction, *, jump: bool | None = None) -> int:
     """
     Gets the stack effect of the given instruction. In Python 3.11, the stack effect of `CALL` is -1,

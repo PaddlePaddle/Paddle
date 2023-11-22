@@ -12,14 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.jit.sot.utils import log, log_do
+
+from .instruction_utils import print_instrs
 from .stack_analyse import StackAnalyser
 
 
 def apply_instr_pass(instrs, code_options):
+    log(3, f"[Opcode Pass]: Original New Code {code_options['co_name']}:\n")
+    log_do(3, lambda: print_instrs(instrs))
     supported_passes = (remove_load_store_pass,)
 
     for instr_pass in supported_passes:
         instr_pass(instrs, code_options)
+
+    log(
+        3,
+        f"[Opcode Pass]: New Code After Opcode Pass {code_options['co_name']}:\n",
+    )
+    log_do(3, lambda: print_instrs(instrs))
 
 
 def find_stored_once_local_vars(instrs, code_options):
@@ -51,14 +62,14 @@ def find_loaded_once_local_vars(instrs, code_options):
     """
     loaded_vars = {}
     for instr in instrs:
-        if instr.opname == "STORE_FAST":
+        if instr.opname == "LOAD_FAST":
             if instr.argval in loaded_vars:
                 loaded_vars[instr.argval] += 1
             else:
                 loaded_vars[instr.argval] = 1
 
-    stored_once = {name for name, count in loaded_vars.items() if count == 1}
-    return stored_once
+    loaded_once = {name for name, count in loaded_vars.items() if count == 1}
+    return loaded_once
 
 
 def find_related_local_opcodes(instrs, code_options):
