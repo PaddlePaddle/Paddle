@@ -478,14 +478,8 @@ class MapExprToIrTranslator {
         // Do nothing
       }
     });
-    std::vector<ir::Expr> visited_expr{};
     for (const auto& [_, pair] : value2var_expr) {
-      if (!IsExprVisited(visited_expr, pair.second)) {
-        binding_var2value->push_back(pair);
-        visited_expr.push_back(pair.second);
-      } else {
-        // Do nothing
-      }
+      binding_var2value->push_back(pair);
     }
     return [value2var_expr, this](const Tensor& tensor) {
       const List<Value>& iterator_values = TensorIteratorExpr4Tensor(tensor);
