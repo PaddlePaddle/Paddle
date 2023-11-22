@@ -14,28 +14,33 @@
 
 import unittest
 
-from test_collective_base_xpu import TestDistBase
+from get_test_cover_info import get_xpu_op_support_types
 
 import paddle
+from xpu.test_collective_api_base import TestDistBase
 
 paddle.enable_static()
 
 
-class TestCAllgatherOp(TestDistBase):
+class TestCollectiveAllgatherAPI(TestDistBase):
     def _setup_config(self):
         pass
 
     def test_allgather(self):
-        dtypes_to_test = [
-            "float16",
-            "float32",
-            "float64",
-            "int32",
-            "int64",
-        ]
-        for dtype in dtypes_to_test:
+        support_types = get_xpu_op_support_types('c_allgather')
+        for dtype in support_types:
             self.check_with_place(
-                "collective_allgather_op_xpu.py", "allgather", dtype=dtype
+                "collective_allgather_api.py", "allgather", dtype=dtype
+            )
+
+    def test_allgather_dygraph(self):
+        support_types = get_xpu_op_support_types('c_allgather')
+        for dtype in support_types:
+            self.check_with_place(
+                "collective_allgather_api_dygraph.py",
+                "allgather",
+                static_mode="0",
+                dtype=dtype,
             )
 
 

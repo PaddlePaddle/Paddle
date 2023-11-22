@@ -14,9 +14,10 @@
 
 import unittest
 
-from test_collective_base_xpu import TestDistBase
+from get_test_cover_info import get_xpu_op_support_types
 
 import paddle
+from xpu.test_collective_api_base import TestDistBase
 
 paddle.enable_static()
 
@@ -26,16 +27,29 @@ class TestCBroadcastOp(TestDistBase):
         pass
 
     def test_broadcast(self):
-        dtypes_to_test = [
-            "float16",
-            "float32",
-            "float64",
-            "int32",
-            "int64",
-        ]
-        for dtype in dtypes_to_test:
+        # dtypes_to_test = [
+        #    "float16",
+        #    "float32",
+        #    "float64",
+        #    "int32",
+        #    "int64",
+        # ]
+        support_types = get_xpu_op_support_types('c_broadcast')
+        for dtype in support_types:
             self.check_with_place(
-                "collective_broadcast_op_xpu.py", "broadcast", dtype
+                "collective_broadcast_api.py",
+                "broadcast",
+                dtype=dtype,
+            )
+
+    def test_broadcast_dygraph(self):
+        support_types = get_xpu_op_support_types('c_broadcast')
+        for dtype in support_types:
+            self.check_with_place(
+                "collective_broadcast_api_dygraph.py",
+                "broadcast",
+                static_mode="0",
+                dtype=dtype,
             )
 
 
