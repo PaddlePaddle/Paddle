@@ -167,7 +167,7 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
         cinn::adt::TryGenerateMapExprFromGroup(group);
       }
 
-      auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
+      auto fn_ptr_res = ir_compiler->Build({group});
       std::unordered_map<std::string, ::pir::Attribute> op_attrs{
           {cinn::dialect::JitKernelOp::kAttrName,
            cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
