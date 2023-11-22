@@ -522,6 +522,59 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     }
   }
 
+  std::map<std::string, int> gmap;
+  gmap.insert(std::make_pair("fc", -1));
+  // auto quant_post_type = Has("quant_post_dynamic_weight_methods") ?
+  // Get<std::map<std::string, int>>("quant_post_dynamic_weight_methods") :
+  // std::map<std::string, int>();
+  auto quant_post_type =
+      Has("quant_post_dynamic_weight_methods")
+          ? Get<std::map<std::string, int>>("quant_post_dynamic_weight_methods")
+          : gmap;
+
+  /*
+  if(quant_post_type.find("fc")!=quant_post_type.end() &&
+  quant_post_type.find("fc")->second == -1){ std::cout<<"quant type is  fc==
+  -1"<<std::endl; std::cout<<"quant type is  fc== -1
+  Key:"<<quant_post_type.find("fc")->first<<std::endl; std::cout<<"quant type is
+  fc== -1 Value:"<<quant_post_type.find("fc")->second<<std::endl; }else{
+    //if (quant_post_type.find("fc")!=quant_post_type.end() &&
+  quant_post_type.find("fc")->second !=-1) { std::cout << "fc exists in the
+  map." << std::endl; int type=quant_post_type.find("fc")->second;
+        //std::cout<<"Typeeeeeeeeeeeeeeeeeeeee:"<<type<<std::endl;
+        std::string name=quant_post_type.find("fc")->first;
+        //std::cout<<"Nameeeeeeeeeeeeeeeeeeeee:"<<name.c_str()<<std::endl;
+
+        if(type==0){
+            std::cout<<"Typeeeeeee 0 int8 per tensor"<<std::endl;
+        }
+        if(type==1){
+            std::cout<<"Typeeeeeee 1 int8 per channel"<<std::endl;
+        }
+
+        if(type==2){
+            std::cout<<"Typeeeeeee 2 int16 per tensor"<<std::endl;
+        }
+        if(type==3){
+            std::cout<<"Typeeeeeee 3 int16 per channel"<<std::endl;
+        }
+        if(type==4){
+            std::cout<<"Typeeeeeee 4 int31 per tensor"<<std::endl;
+        }
+
+        //for (auto it = quant_post_type.begin(); it != quant_post_type.end();
+  ++it) {
+          //std::cout << "Key: " << it->first << ", Value: " << it->second <<
+  std::endl;
+        //}
+    //}
+    std::cout<<"Get Value From Outside"<<std::endl;
+    for (auto it = quant_post_type.begin(); it != quant_post_type.end(); ++it) {
+        std::cout << "Key: " << it->first << ", Value: " << it->second <<
+  std::endl;
+    }
+  }
+ */
   (*fusion_nodes_map)["bias"] = fusion_bias_node;
 
   Node* filter_intx = nullptr;
@@ -530,7 +583,52 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   bool per_channel_quant =
       std::getenv("FLAGS_fc_gemm_use_per_channel") == nullptr ? false : true;
   if (op_weights_precision != "int8") {
-    PrepareWeight<float, int16_t>(graph,
+    if (quant_post_type.find("fc") != quant_post_type.end() &&
+        quant_post_type.find("fc")->second == -1) {
+      std::cout << "Fc int16 per tensor" << std::endl;
+      PrepareWeight<float, int16_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    false);
+    }
+    if (quant_post_type.find("fc") != quant_post_type.end() &&
+        quant_post_type.find("fc")->second == 2) {
+      std::cout << "Fc int16 per tensor" << std::endl;
+      PrepareWeight<float, int16_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    false);
+    }
+    if (quant_post_type.find("fc") != quant_post_type.end() &&
+        quant_post_type.find("fc")->second == 3) {
+      std::cout << "Fc int16 per channel" << std::endl;
+      PrepareWeight<float, int16_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    true);
+    }
+    if (quant_post_type.find("fc") != quant_post_type.end() &&
+        quant_post_type.find("fc")->second == 4) {
+      std::cout << "Fc int31 per tensor" << std::endl;
+      PrepareWeight<float, float>(graph,
                                   scope,
                                   block,
                                   mul_w_replicated_node,
@@ -539,18 +637,37 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                   &scale_max,
                                   !transpose_w,
                                   weight_scale,
-                                  per_channel_quant);
+                                  false);
+    }
   } else {
-    PrepareWeight<int8_t, int8_t>(graph,
-                                  scope,
-                                  block,
-                                  mul_w_replicated_node,
-                                  &filter_intx,
-                                  &filter_max,
-                                  &scale_max,
-                                  !transpose_w,
-                                  weight_scale,
-                                  per_channel_quant);
+    if (quant_post_type.find("fc") != quant_post_type.end() &&
+        quant_post_type.find("fc")->second == 0) {
+      std::cout << "Fc int8 per tensor" << std::endl;
+      PrepareWeight<int8_t, int8_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    false);
+    }
+    if (quant_post_type.find("fc") != quant_post_type.end() &&
+        quant_post_type.find("fc")->second == 1) {
+      std::cout << "Fc int8 per channel" << std::endl;
+      PrepareWeight<int8_t, int8_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    true);
+    }
   }
   (*fusion_nodes_map)["w"] = filter_intx;
   (*fusion_nodes_map)["w_max"] = filter_max;
