@@ -187,7 +187,7 @@ class GpuPsGraphTable
       std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
       bool weighted,
       bool return_weight);
-  void weighted_sample(GpuPsCommGraph &graph,
+  void weighted_sample(GpuPsCommGraph &graph,  // NOLINT
                        GpuPsNodeInfo *node_info_list,
                        int *actual_size_array,
                        uint64_t *sample_array,
@@ -200,7 +200,7 @@ class GpuPsGraphTable
                        uint64_t random_seed,
                        float *weight_array,
                        bool return_weight);
-  void unweighted_sample(GpuPsCommGraph &graph,
+  void unweighted_sample(GpuPsCommGraph &graph,  // NOLINT
                          GpuPsNodeInfo *node_info_list,
                          int *actual_size_array,
                          uint64_t *sample_array,
@@ -260,8 +260,8 @@ class GpuPsGraphTable
       int node_num,
       const std::shared_ptr<phi::Allocation> &size_list,
       const std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
-      std::shared_ptr<phi::Allocation> &feature_list,
-      std::shared_ptr<phi::Allocation> &slot_list);
+      std::shared_ptr<phi::Allocation> &feature_list,  // NOLINT
+      std::shared_ptr<phi::Allocation> &slot_list);    // NOLINT
 
   template <typename FeatureType>
   int get_feature_info_of_nodes_all2all(
@@ -270,8 +270,8 @@ class GpuPsGraphTable
       int node_num,
       const std::shared_ptr<phi::Allocation> &size_list,
       const std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
-      std::shared_ptr<phi::Allocation> &feature_list,
-      std::shared_ptr<phi::Allocation> &slot_list,
+      std::shared_ptr<phi::Allocation> &feature_list,  // NOLINT
+      std::shared_ptr<phi::Allocation> &slot_list,     // NOLINT
       bool sage_mode = false);
   int get_rank_info_of_nodes(int gpu_id,
                              const uint64_t *d_nodes,

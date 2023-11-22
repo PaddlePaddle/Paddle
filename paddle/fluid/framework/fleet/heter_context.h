@@ -196,7 +196,7 @@ class HeterContext {
       }
     }
 
-    for (auto & item : keys2rank_map_vec_) {
+    for (auto& item : keys2rank_map_vec_) {
       item.clear();
     }
     keys2rank_map_vec_.clear();

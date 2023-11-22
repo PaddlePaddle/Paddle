@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #pragma once
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_fp16.h>
+#endif
 #include <cstddef>
 #include <cstdint>
 #include <vector>
 #include "paddle/phi/core/macros.h"
-#include <cuda_fp16.h>
 namespace paddle {
 namespace distributed {
 

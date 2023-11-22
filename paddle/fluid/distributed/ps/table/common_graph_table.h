@@ -626,8 +626,8 @@ class GraphTable : public Table {
                                                 const std::string &node_type,
                                                 int idx,
                                                 bool load_slot = true);
-  std::pair<uint64_t, uint64_t> parse_node_file_parallel(const std::string &path,
-                                                bool load_slot = true);
+  std::pair<uint64_t, uint64_t> parse_node_file_parallel(
+      const std::string &path, bool load_slot = true);
   int32_t add_graph_node(int idx,
                          std::vector<uint64_t> &id_list,      // NOLINT
                          std::vector<bool> &is_weight_list);  // NOLINT
@@ -732,8 +732,8 @@ class GraphTable : public Table {
       int gpu_id, std::vector<uint64_t> &node_ids, int slot_num);  // NOLINT
   virtual paddle::framework::GpuPsCommGraphFloatFea make_gpu_ps_graph_float_fea(
       int gpu_id,
-      std::vector<uint64_t> &node_ids,
-      int float_slot_num);  // NOLINT
+      std::vector<uint64_t> &node_ids,  // NOLINT
+      int float_slot_num);
   virtual paddle::framework::GpuPsCommRankFea make_gpu_ps_rank_fea(int gpu_id);
   int32_t Load_to_ssd(const std::string &path, const std::string &param);
   int64_t load_graph_to_memory_from_ssd(int idx,
@@ -811,7 +811,8 @@ class GraphTable : public Table {
   // int float_fea_num_{-1};
   std::vector<std::unordered_map<std::string, int32_t>> feat_id_map;
   std::vector<std::unordered_map<std::string, int32_t>> float_feat_id_map;
-  std::unordered_map<std::string, int> node_type_str_to_node_types_idx, edge_to_id;
+  std::unordered_map<std::string, int> node_type_str_to_node_types_idx,
+      edge_to_id;
   std::vector<std::string> id_to_feature, id_to_edge;
   std::string table_name;
   std::string table_type;

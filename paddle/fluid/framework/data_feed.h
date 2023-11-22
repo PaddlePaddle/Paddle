@@ -996,7 +996,10 @@ class GraphDataGenerator {
       bool gpu_graph_training,
       std::shared_ptr<phi::Allocation> final_sage_nodes = nullptr);
   int FillGraphSlotFeatureAccum(bool gpu_graph_training, int index);
-  int FillSlotFeature(uint64_t* d_walk, size_t key_num, int tensor_pair_idx, int accum=0);
+  int FillSlotFeature(uint64_t* d_walk,
+                      size_t key_num,
+                      int tensor_pair_idx,
+                      int accum = 0);
   int FillFloatFeature(uint64_t* d_walk, size_t key_num, int tensor_pair_idx);
   int GetPathNum() { return total_row_[0]; }
   void ResetPathNum() { total_row_[0] = 0; }
@@ -1022,7 +1025,8 @@ class GraphDataGenerator {
     // h_device_keys_.push_back(device_keys);
   }
   int GetTrainMemoryDataSize() {
-    // use only for is_multi_node = True, sage_mode = True, gpu_graph_training = True
+    // use only for is_multi_node = True, sage_mode = True, gpu_graph_training =
+    // True
     if (!global_train_flag_) {
       return 0;
     } else {
@@ -1031,7 +1035,9 @@ class GraphDataGenerator {
   }
   std::vector<uint64_t>& GetHostVec() { return host_vec_; }
   std::vector<uint32_t>& GetHostRanks() { return host_ranks_; }
-  std::shared_ptr<HashTable<uint64_t, uint32_t>> GetKeys2RankTable() { return keys2rank_table_; }
+  std::shared_ptr<HashTable<uint64_t, uint32_t>> GetKeys2RankTable() {
+    return keys2rank_table_;
+  }
 
   bool get_epoch_finish() { return epoch_finish_; }
   int get_pass_end() { return pass_end_; }
@@ -1062,7 +1068,7 @@ class GraphDataGenerator {
   cudaStream_t sample_stream_;
   paddle::platform::Place place_;
   std::vector<phi::DenseTensor*> feed_vec_;
-  std::vector<UsedSlotInfo>* feed_info_; // adapt for float feature
+  std::vector<UsedSlotInfo>* feed_info_;  // adapt for float feature
   std::vector<size_t> offset_;
   std::vector<std::vector<std::shared_ptr<phi::Allocation>>> d_device_keys_;
   std::vector<std::shared_ptr<phi::Allocation>> d_train_metapath_keys_;
@@ -1106,8 +1112,8 @@ class GraphDataGenerator {
   // size of a d_walk buf
   int repeat_time_;
   std::vector<BufState> buf_state_;
-  int float_slot_num_ = 0; // float slot num
-  int uint_slot_num_ = 0; // uint slot num
+  int float_slot_num_ = 0;  // float slot num
+  int uint_slot_num_ = 0;   // uint slot num
   std::vector<int> h_slot_feature_num_map_;
   int fea_num_per_node_;
   std::vector<int> shuffle_seed_;
@@ -1263,7 +1269,7 @@ class DataFeed {
 #else
     return 0;
 #endif
-}
+  }
 
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   virtual std::vector<uint64_t>* GetHostVec() {
@@ -1969,7 +1975,7 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   }
 #endif
   void DumpWalkPath(std::string dump_path, size_t dump_rate) override;
-  virtual void DumpSampleNeighbors(std::string dump_path);
+  void DumpSampleNeighbors(std::string dump_path) override;
 
   float sample_rate_ = 1.0f;
   int use_slot_size_ = 0;

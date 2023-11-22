@@ -81,11 +81,12 @@ class GraphGpuWrapper {
   std::vector<GpuPsCommGraphFea> get_sub_graph_fea(
       std::vector<std::vector<uint64_t>>& node_ids, int slot_num);  // NOLINT
   std::vector<GpuPsCommGraphFloatFea> get_sub_graph_float_fea(
-      std::vector<std::vector<uint64_t>>& node_ids,
+      std::vector<std::vector<uint64_t>>& node_ids,                   // NOLINT
       int float_slot_num);                                            // NOLINT
   void build_gpu_graph_fea(GpuPsCommGraphFea& sub_graph_fea, int i);  // NOLINT
-  void build_gpu_graph_float_fea(GpuPsCommGraphFloatFea& sub_graph_float_fea,
-                                 int i);  // NOLINT
+  void build_gpu_graph_float_fea(
+      GpuPsCommGraphFloatFea& sub_graph_float_fea,  // NOLINT
+      int i);                                       // NOLINT
   void add_table_feat_conf(std::string table_name,
                            std::string feat_name,
                            std::string feat_dtype,
@@ -200,19 +201,19 @@ class GraphGpuWrapper {
       int gpu_id,
       uint64_t* d_nodes,
       int node_num,
-      std::shared_ptr<phi::Allocation>& size_list,
-      std::shared_ptr<phi::Allocation>& size_list_prefix_sum,
-      std::shared_ptr<phi::Allocation>& feature_list,  // NOLINT
-      std::shared_ptr<phi::Allocation>& slot_list,     // NOLINT
+      std::shared_ptr<phi::Allocation>& size_list,             // NOLINT
+      std::shared_ptr<phi::Allocation>& size_list_prefix_sum,  // NOLINT
+      std::shared_ptr<phi::Allocation>& feature_list,          // NOLINT
+      std::shared_ptr<phi::Allocation>& slot_list,             // NOLINT
       bool sage_mode = false);
   int get_float_feature_info_of_nodes(
       int gpu_id,
       uint64_t* d_nodes,
       int node_num,
-      std::shared_ptr<phi::Allocation>& size_list,
-      std::shared_ptr<phi::Allocation>& size_list_prefix_sum,
-      std::shared_ptr<phi::Allocation>& feature_list,  // NOLINT
-      std::shared_ptr<phi::Allocation>& slot_list,     // NOLINT
+      std::shared_ptr<phi::Allocation>& size_list,             // NOLINT
+      std::shared_ptr<phi::Allocation>& size_list_prefix_sum,  // NOLINT
+      std::shared_ptr<phi::Allocation>& feature_list,          // NOLINT
+      std::shared_ptr<phi::Allocation>& slot_list,             // NOLINT
       bool sage_mode = false);
   void init_metapath(std::string cur_metapath,
                      int cur_metapath_index,
@@ -223,8 +224,9 @@ class GraphGpuWrapper {
   void release_graph_edge();
   void release_graph_node();
   void init_type_keys(
-      std::vector<std::vector<std::shared_ptr<phi::Allocation>>>& keys,
-      std::vector<std::vector<uint64_t>>& lens);
+      std::vector<std::vector<std::shared_ptr<phi::Allocation>>>&
+          keys,                                   // NOLINT
+      std::vector<std::vector<uint64_t>>& lens);  // NOLINT
   std::vector<uint64_t>& get_graph_total_keys();
   std::vector<std::vector<uint64_t>>& get_graph_type_keys();
   std::unordered_map<int, int>& get_type_to_neighbor_limit();
@@ -262,7 +264,8 @@ class GraphGpuWrapper {
   std::vector<std::vector<std::set<int>>> finish_node_type_;
   std::vector<std::vector<std::unordered_map<int, size_t>>> node_type_start_;
   std::vector<size_t> cur_metapath_start_;
-  std::vector<std::vector<std::unordered_map<int, size_t>>> global_infer_node_type_start_;
+  std::vector<std::vector<std::unordered_map<int, size_t>>>
+      global_infer_node_type_start_;
   std::vector<std::vector<size_t>> infer_cursor_;
   std::vector<size_t> cursor_;
   int tensor_pair_num_;

@@ -361,8 +361,8 @@ void PsGraphClient::request_handler(const simple::RpcMessageHead &head,
 }
 
 // server pull remote keys (only key)
-void PsGraphClient::request_key_handler(
-    const simple::RpcMessageHead &head, paddle::framework::BinaryArchive &iar) {
+void PsGraphClient::request_key_handler(const simple::RpcMessageHead &head,
+                                        paddle::framework::BinaryArchive &iar) {
   size_t table_id = head.consumer_id;
   uint32_t id = 0;
   iar.ReadBack(&id, sizeof(uint32_t));

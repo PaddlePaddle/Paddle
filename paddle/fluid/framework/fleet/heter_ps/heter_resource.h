@@ -142,7 +142,8 @@ class HeterPsResource {
   std::shared_ptr<HashTable<uint64_t, uint32_t>> keys2rank(int gpu_id) {
     return keys2rank_vec_[gpu_id];
   }
-  void set_keys2rank(int gpu_id, std::shared_ptr<HashTable<uint64_t, uint32_t>> keys2rank) {
+  void set_keys2rank(int gpu_id,
+                     std::shared_ptr<HashTable<uint64_t, uint32_t>> keys2rank) {
     keys2rank_vec_[gpu_id] = keys2rank;
   }
   int multi_mf() { return multi_mf_dim_; }

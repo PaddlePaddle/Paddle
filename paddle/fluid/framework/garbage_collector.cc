@@ -234,7 +234,7 @@ std::unique_ptr<GarbageCollector> CreateGarbageCollector(
     if (IsFastEagerDeletionModeEnabled()) {
       VLOG(4) << "Use unsafe fast gc for " << place << ".";
       gc = std::make_unique<CustomDeviceUnsafeFastGarbageCollector>(
-          place_, max_memory_size);
+          place, max_memory_size);
     } else {
       VLOG(4) << "Use default stream gc for " << place << ".";
       gc = std::make_unique<CustomDefaultStreamGarbageCollector>(

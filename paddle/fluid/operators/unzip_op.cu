@@ -28,11 +28,10 @@ __global__ void unzipKernel(
   CUDA_KERNEL_LOOP(i, n) {
     int lod_idx = i / col_size;
     int len = lod[lod_idx + 1] - lod[lod_idx];
-    if (i >= lod_idx * col_size + len ) {
-        Y[i] = 0; 
-    }
-    else {
-        Y[i] = X[lod[lod_idx] + i % col_size]; 
+    if (i >= lod_idx * col_size + len) {
+      Y[i] = 0;
+    } else {
+      Y[i] = X[lod[lod_idx] + i % col_size];
     }
   }
 }

@@ -4925,7 +4925,7 @@ void GraphDataGenerator::DumpWalkPath(std::string dump_path, size_t dump_rate) {
 void GraphDataGenerator::DumpSampleNeighbors(std::string dump_path) {
 #ifdef _LINUX
   int err_no = 0;
-  int part_num = rand() % 100;  // set 100 part files
+  int part_num = rand() % 100;  // NOLINT // set 100 part files
   std::string part_path =
       string::format_string("%s-%03d", dump_path.c_str(), part_num);
   std::shared_ptr<FILE> fp = fs_open_append_write(part_path, &err_no, "");

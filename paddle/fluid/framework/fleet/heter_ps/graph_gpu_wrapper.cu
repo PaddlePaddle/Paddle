@@ -118,8 +118,8 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type_str,
             all_node_type_.push_back(src_node_id);
             all_node_type_.push_back(dst_node_id);
             VLOG(1) << "add all_node_type[" << tensor_pair_idx << "] "
-                << node_types_idx_to_node_type_str(src_node_id) << ", "
-                << node_types_idx_to_node_type_str(dst_node_id);
+                    << node_types_idx_to_node_type_str(src_node_id) << ", "
+                    << node_types_idx_to_node_type_str(dst_node_id);
           }
         }  // end for (auto &edge : edges) {
       }    // end for (size_t i = 0; i < meta_paths.size(); i++) {
@@ -175,7 +175,9 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type_str,
       for (int i = 0; i < id_to_feature.size(); ++i) {
         std::stringstream buf;
         for (int j = 0; j < id_to_feature.size(); ++j) {
-          buf << (int)pair_label_conf_[i * id_to_feature.size() + j] << " ";
+          buf << static_cast<int>(
+                     pair_label_conf_[i * id_to_feature.size() + j])
+              << " ";
         }
         VLOG(2) << "pair_label_conf[" << i << "]: " << buf.str();
       }
@@ -203,7 +205,8 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type_str,
       for (size_t i = 0; i < device_id_mapping.size(); i++) {
         int dev_id = device_id_mapping[i];
         auto &node_type_start = node_type_start_[tensor_pair_idx][i];
-        auto &infer_node_type_start = global_infer_node_type_start_[tensor_pair_idx][i];
+        auto &infer_node_type_start =
+            global_infer_node_type_start_[tensor_pair_idx][i];
         auto &finish_node_type = finish_node_type_[tensor_pair_idx][i];
         finish_node_type.clear();
 
@@ -251,17 +254,17 @@ void GraphGpuWrapper::init_type_keys(
     keys[f_idx].resize(thread_num);
     auto &type_total_key = graph_all_type_total_keys[f_idx];
     VLOG(1) << "node_type[" << index_to_node_type_str(f_idx) << "] index["
-        << type_to_index[f_idx] << "] graph_all_type_total_keys[" << f_idx
-        << "]=" << graph_all_type_total_keys[f_idx].size();
+            << type_to_index[f_idx] << "] graph_all_type_total_keys[" << f_idx
+            << "]=" << graph_all_type_total_keys[f_idx].size();
     for (size_t j = 0; j < type_total_key.size(); j++) {
       uint64_t shard = type_total_key[j] % thread_num;
       tmp_keys[shard].push_back(type_total_key[j]);
     }
     for (size_t j = 0; j < thread_num; j++) {
       lens[f_idx].push_back(tmp_keys[j].size());
-      VLOG(1) << "node_type[" << index_to_node_type_str(f_idx)
-          << "] index[" << type_to_index[f_idx] << "] gpu_graph_device_keys["
-          << f_idx << "]=" << tmp_keys[j].size();
+      VLOG(1) << "node_type[" << index_to_node_type_str(f_idx) << "] index["
+              << type_to_index[f_idx] << "] gpu_graph_device_keys[" << f_idx
+              << "]=" << tmp_keys[j].size();
     }
     for (size_t j = 0; j < thread_num; j++) {
       auto stream = get_local_stream(j);
@@ -421,7 +424,8 @@ int GraphGpuWrapper::get_all_neighbor_id(
       ->cpu_graph_table_->get_all_neighbor_id(table_type, slice_num, output);
 }
 
-std::string GraphGpuWrapper::node_types_idx_to_node_type_str(int node_types_idx) {
+std::string GraphGpuWrapper::node_types_idx_to_node_type_str(
+    int node_types_idx) {
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
       ->cpu_graph_table_->node_types_idx_to_node_type_str(node_types_idx);
 }
@@ -668,7 +672,7 @@ int GraphGpuWrapper::set_node_iter_from_file(std::string ntype2files,
                                              bool training,
                                              bool shuffle) {
   // 1. load cpu node
-  ((GpuPsGraphTable *)graph_table)
+  (reinterpret_cast<GpuPsGraphTable *>(graph_table))
       ->cpu_graph_table_->parse_node_and_load(
           ntype2files, node_types_file_path, part_num, false);
 
@@ -686,9 +690,10 @@ int GraphGpuWrapper::set_node_iter_from_file(std::string ntype2files,
     type_keys_initialized_ = false;
   }
 
-  ((GpuPsGraphTable *)graph_table)
+  (reinterpret_cast<GpuPsGraphTable *>(graph_table))
       ->cpu_graph_table_->build_node_iter_type_keys();
-  ((GpuPsGraphTable *)graph_table)->cpu_graph_table_->clear_node_shard();
+  (reinterpret_cast<GpuPsGraphTable *>(graph_table))
+      ->cpu_graph_table_->clear_node_shard();
 
   // 3. init train or infer type keys.
   if (!training) {

@@ -270,14 +270,15 @@ class HogwildWorker : public CPUWorkerBase {
     std::vector<std::string> copy_vars;
     std::vector<std::string> backup_vars;
     std::vector<std::pair<std::string, std::string>> cast_vars;
-    template<typename TCopyer>
+    template <typename TCopyer>
     void CopyInputs(const Scope* root,
                     const platform::Place& place,
                     Scope* scope,
-                    TCopyer *copyer);
-    template<typename TCopyer>
-    void BackUpInputs(Scope* root, Scope* scope, TCopyer *copyer);
+                    TCopyer* copyer);
+    template <typename TCopyer>
+    void BackUpInputs(Scope* root, Scope* scope, TCopyer* copyer);
   };
+
  public:
   HogwildWorker() {}
   virtual ~HogwildWorker() {}
@@ -300,8 +301,8 @@ class HogwildWorker : public CPUWorkerBase {
   // build thread sharding depends
   void BuildShardingDepends(const ProgramDesc& program);
   int IsParameter(const std::string& name, bool full_match);
-  bool IsNeedOffload(const std::string &name);
-  size_t AdjustOffloadOps(const ProgramDesc &program);
+  bool IsNeedOffload(const std::string& name);
+  size_t AdjustOffloadOps(const ProgramDesc& program);
 
   std::vector<std::string> op_names_;
   std::vector<std::unique_ptr<OperatorBase>> ops_;

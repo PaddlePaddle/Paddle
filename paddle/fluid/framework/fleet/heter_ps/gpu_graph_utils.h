@@ -134,7 +134,7 @@ inline void debug_gpu_memory_info(const char* desc) {
             << "desc=" << desc;
   }
 }
- 
+
 inline void show_gpu_mem(const char* desc) {
   CudaDeviceRestorer r;
 
@@ -161,15 +161,15 @@ inline void show_gpu_mem(const char* desc) {
 }
 
 inline void show_cpu_mem(const char* desc) {
-  //MB
-  long virtual_mem = 0, resident_mem = 0;
+  // MB
+  int64_t virtual_mem = 0, resident_mem = 0;
 
-  FILE * fp = fopen("/proc/self/statm", "r");
+  FILE* fp = fopen("/proc/self/statm", "r");
   if (NULL != fp) {
-      fscanf(fp, "%ld %ld", &virtual_mem, &resident_mem);
-      resident_mem = resident_mem * 4096 / 1000000;
-      virtual_mem = virtual_mem * 4096 / 1000000;
-      fclose(fp);
+    fscanf(fp, "%ld %ld", &virtual_mem, &resident_mem);
+    resident_mem = resident_mem * 4096 / 1000000;
+    virtual_mem = virtual_mem * 4096 / 1000000;
+    fclose(fp);
   }
 
   VLOG(0) << "[" << desc << "] mem used " << resident_mem << "MB";

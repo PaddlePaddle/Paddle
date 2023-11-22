@@ -598,12 +598,12 @@ class SparseAdamSharedOptimizer {
 
 template <typename GPUAccessor>
 class SparseAdagradV2Optimizer {
- // a new SparseAdaGradV2 use standard adagrad update rules.
- // g2sum = grad_x * grad_x + g2sum
- // x = x + lr * grad_x / sqrt(g2sum + epsilon)
+  // a new SparseAdaGradV2 use standard adagrad update rules.
+  // g2sum = grad_x * grad_x + g2sum
+  // x = x + lr * grad_x / sqrt(g2sum + epsilon)
  public:
   SparseAdagradV2Optimizer() {}
-  SparseAdagradV2Optimizer(GPUAccessor gpu_accessor) {
+  explicit SparseAdagradV2Optimizer(GPUAccessor gpu_accessor) {
     gpu_accessor_ = gpu_accessor;
     _lr_embedding_dim = 1;
     _embedding_dim = gpu_accessor_.common_feature_value.EmbedWDim();
@@ -634,8 +634,7 @@ class SparseAdagradV2Optimizer {
     }
     g2sum += add_g2sum / n;
 
-    double ratio =
-        learning_rate / (sqrt(g2sum) + epsilon);
+    double ratio = learning_rate / (sqrt(g2sum) + epsilon);
     for (int i = 0; i < n; ++i) {
       double scaled_grad = g[i] / scale;
 
@@ -679,7 +678,8 @@ class SparseAdagradV2Optimizer {
         scale,
         slot);
 
-    int mf_dim = int(ptr[gpu_accessor_.common_feature_value.MfDimIndex()]);
+    int mf_dim =
+        int(ptr[gpu_accessor_.common_feature_value.MfDimIndex()]);  // NOLINT
     if (ptr[gpu_accessor_.common_feature_value.MfSizeIndex()] == 0) {
       if (optimizer_config.mf_create_thresholds <=
           optimizer_config.nonclk_coeff *

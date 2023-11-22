@@ -31,8 +31,8 @@ class CBroadcastOp : public framework::OperatorWithKernel {
     int out_dtype = ctx.Attr<int>("out_dtype");
     if (out_dtype >= 0) {
       return phi::KernelKey(
-           static_cast<framework::proto::VarType::Type>(out_dtype),
-           ctx.GetPlace());
+          static_cast<framework::proto::VarType::Type>(out_dtype),
+          ctx.GetPlace());
     }
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());

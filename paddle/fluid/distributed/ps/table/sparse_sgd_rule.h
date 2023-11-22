@@ -107,9 +107,9 @@ class SparseAdaGradSGDRule : public SparseValueSGDRule {
 };
 
 class SparseAdaGradV2SGDRule : public SparseValueSGDRule {
- // a new SparseAdaGradV2 use standard adagrad update rules.
- // g2sum = grad_x * grad_x + g2sum
- // x = x + lr * grad_x / sqrt(g2sum + epsilon)
+  // a new SparseAdaGradV2 use standard adagrad update rules.
+  // g2sum = grad_x * grad_x + g2sum
+  // x = x + lr * grad_x / sqrt(g2sum + epsilon)
  public:
   virtual void LoadConfig(const SparseCommonSGDRuleParameter& param,
                           size_t emb_dim);
@@ -125,9 +125,6 @@ class SparseAdaGradV2SGDRule : public SparseValueSGDRule {
   float learning_rate_;
   float _initial_g2sum;
 };
-
-
-
 
 class StdAdaGradSGDRule : public SparseValueSGDRule {
  public:

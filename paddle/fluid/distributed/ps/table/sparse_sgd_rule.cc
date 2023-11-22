@@ -335,8 +335,8 @@ void SparseSharedAdamSGDRule::InitValueWork(float *value,
   *(sgd + Beta2PowIndex()) = _beta2_decay_rate;
 }
 
-void SparseAdaGradV2SGDRule::LoadConfig(const SparseCommonSGDRuleParameter &param,
-                                      size_t emb_dim) {
+void SparseAdaGradV2SGDRule::LoadConfig(
+    const SparseCommonSGDRuleParameter &param, size_t emb_dim) {
   _embedding_dim = emb_dim;
   auto adagrad_param = param.adagrad();
   learning_rate_ = adagrad_param.learning_rate();
@@ -356,9 +356,9 @@ void SparseAdaGradV2SGDRule::LoadConfig(const SparseCommonSGDRuleParameter &para
 }
 
 void SparseAdaGradV2SGDRule::UpdateValueWork(float *w,
-                                           float *sgd,
-                                           const float *grad,
-                                           float scale) {
+                                             float *sgd,
+                                             const float *grad,
+                                             float scale) {
   float &g2sum = sgd[G2SumIndex()];
   double add_g2sum = 0;
   float epsilon = 1e-8;
@@ -377,8 +377,8 @@ void SparseAdaGradV2SGDRule::UpdateValueWork(float *w,
 }
 
 void SparseAdaGradV2SGDRule::InitValueWork(float *value,
-                                         float *sgd,
-                                         bool zero_init) {
+                                           float *sgd,
+                                           bool zero_init) {
   for (size_t i = 0; i < _embedding_dim; ++i) {
     if (zero_init) {
       value[i] = 0.0;
@@ -394,8 +394,6 @@ void SparseAdaGradV2SGDRule::InitValueWork(float *value,
   }
   sgd[G2SumIndex()] = 0;
 }
-
-
 
 }  // namespace distributed
 }  // namespace paddle

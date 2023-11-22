@@ -856,10 +856,10 @@ PHI_DEFINE_EXPORTED_bool(graph_load_in_parallel,
 /**
  * Distributed related FLAG
  * Name: FLAGS_enable_neighbor_list_use_uva
- * Since Version: 2.2.0
+ * Since Version: 2.5.0
  * Value Range: bool, default=false
  * Example:
- * Note: Control whether store neighbor_list with UVA
+ * Note: Control whether store neighbor_list with UVA in gpu graph mode
  */
 PHI_DEFINE_EXPORTED_bool(enable_neighbor_list_use_uva,
                          false,
@@ -868,7 +868,7 @@ PHI_DEFINE_EXPORTED_bool(enable_neighbor_list_use_uva,
 /**
  * Distributed related FLAG
  * Name: FLAGS_graph_neighbor_size_percent
- * Since Version: 2.2.0
+ * Since Version: 2.5.0
  * Value Range: double, default=1.0
  * Example:
  * Note: Control whether load graph node and edge with multi threads parallely
@@ -926,7 +926,8 @@ PHI_DEFINE_EXPORTED_bool(
  * Since Version: 2.5.0
  * Value Range: int32, default=0
  * Example:
- * Note: Control  whether adjust op order in worker to reduce hbm cost.
+ * Note: Control  whether adjust op order in worker to reduce hbm cost in gpu
+ * graph mode.
  */
 PHI_DEFINE_EXPORTED_int32(
     enable_adjust_op_order,
@@ -1167,17 +1168,18 @@ PHI_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
 PHI_DEFINE_EXPORTED_bool(
     graph_embedding_split_infer_mode,
     true,
-    "graph embedding split infer mode not need nccl barrier");
+    "graph embedding split infer mode not need nccl barrier in gpu graph mode");
 PHI_DEFINE_EXPORTED_bool(enable_graph_multi_node_sampling,
                          false,
-                         "control multi-node sample");
-PHI_DEFINE_EXPORTED_bool(query_dest_rank_by_multi_node,
-                         false,
-                         "Control whether to query dest rank by multi machine");
+                         "control multi-node sample in gpu graph mode");
 PHI_DEFINE_EXPORTED_bool(
-    multi_node_sample_use_gpu_table,
-    true,
-    "Control whether to use gpu table in sample multi machine");
+    query_dest_rank_by_multi_node,
+    false,
+    "Control whether to query dest rank by multi machine in gpu graph mode");
+PHI_DEFINE_EXPORTED_bool(multi_node_sample_use_gpu_table,
+                         true,
+                         "Control whether to use gpu table in sample multi "
+                         "machine in gpu graph mode");
 
 /**
  * ProcessGroupNCCL related FLAG

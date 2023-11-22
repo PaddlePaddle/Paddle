@@ -72,7 +72,7 @@ class PsGraphClient : public PsLocalClient {
   void request_handler(const simple::RpcMessageHead &head,
                        paddle::framework::BinaryArchive &iar);  // NOLINT
   void request_key_handler(const simple::RpcMessageHead &head,
-                                     paddle::framework::BinaryArchive &iar);
+                           paddle::framework::BinaryArchive &iar);  // NOLINT
   SparseTableInfo &get_table_info(const size_t &table_id);
 
  private:

@@ -367,11 +367,12 @@ __global__ void get_actual_size_and_neighbor_count(
   }
 }
 
-__device__ __forceinline__ float gen_key_from_weight(const float weight,
-                                                     RandomNumGen& rng) {
+__device__ __forceinline__ float gen_key_from_weight(
+    const float weight,
+    RandomNumGen& rng) {  // NOLINT
   rng.NextValue();
   float u = -rng.RandomUniformFloat(1.0f, 0.5f);
-  long long random_num2 = 0;
+  long long random_num2 = 0;  // NOLINT
   int seed_count = -1;
   do {
     random_num2 = rng.Random64();

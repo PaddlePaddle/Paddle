@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
-#include "paddle/phi/api/include/tensor.h"
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -60,19 +60,13 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
         if (in_dtype != out_dtype) {
           // convert to float16 tensor
           auto in_kernel_type =
-             phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, in_dtype);
+              phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, in_dtype);
           auto out_kernel_type =
-             phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, out_dtype);
-          framework::TransDataType(
-             in_kernel_type, out_kernel_type, *x, out);
+              phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, out_dtype);
+          framework::TransDataType(in_kernel_type, out_kernel_type, *x, out);
 
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
-              out->data<T>(),
-              numel,
-              dtype,
-              root,
-              comm->comm(),
-              stream));
+              out->data<T>(), numel, dtype, root, comm->comm(), stream));
           VLOG(3) << "rank " << comm->rank() << " invoke Bcast. cast sent "
                   << x->numel();
         } else {

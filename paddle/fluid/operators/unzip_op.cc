@@ -97,13 +97,9 @@ class unzipGradientOp : public framework::OperatorWithKernel {
 class unzipOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(LodTensor, default LodTensor<float>)");
-    AddInput("lod",
-             "(Tensor),  a 1-D Tensor with shape [K]");
-    AddAttr<int>("len",
-                 "The len of each original Tensor")
-        .SetDefault(1);
+    AddInput("X", "(LodTensor, default LodTensor<float>)");
+    AddInput("lod", "(Tensor),  a 1-D Tensor with shape [K]");
+    AddAttr<int>("len", "The len of each original Tensor").SetDefault(1);
     AddOutput("Y",
               "(LodTensor, default LodTensor<float>), a 2-D tensor with shape "
               "[K-1 x len].");

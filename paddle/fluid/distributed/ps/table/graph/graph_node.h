@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#ifdef PADDLE_WITH_CUDA
 #include <cuda_fp16.h>
+#endif
 #include <cstring>
 #include <iostream>
 #include <memory>

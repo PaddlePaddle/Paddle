@@ -122,10 +122,9 @@ class MultiTrainer : public TrainerBase {
 
   void MergeDenseParam();
 #endif
- protected:
-  void MergeWorkerVars(void);
 
  protected:
+  void MergeWorkerVars(void);
   int thread_num_;
   std::vector<DataFeed*> readers_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;

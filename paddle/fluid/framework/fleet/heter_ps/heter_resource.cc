@@ -203,8 +203,8 @@ bool GpuRDMAChecker::check_device_status(const int &device_count,
       }
       continue;
     }
-    if ((strncmp(card_name.c_str(), "mlx5", 4) != 0) \
-            && (strncmp(card_name.c_str(), "NIC", 3) != 0)) {
+    if ((strncmp(card_name.c_str(), "mlx5", 4) != 0) &&
+        (strncmp(card_name.c_str(), "NIC", 3) != 0)) {
       continue;
     }
     for (int j = 0; j < device_count; ++j) {
