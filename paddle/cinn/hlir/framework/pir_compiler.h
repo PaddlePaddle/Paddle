@@ -33,15 +33,13 @@ class PirCompiler final {
         target_(target),
         op_lowerer_(CreateOpLowerer<pir::GroupPtr>(target_)) {}
 
-  std::vector<pir::CUDAJITInfo> Build(
-      const std::vector<pir::GroupPtr>& groups);
+  std::vector<pir::CUDAJITInfo> Build(const std::vector<pir::GroupPtr>& groups);
 
  private:
   CINN_DISALLOW_COPY_AND_ASSIGN(PirCompiler);
 
   void ProcessFunction(const std::vector<ir::LoweredFunc>& lowered_funcs);
 
-  
   Target target_;
   OpLowerer<pir::GroupPtr> op_lowerer_;
   ir::Module::Builder m_builder_;
@@ -57,8 +55,7 @@ class PirCompilerManager {
     return instance;
   }
 
-  static std::shared_ptr<PirCompiler> Create(
-      const Target& target) {
+  static std::shared_ptr<PirCompiler> Create(const Target& target) {
     std::shared_ptr<PirCompiler> compiler =
         std::make_shared<PirCompiler>(target);
     PirCompilerManager::Instance().insert(compiler);
