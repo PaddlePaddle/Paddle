@@ -62,6 +62,52 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   }
 }
 
+bool valid_type(const DataType& dtype) {
+  switch (dtype) {
+    case phi::DataType::INT8:
+    case phi::DataType::INT16:
+    case phi::DataType::INT32:
+    case phi::DataType::INT64:
+    case phi::DataType::UINT8:
+    case phi::DataType::UINT16:
+    case phi::DataType::UINT32:
+    case phi::DataType::UINT64:
+    case phi::DataType::FLOAT16:
+    case phi::DataType::FLOAT32:
+    case phi::DataType::FLOAT64:
+      return true;
+    default:
+      return false;
+  }
+}
+
+template <typename T>
+Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
+  auto org_dtype = x.dtype();
+  auto x_cast = x;
+  bool need_cast = org_dtype == phi::DataType::FLOAT16 ||
+                   org_dtype == phi::DataType::BFLOAT16;
+  if (need_cast) {
+    x_cast = cast<T>(x, phi::DataType::FLOAT32);
+  }
+
+  Tensor y_full;
+  if (valid_type(y.dtype())) {
+    y_full = full<T>(phi::vectorize(x_cast.dims()), y, x_cast.dtype());
+  } else {
+    y_full = full<T>(phi::vectorize(x_cast.dims()), 0, x_cast.dtype());
+    // PADDLE_THROW(phi::errors::InvalidArgument("Unsupported data type: %s",
+    // phi::DataTypeToString(y.dtype())));
+  }
+
+  auto ans = elementwise_pow<T>(x_cast, y_full);
+  if (need_cast) {
+    return cast<T>(ans, org_dtype);
+  } else {
+    return ans;
+  }
+}
+
 template <typename T>
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     const Tensor& x,
