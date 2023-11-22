@@ -2126,9 +2126,23 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
                y_type);
     dialect::DenseTensorType y_tensor_type =
         y_type.dyn_cast<dialect::DenseTensorType>();
-    std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
 
     pir::OpResult value = operation->result(idx_in_op);
+
+    // if y_grad' shape is same with y, we don't need a reshape
+    pir::Type y_grad_type = value.type();
+    IR_ENFORCE(y_grad_type.isa<dialect::DenseTensorType>(),
+               "Expected op[%s]'s input %s is DenseTensor but got %s",
+               op_desc.Type(),
+               y_grad_var_name,
+               y_grad_type);
+    dialect::DenseTensorType y_grad_tensor_type =
+        y_grad_type.dyn_cast<dialect::DenseTensorType>();
+    if (y_grad_tensor_type.dims() == y_tensor_type.dims()) {
+      return;
+    }
+
+    std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
     pir::Builder builder(ctx, operation->GetParent());
     auto reshape_op = builder.Build<dialect::ReshapeOp>(value, y_shape);
     param_map->PushValue(y_grad_var_name,
