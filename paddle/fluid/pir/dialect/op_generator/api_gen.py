@@ -71,6 +71,7 @@ API_DECLARE_TEMPLATE = """
 
 API_IMPL_TEMPLATE = """
 {ret_type} {api_name}({args}){{
+    {check_data_type}
     {handle_optional_inputs}
     {in_combine}
     {compute_op}
@@ -80,6 +81,9 @@ API_IMPL_TEMPLATE = """
 }}
 
 """
+
+CHECK_DATA_TYPE_TEMPLATE = """
+    {function}({input}, "{input}", "{op_name}");"""
 
 OPTIONAL_VECTOR_VALUE_INPUT_TEMPLATE = """
     paddle::optional<pir::Value> optional_{name};
@@ -517,6 +521,35 @@ class CodeGen:
         elif len(ret_list) == 0:
             return 'return;'
 
+    def _gen_check_data_type(self, op_info, op_name):
+        name_list = op_info.input_name_list
+        type_list = op_info.input_type_list
+        if (
+            op_name.endswith(('_grad', '_grad_', '_grad_dense', '_grad_sparse'))
+            or len(name_list) == 0
+        ):
+            return ''
+        try:
+            data_type_candidates = op_info.kernel_map['data_type']['candidates']
+        except Exception:
+            data_type_candidates = None
+        ret = ''
+        if data_type_candidates is not None:
+            for name in data_type_candidates:
+                if name not in name_list:
+                    continue
+                index = name_list.index(name)
+                type = type_list[index]
+                if VECTOR_TYPE in type:
+                    function_name = 'CheckVectorOfValueDataType'
+
+                else:
+                    function_name = 'CheckValueDataType'
+                ret += CHECK_DATA_TYPE_TEMPLATE.format(
+                    function=function_name, input=name, op_name=op_name
+                )
+        return ret
+
     def _gen_one_impl(
         self, op_info, op_name, is_mutable_attr, is_vector_mutable_attr
     ):
@@ -535,6 +568,7 @@ class CodeGen:
         )
 
         ret = API_IMPL_TEMPLATE.format(
+            check_data_type=self._gen_check_data_type(op_info, op_name),
             ret_type=ret_type,
             api_name=op_name,
             args=self._gen_api_args(

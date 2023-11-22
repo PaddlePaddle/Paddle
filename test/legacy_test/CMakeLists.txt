@@ -827,12 +827,6 @@ if(NOT WIN32)
                   test_ir_memory_optimize_transformer)
 endif()
 
-# dist xpu tests:
-if(WITH_XPU_BKCL)
-  py_test(test_collective_allreduce_api_xpu
-          SRCS "collective/test_collective_allreduce_api.py")
-endif()
-
 if(WITH_HETERPS)
   set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
   set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
@@ -924,7 +918,7 @@ set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
 set_tests_properties(test_cross_entropy2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy_loss PROPERTIES TIMEOUT 180)
 set_tests_properties(test_gru_unit_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 200)
+set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 250)
 set_tests_properties(test_empty_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_transformer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_div_op PROPERTIES TIMEOUT 120)

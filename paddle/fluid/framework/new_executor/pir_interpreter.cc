@@ -284,6 +284,11 @@ void PirInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
           << ") to InterpreterCore(" << this << ")";
 }
 
+std::tuple<double, double> PirInterpreter::InterpreterRunTime() {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "PirInterpreter::InterpreterRunTime is not implemented."));
+}
+
 const interpreter::PirDependencyBuilder&
 PirInterpreter::GetPirDependencyBuilder() const {
   return ir_dependency_builder_;
@@ -1188,7 +1193,8 @@ paddle::framework::FetchList PirInterpreter::Run(
 }
 
 FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
-                              bool need_fetch) {
+                              bool need_fetch,
+                              bool enable_job_schedule_profiler) {
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -1529,7 +1535,8 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     const std::vector<std::string> op_callstack_attr =
         interpreter::GetInstructionCallStack(op->name(), op->attributes());
     framework::InsertCallStackInfo(op->name(), op_callstack_attr, &ex);
-    LOG(WARNING) << instr_node->Name() << " raises an EnforceNotMet exception "
+    LOG(WARNING) << " OP id:" << instr_node->Id() << " " << instr_node->Name()
+                 << " raises an EnforceNotMet exception "
                  << platform::demangle(typeid(ex).name()) << ", " << ex.what();
     exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
   } catch (platform::EOFException&) {
