@@ -37,9 +37,8 @@ Operation PlaceholderOp::Make(const std::string &name,
   auto n = make_shared<PlaceholderOp>();
   n->name = name;
   n->sym_shape = sym_shape;
-  n->shape.reserve(sym_shape.size());
   for (int i = 0; i < sym_shape.size(); i++) {
-    n->shape[i] = sym_shape[i]->dim_expr;
+    n->shape.emplace_back(sym_shape[i]->dim_expr);
   }
   n->set_type(dtype);
   return Operation(n);

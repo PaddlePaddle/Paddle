@@ -217,8 +217,8 @@ void OpLowererImpl::LowerOpsForMapExpr(
     VLOG(4) << "out_types.size(): " << out_types.size();
     NodeAttr node_attrs = details::CollectAttrs(*op);
 
-    std::vector<ir::Tensor> op_func_arg_tensors =
-        details::CollectInputTensor(op, group_func_arg_tensors, tensor_map);
+    std::vector<ir::Tensor> op_func_arg_tensors = details::CollectInputTensor(
+        group, op, group_func_arg_tensors, tensor_map);
     VLOG(4) << "input size:" << op_func_arg_tensors.size();
 
     std::string cinn_op_name = CompatibleInfo::OpName(*op);
