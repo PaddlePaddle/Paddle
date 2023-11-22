@@ -1468,7 +1468,7 @@ def cross(x, y, axis=9, name=None):
              [0., 0., 0.],
              [0., 0., 0.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         axis = K_DEFAULT_DIM if axis is None else axis
         return _C_ops.cross(x, y, axis)
     else:
@@ -1596,8 +1596,8 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
              [1, 1, 1, 1]])
 
     """
-    if in_dynamic_mode():
-        if isinstance(tol, Variable):
+    if in_dynamic_or_pir_mode():
+        if isinstance(tol, (Variable, paddle.pir.OpResult)):
             if tol.dtype != x.dtype:
                 tol_tensor = cast(tol, x.dtype)
             else:
@@ -1681,7 +1681,7 @@ def bmm(x, y, name=None):
               [60., 60.]]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bmm(x, y)
     else:
         x_shape = x.shape
@@ -1739,7 +1739,7 @@ def histogram(input, bins=100, min=0, max=0, name=None):
             Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [0, 2, 1, 0])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.histogram(input, bins, min, max)
     else:
         helper = LayerHelper('histogram', **locals())
@@ -1851,7 +1851,7 @@ def mv(x, vec, name=None):
             Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [14., 10.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.mv(x, vec)
     else:
 
@@ -2289,7 +2289,7 @@ def matrix_power(x, n, name=None):
              [-7.66666667 ,  8.         , -1.83333333 ],
              [ 1.80555556 , -1.91666667 ,  0.44444444 ]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.matrix_power(x, n)
     else:
         check_variable_and_dtype(
@@ -2349,7 +2349,7 @@ def qr(x, mode="reduced", name=None):
 
             >>> # one can verify : X = Q * R ;
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         q, r = _C_ops.qr(x, mode)
         if mode == "r":
             return r
@@ -2452,7 +2452,7 @@ def lu(x, pivot=True, get_infos=False, name=None):
             >>> # one can verify : X = P @ L @ U ;
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         lu, p, info = _C_ops.lu(x, pivot)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu')
@@ -2555,7 +2555,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
         raise ValueError(
             f"The shape of Pivots should be (*, K), but received ndim is [{y.ndim} < 1]"
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         P, L, U = _C_ops.lu_unpack(x, y, unpack_ludata, unpack_pivots)
         return P, L, U
     else:
@@ -2763,7 +2763,7 @@ def multi_dot(x, name=None):
             [10, 7]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multi_dot(x)
     else:
         check_type(x, 'x', (list, tuple), 'multi_dot')
@@ -3455,7 +3455,16 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
     else:
         raise RuntimeError("Only support lstsq api for CPU or CUDA device.")
 
-    if not (x.dtype == y.dtype and x.dtype in (paddle.float32, paddle.float64)):
+    if not (
+        x.dtype == y.dtype
+        and x.dtype
+        in (
+            paddle.float32,
+            paddle.float64,
+            paddle.base.core.DataType.FLOAT32,
+            paddle.base.core.DataType.FLOAT64,
+        )
+    ):
         raise ValueError(
             "Only support x and y have the same dtype such as 'float32' and 'float64'."
         )
@@ -3476,17 +3485,29 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         )
 
     if rcond is None:
-        if x.dtype == paddle.float32:
+        if (
+            x.dtype == paddle.float32
+            or x.dtype == paddle.base.core.DataType.FLOAT32
+        ):
             rcond = 1e-7 * max(x.shape[-2], x.shape[-1])
-        elif x.dtype == paddle.float64:
+        elif (
+            x.dtype == paddle.float64
+            or x.dtype == paddle.base.core.DataType.FLOAT64
+        ):
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         solution, residuals, rank, singular_values = _C_ops.lstsq(
             x, y, rcond, driver
         )
         if driver == "gels":
-            rank = paddle.empty(shape=[0], dtype=paddle.int32)
+            if in_dynamic_mode():
+                rank = paddle.empty(shape=[0], dtype=paddle.int32)
+
+            else:
+                rank = paddle.empty(
+                    shape=[0], dtype=paddle.base.core.DataType.INT32
+                )
             singular_values = paddle.empty(shape=[0], dtype=x.dtype)
         elif driver == "gelsy":
             singular_values = paddle.empty(shape=[0], dtype=x.dtype)

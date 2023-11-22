@@ -127,6 +127,8 @@ ProgramInfo BuildSoftmax() {
                                                 broadcast_2.owner(),
                                                 divide.owner()})));
 
+  groups[0]->op_pattern_kind = cinn::hlir::framework::kReduction;
+
   return {program, groups};
 }
 

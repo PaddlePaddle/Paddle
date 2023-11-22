@@ -22,6 +22,7 @@
 #include <iostream>
 #include <new>
 #include <string>
+#include "glog/logging.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "dnnl.hpp"  //NOLINT

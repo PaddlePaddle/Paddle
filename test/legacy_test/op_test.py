@@ -1971,6 +1971,8 @@ class OpTest(unittest.TestCase):
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
+        if not self.is_mkldnn_op():
+            set_flags({"FLAGS_use_mkldnn": False})
 
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2916,6 +2918,9 @@ class OpTest(unittest.TestCase):
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
+
+        if not self.is_mkldnn_op():
+            set_flags({"FLAGS_use_mkldnn": False})
 
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
