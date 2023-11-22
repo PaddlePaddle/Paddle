@@ -1027,7 +1027,10 @@ struct DataOpTranscriber : public FeedOpTranscriber {
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
-    int allocate_type = paddle::get<int>(op_desc.GetAttr("place"));
+    int allocate_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place"));
+    int var_dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
+    auto phi_dtype = phi::TransToPhiDataType(var_dtype);
+
     auto& attribute_translator = AttributeTranslator::instance();
     pir::Attribute shape = attribute_translator(
         "paddle::dialect::IntArrayAttribute", op_desc.GetAttr("shape"));
@@ -1036,8 +1039,7 @@ struct DataOpTranscriber : public FeedOpTranscriber {
          pir::StrAttribute::get(ctx,
                                 op_desc.GetAttrIfExists<std::string>("name"))},
         {"shape", shape},
-        {"dtype",
-         paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::FLOAT32)},
+        {"dtype", paddle::dialect::DataTypeAttribute::get(ctx, phi_dtype)},
         {"place",
          paddle::dialect::PlaceAttribute::get(
              ctx, phi::Place(static_cast<phi::AllocationType>(allocate_type)))},
@@ -1604,8 +1606,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
                << "[" << op_desc.Type() << "]" << grad_var_name << " "
                << idx_in_op << " " << idx_in_vec;
 
-      VarDesc* var_desc =
-          op_desc.Block()->FindVarRecursive(var_name.substr(0, 1));
+      VarDesc* var_desc = op_desc.Block()->FindVarRecursive(
+          op_desc.Input(var_name.substr(0, 1))[0]);
       IR_ENFORCE(var_desc != nullptr,
                  "[op:%s] Input %s should not be null",
                  op_desc.Type(),
@@ -1638,10 +1640,6 @@ struct MulGradOpTranscriber : public OpTranscriber {
 
     if (x_grad_output.size()) {
       gradReshape("X@GRAD");
-    }
-
-    if (y_grad_output.size() < 1) {
-      return;
     }
 
     if (y_grad_output.size()) {
@@ -2214,12 +2212,12 @@ struct SetValueWithTensorOpTranscriber : public SetValueOpTranscriber {
 struct SetValueGradOpTranscriber : public SetValueWithTensorOpTranscriber {
   pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
                             const OpDesc& op_desc) override {
-    std::string target_op_name = dialect::SetValueGradOp::name();
+    std::string target_op_name = dialect::SetValueWithTensorGradOp::name();
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       IR_THROW(
           "Op set_value_grad should have corresponding OpInfo "
-          "pd_op.set_value_grad");
+          "pd_op.set_value_with_tensor_grad");
     }
 
     return op_info;
@@ -2322,6 +2320,45 @@ struct ShareBufferOpTranscriber : public OpTranscriber {
   }
 };
 
+struct RandIntOpTranscriber : public OpTranscriber {
+  std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
+      pir::IrContext* ctx,
+      const OpDesc& op_desc,
+      const OpOutputInfoList& output_infos) {
+    OpOutputMapping arg_to_idx;
+    OpOutputTypeList op_output_types = {};
+
+    auto& type_translator = TypeTranslator::instance();
+
+    const BlockDesc* block = op_desc.Block();
+    std::string legacy_output_name = "Out";
+    const auto& legacy_output_vars = op_desc.Output(legacy_output_name);
+    auto& var_name = legacy_output_vars[0];
+    VarDesc* var = block->FindVarRecursive(var_name);
+    IR_ENFORCE(var != nullptr,
+               "[op:%s] Output %s should not be null",
+               op_desc.Type(),
+               var_name);
+    int dtype_attr_val = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
+
+    paddle::framework::proto::VarType::Type var_type =
+        static_cast<paddle::framework::proto::VarType::Type>(dtype_attr_val);
+
+    pir::Type dtype = type_translator[var_type](ctx, *var);
+    paddle::dialect::DenseTensorTypeStorage::Dim dim =
+        phi::make_ddim(var->GetShape());
+    paddle::dialect::DenseTensorTypeStorage::DataLayout layout =
+        paddle::dialect::DenseTensorTypeStorage::DataLayout::UNDEFINED;
+    paddle::dialect::DenseTensorTypeStorage::LoD lod = {};
+    size_t offset = 0;
+    pir::Type translated_var_type = paddle::dialect::DenseTensorType::get(
+        ctx, dtype, dim, layout, lod, offset);
+    arg_to_idx[var_name] = {0, 0};
+    op_output_types.push_back(translated_var_type);
+    return {op_output_types, arg_to_idx};
+  }
+};
+
 struct RepeatInterLeaveOpTranscriber : public OpTranscriber {
   pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
                             const OpDesc& op_desc) override {
@@ -2395,6 +2432,36 @@ struct RepeatInterLeaveGradOpTranscriber : public OpTranscriber {
     return op_inputs;
   }
 };
+
+struct FusedElemwiseAddActivationOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "scale") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.0);
+    } else if (info.name == "axis") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -1);
+    } else if (info.name == "save_intermediate_out") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    }
+  }
+};
+
+struct FusedElemwiseAddActivationGradOpTranscriber
+    : public FusedElemwiseAddActivationOpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    const auto inter_out_grad = op_desc.Output("IntermediateOut@GRAD");
+    if (inter_out_grad.size() > 0) {
+      IR_THROW(
+          "pd_op.fused_elemwise_add_activation_grad doesn't have "
+          "Intermediate_out_grad output");
+    }
+
+    return OpTranscriber::LoopkUpOpInfo(ctx, op_desc);
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -2410,11 +2477,16 @@ OpTranslator::OpTranslator() {
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["fill_constant"] = FillConstantTranscriber();
   special_handlers["fused_feedforward"] = FusedFeedForwardOpTranscriber();
+  special_handlers["fused_elemwise_add_activation"] =
+      FusedElemwiseAddActivationOpTranscriber();
+  special_handlers["fused_elemwise_add_activation_grad"] =
+      FusedElemwiseAddActivationGradOpTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
   special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();
   special_handlers["one_hot_v2"] = OneHotTranscriber();
+  special_handlers["randint"] = RandIntOpTranscriber();
   special_handlers["reduce_all"] = ReduceOpTranscriber();
   special_handlers["reduce_any"] = ReduceOpTranscriber();
   special_handlers["repeat_interleave"] = RepeatInterLeaveOpTranscriber();

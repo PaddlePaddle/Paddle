@@ -36,6 +36,7 @@ if(APPLE)
     cryptopp
     protobuf
     phi
+    pir
     cblas)
 endif()
 

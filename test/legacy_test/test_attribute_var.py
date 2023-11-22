@@ -44,6 +44,7 @@ class UnittestBase(unittest.TestCase):
         config = paddle_infer.Config(
             self.save_path + '.pdmodel', self.save_path + '.pdiparams'
         )
+        config.disable_mkldnn()
         predictor = paddle_infer.create_predictor(config)
         input_names = predictor.get_input_names()
         for i, shape in enumerate(self.shapes):

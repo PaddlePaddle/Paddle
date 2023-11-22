@@ -162,7 +162,6 @@ class TestTrtFp32MixPrecision(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         config = self.create_inference_config()
         InternalUtils.disable_tensorrt_half_ops(
             config,

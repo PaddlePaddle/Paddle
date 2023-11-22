@@ -2012,11 +2012,13 @@ All parameter, weight, gradient are variables in Paddle.
                     const interpreter::Plan &,
                     Scope *>())
       .def("run",
-           [](StandaloneExecutor &self, std::vector<std::string> feed_names) {
+           [](StandaloneExecutor &self,
+              std::vector<std::string> feed_names,
+              bool enable_job_schedule_profiler = false) {
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
-               ret = self.Run(feed_names);
+               ret = self.Run(feed_names, enable_job_schedule_profiler);
              }
              return py::cast(std::move(ret));
            });
@@ -2033,7 +2035,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def(
           py::init<
               const std::vector<std::shared_ptr<framework::interpreter::Job>> &,
-              const std::unordered_map<std::string, framework::ProgramDesc *>
+              const std::unordered_map<std::string,
+                                       std::shared_ptr<framework::ProgramDesc>>
                   &>(),
           py::arg("job_list"),
           py::arg("type_to_program"))
@@ -2045,7 +2048,10 @@ All parameter, weight, gradient are variables in Paddle.
           py::arg("job_list"),
           py::arg("type_to_ir_program"))
       .def("job_list", &framework::interpreter::Plan::JobList)
+      .def("job_types", &framework::interpreter::Plan::JobTypes)
       .def("micro_batch_num", &framework::interpreter::Plan::MicroBatchNum)
+      .def("set_ir_program", &framework::interpreter::Plan::SetIrProgram)
+      .def("ir_program", &framework::interpreter::Plan::IrProgram)
       .def("program", &framework::interpreter::Plan::Program);
 
   m.def("init_gflags", framework::InitGflags);
@@ -2975,7 +2981,7 @@ All parameter, weight, gradient are variables in Paddle.
   GetAllWorkerInfos(&m);
 #endif
 
-  BindPIR(&m);
+  BindPir(&m);
   BindVjp(&m);
   BindDecomp(&m);
 }

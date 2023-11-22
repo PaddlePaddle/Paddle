@@ -112,6 +112,9 @@ from .logic import allclose  # noqa: F401
 from .logic import isclose  # noqa: F401
 from .logic import equal_all  # noqa: F401
 from .logic import is_tensor  # noqa: F401
+from .manipulation import atleast_1d  # noqa: F401
+from .manipulation import atleast_2d  # noqa: F401
+from .manipulation import atleast_3d  # noqa: F401
 from .manipulation import cast  # noqa: F401
 from .manipulation import cast_  # noqa: F401
 from .manipulation import concat  # noqa: F401
@@ -170,6 +173,7 @@ from .manipulation import masked_fill  # noqa: F401
 from .manipulation import masked_fill_  # noqa: F401
 from .manipulation import index_fill  # noqa: F401
 from .manipulation import index_fill_  # noqa: F401
+from .manipulation import diagonal_scatter  # noqa: F401
 from .math import abs  # noqa: F401
 from .math import abs_  # noqa: F401
 from .math import acos  # noqa: F401
@@ -224,6 +228,8 @@ from .math import sqrt_  # noqa: F401
 from .math import square  # noqa: F401
 from .math import stanh  # noqa: F401
 from .math import sum  # noqa: F401
+from .math import multigammaln  # noqa: F401
+from .math import multigammaln_  # noqa: F401
 from .math import nan_to_num  # noqa: F401
 from .math import nan_to_num_  # noqa: F401
 from .math import nansum  # noqa: F401
@@ -365,6 +371,7 @@ from .search import index_sample  # noqa: F401
 from .search import masked_select  # noqa: F401
 from .search import kthvalue  # noqa: F401
 from .search import mode  # noqa: F401
+from .search import top_p_sampling
 
 from .stat import mean  # noqa: F401
 from .stat import std  # noqa: F401
@@ -469,6 +476,8 @@ tensor_method_func = [
     'square',
     'stanh',
     'sum',
+    'multigammaln',
+    'multigammaln_',
     'nan_to_num',
     'nan_to_num_',
     'hypot',
@@ -598,6 +607,7 @@ tensor_method_func = [
     'argsort',
     'masked_select',
     'topk',
+    'top_p_sampling',
     'where',
     'where_',
     'index_select',
@@ -729,6 +739,10 @@ tensor_method_func = [
     'normal_',
     'index_fill',
     'index_fill_',
+    'atleast_1d',
+    'atleast_2d',
+    'atleast_3d',
+    'diagonal_scatter',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

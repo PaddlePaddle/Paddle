@@ -93,9 +93,9 @@ void InstanceNormGradKernel(const Context& dev_ctx,
   }
 
   auto scale_e =
-      scale_ptr
-          ? EigenVector<T>::Flatten(*scale_ptr)
-          : EigenVector<T>::Flatten(const_cast<const DenseTensor&>(scale_data));
+      scale_ptr ? EigenVector<T>::Flatten(*scale_ptr)
+                : EigenVector<T>::Flatten(
+                      const_cast<const DenseTensor&>(scale_data));  // NOLINT
   auto mean_e = EigenVector<T>::Flatten(saved_mean);
   auto inv_var_e = EigenVector<T>::Flatten(saved_variance);
   auto dy_e = EigenVector<T>::Flatten(d_y);

@@ -103,6 +103,7 @@ pass_library(delete_quant_dequant_filter_op_pass inference)
 pass_library(trt_delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_op_device_pass inference)
 pass_library(delete_weight_dequant_linear_op_pass inference)
+pass_library(quant_linear_fuse_pass inference)
 pass_library(delete_quant_dequant_linear_op_pass inference)
 pass_library(delete_assign_op_pass inference)
 pass_library(delete_dropout_op_pass inference)
@@ -516,14 +517,14 @@ if(WITH_MKLDNN)
     test_depthwise_conv_mkldnn_pass
     SRCS mkldnn/depthwise_conv_mkldnn_pass_tester.cc
     DEPS depthwise_conv_mkldnn_pass)
-  cc_test_old(
-    test_int8_scale_calculation_mkldnn_pass SRCS
-    mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc DEPS
-    int8_scale_calculation_mkldnn_pass pass_test_util)
-  cc_test_old(
-    test_params_quantization_mkldnn_pass SRCS
-    mkldnn/params_quantization_mkldnn_pass_tester.cc DEPS
-    params_quantization_mkldnn_pass)
+  cc_test(
+    test_int8_scale_calculation_mkldnn_pass
+    SRCS mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc
+    DEPS int8_scale_calculation_mkldnn_pass pass_test_util)
+  cc_test(
+    test_params_quantization_mkldnn_pass
+    SRCS mkldnn/params_quantization_mkldnn_pass_tester.cc
+    DEPS params_quantization_mkldnn_pass)
   set(TEST_CONV_BN_PASS_DEPS
       conv_bn_fuse_pass
       graph_to_program_pass

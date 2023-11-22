@@ -84,7 +84,7 @@ TEST(CinnJitInstruction, Run) {
   auto target = cinn::common::DefaultNVGPUTarget();
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
 
-  std::vector<cinn::hlir::framework::PIRCompiler*> compiler_list;
+  std::vector<cinn::hlir::framework::PirCompiler*> compiler_list;
 
   std::set<std::string> checking_cinn_ops = {"pd_op.sin", "pd_op.cos"};
 
@@ -99,11 +99,11 @@ TEST(CinnJitInstruction, Run) {
   std::unordered_map<pir::Value, pir::Value> value_map;
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
-    if (checking_cinn_ops.count((*it)->name())) {
+    if (checking_cinn_ops.count(it->name())) {
       auto ir_compiler =
-          new cinn::hlir::framework::PIRCompiler(*program, target, scope);
+          new cinn::hlir::framework::PirCompiler(*program, target, scope);
 
-      std::vector<::pir::Operation*> ops = {*it};
+      std::vector<::pir::Operation*> ops = {it};
       auto group = std::make_shared<cinn::hlir::framework::pir::Group>(ops);
       auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
       compiler_list.push_back(ir_compiler);
@@ -112,35 +112,35 @@ TEST(CinnJitInstruction, Run) {
            cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
       };
 
-      auto out_type = (*it)->result(0).type();
+      auto out_type = it->result(0).type();
 
       std::vector<pir::Value> vec_ins;
 
-      for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-        vec_ins.push_back(value_map.at((*it)->operand_source(i)));
+      for (size_t i = 0; i < it->num_operands(); ++i) {
+        vec_ins.push_back(value_map.at(it->operand_source(i)));
       }
 
       ::pir::Operation* cinn_op =
           ::pir::Operation::Create(vec_ins, op_attrs, {out_type}, op_info);
 
-      value_map[(*it)->result(0)] = cinn_op->result(0);
+      value_map[it->result(0)] = cinn_op->result(0);
 
       ir_program->block()->push_back(cinn_op);
     } else {
       std::vector<pir::Value> vec_ins;
 
-      for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-        vec_ins.push_back(value_map.at((*it)->operand_source(i)));
+      for (size_t i = 0; i < it->num_operands(); ++i) {
+        vec_ins.push_back(value_map.at(it->operand_source(i)));
       }
 
-      auto type1 = (*it)->result(0).type();
-      ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo((*it)->name());
-      ::pir::Operation* op = ::pir::Operation::Create(
-          vec_ins, (*it)->attributes(), {type1}, info1);
+      auto type1 = it->result(0).type();
+      ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo(it->name());
+      ::pir::Operation* op =
+          ::pir::Operation::Create(vec_ins, it->attributes(), {type1}, info1);
 
       ir_program->block()->push_back(op);
 
-      value_map[(*it)->result(0)] = op->result(0);
+      value_map[it->result(0)] = op->result(0);
     }
   }
 

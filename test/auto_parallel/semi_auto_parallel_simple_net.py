@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import random
 
 import numpy as np
 
@@ -80,9 +81,6 @@ class TestSimpleNetForSemiAutoParallel:
         )
 
         paddle.set_device(self._backend)
-
-        self.init_input_data()
-
         self.init_single_card_net_result()
 
     def shard_fn(self, layer_name, layer, process_mesh):
@@ -124,56 +122,58 @@ class TestSimpleNetForSemiAutoParallel:
             )
             layer.bias = dist.shard_tensor(layer.bias, dist_attr=bias_dist_attr)
 
-    def init_input_data(self):
-        paddle.seed(self._seed)
-        np.random.seed(self._seed)
+    def set_random_seed(self, seed):
+        random.seed(seed)
+        np.random.seed(seed)
+        paddle.seed(seed)
 
-        self.image = np.random.random([BATCH_SIZE, IMAGE_SIZE]).astype(
-            'float32'
-        )
-        self.label = np.random.random([BATCH_SIZE, CLASS_NUM]).astype('float32')
+    def init_input_data(self):
+        image = np.random.random([BATCH_SIZE, IMAGE_SIZE]).astype('float32')
+        label = np.random.random([BATCH_SIZE, CLASS_NUM]).astype('float32')
+        return paddle.to_tensor(image), paddle.to_tensor(label)
 
     def run_dynamic(self, layer, shard_input=False, is_pp=False):
-        paddle.seed(self._seed)
-        np.random.seed(self._seed)
-
         # create loss
         loss_fn = nn.MSELoss()
-
         # run forward and backward
-        image = paddle.to_tensor(self.image)
         input_mesh = self._pp_mesh0 if is_pp else self._mesh
-        if shard_input:
-            image = dist.shard_tensor(
-                image,
-                dist_attr=dist.DistAttr(
-                    mesh=input_mesh, sharding_specs=['x', None]
-                ),
-            )
-
-        out = layer(image)
-        label = paddle.to_tensor(self.label)
-
-        loss = loss_fn(out, label)
-
-        loss.backward()
         opt = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=layer.parameters()
         )
-        opt.step()
+        for _ in range(5):
+            image, label = self.init_input_data()
+            if shard_input:
+                image = dist.shard_tensor(
+                    image,
+                    dist_attr=dist.DistAttr(
+                        mesh=input_mesh, sharding_specs=['x', None]
+                    ),
+                )
+
+            out = layer(image)
+            loss = loss_fn(out, label)
+            loss.backward()
+
+            opt.step()
+            opt.clear_grad()
         return loss, layer.parameters()
 
     def init_single_card_net_result(self):
+        self.set_random_seed(self._seed)
         self.base_loss, self.base_parameters = self.run_dynamic(
             DemoNet("demo_weight")
         )
 
-    def check_tensor_eq(self, a, b):
-        np1 = a.numpy()
-        np2 = b.numpy()
-        np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
+    def check_tensor_eq(self, a, b, rtol=1e-05, atol=0, verbose=True):
+        np1 = a.astype("float32").numpy()
+        np2 = b.astype("float32").numpy()
+        np.testing.assert_allclose(
+            np1, np2, rtol=rtol, atol=atol, verbose=verbose
+        )
 
     def test_dp_demo_net(self):
+        self.set_random_seed(self._seed)
+
         self.dp_loss, self.dp_parameters = self.run_dynamic(
             DemoNet("dp_demo_weight"),
             shard_input=True,
@@ -184,6 +184,8 @@ class TestSimpleNetForSemiAutoParallel:
             self.check_tensor_eq(param.grad, param_base.grad)
 
     def test_mp_demo_net(self):
+        self.set_random_seed(self._seed)
+
         mp_layer = dist.shard_layer(
             DemoNet("mp_demo_weight"), self._mesh, self.shard_fn
         )
@@ -196,6 +198,8 @@ class TestSimpleNetForSemiAutoParallel:
             self.check_tensor_eq(param.grad, param_base.grad)
 
     def test_pp_demo_net(self):
+        self.set_random_seed(self._seed)
+
         # Send/Recv operators doens't support CPU now.
         if self._backend != "gpu":
             return
