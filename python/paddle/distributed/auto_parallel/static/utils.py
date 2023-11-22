@@ -2399,9 +2399,7 @@ def check_if_op_supports_runtime_profiling(op):
     return not is_comm_op(op)
 
 
-def _measure_real_op_cost_wrt_program_and_place_multipass(
-    program, place, run_iters, verbose
-):
+def _measure_program_real_op_cost_multipass(program, place, run_iters, verbose):
     '''
     Run op profiling for a single pass. Internal function, do not call this directly.
     '''
@@ -2578,11 +2576,10 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
     return prof_results
 
 
-def measure_real_op_cost_wrt_program_and_place(
+def measure_program_real_op_cost(
     program: paddle.static.Program,
-    place,
     run_iters: int = 8,
-    profile_strategy: str = 'stable_average',
+    place=paddle.base.framework._current_expected_place(),
     verbose_level: int = 0,
 ):
     '''
@@ -2594,17 +2591,11 @@ def measure_real_op_cost_wrt_program_and_place(
     -----------
     @param program: paddle.static.Program
         The program object waiting to be executed.
-    @param place: paddle.CPUPlace | paddle.CUDAPlace | ...
-        Where the program is going to be executed.
     @param run_iters: int
         Specify how many iterations will be run during profiling. Larger value tends
         to give more accurate profiling result but requires more time.
-    @param profile_strategy: str
-        Specify strategy used during profiling. Can be one of the following: 'average',
-        'last', 'stable_average'.
-        'average': simply average the results from multiple runs,
-        'last': only take the last run as its profiling result,
-        'stable_average': first remove the outliers then average the remained result.
+    @param place: paddle.CPUPlace | paddle.CUDAPlace | ...
+        Where the program is going to be executed.
     @param verbose_level: int
         Set up verbose level during profiling. Can be set to one of the following:
         0 = turn off, don't output anything,
@@ -2628,18 +2619,18 @@ def measure_real_op_cost_wrt_program_and_place(
     Example
     -----------
     * Profiling a simple program from scratch:
-    >>> from paddle.distributed.auto_parallel.static.utils import measure_real_op_cost_wrt_program_and_place
+    >>> from paddle.distributed.auto_parallel.static.utils import measure_program_real_op_cost
     >>> program = ... # build your own program object here.
-    >>> measure_real_op_cost_wrt_program_and_place(
-    >>>     program, paddle.CUDAPlace(0), verbose_level=1
+    >>> measure_program_real_op_cost(
+    >>>     program, verbose_level=1
     >>> )
     * Profiling a program which is already embedded into an Executor or some other class instance:
     >>> import paddle
-    >>> from paddle.distributed.auto_parallel.static.utils import measure_real_op_cost_wrt_program_and_place
+    >>> from paddle.distributed.auto_parallel.static.utils import measure_program_real_op_cost
     >>> place: str = paddle.device.get_device() # here we assume place = "cuda:x"
     >>> place = paddle.CUDAPlace(int(place.split(':')[1]))
     >>> # here "program" is an inner object that has alredy been built before
-    >>> measure_real_op_cost_wrt_program_and_place(program, place, verbose_level=1)
+    >>> measure_program_real_op_cost(program, verbose_level=1)
     '''
 
     # parameter checks
@@ -2654,41 +2645,27 @@ def measure_real_op_cost_wrt_program_and_place(
     assert any(
         isinstance(place, supported_place)
         for supported_place in supported_places
-    ), 'Invalid place given ({}). "place" should be one of the following: {}.'.format(
+    ), 'Current place ({}) does not support runtime profiling. "place" should be one of the following: {}.'.format(
         str(place), str(supported_places)
     )
     assert isinstance(run_iters, int) and run_iters >= 1, (
         'Invalid parameter run_iters set. run_iters '
         'should be an integer >= 1.'
     )
-    supported_strategies = ['average', 'last', 'stable_average']
-    assert profile_strategy in supported_strategies, (
-        'Invalid profile_strategy given, should be one '
-        'of the following: %s' % str(supported_strategies)
-    )
     if run_iters == 1:
         warnings.warn(
-            'run_iters was set to 1, profile_strategy will not work and profiling results '
-            'might be inaccurate.'
+            'run_iters was set to 1, profiling results might be inaccurate due to outilers.'
         )
 
     # run profiling multiple times and record op run time of each run
-    prof_results = _measure_real_op_cost_wrt_program_and_place_multipass(
+    prof_results = _measure_program_real_op_cost_multipass(
         program, place, run_iters, verbose=(verbose_level >= 2)
     )
     op_num = len(prof_results)
     for op_id, op in zip(range(op_num), program.global_block().ops):
         op_runtime_us_final = None
         if prof_results[op_id][0] is not None:
-            if profile_strategy == 'average':
-                op_runtime_us_final = np.mean(prof_results[op_id])
-            elif profile_strategy == 'last':
-                op_runtime_us_final = prof_results[op_id][-1]
-            elif profile_strategy == 'stable_average':
-                keep = 1 if run_iters // 2 < 1 else run_iters // 2
-                op_runtime_us_final = np.mean(
-                    sorted(prof_results[op_id])[:keep]
-                )
+            op_runtime_us_final = np.median(prof_results[op_id])
         if (
             op_runtime_us_final is not None
             and check_if_op_supports_runtime_profiling(op)

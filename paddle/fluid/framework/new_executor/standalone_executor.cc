@@ -217,12 +217,10 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       if (jobs.size() > 1 && job_type != "forward") {
         const std::vector<std::string> tmp_feed_names = {};
         interpretercores_[job_idx]->Run(tmp_feed_names,
-                                        /*need_fetch = */ false,
-                                        /*enable_op_profiling = */ false);
+                                        /*need_fetch = */ false);
       } else {
         interpretercores_[job_idx]->Run(feed_names,
-                                        /*need_fetch = */ false,
-                                        /*enable_op_profiling = */ false);
+                                        /*need_fetch = */ false);
       }
     }
   }

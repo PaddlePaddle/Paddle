@@ -113,13 +113,9 @@ void ProgramInterpreter::RunImpl() {
 
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
 
-  if (is_in_op_profiling_mode_) {
-    VLOG(4) << "Op Profiling Mode Enabled. Tracing Instruction List.";
-    TraceInstructionList(vec_instruction_);
-  } else if (execution_config_.used_for_inference ||
-             ((execution_config_.used_for_jit ||
-               execution_config_.used_for_cinn) &&
-              (sync_op_num_ == 0))) {
+  if (is_in_op_profiling_mode_ || execution_config_.used_for_inference ||
+      ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
+       (sync_op_num_ == 0))) {
     VLOG(4) << "Tracing Instruction List";
     TraceInstructionList(vec_instruction_);
   } else {
@@ -942,29 +938,17 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     // sub-graphs also run on the same machine concurrently, which cannot be
     // guaranteed in most of the time.
   } else {
-    // do some preparation works for op profiling right before "compute" event
-    // starts.
-    auto SyncDevice = []() -> void {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      platform::GpuDeviceSync();
-#endif
-    };
-    auto Tick = []() -> uint64_t {
-      timeval _now;
-      gettimeofday(&_now, nullptr);
-      uint64_t us_since_epoch =
-          static_cast<uint64_t>(_now.tv_sec) * 1000 * 1000 +
-          static_cast<uint64_t>(_now.tv_usec);
-      return us_since_epoch;
-    };
-
     platform::RecordEvent compute_event(
         "compute",
         platform::TracerEventType::OperatorInner,
         1,
         platform::EventRole::kInnerOp);
 
-    if (is_in_op_profiling_mode_) SyncDevice();
+    if (is_in_op_profiling_mode_) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      platform::GpuDeviceSync();
+#endif
+    }
 
     if (op_with_kernel == nullptr) {  // operator base
       instr_node.OpBase()->Run(*local_scope, place_);
@@ -1001,9 +985,13 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
       // if statement to check.
       if (op->Id() != UINT64_MAX)
         op_dist_attr = block_.Op(op->Id())->MutableDistAttr();
-      uint64_t _start = Tick();
-      SyncDevice();
-      if (op_dist_attr) op_dist_attr->set_run_time_us(Tick() - _start);
+      platform::Timer op_timer;
+      op_timer.Start();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      platform::GpuDeviceSync();
+#endif
+      op_timer.Pause();
+      if (op_dist_attr) op_dist_attr->set_run_time_us(op_timer.ElapsedUS());
     }
   }
 

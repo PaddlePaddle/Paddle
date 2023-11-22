@@ -810,22 +810,16 @@ class _StandaloneExecutor:
             enable_op_profiling(bool): Enable/disable op runtime profiling. The default is False.
         """
         if enable_op_profiling:
-            return self._run_op_runtime_profiling_and_return_program_desc(
-                feed_names
-            )
+            return self._run_op_runtime_profiling(feed_names)
         else:
-            return self._run_feed_forward_and_return_numpy_if_required(
-                feed_names, return_numpy
-            )
+            return self._run_feed_forward(feed_names, return_numpy)
 
     def _create_new_executor(self):
         new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
 
         return new_exe
 
-    def _run_feed_forward_and_return_numpy_if_required(
-        self, feed_names, return_numpy
-    ):
+    def _run_feed_forward(self, feed_names, return_numpy):
         tensors = self._new_exe.run(feed_names)._move_to_list()
         if return_numpy:
             tensors = as_numpy(tensors, copy=True)
@@ -841,7 +835,7 @@ class _StandaloneExecutor:
                 )
             return tensors
 
-    def _run_op_runtime_profiling_and_return_program_desc(self, feed_names):
+    def _run_op_runtime_profiling(self, feed_names) -> core.ProgramDesc:
         program_desc = self._new_exe.run_profile(feed_names)
         return program_desc
 

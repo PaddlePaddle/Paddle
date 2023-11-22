@@ -26,7 +26,7 @@ from paddle.distributed.auto_parallel.static.dist_context import (
     DistributedContext,
 )
 from paddle.distributed.auto_parallel.static.utils import (
-    measure_real_op_cost_wrt_program_and_place,
+    measure_program_real_op_cost,
 )
 from paddle.static import Executor, Program, program_guard
 
@@ -102,8 +102,8 @@ class TestOpProfiling(unittest.TestCase):
         exe.run(startup_program)
 
         if run_profiling:
-            measure_real_op_cost_wrt_program_and_place(
-                train_program, place, verbose_level=2
+            measure_program_real_op_cost(
+                train_program, place=place, verbose_level=2
             )
         x = np.ones([1024, 1]).astype('float32')
         (loss_data,) = exe.run(
