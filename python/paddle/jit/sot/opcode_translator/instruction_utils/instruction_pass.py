@@ -155,6 +155,7 @@ def remove_load_store_pass(instrs, code_options):
                             and instr.argval == b_name
                         ):
                             instr.argval = a_name
+                            instr.arg = load_a.arg
                 modified = True
 
             # if
@@ -209,7 +210,9 @@ def remove_load_store_pass(instrs, code_options):
                         "LOAD_FAST", a_name, instrs[instrs.index(store_b) :]
                     )
                 ):
-                    last_store_a.argval = b_name
+                    if last_store_a is not None:
+                        last_store_a.argval = b_name
+                        last_store_a.arg = store_b.arg
                     instrs.remove(load_a)
                     instrs.remove(store_b)
                     for instr in instrs[instrs.index(last_store_a) :]:
@@ -218,6 +221,7 @@ def remove_load_store_pass(instrs, code_options):
                             and instr.argval == a_name
                         ):
                             instr.argval = b_name
+                            instr.arg = store_b.arg
 
     # remove store load
     loaded_once = find_loaded_once_local_vars(instrs, code_options)
