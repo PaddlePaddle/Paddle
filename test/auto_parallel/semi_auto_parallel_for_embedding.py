@@ -104,8 +104,8 @@ class TestEmbeddingApiForSemiAutoParallel:
             self.test_body(
                 x_shape=[12, 16],
                 w_shape=[10, 4],
-                x_specs=["x", None],
-                w_specs=[None, "x"],
+                x_placements=[Shard(0)],
+                w_placements=[Shard(1)],
             )
         except RuntimeError as e:
             assert 'sharded by same mesh dimension ' in str(e)
@@ -115,8 +115,8 @@ class TestEmbeddingApiForSemiAutoParallel:
             self.test_body(
                 x_shape=[12, 16],
                 w_shape=[10, 4],
-                x_specs=[None, "x"],
-                w_specs=["x", None],
+                x_placements=[Shard(1)],
+                w_placements=[Shard(0)],
             )
         except RuntimeError as e:
             assert 'sharded by same mesh dimension ' in str(e)
@@ -126,8 +126,8 @@ class TestEmbeddingApiForSemiAutoParallel:
             self.test_body(
                 x_shape=[12, 16],
                 w_shape=[10, 4],
-                x_specs=[None, "x"],
-                w_specs=[None, "x"],
+                x_placements=[Shard(1)],
+                w_placements=[Shard(1)],
             )
         except RuntimeError as e:
             assert 'sharded by same mesh dimension', str(e)

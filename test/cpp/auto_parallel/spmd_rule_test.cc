@@ -1369,7 +1369,7 @@ TEST(EmbeddingGradInferSpmd, Ctor) {
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
             std::vector<int64_t>({-1, -1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
-            std::vector<int64_t>({-1, -1, -1}));
+            std::vector<int64_t>({1, -1, -1}));
 
   EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
             std::vector<int64_t>({-1, -1}));
@@ -1398,18 +1398,17 @@ TEST(EmbeddingGradInferSpmd, Ctor) {
   EXPECT_EQ(spmdinfo.first.size(), 3UL);
   EXPECT_EQ(spmdinfo.second.size(), 1UL);
 
-  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
-            std::vector<int64_t>({-1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({-1, 1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]), std::vector<int64_t>({-1, 1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
             std::vector<int64_t>({-1, 1, -1}));
 
   EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
-            std::vector<int64_t>({-1, 1}));
+            std::vector<int64_t>({-1, -1}));
   EXPECT_EQ(
       PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmdinfo.second[0])
           .is_partial(),
-      false);
+      true);
   VLOG(4) << "Test EmbeddingGradInferSpmd with replicating indices and "
              "sharding weight along col axis."
           << std::endl
@@ -1438,7 +1437,7 @@ TEST(EmbeddingGradInferSpmd, Ctor) {
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({0}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
             std::vector<int64_t>({-1, -1}));
-  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]), std::vector<int64_t>({-1, 1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]), std::vector<int64_t>({0, 1}));
 
   EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
             std::vector<int64_t>({-1, 1}));
