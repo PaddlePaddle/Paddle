@@ -54,6 +54,7 @@ MAIN_DIST_BRANCH_TEMPLATE = """
       // 6. PrepareData (DataTransform & Prepare Dense Input){}
       // 7. Infer Local DenseTensor Meta{}
       // 8. DenseTensor Kernel Call{}
+      // Fallback{}
     }}\n
     // 9. Set Output Dist Attr For Default Impl{}\n
     // 10. Return
@@ -1367,6 +1368,26 @@ class DistForwardAPI(ForwardAPI):
                     result += MULTI_SINGLE_SET_DIST_OUT_DIMS.format(i, i)
         return result
 
+    def generate_fallback_code(self) -> str:
+        fallback_code = ""
+        fallback_code += """
+      if (kernel_result.has_fallback_cpu) {"""
+        for kernel_out in self.dense_output_args:
+            fallback_code += f"""
+        TransDataBackend({kernel_out}, kernel_backend, {kernel_out});"""
+
+        inplace_flag = False
+        if len(self.inplace_map) > 0:
+            inplace_flag = True
+
+        fallback_code += self.reset_view_after_fallback(
+            self.outputs['types'], '        ', inplace_flag
+        )
+
+        fallback_code += """
+      }"""
+        return fallback_code
+
     def generate_output_dist_attr_setting(self) -> str:
         set_out_dist_attr_code = ""
         if self.generate_general_infer_spmd is True:
@@ -1406,6 +1427,7 @@ class DistForwardAPI(ForwardAPI):
             self.generate_prepare_data_code(),
             self.generate_infer_meta_code(),
             self.generate_kernel_call_code(),
+            self.generate_fallback_code(),
             self.generate_output_dist_attr_setting(),
             self.generate_return_code(),
         )

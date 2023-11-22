@@ -35,6 +35,7 @@ MAIN_DIST_BRANCH_TEMPLATE = """
       // 7. PrepareData (DataTransform & Prepare Dense Input){}
       // 8. Infer Local DenseTensor Meta{}
       // 9. DenseTensor Kernel Call{}
+      // Fallback{}
     }}
     // 10. Reshard Kernel Output to API output{}\n
     // 11. Return
@@ -301,6 +302,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             self.generate_prepare_data_code(),
             self.generate_infer_meta_code(),
             self.generate_kernel_call_code(),
+            self.generate_fallback_code(),
             self.generate_reshard_output_code(),
             self.generate_return_code(),
         )
