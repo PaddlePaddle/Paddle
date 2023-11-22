@@ -67,7 +67,9 @@ ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m)
   }
 }
 
-ShapeConstraintIRAnalysis::~ShapeConstraintIRAnalysis() { mgr_.Save(); }
+ShapeConstraintIRAnalysis::~ShapeConstraintIRAnalysis() {
+  // mgr_.Save();
+}
 
 bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
@@ -132,6 +134,17 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
   }
 
   return mgr_.IsSymbolicDimProductEqual(lhs_prod, rhs_prod);
+}
+
+const std::vector<shape::SymbolicDimOp>&
+ShapeConstraintIRAnalysis::GetOrCreateSymbolicDimsForRankedValue(
+    const Value& value) {
+  if (value_to_sym_dims_.find(value) == value_to_sym_dims_.end()) {
+    CHECK(value_to_sym_dims_
+              .emplace(value, mgr_.CreateSymbolicDimsForRankedValue(value))
+              .second);
+  }
+  return value_to_sym_dims_.at(value);
 }
 
 }  // namespace pir
