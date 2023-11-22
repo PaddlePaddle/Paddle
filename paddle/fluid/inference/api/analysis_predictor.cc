@@ -1400,8 +1400,6 @@ void AnalysisPredictor::GetFetchOne(const phi::DenseTensor &fetch,
   // set data.
   int num_elems = inference::VecReduceToInt(shape);
   output->data.Resize(num_elems * sizeof(T));
-  // The fetched tensor output by fetch op, should always in CPU memory, so just
-  // copy.
   paddle::memory::Copy(platform::CPUPlace(),
                        output->data.data(),
                        fetch.place(),

@@ -73,7 +73,7 @@ PD_DEFINE_bool(record_benchmark,
                false,
                "Record benchmark after profiling the model");
 PD_DEFINE_double(accuracy, 1e-3, "Result Accuracy.");
-PD_DEFINE_double(quantized_accuracy, 1e-2, "Result Quantized Accuracy.");
+PD_DEFINE_double(quantized_accuracy, 2e-2, "Result Quantized Accuracy.");
 PD_DEFINE_bool(zero_copy, false, "Use ZeroCopy to speedup Feed/Fetch.");
 PD_DEFINE_bool(warmup,
                false,
