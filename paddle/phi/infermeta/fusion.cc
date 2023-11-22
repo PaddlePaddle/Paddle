@@ -2968,6 +2968,7 @@ void SkipLayerNormInferMeta(const MetaTensor& x,
   auto dim_input = x.dims();
   out->set_dims(dim_input);
   out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 void FusedBiasDropoutResidualLnInferMeta(
@@ -3053,7 +3054,7 @@ void FusedBiasDropoutResidualLnGradInferMeta(
     ln_bias_grad->set_dtype(y_grad.dtype());
   }
   if (residual_grad) {
-    residual_grad->set_dims(residual_grad->dims());
+    residual_grad->set_dims(residual.dims());
     residual_grad->set_dtype(y_grad.dtype());
   }
   if (bias_grad) {
