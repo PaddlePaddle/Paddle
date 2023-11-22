@@ -95,9 +95,8 @@ class SemiAutoParallelTestBase:
         assert len(flat_inputs_specs) == len(flat_inputs_shape)
 
         for shape, spec in zip(flat_inputs_shape, flat_inputs_specs):
-            input_np = np.random.random(size=shape).astype("float32")
+            input_np = np.random.random(size=shape).astype(self._dtype)
             input = paddle.to_tensor(input_np)
-            input = paddle.cast(input, self._dtype).detach()
             input.stop_gradient = not with_backward
             input_dist_attr = dist.DistAttr(
                 mesh=self._mesh, sharding_specs=spec

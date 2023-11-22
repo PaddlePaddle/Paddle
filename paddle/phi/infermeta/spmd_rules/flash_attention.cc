@@ -223,29 +223,21 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   // [batch_size,  num_heads, seq_len_q, seq_len_kv]
   std::string softmax_lse_axes = {batch_axis, num_heads_axis, seq_len_q_axis};
 
-  std::string q_axes_align = q_axes;
-  q_axes_align[1] = alphabet[used_axes_index++];
-  q_axes_align[3] = alphabet[used_axes_index++];
-
-  std::string k_axes_align = k_axes;
-  k_axes_align[1] = alphabet[used_axes_index++];
-  k_axes_align[3] = alphabet[used_axes_index++];
-
-  std::string v_axes_align = v_axes;
-  v_axes_align[1] = alphabet[used_axes_index++];
-  v_axes_align[3] = alphabet[used_axes_index++];
+  auto q_dist_attr_dst = UnShardTensorDims(q_dist_attr, {1, 3});
+  auto k_dist_attr_dst = UnShardTensorDims(k_dist_attr, {1, 3});
+  auto v_dist_attr_dst = UnShardTensorDims(k_dist_attr, {1, 3});
 
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
 
-  axes_sharding_info.emplace_back(q_axes_align, q_dist_attr.dims_mapping());
-  axes_sharding_info.emplace_back(k_axes_align, k_dist_attr.dims_mapping());
-  axes_sharding_info.emplace_back(v_axes_align, k_dist_attr.dims_mapping());
+  axes_sharding_info.emplace_back(q_axes, q_dist_attr_dst.dims_mapping());
+  axes_sharding_info.emplace_back(k_axes, k_dist_attr_dst.dims_mapping());
+  axes_sharding_info.emplace_back(v_axes, v_dist_attr_dst.dims_mapping());
 
   auto axis_to_dim_map = ShardingMergeForTensors(axes_sharding_info);
 
-  auto q_dist_attr_dst = MapDims(q_dist_attr, axis_to_dim_map, q_axes);
-  auto k_dist_attr_dst = MapDims(k_dist_attr, axis_to_dim_map, k_axes);
-  auto v_dist_attr_dst = MapDims(v_dist_attr, axis_to_dim_map, v_axes);
+  q_dist_attr_dst = MapDims(q_dist_attr, axis_to_dim_map, q_axes);
+  k_dist_attr_dst = MapDims(k_dist_attr, axis_to_dim_map, k_axes);
+  v_dist_attr_dst = MapDims(v_dist_attr, axis_to_dim_map, v_axes);
 
   // TODO(liuzhenhai): process fixed_seed and  attn_mask
   auto fixed_seed_offset_dist_attr_dst = fixed_seed_offset_dist_attr;
@@ -469,48 +461,37 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   // [batch_size,  num_heads, seq_len_q]
   std::string softmax_lse_axes = {batch_axis, num_heads_axis, seq_len_q_axis};
 
-  std::string q_axes_align = q_axes;
-  q_axes_align[1] = alphabet[used_axes_index++];
-  q_axes_align[3] = alphabet[used_axes_index++];
-
-  std::string k_axes_align = k_axes;
-  k_axes_align[1] = alphabet[used_axes_index++];
-  k_axes_align[3] = alphabet[used_axes_index++];
-
-  std::string v_axes_align = v_axes;
-  v_axes_align[1] = alphabet[used_axes_index++];
-  v_axes_align[3] = alphabet[used_axes_index++];
-
-  std::string out_axes_align = out_axes;
-  out_axes_align[1] = alphabet[used_axes_index++];
-  out_axes_align[3] = alphabet[used_axes_index++];
-
-  std::string out_grad_axes_align = out_axes;
-  out_grad_axes_align[1] = alphabet[used_axes_index++];
-  out_grad_axes_align[3] = alphabet[used_axes_index++];
+  auto q_dist_attr_dst = UnShardTensorDims(q_dist_attr, {1, 3});
+  auto k_dist_attr_dst = UnShardTensorDims(k_dist_attr, {1, 3});
+  auto v_dist_attr_dst = UnShardTensorDims(k_dist_attr, {1, 3});
+  auto out_dist_attr_dst = UnShardTensorDims(out_dist_attr, {1, 3});
+  auto out_grad_dist_attr_dst = UnShardTensorDims(out_grad_dist_attr, {1, 3});
+  auto softmax_lse_dist_attr_dst =
+      UnShardTensorDims(softmax_lse_dist_attr, {2});
 
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
-  axes_sharding_info.emplace_back(q_axes_align, q_dist_attr.dims_mapping());
-  axes_sharding_info.emplace_back(k_axes_align, k_dist_attr.dims_mapping());
-  axes_sharding_info.emplace_back(v_axes_align, k_dist_attr.dims_mapping());
-  axes_sharding_info.emplace_back(out_axes_align, out_dist_attr.dims_mapping());
-  axes_sharding_info.emplace_back(out_grad_axes_align,
-                                  out_grad_dist_attr.dims_mapping());
+  axes_sharding_info.emplace_back(q_axes, q_dist_attr_dst.dims_mapping());
+  axes_sharding_info.emplace_back(k_axes, k_dist_attr_dst.dims_mapping());
+  axes_sharding_info.emplace_back(v_axes, v_dist_attr_dst.dims_mapping());
+  axes_sharding_info.emplace_back(out_axes, out_dist_attr_dst.dims_mapping());
+  axes_sharding_info.emplace_back(out_axes,
+                                  out_grad_dist_attr_dst.dims_mapping());
+  axes_sharding_info.emplace_back(softmax_lse_axes,
+                                  softmax_lse_dist_attr_dst.dims_mapping());
   auto axis_to_dim_map = ShardingMergeForTensors(axes_sharding_info);
 
-  auto q_dist_attr_dst = MapDims(q_dist_attr, axis_to_dim_map, q_axes);
-  auto k_dist_attr_dst = MapDims(k_dist_attr, axis_to_dim_map, k_axes);
-  auto v_dist_attr_dst = MapDims(v_dist_attr, axis_to_dim_map, v_axes);
-  auto out_dist_attr_dst = MapDims(out_dist_attr, axis_to_dim_map, out_axes);
-  auto softmax_lse_dist_attr_dst =
+  q_dist_attr_dst = MapDims(q_dist_attr, axis_to_dim_map, q_axes);
+  k_dist_attr_dst = MapDims(k_dist_attr, axis_to_dim_map, k_axes);
+  v_dist_attr_dst = MapDims(v_dist_attr, axis_to_dim_map, v_axes);
+  out_dist_attr_dst = MapDims(out_dist_attr, axis_to_dim_map, out_axes);
+  softmax_lse_dist_attr_dst =
       MapDims(softmax_lse_dist_attr, axis_to_dim_map, softmax_lse_axes);
 
   // TODO(liuzhenhai): process seed and  attn_mask
   auto& seed_offset_dist_attr_dst = seed_offset_dist_attr;
   auto& attn_mask_dist_attr_dst = attn_mask_dist_attr;
+  out_grad_dist_attr_dst = MapDims(out_dist_attr, axis_to_dim_map, out_axes);
 
-  auto out_grad_dist_attr_dst =
-      MapDims(out_grad_dist_attr, axis_to_dim_map, out_axes);
   auto q_grad = MapDims(q_dist_attr, axis_to_dim_map, q_axes);
   auto k_grad = MapDims(k_dist_attr, axis_to_dim_map, k_axes);
   auto v_grad = MapDims(v_dist_attr, axis_to_dim_map, v_axes);
