@@ -43,6 +43,7 @@
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
+#include "paddle/cinn/utils/error.h"
 #include "paddle/cinn/utils/string.h"
 
 PD_DECLARE_int32(cinn_error_message_level);
@@ -239,6 +240,7 @@ Expr StScheduleImpl::Fuse(const std::vector<Expr>& loops) {
       CHECK_EQ(for_nodes.back()->body.As<ir::Block>()->stmts[0], it_loop)
           << "The For nodes in loops param of Fuse must be adjacent! Please "
              "check.";
+      VLOG(-1) << utils::enforce::GetCurrentTraceBackString();
     }
     for_nodes.push_back(it_loop.As<ir::For>());
     loop_vars.push_back(it_loop.As<ir::For>()->loop_var);

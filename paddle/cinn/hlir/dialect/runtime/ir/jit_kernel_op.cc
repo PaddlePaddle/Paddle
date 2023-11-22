@@ -29,16 +29,16 @@ void JitKernelOp::VerifySig() {
 
   auto& attributes = this->attributes();
 
-  IR_ENFORCE(
-      attributes.count(kAttrName) > 0 &&
-          attributes.at(kAttrName).isa<cinn::dialect::CUDAJITInfoAttribute>(),
-      "Type of attribute: instruction is not right.");
+  IR_ENFORCE(attributes.count(kAttrName) > 0 &&
+                 attributes.at(kAttrName)
+                     .isa<cinn::dialect::CINNKernelInfoAttribute>(),
+             "Type of attribute: instruction is not right.");
 }
 
-const hlir::framework::pir::CUDAJITInfo& JitKernelOp::cuda_jit_info() {
+const hlir::framework::pir::CINNKernelInfo& JitKernelOp::cinn_kernel_info() {
   return attributes()
       .at(kAttrName)
-      .dyn_cast<cinn::dialect::CUDAJITInfoAttribute>()
+      .dyn_cast<cinn::dialect::CINNKernelInfoAttribute>()
       .data();
 }
 

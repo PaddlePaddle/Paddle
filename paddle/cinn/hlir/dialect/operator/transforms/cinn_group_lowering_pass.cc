@@ -153,18 +153,18 @@ std::shared_ptr<pir::ShapeConstraintIRAnalysis> CreateShapeAnalysis(
         shape_analysis->GetOrCreateSymbolicDimsForRankedValue(value));
   }
 
-  sym_dim_mgr.MapSymbolicDimEqual(sym_vecs[1][0], sym_vecs[2][0]);
-  sym_dim_mgr.MapSymbolicDimEqual(sym_vecs[1][0], sym_vecs[3][0]);
-
-  std::cout << sym_dim_mgr.IsSymbolicDimEqual(sym_vecs[1][0], sym_vecs[2][0])
-            << std::endl;
-  std::cout << sym_vecs[1][0].GetSymName() << std::endl;
-  std::cout << sym_vecs[1][1].GetSymName() << std::endl;
-  std::cout << sym_vecs[2][0].GetSymName() << std::endl;
-  std::cout << sym_vecs[2][1].GetSymName() << std::endl;
-
-  std::cout << sym_vecs[3][0].GetSymName() << std::endl;
-  std::cout << sym_vecs[3][1].GetSymName() << std::endl;
+  // sym_dim_mgr.MapSymbolicDimEqual(sym_vecs[1][0], sym_vecs[2][0]);
+  // sym_dim_mgr.MapSymbolicDimEqual(sym_vecs[1][0], sym_vecs[3][0]);
+  //
+  // std::cout << sym_dim_mgr.IsSymbolicDimEqual(sym_vecs[1][0], sym_vecs[2][0])
+  //           << std::endl;
+  // std::cout << sym_vecs[1][0].GetSymName() << std::endl;
+  // std::cout << sym_vecs[1][1].GetSymName() << std::endl;
+  // std::cout << sym_vecs[2][0].GetSymName() << std::endl;
+  // std::cout << sym_vecs[2][1].GetSymName() << std::endl;
+  //
+  // std::cout << sym_vecs[3][0].GetSymName() << std::endl;
+  // std::cout << sym_vecs[3][1].GetSymName() << std::endl;
 
   return shape_analysis;
 }
@@ -223,38 +223,46 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
       }
       // auto sym_vec0 =
       // shape_analysis->GetOrCreateSymbolicDimsForRankedValue(test_values[0]);
-      auto sym_vec1 =
-          shape_analysis->GetOrCreateSymbolicDimsForRankedValue(test_values[1]);
-      auto sym_vec2 =
-          shape_analysis->GetOrCreateSymbolicDimsForRankedValue(test_values[2]);
-      auto sym_vec3 =
-          shape_analysis->GetOrCreateSymbolicDimsForRankedValue(test_values[3]);
-      VLOG(1) << "%1 %2 IsShapeEqual:"
-              << shape_analysis->IsShapeEqual(test_values[1], test_values[2]);
-      VLOG(1) << "%1 %3 IsShapeEqual: "
-              << shape_analysis->IsShapeEqual(test_values[1], test_values[3]);
-      VLOG(1) << "%2 %3 IsShapeEqual: "
-              << shape_analysis->IsShapeEqual(test_values[2], test_values[3]);
-      VLOG(1) << sym_vec1[0].GetSymName() << " == " << sym_vec2[0].GetSymName()
-              << " IsSymbolicDimEqual: "
-              << shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
-                     sym_vec1[0], sym_vec2[0]);
-      VLOG(1) << sym_vec1[0].GetSymName() << " == " << sym_vec3[0].GetSymName()
-              << " IsSymbolicDimEqual: "
-              << shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
-                     sym_vec1[0], sym_vec3[0]);
-      VLOG(1) << sym_vec1[1].GetSymName() << " == " << sym_vec2[1].GetSymName()
-              << " IsSymbolicDimEqual: "
-              << shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
-                     sym_vec1[1], sym_vec2[1]);
-      VLOG(1) << sym_vec2[0].GetSymName() << " == " << sym_vec3[0].GetSymName()
-              << " IsSymbolicDimEqual: "
-              << shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
-                     sym_vec2[0], sym_vec3[0]);
-      VLOG(1) << sym_vec2[0].GetSymName() << " == " << sym_vec3[1].GetSymName()
-              << " IsSymbolicDimEqual: "
-              << shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
-                     sym_vec2[0], sym_vec2[1]);
+      // auto sym_vec1 =
+      //     shape_analysis->GetOrCreateSymbolicDimsForRankedValue(test_values[1]);
+      // auto sym_vec2 =
+      //     shape_analysis->GetOrCreateSymbolicDimsForRankedValue(test_values[2]);
+      // auto sym_vec3 =
+      //     shape_analysis->GetOrCreateSymbolicDimsForRankedValue(test_values[3]);
+      // VLOG(1) << "%1 %2 IsShapeEqual:"
+      //         << shape_analysis->IsShapeEqual(test_values[1],
+      //         test_values[2]);
+      // VLOG(1) << "%1 %3 IsShapeEqual: "
+      //         << shape_analysis->IsShapeEqual(test_values[1],
+      //         test_values[3]);
+      // VLOG(1) << "%2 %3 IsShapeEqual: "
+      //         << shape_analysis->IsShapeEqual(test_values[2],
+      //         test_values[3]);
+      // VLOG(1) << sym_vec1[0].GetSymName() << " == " <<
+      // sym_vec2[0].GetSymName()
+      //         << " IsSymbolicDimEqual: "
+      //         << shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
+      //                sym_vec1[0], sym_vec2[0]);
+      // VLOG(1) << sym_vec1[0].GetSymName() << " == " <<
+      // sym_vec3[0].GetSymName()
+      //         << " IsSymbolicDimEqual: "
+      //         << shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
+      //                sym_vec1[0], sym_vec3[0]);
+      // VLOG(1) << sym_vec1[1].GetSymName() << " == " <<
+      // sym_vec2[1].GetSymName()
+      //         << " IsSymbolicDimEqual: "
+      //         << shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
+      //                sym_vec1[1], sym_vec2[1]);
+      // VLOG(1) << sym_vec2[0].GetSymName() << " == " <<
+      // sym_vec3[0].GetSymName()
+      //         << " IsSymbolicDimEqual: "
+      //         << shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
+      //                sym_vec2[0], sym_vec3[0]);
+      // VLOG(1) << sym_vec2[0].GetSymName() << " == " <<
+      // sym_vec3[1].GetSymName()
+      //         << " IsSymbolicDimEqual: "
+      //         << shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
+      //                sym_vec2[0], sym_vec2[1]);
 
       // op fusion
       auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
@@ -284,7 +292,7 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
         std::unordered_map<std::string, ::pir::Attribute> op_attrs{
             {cinn::dialect::JitKernelOp::kAttrName,
-             cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
+             cinn::dialect::CINNKernelInfoAttribute::get(ctx, fn_ptr_res[0])},
         };
 
         // Generate jit kernel op input and output

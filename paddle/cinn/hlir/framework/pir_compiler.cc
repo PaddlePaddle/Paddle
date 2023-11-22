@@ -41,9 +41,9 @@ std::unique_ptr<Program> PirCompiler::Build() {
   return std::move(Build(groups));
 }
 
-std::vector<pir::CUDAJITInfo> PirCompiler::BuildCUDAJITInfo(
+std::vector<pir::CINNKernelInfo> PirCompiler::BuildCUDAJITInfo(
     const std::vector<pir::GroupPtr>& groups) {
-  std::vector<pir::CUDAJITInfo> vec_res;
+  std::vector<pir::CINNKernelInfo> vec_res;
 
   auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
 
@@ -66,16 +66,13 @@ std::vector<pir::CUDAJITInfo> PirCompiler::BuildCUDAJITInfo(
 
   auto fn_ptrs = compiler_->GetFnPtr();
 
-  auto* compilter_ptr = compiler_.release();
   for (int idx = 0; idx < groups.size(); ++idx) {
-    pir::CUDAJITInfo jit_info;
-    jit_info.fn_ptr = fn_ptrs[idx];
-    jit_info.compiler = reinterpret_cast<void*>(compilter_ptr);
-
-    lowered_funcs[idx][0]->cuda_axis_info.CopyBlockDimsTo(
-        &(jit_info.block_dims));
-
-    lowered_funcs[idx][0]->cuda_axis_info.CopyGridDimsTo(&(jit_info.grid_dims));
+    pir::CINNKernelInfo jit_info;
+    auto fn_name = groups[idx]->FuncName();
+    auto fn_ptr = compiler_->Lookup(fn_name);
+    jit_info.fn_ptr = fn_ptr;
+    jit_info.compiler = reinterpret_cast<void*>(compiler_.release());
+    jit_info.int_args_map = groups[idx]->int_args_map;
 
     vec_res.push_back(jit_info);
   }
