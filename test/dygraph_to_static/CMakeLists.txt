@@ -90,3 +90,22 @@ foreach(ITEST ${DISABLE_PIR_PT_MODES})
       STATUS "PIR Disabled OpTest: not found ${ITEST} in dygraph_to_static")
   endif()
 endforeach()
+
+if(NOT WIN32)
+  set(WIN_DISABLE_PIR_PT_MODES test_jit_setitem test_program_translator
+                               test_cache_program)
+  foreach(ITEST ${WIN_DISABLE_PIR_PT_MODES})
+    if(TEST ${ITEST})
+      set_tests_properties(
+        ${ITEST} PROPERTIES ENVIRONMENT "FLAGS_enable_pir_with_pt_in_dy2st=0")
+      message(
+        STATUS
+          "WIN PIR Disabled OpTest: set FLAGS_enable_pir_with_pt_in_dy2st to False for ${ITEST}"
+      )
+    else()
+      message(
+        STATUS
+          "WIN PIR Disabled OpTest: not found ${ITEST} in dygraph_to_static")
+    endif()
+  endforeach()
+endif()
