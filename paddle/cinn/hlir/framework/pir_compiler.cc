@@ -59,7 +59,6 @@ std::vector<pir::CUDAJITInfo> PirCompiler::Build(
   return jit_infos;
 }
 
-
 void PirCompiler::ProcessFunction(
     const std::vector<ir::LoweredFunc>& lowered_funcs) {
   for (auto&& func : lowered_funcs) {

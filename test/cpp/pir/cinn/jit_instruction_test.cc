@@ -97,7 +97,8 @@ TEST(CinnJitInstruction, Run) {
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
     if (checking_cinn_ops.count(it->name())) {
-      auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(target);
+      auto ir_compiler =
+          cinn::hlir::framework::PirCompilerManager::Create(target);
 
       std::vector<::pir::Operation*> ops = {it};
       auto group = std::make_shared<cinn::hlir::framework::pir::Group>(ops);
