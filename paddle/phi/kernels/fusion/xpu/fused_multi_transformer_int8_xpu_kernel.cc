@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "glog/logging.h"
-#include "paddle/phi/core/distributed/xccl_comm_context.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/distributed/xccl_comm_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/binary.h"
