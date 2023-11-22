@@ -82,15 +82,16 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
 }
 
 pir::Block *IfOp::true_block() {
-  pir::Region &true_region = (*this)->region(0);
-  if (true_region.empty()) true_region.emplace_back();
-  return true_region.front();
+  pir::Region &region = true_region();
+  if (region.empty()) region.emplace_back();
+  return region.front();
 }
 pir::Block *IfOp::false_block() {
-  pir::Region &false_region = (*this)->region(1);
-  if (false_region.empty()) false_region.emplace_back();
-  return false_region.front();
+  pir::Region &region = false_region();
+  if (region.empty()) region.emplace_back();
+  return region.front();
 }
+
 void IfOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
@@ -100,14 +101,14 @@ void IfOp::Print(pir::IrPrinter &printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << "{";
-  for (auto item : *true_block()) {
+  for (auto &item : *true_block()) {
     os << "\n  ";
-    printer.PrintOperation(item);
+    printer.PrintOperation(&item);
   }
   os << "\n } else {";
-  for (auto item : *false_block()) {
+  for (auto &item : *false_block()) {
     os << "\n  ";
-    printer.PrintOperation(item);
+    printer.PrintOperation(&item);
   }
   os << "\n }";
 }
@@ -217,9 +218,9 @@ void WhileOp::Print(pir::IrPrinter &printer) {
       body_block()->args_end(),
       [&](pir::Value v) { printer.PrintValue(v); },
       [&]() { os << ", "; });
-  for (auto item : *body_block()) {
+  for (auto &item : *body_block()) {
     os << "\n  ";
-    printer.PrintOperation(item);
+    printer.PrintOperation(&item);
   }
   os << "\n }";
 }

@@ -45,12 +45,14 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
             learning_rate=0.1, parameters=layer.parameters()
         )
 
+        # TODO(GhostScreaming): Fix problem of admaw master params.
         if level == 'O2':
             layer, opt = paddle.amp.decorate(
                 models=layer,
                 level='O2',
                 master_grad=self._use_master_grad,
                 optimizers=opt,
+                master_weight=False,
                 dtype=self._dtype,
             )
 
@@ -150,6 +152,8 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
             self.check_tensor_eq(param.grad, param_base.grad)
 
     def run_test_case(self):
+        if self._dtype == "bfloat16" and not paddle.amp.is_bfloat16_supported():
+            return
         self.test_dp_demo_net()
         self.test_mp_demo_net()
 

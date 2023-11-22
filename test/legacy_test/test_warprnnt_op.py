@@ -240,9 +240,7 @@ class TestWarpRNNTOp(OpTest):
             )
         else:
             self.check_grad(
-                ["input"],
-                "loss",
-                numeric_grad_delta=0.009,
+                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
             )
 
 
