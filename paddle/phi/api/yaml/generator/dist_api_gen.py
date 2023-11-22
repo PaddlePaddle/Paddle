@@ -138,6 +138,7 @@ VECTOR_INPLACE_OUT_DIST_ATTR = """
     std::vector<phi::distributed::TensorDistAttr> dist_out_attr;
     for (size_t i = 0; i < api_output.size(); ++i) {{
         dist_out_attr.push_back(static_cast<phi::distributed::DistTensor*>(api_output[i].impl().get())->dist_attr());
+    }}
 """
 VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({}, &api_output);
