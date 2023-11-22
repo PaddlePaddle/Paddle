@@ -106,7 +106,7 @@ class TestConcatLargeInputNum(OpTest):
         self.init_shape()
         self.init_test_data()
         self.configure_datatype()
-        self.inputs = {'X': [('x{}'.format(i), self.x) for i in range(136)]}
+        self.inputs = {'X': [(f'x{i}', self.x) for i in range(136)]}
         self.attrs = {
             'axis': self.axis,
             'use_mkldnn': True,
