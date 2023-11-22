@@ -13,6 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/sub_graph/sub_graph_checker.h"
+
+#include <chrono>
+#include <ctime>
+
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/pir/core/ir_context.h"
 
@@ -79,6 +83,9 @@ std::vector<pir::Value> GetBlockInput(pir::Block* block) {
   std::unordered_set<::pir::Value> insert_value;
   for (auto& op : *block) {
     for (size_t i = 0; i < op.num_operands(); ++i) {
+      if (!op.operand(i) || !(op.operand_source(i))) {
+        continue;
+      }
       if (!block_inner_output.count(op.operand_source(i)) &&
           !insert_value.count(op.operand_source(i))) {
         vec_res.push_back(op.operand_source(i));
@@ -98,9 +105,19 @@ void SubGraphChecker::CheckResult() {
 
   auto cinn_res = RunCinnResult();
 
+  bool check = true;
   for (size_t i = 0; i < phi_res.size(); ++i) {
     auto res = AllClose(phi_res[i], cinn_res[i]);
+    if (!res) {
+      check = false;
+    }
     LOG(INFO) << "compare index " << i << "\t" << res << std::endl;
+  }
+
+  if (check) {
+    LOG(INFO) << "Result check Success" << std::endl;
+  } else {
+    LOG(INFO) << "Result check Failed" << std::endl;
   }
 }
 
@@ -115,7 +132,10 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunPhiResult() {
 
   paddle::framework::interpreter::ExecutionConfig exec_config;
   exec_config.create_local_scope = false;
-  exec_config.skip_gc_vars.insert("input_0");
+  for (size_t i = 0; i < phi_input_values_.size(); ++i) {
+    std::string name = "input_" + std::to_string(i);
+    exec_config.skip_gc_vars.insert(name);
+  }
 
   std::vector<std::string> fetch_var_names;
   for (auto name : phi_fetch_names_) {
@@ -168,8 +188,19 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
   for (auto name : cinn_fetch_names_) {
     fetch_var_names.push_back(name + "@fetch");
   }
-  paddle::framework::InterpreterCore executor(
-      place, fetch_var_names, kernel_program->block(), &inner_scope_);
+
+  paddle::framework::interpreter::ExecutionConfig exec_config;
+  exec_config.create_local_scope = false;
+  for (size_t i = 0; i < phi_input_values_.size(); ++i) {
+    std::string name = "input_" + std::to_string(i);
+    exec_config.skip_gc_vars.insert(name);
+  }
+
+  paddle::framework::InterpreterCore executor(place,
+                                              fetch_var_names,
+                                              kernel_program->block(),
+                                              &inner_scope_,
+                                              exec_config);
 
   executor.Run({}, true);
 
@@ -179,6 +210,120 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
   }
 
   return vec_res;
+}
+
+void SubGraphChecker::CheckSpeed() {
+  auto time_phi = RunPhiSpeed();
+  auto time_cinn = RunCinnSpeed();
+
+  LOG(INFO) << "time cost: Phi: " << time_phi << "\tCINN : " << time_cinn
+            << std::endl;
+}
+
+double SubGraphChecker::RunPhiSpeed() {
+  RemoveFetchOp(phi_program_->block());
+  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+  phi_kernel_program_ =
+      paddle::dialect::PdOpLowerToKernelPass(phi_program_.get(), place);
+
+  paddle::framework::interpreter::ExecutionConfig exec_config;
+  exec_config.create_local_scope = false;
+  for (size_t i = 0; i < phi_input_values_.size(); ++i) {
+    std::string name = "input_" + std::to_string(i);
+    exec_config.skip_gc_vars.insert(name);
+  }
+
+  std::vector<std::string> fetch_var_names;
+  for (auto name : phi_fetch_names_) {
+    fetch_var_names.push_back(name + "@fetch");
+  }
+  phi_exec_ =
+      new paddle::framework::InterpreterCore(place,
+                                             fetch_var_names,
+                                             phi_kernel_program_->block(),
+                                             &inner_scope_,
+                                             exec_config);
+  // warm up
+  for (size_t i = 0; i < 10; ++i) {
+    phi_exec_->Run({}, true);
+  }
+
+  auto start = std::chrono::system_clock::now();
+  for (size_t i = 0; i < 1000; ++i) {
+    phi_exec_->Run({}, true);
+  }
+  auto end = std::chrono::system_clock::now();
+
+  std::chrono::duration<double> elapsed_seconds = end - start;
+
+  return elapsed_seconds.count();
+}
+double SubGraphChecker::RunCinnSpeed() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+
+  AppendFetchOp(prim_program_->block(), &cinn_fetch_names_, "cinn_out_");
+
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+
+  cinn::dialect::ir::PdOp2CinnOpConverter(prim_program_.get());
+
+  pir::PassManager pm(ctx);
+  pm.AddPass(
+      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(pir::CreateBuildCinnPass());
+  pm.Run(prim_program_.get());
+
+  auto res = cinn::dialect::ir::CINNGroupLoweringPass(prim_program_.get());
+
+  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+
+  RemoveFetchOp(res->block());
+
+  auto kernel_program =
+      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+
+  std::vector<std::string> fetch_var_names;
+  for (auto name : cinn_fetch_names_) {
+    fetch_var_names.push_back(name + "@fetch");
+  }
+
+  paddle::framework::interpreter::ExecutionConfig exec_config;
+  exec_config.create_local_scope = false;
+  for (size_t i = 0; i < phi_input_values_.size(); ++i) {
+    std::string name = "input_" + std::to_string(i);
+    exec_config.skip_gc_vars.insert(name);
+  }
+
+  paddle::framework::InterpreterCore executor(place,
+                                              fetch_var_names,
+                                              kernel_program->block(),
+                                              &inner_scope_,
+                                              exec_config);
+
+  for (size_t i = 0; i < 100; ++i) {
+    executor.Run({}, true);
+  }
+
+  auto start = std::chrono::system_clock::now();
+  for (size_t i = 0; i < 1000; ++i) {
+    executor.Run({}, true);
+  }
+  auto end = std::chrono::system_clock::now();
+
+  std::chrono::duration<double> elapsed_seconds = end - start;
+
+  return elapsed_seconds.count();
+}
+
+void SubGraphChecker::RemoveFetchOp(pir::Block* block) {
+  for (auto it = block->begin(); it != block->end();) {
+    if (it->isa<paddle::dialect::FetchOp>()) {
+      it = block->erase(it);
+    } else {
+      it++;
+    }
+  }
 }
 
 void SubGraphChecker::InitInputs(const std::vector<pir::Value>& input_values,

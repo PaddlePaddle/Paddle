@@ -40,9 +40,13 @@ class SubGraphChecker {
                      std::vector<std::string>* names,
                      const std::string& prefix);
 
+  void RemoveFetchOp(pir::Block* block);
+
   std::vector<phi::DenseTensor> RunPhiResult();
   std::vector<phi::DenseTensor> RunCinnResult();
 
+  double RunPhiSpeed();
+  double RunCinnSpeed();
   std::shared_ptr<pir::Program> phi_program_;
   std::shared_ptr<pir::Program> prim_program_;
 
@@ -51,7 +55,6 @@ class SubGraphChecker {
   paddle::framework::InterpreterCore* phi_exec_;
 
   paddle::framework::Scope inner_scope_;
-  // paddle::framework::Scope cinn_scope_;
 
   std::vector<pir::Value> phi_input_values_;
   std::vector<std::string> phi_fetch_names_;

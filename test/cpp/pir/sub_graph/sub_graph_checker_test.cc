@@ -29,7 +29,7 @@ std::shared_ptr<::pir::Program> BuildBasicProgram() {
 
   // full -> softmax(max -> subtract -> exp -> sum -> divide)
   const float value_one = 1.0;
-  const std::vector<int64_t> shape = {16, 16};
+  const std::vector<int64_t> shape = {128, 12, 128, 128};
 
   auto x = builder
                .Build<paddle::dialect::DataOp>(
@@ -48,7 +48,7 @@ std::shared_ptr<::pir::Program> BuildPrimProgram() {
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
   const float value_one = 1.0;
-  const std::vector<int64_t> shape = {16, 16};
+  const std::vector<int64_t> shape = {128, 12, 128, 128};
 
   auto x = builder
                .Build<paddle::dialect::DataOp>(
@@ -70,11 +70,92 @@ std::shared_ptr<::pir::Program> BuildPrimProgram() {
   return program;
 }
 
-TEST(sub_grah_checker, test_class) {
+std::shared_ptr<::pir::Program> BuildDropOutPrimProgram() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  auto program = std::make_shared<::pir::Program>(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+
+  auto x =
+      builder
+          .Build<paddle::dialect::DataOp>("input_0",
+                                          std::vector<int64_t>({128, 128, 768}),
+                                          phi::DataType::FLOAT32,
+                                          phi::GPUPlace())
+          .result(0);
+
+  auto prob = builder
+                  .Build<paddle::dialect::FullOp>(std::vector<int64_t>({1}),
+                                                  0.5,
+                                                  phi::DataType::FLOAT32,
+                                                  phi::GPUPlace())
+                  .result(0);
+
+  auto random = builder
+                    .Build<paddle::dialect::UniformOp>(
+                        std::vector<int64_t>({128, 128, 768}),
+                        phi::DataType::FLOAT32,
+                        0.0,
+                        1.0,
+                        0,
+                        phi::GPUPlace())
+                    .result(0);
+
+  auto mask =
+      builder.Build<paddle::dialect::GreaterThanOp>(random, prob).result(0);
+  auto mask1 =
+      builder.Build<paddle::dialect::CastOp>(mask, phi::DataType::FLOAT32)
+          .result(0);
+  auto mul = builder.Build<paddle::dialect::MultiplyOp>(x, mask1).result(0);
+  auto neg_prob = prob =
+      builder
+          .Build<paddle::dialect::FullOp>(std::vector<int64_t>({1}),
+                                          0.5,
+                                          phi::DataType::FLOAT32,
+                                          phi::GPUPlace())
+          .result(0);
+  auto out = builder.Build<paddle::dialect::DivideOp>(mul, neg_prob).result(0);
+
+  return program;
+}
+
+std::shared_ptr<::pir::Program> BuildDropOutPhiProgram() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  auto program = std::make_shared<::pir::Program>(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+
+  auto x =
+      builder
+          .Build<paddle::dialect::DataOp>("input_0",
+                                          std::vector<int64_t>({128, 128, 768}),
+                                          phi::DataType::FLOAT32,
+                                          phi::GPUPlace())
+          .result(0);
+
+  auto out = builder
+                 .Build<paddle::dialect::DropoutOp>(
+                     x, pir::Value(), 0.5, false, "upscale_in_train", 0, false)
+                 .result(0);
+  return program;
+}
+
+TEST(sub_grah_checker, test_softmax) {
   auto basic_program = BuildBasicProgram();
   auto prim_program = BuildPrimProgram();
 
   paddle::test::SubGraphChecker sub_graph_checker(basic_program, prim_program);
 
   sub_graph_checker.CheckResult();
+  sub_graph_checker.CheckSpeed();
+}
+
+TEST(sub_grah_checker, test_dropout) {
+  auto basic_program = BuildDropOutPhiProgram();
+  auto prim_program = BuildDropOutPrimProgram();
+
+  paddle::test::SubGraphChecker sub_graph_checker(basic_program, prim_program);
+
+  sub_graph_checker.CheckResult();
+  sub_graph_checker.CheckSpeed();
 }
