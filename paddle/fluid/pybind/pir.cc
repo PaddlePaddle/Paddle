@@ -72,7 +72,9 @@ namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
+using paddle::dialect::IfOp;
 using paddle::dialect::SelectedRowsType;
+
 using pir::Attribute;
 using pir::Block;
 using pir::Operation;
@@ -374,6 +376,10 @@ void BindOperation(py::module *m) {
       .def("operand_source", &Operation::operand_source)
       .def("operands", &Operation::operands)
       .def("results", &Operation::results)
+      .def(
+          "blocks",
+          [](Operation &self) { return &self.blocks(); },
+          return_value_policy::reference)
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
@@ -449,7 +455,19 @@ void BindOperation(py::module *m) {
       .def("replace_all_uses_with",
            [](Operation &self, const std::vector<OpResult> &op_results) {
              self.ReplaceAllUsesWith(op_results);
-           });
+           })
+      .def("as_if_op",
+           [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); });
+  py::class_<Operation::BlockContainer> block_container(
+      *m, "Operation_BlockContainer", R"DOC(
+    The Operation_BlockContainer only use to walk all blocks in the operation.
+     )DOC");
+  block_container.def(
+      "__iter__",
+      [](Operation::BlockContainer &self) {
+        return py::make_iterator(self.begin(), self.end());
+      },
+      py::keep_alive<0, 1>());
 }
 
 py::str Value2String(const Value &self) {
