@@ -21,6 +21,7 @@
 #include <type_traits>
 
 #include "paddle/cinn/common/shared.h"
+#include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -585,7 +586,14 @@ void BindOperation(py::module *m) {
   py::class_<ir::PlaceholderOp> placeholder_op(*m, "PlaceholderOp");
   placeholder_op.def_readwrite("shape", &ir::PlaceholderOp::shape)
       .def_readwrite("dtype", &ir::PlaceholderOp::dtype)
-      .def_static("make", &ir::PlaceholderOp::Make)
+      .def_static("make",
+                  py::overload_cast<const std::string &,
+                                    const std::vector<Expr> &,
+                                    Type>(&ir::PlaceholderOp::Make))
+      .def_static("make",
+                  py::overload_cast<const std::string &,
+                                    const std::vector<ir::Dim> &,
+                                    Type>(&ir::PlaceholderOp::Make))
       .def("func_type", &ir::PlaceholderOp::func_type);
 
   py::class_<ir::CallOp> call_op(*m, "CallOp");
