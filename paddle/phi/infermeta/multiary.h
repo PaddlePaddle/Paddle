@@ -897,5 +897,12 @@ void QkvTransposeSplitInferMeta(const MetaTensor& qkv,
                                 MetaTensor* q_out,
                                 MetaTensor* k_out,
                                 MetaTensor* v_out);
+void GetPaddingOffsetInferMeta(const MetaTensor& input_ids,
+                               const MetaTensor& cum_offsets,
+                               const MetaTensor& token_num,
+                               const MetaTensor& seq_len,
+                               MetaTensor* x_remove_padding,
+                               MetaTensor* cum_offsets_out,
+                               MetaTensor* padding_offset);
 
 }  // namespace phi

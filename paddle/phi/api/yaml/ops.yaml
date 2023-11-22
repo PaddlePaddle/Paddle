@@ -1112,6 +1112,15 @@
     data_type : anchors
   optional : rpn_rois_num
 
+- op : get_padding_offset
+  args : (Tensor input_ids, Tensor cum_offsets, Tensor token_num, Tensor seq_len)
+  output : Tensor(x_remove_padding), Tensor(cum_offsets_out), Tensor(padding_offset)
+  infer_meta :
+    func : GetPaddingOffsetInferMeta
+  kernel :
+    func : get_padding_offset
+    data_type : input_ids
+
 - op : grid_sample
   args : (Tensor x, Tensor grid, str mode = "bilinear", str padding_mode = "zeros", bool align_corners = true)
   output : Tensor(out)
