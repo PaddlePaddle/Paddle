@@ -556,6 +556,31 @@ def _decomp_bwd_without_vjp(
     return tuple(res), has_decomposed
 
 
+def check_op(
+    fwd_op: pir.Operation,
+    bwd_op: pir.Operation,
+):
+    if fwd_op is None or fwd_op.name() + "_grad" != bwd_op.name():
+        return False
+
+    bwd_op_input_names = bwd_op.get_input_names()
+    bwd_inputs = [x.source() for x in bwd_op.operands()]
+    assert len(bwd_op_input_names) == len(
+        bwd_inputs
+    ), "backward op names do not match backward op inputs"
+    fwd_op_related_inputs_outputs = []
+    for idx, name in enumerate(bwd_op_input_names):
+        if not ("_grad" in name):
+            fwd_op_related_inputs_outputs.append(bwd_inputs[idx])
+    fwd_inputs = [x.source() for x in fwd_op.operands()]
+    fwd_outputs = fwd_op.results()
+    for operand in fwd_op_related_inputs_outputs:
+        if operand not in fwd_inputs and operand not in fwd_outputs:
+            return False
+
+    return True
+
+
 def decomp_bwd_op(
     block: Block,
     bwd_op: pir.Operation,
@@ -585,7 +610,7 @@ def decomp_bwd_op(
             "To decompose backward op, please set `core._set_prim_backward_enabled(True)` firstly"
         )
     fwd_op = _get_fwd_op(bwd_op, grad_var_to_var_map)
-    if fwd_op is None or fwd_op.name() + "_grad" != bwd_op.name():
+    if not check_op(fwd_op, bwd_op):
         return None, False
 
     (
