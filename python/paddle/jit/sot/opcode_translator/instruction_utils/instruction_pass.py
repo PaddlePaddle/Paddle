@@ -94,12 +94,6 @@ def remove_load_store_pass(instrs, code_options):
     and we only consider the local vars.
     """
 
-    def name_not_loaded_in(name, instrs):
-        for instr in instrs:
-            if instr.opname == "LOAD_FAST" and instr.argval == name:
-                return False
-        return True
-
     def stored_from(load_instr, instrs):
         idx = instrs.index(load_instr) - 1
         while idx >= 0:
@@ -112,16 +106,11 @@ def remove_load_store_pass(instrs, code_options):
             idx -= 1
         return None
 
-    def no_more_load(load_instr, instrs):
-        idx = instrs.index(load_instr) + 1
-        while idx < len(instrs):
-            instr = instrs[idx]
-            if (
-                instr.opname == "LOAD_FAST"
-                and instr.argval == load_instr.argval
-            ):
-                return False
-        return True
+    def code_exist(opname, argval, instrs):
+        for instr in instrs:
+            if instr.opname == opname and instr.argval == argval:
+                return True
+        return False
 
     # remove rename and load store
     jump_target = {
@@ -136,62 +125,88 @@ def remove_load_store_pass(instrs, code_options):
         # find out all LOAD_FAST -> STORE_FAST pair
         opcode_pairs = find_related_local_opcodes(instrs, code_options)
 
-        for load, store in opcode_pairs:
-            if load in jump_target or store in jump_target:
+        for load_a, store_b in opcode_pairs:
+            if load_a in jump_target or store_b in jump_target:
                 continue
-            load_name = load.argval
-            store_name = store.argval
+            a_name = load_a.argval
+            b_name = store_b.argval
 
             # if these two names are only stored once
             # it means these two name only have one value all the time
             # so we can just rename them, to delete some codes
-            if load_name in stored_once and store_name in stored_once:
-                instrs.remove(load)
-                instrs.remove(store)
-                if load_name != store_name:
+            if a_name in stored_once and b_name in stored_once:
+                instrs.remove(load_a)
+                instrs.remove(store_b)
+                if a_name != b_name:
                     for instr in instrs:
                         if (
                             instr.opname in ("LOAD_FAST", "STORE_FAST")
-                            and instr.argval == store_name
+                            and instr.argval == b_name
                         ):
-                            instr.argval = load_name
+                            instr.argval = a_name
                 modified = True
 
             # if
             #       LOAD A
             #       STORE B
             # A or B is not stored only once (maybe it is input)
-            # we give a more general way to simplify the codes:
+            # we give a more general way to simplify the codes
             #
-            # if A will not be loaded again after STORE B, it means we can move STORE B ahead, like:
-            #       STORE A             ->          STORE B
-            #       ...                             ...
-            #       LOAD  A             ->          LOAD B
-            #       ...                             ...
-            #       LOAD A              ->          ---- (rm)
-            #       STORE B                         ---- (rm)
+            # if A will not be loaded again after (6)STORE B, it means we can move (6)STORE B ahead to (1)STORE A
+            # TIP: there is no more STORE A between (1) and (5)
+            #  (1)      STORE A             ->          STORE B
+            #           ...                             ...
+            #  (2)      LOAD A              ->          LOAD B
+            #           ...
+            #  (3)      LOAD B              ->          not support
+            #           ...
+            #  (4)      STORE B             ->          not support
+            #           ...                             ...
+            #  (5)      LOAD A              ->          ---- (rm)
+            #  (6)      STORE B                         ---- (rm)
+            #           ...
+            #  (7)      STORE B
+            #  (8)      LOAD A
             # so we can rename the rest LOAD A below as LOAD B
-            # Notice, to do this transform, we must make sure that there is not LOAD B exist
-            # between STORE A and STORE B, for B should be another value in this range
+            #
+            # What changed:
+            #   1. if (4) exist, B changed:
+            #       (1) ~ (4), (6) ~
+            #   2. if (4) not exist, B changed:
+            #       (1), (6)
+            #   3. A changed:
+            #       (1) ~
+            #
+            # To do this transform, we should make sure
+            #   1. (4) is not exist in (1) ~ (5): it is too complex
+            #   2. (3) is not exist in (1) ~ (5): load B in the range that B value is changed
+            #   3. (7) (8) is not exist in (6)~: load A in range that A value is changed, if we load B instead, but B also changed
+            #       we can simplify this as "no more LOAD A after (6)"
 
-            elif no_more_load(load, instrs):
-                last_store = stored_from(load, instrs)
-                if last_store is not None:
-                    code_range = instrs[
-                        instrs.index(last_store) : instrs.index(store)
-                    ]
-                else:
-                    code_range = instrs[: instrs.index(store)]
-                if name_not_loaded_in(store_name, code_range):
-                    last_store.argval = store_name
-                    instrs.remove(load)
-                    instrs.remove(store)
-                    for instr in instrs[instrs.index(last_store) :]:
-                        if (
-                            instr.opname in ("LOAD_FAST", "STORE_FAST")
-                            and instr.argval == load_name
-                        ):
-                            instr.argval = store_name
+            last_store_a = stored_from(load_a, instrs)
+            if last_store_a is not None:
+                code_range = instrs[
+                    instrs.index(last_store_a) : instrs.index(store_b)
+                ]
+            else:
+                code_range = instrs[: instrs.index(store_b)]
+
+            if (
+                not code_exist("STORE_FAST", b_name, code_range)
+                and not code_exist("LOAD_FAST", b_name, code_range)
+                and not code_exist(
+                    "LOAD_FAST", a_name, instrs[instrs.index(store_b) :]
+                )
+            ):
+                last_store_a.argval = b_name
+                instrs.remove(load_a)
+                instrs.remove(store_b)
+                for instr in instrs[instrs.index(last_store_a) :]:
+                    if (
+                        instr.opname in ("LOAD_FAST", "STORE_FAST")
+                        and instr.argval == a_name
+                    ):
+                        instr.argval = b_name
 
     # remove store load
     loaded_once = find_loaded_once_local_vars(instrs, code_options)
