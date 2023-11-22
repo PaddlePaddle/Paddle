@@ -2266,7 +2266,7 @@ def column_stack(x, name=None):
         else:
             arrays.append(tensor)
 
-    return paddle.hstack(arrays, name=name)
+    return paddle.concat(arrays, axis=1, name=name)
 
 
 def row_stack(x, name=None):
