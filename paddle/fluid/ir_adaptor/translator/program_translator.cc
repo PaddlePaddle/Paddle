@@ -570,8 +570,8 @@ void ProgramTranslator::TranslateGeneralOperation(
 inline pir::Operation* InsertGetParamaterOp(pir::IrContext* ctx,
                                             const VarDesc* var) {
   auto& type_translator = TypeTranslator::instance();
-  std::string get_parameter_op_name(pir::GetParameterOp::name());
-  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(get_parameter_op_name);
+  std::string parameter_op_name(pir::ParameterOp::name());
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(parameter_op_name);
   std::unordered_map<std::string, pir::Attribute> op_attribute_map = {
       {"parameter_name", pir::StrAttribute::get(ctx, var->Name())},
   };
@@ -626,8 +626,8 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
           var_desc = block.FindVarRecursive(var_name);
         }
 
-        bool need_get_parameter_op = is_parameter && is_unseen_variable;
-        if (need_get_parameter_op) {
+        bool need_parameter_op = is_parameter && is_unseen_variable;
+        if (need_parameter_op) {
           PADDLE_ENFORCE_NOT_NULL(
               var_desc,
               phi::errors::PreconditionNotMet(

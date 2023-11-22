@@ -246,7 +246,7 @@ void BindProgram(py::module *m) {
 }
 
 void RefreshOpStopgradients(Operation *op) {
-  if (op->num_operands() == 0 || op->isa<pir::GetParameterOp>() ||
+  if (op->num_operands() == 0 || op->isa<pir::ParameterOp>() ||
       op->isa<paddle::dialect::UniformOp>()) {
     return;
   } else if (op->isa<pir::SliceOp>()) {
@@ -733,7 +733,7 @@ void BindOpResult(py::module *m) {
       .def_property_readonly(
           "name",
           [](OpResult &self) {
-            if (self.owner()->isa<::pir::GetParameterOp>()) {
+            if (self.owner()->isa<::pir::ParameterOp>()) {
               auto param_name =
                   self.owner()
                       ->attribute<pir::StrAttribute>("parameter_name")
