@@ -1,5 +1,20 @@
 # Ops in this file is only used for pir currently and will replace ops of legacy_ops.yaml/ops.yaml of PHI in future.
 
+- backward_op : embedding_grad
+  forward : embedding (Tensor x, Tensor weight, int64_t padding_idx=-1) -> Tensor(out)
+  args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1)
+  output : Tensor(weight_grad)
+  infer_meta :
+    func : EmbeddingGradInferMeta
+    param : [x,weght]
+  kernel :
+    func : embedding_grad {dense, dense, dense -> dense}
+           embedding_sparse_grad {dense, dense, dense -> selected_rows}
+           sparse_weight_embedding_grad {selected_rows, dense, dense -> dense}
+           sparse_weight_embedding_sparse_grad {selected_rows, dense, dense -> selected_rows}
+    data_type : out_grad
+  no_need_buffer : weight
+
 - op : arange
   args : (Scalar start, Scalar end, Scalar step, DataType dtype=DataType::FLOAT64, Place place=CPUPlace())
   output : Tensor(out)
