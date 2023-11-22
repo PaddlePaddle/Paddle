@@ -365,7 +365,7 @@ def monkey_patch_opresult():
         if not self.is_dense_tensor_array_type():
             raise TypeError(
                 "Only OpResult with pd_op.tensor_array support `append` method, but received type: {}".format(
-                    self.type
+                    self.type()
                 )
             )
         from paddle.tensor.array import array_length, array_write
