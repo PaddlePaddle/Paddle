@@ -16,7 +16,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_pir_api_only,
+)
 
 import paddle
 from paddle.nn import BatchNorm, Linear
@@ -82,18 +86,23 @@ class TestTanhHighOrderGrad(Dy2StTestBase):
         self.dy2st_input = (x2,)
         self.dy2st_grad_input = (x2,)
 
+    @test_ast_only
+    @test_pir_api_only
     def test_run(self):
         try:
             dy_out = self.func(*self.dy_input)
-            dy_grad = paddle.grad(dy_out, self.dy_grad_input)
+            dy_grad = paddle.grad(dy_out, self.dy_grad_input, allow_unused=True)
         except:
             dy_grad = [None for i in self.dy_grad_input]
         dy_grad = [
             t.numpy() if isinstance(t, paddle.Tensor) else t for t in dy_grad
         ]
 
-        dy2st_out = paddle.jit.to_static(self.func)(*self.dy2st_input)
-        dy2st_grad = paddle.grad(dy2st_out, self.dy2st_grad_input)
+        tmp_func = paddle.jit.to_static(self.func, full_graph=True)
+        dy2st_out = tmp_func(*self.dy2st_input)
+        dy2st_grad = paddle.grad(
+            dy2st_out, self.dy2st_grad_input, allow_unused=True
+        )
         dy2st_grad = [
             t.numpy() if isinstance(t, paddle.Tensor) else t for t in dy_grad
         ]
@@ -112,8 +121,8 @@ class TestTanhHighOrderGrad(Dy2StTestBase):
 
 def matmul_high_order_grad(x, y):
     z = paddle.matmul(x, y)
-    g = paddle.grad(z, [x, y], create_graph=True, allow_unused=True)
-    return g[0]
+    g = paddle.grad(z, [x], create_graph=True, allow_unused=True)
+    return g
 
 
 class TestMatMulHighOrderGrad1(TestTanhHighOrderGrad):

@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/tensor_node.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/tensor_node.h"
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_node.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_node.h"
 
 namespace cinn {
 namespace dialect {

@@ -14,14 +14,13 @@
 
 #pragma once
 
-#include "paddle/pir/core/program.h"
+#include <memory>
+#include "paddle/pir/pass/pass.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
-
-std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program);
-
+std::unique_ptr<::pir::Pass> CreateCinnGroupLoweringPass();
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
