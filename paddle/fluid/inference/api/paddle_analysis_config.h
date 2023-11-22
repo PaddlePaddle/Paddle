@@ -1317,7 +1317,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_feed_fetch_ops_{false};
   bool ir_debug_{false};
 
-  bool use_new_executor_{true};
+  bool use_new_executor_{false};
 
   bool specify_input_name_{false};
 
