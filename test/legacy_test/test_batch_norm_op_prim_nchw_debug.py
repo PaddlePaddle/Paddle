@@ -67,6 +67,8 @@ class TestBatchNormOp(OpTest):
         self.check_prim_pir = False
         self.initConfig()
         self.initTestCase()
+        print("class name ============", type(self))
+        print("method name ============", self._testMethodName)
 
     def test_check_output(self):
         if self.dtype not in ("uint16", "float16"):
