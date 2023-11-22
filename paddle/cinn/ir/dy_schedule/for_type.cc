@@ -22,7 +22,24 @@ namespace ir {
 void DyScheduleImpl::MutateForType(const Expr& loop,
                                    ForType for_type,
                                    int factor) {
-  CINN_NOT_IMPLEMENTED;
+  auto* for_node = loop.As<ir::For>();
+  CHECK(for_node) << "loop param must be For node! Please check.";
+  CHECK(for_node->is_serial())
+      << "loop is not serial, current forloop type is "
+      << static_cast<int>(for_node->for_type()) << ", and it cannot become "
+      << static_cast<int>(for_type);
+  auto loop_copy = ir::ir_utils::IRCopy(loop);
+  auto* new_for_node = loop_copy.As<ir::For>();
+  CHECK(new_for_node);
+  new_for_node->set_for_type(for_type);
+  if (new_for_node->is_vectorized()) {
+    VectorizeInfo vec_info(0, factor);
+    new_for_node->set_vectorize_info(vec_info);
+  } else if (new_for_node->is_binded()) {
+    BindInfo bind_info(for_type, factor, DeviceAPI::GPU);
+    new_for_node->set_bind_info(bind_info);
+  }
+  this->Replace(loop, loop_copy);
 }
 
 void DyScheduleImpl::Parallel(const Expr& loop) { CINN_NOT_IMPLEMENTED; }
