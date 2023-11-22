@@ -20,6 +20,7 @@
 
 #include "paddle/pir/core/spin_lock.h"
 #include "paddle/pir/core/type_id.h"
+#include "paddle/utils/test_macros.h"
 
 namespace pir {
 ///
