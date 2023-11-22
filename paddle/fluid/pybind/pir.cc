@@ -986,7 +986,7 @@ pir::OpResult FakeOpResult() {
 
 bool IsFakeOpResult(const pir::OpResult &result) {
   // create a fake opresults to simplify `ForwardBackwardSplit`.
-  return result.Value::impl() == nullptr;
+  return result.Value::impl() == nullptr || !result.Value::type();
 }
 
 static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
