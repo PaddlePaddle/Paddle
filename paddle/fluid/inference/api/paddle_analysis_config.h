@@ -875,7 +875,6 @@ struct PD_INFER_DECL AnalysisConfig {
   int tensorrt_optimization_level() { return trt_optimization_level_; }
 
   void EnableNewExecutor(bool x = true) { use_new_executor_ = x; }
-
   bool new_executor_enabled() const { return use_new_executor_; }
 
   void EnableDlnne(
