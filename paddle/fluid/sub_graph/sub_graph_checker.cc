@@ -63,90 +63,26 @@ bool AllClose(const phi::DenseTensor& a,
   return true;
 }
 
-pir::Operation* BuildOpFrom(
-    pir::Operation* to_copy_op,
-    std::unordered_map<pir::Value, pir::Value>& value_map) {  // NOLINT
-  pir::OperationArgument to_create_argument(to_copy_op->info());
-  to_create_argument.attributes = to_copy_op->attributes();
-
-  VLOG(6) << "start copy op: " << to_copy_op->name();
-  auto origin_results = to_copy_op->results();
-  VLOG(6) << "start translate origin results into op type.";
-  std::transform(origin_results.begin(),
-                 origin_results.end(),
-                 std::back_inserter(to_create_argument.output_types),
-                 [](const pir::OpResult& r) {
-                   // OpResult -> OpType
-                   return r.type();
-                 });
-
-  // transform by value_map dict.
-  VLOG(6) << "start create op.";
-  auto origin_operands = to_copy_op->operands();
-  std::transform(origin_operands.begin(),
-                 origin_operands.end(),
-                 std::back_inserter(to_create_argument.inputs),
-                 [&value_map](const pir::OpOperand& operand) {
-                   // Operand -> OpResult
-                   return value_map[operand.source()];
-                 });
-  auto* cloned_op = pir::Operation::Create(std::move(to_create_argument));
-
-  std::vector<int> tmp;
-  std::transform(
-      origin_results.begin(),
-      origin_results.end(),
-      cloned_op->results().begin(),
-      std::back_inserter(tmp),  // NOLINT, just a placeholder.
-      [&value_map](const pir::OpResult& a, const pir::OpResult& b) {  // NOLINT
-        value_map[a.Value::impl()] = b.Value::impl();
-        return 1;
-      });
-  return cloned_op;
-}
-
-using OpResultMap = std::unordered_map<pir::OpResult, pir::OpResult>;
-std::shared_ptr<pir::Program> CloneProgram(const pir::Program& program) {
-  // Limitation of this function:
-  // 1. don't support Parameters.
-  // 2. don't support Regions in operator.
-  pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-
-  auto cloned_program = std::make_shared<pir::Program>(ctx);
-  std::unordered_map<pir::Value, pir::Value> value_map;
-  for (auto& op : *program.block()) {
-    auto* cloned_op = BuildOpFrom(op, value_map);
-    cloned_program->block()->push_back(cloned_op);
-  }
-  std::unordered_map<pir::OpResult, pir::OpResult> op_result_map;
-  for (auto& pair : value_map) {
-    op_result_map[pair.first.dyn_cast<pir::OpResult>()] =
-        pair.second.dyn_cast<pir::OpResult>();
-  }
-  return cloned_program;
-}
-
 std::vector<pir::Value> GetBlockInput(pir::Block* block) {
   std::vector<pir::Value> vec_res;
   std::unordered_set<::pir::Value> block_inner_output;
-  for (auto op : *block) {
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      block_inner_output.insert(op->result(i));
+  for (auto& op : *block) {
+    for (size_t i = 0; i < op.num_results(); ++i) {
+      block_inner_output.insert(op.result(i));
     }
 
-    if (op->isa<paddle::dialect::DataOp>()) {
-      vec_res.push_back(op->result(0));
+    if (op.isa<paddle::dialect::DataOp>()) {
+      vec_res.push_back(op.result(0));
     }
   }
 
   std::unordered_set<::pir::Value> insert_value;
-  for (auto op : *block) {
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      if (!block_inner_output.count(op->operand_source(i)) &&
-          !insert_value.count(op->operand_source(i))) {
-        vec_res.push_back(op->operand_source(i));
-        insert_value.insert(op->operand_source(i));
+  for (auto& op : *block) {
+    for (size_t i = 0; i < op.num_operands(); ++i) {
+      if (!block_inner_output.count(op.operand_source(i)) &&
+          !insert_value.count(op.operand_source(i))) {
+        vec_res.push_back(op.operand_source(i));
+        insert_value.insert(op.operand_source(i));
       }
     }
   }
@@ -155,8 +91,8 @@ std::vector<pir::Value> GetBlockInput(pir::Block* block) {
 
 SubGraphChecker::SubGraphChecker(std::shared_ptr<pir::Program> phi_program,
                                  std::shared_ptr<pir::Program> prim_program)
-    : phi_program_(CloneProgram(*(phi_program.get()))),
-      prim_program_(CloneProgram(*(prim_program.get())))
+    : phi_program_(phi_program),
+      prim_program_(prim_program)
 // : phi_program_(phi_program), prim_program_( prim_program)
 {}
 
@@ -367,10 +303,10 @@ void SubGraphChecker::AppendGetParameter(
 void SubGraphChecker::AppendFetchOp(pir::Block* block,
                                     std::vector<std::string>* fetch_names,
                                     const std::string& prefix) {
-  for (auto op : *block) {
-    if (op->isa<paddle::dialect::FetchOp>()) {
+  for (auto& op : *block) {
+    if (op.isa<paddle::dialect::FetchOp>()) {
       fetch_names->push_back(
-          op->attribute("name").dyn_cast<pir::StrAttribute>().AsString());
+          op.attribute("name").dyn_cast<pir::StrAttribute>().AsString());
     }
   }
 
