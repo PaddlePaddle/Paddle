@@ -222,29 +222,29 @@ SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
   TensorDistAttr x_dist_attr = out_grad_dist_attr;
   TensorDistAttr x_grad_dist_attr = out_grad_dist_attr;
 
-  std::vector<int64_t> x_dims_mapping = x.dist_attr().dims_mapping();
+  std::vector<int64_t> x_dim = phi::vectorize(x.dims());
   std::vector<int64_t> out_grad_dim = phi::vectorize(out_grad.dims());
 
-  if (x_dims_mapping.size() != out_grad_dim.size()) {
+  if (x_dim.size() != out_grad_dim.size()) {
     auto dims_mapping = x_dist_attr.dims_mapping();
     auto axis_value = axis.GetData();
 
     for (size_t i = 0; i < axis_value.size(); ++i) {
       if (axis_value[i] < 0) {
-        axis_value[i] += x_dims_mapping.size();
+        axis_value[i] += x_dim.size();
       }
     }
     std::sort(axis_value.begin(), axis_value.end());
 
     // if the input_axes is empty means to reduce all
     if (axis_value.empty()) {
-      for (size_t i = 0; i < x_dims_mapping.size(); ++i) {
+      for (size_t i = 0; i < x_dim.size(); ++i) {
         axis_value.emplace_back(i);
       }
     }
 
     for (const auto& axis : axis_value) {
-      dims_mapping.insert(dims_mapping.begin() + axis, x_dims_mapping[axis]);
+      dims_mapping.insert(dims_mapping.begin() + axis, -1);
     }
     x_dist_attr.set_dims_mapping(dims_mapping);
     x_grad_dist_attr.set_dims_mapping(dims_mapping);

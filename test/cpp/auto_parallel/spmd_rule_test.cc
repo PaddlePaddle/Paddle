@@ -1002,7 +1002,7 @@ TEST(ReduceMaxRule, Ctor) {
       phi::distributed::ReductionGradInferSpmd(
           x, out, out_grad, {1}, false, false);
   check_partial_dims(backward_info.first[1], {});
-  check_dim_mapping(backward_info.second[0], {-1, 0, -1});
+  check_dim_mapping(backward_info.second[0], {-1, -1, -1});
   check_partial_dims(backward_info.second[0], {});
 }
 
