@@ -163,17 +163,9 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
             res = exe.run(
                 feed={'X': self.x_np, 'Index': self.index_np}, fetch_list=[out]
             )
-        out_ref = np.zeros_like(self.index_np, dtype=self.x_np.dtype)
-        if self.axis == 0:
-            for i in range(self.index_shape[0]):
-                for j in range(self.index_shape[1]):
-                    out_ref[i, j] = self.x_np[self.index_np[i, j], j]
-        elif self.axis == 1:
-            for i in range(self.index_shape[0]):
-                for j in range(self.index_shape[1]):
-                    out_ref[i, j] = self.x_np[i, self.index_np[i, j]]
-        else:
-            return
+        out_ref = np.array(
+            np.take_along_axis(self.x_np, self.index_np, self.axis)
+        )
         for out in res:
             np.testing.assert_allclose(out, out_ref, rtol=0.001)
 
@@ -182,17 +174,9 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
         x_tensor = paddle.to_tensor(self.x_np)
         self.index = paddle.to_tensor(self.index_np)
         out = paddle.take_along_axis(x_tensor, self.index, self.axis)
-        out_ref = np.zeros_like(self.index_np, dtype=self.x_np.dtype)
-        if self.axis == 0:
-            for i in range(self.index_shape[0]):
-                for j in range(self.index_shape[1]):
-                    out_ref[i, j] = self.x_np[self.index_np[i, j], j]
-        elif self.axis == 1:
-            for i in range(self.index_shape[0]):
-                for j in range(self.index_shape[1]):
-                    out_ref[i, j] = self.x_np[i, self.index_np[i, j]]
-        else:
-            return
+        out_ref = np.array(
+            np.take_along_axis(self.x_np, self.index_np, self.axis)
+        )
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
@@ -226,17 +210,47 @@ class TestTakeAlongAxisAPICase1(TestTakeAlongAxisAPI):
             self.place.append(paddle.CUDAPlace(0))
 
 
-class TestTakeAlongAxisAPICase2(TestTakeAlongAxisAPI):
+class TestTakeAlongAxisAPICase2(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
-        self.shape = [2, 2]
-        self.index_shape = [1, 1]
-        self.index_np = np.array([[1]]).astype('int64')
+        self.shape = [3, 3]
+        self.index_shape = [1, 3]
+        self.index_np = np.array([[0, 1, 2]]).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
         self.place = [paddle.CPUPlace()]
-        self.axis = 1
+        self.axis = 0
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
+
+    @test_with_pir_api
+    def test_api_static(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('X', self.shape)
+            index = paddle.static.data('Index', self.index_shape, "int64")
+            out = paddle.take_along_axis(x, index, self.axis, False)
+            exe = paddle.static.Executor(self.place[0])
+            res = exe.run(
+                feed={'X': self.x_np, 'Index': self.index_np}, fetch_list=[out]
+            )
+        out_ref = np.zeros_like(self.index_np, dtype=self.x_np.dtype)
+        for i in range(self.index_shape[0]):
+            for j in range(self.index_shape[1]):
+                out_ref[i, j] = self.x_np[self.index_np[i, j], j]
+        for out in res:
+            np.testing.assert_allclose(out, out_ref, rtol=0.001)
+
+    def test_api_dygraph(self):
+        paddle.disable_static(self.place[0])
+        x_tensor = paddle.to_tensor(self.x_np)
+        self.index = paddle.to_tensor(self.index_np)
+        out = paddle.take_along_axis(x_tensor, self.index, self.axis, False)
+        out_ref = np.zeros_like(self.index_np, dtype=self.x_np.dtype)
+        for i in range(self.index_shape[0]):
+            for j in range(self.index_shape[1]):
+                out_ref[i, j] = self.x_np[self.index_np[i, j], j]
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

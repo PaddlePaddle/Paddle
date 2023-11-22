@@ -61,7 +61,7 @@ class TestPutAlongAxisOp(OpTest):
         self.x_shape = (10, 10, 10)
         self.value_type = "float64"
         self.value = np.array([99]).astype(self.value_type)
-        self.index_type = "int64"
+        self.index_type = "int32"
         self.index = np.array([[[0]]]).astype(self.index_type)
         self.axis = 1
         self.axis_type = "int64"
@@ -157,7 +157,8 @@ class TestPutAlongAxisAPI(unittest.TestCase):
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.shape)
                 index = paddle.static.data('Index', self.index_shape, "int64")
-                out = paddle.put_along_axis(x, index, self.value_np, self.axis)
+                value = paddle.static.data('Value', self.value_shape)
+                out = paddle.put_along_axis(x, index, value, self.axis)
                 exe = paddle.static.Executor(self.place[0])
                 res = exe.run(
                     feed={
@@ -167,10 +168,12 @@ class TestPutAlongAxisAPI(unittest.TestCase):
                     },
                     fetch_list=[out],
                 )
-            out_ref = copy.deepcopy(self.x_np)
-            for i in range(self.index_shape[0]):
-                for j in range(self.index_shape[1]):
-                    out_ref[self.index_np[i, j], j] = self.value_np
+
+            np.put_along_axis(
+                self.x_np, self.index_np, self.value_np, self.axis
+            )
+            # numpy put_along_axis is an inplace opearion.
+            out_ref = self.x_np
 
             for out in res:
                 np.testing.assert_allclose(out, out_ref, rtol=0.001)
@@ -183,21 +186,24 @@ class TestPutAlongAxisAPI(unittest.TestCase):
             paddle.disable_static(place)
             x_tensor = paddle.to_tensor(self.x_np)
             index_tensor = paddle.to_tensor(self.index_np)
+            value_tensor = paddle.to_tensor(self.value_np)
             out = paddle.put_along_axis(
-                x_tensor, index_tensor, self.value_np, self.axis
+                x_tensor, index_tensor, value_tensor, self.axis
             )
-            out_ref = copy.deepcopy(self.x_np)
-            for i in range(self.index_shape[0]):
-                for j in range(self.index_shape[1]):
-                    out_ref[self.index_np[i, j], j] = self.value_np
+            np.array(
+                np.put_along_axis(
+                    self.x_np, self.index_np, self.value_np, self.axis
+                )
+            )
+            out_ref = self.x_np
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
 
             # for ci coverage, numpy put_along_axis did not support argument of 'reduce'
             paddle.put_along_axis(
-                x_tensor, index_tensor, self.value_np, self.axis, 'mul'
+                x_tensor, index_tensor, value_tensor, self.axis, 'mul'
             )
             paddle.put_along_axis(
-                x_tensor, index_tensor, self.value_np, self.axis, 'add'
+                x_tensor, index_tensor, value_tensor, self.axis, 'add'
             )
 
             paddle.enable_static()
@@ -289,7 +295,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
             index_tensor1 = paddle.to_tensor(self.index_np1)
             value_tensor = paddle.to_tensor(self.value)
             out = paddle.put_along_axis(
-                x_tensor, index_tensor1, value_tensor, 0
+                x_tensor, index_tensor1, value_tensor, 0, 'assign', False
             )
             out_ref = copy.deepcopy(self.x_np)
             for i in range(self.index1_shape[0]):
@@ -299,15 +305,15 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
 
             # for ci coverage, numpy put_along_axis did not support argument of 'reduce'
             paddle.put_along_axis(
-                x_tensor, index_tensor1, value_tensor, 0, 'mul'
+                x_tensor, index_tensor1, value_tensor, 0, 'mul', False
             )
             paddle.put_along_axis(
-                x_tensor, index_tensor1, value_tensor, 0, 'add'
+                x_tensor, index_tensor1, value_tensor, 0, 'add', False
             )
 
             index_tensor2 = paddle.to_tensor(self.index_np2)
             out = paddle.put_along_axis(
-                x_tensor, index_tensor2, value_tensor, 1
+                x_tensor, index_tensor2, value_tensor, 1, 'assign', False
             )
             out_ref = copy.deepcopy(self.x_np)
             for i in range(self.index2_shape[0]):
@@ -317,10 +323,10 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
 
             # for ci coverage, numpy put_along_axis did not support argument of 'reduce'
             paddle.put_along_axis(
-                x_tensor, index_tensor2, value_tensor, 1, 'mul'
+                x_tensor, index_tensor2, value_tensor, 1, 'mul', False
             )
             paddle.put_along_axis(
-                x_tensor, index_tensor2, value_tensor, 1, 'add'
+                x_tensor, index_tensor2, value_tensor, 1, 'add', False
             )
 
             paddle.enable_static()
@@ -337,7 +343,9 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
                 x1 = paddle.static.data('X', self.shape)
                 index1 = paddle.static.data('Index', self.index1_shape, "int64")
                 value_tensor = paddle.to_tensor(self.value)
-                out1 = paddle.put_along_axis(x1, index1, value_tensor, 0)
+                out1 = paddle.put_along_axis(
+                    x1, index1, value_tensor, 0, 'assign', False
+                )
                 exe = paddle.static.Executor(place)
                 res = exe.run(
                     feed={
@@ -359,7 +367,9 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
                 x2 = paddle.static.data('X', self.shape)
                 index2 = paddle.static.data('Index', self.index2_shape, "int64")
                 value_tensor = paddle.to_tensor(self.value)
-                out2 = paddle.put_along_axis(x2, index2, value_tensor, 1)
+                out2 = paddle.put_along_axis(
+                    x2, index2, value_tensor, 1, 'assign', False
+                )
                 exe = paddle.static.Executor(place)
                 res = exe.run(
                     feed={
@@ -386,13 +396,17 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
         values = paddle.to_tensor([2])
         # len(arr.shape) != len(indices.shape)
         try:
-            res = paddle.put_along_axis(tensorx, indices, 1.0, 0)
+            res = paddle.put_along_axis(
+                tensorx, indices, 1.0, 0, 'assign', False
+            )
         except Exception as error:
             self.assertIsInstance(error, ValueError)
         indices = paddle.to_tensor([[1]]).astype("int32")
         # len(values.shape) != len(indices.shape)
         try:
-            res = paddle.put_along_axis(tensorx, indices, values, 0)
+            res = paddle.put_along_axis(
+                tensorx, indices, values, 0, 'assign', False
+            )
         except Exception as error:
             self.assertIsInstance(error, ValueError)
         indices = paddle.to_tensor(
@@ -400,13 +414,17 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
         ).astype("int32")
         # indices too large
         try:
-            res = paddle.put_along_axis(tensorx, indices, 1.0, 0)
+            res = paddle.put_along_axis(
+                tensorx, indices, 1.0, 0, 'assign', False
+            )
         except Exception as error:
             self.assertIsInstance(error, RuntimeError)
         indices = paddle.to_tensor([[10]]).astype("int32")
         # the element of indices out of range
         try:
-            res = paddle.put_along_axis(tensorx, indices, 1.0, 0)
+            res = paddle.put_along_axis(
+                tensorx, indices, 1.0, 0, 'assign', False
+            )
         except Exception as error:
             self.assertIsInstance(error, RuntimeError)
 
