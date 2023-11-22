@@ -224,13 +224,13 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
                                  float* values_ptr) {
   using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
 
-#ifdef _OPENMP
-  // Use maximum 4 threads to collect the nan and inf information.
-  int num_threads = std::max(omp_get_num_threads(), 1);
-  num_threads = std::min(num_threads, 4);
-#else
+  // #ifdef _OPENMP
+  //   // Use maximum 4 threads to collect the nan and inf information.
+  //   int num_threads = std::max(omp_get_num_threads(), 1);
+  //   num_threads = std::min(num_threads, 4);
+  // #else
   int num_threads = 1;
-#endif
+  // #endif
 
   std::vector<int64_t> thread_num_nan(num_threads, 0);
   std::vector<int64_t> thread_num_inf(num_threads, 0);
@@ -239,20 +239,21 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
   std::vector<MT> thread_max_value(num_threads, static_cast<MT>(value_ptr[0]));
   std::vector<MT> thread_mean_value(num_threads, static_cast<MT>(0));
 
-#ifdef _OPENMP
-#pragma omp parallel num_threads(num_threads)
-#endif
+  // #ifdef _OPENMP
+  // #pragma omp parallel num_threads(num_threads)
+  // #endif
   {
-#ifdef _OPENMP
-    int64_t tid = omp_get_thread_num();
-    int64_t chunk_size = (numel + num_threads - 1) / num_threads;
-    int64_t begin = tid * chunk_size;
-    int64_t end = chunk_size + begin > numel ? numel : chunk_size + begin;
-#else
+    // #ifdef _OPENMP
+    //     int64_t tid = omp_get_thread_num();
+    //     int64_t chunk_size = (numel + num_threads - 1) / num_threads;
+    //     int64_t begin = tid * chunk_size;
+    //     int64_t end = chunk_size + begin > numel ? numel : chunk_size +
+    //     begin;
+    // #else
     int64_t tid = 0;
     int64_t begin = 0;
     int64_t end = numel;
-#endif
+    // #endif
     for (int64_t i = begin; i < end; ++i) {
       MT value = static_cast<MT>(value_ptr[i]);
 
@@ -338,9 +339,9 @@ void CheckNumericsCpuImpl(const T* value_ptr,
 
   RealType real_sum = 0.0f, imag_sum = 0.0f;
 
-#ifdef _OPENMP
-#pragma omp parallel for reduction(+ : real_sum) reduction(+ : imag_sum)
-#endif
+  // #ifdef _OPENMP
+  // #pragma omp parallel for reduction(+ : real_sum) reduction(+ : imag_sum)
+  // #endif
   for (int64_t i = 0; i < numel; ++i) {
     T value = value_ptr[i];
     real_sum += (value.real - value.real);
