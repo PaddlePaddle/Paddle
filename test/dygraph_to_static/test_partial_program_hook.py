@@ -52,11 +52,11 @@ class TestPirPartiaProgramLayerHook(Dy2StTestBase):
 
     @test_ast_only
     def test_before_append_backward(self):
-        self.assertIsNone(self._hook.before_append_backward(None))
+        self.assertIsNone(self._hook.before_append_backward(None, None))
 
     @test_ast_only
     def test_after_append_backward(self):
-        self.assertIsNone(self._hook.after_append_backward(None, 0))
+        self.assertIsNone(self._hook.after_append_backward(None, None, 0))
 
     @test_ast_only
     def test_after_infer(self):
@@ -101,10 +101,9 @@ class TestPrimHook(Dy2StTestBase):
 
 class TestPirPrimHook(Dy2StTestBase):
     def setUp(self):
+        core._set_prim_all_enabled(True)
         with paddle.pir_utils.IrGuard():
             paddle.disable_static()
-
-            core._set_prim_all_enabled(False)
 
             def f():
                 return paddle.nn.functional.dropout(paddle.rand((1,)))
@@ -117,16 +116,12 @@ class TestPirPrimHook(Dy2StTestBase):
             )
             self.partial_program_layer = partial_program_layer
 
-            core._set_prim_all_enabled(True)
-
     def tearDown(self):
         core._set_prim_all_enabled(False)
 
     @test_ast_only
     def test_before_append_backward(self):
         with paddle.pir_utils.IrGuard():
-            paddle.disable_static()
-
             program = self.partial_program_layer.program
 
             self._hook.before_append_backward(
@@ -136,27 +131,27 @@ class TestPirPrimHook(Dy2StTestBase):
             self.assertNotIn(
                 'dropout',
                 tuple(
-                    op.type for op in program.forward_program.global_block.ops
+                    op.name()
+                    for op in program.forward_program.global_block().ops
                 ),
             )
 
     @test_ast_only
     def test_after_append_backward(self):
         with paddle.pir_utils.IrGuard():
-            paddle.disable_static()
-
-            train_program = self.partial_program_layer.train_program
+            program_ = self.partial_program_layer.train_program
+            train_program = program_.program
 
             (
                 program,
                 forward_end_idx,
                 targets,
             ) = self._hook.after_append_backward(
-                train_program, train_program.out_values, 0
+                train_program, program_.out_values, 0
             )
             self.assertNotIn(
-                'dropout_grad',
-                tuple(op.name for op in program.program.global_block().ops),
+                'pd_op.dropout_grad',
+                tuple(op.name() for op in train_program.global_block().ops),
             )
 
 
