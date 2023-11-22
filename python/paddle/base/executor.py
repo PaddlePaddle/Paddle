@@ -798,7 +798,7 @@ class _StandaloneExecutor:
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, feed_names, return_numpy=True, enable_op_profiling=False):
+    def run(self, feed_names, return_numpy=True):
         """
         Args:
             feed_names(list): This parameter represents the input names of the model.
@@ -807,19 +807,7 @@ class _StandaloneExecutor:
             return_numpy(bool): This parameter indicates whether convert the fetched Tensors
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
-            enable_op_profiling(bool): Enable/disable op runtime profiling. The default is False.
         """
-        if enable_op_profiling:
-            return self._run_op_runtime_profiling(feed_names)
-        else:
-            return self._run_feed_forward(feed_names, return_numpy)
-
-    def _create_new_executor(self):
-        new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
-
-        return new_exe
-
-    def _run_feed_forward(self, feed_names, return_numpy):
         tensors = self._new_exe.run(feed_names)._move_to_list()
         if return_numpy:
             tensors = as_numpy(tensors, copy=True)
@@ -835,9 +823,13 @@ class _StandaloneExecutor:
                 )
             return tensors
 
-    def _run_op_runtime_profiling(self, feed_names) -> core.ProgramDesc:
+    def run_profile(self, feed_names) -> core.ProgramDesc:
         program_desc = self._new_exe.run_profile(feed_names)
         return program_desc
+
+    def _create_new_executor(self):
+        new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
+        return new_exe
 
 
 class _ExecutorCache:

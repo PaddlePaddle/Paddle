@@ -2555,7 +2555,7 @@ def _measure_program_real_op_cost_multipass(program, place, run_iters, verbose):
 
     for iter_id in range(run_iters):
         # for each iteration, run profiling and retrieve modified version of program desc
-        program_desc = exe.run(feed_names, enable_op_profiling=True)
+        program_desc = exe.run_profile(feed_names)
 
         # rebuild program object from the new program desc
         temp_program = cloned_program.clone()
@@ -2594,13 +2594,13 @@ def measure_program_real_op_cost(
     @param run_iters: int
         Specify how many iterations will be run during profiling. Larger value tends
         to give more accurate profiling result but requires more time.
-    @param place: paddle.CPUPlace | paddle.CUDAPlace | ...
+    @param place: paddle.CPUPlace | paddle.CUDAPlace
         Where the program is going to be executed.
     @param verbose_level: int
         Set up verbose level during profiling. Can be set to one of the following:
         0 = turn off, don't output anything,
-        1 = output profiling message only,
-        2 = output profiling and debug message.
+        1 = output profiling messages only,
+        2 = output profiling and debug messages.
 
     Returns
     -----------
@@ -2657,6 +2657,8 @@ def measure_program_real_op_cost(
             'run_iters was set to 1, profiling results might be inaccurate due to outilers.'
         )
 
+    logger = get_logger(log_level=logging.INFO)
+
     # run profiling multiple times and record op run time of each run
     prof_results = _measure_program_real_op_cost_multipass(
         program, place, run_iters, verbose=(verbose_level >= 2)
@@ -2671,3 +2673,7 @@ def measure_program_real_op_cost(
             and check_if_op_supports_runtime_profiling(op)
         ):
             op.dist_attr.run_time_us = op_runtime_us_final
+        logger.info(
+            "%4s %32s  %.1f us"
+            % (str(op_id), str(op.type), op_runtime_us_final)
+        ) if verbose_level >= 1 else None

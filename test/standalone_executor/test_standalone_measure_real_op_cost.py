@@ -105,6 +105,14 @@ class TestOpProfiling(unittest.TestCase):
             measure_program_real_op_cost(
                 train_program, place=place, verbose_level=2
             )
+            num_ops = len(train_program.global_block().ops)
+            for i in range(num_ops):
+                # all of program ops built in unit test supports runtime profiling,
+                # so assert their run time are all correctly set.
+                op_run_time_us = (
+                    train_program.global_block().ops[i].dist_attr.run_time_us
+                )
+                self.assertTrue(op_run_time_us > 0)
         x = np.ones([1024, 1]).astype('float32')
         (loss_data,) = exe.run(
             train_program, feed={"X": x}, fetch_list=[loss.name]
