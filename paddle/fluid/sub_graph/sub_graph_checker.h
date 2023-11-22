@@ -26,7 +26,7 @@ class SubGraphChecker {
   SubGraphChecker(std::shared_ptr<pir::Program> orig_program,
                   std::shared_ptr<pir::Program> prim_program);
 
-  void CheckResult1();
+  void CheckResult();
 
   void CheckSpeed();
 

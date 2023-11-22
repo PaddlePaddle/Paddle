@@ -47,14 +47,9 @@ std::shared_ptr<::pir::Program> BuildPrimProgram() {
   auto program = std::make_shared<::pir::Program>(ctx);
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
-  // full -> softmax(max -> subtract -> exp -> sum -> divide)
   const float value_one = 1.0;
   const std::vector<int64_t> shape = {16, 16};
-  //   auto x = builder
-  //                .Build<paddle::dialect::FullOp>(
-  //                    shape, value_one, phi::DataType::FLOAT32,
-  //                    phi::GPUPlace())
-  //                .result(0);
+
   auto x = builder
                .Build<paddle::dialect::DataOp>(
                    "input_0", shape, phi::DataType::FLOAT32, phi::GPUPlace())
@@ -79,11 +74,7 @@ TEST(sub_grah_checker, test_class) {
   auto basic_program = BuildBasicProgram();
   auto prim_program = BuildPrimProgram();
 
-  std::cerr << "before init\n";
   paddle::test::SubGraphChecker sub_graph_checker(basic_program, prim_program);
 
-  std::cerr << "after init\n";
-  sub_graph_checker.CheckResult1();
-
-  std::cerr << "finish run\n";
+  sub_graph_checker.CheckResult();
 }

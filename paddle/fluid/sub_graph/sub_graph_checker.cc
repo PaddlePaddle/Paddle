@@ -91,51 +91,27 @@ std::vector<pir::Value> GetBlockInput(pir::Block* block) {
 
 SubGraphChecker::SubGraphChecker(std::shared_ptr<pir::Program> phi_program,
                                  std::shared_ptr<pir::Program> prim_program)
-    : phi_program_(phi_program),
-      prim_program_(prim_program)
-// : phi_program_(phi_program), prim_program_( prim_program)
-{}
+    : phi_program_(phi_program), prim_program_(prim_program) {}
 
-void SubGraphChecker::CheckResult1() {
-  std::cerr << "~~~\n";
+void SubGraphChecker::CheckResult() {
   auto phi_res = RunPhiResult();
-
-  std::cerr << "@@@@\n";
-
-  std::cerr << "finish phi run\n";
 
   auto cinn_res = RunCinnResult();
 
   for (size_t i = 0; i < phi_res.size(); ++i) {
     auto res = AllClose(phi_res[i], cinn_res[i]);
-
-    std::cerr << "compare " << i << "\t" << res << std::endl;
+    LOG(INFO) << "compare index " << i << "\t" << res << std::endl;
   }
 }
 
 std::vector<phi::DenseTensor> SubGraphChecker::RunPhiResult() {
   phi_input_values_ = GetBlockInput(phi_program_->block());
   InitInputs(phi_input_values_, phi_program_->block(), &inner_scope_);
-  std::cerr << "--11\n";
-  phi_program_->Print(std::cout);
-  // AppendGetParameter( phi_input_values_, phi_program_->block() );
-
-  std::cerr << "12\n";
-  phi_program_->Print(std::cout);
-
-  std::cerr << "13\n";
   AppendFetchOp(phi_program_->block(), &phi_fetch_names_, "phi_out_");
 
-  phi_program_->Print(std::cout);
-
-  std::cerr << "15\n";
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
   phi_kernel_program_ =
       paddle::dialect::PdOpLowerToKernelPass(phi_program_.get(), place);
-
-  phi_kernel_program_->Print(std::cout);
-
-  std::cerr << "init kernel program\n";
 
   paddle::framework::interpreter::ExecutionConfig exec_config;
   exec_config.create_local_scope = false;
@@ -154,8 +130,6 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunPhiResult() {
 
   phi_exec_->Run({}, true);
 
-  std::cerr << "finish phi kernel run\n";
-
   std::vector<phi::DenseTensor> vec_res;
   for (auto& name : fetch_var_names) {
     vec_res.push_back(
@@ -166,27 +140,16 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunPhiResult() {
 }
 
 std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
-  std::cerr << "begin cinn\n";
   cinn_input_values_ = GetBlockInput(prim_program_->block());
-  // InitInputs( cinn_input_values_, prim_program_->block(), &inner_scope_);
 
-  std::cerr << "finish init\n";
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 
-  prim_program_->Print(std::cout);
-  // AppendGetParameter(cinn_input_values_, prim_program_->block() );
   AppendFetchOp(prim_program_->block(), &cinn_fetch_names_, "cinn_out_");
-
-  std::cerr << "11\n";
-  prim_program_->Print(std::cout);
 
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
   cinn::dialect::ir::PdOp2CinnOpConverter(prim_program_.get());
-
-  std::cerr << "12\n";
-  prim_program_->Print(std::cout);
 
   pir::PassManager pm(ctx);
   pm.AddPass(
@@ -194,13 +157,8 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
   pm.AddPass(pir::CreateBuildCinnPass());
   pm.Run(prim_program_.get());
 
-  std::cerr << "13\n";
-  prim_program_->Print(std::cout);
-
   auto res = cinn::dialect::ir::CINNGroupLoweringPass(prim_program_.get());
 
-  std::cerr << "15\n";
-  res->Print(std::cout);
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   auto kernel_program =
@@ -226,8 +184,6 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
 void SubGraphChecker::InitInputs(const std::vector<pir::Value>& input_values,
                                  pir::Block* block,
                                  paddle::framework::Scope* scope) {
-  std::cerr << "inpuut value szi " << input_values.size() << std::endl;
-
   // build a proram, init data and set parameter to scope
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -254,27 +210,20 @@ void SubGraphChecker::InitInputs(const std::vector<pir::Value>& input_values,
     builder.Build<pir::SetParameterOp>(random, name);
     auto param = scope->Var(name);
     out_tensor = param->GetMutable<phi::DenseTensor>();
-
-    std::cerr << "out ptr" << out_tensor << std::endl;
   }
 
   if (input_values.size() > 0) {
     paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
-    program->Print(std::cout);
     auto kernel_program =
         paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
-    std::cerr << "init kernel program\n";
-    kernel_program->Print(std::cout);
     paddle::framework::interpreter::ExecutionConfig exec_config;
     exec_config.create_local_scope = false;
     paddle::framework::InterpreterCore executor(
         place, {}, kernel_program->block(), scope, exec_config);
 
     executor.Run({}, true);
-    std::cerr << "out ptr" << out_tensor->data() << std::endl;
-    std::cerr << "after init " << *out_tensor << std::endl;
   }
 }
 void SubGraphChecker::AppendGetParameter(
@@ -291,10 +240,8 @@ void SubGraphChecker::AppendGetParameter(
                                         input_values[i].type())
             .result(0);
 
-    std::cerr << "use count " << input_values[i].use_count() << std::endl;
     for (auto it = input_values[i].use_begin();
          it != input_values[i].use_end();) {
-      std::cerr << "set sorce \n";
       (it++)->set_source(get_param);
     }
   }
@@ -319,7 +266,6 @@ void SubGraphChecker::AppendFetchOp(pir::Block* block,
 
   ::pir::Builder builder = ::pir::Builder(ctx, block);
 
-  std::cerr << "!!!!!!!!!!!!! " << block->back()->name() << std::endl;
   for (size_t i = 0; i < block->back()->num_results(); ++i) {
     auto name = prefix + std::to_string(i);
     builder.Build<paddle::dialect::FetchOp>(block->back()->result(i), name, i);
