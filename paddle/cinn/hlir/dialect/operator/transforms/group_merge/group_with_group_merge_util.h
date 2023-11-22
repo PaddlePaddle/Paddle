@@ -27,7 +27,7 @@
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 
 namespace cinn {
 namespace dialect {

@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,17 +14,13 @@
 
 #pragma once
 
+#include <memory>
+#include "paddle/pir/pass/pass.h"
+
 namespace cinn {
-namespace common {
-
-class DevInfoBase {
- public:
-  explicit DevInfoBase(int device_num = 0) : device_num_(device_num) {}
-  virtual ~DevInfoBase() = default;
-
- protected:
-  int device_num_;
-};
-
-}  // namespace common
+namespace dialect {
+namespace ir {
+std::unique_ptr<::pir::Pass> CreateCinnGroupLoweringPass();
+}  // namespace ir
+}  // namespace dialect
 }  // namespace cinn
