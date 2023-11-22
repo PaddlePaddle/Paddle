@@ -747,6 +747,9 @@ llvm::Value *CodeGenLLVM::Visit(const ir::ScheduleBlock *) {
 llvm::Value *CodeGenLLVM::Visit(const ir::ScheduleBlockRealize *) {
   CINN_NOT_IMPLEMENTED return nullptr;
 }
+llvm::Value *CodeGenLLVM::Visit(const ir::_Dim_ *) {
+  CINN_NOT_IMPLEMENTED return nullptr;
+}
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Call *op) {
   if (op->name == runtime::intrinsic::debug_log_repr) {

@@ -5,6 +5,8 @@ cc_test_old(
   DEPS
   pir
   op_dialect_vjp
+  pir_transforms
+  op_dialect
   gtest)
 
 cc_test_old(
@@ -14,4 +16,6 @@ cc_test_old(
   DEPS
   pir
   op_dialect_vjp
+  pir_transforms
+  op_dialect
   gtest)

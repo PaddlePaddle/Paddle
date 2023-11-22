@@ -69,13 +69,13 @@ TEST(DrrTest, reduce_sum) {
 
   auto it = program.block()->begin();
 
-  CHECK_EQ((*it)->isa<paddle::dialect::FullOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<cinn::dialect::ReduceSumOp>(), true);
+  CHECK_EQ(it->isa<cinn::dialect::ReduceSumOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<paddle::dialect::ReluOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::ReluOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<paddle::dialect::ExpOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::ExpOp>(), true);
 }
 
 TEST(DrrTest, reduce_max) {
@@ -91,11 +91,11 @@ TEST(DrrTest, reduce_max) {
 
   auto it = program.block()->begin();
 
-  CHECK_EQ((*it)->isa<paddle::dialect::FullOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<cinn::dialect::ReduceMaxOp>(), true);
+  CHECK_EQ(it->isa<cinn::dialect::ReduceMaxOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<paddle::dialect::ReluOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::ReluOp>(), true);
   it++;
-  CHECK_EQ((*it)->isa<paddle::dialect::ExpOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::ExpOp>(), true);
 }

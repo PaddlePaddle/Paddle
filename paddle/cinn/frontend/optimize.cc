@@ -38,6 +38,7 @@ PD_DECLARE_bool(use_reduce_split_pass);
 PD_DECLARE_bool(cinn_use_dense_merge_pass);
 PD_DECLARE_string(cinn_custom_call_deny_ops);
 PD_DECLARE_bool(general_fusion_merge_pass);
+PD_DECLARE_bool(cinn_use_cutlass);
 
 namespace cinn {
 namespace frontend {
@@ -58,6 +59,7 @@ OptimizeOptions DefaultTrainingOptimizeOptions() {
     return FLAGS_cinn_custom_call_deny_ops.find(op) != std::string::npos;
   };
   bool is_gemm_use_cublas = FLAGS_cinn_use_custom_call &&
+                            !FLAGS_cinn_use_cutlass &&
                             !can_find_custom_call_deny_op("matmul") &&
                             !can_find_custom_call_deny_op("cublas_gemm") &&
                             !can_find_custom_call_deny_op("cublas_matmul");

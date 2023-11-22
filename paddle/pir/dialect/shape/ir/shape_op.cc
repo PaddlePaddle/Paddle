@@ -52,11 +52,11 @@ void SymbolicDimOp::Build(Builder &builder,
   argument.AddAttribute("known_non_size_zero", attr_known_non_size_zero);
 }
 
-const std::string SymbolicDimOp::GetSymName() {
+const std::string SymbolicDimOp::GetSymName() const {
   return attribute<StrAttribute>("sym_name").AsString();
 }
 
-int64_t SymbolicDimOp::GetDimSize() {
+int64_t SymbolicDimOp::GetDimSize() const {
   return attribute<Int64Attribute>("value").data();
 }
 
@@ -106,7 +106,7 @@ void SymbolicDimOp::UpdateKnownNonSizeZero(bool flag) {
                              BoolAttribute::get(IrContext::Instance(), flag));
 }
 
-bool SymbolicDimOp::IsDynamic() {
+bool SymbolicDimOp::IsDynamic() const {
   return GetDimSize() == ShapedTypeInterface::kDynamic;
 }
 
@@ -251,9 +251,9 @@ void FuncOp::Print(IrPrinter &printer) {
   auto &os = printer.os;
   os << " shape.func () ";
   os << "{";
-  for (auto item : *block()) {
+  for (auto &item : *block()) {
     os << "\n  ";
-    printer.PrintOperation(item);
+    printer.PrintOperation(&item);
   }
   os << "\n }";
 }

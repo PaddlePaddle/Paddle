@@ -53,5 +53,18 @@ void ApiBuilder::SetParameter(const std::string& name,
   program->SetParameter(name, std::move(parameter));
 }
 
+void ApiBuilder::PushInsertionPoint(
+    const pir::InsertionPoint& insertion_point) {
+  insertion_point_stack_.push(this->insertion_point());
+  set_insertion_point(insertion_point);
+}
+
+void ApiBuilder::PopInsertionPoint() {
+  IR_ENFORCE(!insertion_point_stack_.empty(),
+             "insertion_point_stack_ is empty.");
+  set_insertion_point(insertion_point_stack_.top());
+  insertion_point_stack_.pop();
+}
+
 }  // namespace dialect
 }  // namespace paddle

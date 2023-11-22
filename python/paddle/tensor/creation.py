@@ -1202,7 +1202,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     else:
         num_columns = num_rows
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.eye(
             num_rows, num_columns, dtype, _current_expected_place()
         )

@@ -51,8 +51,19 @@ using InsertionPoint = std::pair<Block *, Block::Iterator>;
 ///
 class Builder {
  public:
-  Builder(IrContext *context, Block *block, Block::Iterator insert_point)
-      : context_(context), insertion_point_(block, insert_point) {}
+  Builder(IrContext *context,
+          Block *block,
+          Block::Iterator insertion_point,
+          bool forbid_insert_without_position = true)
+      : context_(context),
+        insertion_point_(block, insertion_point),
+        forbid_insert_without_position_(forbid_insert_without_position) {}
+
+  Builder(IrContext *context, bool forbid_insert_without_position)
+      : Builder(context,
+                nullptr,
+                Block::Iterator{},
+                forbid_insert_without_position) {}
 
   Builder(IrContext *context, Block *block)
       : Builder(context, block, block->end()) {}
@@ -143,6 +154,8 @@ class Builder {
   IrContext *context_;
 
   InsertionPoint insertion_point_;
+
+  bool forbid_insert_without_position_;
 };
 
 template <typename OpTy, typename... Args>

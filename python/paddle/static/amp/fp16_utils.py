@@ -53,6 +53,16 @@ class AmpOptions:
     use_promote: bool
 
 
+DEFAULT_AMP_OPTIONS = AmpOptions(
+    enable=True,
+    custom_white_list=None,
+    custom_black_list=None,
+    level='O1',
+    dtype='float16',
+    use_promote=True,
+)
+
+
 def _rename_arg(op, old_name, new_name):
     """
     If an op has old_name input and output, rename these input
@@ -609,28 +619,31 @@ def map_block(block, fn, parent_op=None):
         map_block(sub_block, fn, op)
 
 
-def prepare_op_should_auto_cast(
+def prepare_op_amp_options(
     program: paddle.static.Program,
     amp_records: dict[int, list[tuple[AmpOptions, int, int]]],
+    global_amp_options: AmpOptions,
 ):
-    amp_enable_op_map: dict[paddle.static.Operator, bool] = {}
+    op_amp_options_map: dict[paddle.static.Operator, AmpOptions] = {}
 
     def fill_amp_enable_op_map(block, parent_op):
         block_idx = block.idx
         ops = block.ops
         for op in ops:
-            # The top level should be FP16
-            current_op_amp_options = amp_enable_op_map.get(parent_op, True)
+            # Set the default options to global_amp_options if the op has not parent op.
+            current_op_amp_options = op_amp_options_map.get(
+                parent_op, global_amp_options
+            )
             if block_idx in amp_records:
                 for amp_options, start, end in amp_records[block_idx]:
                     if op.idx in range(start, end):
-                        current_op_amp_options = amp_options.enable
+                        current_op_amp_options = amp_options
                         break
-            amp_enable_op_map[op] = current_op_amp_options
+            op_amp_options_map[op] = current_op_amp_options
 
     map_block(program.global_block(), fill_amp_enable_op_map)
-    for op, enable in amp_enable_op_map.items():
-        op.set_auto_cast(enable)
+    for op, enable in op_amp_options_map.items():
+        op.set_amp_options(enable)
 
 
 def cast_model_to_fp16(

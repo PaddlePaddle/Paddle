@@ -63,6 +63,122 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
 }
 
 template <typename T>
+std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
+    const Tensor& x,
+    const Tensor& run_mean,
+    const Tensor& run_var,
+    const paddle::optional<Tensor>& scale,
+    const paddle::optional<Tensor>& bias,
+    bool is_test,
+    float momentum,
+    float epsilon,
+    const std::string& data_layout,
+    bool use_global_stats,
+    bool trainable_statistics) {
+  auto org_dtype = x.dtype();
+  Tensor x_cast = x;
+
+  bool need_cast = org_dtype == phi::DataType::FLOAT16 ||
+                   org_dtype == phi::DataType::BFLOAT16;
+
+  if (need_cast) {
+    x_cast = cast<T>(x, phi::DataType::FLOAT32);
+  }
+
+  std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x_cast.dims());
+  int rank = x_dim.size();
+  DataLayout data_layout_ = phi::StringToDataLayout(data_layout);
+  int feature_axis;
+  if (data_layout_ == DataLayout::kNCHW) {
+    feature_axis = 1;
+  } else if (data_layout_ == DataLayout::kNHWC) {
+    feature_axis = rank - 1;
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Unknown storage order: %s", data_layout));
+  }
+  std::vector<int64_t> reduce_axes;
+  for (int i = 0; i < rank; ++i) {
+    if (i != feature_axis) {
+      reduce_axes.push_back(i);
+    }
+  }
+  std::vector<int64_t> stats_shape;
+  for (int i = 0; i < rank; ++i) {
+    if (find_value(reduce_axes, i) == false) {
+      stats_shape.push_back(x_dim[i]);
+    } else {
+      stats_shape.push_back(1);
+    }
+  }
+
+  Tensor half = full<T>(IntArray({1}), -0.5, x_cast.dtype());
+
+  bool use_run_stat = (is_test && (!trainable_statistics)) || use_global_stats;
+  Tensor x_hat;
+  Tensor batch_mean;
+  Tensor inv_std;
+  Tensor run_mean_;
+  Tensor run_var_;
+  if (!use_run_stat) {
+    batch_mean = mean_decomp<T>(x_cast, IntArray(reduce_axes), false);
+    auto temp = mean_decomp<T>(x_cast * x_cast, IntArray(reduce_axes), false);
+    auto batch_var = temp - batch_mean * batch_mean;
+    inv_std = elementwise_pow<T>((batch_var + epsilon), half);
+    if (data_layout_ == DataLayout::kNHWC) {
+      x_hat = (x_cast - batch_mean) * inv_std;
+    } else {
+      x_hat = (x_cast - reshape<T>(batch_mean, stats_shape)) *
+              reshape<T>(inv_std, stats_shape);
+    }
+    run_mean_ = run_mean * momentum + batch_mean * (1. - momentum);
+    run_var_ = run_var * momentum + batch_var * (1. - momentum);
+  } else {
+    batch_mean = full<T>(phi::vectorize(run_mean.dims()), 0, run_mean.dtype());
+    auto batch_var =
+        full<T>(phi::vectorize(run_var.dims()), 0, run_var.dtype());
+    inv_std = elementwise_pow<T>((batch_var + epsilon), half);
+    if (data_layout_ == DataLayout::kNHWC) {
+      x_hat =
+          (x_cast - run_mean) * elementwise_pow<T>((run_var + epsilon), half);
+    } else {
+      x_hat = (x_cast - reshape<T>(run_mean, stats_shape)) *
+              elementwise_pow<T>((reshape<T>(run_var, stats_shape) + epsilon),
+                                 half);
+    }
+    run_mean_ = assign<T>(run_mean);
+    run_var_ = assign<T>(run_var);
+  }
+  Tensor y;
+  Tensor new_scale =
+      scale ? scale.get()
+            : full<T>(phi::vectorize(x_cast.dims()), 1, x_cast.dtype());
+  Tensor new_bias =
+      bias ? bias.get()
+           : full<T>(phi::vectorize(x_cast.dims()), 0, x_cast.dtype());
+  if (data_layout_ == DataLayout::kNHWC) {
+    y = x_hat * new_scale + new_bias;
+  } else {
+    y = x_hat * reshape<T>(new_scale, stats_shape) +
+        reshape<T>(new_bias, stats_shape);
+  }
+  if (need_cast) {
+    y = cast<T>(y, org_dtype);
+  }
+  Tensor reserve_space;
+
+  auto batch_mean_ = assign<T>(batch_mean);
+  auto inv_std_ = assign<T>(inv_std);
+  if (!use_run_stat) {
+    return std::make_tuple(
+        y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space);
+  } else {
+    return std::make_tuple(
+        y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space);
+  }
+}
+
+template <typename T>
 Tensor softmax_decomp(const Tensor& x, const int& axis) {
   auto org_dtype = x.dtype();
   auto x_tmp = x;
@@ -156,6 +272,8 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   if (scale_ptr) {
     if (slice_shape != scale_ptr->shape()) {
       scale_cast = reshape<T>(*scale_ptr, slice_shape);
+    } else {
+      scale_cast = *scale_ptr;
     }
     if (need_cast) {
       scale_cast = cast<T>(scale_cast, phi::DataType::FLOAT32);
@@ -166,6 +284,8 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   if (bias_ptr) {
     if (slice_shape != bias_ptr->shape()) {
       bias_cast = reshape<T>(*bias_ptr, slice_shape);
+    } else {
+      bias_cast = *bias_ptr;
     }
     if (need_cast) {
       bias_cast = cast<T>(bias_cast, phi::DataType::FLOAT32);
@@ -182,6 +302,57 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   }
 
   return std::make_tuple(out, mean_, variance);
+}
+
+template <typename T>
+Tensor sqrt_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  bool need_cast =
+      org_dtype == phi::DataType::FLOAT16 || org_dtype == phi::DataType::UINT16;
+
+  Tensor x_cast;
+  if (need_cast) {
+    x_cast = cast<T>(x, phi::DataType::FLOAT32);
+  } else {
+    x_cast = x;
+  }
+
+  auto ans = elementwise_pow<T>(
+      x_cast, full<T>(phi::vectorize(x_cast.dims()), 0.5, x_cast.dtype()));
+  if (need_cast) {
+    return cast<T>(ans, org_dtype);
+  } else {
+    return ans;
+  }
+}
+
+template <typename T>
+Tensor gelu_decomp(const Tensor& x, bool approximate) {
+  const double PM_2_SQRTPI = 1.12837916709551257390; /* 2/sqrt(pi) */
+  const double PM_SQRT1_2 = 0.70710678118654752440;  /* 1/sqrt(2) */
+
+  auto org_dtype = x.dtype();
+  auto half = full<T>(phi::vectorize(x.dims()), 0.5, org_dtype);
+  auto one = full<T>(phi::vectorize(x.dims()), 1.0, org_dtype);
+  if (approximate) {
+    // gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
+    auto kAlpha =
+        full<T>(phi::vectorize(x.dims()), PM_2_SQRTPI * PM_SQRT1_2, org_dtype);
+    auto GELU_CONSTANT = full<T>(phi::vectorize(x.dims()), 0.044715, org_dtype);
+    auto x_pow3 =
+        elementwise_pow<T>(x, full<T>(phi::vectorize(x.dims()), 3, org_dtype));
+    auto tanh_out = tanh<T>(kAlpha * (x + x_pow3 * GELU_CONSTANT));
+
+    auto res = x * half * (one + tanh_out);
+    return res;
+  } else {
+    // gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
+    auto M_SQRT1_2T = full<T>(phi::vectorize(x.dims()), PM_SQRT1_2, org_dtype);
+    auto erf_out = one + erf<T>(x * M_SQRT1_2T);
+
+    auto res = x * half * erf_out;
+    return res;
+  }
 }
 
 }  // namespace details
