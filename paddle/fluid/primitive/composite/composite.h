@@ -62,7 +62,7 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   }
 }
 
-bool valid_type(const DataType& dtype) {
+static bool valid_type(const DataType& dtype) {
   switch (dtype) {
     case phi::DataType::INT8:
     case phi::DataType::INT16:
@@ -95,9 +95,8 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
   if (valid_type(y.dtype())) {
     y_full = full<T>(phi::vectorize(x_cast.dims()), y, x_cast.dtype());
   } else {
-    y_full = full<T>(phi::vectorize(x_cast.dims()), 0, x_cast.dtype());
-    // PADDLE_THROW(phi::errors::InvalidArgument("Unsupported data type: %s",
-    // phi::DataTypeToString(y.dtype())));
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Unsupported data type: %s", phi::DataTypeToString(y.dtype())));
   }
 
   auto ans = elementwise_pow<T>(x_cast, y_full);
