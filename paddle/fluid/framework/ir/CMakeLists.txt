@@ -614,6 +614,10 @@ if(WITH_XPU)
     SRCS xpu/fused_multi_transformer_cachekv_layout_trans_pass_test.cc
     DEPS fused_multi_transformer_cachekv_layout_trans_pass)
   cc_test(
+    test_fused_multi_transformer_int8_cachekv_layout_trans_pass
+    SRCS xpu/fused_multi_transformer_int8_cachekv_layout_trans_pass_test.cc
+    DEPS fused_multi_transformer_int8_cachekv_layout_trans_pass)
+  cc_test(
     test_multi_encoder_xpu_adaptive_seqlen_fuse_pass
     SRCS xpu/multi_encoder_xpu_adaptive_seqlen_fuse_pass_test.cc
     DEPS multi_encoder_xpu_adaptive_seqlen_fuse_pass)
