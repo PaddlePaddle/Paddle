@@ -91,10 +91,10 @@ def fused_attention_kernel(
     start_m = tl.program_id(0)
     offs_m = start_m * BLOCK_M + tl.arange(0, BLOCK_M)
     # write back l and m
-    l_ptrs = L + off_hz * seq_len + offs_m
-    m_ptrs = M + off_hz * seq_len + offs_m
-    tl.store(l_ptrs, l_prev)
-    tl.store(m_ptrs, m_prev)
+    # l_ptrs = L + off_hz * seq_len + offs_m
+    # m_ptrs = M + off_hz * seq_len + offs_m
+    # tl.store(l_ptrs, l_prev)
+    # tl.store(m_ptrs, m_prev)
     # initialize pointers to output
     offs_n = tl.arange(0, BLOCK_DMODEL)
     off_o = off_hz * stride_h + offs_m[:, None] * BLOCK_DMODEL + offs_n[None, :]

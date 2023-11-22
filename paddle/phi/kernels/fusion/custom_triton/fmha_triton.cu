@@ -1,6 +1,6 @@
 #include <vector>
 #include "paddle/extension.h"
-#include "generated/aot/fmha/fmha_fp16.h"
+#include "generated/aot/fmha/fp16/fmha_fp16.h"
 #include <cuda_fp16.h>
 
 std::vector<paddle::Tensor> TritonFMHA(const paddle::Tensor& q, 

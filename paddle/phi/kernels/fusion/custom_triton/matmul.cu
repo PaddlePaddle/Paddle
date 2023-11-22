@@ -1,7 +1,7 @@
 
 #include <vector>
 #include "paddle/extension.h"
-#include "generated/aot/matmul/matmul_fp16.h"
+#include "generated/aot/matmul/fp16/matmul_fp16.h"
 #include <cuda_fp16.h>
 
 std::vector<paddle::Tensor> TritonMatMul(const paddle::Tensor& a, 

@@ -5,9 +5,9 @@ from triton_ops import triton_fmha
 
 import paddle
 
-batch = 8
+batch = 16
 seq_len = 512
-heads = 128
+heads = 32
 head_dim = 128
 q = paddle.rand((batch, heads, seq_len, head_dim),dtype ="float16")
 k = paddle.rand((batch, heads, seq_len, head_dim),dtype ="float16")
@@ -49,8 +49,8 @@ starttime = datetime.datetime.now()
 
 
 for i in range(100):
-    #qkv_out1 = triton_fmha(q,k,v)
-    qkv_out2 = variable_length_memory_efficient_attention(q, k, v, seq_lens, seq_lens, mask=attn_mask1, scale=scale,)
+    qkv_out1 = triton_fmha(q,k,v)
+    #qkv_out2 = variable_length_memory_efficient_attention(q, k, v, seq_lens, seq_lens, mask=attn_mask1, scale=scale,)
 
 paddle.device.cuda.synchronize(0)
 endtime = datetime.datetime.now()
