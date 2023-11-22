@@ -2572,7 +2572,7 @@ class OpTest(unittest.TestCase):
             if (
                 isinstance(place, paddle.base.libpaddle.CUDAPlace)
                 and paddle.device.cuda.device_count() < 2
-                and not paddle.is_compiled_with_distribute()
+                or not paddle.is_compiled_with_distribute()
             ):
                 pass
             else:

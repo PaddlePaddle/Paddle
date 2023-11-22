@@ -246,6 +246,53 @@ def reshard(dist_tensor, dist_attr):
         )
 
 
+def reshard_test(dist_tensor, dist_attr):
+    """
+    Reshard a distributed ``paddle.Tensor`` with given distributed attributes.
+
+    Args:
+        dist_tensor(Tensor): the distributed tensor to be resharded.
+        dist_attr(paddle.distributed.DistAttr): Specify how tensors are distributed or sliced on ProcessMesh.
+
+    Returns:
+        Tensor: A Distributed Tensor reshared with distributed attributes.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+
+            >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
+            >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+
+            >>> out_mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
+            >>> out_dist_attr = dist.DistAttr(mesh=out_mesh, sharding_specs=[None, None])
+
+            >>> # dense tensor
+            >>> a = paddle.to_tensor([[1,2,3],
+            ...                       [5,6,7]])
+
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # distributed tensor
+            >>> d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+
+            >>> out_d_tensor = dist.reshard(d_tensor, out_dist_attr)
+
+            >>> print(d_tensor)
+            >>> print(out_d_tensor)
+
+    """
+
+    if paddle.framework.in_dynamic_mode():
+        return paddle.base.core.reshard(dist_tensor, dist_attr)
+    else:
+        # TODO(GhostScreaming): Support static DistTensor later.
+        raise RuntimeError(
+            "paddle.dist.reshard only support dynamic graph now. It will be supported for static graph later."
+        )
+
+
 def shard_layer(
     layer: nn.Layer,
     process_mesh: dist.ProcessMesh,
