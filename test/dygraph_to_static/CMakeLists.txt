@@ -63,3 +63,25 @@ if(WITH_GPU)
   set_tests_properties(test_train_step_resnet18_sgd PROPERTIES TIMEOUT 240)
   set_tests_properties(test_train_step_resnet18_adam PROPERTIES TIMEOUT 240)
 endif()
+
+set(DISABLE_PIR_PT_MODES
+    test_error
+    test_gradname_parse
+    test_seq2seq
+    test_pylayer
+    test_save_inference_model
+    test_tensor_hook
+    test_len
+    test_list
+    test_slice
+    test_lstm
+    test_reinforcement_learning)
+foreach(ITEST ${DISABLE_PIR_PT_MODES})
+  if(TEST ${ITEST})
+    set_tests_properties(
+      ${ITEST} PROPERTIES ENVIRONMENT "FLAGS_enable_pir_with_pt_in_dy2st=0")
+  else()
+    message(
+      STATUS "PIR Disabled OpTest: not found ${ITEST} in dygraph_to_static")
+  endif()
+endforeach()
