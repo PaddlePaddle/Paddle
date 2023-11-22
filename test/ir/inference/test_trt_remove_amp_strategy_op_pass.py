@@ -29,16 +29,55 @@ paddle.enable_static()
 
 class TestRemoveStrategyOpBase:
     def setUp(self):
+        # Setup random seed
         np.random.seed(1024)
         paddle.seed(1024)
 
+        # Initialize train dataset
+        def transform(x):
+            return np.reshape(x, [1, 28, 28]) - 127.5 / 127.5
+
+        self.train_dataset = paddle.vision.datasets.MNIST(
+            mode='train', backend='cv2', transform=transform
+        )
+
+    def build_model(self, data, label):
+        conv2d = paddle.static.nn.conv2d(
+            input=data, num_filters=6, filter_size=3
+        )
+        bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
+
+        pool = F.max_pool2d(bn, kernel_size=2, stride=2)
+        hidden = paddle.static.nn.fc(pool, size=10)
+        cost = paddle.nn.functional.loss.cross_entropy(
+            input=hidden, label=label
+        )
+        avg_cost = paddle.mean(x=cost)
+        predict = paddle.argmax(hidden, axis=-1, dtype='int32')
+        return avg_cost, predict
+
     def build_program(self):
-        # The following attribute should be set
+        # This method builds the program and determine the following inference configuration
         self.serialized_program = None
         self.serialized_params = None
         self.input_data = None
         self.precision_mode = None
         self.dynamic_shape_info = None
+
+    def train(self, program, feed_list, fetch_list, place, exe, stop_iter):
+        train_loader = paddle.io.DataLoader(
+            self.train_dataset,
+            places=place,
+            feed_list=feed_list,
+            drop_last=True,
+            return_list=False,
+            batch_size=64,
+        )
+        for it, data in enumerate(train_loader):
+            loss = exe.run(program, feed=data, fetch_list=fetch_list)
+            if it == stop_iter:
+                self.input_data = data[0]['X']
+                break
 
     def infer_program(self, use_trt=False):
         config = Config()
@@ -114,18 +153,7 @@ class TestRemoveStrategyOpAMP(TestRemoveStrategyOpBase, unittest.TestCase):
             label = paddle.static.data(
                 name='label', shape=[None, 1], dtype='int64'
             )
-            conv2d = paddle.static.nn.conv2d(
-                input=data, num_filters=6, filter_size=3
-            )
-            bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
-
-            pool = F.max_pool2d(bn, kernel_size=2, stride=2)
-            hidden = paddle.static.nn.fc(pool, size=10)
-            cost = paddle.nn.functional.loss.cross_entropy(
-                input=hidden, label=label
-            )
-            avg_cost = paddle.mean(x=cost)
-            predict = paddle.argmax(hidden, axis=-1, dtype='int32')
+            avg_cost, predict = self.build_model(data, label)
             optimizer = paddle.optimizer.Momentum(learning_rate=0.01)
             optimizer = paddle.static.amp.decorate(
                 optimizer,
@@ -137,29 +165,14 @@ class TestRemoveStrategyOpAMP(TestRemoveStrategyOpBase, unittest.TestCase):
         eval_program = train_program.clone(for_test=True)
 
         # Training
-        def transform(x):
-            return np.reshape(x, [1, 28, 28]) - 127.5 / 127.5
-
-        train_dataset = paddle.vision.datasets.MNIST(
-            mode='train', backend='cv2', transform=transform
-        )
-        train_loader = paddle.io.DataLoader(
-            train_dataset,
-            places=place,
+        self.train(
+            train_program,
             feed_list=[data, label],
-            drop_last=True,
-            return_list=False,
-            batch_size=64,
+            fetch_list=[avg_cost],
+            place=place,
+            exe=exe,
+            stop_iter=100,
         )
-
-        def train(program, stop_iter=100):
-            for it, data in enumerate(train_loader):
-                loss = exe.run(program, feed=data, fetch_list=[avg_cost])
-                if it == stop_iter:
-                    self.input_data = data[0]['X']
-                    break
-
-        train(train_program)
 
         # Save the inference configuration
         self.dynamic_shape_info = [
@@ -195,18 +208,7 @@ class TestRemoveStrategyOpAMPQAT(TestRemoveStrategyOpBase, unittest.TestCase):
             label = paddle.static.data(
                 name='label', shape=[None, 1], dtype='int64'
             )
-            conv2d = paddle.static.nn.conv2d(
-                input=data, num_filters=6, filter_size=3
-            )
-            bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
-
-            pool = F.max_pool2d(bn, kernel_size=2, stride=2)
-            hidden = paddle.static.nn.fc(pool, size=10)
-            cost = paddle.nn.functional.loss.cross_entropy(
-                input=hidden, label=label
-            )
-            avg_cost = paddle.mean(x=cost)
-            predict = paddle.argmax(hidden, axis=-1, dtype='int32')
+            avg_cost, predict = self.build_model(data, label)
             optimizer = paddle.optimizer.Momentum(learning_rate=0.01)
             optimizer = paddle.static.amp.decorate(
                 optimizer,
@@ -218,29 +220,14 @@ class TestRemoveStrategyOpAMPQAT(TestRemoveStrategyOpBase, unittest.TestCase):
         eval_program = train_program.clone(for_test=True)
 
         # Training
-        def transform(x):
-            return np.reshape(x, [1, 28, 28]) - 127.5 / 127.5
-
-        train_dataset = paddle.vision.datasets.MNIST(
-            mode='train', backend='cv2', transform=transform
-        )
-        train_loader = paddle.io.DataLoader(
-            train_dataset,
-            places=place,
+        self.train(
+            train_program,
             feed_list=[data, label],
-            drop_last=True,
-            return_list=False,
-            batch_size=64,
+            fetch_list=[avg_cost],
+            place=place,
+            exe=exe,
+            stop_iter=100,
         )
-
-        def train(program, stop_iter=100):
-            for it, data in enumerate(train_loader):
-                loss = exe.run(program, feed=data, fetch_list=[avg_cost])
-                if it == stop_iter:
-                    self.input_data = data[0]['X']
-                    break
-
-        train(train_program)
 
         # Quantization aware training
         scope = global_scope()
@@ -263,7 +250,14 @@ class TestRemoveStrategyOpAMPQAT(TestRemoveStrategyOpBase, unittest.TestCase):
         quant_eval_program = insert_qdq(
             eval_program, scope, place, for_test=True
         )
-        train(quant_train_program)
+        self.train(
+            quant_train_program,
+            feed_list=[data, label],
+            fetch_list=[avg_cost],
+            place=place,
+            exe=exe,
+            stop_iter=100,
+        )
 
         # Save the inference configuration
         self.dynamic_shape_info = [
