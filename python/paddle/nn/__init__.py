@@ -138,6 +138,7 @@ from .layer.pooling import (
     MaxUnPool1D,
     MaxUnPool2D,
     MaxUnPool3D,
+    LPPool2D,
 )
 from .layer.rnn import (
     GRU,
