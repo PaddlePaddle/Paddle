@@ -164,6 +164,7 @@ def reset_excluded_layers(main_program=None):
             >>> paddle.incubate.asp.reset_excluded_layers()
 
             >>> optimizer = paddle.incubate.asp.decorate(optimizer)
+            >>> #test
 
         .. code-block:: python
             :name: static-graph
