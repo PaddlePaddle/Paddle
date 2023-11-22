@@ -39,6 +39,7 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
         scope_(scope) {}
 
   void Run(pir::Operation* op) override {
+    VLOG(6) << "apply ParamsSyncAmongDevicesPass";
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     PADDLE_ENFORCE_NOT_NULL(
         module_op,
@@ -47,12 +48,10 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
     auto* block = module_op.block();
     for (auto& inner_op : *block) {
       if (inner_op.isa<pir::GetParameterOp>()) {
-        pir::GetParameterOp get_parameter_op =
-            inner_op.dyn_cast<pir::GetParameterOp>();
-        auto param_name = get_parameter_op.attributes()
-                              .at(get_parameter_op.attributes_name[0])
-                              .dyn_cast<pir::StrAttribute>()
-                              .AsString();
+        std::string param_name = inner_op.attributes()
+                                     .at("parameter_name")
+                                     .dyn_cast<pir::StrAttribute>()
+                                     .AsString();
         auto* param_var = scope_->FindVar(param_name);
         if (param_var->IsType<phi::DenseTensor>()) {
           auto* param_tensor = param_var->GetMutable<phi::DenseTensor>();
