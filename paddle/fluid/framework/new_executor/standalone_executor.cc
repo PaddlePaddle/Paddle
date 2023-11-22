@@ -272,8 +272,10 @@ std::shared_ptr<framework::ProgramDesc> StandaloneExecutor::RunProfile(
                                      1);
 
   // in profiling run, there can be one and only one job ("default")
-  interpretercores_[0]->Run(
-      feed_names, /*need_fetch = */ false, /*enable_op_profiling = */ true);
+  interpretercores_[0]->Run(feed_names,
+                            /*need_fetch = */ false,
+                            /*enable_job_schedule_profiler = */ false,
+                            /*enable_op_profiling = */ true);
 
   // Don't return program desc directly, instead, return a copy of it since we
   // don't know how the program desc will be further processed in Python side.

@@ -139,5 +139,9 @@ std::tuple<double, double> InterpreterCore::InterpreterRunTime() {
   return impl_->InterpreterRunTime();
 }
 
+std::shared_ptr<ProgramDesc> InterpreterCore::GetMutableCopyProgram() {
+  return impl_->GetMutableCopyProgram();
+}
+
 }  // namespace framework
 }  // namespace paddle
