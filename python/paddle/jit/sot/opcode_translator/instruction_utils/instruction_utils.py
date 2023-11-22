@@ -46,6 +46,9 @@ class Instruction:
     def __hash__(self):
         return id(self)
 
+    def __eq__(self, instr):
+        return id(self) == id(instr)
+
 
 def gen_instr(name, arg=None, argval=None, gened=True, jump_to=None):
     return Instruction(

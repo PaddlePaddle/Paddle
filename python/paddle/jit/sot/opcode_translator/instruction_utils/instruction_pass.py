@@ -193,31 +193,31 @@ def remove_load_store_pass(instrs, code_options):
             #   2. (3) is not exist in (1) ~ (5): load B in the range that B value is changed
             #   3. (7) (8) is not exist in (6)~: load A in range that A value is changed, if we load B instead, but B also changed
             #       we can simplify this as "no more LOAD A after (6)"
-
-            last_store_a = stored_from(load_a, instrs)
-            if last_store_a is not None:
-                code_range = instrs[
-                    instrs.index(last_store_a) : instrs.index(store_b)
-                ]
             else:
-                code_range = instrs[: instrs.index(store_b)]
+                last_store_a = stored_from(load_a, instrs)
+                if last_store_a is not None:
+                    code_range = instrs[
+                        instrs.index(last_store_a) : instrs.index(store_b)
+                    ]
+                else:
+                    code_range = instrs[: instrs.index(store_b)]
 
-            if (
-                not code_exist("STORE_FAST", b_name, code_range)
-                and not code_exist("LOAD_FAST", b_name, code_range)
-                and not code_exist(
-                    "LOAD_FAST", a_name, instrs[instrs.index(store_b) :]
-                )
-            ):
-                last_store_a.argval = b_name
-                instrs.remove(load_a)
-                instrs.remove(store_b)
-                for instr in instrs[instrs.index(last_store_a) :]:
-                    if (
-                        instr.opname in ("LOAD_FAST", "STORE_FAST")
-                        and instr.argval == a_name
-                    ):
-                        instr.argval = b_name
+                if (
+                    not code_exist("STORE_FAST", b_name, code_range)
+                    and not code_exist("LOAD_FAST", b_name, code_range)
+                    and not code_exist(
+                        "LOAD_FAST", a_name, instrs[instrs.index(store_b) :]
+                    )
+                ):
+                    last_store_a.argval = b_name
+                    instrs.remove(load_a)
+                    instrs.remove(store_b)
+                    for instr in instrs[instrs.index(last_store_a) :]:
+                        if (
+                            instr.opname in ("LOAD_FAST", "STORE_FAST")
+                            and instr.argval == a_name
+                        ):
+                            instr.argval = b_name
 
     # remove store load
     loaded_once = find_loaded_once_local_vars(instrs, code_options)
