@@ -159,9 +159,9 @@ class NameloadJstTransformer(BaseTransformer):
     def create_visit_with_convert_load(self, node_type, skip_fn=None):
         def visit(node):
             assert isinstance(node, node_type)
-            self.generic_visit(node)
             if skip_fn and skip_fn(node):
                 return node
+            self.generic_visit(node)
             if isinstance(node.ctx, gast.Load):
                 node = self._surround_with_ld(node)
             return node
@@ -173,7 +173,8 @@ class NameloadJstTransformer(BaseTransformer):
             if utils.ast_to_source_code(node).startswith(
                 "_jst."
             ):  # skip _jst.xxx
-                return node
+                return True
+            return False
 
         return self.create_visit_with_convert_load(gast.Attribute, skip_fn)(
             node
