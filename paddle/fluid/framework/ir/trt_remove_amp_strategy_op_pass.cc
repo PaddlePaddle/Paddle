@@ -142,10 +142,8 @@ void TrtRemoveAMPStrategyOpPass::ApplyImpl(Graph *graph) const {
     if (op_node->Op()->Type() == "cast") {
       auto input_dtype = op_node->inputs[0]->Var()->GetDataType();
       auto output_dtype = op_node->outputs[0]->Var()->GetDataType();
-      if ((input_dtype == DataType::FP32 &&
-           output_dtype == DataType::FP16) ||
-          (input_dtype == DataType::FP16 &&
-           output_dtype == DataType::FP32)) {
+      if ((input_dtype == DataType::FP32 && output_dtype == DataType::FP16) ||
+          (input_dtype == DataType::FP16 && output_dtype == DataType::FP32)) {
         PADDLE_THROW(platform::errors::Fatal(
             "There are cast OPs remaining in the graph."));
       }
