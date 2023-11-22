@@ -27,6 +27,7 @@
 
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/dev_info_manager.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/dy_schedule/ir_schedule.h"
@@ -356,6 +357,7 @@ void StScheduleImpl::Unroll(const Expr& loop) {
 }
 
 void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
+#ifdef CINN_WITH_CUDA
   static std::set<std::string> thread_axes = {"blockIdx.x",
                                               "blockIdx.y",
                                               "blockIdx.z",
@@ -365,8 +367,10 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
   CHECK(thread_axes.count(thread_axis))
       << "thread_axis " << thread_axis << " is not supported";
   int offset = thread_axis.back() - 'x';
-  const std::array<int, 3> kMaxBlockDims = common::GetCUDAMaxBlockDims();
-  const std::array<int, 3> kMaxGridDims = common::GetCUDAMaxGridDims();
+  auto cur_dev_info =
+      common::DevInfoMgr<common::Target::Arch::NVGPU>::GetDevInfo(0);
+  const std::array<int, 3> kMaxBlockDims = cur_dev_info->GetMaxBlockDims();
+  const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
   auto check_offset = [&](const char& c) -> bool {
     auto extent = loop.As<ir::For>()->extent.as_int32();
     return extent <= (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);
@@ -380,6 +384,7 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
         << "Invalid Bind! The extent of loop is out of range on block size!\n";
     MutateForType(loop, ForType::GPUThread, offset);
   }
+#endif
 }
 
 // The struct used to mutate new rfactor forloop and its' schedule block.
