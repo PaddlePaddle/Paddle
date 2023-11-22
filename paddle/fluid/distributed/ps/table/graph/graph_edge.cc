@@ -23,7 +23,9 @@ void GraphEdgeBlob::add_edge(int64_t id, float weight = 1) {
 
 void WeightedGraphEdgeBlob::add_edge(int64_t id, float weight = 1) {
   id_arr.push_back(id);
+#ifdef PADDLE_WITH_CUDA
   weight_arr.push_back((half)weight);
+#endif
 }
 }  // namespace distributed
 }  // namespace paddle

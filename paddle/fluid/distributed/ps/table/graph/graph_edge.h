@@ -30,7 +30,9 @@ class GraphEdgeBlob {
   size_t size() { return id_arr.size(); }
   virtual void add_edge(int64_t id, float weight);
   int64_t get_id(int idx) { return id_arr[idx]; }
+#ifdef PADDLE_WITH_CUDA
   virtual half get_weight(int idx UNUSED) { return (half)(1.0); }
+#endif
   std::vector<int64_t>& export_id_array() { return id_arr; }
 
  protected:
@@ -42,10 +44,12 @@ class WeightedGraphEdgeBlob : public GraphEdgeBlob {
   WeightedGraphEdgeBlob() {}
   virtual ~WeightedGraphEdgeBlob() {}
   virtual void add_edge(int64_t id, float weight);
+#ifdef PADDLE_WITH_CUDA
   virtual half get_weight(int idx) { return weight_arr[idx]; }
 
  protected:
   std::vector<half> weight_arr;
+#endif
 };
 }  // namespace distributed
 }  // namespace paddle

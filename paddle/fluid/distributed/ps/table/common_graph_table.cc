@@ -59,7 +59,7 @@ PHI_DEFINE_EXPORTED_int32(graph_edges_debug_node_num,
 namespace paddle {
 namespace distributed {
 
-#ifdef PADDLE_WITH_HETERPS
+#ifdef PADDLE_WITH_GPU_GRAPH
 int32_t GraphTable::Load_to_ssd(const std::string &path,
                                 const std::string &param) {
   bool load_edge = (param[0] == 'e');
@@ -679,21 +679,7 @@ void GraphTable::export_partition_files(int idx, std::string file_path) {
 
   for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
 }
-#endif
 
-void GraphTable::clear_graph(int idx) {
-  for (auto p : edge_shards[idx]) {
-    p->clear();
-    delete p;
-  }
-
-  edge_shards[idx].clear();
-  for (size_t i = 0; i < shard_num_per_server; i++) {
-    edge_shards[idx].push_back(new GraphShard());
-  }
-}
-
-#ifdef PADDLE_WITH_HETERPS
 void GraphTable::release_graph() {
   // Before releasing graph, prepare for sampling ids and embedding keys.
   build_graph_type_keys();
@@ -739,75 +725,7 @@ void GraphTable::release_graph_node() {
     }
   }
 }
-#endif
 
-void GraphTable::clear_edge_shard() {
-  VLOG(0) << "begin clear edge shard";
-  std::vector<std::future<int>> tasks;
-  for (auto &type_shards : edge_shards) {
-    for (auto &shard : type_shards) {
-      tasks.push_back(
-          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
-            delete shard;
-            return 0;
-          }));
-    }
-  }
-  for (auto &task : tasks) task.get();
-  for (auto &shards : edge_shards) {
-    shards.clear();
-    for (size_t i = 0; i < shard_num_per_server; i++) {
-      shards.push_back(new GraphShard());
-    }
-  }
-  VLOG(0) << "finish clear edge shard";
-}
-
-void GraphTable::clear_feature_shard() {
-  VLOG(0) << "begin clear feature shard";
-  std::vector<std::future<int>> tasks;
-  for (auto &type_shards : feature_shards) {
-    for (auto &shard : type_shards) {
-      tasks.push_back(
-          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
-            delete shard;
-            return 0;
-          }));
-    }
-  }
-  for (auto &task : tasks) task.get();
-  for (auto &shards : feature_shards) {
-    shards.clear();
-    for (size_t i = 0; i < shard_num_per_server; i++) {
-      shards.push_back(new GraphShard());
-    }
-  }
-  VLOG(0) << "finish clear feature shard";
-}
-
-void GraphTable::clear_node_shard() {
-  VLOG(0) << "begin clear node shard";
-  std::vector<std::future<int>> tasks;
-  for (auto &type_shards : node_shards) {
-    for (auto &shard : type_shards) {
-      tasks.push_back(
-          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
-            delete shard;
-            return 0;
-          }));
-    }
-  }
-  for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
-  for (auto &shards : node_shards) {
-    shards.clear();
-    for (size_t i = 0; i < shard_num_per_server; i++) {
-      shards.push_back(new GraphShard());
-    }
-  }
-  VLOG(0) << "finish clear node shard";
-}
-
-#ifdef PADDLE_WITH_HETERPS
 void GraphTable::feature_shrink_to_fit() {
   std::vector<std::future<int>> tasks;
   for (auto &type_shards : feature_shards) {
@@ -837,16 +755,6 @@ void GraphTable::merge_feature_shard() {
   feature_shards.resize(1);
 }
 
-#endif
-
-void GraphTable::clear_graph() {
-  VLOG(0) << "begin clear_graph";
-  clear_edge_shard();
-  clear_feature_shard();
-  VLOG(0) << "finish clear_graph";
-}
-
-#ifdef PADDLE_WITH_HETERPS
 int32_t GraphTable::load_next_partition(int idx) {
   if (next_partition >= static_cast<int>(partitions[idx].size())) {
     VLOG(0) << "partition iteration is done";
@@ -993,309 +901,7 @@ int32_t GraphTable::make_complementary_graph(int idx, int64_t byte_size) {
 
   return 0;
 }
-#endif
 
-std::vector<Node *> GraphShard::get_batch(int start, int end, int step) {
-  if (start < 0) start = 0;
-  std::vector<Node *> res;
-  for (int pos = start; pos < std::min(end, static_cast<int>(bucket.size()));
-       pos += step) {
-    res.push_back(bucket[pos]);
-  }
-  return res;
-}
-
-size_t GraphShard::get_size() { return bucket.size(); }
-
-int32_t GraphTable::add_comm_edge(int idx, uint64_t src_id, uint64_t dst_id) {
-  size_t src_shard_id = src_id % shard_num;
-
-  if (src_shard_id >= shard_end || src_shard_id < shard_start) {
-    return -1;
-  }
-  size_t index = src_shard_id - shard_start;
-  edge_shards[idx][index]->add_graph_node(src_id)->build_edges(false);
-  edge_shards[idx][index]->add_neighbor(src_id, dst_id, 1.0);
-  return 0;
-}
-int32_t GraphTable::add_graph_node(int idx,
-                                   std::vector<uint64_t> &id_list,
-                                   std::vector<bool> &is_weight_list) {
-  auto &shards = edge_shards[idx];
-  size_t node_size = id_list.size();
-  std::vector<std::vector<std::pair<uint64_t, bool>>> batch(task_pool_size_);
-  for (size_t i = 0; i < node_size; i++) {
-    size_t shard_id = id_list[i] % shard_num;
-    if (shard_id >= shard_end || shard_id < shard_start) {
-      continue;
-    }
-    batch[get_thread_pool_index(id_list[i])].push_back(
-        {id_list[i], i < is_weight_list.size() ? is_weight_list[i] : false});
-  }
-  std::vector<std::future<int>> tasks;
-  for (size_t i = 0; i < batch.size(); ++i) {
-    if (batch[i].empty()) continue;
-    tasks.push_back(
-        _shards_task_pool[i]->enqueue([&shards, &batch, i, this]() -> int {
-          for (auto &p : batch[i]) {
-            size_t index = p.first % this->shard_num - this->shard_start;
-            shards[index]->add_graph_node(p.first)->build_edges(p.second);
-          }
-          return 0;
-        }));
-  }
-  for (auto &task : tasks) task.get();
-  return 0;
-}
-
-int32_t GraphTable::remove_graph_node(int idx, std::vector<uint64_t> &id_list) {
-  size_t node_size = id_list.size();
-  std::vector<std::vector<uint64_t>> batch(task_pool_size_);
-  for (size_t i = 0; i < node_size; i++) {
-    size_t shard_id = id_list[i] % shard_num;
-    if (shard_id >= shard_end || shard_id < shard_start) continue;
-    batch[get_thread_pool_index(id_list[i])].push_back(id_list[i]);
-  }
-  auto &shards = edge_shards[idx];
-  std::vector<std::future<int>> tasks;
-  for (size_t i = 0; i < batch.size(); ++i) {
-    if (batch[i].empty()) continue;
-    tasks.push_back(
-        _shards_task_pool[i]->enqueue([&shards, &batch, i, this]() -> int {
-          for (auto &p : batch[i]) {
-            size_t index = p % this->shard_num - this->shard_start;
-            shards[index]->delete_node(p);
-          }
-          return 0;
-        }));
-  }
-  for (auto &task : tasks) task.get();
-  return 0;
-}
-
-void GraphShard::clear() {
-  for (auto &item : bucket) {
-    delete item;
-  }
-  bucket.clear();
-  node_location.clear();
-}
-
-GraphShard::~GraphShard() { clear(); }
-
-void GraphShard::delete_node(uint64_t id) {
-  auto iter = node_location.find(id);
-  if (iter == node_location.end()) return;
-  int pos = iter->second;
-  delete bucket[pos];
-  if (pos != static_cast<int>(bucket.size()) - 1) {
-    bucket[pos] = bucket.back();
-    node_location[bucket.back()->get_id()] = pos;
-  }
-  node_location.erase(id);
-  bucket.pop_back();
-}
-GraphNode *GraphShard::add_graph_node(uint64_t id) {
-  if (node_location.find(id) == node_location.end()) {
-    node_location[id] = bucket.size();
-    bucket.push_back(new GraphNode(id));
-  }
-  return reinterpret_cast<GraphNode *>(bucket[node_location[id]]);
-}
-
-GraphNode *GraphShard::add_graph_node(Node *node) {
-  auto id = node->get_id();
-  if (node_location.find(id) == node_location.end()) {
-    node_location[id] = bucket.size();
-    bucket.push_back(node);
-  }
-  return reinterpret_cast<GraphNode *>(bucket[node_location[id]]);
-}
-
-FeatureNode *GraphShard::add_feature_node(uint64_t id,
-                                          bool is_overlap,
-                                          int float_fea_num) {
-  if (node_location.find(id) == node_location.end()) {
-    node_location[id] = bucket.size();
-    if (float_fea_num > 0) {
-      bucket.push_back(new FloatFeatureNode(id));
-    } else {
-      bucket.push_back(new FeatureNode(id));
-    }
-    return reinterpret_cast<FeatureNode *>(bucket[node_location[id]]);
-  }
-  if (is_overlap) {
-    return reinterpret_cast<FeatureNode *>(bucket[node_location[id]]);
-  }
-  return NULL;
-}
-
-void GraphShard::add_neighbor(uint64_t id, uint64_t dst_id, float weight) {
-  find_node(id)->add_edge(dst_id, weight);
-}
-
-Node *GraphShard::find_node(uint64_t id) {
-  auto iter = node_location.find(id);
-  return iter == node_location.end() ? nullptr : bucket[iter->second];
-}
-
-GraphTable::~GraphTable() {  // NOLINT
-#ifdef PADDLE_WITH_GPU_GRAPH
-  clear_graph();
-#endif
-}
-
-int32_t GraphTable::Load(const std::string &path, const std::string &param) {
-  bool load_edge = (param[0] == 'e');
-  bool load_node = (param[0] == 'n');
-  if (load_edge) {
-    bool reverse_edge = (param[1] == '<');
-    std::string edge_type = param.substr(2);
-    int ret = this->load_edges(path, reverse_edge, edge_type);
-    if (ret != 0) {
-      VLOG(0) << "Fail to load edges, path[" << path << "] edge_type["
-              << edge_type << "]";
-      return -1;
-    }
-  }
-  if (load_node) {
-    std::string node_type = param.substr(1);
-    int ret = this->load_nodes(path, node_type);
-    if (ret != 0) {
-      VLOG(0) << "Fail to load nodes, path[" << path << "] node_type["
-              << node_type << "]";
-      return -1;
-    }
-  }
-  return 0;
-}
-
-std::string GraphTable::get_inverse_etype(std::string &etype) {
-  auto etype_split = ::paddle::string::split_string<std::string>(etype, "2");
-  std::string res;
-  if (etype_split.size() == 3) {
-    res = etype_split[2] + "2" + etype_split[1] + "2" + etype_split[0];
-  } else {
-    res = etype_split[1] + "2" + etype_split[0];
-  }
-  return res;
-}
-
-int32_t GraphTable::parse_type_to_typepath(
-    std::string &type2files,
-    std::string graph_data_local_path,
-    std::vector<std::string> &res_type,
-    std::unordered_map<std::string, std::string> &res_type2path) {
-  auto type2files_split =
-      ::paddle::string::split_string<std::string>(type2files, ",");
-  if (type2files_split.empty()) {
-    return -1;
-  }
-  for (auto one_type2file : type2files_split) {
-    auto one_type2file_split =
-        ::paddle::string::split_string<std::string>(one_type2file, ":");
-    auto type = one_type2file_split[0];
-    auto type_dir = one_type2file_split[1];
-    res_type.push_back(type);
-    res_type2path[type] = graph_data_local_path + "/" + type_dir;
-  }
-  return 0;
-}
-
-int32_t GraphTable::parse_edge_and_load(
-    std::string etype2files,
-    std::string graph_data_local_path,
-    int part_num,
-    bool reverse,
-    const std::vector<bool> &is_reverse_edge_map,
-    bool use_weight) {
-  std::vector<std::string> etypes;
-  std::unordered_map<std::string, std::string> edge_to_edgedir;
-  int res = parse_type_to_typepath(
-      etype2files, graph_data_local_path, etypes, edge_to_edgedir);
-  if (res != 0) {
-    VLOG(0) << "parse edge type and edgedir failed!";
-    return -1;
-  }
-  VLOG(0) << "etypes size: " << etypes.size();
-  VLOG(0) << "whether reverse: " << reverse;
-  is_load_reverse_edge = reverse;
-  std::string delim = ";";
-  size_t total_len = etypes.size();
-
-  std::vector<std::future<int>> tasks;
-  for (size_t i = 0; i < total_len; i++) {
-    tasks.push_back(
-        _shards_task_pool[i % task_pool_size_]->enqueue([&, i, this]() -> int {
-          std::string etype_path = edge_to_edgedir[etypes[i]];
-          bool only_load_reverse_edge = false;
-          if (!reverse) {
-            only_load_reverse_edge = (i < is_reverse_edge_map.size())
-                                         ? is_reverse_edge_map[i]
-                                         : false;
-          }
-          if (only_load_reverse_edge) {
-            VLOG(1) << "only_load_reverse_edge is True, etype[" << etypes[i]
-                    << "], file_path[" << etype_path << "]";
-          } else {
-            VLOG(1) << "only_load_reverse_edge is False, etype[" << etypes[i]
-                    << "], file_path[" << etype_path << "]";
-          }
-          auto etype_path_list = ::paddle::framework::localfs_list(etype_path);
-          std::string etype_path_str;
-          if (part_num > 0 &&
-              part_num < static_cast<int>(etype_path_list.size())) {
-            std::vector<std::string> sub_etype_path_list(
-                etype_path_list.begin(), etype_path_list.begin() + part_num);
-            etype_path_str =
-                ::paddle::string::join_strings(sub_etype_path_list, delim);
-          } else {
-            etype_path_str =
-                ::paddle::string::join_strings(etype_path_list, delim);
-          }
-          if (!only_load_reverse_edge) {
-            this->load_edges(etype_path_str, false, etypes[i], use_weight);
-            if (reverse) {
-              std::string r_etype = get_inverse_etype(etypes[i]);
-              this->load_edges(etype_path_str, true, r_etype, use_weight);
-            }
-          } else {
-            this->load_edges(etype_path_str, true, etypes[i], use_weight);
-          }
-          return 0;
-        }));
-  }
-  for (size_t i = 0; i < tasks.size(); i++) {
-    tasks[i].get();
-  }
-  tasks.clear();
-
-  if (node_num_ > 1) {
-    graph_partition(true);
-  }
-
-  // record all start node id
-  for (size_t idx = 0; idx < edge_shards.size(); ++idx) {
-    for (size_t part_id = 0; part_id < shard_num_per_server; ++part_id) {
-      tasks.push_back(load_node_edge_task_pool->enqueue([this, idx, part_id]() {
-        std::vector<std::vector<uint64_t>> all_keys;
-        edge_shards[idx][part_id]->get_all_id(&all_keys, 1);
-        int cnt = all_keys[0].size();
-        edge_shards_keys_[idx][part_id] = std::move(all_keys[0]);
-        all_keys[0].clear();
-        return cnt;
-      }));
-    }
-  }
-  size_t total_cnt = 0;
-  for (auto &t : tasks) {
-    total_cnt += t.get();
-  }
-  tasks.clear();
-  VLOG(0) << "load all etypes total edge nodes count=" << total_cnt;
-
-  return 0;
-}
 void GraphTable::graph_partition(bool is_edge) {
   std::string mode = FLAGS_graph_edges_split_mode;
   if (mode == "dbh" || mode == "DBH") {
@@ -1995,6 +1601,398 @@ void GraphTable::stat_graph_edge_info(int type) {
           << ", cross count: " << all_cross_size
           << ", cross rate: " << double(all_cross_size) / double(all_node_size);
 }
+
+#endif  // PADDLE_WITH_GPU_GRAPH
+
+void GraphTable::clear_graph(int idx) {
+  for (auto p : edge_shards[idx]) {
+    p->clear();
+    delete p;
+  }
+
+  edge_shards[idx].clear();
+  for (size_t i = 0; i < shard_num_per_server; i++) {
+    edge_shards[idx].push_back(new GraphShard());
+  }
+}
+
+void GraphTable::clear_edge_shard() {
+  VLOG(0) << "begin clear edge shard";
+  std::vector<std::future<int>> tasks;
+  for (auto &type_shards : edge_shards) {
+    for (auto &shard : type_shards) {
+      tasks.push_back(
+          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
+            delete shard;
+            return 0;
+          }));
+    }
+  }
+  for (auto &task : tasks) task.get();
+  for (auto &shards : edge_shards) {
+    shards.clear();
+    for (size_t i = 0; i < shard_num_per_server; i++) {
+      shards.push_back(new GraphShard());
+    }
+  }
+  VLOG(0) << "finish clear edge shard";
+}
+
+void GraphTable::clear_feature_shard() {
+  VLOG(0) << "begin clear feature shard";
+  std::vector<std::future<int>> tasks;
+  for (auto &type_shards : feature_shards) {
+    for (auto &shard : type_shards) {
+      tasks.push_back(
+          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
+            delete shard;
+            return 0;
+          }));
+    }
+  }
+  for (auto &task : tasks) task.get();
+  for (auto &shards : feature_shards) {
+    shards.clear();
+    for (size_t i = 0; i < shard_num_per_server; i++) {
+      shards.push_back(new GraphShard());
+    }
+  }
+  VLOG(0) << "finish clear feature shard";
+}
+
+void GraphTable::clear_node_shard() {
+  VLOG(0) << "begin clear node shard";
+  std::vector<std::future<int>> tasks;
+  for (auto &type_shards : node_shards) {
+    for (auto &shard : type_shards) {
+      tasks.push_back(
+          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
+            delete shard;
+            return 0;
+          }));
+    }
+  }
+  for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
+  for (auto &shards : node_shards) {
+    shards.clear();
+    for (size_t i = 0; i < shard_num_per_server; i++) {
+      shards.push_back(new GraphShard());
+    }
+  }
+  VLOG(0) << "finish clear node shard";
+}
+
+void GraphTable::clear_graph() {
+  VLOG(0) << "begin clear_graph";
+  clear_edge_shard();
+  clear_feature_shard();
+  VLOG(0) << "finish clear_graph";
+}
+
+std::vector<Node *> GraphShard::get_batch(int start, int end, int step) {
+  if (start < 0) start = 0;
+  std::vector<Node *> res;
+  for (int pos = start; pos < std::min(end, static_cast<int>(bucket.size()));
+       pos += step) {
+    res.push_back(bucket[pos]);
+  }
+  return res;
+}
+
+size_t GraphShard::get_size() { return bucket.size(); }
+
+int32_t GraphTable::add_comm_edge(int idx, uint64_t src_id, uint64_t dst_id) {
+  size_t src_shard_id = src_id % shard_num;
+
+  if (src_shard_id >= shard_end || src_shard_id < shard_start) {
+    return -1;
+  }
+  size_t index = src_shard_id - shard_start;
+  edge_shards[idx][index]->add_graph_node(src_id)->build_edges(false);
+  edge_shards[idx][index]->add_neighbor(src_id, dst_id, 1.0);
+  return 0;
+}
+int32_t GraphTable::add_graph_node(int idx,
+                                   std::vector<uint64_t> &id_list,
+                                   std::vector<bool> &is_weight_list) {
+  auto &shards = edge_shards[idx];
+  size_t node_size = id_list.size();
+  std::vector<std::vector<std::pair<uint64_t, bool>>> batch(task_pool_size_);
+  for (size_t i = 0; i < node_size; i++) {
+    size_t shard_id = id_list[i] % shard_num;
+    if (shard_id >= shard_end || shard_id < shard_start) {
+      continue;
+    }
+    batch[get_thread_pool_index(id_list[i])].push_back(
+        {id_list[i], i < is_weight_list.size() ? is_weight_list[i] : false});
+  }
+  std::vector<std::future<int>> tasks;
+  for (size_t i = 0; i < batch.size(); ++i) {
+    if (batch[i].empty()) continue;
+    tasks.push_back(
+        _shards_task_pool[i]->enqueue([&shards, &batch, i, this]() -> int {
+          for (auto &p : batch[i]) {
+            size_t index = p.first % this->shard_num - this->shard_start;
+            shards[index]->add_graph_node(p.first)->build_edges(p.second);
+          }
+          return 0;
+        }));
+  }
+  for (auto &task : tasks) task.get();
+  return 0;
+}
+
+int32_t GraphTable::remove_graph_node(int idx, std::vector<uint64_t> &id_list) {
+  size_t node_size = id_list.size();
+  std::vector<std::vector<uint64_t>> batch(task_pool_size_);
+  for (size_t i = 0; i < node_size; i++) {
+    size_t shard_id = id_list[i] % shard_num;
+    if (shard_id >= shard_end || shard_id < shard_start) continue;
+    batch[get_thread_pool_index(id_list[i])].push_back(id_list[i]);
+  }
+  auto &shards = edge_shards[idx];
+  std::vector<std::future<int>> tasks;
+  for (size_t i = 0; i < batch.size(); ++i) {
+    if (batch[i].empty()) continue;
+    tasks.push_back(
+        _shards_task_pool[i]->enqueue([&shards, &batch, i, this]() -> int {
+          for (auto &p : batch[i]) {
+            size_t index = p % this->shard_num - this->shard_start;
+            shards[index]->delete_node(p);
+          }
+          return 0;
+        }));
+  }
+  for (auto &task : tasks) task.get();
+  return 0;
+}
+
+void GraphShard::clear() {
+  for (auto &item : bucket) {
+    delete item;
+  }
+  bucket.clear();
+  node_location.clear();
+}
+
+GraphShard::~GraphShard() { clear(); }
+
+void GraphShard::delete_node(uint64_t id) {
+  auto iter = node_location.find(id);
+  if (iter == node_location.end()) return;
+  int pos = iter->second;
+  delete bucket[pos];
+  if (pos != static_cast<int>(bucket.size()) - 1) {
+    bucket[pos] = bucket.back();
+    node_location[bucket.back()->get_id()] = pos;
+  }
+  node_location.erase(id);
+  bucket.pop_back();
+}
+GraphNode *GraphShard::add_graph_node(uint64_t id) {
+  if (node_location.find(id) == node_location.end()) {
+    node_location[id] = bucket.size();
+    bucket.push_back(new GraphNode(id));
+  }
+  return reinterpret_cast<GraphNode *>(bucket[node_location[id]]);
+}
+
+GraphNode *GraphShard::add_graph_node(Node *node) {
+  auto id = node->get_id();
+  if (node_location.find(id) == node_location.end()) {
+    node_location[id] = bucket.size();
+    bucket.push_back(node);
+  }
+  return reinterpret_cast<GraphNode *>(bucket[node_location[id]]);
+}
+
+FeatureNode *GraphShard::add_feature_node(uint64_t id,
+                                          bool is_overlap,
+                                          int float_fea_num) {
+  if (node_location.find(id) == node_location.end()) {
+    node_location[id] = bucket.size();
+    if (float_fea_num > 0) {
+      bucket.push_back(new FloatFeatureNode(id));
+    } else {
+      bucket.push_back(new FeatureNode(id));
+    }
+    return reinterpret_cast<FeatureNode *>(bucket[node_location[id]]);
+  }
+  if (is_overlap) {
+    return reinterpret_cast<FeatureNode *>(bucket[node_location[id]]);
+  }
+  return NULL;
+}
+
+void GraphShard::add_neighbor(uint64_t id, uint64_t dst_id, float weight) {
+  find_node(id)->add_edge(dst_id, weight);
+}
+
+Node *GraphShard::find_node(uint64_t id) {
+  auto iter = node_location.find(id);
+  return iter == node_location.end() ? nullptr : bucket[iter->second];
+}
+
+GraphTable::~GraphTable() {  // NOLINT
+#ifdef PADDLE_WITH_GPU_GRAPH
+  clear_graph();
+#endif
+}
+
+int32_t GraphTable::Load(const std::string &path, const std::string &param) {
+  bool load_edge = (param[0] == 'e');
+  bool load_node = (param[0] == 'n');
+  if (load_edge) {
+    bool reverse_edge = (param[1] == '<');
+    std::string edge_type = param.substr(2);
+    int ret = this->load_edges(path, reverse_edge, edge_type);
+    if (ret != 0) {
+      VLOG(0) << "Fail to load edges, path[" << path << "] edge_type["
+              << edge_type << "]";
+      return -1;
+    }
+  }
+  if (load_node) {
+    std::string node_type = param.substr(1);
+    int ret = this->load_nodes(path, node_type);
+    if (ret != 0) {
+      VLOG(0) << "Fail to load nodes, path[" << path << "] node_type["
+              << node_type << "]";
+      return -1;
+    }
+  }
+  return 0;
+}
+
+std::string GraphTable::get_inverse_etype(std::string &etype) {
+  auto etype_split = ::paddle::string::split_string<std::string>(etype, "2");
+  std::string res;
+  if (etype_split.size() == 3) {
+    res = etype_split[2] + "2" + etype_split[1] + "2" + etype_split[0];
+  } else {
+    res = etype_split[1] + "2" + etype_split[0];
+  }
+  return res;
+}
+
+int32_t GraphTable::parse_type_to_typepath(
+    std::string &type2files,
+    std::string graph_data_local_path,
+    std::vector<std::string> &res_type,
+    std::unordered_map<std::string, std::string> &res_type2path) {
+  auto type2files_split =
+      ::paddle::string::split_string<std::string>(type2files, ",");
+  if (type2files_split.empty()) {
+    return -1;
+  }
+  for (auto one_type2file : type2files_split) {
+    auto one_type2file_split =
+        ::paddle::string::split_string<std::string>(one_type2file, ":");
+    auto type = one_type2file_split[0];
+    auto type_dir = one_type2file_split[1];
+    res_type.push_back(type);
+    res_type2path[type] = graph_data_local_path + "/" + type_dir;
+  }
+  return 0;
+}
+
+int32_t GraphTable::parse_edge_and_load(
+    std::string etype2files,
+    std::string graph_data_local_path,
+    int part_num,
+    bool reverse,
+    const std::vector<bool> &is_reverse_edge_map,
+    bool use_weight) {
+  std::vector<std::string> etypes;
+  std::unordered_map<std::string, std::string> edge_to_edgedir;
+  int res = parse_type_to_typepath(
+      etype2files, graph_data_local_path, etypes, edge_to_edgedir);
+  if (res != 0) {
+    VLOG(0) << "parse edge type and edgedir failed!";
+    return -1;
+  }
+  VLOG(0) << "etypes size: " << etypes.size();
+  VLOG(0) << "whether reverse: " << reverse;
+  is_load_reverse_edge = reverse;
+  std::string delim = ";";
+  size_t total_len = etypes.size();
+
+  std::vector<std::future<int>> tasks;
+  for (size_t i = 0; i < total_len; i++) {
+    tasks.push_back(
+        _shards_task_pool[i % task_pool_size_]->enqueue([&, i, this]() -> int {
+          std::string etype_path = edge_to_edgedir[etypes[i]];
+          bool only_load_reverse_edge = false;
+          if (!reverse) {
+            only_load_reverse_edge = (i < is_reverse_edge_map.size())
+                                         ? is_reverse_edge_map[i]
+                                         : false;
+          }
+          if (only_load_reverse_edge) {
+            VLOG(1) << "only_load_reverse_edge is True, etype[" << etypes[i]
+                    << "], file_path[" << etype_path << "]";
+          } else {
+            VLOG(1) << "only_load_reverse_edge is False, etype[" << etypes[i]
+                    << "], file_path[" << etype_path << "]";
+          }
+          auto etype_path_list = ::paddle::framework::localfs_list(etype_path);
+          std::string etype_path_str;
+          if (part_num > 0 &&
+              part_num < static_cast<int>(etype_path_list.size())) {
+            std::vector<std::string> sub_etype_path_list(
+                etype_path_list.begin(), etype_path_list.begin() + part_num);
+            etype_path_str =
+                ::paddle::string::join_strings(sub_etype_path_list, delim);
+          } else {
+            etype_path_str =
+                ::paddle::string::join_strings(etype_path_list, delim);
+          }
+          if (!only_load_reverse_edge) {
+            this->load_edges(etype_path_str, false, etypes[i], use_weight);
+            if (reverse) {
+              std::string r_etype = get_inverse_etype(etypes[i]);
+              this->load_edges(etype_path_str, true, r_etype, use_weight);
+            }
+          } else {
+            this->load_edges(etype_path_str, true, etypes[i], use_weight);
+          }
+          return 0;
+        }));
+  }
+  for (size_t i = 0; i < tasks.size(); i++) {
+    tasks[i].get();
+  }
+  tasks.clear();
+
+#ifdef PADDLE_WITH_GPU_GRAPH
+  if (node_num_ > 1) {
+    graph_partition(true);
+  }
+#endif
+
+  // record all start node id
+  for (size_t idx = 0; idx < edge_shards.size(); ++idx) {
+    for (size_t part_id = 0; part_id < shard_num_per_server; ++part_id) {
+      tasks.push_back(load_node_edge_task_pool->enqueue([this, idx, part_id]() {
+        std::vector<std::vector<uint64_t>> all_keys;
+        edge_shards[idx][part_id]->get_all_id(&all_keys, 1);
+        int cnt = all_keys[0].size();
+        edge_shards_keys_[idx][part_id] = std::move(all_keys[0]);
+        all_keys[0].clear();
+        return cnt;
+      }));
+    }
+  }
+  size_t total_cnt = 0;
+  for (auto &t : tasks) {
+    total_cnt += t.get();
+  }
+  tasks.clear();
+  VLOG(0) << "load all etypes total edge nodes count=" << total_cnt;
+
+  return 0;
+}
+
 int32_t GraphTable::parse_node_and_load(std::string ntype2files,
                                         std::string graph_data_local_path,
                                         int part_num,
@@ -2041,10 +2039,11 @@ int32_t GraphTable::parse_node_and_load(std::string ntype2files,
   }
   // fix node edge nodes
   fix_feature_node_shards(load_slot);
+#ifdef PADDLE_WITH_GPU_GRAPH
   if (node_num_ > 1) {
     graph_partition(false);
   }
-
+#endif
   return 0;
 }
 void GraphTable::fix_feature_node_shards(bool load_slot) {
@@ -2224,61 +2223,8 @@ int32_t GraphTable::load_node_and_edge_file(
   return 0;
 }
 
-int32_t GraphTable::get_nodes_ids_by_ranges(
-    GraphTableType table_type,
-    int idx,
-    std::vector<std::pair<int, int>> ranges,
-    std::vector<uint64_t> &res) {
-  std::mutex mutex;
-  int start = 0, end, index = 0, total_size = 0;
-  res.clear();
-  auto &shards = table_type == GraphTableType::EDGE_TABLE ? edge_shards[idx]
-                                                          : feature_shards[idx];
-  std::vector<std::future<size_t>> tasks;
-  for (size_t i = 0;
-       i < shards.size() && index < static_cast<int>(ranges.size());
-       i++) {
-    end = total_size + shards[i]->get_size();
-    start = total_size;
-    while (start < end && index < static_cast<int>(ranges.size())) {
-      if (ranges[index].second <= start) {
-        index++;
-      } else if (ranges[index].first >= end) {
-        break;
-      } else {
-        int first = std::max(ranges[index].first, start);
-        int second = std::min(ranges[index].second, end);
-        start = second;
-        first -= total_size;
-        second -= total_size;
-        tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
-            [&shards, this, first, second, i, &res, &mutex]() -> size_t {
-              std::vector<uint64_t> keys;
-              shards[i]->get_ids_by_range(first, second, &keys);
-
-              size_t num = keys.size();
-              mutex.lock();
-              res.reserve(res.size() + num);
-              for (auto &id : keys) {
-                res.push_back(id);
-                std::swap(res[rand() % res.size()],
-                          res[static_cast<int>(res.size()) - 1]);
-              }
-              mutex.unlock();
-
-              return num;
-            }));
-      }
-    }
-    total_size += shards[i]->get_size();
-  }
-  for (auto &task : tasks) {
-    task.get();
-  }
-  return 0;
-}
 bool GraphTable::is_key_for_self_rank(const uint64_t &id) {
-#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_GLOO)
   thread_local auto ps_wrapper =
       ::paddle::framework::PSGPUWrapper::GetInstance();
   if (FLAGS_graph_edges_split_debug && ps_wrapper->GetRankNum() == 1) {
@@ -2290,7 +2236,7 @@ bool GraphTable::is_key_for_self_rank(const uint64_t &id) {
 #endif
 }
 int GraphTable::partition_key_for_rank(const uint64_t &key) {
-#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_GLOO)
   thread_local auto ps_wrapper =
       ::paddle::framework::PSGPUWrapper::GetInstance();
   if (FLAGS_graph_edges_split_debug && ps_wrapper->GetRankNum() == 1) {
@@ -2611,7 +2557,7 @@ int32_t GraphTable::load_edges(const std::string &path,
                                bool reverse_edge,
                                const std::string &edge_type,
                                bool use_weight) {
-#ifdef PADDLE_WITH_HETERPS
+#ifdef PADDLE_WITH_GPU_GRAPH
   if (search_level == 2) total_memory_cost = 0;
 #endif
   int idx = 0;
@@ -2657,7 +2603,7 @@ int32_t GraphTable::load_edges(const std::string &path,
   std::string edge_size = edge_type + ":" + std::to_string(valid_count);
   edge_type_size.push_back(edge_size);
 
-#ifdef PADDLE_WITH_HETERPS
+#ifdef PADDLE_WITH_GPU_GRAPH
   if (search_level == 2) {
     if (count > 0) {
       dump_edges_to_ssd(idx);
@@ -2863,7 +2809,7 @@ int32_t GraphTable::random_sample_neighbors(
           int idy = seq_id[i][k];
           int &actual_size = actual_sizes[idy];
           if (node == nullptr) {
-#ifdef PADDLE_WITH_HETERPS
+#ifdef PADDLE_WITH_GPU_GRAPH
             if (search_level == 2) {
               VLOG(2) << "enter sample from ssd for node_id " << node_id;
               char *buffer_addr = random_sample_neighbor_from_ssd(
@@ -2900,7 +2846,11 @@ int32_t GraphTable::random_sample_neighbors(
             memcpy(buffer_addr + offset, &id, Node::id_size);
             offset += Node::id_size;
             if (need_weight) {
+#ifdef PADDLE_WITH_GPU_GRAPH
               weight = node->get_neighbor_weight(x);
+#else
+              weight = 1.0;
+#endif
               memcpy(buffer_addr + offset, &weight, Node::weight_size);
               offset += Node::weight_size;
             }
@@ -2916,6 +2866,60 @@ int32_t GraphTable::random_sample_neighbors(
   }
   for (auto &t : tasks) {
     t.get();
+  }
+  return 0;
+}
+
+int32_t GraphTable::get_nodes_ids_by_ranges(
+    GraphTableType table_type,
+    int idx,
+    std::vector<std::pair<int, int>> ranges,
+    std::vector<uint64_t> &res) {
+  std::mutex mutex;
+  int start = 0, end, index = 0, total_size = 0;
+  res.clear();
+  auto &shards = table_type == GraphTableType::EDGE_TABLE ? edge_shards[idx]
+                                                          : feature_shards[idx];
+  std::vector<std::future<size_t>> tasks;
+  for (size_t i = 0;
+       i < shards.size() && index < static_cast<int>(ranges.size());
+       i++) {
+    end = total_size + shards[i]->get_size();
+    start = total_size;
+    while (start < end && index < static_cast<int>(ranges.size())) {
+      if (ranges[index].second <= start) {
+        index++;
+      } else if (ranges[index].first >= end) {
+        break;
+      } else {
+        int first = std::max(ranges[index].first, start);
+        int second = std::min(ranges[index].second, end);
+        start = second;
+        first -= total_size;
+        second -= total_size;
+        tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
+            [&shards, this, first, second, i, &res, &mutex]() -> size_t {
+              std::vector<uint64_t> keys;
+              shards[i]->get_ids_by_range(first, second, &keys);
+
+              size_t num = keys.size();
+              mutex.lock();
+              res.reserve(res.size() + num);
+              for (auto &id : keys) {
+                res.push_back(id);
+                std::swap(res[rand() % res.size()],
+                          res[static_cast<int>(res.size()) - 1]);
+              }
+              mutex.unlock();
+
+              return num;
+            }));
+      }
+    }
+    total_size += shards[i]->get_size();
+  }
+  for (auto &task : tasks) {
+    task.get();
   }
   return 0;
 }
@@ -3410,7 +3414,7 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   task_pool_size_ = graph.task_pool_size();
   build_sampler_on_cpu = graph.build_sampler_on_cpu();
 
-#ifdef PADDLE_WITH_HETERPS
+#ifdef PADDLE_WITH_GPU_GRAPH
   _db = NULL;
   search_level = graph.search_level();
   if (search_level >= 2) {
@@ -3450,7 +3454,7 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   node_types_.assign(node_types.begin(), node_types.end());
   auto edge_types = graph.edge_types();
 
-#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_GLOO)
   auto ps_wrapper = ::paddle::framework::PSGPUWrapper::GetInstance();
   node_id_ = ps_wrapper->GetRankId();
   node_num_ = ps_wrapper->GetRankNum();
@@ -3539,7 +3543,7 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   edge_shards.resize(id_to_edge.size());
   node_weight.resize(2);
   node_weight[0].resize(id_to_edge.size());
-#ifdef PADDLE_WITH_HETERPS
+#ifdef PADDLE_WITH_GPU_GRAPH
   partitions.resize(id_to_edge.size());
 #endif
   edge_shards_keys_.resize(id_to_edge.size());

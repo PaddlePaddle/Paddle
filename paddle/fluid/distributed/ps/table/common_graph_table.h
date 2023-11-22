@@ -46,7 +46,7 @@
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
-#ifdef PADDLE_WITH_HETERPS
+#ifdef PADDLE_WITH_GPU_GRAPH
 #include "paddle/fluid/distributed/ps/table/depends/rocksdb_warpper.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 #endif
@@ -510,7 +510,7 @@ class GraphTable : public Table {
     use_cache = false;
     shard_num = 0;
     rw_lock.reset(new pthread_rwlock_t());
-#ifdef PADDLE_WITH_HETERPS
+#ifdef PADDLE_WITH_GPU_GRAPH
     next_partition = 0;
     total_memory_cost = 0;
 #endif
@@ -715,7 +715,7 @@ class GraphTable : public Table {
     return 0;
   }
   virtual void load_node_weight(int type_id, int idx, std::string path);
-#ifdef PADDLE_WITH_HETERPS
+#ifdef PADDLE_WITH_GPU_GRAPH
   virtual void make_partitions(int idx, int64_t gb_size, int device_len);
   virtual void export_partition_files(int idx, std::string file_path);
   virtual char *random_sample_neighbor_from_ssd(
@@ -754,6 +754,14 @@ class GraphTable : public Table {
                             const std::string &edge_type);
   int32_t load_next_partition(int idx);
   void set_search_level(int search_level) { this->search_level = search_level; }
+
+  void graph_partition(bool is_edge);
+  void dbh_graph_edge_partition();
+  void dbh_graph_feature_partition();
+  void fennel_graph_edge_partition();
+  void filter_graph_edge_nodes();
+  void fennel_graph_feature_partition();
+
   int search_level;
   int64_t total_memory_cost;
   std::vector<std::vector<std::vector<uint64_t>>> partitions;
@@ -770,12 +778,6 @@ class GraphTable : public Table {
   void build_node_iter_type_keys();
   bool is_key_for_self_rank(const uint64_t &id);
   int partition_key_for_rank(const uint64_t &key);
-  void graph_partition(bool is_edge);
-  void dbh_graph_edge_partition();
-  void dbh_graph_feature_partition();
-  void fennel_graph_edge_partition();
-  void filter_graph_edge_nodes();
-  void fennel_graph_feature_partition();
   void fix_feature_node_shards(bool load_slot);
   void stat_graph_edge_info(int type);
   std::string node_types_idx_to_node_type_str(int node_types_idx);
@@ -833,7 +835,7 @@ class GraphTable : public Table {
   bool build_sampler_on_cpu;
   bool is_load_reverse_edge = false;
   std::shared_ptr<pthread_rwlock_t> rw_lock;
-#ifdef PADDLE_WITH_HETERPS
+#ifdef PADDLE_WITH_GPU_GRAPH
   // paddle::framework::GpuPsGraphTable gpu_graph_table;
   ::paddle::distributed::RocksDBHandler *_db;
   // std::shared_ptr<::ThreadPool> graph_sample_pool;
