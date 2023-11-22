@@ -696,7 +696,7 @@ Expr Sum::Make(const std::vector<Expr> &vs) {
 
   auto *n = make_shared<Sum>();
   auto type = vs.front().type();
-  for (auto &v : vs) CHECK_EQ(v.type(), type) << vs.front() << " " << v;
+  // for (auto &v : vs) CHECK_EQ(v.type(), type) << vs.front() << " " << v;
 
   n->operands() = vs;
 

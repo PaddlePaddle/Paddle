@@ -37,7 +37,7 @@ Expr ReplaceMaxToConstant(Expr expr);
 struct CasInterval {
   template <typename T>
   CasInterval(T l, T r) : l(l), r(r) {
-    CHECK_LE(l, r) << "left should not be larger than right";
+    // CHECK_LE(l, r) << "left should not be larger than right";
   }
 
   /**

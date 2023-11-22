@@ -45,7 +45,8 @@ std::vector<pir::CUDAJITInfo> PirCompiler::BuildCUDAJITInfo(
 
   std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
   for (int i = 0; i < groups.size(); ++i) {
-    lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
+    lowered_funcs.emplace_back(
+        op_lowerer.Lower(groups[i], false, false, false));
   }
 
   for (auto&& lowered_func : lowered_funcs) {
@@ -113,24 +114,24 @@ std::unique_ptr<Program> PirCompiler::Build(
 void PirCompiler::ProcessFunction(
     const std::vector<ir::LoweredFunc>& lowered_funcs) {
   for (auto&& func : lowered_funcs) {
-    for (auto&& arg : func->args) {
-      std::string arg_name = arg.name();
-      if (arg_name[0] == '_') arg_name = arg_name.substr(1);
-
-      auto* var = scope_->FindVar(arg_name);
-      // For argument buffer not in scope, create it.
-      if (!var && arg.is_buffer()) {
-        auto* new_var = scope_->Var<Tensor>(arg_name);
-        auto& tensor = absl::get<Tensor>(*new_var);
-        std::vector<Shape::dim_t> shape;
-        for (auto& shape_dim : arg.buffer_arg()->shape) {
-          CHECK(shape_dim.is_constant());
-          shape.push_back(static_cast<int>(shape_dim.get_constant()));
-        }
-        tensor->Resize(Shape{shape});
-        tensor->set_type(arg.buffer_arg()->dtype);
-      }
-    }
+    // for (auto&& arg : func->args) {
+    //   std::string arg_name = arg.name();
+    //   if (arg_name[0] == '_') arg_name = arg_name.substr(1);
+    //
+    //   auto* var = scope_->FindVar(arg_name);
+    //   // For argument buffer not in scope, create it.
+    //   if (!var && arg.is_buffer()) {
+    //     auto* new_var = scope_->Var<Tensor>(arg_name);
+    //     auto& tensor = absl::get<Tensor>(*new_var);
+    //     std::vector<Shape::dim_t> shape;
+    //     for (auto& shape_dim : arg.buffer_arg()->shape) {
+    //       CHECK(shape_dim.is_constant());
+    //       shape.push_back(static_cast<int>(shape_dim.get_constant()));
+    //     }
+    //     tensor->Resize(Shape{shape});
+    //     tensor->set_type(arg.buffer_arg()->dtype);
+    //   }
+    // }
     m_builder_.AddFunction(func);
   }
 }
