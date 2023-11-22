@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_group.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_group.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 
 namespace cinn {
 namespace dialect {
