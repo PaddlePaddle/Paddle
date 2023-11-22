@@ -34,8 +34,6 @@
 
 namespace {
 using GroupOpsVec = std::vector<pir::Operation*>;
-// The delim(`;`) that is used to split the FLAGS_allow_cinn_ops
-// & FLAGS_deny_cinn_ops.
 
 bool IsSplitOp(pir::Operation* op) {
   if (op->name() == "pd_op.matmul") {
@@ -60,7 +58,7 @@ class SubGraphExtractPass : public pir::Pass {
               << " cinn supported subgraphs";
     for (auto& group_ops : groups) {
       VLOG(4) << "current group_ops.size(): " << group_ops.size();
-      ::pir::ReplaceWithGroupOp(block, &group_ops);
+      ::pir::ReplaceWithGroupOp(block, group_ops);
     }
   }
 
