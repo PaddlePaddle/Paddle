@@ -104,7 +104,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_conv_elementwise_add_act_fuse_pass$|\
 ^test_conv_eltwiseadd_bn_fuse_pass$|\
 ^test_custom_relu_op_setup$|\
-^test_inference_gap_setup$|\
 ^test_conv3d_transpose_part2_op$|\
 ^test_deform_conv2d$|\
 ^test_matmul_op$|\
