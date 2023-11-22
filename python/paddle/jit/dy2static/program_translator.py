@@ -358,7 +358,7 @@ class StaticFunction:
 
             for spec in flatten(input_spec):
                 if isinstance(spec, InputSpec) and -1 in spec.shape:
-                    input_spec = None
+                    # input_spec = None
                     warnings.warn(
                         'Now prim and cinn do not support -1 shape, but input_spec has -1 shape so we set it to None.'
                     )
@@ -707,7 +707,8 @@ class SymbolicStaticFunction(StaticFunction):
     def _perform_call(self, *args, **kwargs):
         from ..sot import symbolic_translate
 
-        args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
+        args, kwargs = self._function_spec.unified_args_and_kwargs(
+            args, kwargs)
         (
             input_args_with_spec,
             input_kwargs_with_spec,
@@ -774,7 +775,8 @@ class ASTStaticFunction(StaticFunction):
 
     def _perform_call(self, *args, **kwargs):
         # 1. trace ops from dygraph layers and cache the generated program.
-        args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
+        args, kwargs = self._function_spec.unified_args_and_kwargs(
+            args, kwargs)
 
         try:
             concrete_program, partial_program_layer = self.get_concrete_program(
@@ -1585,7 +1587,8 @@ class ProgramCache:
 
         backend = cache_key.kwargs['backend']
         if (
-            prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy'], backend)
+            prim_or_cinn_is_enabled(
+                cache_key.kwargs['build_strategy'], backend)
             and not use_pir_api()
         ):
             for var in concrete_program.main_program.list_vars():

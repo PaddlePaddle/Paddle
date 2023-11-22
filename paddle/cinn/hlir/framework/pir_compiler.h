@@ -40,7 +40,7 @@ class PirCompiler final {
 
   std::unique_ptr<Program> Build();
 
-  std::vector<pir::CUDAJITInfo> BuildCUDAJITInfo(
+  std::vector<pir::CINNKernelInfo> BuildCUDAJITInfo(
       const std::vector<pir::GroupPtr>& groups);
 
   std::unique_ptr<Program> Build(const std::vector<pir::GroupPtr>& groups);

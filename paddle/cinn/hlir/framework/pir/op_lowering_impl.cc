@@ -328,6 +328,17 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     }
   }
 
+  std::map<int, CINNKernelInfo::ArgDimIdx> mps;
+  // update args for dynamic dim
+  int num_tensor_args = static_cast<int>(group_func_args.size());
+  // for (int i = 0; i < num_tensor_args; i++) {
+  // if (num_tensor_args[i].is_dynamic) {
+  group_func_args.emplace_back(ir::_Var_::Make("S1", common::Int(32)));
+  mps[3] = {0, 0};
+  group -> int_args_map = mps;
+  // }
+  // }
+
   auto func_body = ir_sch->GetModule().GetExprs().at(0);
 #ifdef CINN_WITH_CUDA
   optim::OptimizeExprGPU(&(func_body));

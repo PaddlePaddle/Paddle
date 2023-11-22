@@ -28,11 +28,15 @@ namespace framework {
 
 namespace pir {
 
-struct CUDAJITInfo {
+struct CINNKernelInfo {
   void* fn_ptr;
-  std::vector<int> block_dims;
-  std::vector<int> grid_dims;
-  void* compiler;
+
+  struct ArgDimIdx {
+    int arg_idx;
+    int dim_idx;
+  };
+  std::map<int, ArgDimIdx> int_args_map;
+  void* compiler; // instruction need backends::compiler stay alive
 };
 
 struct CompatibleInfo {
