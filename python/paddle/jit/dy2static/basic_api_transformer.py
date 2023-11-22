@@ -168,8 +168,6 @@ class NameloadJstTransformer(BaseTransformer):
 
         return visit
 
-    # All the node can appear in assignment context should be handled here.
-    # See https://github.com/serge-sans-paille/gast?tab=readme-ov-file#asdl
     def visit_Attribute(self, node):
         def skip_fn(node):
             if utils.ast_to_source_code(node).startswith(
@@ -184,17 +182,8 @@ class NameloadJstTransformer(BaseTransformer):
     def visit_Subscript(self, node):
         return self.create_visit_with_convert_load(gast.Subscript)(node)
 
-    def visit_Starred(self, node):
-        return self.create_visit_with_convert_load(gast.Starred)(node)
-
     def visit_Name(self, node):
         return self.create_visit_with_convert_load(gast.Name)(node)
-
-    def visit_List(self, node):
-        return self.create_visit_with_convert_load(gast.List)(node)
-
-    def visit_Tuple(self, node):
-        return self.create_visit_with_convert_load(gast.Tuple)(node)
 
 
 class AttributeJstTransformer(BaseTransformer):
