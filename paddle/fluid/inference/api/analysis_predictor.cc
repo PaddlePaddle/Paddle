@@ -1341,7 +1341,9 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     } else {
       idx = PADDLE_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }
-    framework::SetFeedVariable(scope, *input, framework::kFeedOpType, idx);
+    auto &t = framework::GetVariableTensor(*scope, idx2feeds_[idx]);
+    t.ShareDataWith(*input);
+    t.set_lod(input->lod());
   }
   return true;
 }
@@ -1374,12 +1376,16 @@ bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
       auto &t = framework::GetVariableTensor(*scope, input.name());
       t.ShareDataWith(
           *std::dynamic_pointer_cast<phi::DenseTensor>(input.impl()));
+      t.set_lod(
+          std::dynamic_pointer_cast<phi::DenseTensor>(input.impl())->lod());
     }
   } else {
     for (size_t i = 0; i < inputs.size(); ++i) {
       auto &t = framework::GetVariableTensor(*scope, idx2feeds_[i]);
       t.ShareDataWith(
           *std::dynamic_pointer_cast<phi::DenseTensor>(inputs[i].impl()));
+      t.set_lod(
+          std::dynamic_pointer_cast<phi::DenseTensor>(inputs[i].impl())->lod());
     }
   }
   return true;
@@ -1418,26 +1424,24 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
             "Fetch op's col attr(%d) should be equal to the index(%d)",
             idx,
             i));
-    framework::FetchType &fetch_var =
-        framework::GetFetchVariable(*scope, framework::kFetchOpType, idx);
-    auto &fetch = PADDLE_GET(phi::DenseTensor, fetch_var);
-    auto type = framework::TransToProtoVarType(fetch.dtype());
+    auto &t = framework::GetVariableTensor(*scope, idx2fetches_[idx]);
+    auto type = framework::TransToProtoVarType(t.dtype());
     auto output = &(outputs->at(i));
     output->name = fetches_[idx]->Input("X")[0];
     if (type == framework::proto::VarType::FP32) {
-      GetFetchOne<float>(fetch, output);
+      GetFetchOne<float>(t, output);
       output->dtype = PaddleDType::FLOAT32;
     } else if (type == framework::proto::VarType::INT64) {
-      GetFetchOne<int64_t>(fetch, output);
+      GetFetchOne<int64_t>(t, output);
       output->dtype = PaddleDType::INT64;
     } else if (type == framework::proto::VarType::INT32) {
-      GetFetchOne<int32_t>(fetch, output);
+      GetFetchOne<int32_t>(t, output);
       output->dtype = PaddleDType::INT32;
     } else if (type == framework::proto::VarType::FP16) {
-      GetFetchOne<float16>(fetch, output);
+      GetFetchOne<float16>(t, output);
       output->dtype = PaddleDType::FLOAT16;
     } else if (type == framework::proto::VarType::BF16) {
-      GetFetchOne<bfloat16>(fetch, output);
+      GetFetchOne<bfloat16>(t, output);
       output->dtype = PaddleDType::BFLOAT16;
     } else {
       LOG(ERROR)

@@ -1314,10 +1314,10 @@ struct PD_INFER_DECL AnalysisConfig {
   bool model_from_memory_{false};
 
   bool enable_ir_optim_{true};
-  bool use_feed_fetch_ops_{true};
+  bool use_feed_fetch_ops_{false};
   bool ir_debug_{false};
 
-  bool use_new_executor_{false};
+  bool use_new_executor_{true};
 
   bool specify_input_name_{false};
 
