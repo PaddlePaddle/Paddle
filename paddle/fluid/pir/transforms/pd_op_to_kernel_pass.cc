@@ -63,7 +63,7 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     pir::CombineOp::name(),
     pir::SliceOp::name(),
     pir::SplitOp::name(),
-    pir::GetConstantOp::name(),
+    pir::ConstantTensorOp::name(),
     pir::SetParameterOp::name(),
     pir::GetParameterOp::name(),
     pir::ShadowOutputOp::name(),

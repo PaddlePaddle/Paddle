@@ -68,7 +68,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
   bool Match(pir::Operation* op) const override {
     if (op->HasTrait<pir::SideEffectTrait>() ||
-        op->isa<pir::GetParameterOp>() || op->isa<paddle::dialect::FeedOp>())
+        op->isa<pir::ConstantTensorOp>() || op->isa<pir::GetParameterOp>() ||
+        op->isa<paddle::dialect::FeedOp>())
       return false;
     if (!ValidOp(op)) {
       return false;
@@ -93,22 +94,63 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     core.Run({});
 
     // TODO(liuyuanle): support multiple output
-    auto get_parameter_op = rewriter.Build<pir::GetParameterOp>(
-        output_var_name, op->result(0).type());
-    get_parameter_op->set_attribute(
-        kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+    if (ReplaceResultByParameter(op)) {
+      auto get_parameter_op = rewriter.Build<pir::GetParameterOp>(
+          output_var_name, op->result(0).type());
+      get_parameter_op->set_attribute(
+          kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
 
-    VLOG(4) << "constant_folding_pass applied on [" << op->name() << "] op";
-    rewriter.ReplaceAllUsesWith(op->result(0), get_parameter_op->result(0));
+      VLOG(4) << "constant_folding_pass applied on [" << op->name() << "] op";
+      rewriter.ReplaceAllUsesWith(op->result(0), get_parameter_op->result(0));
+    } else {
+      auto get_constant_op = rewriter.Build<pir::ConstantTensorOp>(
+          pir::StrAttribute::get(ir_context(), output_var_name), op->result(0).type());
+      get_constant_op->set_attribute(
+          kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+
+      VLOG(4) << "constant_folding_pass applied on [" << op->name() << "] op";
+      rewriter.ReplaceAllUsesWith(op->result(0), get_constant_op->result(0));
+    }
     rewriter.EraseOp(op);
   }
 
  private:
+  bool ReplaceResultByParameter(pir::Operation* op) const {
+    for (uint32_t i = 0; i < op->num_operands(); i++) {
+      if (pir::GetDefiningOpForInput(op, i)->isa<pir::ConstantTensorOp>())
+        return false;
+    }
+
+    for (uint32_t i = 0; i < op->num_results(); i++) {
+      auto use_ops = pir::GetUseOpsForOutput(op, i);
+      for (auto* use_op : use_ops) {
+        if (use_op->isa<pir::CombineOp>()) {
+          return false;
+        }
+        if (use_op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
+          auto [input_infos, _1, _2, _3, _4] =
+              use_op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()
+                  .GetOpInfo();
+          for (const auto& input_info : input_infos) {
+            if (input_info.type_name.find("IntArrayAttribute") !=
+                    std::string::npos ||
+                input_info.type_name.find("ScalarAttribute") !=
+                    std::string::npos) {
+              return false;
+            }
+          }
+        }
+      }
+    }
+    return true;
+  }
+
   bool ValidOp(pir::Operation* op) const {
     for (uint32_t i = 0; i < op->num_operands(); i++) {
-      // 1. inputs must come from get_parameter op
+      // 1. inputs must come from get_parameter op or get_constant op
       // 2. inputs must be a dense tensor type
-      if (!pir::GetDefiningOpForInput(op, i)->isa<pir::GetParameterOp>() ||
+      if (!(pir::GetDefiningOpForInput(op, i)->isa<pir::GetParameterOp>() ||
+            pir::GetDefiningOpForInput(op, i)->isa<pir::ConstantTensorOp>()) ||
           !op->operand_source(i)
                .type()
                .isa<paddle::dialect::DenseTensorType>()) {

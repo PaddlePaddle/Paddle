@@ -217,7 +217,7 @@ const std::unordered_set<std::string> SpecialOps = {"pd_op.feed",
                                                     "builtin.combine",
                                                     "builtin.set_parameter",
                                                     "builtin.get_parameter",
-                                                    "builtin.get_constant"
+                                                    "builtin.constant"
                                                     "builtin.slice",
                                                     "builtin.split",
                                                     "pd_op.data",
@@ -231,7 +231,8 @@ Variable* CreateVar(pir::Value value,
                     ValueExecutionInfo* value_exe_info) {
   pir::Operation* def_op = value.dyn_cast<pir::OpResult>().owner();
   bool is_persisable = false;
-  if (def_op->isa<::pir::GetParameterOp>() || def_op->isa<::pir::GetConstantOp>()) {
+  if (def_op->isa<::pir::GetParameterOp>() ||
+      def_op->isa<::pir::ConstantTensorOp>()) {
     is_persisable = true;
   } else if (def_op->HasAttribute(kAttrIsPersisable)) {
     is_persisable = def_op->attribute(kAttrIsPersisable)
@@ -439,15 +440,15 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->result(0);
 
     value_exe_info->Add(value, param_name);
-  } else if (op_name == "builtin.get_constant") {
-    VLOG(6) << "Handle for builtin.get_constant:";
-    auto param_name = op->attributes()
-                          .at("constant_name")
-                          .dyn_cast<pir::StrAttribute>()
-                          .AsString();
-    auto value = op->result(0);
+  } else if (op_name == "builtin.constant") {
+    VLOG(6) << "Handle for builtin.constant:";
+    if (op->isa<pir::ConstantTensorOp>()) {
+      auto param_name =
+          op->attributes().at("value").dyn_cast<pir::StrAttribute>().AsString();
+      auto value = op->result(0);
 
-    value_exe_info->Add(value, param_name);
+      value_exe_info->Add(value, param_name);
+    }
   } else if (op_name == "builtin.slice") {
     VLOG(6) << "Handle for builtin.slice";
     auto out_value = op->result(0);

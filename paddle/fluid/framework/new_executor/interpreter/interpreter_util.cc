@@ -1180,7 +1180,7 @@ std::unordered_set<std::string> GetSpecialOpNames() {
       "pd_op.feed",
       "builtin.set_parameter",
       "builtin.get_parameter",
-      "builtin.get_constant",
+      "builtin.constant",
       "pd_op.data",
       "builtin.shadow_output",
   };
