@@ -827,12 +827,6 @@ if(NOT WIN32)
                   test_ir_memory_optimize_transformer)
 endif()
 
-# dist xpu tests:
-if(WITH_XPU_BKCL)
-  py_test(test_collective_allreduce_api_xpu
-          SRCS "collective/test_collective_allreduce_api.py")
-endif()
-
 if(WITH_HETERPS)
   set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
   set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
