@@ -102,6 +102,12 @@ void CustomOpKernelContext::EmplaceBackInput(Tensor&& input) {
   input_range_.emplace_back(index, index + 1);
 }
 
+void CustomOpKernelContext::EmplaceBackInput(const Tensor& input) {
+  size_t index = inputs_.size();
+  inputs_.emplace_back(input);
+  input_range_.emplace_back(index, index + 1);
+}
+
 void CustomOpKernelContext::EmplaceBackInputs(
     const std::vector<Tensor>& inputs) {
   size_t index = inputs_.size();
