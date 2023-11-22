@@ -1655,6 +1655,7 @@ class Engine:
                         new_feed_dict[invalid_feed_var_name] = feed_dict[
                             invalid_feed_var_name
                         ]
+
                     tmp_program = _add_data_ops(
                         self.main_program, new_feed_dict
                     )
@@ -1724,6 +1725,9 @@ class Engine:
             ):
                 ops = program.global_block().ops
                 bwd_ops = _get_bwd_ops_name(program)
+                num_bwd_ops_decomposed = 0
+                num_bwd_ops_undecomposed = 0
+                bwd_ops_decomposed = []
                 bwd_ops_undecomposed = []
 
                 for op in ops:
@@ -1733,14 +1737,25 @@ class Engine:
                             op,
                             self.pir_grad_var_to_var,
                         )
-                        if (
-                            not has_decomposed
-                            and op.name() not in bwd_ops_undecomposed
-                        ):
-                            bwd_ops_undecomposed.append(op.name())
+                        if has_decomposed:
+                            num_bwd_ops_decomposed += 1
+                            if op.name() not in bwd_ops_decomposed:
+                                bwd_ops_decomposed.append(op.name())
+                        if not has_decomposed:
+                            num_bwd_ops_undecomposed += 1
+                            if op.name() not in bwd_ops_undecomposed:
+                                bwd_ops_undecomposed.append(op.name())
+
                 self._logger.info(
-                    "The following ops can not be decomposed: %s"
-                    % (', '.join(bwd_ops_undecomposed))
+                    "%d backward ops are successfully decomposed, op names are: %s"
+                    % (num_bwd_ops_decomposed, ', '.join(bwd_ops_decomposed))
+                )
+                self._logger.info(
+                    "%d backward ops can not be successfully decomposed, op names are: %s"
+                    % (
+                        num_bwd_ops_undecomposed,
+                        ', '.join(bwd_ops_undecomposed),
+                    )
                 )
 
                 self.pir_program_after_decomposed = program
