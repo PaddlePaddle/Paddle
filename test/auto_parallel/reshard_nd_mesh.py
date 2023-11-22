@@ -162,25 +162,13 @@ class TestReshardNdMesh:
     def test_partial_replicate_to_shard_replicated(self, dev_ctx):
         paddle.seed(self._seeds)
         a = paddle.randn(self._shape).astype(self._dtype)
-        in_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs = [None for i in range(len(self._shape))]
 
-        dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=in_shard_specs
+        input_tensor = dist.shard_tensor(
+            a, self._mesh, [dist.Partial(), dist.Replicate()]
         )
-        dist_attr._set_partial_dims([0])
-
-        out_shard_specs[0] = "x"
-        out_dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=out_shard_specs
+        out = dist.reshard(
+            input_tensor, self._mesh, [dist.Shard(0), dist.Replicate()]
         )
-
-        input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
-
-        reshard_func = core.SameNdMeshReshardFunction()
-        assert reshard_func.is_suitable(input_tensor, out_dist_attr)
-
-        out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
 
         # check the value of input tensor
         out_expected_local_tensor_list = paddle.split(

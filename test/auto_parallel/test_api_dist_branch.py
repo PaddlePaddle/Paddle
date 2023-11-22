@@ -38,9 +38,6 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
             local_t = paddle.to_tensor(np_array, dtype='bool')
 
         mesh = dist.ProcessMesh([0], dim_names=["x"])
-        dist_attr = dist.DistAttr(
-            mesh=mesh, sharding_specs=[None] * np_array.ndim
-        )
         dist_t = dist.shard_tensor(np_array, mesh, [dist.Replicate()])
 
         local_t.stop_gradient = False

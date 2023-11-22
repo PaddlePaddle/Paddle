@@ -78,20 +78,6 @@ class TestReshardAPI:
         input_numpy = np.random.random(self._shape).astype("float32")
         label_numpy = np.random.random(self._shape).astype('float32')
 
-        in_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs[self._shard] = "x"
-
-        in_dist_attr = dist.DistAttr(
-            mesh=dist.ProcessMesh([0, 1], dim_names=["x"]),
-            sharding_specs=in_shard_specs,
-        )
-
-        out_dist_attr = dist.DistAttr(
-            mesh=dist.ProcessMesh([0, 1], dim_names=["x"]),
-            sharding_specs=out_shard_specs,
-        )
-
         local_input = paddle.to_tensor(input_numpy)
         dist_input = dist.shard_tensor(
             paddle.to_tensor(input_numpy),

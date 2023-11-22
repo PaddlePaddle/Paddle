@@ -32,7 +32,7 @@ class TestCustomEmbeddingGradApiForSemiAutoParallel:
         np2 = b.numpy()
         np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
 
-    def test_body(self, x_shape, w_shape, x_specs, w_specs):
+    def test_body(self, x_shape, w_shape, x_placements, w_placements):
         paddle.seed(self._seed)
         np.random.seed(self._seed)
         x_np = np.random.randint(0, 10, size=x_shape)
@@ -43,11 +43,8 @@ class TestCustomEmbeddingGradApiForSemiAutoParallel:
         x.stop_gradient = False
         w.stop_gradient = False
 
-        x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=x_specs)
-        w_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=w_specs)
-
-        dist_x = dist.shard_tensor(x_np, dist_attr=x_dist_attr)
-        dist_w = dist.shard_tensor(w_np, dist_attr=w_dist_attr)
+        dist_x = dist.shard_tensor(x_np, self._mesh, x_placements)
+        dist_w = dist.shard_tensor(w_np, self._mesh, w_placements)
         dist_x.stop_gradient = False
         dist_w.stop_gradient = False
 
@@ -65,64 +62,64 @@ class TestCustomEmbeddingGradApiForSemiAutoParallel:
         self.test_body(
             x_shape=[12, 16],
             w_shape=[10, 4],
-            x_specs=[None, None],
-            w_specs=[None, None],
+            x_placements=[None, None],
+            w_placements=[None, None],
         )
 
     def test_x_row_shard(self):
         self.test_body(
             x_shape=[12, 16],
             w_shape=[10, 4],
-            x_specs=["x", None],
-            w_specs=[None, None],
+            x_placements=["x", None],
+            w_placements=[None, None],
         )
 
     def test_x_col_shard(self):
         self.test_body(
             x_shape=[12, 16],
             w_shape=[10, 4],
-            x_specs=[None, "x"],
-            w_specs=[None, None],
+            x_placements=[None, "x"],
+            w_placements=[None, None],
         )
 
     def test_w_row_shard(self):
         self.test_body(
             x_shape=[12, 16],
             w_shape=[10, 4],
-            x_specs=[None, None],
-            w_specs=["x", None],
+            x_placements=[None, None],
+            w_placements=["x", None],
         )
 
     def test_w_col_shard(self):
         self.test_body(
             x_shape=[12, 16],
             w_shape=[10, 4],
-            x_specs=[None, None],
-            w_specs=[None, "x"],
+            x_placements=[None, None],
+            w_placements=[None, "x"],
         )
 
     def test_x_row_w_col_shard(self):
         self.test_body(
             x_shape=[12, 16],
             w_shape=[10, 4],
-            x_specs=["x", None],
-            w_specs=[None, "x"],
+            x_placements=["x", None],
+            w_placements=[None, "x"],
         )
 
     def test_x_col_w_row_shard(self):
         self.test_body(
             x_shape=[12, 16],
             w_shape=[10, 4],
-            x_specs=[None, "x"],
-            w_specs=["x", None],
+            x_placements=[None, "x"],
+            w_placements=["x", None],
         )
 
     def test_both_col_shard(self):
         self.test_body(
             x_shape=[12, 16],
             w_shape=[10, 4],
-            x_specs=[None, "x"],
-            w_specs=[None, "x"],
+            x_placements=[None, "x"],
+            w_placements=[None, "x"],
         )
 
     def run_test_case(self):

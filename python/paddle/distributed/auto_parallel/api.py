@@ -127,7 +127,6 @@ def shard_tensor(
             >>> import paddle.distributed as dist
 
             >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
-            >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
 
             >>> # dense tensor
             >>> a = paddle.to_tensor([[1,2,3],
@@ -135,7 +134,7 @@ def shard_tensor(
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> # distributed tensor
-            >>> d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+            >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Shard(0), dist.Shard(1)])
 
             >>> print(d_tensor)
 
@@ -191,9 +190,8 @@ def dtensor_from_fn(fn, mesh, placements, *args, **kwargs):
             >>> import paddle.distributed as dist
             >>> # Create a distributed attribute
             >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-            >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None])
             >>> # Call the function dtensor_from_fn with dist_attr parameter
-            >>> d_tensor = dist.dtensor_from_fn(paddle.ones, dist_attr=dist_attr, shape=[1])
+            >>> d_tensor = dist.dtensor_from_fn(paddle.ones, mesh, [dist.Replicate()], shape=[1])
             >>> print(d_tensor)
 
     """
@@ -223,23 +221,15 @@ def reshard(dist_tensor, mesh, placements):
             >>> import paddle
             >>> import paddle.distributed as dist
 
-            >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
-            >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
-
-            >>> out_mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
-            >>> out_dist_attr = dist.DistAttr(mesh=out_mesh, sharding_specs=[None, None])
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
             >>> # dense tensor
-            >>> a = paddle.to_tensor([[1,2,3],
-            ...                       [5,6,7]])
+            >>> a = paddle.ones([10, 20])
 
-            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-            >>> # distributed tensor
-            >>> d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+            >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Partial()])
 
-            >>> out_d_tensor = dist.reshard(d_tensor, out_dist_attr)
+            >>> out_d_tensor = dist.reshard(d_tensor, mesh, [dist.Replicate()])
 
-            >>> print(d_tensor)
             >>> print(out_d_tensor)
 
     """
@@ -330,9 +320,8 @@ def shard_layer(
             ...         return self.fc2(self.fc1(input))
 
             >>> def shard_fn(layer_name, layer, process_mesh):
-            ...     dist_attr = dist.DistAttr(mesh=process_mesh, sharding_specs=['x', None])
             ...     if layer_name == 'fc1':
-            ...         layer.weight = dist.shard_tensor(layer.weight, dist_attr=dist_attr)
+            ...         layer.weight = dist.shard_tensor(layer.weight, process_mesh, [dist.Shard(0)])
 
             >>> layer = MLP()
             >>> layer = dist.shard_layer(layer, mesh, shard_fn)

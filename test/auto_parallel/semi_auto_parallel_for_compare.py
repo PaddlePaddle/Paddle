@@ -54,15 +54,8 @@ class TestCompareApiForSemiAutoParallel:
         x.stop_gradient = False
         y.stop_gradient = False
 
-        x_dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=x_placements
-        )
-        y_dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=y_placements
-        )
-
-        dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
-        dist_y = dist.shard_tensor(y, dist_attr=y_dist_attr)
+        dist_x = dist.shard_tensor(x, self._mesh, x_placements)
+        dist_y = dist.shard_tensor(y, self._mesh, y_placements)
         dist_x.stop_gradient = False
         dist_y.stop_gradient = False
 
