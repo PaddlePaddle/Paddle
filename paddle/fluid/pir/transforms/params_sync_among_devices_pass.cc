@@ -45,16 +45,16 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
         phi::errors::PreconditionNotMet(
             "params_sync_among_devices_pass should run on module op."));
     auto* block = module_op.block();
-    for (auto& op : *block) {
-      if (op->attributes().count("op_name") == 0) {
+    for (auto& inner_op : *block) {
+      if (inner_op.attributes().count("op_name") == 0) {
         continue;
       }
-      auto op_name = op->attributes()
+      auto op_name = inner_op.attributes()
                          .at("op_name")
                          .dyn_cast<pir::StrAttribute>()
                          .AsString();
       if (op_name == pir::GetParameterOp::name()) {
-        auto use_op = pir::GetUseOpsForOutput(op, 0).front();
+        auto use_op = pir::GetUseOpsForOutput(&inner_op, 0).front();
         phi::KernelKey kernel_key;
         if (use_op->attributes().count("kernel_key")) {
           kernel_key = use_op->attributes()
@@ -65,7 +65,7 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
         // TODO(liuyuanle): When the kernel_key doesn't exist？
         if (use_op->attributes().count("kernel_key") &&
             kernel_key.backend() != phi::Backend::CPU) {
-          std::string param_name = op->attributes()
+          std::string param_name = inner_op.attributes()
                                        .at("parameter_name")
                                        .dyn_cast<pir::StrAttribute>()
                                        .AsString();

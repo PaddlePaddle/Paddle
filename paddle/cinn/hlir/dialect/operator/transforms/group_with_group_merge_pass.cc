@@ -17,6 +17,7 @@
 #include <unordered_map>
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/op_group.h"
+#include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/value.h"
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_with_group_merge_pass_utils.h"
@@ -749,7 +750,9 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
     if (iter == map.end()) {
       return false;
     }
-    return iter->second(ctx, src, dst);
+
+    auto res = iter->second(ctx, src, dst);
+    return res;
   }
 
   typedef bool (*ConditionT)(LightwareFusePassCtx* ctx,
@@ -2133,6 +2136,24 @@ GroupList GeneralFusionMergePassInternal(const GroupList& group_list) {
 
   GeneralFusionMergePassHelper fusion_merge_pass_helper(group_list);
   auto res = fusion_merge_pass_helper();
+
+  if (VLOG_IS_ON(6)) {
+    std::stringstream ss;
+    ::pir::IrPrinter printer(ss);
+    for (size_t i = 0; i < res.size(); ++i) {
+      auto group = res[i];
+
+      ss << "group\t" << group->group_id << std::endl;
+      ss << "kind\t" << group->kind() << std::endl;
+
+      for (auto op : group->ops) {
+        printer.PrintOperation(op);
+        ss << "\n";
+      }
+    }
+
+    VLOG(6) << ss.str();
+  }
 
   return res;
 }
