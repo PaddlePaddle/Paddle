@@ -26,7 +26,7 @@ class Binomial(distribution.Distribution):
     r"""
     The Binomial distribution with size `total_count` and `probability` parameters.
 
-    In probability theory and statistics, the binomial distribution is the most basic probability distribution,
+    In probability theory and statistics, the binomial distribution is the most basic discrete probability distribution defined on :math:`[0, n] \cap \mathbb{N}`,
     which can be viewed as the number of times a potentially unfair coin is tossed to get heads, and the result
     of its random variable can be viewed as the sum of a series of independent Bernoulli experiments.
 
@@ -38,15 +38,14 @@ class Binomial(distribution.Distribution):
 
     In the above equation:
 
-    * :math:`total_count = n`: is the size.
-    * :math:`probability = p`: is the probability.
+    * :math:`total_count = n`: is the size, meaning the total number of Bernoulli experiments.
+    * :math:`probability = p`: is the probability of the event happening in one Bernoulli experiments.
 
     Args:
-        total_count(int|Tensor): The size of Binomial distribution, meaning the number of independent bernoulli
-                                trials with probability parameter p. The random variable counts the number of success
-                                among n independent bernoulli trials. The data type of `total_count` will be convert to float32.
-        probability(float|Tensor): The probability of Binomial distribution, meaning the probability of success
-                                for each individual bernoulli trial. The data type of `probability` will be convert to float32.
+        total_count(int|Tensor): The size of Binomial distribution which should be greater than 0, meaning the number of independent bernoulli
+                                trials with probability parameter :math:`p`. The data type of :attr:`total_count` will be convert to float32.
+        probability(float|Tensor): The probability of Binomial distribution which should reside in [0, 1], meaning the probability of success
+                                for each individual bernoulli trial. The data type of :attr:`probability` will be convert to float32.
 
     Examples:
         .. code-block:: python
@@ -141,13 +140,13 @@ class Binomial(distribution.Distribution):
         return self.total_count * self.probability * (1 - self.probability)
 
     def sample(self, shape=()):
-        """Generate binomial samples of the specified shape.
+        """Generate binomial samples of the specified shape. The final shape would be ``shape+batch_shape`` .
 
         Args:
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor: A tensor with prepended dimensions shape. The data type is float32.
+            Tensor: Sampled data with shape `sample_shape` + `batch_shape`.
         """
         if not isinstance(shape, Iterable):
             raise TypeError('sample shape must be Iterable object.')
@@ -259,7 +258,7 @@ class Binomial(distribution.Distribution):
         return paddle.exp(self.log_prob(value))
 
     def kl_divergence(self, other):
-        r"""The KL-divergence between two binomial distributions.
+        r"""The KL-divergence between two binomial distributions with the same :attr:`total_count`.
 
         The probability density function (pdf) is
 

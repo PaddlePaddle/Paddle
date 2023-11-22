@@ -26,8 +26,8 @@ class Poisson(distribution.Distribution):
     r"""
     The Poisson distribution with occurrence rate parameter: `rate`.
 
-    In probability theory and statistics, the Poisson distribution is the most basic probability
-    distribution, which is used to describe the probability distribution of the number of random
+    In probability theory and statistics, the Poisson distribution is the most basic discrete probability
+    distribution defined on the nonnegative integer set, which is used to describe the probability distribution of the number of random
     events occurring per unit time.
 
     The probability mass function (pmf) is
@@ -41,7 +41,7 @@ class Poisson(distribution.Distribution):
     * :math:`rate = \lambda`: is the mean occurrence rate.
 
     Args:
-        rate(int|float|Tensor): The mean occurrence rate of Poisson distribution, meaning the expected occurrence
+        rate(int|float|Tensor): The mean occurrence rate of Poisson distribution which should be greater than 0, meaning the expected occurrence
                                 times of an event in a fixed time interval. The data type of `rate` will be convert to float32.
 
     Examples:
@@ -133,13 +133,13 @@ class Poisson(distribution.Distribution):
         return self.rate
 
     def sample(self, shape=()):
-        """Generate poisson samples of the specified shape.
+        """Generate poisson samples of the specified shape. The final shape would be ``shape+batch_shape`` .
 
         Args:
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor: A tensor with prepended dimensions shape. The data type is float32.
+            Tensor: Sampled data with shape `sample_shape` + `batch_shape`.
         """
         if not isinstance(shape, Iterable):
             raise TypeError('sample shape must be Iterable object.')
@@ -245,7 +245,7 @@ class Poisson(distribution.Distribution):
         return paddle.exp(self.log_prob(value))
 
     def kl_divergence(self, other):
-        r"""The KL-divergence between two poisson distributions.
+        r"""The KL-divergence between two poisson distributions with the same `batch_shape`.
 
         The probability density function (pdf) is
 
