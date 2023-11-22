@@ -77,7 +77,7 @@ void OperatorDialect::PrintType(pir::Type type, std::ostream &os) const {
   if (auto tensor_type = type.dyn_cast<DenseTensorType>()) {
     os << "tensor<";
     for (auto d : phi::vectorize(tensor_type.dims())) {
-      pir::ShapedTypeInterface::IsDynamic(d) ? os << "?" : os << d;
+      os << d;
       os << "x";
     }
     tensor_type.dtype().Print(os);
