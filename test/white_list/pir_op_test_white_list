@@ -1,11 +1,9 @@
 test_accuracy_op
 test_activation_bf16_mkldnn_op
 test_activation_mkldnn_op
-test_activation_op
 test_adadelta_op
 test_adagrad_op
 test_adagrad_op_static_build
-test_adam_op
 test_adamax_op
 test_adamw_op
 test_adamw_op_static_build
@@ -20,12 +18,10 @@ test_arg_min_max_op_static_build
 test_arg_min_max_v2_op
 test_argsort_op
 test_assign_op
-test_assign_pos_op
 test_assign_value_op
 test_atan2_op
 test_auc_op
 test_auc_single_pred_op
-test_batch_fc_op
 test_batch_norm_op_prim_nchw
 test_batch_norm_op_prim_nhwc
 test_bce_loss
