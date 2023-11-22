@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,17 +14,13 @@
 
 #pragma once
 
-#include <pybind11/pybind11.h>
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/ddim.h"
-#include "paddle/pir/core/op_result.h"
+#include <memory>
+#include "paddle/pir/pass/pass.h"
 
-namespace paddle {
-namespace pybind {
-using pir::OpResult;
-void BindPir(pybind11::module *m);
-phi::DataType GetOpResultDtype(const OpResult &result);
-const phi::DDim &GetOpResultDims(const OpResult &result);
-bool GetOpResultBoolAttr(const OpResult &self, const std::string &attr_name);
-}  // namespace pybind
-}  // namespace paddle
+namespace cinn {
+namespace dialect {
+namespace ir {
+std::unique_ptr<::pir::Pass> CreateCinnGroupLoweringPass();
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

@@ -85,4 +85,6 @@ PD_REGISTER_STRUCT_KERNEL(c_allgather,
                           double,
                           plat::float16,
                           int,
-                          int64_t) {}
+                          int64_t,
+                          uint8_t,
+                          bool) {}
