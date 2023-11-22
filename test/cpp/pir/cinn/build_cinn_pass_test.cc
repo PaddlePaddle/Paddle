@@ -162,9 +162,8 @@ TEST(BuildCinnPassTest, OneCinnSubgraph) {
   LOG(INFO) << "after pass: " << *origin_program;
 
   CHECK_EQ(origin_program->block()->size(), 4u);
-  pir::Operation* group_op = origin_program->block()->front();
-  pir::Block* group_block =
-      group_op->dyn_cast<cinn::dialect::GroupOp>().block();
+  pir::Operation& group_op = origin_program->block()->front();
+  pir::Block* group_block = group_op.dyn_cast<cinn::dialect::GroupOp>().block();
   CHECK_EQ(group_block->size(), 4u);
 
   std::vector<std::string> op_names = {

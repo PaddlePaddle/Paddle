@@ -188,7 +188,7 @@ namespace pybind {
 void BindControlFlowApi(py::module* m) {
   m->def("get_used_external_value", GetUsedExternalValue);
   m->def("build_pipe_for_block", BuildPipeForBlock);
-  m->def("cvt_to_if_op",
+  m->def("cvt_as_if_op",
          [](Operation& op) { return PyIfOp(op.dyn_cast<IfOp>()); });
   BindIfOp(m);
 }

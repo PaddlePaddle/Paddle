@@ -17,7 +17,7 @@ import unittest
 import paddle
 from paddle.base.libpaddle.pir import (
     build_pipe_for_block,
-    cvt_to_if_op,
+    cvt_as_if_op,
     get_used_external_value,
 )
 
@@ -60,7 +60,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             out = paddle.static.nn.cond(pred, true_func, false_func)
         self.assertEqual(out[0].get_defining_op().name(), "pd_op.if")
         self.assertEqual(len(out), 2)
-        if_op = cvt_to_if_op(out[0].get_defining_op())
+        if_op = cvt_as_if_op(out[0].get_defining_op())
         true_block = if_op.true_block()
         self.assertEqual(len(true_block), 3)
         build_pipe_for_block(true_block)
