@@ -153,7 +153,8 @@ static std::unordered_set<pir::Value> GetSkipDeletionValues(pir::Block* block) {
     auto upper_op_name =
         op.attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
 
-    if (upper_op_name == "pd_op.feed" || upper_op_name == "pd_op.data") {
+    if (upper_op_name == "pd_op.feed" || upper_op_name == "pd_op.data" ||
+        upper_op_name == "pd_op.shadow_feed") {
       skip_dels.insert(op.result(0));
       continue;
     }
