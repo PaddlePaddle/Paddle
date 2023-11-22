@@ -57,9 +57,9 @@ elif env_version != version:
         f"we will attempt to use the python version you set to execute."
     )
     cmd = 'which python' + env_version
-    res = subprocess.run(cmd, shell = True)
+    res = subprocess.run(cmd, shell = True, stdout=subprocess.PIPE)
     if res.returncode == 0:
-        os.environ["PythonInterp_FIND_VERSION"] = env_version
+        os.environ["PYTHON_EXECUTABLE"] = res
     else:
         raise RuntimeError(
             "We can't find the version you set in your machine"
