@@ -55,7 +55,7 @@ using phi::distributed::auto_parallel::OperatorDistAttrProto;
 
 constexpr const char* kDefault = "default";
 
-std::vector<int64_t> get_tensor_shape(const VarDesc* tensor);
+TEST_API std::vector<int64_t> get_tensor_shape(const VarDesc* tensor);
 
 class TEST_API OperatorDistAttr {
  public:
