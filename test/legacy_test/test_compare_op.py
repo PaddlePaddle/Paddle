@@ -60,6 +60,7 @@ def create_test_class(op_type, typename, callback, check_pir=False):
 for _type_name in {
     'float32',
     'float64',
+    'uint8',
     'int8',
     'int16',
     'int32',
