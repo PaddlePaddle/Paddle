@@ -2014,12 +2014,12 @@ struct ElementwiseTranscriber : public OpTranscriber {
     }
 
     int append_size = static_cast<int>(x_shape.size() - axis - y_shape.size());
-    if (append_size < 0) {  // which means x.rank <= y.rank, mostly
-                            // x.rank=y.rank
+    if (append_size <= 0) {  // which means x.rank <= y.rank, mostly
+                             // x.rank=y.rank
       return {x_value, y_value};
     }
-    IR_ENFORCE(append_size >= 0,
-               "Expected op[%s] have append size >= 0 with axis=%d but got %d",
+    IR_ENFORCE(append_size > 0,
+               "Expected op[%s] have append size > 0 with axis=%d but got %d",
                op_desc.Type(),
                axis,
                append_size);
