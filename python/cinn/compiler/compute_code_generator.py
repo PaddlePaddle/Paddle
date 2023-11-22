@@ -112,25 +112,8 @@ class ComputeCodeGenerator(ast.NodeVisitor):
                             arg_annotation
                         )
                     )
-                elif isinstance(arg_annotation, int):
-                    if (
-                        -(2**21) <= arg_annotation
-                        and arg_annotation <= 2**31 - 1
-                    ):
-                        self.inputs_signature.append("i32")
-                    elif (
-                        2**63 <= arg_annotation
-                        and arg_annotation <= 2**64 - 1
-                    ):
-                        self.inputs_signature.append("u64")
-                    else:
-                        self.inputs_signature.append("i64")
-                elif isinstance(arg_annotation, float):
-                    return self.inputs_signature.append("fp32")
                 else:
-                    raise TypeError(
-                        f'Unsupported type {type(arg_annotation)} for {arg_annotation}'
-                    )
+                    self.inputs_signature.append("i64")
 
         return arg_names
 

@@ -27,8 +27,13 @@ ir::Tensor CreatePlaceHolder(const std::vector<int> &shape,
                              const std::string &name) {
   std::vector<Expr> expr_shape;
   for (int s : shape) {
-    expr_shape.push_back(Expr(s));
+    if (s == -1) {
+      expr_shape.push_back(ir::_Var_::Make("S1", common::Int(32)));
+    } else {
+      expr_shape.push_back(Expr(s));
+    }
   }
+
   return CreatePlaceHolder(expr_shape, type, name);
 }
 

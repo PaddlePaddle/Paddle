@@ -44,11 +44,15 @@ std::vector<NodeData*> GetInputNodeData(const Node* node) {
 ir::Tensor GetTensor(
     const NodeData* node_data,
     const absl::flat_hash_map<std::string, Type>& type_dict,
-    const absl::flat_hash_map<std::string, shape_t>& shape_dict) {
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict,
+    const absl::flat_hash_map<std::string, std::vector<std::string>>&
+        dyn_shape_dict) {
   auto dtype = type_dict.at(node_data->id());
   if (dtype.is_float(32)) {
+    VLOG(-1) << "dddd";
     return lang::Placeholder<float>(node_data->id(),
-                                    shape_dict.at(node_data->id()));
+                                    shape_dict.at(node_data->id()),
+                                    dyn_shape_dict.at(node_data->id()));
   } else if (dtype.is_float(64)) {
     return lang::Placeholder<double>(node_data->id(),
                                      shape_dict.at(node_data->id()));
@@ -95,19 +99,25 @@ std::vector<ir::Tensor> CollectInputTensor(
     const absl::flat_hash_map<std::string, Type>& type_dict,
     const absl::flat_hash_map<std::string, shape_t>& shape_dict,
     std::vector<ir::Tensor>* func_args,
-    std::unordered_map<std::string, ir::Tensor>* tensor_map) {
+    std::unordered_map<std::string, ir::Tensor>* tensor_map,
+    const absl::flat_hash_map<std::string, std::vector<std::string>>&
+        dyn_shape_dict) {
   std::vector<ir::Tensor> tensors;
   // get all input nodes
+  VLOG(-1) << "dddd ";
   for (auto& node_data : GetInputNodeData(node)) {
     CHECK(node_data);
-    auto tensor = GetTensor(node_data, type_dict, shape_dict);
+    auto tensor = GetTensor(node_data, type_dict, shape_dict, dyn_shape_dict);
     if (!tensor_map->count(node_data->id())) {
+      VLOG(-1) << "dddd ";
       (*tensor_map)[node_data->id()] = tensor;
+      VLOG(-1) << "dddd ";
       // record func input args
       func_args->push_back(tensor);
     }
     tensors.push_back(tensor);
   }
+  VLOG(-1) << "dddd ";
   return tensors;
 }
 

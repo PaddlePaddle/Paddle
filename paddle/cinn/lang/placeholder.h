@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "glog/logging.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/ir.h"
@@ -36,8 +37,12 @@ using ir::Expr;
 template <typename T>
 class Placeholder {
  public:
-  Placeholder(const std::string &name, const std::vector<int> &shape);
+  // Placeholder(const std::string &name, const std::vector<int> &shape);
   Placeholder(const std::string &name, const std::vector<Expr> &shape);
+  Placeholder(
+      const std::string &name,
+      const std::vector<int> &shape,
+      const std::vector<std::string> &dyn_shape = std::vector<std::string>());
 
   //! Get a slice.
   // @{
@@ -80,10 +85,15 @@ Expr Placeholder<T>::Call(const std::vector<Expr> &indices) const {
 
 template <typename T>
 Placeholder<T>::Placeholder(const std::string &name,
-                            const std::vector<int> &shape) {
+                            const std::vector<int> &shape,
+                            const std::vector<std::string> &dyn_shape) {
   std::vector<Expr> _shape;
+  std::vector<Expr> _dyn_shape;
   for (int v : shape) _shape.push_back(Expr(v));
-  Init(name, _shape);
+  for (std::string v : dyn_shape) {
+    _dyn_shape.push_back(ir::_Var_::Make(v, common::Int(32)));
+  }
+  Init(name, _dyn_shape);
 }
 
 template <typename T>
@@ -104,6 +114,7 @@ ir::Tensor CreatePlaceHolder(const std::vector<Expr> &shape,
 template <typename T>
 void Placeholder<T>::Init(const std::string &name,
                           const std::vector<Expr> &shape) {
+  VLOG(-1) << "Init";
   ir::Var buffer_ptr(Context::Global().NewName("buffer"));
   buffer_ptr->set_type(type_of<T>());
 

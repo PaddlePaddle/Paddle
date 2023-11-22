@@ -45,6 +45,7 @@ struct _Variable_ : public common::Object {
   std::string id;
   common::Type type;
   std::vector<int> shape;
+  std::vector<std::string> dyn_shape;
   bool is_const = false;
 
   const char* type_info() const override { return __type_info__; }

@@ -399,6 +399,10 @@ class NetBuilder {
   Placeholder CreateInput(const common::Type& type,
                           const cinn::utils::ShapeType& shape,
                           const std::string& id_hint = "");
+  Placeholder CreateInput(const common::Type& type,
+                          const std::vector<std::string>& shape,
+                          const std::string& id_hint,
+                          const std::string&);
 
   /**
    * @brief Create constant tensor with the specific value/vector and type

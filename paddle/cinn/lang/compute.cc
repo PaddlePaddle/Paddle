@@ -128,9 +128,12 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
                    std::function<Expr(const std::vector<Expr> &)> fn,
                    const std::string &name,
                    const std::vector<Expr> &shape) {
+  VLOG(-1) << "xxx " << domain.size();
   auto axises = common::GenDefaultAxis(domain.size());
   std::vector<Expr> _axis;
   for (auto &x : axises) _axis.push_back(x);
+  VLOG(-1) << "xxx " << _axis.size();
+
   Expr fn_body = fn(_axis);
 
   std::vector<Var> reduce_axis;

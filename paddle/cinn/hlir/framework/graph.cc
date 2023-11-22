@@ -33,6 +33,7 @@ namespace framework {
 
 using DTypeDict = absl::flat_hash_map<std::string, common::Type>;
 using ShapeDict = absl::flat_hash_map<std::string, shape_t>;
+using DynShapeDict = absl::flat_hash_map<std::string, std::vector<std::string>>;
 
 void Graph::Initialize(const frontend::Program& prog,
                        const std::unordered_set<std::string>& fetch_var_ids,
@@ -40,6 +41,7 @@ void Graph::Initialize(const frontend::Program& prog,
   target_ = target;
   ShapeDict shape_dict;
   DTypeDict dtype_dict;
+  DynShapeDict dyn_shape_dict;
   int counter = 0;
   for (size_t i = 0; i < prog.size(); i++) {
     auto temp = prog[i];
@@ -55,6 +57,7 @@ void Graph::Initialize(const frontend::Program& prog,
       if (!graph_node) {
         dtype_dict[input_v->id] = input_v->type;
         shape_dict[input_v->id] = input_v->shape;
+        dyn_shape_dict[input_v->id] = input_v->dyn_shape;
         NodeData* input_data =
             new NodeData(nullptr, 0, 0, input_v->id, input_v.is_const());
         input_data->LinkTo(node_tmp);
@@ -69,6 +72,7 @@ void Graph::Initialize(const frontend::Program& prog,
       if (!graph_node) {
         dtype_dict[output_v->id] = output_v->type;
         shape_dict[output_v->id] = output_v->shape;
+        dyn_shape_dict[output_v->id] = {"n"};
         auto* output_data = new NodeData(node_ptr, out_idx++, 0, output_v->id);
         if (fetch_var_ids.count(output_v->id)) {
           outputs.push_back(output_data);
@@ -86,6 +90,7 @@ void Graph::Initialize(const frontend::Program& prog,
   }
   this->attrs["infershape"] = std::make_shared<absl::any>(shape_dict);
   this->attrs["inferdtype"] = std::make_shared<absl::any>(dtype_dict);
+  this->attrs["indefdynshape"] = std::make_shared<absl::any>(dyn_shape_dict);
 }
 
 std::vector<std::vector<Node*>> Graph::FusionGroupsToGroups() {

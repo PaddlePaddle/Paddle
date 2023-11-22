@@ -27,14 +27,20 @@ std::vector<NodeData*> GetInputNodeData(const Node* node);
 ir::Tensor GetTensor(
     const NodeData* node_data,
     const absl::flat_hash_map<std::string, Type>& type_dict,
-    const absl::flat_hash_map<std::string, shape_t>& shape_dict);
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict,
+    const absl::flat_hash_map<std::string, std::vector<std::string>>&
+        dyn_shape_dict =
+            absl::flat_hash_map<std::string, std::vector<std::string>>());
 
 std::vector<ir::Tensor> CollectInputTensor(
     const Node* node,
     const absl::flat_hash_map<std::string, Type>& type_dict,
     const absl::flat_hash_map<std::string, shape_t>& shape_dict,
     std::vector<ir::Tensor>* func_args,
-    std::unordered_map<std::string, ir::Tensor>* tensor_map);
+    std::unordered_map<std::string, ir::Tensor>* tensor_map,
+    const absl::flat_hash_map<std::string, std::vector<std::string>>&
+        dyn_shape_dict =
+            absl::flat_hash_map<std::string, std::vector<std::string>>());
 
 std::unordered_map<Node*, Node*> BuildVirtualConsumer(
     const GroupPtr& group,

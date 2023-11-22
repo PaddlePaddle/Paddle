@@ -43,6 +43,8 @@ PYBIND11_MODULE(core_api, m) {
       m.def_submodule("utils", "namespace cinn::utils, CINN framework");
   py::module schedule = m.def_submodule(
       "schedule", "namespace cinn::ir::schedule, CINN Schedule");
+  py::module hlir = m.def_submodule("hlir", "namespace cinn::hlir, CINN hlir");
+  py::module hlir_transform = hlir.def_submodule("transform", "namespace cinn::hlir::pass, CINN hlir pass");
 
   BindRuntime(&runtime);
   BindCommon(&common);
@@ -56,6 +58,8 @@ PYBIND11_MODULE(core_api, m) {
   BindFramework(&framework);
   BindUtils(&utils);
   BindSchedule(&schedule);
+  BindHlir(&hlir);
+  BindHlirTransform(&hlir_transform);
 }
 
 }  // namespace cinn::pybind
