@@ -73,6 +73,7 @@ class InterpreterBaseImpl {
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       bool need_fetch = true,
+      bool enable_job_schedule_profiler = false,
       bool enable_op_profiling = false) = 0;
 
   virtual void ShareWorkQueueFrom(InterpreterBaseImpl* src) = 0;
@@ -108,6 +109,8 @@ class InterpreterBaseImpl {
       std::vector<paddle::framework::OpFuncNode>* op_func_nodes) = 0;
 
   virtual bool IsStaticBuild() const = 0;
+
+  virtual std::tuple<double, double> InterpreterRunTime() = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {

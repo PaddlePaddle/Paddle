@@ -52,6 +52,7 @@ class InterpreterCore {
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true,
+                                   bool enable_job_schedule_profiler = false,
                                    bool enable_op_profiling = false);
 
   void RunProfile(const std::vector<std::string>& feed_names);
@@ -84,6 +85,8 @@ class InterpreterCore {
              std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
 
   bool IsStaticBuild() const;
+
+  std::tuple<double, double> InterpreterRunTime();
 
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);

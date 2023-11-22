@@ -16,6 +16,10 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/phi/kernels/autotune/gpu_timer.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -48,6 +52,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true,
+                                   bool enable_job_schedule_profiler = false,
                                    bool enable_op_profiling = false) override;
 
   std::shared_ptr<ProgramDesc> GetMutableCopyProgram() override;
@@ -101,6 +106,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   }
 
   bool IsStaticBuild() const override { return static_build_; }
+
+  std::tuple<double, double> InterpreterRunTime() override;
 
  private:
   // build graph
@@ -217,6 +224,12 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   InstructionSchedulingPriorityLess instruction_scheduling_priority_less;
 
   std::vector<HookFunc> hookfuncs_;
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  std::unique_ptr<phi::CalculateStreamTimer> calculate_stream_timer_;
+#endif
+  size_t last_calculate_instr_id_;
+  bool enable_job_schedule_profiler_;
 };
 
 }  // namespace framework

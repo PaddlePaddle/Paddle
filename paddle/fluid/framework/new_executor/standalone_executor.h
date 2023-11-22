@@ -39,7 +39,10 @@ class StandaloneExecutor {
 
   ~StandaloneExecutor() {}
 
-  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
+  paddle::framework::FetchList Run(
+      const std::vector<std::string>& feed_names,
+      const bool enable_job_schedule_profiler = false);
+
   std::shared_ptr<framework::ProgramDesc> RunProfile(
       const std::vector<std::string>& feed_names);
 

@@ -199,6 +199,9 @@ from .tensor.logic import (  # noqa: F401
 
 
 from .tensor.manipulation import (  # noqa: F401
+    atleast_1d,
+    atleast_2d,
+    atleast_3d,
     cast,
     cast_,
     concat,
@@ -257,6 +260,7 @@ from .tensor.manipulation import (  # noqa: F401
     masked_fill_,
     index_fill,
     index_fill_,
+    diagonal_scatter,
 )
 
 from .tensor.math import (  # noqa: F401
@@ -315,6 +319,8 @@ from .tensor.math import (  # noqa: F401
     square_,
     stanh,
     sum,
+    multigammaln,
+    multigammaln_,
     nan_to_num,
     nan_to_num_,
     nansum,
@@ -833,6 +839,9 @@ __all__ = [
     'logspace',
     'reshape',
     'reshape_',
+    'atleast_1d',
+    'atleast_2d',
+    'atleast_3d',
     'reverse',
     'nonzero',
     'CUDAPinnedPlace',
@@ -881,6 +890,8 @@ __all__ = [
     'renorm_',
     'take_along_axis',
     'put_along_axis',
+    'multigammaln',
+    'multigammaln_',
     'nan_to_num',
     'nan_to_num_',
     'heaviside',
@@ -918,4 +929,5 @@ __all__ = [
     'hypot_',
     'index_fill',
     "index_fill_",
+    'diagonal_scatter',
 ]

@@ -1,5 +1,5 @@
 if(WITH_CINN)
-  set(eager_deps ${eager_deps} cinn_compiler python)
+  set(eager_deps ${eager_deps} python)
 endif()
 cc_test(
   test_egr_ds_eager_tensor

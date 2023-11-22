@@ -56,11 +56,14 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true,
-                                   bool enable_op_profiling = false) override;
+                                   bool enable_job_schedule_profiler = false,
+                                   bool enable_op_profiling) override;
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
   void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
+
+  std::tuple<double, double> InterpreterRunTime() override;
 
   std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
 

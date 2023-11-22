@@ -18,30 +18,30 @@ import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir,
+    test_legacy_and_pir_exe_and_pir_api,
 )
 
-from paddle import base
-from paddle.jit.api import to_static
+import paddle
+from paddle.base.dygraph import to_variable
 
 SEED = 2020
 np.random.seed(SEED)
 
 
 def test_bool_cast(x):
-    x = base.dygraph.to_variable(x)
+    x = to_variable(x)
     x = bool(x)
     return x
 
 
 def test_int_cast(x):
-    x = base.dygraph.to_variable(x)
+    x = to_variable(x)
     x = int(x)
     return x
 
 
 def test_float_cast(x):
-    x = base.dygraph.to_variable(x)
+    x = to_variable(x)
     x = float(x)
     return x
 
@@ -52,7 +52,7 @@ def test_not_var_cast(x):
 
 
 def test_mix_cast(x):
-    x = base.dygraph.to_variable(x)
+    x = to_variable(x)
     x = int(x)
     x = float(x)
     x = bool(x)
@@ -63,12 +63,11 @@ def test_mix_cast(x):
 class TestCastBase(Dy2StTestBase):
     def setUp(self):
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
         self.prepare()
-        self.set_func()
 
     def prepare(self):
         self.input_shape = (16, 32)
@@ -81,16 +80,16 @@ class TestCastBase(Dy2StTestBase):
         self.cast_dtype = 'bool'
 
     def set_func(self):
-        self.func = to_static(full_graph=True)(test_bool_cast)
+        self.func = paddle.jit.to_static(full_graph=True)(test_bool_cast)
 
     def do_test(self):
-        with base.dygraph.guard():
-            res = self.func(self.input)
-            return res
+        res = self.func(self.input)
+        return res
 
     @test_ast_only  # TODO: add new sot only test.
-    @test_legacy_and_pir
+    @test_legacy_and_pir_exe_and_pir_api
     def test_cast_result(self):
+        self.set_func()
         res = self.do_test().numpy()
         self.assertTrue(
             res.dtype == self.cast_dtype,
@@ -119,7 +118,7 @@ class TestIntCast(TestCastBase):
         self.cast_dtype = 'int32'
 
     def set_func(self):
-        self.func = to_static(full_graph=True)(test_int_cast)
+        self.func = paddle.jit.to_static(full_graph=True)(test_int_cast)
 
 
 class TestFloatCast(TestCastBase):
@@ -134,7 +133,7 @@ class TestFloatCast(TestCastBase):
         self.cast_dtype = 'float32'
 
     def set_func(self):
-        self.func = to_static(full_graph=True)(test_float_cast)
+        self.func = paddle.jit.to_static(full_graph=True)(test_float_cast)
 
 
 class TestMixCast(TestCastBase):
@@ -152,11 +151,12 @@ class TestMixCast(TestCastBase):
         self.cast_dtype = 'float32'
 
     def set_func(self):
-        self.func = to_static(full_graph=True)(test_mix_cast)
+        self.func = paddle.jit.to_static(full_graph=True)(test_mix_cast)
 
     @test_ast_only  # TODO: add new symbolic only test.
-    @test_legacy_and_pir
+    @test_legacy_and_pir_exe_and_pir_api
     def test_cast_result(self):
+        self.set_func()
         res = self.do_test().numpy()
         self.assertTrue(
             res.dtype == self.cast_dtype,
@@ -184,13 +184,12 @@ class TestNotVarCast(TestCastBase):
         self.cast_dtype = 'int'
 
     def set_func(self):
-        self.func = to_static(full_graph=True)(test_not_var_cast)
+        self.func = paddle.jit.to_static(full_graph=True)(test_not_var_cast)
 
     @test_ast_only
-    @test_legacy_and_pir
+    @test_legacy_and_pir_exe_and_pir_api
     def test_cast_result(self):
-        # breakpoint()
-        # print("run once!!!")
+        self.set_func()
         res = self.do_test()
         self.assertTrue(type(res) == int, msg='The casted dtype is not int.')
         ref_val = int(self.input)
