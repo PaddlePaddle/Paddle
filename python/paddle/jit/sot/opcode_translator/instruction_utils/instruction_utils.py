@@ -355,7 +355,7 @@ def replace_instr(instructions, instr, new_instr):
     instructions[idx : idx + 1] = new_instr
 
 
-def instrs_info(instrs, mark=None, range=None):
+def instrs_info(instrs, mark=None, range=None, want_str=True):
     ret = []
     start = -1
     end = 1000000
@@ -382,11 +382,9 @@ def instrs_info(instrs, mark=None, range=None):
         )
         if idx == mark:
             ret[-1] = "\033[31m" + ret[-1] + "\033[0m"
+    if want_str:
+        return "\n".join(ret)
     return ret
-
-
-def print_instrs(instrs, mark=None, range=None):
-    print("\n".join(instrs_info(instrs, mark, range)))
 
 
 def calc_stack_effect(instr: Instruction, *, jump: bool | None = None) -> int:

@@ -1038,7 +1038,7 @@ class PyCodeGen:
         self._instructions.insert(index, instr)
 
     def pprint(self):
-        print('\n'.join(instrs_info(self._instructions)))
+        print(instrs_info(self._instructions))
 
     def extend_instrs(self, instrs):
         self._instructions.extend(instrs)

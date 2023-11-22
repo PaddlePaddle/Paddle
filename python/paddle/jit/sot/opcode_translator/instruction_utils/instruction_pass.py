@@ -14,13 +14,13 @@
 
 from paddle.jit.sot.utils import log, log_do
 
-from .instruction_utils import print_instrs
+from .instruction_utils import instrs_info
 from .stack_analyse import StackAnalyser
 
 
 def apply_instr_pass(instrs, code_options):
     log(3, f"[Opcode Pass]: Original New Code {code_options['co_name']}:\n")
-    log_do(3, lambda: print_instrs(instrs))
+    log_do(3, lambda: print(instrs_info(instrs)))
     supported_passes = (remove_load_store_pass,)
 
     for instr_pass in supported_passes:
@@ -30,7 +30,7 @@ def apply_instr_pass(instrs, code_options):
         3,
         f"[Opcode Pass]: New Code After Opcode Pass {code_options['co_name']}:\n",
     )
-    log_do(3, lambda: print_instrs(instrs))
+    log_do(3, lambda: print(instrs_info(instrs)))
 
 
 def find_stored_once_local_vars(instrs, code_options):
