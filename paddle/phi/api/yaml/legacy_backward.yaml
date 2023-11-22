@@ -577,7 +577,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : KernelWithXShapeInferMeta
-    param : [xshape]
+    param : [xshape, out_grad]
   kernel :
     func : reshape_grad
     param : [out_grad]
