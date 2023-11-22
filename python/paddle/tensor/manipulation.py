@@ -313,27 +313,25 @@ def slice(input, axes, starts, ends):
             >>> sliced_2 = paddle.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
             >>> # sliced_2 is input[1:3, 0:2, 2:4].
     """
+    if isinstance(axes, (list, tuple)):
+        axes = list(axes)
+        if len(axes) == 0:
+            raise ValueError("Input axes should not be an empty list/tuple.")
+        for i in range(len(axes)):
+            if axes[i] < 0:
+                axes[i] = max(0, axes[i] + len(input.shape))
+            else:
+                axes[i] = min(len(input.shape) - 1, axes[i])
+
+    else:
+        raise ValueError(
+            f"Input axes must be a python list or tuple, but reveived {type(axes)}"
+        )
+
     if in_dynamic_mode():
         attrs = ()
         starts_tensor = None
         ends_tensor = None
-
-        if isinstance(axes, (list, tuple)):
-            axes = list(axes)
-            if len(axes) == 0:
-                raise ValueError(
-                    "Input axes should not be an empty list/tuple."
-                )
-            for i in range(len(axes)):
-                if axes[i] < 0:
-                    axes[i] = max(0, axes[i] + len(input.shape))
-                else:
-                    axes[i] = min(len(input.shape) - 1, axes[i])
-
-        else:
-            raise ValueError(
-                f"Input axes must be a python list or tuple, but reveived {type(axes)}"
-            )
 
         infer_flags = [1 for i in range(len(axes))]
 
