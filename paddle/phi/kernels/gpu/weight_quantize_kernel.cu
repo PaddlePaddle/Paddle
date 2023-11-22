@@ -17,6 +17,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/impl/weight_quantize_kernel_gpu_impl.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -24,6 +25,7 @@ template <typename T, typename Context>
 void WeightQuantizeKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const std::string& algo,
+                          const int32_t arch,
                           DenseTensor* out,
                           DenseTensor* scale) {
   DenseTensor quanted_x;
@@ -33,14 +35,18 @@ void WeightQuantizeKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<float>(scale);
   std::vector<int> weight_shape{static_cast<int>(x.dims()[0]),
                                 static_cast<int>(x.dims()[1])};
-  if (algo == "weight_only_int8" || algo == "llm.int8") {
+  if (algo == "llm.int8"){
+      std::vector<int> axis = {1, 0};
+      funcs::Transpose<Context, int8_t, 2> trans;
+      trans(dev_ctx, x_int, out, axis);
+  } else if (algo == "weight_only_int8") {
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
                                  quanted_x.data<int8_t>(),
                                  scale->data<float>(),
                                  weight_shape);
     weight_permute_gpu<Context>(
-        dev_ctx, quanted_x.data<int8_t>(), out->data<int8_t>(), weight_shape);
+        dev_ctx, quanted_x.data<int8_t>(), out->data<int8_t>(), weight_shape, arch);
   } else if (algo == "weight_only_int4") {
     phi::errors::Unimplemented(
         "Weight quant gpu kernel currently don't support weight_only_int4 "
