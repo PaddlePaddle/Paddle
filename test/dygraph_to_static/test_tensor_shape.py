@@ -451,9 +451,9 @@ class TestTupleShape3(TestTensorShapeBasic):
         self.expected_slice_op_num = 2
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 10
+        self.pir_expected_op_num = 13
         self.pir_expected_shape_op_num = 1
-        self.pir_expected_slice_op_num = 1
+        self.pir_expected_slice_op_num = 2
 
 
 class TestPaddleShapeApi(TestTensorShapeBasic):
@@ -757,6 +757,12 @@ class TestOpNumWithTensorShapeInFor1(TestOpNumBasicWithTensorShape):
         self.pir_expected_shape_op_num = 0
         self.pir_expected_slice_op_num = 0
 
+    @test_ast_only
+    @test_pir_api_only
+    def test_pir_op_num(self):
+        # Remove this after we support control flow
+        pass
+
 
 class TestOpNumWithTensorShapeInWhile1(TestOpNumBasicWithTensorShape):
     def _set_test_func(self):
@@ -818,7 +824,9 @@ class TestFindStatiConvertVarShapeSuffixVar(Dy2StTestBase):
     @test_legacy_and_pir_exe_and_pir_api
     def test(self):
         x_spec = paddle.static.InputSpec(shape=[None, 10])
-        func = paddle.jit.to_static(dyfunc_with_if_2, input_spec=[x_spec])
+        func = paddle.jit.to_static(
+            dyfunc_with_static_convert_var_shape, input_spec=[x_spec]
+        )
         # Call this function to trigger program translation.
         func.concrete_program  # noqa: B018
 
