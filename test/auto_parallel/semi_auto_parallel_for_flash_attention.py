@@ -39,7 +39,7 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
             inputs_shape=shapes,
             inputs_specs=specs,
             op_func=flash_attention,
-            with_backward=False,
+            with_backward=True,
             causal=True,
         )
         self.check_dim_mapping(outputs[0], [0, -1, -1, -1])
@@ -55,7 +55,7 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
             inputs_shape=shapes,
             inputs_specs=specs,
             op_func=flash_attention,
-            with_backward=False,
+            with_backward=True,
             causal=True,
         )
         self.check_dim_mapping(outputs[0], [0, -1, -1, -1])

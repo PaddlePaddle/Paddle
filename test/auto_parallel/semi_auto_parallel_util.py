@@ -98,12 +98,12 @@ class SemiAutoParallelTestBase:
             input_np = np.random.random(size=shape).astype("float32")
             input = paddle.to_tensor(input_np)
             input = paddle.cast(input, self._dtype).detach()
-            input.stop_gradient = False
+            input.stop_gradient = not with_backward
             input_dist_attr = dist.DistAttr(
                 mesh=self._mesh, sharding_specs=spec
             )
             dist_input = dist.shard_tensor(input, dist_attr=input_dist_attr)
-            dist_input.stop_gradient = False
+            dist_input.stop_gradient = not with_backward
             flat_inputs.append(input)
             flat_dist_inputs.append(dist_input)
         inputs, _ = self.unflatten(flat_inputs, inputs_structure)
@@ -127,8 +127,8 @@ class SemiAutoParallelTestBase:
             flat_dist_out, _ = self.flatten(dist_out, terminal_cond2)
             assert len(flat_out) == len(flat_dist_out)
             for output, dist_output in zip(flat_out, flat_dist_out):
-                self.check_tensor_eq(out, dist_out)
-                if out is not None:
+                self.check_tensor_eq(output, dist_output)
+                if output is not None:
                     output.backward()
                     dist_output.backward()
 

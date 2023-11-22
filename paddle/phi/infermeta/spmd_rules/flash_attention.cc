@@ -18,7 +18,32 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
+
+#define LOG_SPMD_INPUT(name)                                                  \
+  do {                                                                        \
+    VLOG(4) << #name;                                                         \
+    VLOG(4) << "shape: [" << str_join(name##_shape) << "] "                   \
+            << "src_dist_attr: [" << name##_dist_attr.to_string() << "] "     \
+            << "src_dist_attr: [" << name##_dist_attr_dst.to_string() << "]"; \
+  } while (0)
+
+#define LOG_SPMD_OUTPUT(name)                                 \
+  do {                                                        \
+    VLOG(4) << #name;                                         \
+    VLOG(4) << "src_dist_attr: [" << name.to_string() << "]"; \
+  } while (0)
+
 using phi::distributed::auto_parallel::str_join;
+
+TensorDistAttr MapDims(
+    const TensorDistAttr& src,
+    const std::unordered_map<std::string, int64_t>& axes_mapping,
+    const std::string& axes) {
+  auto dst = CopyTensorDistAttrForOutput(src);
+  auto dims_mapping = GetDimsMappingForAxes(axes, axes_mapping, true);
+  dst.set_dims_mapping(dims_mapping);
+  return dst;
+}
 
 SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
                            const DistMetaTensor& k,
@@ -153,13 +178,15 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
                                    v_dims_mapping_size));
 
   // fixed_seed_offset
-
+  // TODO(liuzhenhai): process fixed_seed_offset and attn_mask
+  auto fixed_seed_offset_dist_attr = fixed_seed_offset.dist_attr();
+  auto fixed_seed_offset_shape = phi::vectorize(fixed_seed_offset.dims());
   // attn_mask
-  auto mask_shape = phi::vectorize(attn_mask.dims());
-  int mask_ndim = mask_shape.size();
-  auto mask_dist_attr = attn_mask.dist_attr();
-  int mask_dims_mapping_size = mask_dist_attr.dims_mapping().size();
-  if (!IsEmpty(mask_shape)) {
+  auto attn_mask_shape = phi::vectorize(attn_mask.dims());
+  int mask_ndim = attn_mask_shape.size();
+  auto attn_mask_dist_attr = attn_mask.dist_attr();
+  int mask_dims_mapping_size = attn_mask_dist_attr.dims_mapping().size();
+  if (!IsEmpty(attn_mask_shape)) {
     PADDLE_ENFORCE_EQ(
         mask_ndim,
         mask_dims_mapping_size,
@@ -194,8 +221,7 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   std::string softmax_axes = {
       batch_axis, num_heads_axis, seq_len_q_axis, seq_len_kv_axis};
   // [batch_size,  num_heads, seq_len_q, seq_len_kv]
-  std::string softmax_lse_axes = {
-      batch_axis, num_heads_axis, seq_len_q_axis, seq_len_kv_axis};
+  std::string softmax_lse_axes = {batch_axis, num_heads_axis, seq_len_q_axis};
 
   std::string q_axes_align = q_axes;
   q_axes_align[1] = alphabet[used_axes_index++];
@@ -217,67 +243,42 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
 
   auto axis_to_dim_map = ShardingMergeForTensors(axes_sharding_info);
 
-  auto q_dist_attr_dst = CopyTensorDistAttrForOutput(q_dist_attr);
-  auto q_dims_mapping = GetDimsMappingForAxes(q_axes, axis_to_dim_map, true);
-  q_dist_attr_dst.set_dims_mapping(q_dims_mapping);
-  auto k_dist_attr_dst = CopyTensorDistAttrForOutput(k_dist_attr);
-  auto k_dims_mapping = GetDimsMappingForAxes(k_axes, axis_to_dim_map, true);
-  k_dist_attr_dst.set_dims_mapping(k_dims_mapping);
-  auto v_dist_attr_dst = CopyTensorDistAttrForOutput(v_dist_attr);
-  auto v_dims_mapping = GetDimsMappingForAxes(v_axes, axis_to_dim_map, true);
-  v_dist_attr_dst.set_dims_mapping(v_dims_mapping);
+  auto q_dist_attr_dst = MapDims(q_dist_attr, axis_to_dim_map, q_axes);
+  auto k_dist_attr_dst = MapDims(k_dist_attr, axis_to_dim_map, k_axes);
+  auto v_dist_attr_dst = MapDims(v_dist_attr, axis_to_dim_map, v_axes);
 
-  // TODO(liuzhenhai): process fixed_seed_offset and attn_mask
-  auto fixed_seed_offset_dist_attr = fixed_seed_offset.dist_attr();
-  auto attn_mask_dist_attr = attn_mask.dist_attr();
+  // TODO(liuzhenhai): process fixed_seed and  attn_mask
+  auto fixed_seed_offset_dist_attr_dst = fixed_seed_offset_dist_attr;
+  auto attn_mask_dist_attr_dst = attn_mask_dist_attr;
 
-  TensorDistAttr out;
-  auto out_dims_mapping =
-      GetDimsMappingForAxes(out_axes, axis_to_dim_map, true);
-  out.set_dims_mapping(out_dims_mapping);
-  TensorDistAttr softmax;
-  softmax.set_dims_mapping(
-      GetDimsMappingForAxes(softmax_axes, axis_to_dim_map, true));
-  TensorDistAttr softmax_lse;
-  softmax_lse.set_dims_mapping(
-      GetDimsMappingForAxes(softmax_lse_axes, axis_to_dim_map, true));
-  TensorDistAttr seed_offset =
-      CopyTensorDistAttrForOutput(fixed_seed_offset_dist_attr);
-  // same as input
-  seed_offset.set_dims_mapping(fixed_seed_offset_dist_attr.dims_mapping());
+  auto out = MapDims(q_dist_attr, axis_to_dim_map, out_axes);
+  auto softmax = MapDims(q_dist_attr, axis_to_dim_map, softmax_axes);
+  auto softmax_lse = MapDims(q_dist_attr, axis_to_dim_map, softmax_lse_axes);
+
+  TensorDistAttr seed_offset = fixed_seed_offset_dist_attr;
 
   VLOG(4) << "FlashAttInferSpmd:";
   VLOG(4) << "Einsum Notation: " << q_axes << "," << k_axes << "," << v_axes
           << "-->" << out_axes << "," << softmax_axes << ","
           << softmax_lse_axes;
 
-  VLOG(4) << "q";
-  VLOG(4) << "Input shape: [" << str_join(q_shape) << "] "
-          << "src_dims_mapping: [" << str_join(q_dist_attr.dims_mapping())
-          << "] "
-          << "dst_dims_mapping: [" << str_join(q_dims_mapping) << "]";
-
-  VLOG(4) << "k";
-  VLOG(4) << "Input shape: [" << str_join(k_shape) << "] "
-          << "src_dims_mapping: [" << str_join(k_dist_attr.dims_mapping())
-          << "] "
-          << "dst_dims_mapping: [" << str_join(v_dims_mapping) << "]";
-
-  VLOG(4) << "v";
-  VLOG(4) << "Input shape: [" << str_join(v_shape) << "] "
-          << "src_dims_mapping: [" << str_join(v_dist_attr.dims_mapping())
-          << "] "
-          << "dst_dims_mapping: [" << str_join(v_dims_mapping) << "]";
-
-  VLOG(4) << "Output"
-          << " dims_mapping: [" << str_join(out_dims_mapping) << "]";
+  LOG_SPMD_INPUT(q);
+  LOG_SPMD_INPUT(k);
+  LOG_SPMD_INPUT(v);
+  LOG_SPMD_INPUT(fixed_seed_offset);
+  LOG_SPMD_INPUT(attn_mask);
+  VLOG(4) << "Outputs:";
+  LOG_SPMD_OUTPUT(out);
+  LOG_SPMD_OUTPUT(softmax);
+  LOG_SPMD_OUTPUT(softmax_lse);
+  LOG_SPMD_OUTPUT(seed_offset);
   VLOG(4) << std::endl;
 
   return {{q_dist_attr_dst,
            k_dist_attr_dst,
            v_dist_attr_dst,
-           fixed_seed_offset_dist_attr,
-           attn_mask_dist_attr},
+           fixed_seed_offset_dist_attr_dst,
+           attn_mask_dist_attr_dst},
           {out, softmax, softmax_lse, seed_offset}};
 }
 
@@ -360,7 +361,7 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       k_ndim,
       k_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor q's rank [%d] and Its "
+      phi::errors::InvalidArgument("The Tensor k's rank [%d] and Its "
                                    "dims_mapping size [%d] are not matched.",
                                    k_ndim,
                                    k_dims_mapping_size));
@@ -408,28 +409,35 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       v_ndim,
       v_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor q's rank [%d] and Its "
+      phi::errors::InvalidArgument("The Tensor v's rank [%d] and Its "
                                    "dims_mapping size [%d] are not matched.",
                                    v_ndim,
                                    v_dims_mapping_size));
 
   // fixed_seed_offset
+  auto seed_offset_dist_attr = seed_offset.dist_attr();
+  auto seed_offset_shape = phi::vectorize(seed_offset.dims());
 
   // attn_mask
-  auto mask_shape = phi::vectorize(attn_mask.dims());
-  int mask_ndim = mask_shape.size();
-  auto mask_dist_attr = attn_mask.dist_attr();
-  int mask_dims_mapping_size = mask_dist_attr.dims_mapping().size();
-  PADDLE_ENFORCE_EQ(
-      mask_ndim,
-      mask_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor q's rank [%d] and Its "
-                                   "dims_mapping size [%d] are not matched.",
-                                   mask_ndim,
-                                   mask_dims_mapping_size));
+  auto attn_mask_shape = phi::vectorize(attn_mask.dims());
+  int mask_ndim = attn_mask_shape.size();
+  auto attn_mask_dist_attr = attn_mask.dist_attr();
+  int mask_dims_mapping_size = attn_mask_dist_attr.dims_mapping().size();
+  if (!IsEmpty(attn_mask_shape)) {
+    PADDLE_ENFORCE_EQ(
+        mask_ndim,
+        mask_dims_mapping_size,
+        phi::errors::InvalidArgument("The Tensor mask's rank [%d] and Its "
+                                     "dims_mapping size [%d] are not matched.",
+                                     mask_ndim,
+                                     mask_dims_mapping_size));
+  }
 
   auto out_shape = phi::vectorize(out.dims());
-  auto out_dist_attr = attn_mask.dist_attr();
+  auto out_dist_attr = out.dist_attr();
+
+  auto softmax_lse_shape = phi::vectorize(softmax_lse.dims());
+  auto softmax_lse_dist_attr = softmax_lse.dist_attr();
 
   auto out_grad_shape = phi::vectorize(out_grad.dims());
   auto out_grad_dist_attr = out_grad.dist_attr();
@@ -458,9 +466,8 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   // [batch_size,  num_heads, seq_len_q, seq_len_kv]
   std::string softmax_axes = {
       batch_axis, num_heads_axis, seq_len_q_axis, seq_len_kv_axis};
-  // [batch_size,  num_heads, seq_len_q, seq_len_kv]
-  std::string softmax_lse_axes = {
-      batch_axis, num_heads_axis, seq_len_q_axis, seq_len_kv_axis};
+  // [batch_size,  num_heads, seq_len_q]
+  std::string softmax_lse_axes = {batch_axis, num_heads_axis, seq_len_q_axis};
 
   std::string q_axes_align = q_axes;
   q_axes_align[1] = alphabet[used_axes_index++];
@@ -483,104 +490,56 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   out_grad_axes_align[3] = alphabet[used_axes_index++];
 
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
-
   axes_sharding_info.emplace_back(q_axes_align, q_dist_attr.dims_mapping());
   axes_sharding_info.emplace_back(k_axes_align, k_dist_attr.dims_mapping());
   axes_sharding_info.emplace_back(v_axes_align, k_dist_attr.dims_mapping());
   axes_sharding_info.emplace_back(out_axes_align, out_dist_attr.dims_mapping());
   axes_sharding_info.emplace_back(out_grad_axes_align,
                                   out_grad_dist_attr.dims_mapping());
-
   auto axis_to_dim_map = ShardingMergeForTensors(axes_sharding_info);
 
-  auto q_dist_attr_dst = CopyTensorDistAttrForOutput(q_dist_attr);
-  auto q_dims_mapping = GetDimsMappingForAxes(q_axes, axis_to_dim_map, true);
-  q_dist_attr_dst.set_dims_mapping(q_dims_mapping);
-  auto k_dist_attr_dst = CopyTensorDistAttrForOutput(k_dist_attr);
-  auto k_dims_mapping = GetDimsMappingForAxes(k_axes, axis_to_dim_map, true);
-  k_dist_attr_dst.set_dims_mapping(k_dims_mapping);
-  auto v_dist_attr_dst = CopyTensorDistAttrForOutput(v_dist_attr);
-  auto v_dims_mapping = GetDimsMappingForAxes(v_axes, axis_to_dim_map, true);
-  v_dist_attr_dst.set_dims_mapping(v_dims_mapping);
-  auto out_dist_attr_dst = CopyTensorDistAttrForOutput(out_dist_attr);
-  auto out_dims_mapping =
-      GetDimsMappingForAxes(out_axes, axis_to_dim_map, true);
-  out_dist_attr_dst.set_dims_mapping(out_dims_mapping);
+  auto q_dist_attr_dst = MapDims(q_dist_attr, axis_to_dim_map, q_axes);
+  auto k_dist_attr_dst = MapDims(k_dist_attr, axis_to_dim_map, k_axes);
+  auto v_dist_attr_dst = MapDims(v_dist_attr, axis_to_dim_map, v_axes);
+  auto out_dist_attr_dst = MapDims(out_dist_attr, axis_to_dim_map, out_axes);
+  auto softmax_lse_dist_attr_dst =
+      MapDims(softmax_lse_dist_attr, axis_to_dim_map, softmax_lse_axes);
 
-  // TODO(liuzhenhai): process fixed_seed_offset and attn_mask
-  auto fixed_seed_offset_dist_attr = seed_offset.dist_attr();
-  auto attn_mask_dist_attr = attn_mask.dist_attr();
+  // TODO(liuzhenhai): process seed and  attn_mask
+  auto& seed_offset_dist_attr_dst = seed_offset_dist_attr;
+  auto& attn_mask_dist_attr_dst = attn_mask_dist_attr;
 
-  auto out_grad_dist_attr_dst = CopyTensorDistAttrForOutput(out_grad_dist_attr);
-  auto out_grad_dims_mapping =
-      GetDimsMappingForAxes(out_axes, axis_to_dim_map, true);
-  v_dist_attr_dst.set_dims_mapping(out_grad_dims_mapping);
-
-  TensorDistAttr q_grad;
-  auto q_grad_dims_mapping =
-      GetDimsMappingForAxes(q_axes, axis_to_dim_map, true);
-  q_grad.set_dims_mapping(q_grad_dims_mapping);
-
-  TensorDistAttr k_grad;
-  auto k_grad_dims_mapping =
-      GetDimsMappingForAxes(k_axes, axis_to_dim_map, true);
-  k_grad.set_dims_mapping(k_grad_dims_mapping);
-
-  TensorDistAttr v_grad;
-  auto v_grad_dims_mapping =
-      GetDimsMappingForAxes(v_axes, axis_to_dim_map, true);
-  v_grad.set_dims_mapping(v_grad_dims_mapping);
+  auto out_grad_dist_attr_dst =
+      MapDims(out_grad_dist_attr, axis_to_dim_map, out_axes);
+  auto q_grad = MapDims(q_dist_attr, axis_to_dim_map, q_axes);
+  auto k_grad = MapDims(k_dist_attr, axis_to_dim_map, k_axes);
+  auto v_grad = MapDims(v_dist_attr, axis_to_dim_map, v_axes);
 
   VLOG(4) << "FlashAttInferSpmd:";
   VLOG(4) << "Einsum Notation: " << q_axes << "," << k_axes << "," << v_axes
-          << "-->" << out_axes << "," << softmax_axes << ","
-          << softmax_lse_axes;
-
-  VLOG(4) << "q";
-  VLOG(4) << "Input shape: [" << str_join(q_shape) << "] "
-          << "src_dims_mapping: [" << str_join(q_dist_attr.dims_mapping())
-          << "] "
-          << "dst_dims_mapping: [" << str_join(q_dims_mapping) << "]";
-
-  VLOG(4) << "k";
-  VLOG(4) << "Input shape: [" << str_join(k_shape) << "] "
-          << "src_dims_mapping: [" << str_join(k_dist_attr.dims_mapping())
-          << "] "
-          << "dst_dims_mapping: [" << str_join(v_dims_mapping) << "]";
-
-  VLOG(4) << "v";
-  VLOG(4) << "Input shape: [" << str_join(v_shape) << "] "
-          << "src_dims_mapping: [" << str_join(v_dist_attr.dims_mapping())
-          << "] "
-          << "dst_dims_mapping: [" << str_join(v_dims_mapping) << "]";
-
-  VLOG(4) << "out";
-  VLOG(4) << "Input shape: [" << str_join(out_shape) << "] "
-          << "src_dims_mapping: [" << str_join(out_dist_attr.dims_mapping())
-          << "] "
-          << "dst_dims_mapping: [" << str_join(out_dims_mapping) << "]";
-
-  VLOG(4) << "out_grad";
-  VLOG(4) << "Input shape: [" << str_join(out_grad_shape) << "] "
-          << "src_dims_mapping: ["
-          << str_join(out_grad_dist_attr.dims_mapping()) << "] "
-          << "dst_dims_mapping: [" << str_join(out_grad_dims_mapping) << "]";
-
-  VLOG(4) << "q_grad"
-          << " dims_mapping: [" << str_join(q_grad_dims_mapping) << "]";
-  VLOG(4) << "k_grad"
-          << " dims_mapping: [" << str_join(k_grad_dims_mapping) << "]";
-  VLOG(4) << "v_grad"
-          << " dims_mapping: [" << str_join(v_grad_dims_mapping) << "]";
-
-  VLOG(4) << std::endl;
+          << "-->" << out_axes << "," << softmax_axes << "," << softmax_lse_axes
+          << std::endl;
+  VLOG(4) << "Inputs:" << std::endl;
+  LOG_SPMD_INPUT(q);
+  LOG_SPMD_INPUT(k);
+  LOG_SPMD_INPUT(v);
+  LOG_SPMD_INPUT(out);
+  LOG_SPMD_INPUT(softmax_lse);
+  LOG_SPMD_INPUT(seed_offset);
+  LOG_SPMD_INPUT(attn_mask);
+  LOG_SPMD_INPUT(out_grad);
+  VLOG(4) << "Outputs:" << std::endl;
+  LOG_SPMD_OUTPUT(q_grad);
+  LOG_SPMD_OUTPUT(k_grad);
+  LOG_SPMD_OUTPUT(v_grad);
 
   return {{q_dist_attr_dst,
            k_dist_attr_dst,
            v_dist_attr_dst,
            out_dist_attr_dst,
-           fixed_seed_offset_dist_attr,
-           attn_mask_dist_attr,
+           softmax_lse_dist_attr_dst,
+           seed_offset_dist_attr_dst,
+           attn_mask_dist_attr_dst,
            out_grad_dist_attr_dst},
           {q_grad, k_grad, v_grad}};
 }
