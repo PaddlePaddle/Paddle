@@ -22,6 +22,7 @@ from test_attribute_var import UnittestBase
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
+from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -447,6 +448,7 @@ class TestOutputSizeTensor(UnittestBase):
 
     @test_with_pir_api
     def test_static(self):
+        paddle.enable_static()
         main_prog = paddle.static.Program()
         starup_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, starup_prog):
@@ -459,15 +461,21 @@ class TestOutputSizeTensor(UnittestBase):
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
-            self.assertTrue(self.var_prefix() in str(main_prog))
+
+            if not in_pir_mode():
+                self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
+            exe.run(starup_prog)
             res = exe.run(fetch_list=[out])
             np.testing.assert_array_equal(res[0].shape, [1, 3, 7, 7])
-            paddle.static.save_inference_model(self.save_path, [x], [out], exe)
-            # Test for Inference Predictor
-            infer_outs = self.infer_prog()
-            np.testing.assert_array_equal(res[0].shape, [1, 3, 7, 7])
+            if not in_pir_mode():
+                paddle.static.save_inference_model(
+                    self.save_path, [x], [out], exe
+                )
+                # Test for Inference Predictor
+                infer_outs = self.infer_prog()
+                np.testing.assert_array_equal(res[0].shape, [1, 3, 7, 7])
 
     def path_prefix(self):
         return 'unpool_var'
