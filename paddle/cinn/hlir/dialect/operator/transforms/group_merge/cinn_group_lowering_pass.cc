@@ -161,8 +161,8 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
         cinn::dialect::ir::GeneralFusionMergePassInternal(op_fusion);
 
     for (auto group : group_list) {
-      auto ir_compiler = hlir::framework::PirCompilerManager::Create(
-            *program, target, scope);
+      auto ir_compiler =
+          hlir::framework::PirCompilerManager::Create(*program, target, scope);
       if (FLAGS_cinn_enable_map_expr) {
         cinn::adt::TryGenerateMapExprFromGroup(group);
       }
