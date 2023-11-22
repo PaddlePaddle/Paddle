@@ -77,6 +77,15 @@ common::Type GetTensorDtype(
   return common::F32();
 }
 
+ir::Tensor GetTensor(const ::pir::Value& value) {
+  auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  auto in_shape = phi::vectorize<int>(type_info.dims());
+  auto dtype = type_info.dtype();
+  std::string input_id = CompatibleInfo::ValueName(value);
+  return lang::CreatePlaceHolder(
+      in_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+}
+
 ir::Tensor GetTensor(const GroupPtr& group, const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
   auto in_shape = phi::vectorize<int>(type_info.dims());
@@ -90,6 +99,27 @@ ir::Tensor GetTensor(const GroupPtr& group, const ::pir::Value& value) {
   }
   return lang::CreatePlaceHolder(
       sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+}
+
+std::vector<ir::Tensor> CollectInputTensor(
+    const ::pir::Operation* op,
+    std::vector<ir::Tensor>* func_args,
+    std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
+  std::vector<ir::Tensor> tensors;
+  for (auto in_value : CompatibleInfo::RealOperandSources(*op)) {
+    VLOG(4) << "input tensor name: " << CompatibleInfo::ValueName(in_value);
+    ir::Tensor tensor = details::GetTensor(in_value);
+    if (!tensor_map->count(in_value)) {
+      // record tensor.
+      (*tensor_map)[in_value] = tensor;
+      // record func input args
+      if (func_args != nullptr) {
+        func_args->push_back(tensor);
+      }
+    }
+    tensors.push_back(tensor);
+  }
+  return tensors;
 }
 
 std::vector<ir::Tensor> CollectInputTensor(
@@ -217,8 +247,8 @@ void OpLowererImpl::LowerOpsForMapExpr(
     VLOG(4) << "out_types.size(): " << out_types.size();
     NodeAttr node_attrs = details::CollectAttrs(*op);
 
-    std::vector<ir::Tensor> op_func_arg_tensors = details::CollectInputTensor(
-        group, op, group_func_arg_tensors, tensor_map);
+    std::vector<ir::Tensor> op_func_arg_tensors =
+        details::CollectInputTensor(op, group_func_arg_tensors, tensor_map);
     VLOG(4) << "input size:" << op_func_arg_tensors.size();
 
     std::string cinn_op_name = CompatibleInfo::OpName(*op);
