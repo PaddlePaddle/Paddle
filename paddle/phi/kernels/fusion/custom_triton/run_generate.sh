@@ -17,7 +17,7 @@ matmul_dir=generated/aot/matmul/fp16
 mkdir -p ${matmul_dir}
 
 
-# -n : the kernel name in your py file
+# -n : the kernel name decorated by @triton.jit in your py file
 # -o : the output file name 
 # --out-name : the name of the kernel in c++ for your invoke
 python3.8  ${compile_file}     \
