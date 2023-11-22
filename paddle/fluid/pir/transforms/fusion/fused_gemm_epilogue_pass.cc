@@ -35,7 +35,8 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
 
     pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
       return (match_ctx.Tensor("w").Shape().size() == 2 &&
-              match_ctx.Tensor("x").Shape().size() >= 2);
+              match_ctx.Tensor("x").Shape().size() >= 2 &&
+              match_ctx.Tensor("bias").Shape().size() == 1);
     });
 
     pir::drr::ResultPattern res = pat.ResultPattern();
@@ -77,7 +78,8 @@ class FusedLinearGradPattern
 
     pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
       return (match_ctx.Tensor("w").Shape().size() == 2 &&
-              match_ctx.Tensor("x").Shape().size() >= 2);
+              match_ctx.Tensor("x").Shape().size() >= 2 &&
+              match_ctx.Tensor("bias").Shape().size() == 1);
     });
 
     pir::drr::ResultPattern res = pat.ResultPattern();
