@@ -64,8 +64,7 @@ elif env_version != version:
         raise RuntimeError(
             "We can't find the version you set in your machine"
         )
-            
-    os.environ["PY_VERSION"] = python_version
+        
 
 # check cmake
 CMAKE = shutil.which('cmake3') or shutil.which('cmake')
