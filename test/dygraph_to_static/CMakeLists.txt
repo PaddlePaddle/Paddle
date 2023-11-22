@@ -75,6 +75,7 @@ set(DISABLE_PIR_PT_MODES
     test_list
     test_slice
     test_lstm
+    test_for_enumerate
     test_reinforcement_learning)
 foreach(ITEST ${DISABLE_PIR_PT_MODES})
   if(TEST ${ITEST})

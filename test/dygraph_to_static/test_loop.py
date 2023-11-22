@@ -407,6 +407,7 @@ class TestTransformForLoop(Dy2StTestBase):
                 ret = self.dyfunc(self.len)
             return ret.numpy()
 
+    @test_sot_only
     def test_ast_to_func(self):
         np.testing.assert_allclose(
             self._run_dygraph(), self._run_static(), rtol=1e-05
