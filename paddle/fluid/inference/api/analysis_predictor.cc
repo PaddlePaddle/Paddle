@@ -777,8 +777,8 @@ bool AnalysisPredictor::PrepareExecutor() {
       pm_for_op_program.AddPass(::pir::CreateDeadCodeEliminationPass());
       pm_for_op_program.AddPass(
           ::pir::CreateReplaceFetchWithShadowOutputPass());
-      pm_for_op_program.AddPass(
-          ::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
+      // pm_for_op_program.AddPass(
+      //     ::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
       // pm_for_op_program.EnableIRPrinting();
       pm_for_op_program.Run(pir_program_.get());
 
