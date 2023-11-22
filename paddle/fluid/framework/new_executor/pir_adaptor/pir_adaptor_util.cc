@@ -221,6 +221,7 @@ const std::unordered_set<std::string> SpecialOps = {"pd_op.feed",
                                                     "builtin.split",
                                                     "pd_op.data",
                                                     "builtin.shadow_output",
+                                                    "builtin.constant_tensor",
                                                     "pd_op.if",
                                                     "pd_op.while"};
 
