@@ -45,12 +45,14 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
             learning_rate=0.1, parameters=layer.parameters()
         )
 
+        # TODO(GhostScreaming): Fix problem of admaw master params.
         if level == 'O2':
             layer, opt = paddle.amp.decorate(
                 models=layer,
                 level='O2',
                 master_grad=self._use_master_grad,
                 optimizers=opt,
+                master_weight=False,
                 dtype=self._dtype,
             )
 
