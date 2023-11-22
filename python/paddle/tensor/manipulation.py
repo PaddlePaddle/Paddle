@@ -5243,9 +5243,9 @@ def put_along_axis(arr, indices, values, axis, reduce='assign', broadcast=True):
             >>> axis = 0
             >>> result = paddle.put_along_axis(x, index, value, axis)
             >>> print(result)
-            Tensor(shape=[2, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-                   [[99, 99, 99],
-                    [60, 40, 50]])
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[99, 99, 99],
+             [60, 40, 50]])
 
     """
     if len(arr.shape) != len(indices.shape):
