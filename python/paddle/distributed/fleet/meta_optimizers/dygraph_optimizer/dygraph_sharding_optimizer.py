@@ -295,6 +295,7 @@ class DygraphShardingOptimizer:
                 mapping[param.name] = rank
         return mapping
 
+    @paddle.autograd.no_grad()
     def reduce_gradients(self, parameter_list, hcg):
         if self._pp_overlap:
             return
