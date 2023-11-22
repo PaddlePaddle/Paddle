@@ -111,6 +111,7 @@ PD_REGISTER_KERNEL(equal_all,
                      phi::func##Kernel,                   \
                      bool,                                \
                      int,                                 \
+                     uint8_t,                             \
                      int8_t,                              \
                      int16_t,                             \
                      int64_t,                             \
