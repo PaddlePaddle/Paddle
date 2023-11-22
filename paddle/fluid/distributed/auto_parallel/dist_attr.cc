@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace distributed {
@@ -28,7 +29,7 @@ namespace auto_parallel {
 
 using phi::distributed::auto_parallel::str_join;
 
-std::vector<int64_t> get_tensor_shape(const VarDesc* tensor) {
+TEST_API std::vector<int64_t> get_tensor_shape(const VarDesc* tensor) {
   if (tensor == nullptr) return std::vector<int64_t>();
   switch (tensor->GetType()) {
     case framework::proto::VarType::READER:
