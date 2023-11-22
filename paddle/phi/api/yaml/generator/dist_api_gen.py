@@ -917,7 +917,7 @@ class DistForwardAPI(ForwardAPI):
                     and self.generate_general_infer_spmd
                 ):
                     output_creation_code += SINGLE_INPLACE_OUT_DIST_ATTR
-                elif self.infer_meta['spmd_rule'] is not None:
+                if self.infer_meta['spmd_rule'] is not None:
                     output_creation_code += SINGLE_OUT_CREATION_TEMPLATE
                 else:
                     output_creation_code += SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD
