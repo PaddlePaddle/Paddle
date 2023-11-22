@@ -80,6 +80,10 @@ foreach(ITEST ${DISABLE_PIR_PT_MODES})
   if(TEST ${ITEST})
     set_tests_properties(
       ${ITEST} PROPERTIES ENVIRONMENT "FLAGS_enable_pir_with_pt_in_dy2st=0")
+    message(
+      STATUS
+        "PIR Disabled OpTest: set FLAGS_enable_pir_with_pt_in_dy2st to False for ${ITEST}"
+    )
   else()
     message(
       STATUS "PIR Disabled OpTest: not found ${ITEST} in dygraph_to_static")
