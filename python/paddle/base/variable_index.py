@@ -341,17 +341,9 @@ def get_value_for_bool_tensor(var, item):
                 )
             )
         i += 1
-    empty_shape = [0] + list(var.shape[i:])
 
-    def idx_not_empty(var, item):
-        bool_2_idx = paddle.nonzero(item)
-        return paddle.gather_nd(var, bool_2_idx)
-
-    return paddle.static.nn.cond(
-        item.any(),
-        lambda: idx_not_empty(var, item),
-        lambda: paddle.empty(empty_shape, var.dtype),
-    )
+    bool_2_idx = paddle.nonzero(item)
+    return paddle.gather_nd(var, bool_2_idx)
 
 
 def _setitem_for_tensor_array(var, item, value):
@@ -1217,11 +1209,11 @@ def _getitem_static(x, indices):
                 advanced_index_tensor = paddle.stack(
                     adjusted_advanced_index, axis=-1
                 )
-                out = paddle.gather_nd(transed_tensor, advanced_index_tensor)
             else:
-                out = paddle.gather_nd(
-                    transed_tensor, adjusted_advanced_index[0].unsqueeze(-1)
-                )
+                # fast path for single bool tensor, since stack is much slower than unsuqeeze
+                advanced_index_tensor = adjusted_advanced_index[0].unsqueeze(-1)
+
+            out = paddle.gather_nd(transed_tensor, advanced_index_tensor)
 
         if pos_of_new_dim != 0:
             perm = (
