@@ -134,4 +134,22 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
   return mgr_.IsSymbolicDimProductEqual(lhs_prod, rhs_prod);
 }
 
+ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
+  static ShapeAnalysisManager instance;
+  return instance;
+}
+
+ShapeConstraintIRAnalysis& ShapeAnalysisManager::GetShapeConstraintIRAnalysis(
+    pir::Program* program) {
+  auto it = tables_.find(program);
+
+  if (it == tables_.end()) {
+    it = tables_
+             .emplace(program, ShapeConstraintIRAnalysis(program->module_op()))
+             .first;
+  }
+
+  return it->second;
+}
+
 }  // namespace pir
