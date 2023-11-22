@@ -349,7 +349,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
 
     def init_fractional(self):
         self.fractional = False
-        self.random_u = None
+        self.random_u = 0.3
 
 
 class TestCase1(TestMaxPoolWithIndex_Op):

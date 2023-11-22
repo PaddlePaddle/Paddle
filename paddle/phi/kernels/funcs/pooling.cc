@@ -1770,7 +1770,7 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
     float u_height = 0, u_width = 0, u_depth = 0;
     if (fractional) {
       float u = 0;
-      if (fractional) {
+      if (random_u == 0) {
         std::uniform_real_distribution<float> dist(0, 1);
         auto engine = phi::GetCPURandomEngine(0);
         u = dist(*engine);
