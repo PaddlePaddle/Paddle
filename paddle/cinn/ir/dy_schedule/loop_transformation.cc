@@ -51,7 +51,8 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   // this->module_expr_); CINN_IR_SCHEDULE_END(this->err_msg_level_);
 
   auto prod_size = std::accumulate(factors.begin(), factors.end(), Expr(1));
-  process_factors.insert(process_factors.begin(), tot_extent / prod_size);
+  process_factors.insert(process_factors.begin(),
+                         tot_extent / prod_size + Expr(1));
 
   std::vector<Var> new_loop_vars;
   new_loop_vars.push_back(Var(common::UniqName(for_node->loop_var->name)));
