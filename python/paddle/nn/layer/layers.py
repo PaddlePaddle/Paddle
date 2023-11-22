@@ -26,17 +26,18 @@ from paddle import nn, profiler
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
 from paddle.base.dygraph import no_grad
-from paddle.base.dygraph.base import in_declarative_mode  # noqa: F401
 from paddle.base.dygraph.base import (
     _convert_into_variable,
+    in_declarative_mode,  # noqa: F401
     in_to_static_mode,
     program_desc_tracing_guard,
 )
 from paddle.base.dygraph_utils import _append_activation_in_dygraph
 from paddle.base.executor import Executor, global_scope
-from paddle.base.framework import Parameter, Program
-from paddle.base.framework import _current_expected_place as _get_device
 from paddle.base.framework import (
+    Parameter,
+    Program,
+    _current_expected_place as _get_device,
     _global_flags,
     convert_np_dtype_to_dtype_,
     default_main_program,
@@ -919,6 +920,86 @@ class Layer:
         ]
         return ret
 
+    def astype(self, dtype=None):
+        """
+
+        Casts all parameters and buffers to dtype and then return the Layer.
+
+        Parameters:
+            dtype(str|paddle.dtype|numpy.dtype): target data type of layer.
+                If set str, it can be "bool", "bfloat16", "float16", "float32", "float64",
+                "int8", "int16", "int32", "int64", "uint8", "complex64", "complex128".
+                Default: None
+
+        Returns:
+            Layer, self
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> import paddle.nn as nn
+                >>> weight_attr = paddle.ParamAttr(name="weight",initializer=paddle.nn.initializer.Constant(value=1.5))
+                >>> bias_attr = paddle.ParamAttr(name="bias",initializer=paddle.nn.initializer.Constant(value=2.5))
+
+                >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr).to(device="cpu",dtype="float32")
+                >>> print(linear)
+                Linear(in_features=2, out_features=2, dtype=float32)
+                >>> print(linear.parameters())
+                [Parameter containing:
+                Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+                    [[1.50000000, 1.50000000],
+                        [1.50000000, 1.50000000]]), Parameter containing:
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
+                    [2.50000000, 2.50000000])]
+
+                >>> linear=linear.astype("int8")
+                >>> print(linear)
+                Linear(in_features=2, out_features=2, dtype=paddle.int8)
+                >>> print(linear.parameters())
+                [Parameter containing:
+                Tensor(shape=[2, 2], dtype=int8, place=Place(cpu), stop_gradient=False,
+                    [[1, 1],
+                        [1, 1]]), Parameter containing:
+                Tensor(shape=[2], dtype=int8, place=Place(cpu), stop_gradient=False,
+                    [2, 2])]
+
+        """
+        valid_dtypes = [
+            "bfloat16",
+            "float16",
+            "float32",
+            "float64",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "uint8",
+            "complex64",
+            "complex128",
+            "bool",
+        ]
+        if (
+            isinstance(dtype, (paddle.dtype, np.dtype))
+            or type(dtype) is str
+            and dtype in valid_dtypes
+        ):
+            if isinstance(dtype, (str, np.dtype)):
+                dtype = framework.convert_np_dtype_to_dtype_(dtype)
+            self._dtype = dtype
+            for layer in self.sublayers():
+                layer._dtype = dtype
+            for _, param in self.named_parameters(include_sublayers=True):
+                param._to(None, dtype)
+            for _, buffer in self.named_buffers(include_sublayers=True):
+                buffer.to(None, dtype)
+            return self
+        else:
+            raise ValueError(
+                "dtype value error, must be 'bfloat16', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'complex64', 'complex128', 'bool', or paddle.dtype, numpy.dtype, but recieve "
+                + str(dtype)
+            )
+
     def children(self):
         """
 
@@ -1591,7 +1672,7 @@ class Layer:
 
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
             params[name] = value
-        elif isinstance(value, paddle.pir.OpResult) and value.is_persistable:
+        elif isinstance(value, paddle.pir.OpResult) and value.persistable:
             if params is None:
                 raise ValueError("super().__init__() should be called first")
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)

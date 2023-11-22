@@ -22,6 +22,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/schedule/schedule_base.h"
 #include "paddle/cinn/ir/schedule/schedule_desc.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/utils/error.h"
@@ -31,41 +32,12 @@ namespace cinn {
 namespace ir {
 
 /**
- * A struct representing a module that contains Expr. This struct is only used
- * in Schedule process.
- */
-class ModuleExpr {
- public:
-  ModuleExpr() = default;
-  ModuleExpr(const ModuleExpr& mod_expr) = default;
-  ModuleExpr(ModuleExpr&& mod_expr) = default;
-
-  ModuleExpr& operator=(const ModuleExpr& mod_expr) = default;
-
-  explicit ModuleExpr(const std::vector<Expr>& exprs) : exprs_(exprs) {}
-  explicit ModuleExpr(std::vector<Expr>&& exprs) : exprs_(std::move(exprs)) {}
-
-  //! Get all the Expr in this ModuleExpr.
-  std::vector<Expr> GetExprs() { return exprs_; }
-
-  std::vector<Expr> GetExprs() const { return exprs_; }
-
-  void SetExprs(const std::vector<Expr>& exprs) { exprs_ = exprs; }
-
- private:
-  //! Exprs stored in ModuleExpr. Each one is an AST, representing a computation
-  //! kernel.
-  std::vector<Expr> exprs_;
-};
-
-/**
  * A struct containing all the schedule primitives. Each shedule primitive is a
  * member function of IRSchedule. Schedule primitves are implmented by
- * ScheduleImpl manipulating the AST - IR(Expr). To support serializing and
+ * StScheduleImpl manipulating the AST - IR(Expr). To support serializing and
  * replaying, each schedule primitive should append a ScheduleDesc::Step to the
  * trace_ in its corresponding function implment.
  */
-class ScheduleImpl;
 class IRSchedule {
  public:
   IRSchedule();
@@ -73,10 +45,12 @@ class IRSchedule {
                       utils::LinearRandomEngine::StateType rand_seed = -1,
                       bool debug_flag = false,
                       utils::ErrorMessageLevel err_msg_level =
-                          utils::ErrorMessageLevel::kGeneral);
+                          utils::ErrorMessageLevel::kGeneral,
+                      bool is_dynamic = false);
   IRSchedule(ir::ModuleExpr&& mod_expr,
              ScheduleDesc&& trace,
-             utils::LinearRandomEngine::StateType rand_seed = -1);
+             utils::LinearRandomEngine::StateType rand_seed = -1,
+             bool is_dynamic = false);
   IRSchedule(const IRSchedule& other);
   IRSchedule& operator=(const IRSchedule& src);
   IRSchedule(IRSchedule&& other);
@@ -96,6 +70,8 @@ class IRSchedule {
 
   //! Get the ScheduleDesc that traces the scheduling process
   const ScheduleDesc& GetTraceDesc() const { return trace_; }
+
+  bool IsDynamicShape() const { return is_dynamic_shape_; }
 
   /**
    * \brief Get all the loops of specific Block stored in ModuleExpr.
@@ -498,9 +474,10 @@ class IRSchedule {
   utils::LinearRandomEngine::StateType ForkSeed() const;
 
  private:
-  std::unique_ptr<ScheduleImpl> impl_;
+  std::unique_ptr<ScheduleBase> impl_;
   mutable ScheduleDesc trace_;  // trace the scheduling process
   mutable utils::LinearRandomEngine::StateType rand_seed_;
+  bool is_dynamic_shape_;
 };
 
 /*!

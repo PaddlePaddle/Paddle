@@ -16,6 +16,7 @@ import argparse
 
 import yaml
 from api_gen import ForwardAPI
+from dist_api_gen import DistForwardAPI
 from sparse_api_gen import SparseAPI
 
 
@@ -56,6 +57,11 @@ def source_include(header_file_path):
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#endif
+
 PD_DECLARE_int32(low_precision_op_list);
 """
 
@@ -91,6 +97,7 @@ def generate_intermediate_api(
     sparse_api_yaml_path,
     dygraph_header_file_path,
     dygraph_source_file_path,
+    gen_dist_branch,
 ):
     dygraph_header_file = open(dygraph_header_file_path, 'w')
     dygraph_source_file = open(dygraph_source_file_path, 'w')
@@ -114,7 +121,7 @@ def generate_intermediate_api(
                 apis.extend(api_list)
 
     for api in apis:
-        foward_api = ForwardAPI(api)
+        foward_api = DistForwardAPI(api) if gen_dist_branch else ForwardAPI(api)
         if foward_api.is_dygraph_api:
             dygraph_header_file.write(foward_api.gene_api_declaration())
             dygraph_source_file.write(foward_api.gene_api_code())
@@ -170,18 +177,27 @@ def main():
         default='paddle/phi/api/lib/dygraph_api.cc',
     )
 
+    parser.add_argument(
+        '--gen_dist_branch',
+        help='whether generate distributed branch code',
+        dest='gen_dist_branch',
+        action='store_true',
+    )
+
     options = parser.parse_args()
 
     api_yaml_path = options.api_yaml_path
     sparse_api_yaml_path = options.sparse_api_yaml_path
     dygraph_header_file_path = options.dygraph_api_header_path
     dygraph_source_file_path = options.dygraph_api_source_path
+    gen_dist_branch = options.gen_dist_branch
 
     generate_intermediate_api(
         api_yaml_path,
         sparse_api_yaml_path,
         dygraph_header_file_path,
         dygraph_source_file_path,
+        gen_dist_branch,
     )
 
 

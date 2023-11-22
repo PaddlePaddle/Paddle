@@ -11,6 +11,6 @@ if(WITH_CINN)
 endif()
 
 cc_library(
-  transform
+  pir_transforms
   SRCS ${transforms_srcs}
   DEPS ${transforms_deps})

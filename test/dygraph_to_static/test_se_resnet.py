@@ -43,13 +43,15 @@ EPOCH_NUM = 1
 PRINT_STEP = 2
 STEP_NUM = 10
 
-place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
+place = (
+    paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+)
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
 #        some algorithm results are non-deterministic, like convolution algorithms.
-if base.is_compiled_with_cuda():
-    base.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.is_compiled_with_cuda():
+    paddle.set_flags({'FLAGS_cudnn_deterministic': True})
 
 train_parameters = {
     "learning_strategy": {

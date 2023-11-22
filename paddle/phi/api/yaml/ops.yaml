@@ -1914,6 +1914,7 @@
   output : Tensor(size)
   infer_meta :
     func : NumelInferMeta
+    spmd_rule : NumelInferSpmd
   kernel :
     func : numel
     data_type : x
@@ -2308,16 +2309,6 @@
   optional : master_param, master_param_out
   inplace : (param -> param_out), (master_param -> master_param_out)
 
-- op : shadow_output
-  args : (Tensor x, str name)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel:
-    func : shadow_output
-    param : [x]
-
 - op : shape
   args : (Tensor input)
   output : Tensor(out)
@@ -2506,6 +2497,7 @@
   output : Tensor (out)
   infer_meta :
     func : StackInferMeta
+    spmd_rule : StackInferSpmd
   kernel :
     func : stack
   backward : stack_grad
@@ -2600,6 +2592,16 @@
     func : thresholded_relu
   inplace: (x -> out)
   backward : thresholded_relu_grad
+
+- op : top_p_sampling
+  args : (Tensor x, Tensor ps, Tensor threshold, int seed=-1)
+  output : Tensor (out), Tensor(ids)
+  infer_meta :
+    func : TopPSamplingInferMeta
+  kernel :
+    func : top_p_sampling
+    data_type : x
+  optional : threshold
 
 - op : topk
   args : (Tensor x, Scalar(int) k = 1, int axis = -1, bool largest = true, bool sorted = true)
@@ -2845,6 +2847,7 @@
   output : Tensor(out)
   infer_meta :
     func : WhereInferMeta
+    spmd_rule: WhereInferSpmd
   kernel :
     func : where
   inplace: (x -> out)
