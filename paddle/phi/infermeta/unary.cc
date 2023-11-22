@@ -149,6 +149,29 @@ void ArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(make_ddim({1}));
 }
 
+void ArrayToTensorInferMeta(const MetaTensor& x,
+                            int axis,
+                            bool use_stack,
+                            MetaTensor* out,
+                            MetaConfig config) {
+  if (config.is_runtime) return;
+  auto dims = x.dims();
+  // if the shape is empty
+  if (dims == phi::make_ddim({0UL})) return;
+  // otherwise, suppose the shape of array is the shape of tensor in the
+  // array, which is consistent with what tensor_array_read_write dose
+  if (use_stack) {
+    auto dim_vec = phi::vectorize<int>(dims);
+    // use -1 for the stack dim size
+    dim_vec.insert(dim_vec.begin() + axis, -1);
+    dims = phi::make_ddim(dim_vec);
+  } else {
+    // use -1 for the concat dim size
+    dims[axis] = -1;
+  }
+  out->set_dims(dims);
+}
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
