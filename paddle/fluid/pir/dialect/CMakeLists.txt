@@ -142,6 +142,8 @@ foreach(generated_file ${generated_files_pir})
   endif()
 endforeach()
 
+add_custom_target(ops_api_gen ALL DEPENDS ${ops_api_source_file})
+
 #Note(risemeup1):compile some *.cc files which do not depend on primitive_vjp_experimental into op_dialect.a/lib
 file(GLOB_RECURSE op_dialect_srcs "*.cc")
 list(
