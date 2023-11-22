@@ -92,7 +92,7 @@ def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
             # wait if any async_save task has not been done
             paddle.clear_async_task_queue()
     '''
-    if in_dygraph_mode():
+    if not in_dygraph_mode():
         raise ValueError(
             "async_save currently is not supported in static mode."
         )

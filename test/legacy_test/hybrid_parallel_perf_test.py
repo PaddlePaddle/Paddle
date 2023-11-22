@@ -120,8 +120,8 @@ class TestDistMPTraning(unittest.TestCase):
         )
 
         topo = CommunicateTopology(
-            hybrid_group_names=["data", "pipe", "sharding", "model"],
-            dims=[1, 1, 1, 2],
+            hybrid_group_names=["data", "pipe", "sharding", "sep", "model"],
+            dims=[1, 1, 1, 1, 2],
         )
         self.hcg = HybridCommunicateGroup(topo)
 
