@@ -1410,6 +1410,7 @@
   output : Tensor(out), Tensor(mean), Tensor(variance)
   infer_meta :
     func : LayerNormInferMeta
+    spmd_rule : LayerNormInferSpmd
   kernel :
     func : layer_norm
     data_type : x
@@ -2816,7 +2817,7 @@
     data_type : out_dtype
 
 - op : weight_only_linear
-  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype)
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch = 80)
   output : Tensor(out)
   infer_meta :
     func : WeightOnlyLinearInferMeta
@@ -2827,7 +2828,7 @@
   backward: weight_only_linear_grad
 
 - op : weight_quantize
-  args : (Tensor x, str algo="weight_only_int8")
+  args : (Tensor x, str algo = "weight_only_int8", int arch = 80)
   output : Tensor(out), Tensor(scale)
   infer_meta :
     func : WeightQuantizeInferMeta

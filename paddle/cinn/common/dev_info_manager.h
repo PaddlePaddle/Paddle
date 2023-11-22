@@ -16,6 +16,7 @@
 
 #include <memory>
 
+#include "paddle/cinn/common/dev_info_base.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/nvgpu_dev_info.h"
 #include "paddle/cinn/common/target.h"
@@ -23,30 +24,43 @@
 namespace cinn {
 namespace common {
 
+template <Target::Arch arch>
+struct GetDevType {
+  using DevType = DevInfoBase;
+};
+
+// Extra device should be added here
+class NVGPUDevInfo;
+template <>
+struct GetDevType<Target::Arch::NVGPU> {
+  using DevType = NVGPUDevInfo;
+};
+
+template <Target::Arch arch>
 class DevInfoMgr final {
  private:
-  explicit DevInfoMgr(Target::Arch arch = Target::Arch::Unk,
-                      int device_num = 0);
+  explicit DevInfoMgr(int device_num = 0) : device_num_(device_num) {
+    impl_ = std::make_unique<typename GetDevType<arch>::DevType>(device_num);
+  }
+
   std::unique_ptr<DevInfoBase> impl_;
-  Target::Arch arch_;
   int device_num_;
 
  public:
-  static std::unique_ptr<DevInfoMgr> GetDevInfo(
-      Target::Arch arch = Target::Arch::NVGPU, int device_num = 0);
+  static DevInfoMgr<arch> GetDevInfo(int device_num = 0) {
+    return DevInfoMgr(device_num);
+  }
 
-// Extra device should be added here
-#ifdef CINN_WITH_CUDA
-  using RET_TYPE = NVGPUDevInfo;
-  const RET_TYPE* operator->() const {
-    CHECK(!std::is_void<RET_TYPE>()) << "Current device can't be recognized!\n";
-    return dynamic_cast<const RET_TYPE*>(impl_.get());
+  using RetType = typename GetDevType<arch>::DevType;
+
+  const RetType* operator->() const {
+    CHECK(!std::is_void<RetType>()) << "Current device can't be recognized!\n";
+    return dynamic_cast<const RetType*>(impl_.get());
   }
-  RET_TYPE* operator->() {
-    CHECK(!std::is_void<RET_TYPE>()) << "Current device can't be recognized!\n";
-    return dynamic_cast<RET_TYPE*>(impl_.get());
+  RetType* operator->() {
+    CHECK(!std::is_void<RetType>()) << "Current device can't be recognized!\n";
+    return dynamic_cast<RetType*>(impl_.get());
   }
-#endif
 };
 
 }  // namespace common
