@@ -1333,7 +1333,6 @@ struct PD_INFER_DECL AnalysisConfig {
     if (nIds >= 0x00000001) {
       // EAX = 1
       cpuid(reg.data(), 0x00000001);
-      // AVX: ECX Bit 28
     }
     if (nIds >= 0x00000007) {
       // EAX = 7
