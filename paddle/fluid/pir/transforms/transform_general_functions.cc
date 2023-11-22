@@ -46,8 +46,8 @@ std::string GetParameterNameFromValue(pir::Value value) {
                .AsString();
   } else {
     PADDLE_THROW(
-      phi::errors::Unimplemented("Value must be a weight from a GetParameter "
-                                 "or a ConstantTensorOp op."));
+        phi::errors::Unimplemented("Value must be a weight from a GetParameter "
+                                   "or a ConstantTensorOp op."));
   }
   return name;
 }
