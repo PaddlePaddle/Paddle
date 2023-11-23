@@ -170,7 +170,6 @@ class TestCollectiveAPIRunnerBase:
             )
         else:
             out = self.get_model(train_prog, startup_prog, rank, indata)
-            # print(out, sys.stderr)
         dump_output(out)
 
 
@@ -228,7 +227,6 @@ class TestDistBase(unittest.TestCase):
     def _run_cluster(self, model_file, envs):
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
-        # print("w0_ep:",w0_ep," w1_ep:",w1_ep)
         if core.is_compiled_with_cuda():
             env0 = {
                 "FLAGS_selected_gpus": "0",
@@ -287,7 +285,6 @@ class TestDistBase(unittest.TestCase):
         )
         tr0_pipe = open(path0, "w")
         tr1_pipe = open(path1, "w")
-        # print(tr0_cmd)
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(),
             stdout=subprocess.PIPE,

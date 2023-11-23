@@ -27,13 +27,6 @@ class TestCBroadcastOp(TestDistBase):
         pass
 
     def test_broadcast(self):
-        # dtypes_to_test = [
-        #    "float16",
-        #    "float32",
-        #    "float64",
-        #    "int32",
-        #    "int64",
-        # ]
         support_types = get_xpu_op_support_types('c_broadcast')
         for dtype in support_types:
             self.check_with_place(

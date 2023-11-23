@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,8 +38,6 @@ def all_gather_new(tensor_list, tensor, group=None):
                 'float64',
                 'int32',
                 'int64',
-                'bool',
-                'uint8',
             ],
             op_type,
         )
@@ -52,8 +50,6 @@ def all_gather_new(tensor_list, tensor, group=None):
             'float64',
             'int32',
             'int64',
-            'bool',
-            'uint8',
         ],
         op_type,
     )
