@@ -17,8 +17,8 @@
 #include <iostream>
 #include <memory>
 #include <string>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/comm_context.h"
