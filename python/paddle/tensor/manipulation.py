@@ -2271,9 +2271,25 @@ def tensor_split(x, indices_or_sections, axis=0, name=None):
     total_n = x.shape[axis]
 
     def _tensor_split_indices(x, total_n, indices, axis):
-        indices = [0] + list(indices) + [total_n]
-        num_or_sections = np.diff(indices).tolist()
-        return split(x, num_or_sections, axis)
+        splits = []
+
+        starts = 0
+        ends = 0
+        for idx in list(indices) + [total_n]:
+            ends = idx
+            # convert index < 0 to positive
+            starts_index = starts if starts >= 0 else total_n + starts
+            ends_index = ends if ends >= 0 else total_n + ends
+            # ends index should equal or larger than starts
+            ends_index = max(starts_index, ends_index)
+
+            sub_array = paddle.slice(
+                x, axes=[axis], starts=[starts_index], ends=[ends_index]
+            )
+            splits.append(sub_array)
+            starts = ends
+
+        return splits
 
     def _tensor_split_sections(x, total_n, sections, axis):
         if sections <= 0:

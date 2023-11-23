@@ -43,6 +43,7 @@ DTYPE_ALL_GPU = DTYPE_ALL_CPU | (
     else set()
 )
 
+
 PLACES = [paddle.CPUPlace()] + (
     [paddle.CUDAPlace(0)] if core.is_compiled_with_cuda() else []
 )
@@ -622,6 +623,36 @@ class TestTensorSplit(BaseTest):
             {**x, 'split_paddle': [2, 4, 6], 'split_numpy': [2, 4, 6]}
         )
 
+    def test_special_indices(self):
+        """indices in a mess, negative index, index out of range"""
+        self.func_paddle = functools.partial(paddle.tensor_split, axis=0)
+        self.func_numpy = functools.partial(np.array_split, axis=0)
+
+        x = generate_data([7])
+        # indices' order in a mess
+        self._test_all(
+            {**x, 'split_paddle': [2, 1, 3], 'split_numpy': [2, 1, 3]}
+        )
+
+        # index out of range
+        self._test_all(
+            {**x, 'split_paddle': [2, 3, 16], 'split_numpy': [2, 3, 16]}
+        )
+
+        # index with -1
+        self._test_all(
+            {**x, 'split_paddle': [3, -1, 16], 'split_numpy': [3, -1, 16]}
+        )
+
+        # mix index
+        self._test_all(
+            {
+                **x,
+                'split_paddle': [3, -1, 5, 2, 16],
+                'split_numpy': [3, -1, 5, 2, 16],
+            }
+        )
+
     def test_dtype(self):
         self.func_paddle = functools.partial(paddle.tensor_split, axis=0)
         self.func_numpy = functools.partial(np.array_split, axis=0)
@@ -742,24 +773,6 @@ class TestTensorSplit(BaseTest):
         x = generate_data([6])
         with self.assertRaises(ValueError):
             self._test_all({**x, 'split_paddle': 0, 'split_numpy': None})
-
-    def test_error_from_numpy(self):
-        """not support(like numpy does) indices in a mess, or index out of range"""
-        self.func_paddle = functools.partial(paddle.tensor_split, axis=0)
-        self.func_numpy = functools.partial(np.array_split, axis=0)
-
-        x = generate_data([7])
-        with self.assertRaises(ValueError):
-            # indices' order in a mess
-            self._test_all(
-                {**x, 'split_paddle': [2, 1, 3], 'split_numpy': None}
-            )
-
-        with self.assertRaises(RuntimeError):
-            # index out of range
-            self._test_all(
-                {**x, 'split_paddle': [2, 3, 16], 'split_numpy': None}
-            )
 
 
 if __name__ == '__main__':
