@@ -278,8 +278,8 @@ class MultiHeadAttention(Layer):
                 should be float32 or float64.
 
         Returns:
-            tuple: A tuple including transformed keys and values. Their shapes \
-                both are `[batch_size, num_heads, sequence_length, embed_dim // num_heads]`, \
+            tuple: A tuple including transformed keys and values. Their shapes
+                both are `[batch_size, num_heads, sequence_length, embed_dim // num_heads]`,
                 and their data types are same as inputs.
         """
         k = self.k_proj(key)
@@ -393,15 +393,15 @@ class MultiHeadAttention(Layer):
                 Default None.
 
         Returns:
-            Tensor|tuple: It is a tensor that has the same shape and data type \
-                as `query`, representing attention output. Or a tuple if \
-                `need_weights` is True or `cache` is not None. If `need_weights` \
-                is True, except for attention output, the tuple also includes \
-                the attention weights tensor shaped `[batch_size, num_heads, query_length, key_length]`. \
-                If `cache` is not None, the tuple then includes the new cache \
-                having the same type as `cache`, and if it is `StaticCache`, it \
-                is same as the input `cache`, if it is `Cache`, the new cache \
-                reserves tensors concatanating raw tensors with intermediate \
+            Tensor|tuple: It is a tensor that has the same shape and data type
+                as `query`, representing attention output. Or a tuple if
+                `need_weights` is True or `cache` is not None. If `need_weights`
+                is True, except for attention output, the tuple also includes
+                the attention weights tensor shaped `[batch_size, num_heads, query_length, key_length]`.
+                If `cache` is not None, the tuple then includes the new cache
+                having the same type as `cache`, and if it is `StaticCache`, it
+                is same as the input `cache`, if it is `Cache`, the new cache
+                reserves tensors concatanating raw tensors with intermediate
                 results of current query.
         """
         key = query if key is None else key
