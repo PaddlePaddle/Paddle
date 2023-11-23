@@ -444,7 +444,7 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::run_gemm<EpilogueTag>(
                                             n,
                                             k,
                                             num_experts,
-                                            /* split_k_limit */ 1,
+                                            split_k_limit,
                                             workspace_bytes,
                                             multi_processor_count_,
                                             is_weight_only);
