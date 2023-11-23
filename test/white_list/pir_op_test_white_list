@@ -84,6 +84,7 @@ test_diag_embed
 test_diag_v2
 test_diagonal_op
 test_digamma_op
+test_dirichlet_op
 test_dist_op
 test_dot_op
 test_dpsgd_op
