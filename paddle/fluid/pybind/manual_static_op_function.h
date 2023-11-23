@@ -248,7 +248,7 @@ static PyObject *static_api_array_to_tensor(PyObject *self,
     PyObject *axis_obj = PyTuple_GET_ITEM(args, 1);
     auto axis = CastPyArg2Int(axis_obj, "array_to_tensor", 1);
     PyObject *use_stack_obj = PyTuple_GET_ITEM(args, 2);
-    auto use_stack = CastPyArg2Bool(use_stack_obj, "array_to_tensor", 2);
+    auto use_stack = CastPyArg2Boolean(use_stack_obj, "array_to_tensor", 2);
 
     // Call ir static api
     auto static_api_out = paddle::dialect::array_to_tensor(x, axis, use_stack);
