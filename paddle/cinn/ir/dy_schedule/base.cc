@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/dy_schedule/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace ir {
@@ -21,7 +22,17 @@ namespace ir {
 void DyScheduleImpl::MergeExprs() { CINN_NOT_IMPLEMENTED; }
 
 bool DyScheduleImpl::HasBlock(const std::string& block_name) const {
-  CINN_NOT_IMPLEMENTED;
+  auto exprs = module_expr_.GetExprs();
+  for (auto& it_expr : exprs) {
+    ir::FindBlocksVisitor visitor(block_name);
+    auto find_blocks = visitor(&it_expr);
+    if (!find_blocks.empty()) {
+      CHECK_EQ(find_blocks.size(), 1U)
+          << "There should not be more than 1 block with identical name!";
+      return true;
+    }
+  }
+  return false;
 }
 
 std::vector<Expr> DyScheduleImpl::GetLoops(const Expr& block) const {
@@ -44,7 +55,24 @@ Expr DyScheduleImpl::GetBlock(const std::string& block_name) const {
 }
 
 Expr DyScheduleImpl::GetRootBlock(const Expr& expr) const {
-  CINN_NOT_IMPLEMENTED;
+  auto exprs = this->GetModule().GetExprs();
+  for (auto& it_expr : exprs) {
+    auto find_expr = ir::ir_utils::CollectIRNodesWithoutTensor(
+        it_expr,
+        [&](const Expr* x) {
+          return x->node_type() == expr.node_type() && *x == expr;
+        },
+        true);
+    if (!find_expr.empty()) {
+      CHECK(it_expr.As<ir::Block>());
+      CHECK_EQ(it_expr.As<ir::Block>()->stmts.size(), 1U);
+      CHECK(it_expr.As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>());
+      return it_expr.As<ir::Block>()->stmts[0];
+    }
+  }
+  LOG(FATAL) << "Didn't find expr \n"
+             << expr << "in StScheduleImpl:\n"
+             << exprs[0];
 }
 
 DeviceAPI DyScheduleImpl::GetDeviceAPI() const { CINN_NOT_IMPLEMENTED; }

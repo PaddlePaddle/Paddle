@@ -1154,27 +1154,6 @@ Expr StScheduleImpl::Reorder(const Expr& block,
   return this->Reorder(loops_expr);
 }
 
-Expr StScheduleImpl::GetRootBlock(const Expr& expr) const {
-  auto exprs = this->GetModule().GetExprs();
-  for (auto& it_expr : exprs) {
-    auto find_expr = ir::ir_utils::CollectIRNodesWithoutTensor(
-        it_expr,
-        [&](const Expr* x) {
-          return x->node_type() == expr.node_type() && *x == expr;
-        },
-        true);
-    if (!find_expr.empty()) {
-      CHECK(it_expr.As<ir::Block>());
-      CHECK_EQ(it_expr.As<ir::Block>()->stmts.size(), 1U);
-      CHECK(it_expr.As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>());
-      return it_expr.As<ir::Block>()->stmts[0];
-    }
-  }
-  LOG(FATAL) << "Didn't find expr \n"
-             << expr << "in StScheduleImpl:\n"
-             << exprs[0];
-}
-
 // The struct used to reconstruct the new For node to replace the old For node.
 struct LoopReconstructor : public ir::IRMutator<> {
  public:
