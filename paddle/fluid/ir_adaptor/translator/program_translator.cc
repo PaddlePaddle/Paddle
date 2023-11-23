@@ -471,7 +471,7 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
                    0,
                    true_sub_block.OpSize(),
                    true_block_context,
-                   true_region.front(),
+                   &true_region.front(),
                    true,
                    cond_ops.TrueBlockOutputVarNames(),
                    cond_ops.TrueBlockInitOps());
@@ -488,7 +488,7 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
                    0,
                    false_sub_block.OpSize(),
                    false_block_context,
-                   false_region.front(),
+                   &false_region.front(),
                    true,
                    cond_ops.FalseBlockOutputVarNames(),
                    cond_ops.FalseBlockInitOps());

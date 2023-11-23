@@ -527,11 +527,14 @@ class Optimizer:
                             )
                         self._learning_rate_map[
                             paddle.static.default_main_program()
-                        ] = paddle._pir_ops.full(
-                            [],
-                            self._learning_rate,
-                            _lr_dtype,
-                            place,
+                        ] = paddle.pir.core.create_parameter(
+                            dtype=_lr_dtype,
+                            shape=[],
+                            name=unique_name.generate("learning_rate"),
+                            trainable=False,
+                            initializer=paddle.nn.initializer.ConstantInitializer(
+                                value=float(self._learning_rate)
+                            ),
                         )
                 else:
                     if isinstance(lr, framework.Variable):

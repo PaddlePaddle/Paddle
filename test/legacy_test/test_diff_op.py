@@ -85,7 +85,7 @@ class TestDiffOp(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
-            with static.program_guard(
+            with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
                 x = paddle.static.data(

@@ -271,7 +271,7 @@ TEST(program_test, builder) {
       std::vector<int64_t>{2, 2}, 1.5, phi::DataType::FLOAT32, phi::CPUPlace());
   pir::Type full_op_output = full_op->result_type(0);
   EXPECT_EQ(program.block()->size(), 1u);
-  EXPECT_EQ(program.block()->back(), full_op.operation());
+  EXPECT_EQ(program.block()->back(), *full_op.operation());
   EXPECT_EQ(full_op.num_operands(), 0u);
   EXPECT_EQ(full_op.num_results(), 1u);
   EXPECT_EQ(full_op.attributes().size(), 5u);

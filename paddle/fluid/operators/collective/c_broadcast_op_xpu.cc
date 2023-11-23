@@ -118,4 +118,7 @@ PD_REGISTER_STRUCT_KERNEL(c_broadcast,
                           ALL_LAYOUT,
                           ops::CBroadcastOpXPUKernel,
                           float,
-                          plat::float16) {}
+                          double,
+                          plat::float16,
+                          int,
+                          int64_t) {}

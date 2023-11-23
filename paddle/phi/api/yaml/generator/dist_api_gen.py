@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import collections
 import re
 
 import yaml
@@ -52,11 +53,13 @@ MAIN_DIST_BRANCH_TEMPLATE = """
       // 4. Select Kernel{}
       // 5. Reshard Input{}\n
       // 6. PrepareData (DataTransform & Prepare Dense Input){}
-      // 7. Infer Local DenseTensor Meta{}
-      // 8. DenseTensor Kernel Call{}
+      // 7. RecordOpInfoSupplement{}
+      // 8. Infer Local DenseTensor Meta{}
+      // 9. DenseTensor Kernel Call{}
+      // 10. Fallback{}
     }}\n
-    // 9. Set Output Dist Attr For Default Impl{}\n
-    // 10. Return
+    // 11. Set Output Dist Attr For Default Impl{}\n
+    // 12. Return
     {}
   }}
 """
@@ -164,7 +167,7 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{idx} = SetKernelDistOutput(&{out}, spmd_info.second[{idx}]);
-    auto dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
+    auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
     if (!rank_is_in_current_mesh) {{
       *dense_out_{idx} = phi::DenseTensor(
             std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
@@ -368,9 +371,16 @@ VECTOR_OUTPUT_NAME_TEMPLATE = """
 TUPLE_OUTPUT_NAME_TEMPLATE = """
 """
 KERNEL_CALL_TEMPLATE = """
+      phi::RecordEvent* kernel_record_event = nullptr;
+      if(phi::RecordEvent::IsEnabled()){{
+        kernel_record_event = new phi::RecordEvent(\"{} dist compute\", phi::TracerEventType::OperatorInner, 1);
+      }}
       using kernel_signature = {};
       auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
       (*kernel_fn)({}, {});
+      if(kernel_record_event != nullptr){{
+        delete kernel_record_event;
+      }}
 """
 
 # TODO(GhostScreaming): Some operators generate shape info in runtime,
@@ -761,10 +771,26 @@ class DistForwardAPI(ForwardAPI):
                     input_args_code += "meta_dist_input_" + param + ", "
                 elif (
                     self.inputs['input_info'][param]
+                    == "const paddle::optional<Tensor>&"
+                ):
+                    input_decl_code += (
+                        OPTIONAL_SINGLE_DIST_META_IN_TEMPLATE.format(name=param)
+                    )
+                    input_args_code += "meta_dist_input_" + param + ", "
+                elif (
+                    self.inputs['input_info'][param]
                     == "const std::vector<Tensor>&"
                 ):
                     input_decl_code += VECTOR_DIST_META_IN_TEMPLATE.format(
                         name=param
+                    )
+                    input_args_code += "meta_dist_input_" + param + ", "
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const paddle::optional<Tensor>&"
+                ):
+                    input_decl_code += (
+                        OPTIONAL_SINGLE_DIST_META_IN_TEMPLATE.format(name=param)
                     )
                     input_args_code += "meta_dist_input_" + param + ", "
 
@@ -883,7 +909,10 @@ class DistForwardAPI(ForwardAPI):
             # kernel output generate
             self.dist_output_args.append('dist_out')
             self.dense_output_args.append('dense_out')
-            if self.outputs['types'][0] == 'Tensor':
+            if (
+                self.outputs['types'][0] == 'Tensor'
+                or self.outputs['types'][0] == 'const paddle::optional<Tensor>'
+            ):
                 if (
                     self.need_to_generate_code_for_inplace_impl(0)
                     and self.generate_general_infer_spmd
@@ -1135,10 +1164,7 @@ class DistForwardAPI(ForwardAPI):
 
         return input_reshard_code
 
-    def generate_single_dense_input(
-        self,
-        input_name,
-    ):
+    def generate_single_dense_input(self, input_name, input_name_tensor_map):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
         input_names = self.inputs['names']
@@ -1159,13 +1185,11 @@ class DistForwardAPI(ForwardAPI):
                 idx=kernel_param.index(input_name),
                 trans_flag=trans_flag,
             )
+        input_name_tensor_map[input_name].append((f'input_{input_name}', False))
 
         return input_tensor_code
 
-    def generate_vector_dense_input(
-        self,
-        input_name,
-    ):
+    def generate_vector_dense_input(self, input_name, input_name_tensor_map):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
         input_names = self.inputs['names']
@@ -1178,12 +1202,14 @@ class DistForwardAPI(ForwardAPI):
             idx=kernel_param.index(input_name),
             trans_flag=trans_flag,
         )
+        input_name_tensor_map[input_name].append(
+            (f'dense_input_{input_name}_vec', True)
+        )
 
         return input_tensor_code
 
     def generate_optional_single_dense_input(
-        self,
-        input_name,
+        self, input_name, input_name_tensor_map
     ):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
@@ -1207,12 +1233,12 @@ class DistForwardAPI(ForwardAPI):
                     trans_flag=trans_flag,
                 )
             )
+        input_name_tensor_map[input_name].append((f'input_{input_name}', False))
 
         return input_tensor_code
 
     def generate_optional_vector_dense_input(
-        self,
-        input_name,
+        self, input_name, input_name_tensor_map
     ):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
@@ -1227,6 +1253,8 @@ class DistForwardAPI(ForwardAPI):
             trans_flag=trans_flag,
         )
 
+        input_name_tensor_map[input_name].append((f'input_{input_name}', True))
+
         return input_tensor_code
 
     def generate_prepare_data_code(self) -> str:
@@ -1235,6 +1263,7 @@ class DistForwardAPI(ForwardAPI):
         kernel_param = self.kernel['param']
         if kernel_param is None:
             kernel_param = input_names + attr_names
+        input_name_tensor_map = collections.defaultdict(list)
         input_tensor_code = ""
         for i, input_name in enumerate(input_names):
             # set input code
@@ -1245,7 +1274,7 @@ class DistForwardAPI(ForwardAPI):
                 if api_tensor_type in self.gene_dist_input_func.keys():
                     input_tensor_code += self.gene_dist_input_func[
                         api_tensor_type
-                    ][phi_tensor_type](input_name)
+                    ][phi_tensor_type](input_name, input_name_tensor_map)
                 else:
                     # do nothing
                     pass
@@ -1277,7 +1306,7 @@ class DistForwardAPI(ForwardAPI):
                                 )
                             )
 
-        return input_tensor_code
+        return input_tensor_code, input_name_tensor_map
 
     def generate_infer_meta_code(self) -> str:
         input_names = self.inputs['names']
@@ -1428,6 +1457,7 @@ class DistForwardAPI(ForwardAPI):
         kernel_signature = "void(*)(" + ", ".join(kernel_args_type_list) + ")"
 
         result = KERNEL_CALL_TEMPLATE.format(
+            self.api,
             kernel_signature,
             ", ".join(input_args),
             ", ".join(self.dense_output_args),
@@ -1443,6 +1473,26 @@ class DistForwardAPI(ForwardAPI):
                 for i in range(len(self.outputs['types'])):
                     result += MULTI_SINGLE_SET_DIST_OUT_DIMS.format(i, i)
         return result
+
+    def generate_fallback_code(self) -> str:
+        fallback_code = ""
+        fallback_code += """
+      if (kernel_result.has_fallback_cpu) {"""
+        for kernel_out in self.dense_output_args:
+            fallback_code += f"""
+        TransDataBackend({kernel_out}, kernel_backend, {kernel_out});"""
+
+        inplace_flag = False
+        if len(self.inplace_map) > 0:
+            inplace_flag = True
+
+        fallback_code += self.reset_view_after_fallback(
+            self.outputs['types'], '        ', inplace_flag
+        )
+
+        fallback_code += """
+      }"""
+        return fallback_code
 
     def generate_output_dist_attr_setting(self) -> str:
         set_out_dist_attr_code = ""
@@ -1508,21 +1558,69 @@ class DistForwardAPI(ForwardAPI):
     def generate_return_code(self) -> str:
         return self.gene_return_code()
 
+    def generate_strided_handle_code(self) -> str:
+        pre_save_stride = ""
+        transdata2strided = ""
+
+        if len(self.inplace_map) > 0 and self.kernel['func'][0] not in [
+            "squeeze",
+            "unsqueeze",
+            "reshape",
+            "flatten",
+            "transpose",
+        ]:
+            i = 0
+            for kernel_out in self.dense_output_args:
+                pre_save_stride += f"""
+      auto backup{i} = ProcessStrideBackup(&{kernel_out});"""
+                transdata2strided += f"""
+      TransStride(dev_ctx, {kernel_out}, backup{i});"""
+                i = i + 1
+        return pre_save_stride, transdata2strided
+
     def generate_auto_paralel_branch(self) -> str:
         # if no tensor input, do not genetate auto parallel branch
         if len(self.inputs['names']) == 0:
             return ""
+
+        infer_spmd_code = self.generate_infer_spmd_code()
+        output_creation_code = self.generate_output_creation_code()
+        infer_global_shape_code = self.generate_infer_global_shape_code()
+        kernel_selection_code = self.generate_kernel_selection_code()
+        reshard_input_code = self.generate_reshard_input_code()
+        (
+            prepare_data_code,
+            input_name_tensor_map,
+        ) = self.generate_prepare_data_code()
+        record_op_info_supplement_code = (
+            self.generate_record_op_info_supplement(
+                input_name_tensor_map, '    ', True
+            )
+        )
+        infer_meta_code = self.generate_infer_meta_code()
+        kernel_call_code = self.generate_kernel_call_code()
+        fallback_code = self.generate_fallback_code()
+        output_dist_attr_setting = self.generate_output_dist_attr_setting()
+        return_code = self.generate_return_code()
+        pre_save_stride, transdata2strided = self.generate_strided_handle_code()
+        if len(pre_save_stride) != 0:
+            kernel_call_code = (
+                pre_save_stride + kernel_call_code + transdata2strided
+            )
+
         return MAIN_DIST_BRANCH_TEMPLATE.format(
-            self.generate_infer_spmd_code(),
-            self.generate_output_creation_code(),
-            self.generate_infer_global_shape_code(),
-            self.generate_kernel_selection_code(),
-            self.generate_reshard_input_code(),
-            self.generate_prepare_data_code(),
-            self.generate_infer_meta_code(),
-            self.generate_kernel_call_code(),
-            self.generate_output_dist_attr_setting(),
-            self.generate_return_code(),
+            infer_spmd_code,
+            output_creation_code,
+            infer_global_shape_code,
+            kernel_selection_code,
+            reshard_input_code,
+            prepare_data_code,
+            record_op_info_supplement_code,
+            infer_meta_code,
+            kernel_call_code,
+            fallback_code,
+            output_dist_attr_setting,
+            return_code,
         )
 
     def check_argument_whether_support_auto_parallel(self):

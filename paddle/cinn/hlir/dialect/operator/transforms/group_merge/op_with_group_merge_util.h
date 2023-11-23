@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "paddle/cinn/hlir/framework/pir/group.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/operation.h"
@@ -60,8 +61,6 @@ std::vector<T> GetVectorAttr(const ::pir::Operation* op,
   }
   return vec_res;
 }
-
-OpPatternKind GetOpKind(const std::string& op_name);
 
 phi::DDim GetFirstInputShape(const ::pir::Operation* op);
 
@@ -114,7 +113,8 @@ inline bool reduce_fuse_reduce(::pir::Operation* producer,
                                const std::shared_ptr<Group>& consumer) {
   ::pir::Operation* reducer = NULL;
   for (auto* master : consumer->master_ops) {
-    if (GetOpKind(master->name()) == OpPatternKind::kReduction) {
+    if (hlir::framework::pir::CompatibleInfo::OpKind(*master) ==
+        OpPatternKind::kReduction) {
       reducer = master;
       break;
     }
@@ -157,7 +157,8 @@ inline bool reduce_fuse_reduce(::pir::Operation* producer,
     if (input_shape_same || without_last_dim) {
       auto shared_size = GetSharedSize(producer);
       for (auto* master : consumer->master_ops) {
-        if (GetOpKind(master->name()) == OpPatternKind::kReduction) {
+        if (hlir::framework::pir::CompatibleInfo::OpKind(*master) ==
+            OpPatternKind::kReduction) {
           shared_size += GetSharedSize(master);
         }
       }
@@ -207,7 +208,8 @@ inline bool is_horizontal_relation(::pir::Operation* producer,
   };
 
   for (auto op : consumer->ops_set) {
-    if (GetOpKind(op->name()) != consumer->op_pattern_kind) {
+    if (hlir::framework::pir::CompatibleInfo::OpKind(*op) !=
+        consumer->op_pattern_kind) {
       continue;
     }
     if (check_depency(op)) {
@@ -228,7 +230,8 @@ inline bool horizontal_or_vertical_reduce_relation(
   // reducer op in fusion op.
   ::pir::Operation* reducer = NULL;
   for (auto* master : consumer->master_ops) {
-    if (GetOpKind(master->name()) == OpPatternKind::kReduction) {
+    if (hlir::framework::pir::CompatibleInfo::OpKind(*master) ==
+        OpPatternKind::kReduction) {
       reducer = master;
       break;
     }
@@ -385,7 +388,8 @@ inline bool reduce_fuse_broadcast(::pir::Operation* producer,
       };
 
   for (auto op : consumer->ops_set) {
-    if (GetOpKind(op->name()) != OpPatternKind::kBroadcast) {
+    if (hlir::framework::pir::CompatibleInfo::OpKind(*op) !=
+        OpPatternKind::kBroadcast) {
       continue;
     }
 

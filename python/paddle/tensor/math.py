@@ -1157,7 +1157,7 @@ def _add_with_axis(x, y, axis=-1, name=None):
 
 def _subtract_with_axis(x, y, axis=-1, name=None):
     # opt performance, only dynamic mode needs reshape
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _elementwise_op_with_axis(x, y, axis, name, "subtract")
     else:
         op_type = 'elementwise_sub'
@@ -1166,7 +1166,7 @@ def _subtract_with_axis(x, y, axis=-1, name=None):
 
 def _multiply_with_axis(x, y, axis=-1, name=None):
     # opt performance, only dynamic mode needs reshape
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _elementwise_op_with_axis(x, y, axis, name, "multiply")
     else:
         op_type = 'elementwise_mul'
@@ -1175,7 +1175,7 @@ def _multiply_with_axis(x, y, axis=-1, name=None):
 
 def _divide_with_axis(x, y, axis=-1, name=None):
     # opt performance, only dynamic mode needs reshape
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _elementwise_op_with_axis(x, y, axis, name, "divide")
     else:
         op_type = 'elementwise_div'
