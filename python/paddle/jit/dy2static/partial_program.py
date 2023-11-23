@@ -24,7 +24,6 @@ from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import _apply_pass, get_flags
-from paddle.base.unique_name import switch
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
@@ -170,19 +169,12 @@ class PartialProgramLayer:
     """
 
     def __init__(
-        self,
-        main_program,
-        inputs,
-        outputs,
-        name_generator,
-        parameters=None,
-        **kwargs
+        self, main_program, inputs, outputs, parameters=None, **kwargs
     ):
         super().__init__()
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
-        self._name_generator = name_generator
 
         self._build_strategy = kwargs.get('build_strategy', BuildStrategy())
         assert isinstance(self._build_strategy, BuildStrategy)
@@ -231,7 +223,6 @@ class PartialProgramLayer:
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        old_generator, old_para_name_checker = switch(self._name_generator)
 
         in_vars, in_var_names = self._prepare_inputs(inputs)
         out_vars = self._prepare_outputs()
@@ -255,14 +246,12 @@ class PartialProgramLayer:
         restored_nest_out = self._restore_out(out_vars)
         restored_nest_out = self._remove_no_value(restored_nest_out)
 
-        switch(old_generator, old_para_name_checker)
         return restored_nest_out
 
     def sot_call(self, inputs):
         """
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
-        old_generator, old_para_name_checker = switch(self._name_generator)
 
         out_vars = self._prepare_outputs()
         self._cast_fp16_if_pure_fp16(inputs)
@@ -281,7 +270,6 @@ class PartialProgramLayer:
             *attrs
         )
 
-        switch(old_generator, old_para_name_checker)
         return out_vars
 
     def _sync_lr_value_with_scheduler(self):
@@ -1123,7 +1111,6 @@ def partial_program_from(concrete_program, from_method=False):
         concrete_program.main_program,
         inputs,
         concrete_program.outputs,
-        concrete_program.name_generator,
         concrete_program.parameters,
         **concrete_program.kwargs
     )

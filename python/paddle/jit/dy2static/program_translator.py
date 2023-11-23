@@ -31,10 +31,6 @@ from paddle.base.dygraph.base import (
     param_guard,
     switch_to_static_graph,
 )
-from paddle.base.unique_name import (
-    UniqueNameGenerator,
-    guard as UniqueNameGuard,
-)
 from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
@@ -1135,7 +1131,6 @@ class ConcreteProgram:
         "startup_program",
         "parameters",
         "function",
-        "name_generator",
         'kwargs',
     ]
 
@@ -1145,7 +1140,6 @@ class ConcreteProgram:
         outputs,
         parameters,
         function,
-        name_generator,
         main_program,
         startup_program=None,
         **kwargs,
@@ -1156,7 +1150,6 @@ class ConcreteProgram:
         self.startup_program = startup_program
         self.parameters = parameters
         self.function = function
-        self.name_generator = name_generator
         self.kwargs = kwargs
 
     @staticmethod
@@ -1247,12 +1240,10 @@ class ConcreteProgram:
         # TODO(@xiongkun): support op call stack in new ir?
         # main_program = update_op_callstack_with_origin_info(main_program)
 
-        new_name_generator = UniqueNameGenerator()
         return ConcreteProgram(
             inputs=static_inputs,
             outputs=outputs,
             parameters=all_parameters_and_buffers,
-            name_generator=new_name_generator,
             function=dygraph_function,
             main_program=main_program,
             startup_program=startup_program,
@@ -1293,13 +1284,10 @@ class ConcreteProgram:
             framework.default_startup_program().random_seed
         )
 
-        new_name_generator = UniqueNameGenerator()
         ProgramTranslator.get_instance()._amp_records.clear()
 
         with framework.program_guard(main_program, startup_program):
-            with _to_static_mode_guard_(is_to_static=True), UniqueNameGuard(
-                new_name_generator
-            ):
+            with _to_static_mode_guard_(is_to_static=True):
                 # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.to_static_inputs_with_spec(
                     input_spec, main_program
@@ -1354,7 +1342,6 @@ class ConcreteProgram:
             outputs=outputs,
             parameters=all_parameters_and_buffers,
             function=dygraph_function,
-            name_generator=new_name_generator,
             main_program=main_program,
             startup_program=startup_program,
             **kwargs,
