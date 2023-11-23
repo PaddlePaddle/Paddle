@@ -18,6 +18,7 @@
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/concat_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/stack_kernel.h"
 
 namespace phi {
@@ -94,12 +95,18 @@ void ArrayToTensorKernel(const Context& dev_ctx,
   auto vec = phi::vectorize<int>(out_dims);
   vec.insert(vec.begin() + axis, x.size());  // NOLINT
   out->Resize(phi::make_ddim(vec));
-
-  std::vector<DenseTensor> tmp_tensors(x.size());
+  std::vector<DenseTensor> tmp_inputs(x.size());
   std::vector<const DenseTensor*> inputs;
+
+  std::vector<DenseTensor> tmp_indexs(x.size());
+  std::vector<const DenseTensor*> indexs;
+
   for (size_t i = 0; i < x.size(); i++) {
-    tmp_tensors[i].ShareDataWith(x[i]);
-    inputs.push_back(&tmp_tensors[i]);
+    tmp_inputs[i].ShareDataWith(x[i]);
+    inputs.push_back(&tmp_inputs[i]);
+    FullKernel<T, Context>(
+        dev_ctx, {1}, x[i].dims()[axis], DataType::INT32, &tmp_indexs[i]);
+    indexs.push_back(&tmp_indexs[i]);
   }
 
   if (use_stack) {
@@ -107,6 +114,9 @@ void ArrayToTensorKernel(const Context& dev_ctx,
   } else {
     ConcatKernel<T, Context>(dev_ctx, inputs, axis, out);
   }
+
+  out_index->Resize(phi::make_ddim({static_cast<int>(x.size())}));
+  StackKernel<T, Context>(dev_ctx, indexs, 0, out_index);
 }
 
 }  // namespace phi

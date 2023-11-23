@@ -172,6 +172,7 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
   }
   out->set_dims(dims);
   out_index->set_dtype(DataType::INT32);
+  out_index->set_dims(phi::make_ddim({-1}));
 }
 
 void ArgMinMaxInferMeta(const MetaTensor& x,
