@@ -1550,7 +1550,9 @@ OpInfoTuple ArrayToTensorOp::GetOpInfo() {
 
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
-          "out", "paddle::dialect::DenseTensorType", false, false)};
+          "out", "paddle::dialect::DenseTensorType", false, false),
+      paddle::dialect::OpOutputInfo(
+          "out_index", "paddle::dialect::DenseTensorType", false, false)};
 
   paddle::dialect::OpRunTimeInfo run_time_info =
       paddle::dialect::OpRunTimeInfo("ArrayToTensorInferMeta",
@@ -1595,8 +1597,15 @@ void ArrayToTensorOp::Build(pir::Builder &builder,             // NOLINT
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
 
-  phi::ArrayToTensorInferMeta(
-      meta_x, axis, use_stack, &meta_out, phi::MetaConfig(false, false));
+  paddle::dialect::IrTensor dense_out_index;
+  paddle::dialect::IrMetaTensor meta_out_index(&dense_out_index);
+
+  phi::ArrayToTensorInferMeta(meta_x,
+                              axis,
+                              use_stack,
+                              &meta_out,
+                              &meta_out_index,
+                              phi::MetaConfig(false, false));
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
@@ -1607,6 +1616,14 @@ void ArrayToTensorOp::Build(pir::Builder &builder,             // NOLINT
       dense_out.lod(),
       dense_out.offset());
   argument_outputs.push_back(out_dense_tensor_type);
+  pir::Type out_index_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out_index.dtype()),
+      dense_out_index.dims(),
+      dense_out_index.layout(),
+      dense_out_index.lod(),
+      dense_out_index.offset());
+  argument_outputs.push_back(out_index_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
 
@@ -1643,11 +1660,15 @@ void ArrayToTensorOp::VerifySig() {
     auto output_size = num_results();
     PADDLE_ENFORCE_EQ(
         output_size,
-        1u,
+        2u,
         phi::errors::PreconditionNotMet(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE(
         (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 0th output."));
+    PADDLE_ENFORCE(
+        (*this)->result(1).type().isa<paddle::dialect::DenseTensorType>(),
         phi::errors::PreconditionNotMet(
             "Type validation failed for the 0th output."));
   }

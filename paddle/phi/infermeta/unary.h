@@ -65,6 +65,7 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
                             int axis,
                             bool use_stack,
                             MetaTensor* out,
+                            MetaTensor* out_index,
                             MetaConfig config = MetaConfig());
 
 void AsRealInferMeta(const MetaTensor& input, MetaTensor* output);

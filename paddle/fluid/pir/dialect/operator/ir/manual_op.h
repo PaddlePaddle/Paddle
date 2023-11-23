@@ -277,6 +277,7 @@ class ArrayToTensorOp
   void VerifySig();
   pir::Value x() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
+  pir::OpResult out_index() { return result(2); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 

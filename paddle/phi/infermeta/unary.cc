@@ -153,6 +153,7 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
                             int axis,
                             bool use_stack,
                             MetaTensor* out,
+                            MetaTensor* out_index,
                             MetaConfig config) {
   if (config.is_runtime) return;
   auto dims = x.dims();
@@ -170,6 +171,7 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
     dims[axis] = -1;
   }
   out->set_dims(dims);
+  out_index->set_dtype(DataType::INT32);
 }
 
 void ArgMinMaxInferMeta(const MetaTensor& x,

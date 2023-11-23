@@ -68,5 +68,9 @@ pir::OpResult array_read(pir::Value array, pir::Value i);
 
 pir::OpResult array_write_(pir::Value array, pir::Value x, pir::Value i);
 
+std::tuple<pir::OpResult, pir::OpResult> array_to_tensor(pir::Value x,
+                                                         int axis,
+                                                         bool use_stack);
+
 }  // namespace dialect
 }  // namespace paddle
