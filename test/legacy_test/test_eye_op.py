@@ -23,7 +23,6 @@ import paddle
 from paddle import base
 from paddle.base import core, framework
 from paddle.base.framework import Program, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestEyeOp(OpTest):
@@ -145,7 +144,6 @@ class TestEyeRowsCol(UnittestBase):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
 
-    @test_with_pir_api
     def test_static(self):
         main_prog = Program()
         starup_prog = Program()

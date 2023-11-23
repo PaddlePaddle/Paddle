@@ -2179,9 +2179,18 @@ def empty_like(x, dtype=None, name=None):
         dtype = x.dtype
     dtype = convert_dtype(dtype)
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         out = _C_ops.empty(
             x.shape,
+            convert_np_dtype_to_dtype_(dtype),
+            _current_expected_place(),
+        )
+        out.stop_gradient = True
+        return out
+    elif in_pir_mode():
+        shape = paddle.shape(x)
+        out = _C_ops.empty(
+            shape,
             convert_np_dtype_to_dtype_(dtype),
             _current_expected_place(),
         )
