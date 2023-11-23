@@ -357,10 +357,188 @@ Expr DyScheduleImpl::AddUnitLoop(const Expr& block) const {
 
 void DyScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
                                   const bool force_flat) {
+  CHECK_GT(loops.size(), 0) << "Loops can't be empty!";
   std::for_each(loops.begin(), loops.end(), [](Expr& loop) {
     if (!loop.As<For>()->extent.is_constant())
       LOG(FATAL) << "Loop with extent which is variable can't be flatten\n";
-  })
+  });
+  VLOG(4) << "Before FlattenLoops, ir is:\n" << loops[0];
+  // compute loop
+  int extent = 1;
+  std::vector<int> strides;
+  std::vector<ir::Var> loop_vars(loops.size());
+  for (int idx = loops.size() - 1; idx >= 0; --idx) {
+    strides.insert(strides.begin(), extent);
+    extent *= loops[idx].As<ir::For>()->extent.as_int32();
+    loop_vars[idx] = loops[idx].As<ir::For>()->loop_var;
+  }
+  CHECK_EQ(loops.size(), strides.size());
+
+  // create new loop.
+  auto last = loops.back().As<ir::For>();
+  auto var = ir::Var("flat_i");
+  auto _var = ir::Var("_flat_i");
+  auto loop = ir::For::Make(var,
+                            ir::Expr(0),
+                            ir::Expr(extent),
+                            last->for_type(),
+                            last->device_api,
+                            last->body);
+
+  // map loop var to old loop var.
+  auto _iter = ir::Expr(_var);
+  std::unordered_map<std::string, ir::Expr> loops_to_flat_var_map;
+  for (int idx = 0; idx < strides.size(); ++idx) {
+    if (strides[idx] == 1) {
+      // flat_i_to_loop_var.push_back(_iter);
+      loops_to_flat_var_map[loops[idx].As<ir::For>()->loop_var->name] = _iter;
+    } else {
+      // flat_i_to_loop_var.push_back(_iter / Expr(strides[idx]));
+      loops_to_flat_var_map[loops[idx].As<ir::For>()->loop_var->name] =
+          _iter / Expr(strides[idx]);
+      _iter = _iter % Expr(strides[idx]);
+    }
+  }
+
+  ir::FindBlocksVisitor visitor;
+  auto blocks = visitor(&last->body);
+  auto can_do_flat = [](const std::vector<Expr>& indexs,
+                        const std::vector<Var>& loop_vars) {
+    if (indexs.size() != loop_vars.size()) {
+      return false;
+    }
+
+    for (int idx = 0; idx < indexs.size(); ++idx) {
+      if (!indexs[idx].as_var()) {
+        return false;
+      } else {
+        auto var = indexs[idx].as_var_ref();
+        if (var->name != loop_vars[idx]->name) {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  // change blocks iter value/iter var
+  for (auto& block : blocks) {
+    auto block_realize = block.As<ir::ScheduleBlockRealize>();
+    auto schedule_block = block_realize->schedule_block.As<ir::ScheduleBlock>();
+
+    // checkout loops in orders.
+    std::vector<std::string> var_names = {};
+    CHECK_GE(block_realize->iter_values.size(), loop_vars.size())
+        << "the number of iter bind values must be more than loop vars!";
+    for (int idx = 0; idx < block_realize->iter_values.size(); ++idx) {
+      auto& iter = block_realize->iter_values[idx];
+      if (iter.is_var()) {
+        CHECK_EQ(iter.as_var_ref()->name, loop_vars[idx]->name)
+            << "loops is not the same order with tensor!";
+      } else {
+        CHECK(iter.As<IntImm>()) << iter.node_type() << " is not IntImm";
+        CHECK_EQ(iter.as_int32(), 0);
+      }
+    }
+
+    auto exprs = ir::ir_utils::CollectIRNodesInOrder(
+        schedule_block->body,
+        [&](const Expr* x) { return x->As<ir::Store>() || x->As<ir::Load>(); });
+    // reverse exprs from last to first.
+    std::reverse(std::begin(exprs), std::end(exprs));
+
+    std::vector<ir::Var> var_to_replace;
+    std::vector<ir::Expr> flat_i_to_loop_var;
+    // if iter var is more than flat i to loop, there exist dim = 1.
+    for (int idx = 0; idx < block_realize->iter_values.size(); ++idx) {
+      if (block_realize->iter_values[idx].is_var()) {
+        var_to_replace.push_back(schedule_block->iter_vars[idx]);
+        auto var_name = block_realize->iter_values[idx].as_var_ref()->name;
+        CHECK(loops_to_flat_var_map.count(var_name))
+            << "Can't find var name : " << var_name;
+        flat_i_to_loop_var.push_back(loops_to_flat_var_map[var_name]);
+      } else {
+        CHECK_EQ(block_realize->iter_values[idx].as_int32(), 0);
+        // insert var -> 0, to replace var to 0.
+        var_to_replace.push_back(schedule_block->iter_vars[idx]);
+        flat_i_to_loop_var.push_back(Expr(0));
+      }
+    }
+    CHECK_EQ(var_to_replace.size(), flat_i_to_loop_var.size());
+
+    for (auto expr : exprs) {
+      if (expr.As<ir::Store>()) {
+        auto store = expr.As<ir::Store>();
+        if (store->is_addr_tensor()) {
+          auto t = store->tensor.as_tensor_ref();
+          CHECK(!t->reduce_axis.size());
+          auto tsize = std::accumulate(t->shape.begin(),
+                                       t->shape.end(),
+                                       1,
+                                       [](const int sum, const Expr& expr) {
+                                         return sum * expr.as_int32();
+                                       });
+          if ((!flat_tensor &&
+               !can_do_flat(store->indices, schedule_block->iter_vars)) ||
+              extent != tsize) {
+            // just replace indexs
+            for (auto& indice : store->indices) {
+              if (!indice.is_var()) {
+                continue;
+              }
+              ReplaceExpr(&indice, var_to_replace, flat_i_to_loop_var);
+            }
+            // compute index and flat tensor.
+            store->indices = {store->index()};
+            continue;
+          }
+          // update var and shape
+          store->indices = {Expr(_var)};
+        }
+      } else {
+        auto load = expr.As<ir::Load>();
+        if (load->is_addr_tensor()) {
+          auto t = load->tensor.as_tensor_ref();
+          CHECK(!t->reduce_axis.size());
+          auto tsize = std::accumulate(t->shape.begin(),
+                                       t->shape.end(),
+                                       1,
+                                       [](const int sum, const Expr& expr) {
+                                         return sum * expr.as_int32();
+                                       });
+          if ((!flat_tensor &&
+               !can_do_flat(load->indices, schedule_block->iter_vars)) ||
+              extent != tsize) {
+            // just replace indexs
+            for (auto& indice : load->indices) {
+              if (!indice.is_var()) {
+                continue;
+              }
+              ReplaceExpr(&indice, var_to_replace, flat_i_to_loop_var);
+            }
+            // compute index and flat tensor.
+            load->indices = {load->index()};
+            continue;
+          }
+          // update var and shape
+          load->indices = {Expr(_var)};
+        }
+      }
+    }
+    ReplaceExpr(&schedule_block->body, var_to_replace, flat_i_to_loop_var);
+
+    // update iter values
+    auto iter = ir::Expr(var);
+    block_realize->iter_values = {iter};
+
+    // update iter_vars
+    schedule_block->iter_vars = {_var};
+    CHECK_EQ(block_realize->iter_values.size(),
+             schedule_block->iter_vars.size());
+  }
+
+  this->Replace(loops[0], loop);
+  VLOG(4) << "After FlattenLoops, ir is:\n" << loop;
 }
 
 }  // namespace ir
