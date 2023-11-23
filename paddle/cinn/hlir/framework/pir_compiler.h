@@ -26,41 +26,24 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-// TODO(Aurelius84): Need abstract this logic to implement Proxy for
-// the co-existance with GraphCompiler.
 class PirCompiler final {
  public:
-  PirCompiler(const ::pir::Program& prog,
-              const Target& target,
-              const std::shared_ptr<Scope>& scope)
-      : program_(prog),
-        m_builder_("Pir", target),
+  PirCompiler(const Target& target)
+      : m_builder_("Pir", target),
         target_(target),
-        scope_(scope) {}
+        op_lowerer_(CreateOpLowerer<pir::GroupPtr>(target_)) {}
 
-  std::unique_ptr<Program> Build();
-
-  std::vector<pir::CUDAJITInfo> BuildCUDAJITInfo(
-      const std::vector<pir::GroupPtr>& groups);
-
-  std::unique_ptr<Program> Build(const std::vector<pir::GroupPtr>& groups);
+  std::vector<pir::CUDAJITInfo> Build(const std::vector<pir::GroupPtr>& groups);
 
  private:
   CINN_DISALLOW_COPY_AND_ASSIGN(PirCompiler);
 
-  std::vector<ir::LoweredFunc> GetOpFunc(const ::pir::Operation& op, int idx);
-
   void ProcessFunction(const std::vector<ir::LoweredFunc>& lowered_funcs);
 
-  std::vector<std::unique_ptr<Instruction>> BuildInstructions(
-      const std::vector<pir::GroupPtr>& groups);
-
-  const ::pir::Program& program_;
+  Target target_;
+  OpLowerer<pir::GroupPtr> op_lowerer_;
   ir::Module::Builder m_builder_;
   std::unique_ptr<backends::Compiler> compiler_{nullptr};
-  Target target_;
-  std::shared_ptr<Scope> scope_;
-  std::unordered_map<std::string, std::string> func_names_;
 };
 
 std::shared_ptr<Scope> BuildScope(const Target&, const ::pir::Program&);
@@ -70,6 +53,13 @@ class PirCompilerManager {
   static PirCompilerManager& Instance() {
     static PirCompilerManager instance;
     return instance;
+  }
+
+  static std::shared_ptr<PirCompiler> Create(const Target& target) {
+    std::shared_ptr<PirCompiler> compiler =
+        std::make_shared<PirCompiler>(target);
+    PirCompilerManager::Instance().insert(compiler);
+    return compiler;
   }
 
   void insert(const std::shared_ptr<PirCompiler>& compiler) {

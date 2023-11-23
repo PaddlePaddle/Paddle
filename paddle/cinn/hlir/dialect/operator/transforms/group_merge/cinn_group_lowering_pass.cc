@@ -161,13 +161,13 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
         cinn::dialect::ir::GeneralFusionMergePassInternal(op_fusion);
 
     for (auto group : group_list) {
-      auto ir_compiler = std::make_shared<cinn::hlir::framework::PirCompiler>(
-          *program, target, scope);
+      auto ir_compiler =
+          cinn::hlir::framework::PirCompilerManager::Create(target);
       if (FLAGS_cinn_enable_map_expr) {
         cinn::adt::TryGenerateMapExprFromGroup(group);
       }
 
-      auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
+      auto fn_ptr_res = ir_compiler->Build({group});
       std::unordered_map<std::string, ::pir::Attribute> op_attrs{
           {cinn::dialect::JitKernelOp::kAttrName,
            cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
