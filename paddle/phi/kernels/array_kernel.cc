@@ -93,7 +93,7 @@ void ArrayToTensorKernel(const Context& dev_ctx,
   }
   auto vec = phi::vectorize<int>(out_dims);
   vec.insert(vec.begin() + axis, x.size());  // NOLINT
-  out.Resize(phi::make_ddim(vec));
+  out->Resize(phi::make_ddim(vec));
 
   std::vector<DenseTensor> tmp_tensors(x.size());
   std::vector<const DenseTensor*> inputs;
