@@ -1547,6 +1547,26 @@ class DistForwardAPI(ForwardAPI):
     def generate_return_code(self) -> str:
         return self.gene_return_code()
 
+    def generate_strided_handle_code(self) -> str:
+        pre_save_stride = ""
+        transdata2strided = ""
+
+        if len(self.inplace_map) > 0 and self.kernel['func'][0] not in [
+            "squeeze",
+            "unsqueeze",
+            "reshape",
+            "flatten",
+            "transpose",
+        ]:
+            i = 0
+            for kernel_out in self.dense_output_args:
+                pre_save_stride += f"""
+      auto backup{i} = ProcessStrideBackup(&{kernel_out});"""
+                transdata2strided += f"""
+      TransStride(dev_ctx, {kernel_out}, backup{i});"""
+                i = i + 1
+        return pre_save_stride, transdata2strided
+
     def generate_auto_paralel_branch(self) -> str:
         # if no tensor input, do not genetate auto parallel branch
         if len(self.inputs['names']) == 0:
@@ -1571,6 +1591,11 @@ class DistForwardAPI(ForwardAPI):
         fallback_code = self.generate_fallback_code()
         output_dist_attr_setting = self.generate_output_dist_attr_setting()
         return_code = self.generate_return_code()
+        pre_save_stride, transdata2strided = self.generate_strided_handle_code()
+        if len(pre_save_stride) != 0:
+            kernel_call_code = (
+                pre_save_stride + kernel_call_code + transdata2strided
+            )
 
         return MAIN_DIST_BRANCH_TEMPLATE.format(
             infer_spmd_code,
