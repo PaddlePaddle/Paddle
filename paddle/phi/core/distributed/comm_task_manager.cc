@@ -136,7 +136,6 @@ inline void LogLongStr(const std::string prefix, const std::string& log) {
   }
 }
 
-
 void CommTaskManager::CommTaskLoop() {
   bool done = false;
   while (!terminated_.load() || !done) {
