@@ -78,9 +78,9 @@ void ArrayToTensorKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       n,
       0,
-      platform::errors::InvalidArgument("Input tensorarray size should > 0,"
-                                        "but the received is %d",
-                                        n));
+      phi::errors::InvalidArgument("Input tensorarray size should > 0,"
+                                   "but the received is %d",
+                                   n));
 
   auto out_dims = x[0].dims();
   size_t in_zero_dims_size = out_dims.size();
