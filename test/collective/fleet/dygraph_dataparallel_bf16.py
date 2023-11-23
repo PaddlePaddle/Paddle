@@ -15,7 +15,12 @@
 import logging
 
 import numpy as np
-from dist_amp_base import MLP, RandomDataset, create_optimizer
+from dist_amp_base import (
+    MLP,
+    RandomDataset,
+    compare_state_dict,
+    create_optimizer,
+)
 
 import paddle
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (
@@ -31,6 +36,7 @@ def train_mlp(
     logging.info(
         f"-- Train Info: use_pure_bf16={use_pure_bf16}, use_main_grad={use_main_grad}, acc_steps={acc_steps}"
     )
+
     optimizer = create_optimizer(
         model=model, use_pure_bf16=use_pure_bf16, use_main_grad=use_main_grad
     )
@@ -69,6 +75,10 @@ def train_mlp(
         for batch_id, data in enumerate(train_loader()):
             data.stop_gradient = True
 
+            enable_stats = False  # eop == 0 and batch_id == 0
+            if enable_stats:
+                logging.info("<<<<<<<<<<<< forward-backward >>>>>>>>>>>")
+                paddle.amp.debugging.enable_operator_stats_collection()
             with model.no_sync():
                 with paddle.amp.auto_cast(
                     True,
@@ -79,18 +89,41 @@ def train_mlp(
                     out = model(data)
                     loss = paddle.mean(out)
 
+                    # normal implementation for gradient accumulation.
+                    if acc_steps != 1:
+                        loss = loss / acc_steps
+
                 losses.append(loss.astype("float32").item())
                 loss.backward()
                 logging.info(
                     f"-- [rank={local_rank}] epoch {eop}, batch {batch_id}, loss: {loss.astype(paddle.float32).numpy()}"
                 )
+            if enable_stats:
+                paddle.amp.debugging.disable_operator_stats_collection()
 
             if (batch_id + 1) % acc_steps == 0:
+                if enable_stats:
+                    logging.info(
+                        "<<<<<<<<<<<< fused_allreduce_gradients >>>>>>>>>>>"
+                    )
+                    paddle.amp.debugging.enable_operator_stats_collection()
                 fused_allreduce_gradients(list(model.parameters()), None)
+                if enable_stats:
+                    paddle.amp.debugging.disable_operator_stats_collection()
 
+                if enable_stats:
+                    logging.info("<<<<<<<<<<<< optimizer >>>>>>>>>>>")
+                    paddle.amp.debugging.enable_operator_stats_collection()
                 optimizer.step()
                 optimizer.clear_grad()
-    return losses
+                if enable_stats:
+                    paddle.amp.debugging.disable_operator_stats_collection()
+
+    if use_pure_bf16:
+        state_dict = optimizer.state_dict()
+    else:
+        state_dict = model.state_dict()
+    return losses, state_dict
 
 
 def test_dp_bf16():
@@ -115,29 +148,29 @@ def test_dp_bf16():
     single_mlp = MLP()
     state_dict = single_mlp.state_dict()
 
-    # dp bf16 O1 vs dp bf16 O2 main_grad
-    mlp1 = MLP()
-    mlp2 = MLP()
-    mlp1.set_state_dict(state_dict)
-    mlp2.set_state_dict(state_dict)
-    losses_o1 = train_mlp(mlp1, train_loader, use_pure_bf16=False)
-    losses_o2 = train_mlp(
-        mlp2, train_loader, use_pure_bf16=True, use_main_grad=True
-    )
-    np.testing.assert_array_equal(losses_o2, losses_o1)
+    def _compare_bf16_o1_vs_o2(acc_steps=1):
+        # dp bf16 O1 vs dp bf16 O2 main_grad
+        mlp1 = MLP()
+        mlp2 = MLP()
+        mlp1.set_state_dict(state_dict)
+        mlp2.set_state_dict(state_dict)
+        losses_o1, state_dict_o1 = train_mlp(
+            mlp1, train_loader, use_pure_bf16=False, acc_steps=acc_steps
+        )
+        losses_o2, state_dict_o2 = train_mlp(
+            mlp2,
+            train_loader,
+            use_pure_bf16=True,
+            use_main_grad=True,
+            acc_steps=acc_steps,
+        )
+        np.testing.assert_array_equal(losses_o2, losses_o1)
+        compare_state_dict(state_dict_o1, state_dict_o2)
 
-    # grad accumulation test
-    mlp3 = MLP()
-    mlp4 = MLP()
-    mlp3.set_state_dict(state_dict)
-    mlp4.set_state_dict(state_dict)
-    losses_acc_grad_o1 = train_mlp(
-        mlp3, train_loader, use_pure_bf16=False, acc_steps=2
-    )
-    losses_acc_grad_o2 = train_mlp(
-        mlp4, train_loader, use_pure_bf16=True, use_main_grad=True, acc_steps=2
-    )
-    np.testing.assert_array_equal(losses_acc_grad_o2, losses_acc_grad_o1)
+    # no gradient accumulation
+    _compare_bf16_o1_vs_o2(acc_steps=1)
+    # gradient accumulation
+    _compare_bf16_o1_vs_o2(acc_steps=2)
 
 
 if __name__ == '__main__':

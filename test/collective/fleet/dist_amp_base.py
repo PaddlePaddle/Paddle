@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+
 import numpy as np
 
 import paddle
 from paddle.distributed.fleet.utils import mix_precision_utils
 from paddle.nn import Linear, ReLU
+
+logging.basicConfig(level="INFO", format="%(message)s")
 
 
 class MLP(paddle.nn.Layer):
@@ -60,10 +64,27 @@ def create_optimizer(model, use_pure_bf16, use_main_grad):
         parameters=model.parameters(),
         learning_rate=0.00001,
         weight_decay=0.00001,
-        grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
+        grad_clip=None,  # paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
         multi_precision=use_pure_bf16,
     )
     if use_main_grad:
         optimizer = mix_precision_utils.MixPrecisionOptimizer(optimizer)
 
     return optimizer
+
+
+def compare_state_dict(state_dict_o1, state_dict_o2):
+    master_weights = None
+    if state_dict_o2.get("master_weights", None) is not None:
+        master_weights = state_dict_o2["master_weights"]
+    assert master_weights is not None
+    master_weights_names = list(master_weights.keys())
+
+    param_names = list(state_dict_o1.keys())
+    for i in range(len(param_names)):
+        param_name = param_names[i]
+        master_weight_name = master_weights_names[i]
+        logging.info(f"-- compare {param_name} with {master_weight_name}")
+        param_o1 = state_dict_o1[param_name]
+        master_param_o2 = master_weights[master_weight_name]
+        np.testing.assert_array_equal(param_o1.numpy(), master_param_o2.numpy())

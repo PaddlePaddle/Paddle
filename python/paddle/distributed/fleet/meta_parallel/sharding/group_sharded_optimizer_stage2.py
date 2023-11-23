@@ -321,7 +321,7 @@ class GroupShardedOptimizerStage2(Optimizer):
                     or param.dtype == Type.bf16.value
                 ):
                     master_tensor = paddle.cast(param, Type.fp32.value)
-                    master_tensor.name = param.name
+                    master_tensor.name = self._gen_master_weight_var_name(param)
                     self._optim._master_weights[param.name] = master_tensor
 
     def _update_opt_status(self):
