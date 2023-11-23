@@ -19,7 +19,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
-    test_legacy_and_pir,
     test_legacy_and_pir_exe_and_pir_api,
 )
 
@@ -338,7 +337,6 @@ class TestTransformWhileLoop(Dy2StTestBase):
         else:
             return ret
 
-    @test_legacy_and_pir
     def test_ast_to_func(self):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
