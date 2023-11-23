@@ -14,17 +14,22 @@
 
 #pragma once
 
-#include <pybind11/pybind11.h>
-#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
-namespace pybind {
-class PyIfOp : public dialect::IfOp {
+namespace framework {
+namespace ir {
+
+class TrtRemoveAMPStrategyOpPass : public FusePassBase {
  public:
-  explicit PyIfOp(dialect::IfOp if_op);
-  void UpdateOutput();
+  TrtRemoveAMPStrategyOpPass() = default;
+  ~TrtRemoveAMPStrategyOpPass() = default;
+
+ protected:
+  void ApplyImpl(Graph* graph) const override;
 };
 
-void BindControlFlowApi(pybind11::module *m);
-}  // namespace pybind
+}  // namespace ir
+}  // namespace framework
 }  // namespace paddle
