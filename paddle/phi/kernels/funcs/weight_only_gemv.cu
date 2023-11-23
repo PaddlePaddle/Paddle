@@ -817,12 +817,10 @@ void select_batch_gemv_multi_warp_by_batch(const T* input,
                                     const int n,
                                     gpuStream_t stream){
 #ifdef PADDLE_WITH_CUDA
-  VLOG(1)<<"launch batched gemv multi_block mnk:"<<m<<" "<<" "<<n<<" "<<k;
+  VLOG(3)<<"launch batched gemv multi_block mnk:"<<m<<" "<<" "<<n<<" "<<k;
   dim3 grid(n / NPerBlock / kInterleave);
   dim3 block(BlockSize);
   int smem_size = sizeof(float) * BlockSize / 32 * m * NPerBlock * kInterleave;
-// template <typename T, WeightOnlyQuantType QType, typename WeightOnlyFlag, bool Gelu, bool Zero, bool Bias,
-//     int NPerBlock, int Batch, int BlockSize>
   switch(m){
    case 1:{
       weight_only_batched_gemv_multi_warp<T,
@@ -978,16 +976,18 @@ void GemvWeightonlyInt8Wrapper(const Context& ctx,
                                 "only support `gelu`, `None`. "));
   }
   if (m < 1){
-  int8_weight_only_gemv_launcher<DataType>(
-      reinterpret_cast<const DataType*>(x),
-      weight,
-      reinterpret_cast<const DataType*>(weight_scale),
-      reinterpret_cast<const DataType*>(bias),
-      reinterpret_cast<DataType*>(output),
-      k,
-      n,
-      gelu,
-      ctx.stream());
+    // should no go here since m >=1
+    // multi_warp is slightly faster even in m == 1. we don't dispatch to this kernel but keep it for future use.
+    int8_weight_only_gemv_launcher<DataType>(
+        reinterpret_cast<const DataType*>(x),
+        weight,
+        reinterpret_cast<const DataType*>(weight_scale),
+        reinterpret_cast<const DataType*>(bias),
+        reinterpret_cast<DataType*>(output),
+        k,
+        n,
+        gelu,
+        ctx.stream());
   } else {
   batched_int8_weight_only_gemv_multi_warp_launcher<DataType>(
       reinterpret_cast<const DataType*>(x),
