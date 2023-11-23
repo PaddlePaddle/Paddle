@@ -216,7 +216,7 @@ const std::unordered_set<std::string> SpecialOps = {"pd_op.feed",
                                                     "pd_op.fetch",
                                                     "builtin.combine",
                                                     "builtin.set_parameter",
-                                                    "builtin.get_parameter",
+                                                    "builtin.parameter",
                                                     "builtin.slice",
                                                     "builtin.split",
                                                     "pd_op.data",
@@ -230,7 +230,7 @@ Variable* CreateVar(pir::Value value,
                     ValueExecutionInfo* value_exe_info) {
   pir::Operation* def_op = value.dyn_cast<pir::OpResult>().owner();
   bool is_persisable = false;
-  if (def_op->isa<::pir::GetParameterOp>()) {
+  if (def_op->isa<::pir::ParameterOp>()) {
     is_persisable = true;
   } else if (def_op->HasAttribute(kAttrIsPersisable)) {
     is_persisable = def_op->attribute(kAttrIsPersisable)
@@ -429,8 +429,8 @@ void HandleForSpecialOp(pir::Operation* op,
     VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
 
     value_exe_info->Rename(value, var_name, orig_name);
-  } else if (op_name == "builtin.get_parameter") {
-    VLOG(6) << "Handle for builtin.get_parameter:";
+  } else if (op_name == "builtin.parameter") {
+    VLOG(6) << "Handle for builtin.parameter:";
     auto param_name = op->attributes()
                           .at("parameter_name")
                           .dyn_cast<pir::StrAttribute>()

@@ -367,7 +367,7 @@ def append_backward_ops(
     if op don't has grad_op:
         if it don't has input and it's output has more than
         one output_grad, add sumop for grad aggregation.
-        (eg: full op and get_parameter op etc.)
+        (eg: full op and parameter op etc.)
 
         else continue to next op.
     '''
