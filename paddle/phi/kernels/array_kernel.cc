@@ -17,6 +17,8 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/concat_kernel.h"
+#include "paddle/phi/kernels/stack_kernel.h"
 
 namespace phi {
 template <typename T, typename Context>
@@ -62,6 +64,48 @@ void ArrayWriteKernel(const Context& dev_ctx,
   out_tensor->set_lod(x.lod());
   if (x.memory_size() > 0) {
     phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out_tensor);
+  }
+}
+
+template <typename T, typename Context>
+void ArrayToTensorKernel(const Context& dev_ctx,
+                         const TensorArray& x,
+                         int axis,
+                         bool use_stack,
+                         DenseTensor* out,
+                         DenseTensor* out_index) {
+  const size_t n = x.size();
+  PADDLE_ENFORCE_GT(
+      n,
+      0,
+      platform::errors::InvalidArgument("Input tensorarray size should > 0,"
+                                        "but the received is %d",
+                                        n));
+
+  auto out_dims = x[0].dims();
+  size_t in_zero_dims_size = out_dims.size();
+  for (size_t i = 1; i < n; i++) {
+    for (size_t j = 0; j < in_zero_dims_size; j++) {
+      if (j == static_cast<size_t>(axis)) {
+        out_dims[axis] += x[i].dims()[static_cast<int>(j)];
+      }
+    }
+  }
+  auto vec = phi::vectorize<int>(out_dims);
+  vec.insert(vec.begin() + axis, x.size());  // NOLINT
+  out.Resize(phi::make_ddim(vec));
+
+  std::vector<DenseTensor> tmp_tensors(x.size());
+  std::vector<const DenseTensor*> inputs;
+  for (size_t i = 0; i < x.size(); i++) {
+    tmp_tensors[i].ShareDataWith(x[i]);
+    inputs.push_back(&tmp_tensors[i]);
+  }
+
+  if (use_stack) {
+    StackKernel<T, Context>(dev_ctx, inputs, axis, out);
+  } else {
+    ConcatKernel<T, Context>(dev_ctx, inputs, axis, out);
   }
 }
 
@@ -140,14 +184,55 @@ PD_REGISTER_KERNEL(array_read,
                    phi::dtype::complex<double>) {}
 #endif
 
-PD_REGISTER_KERNEL(
-    array_write, CPU, ALL_LAYOUT, phi::ArrayWriteKernel, float, double, bool) {}
+PD_REGISTER_KERNEL(array_write,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ArrayWriteKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(array_write,
                    GPU,
                    ALL_LAYOUT,
                    phi::ArrayWriteKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#endif
+
+PD_REGISTER_KERNEL(array_to_tensor,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ArrayToTensorKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(array_to_tensor,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ArrayToTensorKernel,
                    bool,
                    int,
                    int64_t,
