@@ -324,9 +324,9 @@ class TestSigmoidCrossEntropyWithLogitsOpError(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
+            if not in_pir_mode():
 
-            def test_Variable():
-                if not in_pir_mode():
+                def test_Variable():
                     # the input of sigmoid_cross_entropy_with_logits must be Variable.
                     x1 = base.create_lod_tensor(
                         np.array([-1, 3, 5, 5]),
@@ -342,7 +342,7 @@ class TestSigmoidCrossEntropyWithLogitsOpError(unittest.TestCase):
                         x1, lab1
                     )
 
-            self.assertRaises(TypeError, test_Variable)
+                self.assertRaises(TypeError, test_Variable)
 
             def test_dtype():
                 # the input dtype of sigmoid_cross_entropy_with_logits must be float16 or float32 or float64
