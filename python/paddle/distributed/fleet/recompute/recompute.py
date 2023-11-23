@@ -522,6 +522,8 @@ def recompute(function, *args, **kwargs):
         raise ValueError(
             "Error, if you want to send kwargs(dict parameter) to function, please set use_reentrant=False."
         )
+    attention_mask = kwargs.pop('attention_mask', None)
+    args.append(attention_mask)
 
     if framework._dygraph_tracer()._has_grad:
         check_recompute_necessary(args)
