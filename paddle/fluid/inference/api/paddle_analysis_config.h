@@ -1300,49 +1300,6 @@ struct PD_INFER_DECL AnalysisConfig {
 
   std::unordered_set<std::string> trt_ops_run_float_;
 
-#ifdef PADDLE_WITH_DNNL
-#ifdef PADDLE_WITH_XBYAK
-  bool SupportAVX2() {
-    using namespace Xbyak::util;  // NOLINT
-    Xbyak::util::Cpu cpu;
-    return cpu.has(Cpu::tAVX2);
-  }
-#else
-  bool SupportAVX2() {
-#ifdef _WIN32
-#define cpuid(reg, x) __cpuidex(reg, x, 0)
-#else
-#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) &&  \
-    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS) && \
-    !defined(PADDLE_WITH_LOONGARCH)
-#include <cpuid.h>
-    inline void cpuid(int reg[4], int x) {
-      __cpuid_count(x, 0, reg[0], reg[1], reg[2], reg[3]);
-    }
-#endif
-#endif
-
-#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) &&  \
-    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS) && \
-    !defined(PADDLE_WITH_LOONGARCH)
-    std::array<int, 4> reg;
-    cpuid(reg.data(), 0);
-    int nIds = reg[0];
-    if (nIds >= 0x00000001) {
-      // EAX = 1
-      cpuid(reg.data(), 0x00000001);
-    }
-    if (nIds >= 0x00000007) {
-      // EAX = 7
-      cpuid(reg.data(), 0x00000007);
-      // AVX2: EBX Bit 5
-      int avx2_mask = (1 << 5);
-      return (reg[1] & avx2_mask) != 0;
-    }
-#endif
-    return false;
-  }
-
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
