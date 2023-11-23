@@ -548,6 +548,7 @@ class TestPowDoubleGradCheck1(unittest.TestCase):
     def pow_wrapper(self, x):
         return paddle.pow(x[0], 2)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -577,6 +578,7 @@ class TestPowDoubleGradCheck2(unittest.TestCase):
     def pow_wrapper(self, x):
         return paddle.pow(x[0], 1)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]

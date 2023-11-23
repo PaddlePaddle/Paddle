@@ -266,7 +266,11 @@ void BindBlock(py::module *m) {
         The constructor of Block should not be invoked directly. You can
         use `Program.block()` to get a block.
   )DOC");
-  block.def("front", &Block::front, return_value_policy::reference)
+  block
+      .def(
+          "front",
+          [](Block &self) { return &self.front(); },
+          return_value_policy::reference)
       .def_property_readonly(
           "program",
           [](Block &self) { return self.GetParentOp()->GetParentProgram(); },
@@ -287,6 +291,7 @@ void BindBlock(py::module *m) {
            [](Block &self, py::object, py::object, py::object) {
              ApiBuilder::Instance().PopInsertionPoint();
            })
+      .def("__len__", [](Block &self) { return self.size(); })
       .def(
           "remove_op",
           [](Block &self, Operation *op) {
