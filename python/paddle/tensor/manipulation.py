@@ -133,6 +133,10 @@ def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
         res = op(input, axis=axis)
         sizes = paddle.to_tensor(np.array([int(x.shape[axis]) for x in input]))
         return res, sizes
+    elif in_pir_mode():
+        if not isinstance(input, paddle.pir.OpResult):
+            raise ValueError("Input starts must be an OpResult.")
+        return paddle._pir_ops.array_to_tensor(input, axis, use_stack)
     else:
         check_type(input, 'input', (list, Variable), 'tensor_array_to_tensor')
         if isinstance(input, list):
