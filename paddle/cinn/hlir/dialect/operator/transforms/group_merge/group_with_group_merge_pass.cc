@@ -16,15 +16,15 @@
 #include <set>
 #include <unordered_map>
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_group.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_group.h"
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/value.h"
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_with_group_merge_pass_utils.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/group_with_group_merge_pass_utils.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_pass.h"
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_with_group_merge_util.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/group_with_group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/phi/core/flags.h"
 
 #include "paddle/cinn/common/is_reachable_predicator.h"
@@ -1395,7 +1395,8 @@ class GeneralFusionMergePassHelper {
       }
       // master node
       for (auto& node : consumer->master_ops) {
-        if (GetOpKind(node->name()) == OpPatternKind::kReduction) {
+        if (hlir::framework::pir::CompatibleInfo::OpKind(*node) ==
+            OpPatternKind::kReduction) {
           fused_group->master_ops.insert(node);
         }
       }
@@ -1474,7 +1475,8 @@ class GeneralFusionMergePassHelper {
            ++consumer) {
         ::pir::Operation* master_node = nullptr;
         for (auto& node : (*consumer)->master_ops) {
-          if (GetOpKind(node->name()) != OpPatternKind::kReduction) {
+          if (hlir::framework::pir::CompatibleInfo::OpKind(*node) !=
+              OpPatternKind::kReduction) {
             master_node = node;
             break;
           }
@@ -1609,7 +1611,8 @@ class GeneralFusionMergePassHelper {
       }
       // master nodes
       for (auto& node : producer->master_ops) {
-        if (GetOpKind(node->name()) == OpPatternKind::kReduction) {
+        if (hlir::framework::pir::CompatibleInfo::OpKind(*node) ==
+            OpPatternKind::kReduction) {
           fused_group->master_ops.insert(node);
         }
       }

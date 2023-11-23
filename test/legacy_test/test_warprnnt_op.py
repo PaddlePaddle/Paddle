@@ -227,7 +227,7 @@ class TestWarpRNNTOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.outputs["warprnntgrad"] = self.gradient
@@ -239,9 +239,7 @@ class TestWarpRNNTOp(OpTest):
             )
         else:
             self.check_grad(
-                ["input"],
-                "loss",
-                numeric_grad_delta=0.009,
+                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
             )
 
 

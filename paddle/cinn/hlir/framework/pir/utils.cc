@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include "glog/logging.h"
 
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/op_mapper.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -30,33 +31,44 @@ namespace hlir {
 namespace framework {
 namespace pir {
 
-// Mapping PaddleDialect Op into CINN AST Compute register Op
+// Mapping PaddleDialect Op into CINN AST Compute register Op.
+// All key names are also supported in CINN. For ops not in this
+// list, we judge them by search it in CINN global Operator table.
 const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.full", "fill_constant"},
     {"pd_op.sum", "reduce_sum"},
     {"pd_op.max", "reduce_max"},
+    {"pd_op.mean", "reduce_mean"},
     {"pd_op.add", "elementwise_add"},
-    {"pd_op.subtract", "subtract"},
-    {"pd_op.divide", "divide"},
     {"pd_op.elementwise_pow", "pow"},
     {"pd_op.multiply", "elementwise_mul"},
     {"cinn_op.reshape", "reshape"},
     {"cinn_op.scale", "scale"},
-    {"cinn_op.broadcast", "broadcast_to"}};
+    {"cinn_op.broadcast", "broadcast_to"},
+    // The following should implement OpPattern in pd_to_cinn_pass,
+    // otherwise, it will be block in BuildCinnPass.
+    {"cinn_op.squeeze", ""},
+    {"cinn_op.unsqueeze", ""}};
 
-// Tagging PaddleDialect Op with REGITER_OP_MAPPER(OP)
-const std::unordered_set<std::string> CompatibleInfo::CINN_WHITE_OPS = {
-    "subtract",
-    "divide",
-    "broadcast_to",
-    "multiply",
-    "scale",
-    "elementwise_pow",
-    "reshape"};
-
+// In following cases, the op is marked SupportCinn:
+// 1. its name is in OP_NAMES, like pd_op.sum;
+// 2. it supports AttributeTensor but has Pattern to process it.
+//    Such as cinn_op.reshape, except pd_op.reshape;
+// 3. otherwise, it should be registered in OpRegistry;
 bool CompatibleInfo::IsSupportCinn(const ::pir::Operation& op) {
-  return CINN_WHITE_OPS.find(CompatibleInfo::OpName(op)) !=
-         CINN_WHITE_OPS.end();
+  if (OP_NAMES.find(op.name()) != OP_NAMES.end()) {
+    return true;
+  }
+  // After PdToCinnPass, if pd_op.reshape still exists, return false.
+  std::string black_op_name =
+      std::string(cinn::dialect::OperatorDialect::name()) + "." + OpName(op);
+  if (OP_NAMES.find(black_op_name) != OP_NAMES.end()) {
+    VLOG(4) << "Found black op after PdToCinnPass, because it has Attribute "
+               "Tensor: "
+            << op.name();
+    return false;
+  }
+  return OpRegistry::Global()->Find(OpName(op)) != nullptr;
 }
 
 std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
@@ -70,6 +82,9 @@ std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
   }
   auto cinn_op_name = name.substr(pos + 1);
   VLOG(4) << "GetOpName: " << name << " -> " << cinn_op_name;
+  CHECK(cinn_op_name != "")
+      << "Found empty cinn_op_name, maybe you should implement OpPattern for "
+      << name;
   return cinn_op_name;
 }
 
@@ -237,10 +252,19 @@ int CompatibleInfo::ShapeProduct(const std::vector<int>& shape) {
 
 OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
   auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
-  const hlir::framework::Operator* cinn_op =
-      Operator::Get(CompatibleInfo::OpName(op));
+  auto op_name = CompatibleInfo::OpName(op);
+  const hlir::framework::Operator* cinn_op = Operator::Get(op_name);
   CHECK(op_pattern_dict.Find(cinn_op));
-  return op_pattern_dict[cinn_op];
+  auto kind = op_pattern_dict[cinn_op];
+  if (kind == hlir::framework::kBroadcast) {
+    // As binary op was defined as broadcast, actually it should be
+    // element-wise. See fusion_hepler_base.h for detail.
+    if (op_name != "broadcast_to") {
+      kind = hlir::framework::kElementWise;
+    }
+  }
+  VLOG(4) << op_name << " OpPatternKind: " << kind;
+  return kind;
 }
 
 std::vector<int> CompatibleInfo::ValueShape(const ::pir::Value& value) {

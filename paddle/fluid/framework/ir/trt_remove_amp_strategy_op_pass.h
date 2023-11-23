@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,22 +14,22 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/tensor_node.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph.h"
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_node.h"
-
-namespace cinn {
-namespace dialect {
+namespace paddle {
+namespace framework {
 namespace ir {
 
-OpNode TensorNode::producer() const {
-  return OpNode(node_data_.dyn_cast<pir::OpResult>().owner());
-}
+class TrtRemoveAMPStrategyOpPass : public FusePassBase {
+ public:
+  TrtRemoveAMPStrategyOpPass() = default;
+  ~TrtRemoveAMPStrategyOpPass() = default;
 
-OpNode TensorNode::ConsumerOpListView::Iterator::operator*() const {
-  return OpNode(iter_.owner());
-}
+ protected:
+  void ApplyImpl(Graph* graph) const override;
+};
 
 }  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+}  // namespace framework
+}  // namespace paddle
