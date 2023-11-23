@@ -1149,6 +1149,30 @@ TEST(FlashAtt, Ctor) {
   check_dim_mapping(spmd2.second[2], {0, -1, 1, -1});
 }
 
+TEST(Util, Ctor) {
+  // test equal test not equal
+  using phi::distributed::PartialStatus;
+  using phi::distributed::PlacementEqual;
+  using phi::distributed::ReplicatedStatus;
+  using phi::distributed::ShardStatus;
+  auto a = std::make_shared<PartialStatus>(phi::ReduceType::kRedSum);
+  auto b = std::make_shared<PartialStatus>(phi::ReduceType::kRedMin);
+  EXPECT_TRUE(PlacementEqual(a, a));
+  EXPECT_TRUE(!PlacementEqual(a, b));
+  auto c = std::make_shared<ShardStatus>(0);
+  auto d = std::make_shared<ShardStatus>(1);
+  EXPECT_TRUE(!PlacementEqual(a, c));
+  EXPECT_TRUE(!PlacementEqual(b, c));
+  EXPECT_TRUE(PlacementEqual(c, c));
+  EXPECT_TRUE(!PlacementEqual(c, d));
+  auto e = std::make_shared<ReplicatedStatus>();
+  EXPECT_TRUE(PlacementEqual(e, e));
+  EXPECT_TRUE(!PlacementEqual(a, e));
+  EXPECT_TRUE(!PlacementEqual(b, e));
+  EXPECT_TRUE(!PlacementEqual(c, e));
+  EXPECT_TRUE(!PlacementEqual(d, e));
+}
+
 TEST(ElementwiseUnaryLike, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};
   std::vector<int64_t> process_ids = {0, 1, 2, 3};
@@ -1197,30 +1221,6 @@ TEST(ElementwiseUnaryLike, Ctor) {
   input = phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
   infered_dist_attrs = phi::distributed::ScaleInferSpmd(input, 1.0, 1.0, false);
   check_element_unary_like(infered_dist_attrs);
-}
-
-TEST(Util, Ctor) {
-  // test equal test not equal
-  using phi::distributed::PartialStatus;
-  using phi::distributed::PlacementEqual;
-  using phi::distributed::ReplicatedStatus;
-  using phi::distributed::ShardStatus;
-  auto a = std::make_shared<PartialStatus>(phi::ReduceType::kRedSum);
-  auto b = std::make_shared<PartialStatus>(phi::ReduceType::kRedMin);
-  EXPECT_TRUE(PlacementEqual(a, a));
-  EXPECT_TRUE(!PlacementEqual(a, b));
-  auto c = std::make_shared<ShardStatus>(0);
-  auto d = std::make_shared<ShardStatus>(1);
-  EXPECT_TRUE(!PlacementEqual(a, c));
-  EXPECT_TRUE(!PlacementEqual(b, c));
-  EXPECT_TRUE(PlacementEqual(c, c));
-  EXPECT_TRUE(!PlacementEqual(c, d));
-  auto e = std::make_shared<ReplicatedStatus>();
-  EXPECT_TRUE(PlacementEqual(e, e));
-  EXPECT_TRUE(!PlacementEqual(a, e));
-  EXPECT_TRUE(!PlacementEqual(b, e));
-  EXPECT_TRUE(!PlacementEqual(c, e));
-  EXPECT_TRUE(!PlacementEqual(d, e));
 }
 
 }  // namespace auto_parallel
