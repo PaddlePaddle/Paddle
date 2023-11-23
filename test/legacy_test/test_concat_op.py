@@ -909,11 +909,17 @@ class TestConcatOpAutoParallel(OpTest):
         self.check_grad(
             ['x0'],
             'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
             check_auto_parallel=True,
         )
         self.check_grad(
             ['x0', 'x1', 'x2'],
             'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
             check_auto_parallel=True,
         )
 

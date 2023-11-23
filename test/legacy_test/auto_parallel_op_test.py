@@ -53,7 +53,7 @@ from auto_parallel_op_test import AutoParallelGradChecker
 
 LOAD_TEST_INFO_TEMPLATE = """
 
-def dump_test_info(test_info_path):
+def load_test_info(test_info_path):
     with open(test_info_path, "rb") as f:
         test_info = pickle.load(f)
     return test_info
@@ -99,7 +99,7 @@ def run_grad_check(test_info):
 TEST_BODY_TEMPLATE = """
 
 if __name__ == "__main__":
-    test_info = dump_test_info(r'{test_info_path}')
+    test_info = load_test_info(r'{test_info_path}')
     {run_test}
 """
 
@@ -175,6 +175,7 @@ def dump_test_info(
     with open(test_info_path, "wb") as f:
         test_info["op_type"] = op_test.op_type
         test_info["python_api"] = op_test.python_api
+        print("op_test.python_api", op_test.python_api)
         test_info["dtype"] = op_test.dtype
         test_info["input_specs"] = op_test.input_specs
         test_info["inputs"] = op_test.inputs
@@ -260,6 +261,7 @@ TOLERANCE = {
     np.dtype('float32'): {"rtol": 1e-6, "atol": 0},
     np.dtype('float16'): {"rtol": 1e-3, "atol": 0},
     np.dtype('uint16'): {"rtol": 1e-2, "atol": 0},
+    np.dtype('int32'): {"rtol": 0, "atol": 0},
 }
 
 

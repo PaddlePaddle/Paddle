@@ -950,6 +950,9 @@ class TestElementwiseAddOpAutoParallel(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
+            check_prim=self.check_prim,
+            check_prim_pir=self.check_dygraph(),
+            check_pir=self.check_dygraph(),
             check_auto_parallel=True,
         )
 
@@ -1005,7 +1008,13 @@ class TestElementwiseAddOpAutoParallelXYShard(TestElementwiseAddOpAutoParallel):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X', 'Y'], 'Out', check_auto_parallel=True
+            place,
+            ['X', 'Y'],
+            'Out',
+            check_prim=self.check_prim,
+            check_prim_pir=self.check_dygraph(),
+            check_pir=self.check_dygraph(),
+            check_auto_parallel=True,
         )
 
     def init_input_output(self):
@@ -1026,7 +1035,13 @@ class TestElementwiseAddOpAutoParallelXYShardBroardcast(
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X', 'Y'], 'Out', check_auto_parallel=True
+            place,
+            ['X', 'Y'],
+            'Out',
+            check_prim=self.check_prim,
+            check_prim_pir=self.check_dygraph(),
+            check_pir=self.check_dygraph(),
+            check_auto_parallel=True,
         )
 
     def init_input_output(self):

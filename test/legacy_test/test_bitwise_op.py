@@ -430,5 +430,86 @@ class TestBitwiseNotBool(TestBitwiseNot):
         self.outputs = {'Out': out}
 
 
+class TestBitwiseAndAutoParallel(OpTest):
+    def setUp(self):
+        self.op_type = "bitwise_and"
+        self.python_api = paddle.tensor.logic.bitwise_and
+        self.init_dtype()
+        self.init_shape()
+        self.init_bound()
+
+        x = np.random.randint(
+            self.low, self.high, self.x_shape, dtype=self.dtype
+        )
+        y = np.random.randint(
+            self.low, self.high, self.y_shape, dtype=self.dtype
+        )
+        out = np.bitwise_and(x, y)
+
+        self.inputs = {'X': x, 'Y': y}
+        self.init_input_specs()
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output(
+            check_cinn=True, check_pir=True, check_auto_parallel=True
+        )
+
+    def test_check_grad(self):
+        pass
+
+    def init_dtype(self):
+        self.dtype = np.int32
+
+    def init_input_specs(self):
+        self.input_specs = {'X': ['x', None], 'Y': [None, None]}
+
+    def init_shape(self):
+        self.x_shape = [16, 32]
+        self.y_shape = [16, 32]
+
+    def init_bound(self):
+        self.low = -100
+        self.high = 100
+
+
+class TestBitwiseAndAutoParallelXShardBroadcast(TestBitwiseAndAutoParallel):
+    def init_input_specs(self):
+        self.input_specs = {'X': ['x', None], 'Y': [None, None, None]}
+
+    def init_shape(self):
+        self.x_shape = [16, 32]
+        self.y_shape = [2, 16, 32]
+
+
+class TestBitwiseAndAutoParallelXYShard(TestBitwiseAndAutoParallel):
+    def init_input_specs(self):
+        self.input_specs = {
+            'X': ['x', None],
+            'Y': [None, 'x'],
+        }
+
+    def init_shape(self):
+        self.x_shape = [16, 32]
+        self.y_shape = [16, 32]
+
+    def test_check_output(self):
+        self.check_output_with_place(
+            paddle.CUDAPlace(0),
+            check_cinn=True,
+            check_pir=True,
+            check_auto_parallel=True,
+        )
+
+
+class TestBitwiseAndAutoParallelXYShardBroadcast(TestBitwiseAndAutoParallel):
+    def init_input_specs(self):
+        self.input_specs = {'X': ['x', None, None], 'Y': [None, None]}
+
+    def init_shape(self):
+        self.x_shape = [4, 16, 32]
+        self.y_shape = [16, 32]
+
+
 if __name__ == "__main__":
     unittest.main()

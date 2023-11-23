@@ -559,6 +559,110 @@ class TestRealComplexElementwiseMulOp(TestComplexElementwiseMulOp):
         self.out = self.x * self.y
 
 
+class ElementwiseMulOpAutoParallelXShard(OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = False
+
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
+        self.dtype = np.float64
+        self.axis = -1
+        self.init_dtype()
+        self.init_input_output()
+        self.init_kernel_type()
+        self.init_axis()
+        self.if_enable_cinn()
+        self.outputs = {'Out': self.out}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(
+            check_dygraph=(not self.use_mkldnn),
+            check_pir=(not self.use_mkldnn),
+        )
+
+    def test_check_grad_normal(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+            check_prim_pir=(not self.use_mkldnn),
+            check_pir=(not self.use_mkldnn),
+            check_auto_parallel=True,
+        )
+
+    def test_check_grad_ingore_x(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+            check_prim_pir=(not self.use_mkldnn),
+            check_pir=(not self.use_mkldnn),
+            check_auto_parallel=True,
+        )
+
+    def test_check_grad_ingore_y(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+            check_prim_pir=(not self.use_mkldnn),
+            check_pir=(not self.use_mkldnn),
+            check_auto_parallel=True,
+        )
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [16, 32]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [16, 32]).astype(self.dtype)
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+        self.input_specs = {
+            'X': ['x', None],
+            'Y': [None, None],
+        }
+        self.out = np.multiply(self.x, self.y)
+
+    def init_dtype(self):
+        pass
+
+    def init_axis(self):
+        pass
+
+    def if_enable_cinn(self):
+        pass
+
+
+class ElementwiseMulOpAutoParallelXShardBroadcast(
+    ElementwiseMulOpAutoParallelXShard
+):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [16, 32]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [2, 16, 32]).astype(self.dtype)
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+        self.input_specs = {
+            'X': ['x', None],
+            'Y': [None, None, None],
+        }
+        self.out = np.multiply(self.x, self.y)
+
+
 class TestElementwiseMulop(unittest.TestCase):
     def test_dygraph_mul(self):
         paddle.disable_static()

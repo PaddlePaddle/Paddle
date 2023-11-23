@@ -194,6 +194,39 @@ class TestCastOpFp32ToBf16(OpTest):
         )
 
 
+class TestCastOpFp32ToFp64AutoParallel(OpTest):
+    def setUp(self):
+        self.init_shapes()
+        ipt = np.random.random(size=self.input_shape)
+        self.inputs = {'X': ipt.astype('float32')}
+        self.input_specs = {'X': ['x', None]}
+        self.outputs = {'Out': ipt.astype('float64')}
+        self.attrs = {
+            'in_dtype': int(core.VarDesc.VarType.FP32),
+            'out_dtype': int(core.VarDesc.VarType.FP64),
+        }
+        self.op_type = 'cast'
+        self.prim_op_type = "prim"
+        self.python_api = cast_wrapper
+        self.public_python_api = cast_wrapper
+
+    def init_shapes(self):
+        self.input_shape = [16, 32]
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_grad(self):
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+            check_auto_parallel=True,
+        )
+
+
 class TestCastOpError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
