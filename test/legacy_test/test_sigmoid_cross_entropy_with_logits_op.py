@@ -20,6 +20,7 @@ from scipy.special import expit, logit
 
 import paddle
 from paddle import base
+from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -325,18 +326,21 @@ class TestSigmoidCrossEntropyWithLogitsOpError(unittest.TestCase):
         ):
 
             def test_Variable():
-                # the input of sigmoid_cross_entropy_with_logits must be Variable.
-                x1 = base.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]),
-                    [[1, 1, 1, 1]],
-                    base.CPUPlace(),
-                )
-                lab1 = base.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]),
-                    [[1, 1, 1, 1]],
-                    base.CPUPlace(),
-                )
-                paddle.nn.functional.binary_cross_entropy_with_logits(x1, lab1)
+                if not in_pir_mode():
+                    # the input of sigmoid_cross_entropy_with_logits must be Variable.
+                    x1 = base.create_lod_tensor(
+                        np.array([-1, 3, 5, 5]),
+                        [[1, 1, 1, 1]],
+                        base.CPUPlace(),
+                    )
+                    lab1 = base.create_lod_tensor(
+                        np.array([-1, 3, 5, 5]),
+                        [[1, 1, 1, 1]],
+                        base.CPUPlace(),
+                    )
+                    paddle.nn.functional.binary_cross_entropy_with_logits(
+                        x1, lab1
+                    )
 
             self.assertRaises(TypeError, test_Variable)
 
