@@ -715,7 +715,7 @@ class GraphTable : public Table {
     return 0;
   }
   virtual void load_node_weight(int type_id, int idx, std::string path);
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   virtual void make_partitions(int idx, int64_t gb_size, int device_len);
   virtual void export_partition_files(int idx, std::string file_path);
   virtual char *random_sample_neighbor_from_ssd(

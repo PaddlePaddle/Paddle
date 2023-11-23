@@ -59,7 +59,7 @@ PHI_DEFINE_EXPORTED_int32(graph_edges_debug_node_num,
 namespace paddle {
 namespace distributed {
 
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
 int32_t GraphTable::Load_to_ssd(const std::string &path,
                                 const std::string &param) {
   bool load_edge = (param[0] == 'e');
@@ -1602,7 +1602,7 @@ void GraphTable::stat_graph_edge_info(int type) {
           << ", cross rate: " << double(all_cross_size) / double(all_node_size);
 }
 
-#endif  // PADDLE_WITH_GPU_GRAPH
+#endif  // PADDLE_WITH_HETERPS
 
 void GraphTable::clear_graph(int idx) {
   for (auto p : edge_shards[idx]) {
