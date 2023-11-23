@@ -26,12 +26,18 @@ class FusedMatmulAddGradAddPattern
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     pir::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &matmul0 = pat.Op(paddle::dialect::MatmulOp::name(),
+                                 {{"transpose_x", pat.Attr("trans_x")},
+                                  {"transpose_y", pat.Attr("trans_y")}});
+    const auto &add = pat.Op(paddle::dialect::AddOp::name());
     const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name());
     const auto &matmul_grad = pat.Op(paddle::dialect::MatmulGradOp::name(),
                                      {{"transpose_x", pat.Attr("trans_x")},
                                       {"transpose_y", pat.Attr("trans_y")}});
     const auto &add_ = pat.Op(paddle::dialect::Add_Op::name());
 
+    pat.Tensor("out") = matmul0(pat.Tensor("x"), pat.Tensor("weight"));
+    pat.Tensor("fwd_add_out") = add(pat.Tensor("out"), pat.Tensor("bias"));
     add_grad(
         {&pat.Tensor("out"), &pat.Tensor("bias"), &pat.Tensor("addout_grad")},
         {&pat.Tensor("out_grad"), &pat.Tensor("dbias")});
@@ -232,15 +238,25 @@ class FusedMatmulAddGradAddaPattern
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     pir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name());
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
                                  {"transpose_y", pat.Attr("trans_y")}});
+    const auto &add = pat.Op(paddle::dialect::AddOp::name());
+    const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name());
+    const auto &matmul_g0 = pat.Op(paddle::dialect::MatmulOp::name(),
+                                   {{"transpose_x", pat.Attr("trans_xg0")},
+                                    {"transpose_y", pat.Attr("trans_yg0")}});
+    const auto &matmul_g1 = pat.Op(paddle::dialect::MatmulOp::name(),
+                                   {{"transpose_x", pat.Attr("trans_xg1")},
+                                    {"transpose_y", pat.Attr("trans_yg1")}});
     const auto &add_ = pat.Op(paddle::dialect::Add_Op::name());
+
+    pat.Tensor("out") = matmul(pat.Tensor("x"), pat.Tensor("weight"));
+    pat.Tensor("fwd_add_out") = add(pat.Tensor("out"), pat.Tensor("bias"));
     add_grad({&pat.Tensor("out"), &pat.Tensor("bias"), &pat.Tensor("dadd_out")},
              {&pat.Tensor("dout"), &pat.Tensor("dbias")});
-    matmul({&pat.Tensor("x"), &pat.Tensor("dout")},
-           {&pat.Tensor("weight_grad")});
+    pat.Tensor("dx") = matmul_g0(pat.Tensor("dout"), pat.Tensor("weight"));
+    pat.Tensor("weight_grad") = matmul_g1(pat.Tensor("x"), pat.Tensor("dout"));
     pat.Tensor("dweight_out") =
         add_(pat.Tensor("dweight"), pat.Tensor("weight_grad"));
 
@@ -277,15 +293,25 @@ class FusedMatmulAddGradAddbPattern
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     pir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name());
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
                                  {"transpose_y", pat.Attr("trans_y")}});
+    const auto &add = pat.Op(paddle::dialect::AddOp::name());
+    const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name());
+    const auto &matmul_g0 = pat.Op(paddle::dialect::MatmulOp::name(),
+                                   {{"transpose_x", pat.Attr("trans_xg0")},
+                                    {"transpose_y", pat.Attr("trans_yg0")}});
+    const auto &matmul_g1 = pat.Op(paddle::dialect::MatmulOp::name(),
+                                   {{"transpose_x", pat.Attr("trans_xg1")},
+                                    {"transpose_y", pat.Attr("trans_yg1")}});
     const auto &add_ = pat.Op(paddle::dialect::Add_Op::name());
+
+    pat.Tensor("out") = matmul(pat.Tensor("x"), pat.Tensor("weight"));
+    pat.Tensor("fwd_add_out") = add(pat.Tensor("out"), pat.Tensor("bias"));
     add_grad({&pat.Tensor("out"), &pat.Tensor("bias"), &pat.Tensor("dadd_out")},
              {&pat.Tensor("dout"), &pat.Tensor("dbias")});
-    matmul({&pat.Tensor("x"), &pat.Tensor("dout")},
-           {&pat.Tensor("weight_grad")});
+    pat.Tensor("dx") = matmul_g0(pat.Tensor("dout"), pat.Tensor("weight"));
+    pat.Tensor("weight_grad") = matmul_g1(pat.Tensor("x"), pat.Tensor("dout"));
     pat.Tensor("dweight_out") =
         add_(pat.Tensor("weight_grad"), pat.Tensor("dweight"));
 
