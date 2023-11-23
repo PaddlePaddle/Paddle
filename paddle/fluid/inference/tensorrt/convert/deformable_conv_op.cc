@@ -60,7 +60,7 @@ class DeformableConvOpConverter : public OpConverter {
 
     nvinfer1::Weights weights;
     weights.count = filter_tensor->numel();
-    // TODO(tangbinhan): deformable_conv currently does not support fp16
+    // TODO(bukejiyu): deformable_conv currently does not support fp16
     // mode,will be supported in the future.
     bool with_fp16 = false;
     if (with_fp16) {
