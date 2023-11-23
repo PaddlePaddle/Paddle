@@ -114,6 +114,7 @@ set_field_default_config(PIPELINE, "micro_batch_size", 1)
 set_field_default_config(PIPELINE, "accumulate_steps", 1)
 set_field_default_config(PIPELINE, "generation_batch_size", 1)
 set_field_default_config(PIPELINE, "enable_send_recv_overlap", False)
+set_field_default_config(PIPELINE, "schedule_profiler", False)
 
 #########################################
 # quantization configuration

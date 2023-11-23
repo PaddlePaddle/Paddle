@@ -21,6 +21,7 @@
 
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
+#include "paddle/cinn/hlir/framework/pir/compilation_task.h"
 
 namespace cinn {
 namespace hlir {
@@ -61,6 +62,7 @@ class PirCompiler final {
   Target target_;
   std::shared_ptr<Scope> scope_;
   std::unordered_map<std::string, std::string> func_names_;
+  std::vector<GroupCompilationContext> group_compilation_contexts_;
 };
 
 std::shared_ptr<Scope> BuildScope(const Target&, const ::pir::Program&);

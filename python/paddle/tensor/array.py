@@ -14,7 +14,10 @@
 
 # Define functions about array.
 
+import paddle
+
 from ..base.data_feeder import check_type, check_variable_and_dtype
+from ..base.framework import in_pir_mode
 from ..common_ops_import import Variable
 from ..framework import LayerHelper, core, in_dynamic_mode
 
@@ -51,6 +54,15 @@ def array_length(array):
             array, list
         ), "The 'array' in array_write must be a list in dygraph mode"
         return len(array)
+    elif in_pir_mode():
+        if (
+            not isinstance(array, paddle.pir.OpResult)
+            or not array.is_dense_tensor_array_type()
+        ):
+            raise TypeError(
+                "array should be tensor array vairable in array_length Op"
+            )
+        return paddle._pir_ops.array_length(array)
     else:
         if (
             not isinstance(array, Variable)
@@ -123,6 +135,15 @@ def array_read(array, i):
         ], "The shape of index 'i' should be [1] in dygraph mode"
         i = i.item(0)
         return array[i]
+    elif in_pir_mode():
+        if (
+            not isinstance(array, paddle.pir.OpResult)
+            or not array.is_dense_tensor_array_type()
+        ):
+            raise TypeError(
+                "array should be tensor array vairable in array_length Op"
+            )
+        return paddle._pir_ops.array_read(array, i)
     else:
         check_variable_and_dtype(i, 'i', ['int64'], 'array_read')
         helper = LayerHelper('array_read', **locals())
@@ -196,6 +217,23 @@ def array_write(x, i, array=None):
         else:
             array.append(x)
         return array
+    elif in_pir_mode():
+        check_variable_and_dtype(i, 'i', ['int64'], 'array_write')
+        if not isinstance(x, paddle.pir.OpResult):
+            raise TypeError(
+                f"x should be pir.OpResult, but recevied {type(x)}."
+            )
+        if array is not None:
+            if (
+                not isinstance(array, paddle.pir.OpResult)
+                or not array.is_dense_tensor_array_type()
+            ):
+                raise TypeError("array should be tensor array vairable")
+        if array is None:
+            array = paddle._pir_ops.create_array(x.dtype)
+
+        array = paddle._pir_ops.array_write_(array, x, i)
+        return array
     else:
         check_variable_and_dtype(i, 'i', ['int64'], 'array_write')
         check_type(x, 'x', (Variable), 'array_write')
@@ -264,15 +302,22 @@ def create_array(dtype, initialized_list=None):
 
     # NOTE: Only support plain list like [x, y,...], not support nested list in static graph mode.
     for val in array:
-        if not isinstance(val, Variable):
+        if not isinstance(val, (Variable, paddle.pir.OpResult)):
             raise TypeError(
-                "All values in `initialized_list` should be Variable, but recevied {}.".format(
+                "All values in `initialized_list` should be Variable or pir.OpResult, but recevied {}.".format(
                     type(val)
                 )
             )
 
     if in_dynamic_mode():
         return array
+    elif in_pir_mode():
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+            dtype = paddle.base.framework.convert_np_dtype_to_dtype_(dtype)
+        out = paddle._pir_ops.create_array(dtype)
+        for val in array:
+            out = paddle._pir_ops.array_write_(out, val, array_length(out))
+        return out
     else:
         helper = LayerHelper("array", **locals())
         tensor_array = helper.create_variable(

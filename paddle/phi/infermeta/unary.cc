@@ -144,6 +144,11 @@ void AllToAllInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(dim);
 }
 
+void ArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(phi::DataType::INT64);
+  out->set_dims(make_ddim({1}));
+}
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
@@ -5113,8 +5118,14 @@ void UnStackInferMeta(const MetaTensor& x,
 
 void WeightQuantizeInferMeta(const MetaTensor& x,
                              const std::string& algo,
+                             const int32_t arch,
                              MetaTensor* out,
                              MetaTensor* scale) {
+  PADDLE_ENFORCE_EQ(
+      ((arch == 80) || (arch == 70)),
+      true,
+      phi::errors::InvalidArgument("Currently, arch only support 70, 80."));
+
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
       x_dims.size(),

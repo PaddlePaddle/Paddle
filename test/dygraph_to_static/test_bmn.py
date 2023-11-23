@@ -18,14 +18,18 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_pir_only
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    static_guard,
+    test_pir_only,
+)
 from predictor_utils import PredictorTools
 
 import paddle
 from paddle import base
 from paddle.base import ParamAttr
 from paddle.base.dygraph import to_variable
-from paddle.jit import to_static
+from paddle.base.framework import unique_name
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2000
@@ -34,8 +38,8 @@ DATATYPE = 'float32'
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
 #        some algorithm results are non-deterministic, like convolution algorithms.
-if base.is_compiled_with_cuda():
-    base.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.is_compiled_with_cuda():
+    paddle.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 def get_interp1d_mask(
@@ -265,7 +269,6 @@ class BMN(paddle.nn.Layer):
             bias_attr=ParamAttr(name="PEM_2d4_b"),
         )
 
-    @to_static
     def forward(self, x):
         # Base Module
         x = paddle.nn.functional.relu(self.b_conv1(x))
@@ -641,9 +644,9 @@ class TestTrain(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
         self.place = (
-            base.CPUPlace()
-            if not base.is_compiled_with_cuda()
-            else base.CUDAPlace(0)
+            paddle.CPUPlace()
+            if not paddle.is_compiled_with_cuda()
+            else paddle.CUDAPlace(0)
         )
 
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -656,18 +659,18 @@ class TestTrain(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def train_bmn(self, args, place, to_static):
+    def train_bmn(self, args, to_static):
         paddle.jit.enable_to_static(to_static)
-        loss_data = []
 
-        with base.dygraph.guard(place):
+        with unique_name.guard():
+            loss_data = []
+
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
             global local_random
             local_random = np.random.RandomState(SEED)
 
-            bmn = BMN(args)
-            bmn = paddle.jit.to_static(bmn)
+            bmn = paddle.jit.to_static(BMN(args))
             adam = optimizer(args, parameter_list=bmn.parameters())
 
             train_reader = fake_data_reader(args, 'train')
@@ -724,12 +727,10 @@ class TestTrain(Dy2StTestBase):
                     ):
                         print(
                             f'[TRAIN] Epoch {epoch}, iter {batch_id} '
-                            + '\tLoss = {}, \ttem_loss = {}, \tpem_reg_loss = {}, \tpem_cls_loss = {}'.format(
-                                '%f' % float(avg_loss),
-                                '%f' % float(tem_loss),
-                                '%f' % float(pem_reg_loss),
-                                '%f' % float(pem_cls_loss),
-                            )
+                            + f'\tLoss = {float(avg_loss):f}, '
+                            + f'\ttem_loss = {float(tem_loss):f}, '
+                            + f'\tpem_reg_loss = {float(pem_reg_loss):f}, '
+                            + f'\tpem_cls_loss = {float(pem_cls_loss):f}'
                         )
 
                     # validation
@@ -752,8 +753,8 @@ class TestTrain(Dy2StTestBase):
 
     @test_pir_only
     def test_train_pir(self):
-        static_res = self.train_bmn(self.args, self.place, to_static=True)
-        dygraph_res = self.train_bmn(self.args, self.place, to_static=False)
+        static_res = self.train_bmn(self.args, to_static=True)
+        dygraph_res = self.train_bmn(self.args, to_static=False)
         np.testing.assert_allclose(
             dygraph_res,
             static_res,
@@ -766,8 +767,8 @@ class TestTrain(Dy2StTestBase):
         )
 
     def test_train(self):
-        static_res = self.train_bmn(self.args, self.place, to_static=True)
-        dygraph_res = self.train_bmn(self.args, self.place, to_static=False)
+        static_res = self.train_bmn(self.args, to_static=True)
+        dygraph_res = self.train_bmn(self.args, to_static=False)
         np.testing.assert_allclose(
             dygraph_res,
             static_res,
@@ -833,51 +834,48 @@ class TestTrain(Dy2StTestBase):
 
     def predict_dygraph(self, data):
         paddle.jit.enable_to_static(False)
-        with base.dygraph.guard(self.place):
-            bmn = BMN(self.args)
-            # load dygraph trained parameters
-            model_dict = paddle.load(self.dy_param_path + ".pdparams")
-            bmn.set_dict(model_dict)
-            bmn.eval()
+        bmn = paddle.jit.to_static(BMN(self.args))
+        # load dygraph trained parameters
+        model_dict = paddle.load(self.dy_param_path + ".pdparams")
+        bmn.set_dict(model_dict)
+        bmn.eval()
 
-            x = to_variable(data)
-            pred_res = bmn(x)
-            pred_res = [var.numpy() for var in pred_res]
-
-            return pred_res
-
-    def predict_static(self, data):
-        paddle.enable_static()
-        exe = base.Executor(self.place)
-        # load inference model
-        [
-            inference_program,
-            feed_target_names,
-            fetch_targets,
-        ] = paddle.static.io.load_inference_model(
-            self.model_save_dir,
-            executor=exe,
-            model_filename=self.model_filename,
-            params_filename=self.params_filename,
-        )
-        pred_res = exe.run(
-            inference_program,
-            feed={feed_target_names[0]: data},
-            fetch_list=fetch_targets,
-        )
+        x = to_variable(data)
+        pred_res = bmn(x)
+        pred_res = [var.numpy() for var in pred_res]
 
         return pred_res
 
+    def predict_static(self, data):
+        with static_guard():
+            exe = paddle.static.Executor(self.place)
+            # load inference model
+            [
+                inference_program,
+                feed_target_names,
+                fetch_targets,
+            ] = paddle.static.io.load_inference_model(
+                self.model_save_dir,
+                executor=exe,
+                model_filename=self.model_filename,
+                params_filename=self.params_filename,
+            )
+            pred_res = exe.run(
+                inference_program,
+                feed={feed_target_names[0]: data},
+                fetch_list=fetch_targets,
+            )
+        return pred_res
+
     def predict_dygraph_jit(self, data):
-        with base.dygraph.guard(self.place):
-            bmn = paddle.jit.load(self.model_save_prefix)
-            bmn.eval()
+        bmn = paddle.jit.load(self.model_save_prefix)
+        bmn.eval()
 
-            x = to_variable(data)
-            pred_res = bmn(x)
-            pred_res = [var.numpy() for var in pred_res]
+        x = to_variable(data)
+        pred_res = bmn(x)
+        pred_res = [var.numpy() for var in pred_res]
 
-            return pred_res
+        return pred_res
 
     def predict_analysis_inference(self, data):
         output = PredictorTools(
