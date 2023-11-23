@@ -98,7 +98,7 @@ void weight_permute_gpu(const GPUContext& dev_ctx,
   auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
   int grid_size = gpu_config.GetGridSize();
   int block_size = gpu_config.GetBlockSize();
-  if(arch == 80 || arch == 75){
+  if((arch == 80) || (arch == 86) || (arch == 75)){
     weight_permute_kernel_wint8<<<grid_size, block_size>>>(
         input_data, output_data, numel, total_k, total_n);
   } else if(arch == 70){
@@ -109,17 +109,6 @@ void weight_permute_gpu(const GPUContext& dev_ctx,
       total_k,
       total_n);
     }
-  }
-}
-
-template <typename T>
-inline __device__ T half_abs(T a) {
-  return a > static_cast<T>(0.0f) ? a : -a;
-}
-
-template <typename T>
-inline __device__ T half_max(T a, T b) {
-  return a > b ? a : b;
 }
 template <typename T, int VectorSize = 8>
 __global__ void per_channel_quant_gpu(const T* weight_data,

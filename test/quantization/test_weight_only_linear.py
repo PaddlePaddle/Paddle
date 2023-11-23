@@ -61,6 +61,8 @@ def convert_uint16_to_float(in_list):
     or paddle.device.cuda.get_device_capability()[0] < 8,
     "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
+
+
 class WeightOnlyLinearTestCase(unittest.TestCase):
     def config(self):
         self.dtype = 'float16'
@@ -73,7 +75,28 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
         self.out_features = 256
         self.weight_dtype = "int8"
         self.static = False
-
+    def weightQuantizeCPUGPUConsistenceCheck(self,weight_float):
+        for arch in [70, 75, 80, 86]:
+            weight_gpu, weight_scale_gpu = Q.weight_quantize(
+                weight_float.cuda()
+                if self.weight_dtype == "int8"
+                else self.weight.cpu(),
+                algo="weight_only_int8"
+                if self.weight_dtype == "int8"
+                else "weight_only_int4",
+                arch=arch
+            )
+            weight_cpu, weight_scale_cpu = Q.weight_quantize(
+                weight_float.cpu(),
+                algo="weight_only_int8"
+                if self.weight_dtype == "int8"
+                else "weight_only_int4",
+                arch=arch
+            )
+            np.testing.assert_allclose(weight_gpu.numpy(), weight_cpu.numpy())
+            np.testing.assert_allclose(weight_scale_gpu.numpy(), weight_scale_cpu.numpy())
+            pass
+        pass
     def setUp(self):
         self.config()
         if self.dtype == "bfloat16" or self.weight_dtype == "int4":
@@ -97,6 +120,9 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
         self.weight = self.linear.weight
         self.float_weight = self.linear.weight
         self.weight_scale = None
+        # check weight quantize
+        self.weightQuantizeCPUGPUConsistenceCheck(self.float_weight)
+
         self.weight, self.weight_scale = Q.weight_quantize(
             self.float_weight.cuda()
             if self.weight_dtype == "int8"
@@ -105,14 +131,6 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
             if self.weight_dtype == "int8"
             else "weight_only_int4",
         )
-        self.weight_cpu, self.weight_scale_cpu = Q.weight_quantize(
-            self.float_weight.cpu(),
-            algo="weight_only_int8"
-            if self.weight_dtype == "int8"
-            else "weight_only_int4",
-        )
-        np.testing.assert_allclose(self.weight, self.weight_cpu)
-        np.testing.assert_allclose(self.weight_scale, self.weight_scale_cpu)
 
     def get_linear_out(self):
         out = self.linear(self.x)

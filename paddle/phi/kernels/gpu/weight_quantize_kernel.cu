@@ -29,16 +29,28 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                           DenseTensor* out,
                           DenseTensor* scale) {
   DenseTensor quanted_x;
-  quanted_x.Resize({x.dims()});
-  dev_ctx.template Alloc<int8_t>(&quanted_x);
   dev_ctx.template Alloc<int8_t>(out);
   dev_ctx.template Alloc<float>(scale);
+  size_t m = x.dims()[0];
+  size_t n = x.dims()[1];
+  quanted_x.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
+  dev_ctx.template Alloc<int8_t>(&quanted_x);
   std::vector<int> weight_shape{static_cast<int>(x.dims()[0]),
                                 static_cast<int>(x.dims()[1])};
+  PADDLE_ENFORCE_EQ(
+      ((arch == 80) || (arch == 86) || (arch == 75) || (arch == 70)),
+      true,
+      phi::errors::InvalidArgument("Currently, arch only support 70, 75, 80, 86."));
+
   if (algo == "llm.int8"){
       std::vector<int> axis = {1, 0};
       funcs::Transpose<Context, int8_t, 2> trans;
-      trans(dev_ctx, x_int, out, axis);
+      weight_quant_gpu<T, Context>(dev_ctx,
+                                    x.data<T>(),
+                                    quanted_x.data<int8_t>(),
+                                    scale->data<float>(),
+                                    weight_shape);
+      trans(dev_ctx, quanted_x, out, axis);
   } else if (algo == "weight_only_int8") {
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
