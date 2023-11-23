@@ -197,12 +197,10 @@ def remove_load_store_pass(instrs, code_options):
             else:
                 last_store_a = stored_from(load_a, instrs)
                 if last_store_a is not None:
-                    code_range = instrs[
-                        instrs.index(last_store_a) : instrs.index(store_b)
-                    ]
+                    last_store_idx = instrs.index(last_store_a)
                 else:
-                    code_range = instrs[: instrs.index(store_b)]
-
+                    last_store_idx = 0
+                code_range = instrs[last_store_idx : instrs.index(store_b)]
                 if (
                     not code_exist("STORE_FAST", b_name, code_range)
                     and not code_exist("LOAD_FAST", b_name, code_range)
@@ -215,7 +213,7 @@ def remove_load_store_pass(instrs, code_options):
                         last_store_a.arg = store_b.arg
                     instrs.remove(load_a)
                     instrs.remove(store_b)
-                    for instr in instrs[instrs.index(last_store_a) :]:
+                    for instr in instrs[last_store_idx:]:
                         if (
                             instr.opname in ("LOAD_FAST", "STORE_FAST")
                             and instr.argval == a_name
