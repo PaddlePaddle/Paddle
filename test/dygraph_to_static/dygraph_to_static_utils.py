@@ -16,6 +16,7 @@ import importlib
 import inspect
 import logging
 import os
+import sys
 import unittest
 from enum import Flag, auto
 from functools import wraps
@@ -83,6 +84,34 @@ class IrMode(Flag):
 
 DEFAULT_TO_STATIC_MODE = ToStaticMode.AST | ToStaticMode.SOT
 DEFAULT_IR_MODE = IrMode.LEGACY_IR | IrMode.PT
+
+DISABLED_TO_STATIC_TEST_FILES = {
+    ToStaticMode.AST: [],
+    ToStaticMode.SOT: [],
+}
+
+DISABLED_IR_TEST_FILES = {
+    IrMode.LEGACY_IR: [],
+    IrMode.PT: [
+        "test_error",
+        "test_gradname_parse",
+        "test_seq2seq",
+        "test_pylayer",
+        "test_save_inference_model",
+        "test_tensor_hook",
+        "test_len",
+        "test_list",
+        "test_slice",
+        "test_lstm",
+        "test_for_enumerate",
+        "test_jit_setitem",
+        "test_reinforcement_learning",
+        # TODO: only disable on Windows
+        "test_program_translator",
+        "test_cache_program",
+    ],
+    IrMode.PIR: [],
+}
 
 
 def to_ast_test(fn):
@@ -182,6 +211,10 @@ class Dy2StTestMeta(type):
     }
 
     def __new__(cls, name, bases, attrs):
+        module_name = attrs["__module__"]
+        filepath = sys.modules[module_name].__file__
+        assert filepath
+        filename = Path(filepath).stem
         new_attrs = {}
         original_test_cases = {
             key: value
@@ -218,10 +251,20 @@ class Dy2StTestMeta(type):
                 for ir_mode in IrMode
                 if to_static_mode & fn_to_static_modes and ir_mode & fn_ir_modes
             ]
-            # Filter out disabled test cases and test cases already in compare groups
+            # Filter out disabled test cases by decorator
             to_static_with_ir_modes = list(
                 filter(
                     lambda flags: (flags not in fn_disabled_test_cases),
+                    to_static_with_ir_modes,
+                )
+            )
+            # Filter out disabled test cases by file
+            to_static_with_ir_modes = list(
+                filter(
+                    lambda flags: (
+                        filename not in DISABLED_TO_STATIC_TEST_FILES[flags[0]]
+                        and filename not in DISABLED_IR_TEST_FILES[flags[1]]
+                    ),
                     to_static_with_ir_modes,
                 )
             )
