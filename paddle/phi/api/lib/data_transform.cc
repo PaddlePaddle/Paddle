@@ -43,7 +43,8 @@ inline bool NeedTransformDataType(const DataType& input,
                                   const TransformFlag& transform_flag) {
   return input != target &&
          (transform_flag.need_trans_data_type() ||
-          target == DataType::COMPLEX64 || target == DataType::COMPLEX128);
+          ((target == DataType::COMPLEX64 || target == DataType::COMPLEX128) &&
+           (input != DataType::INT32 && input != DataType::INT64)));
 }
 
 inline bool NeedTransformLayout(const DataLayout& input,
