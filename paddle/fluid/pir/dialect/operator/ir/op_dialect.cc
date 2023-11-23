@@ -50,10 +50,12 @@ void OperatorDialect::initialize() {
 #define GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.cc"  // NOLINT
       >();
+
   RegisterOps<
 #define GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.cc"  // NOLINT
       >();
+
   RegisterOps<paddle::dialect::AddNOp,
               paddle::dialect::AddN_Op,
               paddle::dialect::AddNWithKernelOp,
@@ -64,7 +66,8 @@ void OperatorDialect::initialize() {
               paddle::dialect::CreateArrayOp,
               paddle::dialect::ArrayLengthOp,
               paddle::dialect::ArrayReadOp,
-              paddle::dialect::ArrayWrite_Op>();
+              paddle::dialect::ArrayWrite_Op,
+              paddle::dialect::ArrayToTensorOp>();
 
   RegisterInterfaces<ParameterConvertInterface>();
 }
