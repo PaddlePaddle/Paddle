@@ -528,12 +528,12 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   Node* filter_max = nullptr;
   Node* scale_max = nullptr;
 
-  std::map<std::string, int> gmap;
-  gmap.insert(std::make_pair("fc", -1));
+  std::map<std::string, int> default_type;
+  default_type.insert(std::make_pair("fc", -1));
   auto quant_post_type =
       Has("quant_post_dynamic_weight_methods")
           ? Get<std::map<std::string, int>>("quant_post_dynamic_weight_methods")
-          : gmap;
+          : default_type;
 
   if (op_weights_precision != "int8") {
     if (quant_post_type.find("fc") != quant_post_type.end() &&
