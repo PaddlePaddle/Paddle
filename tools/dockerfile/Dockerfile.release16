@@ -125,6 +125,8 @@ RUN pip3.7 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
 RUN pip3.7 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3.7 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0'
 
+# For PaddleTest CE
+RUN pip3.7 --no-cache-dir install pytest
 
 RUN pip3.7 --no-cache-dir install coverage
 

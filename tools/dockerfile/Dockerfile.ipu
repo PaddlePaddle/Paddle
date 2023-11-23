@@ -68,8 +68,8 @@ RUN git config --global credential.helper store
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
-# install pre-commit
-RUN /opt/conda/bin/pip install pre-commit protocol PyGithub
+# install pytest and pre-commit
+RUN /opt/conda/bin/pip install pre-commit pytest protocol PyGithub
 
 # install Paddle requirement
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
