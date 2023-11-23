@@ -135,7 +135,5 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   SetDistProps(out, in.dims(), out_dist_attr);
 }
 
-REGISTER_RESHARD_FUNC(SToSReshardFunction);
-
 }  // namespace distributed
 }  // namespace phi
