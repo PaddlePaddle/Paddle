@@ -1300,7 +1300,11 @@ struct PD_INFER_DECL AnalysisConfig {
 
   std::unordered_set<std::string> trt_ops_run_float_;
 
+#ifdef PADDLE_WITH_DNNL
+  bool use_mkldnn_{true};
+#else
   bool use_mkldnn_{false};
+#endif
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
   bool model_from_memory_{false};

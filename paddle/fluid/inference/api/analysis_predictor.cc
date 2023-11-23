@@ -58,7 +58,6 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
@@ -359,10 +358,6 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
     if (FLAGS_enable_pir_in_executor) {
       config_.SwitchIrOptim(false);
     }
-  }
-  if (config_.ir_optim() &&
-      phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2)) {
-    config_.EnableMKLDNN();
   }
   int trt_identifier = config_.trt_engine_memory_sharing_identifier_;
   if (trt_identifier > 0) {
