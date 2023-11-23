@@ -46,12 +46,12 @@ pir::OpResult zeros_like(const pir::Value& x,
   return paddle::dialect::full_like(x, 0, dtype, place);
 }
 
-pir::OpResult get_parameter(const std::string& name) {
+pir::OpResult parameter(const std::string& name) {
   pir::Parameter* param = ApiBuilder::Instance().GetParameter(name);
-  pir::GetParameterOp get_parameter_op =
-      ApiBuilder::Instance().GetBuilder()->Build<pir::GetParameterOp>(
+  pir::ParameterOp parameter_op =
+      ApiBuilder::Instance().GetBuilder()->Build<pir::ParameterOp>(
           name, param->type());
-  return get_parameter_op.result(0);
+  return parameter_op.result(0);
 }
 
 void set_parameter(const pir::Value& parameter, const std::string& name) {
@@ -117,6 +117,35 @@ pir::OpResult zeros(const std::vector<int64_t>& shape,
                     phi::DataType dtype,
                     const Place& place) {
   return paddle::dialect::full(shape, 0, dtype, place);
+}
+
+pir::OpResult create_array(phi::DataType dtype) {
+  auto create_array_op = ApiBuilder::Instance()
+                             .GetBuilder()
+                             ->Build<paddle::dialect::CreateArrayOp>(dtype);
+  return create_array_op.out();
+}
+
+pir::OpResult array_length(pir::Value x) {
+  auto array_length_op = ApiBuilder::Instance()
+                             .GetBuilder()
+                             ->Build<paddle::dialect::ArrayLengthOp>(x);
+  return array_length_op.out();
+}
+
+pir::OpResult array_read(pir::Value array, pir::Value i) {
+  auto array_read_op =
+      ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::ArrayReadOp>(
+          array, i);
+  return array_read_op.out();
+}
+
+pir::OpResult array_write_(pir::Value array, pir::Value x, pir::Value i) {
+  auto array_write_op =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::ArrayWrite_Op>(array, x, i);
+  return array_write_op.out();
 }
 
 }  // namespace dialect

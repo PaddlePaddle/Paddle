@@ -23,9 +23,12 @@ import numpy as np
 
 from paddle import pir
 
-from ..pir import OpResult
-from ..pir import Program as PirProgram
-from ..pir import Value, translate_to_pir
+from ..pir import (
+    OpResult,
+    Program as PirProgram,
+    Value,
+    translate_to_pir,
+)
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
@@ -805,7 +808,9 @@ class _StandaloneExecutor:
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, feed_names, return_numpy=True):
+    def run(
+        self, feed_names, return_numpy=True, enable_job_schedule_profiler=False
+    ):
         """
         Args:
             feed_names(list): This parameter represents the input names of the model.
@@ -815,7 +820,9 @@ class _StandaloneExecutor:
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
         """
-        tensors = self._new_exe.run(feed_names)._move_to_list()
+        tensors = self._new_exe.run(
+            feed_names, enable_job_schedule_profiler
+        )._move_to_list()
         if return_numpy:
             tensors = as_numpy(tensors, copy=True)
             if not get_flags("FLAGS_enable_pir_in_executor")[
@@ -1198,6 +1205,8 @@ class Executor:
 
         self.op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
+        self.enable_job_schedule_profiler = False
+
     def _is_optimizer_op(self, op):
         return self.op_role_key in op.attr_names and int(
             op.all_attrs()[self.op_role_key]
@@ -1314,10 +1323,12 @@ class Executor:
 
     def _pir_feed_data(self, program, feed, scope):
         # feed var to framework
+        feed_target_names = set()
         global_block = program.global_block()
         for op in global_block.ops:
             if op.name() == 'pd_op.data':
                 feed_target_name = op.attrs()["name"]
+                feed_target_names.add(feed_target_name)
                 var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
                 var_shape = op.attrs()["shape"]
                 cur_feed = feed[feed_target_name]
@@ -1330,6 +1341,15 @@ class Executor:
                 core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
             else:
                 break
+
+        # pop variable which is not found in program
+        for feed_name in list(feed.keys()):
+            if feed_name not in feed_target_names:
+                feed.pop(feed_name)
+                warnings.warn(
+                    "The value %s is not found in program. It is not declared or is pruned."
+                    % feed_name
+                )
 
     def _fetch_data(self, fetch_list, fetch_var_name, scope):
         outs = [
@@ -1907,7 +1927,11 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            ret = new_exe.run(list(feed.keys()), return_numpy)
+            ret = new_exe.run(
+                list(feed.keys()),
+                return_numpy,
+                self.enable_job_schedule_profiler,
+            )
             set_flags(stored_flag)
             return ret
 
@@ -2004,6 +2028,34 @@ class Executor:
         )
 
         self._pir_feed_data(program, feed, scope)
+
+        if hasattr(program, 'lr_scheduler'):
+            from paddle.optimizer.lr import LRScheduler
+
+            assert isinstance(
+                program.lr_scheduler, LRScheduler
+            ), "must be LRScheduler"
+
+            lr_scheduler = program.lr_scheduler
+            lr_value = lr_scheduler()
+            lr_var = program.lr_var
+
+            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+            tensor = core.get_variable_tensor(
+                global_scope(), lr_scheduler._var_name
+            )
+            # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
+            cpu_tensor = _as_lodtensor(data, core.CPUPlace())
+            if core.is_cuda_graph_capturing():
+                warnings.warn(
+                    "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
+                    "take any effect! Please set the learning rate manually before each batch!"
+                )
+            elif core.is_compiled_with_ipu():
+                # for ipu, tensor is allocated on cpu
+                tensor._copy_from(cpu_tensor, tensor._place())
+            else:
+                tensor._copy_from(cpu_tensor, self.place)
 
         ret = new_exe.run(list(feed.keys()), return_numpy)
         return ret

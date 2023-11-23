@@ -1606,8 +1606,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
                << "[" << op_desc.Type() << "]" << grad_var_name << " "
                << idx_in_op << " " << idx_in_vec;
 
-      VarDesc* var_desc =
-          op_desc.Block()->FindVarRecursive(var_name.substr(0, 1));
+      VarDesc* var_desc = op_desc.Block()->FindVarRecursive(
+          op_desc.Input(var_name.substr(0, 1))[0]);
       IR_ENFORCE(var_desc != nullptr,
                  "[op:%s] Input %s should not be null",
                  op_desc.Type(),
@@ -1640,10 +1640,6 @@ struct MulGradOpTranscriber : public OpTranscriber {
 
     if (x_grad_output.size()) {
       gradReshape("X@GRAD");
-    }
-
-    if (y_grad_output.size() < 1) {
-      return;
     }
 
     if (y_grad_output.size()) {
@@ -2018,12 +2014,12 @@ struct ElementwiseTranscriber : public OpTranscriber {
     }
 
     int append_size = static_cast<int>(x_shape.size() - axis - y_shape.size());
-    if (append_size < 0) {  // which means x.rank <= y.rank, mostly
-                            // x.rank=y.rank
+    if (append_size <= 0) {  // which means x.rank <= y.rank, mostly
+                             // x.rank=y.rank
       return {x_value, y_value};
     }
-    IR_ENFORCE(append_size >= 0,
-               "Expected op[%s] have append size >= 0 with axis=%d but got %d",
+    IR_ENFORCE(append_size > 0,
+               "Expected op[%s] have append size > 0 with axis=%d but got %d",
                op_desc.Type(),
                axis,
                append_size);
@@ -2130,9 +2126,23 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
                y_type);
     dialect::DenseTensorType y_tensor_type =
         y_type.dyn_cast<dialect::DenseTensorType>();
-    std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
 
     pir::OpResult value = operation->result(idx_in_op);
+
+    // if y_grad' shape is same with y, we don't need a reshape
+    pir::Type y_grad_type = value.type();
+    IR_ENFORCE(y_grad_type.isa<dialect::DenseTensorType>(),
+               "Expected op[%s]'s input %s is DenseTensor but got %s",
+               op_desc.Type(),
+               y_grad_var_name,
+               y_grad_type);
+    dialect::DenseTensorType y_grad_tensor_type =
+        y_grad_type.dyn_cast<dialect::DenseTensorType>();
+    if (y_grad_tensor_type.dims() == y_tensor_type.dims()) {
+      return;
+    }
+
+    std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
     pir::Builder builder(ctx, operation->GetParent());
     auto reshape_op = builder.Build<dialect::ReshapeOp>(value, y_shape);
     param_map->PushValue(y_grad_var_name,
@@ -2437,6 +2447,35 @@ struct RepeatInterLeaveGradOpTranscriber : public OpTranscriber {
   }
 };
 
+struct FusedElemwiseAddActivationOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "scale") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.0);
+    } else if (info.name == "axis") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -1);
+    } else if (info.name == "save_intermediate_out") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    }
+  }
+};
+
+struct FusedElemwiseAddActivationGradOpTranscriber
+    : public FusedElemwiseAddActivationOpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    const auto inter_out_grad = op_desc.Output("IntermediateOut@GRAD");
+    if (inter_out_grad.size() > 0) {
+      IR_THROW(
+          "pd_op.fused_elemwise_add_activation_grad doesn't have "
+          "Intermediate_out_grad output");
+    }
+
+    return OpTranscriber::LoopkUpOpInfo(ctx, op_desc);
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -2452,6 +2491,10 @@ OpTranslator::OpTranslator() {
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["fill_constant"] = FillConstantTranscriber();
   special_handlers["fused_feedforward"] = FusedFeedForwardOpTranscriber();
+  special_handlers["fused_elemwise_add_activation"] =
+      FusedElemwiseAddActivationOpTranscriber();
+  special_handlers["fused_elemwise_add_activation_grad"] =
+      FusedElemwiseAddActivationGradOpTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();

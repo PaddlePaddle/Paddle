@@ -228,6 +228,7 @@
   output : Tensor(out)
   infer_meta :
     func : CastInferMeta
+    spmd_rule : CastInferSpmd
   kernel :
     func : cast
     param : [x, dtype]
@@ -711,6 +712,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceIntArrayAxisInferMeta
+    spmd_rule: ReductionMaxInferSpmdDynamic
   kernel :
     func : max
   backward : max_grad
@@ -1017,6 +1019,7 @@
   output : Tensor[]{num}
   infer_meta :
     func : SplitWithNumInferMeta
+    spmd_rule : SplitWithNumInferSpmdDynamic
   kernel :
     func : split_with_num
   backward : split_with_num_grad
@@ -1098,6 +1101,7 @@
   output : Tensor(out)
   infer_meta :
     func : TransposeInferMeta
+    spmd_rule: TransposeInferSpmd
   kernel :
     func : transpose
   inplace : (x -> out)
@@ -1130,6 +1134,7 @@
   output : Tensor(out)
   infer_meta :
     func : TriuInferMeta
+    spmd_rule : TriuInferSpmd
   kernel :
     func : triu
   inplace: (x -> out)

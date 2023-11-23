@@ -216,5 +216,21 @@ class TestDy2staticPir6(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), ans.numpy())
 
 
+class TestDy2staticPir7(unittest.TestCase):
+    # test basic-indexing __getitem__ for OpResult
+    def test_basic_network(self):
+        def func(x):
+            x = x * 2
+            x = x + 1
+            return 1
+
+        static_func = paddle.jit.to_static(func, full_graph=True)
+        x = paddle.randn((2, 3, 4))
+        x.stop_gradient = False
+        ans = func(x)
+        out = static_func(x)
+        np.testing.assert_allclose(out, ans)
+
+
 if __name__ == "__main__":
     unittest.main()
