@@ -41,29 +41,6 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle_mkldnn_quantizer_config.h"  // NOLINT
 #endif
-#ifdef PADDLE_WITH_XBYAK
-#include "xbyak/xbyak_util.h"
-#endif
-
-#ifdef _WIN32
-#if defined(__AVX2__)
-#include <immintrin.h>  // avx2
-#elif defined(__AVX__)
-#include <intrin.h>  // avx
-#endif               // AVX
-#else                // WIN32
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
-#endif  // WIN32
-
-#if defined(_WIN32)
-#define ALIGN32_BEG __declspec(align(32))
-#define ALIGN32_END
-#else
-#define ALIGN32_BEG
-#define ALIGN32_END __attribute__((aligned(32)))
-#endif  // _WIN32
 
 namespace paddle {
 
@@ -1365,12 +1342,8 @@ struct PD_INFER_DECL AnalysisConfig {
 #endif
     return false;
   }
-#endif
-  bool use_mkldnn_{SupportAVX2() ? true : false};
-#else
-  bool use_mkldnn_{false};
-#endif
 
+  bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
   bool model_from_memory_{false};
