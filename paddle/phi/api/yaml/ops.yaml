@@ -1030,6 +1030,16 @@
     data_type : dtype
     backend : place
 
+- op : gammaln
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : gammaln
+  inplace: (x -> out)
+  backward : gammaln_grad
+
 - op : gather
   args : (Tensor x, Tensor index, Scalar axis=0)
   output : Tensor(out)

@@ -4986,6 +4986,51 @@ def conj(x, name=None):
         return out
 
 
+def gammaln(x, name=None):
+    r"""
+    Calculates the logarithm of the absolute value of the gamma function elementwisely.
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64, uint16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, The values of the logarithm of the absolute value of the gamma at the given tensor x.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.arange(1.5, 4.5, 0.5)
+            >>> out = paddle.gammaln(x)
+            >>> print(out)
+            Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [-0.12078224,  0.        ,  0.28468287,  0.69314718,  1.20097363,
+                    1.79175949])
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.gammaln(x)
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'gammaln'
+        )
+        helper = LayerHelper('gammaln', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(type='gammaln', inputs={'x': x}, outputs={'out': out})
+        return out
+
+
+@inplace_apis_in_dygraph_only
+def gammaln_(x, name=None):
+    r"""
+    Inplace version of ``gammaln`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_gammaln`.
+    """
+    if in_dynamic_mode():
+        return _C_ops.gammaln_(x)
+
+
 def digamma(x, name=None):
     r"""
     Calculates the digamma of the given input tensor, element-wise.

@@ -336,6 +336,8 @@ from .math import i0_  # noqa: F401
 from .math import i0e  # noqa: F401
 from .math import i1  # noqa: F401
 from .math import i1e  # noqa: F401
+from .math import gammaln  # noqa: F401
+from .math import gammaln_  # noqa: F401
 from .math import polygamma  # noqa: F401
 from .math import polygamma_  # noqa: F401
 from .math import renorm  # noqa: F401
@@ -629,6 +631,8 @@ tensor_method_func = [
     'real',
     'imag',
     'is_floating_point',
+    'gammaln',
+    'gammaln_',
     'digamma',
     'digamma_',
     'diagonal',
