@@ -33,46 +33,6 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-std::unordered_map<std::string, OpPatternKind> OpKindMap = {
-    {"pd_op.add", OpPatternKind::kElementWise},
-    {"pd_op.subtract", OpPatternKind::kElementWise},
-    {"pd_op.multiply", OpPatternKind::kElementWise},
-    {"pd_op.divide", OpPatternKind::kElementWise},
-    {"pd_op.sqrt", OpPatternKind::kElementWise},
-    {"pd_op.rsqrt", OpPatternKind::kElementWise},
-    {"pd_op.full", OpPatternKind::kElementWise},
-    {"pd_op.relu", OpPatternKind::kElementWise},
-    {"pd_op.exp", OpPatternKind::kElementWise},
-    {"pd_op.sin", OpPatternKind::kElementWise},
-    {"pd_op.cos", OpPatternKind::kElementWise},
-    {"pd_op.pow", OpPatternKind::kElementWise},
-    {"pd_op.elementwise_pow", OpPatternKind::kElementWise},
-    {"pd_op.sum", OpPatternKind::kReduction},
-    {"cinn_op.reshape", OpPatternKind::kElementWise},
-    {"pd_op.cast", OpPatternKind::kElementWise},
-    {"pd_op.greater_than", OpPatternKind::kElementWise},
-    {"pd_op.greater_equal", OpPatternKind::kElementWise},
-    {"pd_op.transpose", OpPatternKind::kInjective},
-    {"pd_op.gather_nd", OpPatternKind::kInjective},
-    {"cinn_op.scale", OpPatternKind::kElementWise},
-    {"cinn_op.concat", OpPatternKind::kInjective},
-    {"cinn_op.slice", OpPatternKind::kInjective},
-    {"cinn_op.split", OpPatternKind::kInjective},
-    {"cinn_op.reduce_sum", OpPatternKind::kReduction},
-    {"cinn_op.reduce_max", OpPatternKind::kReduction},
-    {"cinn_op.broadcast", OpPatternKind::kBroadcast},
-    {"cinn_op.uniform_random", OpPatternKind::kElementWise}};
-
-OpPatternKind GetOpKind(const std::string& op_name) {
-  auto found_it = OpKindMap.find(op_name);
-  if (found_it == OpKindMap.end()) {
-    PADDLE_THROW(phi::errors::Unavailable(
-        "not support [%s] op yet in op kind map", op_name));
-  }
-
-  return found_it->second;
-}
-
 std::vector<pir::Operation*> GetProducerOpsReverseSort(
     pir::Operation* op,
     const std::unordered_map<pir::Operation*, size_t>& op2id) {
@@ -324,7 +284,8 @@ class OpFusionPassHelper {
         }
 
         // group type
-        group->op_pattern_kind = GetOpKind(op->name());
+        group->op_pattern_kind =
+            hlir::framework::pir::CompatibleInfo::OpKind(*op);
         // use current op as master op for schedule
         group->master_ops.insert(op);
 
@@ -390,7 +351,8 @@ class OpFusionPassHelper {
  private:
   void DoOpFusion() {
     for (auto consumer : ops_) {
-      auto consumer_kind = GetOpKind(consumer->name());
+      auto consumer_kind =
+          hlir::framework::pir::CompatibleInfo::OpKind(*consumer);
       // kNonFusible op can't fuse any other op.
       if (consumer_kind == OpPatternKind::kNonFusible) {
         continue;
@@ -419,7 +381,8 @@ class OpFusionPassHelper {
           continue;
         }
         // kNonFusible op can't fuse any other op.
-        auto producer_kind = GetOpKind(producer->name());
+        auto producer_kind =
+            hlir::framework::pir::CompatibleInfo::OpKind(*producer);
         if (producer_kind == OpPatternKind::kNonFusible) {
           continue;
         }
@@ -626,13 +589,17 @@ class OpFusionPassHelper {
   }
 
   bool CanFuse(::pir::Operation* producer, const ::pir::Operation* consumer) {
-    auto& relation = fusion_relation_map_[GetOpKind(producer->name())];
+    auto& relation =
+        fusion_relation_map_[hlir::framework::pir::CompatibleInfo::OpKind(
+            *producer)];
     // first step: check producer can be fused into consumer
-    if (relation.op_kind.count(GetOpKind(consumer->name()))) {
+    if (relation.op_kind.count(
+            hlir::framework::pir::CompatibleInfo::OpKind(*consumer))) {
       auto& consumer_group = fusion_groups_[consumer];
       // second step: check producer can be fused into consumer group
       VLOG(3) << "Call ConditionFunction, Producer Op Pattern : "
-              << GetOpKind(producer->name()) << " , Consumer Group Pattern : "
+              << hlir::framework::pir::CompatibleInfo::OpKind(*producer)
+              << " , Consumer Group Pattern : "
               << consumer_group->op_pattern_kind;
 
       return relation.fusion_op_kind[consumer_group->op_pattern_kind](
