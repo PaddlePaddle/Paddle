@@ -852,7 +852,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func :  KernelWithXShapeInferMeta
-    param : [xshape]
+    param : [xshape, out_grad]
   kernel :
     func : flatten_grad
     data_type : out_grad
@@ -2277,7 +2277,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : KernelWithXShapeInferMeta
-    param: [xshape]
+    param: [xshape, out_grad]
   kernel :
     func : squeeze_grad
     data_type : out_grad
@@ -2522,7 +2522,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : KernelWithXShapeInferMeta
-    param: [xshape]
+    param: [xshape, out_grad]
   kernel :
     func : unsqueeze_grad
     param : [xshape, out_grad]
