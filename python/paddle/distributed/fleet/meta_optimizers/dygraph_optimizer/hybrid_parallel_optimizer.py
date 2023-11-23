@@ -42,8 +42,6 @@ from ...utils.mix_precision_utils import MixPrecisionOptimizer
 
 __all__ = []
 
-g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 0))
-
 
 class HybridParallelClipGrad:
     def __init__(self, clip, hcg):
@@ -300,8 +298,7 @@ class HybridParallelClipGrad:
         mp_flag = self._hcg.get_model_parallel_world_size() > 1
         pp_flag = self._hcg.get_pipe_parallel_world_size() > 1
 
-        # not g_shard_norm_align_dp, grads are sharded among sharding group
-        if sharding_flag and not g_shard_norm_align_dp:
+        if sharding_flag:
             # norm of mp distributed variable
             if mp_flag:
                 # dist should reduce among sharding group and mp group、pp group latter
@@ -593,10 +590,9 @@ class HybridParallelOptimizer:
             )
             self._inner_opt.reduce_gradients(parameter_list, self._hcg)
             # dp sync later do not need to use global parameter list
-            if not g_shard_norm_align_dp:
-                dp_parameter_list = self._inner_opt.filter_parameters(
-                    parameter_list, self._hcg
-                )
+            dp_parameter_list = self._inner_opt.filter_parameters(
+                parameter_list, self._hcg
+            )
 
         if self._dp_enable:
             fused_allreduce_gradients(dp_parameter_list, self._hcg)
@@ -623,10 +619,9 @@ class HybridParallelOptimizer:
             )
             self._inner_opt.reduce_gradients(parameter_list, self._hcg)
             # dp sync later do not need to use global parameter list
-            if not g_shard_norm_align_dp:
-                dp_parameter_list = self._inner_opt.filter_parameters(
-                    parameter_list, self._hcg
-                )
+            dp_parameter_list = self._inner_opt.filter_parameters(
+                parameter_list, self._hcg
+            )
 
         if self._dp_enable:
             fused_allreduce_gradients(dp_parameter_list, self._hcg)
