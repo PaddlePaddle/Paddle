@@ -88,7 +88,7 @@ Block *ModuleOp::block() {
   assert(operation() != nullptr);
   assert(operation()->num_regions() == 1);
   assert(operation()->region(0).size() == 1);
-  return operation()->region(0).front();
+  return &operation()->region(0).front();
 }
 
 ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {

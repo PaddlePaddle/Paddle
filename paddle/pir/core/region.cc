@@ -69,9 +69,11 @@ void Region::clear() {
     blocks_.pop_back();
   }
 }
-
+Program *Region::parent_program() const {
+  return parent_ ? parent_->GetParentProgram() : nullptr;
+}
 IrContext *Region::ir_context() const {
-  IR_ENFORCE(parent_, "Region is not attached to a container.");
+  IR_ENFORCE(parent_, "Region is not attached to a operation.");
   return parent_->ir_context();
 }
 }  // namespace pir
