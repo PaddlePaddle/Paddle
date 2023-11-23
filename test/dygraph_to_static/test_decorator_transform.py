@@ -19,10 +19,10 @@ from functools import wraps
 
 import decos
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir,
+    test_legacy_and_pt,
 )
 
 import paddle
@@ -186,7 +186,7 @@ def deco_with_paddle_api():
 
 
 class TestDecoratorTransform(Dy2StTestBase):
-    @test_legacy_and_pir
+    @test_legacy_and_pt
     def test_deco_transform(self):
         outs = paddle.jit.to_static(forward)()
         np.testing.assert_allclose(outs[0], np.array(3), rtol=1e-05)
@@ -215,7 +215,7 @@ class TestDecoratorTransform(Dy2StTestBase):
                     break
             self.assertTrue(flag)
 
-    @test_legacy_and_pir
+    @test_legacy_and_pt
     def test_deco_with_paddle_api(self):
         self.assertTrue(deco_with_paddle_api())
 

@@ -18,9 +18,9 @@ import unittest
 from time import time
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    compare_legacy_with_pir,
+    compare_legacy_with_pt,
     test_ast_only,
 )
 from predictor_utils import PredictorTools
@@ -157,7 +157,7 @@ class TestMNISTWithToStatic(TestMNIST):
     still works if model is trained in dygraph mode.
     """
 
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def train_static(self):
         return self.train(to_static=True)
 

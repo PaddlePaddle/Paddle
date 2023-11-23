@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir,
+    test_legacy_and_pt,
 )
 
 import paddle
@@ -37,7 +37,6 @@ class TestTensorClone(Dy2StTestBase):
         x = paddle.ones([1, 2, 3])
         return tensor_clone(x).numpy()
 
-    @test_legacy_and_pir
     def test_tensor_clone(self):
         paddle.disable_static()
         dygraph_res = self._run(to_static=False)
@@ -60,7 +59,7 @@ class TestTensorDygraphOnlyMethodError(Dy2StTestBase):
         return y.numpy()
 
     @test_ast_only
-    @test_legacy_and_pir
+    @test_legacy_and_pt
     def test_to_static_numpy_report_error(self):
         paddle.disable_static()
         dygraph_res = self._run(to_static=False)
@@ -83,7 +82,7 @@ class TestTensorItem(Dy2StTestBase):
             return tensor_item(x).numpy()
         return tensor_item(x)
 
-    @test_legacy_and_pir
+    @test_legacy_and_pt
     def test_tensor_clone(self):
         paddle.disable_static()
         dygraph_res = self._run(to_static=False)
@@ -110,7 +109,7 @@ class TestTensorSize(Dy2StTestBase):
             ret = ret.numpy()
         return ret
 
-    @test_legacy_and_pir
+    @test_legacy_and_pt
     def test_tensor_clone(self):
         paddle.disable_static()
         dygraph_res = self._run(to_static=False)
@@ -131,7 +130,7 @@ class TestTrueDiv(Dy2StTestBase):
         y = paddle.to_tensor([4], dtype='int64')
         return true_div(x, y).numpy()
 
-    @test_legacy_and_pir
+    @test_legacy_and_pt
     def test_ture_div(self):
         paddle.disable_static()
         dygraph_res = self._run(to_static=False)

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt
 
 import paddle
 from paddle.jit import to_static
@@ -75,7 +75,7 @@ class TestParameterList(Dy2StTestBase):
 
         return loss
 
-    @test_legacy_and_pir
+    @test_legacy_and_pt
     def test_parameter_list(self):
         static_loss = self.train(False, to_static=True)
         dygraph_loss = self.train(False, to_static=False)
@@ -128,7 +128,7 @@ class TestRawParameterList(Dy2StTestBase):
 
         return loss
 
-    @test_legacy_and_pir
+    @test_legacy_and_pt
     def test_parameter_list(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)

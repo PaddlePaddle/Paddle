@@ -14,10 +14,10 @@
 
 import unittest
 
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir,
+    test_legacy_and_pt,
 )
 
 import paddle
@@ -39,7 +39,7 @@ def main_func():
 class TestConvertGenerator(Dy2StTestBase):
     # fallback will ok.
     @test_ast_only
-    @test_legacy_and_pir
+    @test_legacy_and_pt
     def test_raise_error(self):
         translator_logger.verbosity_level = 1
         with self.assertLogs(
