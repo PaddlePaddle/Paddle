@@ -56,10 +56,7 @@ logger = logging.getLogger("Dygraph to static utils")
 logger.setLevel(logging.WARNING)
 
 ENV_ENABLE_PIR_WITH_PT_IN_DY2ST = BooleanEnvironmentVariable(
-    "FLAGS_enable_pir_with_pt_in_dy2st",
-    True
-    # "FLAGS_enable_pir_in_executor",
-    # True,
+    "FLAGS_enable_pir_with_pt_in_dy2st", True
 )
 
 
@@ -146,7 +143,6 @@ def to_legacy_ir_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
         logger.info("[LEGACY_IR] running legacy ir")
-        print("[LEGACY_IR] running legacy ir")
         pt_in_dy2st_flag = ENV_ENABLE_PIR_WITH_PT_IN_DY2ST.name
         original_flag_value = get_flags(pt_in_dy2st_flag)[pt_in_dy2st_flag]
         with EnvironmentVariableGuard(ENV_ENABLE_PIR_WITH_PT_IN_DY2ST, False):
@@ -164,7 +160,6 @@ def to_pt_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
         logger.info("[PT] running PT")
-        print("[PT] running PT")
         pt_in_dy2st_flag = ENV_ENABLE_PIR_WITH_PT_IN_DY2ST.name
         original_flag_value = get_flags(pt_in_dy2st_flag)[pt_in_dy2st_flag]
         if os.environ.get('FLAGS_use_stride_kernel', False):
