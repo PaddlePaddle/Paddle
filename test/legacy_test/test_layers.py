@@ -34,6 +34,7 @@ from paddle.incubate.layers.nn import (
     rank_attention,
     shuffle_batch,
 )
+from paddle.pir_utils import test_with_pir_api
 from paddle.tensor import random
 
 
@@ -275,6 +276,7 @@ class TestLayer(LayerTest):
 
             self.assertRaises(TypeError, test_type)
 
+    @test_with_pir_api
     def test_SyncBatchNorm(self):
         if core.is_compiled_with_cuda():
             with self.static_graph():

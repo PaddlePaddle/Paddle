@@ -838,7 +838,9 @@ class PartialProgramLayer:
             if not param_value.use_empty():
                 required_params.append(param)
                 required_param_values.append(param_value)
-
+            else:
+                # in pir, we need remove the get_parameter op for unused parameters.
+                block.remove_op(param_value.get_defining_op())
         self._params = required_params
         self._param_values = required_param_values
 
