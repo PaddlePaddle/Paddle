@@ -150,8 +150,17 @@ class DistributedOperator:
                     is_parameter_str = "non-parameter"
             else:
                 is_parameter_str = "non-parameter"
-            str += ", {}'s dims_mapping (input, {}, {}): {}".format(
-                arg_name, annotated_str, is_parameter_str, dims_mapping
+
+            # partial
+            input_dist_attr = self.dist_attr.get_input_dist_attr(arg_name)
+            partial_dims = sorted(input_dist_attr._partial_dims())
+
+            str += "; {}'s dims_mapping (input, {}, {}): {}, partial on dims: {}".format(
+                arg_name,
+                annotated_str,
+                is_parameter_str,
+                dims_mapping,
+                partial_dims,
             )
 
         for arg_name in self.serial_op.desc.output_arg_names():
@@ -174,8 +183,17 @@ class DistributedOperator:
                     is_parameter_str = "non-parameter"
             else:
                 is_parameter_str = "non-parameter"
-            str += ", {}'s dims_mapping (output, {}, {}): {}".format(
-                arg_name, annotated_str, is_parameter_str, dims_mapping
+
+            # partial
+            output_dist_attr = self.dist_attr.get_output_dist_attr(arg_name)
+            partial_dims = sorted(output_dist_attr._partial_dims())
+
+            str += "; {}'s dims_mapping (output, {}, {}): {}, partial on dims: {}".format(
+                arg_name,
+                annotated_str,
+                is_parameter_str,
+                dims_mapping,
+                partial_dims,
             )
 
         str += ", dist_impl idx: {} , dist_impl type {} }}".format(

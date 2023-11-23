@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestFlattenOp(OpTest):
@@ -49,11 +50,11 @@ class TestFlattenOp(OpTest):
                 core.CUDAPlace(0),
                 no_check_set=["XShape"],
                 check_prim=True,
-                check_new_ir=True,
+                check_pir=True,
             )
         else:
             self.check_output(
-                no_check_set=["XShape"], check_prim=True, check_new_ir=True
+                no_check_set=["XShape"], check_prim=True, check_pir=True
             )
 
     def test_check_grad(self):
@@ -63,10 +64,10 @@ class TestFlattenOp(OpTest):
                 ["X"],
                 "Out",
                 check_prim=True,
-                check_new_ir=True,
+                check_pir=True,
             )
         else:
-            self.check_grad(["X"], "Out", check_prim=True, check_new_ir=True)
+            self.check_grad(["X"], "Out", check_prim=True, check_pir=True)
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
@@ -461,6 +462,7 @@ class TestStaticFlattenPythonAPI(unittest.TestCase):
     def execute_api(self, x, start_axis=0, stop_axis=-1):
         return paddle.flatten(x, start_axis, stop_axis)
 
+    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
         np_x = np.random.rand(2, 3, 4, 4).astype('float32')
@@ -481,6 +483,7 @@ class TestStaticFlattenInferShapePythonAPI(unittest.TestCase):
     def execute_api(self, x, start_axis=0, stop_axis=-1):
         return paddle.flatten(x, start_axis, stop_axis)
 
+    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -489,7 +492,7 @@ class TestStaticFlattenInferShapePythonAPI(unittest.TestCase):
                 name="x", shape=[-1, 3, -1, -1], dtype='float32'
             )
             out = self.execute_api(x, start_axis=2, stop_axis=3)
-        self.assertTrue((-1, 3, -1) == out.shape)
+        self.assertTrue((-1, 3, -1) == tuple(out.shape))
 
 
 class TestStaticInplaceFlattenPythonAPI(TestStaticFlattenPythonAPI):

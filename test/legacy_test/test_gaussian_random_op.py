@@ -46,7 +46,7 @@ class TestGaussianRandomOp(OpTest):
         self.std = 2.0
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output, check_new_ir=True)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         self.assertEqual(outs[0].shape, (123, 92))
@@ -88,7 +88,7 @@ class TestGaussianRandomFP16Op(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place_customized(
-            self.verify_output, place=core.CUDAPlace(0), check_new_ir=True
+            self.verify_output, place=core.CUDAPlace(0), check_pir=True
         )
 
     def verify_output(self, outs):
@@ -141,7 +141,7 @@ class TestGaussianRandomBF16Op(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place_customized(
-            self.verify_output, place=core.CUDAPlace(0), check_new_ir=True
+            self.verify_output, place=core.CUDAPlace(0), check_pir=True
         )
 
     def verify_output(self, outs):
@@ -196,7 +196,7 @@ class TestGaussianRandomOp_ShapeTensorList(TestGaussianRandomOp):
         self.seed = 10
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output, check_new_ir=True)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
 
 class TestGaussianRandomOp2_ShapeTensorList(

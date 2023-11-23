@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/pir/dialect/shape/utils/shape_optimization_utils.h"
 #include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
 namespace pir {
@@ -47,103 +48,10 @@ class ShapeAnalysis {
   virtual bool IsSameNumElements(Value lhs, Value rhs);
 };
 
-using dialect::SymbolicDim;
-
-struct SymbolicDimProduct {
-  std::vector<SymbolicDim> symbols;
-  int64_t factor = 1;
-  bool empty() { return factor == 1 && symbols.empty(); }
-  friend inline bool operator==(const SymbolicDimProduct& lhs,
-                                const SymbolicDimProduct& rhs) {
-    return lhs.factor == rhs.factor && lhs.symbols == rhs.symbols;
-  }
-
-  friend inline bool operator!=(const SymbolicDimProduct& lhs,
-                                const SymbolicDimProduct& rhs) {
-    return !(lhs == rhs);
-  }
-};
-
-struct SymDimHasher {
-  size_t operator()(const dialect::SymbolicDim& symbol) const noexcept {
-    return std::hash<Operation*>{}(symbol.operation());
-  }
-};
-
-struct SymProductHasher {
-  size_t operator()(const SymbolicDimProduct& symProd) const noexcept {
-    size_t hash = std::hash<size_t>{}(symProd.symbols.size());
-    for (auto& symbol : symProd.symbols) {
-      hash = hash_combine(hash, SymDimHasher{}(symbol));  // NOLINT
-    }
-    hash = hash_combine(hash, std::hash<int64_t>{}(symProd.factor));
-    return hash;
-  }
-};
-
-class SymbolicDimMgr {
- public:
-  explicit SymbolicDimMgr(ModuleOp m);
-  bool Load();
-  SymbolicDim NewSymbolicDim(const std::string& name = {});
-  SymbolicDim NewConstantSymbolicDim(int64_t val);
-  std::vector<SymbolicDim> CreateSymbolicDimsForRankedValue(Value value);
-  SymbolicDim GetRootSymbolicDim(SymbolicDim symbol);
-  bool IsSymbolicDimEqual(SymbolicDim lhs, SymbolicDim rhs);
-  SymbolTable& symbolTable() { return symbol_table_; }
-  bool MapSymbolicDimEqual(SymbolicDim lhs, SymbolicDim rhs);
-  SymbolicDimProduct SimplifySymbolicDimProduct(const SymbolicDimProduct& x);
-  std::pair<SymbolicDimProduct, SymbolicDimProduct>
-  SimplifySymbolicDimProductPair(const SymbolicDimProduct& x,
-                                 const SymbolicDimProduct& y);
-  SymbolicDimProduct* SymbolicDimProductDivide(const SymbolicDimProduct& x,
-                                               const SymbolicDimProduct& y);
-
-  bool Save();
-
-  bool IsSymbolicDimProductEqual(const SymbolicDimProduct& lhs,
-                                 const SymbolicDimProduct& rhs);
-  bool MapSymbolicDimProductEqual(const SymbolicDimProduct& lhs,
-                                  const SymbolicDimProduct& rhs);
-
- private:
-  const std::string GetNextName();
-  bool UpdateProductEqualityMap();
-  bool IsMultipleOfKnownSymbolicDimProductEqualPair(
-      const SymbolicDimProduct& lhs, const SymbolicDimProduct& rhs);
-  bool SaveShapeConstraintGraph();
-  bool LoadShapeConstraintGraph();
-
- private:
-  ModuleOp m_;
-
-  SymbolTable symbol_table_;
-
-  int64_t nextSymbolicIdx_ = 0;
-
-  std::unordered_set<std::string> symbolNameSet_;
-
-  std::unordered_map<SymbolicDim, SymbolicDim, SymDimHasher> symbolDimUnionSet_;
-
-  std::unordered_map<int64_t, SymbolicDim> constantSymbolicDimMap_;
-
-  // productEqualityMap_[A][B] == true : Product[A] == Product[B]
-  using SymbolicDimProductMap = std::unordered_map<
-      SymbolicDimProduct,
-      std::unordered_map<SymbolicDimProduct, bool, SymProductHasher>,
-      SymProductHasher>;
-  SymbolicDimProductMap productEqualityMap_;
-  bool productEqualityMapUpdated_ = true;
-};
-
 // A subclass to impement `ShapeAnalysis` on buffer level.
 // The implementation is based on shape constraint ir.
 class ShapeConstraintIRAnalysis : public ShapeAnalysis {
  public:
-  // Build shape related analysis on the provided `op`.
-  // This generally can be divided into two steps:
-  // 1, load exsiting shape constraint ir (e.g. symbolic dim ops)
-  // 2, build mapping between memref values and symbolic dim ops.
   explicit ShapeConstraintIRAnalysis(ModuleOp m);
 
   // auto-save updated shape constriant ir when destroying.
@@ -156,12 +64,6 @@ class ShapeConstraintIRAnalysis : public ShapeAnalysis {
   // Returns true if the two value have the same symbolic shape.
   bool IsShapeEqual(Value lhs, Value rhs) override;
 
-  // Suppose:
-  //    lhs_dim_idxs = {ld0, ld1, ...}
-  //    rhs_dim_idxs = {rd0, rd1, ...}
-  // Returns true if:
-  //    lhs.shape[ld0] * lhs.shape[ld1] * ... ==
-  //    rhs.shape[rd0] * rhs.shape[rd1] * ...
   bool IsProductEqual(Value lhs,
                       std::vector<int> lhs_dim_idxs,
                       Value rhs,
@@ -174,40 +76,8 @@ class ShapeConstraintIRAnalysis : public ShapeAnalysis {
   SymbolicDimMgr mgr_;
   // Map a ranked memref value to an array of symbolicDims, each represents one
   // dimension size of the memref value.
-  std::unordered_map<Value, std::vector<SymbolicDim>> value_to_sym_dims_;
+  std::unordered_map<Value, std::vector<shape::SymbolicDimOp>>
+      value_to_sym_dims_;
 };
 
-class ShapeComputationIRAnalysis {
- public:
-  using func = std::function<bool(Operation* op)>;
-  explicit ShapeComputationIRAnalysis(ModuleOp m,
-                                      SymbolicDimMgr& mgr);  // NOLINT
-  bool Run();
-
- private:
-  bool RunOnRegion(Region* region, func fn);
-  bool RunOnBlock(Block* block, func fn);
-  bool RunOnOperation(Operation* op, func fn);
-
-  bool BuildShapeOnOperation(Operation* op);
-  bool BuildShapeOnValue(Value value);
-
-  bool ApplyOpConstraint(Operation* op);
-  bool ApplyIndexOpConstraint(Operation* op);
-  bool ApplyTieShapeOpConstraint(Operation* op);
-
-  bool initialized_ = false;
-  ModuleOp m_;
-  SymbolicDimMgr& mgr_;
-
-  std::unordered_map<Value, SymbolicDim> value2SymDim_;
-
-  // shape tensor is the 1D ranked tensor with int/index dtype.
-  std::unordered_map<Value, std::vector<SymbolicDim>> shapeTensor2SymDims_;
-
-  std::unordered_map<Value, std::vector<SymbolicDim>> rankedTensor2SymDims_;
-};
-
-bool IsIntOrIndex(Type type);
-bool IsCandidateShapeTensorType(Type ty);
 }  // namespace pir

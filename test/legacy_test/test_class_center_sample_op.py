@@ -19,7 +19,8 @@ import numpy as np
 from op_test import OpTest, paddle_static_guard
 
 import paddle
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def class_center_sample_numpy(label, classes_list, num_samples):
@@ -118,7 +119,9 @@ class TestClassCenterSampleOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=['SampledLocalClassCenter'])
+        self.check_output(
+            no_check_set=['SampledLocalClassCenter'], check_pir=True
+        )
 
 
 class TestClassCenterSampleOpINT32(TestClassCenterSampleOp):
@@ -160,9 +163,12 @@ class TestClassCenterSampleV2(unittest.TestCase):
             for place in self.places:
                 self.check_static_result(place=place)
 
+    @test_with_pir_api
     def check_static_result(self, place):
         with paddle_static_guard():
-            with program_guard(Program(), Program()):
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
                 label_np = np.random.randint(
                     0, self.num_classes, (self.batch_size,), dtype=self.dtype
                 )
@@ -185,7 +191,6 @@ class TestClassCenterSampleV2(unittest.TestCase):
                 )
                 exe = paddle.base.Executor(place)
                 [remapped_label_res, sampled_class_index_res] = exe.run(
-                    paddle.base.default_main_program(),
                     feed={'label': label_np},
                     fetch_list=[remapped_label, sampled_class_index],
                 )

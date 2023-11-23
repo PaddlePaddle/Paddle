@@ -22,6 +22,7 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
@@ -67,7 +68,7 @@ class TestSliceOp(OpTest):
         self.out = self.input[1:3, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -75,7 +76,8 @@ class TestSliceOp(OpTest):
             'Out',
             max_relative_error=0.006,
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -125,7 +127,7 @@ class TestSliceZerosShapeTensor(OpTest):
         self.out = self.input[1:2]
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.CPUPlace(), check_new_ir=True)
+        self.check_output_with_place(paddle.CPUPlace(), check_pir=True)
 
 
 # 1.2 with attr(decrease)
@@ -157,7 +159,7 @@ class TestSliceOp_decs_dim(OpTest):
         self.out = self.input[1:2, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -165,11 +167,11 @@ class TestSliceOp_decs_dim(OpTest):
             'Out',
             max_relative_error=0.006,
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
-# Situation 2: starts(list, have tensor), ends(list, no tensor)
 # without attr(decrease)
 class TestSliceOp_starts_ListTensor(OpTest):
     def setUp(self):
@@ -203,11 +205,11 @@ class TestSliceOp_starts_ListTensor(OpTest):
         self.starts_infer = [-1, 0, -1]
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['Input'], 'Out', max_relative_error=0.006, check_new_ir=True
+            ['Input'], 'Out', max_relative_error=0.006, check_pir=True
         )
 
 
@@ -248,11 +250,11 @@ class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
         self.starts_infer = [1, -1, 2]
 
     def test_check_output(self):
-        self.check_output(check_dygraph=True, check_new_ir=True)
+        self.check_output(check_dygraph=True, check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['Input'], 'Out', max_relative_error=0.006, check_new_ir=True
+            ['Input'], 'Out', max_relative_error=0.006, check_pir=True
         )
 
 
@@ -301,11 +303,11 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
         self.out = self.input[1, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['Input'], 'Out', max_relative_error=0.006, check_new_ir=True
+            ['Input'], 'Out', max_relative_error=0.006, check_pir=True
         )
 
 
@@ -339,11 +341,11 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
         self.out = self.input[1:3, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['Input'], 'Out', max_relative_error=0.006, check_new_ir=True
+            ['Input'], 'Out', max_relative_error=0.006, check_pir=True
         )
 
 
@@ -378,11 +380,11 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
         self.out = self.input[1, 0, 2:4, :]
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['Input'], 'Out', max_relative_error=0.006, check_new_ir=True
+            ['Input'], 'Out', max_relative_error=0.006, check_pir=True
         )
 
 
@@ -424,11 +426,11 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
         self.ends_infer = [-1, 3, 4]
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['Input'], 'Out', max_relative_error=0.006, check_new_ir=True
+            ['Input'], 'Out', max_relative_error=0.006, check_pir=True
         )
 
 
@@ -468,10 +470,10 @@ class TestSliceOp_ZeroDim(OpTest):
         self.out = self.input[0:20, 1:3, 1:3]
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', check_new_ir=True)
+        self.check_grad(['Input'], 'Out', check_pir=True)
 
 
 # Test CUDA float16
@@ -507,7 +509,7 @@ class TestFP16(OpTest):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
             self.check_output_with_place(
-                place, check_prim=True, check_new_ir=True
+                place, check_prim=True, check_pir=True, check_prim_pir=True
             )
 
     def test_check_grad_normal(self):
@@ -519,7 +521,8 @@ class TestFP16(OpTest):
                 ['Input'],
                 'Out',
                 check_prim=True,
-                check_new_ir=True,
+                check_pir=True,
+                check_prim_pir=True,
             )
 
 
@@ -555,7 +558,7 @@ class TestFP16_2(OpTest):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
             self.check_output_with_place(
-                place, check_prim=True, check_new_ir=True
+                place, check_prim=True, check_pir=True, check_prim_pir=True
             )
 
     def test_check_grad_normal(self):
@@ -567,7 +570,8 @@ class TestFP16_2(OpTest):
                 'Out',
                 numeric_grad_delta=0.5,
                 check_prim=True,
-                check_new_ir=True,
+                check_pir=True,
+                check_prim_pir=True,
             )
 
 
@@ -597,10 +601,16 @@ class TestBF16(OpTest):
         self.infer_flags = [1, 1, 1]
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ['Input'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 # Test python API
@@ -648,7 +658,7 @@ class TestSliceAPI(unittest.TestCase):
 
             exe = base.Executor(place=base.CPUPlace())
             res_1, res_2, res_3, res_4, res_5, res_6, res_7 = exe.run(
-                base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={
                     "x": input,
                     'starts': np.array([-3, 0, 2]).astype("int32"),
@@ -664,6 +674,65 @@ class TestSliceAPI(unittest.TestCase):
             np.testing.assert_array_equal(res_5, input[-3:3, 0:100, 2:-1, :])
             np.testing.assert_array_equal(res_6, input[-3:3, 0:100, :, 2:-1])
             np.testing.assert_array_equal(res_7, input[-1, 0:100, :, 2:-1])
+
+    def test_pir(self):
+        with paddle.pir_utils.IrGuard(), paddle.static.program_guard(
+            paddle.static.Program()
+        ):
+            input = np.random.random([3, 4, 5, 6]).astype("float64")
+            minus_1 = paddle.tensor.fill_constant([], "int32", -1)
+            minus_3 = paddle.tensor.fill_constant([], "int64", -3)
+            starts = paddle.static.data(name='starts', shape=[3], dtype="int32")
+            ends = paddle.static.data(name='ends', shape=[3], dtype="int32")
+            x = paddle.static.data(
+                name="x",
+                shape=[3, 4, 5, 6],
+                dtype="float64",
+            )
+
+            # value_int64 is greater than 2147483647 which is the max of int32
+            value_int64 = paddle.tensor.fill_constant([1], "int64", 2147483648)
+
+            out_1 = paddle.slice(
+                x,
+                axes=[0, 1, 2],
+                starts=[-3, 0, 2],
+                ends=[value_int64, 100, -1],
+            )
+            out_2 = paddle.slice(
+                x, axes=[0, 1, 3], starts=[minus_3, 0, 2], ends=[3, 100, -1]
+            )
+            out_3 = paddle.slice(
+                x,
+                axes=[0, 1, 3],
+                starts=[minus_3, 0, 2],
+                ends=[3, 100, minus_1],
+            )
+            out_4 = paddle.slice(x, axes=[0, 1, 2], starts=starts, ends=ends)
+
+            out_5 = x[-3:3, 0:100, 2:-1]
+            out_6 = x[minus_3:3, 0:100, :, 2:-1]
+            # open it after supporting control flow
+            # out_7 = x[minus_1, 0:100, :, 2:minus_1]
+
+            exe = base.Executor(place=base.CPUPlace())
+            res_1, res_2, res_3, res_4, res_5, res_6 = exe.run(
+                paddle.static.default_main_program(),
+                feed={
+                    "x": input,
+                    'starts': np.array([-3, 0, 2]).astype("int32"),
+                    'ends': np.array([3, 100, -1]).astype("int32"),
+                },
+                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6],
+            )
+
+            np.testing.assert_array_equal(res_1, input[-3:3, 0:100, 2:-1, :])
+            np.testing.assert_array_equal(res_2, input[-3:3, 0:100, :, 2:-1])
+            np.testing.assert_array_equal(res_3, input[-3:3, 0:100, :, 2:-1])
+            np.testing.assert_array_equal(res_4, input[-3:3, 0:100, 2:-1, :])
+            np.testing.assert_array_equal(res_5, input[-3:3, 0:100, 2:-1, :])
+            np.testing.assert_array_equal(res_6, input[-3:3, 0:100, :, 2:-1])
+            # np.testing.assert_array_equal(res_7, input[-1, 0:100, :, 2:-1])
 
 
 class TestSliceApiWithTensor(unittest.TestCase):
@@ -745,7 +814,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
 
     def set_program_and_run(self, main_program, case_num):
         with paddle_static_guard():
-            with base.program_guard(main_program):
+            with paddle.static.program_guard(main_program):
                 x = [
                     paddle.static.data(
                         name='x0', shape=self.shape, dtype="float32"
@@ -801,7 +870,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
                 )
 
     def test_case_1(self):
-        main_program = base.Program()
+        main_program = paddle.static.Program()
         self.set_program_and_run(main_program, 1)
 
         self.assertTrue(self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR)
@@ -813,7 +882,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
 
     def test_case_2(self):
         with paddle_static_guard():
-            main_program = base.Program()
+            main_program = paddle.static.Program()
             self.set_program_and_run(main_program, 2)
 
             self.assertTrue(
@@ -829,7 +898,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
 
     def test_case_3(self):
         with paddle_static_guard():
-            main_program = base.Program()
+            main_program = paddle.static.Program()
             self.set_program_and_run(main_program, 3)
 
             self.assertTrue(
@@ -883,6 +952,13 @@ class TestInferShape(unittest.TestCase):
 
             out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
             self.assertEqual(out0.shape, (3, -1, 5))
+
+    def test_pir(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data('x', shape=[3, -1, 5])
+
+            out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
+            self.assertEqual(out0.shape, [3, -1, 5])
 
     def test_axis_less_than_zero(self):
         # Using paddle.disable_static will make other unittests fail.
@@ -973,6 +1049,7 @@ class TestSliceDoubleGradCheck(unittest.TestCase):
             x[0], axes=[0, 1, 2], starts=[-3, 0, 2], ends=[3, 2, 4]
         )
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -1008,6 +1085,7 @@ class TestSliceTripleGradCheck(unittest.TestCase):
             x[0], axes=[0, 1, 2], starts=[-3, 0, 2], ends=[3, 2, 4]
         )
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.

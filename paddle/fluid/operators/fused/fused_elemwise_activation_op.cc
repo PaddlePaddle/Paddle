@@ -405,7 +405,7 @@ class FusedElemwiseAddActivationOp : public FusedElemwiseActivationOp {
     std::vector<std::string> functor_names =
         ctx->Attrs().Get<std::vector<std::string>>("functor_list");
     bool elemntwise_add_detected = false;
-    for (auto names : functor_names) {
+    for (auto const &names : functor_names) {
       if (names == "elementwise_add") {
         elemntwise_add_detected = true;
         break;
@@ -430,7 +430,7 @@ class FusedElemwiseAddActivationOpGrad : public FusedElemwiseActivationOpGrad {
     std::vector<std::string> functor_names =
         ctx->Attrs().Get<std::vector<std::string>>("functor_list");
     bool elemntwise_add_grad_detected = false;
-    for (auto names : functor_names) {
+    for (auto const &names : functor_names) {
       if (names == "elementwise_add_grad") {
         elemntwise_add_grad_detected = true;
         break;

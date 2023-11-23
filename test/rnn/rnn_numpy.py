@@ -38,12 +38,14 @@ class SimpleRNNCell(LayerMixin):
         self,
         input_size,
         hidden_size,
+        weight=True,
         bias=True,
         nonlinearity="RNN_TANH",
         dtype="float64",
     ):
         self.input_size = input_size
         self.hidden_size = hidden_size
+        self.weight = weight
         self.bias = bias
         if nonlinearity == 'RNN_TANH':
             self.nonlinearity = np.tanh
@@ -52,12 +54,16 @@ class SimpleRNNCell(LayerMixin):
 
         self.parameters = {}
         std = 1.0 / math.sqrt(hidden_size)
-        self.weight_ih = np.random.uniform(
-            -std, std, (hidden_size, input_size)
-        ).astype(dtype)
-        self.weight_hh = np.random.uniform(
-            -std, std, (hidden_size, hidden_size)
-        ).astype(dtype)
+        if weight:
+            self.weight_ih = np.random.uniform(
+                -std, std, (hidden_size, input_size)
+            ).astype(dtype)
+            self.weight_hh = np.random.uniform(
+                -std, std, (hidden_size, hidden_size)
+            ).astype(dtype)
+        else:
+            self.weight_ih = np.ones((hidden_size, input_size)).astype(dtype)
+            self.weight_hh = np.ones((hidden_size, hidden_size)).astype(dtype)
         self.parameters['weight_ih'] = self.weight_ih
         self.parameters['weight_hh'] = self.weight_hh
         if bias:
@@ -67,11 +73,11 @@ class SimpleRNNCell(LayerMixin):
             self.bias_hh = np.random.uniform(-std, std, (hidden_size,)).astype(
                 dtype
             )
-            self.parameters['bias_ih'] = self.bias_ih
-            self.parameters['bias_hh'] = self.bias_hh
         else:
-            self.bias_ih = None
-            self.bias_hh = None
+            self.bias_ih = np.zeros(hidden_size).astype(dtype)
+            self.bias_hh = np.zeros(hidden_size).astype(dtype)
+        self.parameters['bias_ih'] = self.bias_ih
+        self.parameters['bias_hh'] = self.bias_hh
 
     def init_state(self, inputs, batch_dim_index=0):
         batch_size = inputs.shape[batch_dim_index]
@@ -92,18 +98,29 @@ class SimpleRNNCell(LayerMixin):
 
 
 class GRUCell(LayerMixin):
-    def __init__(self, input_size, hidden_size, bias=True, dtype="float64"):
+    def __init__(
+        self, input_size, hidden_size, weight=True, bias=True, dtype="float64"
+    ):
         self.input_size = input_size
         self.hidden_size = hidden_size
+        self.weight = weight
         self.bias = bias
         self.parameters = {}
         std = 1.0 / math.sqrt(hidden_size)
-        self.weight_ih = np.random.uniform(
-            -std, std, (3 * hidden_size, input_size)
-        ).astype(dtype)
-        self.weight_hh = np.random.uniform(
-            -std, std, (3 * hidden_size, hidden_size)
-        ).astype(dtype)
+        if weight:
+            self.weight_ih = np.random.uniform(
+                -std, std, (3 * hidden_size, input_size)
+            ).astype(dtype)
+            self.weight_hh = np.random.uniform(
+                -std, std, (3 * hidden_size, hidden_size)
+            ).astype(dtype)
+        else:
+            self.weight_ih = np.ones((3 * hidden_size, input_size)).astype(
+                dtype
+            )
+            self.weight_hh = np.ones((3 * hidden_size, hidden_size)).astype(
+                dtype
+            )
         self.parameters['weight_ih'] = self.weight_ih
         self.parameters['weight_hh'] = self.weight_hh
         if bias:
@@ -113,11 +130,11 @@ class GRUCell(LayerMixin):
             self.bias_hh = np.random.uniform(
                 -std, std, (3 * hidden_size)
             ).astype(dtype)
-            self.parameters['bias_ih'] = self.bias_ih
-            self.parameters['bias_hh'] = self.bias_hh
         else:
-            self.bias_ih = None
-            self.bias_hh = None
+            self.bias_ih = np.zeros(3 * hidden_size).astype(dtype)
+            self.bias_hh = np.zeros(3 * hidden_size).astype(dtype)
+        self.parameters['bias_ih'] = self.bias_ih
+        self.parameters['bias_hh'] = self.bias_hh
 
     def init_state(self, inputs, batch_dim_index=0):
         batch_size = inputs.shape[batch_dim_index]
@@ -144,18 +161,29 @@ class GRUCell(LayerMixin):
 
 
 class LSTMCell(LayerMixin):
-    def __init__(self, input_size, hidden_size, bias=True, dtype="float64"):
+    def __init__(
+        self, input_size, hidden_size, weight=True, bias=True, dtype="float64"
+    ):
         self.input_size = input_size
         self.hidden_size = hidden_size
+        self.weight = weight
         self.bias = bias
         self.parameters = {}
         std = 1.0 / math.sqrt(hidden_size)
-        self.weight_ih = np.random.uniform(
-            -std, std, (4 * hidden_size, input_size)
-        ).astype(dtype)
-        self.weight_hh = np.random.uniform(
-            -std, std, (4 * hidden_size, hidden_size)
-        ).astype(dtype)
+        if weight:
+            self.weight_ih = np.random.uniform(
+                -std, std, (4 * hidden_size, input_size)
+            ).astype(dtype)
+            self.weight_hh = np.random.uniform(
+                -std, std, (4 * hidden_size, hidden_size)
+            ).astype(dtype)
+        else:
+            self.weight_ih = np.ones((4 * hidden_size, input_size)).astype(
+                dtype
+            )
+            self.weight_hh = np.ones((4 * hidden_size, hidden_size)).astype(
+                dtype
+            )
         self.parameters['weight_ih'] = self.weight_ih
         self.parameters['weight_hh'] = self.weight_hh
         if bias:
@@ -165,11 +193,11 @@ class LSTMCell(LayerMixin):
             self.bias_hh = np.random.uniform(
                 -std, std, (4 * hidden_size)
             ).astype(dtype)
-            self.parameters['bias_ih'] = self.bias_ih
-            self.parameters['bias_hh'] = self.bias_hh
         else:
-            self.bias_ih = None
-            self.bias_hh = None
+            self.bias_ih = np.zeros(4 * hidden_size).astype(dtype)
+            self.bias_hh = np.zeros(4 * hidden_size).astype(dtype)
+        self.parameters['bias_ih'] = self.bias_ih
+        self.parameters['bias_hh'] = self.bias_hh
 
     def init_state(self, inputs, batch_dim_index=0):
         batch_size = inputs.shape[batch_dim_index]

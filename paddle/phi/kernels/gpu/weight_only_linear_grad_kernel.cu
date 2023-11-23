@@ -1,32 +1,16 @@
-/*
- * Copyright (c) 2022-2023, NVIDIA CORPORATION.  All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/phi/kernels/weight_only_linear_grad_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -48,8 +32,15 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
                                 const DenseTensor& weight_scale,
                                 const DenseTensor& out_grad,
                                 const std::string& weight_dtype,
+                                const int32_t arch,
                                 DenseTensor* x_grad) {
 #if defined(PADDLE_WITH_CUTLASS)
+  PADDLE_ENFORCE_EQ(
+      arch,
+      80,
+      phi::errors::InvalidArgument(
+          "Currently weightonly linear grad only support arch = 80. "));
+
   int n = weight_scale.dims()[0];
   int k = weight.dims()[1];
   dev_ctx.template Alloc<T>(x_grad);
@@ -62,8 +53,12 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
       dev_ctx, weight, weight_scale, algo, true, &weight_dequantized);
   MatmulKernel<T, Context>(
       dev_ctx, out_grad, weight_dequantized, false, false, x_grad);
+#else
+  PADDLE_THROW(
+      phi::errors::PreconditionNotMet("Not compiled with WITH_CUTLASS=ON"));
 #endif
 }
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(weight_only_linear_grad,

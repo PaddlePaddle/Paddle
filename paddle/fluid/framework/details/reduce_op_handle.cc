@@ -63,7 +63,7 @@ void ReduceOpHandle::RunImpl() {
           in_var_handles.size(),
           places_.size()));
 
-  VarHandle *out_var_handle;
+  VarHandle *out_var_handle = nullptr;
   {
     auto out_var_handles = DynamicCast<VarHandle>(outputs_);
 

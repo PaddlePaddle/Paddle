@@ -21,13 +21,16 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops, nn
 from paddle.base import framework
-from paddle.base.dygraph import base as imperative_base
-from paddle.base.dygraph import to_variable
+from paddle.base.dygraph import (
+    base as imperative_base,
+    to_variable,
+)
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     obtain_optimizer_parameters_list,
 )
 from paddle.framework import core
+from paddle.utils import deprecated
 
 
 class MixPrecisionLayer(nn.Layer):
@@ -232,6 +235,11 @@ def unscale_method(self, optimizer):
         self._found_inf = int(is_found_inf)
 
 
+@deprecated(
+    since="2.5.0",
+    update_to="paddle.distributed_scaler",
+    level=1,
+)
 class MixPrecisionScaler:
     def __init__(self, scaler):
         self._inner_scaler = scaler

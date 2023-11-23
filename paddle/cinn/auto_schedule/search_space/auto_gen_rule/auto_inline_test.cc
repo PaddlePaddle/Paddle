@@ -21,6 +21,7 @@
 #include <iostream>
 #include <vector>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/test_helper.h"
 #include "paddle/cinn/cinn.h"
@@ -59,16 +60,13 @@ TEST(AutoInline, SingleLoopInline) {
   ir::Tensor C = Compute(
       {M}, [&](Var i) { return B(i) + ir::Expr(1.f); }, "C");
 
-  poly::StageMap stages = CreateStages({A, B, C});
+  ast_gen_ius::TensorGroup tensor_group({A, B, C});
   std::vector<ir::LoweredFunc> funcs =
-      lang::LowerVec("TestAutoInline_SingleLoopInline",
-                     stages,
-                     {A, C},
-                     {},
-                     {},
-                     nullptr,
-                     target,
-                     true);
+      lang::LowerToAstVec("TestAutoInline_SingleLoopInline",
+
+                          {A, C},
+                          &tensor_Group,
+                          target);
   VLOG(6) << "Expr after lowering:";
   VLOG(6) << funcs[0]->body;
 

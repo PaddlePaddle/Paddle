@@ -16,7 +16,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 
 import paddle
 
@@ -41,11 +41,11 @@ class Net(paddle.nn.Layer):
         return t
 
 
-class TestFallback(unittest.TestCase):
+class TestFallback(Dy2StTestBase):
     def setUp(self):
         self.x = paddle.to_tensor(1.0).astype('int')
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
     def test_name_load(self):
         net_dy = Net()
         net_st = Net()
@@ -54,8 +54,8 @@ class TestFallback(unittest.TestCase):
         np.testing.assert_allclose(output_dy.numpy(), output_st.numpy())
 
 
-class TestLoad2(unittest.TestCase):
-    @test_and_compare_with_new_ir(False)
+class TestLoad2(Dy2StTestBase):
+    @test_legacy_and_pir
     def test_name_load_nograd(self):
         @paddle.no_grad()
         def func(x):

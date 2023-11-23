@@ -17,4 +17,5 @@
 set -e
 # use default values
 # FIXME: random fails on Unknown command lines -c (or -m).
+export FLAGS_dynamic_static_unified_comm=0
 CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch fused_attention_pass_with_mp.py

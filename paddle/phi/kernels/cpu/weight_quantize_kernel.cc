@@ -1,16 +1,16 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/phi/kernels/weight_quantize_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
@@ -27,7 +27,13 @@ void quant_compute(const DeviceContext& dev_ctx,
                    const DenseTensor& x,
                    DenseTensor* out,
                    DenseTensor* scale,
-                   const std::string& algo) {
+                   const std::string& algo,
+                   const int32_t arch) {
+  PADDLE_ENFORCE_EQ(
+      ((arch == 80) || (arch == 70)),
+      true,
+      phi::errors::InvalidArgument("Currently, arch only support 70, 80."));
+
   const auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
@@ -43,7 +49,14 @@ void quant_compute(const DeviceContext& dev_ctx,
   float* scale_data = scale->data<float>();
 
   DenseTensor x_int(out->type());
-  x_int.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
+  if (arch == 80) {
+    x_int.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
+  } else {
+    // phi::Copy may change tensor meta info, here we transpose the quanted
+    // data's shape.
+    x_int.Resize({static_cast<int64_t>(n), static_cast<int64_t>(m)});
+  }
+
   dev_ctx.template Alloc<D>(&x_int);
   D* x_int_data = x_int.data<D>();
 
@@ -64,13 +77,20 @@ void quant_compute(const DeviceContext& dev_ctx,
     funcs::Transpose<DeviceContext, int8_t, 2> trans;
     trans(dev_ctx, x_int, out, axis);
   } else {
-    permute_B_rows_for_mixed_gemm<bits>(
-        int_processed_data, x_int_data, std::vector<size_t>{m, n});
-    subbyte_transpose_impl<bits>(
-        int_processed_2_data, int_processed_data, std::vector<size_t>{m, n});
-    interleave_column_major_tensor<bits>(
-        out_data, int_processed_2_data, std::vector<size_t>{m, n});
-    add_bias_and_interleave_inplace<bits>(out_data, num);
+    if (arch == 70) {
+      // Note(Zhengzekang): In sm70, we only need RowMajor layout, just add bias
+      // to make it unsigned.
+      add_bias_and_interleave_inplace<bits>(x_int_data, num);
+      phi::Copy(dev_ctx, x_int, dev_ctx.GetPlace(), false, out);
+    } else if (arch == 80) {
+      permute_B_rows_for_mixed_gemm<bits>(
+          int_processed_data, x_int_data, std::vector<size_t>{m, n});
+      subbyte_transpose_impl<bits>(
+          int_processed_2_data, int_processed_data, std::vector<size_t>{m, n});
+      interleave_column_major_tensor<bits>(
+          out_data, int_processed_2_data, std::vector<size_t>{m, n});
+      add_bias_and_interleave_inplace<bits>(out_data, num);
+    }
   }
 }
 
@@ -78,14 +98,15 @@ template <typename T, typename Context>
 void WeightQuantizeKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const std::string& algo,
+                          const int32_t arch,
                           DenseTensor* out,
                           DenseTensor* scale) {
   dev_ctx.template Alloc<int8_t>(out);
   dev_ctx.template Alloc<float>(scale);
   if (algo == "weight_only_int8" || algo == "llm.int8") {
-    quant_compute<Context, T, int8_t, 8>(dev_ctx, x, out, scale, algo);
+    quant_compute<Context, T, int8_t, 8>(dev_ctx, x, out, scale, algo, arch);
   } else if (algo == "weight_only_int4") {
-    quant_compute<Context, T, int8_t, 4>(dev_ctx, x, out, scale, algo);
+    quant_compute<Context, T, int8_t, 4>(dev_ctx, x, out, scale, algo, arch);
   } else {
     phi::errors::Unimplemented(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "

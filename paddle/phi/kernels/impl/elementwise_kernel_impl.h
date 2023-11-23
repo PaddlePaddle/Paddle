@@ -54,13 +54,8 @@ namespace phi {
                        const DenseTensor& y,                         \
                        int axis,                                     \
                        DenseTensor* out) {                           \
-    std::vector<const DenseTensor*> inputs;                          \
-    inputs.reserve(2);                                               \
-    std::vector<DenseTensor*> outputs;                               \
-    outputs.reserve(1);                                              \
-    inputs.emplace_back(&x);                                         \
-    inputs.emplace_back(&y);                                         \
-    outputs.emplace_back(out);                                       \
+    std::vector<const DenseTensor*> inputs = {&x, &y};               \
+    std::vector<DenseTensor*> outputs = {out};                       \
     dev_ctx.template Alloc<T>(out);                                  \
     funcs::BroadcastKernel<T>(                                       \
         dev_ctx, inputs, &outputs, funcs::name##Functor<T>(), axis); \

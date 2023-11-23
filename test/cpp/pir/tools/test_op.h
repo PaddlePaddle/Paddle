@@ -34,7 +34,7 @@ class RegionOp : public pir::Op<RegionOp, OneRegionTrait> {
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,              // NOLINT
                     pir::OperationArgument &argument);  // NOLINT
-  void Verify() const {}
+  void VerifySig() const {}
 };
 
 ///
@@ -50,7 +50,7 @@ class BranchOp : public pir::Op<BranchOp> {
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::OpResult> &target_operands,
                     pir::Block *target);
-  void Verify() const;
+  void VerifySig() const;
 };
 
 // Define case op1.
@@ -62,7 +62,7 @@ class Operation1 : public pir::Op<Operation1> {
   static const char *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,              // NOLINT
                     pir::OperationArgument &argument);  // NOLINT
-  void Verify() const;
+  void VerifySig() const;
 };
 
 // Define op2.
@@ -75,7 +75,7 @@ class Operation2
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,                // NOLINT
                     pir::OperationArgument &argument) {}  // NOLINT
-  void Verify() const {}
+  void VerifySig() const {}
   static void InferShape() { VLOG(2) << "This is op2's InferShape interface."; }
 };
 
@@ -98,7 +98,7 @@ class TraitExampleOp
                     pir::Value l_operand,
                     pir::Value r_operand,
                     pir::Type out_type);
-  void Verify() const {}
+  void VerifySig() const {}
 };
 
 // Define SameOperandsShapeTraitOp1.
@@ -111,7 +111,7 @@ class SameOperandsShapeTraitOp1
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,                // NOLINT
                     pir::OperationArgument &argument) {}  // NOLINT
-  void Verify() const {}
+  void VerifySig() const {}
 };
 
 // Define SameOperandsShapeTraitOp2.
@@ -127,7 +127,7 @@ class SameOperandsShapeTraitOp2
                     pir::Value l_operand,
                     pir::Value r_operand,
                     pir::Type out_type);
-  void Verify() const {}
+  void VerifySig() const {}
 };
 
 // Define SameOperandsAndResultShapeTraitOp1.
@@ -143,7 +143,7 @@ class SameOperandsAndResultShapeTraitOp1
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,                // NOLINT
                     pir::OperationArgument &argument) {}  // NOLINT
-  void Verify() const {}
+  void VerifySig() const {}
 };
 
 // Define SameOperandsAndResultShapeTraitOp2.
@@ -161,7 +161,7 @@ class SameOperandsAndResultShapeTraitOp2
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value l_operand,
                     pir::Value r_operand);
-  void Verify() const {}
+  void VerifySig() const {}
 };
 
 // Define SameOperandsAndResultShapeTraitOp3.
@@ -180,7 +180,7 @@ class SameOperandsAndResultShapeTraitOp3
                     pir::Value l_operand,
                     pir::Value r_operand,
                     pir::Type out_type);
-  void Verify() const {}
+  void VerifySig() const {}
 };
 
 // Define SameOperandsElementTypeTraitOp1.
@@ -194,7 +194,7 @@ class SameOperandsElementTypeTraitOp1
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,                // NOLINT
                     pir::OperationArgument &argument) {}  // NOLINT
-  void Verify() const {}
+  void VerifySig() const {}
 };
 
 // Define SameOperandsElementTypeTraitOp2.
@@ -211,7 +211,7 @@ class SameOperandsElementTypeTraitOp2
                     pir::Value l_operand,
                     pir::Value r_operand,
                     pir::Type out_type);
-  void Verify() const {}
+  void VerifySig() const {}
 };
 
 // Define SameOperandsAndResultElementTypeTraitOp1.
@@ -227,7 +227,7 @@ class SameOperandsAndResultElementTypeTraitOp1
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,                // NOLINT
                     pir::OperationArgument &argument) {}  // NOLINT
-  void Verify() const {}
+  void VerifySig() const {}
 };
 
 // Define SameOperandsAndResultElementTypeTraitOp2.
@@ -245,7 +245,7 @@ class SameOperandsAndResultElementTypeTraitOp2
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value l_operand,
                     pir::Value r_operand);
-  void Verify() const {}
+  void VerifySig() const {}
 };
 
 // Define SameOperandsAndResultElementTypeTraitOp3.
@@ -265,7 +265,7 @@ class SameOperandsAndResultElementTypeTraitOp3
                     pir::Value r_operand,
                     pir::Type out_type1,
                     pir::Type out_type2);
-  void Verify() const {}
+  void VerifySig() const {}
 };
 
 // Define SameOperandsAndResultTypeTraitOp1.
@@ -279,7 +279,7 @@ class SameOperandsAndResultTypeTraitOp1
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,                // NOLINT
                     pir::OperationArgument &argument) {}  // NOLINT
-  void Verify() const {}
+  void VerifySig() const {}
 };
 
 // Define SameOperandsAndResultTypeTraitOp2.
@@ -295,7 +295,7 @@ class SameOperandsAndResultTypeTraitOp2
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value l_operand,
                     pir::Value r_operand);
-  void Verify() const {}
+  void VerifySig() const {}
 };
 
 // Define SameOperandsAndResultTypeTraitOp3.
@@ -315,7 +315,7 @@ class SameOperandsAndResultTypeTraitOp3
                     pir::Type out_type1,
                     pir::Type out_type2);
 
-  void Verify() const {}
+  void VerifySig() const {}
 };
 
 }  // namespace test

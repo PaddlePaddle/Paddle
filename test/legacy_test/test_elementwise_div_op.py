@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def broadcast_wrapper(shape=[1, 10, 12, 1]):
@@ -98,9 +99,9 @@ class ElementwiseDivOp(OpTest):
 
     def test_check_output(self):
         if self.place is None:
-            self.check_output(check_new_ir=True)
+            self.check_output(check_pir=True)
         else:
-            self.check_output_with_place(self.place, check_new_ir=True)
+            self.check_output_with_place(self.place, check_pir=True)
 
     def test_check_gradient(self):
         check_list = []
@@ -128,11 +129,11 @@ class ElementwiseDivOp(OpTest):
                 'check_prim_pir': self.check_prim_pir,
             }
             if self.place is None:
-                self.check_grad(*check_args, **check_kwargs, check_new_ir=True)
+                self.check_grad(*check_args, **check_kwargs, check_pir=True)
             else:
                 check_args.insert(0, self.place)
                 self.check_grad_with_place(
-                    *check_args, **check_kwargs, check_new_ir=True
+                    *check_args, **check_kwargs, check_pir=True
                 )
 
 
@@ -221,11 +222,11 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
                 'check_prim_pir': self.check_prim_pir,
             }
             if self.place is None:
-                self.check_grad(*check_args, **check_kwargs, check_new_ir=True)
+                self.check_grad(*check_args, **check_kwargs, check_pir=True)
             else:
                 check_args.insert(0, self.place)
                 self.check_grad_with_place(
-                    *check_args, **check_kwargs, check_new_ir=True
+                    *check_args, **check_kwargs, check_pir=True
                 )
 
     def if_check_prim(self):
@@ -279,11 +280,11 @@ class TestElementwiseDivOpNoPrim(ElementwiseDivOp):
                 'check_dygraph': self.check_dygraph,
             }
             if self.place is None:
-                self.check_grad(*check_args, **check_kwargs, check_new_ir=True)
+                self.check_grad(*check_args, **check_kwargs, check_pir=True)
             else:
                 check_args.insert(0, self.place)
                 self.check_grad_with_place(
-                    *check_args, **check_kwargs, check_new_ir=True
+                    *check_args, **check_kwargs, check_pir=True
                 )
 
 
@@ -454,15 +455,13 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
                     'max_relative_error': max_relative_error,
                 }
                 if self.place is None:
-                    self.check_grad(
-                        *check_args, **check_kwargs, check_new_ir=True
-                    )
+                    self.check_grad(*check_args, **check_kwargs, check_pir=True)
                 else:
                     check_args.insert(0, self.place)
                     self.check_grad_with_place(
                         *check_args,
                         **check_kwargs,
-                        check_new_ir=True,
+                        check_pir=True,
                         check_prim=True,
                         check_prim_pir=True
                     )
@@ -490,6 +489,7 @@ create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
+    @test_with_pir_api
     def test_shape_with_batch_sizes(self):
         paddle.enable_static()
         with base.program_guard(base.Program()):
@@ -514,6 +514,17 @@ class TestDivideOp(unittest.TestCase):
 
             y_1 = paddle.divide(x, y, name='div_res')
             self.assertEqual(('div_res' in y_1.name), True)
+
+        with paddle.pir_utils.IrGuard(), base.program_guard(base.Program()):
+            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
+
+            y_1 = paddle.divide(x, y, name='div_res')
+
+            def name_call():
+                self.assertEqual(('div_res' in y_1.name), True)
+
+            self.assertRaises(ValueError, name_call)
         paddle.disable_static()
 
     def test_dygraph(self):
@@ -556,7 +567,7 @@ class TestComplexElementwiseDivOp(OpTest):
         self.out = self.x / self.y
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -564,7 +575,7 @@ class TestComplexElementwiseDivOp(OpTest):
             'Out',
             numeric_grad_delta=1e-5,
             max_relative_error=1e-6,
-            check_new_ir=True,
+            check_pir=True,
         )
 
     def test_check_grad_ingore_x(self):
@@ -574,7 +585,7 @@ class TestComplexElementwiseDivOp(OpTest):
             no_grad_set=set("X"),
             numeric_grad_delta=1e-5,
             max_relative_error=1e-6,
-            check_new_ir=True,
+            check_pir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -584,7 +595,7 @@ class TestComplexElementwiseDivOp(OpTest):
             no_grad_set=set('Y'),
             numeric_grad_delta=1e-5,
             max_relative_error=1e-6,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 

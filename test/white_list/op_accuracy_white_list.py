@@ -21,7 +21,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'conv2d_transpose',
     'conv3d',
     'conv3d_transpose',
-    'conv_shift',
     'cudnn_lstm',
     'cvm',
     'data_norm',
@@ -40,7 +39,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'log_loss',
     'logit',
     'lrn',
-    'margin_rank_loss',
     'match_matrix_tensor',
     'matmul',
     'max_pool2d_with_index',
@@ -89,7 +87,8 @@ NO_FP16_CHECK_GRAD_OP_LIST = [
 
 NO_FP16_COMPARED_WITH_FP32_OP_LIST = [
     'fake_quantize_moving_average_abs_max',
-    'fused_scale_bias_relu_conv_bnstats',
+    'fused_scale_bias_relu_conv_bn',
+    'fused_scale_bias_add_relu',
     'p_norm',
 ]
 

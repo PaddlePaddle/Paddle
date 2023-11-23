@@ -27,12 +27,12 @@ namespace paddle {
 namespace prim {
 using Tensor = paddle::Tensor;
 template <>
-Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
-                         phi::DataType dtype,
-                         const paddle::Place& place) {
+TEST_API Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
+                                  phi::DataType dtype,
+                                  const paddle::Place& place) {
   framework::VarDesc* new_var =
       StaticCompositeContext::Instance().GetBlock()->Var(
-          std::move(StaticCompositeContext::Instance().GenerateUniqueName()));
+          StaticCompositeContext::Instance().GenerateUniqueName());
   new_var->SetShape(shape.GetData());
   new_var->SetDataType(framework::TransToProtoVarType(dtype));
   // Place is not supported in static mode

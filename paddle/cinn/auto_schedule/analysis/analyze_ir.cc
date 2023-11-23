@@ -190,5 +190,40 @@ ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target,
   return new_func;
 }
 
+std::unordered_set<std::string> GetReduceLoopVarNames(const ir::Expr block) {
+  const ir::ScheduleBlockRealize* block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(block_realize);
+  const ir::ScheduleBlock* block_node =
+      block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(block_node);
+  std::vector<ir::Expr> iter_values = block_realize->iter_values;
+  std::vector<ir::Var> iter_vars = block_node->iter_vars;
+
+  std::unordered_set<std::string> reduce_loop_var;
+  for (int i = 0; i < iter_vars.size(); ++i) {
+    if (iter_vars[i]->is_reduce_axis) {
+      ir::ir_utils::CollectIRNodesWithoutTensor(
+          iter_values[i], [&](const ir::Expr* x) {
+            if (x->as_var()) {
+              reduce_loop_var.insert(x->as_var_ref()->name);
+            }
+            return false;
+          });
+    }
+  }
+  return reduce_loop_var;
+}
+
+std::string GetBlockName(const ir::Expr block) {
+  const ir::ScheduleBlockRealize* block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(block_realize);
+  const ir::ScheduleBlock* block_node =
+      block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(block_node);
+  return block_node->name;
+}
+
 }  // namespace auto_schedule
 }  // namespace cinn

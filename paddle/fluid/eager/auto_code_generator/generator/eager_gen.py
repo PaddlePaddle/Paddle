@@ -271,6 +271,8 @@ TEST_API {} {}({}) {{
 
   // Forward API Call
 {}
+  // Log memory infomation
+{}
   // Check NaN and Inf if needed
 {}
   // Get Outputs
@@ -320,6 +322,8 @@ TEST_API {} {}({}) {{
   // Before log info
 {}
   // Forward API Call
+{}
+  // Log memory infomation
 {}
   // Check NaN and Inf if needed
 {}
@@ -412,6 +416,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/phi/api/lib/data_transform.h"
 PHI_DECLARE_bool(check_nan_inf);
 {}
@@ -573,6 +578,18 @@ CHECK_NAN_AND_INF_TEMPLATE_BACKWARD = """
        std::rethrow_exception(std::current_exception());
      }}
   }}
+"""
+
+FILL_ZERO_GRAD_TEMPLATE_BACKWARD = """
+  egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}], input_metas[{fwd_position}]);
+"""
+
+FILL_ZERO_PLAIN_GRAD_TEMPLATE_BACKWARD = """
+  egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}][0], input_metas[{fwd_position}][0]);
+"""
+
+FILL_ZERO_OPTIONAL_PLAIN_GRAD_TEMPLATE_BACKWARD = """
+  egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[{fwd_position}][0], input_metas[{fwd_position}][0]);
 """
 
 inplace_optional_out_type_map = {
@@ -809,7 +826,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         max_grad_tensor_position = -1
         for _, (_, _, pos) in backward_grad_inputs_map.items():
             assert pos > max_fwd_input_position, AssertMessage(
-                pos, max_grad_tensor_position
+                pos, max_fwd_input_position
             )
             max_grad_tensor_position = max(max_grad_tensor_position, pos)
 
@@ -1054,7 +1071,11 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                             or IsVectorTensorType(atype)
                             or (name in self.optional_inputs)
                         ):
-                            set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name});"
+                            if for_backward is False:
+                                set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name});"
+                            else:
+                                set_tensor_wrappers = f"{indent}if({name}_optional) grad_node->SetTensorWrapper{name}(*{name}_optional);"
+
                         else:
                             need_pre_contiguous_set.add(name)
                             set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name}_tmp);"
@@ -1133,7 +1154,10 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             )
 
             if is_optional:
-                set_grad_out_meta = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
+                if for_backward is False:
+                    set_grad_out_meta = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
+                else:
+                    set_grad_out_meta = f"{indent}if({name}_optional.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}_optional.get_ptr()), {pos});"
             else:
                 if (
                     is_special_forward_api
@@ -1742,6 +1766,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str_tmp});"
 
         dygraph_event_str = f"{indent}paddle::platform::RecordEvent dygraph_entrance_record_event(\"{forward_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);\n"
+        log_memory_info_str = f"{indent}paddle::memory::LogDeviceMemoryStats(egr::Controller::Instance().GetExpectedPlace(), \"{forward_api_name}\");"
         forward_ad_function_name = GetDygraphForwardFunctionName(
             forward_api_name
         )
@@ -1828,6 +1853,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     forward_api_name,
                     before_log_str,
                     forward_call_str,
+                    log_memory_info_str,
                     check_nan_inf_str,
                     get_outputs_str,
                     forward_api_name,
@@ -1854,6 +1880,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 node_creation_pre_contiguous_str,
                 node_creation_before_call_str,
                 forward_call_str,
+                log_memory_info_str,
                 check_nan_inf_str,
                 get_outputs_str,
                 outputs_autograd_meta_str,
@@ -2209,12 +2236,22 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             ) in backward_grad_inputs_map.items():
                 if name in self.optional_inputs:
                     if IsPlainTensorType(ttype):
-                        fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[{fwd_position}][0], input_metas[{fwd_position}][0]);\n"
+                        fill_zero_str += FILL_ZERO_OPTIONAL_PLAIN_GRAD_TEMPLATE_BACKWARD.format(
+                            fwd_position=fwd_position
+                        )
                 else:
                     if IsPlainTensorType(ttype):
-                        fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}][0], input_metas[{fwd_position}][0]);\n"
+                        fill_zero_str += (
+                            FILL_ZERO_PLAIN_GRAD_TEMPLATE_BACKWARD.format(
+                                fwd_position=fwd_position
+                            )
+                        )
                     else:
-                        fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}], input_metas[{fwd_position}]);\n"
+                        fill_zero_str += (
+                            FILL_ZERO_GRAD_TEMPLATE_BACKWARD.format(
+                                fwd_position=fwd_position
+                            )
+                        )
 
         inplace_grad_input_str = ""
         inplace_check_str = ""

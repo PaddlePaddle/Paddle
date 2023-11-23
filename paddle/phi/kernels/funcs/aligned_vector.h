@@ -30,6 +30,11 @@ struct NeedVectorized {
   static constexpr bool value = sizeof(T) <= sizeof(float);
 };
 
+template <int N>
+struct MaxWithOne {
+  static constexpr auto kValue = (N >= 1 ? N : 1);
+};
+
 // Aligned vector generates vectorized load/store on CUDA.
 template <typename T, int Size>
 struct alignas(sizeof(T) * Size) AlignedVector {

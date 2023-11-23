@@ -25,6 +25,7 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.nn.functional import avg_pool2d, max_pool2d
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestPool2D_API(unittest.TestCase):
@@ -52,7 +53,7 @@ class TestPool2D_API(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
@@ -144,7 +145,7 @@ class TestPool2D_API(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
@@ -360,8 +361,6 @@ class TestPool2D_API(unittest.TestCase):
         for place in self.places:
             self.check_max_dygraph_results(place)
             self.check_avg_dygraph_results(place)
-            self.check_max_static_results(place)
-            self.check_avg_static_results(place)
             self.check_max_dygraph_stride_is_none(place)
             self.check_avg_dygraph_stride_is_none(place)
             self.check_max_dygraph_padding(place)
@@ -369,6 +368,14 @@ class TestPool2D_API(unittest.TestCase):
             self.check_max_dygraph_padding_results(place)
             self.check_max_dygraph_ceilmode_results(place)
             self.check_max_dygraph_nhwc_results(place)
+
+    @test_with_pir_api
+    def test_pool2d_static(self):
+        paddle.enable_static()
+        for place in self.places:
+            self.check_max_static_results(place)
+            self.check_avg_static_results(place)
+        paddle.disable_static()
 
 
 class TestPool2DError_API(unittest.TestCase):

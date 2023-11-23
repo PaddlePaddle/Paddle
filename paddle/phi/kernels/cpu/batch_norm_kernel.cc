@@ -37,8 +37,8 @@ void BatchNormKernel(const Context& ctx,
                      const DenseTensor& x,
                      const DenseTensor& mean,
                      const DenseTensor& variance,
-                     const DenseTensor& scale,
-                     const DenseTensor& bias,
+                     const paddle::optional<DenseTensor>& scale,
+                     const paddle::optional<DenseTensor>& bias,
                      bool is_test,
                      float momentum,
                      float epsilon,
@@ -167,11 +167,27 @@ void BatchNormKernel(const Context& ctx,
   //   ((x - est_mean) * (inv_var) * scale + bias
   //   formula transform ====>
   //   (x * inv_var * scale) + (bias - est_mean * inv_var * scale)
-  ConstEigenVectorArrayMap<T> scale_arr(scale.data<T>(), C);
-  ConstEigenVectorArrayMap<T> bias_arr(bias.data<T>(), C);
-  Eigen::Array<T, Eigen::Dynamic, 1> new_scale = inv_std * scale_arr;
-  Eigen::Array<T, Eigen::Dynamic, 1> new_bias =
-      bias_arr - mean_arr * inv_std * scale_arr;
+  auto* Scale = scale.get_ptr();
+  auto* Bias = bias.get_ptr();
+  Eigen::Array<T, Eigen::Dynamic, 1> new_scale(C);
+  Eigen::Array<T, Eigen::Dynamic, 1> new_bias(C);
+  if (Scale && Bias) {
+    ConstEigenVectorArrayMap<T> scale_arr(Scale->data<T>(), C);
+    ConstEigenVectorArrayMap<T> bias_arr(Bias->data<T>(), C);
+    new_scale = inv_std * scale_arr;
+    new_bias = bias_arr - mean_arr * inv_std * scale_arr;
+  } else if (Scale) {
+    ConstEigenVectorArrayMap<T> scale_arr(Scale->data<T>(), C);
+    new_scale = inv_std * scale_arr;
+    new_bias = -(mean_arr * inv_std * scale_arr);
+  } else if (Bias) {
+    ConstEigenVectorArrayMap<T> bias_arr(Bias->data<T>(), C);
+    new_scale = inv_std;
+    new_bias = bias_arr - mean_arr * inv_std;
+  } else {
+    new_scale = inv_std;
+    new_bias = -(mean_arr * inv_std);
+  }
 
   switch (data_layout) {
     case DataLayout::kNCHW: {

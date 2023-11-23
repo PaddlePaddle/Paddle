@@ -18,7 +18,7 @@ from .common import (
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
 )
-from .dist_eltwise import DistributedDefaultImpl0, DistributedElementwiseImpl0
+from .dist_eltwise import DistributedElementwiseImpl0
 
 
 class DistributedFlashAttn(DistributedOperatorImplContainer):
@@ -30,6 +30,7 @@ register_distributed_operator_impl_container(DistributedFlashAttn("flash_attn"))
 
 
 # Dist FlashAttn with Random Control
+# NOTE(zhiqiu): trick implementation, copy dist_attr of q,k,v to out
 class DistributedFlashAttnImpl0(DistributedElementwiseImpl0):
     def __init__(self, name):
         super().__init__(name)
@@ -83,12 +84,12 @@ class DistributedFlashAttnImpl0(DistributedElementwiseImpl0):
 
                 src_op._set_attr('rng_name', rng_name)
 
-        DistributedDefaultImpl0.forward(ctx, *args, **kwargs)
+        DistributedElementwiseImpl0.forward(ctx, *args, **kwargs)
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
         # dropout backward is deterministic by mask, and not need for random state control
-        DistributedDefaultImpl0.backward(ctx, *args, **kwargs)
+        DistributedElementwiseImpl0.backward(ctx, *args, **kwargs)
 
 
 register_distributed_operator_impl(

@@ -101,7 +101,8 @@ void TablePrinter::InsertRow(const std::vector<std::string>& row) {
       if (line.length() > max_width) max_width = line.length();
     }
 
-    if (max_width > widths_[i]) widths_[i] = static_cast<float>(max_width);
+    if (static_cast<float>(max_width) > widths_[i])
+      widths_[i] = static_cast<float>(max_width);
 
     size_t num_lines = table_row[i].size();
     if (num_lines > max_height) max_height = num_lines;
@@ -159,13 +160,15 @@ void TablePrinter::CalcLayout() {
         // If the number of rows required for this record is larger than 1, we
         // will break that line and put it in multiple lines
         if (num_rows > 1) {
-          data_[i][j].erase(data_[i][j].begin() + line_index);
+          data_[i][j].erase(data_[i][j].begin() + line_index);  // NOLINT
           for (size_t k = 0; k < num_rows; ++k) {
             size_t start =
-                std::min(static_cast<size_t>(k * shares_[j]), line.length());
-            size_t end = std::min(static_cast<size_t>((k + 1) * shares_[j]),
-                                  line.length());
-            data_[i][j].insert(data_[i][j].begin() + line_index + k,
+                std::min(static_cast<size_t>(k * shares_[j]),  // NOLINT
+                         line.length());
+            size_t end =
+                std::min(static_cast<size_t>((k + 1) * shares_[j]),  // NOLINT
+                         line.length());
+            data_[i][j].insert(data_[i][j].begin() + line_index + k,  // NOLINT
                                line.substr(start, end - start));
           }
 
@@ -173,8 +176,8 @@ void TablePrinter::CalcLayout() {
           line_index += num_rows - 1;
         }
 
-        if (heights_[i] < (num_rows - 1 + data_[i][j].size()))
-          heights_[i] += num_rows - 1;
+        if (heights_[i] < static_cast<float>(num_rows - 1 + data_[i][j].size()))
+          heights_[i] += static_cast<float>(num_rows - 1);
       }
     }
   }
@@ -182,8 +185,8 @@ void TablePrinter::CalcLayout() {
 
 void TablePrinter::AddRowDivider(std::stringstream& ss) {
   ss << "+";
-  for (auto share : shares_) {
-    for (size_t j = 0; j < share + 2; ++j) ss << "-";
+  for (float share : shares_) {
+    for (float j = 0; j < share + 2; ++j) ss << "-";
     ss << "+";
   }
   ss << "\n";
@@ -191,15 +194,16 @@ void TablePrinter::AddRowDivider(std::stringstream& ss) {
 
 void TablePrinter::AddRow(std::stringstream& ss, size_t row_idx) {
   auto row = data_[row_idx];
-  size_t max_height = heights_[row_idx];
+  size_t max_height = static_cast<size_t>(heights_[row_idx]);
 
   for (size_t h = 0; h < max_height; ++h) {
     ss << "|" << std::left;
     for (size_t i = 0; i < row.size(); ++i) {
       if (h < row[i].size()) {
-        ss << " " << std::setw(shares_[i]) << row[i][h] << " |";
+        ss << " " << std::setw(static_cast<int>(shares_[i])) << row[i][h]
+           << " |";
       } else {
-        ss << " " << std::setw(shares_[i]) << " "
+        ss << " " << std::setw(static_cast<int>(shares_[i])) << " "
            << " |";
       }
     }

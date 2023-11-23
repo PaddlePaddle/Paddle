@@ -73,6 +73,7 @@ inline DataType PromoteTypes(const DataTypeSet& dtype_set) {
     promote_type = DataType::COMPLEX128;
   } else if ((dtype_set.bitset() & c4) == c4) {
     if ((dtype_set.bitset() & f8) == f8) {
+      // COMPLEX128 has real and imaginary parts whose dtype are both FLOAT64
       promote_type = DataType::COMPLEX128;
     } else {
       promote_type = DataType::COMPLEX64;

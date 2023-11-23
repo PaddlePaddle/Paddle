@@ -36,7 +36,7 @@ def _generate_copyright(comment_mark):
     copyright=COPYRIGHT.split(os.linesep)
     header = copyright[0].rstrip()
 
-    p = re.search('(\d{4})', header).group(0)
+    p = re.search(r'(\d{4})', header).group(0)
     now = datetime.datetime.now()
 
     header = header.replace(p,str(now.year))

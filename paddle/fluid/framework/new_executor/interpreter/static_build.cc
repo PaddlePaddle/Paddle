@@ -50,11 +50,11 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
     "create_py_reader",
     "depend",
     "fetch_v2",
+    "print",
     "send_v2",
     "nop"};
 
 std::set<std::string> StaticBuildBlackList = {
-    "batch_norm" /*: to handle reserve_space output*/,
     "cinn_instruction_run" /*: to handle subgraph infermeta*/,
     "cinn_launch" /*: to handle subgraph infermeta*/,
     "run_program" /*: to handle scope output*/,
@@ -171,10 +171,10 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     std::stringstream ss;
     ss << "The following OPs are unable to static build:\n";
     for (auto& item : invalid_ops) {
-      ss << item.first << " [in_black_list = " << (item.second >> 6 & 1)
-         << ", is_operator_base = " << (item.second >> 5 & 1)
-         << ", is_custom_op = " << (item.second >> 4 & 1)
-         << ", use_mkldnn = " << (item.second >> 3 & 1)
+      ss << item.first << " [in_black_list = " << (item.second >> 5 & 1)
+         << ", is_operator_base = " << (item.second >> 4 & 1)
+         << ", is_custom_op = " << (item.second >> 3 & 1)
+         << ", use_mkldnn = " << (item.second >> 2 & 1)
          << ", sub_block_can_not_static_build = " << (item.second >> 1 & 1)
          << "]\n";
     }
@@ -201,6 +201,14 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
   if (op_type == "adam" || op_type == "adamw" || op_type == "merged_adam") {
     if (op.Attr<bool>("use_global_beta_pow") &&
         (parameter_name == "Beta1PowOut" || parameter_name == "Beta2PowOut")) {
+      VLOG(2) << "Skip fake initialization for: " << parameter_name;
+      return false;
+    }
+  }
+
+  if (op_type == "batch_norm" && parameter_name == "ReserveSpace") {
+    if (dynamic_cast<const OperatorWithKernel*>(&op)->kernel_type()->place_ ==
+        phi::CPUPlace()) {
       VLOG(2) << "Skip fake initialization for: " << parameter_name;
       return false;
     }
@@ -248,6 +256,12 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
       VLOG(2) << "Skip fake initialization for: " << parameter_name;
       return false;
     }
+  }
+
+  if ((op_type == "flatten" || op_type == "flatten_contiguous_range") &&
+      parameter_name == "XShape") {
+    VLOG(2) << "Skip fake initialization for: " << parameter_name;
+    return false;
   }
 
   if (op_type == "segment_pool" && parameter_name == "SummedIds") {
@@ -317,7 +331,7 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
 
   // set place
   if (tensor->initialized()) {  // avoid overwriting valid data
-    platform::DeviceContext* dev_ctx_for_copy;
+    platform::DeviceContext* dev_ctx_for_copy = nullptr;
     if (place.GetType() != AllocationType::CPU) {
       dev_ctx_for_copy = platform::DeviceContextPool::Instance().Get(place);
     } else {
@@ -856,6 +870,8 @@ void FakeInitializeOutputsForFunctionKernel(
             dtype = InferDTypeFromAttr(op, runtime_ctx, "dtype");
           } else if (op_type == "bincount" || op_type == "reduce_sum_grad") {
             dtype = GetInputDType(runtime_ctx, "X");
+          } else if (op_type == "dequantize_linear") {
+            dtype = GetInputDType(runtime_ctx, "Scale");
           } else if (op_type == "lamb") {
             bool multi_precision = op.Attr<bool>("multi_precision");
             dtype = GetInputDType(runtime_ctx, "Moment1");

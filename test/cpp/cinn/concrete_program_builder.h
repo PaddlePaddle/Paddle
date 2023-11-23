@@ -112,5 +112,21 @@ class FillConstantAddBuilder : public ProgramBuilder {
   }
 };
 
+class ReduceBuilder : public ProgramBuilder {
+ public:
+  ReduceBuilder() : ProgramBuilder("reduce_builder") {}
+  frontend::Program Build(const std::vector<VariableInfo>& inputs_varinfo,
+                          const utils::AttributeMap& attrs) {
+    CHECK_EQ(inputs_varinfo.size(), 1);
+    CHECK_EQ(attrs.count("reduce_dim"), 1);
+    std::vector<int> reduce_dim =
+        absl::get<std::vector<int>>(attrs.at("reduce_dim"));
+    auto X = builder_.CreateInput(
+        inputs_varinfo[0].type, inputs_varinfo[0].shape, inputs_varinfo[0].id);
+    auto Y = builder_.ReduceSum(X, reduce_dim);
+    return builder_.Build();
+  }
+};
+
 }  // namespace tests
 }  // namespace cinn

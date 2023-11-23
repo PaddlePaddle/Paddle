@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
+from ..completion import get_phi_spmd_rule
 from ..cost import (
     _g_op_cost_factory,
     build_comp_costs_from_descs,
@@ -26,20 +28,27 @@ from ..utils import (
     _get_comm_group,
     _get_corresponding_rank,
     compute_compatible_dim_mapping,
+    get_dist_tensor_spec,
     is_prim_op,
     set_dist_op_desc_original_id,
 )
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
+    get_default_distributed_operator_impl,
     gradient_synchronization,
     is_parameter_related,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
+    update_op_dims_mapping,
 )
 
 __op_not_need_param_init__ = ["while", "cond"]
-__op_has_shape_attr__ = ["fill_constant_batch_size_like", "fill_constant"]
+__op_has_shape_attr__ = [
+    "fill_constant_batch_size_like",
+    "fill_constant",
+    "expand_v2",
+]
 
 
 def prim_operator_data_parallel_functor(ctx, src_op):
@@ -96,6 +105,61 @@ def prim_operator_data_parallel_functor(ctx, src_op):
 class DistributedDefault(DistributedOperatorImplContainer):
     def __init__(self, op_type):
         super().__init__(op_type)
+
+    @staticmethod
+    def update_dims_mapping(dist_op):
+        # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
+
+        op_desc = dist_op.serial_op.desc
+        input_arg_names = op_desc.input_arg_names()
+        output_arg_names = op_desc.output_arg_names()
+
+        num_inputs = len(input_arg_names)
+        input_specs = []
+        for i in range(num_inputs):
+            assert not is_parameter_related(
+                input_arg_names[i]
+            ), "input {} of op {} is parameter, op should not use default rule.".format(
+                input_arg_names[i], str(dist_op.serial_op)
+            )
+            input_specs.append(
+                get_dist_tensor_spec(dist_op, input_arg_names[i])
+            )
+        num_outputs = len(output_arg_names)
+        output_specs = []
+        for i in range(num_outputs):
+            assert not is_parameter_related(
+                output_arg_names[i]
+            ), "output {} of op {} is parameter, op should not use default rule.".format(
+                output_arg_names[i], str(dist_op.serial_op)
+            )
+            output_specs.append(
+                get_dist_tensor_spec(dist_op, output_arg_names[i], False)
+            )
+
+        # step2: infer spmd
+        rule = get_phi_spmd_rule("default_")
+        # tensor order following order in PHI defition
+        fw_results = rule.infer_forward(input_specs, output_specs)
+        bw_results = rule.infer_backward(input_specs, output_specs)
+
+        # step3: update dist_attr
+        # tensor order following order in PHI defition
+        changed = update_op_dims_mapping(
+            dist_op, input_arg_names, output_arg_names, fw_results, bw_results
+        )
+
+        return changed
+
+    @staticmethod
+    def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
+        # all op use default dist operator impl.
+        op_dist_attr = dist_op.dist_attr
+        default_impl = get_default_distributed_operator_impl()
+        op_dist_attr.impl_type = default_impl.type
+        op_dist_attr.impl_idx = default_impl.idx
+
+        return False
 
 
 register_distributed_operator_impl_container(DistributedDefault("default"))

@@ -34,8 +34,11 @@ void ScatterNdAddKernel(const Context &ctx,
   if (updates.numel() == 0) return;
 
   if (index.numel() == 0) {
-    int loop_time =
-        static_cast<int>(index.dims().size() == 0 ? 1 : index.dims()[0]);
+    int64_t index_dims_size = index.dims().size();
+    int loop_time = static_cast<int>(
+        index_dims_size == 0 ? 1
+                             : phi::product(phi::slice_ddim(
+                                   index.dims(), 0, index_dims_size - 1)));
 
     for (int i = 0; i < loop_time; i++) {
       r = xpu::broadcast_add<T>(ctx.x_context(),

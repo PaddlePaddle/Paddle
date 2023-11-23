@@ -24,6 +24,7 @@ namespace ir {
 
 std::vector<std::string> GetNodeNames(const std::vector<Node *> &node_vector) {
   std::vector<std::string> out_vector;
+  out_vector.reserve(node_vector.size());
   for (auto i : node_vector) {
     out_vector.emplace_back(i->Name());
   }

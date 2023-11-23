@@ -349,14 +349,14 @@ bool CPUQuantizePass::AreScalesPresentForVarNames(
   bool present = true;
   if (var_quant_scales_->empty()) {
     auto& scales = Get<VarQuantScale>("quant_var_scales");
-    for (auto name : names) {
+    for (auto const& name : names) {
       if (scales.find(name) == scales.end()) {
         present = false;
         LogScaleIsMissingForVarName(name);
       }
     }
   } else {
-    for (auto name : names) {
+    for (auto const& name : names) {
       if (var_quant_scales_->find(name) == var_quant_scales_->end()) {
         present = false;
         LogScaleIsMissingForVarName(name);

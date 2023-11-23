@@ -50,3 +50,5 @@
 - tanh
 - full
 - cast
+- sign
+- slice

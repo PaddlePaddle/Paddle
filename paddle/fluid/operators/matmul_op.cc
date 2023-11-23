@@ -181,7 +181,7 @@ static phi::DenseTensor FoldHeadAndLastDims(const DeviceContext &context,
  */
 static void ReshapeTensorIntoMatrixSequence(
     phi::DenseTensor *x, const phi::funcs::MatDescriptor &descriptor) {
-  int64_t h, w;
+  int64_t h = 0, w = 0;
   h = descriptor.height_;
   w = descriptor.width_;
   if (descriptor.trans_) {

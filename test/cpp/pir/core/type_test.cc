@@ -95,6 +95,7 @@ TEST(type_test, built_in_type) {
 
   pir::Type index_1 = pir::IndexType::get(ctx);
   pir::Type index_2 = pir::IndexType::get(ctx);
+  EXPECT_TRUE(index_1.IsIndex());
   EXPECT_EQ(index_1, index_2);
   EXPECT_EQ(index_1.type_id(), index_2.type_id());
   EXPECT_EQ(&index_1.abstract_type(),

@@ -16,7 +16,6 @@
 
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/distributed/collective/custom_ccl_tools.h"
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/enforce.h"
@@ -32,23 +31,59 @@ PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 namespace paddle {
 namespace distributed {
 
+using phi::distributed::CheckSizeOnEachRank;
+using phi::distributed::GetPointerByOffset;
+static std::mutex g_unfinished_xccl_task_events_mutex;
+static std::list<std::unique_ptr<phi::event::Event>>
+    g_unfinished_xccl_task_events;
+
 ProcessGroupCustom::XCCLTask::XCCLTask(const Place& place,
                                        int rank,
                                        CommType comm_type,
                                        bool sync_op,
                                        bool use_calc_stream)
     : TaskStream(rank, comm_type, sync_op, use_calc_stream),
-      task_place_(place) {
-  comm_event_.Init(place);
+      task_place_(place),
+      comm_event_(std::make_unique<phi::event::Event>()) {
+  comm_event_->Init(task_place_);
 }
 
-ProcessGroupCustom::XCCLTask::~XCCLTask() = default;
+ProcessGroupCustom::XCCLTask::XCCLTask(
+    const std::vector<Place>& places,
+    int rank,
+    CommType CommType,
+    const std::vector<phi::DenseTensor>& inputs)
+    : TaskStream(rank, inputs, CommType),
+      task_place_(places[0]),
+      comm_event_(std::make_unique<phi::event::Event>()) {
+  comm_event_->Init(task_place_);
+}
 
-bool ProcessGroupCustom::XCCLTask::IsCompleted() { return comm_event_.Query(); }
+ProcessGroupCustom::XCCLTask::~XCCLTask() {
+  if (!IsCompleted()) {
+    std::lock_guard<std::mutex> lock(g_unfinished_xccl_task_events_mutex);
+    g_unfinished_xccl_task_events.push_back(std::move(comm_event_));
+  }
+}
+
+bool ProcessGroupCustom::XCCLTask::IsCompleted() {
+  return comm_event_->Query();
+}
 
 void ProcessGroupCustom::XCCLTask::UpdateWaitChain(
     const phi::DeviceContext& ctx) {
-  comm_event_.Record(
+  {
+    std::lock_guard<std::mutex> lock(g_unfinished_xccl_task_events_mutex);
+    for (auto iter = g_unfinished_xccl_task_events.begin();
+         iter != g_unfinished_xccl_task_events.end();) {
+      if ((*iter)->Query()) {
+        iter = g_unfinished_xccl_task_events.erase(iter);
+      } else {
+        iter++;
+      }
+    }
+  }
+  comm_event_->Record(
       reinterpret_cast<const phi::CustomContext&>(ctx).GetStream().get());
 }
 
@@ -62,7 +97,7 @@ bool ProcessGroupCustom::XCCLTask::Wait(std::chrono::milliseconds timeout) {
 
   const auto* calc_ctx = reinterpret_cast<phi::CustomContext*>(
       platform::DeviceContextPool::Instance().Get(task_place_));
-  calc_ctx->GetStream()->WaitEvent(&comm_event_);
+  calc_ctx->GetStream()->WaitEvent(comm_event_.get());
 
   if (IsBlockCPUInWait()) {
     // If we use the work to do barrier, we should block cpu
@@ -494,7 +529,7 @@ void ProcessGroupCustom::CreateXCCLEnvCache(const Place& place,
           << ", place: " << place_key;
 
   phi::distributed::CommContextManager::CreateXCCLCommContext(
-      store_, std::to_string(gid_), place.GetDeviceType(), rank_, size_);
+      store_, std::to_string(gid_), place, rank_, size_);
 
   auto* calc_ctx = static_cast<phi::CustomContext*>(
       platform::DeviceContextPool::Instance().Get(place));
@@ -590,15 +625,6 @@ std::shared_ptr<ProcessGroupCustom::XCCLTask> ProcessGroupCustom::CreateTask(
       places, rank, comm_type, inputs);
 }
 
-ProcessGroupCustom::XCCLTask::XCCLTask(
-    const std::vector<Place>& places,
-    int rank,
-    CommType CommType,
-    const std::vector<phi::DenseTensor>& inputs)
-    : TaskStream(rank, inputs, CommType), task_place_(places[0]) {
-  comm_event_.Init(places[0]);
-}
-
 // create XCCLManager cache for places_key
 void ProcessGroupCustom::CreateXCCLManagerCache(
     const std::string& places_key, const std::vector<Place>& places) {
@@ -676,7 +702,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
   {
     std::lock_guard<std::mutex> lock(mutex_);
     if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
-      CreateXCCLManagerCache(key, places);
+      CreateXCCLEnvCache(places[0], key);
     }
   }
 

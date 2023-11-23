@@ -508,7 +508,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           const std::string var_name = argument_names[i];
           Variable* var = arguments->at(i);
 
-          const phi::DenseTensor* tensor_in;
+          const phi::DenseTensor* tensor_in = nullptr;
           if (var->IsType<phi::DenseTensor>() ||
               var->IsType<phi::SelectedRows>()) {
             tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);

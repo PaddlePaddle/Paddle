@@ -57,7 +57,7 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
     const bool merge_conflicts) {
   std::unordered_map<std::string, int64_t> axis_to_dim_map;
   std::unordered_map<int64_t, std::string> dim_to_axis_map;
-  int64_t merge_dim;
+  int64_t merge_dim = 0;
 
   for (auto& pair : tensor_axes_to_dim_pairs) {
     for (size_t i = 0; i < pair.second.size(); ++i) {

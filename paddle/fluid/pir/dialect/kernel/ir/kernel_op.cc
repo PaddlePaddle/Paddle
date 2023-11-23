@@ -25,7 +25,7 @@ const char* PhiKernelOp::attributes_name[attributes_num] = {  // NOLINT
     "kernel_name",
     "kernel_key"};
 
-void PhiKernelOp::Verify() {
+void PhiKernelOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs and attributes for: PhiKernelOp.";
 
   auto& attributes = this->attributes();
@@ -64,7 +64,7 @@ const char* LegacyKernelOp::attributes_name[attributes_num] = {  // NOLINT
     "kernel_name",
     "kernel_key"};
 
-void LegacyKernelOp::Verify() {
+void LegacyKernelOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs and attributes for: LegacyKernelOp.";
 
   auto& attributes = this->attributes();

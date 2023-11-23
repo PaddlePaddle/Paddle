@@ -85,7 +85,7 @@ InterceptorMessage ComputeInterceptor::PrepareVarsMsg() {
   ready_msg.set_message_type(DATA_WITH_VARS);
   ready_msg.set_scope_idx(cur_scope_id_);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  for (auto iter : node_->vars_to_dtype()) {
+  for (auto const& iter : node_->vars_to_dtype()) {
     VarList* vars = ready_msg.add_vars_list();
     const auto& var_name = iter.first;
     vars->set_name(var_name);

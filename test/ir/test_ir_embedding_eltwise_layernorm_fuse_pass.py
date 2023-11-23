@@ -121,14 +121,13 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
         self.num_fused_ops = 2
 
     def test_check_output(self):
-        use_gpu_set = [True]
         if not core.is_compiled_with_cuda():
             return
         self.pass_attrs = {
             "embedding_eltwise_layernorm_fuse_pass": {"use_gpu": True}
         }
         place = base.CUDAPlace(0)
-        self.check_output_with_place(place, startup_on_cpu=True)
+        self.check_output_with_place(place)
 
 
 if __name__ == "__main__":

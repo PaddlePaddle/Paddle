@@ -286,7 +286,7 @@ GraphPatternDetector::handle_t GetGenerateDelete(
         for (const std::unique_ptr<PDNode>& pdnode : pattern.nodes()) {
           remove_nodes.emplace(subgraph.at(pdnode.get()));
         }
-        for (auto iter : var_node_maps) {
+        for (auto const& iter : var_node_maps) {
           remove_nodes.erase(iter.second);
         }
         GraphSafeRemoveNodes(graph, remove_nodes);
@@ -424,7 +424,7 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
         for (const std::unique_ptr<PDNode>& pdnode : pattern.nodes()) {
           remove_nodes.emplace(subgraph.at(pdnode.get()));
         }
-        for (auto iter : var_node_maps) {
+        for (auto const& iter : var_node_maps) {
           for (auto& node : iter.second) {
             remove_nodes.erase(node);
           }

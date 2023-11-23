@@ -22,7 +22,6 @@ from ..utils import get_dist_tensor_spec, is_dim_shard
 from .common import (
     DistributedOperatorImplContainer,
     get_default_distributed_operator_impl,
-    merge_forward_backward_dims_mapping,
     register_distributed_operator_impl_container,
     update_op_dims_mapping,
 )
@@ -73,20 +72,14 @@ class DistributedLayerNorm(DistributedOperatorImplContainer):
             begin_norm_axis,
         )
 
-        # step3: merge fw & bw results
-        (
-            infered_input_dims_mappings,
-            infered_output_dims_mappings,
-        ) = merge_forward_backward_dims_mapping(fw_results, bw_results)
-
-        # step4: update dist_attr
+        # step3: update dist_attr
         # tensor order following order in PHI defition
         changed = update_op_dims_mapping(
             dist_op,
             [x_name, scale_name, bias_name],
-            infered_input_dims_mappings,
             [y_name, var_name, mean_name],
-            infered_output_dims_mappings,
+            fw_results,
+            bw_results,
         )
 
         return changed

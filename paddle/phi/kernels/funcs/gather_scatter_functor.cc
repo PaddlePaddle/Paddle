@@ -92,7 +92,7 @@ struct cpu_gather_scatter_functor {
       outer_dim_size *= index_dims[i];
     }
     int64_t index_idx = 0;
-    int64_t self_idx, src_idx;
+    int64_t self_idx = 0, src_idx = 0;
 
     // N layer loop squeezed into 3 layers loop
     for (int64_t i = 0; i < inner_dim_size; i++) {

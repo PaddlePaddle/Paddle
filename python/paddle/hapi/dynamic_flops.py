@@ -85,7 +85,6 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
             ...                      [1, 1, 28, 28],
             ...                      custom_ops= {nn.LeakyReLU: count_leaky_relu},
             ...                      print_detail=True)
-            >>> # doctest: +SKIP
             >>> print(FLOPs)
             <class 'paddle.nn.layer.conv.Conv2D'>'s flops has been counted
             <class 'paddle.nn.layer.activation.ReLU'>'s flops has been counted
@@ -106,7 +105,6 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
             +--------------+-----------------+-----------------+--------+--------+
             Total Flops: 347560     Total Params: 61610
             347560
-            >>> # doctest: -SKIP
     """
     if isinstance(net, nn.Layer):
         # If net is a dy2stat model, net.forward is StaticFunction instance,
@@ -242,9 +240,7 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         else:
             if m_type not in types_collection:
                 print(
-                    "Cannot find suitable count function for {}. Treat it as zero FLOPs.".format(
-                        m_type
-                    )
+                    f"Cannot find suitable count function for {m_type}. Treat it as zero FLOPs."
                 )
 
         if flops_fn is not None:

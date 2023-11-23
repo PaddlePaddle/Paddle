@@ -58,7 +58,7 @@ class TestFillAnyLikeOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_new_ir=True)
+        self.check_output(check_prim=True, check_pir=True)
 
     def if_enable_cinn(self):
         pass
@@ -96,7 +96,7 @@ class TestFillAnyLikeOpBfloat16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_prim=True, check_new_ir=True)
+        self.check_output_with_place(place, check_prim=True, check_pir=True)
 
     def if_enable_cinn(self):
         pass

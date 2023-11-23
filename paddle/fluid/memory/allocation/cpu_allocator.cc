@@ -38,7 +38,7 @@ void CPUAllocator::FreeImpl(phi::Allocation *allocation) {
 }
 
 phi::Allocation *CPUAllocator::AllocateImpl(size_t size) {
-  void *p;
+  void *p = nullptr;
 #ifdef _WIN32
   p = _aligned_malloc(size, kAlignment);
 #else

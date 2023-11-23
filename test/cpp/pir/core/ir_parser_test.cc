@@ -86,7 +86,7 @@ TestTask* ParserTest::GetTestTask() {
   std::string test_type_info;
   while (test_text.peek() != '\n' && test_text.peek() != ' ' &&
          test_text.peek() != EOF) {
-    test_type_info += test_text.get();
+    test_type_info += test_text.get();  // NOLINT
   }
 
   while (test_text.peek() == '\n' || test_text.peek() == ' ') {
@@ -95,10 +95,10 @@ TestTask* ParserTest::GetTestTask() {
 
   std::string test_info;
   while (Peek(5) != "//END" && test_text.peek() != EOF) {
-    test_info += test_text.get();
+    test_info += test_text.get();  // NOLINT
   }
 
-  if (Peek(5) != "//END" || test_info.size() == 0) {
+  if (Peek(5) != "//END" || static_cast<int>(test_info.size()) == 0) {
     return nullptr;
   }
 
@@ -175,7 +175,7 @@ std::string ParserTest::Get(const size_t len) {
     if (test_text.peek() == EOF) {
       break;
     }
-    str += test_text.get();
+    str += test_text.get();  // NOLINT
   }
   return str;
 }

@@ -31,7 +31,7 @@ import astor
 import numpy as np
 
 import paddle
-from paddle import base  # noqa: F401
+from paddle import base, get_flags, set_flags  # noqa: F401
 from paddle.base import backward, core, framework, unique_name
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.layer_helper import LayerHelper
@@ -40,16 +40,18 @@ from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
 from .static_analysis import StaticAnalysisVisitor
-from .utils_helper import DYGRAPH_MODULE_PREFIX  # noqa: F401
-from .utils_helper import DYGRAPH_TO_STATIC_MODULE_PREFIX  # noqa: F401
-from .utils_helper import PADDLE_MODULE_PREFIX  # noqa: F401
-from .utils_helper import NodeVarType  # noqa: F401
-from .utils_helper import _is_api_in_module_helper  # noqa: F401
-from .utils_helper import index_in_list  # noqa: F401
-from .utils_helper import is_api_in_module  # noqa: F401
-from .utils_helper import is_dygraph_api  # noqa: F401
-from .utils_helper import is_numpy_api  # noqa: F401;
-from .utils_helper import is_paddle_api  # noqa: F401
+from .utils_helper import (  # noqa: F401
+    DYGRAPH_MODULE_PREFIX,
+    DYGRAPH_TO_STATIC_MODULE_PREFIX,
+    PADDLE_MODULE_PREFIX,
+    NodeVarType,
+    _is_api_in_module_helper,
+    index_in_list,
+    is_api_in_module,
+    is_dygraph_api,
+    is_numpy_api,
+    is_paddle_api,
+)
 
 __all__ = []
 

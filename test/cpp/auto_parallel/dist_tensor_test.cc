@@ -43,7 +43,7 @@ TEST(dist_tensor, constructor) {
   dist_attr.set_process_mesh(mesh);
 
   // copy construct
-  DenseTensor x1(alloc, meta);
+  std::shared_ptr<DenseTensor> x1 = std::make_shared<DenseTensor>(alloc, meta);
   DistTensor dist_x1(x1, dist_attr);
   EXPECT_TRUE(dist_x1.defined());
   EXPECT_TRUE(dist_x1.initialized());

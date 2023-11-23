@@ -93,7 +93,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       map[out_node->Name()] = 0;
     }
     // Forbid other node in graph having the same name with nodes in map
-    for (auto iter : map) {
+    for (auto const &iter : map) {
       for (auto node : graph->Nodes()) {
         if (node->IsVar() && node->Name() == iter.first) {
           map[node->Name()]++;

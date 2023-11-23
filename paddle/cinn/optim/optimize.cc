@@ -29,6 +29,7 @@
 #include "paddle/cinn/optim/map_extern_call.h"
 #include "paddle/cinn/optim/remove_schedule_block.h"
 #include "paddle/cinn/optim/replace_const_param_to_integer.h"
+#include "paddle/cinn/optim/replace_cross_thread_reduction.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 #include "paddle/cinn/optim/unroll_loops.h"
@@ -49,6 +50,7 @@ Expr Optimize(Expr e,
   ReplaceConstParamToInteger(&copied);
   // Simplify already contains CastSimplify
   Simplify(&copied);
+  ReplaceCrossThreadReduction(&copied);
   UnrollLoop(&copied);
   VLOG(4) << "After Optimize UnrollLoop:" << copied;
 
@@ -85,6 +87,7 @@ Expr Optimize(Expr e,
 
 ir::Module Optimize(const ir::Module& module, const Target& target) {
   auto copied = ir::ir_utils::IRCopy(Expr(module));
+  ReplaceCrossThreadReduction(&copied);
   UnrollLoop(&copied);
   VectorizeLoops(&copied, Target());
   VLOG(10) << "After VectorizeLoops:" << copied.as_module_ref();

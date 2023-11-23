@@ -200,7 +200,7 @@ TracedProgramTuple ProgramDescTracer::CreateProgramDesc(
         }
       }
 
-      op_desc->SetInput(pair.first, std::move(names));
+      op_desc->SetInput(pair.first, names);
     }
 
     for (auto &pair : op->Outputs()) {
@@ -212,7 +212,7 @@ TracedProgramTuple ProgramDescTracer::CreateProgramDesc(
         }
       }
 
-      op_desc->SetOutput(pair.first, std::move(names));
+      op_desc->SetOutput(pair.first, names);
     }
   }
 

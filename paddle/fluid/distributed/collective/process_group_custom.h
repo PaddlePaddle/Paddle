@@ -22,6 +22,7 @@
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_with_stream.h"
+#include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
@@ -61,8 +62,8 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
 
    private:
     bool block_cpu_in_wait_{false};
-    phi::event::Event comm_event_;  // event on comm stream
     Place task_place_;
+    std::unique_ptr<phi::event::Event> comm_event_;  // event on comm stream
   };
 
  public:

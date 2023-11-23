@@ -64,7 +64,7 @@ from .shufflenetv2 import shufflenet_v2_x1_5  # noqa: F401
 from .shufflenetv2 import shufflenet_v2_x2_0  # noqa: F401
 from .shufflenetv2 import shufflenet_v2_swish  # noqa: F401
 
-__all__ = [  # noqa
+__all__ = [
     'ResNet',
     'resnet18',
     'resnet34',

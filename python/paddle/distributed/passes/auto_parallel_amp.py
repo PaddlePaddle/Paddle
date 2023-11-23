@@ -215,7 +215,7 @@ class AMPState:
                         fwd_op_id = self.grad_op_to_op_map[
                             op.desc.original_id()
                         ]
-                        assert fwd_op_id in self._op_fp16_dict, f"{str(op)}"
+                        assert fwd_op_id in self._op_fp16_dict, str(op)
                         self._op_fp16_dict[
                             op.desc.original_id()
                         ] = self._is_fp16_op(fwd_op_id)

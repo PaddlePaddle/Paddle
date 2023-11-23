@@ -18,10 +18,10 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/core/enforce.h"
+#include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/pass/analysis_manager.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace pir {
 
@@ -85,7 +85,7 @@ class IR_API Pass {
  protected:
   virtual void Run(Operation* op) = 0;
 
-  virtual inline bool CanApplyOn(Operation* op) const;
+  virtual bool CanApplyOn(Operation* op) const;
 
   virtual bool Initialize(IrContext* context) { return true; }
 
@@ -105,6 +105,41 @@ class IR_API Pass {
 
   friend class PassManager;
   friend class detail::PassAdaptor;
+};
+
+class PatternRewritePass : public Pass {
+ public:
+  PatternRewritePass(const std::string& name,
+                     uint8_t opt_level,
+                     const std::vector<std::string>& dependents = {})
+      : Pass(name, opt_level, dependents) {}
+
+ protected:
+  virtual RewritePatternSet InitializePatterns(IrContext* context) = 0;
+
+  bool Initialize(IrContext* context) final {
+    RewritePatternSet ps = InitializePatterns(context);
+    IR_ENFORCE(ps.Empty() == false,
+               "Pass creation failed."
+               "When using PatternRewritePass to create a Pass, the number of "
+               "customized Patterns is required to be greater than zero."
+               "Suggested fix: Check whether Pattern is added to the "
+               "InitializePatterns() function of class [%s]",
+               name());
+    patterns_ = FrozenRewritePatternSet(std::move(ps));
+
+    return true;
+  }
+
+  void Run(Operation* op) override {
+    GreedyRewriteConfig cfg;
+    cfg.use_top_down_traversal = true;
+    cfg.max_iterations = 10;
+    ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+  }
+
+ private:
+  FrozenRewritePatternSet patterns_;
 };
 
 }  // namespace pir

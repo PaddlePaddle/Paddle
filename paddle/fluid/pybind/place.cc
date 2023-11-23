@@ -459,6 +459,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   py::enum_<phi::backends::xpu::XPUVersion>(m, "XPUVersion", py::arithmetic())
       .value("XPU1", phi::backends::xpu::XPUVersion::XPU1)
       .value("XPU2", phi::backends::xpu::XPUVersion::XPU2)
+      .value("XPU3", phi::backends::xpu::XPUVersion::XPU3)
       .export_values();
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_device_version",
