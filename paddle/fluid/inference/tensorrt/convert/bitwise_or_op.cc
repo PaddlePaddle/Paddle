@@ -49,7 +49,7 @@ class BitwiseOrConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerOrOutput(layer, "bitwise_or", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "bitwise_or", {output_name}, test_mode);
   }
 };
 
