@@ -51,6 +51,8 @@ class Node {
   virtual uint64_t get_neighbor_id(int idx UNUSED) { return 0; }
 #ifdef PADDLE_WITH_CUDA
   virtual half get_neighbor_weight(int idx UNUSED) { return 1.; }
+#else
+  virtual float get_neighbor_weight(int idx UNUSED) { return 1.; }
 #endif
   virtual int get_size(bool need_feature);
   virtual void to_buffer(char *buffer, bool need_feature);
@@ -105,6 +107,8 @@ class GraphNode : public Node {
   virtual uint64_t get_neighbor_id(int idx) { return edges->get_id(idx); }
 #ifdef PADDLE_WITH_CUDA
   virtual half get_neighbor_weight(int idx) { return edges->get_weight(idx); }
+#else
+  virtual float get_neighbor_weight(int idx) { return edges->get_weight(idx); }
 #endif
   virtual size_t get_neighbor_size() { return edges->size(); }
 
