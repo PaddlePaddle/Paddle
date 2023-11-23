@@ -37,15 +37,19 @@ std::unique_ptr<Program> PirCompiler::Build() {
   return std::move(Build(groups));
 }
 
-std::vector<pir::CUDAJITInfo> PirCompiler::BuildCUDAJITInfo(
+std::vector<pir::CINNKernelInfo> PirCompiler::BuildCUDAJITInfo(
     const std::vector<pir::GroupPtr>& groups) {
-  std::vector<pir::CUDAJITInfo> vec_res;
+  std::vector<pir::CINNKernelInfo> vec_res;
 
   auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
 
   std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
   for (int i = 0; i < groups.size(); ++i) {
-    lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
+    // 一个计算图就只有一个lowered funcs ?
+    lowered_funcs.emplace_back(
+        op_lowerer.Lower(groups[i], false, false, false));
+    VLOG(1) << "DEBUG BuildCudaJitInfo lowered_funcs.body\n"
+            << lowered_funcs[i][0]->body;
   }
 
   for (auto&& lowered_func : lowered_funcs) {
@@ -60,16 +64,13 @@ std::vector<pir::CUDAJITInfo> PirCompiler::BuildCUDAJITInfo(
 
   auto fn_ptrs = compiler_->GetFnPtr();
 
-  auto* compilter_ptr = compiler_.release();
   for (int idx = 0; idx < groups.size(); ++idx) {
-    pir::CUDAJITInfo jit_info;
-    jit_info.fn_ptr = fn_ptrs[idx];
-    jit_info.compiler = reinterpret_cast<void*>(compilter_ptr);
-
-    lowered_funcs[idx][0]->cuda_axis_info.CopyBlockDimsTo(
-        &(jit_info.block_dims));
-
-    lowered_funcs[idx][0]->cuda_axis_info.CopyGridDimsTo(&(jit_info.grid_dims));
+    pir::CINNKernelInfo jit_info;
+    auto fn_name = groups[idx]->FuncName();
+    auto fn_ptr = compiler_->Lookup(fn_name);
+    jit_info.fn_ptr = fn_ptr;
+    jit_info.compiler = reinterpret_cast<void*>(compiler_.release());
+    jit_info.int_args_map = groups[idx]->int_args_map;
 
     vec_res.push_back(jit_info);
   }
@@ -113,24 +114,24 @@ std::unique_ptr<Program> PirCompiler::Build(
 void PirCompiler::ProcessFunction(
     const std::vector<ir::LoweredFunc>& lowered_funcs) {
   for (auto&& func : lowered_funcs) {
-    for (auto&& arg : func->args) {
-      std::string arg_name = arg.name();
-      if (arg_name[0] == '_') arg_name = arg_name.substr(1);
-
-      auto* var = scope_->FindVar(arg_name);
-      // For argument buffer not in scope, create it.
-      if (!var && arg.is_buffer()) {
-        auto* new_var = scope_->Var<Tensor>(arg_name);
-        auto& tensor = absl::get<Tensor>(*new_var);
-        std::vector<Shape::dim_t> shape;
-        for (auto& shape_dim : arg.buffer_arg()->shape) {
-          CHECK(shape_dim.is_constant());
-          shape.push_back(static_cast<int>(shape_dim.get_constant()));
-        }
-        tensor->Resize(Shape{shape});
-        tensor->set_type(arg.buffer_arg()->dtype);
-      }
-    }
+    // for (auto&& arg : func->args) {
+    //   std::string arg_name = arg.name();
+    //   if (arg_name[0] == '_') arg_name = arg_name.substr(1);
+    //
+    //   auto* var = scope_->FindVar(arg_name);
+    //   // For argument buffer not in scope, create it.
+    //   if (!var && arg.is_buffer()) {
+    //     auto* new_var = scope_->Var<Tensor>(arg_name);
+    //     auto& tensor = absl::get<Tensor>(*new_var);
+    //     std::vector<Shape::dim_t> shape;
+    //     for (auto& shape_dim : arg.buffer_arg()->shape) {
+    //       // CHECK(shape_dim.is_constant());
+    //       shape.push_back(static_cast<int>(shape_dim.get_constant()));
+    //     }
+    //     tensor->Resize(Shape{shape});
+    //     tensor->set_type(arg.buffer_arg()->dtype);
+    //   }
+    // }
     m_builder_.AddFunction(func);
   }
 }

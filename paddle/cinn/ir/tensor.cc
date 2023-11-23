@@ -31,6 +31,7 @@
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/utils/error.h"
 
 namespace cinn {
 namespace ir {
@@ -153,8 +154,10 @@ Expr Tensor::operator()(const std::vector<Expr> &indices) const {
                                 "tuple and operate on that instead";
   auto *node = operator->();
 
-  CHECK_EQ(indices.size(), ndims())
-      << "number of indices not match the dimension";
+  if (indices.size() != ndims()) {
+    VLOG(-1) << utils::enforce::GetCurrentTraceBackString();
+  }
+  CHECK_EQ(indices.size(), ndims());
 
   return Load::Make(*this, indices);
 }

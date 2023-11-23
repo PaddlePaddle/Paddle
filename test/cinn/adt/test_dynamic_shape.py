@@ -41,7 +41,8 @@ class TestNet(nn.Layer):
         super().__init__()
 
     def forward(self, x, y):
-        return x - paddle.exp(y)
+        return x - y
+        # return x - paddle.exp(y)
 
 
 def train(layer):

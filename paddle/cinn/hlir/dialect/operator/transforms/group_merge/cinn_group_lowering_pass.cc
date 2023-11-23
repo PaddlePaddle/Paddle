@@ -130,9 +130,7 @@ std::shared_ptr<pir::ShapeConstraintIRAnalysis> CreateShapeAnalysis(
       std::make_shared<pir::MockShapeConstraintIRAnalysis>(ctx);
   pir::SymbolicDimMgr& sym_dim_mgr = shape_analysis->symbolicDimMgr();
 
-  std::vector<std::vector<pir::shape::SymbolicDimOp>> datas_sym_vec{};
-  std::vector<pir::shape::SymbolicDimOp> exp_sym_vec{};
-  std::vector<pir::shape::SymbolicDimOp> sub_sym_vec{};
+  std::vector<std::vector<pir::shape::SymbolicDimOp>> sym_vec{};
 
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
@@ -140,28 +138,28 @@ std::shared_ptr<pir::ShapeConstraintIRAnalysis> CreateShapeAnalysis(
       auto group_op = it->dyn_cast<cinn::dialect::GroupOp>();
       for (auto* op : group_op.ops()) {
         if (op->isa<paddle::dialect::ExpOp>()) {
-          exp_sym_vec = shape_analysis->GetOrCreateSymbolicDimsForRankedValue(
-              op->result(0));
+          sym_vec.emplace_back(
+              shape_analysis->GetOrCreateSymbolicDimsForRankedValue(
+                  op->result(0)));
         }
 
         if (op->isa<paddle::dialect::SubtractOp>()) {
-          sub_sym_vec = shape_analysis->GetOrCreateSymbolicDimsForRankedValue(
-              op->result(0));
+          sym_vec.emplace_back(
+              shape_analysis->GetOrCreateSymbolicDimsForRankedValue(
+                  op->result(0)));
         }
       }
     }
     if (it->isa<paddle::dialect::DataOp>()) {
       auto op = it->dyn_cast<paddle::dialect::DataOp>();
-      datas_sym_vec.emplace_back(
+      sym_vec.emplace_back(
           shape_analysis->GetOrCreateSymbolicDimsForRankedValue(op->result(0)));
     }
   }
-
-  sym_dim_mgr.MapSymbolicDimEqual(exp_sym_vec[0], sub_sym_vec[0]);
-  sym_dim_mgr.MapSymbolicDimEqual(exp_sym_vec[1], sub_sym_vec[1]);
-  for (const auto& data_sym_vec : datas_sym_vec) {
-    sym_dim_mgr.MapSymbolicDimEqual(exp_sym_vec[0], data_sym_vec[0]);
-    sym_dim_mgr.MapSymbolicDimEqual(exp_sym_vec[1], data_sym_vec[1]);
+  VLOG(1) << "DEBUG sym_vec.size() = " << sym_vec.size();
+  for (std::size_t i = 1; i < sym_vec.size(); ++i) {
+    sym_dim_mgr.MapSymbolicDimEqual(sym_vec.at(0)[0], sym_vec.at(i)[0]);
+    sym_dim_mgr.MapSymbolicDimEqual(sym_vec.at(0)[1], sym_vec.at(i)[1]);
   }
 
   CHECK_NOTNULL(shape_analysis.get());
@@ -227,7 +225,7 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
       auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
       std::unordered_map<std::string, ::pir::Attribute> op_attrs{
           {cinn::dialect::JitKernelOp::kAttrName,
-           cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
+           cinn::dialect::CINNKernelInfoAttribute::get(ctx, fn_ptr_res[0])},
       };
 
       // Generate jit kernel op input and output
