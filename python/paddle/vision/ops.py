@@ -22,7 +22,7 @@ from ..base import core
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..base.framework import Variable, in_dygraph_mode, in_dynamic_or_pir_mode
 from ..base.layer_helper import LayerHelper
-from ..framework import _current_expected_place, in_dynamic_or_pir_mode
+from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
 from ..nn.initializer import Normal
 
@@ -1367,7 +1367,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
             >>> print(img.shape)
             [3, 400, 300]
     """
-    if in_dynamic_or_pir_mode():
+    if in_dygraph_mode():
         return _C_ops.decode_jpeg(x, mode, _current_expected_place())
     else:
         inputs = {'X': x}
