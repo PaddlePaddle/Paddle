@@ -229,7 +229,7 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   std::vector<std::string> fetch_var_names_;
 
-  // Note(zhangbo): set_parameter_op's input and get_parameter_op's output
+  // Note(zhangbo): set_parameter_op's input and parameter_op's output
   // belongs to a parameter and cannot GC.
   std::unordered_set<std::string> parameter_var_names_;
 };

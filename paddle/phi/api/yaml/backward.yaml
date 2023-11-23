@@ -830,6 +830,7 @@
   infer_meta :
     func : FlashAttnGradInferMeta
     param : [q, k, v]
+    spmd_rule : FlashAttGradInferSpmd
   kernel :
     func : flash_attn_grad
     data_type: q
