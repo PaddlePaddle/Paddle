@@ -223,7 +223,8 @@ inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   // if reduce using block_reduce, can't fuse producer.
   ::pir::Operation* reducer = nullptr;
   for (auto& node : second->master_ops) {
-    if (GetOpKind(node->name()) == OpPatternKind::kReduction) {
+    if (hlir::framework::pir::CompatibleInfo::OpKind(*node) ==
+        OpPatternKind::kReduction) {
       reducer = node;
       break;
     }
@@ -291,7 +292,8 @@ inline bool broadcast_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   }
   ::pir::Operation* reducer = nullptr;
   for (auto& node : second->master_ops) {
-    if (GetOpKind(node->name()) == OpPatternKind::kReduction) {
+    if (hlir::framework::pir::CompatibleInfo::OpKind(*node) ==
+        OpPatternKind::kReduction) {
       reducer = node;
       break;
     }
@@ -339,7 +341,7 @@ inline bool horizontal_relation(const std::shared_ptr<ir::Group>& first,
                             OpPatternKind kind) {
     std::unordered_set<::pir::Operation*> selected;
     for (auto node : nodes) {
-      if (GetOpKind(node->name()) == kind) {
+      if (hlir::framework::pir::CompatibleInfo::OpKind(*node) == kind) {
         selected.insert(node);
       }
     }
@@ -425,7 +427,8 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
   // required that each consumer of type Broadcast meet the same shape after
   // broadcast as before reduce.
   for (auto& node_in_master : first->master_ops) {
-    if (GetOpKind(node_in_master->name()) != OpPatternKind::kReduction) {
+    if (hlir::framework::pir::CompatibleInfo::OpKind(*node_in_master) !=
+        OpPatternKind::kReduction) {
       continue;
     }
     ::pir::Operation* reducer = node_in_master;
@@ -488,7 +491,8 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
             visited_set.insert(consumer);
             candidates.push(consumer);
           }
-          if (GetOpKind(consumer->name()) == OpPatternKind::kBroadcast &&
+          if (hlir::framework::pir::CompatibleInfo::OpKind(*consumer) ==
+                  OpPatternKind::kBroadcast &&
               second->OpSet().find(consumer) != second->OpSet().end()) {
             broadcasters.insert(consumer);
           }
@@ -552,7 +556,8 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   }
   ::pir::Operation* reducer_0 = nullptr;
   for (auto& reducer : first->master_ops) {
-    if (GetOpKind(reducer->name()) == OpPatternKind::kReduction) {
+    if (hlir::framework::pir::CompatibleInfo::OpKind(*reducer) ==
+        OpPatternKind::kReduction) {
       reducer_0 = reducer;
       break;
     }
@@ -561,7 +566,8 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
 
   ::pir::Operation* reducer_1 = nullptr;
   for (auto& reducer : second->master_ops) {
-    if (GetOpKind(reducer->name()) == OpPatternKind::kReduction) {
+    if (hlir::framework::pir::CompatibleInfo::OpKind(*reducer) ==
+        OpPatternKind::kReduction) {
       reducer_1 = reducer;
       break;
     }
@@ -598,7 +604,8 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
     auto shared_size = 0;
     for (auto& fusion_group : {first, second}) {
       for (auto* master : fusion_group->master_ops) {
-        if (GetOpKind(master->name()) == OpPatternKind::kReduction) {
+        if (hlir::framework::pir::CompatibleInfo::OpKind(*master) ==
+            OpPatternKind::kReduction) {
           shared_size += GetSharedSize(master);
         }
       }
@@ -619,7 +626,8 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
     auto shared_size = 0;
     for (auto& fusion_group : {first, second}) {
       for (auto* master : fusion_group->master_ops) {
-        if (GetOpKind(master->name()) == OpPatternKind::kReduction) {
+        if (hlir::framework::pir::CompatibleInfo::OpKind(*master) ==
+            OpPatternKind::kReduction) {
           shared_size += GetSharedSize(master);
         }
       }
