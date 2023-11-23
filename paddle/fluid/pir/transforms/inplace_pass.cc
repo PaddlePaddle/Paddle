@@ -383,15 +383,15 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     for (auto& kv : inplace_out_2_in) {
       uint32_t out_slot = kv.first;
       uint32_t in_slot = kv.second;
-      if ((in_slot >= op->num_operands()) || (out_slot >= op->num_results()) ||
+      if ((in_slot >= op.num_operands()) || (out_slot >= op.num_results()) ||
           (!CanDoInplace(eager_dels.at(&op),
-                         op->operand_source(in_slot),
-                         op->result(out_slot),
+                         op.operand_source(in_slot),
+                         op.result(out_slot),
                          relax)) ||
-          (visited_values.count(op->result(out_slot)) > 0) ||
-          (!CanBeDeleted(op->result(out_slot))) ||
-          (reused_input_values.count(op->operand_source(in_slot)) > 0) ||
-          (reused_output_values.count(op->result(out_slot)) > 0)) {
+          (visited_values.count(op.result(out_slot)) > 0) ||
+          (!CanBeDeleted(op.result(out_slot))) ||
+          (reused_input_values.count(op.operand_source(in_slot)) > 0) ||
+          (reused_output_values.count(op.result(out_slot)) > 0)) {
         can_do_inplace = false;
         VLOG(6) << upper_op_name
                 << "'s value has been visited or reused by other inplace op, "
@@ -402,10 +402,10 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
             << " -- operand " << in_slot << " and result " << out_slot
             << " can do inplace: "
             << CanDoInplace(eager_dels.at(&op),
-                            op->operand_source(in_slot),
-                            op->result(out_slot),
+                            op.operand_source(in_slot),
+                            op.result(out_slot),
                             relax);
-        VLOG_IF(8, out_slot < op->num_results())
+        VLOG_IF(8, out_slot < op.num_results())
             << " -- result " << out_slot
             << " visited: " << (visited_values.count(op.result(out_slot)) > 0);
         VLOG_IF(8, in_slot < op.num_operands())
