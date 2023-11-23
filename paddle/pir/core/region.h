@@ -30,6 +30,7 @@ class Program;
 
 class IR_API Region {
  public:
+  using Element = Block;
   using Iterator = PointerListIterator<Block>;
   using ConstIterator = PointerListConstIterator<Block>;
   using ReverseIterator = std::reverse_iterator<Iterator>;
