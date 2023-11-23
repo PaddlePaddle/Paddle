@@ -58,8 +58,6 @@ class WeightedGraphEdgeBlob : public GraphEdgeBlob {
 #else
   std::vector<float> weight_arr;
 #endif
-
-#endif
 };
 }  // namespace distributed
 }  // namespace paddle

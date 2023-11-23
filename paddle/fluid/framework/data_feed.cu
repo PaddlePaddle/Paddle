@@ -4886,7 +4886,7 @@ void GraphDataGenerator::SetConfig(
 
 void GraphDataGenerator::DumpWalkPath(std::string dump_path, size_t dump_rate) {
 #ifdef _LINUX
-  PADDLE_ENFORCE_LT(
+  PADDLE_ENFORCE_LE(
       dump_rate,
       10000000,
       platform::errors::InvalidArgument(
@@ -4895,8 +4895,8 @@ void GraphDataGenerator::DumpWalkPath(std::string dump_path, size_t dump_rate) {
   PADDLE_ENFORCE_GE(dump_rate,
                     1,
                     platform::errors::InvalidArgument(
-                        "dump_rate can't be less than 1. Please check "
-                        "the dump rate[1, 10000000]"));
+                        "dump_rate can't be less than 1. Please check the dump "
+                        "rate[1, 10000000]"));
   int err_no = 0;
   std::shared_ptr<FILE> fp = fs_open_append_write(dump_path, &err_no, "");
   platform::CUDADeviceGuard guard(conf_.gpuid);
