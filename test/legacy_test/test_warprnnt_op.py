@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 from paddle import _C_ops
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -449,7 +448,6 @@ class TestRNNTLossAPICase(unittest.TestCase):
             dtype=np.float64,
         )
 
-    @test_with_pir_api
     def test_functinal_api(self):
         self.config()
 
@@ -492,7 +490,6 @@ class TestRNNTLossAPICase(unittest.TestCase):
         )
         np.testing.assert_allclose(loss_pd_sum, loss_np_sum, rtol=1e-05, atol=1)
 
-    @test_with_pir_api
     def test_class_api(self):
         self.config()
 

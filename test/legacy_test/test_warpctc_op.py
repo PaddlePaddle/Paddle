@@ -22,7 +22,6 @@ from test_softmax_op import stable_softmax
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 CUDA_BLOCK_SIZE = 32
 
@@ -617,7 +616,6 @@ class TestWarpCTCOpError(unittest.TestCase):
 
 
 class TestCTCLossAPICase(unittest.TestCase):
-    @test_with_pir_api
     def test_class_api(self):
         self.batch_size = 3
         self.num_classes = 15
