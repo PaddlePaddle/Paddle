@@ -527,30 +527,83 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   Node* filter_intx = nullptr;
   Node* filter_max = nullptr;
   Node* scale_max = nullptr;
-  bool per_channel_quant =
-      std::getenv("FLAGS_fc_gemm_use_per_channel") == nullptr ? false : true;
+
+  std::map<std::string, int> gmap;
+  gmap.insert(std::make_pair("fc", -1));
+  auto quant_post_type =
+      Has("quant_post_dynamic_weight_methods")
+          ? Get<std::map<std::string, int>>("quant_post_dynamic_weight_methods")
+          : gmap;
+
   if (op_weights_precision != "int8") {
-    PrepareWeight<float, int16_t>(graph,
-                                  scope,
-                                  block,
-                                  mul_w_replicated_node,
-                                  &filter_intx,
-                                  &filter_max,
-                                  &scale_max,
-                                  !transpose_w,
-                                  weight_scale,
-                                  per_channel_quant);
+    if (quant_post_type.find("fc") != quant_post_type.end() &&
+        quant_post_type.find("fc")->second == 2) {
+      VLOG(5) << "Use int16 for prepare weight per tensor";
+      PrepareWeight<float, int16_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    false);
+    } else if (quant_post_type.find("fc") != quant_post_type.end() &&
+               quant_post_type.find("fc")->second == 3) {
+      VLOG(5) << "Use int16 for prepare weight per channel";
+      PrepareWeight<float, int16_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    true);
+    } else {
+      VLOG(5) << "Default use int16 for prepare weight per tensor";
+      PrepareWeight<float, int16_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    false);
+    }
   } else {
-    PrepareWeight<int8_t, int8_t>(graph,
-                                  scope,
-                                  block,
-                                  mul_w_replicated_node,
-                                  &filter_intx,
-                                  &filter_max,
-                                  &scale_max,
-                                  !transpose_w,
-                                  weight_scale,
-                                  per_channel_quant);
+    if (quant_post_type.find("fc") != quant_post_type.end() &&
+        quant_post_type.find("fc")->second == 0) {
+      VLOG(5) << "Use int8 for prepare weight per tensor";
+      PrepareWeight<int8_t, int8_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    false);
+    }
+    if (quant_post_type.find("fc") != quant_post_type.end() &&
+        quant_post_type.find("fc")->second == 1) {
+      VLOG(5) << "Use int8 for prepare weight per channel";
+      PrepareWeight<int8_t, int8_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    true);
+    }
   }
   (*fusion_nodes_map)["w"] = filter_intx;
   (*fusion_nodes_map)["w_max"] = filter_max;

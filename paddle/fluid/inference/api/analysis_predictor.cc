@@ -1653,6 +1653,8 @@ void AnalysisPredictor::PrepareArgument() {
       config_.xpu_config_.fc_autotune_file_writeback);
   argument_->SetXpuGemmComputePrecision(
       config_.xpu_config_.gemm_compute_precision);
+  argument_->SetXpuQuantPostDynamicWeightMethods(
+      config_.xpu_config_.quant_post_dynamic_weight_methods);
   argument_->SetXpuTransformerSoftmaxOptimizeLevel(
       config_.xpu_config_.transformer_softmax_optimize_level);
   argument_->SetXpuTransformerEncoderAdaptiveSeqlen(
