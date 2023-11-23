@@ -2102,7 +2102,7 @@ class ThreadShardingOptimizer(ShardingOptimizer):
         rename BroadCast param
 
         """
-        var_names = set([])
+        var_names = set()
         for idx, op in enumerate(block.ops):
             for input_name in op.desc.input_arg_names():
                 pos = input_name.find("@BroadCast")

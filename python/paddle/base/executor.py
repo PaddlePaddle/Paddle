@@ -2467,8 +2467,8 @@ class Executor:
 
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
-        reused_trainer = not program._heter_pipeline_opt is None or (
-            not program._fleet_opt is None
+        reused_trainer = program._heter_pipeline_opt is not None or (
+            program._fleet_opt is not None
             and program._fleet_opt.get("use_ps_gpu", True)
         )
 
