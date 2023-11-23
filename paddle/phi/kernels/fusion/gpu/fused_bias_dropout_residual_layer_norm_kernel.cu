@@ -35,11 +35,11 @@ void FusedBiasDropoutResidualLnKernel(
     const int dropout_seed,
     const std::string& dropout_implementation,
     const float ln_epsilon,
+    DenseTensor* y,
     DenseTensor* bias_dropout_residual_out,
     DenseTensor* dropout_mask_out,
     DenseTensor* ln_mean,
-    DenseTensor* ln_variance,
-    DenseTensor* y) {
+    DenseTensor* ln_variance) {
   using U = phi::funcs::LayerNormParamType<T>;
   auto* x_data = x.data<T>();
   auto* bias_data = (bias.get_ptr() == nullptr) ? nullptr : bias->data<T>();
@@ -103,9 +103,5 @@ PD_REGISTER_KERNEL(fused_bias_dropout_residual_layer_norm,
                    float,
                    double,
                    phi::dtype::float16) {
-  kernel->OutputAt(0).SetDataType(kernel_key.dtype());
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
-  kernel->OutputAt(2).SetDataType(kernel_key.dtype());
-  kernel->OutputAt(3).SetDataType(kernel_key.dtype());
-  kernel->OutputAt(3).SetDataType(kernel_key.dtype());
 }

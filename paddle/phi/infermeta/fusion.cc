@@ -2958,19 +2958,6 @@ void SelfDPAttenInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void SkipLayerNormInferMeta(const MetaTensor& x,
-                            const MetaTensor& y,
-                            const MetaTensor& scale,
-                            const MetaTensor& bias,
-                            const float epsilon,
-                            const int begin_norm_axis,
-                            MetaTensor* out) {
-  auto dim_input = x.dims();
-  out->set_dims(dim_input);
-  out->share_lod(x);
-  out->set_dtype(x.dtype());
-}
-
 void FusedBiasDropoutResidualLnInferMeta(
     const MetaTensor& x,
     const MetaTensor& residual,
@@ -2983,11 +2970,11 @@ void FusedBiasDropoutResidualLnInferMeta(
     const int dropout_seed,
     const std::string& dropout_implementation,
     const float ln_epsilon,
+    MetaTensor* y,
     MetaTensor* bias_dropout_residual_out,
     MetaTensor* dropout_mask_out,
     MetaTensor* ln_mean,
-    MetaTensor* ln_variance,
-    MetaTensor* y) {
+    MetaTensor* ln_variance) {
   PADDLE_ENFORCE_EQ(dropout_rate >= 0.0f && dropout_rate <= 1.0f,
                     true,
                     phi::errors::InvalidArgument(
@@ -3036,11 +3023,11 @@ void FusedBiasDropoutResidualLnGradInferMeta(
     const int dropout_seed,
     const std::string& dropout_implementation,
     const float ln_epsilon,
+    MetaTensor* x_grad,
+    MetaTensor* residual_grad,
     MetaTensor* bias_grad,
     MetaTensor* ln_scale_grad,
-    MetaTensor* ln_bias_grad,
-    MetaTensor* x_grad,
-    MetaTensor* residual_grad) {
+    MetaTensor* ln_bias_grad) {
   PADDLE_ENFORCE_EQ(is_test,
                     false,
                     phi::errors::InvalidArgument(
@@ -3065,6 +3052,19 @@ void FusedBiasDropoutResidualLnGradInferMeta(
     x_grad->set_dims(x.dims());
     x_grad->set_dtype(y_grad.dtype());
   }
+}
+
+void SkipLayerNormInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            const MetaTensor& scale,
+                            const MetaTensor& bias,
+                            const float epsilon,
+                            const int begin_norm_axis,
+                            MetaTensor* out) {
+  auto dim_input = x.dims();
+  out->set_dims(dim_input);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 }  // namespace phi

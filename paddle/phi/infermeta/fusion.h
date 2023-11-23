@@ -603,14 +603,6 @@ void FusionSeqExpandConcatFCInferMeta(const std::vector<const MetaTensor*>& x,
                                       MetaTensor* out,
                                       MetaTensor* fc_out);
 
-void SkipLayerNormInferMeta(const MetaTensor& x,
-                            const MetaTensor& y,
-                            const MetaTensor& scale,
-                            const MetaTensor& bias,
-                            const float epsilon,
-                            const int begin_norm_axis,
-                            MetaTensor* out);
-
 void FusedBiasDropoutResidualLnInferMeta(
     const MetaTensor& x,
     const MetaTensor& residual,
@@ -623,11 +615,11 @@ void FusedBiasDropoutResidualLnInferMeta(
     const int dropout_seed,
     const std::string& dropout_implementation,
     const float ln_epsilon,
+    MetaTensor* y,
     MetaTensor* bias_dropout_residual_out,
     MetaTensor* dropout_mask_out,
     MetaTensor* ln_mean,
-    MetaTensor* ln_variance,
-    MetaTensor* y);
+    MetaTensor* ln_variance);
 
 void FusedBiasDropoutResidualLnGradInferMeta(
     const MetaTensor& y_grad,
@@ -646,11 +638,19 @@ void FusedBiasDropoutResidualLnGradInferMeta(
     const int dropout_seed,
     const std::string& dropout_implementation,
     const float ln_epsilon,
+    MetaTensor* x_grad,
+    MetaTensor* residual_grad,
     MetaTensor* bias_grad,
     MetaTensor* ln_scale_grad,
-    MetaTensor* ln_bias_grad,
-    MetaTensor* x_grad,
-    MetaTensor* residual_grad);
+    MetaTensor* ln_bias_grad);
+
+void SkipLayerNormInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            const MetaTensor& scale,
+                            const MetaTensor& bias,
+                            const float epsilon,
+                            const int begin_norm_axis,
+                            MetaTensor* out);
 
 void SelfDPAttenInferMeta(const MetaTensor& x,
                           const float alpha,

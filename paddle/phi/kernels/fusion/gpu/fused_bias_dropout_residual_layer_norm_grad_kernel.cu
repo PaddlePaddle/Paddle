@@ -44,11 +44,11 @@ void FusedBiasDropoutResidualLnGradKernel(
     const int dropout_seed,
     const std::string& dropout_implementation,
     const float ln_epsilon,
+    DenseTensor* x_grad,
+    DenseTensor* residual_grad,
     DenseTensor* bias_grad,
     DenseTensor* ln_scale_grad,
-    DenseTensor* ln_bias_grad,
-    DenseTensor* x_grad,
-    DenseTensor* residual_grad) {
+    DenseTensor* ln_bias_grad) {
   using U = LayerNormParamType<T>;
   auto* d_y_data = y_grad.data<T>();
   auto* ln_scale_data =
