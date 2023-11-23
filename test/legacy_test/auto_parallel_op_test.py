@@ -175,7 +175,6 @@ def dump_test_info(
     with open(test_info_path, "wb") as f:
         test_info["op_type"] = op_test.op_type
         test_info["python_api"] = op_test.python_api
-        print("op_test.python_api", op_test.python_api)
         test_info["dtype"] = op_test.dtype
         test_info["input_specs"] = op_test.input_specs
         test_info["inputs"] = op_test.inputs
