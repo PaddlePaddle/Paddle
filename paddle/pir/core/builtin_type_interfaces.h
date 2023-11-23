@@ -51,6 +51,11 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
     Model() : Concept(GetElementType, GetShape) {}
   };
 
+  ///
+  /// \brief kDynamic
+  ///
+  static constexpr int64_t kDynamic = -1;
+
   ShapedTypeInterface(Type type, Concept *impl)
       : TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
 
@@ -63,11 +68,6 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   /// \brief Get the shape of this type.
   ///
   std::vector<int64_t> GetDyShape() const;
-
-  ///
-  /// \brief kDynamic
-  ///
-  static constexpr int64_t kDynamic = -1;
 
   ///
   /// \brief Check whether this type is ranked, currently return true.

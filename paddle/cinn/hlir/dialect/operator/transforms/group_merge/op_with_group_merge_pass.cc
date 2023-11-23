@@ -608,7 +608,6 @@ class OpFusionPassHelper {
 
     return false;
   }
-
   std::vector<::pir::Operation*> ops_;
   std::unordered_map<const ::pir::Operation*, GroupPtr> fusion_groups_;
   std::unordered_set<const ::pir::Operation*> output_ops_set_;
