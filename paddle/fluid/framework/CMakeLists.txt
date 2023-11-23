@@ -580,8 +580,7 @@ if(WITH_DISTRIBUTE)
            framework_proto
            trainer_desc_proto
            glog
-           fs
-           shell
+           framework_io
            heter_wrapper
            ps_gpu_wrapper
            box_wrapper
@@ -619,7 +618,7 @@ if(WITH_DISTRIBUTE)
     #         pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     #         device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
     #         index_sampler index_wrapper sampler index_dataset_proto
-    #         lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method
+    #         lod_rank_table framework_io fleet_wrapper heter_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method
     #         graph_to_program_pass variable_helper timer monitor
     #         heter_service_proto fleet heter_server brpc fleet_executor
     #         graph_gpu_wrapper)
@@ -663,8 +662,7 @@ if(WITH_DISTRIBUTE)
            sampler
            index_dataset_proto
            lod_rank_table
-           fs
-           shell
+           framework_io
            fleet_wrapper
            heter_wrapper
            box_wrapper
@@ -736,8 +734,7 @@ if(WITH_DISTRIBUTE)
            trainer_desc_proto
            glog
            lod_rank_table
-           fs
-           shell
+           framework_io
            fleet_wrapper
            heter_wrapper
            ps_gpu_wrapper
@@ -797,8 +794,7 @@ elseif(WITH_PSLIB)
          trainer_desc_proto
          glog
          lod_rank_table
-         fs
-         shell
+         framework_io
          fleet_wrapper
          heter_wrapper
          ps_gpu_wrapper
@@ -845,8 +841,7 @@ else()
          trainer_desc_proto
          glog
          lod_rank_table
-         fs
-         shell
+         framework_io
          fleet_wrapper
          heter_wrapper
          ps_gpu_wrapper
@@ -880,8 +875,7 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor pir_adaptor pd_inplace_pass
-       pd_op_to_kernel_pass pir)
+  DEPS parallel_executor standalone_executor pir_adaptor pir_transforms pir)
 cc_library(
   prune
   SRCS prune.cc

@@ -14,14 +14,12 @@ set(prim_eager_deps
 
 set(prim_generated_deps final_dygraph_function final_dygraph_node
                         dygraph_function dygraph_node)
-if(WITH_CINN)
-  set(CINN_DEPS cinn_compiler)
-endif()
+
 paddle_test(test_comp_static SRCS test_static_prim.cc)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   if(WITH_CINN)
-    set(prim_eager_deps ${prim_eager_deps} cinn_compiler)
+    set(prim_eager_deps ${prim_eager_deps})
   endif()
   cc_library(init_env_utils SRCS init_env_utils.cc)
   target_compile_definitions(init_env_utils PUBLIC PADDLE_DLL_EXPORT)
@@ -33,9 +31,9 @@ endif()
 
 if(NOT WIN32)
   cc_test(
-    test_vjp_new_ir
+    test_vjp_pir
     SRCS test_vjp.cc
-    DEPS pir_adaptor pd_op_dialect pir)
+    DEPS pir_adaptor op_dialect_vjp pir)
 endif()
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

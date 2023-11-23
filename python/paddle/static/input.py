@@ -23,6 +23,7 @@ from paddle.base.framework import (
     static_only,
 )
 from paddle.base.layer_helper import LayerHelper
+from paddle.base.libpaddle import DataType
 
 from ..base.variable_index import _setitem_impl_, _setitem_static
 
@@ -126,7 +127,9 @@ def data(name, shape, dtype=None, lod_level=0):
         dtype = paddle.get_default_dtype()
 
     if in_pir_mode():
-        ir_dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
+        ir_dtype = dtype
+        if not isinstance(ir_dtype, DataType):
+            ir_dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
         _reset_data_op_insertion_point()
         out = paddle._pir_ops.data(name, shape, ir_dtype, core.Place())
         paddle.pir.reset_insertion_point_to_end()
@@ -143,7 +146,7 @@ def data(name, shape, dtype=None, lod_level=0):
         need_check_feed=True,
     )
 
-    is_pir_mode = os.environ.get("FLAGS_enable_new_ir_in_executor", None)
+    is_pir_mode = os.environ.get("FLAGS_enable_pir_in_executor", None)
     if evaluate_flag(is_pir_mode):
         helper = LayerHelper('data', **locals())
         if not isinstance(dtype, core.VarDesc.VarType):

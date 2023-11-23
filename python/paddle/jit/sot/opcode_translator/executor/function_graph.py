@@ -260,9 +260,17 @@ class FunctionGraph:
                 # only restored vars in stack, so used gen_load to process global var
                 self._pycode_gen.gen_load(self._store_var_info[var])
 
-        origin_instr = get_instructions(self.pycode_gen._origin_code)
+        origin_instrs = get_instructions(self.pycode_gen._origin_code)
 
-        for instr in origin_instr[0:instr_idx]:
+        restore_instrs = origin_instrs[:instr_idx]
+        restore_instr_names = [
+            instr.opname for instr in restore_instrs[:instr_idx]
+        ]
+        # NOTE(SigureMo): Trailing KW_NAMES + PRECALL is no need to restore in Python 3.11+
+        if restore_instr_names[-2:] == ["KW_NAMES", "PRECALL"]:
+            restore_instrs = restore_instrs[:-2]
+
+        for instr in restore_instrs:
             if (
                 instr.opname == 'LOAD_FAST'
                 and instr.argval in self.pycode_gen._frame.f_locals.keys()
@@ -288,13 +296,13 @@ class FunctionGraph:
 
         nop = self.pycode_gen._add_instr("NOP")
 
-        for instr in origin_instr:
-            if instr.jump_to == origin_instr[instr_idx]:
+        for instr in origin_instrs:
+            if instr.jump_to == origin_instrs[instr_idx]:
                 instr.jump_to = nop
 
         self.pycode_gen.hooks.append(
             lambda: self.pycode_gen.extend_instrs(
-                iter(origin_instr[instr_idx + 1 :])
+                iter(origin_instrs[instr_idx + 1 :])
             )
         )
 

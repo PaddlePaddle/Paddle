@@ -32,6 +32,7 @@
 
 PD_DECLARE_string(cinn_nvcc_cmd_path);
 PD_DECLARE_bool(nvrtc_compile_to_cubin);
+PD_DECLARE_bool(cinn_nvrtc_cubin_with_fmad);
 
 namespace cinn {
 namespace backends {
@@ -106,6 +107,9 @@ std::string Compiler::CompileCudaSource(const std::string& code,
   }
   if (compile_to_cubin_) {
     compile_options.push_back("-arch=sm_" + cc);
+    std::string enable_fmad =
+        FLAGS_cinn_nvrtc_cubin_with_fmad ? "true" : "false";
+    compile_options.push_back("--fmad=" + enable_fmad);
   } else {
     compile_options.push_back("-arch=compute_" + cc);
   }

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <vector>
+#include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/ir/lowered_func.h"
 
 // Fusion Op lowering, there are four kinds of lowering function:
@@ -36,6 +37,12 @@ class OpLowererImplBase {
                                              bool apply_op_schedule = true,
                                              bool apply_group_schedule = true,
                                              bool apply_pass = true) = 0;
+
+  virtual std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>>
+  BucketLower(const T& group,
+              bool apply_op_schedule = false,
+              bool apply_group_schedule = true,
+              bool apply_pass = true) = 0;
 };
 
 }  // namespace framework
