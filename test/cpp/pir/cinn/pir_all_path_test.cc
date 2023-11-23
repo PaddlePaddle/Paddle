@@ -659,7 +659,6 @@ TEST(GroupOp, TestBuildSum2Group) {
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
-  program->Print(std::cout);
   auto kernel_program =
       paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
@@ -782,10 +781,8 @@ std::shared_ptr<::pir::Program> BuildSliceProgram() {
 //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 //   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-//   program->Print(std::cout);
 //   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
 
-//   program->Print(std::cout);
 //   pir::PassManager pm(ctx);
 //   pm.AddPass(
 //       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
@@ -842,10 +839,8 @@ TEST(GroupOp, TestBuildSplit) {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-  program->Print(std::cout);
   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
 
-  program->Print(std::cout);
   pir::PassManager pm(ctx);
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
@@ -854,7 +849,7 @@ TEST(GroupOp, TestBuildSplit) {
   pm.AddPass(pir::CreateBuildCinnPass());
   CHECK_EQ(pm.Run(program.get()), true);
 
-  //   program->Print(std::cout);
+  // TODO(phlrain): codengen will failed in split op
   //   auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 
   //   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
