@@ -118,8 +118,10 @@ ProcessGroupNCCL::ProcessGroupNCCL(
 }
 ProcessGroupNCCL::~ProcessGroupNCCL() {
   LOG(INFO) << "ProcessGroupNCCL destruct ";
-  auto& comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
-  comm_task_manager.Stop();
+  if (FLAGS_enable_async_trace) {
+    auto& comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
+    comm_task_manager.Stop();
+  }
 }
 
 void ProcessGroupNCCL::GroupStart() {
