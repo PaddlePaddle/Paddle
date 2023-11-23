@@ -15,7 +15,12 @@
 import logging
 
 import numpy as np
-from dist_amp_base import MLP, RandomDataset, create_optimizer
+from dist_amp_base import (
+    MLP,
+    RandomDataset,
+    compare_state_dict,
+    create_optimizer,
+)
 
 import paddle
 from paddle.distributed import fleet
@@ -28,18 +33,22 @@ def train_mlp(
     sharding_stage,
     train_loader,
     use_pure_bf16=False,
-    accumulate_grad=False,
+    acc_steps=1,
     use_main_grad=False,
     test_scaler=False,
 ):
-    scale_loss = 1024
+    logging.info(
+        f"-- Train Info: use_pure_bf16={use_pure_bf16}, use_main_grad={use_main_grad}, acc_steps={acc_steps}"
+    )
+
+    scaler = None
     if test_scaler:
         assert sharding_stage == 1
-        assert not accumulate_grad
+        assert acc_steps == 1
         # bf16 not support dynamic loss scaling
         # disable dynamic_loss_scaling to coverage distributed_scaler
         dynamic_loss_scaling = False
-        scaler = None
+        scale_loss = 1024
         scaler = paddle.amp.GradScaler(
             init_loss_scaling=scale_loss,
             use_dynamic_loss_scaling=dynamic_loss_scaling,
@@ -53,7 +62,6 @@ def train_mlp(
     if use_pure_bf16:
         level = 'O2'
         custom_white_list = None
-
         model = paddle.amp.decorate(models=model, dtype="bfloat16", level=level)
     else:
         level = 'O1'
@@ -99,6 +107,10 @@ def train_mlp(
         for batch_id, data in enumerate(train_loader()):
             data.stop_gradient = True
 
+            enable_stats = False  # eop == 0 and batch_id == 0
+            if enable_stats:
+                logging.info("<<<<<<<<<<<< forward & backward >>>>>>>>>>>")
+                paddle.amp.debugging.enable_operator_stats_collection()
             with paddle.amp.auto_cast(
                 True,
                 level=level,
@@ -108,6 +120,10 @@ def train_mlp(
                 out = model(data)
                 loss = paddle.mean(out)
 
+                # normal implementation for gradient accumulation.
+                if acc_steps != 1:
+                    loss = loss / acc_steps
+
             losses.append(loss.astype("float32").item())
             logging.info(
                 f"-- [rank={local_rank}] epoch {eop}, batch {batch_id}, loss: {loss.astype(paddle.float32).numpy()}"
@@ -116,20 +132,28 @@ def train_mlp(
             if test_scaler:
                 assert scaler is not None
                 scaler.scale(loss).backward()
+                paddle.amp.debugging.disable_operator_stats_collection()
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.clear_grad()
             else:
                 loss.backward()
-                if not accumulate_grad:
+                if enable_stats:
+                    paddle.amp.debugging.disable_operator_stats_collection()
+                if (batch_id + 1) % acc_steps == 0:
+                    if enable_stats:
+                        logging.info("<<<<<<<<<<<< optimizer >>>>>>>>>>>")
+                        paddle.amp.debugging.enable_operator_stats_collection()
                     optimizer.step()
                     optimizer.clear_grad()
+                    if enable_stats:
+                        paddle.amp.debugging.disable_operator_stats_collection()
 
-        if accumulate_grad:
-            optimizer.step()
-            optimizer.clear_grad()
-
-    return losses
+    if use_pure_bf16:
+        state_dict = optimizer.state_dict()
+    else:
+        state_dict = model.state_dict()
+    return losses, state_dict
 
 
 def test_stage1_bf16():
@@ -154,25 +178,34 @@ def test_stage1_bf16():
     mlp = MLP()
     state_dict = mlp.state_dict()
 
-    # stage1 bf16 O1 vs stage1 bf16 O2 main_grad
-    mlp1 = MLP()
-    mlp2 = MLP()
-    mlp1.set_state_dict(state_dict)
-    mlp2.set_state_dict(state_dict)
-    o1_losses = train_mlp(
-        mlp1,
-        sharding_stage=1,
-        train_loader=train_loader,
-        use_pure_bf16=False,
-    )
-    o2_losses = train_mlp(
-        mlp2,
-        sharding_stage=1,
-        train_loader=train_loader,
-        use_pure_bf16=True,
-        use_main_grad=True,
-    )
-    np.testing.assert_array_equal(o2_losses, o1_losses)
+    def _compare_bf16_o1_vs_o2(acc_steps=1):
+        # stage1 bf16 O1 vs stage1 bf16 O2 main_grad
+        mlp1 = MLP()
+        mlp2 = MLP()
+        mlp1.set_state_dict(state_dict)
+        mlp2.set_state_dict(state_dict)
+        o1_losses, state_dict_o1 = train_mlp(
+            mlp1,
+            sharding_stage=1,
+            train_loader=train_loader,
+            use_pure_bf16=False,
+            acc_steps=acc_steps,
+        )
+        o2_losses, state_dict_o2 = train_mlp(
+            mlp2,
+            sharding_stage=1,
+            train_loader=train_loader,
+            use_pure_bf16=True,
+            use_main_grad=True,
+            acc_steps=acc_steps,
+        )
+        np.testing.assert_array_equal(o2_losses, o1_losses)
+        compare_state_dict(state_dict_o1, state_dict_o2)
+
+    # no gradient accumulation
+    _compare_bf16_o1_vs_o2(acc_steps=1)
+    # gradient accumulation
+    _compare_bf16_o1_vs_o2(acc_steps=2)
 
     # stage1 scaler test with main_grad
     mlp3 = MLP()
@@ -197,28 +230,6 @@ def test_stage1_bf16():
         use_main_grad=False,
         test_scaler=True,
     )
-
-    # grad accumulation test
-    mlp5 = MLP()
-    mlp6 = MLP()
-    mlp5.set_state_dict(state_dict)
-    mlp6.set_state_dict(state_dict)
-    o1_losses_grad_acc = train_mlp(
-        mlp5,
-        sharding_stage=1,
-        train_loader=train_loader,
-        use_pure_bf16=False,
-        accumulate_grad=True,
-    )
-    o2_losses_grad_acc = train_mlp(
-        mlp6,
-        sharding_stage=1,
-        train_loader=train_loader,
-        use_pure_bf16=True,
-        use_main_grad=True,
-        accumulate_grad=True,
-    )
-    np.testing.assert_array_equal(o2_losses_grad_acc, o1_losses_grad_acc)
 
 
 if __name__ == '__main__':
