@@ -76,6 +76,7 @@ set(DISABLE_PIR_PT_MODES
     test_slice
     test_lstm
     test_for_enumerate
+    test_jit_setitem
     test_reinforcement_learning)
 foreach(ITEST ${DISABLE_PIR_PT_MODES})
   if(TEST ${ITEST})
@@ -92,8 +93,7 @@ foreach(ITEST ${DISABLE_PIR_PT_MODES})
 endforeach()
 
 if(WIN32)
-  set(WIN_DISABLE_PIR_PT_MODES test_jit_setitem test_program_translator
-                               test_cache_program)
+  set(WIN_DISABLE_PIR_PT_MODES test_program_translator test_cache_program)
   foreach(ITEST ${WIN_DISABLE_PIR_PT_MODES})
     if(TEST ${ITEST})
       set_tests_properties(
