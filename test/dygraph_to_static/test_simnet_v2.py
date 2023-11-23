@@ -17,7 +17,10 @@ import random
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir,
+)
 from simnet_dygraph_model_v2 import BOW, HingeLoss
 
 import paddle
