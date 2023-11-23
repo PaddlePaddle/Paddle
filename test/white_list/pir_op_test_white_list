@@ -301,6 +301,7 @@ test_triu_indices_op
 test_trunc_op
 test_unbind_op
 test_unfold_op
+test_uniform_random_bf16_op
 test_unique_consecutive_op
 test_unpool3d_op
 test_unpool_op
