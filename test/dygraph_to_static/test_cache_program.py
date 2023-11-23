@@ -19,6 +19,7 @@ import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
     test_ast_only,
+    test_legacy_and_pir,
     test_legacy_and_pir_exe_and_pir_api,
 )
 from test_fetch_feed import Linear, Pool2D

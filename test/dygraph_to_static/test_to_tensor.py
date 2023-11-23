@@ -17,6 +17,7 @@ import unittest
 import numpy
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
+    test_legacy_and_pir,
     test_legacy_and_pir_exe_and_pir_api,
     test_legacy_only,
     test_pir_api_only,
