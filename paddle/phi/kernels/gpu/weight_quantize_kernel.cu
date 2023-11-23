@@ -16,8 +16,8 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
-#include "paddle/phi/kernels/impl/weight_quantize_kernel_gpu_impl.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/impl/weight_quantize_kernel_gpu_impl.h"
 
 namespace phi {
 
@@ -40,25 +40,29 @@ void WeightQuantizeKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       ((arch == 80) || (arch == 86) || (arch == 75) || (arch == 70)),
       true,
-      phi::errors::InvalidArgument("Currently, arch only support 70, 75, 80, 86."));
+      phi::errors::InvalidArgument(
+          "Currently, arch only support 70, 75, 80, 86."));
 
-  if (algo == "llm.int8"){
-      std::vector<int> axis = {1, 0};
-      funcs::Transpose<Context, int8_t, 2> trans;
-      weight_quant_gpu<T, Context>(dev_ctx,
-                                    x.data<T>(),
-                                    quanted_x.data<int8_t>(),
-                                    scale->data<float>(),
-                                    weight_shape);
-      trans(dev_ctx, quanted_x, out, axis);
+  if (algo == "llm.int8") {
+    std::vector<int> axis = {1, 0};
+    funcs::Transpose<Context, int8_t, 2> trans;
+    weight_quant_gpu<T, Context>(dev_ctx,
+                                 x.data<T>(),
+                                 quanted_x.data<int8_t>(),
+                                 scale->data<float>(),
+                                 weight_shape);
+    trans(dev_ctx, quanted_x, out, axis);
   } else if (algo == "weight_only_int8") {
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
                                  quanted_x.data<int8_t>(),
                                  scale->data<float>(),
                                  weight_shape);
-    weight_permute_gpu<Context>(
-        dev_ctx, quanted_x.data<int8_t>(), out->data<int8_t>(), weight_shape, arch);
+    weight_permute_gpu<Context>(dev_ctx,
+                                quanted_x.data<int8_t>(),
+                                out->data<int8_t>(),
+                                weight_shape,
+                                arch);
   } else if (algo == "weight_only_int4") {
     phi::errors::Unimplemented(
         "Weight quant gpu kernel currently don't support weight_only_int4 "

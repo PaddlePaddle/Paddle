@@ -32,7 +32,8 @@ void quant_compute(const DeviceContext& dev_ctx,
   PADDLE_ENFORCE_EQ(
       ((arch == 80) || (arch == 86) || (arch == 75) || (arch == 70)),
       true,
-      phi::errors::InvalidArgument("Currently, arch only support 70, 75, 80, 86."));
+      phi::errors::InvalidArgument(
+          "Currently, arch only support 70, 75, 80, 86."));
 
   const auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
@@ -84,8 +85,8 @@ void quant_compute(const DeviceContext& dev_ctx,
       add_bias_and_interleave_inplace<bits>(x_int_data, num);
       // phi::Copy break the shape of int4 output, use naive copy;
       // only left half of x_int data is valid in int4 mode
-      for(int i=0;i<out->numel();++i){
-        out_data[i]=x_int_data[i];
+      for (int i = 0; i < out->numel(); ++i) {
+        out_data[i] = x_int_data[i];
       }
     } else if ((arch == 80) || (arch == 75) || (arch == 86)) {
       permute_B_rows_for_mixed_gemm<bits>(

@@ -48,43 +48,42 @@ __global__ void weight_permute_kernel_wint8(const int8_t* input_data_dev,
   }
 }
 
-
 /*
-For SM70 volta arch, weightonly int8 dequantize invoked in load global memory. 
+For SM70 volta arch, weightonly int8 dequantize invoked in load global memory.
 So it only need interleave in K-dimension
 K_index: 0 1 2 3 -> 0 2 1 3
 */
 __global__ void weight_interleave_add_bias_kernel_wint8(
-  const int8_t* input_data_dev,
-  int8_t* output_data_dev,
-  int numel,
-  int total_k,
-  int total_n){
-    for(int linear_idx = blockIdx.x * blockDim.x + threadIdx.x; 
-        linear_idx < numel; 
-        linear_idx += blockDim.x * gridDim.x){
-        int k_id = linear_idx / total_n;
-        int n_id = linear_idx % total_n;
-        constexpr int n_interleaved_factor = 4;
-        int n_interleave_group_id = n_id / n_interleaved_factor; 
-        int n_interleave_id = n_id % n_interleaved_factor; 
-        if (n_interleave_id == 1 || n_interleave_id == 2) {
-          /*
-          0001 xor 0011 -> 0010
-          0010 xor 0011 -> 0001
-          */
-          n_interleave_id ^= 3; 
-        }
-        const int new_n_id = n_interleave_group_id * n_interleaved_factor + n_interleave_id; 
-        const int interleave_idx = k_id * total_n + new_n_id; 
-
-        uint8_t shift_quant_weight = static_cast<uint8_t>(
-          static_cast<int32_t>(input_data_dev[linear_idx]) + 128
-        );
-        output_data_dev[interleave_idx] = *reinterpret_cast<int8_t*>(&shift_quant_weight);
+    const int8_t* input_data_dev,
+    int8_t* output_data_dev,
+    int numel,
+    int total_k,
+    int total_n) {
+  for (int linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
+       linear_idx < numel;
+       linear_idx += blockDim.x * gridDim.x) {
+    int k_id = linear_idx / total_n;
+    int n_id = linear_idx % total_n;
+    constexpr int n_interleaved_factor = 4;
+    int n_interleave_group_id = n_id / n_interleaved_factor;
+    int n_interleave_id = n_id % n_interleaved_factor;
+    if (n_interleave_id == 1 || n_interleave_id == 2) {
+      /*
+      0001 xor 0011 -> 0010
+      0010 xor 0011 -> 0001
+      */
+      n_interleave_id ^= 3;
     }
-}
+    const int new_n_id =
+        n_interleave_group_id * n_interleaved_factor + n_interleave_id;
+    const int interleave_idx = k_id * total_n + new_n_id;
 
+    uint8_t shift_quant_weight = static_cast<uint8_t>(
+        static_cast<int32_t>(input_data_dev[linear_idx]) + 128);
+    output_data_dev[interleave_idx] =
+        *reinterpret_cast<int8_t*>(&shift_quant_weight);
+  }
+}
 
 template <typename GPUContext>
 void weight_permute_gpu(const GPUContext& dev_ctx,
@@ -98,17 +97,13 @@ void weight_permute_gpu(const GPUContext& dev_ctx,
   auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
   int grid_size = gpu_config.GetGridSize();
   int block_size = gpu_config.GetBlockSize();
-  if((arch == 80) || (arch == 86) || (arch == 75)){
+  if ((arch == 80) || (arch == 86) || (arch == 75)) {
     weight_permute_kernel_wint8<<<grid_size, block_size>>>(
         input_data, output_data, numel, total_k, total_n);
-  } else if(arch == 70){
-    weight_interleave_add_bias_kernel_wint8<<<grid_size,block_size>>>(
-      input_data,
-      output_data,
-      numel,
-      total_k,
-      total_n);
-    }
+  } else if (arch == 70) {
+    weight_interleave_add_bias_kernel_wint8<<<grid_size, block_size>>>(
+        input_data, output_data, numel, total_k, total_n);
+  }
 }
 template <typename T, int VectorSize = 8>
 __global__ void per_channel_quant_gpu(const T* weight_data,
