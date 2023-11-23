@@ -258,7 +258,7 @@ void set_constant_with_place<phi::XPUPlace>(const phi::DeviceContext& context,
 #ifdef PADDLE_WITH_XPU
   phi::VisitDataType(
       tensor->dtype(),
-      TensorSetConstantXPU<float>(tensor, value, tensor->place()));
+      TensorSetConstantXPU<float>(context, tensor, value, tensor->place()));
 #else
   PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with XPU!"));
 #endif

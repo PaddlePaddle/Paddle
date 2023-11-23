@@ -28,7 +28,7 @@ if(WITH_GPU)
     heter_ps
     SRCS heter_ps.cu
     DEPS heter_comm)
-  if(WITH_PSCORE)
+  if(WITH_GPU_GRAPH)
     nv_library(
       graph_gpu_ps
       SRCS graph_gpu_ps_table_inl.cu

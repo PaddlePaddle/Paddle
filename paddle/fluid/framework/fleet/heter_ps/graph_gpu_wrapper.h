@@ -13,10 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <thrust/device_ptr.h>
-#include <thrust/execution_policy.h>
-#include <thrust/random.h>
-#include <thrust/shuffle.h>
 #include <algorithm>
 #include <string>
 #include <unordered_map>
@@ -25,7 +21,11 @@
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_GPU_GRAPH
+#include <thrust/device_ptr.h>
+#include <thrust/execution_policy.h>
+#include <thrust/random.h>
+#include <thrust/shuffle.h>
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
@@ -40,7 +40,7 @@
 namespace paddle {
 namespace framework {
 
-#ifdef PADDLE_WITH_HETERPS
+#ifdef PADDLE_WITH_GPU_GRAPH
 typedef paddle::distributed::GraphTableType GraphTableType;
 
 enum GpuGraphStorageMode {
