@@ -115,15 +115,15 @@ class BaseTest(unittest.TestCase):
                     out.stop_gradient = False
                     y = out * 123
 
-                    # if paddle.framework.in_pir_mode():
-                    #     grads = paddle.autograd.ir_backward.grad(y, [out])
-                    #     out_grad = grads[0]
-                    # else:
-                    #     paddle.static.append_backward(y)
-                    #     out_grad = out.grad_name
+                    if paddle.framework.in_pir_mode():
+                        grads = paddle.autograd.ir_backward.grad(y, [out])
+                        out_grad = grads[0]
+                    else:
+                        paddle.static.append_backward(y)
+                        out_grad = out.grad_name
 
-                    paddle.static.append_backward(y)
-                    out_grad = out.grad_name
+                    # paddle.static.append_backward(y)
+                    # out_grad = out.grad_name
 
                     fetch_list = [out, out_grad]
 
