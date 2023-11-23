@@ -642,7 +642,11 @@ PHI_DEFINE_EXPORTED_uint64(
  */
 PHI_DEFINE_EXPORTED_uint64(
     auto_growth_chunk_size_in_mb,
+#ifdef PADDLE_WITH_GCU
+    512ul,
+#else
     0ul,
+#endif
     "The minimal chunk size of GPU memory block in auto_growth allocator.  "
     "The real chunk size is max(request_size, "
     "FLAGS_auto_growth_chunk_size_in_mb).");

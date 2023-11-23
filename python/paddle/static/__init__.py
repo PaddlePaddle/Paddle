@@ -50,6 +50,7 @@ from ..fluid.compiler import BuildStrategy  # noqa: F401
 from ..fluid.compiler import CompiledProgram  # noqa: F401
 from ..fluid.compiler import IpuCompiledProgram  # noqa: F401
 from ..fluid.compiler import IpuStrategy  # noqa: F401
+from ..fluid.compiler import GcuOptions  # noqa: F401
 from ..fluid.compiler import ExecutionStrategy  # noqa: F401
 from ..fluid.framework import default_main_program  # noqa: F401
 from ..fluid.framework import default_startup_program  # noqa: F401

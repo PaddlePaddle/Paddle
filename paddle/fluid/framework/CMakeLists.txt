@@ -50,6 +50,9 @@ function(pass_library TARGET DEST)
 
   cmake_parse_arguments(pass_library "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
+  if(WITH_GCU)
+    set(pass_library_DEPS ${pass_library_DEPS} gcu_backend)
+  endif()
   if(pass_library_DIR)
     cc_library(
       ${TARGET}
@@ -496,7 +499,8 @@ else()
          infershape_utils
          phi
          op_compat_infos
-         type_info)
+         type_info
+         gcu_info)
 endif()
 
 cc_test(

@@ -187,6 +187,15 @@ limitations under the License. */
 #include "paddle/fluid/pybind/rpc.h"
 #endif
 
+#ifdef PADDLE_WITH_GCU
+#include "paddle/fluid/platform/device/gcu/common/gcu_options.h"
+#include "paddle/fluid/platform/device/gcu/executor/gcu_executor.h"
+#include "paddle/fluid/platform/device/gcu/gcu_backend.h"
+#include "paddle/fluid/platform/device/gcu/gcu_info.h"
+#include "paddle/fluid/platform/device/gcu/gcu_strategy.h"
+#include "paddle/fluid/platform/device/gcu/runtime/gcu_rt_interface.h"
+#endif
+
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
@@ -2236,6 +2245,12 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_IPU
   m.def("get_ipu_device_count", platform::GetIPUDeviceCount);
 #endif
+#ifdef PADDLE_WITH_GCU
+  m.def("set_gcu_random_seed",
+        paddle::platform::gcu::runtime::GcuSetRandomSeed,
+        py::arg("seed") = 0,
+        py::call_guard<py::gil_scoped_release>());
+#endif
 
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
       .value("kDefault", platform::TracerOption::kDefault)
@@ -2450,6 +2465,67 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_memory_recorder", &paddle::platform::DisableMemoryRecorder);
   m.def("enable_op_info_recorder", &phi::EnableOpInfoRecorder);
   m.def("disable_op_info_recorder", &phi::DisableOpInfoRecorder);
+
+#ifdef PADDLE_WITH_GCU
+  py::class_<platform::gcu::GcuBackend> gcu_backend(m, "GcuBackend");
+  py::class_<platform::gcu::GcuStrategy> gcu_strategy(m, "GcuStrategy");
+
+  gcu_backend
+      .def(py::init())
+      // manage GcuBackend in C++
+      .def(
+          "get_instance",
+          []() {
+            return std::unique_ptr<platform::gcu::GcuBackend, py::nodelete>(
+                platform::gcu::GcuBackend::GetInstance());
+          },
+          py::return_value_policy::reference)
+      .def("compile", &platform::gcu::GcuBackend::Compile)
+      .def("set_scope", &platform::gcu::GcuBackend::SetScope)
+      .def("init_backend", &platform::gcu::GcuBackend::InitBackend);
+  // .def("run", &platform::gcu::GcuBackend::Run);
+  // .def("set_gcu_strategy", &platform::gcu::GcuBackend::SetGcuStrategy)
+
+  gcu_strategy
+      .def(py::init())
+      // manage GcuBackend in C++
+      .def("set_target", &platform::gcu::GcuStrategy::SetTargetName)
+      .def("set_batch_size", &platform::gcu::GcuStrategy::SetBatchSize)
+      .def("get_batch_size", &platform::gcu::GcuStrategy::GetBatchSize);
+
+  m.def("get_option", [](const std::string &key) {
+    return platform::gcu::GetGcuOptions().GetOption(key);
+  });
+  m.def("set_graph_option",
+        [](const std::string &key, const std::string &option) {
+          platform::gcu::GetGcuOptions().SetGraphOption(key, option);
+        });
+  m.def("set_global_option",
+        [](const std::string &key, const std::string &option) {
+          platform::gcu::GetGcuOptions().SetGlobalOption(key, option);
+        });
+  m.def("reset_graph_options",
+        [](std::map<std::string, std::string> options_map) {
+          platform::gcu::GetGcuOptions().ResetGraphOptions(options_map);
+        });
+  m.def("reset_global_options",
+        [](std::map<std::string, std::string> options_map) {
+          platform::gcu::GetGcuOptions().ResetGlobalOptions(options_map);
+        });
+  m.def("get_all_graph_options",
+        []() { return platform::gcu::GetGcuOptions().GetAllGraphOptions(); });
+  m.def("get_all_options",
+        []() { return platform::gcu::GetGcuOptions().GetAllOptions(); });
+  m.def("clear_graph_option", [](const std::string &key) {
+    return platform::gcu::GetGcuOptions().ClearGraphOption(key);
+  });
+  m.def("clear_global_option", [](const std::string &key) {
+    return platform::gcu::GetGcuOptions().ClearGlobalOption(key);
+  });
+  m.def("clear_all_options",
+        []() { return platform::gcu::GetGcuOptions().ClearAllOptions(); });
+  m.def("gcu_exe_sync", &paddle::platform::gcu::Synchronize);
+#endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", phi::SetAllowTF32Cublas);

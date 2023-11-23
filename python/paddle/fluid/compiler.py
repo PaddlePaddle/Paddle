@@ -20,6 +20,9 @@ from . import framework
 from .framework import _get_paddle_place, _get_paddle_place_list
 from .framework import cuda_places, cpu_places, xpu_places
 from . import core
+import logging
+from .data_feeder import convert_dtype
+import hashlib
 
 __all__ = [
     'CompiledProgram',
@@ -27,6 +30,7 @@ __all__ = [
     'BuildStrategy',
     'IpuCompiledProgram',
     'IpuStrategy',
+    'GcuOptions',
 ]
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
@@ -1262,3 +1266,711 @@ class IpuCompiledProgram:
         self._ipu_strategy.need_compile = False
 
         return program
+
+
+class GcuCompiledProgram(object):
+    """
+    The GcuCompiledProgram is used to transform a program to a gcu-target program,
+    such as forward graph extraction, computing graph transformation, useless scale Ops clean, etc.
+
+    Args:
+        program(Program, optional): This parameter represents the :code:`Program`
+            to be executed. Default is None, which means the program will be set to
+            the default program :code:`paddle.static.default_main_program()` .
+        scope(Scope, optional): The scope used to run this program, you can switch
+            it to different scope. Default is None, which means use the global
+            scope :code:`paddle.static.global_scope()` .
+        gcu_strategy(GcuStrategy, optional): This argument is used to build the program with the
+            specified options. Default is None, which means build the program
+            based on the default `gcu_strategy`.
+
+    Returns:
+        Program
+
+    Example:
+        .. code-block:: python
+
+            # required: gcu
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+
+            a = static.data(name='data', shape=[None, 1], dtype='int32')
+            b = a + 1
+            main_prog = static.default_main_program()
+
+            gcu_strategy = static.GcuStrategy()
+            gcu_strategy.set_batch_size(batch_num = 16)
+            program = static.GcuCompiledProgram(
+                main_prog,
+                gcu_strategy=gcu_strategy).compile([a.name], [b.name])
+    """
+
+    def __init__(self, program=None, scope=None, gcu_strategy=None):
+        if not core.is_compiled_with_custom_device('gcu'):
+            raise ValueError(
+                "Can not use this function since PaddlePaddle is not compiled with GCU"
+            )
+
+        if program is None:
+            program = framework.default_main_program()
+        else:
+            program = (
+                program._program
+                if isinstance(program, CompiledProgram)
+                else program
+            )
+
+        if not isinstance(program, framework.Program):
+            raise TypeError(
+                "The type of program is wrong, expected Program, but got %s"
+                % type(program)
+            )
+
+        self._logger = logging.getLogger()
+        self._logger.setLevel(logging.INFO)
+
+        self._program = program.clone()
+        self._compiled = False
+
+        program_key_str = str(id(self._program)) + str(':') + str(self._program)
+        self._program_key = self._hash_md5(program_key_str)
+
+        self._logger.info(
+            'gcu compile, program key is:{}, program is:{}'.format(
+                self._program_key, self._program
+            )
+        )
+
+        if scope is not None:
+            self._scope = scope
+        else:
+            # import here to avoiding confused
+            import paddle
+
+            self._scope = paddle.static.global_scope()
+
+        self._backend = core.GcuBackend.get_instance()
+        self.dist = (
+            True if os.getenv('_gcu_enable_distributed') == 'true' else False
+        )
+        local_rank = int(os.getenv('PADDLE_RANK_IN_NODE', 0))
+        world_rank = int(os.getenv('PADDLE_TRAINER_ID', 0))
+        world_size = int(os.getenv('PADDLE_TRAINERS_NUM', 1))
+        device_id = int(os.getenv('FLAGS_selected_gcus', 0))
+        node_id = world_rank // 8
+        self._backend.init_backend(
+            self.dist, local_rank, device_id, world_size, node_id
+        )
+        if program.random_seed != 0:
+            core.set_gcu_random_seed(program.random_seed)
+            self._logger.info(
+                'GcuCompiledProgram, init_backend, set gcu random seed:{}'.format(
+                    program.random_seed
+                )
+            )
+
+        self._logger.info(
+            'GcuCompiledProgram init_backend, dist:{}, rank_id:{}, device_id:{}, world_size:{}, node_id:{}'.format(
+                self.dist, local_rank, device_id, world_size, node_id
+            )
+        )
+
+        # self._backend = core.GcuBackend()
+
+    def compile_in_run(self, feed, fetch_list):
+        """
+        This interface is used to compile the input Program to a program
+        to run the model on the gcu. Used in executor.run.
+
+        Args:
+            feed(list|dict): This parameter represents the input Tensors of the model.
+                If it is single card training, the feed is dict type, and if it is multi-card
+                training, the parameter feed can be dict or list of Tensors. If the
+                parameter type is dict, the data in the feed will be split and sent to
+                multiple devices, that is to say, the input data will be evenly
+                sent to different devices, so you should make sure the number of samples of
+                the current mini-batch must be greater than the number of places;
+                if the parameter type is list, those data are copied directly to each device,
+                so the length of this list should be equal to the number of places.
+            fetch_list(list): This parameter represents the names of Tensors that need to be
+                returned after the model runs.
+        Returns:
+            Program
+
+        Example:
+            .. code-block:: python
+
+                # required: gcu
+
+                import paddle
+                import paddle.static as static
+
+                paddle.enable_static()
+
+                a = static.data(name='data', shape=[None, 1], dtype='int32')
+                b = a + 1
+                main_prog = static.default_main_program()
+
+                gcu_strategy = static.GcuStrategy()
+                gcu_strategy.set_batch_size(batch_num = 16)
+                program = static.GcuCompiledProgram(
+                    main_prog,
+                    gcu_strategy=gcu_strategy).compile([a], [b.name])
+        """
+        # get feed var name list and fetch var name list
+        feed_var_names = []
+        feed_vars = {}
+        if isinstance(feed, dict):
+            feed_var_names = list(feed.keys())
+            feed_vars = feed
+        elif isinstance(feed, list) or isinstance(feed, tuple):
+            for i, each in enumerate(feed):
+                feed_var_names += list(each.keys())
+                feed_vars.update(each)
+
+        # set feed shape and dtype
+        global_block = self._program.global_block()
+        for name in feed_var_names:
+            if global_block.has_var(name):
+                input_data = global_block.var(name)
+                feed_var = feed_vars[name]
+                old_shape = input_data.shape
+                feed_shape = (
+                    feed_var.shape()
+                    if isinstance(feed_var, (core.Tensor, core.LoDTensor))
+                    else feed_var.shape
+                )
+                feed_dtype = (
+                    feed_var._dtype()
+                    if isinstance(feed_var, (core.Tensor, core.LoDTensor))
+                    else feed_var.dtype
+                )
+                input_data.desc.set_shape(feed_shape)
+                input_dtype = input_data.dtype
+                if convert_dtype(feed_dtype) != convert_dtype(input_dtype):
+                    raise ValueError(
+                        "The previous data type of Variable {} is {}, the feed "
+                        "data type is {}. They are not "
+                        "matched.".format(name, input_dtype, feed_dtype)
+                    )
+                self._logger.info(
+                    'gcu compile, input:{}, old_shape:{}, set shape:{}, dtype:{}'.format(
+                        name, old_shape, input_data.shape, input_data.dtype
+                    )
+                )
+            else:
+                warnings.warn(
+                    "The variable %s is not found in program. It is not declared or is pruned."
+                    % name
+                )
+
+        # compile
+        return self.compile(feed_var_names, fetch_list, allreduce_mean=True)
+
+    def compile(self, feed_list, fetch_list, allreduce_mean=True):
+        """
+        This interface is used to compile the input Program to a program
+        to run the model on the gcu.
+
+        Args:
+            feed_list(list): This parameter represents the names of input Tensors of the model.
+            fetch_list(list): This parameter represents the names of Tensors that need to be
+                returned after the model runs.
+        Returns:
+            Program
+
+        Example:
+            .. code-block:: python
+
+                # required: gcu
+
+                import paddle
+                import paddle.static as static
+
+                paddle.enable_static()
+
+                a = static.data(name='data', shape=[None, 1], dtype='int32')
+                b = a + 1
+                main_prog = static.default_main_program()
+
+                gcu_strategy = static.GcuStrategy()
+                gcu_strategy.set_batch_size(batch_num = 16)
+                program = static.GcuCompiledProgram(
+                    main_prog,
+                    gcu_strategy=gcu_strategy).compile([a.name], [b.name])
+        """
+        if len(self._program.global_block().ops) == 0:
+            return self._program
+
+        self._backend.set_scope(self._scope)
+        # self._backend.set_gcu_strategy(self._gcu_strategy)
+
+        # self._graph = framework.IrGraph(core.Graph(self._program.desc))
+        self._graph = core.Graph(self._program.desc)
+        self.origin_ir_graph = framework.IrGraph(self._graph)
+        if self.dist:
+            ar, ar_ins, ar_outs = self.allreduce_fusion(self.origin_ir_graph)
+
+        passes = [
+            'infer_shape_pass',
+        ]
+        for pass_name in passes:
+            a_pass = core.get_pass(pass_name)
+            if pass_name == 'infer_shape_pass':
+                a_pass.set('feed_list', feed_list)
+                # batch_size = self._gcu_strategy.get_batch_size()
+                a_pass.set('batch_size', str(16))
+            a_pass.apply(self._graph)
+
+        if self.dist and ar is not None:
+            # ar, ar_ins, ar_outs = self.allreduce_fusion(self.origin_ir_graph)
+            fp_bp_graph, fp_bp_feed, fp_bp_fetch = self.generate_fp_bp_graph(
+                self.origin_ir_graph, feed_list, fetch_list, ar, ar_ins, ar_outs
+            )
+            (
+                update_graph,
+                update_feed,
+                update_fetch,
+            ) = self.generate_update_graph(
+                self.origin_ir_graph, feed_list, fetch_list, allreduce_mean
+            )
+
+            graph_list = [self._graph, fp_bp_graph.graph, update_graph.graph]
+            all_feeds = [feed_list, fp_bp_feed, update_feed]
+            all_fetches = [fetch_list, fp_bp_fetch, update_fetch]
+
+            self._logger.info('gcu compile, all_feeds:{}'.format(all_feeds))
+            self._logger.info('gcu compile, all_fetches:{}'.format(all_fetches))
+            self._logger.info(fp_bp_graph.to_program())
+            # paddle.fluid.save(fp_bp_graph.to_program(), "./dist_gcu/fp_bp_graph")
+            self._logger.info(update_graph.to_program())
+            # paddle.fluid.save(update_graph.to_program(), "./dist_gcu/update_graph")
+        else:
+            graph_list = [self._graph]
+            all_feeds = [feed_list]
+            all_fetches = [fetch_list]
+
+        self._backend.compile(
+            graph_list, all_feeds, all_fetches, self._program_key
+        )
+
+        passes = [
+            'gcu_runtime_replacer_pass',
+        ]
+        for pass_name in passes:
+            a_pass = core.get_pass(pass_name)
+            a_pass.set('feed_list', feed_list)
+            a_pass.set('fetch_list', fetch_list)
+            a_pass.set('program_key', self._program_key)
+            a_pass.apply(self._graph)
+
+        convert_pass = core.get_pass('graph_to_program_pass')
+        desc = core.ProgramDesc()
+        convert_pass.set_not_owned('program', desc)
+        convert_pass.apply(self._graph)
+        program = framework.Program._construct_from_desc(desc)
+        if hasattr(self._program, 'lr_scheduler'):
+            program.lr_scheduler = self._program.lr_scheduler
+            self._logger.info('gcu compile, program has lr_scheduler')
+        self._compiled = True
+        return program
+
+    def allreduce_fusion(self, ir_graph):
+        all_var_nodes = ir_graph.all_var_nodes()
+        allreduce_ops = []
+        allreduce_input_vars = []
+        allreduce_output_vars = []
+        for op_node in ir_graph.all_op_nodes():
+            if op_node.op().type() == 'eccl_allreduce':
+                allreduce_ops.append(op_node)
+                input_name = op_node.input('InputList')[0]
+                output_name = op_node.output('OutputList')[0]
+                self._logger.info(
+                    'allreduce_fusion, eccl_allreduce input name:{}, output name:{}'.format(
+                        input_name, output_name
+                    )
+                )
+                allreduce_input_vars.append(
+                    ir_graph._find_node_by_name(all_var_nodes, input_name)
+                )
+                allreduce_output_vars.append(
+                    ir_graph._find_node_by_name(all_var_nodes, output_name)
+                )
+        if not allreduce_ops:
+            self._logger.info(
+                'allreduce_fusion, don not have allreduce ops, not need fusion'
+            )
+            return None, None, None
+        # Create fusion allreduce
+        # The GCU does not support multi stream parallelism at this time,
+        # so it is only merged into one allreduce op here
+        fusion_allreduce = ir_graph.create_op_node(
+            op_type='eccl_allreduce',
+            inputs={'InputList': allreduce_input_vars},
+            outputs={'OutputList': allreduce_output_vars},
+            attrs={
+                'op_role': 8,  # 0: Forward   1: Backward   2: Optimize   4: RPC   8: Dist   16: LRSched   256: Loss
+                'reduce_type': 0,  # 0: sum   1: prod   2: max   3: min
+                'sync_mode': True,
+            },
+        )
+        for input_var in allreduce_input_vars:
+            ir_graph.link_to(input_var, fusion_allreduce)
+        for output_var in allreduce_output_vars:
+            ir_graph.link_to(fusion_allreduce, output_var)
+        ir_graph.safe_remove_nodes(allreduce_ops)
+        ir_graph.topology_sort()
+        return fusion_allreduce, allreduce_input_vars, allreduce_output_vars
+
+    def generate_fp_bp_graph(
+        self,
+        ir_graph,
+        global_feed_list,
+        global_fetch_list,
+        fusion_allreduce,
+        allreduce_input_vars,
+        allreduce_output_vars,
+    ):
+        fp_bp_graph = ir_graph.clone()
+        var_node_map = {}
+        for var in fp_bp_graph.all_var_nodes():
+            var_node_map[var.name()] = var
+        new_ar_out_vars = [
+            var_node_map[ar_in_var.name()]
+            for ar_in_var in allreduce_output_vars
+        ]
+
+        all_op_nodes = fp_bp_graph.all_op_nodes()
+        remove_nodes = []
+        remove_ar_out_name = []
+        optimize_op_inputs = []
+        for ar_out_var in new_ar_out_vars:
+            count = len(ar_out_var.outputs)
+            for out_op_node in ar_out_var.outputs:
+                if self._is_optimize_op(out_op_node):
+                    optimize_op_inputs += out_op_node.inputs
+                    # Assume that outputs of the optimizer are all in-place operation
+                    remove_nodes.append(out_op_node)
+                    count -= 1
+                else:
+                    warnings.warn(
+                        'NOT Support, allreduce output to non-opt op:'.format(
+                            out_op_node.name()
+                        )
+                    )
+            assert (
+                count == 0
+            ), "Allreduce can only be output to the optimizer operator"
+            remove_nodes.append(ar_out_var)
+            remove_ar_out_name.append(ar_out_var.name())
+
+        remove_nodes.append(
+            fp_bp_graph._find_node_by_name(
+                all_op_nodes, fusion_allreduce.name()
+            )
+        )
+
+        # get fetch list (before node is removed)
+        fetch_1 = [
+            ar_in_var.name() if not ar_in_var.is_ctrl_var() else None
+            for ar_in_var in allreduce_input_vars
+        ]
+        fetch_2 = [
+            opt_in.name()
+            if not opt_in.is_ctrl_var()
+            and not opt_in.name() in remove_ar_out_name
+            else None
+            for opt_in in optimize_op_inputs
+        ]
+        fetch_list = fetch_1 + fetch_2
+        fetch_list = list(filter(lambda x: x is not None, fetch_list))
+        fetch_list.sort()  # Sorted by name
+        fetch_list = global_fetch_list + fetch_list
+        fetch_list = sorted(
+            set(fetch_list), key=fetch_list.index
+        )  # delete duplication
+
+        # remove nodes, may cause isolated node
+        fp_bp_graph.safe_remove_nodes(remove_nodes)
+
+        # remove isolated node
+        isolated_nodes = [
+            node if not node.inputs and not node.outputs else None
+            for node in fp_bp_graph.all_nodes()
+        ]
+        isolated_nodes = list(filter(lambda x: x is not None, isolated_nodes))
+        isolated_node_names = [node.name() for node in isolated_nodes]
+        fp_bp_graph.safe_remove_nodes(isolated_nodes)
+        self._logger.info(
+            'fp_bp_graph remove isolated_nodes:{}'.format(isolated_node_names)
+        )
+        fp_bp_graph.topology_sort()
+
+        # get fetch list
+        new_all_var_name = [var.name() for var in fp_bp_graph.all_var_nodes()]
+        self._logger.info(
+            'fp_bp_graph new_all_var_name:{}'.format(new_all_var_name)
+        )
+        fetch_list = list(
+            filter(
+                lambda x: x in new_all_var_name
+                and x not in isolated_node_names,
+                fetch_list,
+            )
+        )
+
+        # get feed list
+        feed_list = global_feed_list
+        feed_list = list(filter(lambda x: x in new_all_var_name, feed_list))
+
+        return fp_bp_graph, feed_list, fetch_list
+
+    def _is_optimize_op(self, op_node):
+        if op_node.op().type() in [
+            'merged_momentum',
+            'merged_adam',
+            'merged_adamw',
+        ]:
+            return True
+        if not op_node.op().has_attr('_gcu_graph_op_category'):
+            return False
+        op_category = op_node.op().attr('_gcu_graph_op_category')
+        if op_category == 'gcu_optimizer':
+            return True
+        return False
+
+    def generate_update_graph(
+        self, ir_graph, global_feed_list, global_fetch_list, allreduce_mean
+    ):
+        update_graph = ir_graph.clone()
+        remove_nodes = []
+        optimize_op_input_vars = []
+        optimize_op_output_vars = []
+        for op_node in update_graph.all_op_nodes():
+            if self._is_optimize_op(op_node):
+                optimize_op_input_vars += op_node.inputs
+                optimize_op_output_vars += op_node.outputs
+            else:
+                remove_nodes.append(op_node)
+
+        # Vars to be retained
+        input_vars = [
+            opt_in if not opt_in.is_ctrl_var() else None
+            for opt_in in optimize_op_input_vars
+        ]
+        input_vars = list(filter(lambda x: x is not None, input_vars))
+        output_vars = [
+            opt_out if not opt_out.is_ctrl_var() else None
+            for opt_out in optimize_op_output_vars
+        ]
+        output_vars = list(filter(lambda x: x is not None, output_vars))
+        persist_vars = input_vars + output_vars
+
+        # feed_list, not contain feeds in global_feed_list
+        feed_list = [
+            input_var.name()
+            if input_var.inputs
+            and input_var.outputs
+            and input_var.name() not in global_feed_list
+            else None  # input is not empty and output is not empty
+            for input_var in input_vars
+        ]
+        feed_list = list(filter(lambda x: x is not None, feed_list))
+        feed_list = sorted(set(feed_list))  # delete duplication and sort
+
+        # will remove other vars
+        persist_var_names = [var.name() for var in persist_vars]
+        for var in update_graph.all_var_nodes():
+            if var.name() not in persist_var_names:
+                remove_nodes.append(var)
+                self._logger.info(
+                    'update_graph will remove var:{}'.format(var.name())
+                )
+
+        # remove nodes
+        update_graph.safe_remove_nodes(remove_nodes)
+        update_graph.topology_sort()
+
+        if allreduce_mean:
+            self._logger.info(
+                'Will enable allreduce_mean, NOTE: Option for allreduce must be SUM'
+            )
+            self._grads_mean(update_graph)
+
+        # Adjust the global input or output to the front
+        new_all_var_name = [var.name() for var in update_graph.all_var_nodes()]
+        self._logger.info(
+            'update_graph new_all_var_name:{}'.format(new_all_var_name)
+        )
+        feed_list = global_feed_list + feed_list
+        feed_list = list(filter(lambda x: x in new_all_var_name, feed_list))
+
+        fetch_list = global_fetch_list
+        fetch_list = list(filter(lambda x: x in new_all_var_name, fetch_list))
+
+        return update_graph, feed_list, fetch_list
+
+    def _grads_mean(self, ir_graph):
+        world_size = int(os.getenv('PADDLE_TRAINERS_NUM', 1))
+        grads_vars = []
+        for var in ir_graph.all_var_nodes():
+            if '_gcu_all_reduce' in var.name():
+                grads_vars.append(var)
+        if not grads_vars:
+            return
+        var_type = grads_vars[0].type()
+        world_size_out = ir_graph.create_var_node(
+            name='gcu_grads_mean_world_size',
+            var_type=var_type,
+            shape=[1],
+            var_dtype=core.VarDesc.VarType.FP32,
+        )
+        world_size_op = ir_graph.create_op_node(
+            op_type='fill_constant',
+            inputs={},
+            outputs={'Out': [world_size_out]},
+            attrs={
+                'shape': [1],
+                'dtype': core.VarDesc.VarType.FP32,
+                'value': float(world_size),
+            },
+        )
+        ir_graph.link_to(world_size_op, world_size_out)
+        for grad in grads_vars:
+            grads_outputs = grad.outputs
+            mean_grad = ir_graph.create_var_node(
+                name=grad.name() + '_mean',
+                var_type=grad.type(),
+                shape=grad.shape(),
+                var_dtype=grad.dtype(),
+            )
+            div_op = ir_graph.create_op_node(
+                op_type='elementwise_div',
+                inputs={'X': grad, 'Y': world_size_out},
+                outputs={'Out': mean_grad},
+                attrs={'axis': -1},
+            )
+            ir_graph.link_to(grad, div_op)
+            ir_graph.link_to(world_size_out, div_op)
+            ir_graph.link_to(div_op, mean_grad)
+            for grads_out_node in grads_outputs:
+                ir_graph.update_input_link(grad, mean_grad, grads_out_node)
+
+    def _hash_md5(self, string_key):
+        try:
+            hashinst = hashlib.md5()
+            hashinst.update(str(string_key).encode('utf-8'))
+            md5sum = hashinst.hexdigest()
+        except UnicodeDecodeError as e:
+            md5sum = None
+            err = e
+        assert (
+            md5sum is not None
+        ), 'Error({}) occurred when do hash_md5.'.format(str(err))
+        return str(md5sum)
+
+
+class GcuStrategy(object):
+    """
+    Help users precisely control the graph building in :code:`paddle.static.GcuCompiledProgram` .
+
+    Returns:
+        The GcuStrategy instance.
+
+    Examples:
+        .. code-block:: python
+
+            # required: gcu
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+
+            gcu_strategy = static.GcuStrategy()
+    """
+
+    def __init__(self):
+        if core.is_compiled_with_custom_device('gcu'):
+            self._gcu_strategy = core.GcuStrategy()
+        else:
+            raise RuntimeError(
+                "Can not use GcuStrategy in non IPU compiled environment, please re-compile with WITH_GCU=ON."
+            )
+
+    def set_batch_size(self, batch_num):
+        self._gcu_strategy.set_batch_size(batch_num)
+
+    def get_batch_size(self):
+        batch_size = self._gcu_strategy.get_batch_size()
+        return batch_size
+
+
+class GcuOptions(object):
+    """
+    Help users precisely control the compilation and execution of program.
+
+    Returns:
+        The GcuOptions instance.
+
+    Examples:
+        .. code-block:: python
+
+            # required: gcu
+
+            import paddle
+
+            gcu_options = paddle.framework.GcuOptions()
+    """
+
+    def __init__(self):
+        self._invalid_option_keys = [
+            'gcu_weights_sync_interval',
+            'gcu_weights_sync_mode',
+        ]
+
+    def _check_key(self, key):
+        if not key in self._invalid_option_keys:
+            raise RuntimeError('Key[{}] is not supported yet.'.format(key))
+
+    def _check_keys(self, options):
+        for k, v in options:
+            if not k in self._invalid_option_keys:
+                raise RuntimeError('Key[{}] is not supported yet.'.format(k))
+
+    def get_option(self, key):
+        return core.get_option(key)
+
+    def set_graph_option(self, key, value):
+        self._check_key(key)
+        core.set_graph_option(key, value)
+
+    def set_global_option(self, key, value):
+        self._check_key(key)
+        core.set_global_option(key, value)
+
+    def reset_graph_options(self, options):
+        self._check_keys(options)
+        core.reset_graph_options(options)
+
+    def reset_global_options(self, options):
+        self._check_keys(options)
+        core.reset_global_options(options)
+
+    def get_all_graph_options(self):
+        return core.get_all_graph_options()
+
+    def get_all_options(self):
+        return core.get_all_options()
+
+    def clear_graph_option(self, key):
+        core.clear_graph_option(key)
+
+    def clear_global_option(self, key):
+        core.clear_global_option(key)
+
+    def clear_all_options(self):
+        core.clear_all_options()

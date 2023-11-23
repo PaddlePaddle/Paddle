@@ -22,6 +22,1126 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+#ifdef PADDLE_WITH_GCU
+#include "paddle/fluid/framework/ir/gcu/constant_compute_utils.h"
+#include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/platform/device/gcu/compiler/single_op_compiler.h"
+#include "paddle/fluid/platform/device/gcu/executor/single_op_executor.h"
+#include "paddle/fluid/platform/device/gcu/layout/gcu_layout_interface.h"
+#include "paddle/fluid/platform/device/gcu/register/register.h"
+#include "paddle/fluid/platform/device/gcu/runtime/gcu_rt_interface.h"
+#include "paddle/fluid/platform/device/gcu/utils/layout.h"
+#include "paddle/fluid/platform/device/gcu/utils/types.h"
+
+PHI_DECLARE_bool(check_nan_inf);
+
+namespace paddle {
+namespace gcu {
+const char *const use_gcu_cache_executor = "USE_GCU_CACHE_EXECUTOR";
+const char *const kRunningModeSerial = "serial";
+
+using LoDTensor = phi::DenseTensor;
+using paddle::framework::Scope;
+using paddle::framework::details::VariableInfo;
+using paddle::framework::ir::Graph;
+using paddle::platform::gcu::EquivalenceTransformer;
+using paddle::platform::gcu::GcuBuilder;
+using paddle::platform::gcu::GcuBuilderPtr;
+using paddle::platform::gcu::GcuOp;
+using paddle::platform::gcu::GcuOpPtr;
+using paddle::platform::gcu::INSENSITIVE;
+using paddle::platform::gcu::kAttrOpOutVarName;
+using paddle::platform::gcu::kUnusedArchetype;
+using paddle::platform::gcu::SingleOpGcuCompiler;
+using paddle::platform::gcu::SingleOpGcuExecutor;
+using paddle::platform::gcu::SingleOpGcuExecutorManager;
+using paddle::platform::gcu::TransformUtil;
+using Node = paddle::framework::ir::Node;
+using GcuRunTimeInfo = paddle::platform::gcu::runtime::GcuRunTimeInfo;
+using ScopePtr = std::shared_ptr<paddle::framework::Scope>;
+
+static std::map<size_t, std::set<std::string>> all_tmp_node_names_;
+static std::map<size_t, std::set<std::string>> forward_skip_eager_vars_;
+
+static void SaveLodTensor(const platform::Place &place,
+                          const framework::Variable *var,
+                          const std::string &file_name) {
+  auto &tensor = var->Get<LoDTensor>();
+  if (!tensor.IsInitialized()) {
+    VLOG(0) << "dump tensor to file failed by tensor is not initialized; file "
+               "name is :"
+            << file_name;
+    return;
+  }
+
+  // get device context from pool
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(place);
+
+  std::ofstream fout(file_name, std::ios::binary);
+  PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
+                    true,
+                    platform::errors::Unavailable(
+                        "Cannot open %s to save variables.", file_name));
+
+  // auto in_dtype = framework::TransToProtoVarType(tensor.dtype());
+  framework::SerializeToStream(fout, tensor, dev_ctx);
+
+  fout.close();
+}
+
+static void SaveSelectedRows(const platform::Place &place,
+                             const framework::Variable *var,
+                             const std::string &file_name) {
+  auto &selectedRows = var->Get<phi::SelectedRows>();
+  // get device context from pool
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(place);
+
+  std::ofstream fout(file_name, std::ios::binary);
+  PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
+                    true,
+                    platform::errors::Unavailable(
+                        "Cannot open %s to save variables.", file_name));
+  framework::SerializeToStream(fout, selectedRows, dev_ctx);
+  fout.close();
+}
+
+static void VarToFile(const platform::Place &place,
+                      const std::string file_name,
+                      framework::Variable *var) {
+  if (var->IsType<LoDTensor>()) {
+    SaveLodTensor(place, var, file_name);
+  } else if (var->IsType<phi::SelectedRows>()) {
+    SaveSelectedRows(place, var, file_name);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Save operator only supports saving LoDTensor and SelectedRows "
+        "variable, %s has wrong type",
+        file_name));
+  }
+}
+
+static void VarsToFile(const platform::Place &place,
+                       const std::string &dir,
+                       const std::vector<std::string> &var_names,
+                       std::vector<framework::Variable *> vars) {
+  for (size_t i = 0; i < var_names.size(); i++) {
+    if (var_names[i] == framework::kEmptyVarName ||
+        var_names[i] == "Fake_var") {
+      continue;
+    }
+    // TensorToFile(dir + var_names[i], vars[i]->GetMutable<LoDTensor>());
+    VarToFile(place, dir + var_names[i], vars[i]);
+  }
+}
+
+static void VarsToFile(
+    const platform::Place &place,
+    const std::string &dir,
+    const std::map<std::string, framework::VarDesc *> &graph_var_nodes,
+    const framework::Scope &scope) {
+  std::vector<framework::Variable *> vars;
+  std::vector<std::string> tensor_names;
+
+  for (auto iter = graph_var_nodes.begin(); iter != graph_var_nodes.end();
+       iter++) {
+    auto &var_name = iter->first;
+    if (var_name == framework::kEmptyVarName || var_name == "Fake_var") {
+      continue;
+    }
+
+    auto numel = [](std::vector<int64_t> &shape) -> int64_t {
+      int64_t res = 1;
+      for (auto dim : shape) {
+        res *= dim;
+      }
+      return res;
+    };
+
+    auto *var = scope.FindVar(var_name);
+
+    if ((iter->second != nullptr) &&
+        ((iter->second->GetType() == framework::proto::VarType::LOD_TENSOR) ||
+         (iter->second->GetType() ==
+          framework::proto::VarType::SELECTED_ROWS))) {
+      std::vector<int64_t> shape = iter->second->GetShape();
+      if (numel(shape) != 0) {
+        vars.emplace_back(var);
+        tensor_names.emplace_back(var_name);
+      }
+    } else {
+      VLOG(0) << "dump var to file failed by var is nullptr; var name is : "
+              << var_name;
+    }
+  }
+
+  for (size_t i = 0; i < tensor_names.size(); i++) {
+    VarToFile(place, dir + tensor_names[i], vars[i]);
+  }
+}
+
+static void GraphToFile(std::string dir, bool forward, Graph *graph) {
+  auto nodes = framework::ir::TopologySortOperations(*graph);
+  std::map<std::string, framework::VarDesc *> graph_var_nodes;
+  std::ostringstream os;
+  os << "Output Var: {\n";
+  for (Node *node : nodes) {
+    for (auto output : node->outputs) {
+      os << "    " << output->Name() << "\n";
+    }
+  }
+  os << "}\n";
+
+  std::string var_str = os.str();
+  std::string graph_str = var_str + framework::ir::DebugString(graph);
+  std::string file_name = dir + (forward ? "forward_" : "backward_");
+
+  std::ofstream graph_file((file_name + "graph.txt").c_str(), std::ios::binary);
+  graph_file.write(graph_str.c_str(), graph_str.size());
+  graph_file.close();
+
+  std::ofstream var_file((file_name + "var.txt").c_str(), std::ios::binary);
+  var_file.write(var_str.c_str(), var_str.size());
+  var_file.close();
+}
+
+static std::string GenerateDumpTensorDir(std::string device_type,
+                                         bool forward,
+                                         bool before_train,
+                                         int64_t program_id,
+                                         size_t program_count,
+                                         size_t step_count) {
+  std::ostringstream os;
+  os << "./dump_tensor/" << device_type << "/" << program_count << "_"
+     << program_id << "/" << step_count << "/"
+     << (forward ? "forward_" : "backward_")
+     << (before_train ? "before_train/" : "after_train/");
+  return os.str();
+}
+
+static std::string GenerateDumpGraphDir(std::string device_type,
+                                        int64_t program_id,
+                                        size_t program_count) {
+  std::ostringstream os;
+  os << "./dump_tensor/" << device_type << "/" << program_count << "_"
+     << program_id << "/";
+  return os.str();
+}
+
+static void RefreshDynamicInputVarShape(
+    const Scope &scope,
+    std::map<std::string, framework::VarDesc *> input_var_nodes) {
+  for (auto var_node : input_var_nodes) {
+    auto *var = scope.FindVar(var_node.first);
+
+    if ((var != nullptr) &&
+        (var_node.second->GetType() == framework::proto::VarType::LOD_TENSOR)) {
+      auto tensor_dims = var->GetMutable<LoDTensor>()->dims();
+      auto tensor_shape = phi::vectorize(tensor_dims);
+      auto var_shape = var_node.second->GetShape();
+      if ((platform::gcu::TransformUtil::IsDyn(var_shape) &&
+           !platform::gcu::TransformUtil::IsDyn(tensor_shape)) ||
+          ((var_shape != tensor_shape) && var_shape.size() <= 0)) {
+        VLOG(6) << "input var_name:" << var_node.first << " "
+                << "tensor shape:" << TransformUtil::GetShapeStr(tensor_shape)
+                << " "
+                << "var shape:" << TransformUtil::GetShapeStr(var_shape) << " "
+                << "[WARN]use tensor shape to flush var shape!";
+        var_node.second->SetShape(tensor_shape);
+      }
+    }
+  }
+}
+
+static std::vector<std::string> ParseAttr(std::string attr_value) {
+  std::vector<std::string> out_var_names;
+  if (attr_value == "") return out_var_names;
+  const char *divided_symbol = ";";
+  size_t pos = attr_value.find(divided_symbol);
+  if (pos == attr_value.npos) {
+    out_var_names.emplace_back(attr_value);
+  }
+  while (pos != attr_value.npos) {
+    std::string sub_str = attr_value.substr(0, pos);
+    out_var_names.emplace_back(sub_str);
+    attr_value = attr_value.substr(pos + 1, attr_value.size());
+    pos = attr_value.find(divided_symbol);
+  }
+  if (attr_value.length() != 0) {
+    out_var_names.emplace_back(attr_value);
+  }
+  return out_var_names;
+}
+
+static GcuOpPtr AddGteOp(const Node *node, const GcuOpPtr &input) {
+  if (!node->IsVar()) {
+    VLOG(3) << "ERROR! op name:" << node->Name()
+            << " should be var type when convert to Gcu gte node";
+    return nullptr;
+  }
+  auto attr_out_var_names = input->GetAttribute(kAttrOpOutVarName);
+  PADDLE_ENFORCE_NE(attr_out_var_names == builder::Attribute(""),
+                    true,
+                    platform::errors::NotFound(
+                        "lack of attr [%s] for gcu tuple op, please check.",
+                        kAttrOpOutVarName));
+  auto out_var_names = attr_out_var_names.GetValueAsString();
+  auto list_out_var_names = ParseAttr(out_var_names);
+  auto var_name = node->Name();
+  int32_t idx = 0;
+  VLOG(3) << out_var_names;
+  for (const auto &name : list_out_var_names) {
+    if (name != var_name) {
+      idx++;
+    } else {
+      break;
+    }
+  }
+  auto shape = node->Var()->GetShape();
+  auto dtype =
+      paddle::framework::TransToPhiDataType(node->Var()->GetDataType());
+  auto ptype = TransformUtil::ConvertDataType(dtype);
+  builder::Type input_type(shape, ptype);
+  return std::make_shared<GcuOp>(builder::GetTupleElement(*input, idx));
+}
+
+class DoInferByHlirBuilder {
+ private:
+  GcuBuilderPtr builder_ = nullptr;
+  std::map<std::string, GcuOpPtr> gcu_node_cache_;
+  std::map<std::string, Node *> var_node_cache_;
+
+ public:
+  DoInferByHlirBuilder() {
+    builder_ = std::make_shared<GcuBuilder>();
+    builder_->SetShapeInference(true);
+  }
+  void Run(Scope &scope, Node *node) {  // NOLINT
+    auto op_desc = node->Op();
+    auto op_type = op_desc->Type();
+    auto op_name = node->Name();
+    VLOG(10) << "OpType " << op_type << " strart infer shape by hlir builder. ";
+    if (!node->IsOp()) {
+      VLOG(10) << "OpType " << op_type << " is not operator.";
+      return;
+    }
+    auto func = EquivalenceTransformer::GetInstance().Get(op_type, INSENSITIVE);
+    if (func == nullptr) {
+      VLOG(10) << "OpType " << op_type
+               << " is not register gcu op convert func, please check.";
+      return;
+    }
+
+    bool dyn_input = false;
+    for (auto input : node->inputs) {
+      if (input->IsCtrlVar()) {
+        continue;
+      }
+      auto var_name = input->Name();
+      if (gcu_node_cache_.count(var_name) > 0) {
+        var_node_cache_[var_name] = input;
+        continue;
+      }
+      auto shape = input->Var()->GetShape();
+      if (TransformUtil::IsDyn(shape)) {
+        dyn_input = true;
+        break;
+      }
+      auto dtype =
+          paddle::framework::TransToPhiDataType(input->Var()->GetDataType());
+      auto ptype = TransformUtil::ConvertDataType(dtype);
+      builder::Type input_type(shape, ptype);
+      auto gcu_op = std::make_shared<GcuOp>(builder_->CreateInput(input_type));
+      gcu_node_cache_[var_name] = gcu_op;
+      var_node_cache_[var_name] = input;
+    }
+    if (dyn_input) {
+      VLOG(6)
+          << "OpType " << op_type
+          << " has input with dynamic shape and is about to exit the process";
+      return;
+    }
+
+    for (auto output : node->outputs) {
+      if (output->IsCtrlVar()) {
+        continue;
+      }
+      auto var_name = output->Name();
+      var_node_cache_[var_name] = output;
+    }
+
+    std::map<std::string, std::vector<GcuOpPtr>> input_ops;
+    for (const auto &e : op_desc->Inputs()) {
+      if (e.second.empty()) {
+        continue;
+      }
+      std::vector<GcuOpPtr> v;
+      for (std::string n : e.second) {
+        auto gcu_op = gcu_node_cache_[n];
+        if (gcu_op == nullptr) {
+          VLOG(2) << "[WARN]Can not find transfered gcu op by"
+                     "input name "
+                  << n;
+        }
+        auto gcu_shape_str =
+            TransformUtil::GetShapeStr(gcu_op->GetType().GetShape());
+        VLOG(3) << "Input Archetype name: " << e.first << " in name:" << n
+                << " shape:" << gcu_shape_str;
+        v.push_back(gcu_op);
+      }
+      input_ops[e.first] = v;
+    }
+    GcuOpPtr op = func(builder_, node, input_ops, kRunningModeSerial);
+    VLOG(10) << "Transfered to gcu node end, op name:" << op_name
+             << ", type:" << op_type;
+
+    PADDLE_ENFORCE_NE(
+        op,
+        nullptr,
+        platform::errors::NotFound(
+            "op type:%s transfered gcu node should not be nullptr!",
+            op_name.c_str(),
+            op_type.c_str()));
+    gcu_node_cache_[op_name] = op;
+    bool is_tuple_out = op->GetType().IsTuple();
+    // check tuple condition same with pd
+    if (is_tuple_out) {
+      size_t gcu_output_num = op->GetType().GetTupleSize();
+      size_t valid_output_counter = 0;
+      for (const auto &e : op_desc->Outputs()) {
+        if (!e.second.empty()) {
+          VLOG(6) << "Out Archetype name:" << e.first;
+          for (const auto &p : e.second) {
+            VLOG(6) << "    correspond var name:" << p;
+            valid_output_counter++;
+          }
+        }
+      }
+      PADDLE_ENFORCE_EQ(
+          valid_output_counter,
+          gcu_output_num,
+          platform::errors::NotFound(
+              "op type:%s paddle valid output size is %u, but gcu is %u",
+              op_type.c_str(),
+              valid_output_counter,
+              gcu_output_num));
+    }
+    if (!is_tuple_out) {
+      for (const auto &e : op_desc->Outputs()) {
+        if (e.second.empty()) {
+          continue;
+        }
+        std::string weight_name = "";
+        for (std::string n : e.second) {
+          VLOG(3) << "Output Archetype name: " << e.first << " out name:" << n;
+          auto out_name = n;
+          gcu_node_cache_[out_name] = op;
+          // for shape infer check
+          auto gcu_shape = op->GetType().GetShape();
+          auto var_op = var_node_cache_[out_name];
+          auto paddle_shape = var_op->Var()->GetShape();
+          // normalize scalar shape process, [] -> [1]
+          if (gcu_shape.empty()) {
+            gcu_shape = {1};
+          }
+          if (paddle_shape.empty()) {
+            paddle_shape = {1};
+          }
+          PADDLE_ENFORCE_EQ(
+              gcu_shape.size(),
+              paddle_shape.size(),
+              platform::errors::NotFound(
+                  "op_name:%s, op type:%s transfered gcu node "
+                  "should have same rank!"
+                  "but origin rank is %u now is %u, paddld "
+                  "shape:%s, gcu shape:%s",
+                  op_name.c_str(),
+                  op_type.c_str(),
+                  paddle_shape.size(),
+                  gcu_shape.size(),
+                  TransformUtil::GetShapeStr(paddle_shape).c_str(),
+                  TransformUtil::GetShapeStr(gcu_shape).c_str()));
+          auto gcu_shape_str = TransformUtil::GetShapeStr(gcu_shape);
+          auto paddle_shape_str = TransformUtil::GetShapeStr(paddle_shape);
+
+          if (TransformUtil::IsDyn(paddle_shape) &&
+              !TransformUtil::IsDyn(gcu_shape)) {
+            auto gcu_shape_str = TransformUtil::GetShapeStr(gcu_shape);
+            auto paddle_shape_str = TransformUtil::GetShapeStr(paddle_shape);
+            VLOG(6) << "out var_name:" << out_name.c_str() << " "
+                    << "op_type:" << op_type.c_str() << " "
+                    << "shape_pd:" << paddle_shape_str << " "
+                    << "shape_gcu:" << gcu_shape_str << " "
+                    << "[WARN]use gcu shape to flush paddle shape!";
+            var_op->Var()->SetShape(gcu_shape);
+            auto *var = scope.FindVar(var_op->Name());
+            if (var != nullptr) {
+              var->GetMutable<LoDTensor>()->Resize(phi::make_ddim(gcu_shape));
+            }
+            continue;
+          }
+          PADDLE_ENFORCE_EQ(gcu_shape_str,
+                            paddle_shape_str,
+                            platform::errors::NotFound(
+                                "op_name:%s, op type:%s"
+                                " transfered gcu node should have same shape!"
+                                "but origin shape is %s now is %s",
+                                op_name.c_str(),
+                                op_type.c_str(),
+                                paddle_shape_str.c_str(),
+                                gcu_shape_str.c_str()));
+        }
+      }
+    } else {
+      std::set<std::string> names_in;
+      for (const auto &e : op_desc->Inputs()) {
+        if (e.second.empty()) {
+          continue;
+        }
+        for (std::string n : e.second) {
+          names_in.insert(n);
+        }
+      }
+      for (const auto &e : op_desc->Outputs()) {
+        if (e.second.empty()) continue;
+        for (const auto &out_name : e.second) {
+          auto out_var_op = var_node_cache_[out_name];
+          PADDLE_ENFORCE_NE(
+              out_var_op,
+              nullptr,
+              platform::errors::NotFound(
+                  "op name:%s op type:%s out name:%s not found var op!",
+                  op_name.c_str(),
+                  op_type.c_str(),
+                  out_name.c_str()));
+          VLOG(6) << "  out var name:" << out_name
+                  << " var op name:" << out_var_op->Name();
+          GcuOpPtr gte = AddGteOp(out_var_op, op);
+          PADDLE_ENFORCE_NE(
+              gte,
+              nullptr,
+              platform::errors::NotFound(
+                  "op name:%s op type:%s transfer to gcu gte node failed!",
+                  op_name.c_str(),
+                  op_type.c_str()));
+          gcu_node_cache_[out_name] = gte;
+
+          // for shape infer check
+          auto gcu_shape = gte->GetType().GetShape();
+          auto var_op = var_node_cache_[out_name];
+          auto paddle_shape = var_op->Var()->GetShape();
+          // normalize scalar shape process, [] -> [1]
+          if (gcu_shape.empty()) {
+            gcu_shape = {1};
+          }
+          if (paddle_shape.empty()) {
+            paddle_shape = {1};
+          }
+          if (TransformUtil::IsDyn(paddle_shape) &&
+              !TransformUtil::IsDyn(gcu_shape)) {
+            auto gcu_shape_str = TransformUtil::GetShapeStr(gcu_shape);
+            auto paddle_shape_str = TransformUtil::GetShapeStr(paddle_shape);
+            VLOG(6) << "out var_name:" << out_name.c_str() << " "
+                    << "op_type:" << op_type.c_str() << " "
+                    << "shape_pd:" << paddle_shape_str << " "
+                    << "shape_gcu:" << gcu_shape_str << " "
+                    << "[WARN]use gcu shape to flush paddle shape!";
+            var_op->Var()->SetShape(gcu_shape);
+            auto *var = scope.FindVar(var_op->Name());
+            if (var != nullptr) {
+              var->GetMutable<LoDTensor>()->Resize(phi::make_ddim(gcu_shape));
+            }
+            continue;
+          }
+          PADDLE_ENFORCE_EQ(
+              gcu_shape.size(),
+              paddle_shape.size(),
+              platform::errors::NotFound(
+                  "op_name:%s, op type:%s"
+                  " transfered gcu node should have same rank!"
+                  "but origin rank is %u now is %u, out name is %s",
+                  op_name.c_str(),
+                  op_type.c_str(),
+                  paddle_shape.size(),
+                  gcu_shape.size(),
+                  out_name));
+          auto gcu_shape_str = TransformUtil::GetShapeStr(gcu_shape);
+          auto paddle_shape_str = TransformUtil::GetShapeStr(paddle_shape);
+          PADDLE_ENFORCE_EQ(
+              gcu_shape_str,
+              paddle_shape_str,
+              platform::errors::NotFound(
+                  "op_name:%s, op type:%s"
+                  " transfered gcu node should have same shape!"
+                  "but origin shape is %s now is %s, out name is %s",
+                  op_name.c_str(),
+                  op_type.c_str(),
+                  paddle_shape_str.c_str(),
+                  gcu_shape_str.c_str(),
+                  out_name));
+        }
+      }
+    }
+  }
+};
+
+static void GcuInferShape(framework::ir::Graph *graph) {
+  VLOG(10) << "enter GcuInferShape";
+  if (VLOG_IS_ON(10)) {
+    std::cout << "Before GcuInferShape Graph: \n" << DebugString(graph);
+  }
+
+  ScopePtr scope(new paddle::framework::Scope());
+  std::unordered_set<std::string> var_names;
+  for (auto node : graph->Nodes()) {
+    if (!node->IsVar() || !node->Var() || var_names.count(node->Name())) {
+      continue;
+    }
+    auto var_desc = node->Var();
+    auto *ptr = scope->Var(var_desc->Name());
+    paddle::framework::InitializeVariable(ptr, var_desc->GetType());
+
+    auto tensor = ptr->GetMutable<LoDTensor>();
+    tensor->Resize(phi::make_ddim(var_desc->GetShape()));
+    tensor->set_type(
+        paddle::framework::TransToPhiDataType(var_desc->GetDataType()));
+    if ((node->inputs.empty()) && !(node->outputs.empty())) {
+      var_names.emplace(node->Name());
+    }
+  }
+
+  // infer shape
+  std::set<std::string> use_hlir_do_infer_ops = {
+      "shape", "slice", "bilinear_interp_v2"};
+  std::set<std::string> need_run_ops = {"fill_constant"};
+  DoInferByHlirBuilder do_infer_by_hlir_builder;
+  auto nodes = framework::ir::TopologySortOperations(*graph);
+  for (auto node : nodes) {
+    VLOG(10) << "InferShapePass: Infer shape for Op (" << node->Name() << ")";
+    auto op_desc = node->Op();
+
+    auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
+    paddle::framework::RuntimeContext rt_ctx(
+        op->Inputs(), op->Outputs(), *scope);
+    for (auto input : node->inputs) {
+      if (input->IsCtrlVar()) {
+        continue;
+      }
+    }
+    op->RuntimeInferShape(*scope, paddle::platform::CPUPlace(), rt_ctx);
+
+    for (auto it = rt_ctx.outputs.begin(); it != rt_ctx.outputs.end(); it++) {
+      for (size_t i = 0; i < it->second.size(); i++) {
+        auto output_name = op_desc->Output(it->first)[i];
+        auto dim = it->second[i]->GetMutable<LoDTensor>()->dims();
+        auto new_shape = phi::vectorize(dim);
+        for (auto output_node : node->outputs) {
+          if (output_node->Name() == output_name) {
+            output_node->Var()->SetShape(new_shape);
+            if (VLOG_IS_ON(10)) {
+              std::ostringstream sout;
+              sout << "InferShapePass: output[" << output_node->Name()
+                   << "], infer shape:[";
+              for (auto s : new_shape) {
+                sout << std::to_string(s) << ", ";
+              }
+              sout << "]";
+              VLOG(10) << sout.str();
+            }
+          }
+        }
+      }
+    }
+    VLOG(10) << "InferShapePass: Infer shape for Op (" << node->Name()
+             << ") finished";
+    framework::ir::ConstantComputation::ConstComputeIfNecessary(
+        op, scope, node);
+    std::set<std::string> refresh_shape_after_compute_ops = {"fill_constant"};
+    if (refresh_shape_after_compute_ops.count(node->Name()) > 0) {
+      for (auto output : node->outputs) {
+        if (output->IsCtrlVar()) {
+          continue;
+        }
+        auto var = scope->GetVar(output->Name());
+        auto tensor = var->GetMutable<LoDTensor>();
+        if (tensor->IsInitialized()) {
+          auto dim = var->GetMutable<LoDTensor>()->dims();
+          auto new_shape = phi::vectorize(dim);
+          output->Var()->SetShape(new_shape);
+          op_desc->SetAttr("shape", new_shape);
+          if (VLOG_IS_ON(10)) {
+            std::ostringstream sout;
+            sout << "InferShapePass: output[" << output->Name()
+                 << "], infer shape: " << dim.to_str();
+            VLOG(10) << sout.str();
+          }
+        }
+      }
+    }
+    if (use_hlir_do_infer_ops.count(node->Name()) > 0) {
+      do_infer_by_hlir_builder.Run(*scope, node);
+      continue;
+    }
+  }
+  scope.reset();
+
+  if (VLOG_IS_ON(10)) {
+    std::cout << "After GcuInferShape Graph: \n" << DebugString(graph);
+  }
+  VLOG(10) << "leave GcuInferShape";
+}
+
+static bool CheckTensorHasNanOrInf(const std::string &program_key,
+                                   const std::string &tensor_name,
+                                   LoDTensor *tensor) {
+  if (tensor->dtype() != DataType::FLOAT32) {
+    VLOG(6) << "Skip check tensor " << tensor_name << ", its dtype is "
+            << tensor->dtype();
+    return false;
+  }
+
+  LoDTensor cpu_tensor;
+  cpu_tensor.Resize(tensor->dims());
+  float *cpu_data = static_cast<float *>(
+      cpu_tensor.mutable_data(platform::CPUPlace(), tensor->dtype()));
+
+  framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+  bool has_nan_inf = false;
+  for (int i = 0; i < cpu_tensor.numel(); i++) {
+    if (std::isnan(cpu_data[i]) || std::isinf(cpu_data[i])) {
+      has_nan_inf = true;
+      break;
+    }
+  }
+  if (has_nan_inf) {
+    VLOG(0) << "Program " << program_key << " output tensor " << tensor_name
+            << " contains Inf or Nan.";
+  }
+  return has_nan_inf;
+}
+
+static void CompileAndRunProgram(
+    const platform::Place &ctx_place,
+    const int64_t &program_id,
+    const std::string &program_key,
+    std::vector<std::string> &input_names,   // NOLINT
+    std::vector<std::string> &output_names,  // NOLINT
+    const std::vector<LoDTensor *> &inputs,
+    std::vector<LoDTensor *> &outputs,  // NOLINT
+    framework::Scope &scope,            // NOLINT
+    const std::shared_ptr<framework::ir::Graph> &graph,
+    const int train_flag = 1) {
+  VLOG(3) << "start CompileAndRunProgram program_key: " << program_key;
+
+  if (VLOG_IS_ON(3)) {
+    std::cout << "CompileAndRunProgram graph: \n"
+              << framework::ir::DebugString(graph.get()) << std::endl;
+  }
+  int device_id = ctx_place.GetDeviceId();
+  if (!platform::gcu::runtime::GcuHasRuntimeInfo(device_id)) {
+    int rank_id = 0;
+    auto rt_info = std::make_shared<GcuRunTimeInfo>(device_id, false, 0, 0, 0);
+    PADDLE_ENFORCE_NE(
+        rt_info,
+        nullptr,
+        platform::errors::PreconditionNotMet(
+            "Failed to create rt_info on GCU rank:%d, device_id:%d",
+            rank_id,
+            device_id));
+    platform::gcu::runtime::GcuSetCurrentDevice(device_id);
+    platform::gcu::runtime::GcuSetRuntimeInfo(device_id, rt_info);
+  }
+
+  auto executables =
+      platform::gcu::TransformUtil::GetGcuExecutable(program_key);
+  if (executables.size() <= 0) {
+    auto tmp_gcu_compiler = std::make_shared<SingleOpGcuCompiler>(&scope);
+    auto var_fixed_map = tmp_gcu_compiler->GetVarFixedMap();
+    std::map<std::string, framework::VarDesc *> input_var_nodes;
+    for (Node *node : graph.get()->Nodes()) {
+      if (node->IsOp()) continue;
+      auto op_name = node->Name();
+      if ((node->inputs.size() <= 0) && (node->outputs.size() > 0)) {
+        input_var_nodes[op_name] = node->Var();
+      }
+      // fix shape about dyn such as interpolate
+      if (var_fixed_map.count(op_name) != 0) {
+        node->Var()->SetShape(var_fixed_map[op_name]);
+      }
+    }
+    RefreshDynamicInputVarShape(scope, input_var_nodes);
+    GcuInferShape(graph.get());
+
+    auto gcu_compiler_ = std::make_shared<SingleOpGcuCompiler>(&scope);
+    gcu_compiler_->Compile({graph.get()},
+                           {input_names},
+                           {output_names},
+                           inputs,
+                           all_tmp_node_names_[program_id],
+                           program_key);
+  }
+  // run exec
+  std::vector<const LoDTensor *> real_inputs;
+  real_inputs.reserve(inputs.size());
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    VLOG(3) << "real input " << i << " name: " << input_names[i]
+            << " initialized: " << inputs[i]->initialized()
+            << " dims: " << inputs[i]->dims();
+    if (inputs[i]->initialized()) {
+      real_inputs.emplace_back(inputs[i]);
+    }
+  }
+
+  VLOG(3) << "input_names: " << input_names.size()
+          << " output_names: " << output_names.size()
+          << " real_inputs: " << real_inputs.size()
+          << " outputs: " << outputs.size();
+
+  VLOG(3) << "== target == scope ptr:" << (int64_t)(&scope);
+  std::shared_ptr<SingleOpGcuExecutor> gcu_exec = nullptr;
+  static const char *use_cache = std::getenv(use_gcu_cache_executor);
+  static bool use_new_executor =
+      (use_cache == nullptr || std::string(use_cache) != "true");
+  if (use_new_executor) {
+    VLOG(3) << "CompileAndRunProgram use_new_executor. ";
+    gcu_exec = std::make_shared<SingleOpGcuExecutor>(&scope);
+    gcu_exec->RunGcuOp(
+        real_inputs, outputs, ctx_place, program_key, train_flag);
+    gcu_exec->ReleaseMemory();
+  } else {
+    auto manager = SingleOpGcuExecutorManager::GetInstance();
+    gcu_exec = manager->Find(program_key);
+    if (gcu_exec == nullptr) {
+      gcu_exec = std::make_shared<SingleOpGcuExecutor>(&scope);
+      manager->Add(program_key, gcu_exec);
+    }
+    gcu_exec->RunGcuOp(
+        real_inputs, outputs, ctx_place, program_key, train_flag, &scope);
+  }
+
+  if (FLAGS_check_nan_inf) {
+    VLOG(3) << "Check nan or inf for program " << program_key;
+    bool has_nan_inf = false;
+    for (size_t i = 0; i < outputs.size(); ++i) {
+      auto *out = outputs[i];
+      has_nan_inf |= CheckTensorHasNanOrInf(program_key, output_names[i], out);
+    }
+    PADDLE_ENFORCE_NE(has_nan_inf, true);
+  }
+
+  VLOG(3) << "end CompileAndRunProgram program_key: " << program_key;
+}
+
+static void GetTensors(
+    const paddle::framework::BlockDesc &global_block,
+    framework::Scope &scope,                      // NOLINT
+    std::map<std::string, LoDTensor *> &tensors,  // NOLINT
+    const std::vector<std::string> &var_names,
+    const std::map<std::string, framework::VarDesc *> graph_var_nodes,
+    bool skip_zero_memory = true) {
+  for (size_t i = 0; i < var_names.size(); ++i) {
+    if (var_names[i] == framework::kEmptyVarName ||
+        kUnusedArchetype.count(var_names[i]) > 0 ||
+        var_names[i] == "Fake_var" || !global_block.HasVar(var_names[i])) {
+      continue;
+    }
+
+    auto numel = [](std::vector<int64_t> &shape) -> int64_t {
+      int64_t res = 1;
+      for (auto dim : shape) {
+        res *= dim;
+      }
+      return res;
+    };
+
+    auto *var = scope.FindVar(var_names[i]);
+    VLOG(6) << "GetTensors var name: " << var_names[i]
+            << ", is nullptr: " << (var == nullptr);
+    std::vector<int64_t> shape = graph_var_nodes.at(var_names[i])->GetShape();
+    if (graph_var_nodes.count(var_names[i])) {
+      std::vector<int64_t> shape = graph_var_nodes.at(var_names[i])->GetShape();
+      VLOG(6) << "GetTensors var name:" << var_names[i]
+              << ", shape:" << phi::make_ddim(shape).to_str()
+              << ", numel:" << numel(shape);
+      if (numel(shape) != 0 || !skip_zero_memory) {
+        tensors[var_names[i]] = var->GetMutable<LoDTensor>();
+      }
+    } else {
+      VLOG(6) << "GetTensors not find var in graph, var name:" << var_names[i]
+              << ", shape:" << phi::make_ddim(shape).to_str()
+              << ", numel:" << numel(shape);
+    }
+  }
+}
+
+inline void GcuRunProgramAPI(const std::shared_ptr<framework::ir::Graph> &graph,
+                             paddle::framework::Scope &scope,  // NOLINT
+                             const paddle::framework::BlockDesc &global_block,
+                             bool retain_tmp_var,
+                             int64_t program_id,
+                             std::vector<std::string> input_var_names,
+                             std::vector<std::string> param_names,
+                             std::vector<std::string> output_var_names,
+                             std::vector<std::string> dout_var_names,
+                             const platform::Place &place) {
+  auto tmp_gcu_compiler = std::make_shared<SingleOpGcuCompiler>(&scope);
+  auto var_fixed_map = tmp_gcu_compiler->GetVarFixedMap();
+  std::map<std::string, framework::VarDesc *> graph_var_nodes;
+  std::map<std::string, framework::VarDesc *> no_memory_nodes;
+  std::set<std::string> no_useful_nodes;
+  for (Node *node : graph.get()->Nodes()) {
+    if (node->IsVar()) continue;
+    auto op_name = node->Name();
+    for (const auto &out : node->Op()->Outputs()) {
+      if (kUnusedArchetype.count(out.first) == 0) {
+        continue;
+      }
+      for (const auto &name : out.second) {
+        no_useful_nodes.insert(name);
+      }
+    }
+  }
+  for (Node *node : graph.get()->Nodes()) {
+    if (node->IsOp()) {
+      auto op = node->Op();
+      if (op->Type() != "reshape2" && op->Type() != "transpose2") {
+        continue;
+      }
+      auto no_memory_node_name = op->Output("XShape");
+      if (no_memory_node_name.size() <= 0) {
+        continue;
+      }
+      for (auto *out : node->outputs) {
+        if (out->IsOp()) {
+          continue;
+        }
+        if (out->Name() == no_memory_node_name[0]) {
+          VLOG(6) << "no_memory_node_name: " << no_memory_node_name[0];
+          no_memory_nodes[no_memory_node_name[0]] = out->Var();
+          break;
+        }
+      }
+      continue;
+    }
+    auto op_name = node->Name();
+    if (no_useful_nodes.count(op_name) == 0) {
+      graph_var_nodes[op_name] = node->Var();
+    }
+    // fix shape about dyn such as interpolate
+    if (var_fixed_map.count(op_name) != 0) {
+      node->Var()->SetShape(var_fixed_map[op_name]);
+    }
+  }
+
+  for (auto iter : graph_var_nodes) {
+    scope.Var(iter.first);
+  }
+
+  // prepare inputs and outputs
+  std::map<std::string, LoDTensor *> map_inputs;
+  std::map<std::string, LoDTensor *> map_outputs;
+
+  // inputs
+  GetTensors(
+      global_block, scope, map_inputs, input_var_names, graph_var_nodes, false);
+
+  // outputs
+  GetTensors(
+      global_block, scope, map_outputs, output_var_names, graph_var_nodes);
+  GetTensors(global_block, scope, map_outputs, dout_var_names, graph_var_nodes);
+
+  if (retain_tmp_var) {
+    // tmp tensor
+    std::set<std::string> skip_eager_delete_vars =
+        forward_skip_eager_vars_.at(program_id);
+    std::vector<std::string> tmp_tensor_names;
+    // tmp_tensor_names.reserve(skip_eager_delete_vars.size());
+    for (auto iter : graph_var_nodes) {
+      if ((map_inputs.count(iter.first) <= 0) &&
+          std::find(param_names.begin(), param_names.end(), iter.first) ==
+              param_names.end() &&
+          (map_outputs.count(iter.first) <= 0) &&
+          //   (skip_eager_delete_vars.count(iter.first) <= 0) &&
+          (no_memory_nodes.count(iter.first) <= 0)) {
+        tmp_tensor_names.emplace_back(iter.first);
+      }
+    }
+    GetTensors(
+        global_block, scope, map_outputs, tmp_tensor_names, graph_var_nodes);
+
+    all_tmp_node_names_[program_id] =
+        std::set<std::string>(tmp_tensor_names.begin(), tmp_tensor_names.end());
+  }
+
+  std::vector<LoDTensor *> inputs;
+  std::vector<LoDTensor *> outputs;
+  std::vector<std::string> input_names;
+  std::vector<std::string> output_names;
+
+  size_t io_cnt = 0;
+  for (auto tensor_info : map_inputs) {
+    input_names.push_back(tensor_info.first);
+    inputs.push_back(tensor_info.second);
+    VLOG(6) << "GcuRunProgramOpKernel inputs[" << (io_cnt++)
+            << "] = " << tensor_info.first;
+  }
+  io_cnt = 0;
+  for (auto tensor_info : map_outputs) {
+    output_names.push_back(tensor_info.first);
+    outputs.push_back(tensor_info.second);
+    VLOG(6) << "GcuRunProgramOpKernel outputs[" << (io_cnt++)
+            << "] = " << tensor_info.first;
+  }
+
+  std::hash<std::string> hasher;
+  std::string key_str = std::to_string(program_id) + "GcuRunProgramOpKernel";
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    key_str += input_names[i] + inputs[i]->dims().to_str() + "; ";
+  }
+  for (size_t i = 0; i < output_names.size(); ++i) {
+    key_str += output_names[i] + "; ";
+  }
+
+  auto program_key = std::to_string(hasher(key_str));
+  VLOG(3) << "GcuRunProgramOpKernel program_id: " << program_id
+          << " program_key: " << program_key;
+
+  // run program
+  int train_flag = (retain_tmp_var) ? 1 : 2;
+  CompileAndRunProgram(place,
+                       program_id,
+                       program_key,
+                       input_names,
+                       output_names,
+                       inputs,
+                       outputs,
+                       scope,
+                       graph,
+                       train_flag);
+
+  // refresh no_memory_nodes shape
+  for (auto var_node : no_memory_nodes) {
+    auto *var = scope.FindVar(var_node.first);
+    (var_node.second->GetType() == framework::proto::VarType::LOD_TENSOR);
+
+    if ((var != nullptr) &&
+        (var_node.second->GetType() == framework::proto::VarType::LOD_TENSOR)) {
+      auto tensor = var->GetMutable<LoDTensor>();
+      auto tensor_dims = var->GetMutable<LoDTensor>()->dims();
+      auto tensor_shape = phi::vectorize(tensor_dims);
+      auto var_shape = var_node.second->GetShape();
+      VLOG(6) << "input var_name:" << var_node.first << " "
+              << "var shape:" << TransformUtil::GetShapeStr(var_shape)
+              << " tensor shape:" << tensor_dims.to_str() << " "
+              << " "
+              << "[WARN]use var shape to flush tensor shape!";
+      tensor->Resize(phi::make_ddim(var_shape));
+    }
+  }
+}
+
+inline void GcuRunProgramGradAPI(
+    const std::shared_ptr<framework::ir::Graph> &graph,
+    paddle::framework::Scope &scope,  // NOLINT
+    const paddle::framework::BlockDesc &global_block,
+    int64_t program_id,
+    std::vector<std::string> output_grad_var_names,
+    std::vector<std::string> input_grad_var_names,
+    std::vector<std::string> param_grad_names,
+    const platform::Place &place) {
+  auto tmp_gcu_compiler = std::make_shared<SingleOpGcuCompiler>(&scope);
+  auto var_fixed_map = tmp_gcu_compiler->GetVarFixedMap();
+  std::map<std::string, framework::VarDesc *> graph_var_nodes;
+  for (Node *node : graph.get()->Nodes()) {
+    if (node->IsOp()) continue;
+    auto op_name = node->Name();
+    graph_var_nodes[op_name] = node->Var();
+    // fix shape about dyn such as interpolate
+    if (var_fixed_map.count(op_name) != 0) {
+      node->Var()->SetShape(var_fixed_map[op_name]);
+    }
+  }
+
+  for (auto iter : graph_var_nodes) {
+    scope.Var(iter.first);
+  }
+
+  // prepare inputs and outputs
+  std::map<std::string, LoDTensor *> map_inputs;
+  std::map<std::string, LoDTensor *> map_outputs;
+
+  GetTensors(global_block,
+             scope,
+             map_inputs,
+             output_grad_var_names,
+             graph_var_nodes,
+             false);
+
+  // set tmp tensor as inputs
+  auto &tmp_node_names = all_tmp_node_names_.at(program_id);
+  std::vector<std::string> tmp_var_names(tmp_node_names.begin(),
+                                         tmp_node_names.end());
+
+  GetTensors(global_block, scope, map_inputs, tmp_var_names, graph_var_nodes);
+
+  // outputs
+  GetTensors(
+      global_block, scope, map_outputs, input_grad_var_names, graph_var_nodes);
+  GetTensors(
+      global_block, scope, map_outputs, param_grad_names, graph_var_nodes);
+
+  std::vector<LoDTensor *> inputs;
+  std::vector<LoDTensor *> outputs;
+  std::vector<std::string> input_names;
+  std::vector<std::string> output_names;
+
+  size_t io_cnt = 0;
+  for (auto tensor_info : map_inputs) {
+    input_names.push_back(tensor_info.first);
+    inputs.push_back(tensor_info.second);
+    VLOG(6) << "GcuRunProgramGradOpKernel inputs[" << (io_cnt++)
+            << "] = " << tensor_info.first;
+  }
+  io_cnt = 0;
+  for (auto tensor_info : map_outputs) {
+    output_names.push_back(tensor_info.first);
+    outputs.push_back(tensor_info.second);
+    VLOG(6) << "GcuRunProgramGradOpKernel outputs[" << (io_cnt++)
+            << "] = " << tensor_info.first;
+  }
+
+  std::hash<std::string> hasher;
+  std::string key_str =
+      std::to_string(program_id) + "GcuRunProgramGradOpKernel";
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    key_str += input_names[i] + inputs[i]->dims().to_str() + "; ";
+  }
+  for (size_t i = 0; i < output_names.size(); ++i) {
+    key_str += output_names[i] + "; ";
+  }
+
+  auto program_key = std::to_string(hasher(key_str));
+  VLOG(3) << "GcuRunProgramGradOpKernel program_id: " << program_id
+          << " program_key: " << program_key;
+
+  // run program
+  CompileAndRunProgram(place,
+                       program_id,
+                       program_key,
+                       input_names,
+                       output_names,
+                       inputs,
+                       outputs,
+                       scope,
+                       graph,
+                       1);
+  all_tmp_node_names_.erase(program_id);
+}
+}  // namespace gcu
+}  // namespace paddle
+#endif
+
 namespace details {
 using Tensor = paddle::Tensor;
 
@@ -393,6 +1513,10 @@ inline void RunProgramAPI(
       VLOG(6) << s.str();
     }
 
+#ifdef PADDLE_WITH_GCU
+    paddle::gcu::forward_skip_eager_vars_[program_id] = skip_eager_delete_vars;
+#endif
+
     interpretercore_info_cache.UpdateSkipEagerDeleteVars(
         program_id, false, skip_eager_delete_vars);
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
@@ -419,11 +1543,35 @@ inline void RunProgramAPI(
 
   // interpretercore run
   if (forward_global_block->OpSize() > 0) {
-    paddle::platform::RecordEvent record_event(
-        "interpreter_core_run",
-        paddle::platform::TracerEventType::UserDefined,
-        1);
-    interpreter_core->Run({});
+    if (place.GetDeviceType() == "gcu") {
+      int64_t start_op_index = 0;
+      int64_t end_op_index = forward_global_block->OpSize();
+      auto graph = std::make_shared<paddle::framework::ir::Graph>(
+          *forward_program, start_op_index, end_op_index);
+      graph->Set<int>(paddle::platform::gcu::kGraphType,
+                      new int(paddle::platform::gcu::FP));
+      if (VLOG_IS_ON(6)) {
+        std::cout << "forward_global_block\n"
+                  << paddle::framework::ir::DebugString(graph.get()) + "\n\n";
+      }
+
+      paddle::gcu::GcuRunProgramAPI(graph,
+                                    *global_inner_scope,
+                                    *forward_global_block,
+                                    (!is_test || require_any_grad),
+                                    program_id,
+                                    input_names,
+                                    param_names,
+                                    output_names,
+                                    dout_names,
+                                    place);
+    } else {
+      paddle::platform::RecordEvent record_event(
+          "interpreter_core_run",
+          paddle::platform::TracerEventType::UserDefined,
+          1);
+      interpreter_core->Run({});
+    }
   }
 
   {
@@ -560,13 +1708,45 @@ inline void RunProgramGradAPI(
   }
 
   if (backward_global_block->OpSize() > 0) {
-    paddle::platform::RecordEvent record_event(
-        "interpreter_core_run",
-        paddle::platform::TracerEventType::UserDefined,
-        1);
-    // Debug info: scope info when run end
-    VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
-    interpreter_core->Run({});
+    if (place.GetDeviceType() == "gcu") {
+      int64_t start_op_index = 0;
+      int64_t end_op_index = backward_global_block->OpSize();
+      auto graph = std::make_shared<paddle::framework::ir::Graph>(
+          *backward_program, start_op_index, end_op_index);
+      graph->Set<int>(paddle::platform::gcu::kGraphType,
+                      new int(paddle::platform::gcu::BP));
+      if (VLOG_IS_ON(6)) {
+        std::cout << "backward_global_block\n"
+                  << paddle::framework::ir::DebugString(graph.get()) + "\n\n";
+      }
+
+      std::vector<std::string> x_grad_names;
+      std::vector<std::string> param_grad_names;
+      if (!x_grad.empty()) {
+        x_grad_names = details::GetTensorsName(x_grad);
+      }
+      if (!params_grad.empty()) {
+        param_grad_names = details::GetTensorsName(params_grad);
+      }
+
+      paddle::gcu::GcuRunProgramGradAPI(graph,
+                                        *global_inner_scope,
+                                        *backward_global_block,
+                                        program_id,
+                                        out_grad_names,
+                                        x_grad_names,
+                                        param_grad_names,
+                                        place);
+    } else {
+      paddle::platform::RecordEvent record_event(
+          "interpreter_core_run",
+          paddle::platform::TracerEventType::UserDefined,
+          1);
+      // Debug info: scope info when run end
+      VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(
+          out_scope_vec->front());
+      interpreter_core->Run({});
+    }
   }
 
   {

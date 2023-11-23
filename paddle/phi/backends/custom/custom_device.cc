@@ -644,12 +644,14 @@ class CustomDevice : public DeviceInterface {
     C_CCLRootId root_id;
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->xccl_get_unique_id_size(&(root_id.sz)));
-    root_id.data = new uint8_t[root_id.sz];
+    *unique_id = std::vector<uint8_t>(root_id.sz, 0);
+    root_id.data = unique_id->data();
+    // root_id.data = new uint8_t[root_id.sz];
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_get_unique_id(&root_id));
 
-    uint8_t* ptr = reinterpret_cast<uint8_t*>(root_id.data);
-    *unique_id = std::vector<uint8_t>(ptr, ptr + root_id.sz);
-    delete[] ptr;
+    // uint8_t* ptr = reinterpret_cast<uint8_t*>(root_id.data);
+    // *unique_id = std::vector<uint8_t>(ptr, ptr + root_id.sz);
+    // delete[] ptr;
   }
 
   void CCLCommInitRank(size_t nranks,

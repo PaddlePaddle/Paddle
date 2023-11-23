@@ -82,9 +82,15 @@ PADDLE_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth,
 // NOTE(Ruibiao): This FLAGS is just to be compatibled with
 // the old single-stream CUDA allocator. It will be removed
 // after StreamSafeCudaAllocator has been fully tested.
+#ifdef PADDLE_WITH_GCU
+PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator,
+                            false,
+                            "Enable StreamSafeCUDAAllocator");
+#else
 PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator,
                             true,
                             "Enable StreamSafeCUDAAllocator");
+#endif
 
 PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory,
                             false,
@@ -833,7 +839,11 @@ class AllocatorFacadePrivate {
            dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
            dev_id++) {
         platform::CustomPlace p(dev_type, dev_id);
+#ifdef PADDLE_WITH_GCU
+        system_allocators_[p] = std::make_shared<CustomAllocator>(p);
+#else
         system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+#endif
       }
     }
 #endif
@@ -1004,6 +1014,11 @@ std::shared_ptr<phi::Allocation> AllocatorFacade::AllocShared(
 
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
                                      size_t size) {
+#ifdef PADDLE_WITH_GCU
+  if (UNLIKELY(size == 0)) {
+    size = 1;
+  }
+#endif
   return GetPrivate()->GetAllocator(place, size)->Allocate(size);
 }
 

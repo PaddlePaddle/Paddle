@@ -179,7 +179,7 @@ class Container:
             )
         )
 
-    def logs(self, fn=None, offset=0, whence=1, limit=1000):
+    def logs(self, fn=None, offset=0, whence=1, limit=3000):
         if not self._log_handler:
             return
 

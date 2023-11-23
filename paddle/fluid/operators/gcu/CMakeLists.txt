@@ -1,0 +1,10 @@
+if(WITH_GCU)
+  op_library(
+    gcu_ops
+    SRCS
+    gcu_runtime_op.cc
+    SRCS
+    gcu_eccl_ops.cc
+    DEPS
+    gcu_backend)
+endif()
