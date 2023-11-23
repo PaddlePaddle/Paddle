@@ -668,7 +668,6 @@ def _addup_repetitive_outputs_(
                         new_name
                     ] = topo_order_for_backward[op_desc]
 
-    breakpoint()
     for var_name, inputs in renamed_vars.items():
         if len(renamed_vars[var_name]) > 1:
             if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
