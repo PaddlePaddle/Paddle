@@ -5,7 +5,7 @@ cc_library(
        legacy_kernel_instruction.cc
        cond_instruction.cc
        while_instruction.cc
-       stack_create_instruction.cc
+       has_elements_instruction.cc
        tuple_push_instruction.cc
        tuple_pop_instruction.cc
        instruction_util.cc

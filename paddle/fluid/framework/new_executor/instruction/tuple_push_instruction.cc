@@ -21,9 +21,8 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
                                            const platform::Place& place,
                                            ::pir::Operation* op,
                                            ValueExecutionInfo* value_exe_info)
-    : InstructionBase(id, place) {
+    : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
   tuple_push_op_ = op->dyn_cast<pir::TuplePushOp>();
-  value_exe_info_ = value_exe_info;
   auto stack_value = tuple_push_op_.container();
   auto& value_2_var_name = value_exe_info_->GetValue2VarName();
   PADDLE_ENFORCE_EQ(
@@ -33,13 +32,13 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
           "stack input of PushBackOp not in value2varname map"));
   auto var_array =
       value_exe_info_->GetScope()->FindVar(value_2_var_name.at(stack_value));
-  variable_ref_array_ = var_array->GetMutable<VariableRefArray>();
+  stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
 }
 
 void TuplePushInstruction::Run() {
   if (tuple_push_op_.tuple_size() == 0) {
     Variable* var = nullptr;
-    variable_ref_array_->emplace_back(var);
+    stack_element_var_array_->emplace_back(var);
   } else {
     auto& value_2_var_name = value_exe_info_->GetValue2VarName();
     for (size_t i = tuple_push_op_.tuple_size() - 1; i >= 0; ++i) {
@@ -51,8 +50,12 @@ void TuplePushInstruction::Run() {
       std::string new_name =
           "copy_" + stack_size + '_' + value_exe_info_->GetVarName(var);
       auto copy_var = value_exe_info_->GetScope()->Var(new_name);
+      PADDLE_ENFORCE_EQ(
+          value_exe_info_->GetVarName(copy_var) != "",
+          true,
+          phi::errors::NotFound("copied_var of PushBackOp not in varname map"));
       DeepCopyVariable(var, copy_var, value_exe_info_, stack_size);
-      variable_ref_array_->emplace_back(copy_var);
+      stack_element_var_array_->emplace_back(copy_var);
     }
   }
 }

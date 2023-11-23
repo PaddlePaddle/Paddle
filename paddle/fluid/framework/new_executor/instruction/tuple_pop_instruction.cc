@@ -21,30 +21,41 @@ TuplePopInstruction::TuplePopInstruction(size_t id,
                                          const platform::Place& place,
                                          ::pir::Operation* op,
                                          ValueExecutionInfo* value_exe_info)
-    : InstructionBase(id, place) {
+    : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
   tuple_pop_op_ = op->dyn_cast<pir::TuplePopOp>();
-  value_exe_info_ = value_exe_info;
   auto stack_value = tuple_pop_op_.container();
   auto& value_2_var_name = value_exe_info_->GetValue2VarName();
   PADDLE_ENFORCE_EQ(
       value_2_var_name.find(stack_value) != value_2_var_name.end(),
       true,
       phi::errors::NotFound(
-          "stack input of PushBackOp not in value2varname map"));
+          "stack input of PopBackOp not in value2varname map"));
   auto var_array =
       value_exe_info_->GetScope()->FindVar(value_2_var_name.at(stack_value));
-  variable_ref_array_ = var_array->GetMutable<VariableRefArray>();
+  stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
 }
 
 void TuplePopInstruction::Run() {
+  auto& value_2_var_name = value_exe_info_->GetValue2VarName();
   if (tuple_pop_op_.tuple_size() == 0) {
-    Variable* var = nullptr;
-    variable_ref_array_->emplace_back(var);
+    stack_element_var_array_->pop_back();
+    auto outlet_element = tuple_pop_op_.outlet_element(0);
+    auto grad_var = value_exe_info_->GetScope()->FindVar(
+        value_2_var_name.at(outlet_element));
+    grad_var = nullptr;
   } else {
-    auto& value_2_var_name = value_exe_info_->GetValue2VarName();
     for (size_t i = 0; i < tuple_pop_op_.tuple_size(); ++i) {
-      auto var = variable_ref_array_->back();
-      variable_ref_array_->pop_back();
+      auto front_var = stack_element_var_array_->back();
+      stack_element_var_array_->pop_back();
+
+      auto outlet_element = tuple_pop_op_.outlet_element(i);
+      auto grad_var = value_exe_info_->GetScope()->FindVar(
+          value_2_var_name.at(outlet_element));
+
+      grad_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          front_var->Get<phi::DenseTensor>());
+
+      tuple_pop_gc_var_ids_.insert(value_exe_info_->GetVarId(grad_var));
     }
   }
 }

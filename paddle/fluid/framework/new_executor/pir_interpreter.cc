@@ -46,9 +46,9 @@
 #endif
 
 #include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/has_elements_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/stack_create_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/tuple_pop_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/tuple_push_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/while_instruction.h"
@@ -651,20 +651,21 @@ void PirInterpreter::BuildInstruction() {
         continue;
       }
     } else if (op.dialect()->name() == "cf") {
-      if (op.isa<pir::StackCreateOp>()) {
-        vec_instruction_base_.emplace_back(
-            std::make_unique<StackCreateInstruction>(
-                op_idx++, place_, &op, value_exe_info_.get()));
-      } else if (op.isa<pir::TuplePushOp>()) {
+      if (op.isa<pir::TuplePushOp>()) {
         vec_instruction_base_.emplace_back(
             std::make_unique<TuplePushInstruction>(
                 op_idx++, place_, &op, value_exe_info_.get()));
       } else if (op.isa<pir::TuplePopOp>()) {
-        vec_instruction_base_.emplace_back(
-            std::make_unique<TuplePopInstruction>(
-                op_idx++, place_, &op, value_exe_info_.get()));
+        auto node = std::make_unique<TuplePopInstruction>(
+            op_idx++, place_, &op, value_exe_info_.get());
+        vec_instruction_base_.emplace_back(node.get());
+        for (auto i : node->GetTuplePopGcVarIds()) {
+          node->AddGCCheckVar(i);
+        }
       } else if (op.isa<pir::HasElementsOp>()) {
-        VLOG(0) << "ToDo: HasElementsInstruction";
+        vec_instruction_base_.emplace_back(
+            std::make_unique<HasElementsInstruction>(
+                op_idx++, place_, &op, value_exe_info_.get()));
       } else {
         VLOG(6) << "skip process cf dialect op: " << op.name();
         continue;

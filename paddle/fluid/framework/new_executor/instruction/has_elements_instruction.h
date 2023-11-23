@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <string>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
@@ -26,9 +27,9 @@ namespace framework {
 class Value;
 class ValueExecutionInfo;
 
-class StackCreateInstruction : public InstructionBase {
+class HasElementsInstruction : public InstructionBase {
  public:
-  StackCreateInstruction(size_t id,
+  HasElementsInstruction(size_t id,
                          const platform::Place& place,
                          ::pir::Operation* op,
                          ValueExecutionInfo* value_exe_info);
@@ -42,9 +43,9 @@ class StackCreateInstruction : public InstructionBase {
  private:
   ::pir::Operation* op_;
 
-  std::string name_{"stack_create_instruction"};
+  std::string name_{"has_elelments_instruction"};
 
-  Variable* var_{nullptr};
+  ValueExecutionInfo* value_exe_info_;
 };
 
 }  // namespace framework

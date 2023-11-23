@@ -227,8 +227,6 @@ const std::unordered_set<std::string> SpecialOps = {
     paddle::dialect::IfOp::name(),
     paddle::dialect::WhileOp::name(),
     pir::StackCreateOp::name(),
-    pir::TuplePushOp::name(),
-    pir::TuplePopOp::name(),
 };
 
 Variable* CreateVar(pir::Value value,
@@ -290,13 +288,11 @@ void DeepCopyVariable(const Variable* src_var,
                       Variable* dst_var,
                       ValueExecutionInfo* value_exe_info,
                       uint32_t stack_size) {
-  auto place = platform::CPUPlace();
-
   if (src_var->IsType<phi::DenseTensor>()) {
     auto* tmp_grad_tensor = dst_var->GetMutable<phi::DenseTensor>();
     auto& src_tensor = src_var->Get<phi::DenseTensor>();
     tmp_grad_tensor->set_lod(src_tensor.lod());
-    framework::TensorCopy(src_tensor, place, tmp_grad_tensor);
+    framework::TensorCopy(src_tensor, src_tensor.place(), tmp_grad_tensor);
   } else if (src_var->IsType<phi::SelectedRows>()) {
     auto* tmp_grad_slr = dst_var->GetMutable<phi::SelectedRows>();
     auto& src_slr = src_var->Get<phi::SelectedRows>();
@@ -305,14 +301,14 @@ void DeepCopyVariable(const Variable* src_var,
 
     auto& src_t = src_slr.value();
     auto* dst_t = tmp_grad_slr->mutable_value();
-    framework::TensorCopy(src_t, place, dst_t);
+    framework::TensorCopy(src_t, src_t.place(), dst_t);
   } else if (src_var->IsType<phi::TensorArray>()) {
     auto src_tensor_array = src_var->Get<phi::TensorArray>();
     auto* dst_tensor_array = dst_var->GetMutable<phi::TensorArray>();
     dst_tensor_array->clear();
     for (auto src_tensor : src_tensor_array) {
       phi::DenseTensor* tmp_dst_tensor = new phi::DenseTensor();
-      framework::TensorCopy(src_tensor, place, tmp_dst_tensor);
+      framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
       dst_tensor_array->push_back(*tmp_dst_tensor);
     }
   } else if (src_var->IsType<VariableRefArray>()) {
@@ -358,6 +354,8 @@ void BuildValue(pir::Value value,
   } else if (value.type()
                  .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     var->GetMutable<phi::TensorArray>();
+  } else if (value.type().isa<pir::StackType>()) {
+    var->GetMutable<VariableRefArray>();
   } else if (value.type().isa<pir::VectorType>()) {
     auto tensor_array = var->GetMutable<VariableRefArray>();
     tensor_array->clear();
@@ -375,9 +373,9 @@ void BuildValue(pir::Value value,
       tensor_array->emplace_back(var_i);
     }
   } else {
-    PADDLE_THROW(
-        phi::errors::PreconditionNotMet("Output only support DenseTensorType "
-                                        "or SelectedRowsType or VectorType"));
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
+        "Output only support DenseTensorType "
+        "or SelectedRowsType or VectorType or StackType"));
   }
 }
 
@@ -556,10 +554,12 @@ void HandleForSpecialOp(pir::Operation* op,
       auto while_op_out_value = while_op->result(i);
       BuildValue(while_op_out_value, var_name_prefix, value_exe_info);
     }
-  } else if (op->isa<pir::StackCreateOp>() || op->isa<pir::TuplePushOp>() ||
-             op->isa<pir::TuplePopOp>()) {
-    VLOG(6) << "Handle for StackCreateOp/TuplePushOp/TuplePopOp, skip create "
-               "var while build scope";
+  } else if (op->isa<pir::StackCreateOp>()) {
+    auto stack_create_op = op->dyn_cast<pir::StackCreateOp>();
+    auto& value_2_var_name = value_exe_info->GetValue2VarName();
+    auto stack_value = stack_create_op.stack();
+    std::string stack_var_name = var_name_prefix + "(stack)";
+    BuildValue(stack_value, stack_var_name, value_exe_info);
   }
 }
 

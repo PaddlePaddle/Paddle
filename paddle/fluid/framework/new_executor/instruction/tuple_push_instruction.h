@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <string>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
@@ -51,9 +52,7 @@ class TuplePushInstruction : public InstructionBase {
 
   std::string name_{"tuple_push_instruction"};
 
-  Variable* var_{nullptr};
-
-  VariableRefArray* variable_ref_array_;
+  VariableRefArray* stack_element_var_array_;
 
   ValueExecutionInfo* value_exe_info_;
 };
