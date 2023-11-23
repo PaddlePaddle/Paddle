@@ -24,6 +24,7 @@ from dygraph_to_static_utils_new import (
     Dy2StTestBase,
     test_ast_only,
     test_pir_only,
+    test_sot_only,
 )
 from predictor_utils import PredictorTools
 
@@ -266,7 +267,7 @@ class TestBert(Dy2StTestBase):
         return out
 
     @test_pir_only
-    def test_train_new_ir(self):
+    def test_train_pir(self):
         static_loss, static_ppl = self.train_static(
             self.bert_config, self.data_reader
         )
@@ -289,6 +290,7 @@ class TestBert(Dy2StTestBase):
 
         self.verify_predict()
 
+    @test_sot_only
     def test_train_composite(self):
         core._set_prim_backward_enabled(True)
         # core._add_skip_comp_ops("layer_norm")

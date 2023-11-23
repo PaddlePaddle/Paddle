@@ -18,8 +18,9 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/tensor.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #endif
 
 namespace paddle {

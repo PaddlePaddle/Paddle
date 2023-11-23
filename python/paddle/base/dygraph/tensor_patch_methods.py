@@ -32,9 +32,7 @@ from ..framework import (
     EagerParamBase,
     Parameter,
     Variable,
-    _getitem_static,
     _setitem_impl_,
-    _setitem_static,
     convert_np_dtype_to_dtype_,
 )
 from .base import switch_to_static_graph
@@ -149,6 +147,24 @@ def monkey_patch_tensor():
             static_var = Parameter(**attr_kwargs)
         else:
             static_var = Variable(**attr_kwargs)
+
+        if self.dist_attr is not None:  # import for shard tensor api
+            import paddle.distributed as dist
+            from paddle.distributed.auto_parallel.static.utils import (
+                convert_to_shard_spec,
+            )
+
+            dist_attr = dist.DistAttr(
+                mesh=self.dist_attr.process_mesh,
+                sharding_specs=convert_to_shard_spec(
+                    self.dist_attr.dims_mapping, self.dist_attr.process_mesh
+                ),
+            )
+            static_var = dist.shard_tensor(
+                static_var,
+                stop_gradient=static_var.stop_gradient,
+                dist_attr=dist_attr,
+            )
         return static_var
 
     # TODO(jiabin): move this to cplusplus end if we find some performance issue on it
@@ -512,6 +528,129 @@ def monkey_patch_tensor():
             warnings.filterwarnings("ignore", category=UserWarning)
             return transform(self, device, dtype, blocking)
 
+    @framework.dygraph_only
+    def to(self, *args, **kwargs):
+        """
+        Performs Tensor dtype and/or device conversion. A paddle.dtype and place
+        are inferred from the arguments of ``self.to(*args, **kwargs)``.There are
+        three ways to call `to`:
+
+            1. to(dtype, blocking=True)
+            2. to(device, dtype=None, blocking=True)
+            3. to(other, blocking=True)
+
+        Returns:
+            Tensor: self
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> tensorx = paddle.to_tensor([1,2,3])
+                >>> print(tensorx)
+                Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                    [1, 2, 3])
+
+                >>> tensorx = tensorx.to("cpu")
+                >>> print(tensorx.place)
+                Place(cpu)
+
+                >>> tensorx = tensorx.to("float32")
+                >>> print(tensorx.dtype)
+                paddle.float32
+
+                >>> tensorx = tensorx.to("gpu", "int16")
+                >>> print(tensorx)
+                Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
+                    [1, 2, 3])
+                >>> tensor2 = paddle.to_tensor([4,5,6])
+                >>> tensor2
+                Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                    [4, 5, 6])
+                >>> tensor2 = tensor2.to(tensorx)
+                >>> print(tensor2)
+                Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
+                    [4, 5, 6])
+        """
+        device = None
+        dtype = None
+        blocking = None
+        size_args = len(args)
+        size_kwargs = len(kwargs)
+
+        def get_device_dtype_from_tensor(other):
+            if other is not None:
+                device = str(other.place)[6:-1]
+                dtype = other.dtype
+                return device, dtype
+            else:
+                return None, None
+
+        if size_args + size_kwargs > 3 or size_args + size_kwargs == 0:
+            raise TypeError(
+                "to() received too mant arguments - expected one of:\n  \
+                * (Union[str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace(), paddle.XPUPlace(), paddle.CustomPlace()] \
+                device, Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
+                * (Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
+                * (paddle.Tensor other, bool blocking) "
+            )
+        valid_keys = {"device", "dtype", "blocking", "other"}
+        valid_dtypes = [
+            "bfloat16",
+            "float16",
+            "float32",
+            "float64",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "uint8",
+            "complex64",
+            "complex128",
+            "bool",
+        ]
+        invalid_keys = set(kwargs.keys()) - valid_keys
+        if len(invalid_keys) != 0:
+            raise TypeError(
+                "to() got an unexpected keyword argument "
+                + list(invalid_keys)[0]
+            )
+        if size_args > 0:
+            if isinstance(args[0], paddle.Tensor):
+                device, dtype = get_device_dtype_from_tensor(args[0])
+                if size_args == 2:
+                    blocking = args[1]
+                else:
+                    blocking = kwargs.get("blocking", None)
+            elif (
+                isinstance(args[0], (paddle.dtype, np.dtype))
+                or isinstance(args[0], str)
+                and args[0].lower() in valid_dtypes
+            ):
+                dtype = args[0]
+                if size_args == 2:
+                    blocking = args[1]
+                else:
+                    blocking = kwargs.get("blocking", None)
+            else:
+                device = args[0]
+                if size_args == 2:
+                    dtype = args[1]
+                elif size_args == 3:
+                    dtype, blocking = args[1], args[2]
+                else:
+                    dtype = kwargs.get("dtype", None)
+                    blocking = kwargs.get("blocking", None)
+        else:
+            device = kwargs.get("device", None)
+            dtype = kwargs.get("dtype", None)
+            blocking = kwargs.get("blocking", None)
+            if device is None and dtype is None:
+                device, dtype = get_device_dtype_from_tensor(
+                    kwargs.get("other", None)
+                )
+        return self._to(device, dtype, blocking)
+
     @property
     def grad(self):
         """
@@ -722,78 +861,31 @@ def monkey_patch_tensor():
             array = array.astype(dtype)
         return array
 
-    def contain_tensor(item):
-        if not isinstance(item, (tuple, list)):
-            item = [item]
+    def pre_deal_index_and_value(self, item, value=None):
+        # since in pybind there is no effiency way to transfer Py_Tuple/Py_List/Py_Range to Tensor
+        # we call this function in python level.
+        item = list(item) if isinstance(item, tuple) else [item]
+        for i, slice_item in enumerate(item):
+            if isinstance(slice_item, (list, np.ndarray, tuple)):
+                item[i] = paddle.to_tensor(slice_item)
+            elif isinstance(slice_item, range):
+                item[i] = paddle.to_tensor(list(slice_item))
 
-        for slice_item in item:
-            if isinstance(slice_item, slice):
-                if (
-                    isinstance(slice_item.start, Variable)
-                    or isinstance(slice_item.stop, Variable)
-                    or isinstance(slice_item.step, Variable)
-                ):
-                    return True
-            else:
-                if (
-                    isinstance(slice_item, (Variable, np.ndarray))
-                    and Variable.dtype != paddle.bool
-                ):
-                    return True
-        return False
+        if value is not None and not isinstance(value, Variable):
+            value = paddle.to_tensor(value, dtype=self.dtype)
 
-    def contain_tensor_or_list(item):
-        if not isinstance(item, tuple):
-            item = (item,)
-
-        for slice_item in item:
-            if isinstance(slice_item, (list, np.ndarray, Variable, range)):
-                return True
-
-        return False
+        return tuple(item), value
 
     def __getitem__(self, item):
-        if contain_tensor_or_list(item):
-            # 1. Call _getitem_impl_ when item contains tensor.
-            # Why not call a c++ function ? Because item can't be parsed when it contains tensor.
-            return _getitem_static(self, item)
-
-        else:
-            # 2. Call c++ func getitem_index_not_tensor to speedup.
-            return self._getitem_index_not_tensor(item)
+        item, _ = pre_deal_index_and_value(self, item)
+        return self._getitem_dygraph(item)
 
     def __setitem__(self, item, value):
-        def is_combine_index(item):
-            var_type = None
-            item_type = None
-            if isinstance(item, (tuple, list)):
-                for slice_item in item:
-                    if item_type is None:
-                        item_type = type(slice_item)
-                    else:
-                        if type(slice_item) != item_type:
-                            return True
-
-                    if isinstance(slice_item, Variable):
-                        if var_type is None:
-                            var_type = slice_item.dtype
-                        else:
-                            if var_type != slice_item.dtype:
-                                return True
-                return False
-
-            return False
-
-        if contain_tensor_or_list(item):
-            if core.is_compiled_with_xpu() and not is_combine_index(item):
-                # (NOTE): Currently, there is no index_put_xpu kernel.
-                return _setitem_impl_(self, item, value)
-            # To reuse code with static graph,
-            # Call _setitem_static when item contains tensor or list.
-            return _setitem_static(self, item, value)
-
-        else:
-            return self.__setitem_eager_tensor__(item, value)
+        if core.is_compiled_with_xpu():
+            # (NOTE): Currently, there is no index_put_xpu kernel.
+            return _setitem_impl_(self, item, value)
+        item, value = pre_deal_index_and_value(self, item, value)
+        return self._setitem_dygraph(item, value)
 
     @framework.dygraph_only
     def _set_grad_ivar(self, value):
@@ -889,6 +981,7 @@ def monkey_patch_tensor():
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
+
         Get the values of current SparseTensor(COO or CSR).
 
         Returns:
@@ -913,6 +1006,7 @@ def monkey_patch_tensor():
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
+
         Convert the current SparseTensor(COO or CSR) to DenseTensor.
 
         Returns:
@@ -941,6 +1035,7 @@ def monkey_patch_tensor():
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
+
         Convert the current DenseTensor to SparseTensor in COO format.
 
         Returns:
@@ -1020,6 +1115,7 @@ def monkey_patch_tensor():
         ("item", item),
         ("__setitem__", __setitem__),
         ("_to", _to),
+        ("to", to),
         ("values", values),
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),

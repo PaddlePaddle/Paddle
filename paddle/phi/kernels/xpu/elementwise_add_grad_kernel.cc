@@ -99,6 +99,10 @@ void AddGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    add_grad, XPU, ALL_LAYOUT, phi::AddGradKernel, phi::dtype::float16, float) {
-}
+PD_REGISTER_KERNEL(add_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::AddGradKernel,
+                   phi::dtype::float16,
+                   float,
+                   phi::dtype::bfloat16) {}

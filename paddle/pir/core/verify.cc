@@ -18,11 +18,10 @@ namespace pir {
 void Verify(Operation *op, bool verify_recursively) {
   op->Verify();
   if (!verify_recursively) return;
-  for (size_t index = 0; index < op->num_regions(); ++index) {
-    auto &region = op->region(index);
-    for (auto block : region) {
-      for (auto op_item : *block) {
-        Verify(op_item, verify_recursively);
+  for (auto &region : *op) {
+    for (auto &block : region) {
+      for (auto &op_item : block) {
+        Verify(&op_item, verify_recursively);
       }
     }
   }

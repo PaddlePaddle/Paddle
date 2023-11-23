@@ -44,15 +44,26 @@ class Int64Attribute;
 class ArrayAttribute;
 class PointerAttribute;
 
-using InsertPoint = std::pair<Block *, Block::Iterator>;
+using InsertionPoint = std::pair<Block *, Block::Iterator>;
 ///
 /// \brief Unified interface of the Attribute class. Derivation of all Attribute
 /// classes only derives interfaces, not members.
 ///
 class Builder {
  public:
-  Builder(IrContext *context, Block *block, Block::Iterator insert_point)
-      : context_(context), insert_point_(block, insert_point) {}
+  Builder(IrContext *context,
+          Block *block,
+          Block::Iterator insertion_point,
+          bool forbid_insert_without_position = true)
+      : context_(context),
+        insertion_point_(block, insertion_point),
+        forbid_insert_without_position_(forbid_insert_without_position) {}
+
+  Builder(IrContext *context, bool forbid_insert_without_position)
+      : Builder(context,
+                nullptr,
+                Block::Iterator{},
+                forbid_insert_without_position) {}
 
   Builder(IrContext *context, Block *block)
       : Builder(context, block, block->end()) {}
@@ -60,46 +71,46 @@ class Builder {
   explicit Builder(IrContext *context)
       : Builder(context, nullptr, Block::Iterator{}) {}
 
-  Builder(IrContext *context, const InsertPoint &insert_point)
-      : context_(context), insert_point_(insert_point) {}
+  Builder(IrContext *context, const InsertionPoint &insert_point)
+      : context_(context), insertion_point_(insert_point) {}
 
-  void SetInsertionPoint(const InsertPoint &insert_point) {
-    insert_point_ = insert_point;
+  void set_insertion_point(const InsertionPoint &insert_point) {
+    insertion_point_ = insert_point;
   }
 
   /// Set the insert point to the start of the specified block.
   void SetInsertionPointToStart(Block *block) {
-    SetInsertionPoint(block, block->begin());
+    set_insertion_point(block, block->begin());
   }
 
   /// Set the insertion point to the specified location.
-  void SetInsertionPoint(Block *block, Block::Iterator insert_point) {
-    insert_point_.first = block;
-    insert_point_.second = insert_point;
+  void set_insertion_point(Block *block, Block::Iterator insert_point) {
+    insertion_point_.first = block;
+    insertion_point_.second = insert_point;
   }
 
   /// Set the insertion point to the specified operation, which will cause
   /// subsequent insertions to go right before it.
-  void SetInsertionPoint(Operation *op) {
-    SetInsertionPoint(op->GetParent(), Block::Iterator{*op});
+  void set_insertion_point(Operation *op) {
+    set_insertion_point(op->GetParent(), Block::Iterator{*op});
   }
 
   /// Set the insertion point to the node after the specified operation, which
   /// will cause subsequent insertions to go right after it.
   void SetInsertionPointAfter(Operation *op) {
-    SetInsertionPoint(op->GetParent(), std::next(Block::Iterator{*op}));
+    set_insertion_point(op->GetParent(), std::next(Block::Iterator{*op}));
   }
 
   /// Set the insertion point to the end of the specified block.
   void SetInsertionPointToEnd(Block *block) {
-    SetInsertionPoint(block, block->end());
+    set_insertion_point(block, block->end());
   }
 
   IrContext *ir_context() const { return context_; }
 
-  Block *block() const { return insert_point_.first; }
+  Block *block() const { return insertion_point_.first; }
 
-  const InsertPoint &insert_point() const { return insert_point_; }
+  const InsertionPoint &insertion_point() const { return insertion_point_; }
 
   /// Creates an operation given the fields represented as an OperationState.
   IR_API Operation *Build(OperationArgument &&argument);
@@ -142,7 +153,9 @@ class Builder {
 
   IrContext *context_;
 
-  InsertPoint insert_point_;
+  InsertionPoint insertion_point_;
+
+  bool forbid_insert_without_position_;
 };
 
 template <typename OpTy, typename... Args>

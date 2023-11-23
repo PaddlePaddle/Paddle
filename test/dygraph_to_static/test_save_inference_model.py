@@ -162,17 +162,17 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
 
         loss_out_numpy = float(loss_out)
         self.check_save_inference_model(
-            layer, [x_data], loss_out_numpy, enable_new_ir=False
+            layer, [x_data], loss_out_numpy, enable_pir=False
         )
         self.check_save_inference_model(
-            layer, [x_data], loss_out_numpy, fetch=[loss], enable_new_ir=False
+            layer, [x_data], loss_out_numpy, fetch=[loss], enable_pir=False
         )
         self.check_save_inference_model(
-            layer, [x_data], loss_out_numpy, feed=[x], enable_new_ir=False
+            layer, [x_data], loss_out_numpy, feed=[x], enable_pir=False
         )
 
     def check_save_inference_model(
-        self, model, inputs, gt_out, feed=None, fetch=None, enable_new_ir=True
+        self, model, inputs, gt_out, feed=None, fetch=None, enable_pir=True
     ):
         expected_persistable_vars = {p.name for p in model.parameters()}
 
@@ -190,7 +190,7 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
             input_spec=feed if feed else None,
             output_spec=fetch if fetch else None,
         )
-        if enable_new_ir:
+        if enable_pir:
             wrapped_load_and_run_inference = compare_legacy_with_pir(
                 self.load_and_run_inference
             )
