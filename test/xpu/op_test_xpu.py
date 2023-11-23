@@ -22,9 +22,7 @@ from get_test_cover_info import (
 )
 
 sys.path.append("../legacy_test")
-from op_test import (
-    OpTest,
-)
+from op_test import OpTest
 from testsuite import append_loss_ops, create_op, set_input
 from white_list import no_grad_set_white_list, op_threshold_white_list
 
