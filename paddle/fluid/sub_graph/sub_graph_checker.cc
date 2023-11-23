@@ -407,9 +407,9 @@ void SubGraphChecker::AppendFetchOp(pir::Block* block,
 
   ::pir::Builder builder = ::pir::Builder(ctx, block);
 
-  for (size_t i = 0; i < block->back()->num_results(); ++i) {
+  for (size_t i = 0; i < block->back().num_results(); ++i) {
     auto name = prefix + std::to_string(i);
-    builder.Build<paddle::dialect::FetchOp>(block->back()->result(i), name, i);
+    builder.Build<paddle::dialect::FetchOp>(block->back().result(i), name, i);
 
     fetch_names->push_back(name);
   }
