@@ -142,7 +142,7 @@ def add_n(x):
     return ans
 
 
-@register_decomp('pd_op.silu')
+# @register_decomp('pd_op.silu')
 def silu(x):
     """
     define composite rule of op silu

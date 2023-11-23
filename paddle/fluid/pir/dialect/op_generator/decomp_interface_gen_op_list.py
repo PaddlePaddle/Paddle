@@ -28,6 +28,7 @@ decomp_interface_declare_gen_op_list = [
     "layer_norm",
     "gelu",
     "sqrt",
+    "silu",
 ]
 
 # come into effect in generated file op_decomp.cc

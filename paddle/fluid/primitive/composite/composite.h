@@ -204,6 +204,29 @@ Tensor softmax_decomp(const Tensor& x, const int& axis) {
 }
 
 template <typename T>
+Tensor silu_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  auto x_tmp = x;
+
+  bool need_cast =
+      org_dtype == phi::DataType::FLOAT16 || org_dtype == phi::DataType::UINT16;
+  if (need_cast) {
+    x_tmp = cast<T>(x, phi::DataType::FLOAT32);
+  }
+
+  // res = x / (1 + exp(-x))
+  auto one = full<T>(phi::vectorize(x.dims()), 1, x_tmp.dtype());
+  auto exp_temp =
+      exp<T>(full<T>(phi::vectorize(x.dims()), -1, x_tmp.dtype()) * x_tmp);
+  auto res = divide<T>(x_tmp, exp_temp + one);
+  if (need_cast) {
+    return cast<T>(res, org_dtype);
+  } else {
+    return res;
+  }
+}
+
+template <typename T>
 Tensor relu_decomp(const Tensor& x) {
   return maximum<T>(x, full<T>(phi::vectorize(x.dims()), 0.0, x.dtype()));
 }
