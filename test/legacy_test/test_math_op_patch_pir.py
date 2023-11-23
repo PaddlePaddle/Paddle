@@ -424,13 +424,12 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     x = paddle.static.data(name='x', shape=[3, 2, 1])
                     x.cpu()
                     x.cuda(1, False)
-                    breakpoint()
                     self.assertTrue(len(w) == 2)
                     self.assertTrue(
-                        "device_id is not supported" in str(w[-1].message)
+                        "device_id is not supported" in str(w[-2].message)
                     )
                     self.assertTrue(
-                        "blocking is not supported" in str(w[-2].message)
+                        "blocking is not supported" in str(w[-1].message)
                     )
 
     def test_some_dim(self):
