@@ -951,7 +951,7 @@ void AnalysisConfig::Update() {
   // disable mkldnn will be executed
   if ((!use_gpu() && !use_xpu() && !use_ipu() && !use_mkldnn_) ||
       (!phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) &&
-       !use_mkldnn_)) {
+       use_mkldnn_)) {
     // User manually disable mkldnn or disable when not support AVX2
     pass_builder()->DisableMKLDNN();
   }
