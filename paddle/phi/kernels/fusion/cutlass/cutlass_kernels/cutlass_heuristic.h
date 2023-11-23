@@ -41,6 +41,8 @@ struct TileShape {
 
 static TileShape get_cta_shape_for_config(CutlassTileConfig tile_config) {
   switch (tile_config) {
+    case CutlassTileConfig::CtaShape16x128x64_WarpShape16x32x64:
+      return TileShape{16, 128};
     case CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64:
       return TileShape{32, 128};
     case CutlassTileConfig::CtaShape64x128x64_WarpShape32x64x64:
@@ -48,15 +50,12 @@ static TileShape get_cta_shape_for_config(CutlassTileConfig tile_config) {
       return TileShape{64, 128};
     case CutlassTileConfig::CtaShape128x128x8_WarpShape64x64x8:
     case CutlassTileConfig::CtaShape128x128x64_WarpShape64x32x64:
-    case CutlassTileConfig::CtaShape128x128x64_WarpShape128x32x64:
+    case CutlassTileConfig::CtaShape128x128x64_WarpShape64x64x64:
       return TileShape{128, 128};
     // TODO(wangbojun) check the Tile Shape here,
     // {256, 128} have better performance than 128, 128
     case CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64:
       return TileShape{128, 256};
-    // TODO(wangbojun) CtaShape256x128x64_WarpShape64x64x64 is not a
-    case CutlassTileConfig::CtaShape256x128x64_WarpShape64x64x64:
-      return TileShape{256, 128};
     default:
       throw std::runtime_error(
           "[fpA_intB_gemm Error][get_grid_shape_for_config] Invalid config");
@@ -124,7 +123,7 @@ static std::vector<CutlassTileConfig> get_candidate_tiles(
       CutlassTileConfig::CtaShape16x128x64_WarpShape16x32x64,
       CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64,
       CutlassTileConfig::CtaShape64x128x64_WarpShape64x32x64,
-      CutlassTileConfig::CtaShape128x128x64_WarpShape128x32x64,
+      CutlassTileConfig::CtaShape128x128x64_WarpShape64x64x64,
       CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64};
   std::vector<CutlassTileConfig> quant_B_configs;
   switch (sm) {

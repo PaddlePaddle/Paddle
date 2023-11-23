@@ -173,6 +173,27 @@ void dispatch_gemm_to_cutlass(const T* A,
   // fpA_intB. We also only instantiate configs here where threadblockShapeM ==
   // warpShapeM since those usually perform the best for mixed type gemms.
   switch (gemm_config.tile_config) {
+    case CutlassTileConfig::CtaShape16x128x64_WarpShape16x32x64:
+      dispatch_gemm_config<T,
+                           WeightType,
+                           arch,
+                           EpilogueTag,
+                           cutlass::gemm::GemmShape<16, 128, 64>,
+                           cutlass::gemm::GemmShape<16, 32, 64>>(
+          A,
+          B,
+          weight_scales,
+          biases,
+          C,
+          m,
+          n,
+          k,
+          gemm_config,
+          workspace,
+          workspace_bytes,
+          stream,
+          occupancy);
+      break;
     case CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64:
       dispatch_gemm_config<T,
                            WeightType,
@@ -215,7 +236,7 @@ void dispatch_gemm_to_cutlass(const T* A,
           stream,
           occupancy);
       break;
-    case CutlassTileConfig::CtaShape128x128x64_WarpShape128x32x64:
+    case CutlassTileConfig::CtaShape128x128x64_WarpShape64x64x64:
       dispatch_gemm_config<T,
                            WeightType,
                            arch,
@@ -237,27 +258,6 @@ void dispatch_gemm_to_cutlass(const T* A,
           occupancy);
       break;
     // config for M_16000_N_12288_K_6144 in encoder
-    case CutlassTileConfig::CtaShape256x128x64_WarpShape64x64x64:
-      dispatch_gemm_config<T,
-                           WeightType,
-                           arch,
-                           EpilogueTag,
-                           cutlass::gemm::GemmShape<256, 128, 64>,
-                           cutlass::gemm::GemmShape<64, 64, 64>>(
-          A,
-          B,
-          weight_scales,
-          biases,
-          C,
-          m,
-          n,
-          k,
-          gemm_config,
-          workspace,
-          workspace_bytes,
-          stream,
-          occupancy);
-      break;
     case CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64:
       dispatch_gemm_config<T,
                            WeightType,

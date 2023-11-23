@@ -42,10 +42,12 @@ struct CUDA_HALF_2_TYPE_TARIS<half>{
   using type = half2;
 };
 
+#ifdef PADDLE_CUDA_BF16
 template<>
 struct CUDA_HALF_2_TYPE_TARIS<__nv_bfloat16>{
   using type = __nv_bfloat162;
 };
+#endif
 
 
 template <typename T>

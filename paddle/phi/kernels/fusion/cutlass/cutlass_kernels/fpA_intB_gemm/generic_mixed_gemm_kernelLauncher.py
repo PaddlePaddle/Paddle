@@ -82,15 +82,15 @@ epilogue_tags = ["bias", "biasFtGelu", "biasReLU", "noBias"]
 
 WeightTypes = ["uint8_t", "cutlass::uint4b_t"]
 ThreadblockShapes = [
+    "cutlass::gemm::GemmShape<16, 128, 64>",
     "cutlass::gemm::GemmShape<32, 128, 64>",
     "cutlass::gemm::GemmShape<64, 128, 64>",
     "cutlass::gemm::GemmShape<128, 128, 64>",
-    "cutlass::gemm::GemmShape<256, 128, 64>",
     "cutlass::gemm::GemmShape<128, 256, 64>",
 ]
 WarpShapes = [
+    "cutlass::gemm::GemmShape<16, 32, 64>",
     "cutlass::gemm::GemmShape<32, 32, 64>",
-    "cutlass::gemm::GemmShape<64, 64, 64>",
     "cutlass::gemm::GemmShape<64, 64, 64>",
     "cutlass::gemm::GemmShape<64, 64, 64>",
     "cutlass::gemm::GemmShape<64, 64, 64>",

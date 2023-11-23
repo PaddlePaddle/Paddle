@@ -57,11 +57,11 @@ enum class CutlassTileConfig {
 
   // Warp configs for M=128
   CtaShape128x128x64_WarpShape64x32x64,
-  CtaShape128x128x64_WarpShape128x32x64,
+  CtaShape128x128x64_WarpShape64x64x64,
 
   // configs for large M in encoder
   CtaShape128x256x64_WarpShape64x64x64,
-  CtaShape256x128x64_WarpShape64x64x64
+  // CtaShape256x128x64_WarpShape64x64x64
 };
 
 enum class SplitKStyle {
