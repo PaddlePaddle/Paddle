@@ -85,6 +85,7 @@
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_out)
   infer_meta :
     func : AdamwInferMeta
+    spmd_rule : AdamwInferSpmdDynamic
   kernel :
     func : adamw
     data_type : param
