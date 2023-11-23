@@ -518,10 +518,10 @@ def recompute(function, *args, **kwargs):
     # whether to use reentrant method to implement recompute
     use_reentrant = kwargs.pop('use_reentrant', True)
 
-    if kwargs and use_reentrant:
-        raise ValueError(
-            "Error, if you want to send kwargs(dict parameter) to function, please set use_reentrant=False."
-        )
+    # if kwargs and use_reentrant:
+    #     raise ValueError(
+    #         "Error, if you want to send kwargs(dict parameter) to function, please set use_reentrant=False."
+    #     )
     attention_mask = kwargs.pop('attention_mask', None)
     args.append(attention_mask)
 
