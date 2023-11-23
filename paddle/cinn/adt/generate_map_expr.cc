@@ -486,4 +486,14 @@ void TryGenerateMapExprFromGroup(
                                        ->map_expr_symbolic2dialect_symbolic()));
 }
 
+void TryGenerateMapExprFromGroup(
+    const std::shared_ptr<hlir::framework::pir::Group>& fusion_group) {
+  if (!FLAGS_cinn_enable_map_expr) {
+    return;
+  }
+  const auto& map_expr = GenerateMapExpr(fusion_group);
+  VLOG(1) << ToTxtString(map_expr, fusion_group->group_id);
+  fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));
+}
+
 }  // namespace cinn::adt

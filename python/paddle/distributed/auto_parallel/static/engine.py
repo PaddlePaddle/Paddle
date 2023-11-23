@@ -254,6 +254,8 @@ class Engine:
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
 
+        self.enable_job_schedule_profiler = False
+
     def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []
         labels_spec = []
@@ -565,9 +567,8 @@ class Engine:
         self._parallel(mode)
         # Init comm
         self._init_comm()
-        if init_parameters:
-            # startup program
-            self._initialize(mode)
+        # startup program
+        self._initialize(mode, init_parameters)
         self._has_prepared[mode] = True
 
     def _build(self, mode):
@@ -807,7 +808,19 @@ class Engine:
                 for process_group in all_process_groups:
                     process_group.instantiate()
 
-    def _initialize(self, mode):
+    def _share_parameters(self):
+        # mapping from {variable -> parameter}
+        named_params = self.program_helper.named_parameters()
+        for name, param in named_params.items():
+            var = global_scope().var(name)
+            if param.is_dense():
+                dense_tensor = var.get_tensor()
+                dense_tensor._share_data_with(param.get_tensor())
+            elif param.is_dist():
+                dense_tensor = var.get_tensor()
+                dense_tensor._share_data_with(param.get_tensor().get_tensor())
+
+    def _initialize(self, mode, init_parameters=True):
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
             self._place = paddle.framework.CUDAPlace(
@@ -821,10 +834,15 @@ class Engine:
 
         dist_context = self._dist_contexts[mode]
         if self._dygraph_mode:
-            dist_main_program = dist_context.dist_main_programs[self._cur_rank]
-            self.program_helper.init(
-                dist_main_program, self._place, dist_context
-            )
+            if not init_parameters:
+                self._share_parameters()
+            else:
+                dist_main_program = dist_context.dist_main_programs[
+                    self._cur_rank
+                ]
+                self.program_helper.init(
+                    dist_main_program, self._place, dist_context
+                )
             # The model's instance variables (not paramters), used in forward function,
             # have been initialized when initialize model in dynamic mode.
             if self._model and len(self._model.buffers()) > 0:
@@ -1492,6 +1510,11 @@ class Engine:
             and not self._has_prepared_reader[self._mode]
         ):
             self._prepare_reader()
+
+        self._executor.enable_job_schedule_profiler = (
+            self.enable_job_schedule_profiler
+        )
+
         outs = self._executor.run(
             self.main_program,
             feed=feed_dict,

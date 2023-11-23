@@ -14,13 +14,22 @@
 
 #pragma once
 
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program);
+using GroupPtr = std::shared_ptr<Group>;
+using GroupList = std::vector<GroupPtr>;
+
+GroupList OpFusionPassInternal(
+    const std::vector<pir::Operation*>& op_list,
+    const std::vector<pir::Operation*>& output_op_list = {});
+
+GroupList GeneralFusionMergePassInternal(const GroupList& group_list);
 
 }  // namespace ir
 }  // namespace dialect

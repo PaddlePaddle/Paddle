@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,22 +14,13 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/tensor_node.h"
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_node.h"
+namespace pir {
 
-namespace cinn {
-namespace dialect {
-namespace ir {
+class Pass;
 
-OpNode TensorNode::producer() const {
-  return OpNode(node_data_.dyn_cast<pir::OpResult>().owner());
-}
+IR_API std::unique_ptr<Pass> CreateConv2dFusePass();
 
-OpNode TensorNode::ConsumerOpListView::Iterator::operator*() const {
-  return OpNode(iter_.owner());
-}
-
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+}  // namespace pir

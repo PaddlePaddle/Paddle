@@ -14,23 +14,22 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph.h"
 
-namespace cinn {
-namespace dialect {
+namespace paddle {
+namespace framework {
 namespace ir {
 
-using GroupPtr = std::shared_ptr<Group>;
-using GroupList = std::vector<GroupPtr>;
+class TrtRemoveAMPStrategyOpPass : public FusePassBase {
+ public:
+  TrtRemoveAMPStrategyOpPass() = default;
+  ~TrtRemoveAMPStrategyOpPass() = default;
 
-GroupList OpFusionPassInternal(
-    const std::vector<pir::Operation*>& op_list,
-    const std::vector<pir::Operation*>& output_op_list = {});
-
-GroupList GeneralFusionMergePassInternal(const GroupList& group_list);
+ protected:
+  void ApplyImpl(Graph* graph) const override;
+};
 
 }  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+}  // namespace framework
+}  // namespace paddle

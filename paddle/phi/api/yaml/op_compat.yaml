@@ -3297,6 +3297,12 @@
   outputs :
     out: Out
 
+- op: c_reducescatter
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_sync_calc_stream
   inputs :
     x : X
@@ -3471,6 +3477,12 @@
     x : X
   outputs :
     out : Out
+
+- op: uniform_random_batch_size_like
+  inputs:
+     input : Input
+  outputs:
+     out: Out
 
 - op: write_to_array
   inputs :
