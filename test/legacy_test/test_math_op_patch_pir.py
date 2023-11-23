@@ -22,7 +22,6 @@ import paddle
 from paddle import base
 
 paddle.enable_static()
-paddle.device.set_device("cpu")
 
 
 def new_program():
@@ -411,6 +410,27 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 x.place()
                 self.assertTrue(len(w) == 1)
                 self.assertTrue("place" in str(w[-1].message))
+
+    def test_cpu(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data(name='x', shape=[3, 2, 1])
+            x.cpu()
+
+    def test_cuda(self):
+        if base.is_compiled_with_cuda():
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                with paddle.pir_utils.IrGuard():
+                    x = paddle.static.data(name='x', shape=[3, 2, 1])
+                    x.cpu()
+                    x.cuda(1, False)
+                    self.assertTrue(len(w) == 1)
+                    self.assertTrue(
+                        "device_id is not supported" in str(w[-1].message)
+                    )
+                    self.assertTrue(
+                        "blocking is not supported" in str(w[-1].message)
+                    )
 
     def test_some_dim(self):
         with paddle.pir_utils.IrGuard():

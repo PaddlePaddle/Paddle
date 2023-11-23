@@ -65,6 +65,67 @@ def monkey_patch_opresult():
             raise ValueError("Cannot get data type from var")
         return dtype
 
+    def cpu(self):
+        """
+        In dy2static, OpResult also needs cpu() and cuda() interface.
+        But, the underneath operator has only forward op but not backward one.
+
+        Returns:
+            The tensor which has copied to cpu place.
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> y = x.cpu()
+        """
+        from paddle import _C_ops
+
+        # 0 means cpu place, see paddle/phi/kernels/memcpy_kernel.cc
+        return _C_ops.memcpy(self, 0)
+
+    def cuda(self, device_id: int | None = None, blocking: bool = True):
+        """
+        In dy2static, OpResult also needs cpu() and cuda() interface.
+        But, the underneath operator has only forward op but not backward one.
+
+        Args:
+            self(OpResult): The variable itself.
+            device_id(int, optional): The destination GPU device id. Default: None, means current device.
+                We add this argument for dy2static translation, please do not use it.
+            blocking(bool, optional): Whether blocking or not, Default: True.
+                We add this argument for dy2static translation, please do not use it.
+
+        Returns:
+            The tensor which has copied to cuda place.
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> y = x.cpu()
+                >>> z = y.cuda()
+        """
+        from paddle import _C_ops
+
+        if device_id is not None:
+            warnings.warn("device_id is not supported, and it will be ignored.")
+        if blocking is not True:
+            warnings.warn("blocking is not supported, and it will be ignored.")
+
+        # 1 means cuda place, see paddle/phi/kernels/memcpy_kernel.cc
+        return _C_ops.memcpy(self, 1)
+
     def place(self):
         """
         OpResult don't have 'place' interface in static graph mode
@@ -359,6 +420,8 @@ def monkey_patch_opresult():
     import paddle
 
     opresult_methods = [
+        ('cpu', cpu),
+        ('cuda', cuda),
         ('place', place),
         ('item', _item),
         ('dim', dim),
