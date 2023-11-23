@@ -14,8 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/new_executor/interpretercore.h"
-#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/pir/core/program.h"
 
 namespace paddle {
@@ -51,8 +50,6 @@ class SubGraphChecker {
   std::shared_ptr<pir::Program> prim_program_;
 
   std::unique_ptr<pir::Program> phi_kernel_program_;
-
-  paddle::framework::InterpreterCore* phi_exec_;
 
   paddle::framework::Scope inner_scope_;
 

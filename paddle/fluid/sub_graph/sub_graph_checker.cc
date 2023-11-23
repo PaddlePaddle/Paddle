@@ -16,15 +16,15 @@
 
 #include <chrono>
 #include <ctime>
-
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/pir/core/ir_context.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -141,14 +141,13 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunPhiResult() {
   for (auto name : phi_fetch_names_) {
     fetch_var_names.push_back(name + "@fetch");
   }
-  phi_exec_ =
-      new paddle::framework::InterpreterCore(place,
-                                             fetch_var_names,
-                                             phi_kernel_program_->block(),
-                                             &inner_scope_,
-                                             exec_config);
+  paddle::framework::InterpreterCore exec(place,
+                                          fetch_var_names,
+                                          phi_kernel_program_->block(),
+                                          &inner_scope_,
+                                          exec_config);
 
-  phi_exec_->Run({}, true);
+  exec.Run({}, true);
 
   std::vector<phi::DenseTensor> vec_res;
   for (auto& name : fetch_var_names) {
@@ -175,14 +174,13 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
   pm.Run(prim_program_.get());
-
-  auto res = cinn::dialect::ir::CINNGroupLoweringPass(prim_program_.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+      paddle::dialect::PdOpLowerToKernelPass(prim_program_.get(), place);
 
   std::vector<std::string> fetch_var_names;
   for (auto name : cinn_fetch_names_) {
@@ -237,20 +235,19 @@ double SubGraphChecker::RunPhiSpeed() {
   for (auto name : phi_fetch_names_) {
     fetch_var_names.push_back(name + "@fetch");
   }
-  phi_exec_ =
-      new paddle::framework::InterpreterCore(place,
-                                             fetch_var_names,
-                                             phi_kernel_program_->block(),
-                                             &inner_scope_,
-                                             exec_config);
+  paddle::framework::InterpreterCore exec(place,
+                                          fetch_var_names,
+                                          phi_kernel_program_->block(),
+                                          &inner_scope_,
+                                          exec_config);
   // warm up
   for (size_t i = 0; i < 10; ++i) {
-    phi_exec_->Run({}, true);
+    exec.Run({}, true);
   }
 
   auto start = std::chrono::system_clock::now();
-  for (size_t i = 0; i < 1000; ++i) {
-    phi_exec_->Run({}, true);
+  for (size_t i = 0; i < 10000; ++i) {
+    exec.Run({}, true);
   }
   auto end = std::chrono::system_clock::now();
 
@@ -272,16 +269,15 @@ double SubGraphChecker::RunCinnSpeed() {
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
   pm.Run(prim_program_.get());
-
-  auto res = cinn::dialect::ir::CINNGroupLoweringPass(prim_program_.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
-  RemoveFetchOp(res->block());
+  RemoveFetchOp(prim_program_->block());
 
   auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+      paddle::dialect::PdOpLowerToKernelPass(prim_program_.get(), place);
 
   std::vector<std::string> fetch_var_names;
   for (auto name : cinn_fetch_names_) {
@@ -306,7 +302,7 @@ double SubGraphChecker::RunCinnSpeed() {
   }
 
   auto start = std::chrono::system_clock::now();
-  for (size_t i = 0; i < 1000; ++i) {
+  for (size_t i = 0; i < 10000; ++i) {
     executor.Run({}, true);
   }
   auto end = std::chrono::system_clock::now();
