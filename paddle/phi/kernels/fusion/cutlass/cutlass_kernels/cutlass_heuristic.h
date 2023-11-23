@@ -59,7 +59,7 @@ static TileShape get_cta_shape_for_config(CutlassTileConfig tile_config) {
       return TileShape{256, 128};
     default:
       throw std::runtime_error(
-          "[FT Error][get_grid_shape_for_config] Invalid config");
+          "[fpA_intB_gemm Error][get_grid_shape_for_config] Invalid config");
   }
 }
 
@@ -108,24 +108,24 @@ static std::vector<CutlassTileConfig> get_candidate_tiles(
     const bool is_weight_only_encoder,
     const bool simt_configs_only,
     const int sm) {
+  VLOG(3) << "get_candidate_tiles sm: " << sm;
   std::vector<CutlassTileConfig> simt_configs{
       CutlassTileConfig::CtaShape128x128x8_WarpShape64x64x8};
 
   std::vector<CutlassTileConfig> square_configs{
       CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64,
       CutlassTileConfig::CtaShape64x128x64_WarpShape32x64x64,
-      CutlassTileConfig::CtaShape128x128x64_WarpShape64x32x64,
   };
-
   std::vector<CutlassTileConfig> quant_B_configs_sm70{
       CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64,
       CutlassTileConfig::CtaShape64x128x64_WarpShape64x32x64,
   };
   std::vector<CutlassTileConfig> quant_B_configs_sm80{
+      CutlassTileConfig::CtaShape16x128x64_WarpShape16x32x64,
       CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64,
       CutlassTileConfig::CtaShape64x128x64_WarpShape64x32x64,
-      CutlassTileConfig::CtaShape128x128x64_WarpShape128x32x64};
-
+      CutlassTileConfig::CtaShape128x128x64_WarpShape128x32x64,
+      CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64};
   std::vector<CutlassTileConfig> quant_B_configs;
   switch (sm) {
     case 80:
@@ -139,13 +139,8 @@ static std::vector<CutlassTileConfig> get_candidate_tiles(
       quant_B_configs = quant_B_configs_sm70;
       break;
   }
-
-  std::vector<CutlassTileConfig> encoder_quant_B_configs{
-      CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64
-      //    CutlassTileConfig::CtaShape256x128x64_WarpShape64x64x64
-  };
   const std::vector<CutlassTileConfig> allowed_quant_B_configs =
-      is_weight_only_encoder ? encoder_quant_B_configs : quant_B_configs;
+      quant_B_configs;
   const std::vector<CutlassTileConfig> allowed_configs =
       is_weight_only ? allowed_quant_B_configs : square_configs;
   return simt_configs_only ? simt_configs : allowed_configs;
@@ -186,28 +181,30 @@ static CutlassGemmConfig estimate_best_config_from_occupancies(
     const int is_weight_only) {
   if (occupancies.size() != candidate_configs.size()) {
     throw std::runtime_error(
-        "[FT Error][estimate_best_config_from_occupancies] occpancies and "
+        "[fpA_intB_gemm Error][estimate_best_config_from_occupancies] occpancies and "
         "candidate configs vectors must have equal length.");
   }
 
   CutlassGemmConfig best_config;
-  if (m <= 64){
-    best_config=CutlassGemmConfig{CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64, SplitKStyle::NO_SPLIT_K, 1, 5};
-  } else if (m<256){
-    if(n>=k*2){
-      best_config=CutlassGemmConfig{CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64, SplitKStyle::NO_SPLIT_K, 1, 5};
-    } else{
-      best_config=CutlassGemmConfig{CutlassTileConfig::CtaShape128x128x64_WarpShape128x32x64, SplitKStyle::NO_SPLIT_K, 1, 5};
-    }
-  } else if( (m >= 256) && (n >= k * 2)){
-      best_config=CutlassGemmConfig{CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64, SplitKStyle::NO_SPLIT_K, 1, 5};
-  } else {
+  if (m >= 256 &&
+        std::find_if(
+            candidate_configs.begin(),
+            candidate_configs.end(),
+            [](const CutlassGemmConfig& gemm_config) {
+              return gemm_config.tile_config ==
+                    CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64;
+            }) != candidate_configs.end()) {
+      best_config = CutlassGemmConfig{
+          CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64,
+          SplitKStyle::NO_SPLIT_K,
+          1,
+          5};
+    } else {
     // Score will be [0, 1]. The objective is to minimize this score.
     // It represents the fraction of SM resources unused in the last wave.
     float config_score = 1.0f;
     int config_waves = INT_MAX;
     int current_m_tile = 0;
-
     const int max_split_k = n >= multi_processor_count * 256 ? 1 : split_k_limit;
     for (int ii = 0; ii < candidate_configs.size(); ++ii) {
       CutlassGemmConfig candidate_config = candidate_configs[ii];
@@ -283,7 +280,7 @@ static CutlassGemmConfig estimate_best_config_from_occupancies(
 
   if (best_config.tile_config == CutlassTileConfig::ChooseWithHeuristic) {
     throw std::runtime_error(
-        "[FT Error] Heurisitc failed to find a valid config.");
+        "[fpA_intB_gemm Error] Heurisitc failed to find a valid config.");
   }
   VLOG(3)<<"m n k:"<<m<<" "<<n<<" "<<k
             <<" with best_config: split_factor: "<<best_config.split_k_factor

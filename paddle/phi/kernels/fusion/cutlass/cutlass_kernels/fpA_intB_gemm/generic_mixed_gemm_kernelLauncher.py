@@ -105,9 +105,9 @@ Archs = {
 }
 EpilogueTags = {
     "bias": "EpilogueOpBias",
-    "biasFtGelu": "EpilogueOpBiasFtGelu",
-    "biasReLU": "EpilogueOpBiasReLU",
     "noBias": "EpilogueOpNoBias",
+    # "biasFtGelu": "EpilogueOpBiasFtGelu",
+    # "biasReLU": "EpilogueOpBiasReLU",
 }
 
 

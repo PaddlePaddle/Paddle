@@ -118,8 +118,7 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
                                        ElementAccumulator,
                                        EpilogueTag>::Op;
 // TODO(wangbojun), for llama 13b, we don't want to use normal-dp gemm
-// if(gemm_config.split_k_style == SplitKStyle::NO_SPLIT_K){
-if (false){
+if(gemm_config.split_k_style == SplitKStyle::NO_SPLIT_K){
     using GemmKernel_ = typename cutlass::gemm::kernel::DefaultGemm<
         ElementType,
         cutlass::layout::RowMajor,
@@ -223,7 +222,7 @@ if (false){
       throw std::runtime_error("[fpA_intB Runner] " + err_msg);
     }
   } else {
-      // TODO(WANGBOJUN)
+      // for stream-k, we set gemm_config.split_k_factor = 1 to use default load balance.
       gemm_config.split_k_factor = 1;
       using GemmKernel_ = typename cutlass::gemm::kernel::DefaultGemmUniversal<
           ElementType,
@@ -267,8 +266,6 @@ if (false){
           cutlass::platform::is_same<cutlass::layout::RowMajor, typename MixedGemmArchTraits::LayoutB>::value ?
               n :
               k * GemmKernel::kInterleave;
-      // TODO wangbojun
-
       typename Gemm::Arguments args(cutlass::gemm::GemmUniversalMode::kGemm,
                                   {m, n, k},
                                   {reinterpret_cast<ElementType*>(const_cast<T*>(A)), k},
@@ -302,21 +299,21 @@ if (false){
       if (can_implement != cutlass::Status::kSuccess) {
           std::string err_msg = "fpA_intB cutlass kernel will fail for params. Error: "
                               + std::string(cutlassGetStatusString(can_implement));
-          throw std::runtime_error("[FT Error][fpA_intB Runner] " + err_msg);
+          throw std::runtime_error("[fpA_intB_gemm Error][fpA_intB Runner] " + err_msg);
       }
 
       auto init_status = gemm.initialize(args, workspace, stream);
       if (init_status != cutlass::Status::kSuccess) {
           std::string err_msg =
               "Failed to initialize cutlass fpA_intB gemm. Error: " + std::string(cutlassGetStatusString(init_status));
-          throw std::runtime_error("[FT Error][fpA_intB Runner] " + err_msg);
+          throw std::runtime_error("[fpA_intB_gemm Error][fpA_intB Runner] " + err_msg);
       }
 
       auto run_status = gemm.run(stream);
       if (run_status != cutlass::Status::kSuccess) {
           std::string err_msg =
               "Failed to run cutlass fpA_intB gemm. Error: " + std::string(cutlassGetStatusString(run_status));
-          throw std::runtime_error("[FT Error][fpA_intB Runner] " + err_msg);
+          throw std::runtime_error("[fpA_intB_gemm Error][fpA_intB Runner] " + err_msg);
       }   
   }
 }

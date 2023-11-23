@@ -29,6 +29,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/fpA_intB_gemm_template.h"
+#include "paddle/phi/core/errors.h"
+#include "paddle/phi/core/enforce.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
@@ -475,31 +477,12 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::gemm_bias_act(
     char* workspace_ptr,
     const size_t workspace_bytes,
     cudaStream_t stream) {
-  // VLOG(3)<<__PRETTY_FUNCTION__;
   if (activation_type == "gelu") {
-    run_gemm<EpilogueOpBiasFtGelu>(A,
-                                   B,
-                                   weight_scales,
-                                   biases,
-                                   C,
-                                   m,
-                                   n,
-                                   k,
-                                   workspace_ptr,
-                                   workspace_bytes,
-                                   stream);
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Activation_type = gelu for fpA_intB gemm is not instantiated."));
   } else if (activation_type == "relu") {
-    run_gemm<EpilogueOpBiasReLU>(A,
-                                 B,
-                                 weight_scales,
-                                 biases,
-                                 C,
-                                 m,
-                                 n,
-                                 k,
-                                 workspace_ptr,
-                                 workspace_bytes,
-                                 stream);
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Activation_type = relu for fpA_intB gemm is not instantiated."));
   } else if (activation_type == "none") {
     run_gemm<EpilogueOpBias>(A,
                              B,

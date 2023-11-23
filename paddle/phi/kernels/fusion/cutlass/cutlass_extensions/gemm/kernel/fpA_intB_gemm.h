@@ -505,10 +505,9 @@ struct GemmFpAIntB {
     KernelRunner<compile_needed>::run_kernel(params, shared_storage);
 
 #elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 750) && (__CUDA_ARCH__ < 800)
-    // static constexpr bool compile_needed = platform::is_same<KernelArch,
-    // arch::Sm75>::value; KernelRunner<compile_needed>::run_kernel(params,
-    // shared_storage);
-    CUTLASS_NOT_IMPLEMENTED();
+    static constexpr bool compile_needed = platform::is_same<KernelArch,
+    arch::Sm75>::value; KernelRunner<compile_needed>::run_kernel(params,
+    shared_storage);
 #elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800) && (__CUDA_ARCH__ < 900)
     static constexpr bool compile_needed =
         platform::is_same<KernelArch, arch::Sm80>::value;
