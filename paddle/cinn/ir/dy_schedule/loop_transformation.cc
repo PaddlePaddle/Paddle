@@ -14,9 +14,65 @@
 
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/dy_schedule/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 
 namespace cinn {
 namespace ir {
+
+struct FindBlockParent : public ir::IRMutator<> {
+ public:
+  explicit FindBlockParent(const std::string& block_name)
+      : block_name_(block_name) {}
+
+  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
+
+ private:
+  void Visit(const ir::Block* expr, Expr* op) override {
+    if (target_) return;
+    for (auto& stmt : expr->stmts) {
+      if (stmt.As<ir::ScheduleBlockRealize>()) {
+        if (stmt.As<ir::ScheduleBlockRealize>()
+                ->schedule_block.As<ir::ScheduleBlock>()
+                ->name == block_name_) {
+          target_ = op;
+          return;
+        }
+      }
+    }
+    IRMutator::Visit(expr, op);
+  }
+
+  void Visit(const ir::For* expr, Expr* op) override {
+    if (target_) return;
+    if (expr->body.As<ir::ScheduleBlockRealize>()) {
+      if (expr->body.As<ir::ScheduleBlockRealize>()
+              ->schedule_block.As<ir::ScheduleBlock>()
+              ->name == block_name_) {
+        target_ = op;
+        return;
+      }
+    }
+    IRMutator::Visit(expr, op);
+  }
+
+  void Visit(const ir::ScheduleBlock* expr, Expr* op) override {
+    if (target_) return;
+    if (expr->body.As<ir::ScheduleBlockRealize>()) {
+      if (expr->body.As<ir::ScheduleBlockRealize>()
+              ->schedule_block.As<ir::ScheduleBlock>()
+              ->name == block_name_) {
+        target_ = op;
+        return;
+      }
+    }
+    IRMutator::Visit(expr, op);
+  }
+
+  std::string block_name_;
+
+ public:
+  ir::Expr* target_{nullptr};
+};
 
 std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
                                         const std::vector<int>& factors) {
@@ -88,40 +144,223 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
 }
 
 Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
-  CINN_NOT_IMPLEMENTED;
+  VLOG(3) << "Tring to fuse:\n" << cinn::utils::Join(loops, "\n");
+  std::vector<const ir::For*> for_nodes;
+  std::vector<Var> loop_vars;
+  CHECK(!loops.empty())
+      << "The loops param of Fuse should not be empty! Please check.";
+
+  for (const Expr& it_loop : loops) {
+    CHECK(it_loop.As<ir::For>())
+        << "Expr param of Fuse must be For node! Please check.";
+    if (!for_nodes.empty()) {
+      CHECK(for_nodes.back()->body.As<ir::Block>())
+          << "The body of for node is not Block!";
+      CHECK_EQ(for_nodes.back()->body.As<ir::Block>()->stmts.size(), 1U)
+          << "The Block'size of for node is not 1!";
+      CHECK_EQ(for_nodes.back()->body.As<ir::Block>()->stmts[0], it_loop)
+          << "The For nodes in loops param of Fuse must be adjacent! Please "
+             "check.";
+    }
+    for_nodes.push_back(it_loop.As<ir::For>());
+    loop_vars.push_back(it_loop.As<ir::For>()->loop_var);
+  }
+  std::string suffix;
+  suffix = for_nodes[0]->loop_var->name;
+  int loops_number = for_nodes.size();
+  for (int i = 1; i < loops_number; ++i) {
+    suffix += "_" + for_nodes[i]->loop_var->name;
+  }
+  suffix += "_fused";
+  Var fused_var(suffix);
+  std::vector<Expr> substitute_value;
+  substitute_value.resize(loops_number);
+  Expr fused_expr(fused_var);
+  for (int i = loops_number - 1; i > 0; i--) {
+    substitute_value[i] = Mod::Make(fused_expr, for_nodes[i]->extent);
+    fused_expr = Div::Make(fused_expr, for_nodes[i]->extent);
+  }
+  substitute_value[0] = fused_expr;
+
+  Expr fused_body = ir::ir_utils::IRCopy(for_nodes.back()->body);
+  ReplaceExpr(&fused_body, loop_vars, substitute_value);
+  optim::Simplify(&fused_body);
+  Expr fused_extent(1);
+  for (int i = 0; i < loops_number; ++i) {
+    fused_extent = fused_extent * for_nodes[i]->extent;
+  }
+
+  // current AutoSimplify doesn't support symbolic_dim
+  // fused_extent = common::AutoSimplify(fused_extent);
+
+  if (!fused_body.As<ir::Block>()) fused_body = Block::Make({fused_body});
+  Expr new_stmt = For::Make(fused_var,
+                            Expr(0),
+                            fused_extent,
+                            for_nodes[0]->for_type(),
+                            for_nodes[0]->device_api,
+                            fused_body);
+  this->Replace(loops[0], new_stmt);
+
+  VLOG(3) << "After fuse, ir is:\n" << new_stmt;
+  return new_stmt;
 }
 
 Expr DyScheduleImpl::Fuse(const std::string& block_name,
                           const std::vector<int>& loops_index) {
-  CINN_NOT_IMPLEMENTED;
+  std::vector<Expr> all_loops = this->GetLoops(block_name);
+  std::vector<Expr> loops_expr;
+  loops_expr.reserve(loops_index.size());
+  for (int i = 0; i < loops_index.size(); ++i) {
+    if (i > 0)
+      CHECK_EQ(loops_index[i - 1] + 1, loops_index[i])
+          << "Loops index in Fuse shoule be continuous!";
+  }
+  for (int i : loops_index) {
+    CHECK_LT(i, (int)all_loops.size())
+        << "The loop index in Fuse should be less than total loop's number.";
+    CHECK_GE(i, 0) << "The loop index in Fuse should be >= 0.";
+    loops_expr.emplace_back(all_loops[i]);
+  }
+  return this->Fuse(loops_expr);
 }
 
 Expr DyScheduleImpl::Fuse(const Expr& block,
                           const std::vector<int>& loops_index) {
-  CINN_NOT_IMPLEMENTED;
+  std::vector<Expr> all_loops = this->GetLoops(block);
+  std::vector<Expr> loops_expr;
+  loops_expr.reserve(loops_index.size());
+  for (int i = 0; i < loops_index.size(); ++i) {
+    if (i > 0)
+      CHECK_EQ(loops_index[i - 1] + 1, loops_index[i])
+          << "Loops index in Fuse shoule be continuous!";
+  }
+  for (int i : loops_index) {
+    CHECK_LT(i, (int)all_loops.size())
+        << "The loop index in Fuse should be less than total loop's number.";
+    CHECK_GE(i, 0) << "The loop index in Fuse should be >= 0.";
+    loops_expr.emplace_back(all_loops[i]);
+  }
+  return this->Fuse(loops_expr);
 }
 
 Expr DyScheduleImpl::Reorder(const std::vector<Expr>& loops) {
-  CINN_NOT_IMPLEMENTED;
+  if (loops.size() <= 1) {
+    return Expr{nullptr};
+  }
+  VLOG(4) << "Before Reorder, ir is:\n" << loops[0];
+
+  std::set<Expr, CompExpr> loop_set = CollectLoopsToSet(loops);
+  auto boundary = GetBoundaryOfReorderRange(loop_set);
+  Expr top = boundary.first;
+  Expr bottom = boundary.second;
+  std::vector<Expr> chain = GetLoopsInRange(top, bottom);
+  std::vector<Expr> if_nodes = GetIfThenElseInRange(top, bottom);
+  Expr new_loop = ConstructNewLoopChain(chain, loops, loop_set, if_nodes);
+  this->Replace(top, new_loop);
+
+  VLOG(4) << "After Reorder, ir is:\n" << new_loop;
+  return new_loop;
 }
 
 Expr DyScheduleImpl::Reorder(const std::string& block_name,
                              const std::vector<int>& loops_index) {
-  CINN_NOT_IMPLEMENTED;
+  std::vector<Expr> all_loops = this->GetLoops(block_name);
+  std::vector<Expr> loops_expr;
+  loops_expr.reserve(loops_index.size());
+  for (int i : loops_index) {
+    CHECK_LT(i, (int)all_loops.size())
+        << "The loop index in Reorder should be less than total loop's number.";
+    CHECK_GE(i, 0) << "The loop index in Reorder should be >= 0.";
+    loops_expr.emplace_back(all_loops[i]);
+  }
+  return this->Reorder(loops_expr);
 }
 
 Expr DyScheduleImpl::Reorder(const Expr& block,
                              const std::vector<int>& loops_index) {
-  CINN_NOT_IMPLEMENTED;
+  std::vector<Expr> all_loops = this->GetLoops(block);
+  std::vector<Expr> loops_expr;
+  loops_expr.reserve(loops_index.size());
+  for (int i : loops_index) {
+    CHECK_LT(i, (int)all_loops.size())
+        << "The loop index in Reorder should be less than total loop's number.";
+    CHECK_GE(i, 0) << "The loop index in Reorder should be >= 0.";
+    loops_expr.emplace_back(all_loops[i]);
+  }
+  return this->Reorder(loops_expr);
 }
 
 Expr DyScheduleImpl::AddUnitLoop(const Expr& block) const {
-  CINN_NOT_IMPLEMENTED;
+  auto exprs = module_expr_.GetExprs();
+  CHECK(block.As<ir::ScheduleBlockRealize>());
+  CHECK(block.As<ir::ScheduleBlockRealize>()
+            ->schedule_block.As<ir::ScheduleBlock>());
+  std::string block_name = block.As<ir::ScheduleBlockRealize>()
+                               ->schedule_block.As<ir::ScheduleBlock>()
+                               ->name;
+
+  FindBlockParent visitor(block_name);
+  for (auto expr : exprs) {
+    visitor(&expr);
+    if (visitor.target_) {
+      break;
+    }
+  }
+
+  CHECK(visitor.target_) << ", block name : " << block_name << "\n" << exprs;
+  if (visitor.target_->As<ir::Block>()) {
+    for (auto& stmt : visitor.target_->As<ir::Block>()->stmts) {
+      if (stmt.As<ir::ScheduleBlockRealize>()) {
+        if (stmt.As<ir::ScheduleBlockRealize>()
+                ->schedule_block.As<ir::ScheduleBlock>()
+                ->name == block_name) {
+          auto block = ir::Block::Make({GetBlock(block_name)});
+          auto loop = ir::For::Make(ir::Var(common::UniqName("ix")),
+                                    ir::Expr(0),
+                                    ir::Expr(1),
+                                    ir::ForType::Serial,
+                                    ir::DeviceAPI::UNK,
+                                    block);
+          stmt = loop;
+          return loop;
+        }
+      }
+    }
+  } else if (visitor.target_->As<ir::For>()) {
+    auto block = ir::Block::Make({visitor.target_->As<ir::For>()->body});
+    auto loop = ir::For::Make(ir::Var(common::UniqName("ix")),
+                              ir::Expr(0),
+                              ir::Expr(1),
+                              ir::ForType::Serial,
+                              ir::DeviceAPI::UNK,
+                              block);
+    visitor.target_->As<ir::For>()->body = loop;
+    return loop;
+  } else if (visitor.target_->As<ir::ScheduleBlock>()) {
+    auto block =
+        ir::Block::Make({visitor.target_->As<ir::ScheduleBlock>()->body});
+    auto loop = ir::For::Make(ir::Var(common::UniqName("ix")),
+                              ir::Expr(0),
+                              ir::Expr(1),
+                              ir::ForType::Serial,
+                              ir::DeviceAPI::UNK,
+                              block);
+    visitor.target_->As<ir::ScheduleBlock>()->body = loop;
+    return loop;
+  } else {
+    LOG(FATAL) << "Can't find block's parent!";
+  }
+  LOG(FATAL) << "Shouldn't reach code here in AddUnitLoop";
+  return Expr{nullptr};
 }
 
 void DyScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
                                   const bool force_flat) {
-  CINN_NOT_IMPLEMENTED;
+  std::for_each(loops.begin(), loops.end(), [](Expr& loop) {
+    if (!loop.As<For>()->extent.is_constant())
+      LOG(FATAL) << "Loop with extent which is variable can't be flatten\n";
+  })
 }
 
 }  // namespace ir
