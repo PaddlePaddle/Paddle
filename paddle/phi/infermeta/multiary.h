@@ -138,6 +138,19 @@ void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
                               MetaTensor* out,
                               MetaConfig config);
 
+void ASGDInferMeta(const MetaTensor& param,
+                   const MetaTensor& learning_rate,
+                   const MetaTensor& grad,
+                   const MetaTensor& d,
+                   const MetaTensor& y,
+                   const MetaTensor& n,
+                   const MetaTensor& master_param,
+                   bool multi_precision,
+                   MetaTensor* param_out,
+                   MetaTensor* d_out,
+                   MetaTensor* y_out,
+                   MetaTensor* master_param_out);
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,

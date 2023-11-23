@@ -189,6 +189,19 @@
   backward : as_strided_grad
   no_need_buffer : input
 
+- op : asgd_
+  args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor d, Tensor y, Tensor n, Tensor master_param, bool multi_precision=false)
+  output : Tensor(param_out), Tensor(d_out), Tensor(y_out), Tensor(master_param_out)
+  infer_meta :
+    func : ASGDInferMeta
+  kernel :
+    func : asgd
+    data_type : param
+  data_transform :
+    support_trans_dtype : learning_rate, n
+  optional : master_param, master_param_out
+  inplace : (param -> param_out), (d -> d_out), (y -> y_out), (master_param -> master_param_out)
+
 - op : asin
   args : (Tensor x)
   output : Tensor(out)

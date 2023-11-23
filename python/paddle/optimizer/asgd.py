@@ -95,17 +95,15 @@ class ASGD(Optimizer):
         )
 
         lr = self._create_param_lr(param_and_grad)
-        param = param_and_grad[0]
-        grad = param_and_grad[1]
-        self._d = self._d - self._y + grad
-        self._y = grad
-        grad = grad / self._n
 
         if in_dynamic_or_pir_mode():
             _C_ops.asgd_(
-                param,
+                param_and_grad[0],
                 lr,
-                grad,
+                param_and_grad[1],
+                self._d,
+                self._y,
+                self._n,
                 master_weight,
                 find_master,
             )
@@ -114,18 +112,25 @@ class ASGD(Optimizer):
             assert isinstance(block, framework.Block)
             # create the optimize op
             inputs = {
-                "Param": param,
-                "Grad": grad,
-                "LearningRate": lr,
+                "param": param_and_grad[0],
+                "learning_rate": lr,
+                "grad": param_and_grad[1],
+                "d": self._d,
+                "y": self._y,
+                "n": self._n,
             }
 
-            outputs = {"ParamOut": param}
+            outputs = {
+                "param_out": param_and_grad[0],
+                "d_out": self._d,
+                "y_out": self._y,
+            }
 
             attrs = {"multi_precision": find_master}
 
             if find_master:
-                inputs["MasterParam"] = master_weight
-                outputs["MasterParamOut"] = master_weight
+                inputs["master_param"] = master_weight
+                outputs["master_param_out"] = master_weight
 
             asgd_op = block.append_op(
                 type=self.type,

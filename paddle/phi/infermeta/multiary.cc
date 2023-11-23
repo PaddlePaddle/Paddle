@@ -418,6 +418,48 @@ void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
   }
 }
 
+void ASGDInferMeta(const MetaTensor& param,
+                   const MetaTensor& learning_rate,
+                   const MetaTensor& grad,
+                   const MetaTensor& d,
+                   const MetaTensor& y,
+                   const MetaTensor& n,
+                   const MetaTensor& master_param,
+                   bool multi_precision,
+                   MetaTensor* param_out,
+                   MetaTensor* d_out,
+                   MetaTensor* y_out,
+                   MetaTensor* master_param_out) {
+  PADDLE_ENFORCE_NOT_NULL(
+      param_out,
+      phi::errors::InvalidArgument(
+          "Output(ParamOut) of ASGDOp should not be null."));
+
+  PADDLE_ENFORCE_NOT_NULL(d_out,
+                          phi::errors::InvalidArgument(
+                              "Output(DOut) of ASGDOp should not be null."));
+
+  PADDLE_ENFORCE_NOT_NULL(y_out,
+                          phi::errors::InvalidArgument(
+                              "Output(YOut) of ASGDOp should not be null."));
+
+  param_out->set_dims(param.dims());
+  param_out->set_dtype(param.dtype());
+  d_out->set_dims(d.dims());
+  d_out->set_dtype(d.dtype());
+  y_out->set_dims(y.dims());
+  y_out->set_dtype(y.dtype());
+  if (multi_precision) {
+    master_param_out->set_dims(master_param.dims());
+    if (DataType::FLOAT16 == master_param.dtype() ||
+        DataType::BFLOAT16 == master_param.dtype()) {
+      master_param_out->set_dtype(DataType::FLOAT32);
+    } else {
+      master_param_out->set_dtype(master_param.dtype());
+    }
+  }
+}
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
