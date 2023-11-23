@@ -20,8 +20,6 @@ from scipy.special import expit, logit
 
 import paddle
 from paddle import base
-from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 def loss_wrapper(
@@ -319,30 +317,26 @@ class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
 
 
 class TestSigmoidCrossEntropyWithLogitsOpError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            if not in_pir_mode():
 
-                def test_Variable():
-                    # the input of sigmoid_cross_entropy_with_logits must be Variable.
-                    x1 = base.create_lod_tensor(
-                        np.array([-1, 3, 5, 5]),
-                        [[1, 1, 1, 1]],
-                        base.CPUPlace(),
-                    )
-                    lab1 = base.create_lod_tensor(
-                        np.array([-1, 3, 5, 5]),
-                        [[1, 1, 1, 1]],
-                        base.CPUPlace(),
-                    )
-                    paddle.nn.functional.binary_cross_entropy_with_logits(
-                        x1, lab1
-                    )
+            def test_Variable():
+                # the input of sigmoid_cross_entropy_with_logits must be Variable.
+                x1 = base.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]),
+                    [[1, 1, 1, 1]],
+                    base.CPUPlace(),
+                )
+                lab1 = base.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]),
+                    [[1, 1, 1, 1]],
+                    base.CPUPlace(),
+                )
+                paddle.nn.functional.binary_cross_entropy_with_logits(x1, lab1)
 
-                self.assertRaises(TypeError, test_Variable)
+            self.assertRaises(TypeError, test_Variable)
 
             def test_dtype():
                 # the input dtype of sigmoid_cross_entropy_with_logits must be float16 or float32 or float64
