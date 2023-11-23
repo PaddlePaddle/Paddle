@@ -13,11 +13,12 @@
 # limitations under the License.
 
 export FLAGS_call_stack_level=2 
-export GLOG_v=4 
+export GLOG_v=6 
 export FLAGS_enable_pir_api=1
 export ENABLE_FALL_BACK=False
 
 export FLAGS_cinn_map_expr_enable_index_detail=1
+export FLAGS_cinn_enable_map_expr=1
+export FLAGS_cinn_enable_map_expr_schedule=0
 
-export FLAGS_cinn_enable_map_expr=True
 python test_dynamic_shape.py > ../../../output.log 2>&1
