@@ -40,7 +40,6 @@ parallel_list="^init_phi_test$|\
 ^test_conv1d_layer$|\
 ^test_conv1d_transpose_layer$|\
 ^test_conv2d_api$|\
-^test_conv2d_fusion_op$|\
 ^test_conv2d_layer$|\
 ^test_conv2d_op_depthwise_conv$|\
 ^test_conv2d_transpose_layer$|\
