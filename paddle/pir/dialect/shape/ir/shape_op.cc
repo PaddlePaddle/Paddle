@@ -244,16 +244,16 @@ void FuncOp::Build(Builder &builder, OperationArgument &argument) {
 Block *FuncOp::block() {
   Region &region = (*this)->region(0);
   if (region.empty()) region.emplace_back();
-  return region.front();
+  return &region.front();
 }
 
 void FuncOp::Print(IrPrinter &printer) {
   auto &os = printer.os;
   os << " shape.func () ";
   os << "{";
-  for (auto item : *block()) {
+  for (auto &item : *block()) {
     os << "\n  ";
-    printer.PrintOperation(item);
+    printer.PrintOperation(&item);
   }
   os << "\n }";
 }

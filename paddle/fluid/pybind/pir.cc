@@ -16,6 +16,7 @@
 #include <Python.h>
 #include <algorithm>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -61,7 +62,7 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
@@ -91,6 +92,7 @@ USE_PIR_PASS(fused_dropout_add_pass);
 USE_PIR_PASS(fused_linear_param_grad_add_pass);
 USE_PIR_PASS(inplace_pass);
 USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
+USE_PIR_PASS(conv2d_fuse_pass);
 
 PHI_DECLARE_bool(print_ir);
 
@@ -264,20 +266,23 @@ void BindBlock(py::module *m) {
         The constructor of Block should not be invoked directly. You can
         use `Program.block()` to get a block.
   )DOC");
-  block.def("front", &Block::front, return_value_policy::reference)
+  block
+      .def(
+          "front",
+          [](Block &self) { return &self.front(); },
+          return_value_policy::reference)
       .def_property_readonly(
           "program",
           [](Block &self) { return self.GetParentOp()->GetParentProgram(); },
           return_value_policy::reference)
-      .def_property_readonly(
-          "ops",
-          [](Block &self) -> py::list {
-            py::list op_list;
-            for (auto iter = self.begin(); iter != self.end(); iter++) {
-              op_list.append(*iter);
-            }
-            return op_list;
-          })
+      .def_property_readonly("ops",
+                             [](Block &self) -> py::list {
+                               py::list op_list;
+                               for (auto &op : self) {
+                                 op_list.append(&op);
+                               }
+                               return op_list;
+                             })
       .def("__enter__",
            [](Block &self) {
              ApiBuilder::Instance().PushInsertionPoint({&self, self.end()});
@@ -286,10 +291,11 @@ void BindBlock(py::module *m) {
            [](Block &self, py::object, py::object, py::object) {
              ApiBuilder::Instance().PopInsertionPoint();
            })
+      .def("__len__", [](Block &self) { return self.size(); })
       .def(
           "remove_op",
           [](Block &self, Operation *op) {
-            auto op_iter = std::find(self.begin(), self.end(), op);
+            auto op_iter = std::find(self.begin(), self.end(), *op);
             self.erase(op_iter);
           },
           R"DOC(
@@ -323,17 +329,16 @@ void BindBlock(py::module *m) {
       .def("all_parameters",
            [](Block &self) -> py::list {
              py::list param_list;
-             for (auto iter = self.begin(); iter != self.end(); iter++) {
-               auto op = *iter;
-               if (op->HasAttribute(kAttrIsPersisable)) {
-                 auto attrs = op->attribute(kAttrIsPersisable)
+             for (auto &op : self) {
+               if (op.HasAttribute(kAttrIsPersisable)) {
+                 auto attrs = op.attribute(kAttrIsPersisable)
                                   .dyn_cast<pir::ArrayAttribute>()
                                   .AsVector();
                  for (uint32_t i = 0; i < attrs.size(); i++) {
                    bool is_persistable =
                        attrs[i].dyn_cast<pir::BoolAttribute>().data();
                    if (is_persistable) {
-                     param_list.append(op->result(i));
+                     param_list.append(op.result(i));
                    }
                  }
                }
@@ -341,8 +346,8 @@ void BindBlock(py::module *m) {
              return param_list;
            })
       .def("refresh_stopgradient", [](Block &self) {
-        for (auto iter = self.begin(); iter != self.end(); iter++) {
-          RefreshOpStopgradients(*iter);
+        for (auto &op : self) {
+          RefreshOpStopgradients(&op);
         }
       });
 }
@@ -746,6 +751,19 @@ void BindOpResult(py::module *m) {
                   "persistable"));
             }
           })
+      .def_property_readonly(
+          "id",
+          [](OpResult &self) {
+            if (self.impl() == nullptr) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Currently, we can only get id of OpResult whose impl "
+                  "is not nullptr"));
+            } else {
+              std::stringstream ss;
+              ss << std::hex << self.impl();
+              return ss.str();
+            }
+          })
       .def("initialized",
            [](OpResult &self) {
              if (self.impl() == nullptr || self.type().storage() == nullptr) {
@@ -973,7 +991,7 @@ pir::OpResult FakeOpResult() {
 
 bool IsFakeOpResult(const pir::OpResult &result) {
   // create a fake opresults to simplify `ForwardBackwardSplit`.
-  return result.Value::impl() == nullptr;
+  return result.Value::impl() == nullptr || !result.Value::type();
 }
 
 static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
@@ -1024,7 +1042,7 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
   auto cloned_program = std::make_shared<Program>(ctx);
   std::unordered_map<pir::Value, pir::Value> value_map;
   for (auto &op : *program.block()) {
-    auto *cloned_op = BuildOpFrom(op, value_map);
+    auto *cloned_op = BuildOpFrom(&op, value_map);
     cloned_program->block()->push_back(cloned_op);
   }
   std::unordered_map<pir::OpResult, pir::OpResult> op_result_map;
@@ -1189,17 +1207,16 @@ SplitedResult SplitForwardBackward(
     for (auto it = forward_program->block()->rbegin();
          it != forward_program->block()->rend();
          ++it) {
-      auto *op = *it;
-      if (op->isa<pir::SetParameterOp>()) {
+      if (it->isa<pir::SetParameterOp>()) {
         auto out_name =
-            op->attribute<pir::StrAttribute>("parameter_name").AsString();
+            it->attribute<pir::StrAttribute>("parameter_name").AsString();
         if (out_name == parameter_name) {
           VLOG(4) << out_name
                   << " has been inserted SetParameterOp, skip it now.";
           return;
         }
 
-        inserted_value.insert(op->operand_source(0));
+        inserted_value.insert(it->operand_source(0));
       }
     }
 
@@ -1503,31 +1520,28 @@ void BindUtils(pybind11::module *m) {
   });
 }
 
-// TODO(Aurelius84): Need consider to make an agreement about
-// what a Pass should receive and return. Existed Passes have
-// mutable and immutable interface.
-std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
+void ApplyPirPass(Program &forward_program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+
   pir::PassManager pass_manager(ctx);
   cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
 
   pass_manager.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager.AddPass(pir::CreateBuildCinnPass());
+  pass_manager.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
 
   pass_manager.Run(&forward_program);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
-  std::unique_ptr<pir::Program> new_program =
-      cinn::dialect::ir::CINNGroupLoweringPass(&forward_program);
-  VLOG(3) << "after CINNGroupLoweringPass, forward_program:\n" << *new_program;
-  return std::move(new_program);
-#endif
+#else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
       "compile PaddlePaddle with CINN"));
+#endif
 }
 void BindIrPass(pybind11::module *m) {
   m->def("apply_pir_pass", ApplyPirPass);
