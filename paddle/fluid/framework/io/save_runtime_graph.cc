@@ -10,80 +10,99 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/io/save_runtime_graph.h"
+#include <fstream>
+#include <iostream>
+#include <unordered_map>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
+#include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
 
 namespace paddle {
 namespace framework {
 
-void ir_graph_print(ir::Graph *graph, std::string saved_path) {
-  std::unique_ptr<std::ostream> fout(new std::ofstream(saved_path));
-  PADDLE_ENFORCE_EQ(fout->good(),
-                    true,
-                    platform::errors::Unavailable(
-                        "Open file fail! saved_path = %s.", saved_path));
-  ir::GraphvizSSAGraphPrinter printer;
-  printer.Print(*graph, *fout);
+void save_string(std::string content,
+                 std::string type,
+                 std::string saved_path) {
+  VLOG(6) << type << " will be saved to " << saved_path;
+  MkDirRecursively(DirName(saved_path).c_str());
+
+  std::ofstream fout(saved_path);
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(fout),
+      true,
+      phi::errors::Unavailable("Cannot open %s to save ", saved_path));
+  fout << content;
+  fout.close();
 }
 
-template <typename Callback>
-static inline void IterAllVar(const ir::Graph &graph, Callback callback) {
-  for (auto &each : graph.Get<details::GraphVars>(details::kGraphVars)) {
-    for (auto &pair1 : each) {
-      for (auto &pair2 : pair1.second) {
-        callback(*pair2);
-      }
-    }
-  }
-
-  for (auto &var : graph.Get<details::GraphDepVars>(details::kGraphDepVars)) {
-    callback(*var);
-  }
+std::string node_format(const ir::Node& node, int number) {
+  return "node_" + std::to_string(number) + " : " + "[" + node.Name() + ", " +
+         (node.IsOp() ? "op" : "var") + "]";
 }
 
-void ir::GraphvizSSAGraphPrinter::Print(const ir::Graph &graph,
-                                        std::ostream &sout) const {
-  size_t var_id = 0;
-  std::unordered_map<const details::VarHandleBase *, size_t> vars;
+// std::string edge_format(const ir::Node& node){
+//     std::stringstream nodes_edges;
+//     for (auto *out : node.outputs) {
+//       nodes_edges  << node_format(node) << " -> " << node_format(*out)
+//            << "\n";
+//     }
+//     return nodes_edges.str();
+// }
 
-  sout << "digraph G {\n";
+void save_graph(const ir::Graph& graph,
+                std::string type,
+                std::string saved_path) {
+  VLOG(6) << type << " will be saved to " << saved_path;
+  MkDirRecursively(DirName(saved_path).c_str());
 
-  IterAllVar(graph, [&](const details::VarHandleBase &var) {
-    auto *var_ptr = &var;
-    auto *var_handle_ptr = dynamic_cast<const details::VarHandle *>(var_ptr);
-    auto *dummy_ptr = dynamic_cast<const details::DummyVarHandle *>(var_ptr);
-
-    size_t cur_var_id = var_id++;
-    vars[var_ptr] = cur_var_id;
-
-    if (var_handle_ptr) {
-      sout << "var_" << cur_var_id << " [label=\"" << var_handle_ptr->name()
-           << "\\n"
-           << var_handle_ptr->place() << "\\n"
-           << "scope: " << var_handle_ptr->scope_idx() << "\\n"
-           << "v" << var_handle_ptr->version() << "\"]" << std::endl;
-    } else if (dummy_ptr) {
-      sout << "var_" << cur_var_id << " [label=\"dummy\"]" << std::endl;
-    }
-  });
-
-  size_t op_id = 0;
-  for (auto &op : ir::FilterByNodeWrapper<details::OpHandleBase>(graph)) {
-    std::string op_name = "op_" + std::to_string(op_id++);
-    sout << op_name << " [label=\"" << op->Name() << "\", shape=rect]"
-         << std::endl;
-    for (auto in : op->Inputs()) {
-      std::string var_name = "var_" + std::to_string(vars[in]);
-      sout << var_name << " -> " << op_name << std::endl;
-    }
-
-    for (auto out : op->Outputs()) {
-      std::string var_name = "var_" + std::to_string(vars[out]);
-      sout << op_name << " -> " << var_name << std::endl;
+  std::ofstream fout(saved_path);
+  std::stringstream nodes_content;
+  std::stringstream edges_content;
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(fout),
+      true,
+      phi::errors::Unavailable("Cannot open %s to save ", saved_path));
+  // record all nodes[var, op]
+  // format
+  int index = 0;
+  std::unordered_map<const ir::Node*, std::string> nodes;
+  for (const ir::Node* n : graph.Nodes()) {
+    index++;
+    nodes_content << node_format(*n, index) << "\n";
+    nodes[n] = "node_" + std::to_string(index);
+  }
+  for (const ir::Node* n : graph.Nodes()) {
+    std::string node_id = nodes[n];
+    for (const ir::Node* out : n->outputs) {
+      edges_content << node_id << " -> " << nodes[out] << "\n";
     }
   }
 
-  sout << "}\n";
+  // recode nodes' edges
+  fout << "nodes: \n";
+  fout << nodes_content.str();
+  fout << "edges: \n";
+  fout << edges_content.str();
+  fout.close();
+}
+
+void save_runtime_cinn_graph(const ir::Graph& graph,
+                             std::string clusters_ops,
+                             std::string clusters_inputs,
+                             std::string cluster_outputs,
+                             std::string cluster_intervals,
+                             std::string saved_path) {
+  save_string(clusters_ops, "clusters_ops", saved_path + "/clusters_ops.txt");
+  save_string(
+      clusters_inputs, "clusters_inputs", saved_path + "/clusters_inputs.txt");
+  save_string(
+      cluster_outputs, "cluster_outputs", saved_path + "/cluster_outputs.txt");
+  save_string(cluster_intervals,
+              "cluster_intervals",
+              saved_path + "/cluster_intervals.txt");
+
+  save_graph(graph, "graph", saved_path + "/subgraph.txt");
 }
 
 }  // namespace framework

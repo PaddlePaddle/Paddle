@@ -27,10 +27,6 @@ void SaveTensor(const phi::DenseTensor& x,
                 const std::string& file_path,
                 bool overwrite) {
   std::string new_path(file_path);
-  if (FileExists(new_path)) {
-    VLOG(6) << "FileExists : " << new_path << ", pass";
-    return;
-  }
 
   VLOG(6) << "tensor will be saved to " << new_path;
   MkDirRecursively(DirName(new_path).c_str());

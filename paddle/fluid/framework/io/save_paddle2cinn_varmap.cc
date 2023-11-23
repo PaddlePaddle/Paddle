@@ -20,7 +20,7 @@ namespace framework {
 
 void save_paddle2cinn_varmap(
     std::unordered_map<std::string, std::string> paddle2cinn_var_map,
-    std::string save_path = "./paddle2cinn_varmap.pdtxt") {
+    std::string save_path) {
   std::stringstream ss;
   for (const auto& kv : paddle2cinn_var_map) {
     ss << kv.first << ":" << kv.second << "\n";
@@ -28,7 +28,11 @@ void save_paddle2cinn_varmap(
   std::string mapAsString = ss.str();
 
   // write string to save_path
-  std::ofstream outfile(save_path);
+
+  VLOG(6) << "paddle2cinn_varmap will be saved to " << save_path;
+  MkDirRecursively(DirName(save_path).c_str());
+  // set append mode to write all paddle var to cinn var map
+  std::ofstream outfile(save_path, std::ios::app);
   PADDLE_ENFORCE_EQ(
       static_cast<bool>(outfile),
       true,

@@ -13,9 +13,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-// void save_runtime_graph(const& ir::Graph graph, std::string saved_path =
-// "./graph.pdgraph");
+void save_runtime_cinn_graph(const ir::Graph& graph,
+                             std::string clusters_ops,
+                             std::string clusters_inputs,
+                             std::string cluster_outputs,
+                             std::string cluster_intervals,
+                             std::string saved_path);
 
-void ir_graph_print(ir::Graph *graph, std::string saved_path);
 }  // namespace framework
 }  // namespace paddle

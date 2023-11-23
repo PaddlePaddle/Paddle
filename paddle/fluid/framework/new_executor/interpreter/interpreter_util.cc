@@ -969,7 +969,9 @@ void BuildOpFuncList(const platform::Place& place,
         }
         if (!tensor->IsInitialized()) continue;
         paddle::framework::SaveTensor(
-            *tensor, root_path + op_type + "-input-" + vname + "_1", false);
+            *tensor,
+            root_path + "/saved_tensors/" + op_type + "-input-" + vname,
+            false);
       }
       for (auto& vname : op->OutputVars(true)) {
         auto* var = local_scope->FindVar(vname);
@@ -983,7 +985,9 @@ void BuildOpFuncList(const platform::Place& place,
         }
         if (!tensor->IsInitialized()) continue;
         paddle::framework::SaveTensor(
-            *tensor, root_path + op_type + "-output-" + vname + "_1", false);
+            *tensor,
+            root_path + "/saved_tensors/" + op_type + "-output-" + vname,
+            false);
       }
       VLOG(6) << "end save paddle variable";
     }

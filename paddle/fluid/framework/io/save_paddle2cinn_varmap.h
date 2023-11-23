@@ -16,9 +16,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void save_paddle2cinn_var_map(
+void save_paddle2cinn_varmap(
     std::unordered_map<std::string, std::string> paddle2cinn_var_map,
-    std::string save_path = "./");
+    std::string save_path);
 
 }
 }  // namespace paddle

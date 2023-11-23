@@ -724,6 +724,7 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
       << "All deny var names are: " << GetDebugInfo(deny_var_set);
 
   auto* cinn_compiler = CinnCompiler::GetInstance();
+  int i = 0;
   for (const auto& node_vec : clusters) {
     // Classify var node to inputs, outputs, and internals.
     GraphNodeSet cluster_set(node_vec.begin(), node_vec.end());
@@ -752,6 +753,15 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
           subgraph->GetOrInit<std::unordered_set<std::string>>(kSkipGcVarNames);
       sub_skip_gc_vars = all_skip_gc_vars;
     }
+    if (FLAGS_save_tensor) {
+      paddle::framework::save_runtime_cinn_graph(
+          *subgraph,
+          cluster_debug_info(cluster_set),
+          cluster_debug_info(cluster_inputs),
+          cluster_debug_info(cluster_outputs),
+          cluster_debug_info(cluster_internals),
+          FLAGS_save_load_path + "/cluster_" + std::to_string(++i));
+    }
     auto compilation_key = cinn_compiler->AddGraph(std::move(subgraph));
     VLOG(4) << "Compilation Key:\n"
             << cinn_compiler->ReadableKey(compilation_key);
@@ -772,15 +782,7 @@ void BuildCinnPass::ApplyImpl(Graph* graph) const {
   if (Has("is_inference_stage")) {
     is_inference_stage = Get<bool>("is_inference_stage");
   }
-  if (FLAGS_save_tensor) {
-    paddle::framework::ir_graph_print(
-        graph, FLAGS_save_load_path + "/origin_ir_graph/graph.pdtxt");
-  }
   SearchAllSubgraphs(graph, is_inference_stage);
-  if (FLAGS_save_tensor) {
-    paddle::framework::ir_graph_print(
-        graph, FLAGS_save_load_path + "/cinn_ir_graph/graph.pdtxt");
-  }
 }
 
 }  // namespace paddle2cinn

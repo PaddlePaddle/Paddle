@@ -196,7 +196,7 @@ void CinnLaunchContext::BuildVarNameMap(
   if (FLAGS_save_tensor) {
     paddle::framework::save_paddle2cinn_varmap(
         paddle2cinn_varmap_,
-        FLAGS_save_load_path + "paddle2cinn_varmap/paddle2cinn_varmap.pdtxt")
+        FLAGS_save_load_path + "/paddle2cinn_varmap/paddle2cinn_varmap.txt");
   }
 }
 
