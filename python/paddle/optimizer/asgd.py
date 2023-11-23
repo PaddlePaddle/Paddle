@@ -14,7 +14,8 @@
 
 import warnings
 
-from paddle import _C_ops, zeros
+from paddle import _C_ops
+from paddle.tensor.creation import zeros_like
 
 from ..base import framework
 from ..base.dygraph import no_grad
@@ -44,19 +45,22 @@ class ASGD(Optimizer):
         super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
-            weight_decay=weight_decay,
+            weight_decay=0,
             grad_clip=grad_clip,
             name=name,
         )
         self.type = "asgd"
         self._multi_precision = multi_precision
         self._master_weights = {}
-        p = len(parameters)
-        dtype = parameters[0].dtype
-        self._d = zeros([p], dtype)
-        self._y = zeros([p], dtype)
+        self._ds = []
+        self._ys = []
         self._n = batch_num
         self._i = 0
+        for p in parameters:
+            d = zeros_like(p)
+            y = zeros_like(p)
+            self._ds.append(d)
+            self._ys.append(y)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -101,8 +105,8 @@ class ASGD(Optimizer):
                 param_and_grad[0],
                 lr,
                 param_and_grad[1],
-                self._d,
-                self._y,
+                self._ds,
+                self._ys,
                 self._n,
                 master_weight,
                 find_master,
@@ -115,15 +119,15 @@ class ASGD(Optimizer):
                 "param": param_and_grad[0],
                 "learning_rate": lr,
                 "grad": param_and_grad[1],
-                "d": self._d,
-                "y": self._y,
+                "d": self._ds,
+                "y": self._ys,
                 "n": self._n,
             }
 
             outputs = {
                 "param_out": param_and_grad[0],
-                "d_out": self._d,
-                "y_out": self._y,
+                "d_out": self._ds,
+                "y_out": self._ys,
             }
 
             attrs = {"multi_precision": find_master}
