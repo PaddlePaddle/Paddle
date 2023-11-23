@@ -172,6 +172,11 @@ class TestUnbindOp(OpTest):
         self.num = 3
         self.initParameters()
         x = np.arange(12).reshape(3, 2, 2).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.arange(12).reshape(3, 2, 2)
+                + 1j * np.arange(12).reshape(3, 2, 2)
+            ).astype(self.dtype)
         self.out = np.split(x, self.num, self.axis)
         self.outReshape()
         self.inputs = {'X': x}
