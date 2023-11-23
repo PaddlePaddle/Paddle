@@ -63,7 +63,5 @@ void SToPReshardFunction::Eval(DeviceContext* dev_ctx,
   r_to_p.Eval(dev_ctx, tmp_tensor, out_dist_attr, out);
 }
 
-REGISTER_RESHARD_FUNC(SToPReshardFunction);
-
 }  // namespace distributed
 }  // namespace phi
