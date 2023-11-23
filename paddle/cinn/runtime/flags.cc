@@ -65,6 +65,10 @@ PD_DEFINE_bool(cinn_new_group_scheduler,
                BoolFromEnv("FLAGS_cinn_new_group_scheduler", false),
                "Whether to use new group scheduler.");
 
+PD_DEFINE_bool(cinn_bucket_compile,
+               BoolFromEnv("FLAGS_cinn_bucket_compile", false),
+               "Whether to enable bucket compile for dynamic shape.");
+
 PD_DEFINE_bool(cinn_use_common_subexpression_elimination,
                BoolFromEnv("FLAGS_cinn_use_common_subexpression_elimination",
                            false),
