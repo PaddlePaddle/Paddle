@@ -89,7 +89,7 @@ def monkey_patch_opresult():
         # 0 means cpu place, see paddle/phi/kernels/memcpy_kernel.cc
         return _C_ops.memcpy(self, 0)
 
-    def cuda(self, device_id: int | None = None, blocking: bool = True):
+    def cuda(self, device_id=None, blocking=True):
         """
         In dy2static, OpResult also needs cpu() and cuda() interface.
         But, the underneath operator has only forward op but not backward one.
