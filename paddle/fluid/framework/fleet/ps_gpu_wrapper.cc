@@ -397,7 +397,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
                   }
                 }
               } else {
-                CHECK_EQ(ranks_vec[i]->size(), 0)
+                CHECK_EQ(ranks_vec[i]->size(), 0UL)
                     << ranks_vec[i]->size() << " should be euqal to 0";
                 for (size_t j = 0; j < keys_vec[i]->size(); ++j) {
                   auto& key = (*keys_vec[i])[j];
@@ -1032,7 +1032,7 @@ void PSGPUWrapper::FilterPull(std::shared_ptr<HeterContext> gpu_task,
     if (shard_num > 0) {
       auto shard = key % shard_num;
       auto it = keys2rank_vec[shard].find(key);
-      CHECK_NE(it, keys2rank_vec[shard].end())
+      CHECK_EQ(it != keys2rank_vec[shard].end(), true)
           << "can't find key " << key << " in keys2rank_vec[" << shard << "]";
       if (static_cast<int>(it->second) != rank_id_) {
         continue;
@@ -1043,14 +1043,14 @@ void PSGPUWrapper::FilterPull(std::shared_ptr<HeterContext> gpu_task,
       }
     }
     if (dedup_size == pos) {
-      CHECK_NE(shard_values[dedup_size], 0)
+      CHECK_EQ(shard_values[dedup_size] != 0, true)
           << "shard_values[" << dedup_size << "] shouldn't be 0, but got"
           << shard_values[dedup_size];
       ++dedup_size;
       continue;
     }
     shard_keys[dedup_size] = shard_keys[pos];
-    CHECK_NE(shard_values[dedup_size], 0)
+    CHECK_EQ(shard_values[dedup_size] != 0, true)
         << "shard_values[" << dedup_size << "] shouldn't be 0, but got"
         << shard_values[dedup_size];
     ++dedup_size;
@@ -1074,7 +1074,7 @@ void PSGPUWrapper::FilterKey(std::shared_ptr<HeterContext> gpu_task,
     if (shard_num > 0) {
       auto shard = key % shard_num;
       auto it = keys2rank_vec[shard].find(key);
-      CHECK_NE(it, keys2rank_vec[shard].end())
+      CHECK_EQ(it != keys2rank_vec[shard].end(), true)
           << "can't find key " << key << " in keys2rank_vec[" << shard << "]";
       if (static_cast<int>(it->second) != rank_id_) {
         continue;
@@ -1563,7 +1563,7 @@ void PSGPUWrapper::divide_to_device(std::shared_ptr<HeterContext> gpu_task) {
       for (size_t k = 0; k < len; ++k) {
         auto& pos = dev_pos[k];
         d_dim_keys[cur + k] = h_dim_keys[pos];
-        CHECK_NE(h_dim_ptrs[pos], 0)
+        CHECK_EQ(h_dim_ptrs[pos] != 0, true)
             << "total=" << total_keys_len << ", pos=" << pos << ", k=" << k
             << ", len=" << len;
         d_dim_ptr[cur + k] = h_dim_ptrs[pos];
