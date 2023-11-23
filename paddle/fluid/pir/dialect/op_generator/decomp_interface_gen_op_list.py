@@ -42,6 +42,7 @@ decomp_interface_implementation_gen_op_list = [
     "layer_norm",
     "gelu",
     "sqrt",
+    "silu",
 ]
 
 
