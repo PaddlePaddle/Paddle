@@ -1495,7 +1495,7 @@ def log_normal(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    distribution = gaussian(shape, dtype, mean, std, seed)
+    distribution = gaussian(shape, mean=mean, std=std, seed=seed, dtype=dtype)
     return paddle.exp(distribution)
 
 
@@ -1536,4 +1536,4 @@ def log_normal_(x, mean=0.0, std=1.0, seed=0, name=None):
              [ 1.66359663, -0.55764782, -0.59911072, -0.57773495]])
     """
 
-    return gaussian_(x, mean, std, seed).exp_()
+    return gaussian_(x, mean=mean, std=std, seed=seed).exp_()

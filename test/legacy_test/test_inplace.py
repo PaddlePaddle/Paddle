@@ -1616,5 +1616,18 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
         return paddle.index_fill(var, self.index, self.axis, self.value)
 
 
+class TestDygraphInplaceIndexFill(TestDygraphInplace):
+    def init_data(self):
+        self.shape = (20, 40)
+        self.x = np.random.random(self.shape)
+        self.dtype = "float32"
+        self.mean = 0
+        self.std = 1
+        self.seed = 100
+
+    def inplace_api_processing(self, var):
+        return paddle.log_normal_(self.x, self.shape, self.mean, self.std, self.seed)
+
+
 if __name__ == '__main__':
     unittest.main()
