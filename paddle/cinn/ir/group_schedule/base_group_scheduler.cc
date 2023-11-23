@@ -12,32 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
+#include "paddle/cinn/ir/group_schedule/dy_shape_group_scheduler.h"
+#include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 
 namespace cinn {
 namespace ir {
 
-/**
- * The class used for scheduling fusion groups with dynamic shape.
- * Note: Currently only CUDA backend is supported.
- */
-class DynamicShapeGroupScheduler : public GroupScheduler {
- public:
-  DynamicShapeGroupScheduler(
-      ir::IRSchedule* ir_sch,
-      const std::unordered_set<std::string>& output_tensor_names,
-      const common::Target& target)
-      : GroupScheduler(ir_sch, output_tensor_names, target) {}
-
-  void Schedule() override;
-
-  std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetIRs() override;
-
- private:
-  std::vector<std::pair<SymbolicPredicate, std::unique_ptr<ir::IRSchedule>>>
-      ir_schs_;
-};
+std::unique_ptr<GroupScheduler> GroupScheduler::Make(
+    ir::IRSchedule* ir_sch,
+    const std::unordered_set<std::string>& output_tensor_names,
+    const common::Target& target,
+    bool is_dy_shape) {
+  if (is_dy_shape) {
+    return std::make_unique<DynamicShapeGroupScheduler>(
+        ir_sch, output_tensor_names, target);
+  } else {
+    return std::make_unique<StaticShapeGroupScheduler>(
+        ir_sch, output_tensor_names, target);
+  }
+}
 
 }  // namespace ir
 }  // namespace cinn
