@@ -308,6 +308,8 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
                               const std::vector<int>& paddings_t,
                               bool global_pooling,
                               bool adaptive,
+                              bool fractional,
+                              float random_u,
                               DenseTensor* out,
                               DenseTensor* mask) {
   using XPUType = typename XPUTypeTrait<T>::Type;
