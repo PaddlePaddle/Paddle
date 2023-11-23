@@ -26,7 +26,6 @@
 #include "paddle/phi/core/distributed/comm_task_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_task.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
-#include "paddle/phi/core/distributed/trace_utils.h"
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
@@ -46,8 +45,6 @@ namespace paddle {
 namespace distributed {
 
 using phi::distributed::CheckSizeOnEachRank;
-using phi::distributed::GetTraceEndKey;
-using phi::distributed::GetTraceStartKey;
 using phi::distributed::IsP2POP;
 using phi::distributed::NCCLDTypeToString;
 using phi::distributed::NCCLRedTypeToString;

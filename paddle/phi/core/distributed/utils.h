@@ -14,7 +14,6 @@
 
 #pragma once
 #include <sstream>
-#include "glog/logging.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
