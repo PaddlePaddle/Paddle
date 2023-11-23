@@ -192,22 +192,22 @@ class DistributedStrategy:
         self.strategy = distributed_strategy_pb2.DistributedStrategy()
 
         # Set the default values of the following flags to the ones set by users
-        key = 'FLAGS_cudnn_batchnorm_spatial_persistent'
+        key = "FLAGS_cudnn_batchnorm_spatial_persistent"
         if _global_flags().is_public(key):
             self.strategy.cudnn_batchnorm_spatial_persistent = bool(
                 _global_flags()[key]
             )
-        key = 'FLAGS_conv_workspace_size_limit'
+        key = "FLAGS_conv_workspace_size_limit"
         if _global_flags().is_public(key):
             self.strategy.conv_workspace_size_limit = int(_global_flags()[key])
-        key = 'FLAGS_cudnn_exhaustive_search'
+        key = "FLAGS_cudnn_exhaustive_search"
         if _global_flags().is_public(key):
             self.strategy.cudnn_exhaustive_search = bool(_global_flags()[key])
-        key = 'FLAGS_sync_nccl_allreduce'
+        key = "FLAGS_sync_nccl_allreduce"
         if _global_flags().is_public(key):
             self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
-        self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'sep', 'mp']
+        self.hybrid_parallel_order = ["dp", "pp", "sharding", "sep", "mp"]
         self.sync_param_name = ["embedding", "layer_norm", ".b_"]
 
         self.__lock_attr = True
@@ -257,7 +257,7 @@ class DistributedStrategy:
                 >>> strategy.load_from_prototxt("dist_strategy.prototxt")
 
         """
-        with open(pb_file, 'r') as f:
+        with open(pb_file, "r") as f:
             self.strategy = google.protobuf.text_format.Merge(
                 str(f.read()), self.strategy
             )
@@ -332,7 +332,7 @@ class DistributedStrategy:
         fields = self.strategy.build_strategy.DESCRIPTOR.fields
         for f in fields:
             value = getattr(self.strategy.build_strategy, f.name)
-            if f.name == 'reduce_strategy':
+            if f.name == "reduce_strategy":
                 value = paddle.static.BuildStrategy.ReduceStrategy(value)
             setattr(build_strategy, f.name, value)
         return build_strategy
@@ -344,7 +344,7 @@ class DistributedStrategy:
         for f in fields:
             if f.label == 1 or f.label == 2:  # optional and required field
                 value = getattr(strategy, f.name)
-                if f.name == 'reduce_strategy':
+                if f.name == "reduce_strategy":
                     value = ReduceStrategyFleet(value)
                 setattr(self.strategy.build_strategy, f.name, value)
             elif f.label == 3:  # repeated field
@@ -376,7 +376,7 @@ class DistributedStrategy:
         check_configs_key(
             self.strategy.gradient_scale_configs,
             config,
-            'gradient_scale_configs',
+            "gradient_scale_configs",
         )
         assign_configs_value(self.strategy.gradient_scale_configs, config)
 
@@ -635,72 +635,72 @@ class DistributedStrategy:
     @sparse_table_configs.setter
     def fleet_desc_configs(self, configs):
         support_sparse_key_list = [
-            'sparse_table_class',
-            'sparse_compress_in_save',
-            'sparse_shard_num',
-            'sparse_accessor_class',
-            'sparse_learning_rate',
-            'sparse_initial_g2sum',
-            'sparse_initial_range',
-            'sparse_weight_bounds',
-            'sparse_fea_dim',
-            'sparse_embedx_dim',
-            'sparse_embedx_threshold',
-            'sparse_nonclk_coeff',
-            'sparse_click_coeff',
-            'sparse_base_threshold',
-            'sparse_delta_threshold',
-            'sparse_delta_keep_days',
-            'sparse_delete_after_unseen_days',
-            'sparse_show_click_decay_rate',
-            'sparse_delete_threshold',
-            'sparse_converter',
-            'sparse_deconverter',
-            'sparse_enable_cache',
-            'sparse_cache_rate',
-            'sparse_cache_file_num',
-            'sparse_beta1_decay_rate',
-            'sparse_beta2_decay_rate',
-            'sparse_ada_epsilon',
-            'sparse_optimizer',
-            'sparse_ssd_unseenday_threshold',
-            'embed_sparse_optimizer',
-            'embed_sparse_learning_rate',
-            'embed_sparse_weight_bounds',
-            'embed_sparse_initial_range',
-            'embed_sparse_initial_g2sum',
-            'embed_sparse_beta1_decay_rate',
-            'embed_sparse_beta2_decay_rate',
-            'embedx_sparse_optimizer',
-            'embedx_sparse_learning_rate',
-            'embedx_sparse_weight_bounds',
-            'embedx_sparse_initial_range',
-            'embedx_sparse_initial_g2sum',
-            'embedx_sparse_beta1_decay_rate',
-            'embedx_sparse_beta2_decay_rate',
-            'feature_learning_rate',
-            'nodeid_slot',
-            'sparse_load_filter_slots',
+            "sparse_table_class",
+            "sparse_compress_in_save",
+            "sparse_shard_num",
+            "sparse_accessor_class",
+            "sparse_learning_rate",
+            "sparse_initial_g2sum",
+            "sparse_initial_range",
+            "sparse_weight_bounds",
+            "sparse_fea_dim",
+            "sparse_embedx_dim",
+            "sparse_embedx_threshold",
+            "sparse_nonclk_coeff",
+            "sparse_click_coeff",
+            "sparse_base_threshold",
+            "sparse_delta_threshold",
+            "sparse_delta_keep_days",
+            "sparse_delete_after_unseen_days",
+            "sparse_show_click_decay_rate",
+            "sparse_delete_threshold",
+            "sparse_converter",
+            "sparse_deconverter",
+            "sparse_enable_cache",
+            "sparse_cache_rate",
+            "sparse_cache_file_num",
+            "sparse_beta1_decay_rate",
+            "sparse_beta2_decay_rate",
+            "sparse_ada_epsilon",
+            "sparse_optimizer",
+            "sparse_ssd_unseenday_threshold",
+            "embed_sparse_optimizer",
+            "embed_sparse_learning_rate",
+            "embed_sparse_weight_bounds",
+            "embed_sparse_initial_range",
+            "embed_sparse_initial_g2sum",
+            "embed_sparse_beta1_decay_rate",
+            "embed_sparse_beta2_decay_rate",
+            "embedx_sparse_optimizer",
+            "embedx_sparse_learning_rate",
+            "embedx_sparse_weight_bounds",
+            "embedx_sparse_initial_range",
+            "embedx_sparse_initial_g2sum",
+            "embedx_sparse_beta1_decay_rate",
+            "embedx_sparse_beta2_decay_rate",
+            "feature_learning_rate",
+            "nodeid_slot",
+            "sparse_load_filter_slots",
         ]
         support_sparse_table_class = [
-            'DownpourSparseTable',
-            'DownpourSparseSSDTable',
+            "DownpourSparseTable",
+            "DownpourSparseSSDTable",
         ]
         support_sparse_accessor_class = [
-            'DownpourSparseValueAccessor',
-            'DownpourCtrAccessor',
-            'DownpourCtrDoubleAccessor',
-            'DownpourUnitAccessor',
-            'DownpourDoubleUnitAccessor',
-            'DownpourCtrDymfAccessor',
+            "DownpourSparseValueAccessor",
+            "DownpourCtrAccessor",
+            "DownpourCtrDoubleAccessor",
+            "DownpourUnitAccessor",
+            "DownpourDoubleUnitAccessor",
+            "DownpourCtrDymfAccessor",
         ]
         table_param = self.strategy.downpour_table_param
 
         def add_graph_config(graph, strategy):
             graph.feature_learning_rate = strategy.get(
-                'feature_learning_rate', 0.05
+                "feature_learning_rate", 0.05
             )
-            graph.nodeid_slot = strategy.get('nodeid_slot', 9008)
+            graph.nodeid_slot = strategy.get("nodeid_slot", 9008)
 
         def sparse_optimizer_config(sgd, strategy, prefix):
             optimizer_name = strategy.get(
@@ -710,89 +710,89 @@ class DistributedStrategy:
             if optimizer_name == "naive":
                 sgd.name = "SparseNaiveSGDRule"
                 sgd.naive.learning_rate = strategy.get(
-                    prefix + 'sparse_learning_rate', 0.05
+                    prefix + "sparse_learning_rate", 0.05
                 )
                 sgd.naive.initial_range = strategy.get(
-                    prefix + 'sparse_initial_range', 1e-4
+                    prefix + "sparse_initial_range", 1e-4
                 )
                 bounds = strategy.get(
-                    prefix + 'sparse_weight_bounds', [-10, 10]
+                    prefix + "sparse_weight_bounds", [-10, 10]
                 )
                 sgd.naive.weight_bounds.extend(bounds)
             elif optimizer_name == "adagrad":
-                sgd.name = 'SparseAdaGradSGDRule'
+                sgd.name = "SparseAdaGradSGDRule"
                 sgd.adagrad.learning_rate = strategy.get(
-                    prefix + 'sparse_learning_rate', 0.05
+                    prefix + "sparse_learning_rate", 0.05
                 )
                 sgd.adagrad.initial_range = strategy.get(
-                    prefix + 'sparse_initial_range', 1e-4
+                    prefix + "sparse_initial_range", 1e-4
                 )
                 if prefix == "embed_":
                     sgd.adagrad.initial_range = 0
                 sgd.adagrad.initial_g2sum = strategy.get(
-                    prefix + 'sparse_initial_g2sum', 3
+                    prefix + "sparse_initial_g2sum", 3
                 )
                 bounds = strategy.get(
-                    prefix + 'sparse_weight_bounds', [-10, 10]
+                    prefix + "sparse_weight_bounds", [-10, 10]
                 )
                 sgd.adagrad.weight_bounds.extend(bounds)
             elif optimizer_name == "std_adagrad":
-                sgd.name = 'StdAdaGradSGDRule'
+                sgd.name = "StdAdaGradSGDRule"
                 sgd.adagrad.learning_rate = strategy.get(
-                    prefix + 'sparse_learning_rate', 0.05
+                    prefix + "sparse_learning_rate", 0.05
                 )
                 sgd.adagrad.initial_range = strategy.get(
-                    prefix + 'sparse_initial_range', 1e-4
+                    prefix + "sparse_initial_range", 1e-4
                 )
                 if prefix == "embed_":
                     sgd.adagrad.initial_range = 0
                 sgd.adagrad.initial_g2sum = strategy.get(
-                    prefix + 'sparse_initial_g2sum', 3
+                    prefix + "sparse_initial_g2sum", 3
                 )
                 bounds = strategy.get(
-                    prefix + 'sparse_weight_bounds', [-10, 10]
+                    prefix + "sparse_weight_bounds", [-10, 10]
                 )
                 sgd.adagrad.weight_bounds.extend(bounds)
             elif optimizer_name == "adam":
-                sgd.name = 'SparseAdamSGDRule'
+                sgd.name = "SparseAdamSGDRule"
                 sgd.adam.learning_rate = strategy.get(
-                    prefix + 'sparse_learning_rate', 0.001
+                    prefix + "sparse_learning_rate", 0.001
                 )
                 sgd.adam.initial_range = strategy.get(
-                    prefix + 'sparse_initial_range', 1e-4
+                    prefix + "sparse_initial_range", 1e-4
                 )
                 sgd.adam.beta1_decay_rate = strategy.get(
-                    prefix + 'sparse_beta1_decay_rate', 0.9
+                    prefix + "sparse_beta1_decay_rate", 0.9
                 )
                 sgd.adam.beta2_decay_rate = strategy.get(
-                    prefix + 'sparse_beta2_decay_rate', 0.999
+                    prefix + "sparse_beta2_decay_rate", 0.999
                 )
                 sgd.adam.ada_epsilon = strategy.get(
-                    prefix + 'sparse_ada_epsilon', 1e-8
+                    prefix + "sparse_ada_epsilon", 1e-8
                 )
                 bounds = strategy.get(
-                    prefix + 'sparse_weight_bounds', [-10, 10]
+                    prefix + "sparse_weight_bounds", [-10, 10]
                 )
                 sgd.adam.weight_bounds.extend(bounds)
             elif optimizer_name == "shared_adam":
-                sgd.name = 'SparseSharedAdamSGDRule'
+                sgd.name = "SparseSharedAdamSGDRule"
                 sgd.adam.learning_rate = strategy.get(
-                    prefix + 'sparse_learning_rate', 0.001
+                    prefix + "sparse_learning_rate", 0.001
                 )
                 sgd.adam.initial_range = strategy.get(
-                    prefix + 'sparse_initial_range', 1e-4
+                    prefix + "sparse_initial_range", 1e-4
                 )
                 sgd.adam.beta1_decay_rate = strategy.get(
-                    prefix + 'sparse_beta1_decay_rate', 0.9
+                    prefix + "sparse_beta1_decay_rate", 0.9
                 )
                 sgd.adam.beta2_decay_rate = strategy.get(
-                    prefix + 'sparse_beta2_decay_rate', 0.999
+                    prefix + "sparse_beta2_decay_rate", 0.999
                 )
                 sgd.adam.ada_epsilon = strategy.get(
-                    prefix + 'sparse_ada_epsilon', 1e-8
+                    prefix + "sparse_ada_epsilon", 1e-8
                 )
                 bounds = strategy.get(
-                    prefix + 'sparse_weight_bounds', [-10, 10]
+                    prefix + "sparse_weight_bounds", [-10, 10]
                 )
                 sgd.adam.weight_bounds.extend(bounds)
 
@@ -809,18 +809,18 @@ class DistributedStrategy:
                     % (table_class)
                 )
             if table_class == "DownpourSparseSSDTable":
-                table_data.table_class = 'SSDSparseTable'
+                table_data.table_class = "SSDSparseTable"
             else:
-                table_data.table_class = 'MemorySparseTable'
-            table_data.shard_num = config.get('sparse_shard_num', 1000)
+                table_data.table_class = "MemorySparseTable"
+            table_data.shard_num = config.get("sparse_shard_num", 1000)
             table_data.enable_sparse_table_cache = config.get(
-                'sparse_enable_cache', True
+                "sparse_enable_cache", True
             )
             table_data.sparse_table_cache_rate = config.get(
-                'sparse_cache_rate', 0.00055
+                "sparse_cache_rate", 0.00055
             )
             table_data.sparse_table_cache_file_num = config.get(
-                'sparse_cache_file_num', 16
+                "sparse_cache_file_num", 16
             )
 
             accessor_class = config.get(
@@ -833,59 +833,59 @@ class DistributedStrategy:
                 )
 
             if accessor_class.find("Double") >= 0:
-                table_data.accessor.accessor_class = 'CtrDoubleAccessor'
+                table_data.accessor.accessor_class = "CtrDoubleAccessor"
             elif accessor_class.find("Dymf") >= 0:
-                table_data.accessor.accessor_class = 'CtrDymfAccessor'
+                table_data.accessor.accessor_class = "CtrDymfAccessor"
             else:
-                table_data.accessor.accessor_class = 'CtrCommonAccessor'
+                table_data.accessor.accessor_class = "CtrCommonAccessor"
 
             if not configs.get("use_cvm", True):
-                table_data.accessor.accessor_class = 'SparseAccessor'
+                table_data.accessor.accessor_class = "SparseAccessor"
 
-            table_data.accessor.embedx_dim = config.get('sparse_embedx_dim', 8)
+            table_data.accessor.embedx_dim = config.get("sparse_embedx_dim", 8)
             table_data.accessor.fea_dim = table_data.accessor.embedx_dim + 3
             table_data.accessor.embedx_threshold = config.get(
-                'sparse_embedx_threshold', 10
+                "sparse_embedx_threshold", 10
             )
 
-            if accessor_class == 'DownpourUnitAccessor':
+            if accessor_class == "DownpourUnitAccessor":
                 table_data.accessor.ctr_accessor_param.show_scale = False
             else:
                 table_data.accessor.ctr_accessor_param.show_scale = True
 
             table_data.accessor.ctr_accessor_param.nonclk_coeff = config.get(
-                'sparse_nonclk_coeff', 0.1
+                "sparse_nonclk_coeff", 0.1
             )
             table_data.accessor.ctr_accessor_param.click_coeff = config.get(
-                'sparse_click_coeff', 1
+                "sparse_click_coeff", 1
             )
             table_data.accessor.ctr_accessor_param.base_threshold = config.get(
-                'sparse_base_threshold', 1.5
+                "sparse_base_threshold", 1.5
             )
             table_data.accessor.ctr_accessor_param.delta_threshold = config.get(
-                'sparse_delta_threshold', 0.25
+                "sparse_delta_threshold", 0.25
             )
             table_data.accessor.ctr_accessor_param.delta_keep_days = config.get(
-                'sparse_delta_keep_days', 16
+                "sparse_delta_keep_days", 16
             )
             table_data.accessor.ctr_accessor_param.show_click_decay_rate = (
-                config.get('sparse_show_click_decay_rate', 0.98)
+                config.get("sparse_show_click_decay_rate", 0.98)
             )
             table_data.accessor.ctr_accessor_param.delete_threshold = (
-                config.get('sparse_delete_threshold', 0.8)
+                config.get("sparse_delete_threshold", 0.8)
             )
             table_data.accessor.ctr_accessor_param.delete_after_unseen_days = (
-                config.get('sparse_delete_after_unseen_days', 30)
+                config.get("sparse_delete_after_unseen_days", 30)
             )
             table_data.accessor.ctr_accessor_param.ssd_unseenday_threshold = (
-                config.get('sparse_ssd_unseenday_threshold', 1)
+                config.get("sparse_ssd_unseenday_threshold", 1)
             )
-            load_filter_slots = config.get('sparse_load_filter_slots', [])
+            load_filter_slots = config.get("sparse_load_filter_slots", [])
             table_data.accessor.ctr_accessor_param.load_filter_slots.extend(
                 load_filter_slots
             )
-            converter = config.get('sparse_converter', "")
-            deconverter = config.get('sparse_deconverter', "")
+            converter = config.get("sparse_converter", "")
+            deconverter = config.get("sparse_deconverter", "")
 
             save_data1 = table_data.accessor.table_accessor_save_param.add()
             save_data1.param = 1
@@ -898,21 +898,21 @@ class DistributedStrategy:
             save_data2.deconverter = deconverter
 
             if (
-                accessor_class == 'DownpourCtrAccessor'
-                or accessor_class == 'DownpourCtrDoubleAccessor'
+                accessor_class == "DownpourCtrAccessor"
+                or accessor_class == "DownpourCtrDoubleAccessor"
             ):
                 sparse_optimizer_config(
-                    table_data.accessor.embed_sgd_param, config, ''
+                    table_data.accessor.embed_sgd_param, config, ""
                 )
                 sparse_optimizer_config(
-                    table_data.accessor.embedx_sgd_param, config, ''
+                    table_data.accessor.embedx_sgd_param, config, ""
                 )
             else:
                 sparse_optimizer_config(
-                    table_data.accessor.embed_sgd_param, config, 'embed_'
+                    table_data.accessor.embed_sgd_param, config, "embed_"
                 )
                 sparse_optimizer_config(
-                    table_data.accessor.embedx_sgd_param, config, 'embedx_'
+                    table_data.accessor.embedx_sgd_param, config, "embedx_"
                 )
             add_graph_config(table_data.accessor.graph_sgd_param, config)
 
@@ -921,8 +921,8 @@ class DistributedStrategy:
         else:
             for table_name in configs:
                 if (
-                    table_name == 'dense_table'
-                    or table_name == 'datanorm_table'
+                    table_name == "dense_table"
+                    or table_name == "datanorm_table"
                 ):
                     continue
                 if type(configs[table_name]) != dict:
@@ -987,7 +987,7 @@ class DistributedStrategy:
             use_pure_bf16(bool): Whether to use the pure bf16 training. Default False.
 
             use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
-                   Default True. Only takes effect when `use_pure_fp16` is turned on.
+                Default True. Only takes effect when `use_pure_fp16` is turned on.
 
         Examples:
             .. code-block:: python
@@ -1824,7 +1824,7 @@ class DistributedStrategy:
         hybrid_config = copy.deepcopy(configs)
         if "order" in hybrid_config:
             self.hybrid_parallel_order = hybrid_config["order"]
-            hybrid_config.pop('order')
+            hybrid_config.pop("order")
 
         check_configs_key(
             self.strategy.hybrid_configs, hybrid_config, "hybrid_configs"
@@ -2053,7 +2053,7 @@ class DistributedStrategy:
     @is_strict_auto
     def fp16_allreduce(self, flag):
         if not isinstance(flag, bool):
-            raise TypeError('fp16_allreduce must be value of bool type')
+            raise TypeError("fp16_allreduce must be value of bool type")
         self.strategy.fp16_allreduce = flag
 
     @property
