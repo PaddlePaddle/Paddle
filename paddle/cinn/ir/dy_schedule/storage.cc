@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/dy_schedule/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 
 namespace cinn {
 namespace ir {
@@ -30,8 +31,13 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
   CINN_NOT_IMPLEMENTED;
 }
 
-void DyScheduleImpl::SyncThreads(const Expr& ir_node, bool after_node) {
-  CINN_NOT_IMPLEMENTED;
+void StScheduleImpl::SyncThreads(const Expr& ir_node, bool after_node) {
+  CHECK(ir_node.As<ScheduleBlockRealize>() || ir_node.As<ir::For>());
+  auto root = GetRootBlock(ir_node);
+  ChangeBodyToBlock::Change(&root);
+  Expr sync_threads = runtime::IntrinsicCall(Void(), "__syncthreads", {});
+  InsertExpr::Insert(ir_node, sync_threads, after_node, &root);
+  return;
 }
 
 void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT
