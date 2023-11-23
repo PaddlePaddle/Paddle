@@ -953,6 +953,7 @@ void AnalysisConfig::Update() {
       (!phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) &&
        use_mkldnn_)) {
     // User manually disable mkldnn or disable when not support AVX2
+    use_mkldnn_ = false;
     pass_builder()->DisableMKLDNN();
   }
 #endif
