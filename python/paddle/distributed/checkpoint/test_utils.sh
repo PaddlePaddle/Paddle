@@ -1,0 +1,2 @@
+rm -rf log/*
+python -u -m paddle.distributed.launch --log_dir ./log --devices 0,1,2,3 utils.py
