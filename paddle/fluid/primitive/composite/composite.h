@@ -304,6 +304,40 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   return std::make_tuple(out, mean_, variance);
 }
 
+static bool valid_type(const DataType& dtype) {
+  switch (dtype) {
+    case phi::DataType::INT8:
+    case phi::DataType::INT16:
+    case phi::DataType::INT32:
+    case phi::DataType::INT64:
+    case phi::DataType::UINT8:
+    case phi::DataType::UINT16:
+    case phi::DataType::UINT32:
+    case phi::DataType::UINT64:
+    case phi::DataType::FLOAT16:
+    case phi::DataType::FLOAT32:
+    case phi::DataType::FLOAT64:
+      return true;
+    default:
+      return false;
+  }
+}
+
+template <typename T>
+Tensor full_like_decomp(const Tensor& x,
+                        const paddle::Scalar& value,
+                        const DataType& dtype,
+                        const Place& place) {
+  Tensor ans;
+  if (valid_type(dtype) && valid_type(value.dtype())) {
+    ans = full<T>(phi::vectorize(x.dims()), value, dtype, place);
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument("Unsupported data type: %s",
+                                              phi::DataTypeToString(dtype)));
+  }
+  return ans;
+}
+
 template <typename T>
 Tensor sqrt_decomp(const Tensor& x) {
   auto org_dtype = x.dtype();
