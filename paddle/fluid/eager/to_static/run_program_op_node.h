@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <iostream>
-
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
