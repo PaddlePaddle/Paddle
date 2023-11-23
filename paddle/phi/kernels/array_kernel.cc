@@ -104,7 +104,7 @@ void ArrayToTensorKernel(const Context& dev_ctx,
   for (size_t i = 0; i < x.size(); i++) {
     tmp_inputs[i].ShareDataWith(x[i]);
     inputs.push_back(&tmp_inputs[i]);
-    FullKernel<T, Context>(
+    FullKernel<int, Context>(
         dev_ctx, {1}, x[i].dims()[axis], DataType::INT32, &tmp_indexs[i]);
     indexs.push_back(&tmp_indexs[i]);
   }
@@ -116,7 +116,7 @@ void ArrayToTensorKernel(const Context& dev_ctx,
   }
 
   out_index->Resize(phi::make_ddim({static_cast<int>(x.size())}));
-  StackKernel<T, Context>(dev_ctx, indexs, 0, out_index);
+  StackKernel<int, Context>(dev_ctx, indexs, 0, out_index);
 }
 
 }  // namespace phi
