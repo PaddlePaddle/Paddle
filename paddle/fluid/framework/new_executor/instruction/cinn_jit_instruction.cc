@@ -47,6 +47,9 @@ class CinnJitInstruction::FnPtrImpl {
     for (const auto& int_arg_mp : cuda_jit_info_.int_args_map) {
       func_args_.emplace_back(kernel_args[int_arg_mp.second.arg_idx]->dims().at(
           int_arg_mp.second.dim_idx));
+      VLOG(-1) << "xx  "
+               << kernel_args[int_arg_mp.second.arg_idx]->dims().at(
+                      int_arg_mp.second.dim_idx);
     }
 
     // launch host kernel
@@ -114,10 +117,11 @@ CinnJitInstruction::CinnJitInstruction(
 void CinnJitInstruction::Run() {
   auto gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx_);
   auto stream = gpu_ctx->stream();
-  // template infer shape
-  tensor_args_[2]->Resize(tensor_args_[0]->dims());
   for (size_t i = 0; i < tensor_args_.size(); ++i) {
+    // template infer shape
+    tensor_args_[i]->Resize(tensor_args_[0]->dims());
     gpu_ctx->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
+    VLOG(-1) << tensor_args_[i]->dims() << "   xxx  ";
   }
   fn_ptr_impl_->Run(tensor_args_, nullptr);
 }

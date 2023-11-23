@@ -443,13 +443,21 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   std::map<int, CINNKernelInfo::ArgDimIdx> mps;
   // update args for dynamic dim
   int num_tensor_args = static_cast<int>(group_func_args.size());
-  // for (int i = 0; i < num_tensor_args; i++) {
-  // if (num_tensor_args[i].is_dynamic) {
-  group_func_args.emplace_back(ir::_Var_::Make("S1", common::Int(32)));
-  mps[3] = {0, 0};
-  group->int_args_map = mps;
-  // }
-  // }
+  int non_tensor_arg_idx = group_func_args.size();
+  for (int tensor_arg_idx = 0; tensor_arg_idx < num_tensor_args;
+       tensor_arg_idx++) {
+    auto tensor_dim = (*group_func_arg_tensors)[tensor_arg_idx]->sym_shape;
+    int tensor_dim_size = tensor_dim.size();
+    for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
+         tensor_arg_dim_idx++) {
+      if (tensor_dim[tensor_arg_dim_idx]->IsDynamic()) {
+        group_func_args.emplace_back(ir::_Var_::Make(
+            tensor_dim[tensor_arg_dim_idx]->GetSymbolName(), common::Int(32)));
+        group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
+                                                     tensor_arg_dim_idx};
+      }
+    }
+  }
 
   auto func_body = ir_sch->GetModule().GetExprs().at(0);
 #ifdef CINN_WITH_CUDA
