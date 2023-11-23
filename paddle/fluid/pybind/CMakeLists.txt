@@ -99,6 +99,12 @@ if(WITH_CUSTOM_DEVICE)
   endif()
 endif()
 
+if(WITH_GCU)
+  include_directories(/usr/include)
+  include_directories(/usr/include/dtu)
+  set(PYBIND_DEPS ${PYBIND_DEPS} gcu_info)
+endif()
+
 if(NOT WIN32)
   set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
   if(WITH_NCCL OR WITH_RCCL)

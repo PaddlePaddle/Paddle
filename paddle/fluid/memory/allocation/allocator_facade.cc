@@ -833,7 +833,11 @@ class AllocatorFacadePrivate {
            dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
            dev_id++) {
         platform::CustomPlace p(dev_type, dev_id);
+#ifdef PADDLE_WITH_GCU
+        system_allocators_[p] = std::make_shared<CustomAllocator>(p);
+#else
         system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+#endif
       }
     }
 #endif
@@ -1004,6 +1008,11 @@ std::shared_ptr<phi::Allocation> AllocatorFacade::AllocShared(
 
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
                                      size_t size) {
+#ifdef PADDLE_WITH_GCU
+  if (UNLIKELY(size == 0)) {
+    size = 1;
+  }
+#endif
   return GetPrivate()->GetAllocator(place, size)->Allocate(size);
 }
 
