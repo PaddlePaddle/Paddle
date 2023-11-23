@@ -228,7 +228,6 @@ void FusedMultiTransformerInt8XpuKernel(
     auto qkvw_dims = qkvw[i]->dims();
     xft_qkvw.emplace_back(
         const_cast<TW*>(qkvw[i]->data<TW>()),
-        // const_cast<float*>(qkvw_max[i]->data<float>()),
         std::array<int64_t, 2>{qkvw_dims[0] * qkvw_dims[1] * qkvw_dims[2],
                                qkvw_dims[3]});
     auto qkvb_dims = qkv_bias[i]->dims();
@@ -246,7 +245,6 @@ void FusedMultiTransformerInt8XpuKernel(
     auto outw_dims = out_linear_w[i]->dims();
     xft_out_linear_w.emplace_back(
         const_cast<TW*>(out_linear_w[i]->data<TW>()),
-        // const_cast<float*>(out_linear_wmax[i]->data<float>()),
         std::array<int64_t, 2>{outw_dims[0], outw_dims[1]});
     xft_out_linear_bias.emplace_back(
         const_cast<float*>(out_linear_bias[i]->data<float>()),
@@ -269,7 +267,6 @@ void FusedMultiTransformerInt8XpuKernel(
     auto ffn1w_dims = ffn1_weight[i]->dims();
     xft_ffn1_w.emplace_back(
         const_cast<TW*>(ffn1_weight[i]->data<TW>()),
-        // const_cast<float*>(ffn1_weight_max[i]->data<float>()),
         std::array<int64_t, 2>{ffn1w_dims[0], ffn1w_dims[1]});
     xft_ffn1_bias.emplace_back(const_cast<float*>(ffn1_bias[i]->data<float>()),
                                std::array<int64_t, 1>{ffn1_bias[i]->dims()[0]});
@@ -284,7 +281,6 @@ void FusedMultiTransformerInt8XpuKernel(
     auto ffn2w_dims = ffn2_weight[i]->dims();
     xft_ffn2_w.emplace_back(
         const_cast<TW*>(ffn2_weight[i]->data<TW>()),
-        // const_cast<float*>(ffn2_weight_max[i]->data<float>()),
         std::array<int64_t, 2>{ffn2w_dims[0], ffn2w_dims[1]});
     xft_ffn2_bias.emplace_back(const_cast<float*>(ffn2_bias[i]->data<float>()),
                                std::array<int64_t, 1>{ffn2_bias[i]->dims()[0]});
@@ -367,13 +363,6 @@ void FusedMultiTransformerInt8XpuKernel(
               cache_kv_out[i]->numel());
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::copy");
         }
-        // std::cout<<"curr——time_step: "<<time_step_value<<std::endl;
-        // std::cout<<"cache_kv_dims: "<<cache_kv_dims.to_str()<<std::endl;
-        // std::cout<<"cache_kv_data ptr: "<<cache_kv_data<<std::endl;
-        // std::cout<<"cache_kv_gather_dims:
-        // "<<cache_kv_gather_dims.to_str()<<std::endl; std::cout<<"cache_kv_out
-        // ptr: "<<reinterpret_cast<XPUTypeT*>(ctx.template
-        // Alloc<T>(cache_kv_out[i]))<<std::endl;
       } else {  // inplace gather
         auto context_len_env = std::getenv("ERNIE_CONTEXT_LEN");
         int context_len =
@@ -409,8 +398,6 @@ void FusedMultiTransformerInt8XpuKernel(
               time_step_value - context_len);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::gather_inplace");
         }
-        // std::cout<<"gather_part cache_kv_gather_dims:
-        // "<<cache_kv_gather_dims.to_str()<<std::endl;
       }
     }
 
