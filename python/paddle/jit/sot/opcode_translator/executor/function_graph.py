@@ -248,16 +248,10 @@ class FunctionGraph:
                 self._store_var_info = store_var_info
                 self._pycode_gen: PyCodeGen = pycode_gen
 
-            def load(self, var, allow_push_null=True):
+            def load(self, var):
                 if isinstance(var, NullVariable):
-                    # PUSH_NULL is an opcode
-                    if allow_push_null:
-                        var.reconstruct(self._pycode_gen)
-                    else:
-                        # Avoid passing NULL as a parameter to the resume function
-                        self._pycode_gen.gen_load_null_variable()
+                    var.reconstruct(self._pycode_gen)
                     return
-                # only restored vars in stack, so used gen_load to process global var
                 self._pycode_gen.gen_load(self._store_var_info[var])
 
         origin_instrs = get_instructions(self.pycode_gen._origin_code)
@@ -269,30 +263,6 @@ class FunctionGraph:
         # NOTE(SigureMo): Trailing KW_NAMES + PRECALL is no need to restore in Python 3.11+
         if restore_instr_names[-2:] == ["KW_NAMES", "PRECALL"]:
             restore_instrs = restore_instrs[:-2]
-
-        for instr in restore_instrs:
-            if (
-                instr.opname == 'LOAD_FAST'
-                and instr.argval in self.pycode_gen._frame.f_locals.keys()
-                and isinstance(
-                    self.pycode_gen._frame.f_locals[instr.argval], NullVariable
-                )
-            ):
-                self.pycode_gen._frame.f_locals[instr.argval].reconstruct(
-                    self.pycode_gen
-                )
-            elif (
-                instr.opname == 'LOAD_GLOBAL'
-                and instr.argval in self.pycode_gen._frame.f_globals.keys()
-                and isinstance(
-                    self.pycode_gen._frame.f_globals[instr.argval], NullVariable
-                )
-            ):
-                self.pycode_gen._frame.f_globals[instr.argval].reconstruct(
-                    self.pycode_gen
-                )
-            else:
-                self.pycode_gen.extend_instrs([instr])
 
         nop = self.pycode_gen._add_instr("NOP")
 
@@ -324,15 +294,9 @@ class FunctionGraph:
 
             def load(self, var, allow_push_null=True):
                 if isinstance(var, NullVariable):
-                    # PUSH_NULL is an opcode
-                    if allow_push_null:
-                        var.reconstruct(self._pycode_gen)
-                    else:
-                        # Avoid passing NULL as a parameter to the resume function
-                        self._pycode_gen.gen_load_null_variable()
+                    var.reconstruct(self._pycode_gen)
                     return
-                # all vars to be load are saved by this function, so load_fast is correct
-                self._pycode_gen.gen_load_fast(self._index_for_load[var.id])
+                self._pycode_gen.gen_load(self._store_var_info[var])
 
         # var_id -> local_name mapping
         index_for_load = {}

@@ -2049,8 +2049,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         ), f"Stack must have one element, but get {len(self.stack)} elements."
         ret_val = self.stack.pop()
         if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
-            py_codegen = PyCodeGen(self._frame)
-            self.new_code = py_codegen.replace_null_variable()
+            self.new_code = None
         else:
             self._graph.start_compile(ret_val)
             self._graph.pycode_gen.gen_return()
