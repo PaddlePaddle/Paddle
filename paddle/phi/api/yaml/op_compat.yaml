@@ -1033,6 +1033,20 @@
   extra :
     attrs : [int round_type = 1]
 
+- op : fc
+  inputs :
+    input : Input
+    w : W
+    bias : Bias
+  outputs :
+    out : Out
+  attrs :
+    scale_in : Scale_in
+    scale_weights : Scale_weights
+    scale_out : Scale_out
+  extra :
+    [bool @ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@ = true]
+
 - op : feed
   outputs: {out: Out}
 
@@ -1232,6 +1246,21 @@
     saved_mean: SavedMean
     saved_variance: SavedVariance
     reserve_space: ReserveSpace
+
+- op : fused_bias_dropout_residual_layer_norm
+  backward : fused_bias_dropout_residual_layer_norm_grad
+  inputs :
+    x : X
+    residual : Residual
+    bias : Bias
+    ln_scale : LnScale
+    ln_bias : LnBias
+  outputs :
+    bias_dropout_residual_out : BiasDropoutResidualOut
+    dropout_mask_out : DropoutMaskOut
+    ln_mean : LnMean
+    ln_variance : LnVariance
+    y : Y
 
 - op : fused_bn_add_activation_ (fused_bn_add_activation)
   backward : fused_bn_add_activation_grad
@@ -2686,10 +2715,6 @@
   extra :
     attrs : [bool use_mkldnn=false]
 
-- op : shadow_output
-  inputs: {x: x}
-  outputs: {out: out}
-
 - op : shape
   inputs :
     input : Input
@@ -3287,6 +3312,12 @@
   outputs :
     out: Out
 
+- op: c_reducescatter
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_sync_calc_stream
   inputs :
     x : X
@@ -3320,6 +3351,13 @@
     {input: Input}
   outputs:
     {out: Out}
+
+- op: fused_elemwise_add_activation
+  backward: fused_elemwise_add_activation_grad
+  inputs :
+    {x: X, y: Y}
+  outputs :
+    {out : Out, intermediate_out : IntermediateOut}
 
 - op: fusion_squared_mat_sub
   inputs :
@@ -3431,6 +3469,12 @@
   outputs :
     out : Out
 
+- op: skip_layernorm
+  inputs :
+    {x: X, y: Y, scale: Scale, bias : Bias}
+  outputs :
+    out : Out
+
 - op: sparse_momentum
   inputs :
     {param: Param, grad: Grad, velocity: Velocity, index: Index, axis: Axis, learning_rate: LearningRate,master_param: MasterParam}
@@ -3454,6 +3498,12 @@
     x : X
   outputs :
     out : Out
+
+- op: uniform_random_batch_size_like
+  inputs:
+     input : Input
+  outputs:
+     out: Out
 
 - op: write_to_array
   inputs :

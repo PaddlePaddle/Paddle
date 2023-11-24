@@ -75,14 +75,14 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
 #define RESHARD_FUNCTOR_IMPL(dev_ctx, fn_name, dtype, ...)            \
   do {                                                                \
     if (phi::CPUContext::classof(dev_ctx)) {                          \
-      VLOG(4) << "Call `" << #fn_name << "` in Resharding on GPU.";   \
-      PD_VISIT_BOOL_AND_FLOATING_AND_INTEGRAL_TYPES(                  \
+      VLOG(4) << "Call `" << #fn_name << "` in Resharding on CPU.";   \
+      PD_VISIT_FLOATING_AND_INTEGRAL_TYPES(                           \
           dtype, #fn_name, ([&] {                                     \
             fn_name<data_t>(static_cast<const CPUContext&>(*dev_ctx), \
                             __VA_ARGS__);                             \
           }));                                                        \
     } else if (phi::GPUContext::classof(dev_ctx)) {                   \
-      VLOG(4) << "Call `" << #fn_name << "` in Resharding on CPU.";   \
+      VLOG(4) << "Call `" << #fn_name << "` in Resharding on GPU.";   \
       PD_VISIT_BOOL_AND_FLOATING_AND_INTEGRAL_TYPES(                  \
           dtype, #fn_name, ([&] {                                     \
             fn_name<data_t>(static_cast<const GPUContext&>(*dev_ctx), \

@@ -109,6 +109,10 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for inference only, false "
                   "for training.")
         .SetDefault(false);
+    AddAttr<bool>(
+        "in_pir_pt_mode",
+        "(bool, default false) Set to true when need to run in pir mode")
+        .SetDefault(false);
     AddAttr<int64_t>(
         "program_id",
         "(int64_t)"

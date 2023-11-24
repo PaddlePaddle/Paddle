@@ -241,6 +241,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     std::vector<Expr> buffers;
     std::vector<Expr> functions;
     std::vector<Expr> submodules;
+    std::vector<Expr> predicates;
 
     for (auto& expr : op->buffers) {
       buffers.push_back(Visit(&expr));
@@ -254,10 +255,15 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
       submodules.push_back(Visit(&expr));
     }
 
+    for (auto& expr : op->predicates) {
+      predicates.push_back(Visit(&expr));
+    }
+
     auto res = ir::_Module_::Make(op->name, op->target);
     res->buffers = buffers;
     res->functions = functions;
     res->submodules = submodules;
+    res->predicates = predicates;
 
     return Expr(res);
   }
@@ -405,6 +411,10 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     }
     return ir::ScheduleBlockRealize::Make(iter_values,
                                           Visit(&op->schedule_block));
+  }
+
+  Expr Visit(const ir::_Dim_* op) override {
+    return ir::_Dim_::Make(op->name, op->sym_dim);
   }
 
 #define __(x__) Expr Visit(const ir::intrinsics::x__* op);

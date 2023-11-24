@@ -109,7 +109,9 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
     helper = LayerHelper("unfold", **locals())
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'unfold')
+    check_variable_and_dtype(
+        x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'unfold'
+    )
 
     assert len(x.shape) == 4, "input should be the format of [N, C, H, W]"
 
@@ -155,7 +157,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             "of 2 or 4 integers"
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.unfold(x, kernel_sizes, strides, paddings, dilations)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -941,7 +943,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
             [5, 1000]
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bilinear(x1, x2, weight, bias)
     else:
         check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')

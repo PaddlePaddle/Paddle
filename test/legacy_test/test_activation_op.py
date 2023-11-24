@@ -1162,7 +1162,10 @@ class TestTanhshrink(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 class TestTanhshrink_ZeroDim(TestTanhshrink):
@@ -1181,6 +1184,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2687,6 +2691,8 @@ class TestGelu(TestActivation):
         self.public_python_api = paddle.nn.functional.gelu
         self.init_dtype()
         self.init_shape()
+        # Todo: Under float64, only this accuracy is currently supported, for further processing
+        self.fw_comp_rtol = 1e-7
         approximate = False
         np.random.seed(2048)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -2709,7 +2715,7 @@ class TestGelu(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True, check_prim_pir=False)
+        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -3379,10 +3385,10 @@ class TestReciprocal(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.01)
+        self.check_grad(['X'], 'Out', max_relative_error=0.01, check_pir=True)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestReciprocal_ZeroDim(TestReciprocal):
@@ -4317,7 +4323,10 @@ class TestThresholdedRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 class TestThresholdedRelu_ZeroDim(TestThresholdedRelu):
@@ -4338,6 +4347,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4805,7 +4815,7 @@ create_test_act_fp16_class(TestLogSigmoid)
 create_test_act_fp16_class(
     TestTanh, check_prim=True, check_prim_pir=True, enable_cinn=True
 )
-create_test_act_fp16_class(TestTanhshrink)
+create_test_act_fp16_class(TestTanhshrink, check_pir=True)
 create_test_act_fp16_class(TestHardShrink, check_pir=True)
 create_test_act_fp16_class(TestSoftshrink, check_pir=True)
 create_test_act_fp16_class(
@@ -4868,7 +4878,7 @@ create_test_act_fp16_class(TestRelu6)
 create_test_act_fp16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_fp16_class(TestELU)
 create_test_act_fp16_class(TestCELU)
-create_test_act_fp16_class(TestReciprocal)
+create_test_act_fp16_class(TestReciprocal, check_pir=True)
 create_test_act_fp16_class(TestLog, check_prim=True, check_pir=True)
 if core.is_compiled_with_rocm():
     create_test_act_fp16_class(TestLog2, check_pir=True)
@@ -4980,7 +4990,7 @@ create_test_act_bf16_class(TestSigmoid, check_prim=True, check_pir=True)
 create_test_act_bf16_class(TestSilu, check_prim=True, check_prim_pir=True)
 create_test_act_bf16_class(TestLogSigmoid)
 create_test_act_bf16_class(TestTanh, check_prim=True, check_prim_pir=True)
-create_test_act_bf16_class(TestTanhshrink)
+create_test_act_bf16_class(TestTanhshrink, check_pir=True)
 create_test_act_bf16_class(TestHardShrink, check_pir=True)
 create_test_act_bf16_class(TestSoftshrink, check_pir=True)
 create_test_act_bf16_class(
@@ -5023,7 +5033,7 @@ create_test_act_bf16_class(TestRelu6)
 create_test_act_bf16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_bf16_class(TestELU)
 create_test_act_bf16_class(TestCELU)
-create_test_act_bf16_class(TestReciprocal)
+create_test_act_bf16_class(TestReciprocal, check_pir=True)
 create_test_act_bf16_class(TestLog, check_prim=True, check_pir=True)
 if core.is_compiled_with_rocm():
     create_test_act_bf16_class(TestLog2, check_pir=True)

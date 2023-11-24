@@ -15,24 +15,28 @@
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 
 #include <absl/types/variant.h>
+#include "paddle/cinn/hlir/framework/pir/compilation_task.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/utils/multi_threading.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/builtin_type.h"
+
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
 namespace hlir {
 namespace framework {
 
-// TODO(Aurelius84): Need abstract this logic to implement Proxy for
-// the co-existance with GraphCompiler.
+// TODO(Aurelius84): Clear usless Build Interface.
 std::unique_ptr<Program> PirCompiler::Build() {
   m_builder_.Clear();
   // NOTE(Aurelius84): Currently only support each op for one group
   std::vector<pir::GroupPtr> groups;
-  for (auto it = program_.block()->begin(); it != program_.block()->end();
-       ++it) {
-    std::vector<::pir::Operation*> ops = {*it};
-    groups.push_back(std::make_shared<pir::Group>(ops));
+  for (auto& op : *program_.block()) {
+    std::vector<::pir::Operation*> ops = {&op};
+    auto group = std::make_shared<pir::Group>(ops);
+    group->output_ops.insert(&op);
+    groups.push_back(group);
   }
   VLOG(4) << "Groups size: " << groups.size();
   return std::move(Build(groups));
@@ -80,22 +84,36 @@ std::vector<pir::CUDAJITInfo> PirCompiler::BuildCUDAJITInfo(
 
 std::unique_ptr<Program> PirCompiler::Build(
     const std::vector<pir::GroupPtr>& groups) {
-  auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
+  std::vector<std::unique_ptr<Instruction>> instructions(groups.size());
+  if (FLAGS_cinn_bucket_compile) {
+    for (int i = 0; i < groups.size(); ++i) {
+      group_compilation_contexts_.emplace_back(target_, groups[i], scope_);
+    }
+    auto worker_fn = [&](int index) {
+      CompilationTask task(&group_compilation_contexts_[index]);
+      task();
+      instructions[index] = task.BuildInstruction();
+    };
+    utils::parallel_run(
+        worker_fn, utils::SequenceDispatcher(0, groups.size()), -1);
+  } else {
+    auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
 
-  std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-  for (int i = 0; i < groups.size(); ++i) {
-    lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
+    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
+    for (int i = 0; i < groups.size(); ++i) {
+      lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
+    }
+
+    for (auto&& lowered_func : lowered_funcs) {
+      ProcessFunction(lowered_func);
+    }
+
+    compiler_ = backends::Compiler::Create(target_);
+    auto build_module = m_builder_.Build();
+    compiler_->Build(build_module, "");
+
+    instructions = BuildInstructions(groups);
   }
-
-  for (auto&& lowered_func : lowered_funcs) {
-    ProcessFunction(lowered_func);
-  }
-
-  compiler_ = backends::Compiler::Create(target_);
-  auto build_module = m_builder_.Build();
-  compiler_->Build(build_module, "");
-
-  auto instructions = BuildInstructions(groups);
 
   // TODO(Aurelius84): Instantiate all tensors on compile-time, which is
   // controlled by 'options.with_instantiate_variables' in GraphCompiler.
@@ -166,7 +184,7 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
   auto scope = std::make_shared<Scope>();
 
   auto create_var = [&](::pir::Value value) {
-    if (!(value.type())) {
+    if (!(value) || !(value.type())) {
       return;
     }
     if (visited.count(value) > 0) return;
@@ -185,12 +203,12 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
     tensor->set_type(pir::CompatibleInfo::ConvertIRType(type_info.dtype()));
   };
 
-  for (auto it = program.block()->begin(); it != program.block()->end(); ++it) {
-    for (auto& oprand : (*it)->operands()) {
+  for (auto& op : *program.block()) {
+    for (auto oprand : op.operands()) {
       create_var(oprand.source());
     }
 
-    for (auto& result : (*it)->results()) {
+    for (auto result : op.results()) {
       create_var(result);
     }
   }

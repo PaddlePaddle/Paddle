@@ -216,7 +216,7 @@ const std::unordered_set<std::string> SpecialOps = {"pd_op.feed",
                                                     "pd_op.fetch",
                                                     "builtin.combine",
                                                     "builtin.set_parameter",
-                                                    "builtin.get_parameter",
+                                                    "builtin.parameter",
                                                     "builtin.slice",
                                                     "builtin.split",
                                                     "pd_op.data",
@@ -230,7 +230,7 @@ Variable* CreateVar(pir::Value value,
                     ValueExecutionInfo* value_exe_info) {
   pir::Operation* def_op = value.dyn_cast<pir::OpResult>().owner();
   bool is_persisable = false;
-  if (def_op->isa<::pir::GetParameterOp>()) {
+  if (def_op->isa<::pir::ParameterOp>()) {
     is_persisable = true;
   } else if (def_op->HasAttribute(kAttrIsPersisable)) {
     is_persisable = def_op->attribute(kAttrIsPersisable)
@@ -300,6 +300,9 @@ void BuildValue(pir::Value value,
     var->GetMutable<phi::DenseTensor>();
   } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     var->GetMutable<phi::SelectedRows>();
+  } else if (value.type()
+                 .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    var->GetMutable<phi::TensorArray>();
   } else if (value.type().isa<pir::VectorType>()) {
     auto tensor_array = var->GetMutable<VariableRefArray>();
     tensor_array->clear();
@@ -426,8 +429,8 @@ void HandleForSpecialOp(pir::Operation* op,
     VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
 
     value_exe_info->Rename(value, var_name, orig_name);
-  } else if (op_name == "builtin.get_parameter") {
-    VLOG(6) << "Handle for builtin.get_parameter:";
+  } else if (op_name == "builtin.parameter") {
+    VLOG(6) << "Handle for builtin.parameter:";
     auto param_name = op->attributes()
                           .at("parameter_name")
                           .dyn_cast<pir::StrAttribute>()
@@ -558,33 +561,33 @@ void BuildScope(const pir::Block& block,
           << GenScopeTreeDebugInfo(
                  const_cast<Scope*>(value_exe_info->GetScope()->root()));
 
-  for (auto op : block) {
-    std::string op_name = op->name();
-    if (op->attributes().count("op_name")) {
-      op_name = op->attributes()
+  for (auto& op : block) {
+    std::string op_name = op.name();
+    if (op.attributes().count("op_name")) {
+      op_name = op.attributes()
                     .at("op_name")
                     .dyn_cast<pir::StrAttribute>()
                     .AsString();
     }
     VLOG(4) << "build op:" << op_name;
     if (SpecialOps.count(op_name)) {
-      HandleForSpecialOp(op, var_name_prefix, value_exe_info);
+      HandleForSpecialOp(&op, var_name_prefix, value_exe_info);
       continue;
     }
 
-    CheckInputVars(op, op_name, value_exe_info);
+    CheckInputVars(&op, op_name, value_exe_info);
 
-    if (op->num_results() < 1) continue;
-    if (op->attributes().count("is_inplace") != 0 &&
-        op->attributes()
+    if (op.num_results() < 1) continue;
+    if (op.attributes().count("is_inplace") != 0 &&
+        op.attributes()
             .at("is_inplace")
             .dyn_cast<pir::BoolAttribute>()
             .data()) {
-      HandleForInplaceOp(op, var_name_prefix, value_exe_info);
+      HandleForInplaceOp(&op, var_name_prefix, value_exe_info);
       continue;
     } else {
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        BuildValue(op->result(i), var_name_prefix, value_exe_info);
+      for (size_t i = 0; i < op.num_results(); ++i) {
+        BuildValue(op.result(i), var_name_prefix, value_exe_info);
       }
     }
   }
@@ -766,6 +769,13 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
               attribute.dyn_cast<pir::DoubleAttribute>().data());  // NOLINT
         }
         attr_map[name] = vec_double;
+      } else if (array_list[0].isa<pir::StrAttribute>()) {
+        std::vector<std::string> vec_string;
+        for (auto attribute : array_list) {
+          vec_string.push_back(
+              attribute.dyn_cast<pir::StrAttribute>().AsString());  // NOLINT
+        }
+        attr_map[name] = vec_string;
       } else {
         std::stringstream ss;
         val.Print(ss);

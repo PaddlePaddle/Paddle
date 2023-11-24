@@ -19,6 +19,7 @@ import multiprocessing
 import os
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -37,25 +38,33 @@ from setuptools.dist import Distribution
 # check python
 python_version = platform.python_version()
 version_detail = sys.version_info
-version = version_detail[0] + version_detail[1] / 10
-env_version = os.getenv("PY_VERSION")
+version = str(version_detail[0]) + '.' + str(version_detail[1]) 
+env_version = str(os.getenv("PY_VERSION"))
 
-if version < 3.7:
+if version_detail < (3, 7):
     raise RuntimeError(
         f"Paddle only supports Python version >= 3.7 now,"
         f"you are using Python {python_version}"
     )
 elif env_version is None:
-    print(f"export PY_VERSION = { python_version }")
+    print(f"Export PY_VERSION = { python_version }")
     os.environ["PY_VERSION"] = python_version
 
 elif env_version != version:
     warnings.warn(
-        f"You set PY_VERSION={env_version}, but"
-        f"your current python environment is {version}"
-        f"we will use your current python version to execute"
+        f"You set PY_VERSION={env_version}, but "
+        f"your current python environment is {version} "
+        f"we will attempt to use the python version you set to execute."
     )
-    os.environ["PY_VERSION"] = python_version
+    cmd = 'which python' + env_version
+    res = subprocess.run(cmd, shell = True, stdout=subprocess.PIPE)
+    if res.returncode == 0:
+        os.environ["PYTHON_EXECUTABLE"] = res
+    else:
+        raise RuntimeError(
+            "We can't find the version you set in your machine"
+        )
+        
 
 # check cmake
 CMAKE = shutil.which('cmake3') or shutil.which('cmake')
@@ -916,7 +925,6 @@ def get_package_data_and_package_dir():
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
     package_data['paddle.libs'] = []
-
     if env_dict.get("WITH_SHARED_PHI") == "ON":
         package_data['paddle.libs'] += [
             ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
@@ -933,6 +941,10 @@ def get_package_data_and_package_dir():
         ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix,
         ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_suffix,
     ]
+    package_data['paddle.libs'] += [
+        ('libcommon' if os.name != 'nt' else 'common') + ext_suffix,
+    ]
+    shutil.copy(env_dict.get("COMMON_LIB"), libs_path)
     shutil.copy(env_dict.get("WARPCTC_LIBRARIES"), libs_path)
     shutil.copy(env_dict.get("WARPRNNT_LIBRARIES"), libs_path)
     package_data['paddle.libs'] += [
@@ -1168,6 +1180,12 @@ def get_package_data_and_package_dir():
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 )
+                commands.append(
+                    "install_name_tool -add_rpath '@loader_path' "
+                    + env_dict.get("PADDLE_BINARY_DIR")
+                    + '/python/paddle/libs/'
+                    + env_dict.get("COMMON_NAME")
+                )
                 if env_dict.get("WITH_SHARED_PHI") == "ON":
                     commands.append(
                         "install_name_tool -add_rpath '@loader_path' "
@@ -1190,6 +1208,12 @@ def get_package_data_and_package_dir():
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 ]
+                commands.append(
+                    "patchelf --set-rpath '$ORIGIN' "
+                    + env_dict.get("PADDLE_BINARY_DIR")
+                    + '/python/paddle/libs/'
+                    + env_dict.get("COMMON_NAME")
+                )
                 if env_dict.get("WITH_SHARED_PHI") == "ON":
                     commands.append(
                         "patchelf --set-rpath '$ORIGIN' "
@@ -1699,7 +1723,7 @@ def main():
     if env_dict.get("WITH_STRIP") == 'ON':
         command = (
             'find '
-            + paddle_binary_dir
+            + shlex.quote(paddle_binary_dir)
             + '/python/paddle -name "*.so" | xargs -i strip {}'
         )
         if os.system(command) != 0:

@@ -139,5 +139,13 @@ std::vector<std::vector<Tensor>> ConstructVjpResultByStopGradients(
     const std::vector<std::vector<Tensor>>& outputs,
     const std::vector<std::vector<bool>>& stop_gradients);
 
+static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
+  if (std::find(vec.begin(), vec.end(), value) != vec.end()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 }  // namespace primitive
 }  // namespace paddle
