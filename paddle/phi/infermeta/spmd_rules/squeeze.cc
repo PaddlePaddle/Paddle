@@ -50,7 +50,7 @@ void MakeSqueezeDimTransWithAxis(
     if (x_shape[i] == 1) {
       auto it = find(axis.begin(), axis.end(), i);
       if (it == axis.end()) {
-        trans->emplace_back(new Singleton());
+        trans->emplace_back(std::make_shared<Singleton>());
         out_shape->emplace_back(1);
       }
     } else {
@@ -68,7 +68,7 @@ void MakeSqueezeDimTransReverseWithoutAxis(
     if (x_shape[i] != 1) {
       trans->emplace_back(std::make_shared<InputDim>(j++));
     } else {
-      trans->emplace_back(new Singleton());
+      trans->emplace_back(std::make_shared<Singleton>());
     }
   }
 }
@@ -81,7 +81,7 @@ void MakeSqueezeDimTransReverseWithAxis(
   for (int64_t i = 0, j = 0, n = static_cast<int64_t>(x_shape.size()); i < n;
        i++) {
     if (x_shape[i] == 1) {
-      trans->emplace_back(new Singleton());
+      trans->emplace_back(std::make_shared<Singleton>());
 
       auto it = find(axis.begin(), axis.end(), i);
       if (it == axis.end()) {
@@ -144,8 +144,7 @@ SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
           << "] Out shape: [" << str_join(out_shape) << "]";
   VLOG(4) << "Transformation from input to output:";
   for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
-    std::shared_ptr<DimTrans> t = trans[i];
-    VLOG(4) << "\tOut axis[" << i << "]: " << t->to_string();
+    VLOG(4) << "\tOut axis[" << i << "]: " << trans[i]->to_string();
   }
   VLOG(4) << "X dims_mapping_src: [" << str_join(x_dims_mapping)
           << "] dims_mapping_dst: [" << str_join(dims_mapping_vec[0])
@@ -210,8 +209,7 @@ SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
           << "] X shape: [" << str_join(x_shape) << "]";
   VLOG(4) << "Transformation from output to input:";
   for (int64_t i = 0, n = trans.size(); i < n; i++) {
-    std::shared_ptr<DimTrans> t = trans[i];
-    VLOG(4) << "\tX axis[" << i << "]: " << t->to_string();
+    VLOG(4) << "\tX axis[" << i << "]: " << trans[i]->to_string();
   }
   VLOG(4) << "Out dims_mapping_src: [" << str_join(out_dims_mapping) << "] "
           << "dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
