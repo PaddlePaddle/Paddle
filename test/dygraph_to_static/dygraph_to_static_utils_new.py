@@ -234,8 +234,8 @@ class Dy2StTestMeta(type):
             # Generate all test cases
             for to_static_mode, ir_mode in to_static_with_ir_modes:
                 if (
-                    to_static_mode == ToStaticMode.SOT_MGS10
-                    and ir_mode != IrMode.LEGACY_IR
+                    to_static_mode != ToStaticMode.SOT
+                    or ir_mode != IrMode.LEGACY_IR
                 ):
                     # SOT_MGS10 only test with LEGACY_IR
                     continue
