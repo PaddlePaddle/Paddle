@@ -161,22 +161,8 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
 std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
     Tensor* out,
     bool set_dist_output_as_tensor_impl,
-    const phi::distributed::TensorDistAttr& dist_attr);
-
-std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
-    Tensor* out,
-    bool set_dist_output_as_tensor_impl,
     const phi::distributed::ArgDistAttr& dist_attr =
         phi::distributed::TensorDistAttr());
-
-std::vector<std::shared_ptr<phi::distributed::DistTensor>>
-CreateKernelDistOutput(std::vector<Tensor*> out,
-                       bool set_dist_output_as_tensor_impl,
-                       const phi::distributed::ArgDistAttr& dist_attr);
-
-std::vector<std::shared_ptr<phi::distributed::DistTensor>>
-CreateKernelDistOutput(std::vector<Tensor*> out,
-                       bool set_dist_output_as_tensor_impl);
 
 std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
     Tensor* out, const phi::distributed::ArgDistAttr& dist_attr);

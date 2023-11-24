@@ -236,12 +236,6 @@ void ReshardKernelOutputToApiOutput(
     const std::shared_ptr<phi::distributed::DistTensor>& src_tensor,
     Tensor* dst_tensor);
 
-void ReshardKernelOutputToApiOutput(
-    phi::DeviceContext* dev_ctx,
-    const std::vector<std::shared_ptr<phi::distributed::DistTensor>>&
-        src_tensors,
-    const std::vector<Tensor*>& dst_tensors);
-
 std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
     std::shared_ptr<phi::distributed::DistTensor> input,
     const phi::TensorArgDef& target_args_def,

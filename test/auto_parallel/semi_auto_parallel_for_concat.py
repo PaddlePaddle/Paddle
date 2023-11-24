@@ -38,7 +38,7 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
             inputs_shape=shapes,
             inputs_specs=specs,
             op_func=paddle.concat,
-            with_backward=True,
+            with_backward=False,
             axis=0,
         )
         self.check_dim_mapping(outputs, [-1, -1, 0])
@@ -50,7 +50,7 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
             inputs_shape=shapes,
             inputs_specs=specs,
             op_func=paddle.concat,
-            with_backward=True,
+            with_backward=False,
             axis=0,
         )
         self.check_dim_mapping(outputs, [-1, -1, 0])
@@ -62,7 +62,7 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
             inputs_shape=shapes,
             inputs_specs=specs,
             op_func=paddle.stack,
-            with_backward=True,
+            with_backward=False,
             axis=0,
         )
         self.check_dim_mapping(outputs, [-1, -1, -1, 0])
@@ -74,7 +74,7 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
             inputs_shape=shapes,
             inputs_specs=specs,
             op_func=paddle.stack,
-            with_backward=True,
+            with_backward=False,
             axis=0,
         )
         self.check_dim_mapping(outputs, [-1, 0, -1, -1])
