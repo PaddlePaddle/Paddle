@@ -3,7 +3,6 @@ set(paddle2cinn_deps
     gtest
     absl
     isl
-    mkldnn
     xxhash
     pybind
     python
@@ -18,6 +17,9 @@ set(paddle2cinn_deps
     schedule_desc_proto
     auto_schedule_proto
     parallel_executor)
+if(WITH_MKLDNN)
+  set(paddle2cinn ${paddle2cinn} mkldnn)
+endif()
 
 cc_library(
   paddle2cinn
