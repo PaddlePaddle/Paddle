@@ -264,6 +264,9 @@ void SliceOp::Build(Builder &builder,
                                          .dyn_cast<pir::VectorType>()
                                          .data()[static_cast<size_t>(index)]);
   PassStopGradients(argument, index);
+
+  argument.AddAttribute(
+      "index", pir::Int32Attribute::get(pir::IrContext::Instance(), index));
 }
 
 void SliceOp::PassStopGradients(OperationArgument &argument, int index) {
