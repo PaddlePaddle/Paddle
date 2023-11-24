@@ -253,5 +253,43 @@ class TestCinnDropout(TestCinnSubGraphBase):
         # np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
+class TestCinnEvalPrim(TestCinnSubGraphBase):
+    def prepare_data(self):
+        self.shape = [1, 2048, 768]
+        self.hidden_states = paddle.randn(self.shape, dtype="float32")
+        self.hidden_states.stop_gradient = False
+
+    def eval(self, use_cinn):
+        paddle.seed(2022)
+        net = CINNSoftmaxSubGraphNet()
+        if use_cinn:
+            net = apply_to_static(net, True)
+        net.eval()
+        out = net(self.hidden_states)
+
+        if use_cinn:
+            ops = [
+                op.name()
+                for op in net.forward.program_cache.last()[-1][-1]
+                .train_program.program.global_block()
+                .ops
+            ]
+            assert (
+                "pd_op.softmax" not in ops
+            ), f"after prim, pd_op.softmax should not exist, but got {ops}"
+            assert (
+                "pd_op.exp" in ops
+            ), f"after prim, pd_op.softmax should not exist, but got {ops}"
+
+        return out
+
+    def test_eval(self):
+        cinn_out = self.eval(use_cinn=True)
+        dy_out = self.eval(use_cinn=False)
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

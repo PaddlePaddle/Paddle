@@ -516,11 +516,11 @@ class PartialProgramLayer:
         if is_infer_mode:
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runable_program.clone()
+            if self._hooker:
+                self._hooker.after_infer(infer_program)
             infer_program = PirPassContext.apply(
                 infer_program, self._build_strategy
             )
-            if self._hooker:
-                self._hooker.after_infer(infer_program)
             return infer_program
         else:
             train_program: RunableProgram = self.origin_runable_program.clone()
