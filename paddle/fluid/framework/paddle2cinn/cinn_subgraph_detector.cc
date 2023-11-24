@@ -61,7 +61,7 @@ void CinnSubGraph::Insert(Node* op) {
   input_nodes.erase(op);
 }
 
-void SubgraphDetector::DoOpFusion() {
+void CinnSubgraphDetector::DoOpFusion() {
   // sort node from input to output
   for (auto& node : TopologicalSort(*graph_)) {
     if (node.IsVar()) {
@@ -108,7 +108,7 @@ void SubgraphDetector::DoOpFusion() {
   }
 }
 
-void SubgraphDetector::BuildSubGraph() {
+void CinnSubgraphDetector::BuildSubGraph() {
   std::unordered_set<CinnSubGraph*> subgraph_set;
   for (auto node : nodes_) {
     CHECK(subgraph_map_.count(node));
@@ -144,7 +144,7 @@ void SubgraphDetector::BuildSubGraph() {
   std::reverse(subgraph_list_.begin(), subgraph_list_.end());
 }
 
-void SubgraphDetector::DoSubGraphFusion() {
+void CinnSubgraphDetector::DoSubGraphFusion() {
   while (true) {
     bool update = false;
     for (auto& subgraph : subgraph_list_) {
@@ -161,7 +161,7 @@ void SubgraphDetector::DoSubGraphFusion() {
   }
 }
 
-bool SubgraphDetector::FuseSubGraph(CinnSubGraphPtr subgraph_ptr) {
+bool CinnSubgraphDetector::FuseSubGraph(CinnSubGraphPtr subgraph_ptr) {
   auto producer = subgraph_ptr;
   auto& consumers = producer->consumers;
   std::vector<CinnSubGraphPtr> candidates;
@@ -243,7 +243,7 @@ bool SubgraphDetector::FuseSubGraph(CinnSubGraphPtr subgraph_ptr) {
   return true;
 }
 
-bool SubgraphDetector::IsDependency(
+bool CinnSubgraphDetector::IsDependency(
     const CinnSubGraphPtr& producer_g,
     const CinnSubGraphPtr& consumer,
     const std::unordered_set<CinnSubGraphPtr>& consumers) {
@@ -270,7 +270,7 @@ bool SubgraphDetector::IsDependency(
   return false;
 }
 
-bool SubgraphDetector::IsDependencySimplify(
+bool CinnSubgraphDetector::IsDependencySimplify(
     const CinnSubGraphPtr& producer_g,
     const CinnSubGraphPtr& consumer,
     const std::unordered_set<CinnSubGraphPtr>& consumers) {
@@ -301,7 +301,7 @@ bool SubgraphDetector::IsDependencySimplify(
   return false;
 }
 
-std::vector<std::vector<Node*>> SubgraphDetector::operator()() {
+std::vector<std::vector<Node*>> CinnSubgraphDetector::operator()() {
   DoOpFusion();
   BuildSubGraph();
   DoSubGraphFusion();
