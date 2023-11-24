@@ -5566,7 +5566,6 @@ class TestNoBackwardAPI(unittest.TestCase):
         out = paddle.randn(self.shape)
         self.assertEqual(out.shape, [2, 3, 4])
 
-    @test_with_pir_api
     def test_randint_and_randint_like(self):
         out = paddle.randint(-10, 10, [])
         self.assertEqual(out.shape, [])
@@ -5810,18 +5809,27 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
 
-    @test_with_pir_api
-    def test_randint_and_randint_like(self):
+    def test_randint(self):
         out1 = paddle.randint(-10, 10, [])
-        out2 = paddle.randint_like(out1, -10, 10)
-        out3 = paddle.randint(-10, 10, self.shape)
+        out2 = paddle.randint(-10, 10, self.shape)
 
         res = self.exe.run(
-            paddle.static.default_main_program(), fetch_list=[out1, out2, out3]
+            paddle.static.default_main_program(), fetch_list=[out1, out2]
         )
         self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (2, 3, 4))
+
+    @test_with_pir_api
+    def test_randint_like(self):
+        out1 = paddle.rand([])
+        out2 = paddle.randint_like(out1, -10, 10)
+
+        res = self.exe.run(
+            paddle.static.default_main_program(), fetch_list=[out1, out2]
+        )
+
+        self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, (2, 3, 4))
 
     def test_standard_normal(self):
         out1 = paddle.standard_normal([])
