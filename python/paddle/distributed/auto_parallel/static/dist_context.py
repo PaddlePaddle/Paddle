@@ -904,14 +904,12 @@ class DistributedContext:
             dist_tensor = self._dist_tensors_for_program.get(
                 serial_tensor_id, None
             )
-            if dist_tensor:
-                dist_tensor.dist_attr.process_mesh = self.process_meshes[0]
-            else:
+            if not dist_tensor:
                 serial_tensor_id = orphan_node.var().original_id()
                 dist_tensor = self._dist_tensors_for_program.get(
                     serial_tensor_id, None
                 )
-                dist_tensor.dist_attr.process_mesh = self.process_meshes[0]
+            dist_tensor.dist_attr.process_mesh = self.process_meshes[0]
 
     def amend_dist_attr_for_program(self):
         for dist_tensor in self._dist_tensors_for_program.values():
