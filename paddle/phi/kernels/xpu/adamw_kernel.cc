@@ -31,7 +31,8 @@ float GetAbsMax(const Context& dev_ctx,
                 const float* input,
                 float* buffer_xpu,
                 int64_t numel) {
-  float buffer_cpu[6];
+  int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+  float buffer_cpu[12];  // 12 is enough even for XPU3
   // int findmax(Context* ctx, const T* x, float* maxptr, int64_t len);
   int r = xpu::findmax<float>(dev_ctx.x_context(), input, buffer_xpu, numel);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "findmax");
@@ -39,8 +40,8 @@ float GetAbsMax(const Context& dev_ctx,
                      static_cast<void*>(buffer_cpu),
                      dev_ctx.GetPlace(),
                      static_cast<void*>(buffer_xpu),
-                     sizeof(float) * 6);
-  float* max_value = std::max_element(buffer_cpu, buffer_cpu + 6);
+                     sizeof(float) * max_ptr_size);
+  float* max_value = std::max_element(buffer_cpu, buffer_cpu + max_ptr_size);
   return *max_value;
 }
 
@@ -357,8 +358,13 @@ void AdamwDenseKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    adamw, XPU, ALL_LAYOUT, phi::AdamwDenseKernel, float, phi::dtype::float16) {
+PD_REGISTER_KERNEL(adamw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::AdamwDenseKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);

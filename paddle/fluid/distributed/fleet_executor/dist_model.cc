@@ -269,7 +269,7 @@ bool DistModel::CommInit() {
   }
   framework::NaiveExecutor e(place_);
   e.CreateVariables(*comm_init_program, 0, true, scope_.get());
-  e.Prepare(scope_.get(), *comm_init_program, 0, false);
+  e.Prepare(scope_.get(), *comm_init_program, 0);
   e.Run();
   VLOG(3) << "Comm init successful.";
   return true;
@@ -468,7 +468,7 @@ bool DistModel::LoadParameters() {
   // Other non-persistable variables will be created in the micro scope
   // managed by fleet executor.
   e.CreateVariables(*program_, 0, true, scope_.get());
-  e.Prepare(scope_.get(), *load_program, 0, false);
+  e.Prepare(scope_.get(), *load_program, 0);
   e.Run();
   VLOG(3) << "After loading there are " << scope_->LocalVarNames().size()
           << " vars.";

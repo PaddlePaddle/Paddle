@@ -87,7 +87,7 @@ Block *ModuleOp::block() {
   assert(operation() != nullptr);
   assert(operation()->num_regions() == 1);
   assert(operation()->region(0).size() == 1);
-  return operation()->region(0).front();
+  return &operation()->region(0).front();
 }
 
 ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
@@ -122,20 +122,20 @@ void ModuleOp::VerifySig() const {
   IR_ENFORCE(num_results() == 0u, "The size of inputs must be equal to 0.");
 }
 
-const char *GetParameterOp::attributes_name[attributes_num] = {  // NOLINT
+const char *ParameterOp::attributes_name[attributes_num] = {  // NOLINT
     "parameter_name"};
 
-void GetParameterOp::Build(Builder &builder,
-                           OperationArgument &argument,
-                           const std::string &name,
-                           Type type) {
+void ParameterOp::Build(Builder &builder,
+                        OperationArgument &argument,
+                        const std::string &name,
+                        Type type) {
   argument.attributes[attributes_name[0]] =
       pir::StrAttribute::get(builder.ir_context(), name);
   argument.output_types.emplace_back(type);
   PassStopGradients(argument);
 }
 
-void GetParameterOp::PassStopGradients(OperationArgument &argument) {
+void ParameterOp::PassStopGradients(OperationArgument &argument) {
   std::vector<pir::Attribute> outs_stop_gradient(
       1, pir::BoolAttribute::get(pir::IrContext::Instance(), false));
   argument.AddAttribute(
@@ -143,8 +143,8 @@ void GetParameterOp::PassStopGradients(OperationArgument &argument) {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
-void GetParameterOp::VerifySig() const {
-  VLOG(4) << "Verifying inputs, outputs and attributes for: GetParameterOp.";
+void ParameterOp::VerifySig() const {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: ParameterOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
 
@@ -263,6 +263,9 @@ void SliceOp::Build(Builder &builder,
                                          .dyn_cast<pir::VectorType>()
                                          .data()[static_cast<size_t>(index)]);
   PassStopGradients(argument, index);
+
+  argument.AddAttribute(
+      "index", pir::Int32Attribute::get(pir::IrContext::Instance(), index));
 }
 
 void SliceOp::PassStopGradients(OperationArgument &argument, int index) {
@@ -497,7 +500,7 @@ Attribute ConstantOp::value() const { return attributes().at("value"); }
 }  // namespace pir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ModuleOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::GetParameterOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ParameterOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SetParameterOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ShadowOutputOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::CombineOp)

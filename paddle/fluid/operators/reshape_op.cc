@@ -627,9 +627,12 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
     using CompatMetaTensor = framework::CompatMetaTensor;
     CompatMetaTensor xshape(ctx->GetInputVarPtrs("XShape")[0],
                             ctx->IsRuntime());
+    CompatMetaTensor out_grad(
+        ctx->GetInputVarPtrs(framework::GradVarName("Out"))[0],
+        ctx->IsRuntime());
     CompatMetaTensor dx(ctx->GetOutputVarPtrs(framework::GradVarName("X"))[0],
                         ctx->IsRuntime());
-    phi::KernelWithXShapeInferMeta(xshape, &dx);
+    phi::KernelWithXShapeInferMeta(xshape, out_grad, &dx);
   }
 
  protected:

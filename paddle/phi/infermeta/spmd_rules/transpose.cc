@@ -24,31 +24,35 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-////////////////// Utils Functions //////////////////
-std::string GetTransposeOutputNotation(int input_ndim,
-                                       const std::string& x_axes,
-                                       std::vector<int> perm_dims) {
-  // convert the negative dim value to normal dim value
-  for (int i = 0, n = perm_dims.size(); i < n; ++i) {
-    if (perm_dims[i] < 0) {
-      perm_dims[i] = input_ndim + perm_dims[i];
+void BuildEinsumNotation(const size_t x_ndim,
+                         std::vector<int> perm,
+                         std::string* p_x_axes,
+                         std::string* p_out_axes) {
+  std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
+  // get einsum notation for x
+  *p_x_axes = alphabet.substr(0, x_ndim);
+
+  // convert perm
+  for (size_t i = 0; i < x_ndim; i++) {
+    if (perm[i] < 0) {
+      perm[i] += x_ndim;
     }
   }
 
-  std::string out_axes = "";
-  for (int64_t i = 0; i < input_ndim; i++) {
-    out_axes.append(1, x_axes[perm_dims[i]]);
+  // get einsum notation for out
+  *p_out_axes = "";
+  for (size_t i = 0; i < x_ndim; i++) {
+    p_out_axes->append(1, p_x_axes->at(perm[i]));
   }
-
-  return out_axes;
 }
+
 ////////////////// InferMeta(Contains SPMD) Functions //////////////////
 SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
                             const std::vector<int>& perm) {
   // Step0: Verify input args based on transpose logic
-  auto x_shape = common::vectorize(x.dims());
-  int x_ndim = x_shape.size();
-  auto x_dist_attr_src = x.dist_attr();
+  std::vector<int64_t> x_shape = common::vectorize(x.dims());
+  size_t x_ndim = x_shape.size();
+  const TensorDistAttr& x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
       x_ndim,
@@ -57,14 +61,19 @@ SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
                                    "dims_mapping size [%d] are not matched.",
                                    x_ndim,
                                    x_dims_mapping.size()));
+  // check perm size
+  PADDLE_ENFORCE_EQ(
+      x_ndim,
+      perm.size(),
+      phi::errors::InvalidArgument("The Tensor X's rank [%d] and "
+                                   "perm size [%d] are not matched.",
+                                   x_ndim,
+                                   perm.size()));
 
   // Step1: Build Einsum Notation
-  std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
-  // get einsum notation for input
-  std::string x_axes = alphabet.substr(0, x_ndim);
-
-  // get einsum notation for output
-  std::string out_axes = GetTransposeOutputNotation(x_ndim, x_axes, perm);
+  std::string x_axes;
+  std::string out_axes;
+  BuildEinsumNotation(x_ndim, perm, &x_axes, &out_axes);
 
   // Step2: Sharding Propogation
   // Step2.1: Merge input shardings
@@ -98,11 +107,11 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& out,
                                    const std::vector<int>& perm) {
   // Step0: Verify input args based on transpose logic
-  auto x_shape = common::vectorize(x.dims());
-  auto out_shape = common::vectorize(out.dims());
+  const std::vector<int64_t> x_shape = common::vectorize(x.dims());
+  const std::vector<int64_t> out_shape = common::vectorize(out.dims());
   int x_ndim = x_shape.size();
   int out_ndim = out_shape.size();
-  auto out_dist_attr_src = out.dist_attr();
+  TensorDistAttr out_dist_attr_src = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
       out_ndim,
@@ -111,14 +120,26 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
                                    "dims_mapping size [%d] are not matched.",
                                    out_ndim,
                                    out_dims_mapping.size()));
+  PADDLE_ENFORCE_EQ(
+      x_ndim,
+      out_ndim,
+      phi::errors::InvalidArgument("The Tensor X's rank [%d] and "
+                                   "Out's rank [%d] are not matched.",
+                                   x_ndim,
+                                   out_ndim));
+  // check perm size
+  PADDLE_ENFORCE_EQ(
+      out_ndim,
+      perm.size(),
+      phi::errors::InvalidArgument("The Tensor Out's rank [%d] and "
+                                   "perm size [%d] are not matched.",
+                                   out_ndim,
+                                   perm.size()));
 
   // Step1: Build Einsum Notation
-  std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
-  // get einsum notation for input
-  std::string x_axes = alphabet.substr(0, x_ndim);
-
-  // get einsum notation for output
-  std::string out_axes = GetTransposeOutputNotation(x_ndim, x_axes, perm);
+  std::string x_axes;
+  std::string out_axes;
+  BuildEinsumNotation(x_ndim, perm, &x_axes, &out_axes);
 
   // Step2: Sharding Propogation
   // Step2.1: merge input shardings
@@ -146,6 +167,40 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
           << "dims_mapping: [" << str_join(x_dims_mapping) << "]\n\n";
 
   return {{x_dist_attr}, {out_dist_attr_src}};
+}
+
+SpmdInfo TransposeGradInferSpmd(const DistMetaTensor& out_grad,
+                                const std::vector<int>& perm) {
+  const std::vector<int64_t> out_grad_shape =
+      common::vectorize(out_grad.dims());
+  size_t out_grad_ndim = out_grad_shape.size();
+  const std::vector<int64_t> out_grad_dims_mapping =
+      out_grad.dist_attr().dims_mapping();
+  size_t out_grad_dims_mapping_size = out_grad_dims_mapping.size();
+  PADDLE_ENFORCE_EQ(out_grad_ndim,
+                    out_grad_dims_mapping_size,
+                    phi::errors::InvalidArgument(
+                        "The Tensor Out_grad's rank [%d] and "
+                        "Out_grad's dims_mapping size [%d] are not matched.",
+                        out_grad_ndim,
+                        out_grad_dims_mapping_size));
+  size_t perm_size = perm.size();
+  PADDLE_ENFORCE_EQ(out_grad_ndim,
+                    perm_size,
+                    phi::errors::InvalidArgument(
+                        "The Tensor Out_grad's rank [%d] and perm size "
+                        "[%d] are not matched.",
+                        out_grad_ndim,
+                        perm_size));
+  std::vector<int64_t> x_dims_mapping(out_grad_ndim, -1);
+  for (size_t i = 0; i < perm.size(); ++i) {
+    int origin_index = perm[i] >= 0 ? perm[i] : out_grad_ndim + perm[i];
+    x_dims_mapping[origin_index] = out_grad_dims_mapping[i];
+  }
+  TensorDistAttr x_grad_dist_attr = out_grad.dist_attr();
+  x_grad_dist_attr.clean_partial_status();
+  x_grad_dist_attr.set_dims_mapping(x_dims_mapping);
+  return {{out_grad.dist_attr()}, {x_grad_dist_attr}};
 }
 
 }  // namespace distributed

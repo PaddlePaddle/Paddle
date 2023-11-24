@@ -85,6 +85,8 @@ list(
   rnn_op.cc
   fill_constant_batch_size_like_op.cc
   sum_op.cc
+  bitwise_and_op.cc
+  bitwise_or_op.cc
   shape_op.cc
   fill_constant_op.cc
   fused_token_prune_op.cc
@@ -161,7 +163,6 @@ elseif(WITH_CINN)
          custom_operator
          init_phi
          fleet_executor
-         cinn_compiler
          python)
 else()
   nv_test(

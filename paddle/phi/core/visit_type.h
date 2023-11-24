@@ -437,6 +437,8 @@ namespace phi {
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT64, int64_t, __VA_ARGS__) \
       PD_PRIVATE_CASE_TYPE(                                                    \
           NAME, ::phi::DataType::FLOAT16, phi::float16, __VA_ARGS__)           \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::phi::DataType::BFLOAT16, phi::bfloat16, __VA_ARGS__)         \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::FLOAT32, float, __VA_ARGS__) \
       default:                                                                 \
         PADDLE_THROW(phi::errors::InvalidArgument(                             \

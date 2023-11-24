@@ -14,6 +14,9 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 
+#include "glog/logging.h"
+
+#include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
@@ -24,6 +27,8 @@ std::shared_ptr<DistTensor> ReshardFunction::Eval(
     DeviceContext* dev_ctx,
     const DistTensor& in,
     const TensorDistAttr& out_dist_attr) {
+  phi::RecordEvent reshard_record_event(
+      Name(), phi::TracerEventType::OperatorInner, 1);
   std::shared_ptr<DistTensor> out = std::make_shared<DistTensor>();
   Eval(dev_ctx, in, out_dist_attr, out.get());
   return out;
@@ -57,24 +62,6 @@ void ReshardFunction::SetDistProps(DistTensor* tensor,
 
 DenseTensor* ReshardFunction::GetMutableTensor(DistTensor* tensor) {
   return tensor->value_.get();
-}
-
-ReshardFunction* ChooseProperReshardFunction(
-    const DistTensor& in, const TensorDistAttr& out_dist_attr) {
-  for (const auto& func : GetReshardFunctionList()) {
-    if (func->IsSuitable(in, out_dist_attr)) {
-      return func.get();
-    }
-  }
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "Can not reshard from in_dist_attr=%s to out_dist_attr=%s.",
-      in.dist_attr().to_string(),
-      out_dist_attr.to_string()));
-}
-
-std::vector<std::unique_ptr<ReshardFunction>>& GetReshardFunctionList() {
-  static std::vector<std::unique_ptr<ReshardFunction>> func_list;
-  return func_list;
 }
 
 }  // namespace distributed

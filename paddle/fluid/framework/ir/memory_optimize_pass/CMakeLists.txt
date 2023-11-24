@@ -44,12 +44,12 @@ if(WITH_CINN)
     share_varinfo_into_cinn_pass
     SRCS share_varinfo_into_cinn_pass.cc
     DEPS pass enforce graph_helper computation_op_handle
-         eager_deletion_op_handle cinn_compiler)
+         eager_deletion_op_handle)
   cc_test(
     share_varinfo_into_cinn_pass_test
     SRCS share_varinfo_into_cinn_pass_test.cc
-    DEPS share_varinfo_into_cinn_pass parallel_executor cinn_compiler
-         elementwise_add_op mul_op cinn_launch_op)
+    DEPS share_varinfo_into_cinn_pass parallel_executor elementwise_add_op
+         mul_op cinn_launch_op)
   list(APPEND EAGER_DELETETION_PASS_DEPS share_varinfo_into_cinn_pass)
 endif()
 

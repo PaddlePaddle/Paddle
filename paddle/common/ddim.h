@@ -68,7 +68,7 @@ inline void dynamic_dim_assign(const T1* in, T2* out, int n) {
  *
  * The number of dimensions must be between [1, 9].
  */
-TEST_API class DDim {
+class TEST_API DDim {
  public:
   constexpr static int kMaxRank = 9;
 
