@@ -63,6 +63,7 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     pir::CombineOp::name(),
     pir::SliceOp::name(),
     pir::SplitOp::name(),
+    pir::ConstantTensorOp::name(),
     pir::SetParameterOp::name(),
     pir::ParameterOp::name(),
     pir::ShadowOutputOp::name(),
@@ -73,6 +74,7 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
 };
 const std::unordered_set<std::string> SpecialLowerOps = {
     pir::CombineOp::name(),
+    pir::ConstantTensorOp::name(),
     pir::SetParameterOp::name(),
     pir::ParameterOp::name(),
     pir::ShadowOutputOp::name(),
@@ -1003,7 +1005,8 @@ void HandleForSpecialOp(
     op_output_types.push_back(t1);
   }
 
-  if (op_item->isa<::pir::ParameterOp>()) {
+  if (op_item->isa<::pir::ParameterOp>() ||
+      op_item->isa<::pir::ConstantTensorOp>()) {
     op_output_types.push_back(
         BuildOutputType(op_item->result(0).type(), place, ctx));
   }

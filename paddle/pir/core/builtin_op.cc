@@ -495,6 +495,25 @@ void ConstantOp::VerifySig() const {
 
 Attribute ConstantOp::value() const { return attributes().at("value"); }
 
+void ConstantTensorOp::VerifySig() const {
+  ConstantOp::VerifySig();
+  IR_ENFORCE(value().isa<pir::TensorNameAttribute>(),
+             "Type of value must be strattribute");
+}
+
+ConstantTensorOp ConstantTensorOp::dyn_cast(Operation *op) {
+  if (ConstantTensorOp::classof(op)) return ConstantTensorOp(op);
+  return ConstantTensorOp(nullptr);
+}
+
+bool ConstantTensorOp::classof(const Operation *op) {
+  return op && op->info().id() == TypeId::get<ConstantOp>() &&
+         op->attribute("value").isa<TensorNameAttribute>();
+}
+
+std::string ConstantTensorOp::tensor_name() {
+  return value().dyn_cast<pir::TensorNameAttribute>().data();
+}
 }  // namespace pir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ModuleOp)
@@ -506,3 +525,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(pir::SliceOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantLikeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantTensorOp)

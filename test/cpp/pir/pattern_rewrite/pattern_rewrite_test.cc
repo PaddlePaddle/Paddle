@@ -1013,3 +1013,105 @@ TEST(pattern_rewrite, Patterns) {
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(program.block()->size(), 2u);
 }
+
+void BuildConstantFoldingProgram(pir::Program *program,
+                                 pir::IrContext *ctx,
+                                 paddle::framework::Scope *scope) {
+  pir::Builder builder = pir::Builder(ctx, program->block());
+
+  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
+  phi::DDim dims = {2, 2};
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+  pir::Type dense_tensor_dtype = paddle::dialect::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset);
+
+  phi::DenseTensorMeta meta(
+      phi::DataType::FLOAT32, dims, data_layout, lod, offset);
+  paddle::platform::DeviceContext *dev_ctx =
+      paddle::platform::DeviceContextPool::Instance().Get(
+          paddle::platform::CPUPlace());
+
+  auto op1 = builder.Build<pir::ParameterOp>("a", dense_tensor_dtype);
+  auto op2 = builder.Build<pir::ParameterOp>("b", dense_tensor_dtype);
+  auto op3 = builder.Build<pir::ParameterOp>("c", dense_tensor_dtype);
+
+  auto op4 =
+      builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
+  auto op5 =
+      builder.Build<paddle::dialect::AddOp>(op3->result(0), op4->result(0));
+  builder.Build<paddle::dialect::FetchOp>(op5.out(), "out", 0);
+
+  auto *tensor_a = scope->Var("a")->GetMutable<phi::DenseTensor>();
+  auto *tensor_b = scope->Var("b")->GetMutable<phi::DenseTensor>();
+  auto *tensor_c = scope->Var("c")->GetMutable<phi::DenseTensor>();
+
+  tensor_a->set_meta(meta);
+  tensor_b->set_meta(meta);
+  tensor_c->set_meta(meta);
+
+  dev_ctx->Alloc(tensor_a, phi::DataType::FLOAT32);
+  dev_ctx->Alloc(tensor_b, phi::DataType::FLOAT32);
+  dev_ctx->Alloc(tensor_c, phi::DataType::FLOAT32);
+}
+
+TEST(constant_folding, ConstantFolding) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+
+  pir::Program program(ctx);
+  paddle::framework::Scope scope;
+  BuildConstantFoldingProgram(&program, ctx, &scope);
+
+  pir::PassManager pm(ctx);
+  pm.AddPass(pir::CreateConstantFoldingPass(&scope));
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  pm.EnableIRPrinting();
+
+  CHECK_EQ(pm.Run(&program), true);
+  EXPECT_EQ(program.block()->size(), 2u);
+}
+
+void BuildConcatProgram(pir::Program *program, pir::IrContext *ctx) {
+  pir::Builder builder = pir::Builder(ctx, program->block());
+  auto x = builder
+               .Build<paddle::dialect::FullOp>(std::vector<int64_t>({16, 16}),
+                                               2.0,
+                                               phi::DataType::FLOAT32,
+                                               phi::GPUPlace())
+               .result(0);
+
+  auto y = builder
+               .Build<paddle::dialect::FullOp>(std::vector<int64_t>({16, 16}),
+                                               2.0,
+                                               phi::DataType::FLOAT32,
+                                               phi::GPUPlace())
+               .result(0);
+
+  auto t1 =
+      builder.Build<pir::CombineOp>(std::vector<pir::Value>({x, y})).result(0);
+
+  auto out = builder.Build<paddle::dialect::ConcatOp>(t1, 1).result(0);
+
+  builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+}
+
+TEST(constant_folding, ConstantFolding_Combine) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+
+  pir::Program program(ctx);
+  paddle::framework::Scope scope;
+  BuildConcatProgram(&program, ctx);
+
+  pir::PassManager pm(ctx);
+  pm.AddPass(pir::CreateConstantFoldingPass(&scope));
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  pm.EnableIRPrinting();
+
+  CHECK_EQ(pm.Run(&program), true);
+  EXPECT_EQ(program.block()->size(), 6u);
+}
