@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle.distributed.communication.group import is_initialized
 from metadata import Metadata, ChunkMetadata, MetadataIndex
-from utils import merge_state_dict, dedup_state_dict, compute_local_shape_and_global_offset
+from utils import compute_local_shape_and_global_offset
 
 def check_state_dict(state_dict, process_group):
     local_keys = list(state_dict.keys())
@@ -35,25 +35,27 @@ def check_file_name(file_name, process_group):
     for id in all_unique_id[1:]:
         assert id == all_unique_id[0], f"id:{id} !=  all_unique_id[0]:{file_name}"
 
-# def merge_state_dict(global_state_dict):
-#     assert isinstance(global_state_dict, List), "The global_state_dict should be a list."
-#     out = {}
-#     for state_dict in global_state_dict:
-#         for key, val in state_dict.items():
-#             if key in out and val not in out[key]:
-#                 out[key].append(val)
-#             else:
-#                 out[key] = [val]
-#     return out
+def merge_state_dict(global_state_dict):
+    assert isinstance(global_state_dict, List), "The global_state_dict should be a list."
+    out = {}
+    for state_dict in global_state_dict:
+        for key, val in state_dict.items():
+            if key in out:
+                if val in out[key]:
+                    continue
+                out[key].append(val)
+            else:
+                out[key] = [val]
+    return out
 
-# def dedup_state_dict(global_state_dict):
-#     out = {}
-#     for state_dict in global_state_dict:
-#         for key, val in state_dict.items():
-#             if key in out:
-#                 continue
-#             out[key] = val
-#     return out
+def dedup_state_dict(global_state_dict):
+    out = {}
+    for state_dict in global_state_dict:
+        for key, val in state_dict.items():
+            if key in out:
+                continue
+            out[key] = val
+    return out
 
 def save_state_dict(state_dict, path, process_group=None, coordinator_rank=0, use_dist=True) -> None:
     """
@@ -79,11 +81,11 @@ def save_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
             assert isinstance(val, (paddle.Tensor, paddle.base.framework.EagerParamBase)), "Only support dygraph Tensor now, support static DistributedTensor later"
     #
     if process_group is None:
+        # Init the default global process group
         not is_initialized() and paddle.distributed.init_parallel_env()
-        process_group = paddle.distributed.new_group(list(range(paddle.distributed.ParallelEnv().nranks)), backend="nccl")
+        # TODO(pangengzheng): use global default process group
+        # process_group = paddle.distributed.new_group(list(range(paddle.distributed.ParallelEnv().nranks)), backend="nccl")
     # calculate (global offset, local shape) of each DTensor
-    local_state_dict = {}
-    metadata = Metadata()
     unique_id = 0
     file_name = ""
     while(True):
@@ -95,16 +97,22 @@ def save_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
     check_file_name(file_name, process_group)
     # the parameter_name and order in state_dict should be the same
     check_state_dict(state_dict, process_group)
+    local_state_dict = {}
+    metadata = Metadata()
     local_chunk_metadata = {}
     local_storage_metadata = {}
     for key, val in state_dict.items():
         if isinstance(val, paddle.Tensor):
+            # Case1: not initialized means this tensor is placed in another mesh which do not contain this rank
+            if not val._is_initialized():
+                continue
             if val.is_dist():
-                local_tensor = val.get_tensor().get_tensor()
                 local_shape, global_offset = compute_local_shape_and_global_offset(val.shape, val.dist_attr.process_mesh, val.dist_attr.dims_mapping)
-                # gather local_shape and global_offset from all ranks of each parameter
+                if not local_shape or not global_offset:
+                    continue
                 local_chunk_metadata[key] = ChunkMetadata(local_shape, global_offset)
                 local_storage_metadata[MetadataIndex(key, tuple(global_offset))] = file_name
+                local_tensor = val._local_value()
             else:
                 local_tensor = val
             local_state_dict[key] = local_tensor
@@ -115,13 +123,14 @@ def save_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
     metadata.state_dict_metadata = merge_state_dict(global_chunk_metadata)
     metadata.storage_metadata = dedup_state_dict(global_storage_metadata)
     if coordinator_rank == paddle.distributed.get_rank():
+        print(f"global_chunk_metadata:{global_chunk_metadata}")
+        print(f"global_storage_metadata:{global_storage_metadata}")
         print(f"metadata:{metadata}")
         paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))
     print(f"local_state_dict:{local_state_dict}")
-    for k,v in local_state_dict.items():
-        # the phi::DenseTensor only support convert to np.array
-        local_state_dict[k] = np.array(v)
-        print(f"local_state_dict name:{k}, val:{local_state_dict[k]}, type:{type(local_state_dict[k])}")
+    # for k,v in local_state_dict.items():
+    #     local_state_dict[k] = np.array(v)
+        # print(f"local_state_dict name:{k}, val:{local_state_dict[k]}, type:{type(local_state_dict[k])}")
     paddle.save(local_state_dict, os.path.join(path, file_name))
     
 
@@ -131,9 +140,11 @@ def test_save_state_dict():
     w1 = paddle.arange(8).reshape([4, 2])
     w2 = paddle.arange(8, 12).reshape([2, 2])
     mesh = dist.ProcessMesh([0,1], dim_names=["x"])
+    mesh2 = dist.ProcessMesh([2,3], dim_names=["x"])
     w1_dist_attr = dist.DistAttr(mesh, sharding_specs=["x", None])
     sharded_w1 = dist.shard_tensor(w1, dist_attr=w1_dist_attr)
-    w2_dist_attr = dist.DistAttr(mesh, sharding_specs=[None, None])
+    # w2_dist_attr = dist.DistAttr(mesh, sharding_specs=[None, None])
+    w2_dist_attr = dist.DistAttr(mesh2, sharding_specs=["x", None])
     sharded_w2 = dist.shard_tensor(w2, dist_attr=w2_dist_attr)
     state_dict = {"w1": sharded_w1, "w2": sharded_w2}
     save_state_dict(state_dict, "./output")

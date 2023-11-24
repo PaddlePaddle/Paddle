@@ -19,8 +19,8 @@ from dataclasses import dataclass
 
 @dataclass
 class ChunkMetadata:
-    local_shape: List[int]
-    global_offset: List[int]
+    local_shape: Tuple[int]
+    global_offset: Tuple[int]
 
 @dataclass(frozen=True)
 class MetadataIndex:

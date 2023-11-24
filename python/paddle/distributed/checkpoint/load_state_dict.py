@@ -168,7 +168,7 @@ def compute_overlap(cur_chunk_metadata:ChunkMetadata, storage_chunk_metadata:Chu
         else:
             assert False, "Should not reach here."
         lengths.append(end_offset - begin_offset)
-        assert lengths[-1] > 0, f"Invalid length:{lengths[-1]}, end_offset:{end_offset}, begin_offset:{begin_offset}"
+        assert lengths[-1] >= 0, f"Invalid length:{lengths[-1]}, end_offset:{end_offset}, begin_offset:{begin_offset}"
     return cur_offsets, storage_offsets, lengths
 
 
@@ -239,8 +239,9 @@ def load_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
         ...
     """
     if process_group is None:
+        # Init the default global process group
         not is_initialized() and paddle.distributed.init_parallel_env()
-        process_group = paddle.distributed.new_group(list(range(paddle.distributed.ParallelEnv().nranks)), backend="nccl")
+        # process_group = paddle.distributed.new_group(list(range(paddle.distributed.ParallelEnv().nranks)), backend="nccl")
 
     state_dict = flatten_state_dict(state_dict)
     local_load_files = get_local_load_files(path, state_dict, process_group)
@@ -249,10 +250,12 @@ def load_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
     read_items = get_read_items(path, state_dict, process_group)
     loaded_state_dict = {}
     print(f"before load, state_dict:{state_dict},\n load_infos:{load_infos},\n read_items:{read_items}")
-    # return
     for item in read_items:
         assert item.meta_index in load_infos, f"item:{item}, load_infos:{load_infos}"
         src_rank, file_name = load_infos[item.meta_index]
+        storage_chunk_tensor = None
+        cur_sub_chunk_tensor = None
+        # The src rank need to load the state_dict.
         if src_rank == paddle.distributed.get_rank():
             if file_name not in loaded_state_dict:
                 # The load state_dict is not distributed tensor but a normal tensor.
@@ -263,43 +266,37 @@ def load_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
             storage_offsets = item.storage_offset
             storage_lengths = item.lengths
             storage_ends = [storage_offset + storage_length for storage_offset, storage_length in zip(storage_offsets, storage_lengths)]
-            # storage_chunk_tensor = paddle.cast(paddle.slice(storage_local_tensor, list(range(len(storage_lengths))), storage_offsets, storage_ends), paddle.float32)
             storage_chunk_tensor = paddle.slice(storage_local_tensor, list(range(len(storage_lengths))), storage_offsets, storage_ends)
-            print(f"src_ran:{src_rank}, item.rank:{item.rank}, process_group:{process_group}, storage_local_tensor:{storage_local_tensor}, storage_chunk_tensor:{storage_chunk_tensor}")
-            paddle.distributed.broadcast(storage_chunk_tensor, src=src_rank, group=process_group)
-            if src_rank == item.rank:
-                cur_local_tensor = state_dict[item.meta_index.param]._local_value()
-                cur_offsets = item.cur_offset
-                cur_lengths = item.lengths
-                cur_ends = [cur_offset + cur_length for cur_offset, cur_length in zip(cur_offsets, cur_lengths)]
-                cur_sub_chunk_tensor = paddle.slice(cur_local_tensor, list(range(len(cur_lengths))), cur_offsets, cur_ends)
-                paddle.assign(storage_chunk_tensor, cur_sub_chunk_tensor)
-                
-        elif item.rank == paddle.distributed.get_rank():
+        # The read item rank need to be assigned
+        if item.rank == paddle.distributed.get_rank():
             assert item.meta_index.param in state_dict, f"item:{item}, state_dict:{state_dict}"
             cur_local_tensor = state_dict[item.meta_index.param]._local_value()
             cur_offsets = item.cur_offset
             cur_lengths = item.lengths
             cur_ends = [cur_offset + cur_length for cur_offset, cur_length in zip(cur_offsets, cur_lengths)]
             cur_sub_chunk_tensor = paddle.slice(cur_local_tensor, list(range(len(cur_lengths))), cur_offsets, cur_ends)
-            print(f"cur_sub_chunk_tensor :{cur_sub_chunk_tensor}, cur_local_tensor:{cur_local_tensor}")
-            paddle.distributed.broadcast(cur_sub_chunk_tensor, src=src_rank, group=process_group)
-            print(f"src_rank:{src_rank}, item.rank:{item.rank}, process_group:{process_group}, cur_sub_chunk_tensor:{cur_sub_chunk_tensor}")
         else:
-            dummy_tensor = paddle.zeros(item.lengths, dtype=state_dict[item.meta_index.param].dtype)
-            print(f"dummy_tensor:{dummy_tensor}")
-            paddle.distributed.broadcast(dummy_tensor, src=src_rank, group=process_group)
-            print(f"src_rank:{src_rank}, item.rank:{item.rank}, process_group:{process_group}, dummy_tensor:{dummy_tensor}")
-        # break
+            cur_sub_chunk_tensor = paddle.zeros(item.lengths, dtype=state_dict[item.meta_index.param].dtype)
+
+        if src_rank == item.rank:
+            # assign value locally
+            paddle.assign(storage_chunk_tensor, cur_sub_chunk_tensor)
+        else:
+            # assign value remotely
+            if src_rank == paddle.distributed.get_rank():
+                paddle.distributed.broadcast(storage_chunk_tensor, src=src_rank, group=process_group)
+            else:
+                paddle.distributed.broadcast(cur_sub_chunk_tensor, src=src_rank, group=process_group)
+
     print(f"after load, state_dict:{state_dict}")
 
 
 def test_get_local_load_files():
-    if paddle.distributed.get_rank() == 0:
-        path = "./output"
-    else:
-        path = "./output2"
-    # path = "./output"
+    # if paddle.distributed.get_rank() == 0:
+    #     path = "./output"
+    # else:
+    #     path = "./output2"
+    path = "./output"
     # build state_dict
     import paddle.distributed as dist
     w1 = paddle.zeros([4,2], dtype=paddle.int64)
