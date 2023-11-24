@@ -42,6 +42,10 @@ class BaseExporter:
         self.program = program
         self.role = role
         self.root_dir = get_saving_dir()
+<<<<<<< HEAD
+=======
+        self.fetch_col = 0
+>>>>>>> b6ec01ad08... [PIR+CINN]Support SubGraph Exporter for Unittest Platform
 
     def save(self):
         # step 1: Create subgraph saving path.
@@ -126,8 +130,14 @@ class BaseExporter:
                 type="fetch",
                 inputs={'X': [new_var]},
                 outputs={'Out': [fetch_var]},
+<<<<<<< HEAD
                 attrs={'col': i},
             )
+=======
+                attrs={'col': self.fetch_col},
+            )
+            self.fetch_col += 1
+>>>>>>> b6ec01ad08... [PIR+CINN]Support SubGraph Exporter for Unittest Platform
         global_block._sync_with_cpp()
 
     def rename_ops(self, ops, new_name, old_name):
