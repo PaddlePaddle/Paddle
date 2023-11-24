@@ -366,6 +366,13 @@ void IRPassManager::CreatePasses(Argument *argument,
         pass->Set("quant_post_dynamic_weight_methods",
                   new std::map<std::string, int>(quant_post_type));
       }
+    } else if (pass_name == "conv2d_xpu_fuse_pass") {
+      std::map<std::string, int> quant_post_type =
+          argument->xpu_quant_post_dynamic_weight_methods();
+      if (!quant_post_type.empty()) {
+        pass->Set("quant_post_dynamic_weight_methods",
+                  new std::map<std::string, int>(quant_post_type));
+      }
     }
     pre_pass = pass_name;
 
