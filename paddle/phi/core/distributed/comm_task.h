@@ -37,6 +37,7 @@ class CommTask {
  public:
   CommTask(const std::string& backend = "",
            const phi::Place& place = phi::Place(),
+           const std::string& group_key = "",
            int rank = -1,
            int size = 0,
            int gid = 0,
@@ -47,6 +48,7 @@ class CommTask {
            CommType comm_type = CommType::UNKNOWN)
       : backend_(backend),
         place_(place),
+        group_key_(group_key),
         rank_(rank),
         size_(size),
         gid_(gid),
@@ -65,9 +67,10 @@ class CommTask {
   virtual ~CommTask() = default;
 
   std::string UniqueKey() {
-    return "op:" + CommTypeToString(comm_type_) +
+    return "group_key:" + group_key_ + ",op:" + CommTypeToString(comm_type_) +
            ",gid:" + std::to_string(gid_) + ",seq:" + std::to_string(seq_);
   }
+  std::string GroupKey() { return group_key_; }
   std::string GetBackend() { return backend_; }
   phi::Place GetPlace() { return place_; }
   int GetGlobalRank() { return global_rank_; }
@@ -104,6 +107,12 @@ class CommTask {
     return;
   }
 
+  virtual void ClearRecord() {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("%s is not implemented.", __func__));
+    return;
+  }
+
   virtual std::string GetCommErrors() {
     PADDLE_THROW(
         phi::errors::Unimplemented("%s is not implemented.", __func__));
@@ -124,6 +133,16 @@ class CommTask {
         phi::errors::Unimplemented("%s is not implemented.", __func__));
     return false;
   }
+  virtual void SetUpdated(bool updated) {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("%s is not implemented.", __func__));
+    return;
+  }
+  virtual bool IsUpdated() {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("%s is not implemented.", __func__));
+    return false;
+  }
   virtual void AbortComm() {
     PADDLE_THROW(
         phi::errors::Unimplemented("%s is not implemented.", __func__));
@@ -133,6 +152,7 @@ class CommTask {
  protected:
   std::string backend_;
   phi::Place place_;
+  std::string group_key_;
   int global_rank_;
   int rank_;
   int size_;
@@ -144,7 +164,11 @@ class CommTask {
   CommType comm_type_;
   bool start_trace_updated_{false};
 
+  // task status
+  bool started_ = false;
   bool completed_ = false;
+  // task status changed
+  bool updated_ = true;
   bool aborted_{false};
   std::chrono::time_point<std::chrono::steady_clock> start_time_;
   std::shared_ptr<Store> store_;
