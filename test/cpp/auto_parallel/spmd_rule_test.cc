@@ -1270,11 +1270,11 @@ TEST(Reshape, Ctor) {
 
   auto out_grad = build_input({2, 1024, 4, 1024 / 4}, {-1, -1, -1, -1});
   auto spmd_grad = ReshapeGradInferSpmd(input, out_grad);
-  EXPECT_EQ(spmd.first.size(), static_cast<size_t>(2));
-  EXPECT_EQ(spmd.second.size(), static_cast<size_t>(1));
-  check_dim_mapping(spmd.first[0], {0, 1, -1});
-  check_dim_mapping(spmd.first[1], {0, 1, -1, -1});
-  check_dim_mapping(spmd.second[0], {0, 1, -1});
+  EXPECT_EQ(spmd_grad.first.size(), static_cast<size_t>(2));
+  EXPECT_EQ(spmd_grad.second.size(), static_cast<size_t>(1));
+  check_dim_mapping(spmd_grad.first[0], {0, 1, -1});
+  check_dim_mapping(spmd_grad.first[1], {0, 1, -1, -1});
+  check_dim_mapping(spmd_grad.second[0], {0, 1, -1});
 }
 
 }  // namespace auto_parallel
