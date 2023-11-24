@@ -20,7 +20,7 @@ import scipy.stats
 from distribution import config
 
 import paddle
-from paddle.distribution.poisson import Poisson
+from paddle.distribution import Poisson
 
 
 @parameterize.place(config.DEVICES)
