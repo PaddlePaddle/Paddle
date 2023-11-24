@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode, in_pir_mode
+from paddle.framework import in_dynamic_mode
 from paddle.tensor.linalg import matmul
 
 
@@ -155,15 +155,6 @@ def fused_linear_activation(
             'trans_y',
             trans_y,
             'activation',
-            activation,
-        )
-    elif in_pir_mode():
-        return _C_ops.fused_gemm_epilogue(
-            x,
-            y,
-            bias,
-            trans_x,
-            trans_y,
             activation,
         )
 
