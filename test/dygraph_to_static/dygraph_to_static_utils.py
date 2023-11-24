@@ -391,6 +391,13 @@ def test_legacy_and_pt_and_pir(fn):
     return fn
 
 
+def test_default_mode_only(fn):
+    # Some unittests has high time complexity, we only test them with default mode
+    fn = set_to_static_mode(ToStaticMode.SOT)(fn)
+    fn = set_ir_mode(IrMode.PT)(fn)
+    return fn
+
+
 # NOTE: This is a special decorator for comparing legacy and pt
 def compare_legacy_with_pt(fn):
     @wraps(fn)
