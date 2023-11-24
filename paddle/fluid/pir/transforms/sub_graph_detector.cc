@@ -461,6 +461,8 @@ std::vector<pir::Value> AnalysisOutputs(
     }
   }
 
+  // NOTE: If all value are not used outside, we mark last op's results
+  // as outputs. But keep in mind that is risky.
   if (outputs.size() == 0) {
     for (size_t i = 0; i < group_ops.back()->num_results(); ++i) {
       outputs.push_back(group_ops.back()->result(i));
