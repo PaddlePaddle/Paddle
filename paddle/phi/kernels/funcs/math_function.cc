@@ -184,41 +184,6 @@ struct TensorSetConstantEx {
   phi::Place place_;
 };
 #ifdef PADDLE_WITH_XPU
-template <typename T>
-class XPUTensorTrait {
- public:
-  using Type = T;
-};
-template <>
-class XPUTensorTrait<phi::dtype::float16> {
- public:
-  using Type = ::float16;
-};
-template <>
-class XPUTensorTrait<phi::dtype::bfloat16> {
- public:
-  using Type = ::float16;
-};
-template <>
-class XPUTensorTrait<phi::dtype::complex<double>> {
- public:
-  using Type = int64_t;
-};
-template <>
-class XPUTensorTrait<phi::dtype::complex<float>> {
- public:
-  using Type = float;
-};
-template <>
-class XPUTensorTrait<unsigned char> {
- public:
-  using Type = bool;
-};
-template <>
-class XPUTensorTrait<double> {
- public:
-  using Type = int64_t;
-};
 struct TensorSetConstantXPU {
   TensorSetConstantXPU(const phi::DeviceContext& context,
                        phi::DenseTensor* tensor,
@@ -229,12 +194,16 @@ struct TensorSetConstantXPU {
   void apply() const {
     auto* ctx = phi::DeviceContextPool::Instance().Get(place_);
     auto data = ctx->Alloc<T>(tensor_);
+    const T* num = reinterpret_cast<const T*>(value_);
     int numel = tensor_->numel();
-    if (((std::is_same<T, float>::value) ||
-         (std::is_same<T, phi::dtype::float16>::value)) &&
+    if (((std::is_same<T, float>::(*num)) ||
+         (std::is_same<T, phi::dtype::float16>::(*num))) &&
         (place_ == phi::XPUPlace())) {
-      using XPUType = typename XPUTensorTrait<T>::Type;
-      const T* num = reinterpret_cast<const T*>(value_);
+      using XPUType = typename XPUTypeTrait<T>::Type;
+      VLOG(0) << "TensorSetConstantXPU use xpu kernel, T type is float:"
+              << std::is_same<T, float>::(*num)
+              << " | float16:" << std::is_same<T, phi::dtype::float16>::(*num)
+              << "  XPUType:" << XPUType;
       auto* dev_ctx = static_cast<phi::XPUContext*>(ctx);
       int r = xpu::constant<XPUType>(dev_ctx->x_context(),
                                      reinterpret_cast<XPUType*>(data),
@@ -244,7 +213,6 @@ struct TensorSetConstantXPU {
       dev_ctx->Wait();
     } else {
       std::unique_ptr<T[]> data_cpu(new T[numel]);
-      const T* num = reinterpret_cast<const T*>(value_);
       std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(*num));
       memory_utils::Copy(place_,
                          data,
@@ -353,10 +321,12 @@ void set_constant(const phi::DeviceContext& context,
 #endif
   } else if (place.GetType() == phi::AllocationType::XPU) {
 #ifdef PADDLE_WITH_XPU
+    VLOG(0) << "XPU set_constant with const void value";
     phi::VisitDataType(tensor->dtype(),
                        TensorSetConstantXPU(context, tensor, value, place));
 #endif
   } else {
+    VLOG(0) << "Ex set_constant with const void value";
     phi::VisitDataType(tensor->dtype(),
                        TensorSetConstantEx(tensor, value, place));
   }

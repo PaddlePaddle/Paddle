@@ -76,6 +76,7 @@ template <typename T>
 void set_constant(const phi::DeviceContext& context,
                   phi::DenseTensor* tensor,
                   const T value) {
+  VLOG(0) << "set_constant with T value:" << value;
   set_constant(context, tensor, reinterpret_cast<const void*>(&value));
 }
 

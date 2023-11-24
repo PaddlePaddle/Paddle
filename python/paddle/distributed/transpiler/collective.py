@@ -151,6 +151,7 @@ class Collective:
                 },
             )
             if not has_multitrainer:
+                # 'endpoints': endpoints_str,
                 block.append_op(
                     type='c_comm_init',
                     inputs={'X': nccl_id_var},
@@ -159,7 +160,6 @@ class Collective:
                         'nranks': nranks,
                         'rank': rank,
                         'ring_id': ring_id,
-                        'endpoints': endpoints_str,
                         self.op_role_key: OpRole.Forward,
                     },
                 )
