@@ -21,11 +21,7 @@ from paddle.distributed.fleet import auto
 from paddle.io import Dataset
 
 paddle.enable_static()
-paddle.disable_signal_handler()
 
-global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
-PP_MESH_0 = auto.ProcessMesh([0])
-PP_MESH_1 = auto.ProcessMesh([1])
 batch_size = 2
 batch_num = 10
 hidden_size = 1024
@@ -75,9 +71,10 @@ class MLPLayer(nn.Layer):
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
 
     def forward(self, input):
-        out = auto.shard_op(self.norm, PP_MESH_0)(input)
-        out = self.linear0(out)
-        out = auto.shard_op(self.linear1, PP_MESH_1)(out)
+        out0 = self.linear0(input)
+        out1 = self.linear1(out0)
+        out2 = self.norm(out1)
+        out = nn.functional.gelu(out2)
         return out
 
 
@@ -110,11 +107,6 @@ def train_low_level():
         train_dataset, batch_size=batch_size, mode="train"
     )
     engine.prepare(mode="train")
-    for data in train_dataloader:
-        outs = engine.run(data, mode="train")
-
-    engine.prepare(mode="train")
-
     for data in train_dataloader:
         outs = engine.run(data, mode="train")
 
