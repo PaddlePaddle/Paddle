@@ -1728,11 +1728,6 @@ class Engine:
             self.param_mapping = param_mapping
             self.pir_grad_var_to_var = pir_grad_var_to_var
             self.pir_program_initialized = True
-            lr_scheduler = (
-                self.main_program.lr_scheduler
-                if hasattr(self.main_program, 'lr_scheduler')
-                else None
-            )
 
     def _decompose_pir_program(self):
         if not self.pir_program_initialized:
