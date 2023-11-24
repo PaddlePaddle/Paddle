@@ -496,7 +496,8 @@ TEST(shape_struct_test, shape_analysis_manager) {
       pir::shape::SymbolicDimOp::GetSymbolicDimAttrName(), attr_op5);
 
   auto shape_analysis_mgr = pir::ShapeAnalysisManager::Instance();
-  auto shape_analysis = shape_analysis_mgr.Get(&program);
+  pir::ShapeConstraintIRAnalysis &shape_analysis =
+      shape_analysis_mgr.Get(&program);
 
   EXPECT_TRUE(shape_analysis.IsShapeEqual(value3, value4));
   EXPECT_FALSE(shape_analysis.IsShapeEqual(value1, value2));
