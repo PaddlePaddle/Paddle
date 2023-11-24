@@ -974,6 +974,38 @@ TEST(WhereRule, Ctor) {
   check_partial_dims(infered_dist_attrs.second[1], {0});
 }
 
+TEST(ReduceMaxRule, Ctor) {
+  std::vector<int64_t> mesh_shape = {2};
+  std::vector<int64_t> process_ids = {0, 1};
+  std::vector<std::string> dim_names = {"x"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  // test forward
+  auto t_dist_attr = TensorDistAttr();
+  t_dist_attr.set_process_mesh(process_mesh);
+  t_dist_attr.set_dims_mapping({-1, 0, -1});
+  t_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor x =
+      phi::distributed::DistMetaTensor(phi::make_ddim({4, 6, 8}), t_dist_attr);
+  IntArray axis = {1};
+  bool keep_dim = false;
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::ReductionMaxInferSpmdDynamic(x, axis, keep_dim);
+  check_dim_mapping(forward_info.second[0], {-1, -1});
+  check_partial_dims(forward_info.second[0], {0});
+  // test backward
+  phi::distributed::DistMetaTensor out = phi::distributed::DistMetaTensor(
+      phi::make_ddim({4, 8}),
+      PADDLE_GET_CONST(TensorDistAttr, forward_info.second[0]));
+  phi::distributed::DistMetaTensor out_grad = out;
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::ReductionGradInferSpmd(
+          x, out, out_grad, {1}, false, false);
+  check_partial_dims(backward_info.first[1], {});
+  check_dim_mapping(backward_info.second[0], {-1, -1, -1});
+  check_partial_dims(backward_info.second[0], {});
+}
+
 TEST(Numel, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};
   std::vector<int64_t> process_ids = {0, 1, 2, 3};
@@ -1171,6 +1203,43 @@ TEST(Util, Ctor) {
   EXPECT_TRUE(!PlacementEqual(b, e));
   EXPECT_TRUE(!PlacementEqual(c, e));
   EXPECT_TRUE(!PlacementEqual(d, e));
+}
+
+TEST(Transpose, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  std::vector<int64_t> shape = {6, 8, 10};
+  std::vector<int64_t> dims_mapping = {0, -1, 1};
+
+  TensorDistAttr t_dist_attr = TensorDistAttr();
+  t_dist_attr.set_process_mesh(process_mesh);
+  t_dist_attr.set_dims_mapping(dims_mapping);
+  t_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor x =
+      phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
+  std::vector<int> perm = {1, 2, -3};
+  // test forward
+  phi::distributed::SpmdInfo forward_spmd_info =
+      phi::distributed::TransposeInferSpmd(x, perm);
+  EXPECT_EQ(forward_spmd_info.first.size(), static_cast<size_t>(1));
+  EXPECT_EQ(forward_spmd_info.second.size(), static_cast<size_t>(1));
+  check_dim_mapping(forward_spmd_info.first[0], {0, -1, 1});
+  check_dim_mapping(forward_spmd_info.second[0], {-1, 1, 0});
+  check_partial_dims(forward_spmd_info.second[0], {});
+  // test backward
+  phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
+      phi::make_ddim({8, 10, 6}),
+      PADDLE_GET_CONST(TensorDistAttr, forward_spmd_info.second[0]));
+  phi::distributed::SpmdInfo backward_spmd_info =
+      TransposeGradInferSpmd(out_grad, perm);
+  EXPECT_EQ(backward_spmd_info.first.size(), static_cast<size_t>(1));
+  EXPECT_EQ(backward_spmd_info.second.size(), static_cast<size_t>(1));
+  check_dim_mapping(backward_spmd_info.first[0], {-1, 1, 0});
+  check_dim_mapping(backward_spmd_info.second[0], {0, -1, 1});
+  check_partial_dims(backward_spmd_info.second[0], {});
 }
 
 }  // namespace auto_parallel

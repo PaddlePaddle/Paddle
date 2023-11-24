@@ -1831,11 +1831,6 @@ class Engine:
                 self.pir_program_after_decomposed,
                 self.pir_prune_startup_program,
             ):
-                all_ops_name = []
-                for op in self.pir_program_after_decomposed.global_block().ops:
-                    if op.name() not in all_ops_name:
-                        all_ops_name.append(op.name())
-                print("all_ops_name: ", all_ops_name)
                 outs = self._executor.run(
                     self.pir_program_after_decomposed,
                     feed=feed_dict,

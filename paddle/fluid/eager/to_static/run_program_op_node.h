@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <iostream>
+
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
@@ -31,6 +33,7 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
 
+PHI_DECLARE_bool(enable_pir_with_pt_in_dy2st);
 PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(print_ir);
 
@@ -199,7 +202,7 @@ static auto GetNameFromValue(const ::pir::Block *block,
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
       value2name[op.operand(0).source()] = name;
-    } else if (is_input && op.name() == "builtin.get_parameter") {
+    } else if (is_input && op.name() == "builtin.parameter") {
       name = op.attributes()
                  .at("parameter_name")
                  .dyn_cast<pir::StrAttribute>()
@@ -685,7 +688,12 @@ inline void RunProgramAPI(
     details::ShareTensorsIntoScope(params, global_inner_scope);
     // Step 2. create new interpretercore
 
-    if (FLAGS_enable_pir_in_executor) {
+    bool in_pir_pt_mode = FLAGS_enable_pir_with_pt_in_dy2st;
+    if (attrs.count("in_pir_pt_mode")) {
+      in_pir_pt_mode = PADDLE_GET_CONST(bool, attrs.at("in_pir_pt_mode"));
+    }
+
+    if (FLAGS_enable_pir_in_executor || in_pir_pt_mode) {
       // build new ir program
       auto ir_program =
           paddle::framework::ConstructFowardIrProgram(forward_global_block,
@@ -839,7 +847,12 @@ inline void RunProgramGradAPI(
     VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
 
-    if (FLAGS_enable_pir_in_executor) {
+    bool in_pir_pt_mode = FLAGS_enable_pir_with_pt_in_dy2st;
+    if (attrs.count("in_pir_pt_mode")) {
+      in_pir_pt_mode = PADDLE_GET_CONST(bool, attrs.at("in_pir_pt_mode"));
+    }
+
+    if (FLAGS_enable_pir_in_executor || in_pir_pt_mode) {
       auto res =
           paddle::framework::ConstructBackwardIrProgram(backward_global_block,
                                                         out_grad,
