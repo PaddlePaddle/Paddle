@@ -44,8 +44,7 @@ inline bool NeedTransformDataType(const DataType& input,
                                   const TransformFlag& transform_flag) {
   return input != target &&
          (transform_flag.need_trans_data_type() ||
-          ((target == DataType::COMPLEX64 || target == DataType::COMPLEX128) &&
-           (input != DataType::INT32 && input != DataType::INT64)));
+          target == DataType::COMPLEX64 || target == DataType::COMPLEX128);
 }
 
 inline bool NeedTransformLayout(const DataLayout& input,
@@ -874,6 +873,24 @@ void ReshardKernelOutputToApiOutput(
   } else {
     VLOG(3) << "The output tensor is nullptr when call "
                "ReshardKernelOutputToApiOutput.";
+  }
+}
+
+void ReshardKernelOutputToApiOutput(
+    phi::DeviceContext* dev_ctx,
+    const std::vector<std::shared_ptr<phi::distributed::DistTensor>>&
+        src_tensors,
+    const std::vector<Tensor*>& dst_tensors) {
+  PADDLE_ENFORCE_EQ(
+      src_tensors.size(),
+      dst_tensors.size(),
+      phi::errors::PreconditionNotMet(
+          "src_tensors.size() [%d] and dst_tensors.size() [%d] not match",
+          src_tensors.size(),
+          dst_tensors.size()));
+  auto size = src_tensors.size();
+  for (size_t i = 0; i < size; i++) {
+    ReshardKernelOutputToApiOutput(dev_ctx, src_tensors[i], dst_tensors[i]);
   }
 }
 
