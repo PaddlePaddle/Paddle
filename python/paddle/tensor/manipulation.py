@@ -134,8 +134,25 @@ def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
         sizes = paddle.to_tensor(np.array([int(x.shape[axis]) for x in input]))
         return res, sizes
     elif in_pir_mode():
-        if not isinstance(input, paddle.pir.OpResult):
-            raise ValueError("Input starts must be an OpResult.")
+        check_type(
+            input,
+            'input',
+            (list, paddle.pir.OpResult),
+            'tensor_array_to_tensor',
+        )
+        if isinstance(input, list):
+            for i, input_x in enumerate(input):
+                check_type(
+                    input_x,
+                    'input[' + str(i) + ']',
+                    paddle.pir.OpResult,
+                    'tensor_array_to_tensor',
+                )
+                if not input_x.is_dense_tensor_array_type():
+                    raise TypeError("input should be tensor array vairable")
+        else:
+            if not input.is_dense_tensor_array_type():
+                raise TypeError("input should be tensor array vairable")
         return paddle._pir_ops.array_to_tensor(input, axis, use_stack)
     else:
         check_type(input, 'input', (list, Variable), 'tensor_array_to_tensor')

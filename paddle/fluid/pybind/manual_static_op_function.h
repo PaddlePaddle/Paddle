@@ -244,9 +244,23 @@ static PyObject *static_api_array_to_tensor(PyObject *self,
 
     // Get Value from args
     PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
-    auto x = CastPyArg2Value(x_obj, "array_to_tensor", 0);
+    pir::Value x;
+    if (PyObject_CheckIROpResult(x_obj)) {
+      x = CastPyArg2Value(x_obj, "array_to_tensor", 0);
+    } else if (PyObject_CheckIRVectorOfOpResult(x_obj)) {
+      std::vector<pir::Value> x_tmp =
+          CastPyArg2VectorOfValue(x_obj, "array_to_tensor", 0);
+      if (x_tmp.size() != 1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Input x expects only one input, but %d are given.",
+            x_tmp.size()));  // NOLINT
+      }
+      x = x_tmp[0];
+    }
+
     PyObject *axis_obj = PyTuple_GET_ITEM(args, 1);
     auto axis = CastPyArg2Int(axis_obj, "array_to_tensor", 1);
+
     PyObject *use_stack_obj = PyTuple_GET_ITEM(args, 2);
     auto use_stack = CastPyArg2Boolean(use_stack_obj, "array_to_tensor", 2);
 
