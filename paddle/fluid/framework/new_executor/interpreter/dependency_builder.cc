@@ -53,8 +53,11 @@ size_t CountDownstreamMap(
 const std::string StringizeDownstreamMap(
     const std::map<size_t, std::set<size_t>>& downstream_map) {
   std::ostringstream oss;
+  oss << "\n"
+      << std::left << std::setw(7) << "id" << std::setw(40) << "down_stream_id"
+      << "\n";
   for (auto const& pair : downstream_map) {
-    oss << pair.first << " -> ";
+    oss << std::setw(7) << pair.first << std::setw(40) << " -> ";
     std::copy(pair.second.begin(),
               pair.second.end(),
               std::ostream_iterator<size_t>(oss, " "));

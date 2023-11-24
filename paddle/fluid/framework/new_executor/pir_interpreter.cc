@@ -672,6 +672,39 @@ void PirInterpreter::BuildInstruction() {
   }
 }
 
+std::string PirInterpreter::DebugInstructions() {
+  std::stringstream ss;
+  ss << "\n"
+     << std::left << std::setw(7) << "id" << std::setw(40) << "instruction"
+     << std::setw(40) << "inputs_id" << std::setw(40) << "outputs_id"
+     << std::endl;
+  uint64_t idx = 0;
+  for (auto& instr : vec_instruction_base_) {
+    ss << std::setw(7) << idx++ << std::setw(40) << instr->Name();
+
+    std::stringstream ss_inputs;
+    for (auto& input : instr->Inputs()) {
+      ss_inputs << "{";
+      for (auto id : input.second) {
+        ss_inputs << id << " ";
+      }
+      ss_inputs << "} ";
+    }
+    ss << std::setw(40) << ss_inputs.str();
+
+    std::stringstream ss_outputs;
+    for (auto& output : instr->Outputs()) {
+      ss_outputs << "{";
+      for (auto id : output.second) {
+        ss_outputs << id << " ";
+      }
+      ss_outputs << "} ";
+    }
+    ss << std::setw(40) << ss_outputs.str() << std::endl;
+  }
+  return ss.str();
+}
+
 std::string PirInterpreter::DebugValueInfo() {
   std::stringstream os;
   os << "value info of interpretercore " << this << "\n"
@@ -701,6 +734,9 @@ std::string PirInterpreter::DebugValueInfo() {
 }
 
 void PirInterpreter::BuildInstructionDependences() {
+  if (VLOG_IS_ON(6)) {
+    VLOG(6) << DebugInstructions();
+  }
   // analysis the dependences between instructions, add next_instr_list to each
   // instr, and set the dependecy_count_
   size_t instr_num = vec_instruction_base_.size();
