@@ -61,12 +61,12 @@ struct CinnSubGraph {
  * Detect the nodes in a subgraph that meet some conditions. This class doesn't
  * modify the graph.
  */
-class CinnSubgraphDetector {
+class SubgraphDetector {
  public:
   // Tell whether a node is inside a sub-graph.
   using NodeClassifier = std::function<bool(const Node *)>;
 
-  CinnSubgraphDetector(Graph *graph, const NodeClassifier &classifier)
+  SubgraphDetector(Graph *graph, const NodeClassifier &classifier)
       : graph_(graph), node_classifier_(classifier) {}
 
   std::vector<std::vector<Node *>> operator()();

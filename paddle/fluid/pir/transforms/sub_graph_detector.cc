@@ -176,8 +176,8 @@ struct SubGraph {
 
 using OpClassifier = std::function<bool(pir::Operation*)>;
 
-CinnSubgraphDetector::CinnSubgraphDetector(pir::Block* block,
-                                           const OpClassifier& classifier)
+SubgraphDetector::SubgraphDetector(pir::Block* block,
+                                   const OpClassifier& classifier)
     : block_(block), op_classifier_(classifier) {
   sort_ops_ = InverselyTopologicalSort(block_);
   size_t index = 0;
@@ -186,7 +186,7 @@ CinnSubgraphDetector::CinnSubgraphDetector(pir::Block* block,
   }
 }
 
-std::vector<GroupOpsVec> CinnSubgraphDetector::operator()() {
+std::vector<GroupOpsVec> SubgraphDetector::operator()() {
   DoOpFusion();
   BuildSubGraph();
   DoSubGraphFusion();
@@ -212,7 +212,7 @@ std::vector<GroupOpsVec> CinnSubgraphDetector::operator()() {
   return groups;
 }
 
-void CinnSubgraphDetector::DoOpFusion() {
+void SubgraphDetector::DoOpFusion() {
   // do fusion
   for (auto* op : sort_ops_) {
     auto subgraph = subgraph_map_.count(op)
@@ -248,7 +248,7 @@ void CinnSubgraphDetector::DoOpFusion() {
   }
 }
 
-void CinnSubgraphDetector::BuildSubGraph() {
+void SubgraphDetector::BuildSubGraph() {
   std::unordered_set<SubGraph*> subgraph_set;
   for (auto* op : sort_ops_) {
     CHECK(subgraph_map_.count(op));
@@ -285,7 +285,7 @@ void CinnSubgraphDetector::BuildSubGraph() {
 }
 
 // SubGraph Fusion
-void CinnSubgraphDetector::DoSubGraphFusion() {
+void SubgraphDetector::DoSubGraphFusion() {
   while (true) {
     bool update = false;
     for (auto& subgraph : subgraph_list_) {
@@ -302,7 +302,7 @@ void CinnSubgraphDetector::DoSubGraphFusion() {
   }
 }
 
-bool CinnSubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
+bool SubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
   auto producer = subgraph_ptr;
   auto& consumers = producer->consumers;
   std::vector<SubGraphPtr> candidates;
@@ -382,7 +382,7 @@ bool CinnSubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
   return true;
 }
 // check exist depency.
-bool CinnSubgraphDetector::IsDependency(
+bool SubgraphDetector::IsDependency(
     const SubGraphPtr& producer_g,
     const SubGraphPtr& consumer,
     const std::unordered_set<SubGraphPtr>& consumers) {
@@ -408,7 +408,7 @@ bool CinnSubgraphDetector::IsDependency(
   }
   return false;
 }
-bool CinnSubgraphDetector::IsDependencySimplify(
+bool SubgraphDetector::IsDependencySimplify(
     const SubGraphPtr& producer_g,
     const SubGraphPtr& consumer,
     const std::unordered_set<SubGraphPtr>& consumers) {

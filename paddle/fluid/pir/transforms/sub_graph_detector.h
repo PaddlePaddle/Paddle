@@ -32,12 +32,12 @@ struct SubGraph;
 using SubGraphPtr = std::shared_ptr<SubGraph>;
 using GroupOpsVec = std::vector<pir::Operation*>;
 
-class CinnSubgraphDetector {
+class SubgraphDetector {
  public:
   // Tell whether a node is inside a sub-graph.
   using OpClassifier = std::function<bool(pir::Operation*)>;
 
-  CinnSubgraphDetector(pir::Block* block, const OpClassifier& classifier);
+  SubgraphDetector(pir::Block* block, const OpClassifier& classifier);
 
   std::vector<GroupOpsVec> operator()();
 
