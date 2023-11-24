@@ -537,8 +537,10 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
 
   if (op_weights_precision != "int8") {
     if (quant_post_type.find("fc") != quant_post_type.end() &&
-        quant_post_type.find("fc")->second == 2) {
-      VLOG(5) << "Use int16 for prepare weight per tensor";
+            quant_post_type.find("fc")->second == 2 ||
+        quant_post_type.find("fc") != quant_post_type.end() &&
+            quant_post_type.find("fc")->second == -1) {
+      VLOG(5) << "Use int16 per-tensor weight";
       PrepareWeight<float, int16_t>(graph,
                                     scope,
                                     block,
@@ -551,7 +553,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                     false);
     } else if (quant_post_type.find("fc") != quant_post_type.end() &&
                quant_post_type.find("fc")->second == 3) {
-      VLOG(5) << "Use int16 for prepare weight per channel";
+      VLOG(5) << "Use int16 per-channel weight";
       PrepareWeight<float, int16_t>(graph,
                                     scope,
                                     block,
@@ -563,22 +565,12 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                     weight_scale,
                                     true);
     } else {
-      VLOG(5) << "Default use int16 for prepare weight per tensor";
-      PrepareWeight<float, int16_t>(graph,
-                                    scope,
-                                    block,
-                                    mul_w_replicated_node,
-                                    &filter_intx,
-                                    &filter_max,
-                                    &scale_max,
-                                    !transpose_w,
-                                    weight_scale,
-                                    false);
+      VLOG(5) << "Unsupported type weight by non-int8!";
     }
   } else {
     if (quant_post_type.find("fc") != quant_post_type.end() &&
         quant_post_type.find("fc")->second == 0) {
-      VLOG(5) << "Use int8 for prepare weight per tensor";
+      VLOG(5) << "Use int8  per-tensor weight";
       PrepareWeight<int8_t, int8_t>(graph,
                                     scope,
                                     block,
@@ -592,7 +584,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     }
     if (quant_post_type.find("fc") != quant_post_type.end() &&
         quant_post_type.find("fc")->second == 1) {
-      VLOG(5) << "Use int8 for prepare weight per channel";
+      VLOG(5) << "Use int8  per-channel weight";
       PrepareWeight<int8_t, int8_t>(graph,
                                     scope,
                                     block,
