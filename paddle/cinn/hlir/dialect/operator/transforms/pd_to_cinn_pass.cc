@@ -15,6 +15,8 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/fluid/pir/drr/api/match_context.h"
@@ -104,7 +106,6 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
               .data());
       rewriter.ReplaceAllUsesWith(op.result(0), cinn_scale.result(0));
       rewriter.EraseOp(op);
-      rewriter.EraseOp(full_op);
     } else {
       // using mul op
       auto bias =
@@ -127,6 +128,121 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
     }
 
     return true;
+  }
+};
+
+class ReshapeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::ReshapeOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::ReshapeOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::ReshapeOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto scale_factor_gen_op =
+        op->operand_source(1).dyn_cast<pir::OpResult>().owner();
+
+    if (auto full_op =
+            scale_factor_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>()) {
+      // sacle is generator by full op
+      // get attribute value from full op
+
+      auto out_shape_attr =
+          full_op.attribute("value").dyn_cast<pir::ArrayAttribute>().AsVector();
+
+      std::vector<int> vec_out_shape;
+      if (out_shape_attr.size() > 0) {
+        PADDLE_ENFORCE_EQ(
+            out_shape_attr[0].isa<::pir::Int64Attribute>(),
+            true,
+            phi::errors::Unimplemented(
+                "the 0th elementwise MUST be ir::Int64Attribute"));
+        for (size_t i = 0; i < out_shape_attr.size(); ++i) {
+          vec_out_shape.push_back(
+              out_shape_attr[i].dyn_cast<::pir::Int64Attribute>().data());
+        }
+      }
+
+      auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
+          op->operand_source(0).dyn_cast<pir::OpResult>(), vec_out_shape);
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
+      rewriter.EraseOp(op);
+
+      return true;
+    }
+    return false;
+  }
+};
+
+class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::SliceOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::SliceOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto start_gen_op = op->operand_source(1)
+                            .dyn_cast<pir::OpResult>()
+                            .owner()
+                            ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+
+    auto end_gen_op = op->operand_source(2)
+                          .dyn_cast<pir::OpResult>()
+                          .owner()
+                          ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+
+    if (start_gen_op && end_gen_op) {
+      // sacle is generator by full op
+      // get attribute value from full op
+      auto start_vec = cinn::dialect::ir::GetVectorAttr(start_gen_op, "value");
+      auto end_vec = cinn::dialect::ir::GetVectorAttr(end_gen_op, "value");
+      auto axes = cinn::dialect::ir::GetVectorAttr(op, "axes");
+      auto decrease_axis =
+          cinn::dialect::ir::GetVectorAttr(op, "decrease_axis");
+      auto infer_flags = cinn::dialect::ir::GetVectorAttr(op, "infer_flags");
+
+      auto cinn_slice = rewriter.Build<cinn::dialect::SliceOp>(
+          op->operand_source(0).dyn_cast<pir::OpResult>(),
+          axes,
+          start_vec,
+          end_vec,
+          infer_flags,
+          decrease_axis);
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_slice.result(0));
+      rewriter.EraseOp(op);
+
+      return true;
+    }
+    return false;
+  }
+};
+
+class ConcatOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::ConcatOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::ConcatOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::ConcatOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto axis_gen_op = op->operand_source(1).dyn_cast<pir::OpResult>().owner();
+    if (auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>()) {
+      int axis = phi::Scalar(full_op.attribute("value")
+                                 .dyn_cast<::pir::FloatAttribute>()
+                                 .data())
+                     .to<int>();
+
+      auto input_ops = op->operand_source(0)
+                           .dyn_cast<pir::OpResult>()
+                           .owner()
+                           ->dyn_cast<pir::CombineOp>()
+                           .inputs();
+
+      auto cinn_concat =
+          rewriter.Build<cinn::dialect::ConcatOp>(input_ops, axis);
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_concat.result(0));
+      rewriter.EraseOp(op);
+
+      return true;
+    }
+    return false;
   }
 };
 
@@ -178,25 +294,22 @@ class UniformOpPattern : public pir::drr::DrrPatternBase<UniformOpPattern> {
   }
 };
 
-PdOpToCinnOpPass::PdOpToCinnOpPass() : pir::Pass("pd_to_cinn_pass", 1) {}
+PdOpToCinnOpPass::PdOpToCinnOpPass()
+    : pir::PatternRewritePass("pd_to_cinn_pass", 1) {}
 
-bool PdOpToCinnOpPass::Initialize(pir::IrContext *context) {
+pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
+    pir::IrContext *context) {
   pir::RewritePatternSet ps(context);
   ps.Add<ScaleOpPattern>(
       context);  // NOTE, scale op pattern should before AddBroadcastTo
   ps.Add(SumOpPattern().Build(context));
   ps.Add(MaxOpPattern().Build(context));
+  ps.Add<ReshapeOpPattern>(context);
+  ps.Add<ConcatOpPattern>(context);
+  ps.Add<SliceOpPattern>(context);
   // ps.Add(UniformOpPattern().Build(context));
 
-  patterns_ = ::pir::FrozenRewritePatternSet(std::move(ps));
-  return true;
-}
-
-void PdOpToCinnOpPass::Run(pir::Operation *op) {
-  pir::GreedyRewriteConfig cfg;
-  cfg.use_top_down_traversal = true;
-  cfg.max_iterations = 10;
-  pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+  return ps;
 }
 
 bool PdOpToCinnOpPass::CanApplyOn(pir::Operation *op) const {

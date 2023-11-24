@@ -22,6 +22,7 @@ template <typename T, typename Context>
 void WeightQuantizeKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const std::string& algo,
+                          const int32_t arch,
                           DenseTensor* out,
                           DenseTensor* scale);
 

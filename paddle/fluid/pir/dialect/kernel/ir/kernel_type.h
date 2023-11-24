@@ -103,8 +103,41 @@ class AllocatedSelectedRowsType
   size_t offset() const;
 };
 
+class AllocatedDenseTensorArrayType
+    : public pir::Type::TypeBase<AllocatedDenseTensorArrayType,
+                                 pir::Type,
+                                 AllocatedDenseTensorArrayTypeStorage> {
+ public:
+  using Base::Base;
+
+  static AllocatedDenseTensorArrayType get(pir::IrContext *ctx,
+                                           const phi::Place &place,
+                                           dialect::DenseTensorArrayType type) {
+    return pir::TypeManager::template get<AllocatedDenseTensorArrayType>(
+        ctx, place, type);
+  }
+
+  static AllocatedDenseTensorArrayType get(pir::IrContext *ctx,
+                                           const phi::Place &place,
+                                           const pir::Type &dtype,
+                                           const phi::DataLayout &layout) {
+    dialect::DenseTensorArrayType type =
+        dialect::DenseTensorArrayType::get(ctx, dtype, layout);
+
+    return pir::TypeManager::template get<AllocatedDenseTensorArrayType>(
+        ctx, place, type);
+  }
+
+  const phi::Place &place() const;
+
+  const pir::Type &dtype() const;
+
+  const phi::DataLayout &data_layout() const;
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedDenseTensorType)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedSelectedRowsType)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedDenseTensorArrayType)

@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import re
+import warnings
+from contextlib import contextmanager
 
 import paddle
 from paddle.autograd.py_layer import PyLayerMeta
@@ -20,6 +24,7 @@ from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import _convert_into_variable, in_to_static_mode
 from paddle.base.framework import Variable, core, default_main_program
 from paddle.pir import OpResult
+from paddle.static.amp.fp16_utils import AmpOptions
 
 from .py_layer import StaticPyLayer
 from .utils import (
@@ -42,7 +47,7 @@ def convert_attr(x, attr):
 
 def convert_load(x):
     if in_to_static_mode():
-        if isinstance(x, paddle.base.core.eager.Tensor):
+        if isinstance(x, paddle.Tensor):
             """
             TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
             """
@@ -76,6 +81,9 @@ def convert_load(x):
             )
             if new_var is not None:
                 return new_var
+
+        if x is paddle.amp.auto_cast:
+            return convert_auto_cast
 
     return x
 
@@ -548,7 +556,7 @@ def convert_len(var):
           operations are added in `len` transformation, such as appending
           `shape_op` in var.block.
     """
-    if isinstance(var, (Variable, OpResult)):
+    if isinstance(var, Variable):
         assert var.ndim > 0, "len() of a 0-D tensor is wrong"
         if var.type in [
             core.VarDesc.VarType.LOD_TENSOR,
@@ -567,8 +575,24 @@ def convert_len(var):
                 'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received %s.'
                 % type(var)
             )
+    elif isinstance(var, OpResult):
+        assert var.ndim > 0, "len() of a 0-D tensor is wrong"
+        if var.is_dense_tensor_type() or var.is_selected_row_type():
+            # Note: Length of var may be known ahead of time in dygraph,
+            # but it probably represents batch size which can be variant.
+            # so we return a variable dynamically inferred from var.shape.
+            if var.shape[0] > 0 and var.is_dense_tensor_type():
+                return var.shape[0]
+            return paddle.shape(var)[0]
+        elif var.is_dense_tensor_array_type():
+            return paddle.tensor.array_length(var)
+        else:
+            raise TypeError(
+                'len(var) only supports DenseTensor/DenseTensorArray/SelectedRows, '
+                + f'but received {type(var)}.'
+            )
     else:
-        if isinstance(var, (VariableTuple)):
+        if isinstance(var, VariableTuple):
             return var.__len__()
         return len(var)
 
@@ -617,11 +641,11 @@ def convert_range(*args):
     has_variable = any(isinstance(x, (Variable, OpResult)) for x in args)
     if has_variable:
         if len(args) == 1:
-            return paddle.arange(0, args[0], 1, paddle.int64)
+            return paddle.arange(0, args[0], 1, "int64")
         if len(args) == 2:
-            return paddle.arange(args[0], args[1], 1, paddle.int64)
+            return paddle.arange(args[0], args[1], 1, "int64")
         if len(args) == 3:
-            return paddle.arange(args[0], args[1], args[2], paddle.int64)
+            return paddle.arange(args[0], args[1], args[2], "int64")
     return range(*args)
 
 
@@ -803,6 +827,39 @@ def convert_pop(target, *args):
         return _run_paddle_pop(target, *args)
     else:
         return _run_python_pop(target, *args)
+
+
+@contextmanager
+def convert_auto_cast(
+    enable=True,
+    custom_white_list=None,
+    custom_black_list=None,
+    level='O1',
+    dtype='float16',
+    use_promote=True,
+):
+    from .program_translator import ProgramTranslator
+
+    warnings.warn(
+        "paddle.amp.auto_cast is an experimental features in auto parallel."
+        + "This will take no effect in normal dy2static."
+    )
+
+    amp_records = ProgramTranslator.get_instance()._amp_records
+    main_program = paddle.static.default_main_program()
+    current_block_idx = main_program.current_block_idx
+    current_block = main_program.current_block()
+    start_op_idx = len(current_block.ops)
+    amp_options = AmpOptions(
+        enable, custom_white_list, custom_black_list, level, dtype, use_promote
+    )
+    yield
+    end_op_idx = len(current_block.ops)
+    if current_block_idx not in amp_records:
+        amp_records[current_block_idx] = []
+    amp_records[current_block_idx].append(
+        (amp_options, start_op_idx, end_op_idx)
+    )
 
 
 def _run_paddle_pop(array, *args):

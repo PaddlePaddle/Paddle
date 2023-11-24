@@ -180,25 +180,10 @@ TEST(shape_struct_test, symbolic_dim_mgr_complex) {
       2,
       std::vector<pir::Value>{dim_op_s8, dim_op_s9, dim_op_s10, dim_op_s11});
 
-  auto op = test::CreateDenseTensorOp(ctx,
-                                      {pir::ShapedTypeInterface::kDynamic,
-                                       pir::ShapedTypeInterface::kDynamic,
-                                       pir::ShapedTypeInterface::kDynamic,
-                                       pir::ShapedTypeInterface::kDynamic,
-                                       pir::ShapedTypeInterface::kDynamic,
-                                       pir::ShapedTypeInterface::kDynamic},
-                                      {"op0_attr"},
-                                      {"op0_name"});
-  auto op_ = test::CreateDenseTensorOp(ctx,
-                                       {pir::ShapedTypeInterface::kDynamic,
-                                        pir::ShapedTypeInterface::kDynamic,
-                                        pir::ShapedTypeInterface::kDynamic,
-                                        pir::ShapedTypeInterface::kDynamic,
-                                        pir::ShapedTypeInterface::kDynamic,
-                                        10,
-                                        20},
-                                       {"op1_attr"},
-                                       {"op1_name"});
+  auto op = test::CreateDenseTensorOp(
+      ctx, {-1, -1, -1, -1, -1, -1}, {"op0_attr"}, {"op0_name"});
+  auto op_ = test::CreateDenseTensorOp(
+      ctx, {-1, -1, -1, -1, -1, 10, 20}, {"op1_attr"}, {"op1_name"});
   pir::OpResult res = op->result(0);
   pir::OpResult res_ = op_->result(0);
 
@@ -348,9 +333,9 @@ TEST(shape_struct_test, shape_analysis) {
   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
   pir::shape::FuncOp func_op = builder.Build<pir::shape::FuncOp>();
 
-  phi::DDim dims_D_2 = {pir::ShapedTypeInterface::kDynamic, 2};
+  phi::DDim dims_D_2 = {-1, 2};
   phi::DDim dims_2_2 = {2, 2};
-  phi::DDim dims_D = {pir::ShapedTypeInterface::kDynamic};
+  phi::DDim dims_D = {-1};
 
   // same shape with dynamic: value1 == value2
   auto op1 =

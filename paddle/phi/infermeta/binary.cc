@@ -140,6 +140,29 @@ void KLDivInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void ArrayWriteInferMeta(const MetaTensor& array,
+                         const MetaTensor& x,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  out->set_dtype(array.dtype());
+  out->set_layout(array.layout());
+}
+
+void ArrayReadInferMeta(const MetaTensor& array,
+                        const Scalar& i,
+                        MetaTensor* out,
+                        MetaConfig config) {
+  if (!config.is_runtime) {
+    out->set_dims({-1});
+  } else {
+    double index = i.to<int64_t>();
+    out->set_dims(array.dims(index));
+    out->share_lod(array, index);
+  }
+  out->set_dtype(array.dtype());
+  out->set_layout(array.layout());
+}
+
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto x_dims = x.dims();
   auto y_dims = y.dims();

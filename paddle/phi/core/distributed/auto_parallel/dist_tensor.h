@@ -18,6 +18,8 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 
 namespace phi {
 namespace distributed {
@@ -37,6 +39,13 @@ class DistTensor final
   /// \param dist_attr The distributed attributes of the current tensor.
   DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
              const TensorDistAttr& dist_attr);
+
+  /// \brief Construct a dist tensor based dense tensor.
+  /// \param process_mesh The process mesh of the current tensor.
+  /// \param placements The distributed placements of the current tensor.
+  DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
+             const ProcessMesh& process_mesh,
+             const Placements& placements);
 
   /// \brief Construct a empty dist tensor (for infer spmd)
   /// \param dims The global dimension of the currnet Tensor.
@@ -61,6 +70,22 @@ class DistTensor final
   /// \brief Returns the dist attr of current dist tensor.
   /// \return The TensorDistAttr's const reference
   const TensorDistAttr& dist_attr() const { return dist_attr_; }
+
+  /// \brief Returns the process_mesh of current dist tensor.
+  /// \return The ProcessMesh's const reference
+  const ProcessMesh& process_mesh() const {
+    return dist_tensor_meta_.process_mesh();
+  }
+
+  /// \brief Returns the placements of current dist tensor.
+  /// \return The Placements's const reference
+  const Placements& placements() const {
+    return dist_tensor_meta_.placements();
+  }
+
+  /// \brief Returns the num_shard of current dist tensor.
+  /// \return int64_t
+  int64_t num_shard() const { return dist_tensor_meta_.num_shard(); }
 
   /// \brief Set the dist attr of current dist tensor.
   /// \return void
@@ -121,12 +146,14 @@ class DistTensor final
  private:
   friend class ReshardFunction;
 
-  // The global dimensions(shape)
+  // The global dimensions(shape), will move to DistTensorMeta
   DDim dims_;
-  // The distributed attributes
+  // The distributed attributes, will remove in the future
   TensorDistAttr dist_attr_;
   // The local DenseTensor value
   std::shared_ptr<DenseTensor> value_;
+
+  DistTensorMeta dist_tensor_meta_;
 };
 
 }  // namespace distributed

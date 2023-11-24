@@ -47,6 +47,28 @@ class TestBuildModule(unittest.TestCase):
             (sum_value,) = exe.run(feed={'x': x_feed}, fetch_list=[out])
             self.assertEqual(sum_value, 10)
 
+    def test_basic_network_without_guard(self):
+        x = paddle.static.data('x', [4, 4], dtype='float32')
+        y = paddle.static.data('y', [4, 4], dtype='float32')
+        divide_out = paddle.divide(x, y)
+        sum_out = paddle.sum(divide_out)
+        exe = paddle.static.Executor()
+        x_feed = np.ones([4, 4], dtype=np.float32) * 10
+        y_feed = np.ones([4, 4], dtype=np.float32) * 2
+        (sum_value,) = exe.run(
+            feed={'x': x_feed, 'y': y_feed},
+            fetch_list=[sum_out],
+        )
+        self.assertEqual(sum_value, 5 * 4 * 4)
+
+        out = paddle.mean(x)
+        exe = paddle.static.Executor()
+        x_feed = np.ones([4, 4], dtype=np.float32) * 10
+        (sum_value,) = exe.run(
+            feed={'x': x_feed, 'y': y_feed}, fetch_list=[out]
+        )
+        self.assertEqual(sum_value, 10)
+
     def test_train_network(self):
         x_data = np.array(
             [[1.0], [3.0], [5.0], [9.0], [10.0], [20.0]], dtype="float32"
