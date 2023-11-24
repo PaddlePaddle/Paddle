@@ -773,7 +773,7 @@ bool AnalysisPredictor::PrepareExecutor() {
       ::pir::PassManager pm_for_op_program(::pir::IrContext::Instance(), 2);
       pm_for_op_program.AddPass(::pir::CreateConv2dFusePass());
 
-      pm_for_op_program.AddPass(::pir::CreateConstantFoldingPass(sub_scope_));  
+      pm_for_op_program.AddPass(::pir::CreateConstantFoldingPass(sub_scope_));
       pm_for_op_program.AddPass(::pir::CreateDeadCodeEliminationPass());
       pm_for_op_program.AddPass(
           ::pir::CreateReplaceFetchWithShadowOutputPass());
