@@ -3777,7 +3777,7 @@ def householder_product(x, tau, name=None):
             ...         [-0.0726,  0.8245, -0.3812]])
             >>> tau = paddle.to_tensor([1.7497, 1.1156, 1.7462])
             >>> Q = paddle.linalg.householder_product(x, tau)
-            >>> Q
+            >>> print(Q)
             Tensor(shape=[4, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                    [[-0.74969995, -0.02181768,  0.31115776],
                     [-0.64721400, -0.12367040, -0.21738708],
