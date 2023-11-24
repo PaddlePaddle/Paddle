@@ -302,8 +302,8 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
   }
 }
 
-void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
-                                   paddle::Tensor &&paddle_tensor) {
+void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,     // NOLINT
+                                   paddle::Tensor &paddle_tensor) {  // NOLINT
   std::vector<int> shape;
   for (int i = 0; i < paddle_tensor.dims().size(); ++i) {
     shape.push_back(paddle_tensor.dims()[i]);  // NOLINT
@@ -1245,8 +1245,7 @@ void BindPaddleInferTensor(py::module *m) {
       .def("_share_external_data_paddle_tensor_bind",
            [](paddle_infer::Tensor &self, const py::handle &input) {
              PyObject *obj = input.ptr();
-             PaddleTensorShareExternalData(self,
-                                           std::move(CastPyArg2Tensor(obj, 0)));
+             PaddleTensorShareExternalData(self, CastPyArg2Tensor(obj, 0));
            })
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
       .def("shape", &paddle_infer::Tensor::shape)

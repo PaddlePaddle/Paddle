@@ -145,21 +145,10 @@ std::vector<phi::distributed::DistMetaTensor> MakeDistMetaTensor(
 
 phi::distributed::DistTensor* SetKernelDistOutput(
     Tensor* out,
-    const phi::distributed::TensorDistAttr& dist_attr =
-        phi::distributed::TensorDistAttr());
-
-phi::distributed::DistTensor* SetKernelDistOutput(
-    Tensor* out, const phi::distributed::ArgDistAttr& dist_attr);
-
-std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
-    Tensor* out,
-    bool set_dist_output_as_tensor_impl,
     const phi::distributed::ArgDistAttr& dist_attr =
         phi::distributed::TensorDistAttr());
 
-std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
-    Tensor* out, const phi::distributed::ArgDistAttr& dist_attr);
-
+// For backward
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     std::vector<Tensor*> out);
 
@@ -169,11 +158,14 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     const phi::distributed::ArgDistAttr& dist_attr, std::vector<Tensor>* out);
 
-std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOutput(
-    size_t out_size, std::vector<Tensor>* out);
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out,
+    bool set_dist_output_as_tensor_impl,
+    const phi::distributed::ArgDistAttr& dist_attr =
+        phi::distributed::TensorDistAttr());
 
-std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOptionalOutput(
-    size_t out_size, paddle::optional<std::vector<Tensor>> out);
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out, const phi::distributed::ArgDistAttr& dist_attr);
 
 // DistTensor need to set initial dist attr after the dims setted, it is
 // constructed based dims and current process mesh, beforce calling this

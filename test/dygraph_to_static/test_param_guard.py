@@ -15,10 +15,16 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir_exe_and_pir_api,
+)
 
 import paddle
-from paddle.jit import to_static
+
+# NOTE(SigureMo): In PIR, we convert dygraph EagerParamBase to Variable by
+# _jst.Ld instead of param_guard. So this unittest name maybe confusing.
+# But the test case is still useful.
 
 
 class NetWithParameterList(paddle.nn.Layer):
@@ -28,7 +34,6 @@ class NetWithParameterList(paddle.nn.Layer):
         bias = self.create_parameter([out_size], is_bias=True)
         self.params = paddle.nn.ParameterList([weight, bias])
 
-    @to_static
     def forward(self, x):
         out = paddle.matmul(x, self.params[0])
         out = paddle.add(out, self.params[1])
@@ -40,7 +45,6 @@ class NetWithParameterListIter(NetWithParameterList):
     def __init__(self, in_size, out_size):
         super().__init__(in_size, out_size)
 
-    @to_static
     def forward(self, x):
         # NOTE: manually trigger `__iter__` logic.
         params = list(self.params.__iter__())
@@ -60,9 +64,9 @@ class TestParameterList(Dy2StTestBase):
         np.random.seed(self.seed)
         paddle.jit.enable_to_static(to_static)
         if is_iter:
-            net = NetWithParameterList(10, 3)
+            net = paddle.jit.to_static(NetWithParameterList(10, 3))
         else:
-            net = NetWithParameterListIter(10, 3)
+            net = paddle.jit.to_static(NetWithParameterListIter(10, 3))
         sgd = paddle.optimizer.SGD(0.1, parameters=net.parameters())
 
         for batch_id in range(self.iter_num):
@@ -75,7 +79,7 @@ class TestParameterList(Dy2StTestBase):
 
         return loss
 
-    @test_legacy_and_pir
+    @test_legacy_and_pir_exe_and_pir_api
     def test_parameter_list(self):
         static_loss = self.train(False, to_static=True)
         dygraph_loss = self.train(False, to_static=False)
@@ -94,7 +98,6 @@ class NetWithRawParamList(paddle.nn.Layer):
         self.params = [weight]
         self.bias_dict = {'b': bias}
 
-    @to_static
     def forward(self, x):
         out = paddle.matmul(x, self.params[0])
         out = paddle.add(out, self.bias_dict['b'])
@@ -108,7 +111,7 @@ class TestRawParameterList(Dy2StTestBase):
         self.iter_num = 5
 
     def init_net(self):
-        self.net = NetWithRawParamList(10, 3)
+        self.net = paddle.jit.to_static(NetWithRawParamList(10, 3))
 
     def train(self, to_static):
         paddle.seed(self.seed)
@@ -128,7 +131,7 @@ class TestRawParameterList(Dy2StTestBase):
 
         return loss
 
-    @test_legacy_and_pir
+    @test_legacy_and_pir_exe_and_pir_api
     def test_parameter_list(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -142,7 +145,6 @@ class NetWithSubLayerParamList(paddle.nn.Layer):
         self.params = [sub_layer.weight]
         self.bias_dict = {'b': sub_layer.bias}
 
-    @to_static
     def forward(self, x):
         out = paddle.matmul(x, self.params[0])
         out = paddle.add(out, self.bias_dict['b'])
@@ -153,7 +155,7 @@ class NetWithSubLayerParamList(paddle.nn.Layer):
 class TestSubLayerParameterList(TestRawParameterList):
     def init_net(self):
         fc = paddle.nn.Linear(10, 3)
-        self.net = NetWithSubLayerParamList(fc)
+        self.net = paddle.jit.to_static(NetWithSubLayerParamList(fc))
 
 
 if __name__ == '__main__':
