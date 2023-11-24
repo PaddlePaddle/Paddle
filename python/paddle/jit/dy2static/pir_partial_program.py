@@ -128,7 +128,7 @@ class RunableProgram:
                 ret[op.result(0)] = op.attrs()["name"]
             if op.name() == "builtin.set_parameter":
                 ret[op.operand(0).source()] = op.attrs()["parameter_name"]
-            if op.name() == "builtin.get_parameter":
+            if op.name() == "builtin.parameter":
                 ret[op.result(0)] = op.attrs()["parameter_name"]
         return ret
 
@@ -328,7 +328,7 @@ class PirPassContext:
     """
 
     INPUT_OP_NAME = "pd_op.data"
-    PARM_OP_NAME = "builtin.get_parameter"
+    PARM_OP_NAME = "builtin.parameter"
     OUTPUT_OP_NAME = "builtin.set_parameter"
 
     @classmethod
@@ -371,10 +371,12 @@ class PirPassContext:
 
 
 class PartialProgramLayerHook:
-    def before_append_backward(self, forward_program):
+    def before_append_backward(self, forward_program, src_vars):
         ...
 
-    def after_append_backward(self, whole_program, backward_start_idx):
+    def after_append_backward(
+        self, whole_program, src_vars, backward_start_idx
+    ):
         ...
 
     def after_infer(self, infer_program):
@@ -836,7 +838,9 @@ class PartialProgramLayer:
             if not param_value.use_empty():
                 required_params.append(param)
                 required_param_values.append(param_value)
-
+            else:
+                # in pir, we need remove the get_parameter op for unused parameters.
+                block.remove_op(param_value.get_defining_op())
         self._params = required_params
         self._param_values = required_param_values
 

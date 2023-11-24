@@ -799,6 +799,18 @@ class PartialProgramLayer:
                     self._cuda_graph_pool_id,
                 )
             )
+
+        pir_dy2st_flag = 'FLAGS_enable_pir_with_pt_in_dy2st'
+        in_pir_pt_mode = get_flags(pir_dy2st_flag)[pir_dy2st_flag]
+        is_prim_enabled = (
+            core._is_fwd_prim_enabled() or core._is_bwd_prim_enabled()
+        )
+        in_cinn_backend = self._backend == "CINN"
+        is_cinn_enabled = self._build_strategy.build_cinn_pass
+        if is_prim_enabled or in_cinn_backend or is_cinn_enabled:
+            in_pir_pt_mode = False
+        attrs.extend(['in_pir_pt_mode', in_pir_pt_mode])
+
         return attrs
 
     @switch_to_static_graph
@@ -866,15 +878,21 @@ class PartialProgramLayer:
             forward_program, backward_program
         )
         backward_mem_opt_skip_vars = self._parse_skip_gc_vars(forward_program)
+        in_pir_pt_mode = (
+            get_flags('FLAGS_enable_pir_in_executor')[
+                'FLAGS_enable_pir_in_executor'
+            ]
+            or get_flags('FLAGS_enable_pir_with_pt_in_dy2st')[
+                'FLAGS_enable_pir_with_pt_in_dy2st'
+            ]
+        )
         if forward_program:
             attrs = {
                 "use_cuda": use_cuda,
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not get_flags('FLAGS_enable_pir_in_executor')[
-                'FLAGS_enable_pir_in_executor'
-            ]:
+            if not in_pir_pt_mode:
                 _apply_pass(
                     forward_program,
                     empty_startup_program,
@@ -888,9 +906,7 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not get_flags('FLAGS_enable_pir_in_executor')[
-                'FLAGS_enable_pir_in_executor'
-            ]:
+            if not in_pir_pt_mode:
                 _apply_pass(
                     backward_program,
                     empty_startup_program,

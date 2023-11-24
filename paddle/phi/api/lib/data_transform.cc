@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -43,7 +44,8 @@ inline bool NeedTransformDataType(const DataType& input,
                                   const TransformFlag& transform_flag) {
   return input != target &&
          (transform_flag.need_trans_data_type() ||
-          target == DataType::COMPLEX64 || target == DataType::COMPLEX128);
+          ((target == DataType::COMPLEX64 || target == DataType::COMPLEX128) &&
+           (input != DataType::INT32 && input != DataType::INT64)));
 }
 
 inline bool NeedTransformLayout(const DataLayout& input,
