@@ -11,6 +11,5 @@ add_subdirectory(jit)
 add_subdirectory(pir)
 add_subdirectory(ir_adaptor)
 add_subdirectory(primitive)
-add_subdirectory(sub_graph)
 # NOTE: please add subdirectory inference at last.
 add_subdirectory(inference)
