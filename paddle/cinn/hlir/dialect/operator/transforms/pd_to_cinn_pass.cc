@@ -246,6 +246,33 @@ class ConcatOpPattern
   }
 };
 
+class AddNOpPattern : public pir::OpRewritePattern<paddle::dialect::AddNOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::AddNOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::AddNOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto combine_op = op->operand_source(0)
+                          .dyn_cast<pir::OpResult>()
+                          .owner()
+                          ->dyn_cast<pir::CombineOp>();
+    auto input_ops = combine_op.inputs();
+
+    auto tmp = input_ops[0];
+
+    for (size_t i = 1; i < input_ops.size(); ++i) {
+      tmp = rewriter.Build<paddle::dialect::AddOp>(tmp, input_ops[i]).result(0);
+    }
+
+    rewriter.ReplaceAllUsesWith(op.result(0), tmp);
+
+    rewriter.EraseOp(op);
+    rewriter.EraseOp(combine_op);
+
+    return true;
+  }
+};
+
 class SplitWithNumOpPattern
     : public pir::OpRewritePattern<paddle::dialect::SplitWithNumOp> {
  public:
@@ -365,6 +392,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<ConcatOpPattern>(context);
   ps.Add<SliceOpPattern>(context);
   ps.Add<SplitWithNumOpPattern>(context);
+  ps.Add<AddNOpPattern>(context);
   // ps.Add(UniformOpPattern().Build(context));
 
   return ps;
