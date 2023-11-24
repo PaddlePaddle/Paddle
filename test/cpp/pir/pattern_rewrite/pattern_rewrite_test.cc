@@ -1038,7 +1038,7 @@ void BuildConstantFoldingProgram(pir::Program *program,
 
   auto op3 =
       builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
-  
+
   auto op4 = builder.Build<pir::ParameterOp>("c", dense_tensor_dtype);
 
   auto op5 =
@@ -1103,17 +1103,17 @@ void BuildConcatProgram(pir::Program *program, pir::IrContext *ctx) {
                                                phi::DataType::FLOAT32,
                                                phi::GPUPlace())
                .result(0);
-  
+
   auto w = builder
                .Build<paddle::dialect::FullOp>(std::vector<int64_t>({16, 16}),
                                                2.0,
                                                phi::DataType::FLOAT32,
                                                phi::GPUPlace())
                .result(0);
-  
+
   auto t2 =
       builder.Build<pir::CombineOp>(std::vector<pir::Value>({z, w})).result(0);
-  
+
   auto out2 = builder.Build<paddle::dialect::ConcatOp>(t2, 1).result(0);
 
   auto out = builder.Build<paddle::dialect::AddOp>(out1, out2).result(0);

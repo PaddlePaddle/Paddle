@@ -507,7 +507,7 @@ ConstantTensorOp ConstantTensorOp::dyn_cast(Operation *op) {
 }
 
 bool ConstantTensorOp::classof(const Operation *op) {
-  return op && op->info().id() == TypeId::get<ConstantOp>() &&
+  return ConstantOp::classof(op) && op &&
          op->attribute("value").isa<TensorNameAttribute>();
 }
 
