@@ -18,8 +18,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_ast_only,
-    test_pir_only,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -86,8 +85,7 @@ class TestTanhHighOrderGrad(Dy2StTestBase):
         self.dy2st_input = (x2,)
         self.dy2st_grad_input = (x2,)
 
-    @test_ast_only
-    @test_pir_only
+    @test_legacy_and_pt_and_pir
     def test_run(self):
         try:
             dy_out = self.func(*self.dy_input)

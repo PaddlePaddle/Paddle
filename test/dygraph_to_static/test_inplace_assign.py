@@ -54,6 +54,7 @@ class TestInplaceAssign(Dy2StTestBase):
     @test_legacy_and_pt
     def test_case2(self):
         def func(a, x):
+            x = 2 * x
             x[:] = a * 2.0
             return x
 

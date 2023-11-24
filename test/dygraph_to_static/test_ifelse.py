@@ -48,7 +48,6 @@ from ifelse_simple_func import (
 
 import paddle
 import paddle.nn.functional as F
-from paddle.base import core
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 np.random.seed(1)
@@ -295,7 +294,7 @@ class TestDygraphIfElseNet(Dy2StTestBase):
         paddle.jit.enable_to_static(to_static)
 
         with base.dygraph.guard(place):
-            net = self.Net()
+            net = paddle.jit.to_static(self.Net())
             x_v = base.dygraph.to_variable(self.x)
             ret = net(x_v)
             return ret.numpy()
@@ -330,7 +329,6 @@ class TestAst2FuncWithExternalFunc(TestDygraphIfElse):
 
 
 class NetWithExternalFunc(paddle.nn.Layer):
-    @paddle.jit.to_static
     def forward(self, x, label=None):
         if paddle.mean(x) < 0:
             x_v = x - 1
@@ -364,7 +362,6 @@ class DiffModeNet1(paddle.nn.Layer):
         super().__init__()
         self.mode = mode
 
-    @paddle.jit.to_static
     def forward(self, x, y):
         if self.mode == 'train':
             out = x + y
@@ -380,7 +377,6 @@ class DiffModeNet2(paddle.nn.Layer):
         super().__init__()
         self.mode = mode
 
-    @paddle.jit.to_static
     def forward(self, x, y):
         if self.mode == 'train':
             out = x + y
@@ -408,7 +404,7 @@ class TestDiffModeNet(Dy2StTestBase):
     def _run(self, mode, to_static):
         paddle.jit.enable_to_static(to_static)
 
-        net = self.Net(mode)
+        net = paddle.jit.to_static(self.Net(mode))
         ret = net(self.x, self.y)
         return ret.numpy()
 
@@ -477,7 +473,7 @@ class TestDy2StIfElseRetInt1(Dy2StTestBase):
     @test_legacy_and_pt
     def test_ast_to_func(self):
         self.setUp()
-        self.assertIsInstance(self.out[0], (paddle.Tensor, core.eager.Tensor))
+        self.assertIsInstance(self.out[0], paddle.Tensor)
         self.assertIsInstance(self.out[1], int)
 
 
@@ -498,7 +494,7 @@ class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
     @test_legacy_and_pt
     def test_ast_to_func(self):
         self.setUp()
-        self.assertIsInstance(self.out, (paddle.Tensor, core.eager.Tensor))
+        self.assertIsInstance(self.out, paddle.Tensor)
 
 
 class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
@@ -529,7 +525,6 @@ class IfElseNet(paddle.nn.Layer):
             shape=[3, 2], dtype='float32', is_bias=False
         )
 
-    @paddle.jit.to_static
     def forward(self, a, b, c):
         a = paddle.matmul(a, self.param)
         a = paddle.reshape(a, (2, 4))
@@ -552,7 +547,7 @@ class TestDy2StIfElseBackward(Dy2StTestBase):
         c = paddle.to_tensor([2])
         c.stop_gradient = False
 
-        net = IfElseNet()
+        net = paddle.jit.to_static(IfElseNet())
         net.train()
         out = net(a, b, c)
         out.backward()

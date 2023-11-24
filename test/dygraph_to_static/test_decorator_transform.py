@@ -22,7 +22,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pt,
+    test_legacy_and_pt_and_pir,
     test_pt_only,
 )
 
@@ -181,13 +181,12 @@ def fun10():
     return True
 
 
-@paddle.jit.to_static
 def deco_with_paddle_api():
     return fun10()
 
 
 class TestDecoratorTransform(Dy2StTestBase):
-    @test_legacy_and_pt
+    @test_legacy_and_pt_and_pir
     def test_deco_transform(self):
         outs = paddle.jit.to_static(forward)()
         np.testing.assert_allclose(outs[0], np.array(3), rtol=1e-05)
@@ -217,9 +216,9 @@ class TestDecoratorTransform(Dy2StTestBase):
                     break
             self.assertTrue(flag)
 
-    @test_legacy_and_pt
+    @test_legacy_and_pt_and_pir
     def test_deco_with_paddle_api(self):
-        self.assertTrue(deco_with_paddle_api())
+        self.assertTrue(paddle.jit.to_static(deco_with_paddle_api)())
 
 
 if __name__ == '__main__':

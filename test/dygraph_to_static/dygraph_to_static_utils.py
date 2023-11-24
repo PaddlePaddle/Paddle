@@ -28,6 +28,10 @@ import paddle
 from paddle import get_flags, set_flags, static
 from paddle.base import core
 from paddle.jit.api import sot_mode_guard
+from paddle.jit.sot.opcode_translator.executor.executor_cache import (
+    OpcodeExecutorCache,
+)
+from paddle.jit.sot.utils.envs import min_graph_size_guard
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
     EnvironmentVariableGuard,
@@ -63,6 +67,8 @@ ENV_ENABLE_PIR_WITH_PT_IN_DY2ST = BooleanEnvironmentVariable(
 class ToStaticMode(Flag):
     AST = auto()
     SOT = auto()
+    # SOT with MIN_GRAPH_SIZE=10, we only test SOT_MGS10 + LEGACY_IR to avoid regression
+    SOT_MGS10 = auto()
 
     def lower_case_name(self):
         return self.name.lower()
@@ -79,7 +85,9 @@ class IrMode(Flag):
         return self.name.lower()
 
 
-DEFAULT_TO_STATIC_MODE = ToStaticMode.AST | ToStaticMode.SOT
+DEFAULT_TO_STATIC_MODE = (
+    ToStaticMode.AST | ToStaticMode.SOT | ToStaticMode.SOT_MGS10
+)
 DEFAULT_IR_MODE = IrMode.LEGACY_IR | IrMode.PT
 
 DISABLED_TO_STATIC_TEST_FILES = {
@@ -111,7 +119,7 @@ DISABLED_IR_TEST_FILES = {
 
 def to_ast_test(fn):
     """
-    convert run fall_back to ast
+    convert run AST
     """
 
     @wraps(fn)
@@ -125,14 +133,34 @@ def to_ast_test(fn):
 
 def to_sot_test(fn):
     """
-    convert run fall_back to ast
+    convert run SOT
     """
 
     @wraps(fn)
     def impl(*args, **kwargs):
         logger.info("[SOT] running SOT")
+
+        OpcodeExecutorCache().clear()
         with sot_mode_guard(True):
-            fn(*args, **kwargs)
+            with min_graph_size_guard(0):
+                fn(*args, **kwargs)
+
+    return impl
+
+
+def to_sot_mgs10_test(fn):
+    """
+    convert run SOT and MIN_GRAPH_SIZE=10
+    """
+
+    @wraps(fn)
+    def impl(*args, **kwargs):
+        logger.info("[SOT_MGS10] running SOT")
+
+        OpcodeExecutorCache().clear()
+        with sot_mode_guard(True):
+            with min_graph_size_guard(10):
+                fn(*args, **kwargs)
 
     return impl
 
@@ -195,6 +223,7 @@ class Dy2StTestMeta(type):
     TO_STATIC_HANDLER_MAP = {
         ToStaticMode.SOT: to_sot_test,
         ToStaticMode.AST: to_ast_test,
+        ToStaticMode.SOT_MGS10: to_sot_mgs10_test,
     }
 
     IR_HANDLER_MAP = {
@@ -263,6 +292,12 @@ class Dy2StTestMeta(type):
             )
             # Generate all test cases
             for to_static_mode, ir_mode in to_static_with_ir_modes:
+                if (
+                    to_static_mode == ToStaticMode.SOT_MGS10
+                    and ir_mode != IrMode.LEGACY_IR
+                ):
+                    # SOT_MGS10 only test with LEGACY_IR
+                    continue
                 new_attrs[
                     Dy2StTestMeta.test_case_name(
                         fn_name, to_static_mode, ir_mode
@@ -321,7 +356,7 @@ def test_ast_only(fn):
 
 
 def test_sot_only(fn):
-    fn = set_to_static_mode(ToStaticMode.SOT)(fn)
+    fn = set_to_static_mode(ToStaticMode.SOT | ToStaticMode.SOT_MGS10)(fn)
     return fn
 
 
