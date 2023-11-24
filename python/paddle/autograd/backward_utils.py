@@ -17,6 +17,8 @@ import collections
 from collections.abc import Sequence
 from typing import Any
 
+from paddle import pir
+
 
 class ValueWrapper:
     def __init__(self, value) -> None:
@@ -25,6 +27,8 @@ class ValueWrapper:
         self.value = value
 
     def __hash__(self) -> int:
+        if isinstance(self.value, pir.OpResult):
+            return hash(self.value.to_value())
         return hash(self.value)
 
     def __eq__(self, other) -> bool:

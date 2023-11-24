@@ -728,8 +728,6 @@ void BindOpResult(py::module *m) {
            [](OpResult &self) {
              return paddle::dialect::scale(self, -1.0, 0.0, true);
            })
-      .def("__hash__",
-           [](OpResult &self) { return std::hash<pir::Value>{}(self); })
       .def("__str__",
            [](OpResult &self) -> py::str {
              std::ostringstream print_stream;
@@ -824,6 +822,7 @@ void BindOpResult(py::module *m) {
            [](OpResult &self, OpResult &op_result) {
              self.ReplaceAllUsesWith(op_result);
            })
+      .def("to_value", [](OpResult &self) { return pir::Value(self.impl()); })
       .def_property(
           "stop_gradient",
           [](OpResult &self) {

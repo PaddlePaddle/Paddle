@@ -372,6 +372,9 @@ def monkey_patch_opresult():
 
         array_write(x=var, i=array_length(self), array=self)
 
+    def op_result_hash(self):
+        raise NotImplementedError('In python OpResult can not hash!')
+
     import paddle
 
     opresult_methods = [
@@ -384,6 +387,7 @@ def monkey_patch_opresult():
         ('size', _size_),
         ('clone', clone),
         ('append', append),
+        ('__hash__', op_result_hash),
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
