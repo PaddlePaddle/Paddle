@@ -17,6 +17,7 @@ import unittest
 from get_test_cover_info import get_xpu_op_support_types
 
 import paddle
+from paddle import core
 from xpu.test_collective_api_base import TestDistBase
 
 paddle.enable_static()
@@ -26,6 +27,10 @@ class TestCollectiveReduceAPI(TestDistBase):
     def _setup_config(self):
         pass
 
+    @unittest.skipIf(
+        not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
+        "run test when having at leaset 2 XPUs.",
+    )
     def test_reduce(self):
         support_types = get_xpu_op_support_types('c_reduce_sum')
         for dtype in support_types:
@@ -35,6 +40,10 @@ class TestCollectiveReduceAPI(TestDistBase):
                 dtype=dtype,
             )
 
+    @unittest.skipIf(
+        not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
+        "run test when having at leaset 2 XPUs.",
+    )
     def test_reduce_dygraph(self):
         support_types = get_xpu_op_support_types('c_reduce_sum')
         for dtype in support_types:

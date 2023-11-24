@@ -14,10 +14,16 @@
 
 import unittest
 
+import paddle
+from paddle import core
 from xpu.test_parallel_dygraph_dataparallel import TestMultipleXpus
 
 
 class TestProcessGroup(TestMultipleXpus):
+    @unittest.skipIf(
+        not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
+        "run test when having at leaset 2 XPUs.",
+    )
     def test_process_group_bkcl(self):
         self.run_mnist_2xpu('process_group_bkcl.py')
 
