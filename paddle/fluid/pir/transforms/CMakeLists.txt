@@ -2,6 +2,8 @@ file(GLOB_RECURSE transforms_srcs "*.cc")
 if(NOT WITH_CINN)
   list(REMOVE_ITEM transforms_srcs
        ${CMAKE_CURRENT_SOURCE_DIR}/build_cinn_pass.cc)
+  list(REMOVE_ITEM transforms_srcs
+       ${CMAKE_CURRENT_SOURCE_DIR}/infer_symbolic_shape_pass.cc)
 endif()
 
 set(transforms_deps drr op_dialect op_dialect_vjp standalone_executor pir)
