@@ -26,7 +26,7 @@ PHI_DECLARE_bool(multi_node_sample_use_gpu_table);
 namespace paddle {
 namespace framework {
 
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
 std::shared_ptr<GraphGpuWrapper> GraphGpuWrapper::s_instance_(nullptr);
 void GraphGpuWrapper::set_device(std::vector<int> ids) {
   for (auto device_id : ids) {

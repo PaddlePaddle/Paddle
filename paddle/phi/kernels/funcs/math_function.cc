@@ -230,19 +230,28 @@ struct TensorSetConstantXPU {
     auto* ctx = phi::DeviceContextPool::Instance().Get(place_);
     auto data = ctx->Alloc<T>(tensor_);
     int numel = tensor_->numel();
-    using XPUInTDType = typename XPUTensorTrait<T>::Type;
-    float num = static_cast<float>(*reinterpret_cast<const T*>(value_));
-    auto dev_ctx = reinterpret_cast<const phi::XPUContext*>(&context_);
-    int ret = xpu::constant(dev_ctx->x_context(),
-                            reinterpret_cast<XPUInTDType*>(data),
-                            numel,
-                            static_cast<XPUInTDType>(num));
-    PADDLE_ENFORCE_EQ(
-        ret,
-        XPU_SUCCESS,
-        phi::errors::External("XPU CONSTANT API return wrong value[%d %s].",
-                              ret,
-                              XPUAPIErrorMsg[ret]));
+    if (((std::is_same<T, float>::value) ||
+         (std::is_same<T, phi::dtype::float16>::value)) &&
+        (place_ == phi::XPUPlace())) {
+      using XPUType = typename XPUTensorTrait<T>::Type;
+      const T* num = reinterpret_cast<const T*>(value_);
+      auto* dev_ctx = static_cast<phi::XPUContext*>(ctx);
+      int r = xpu::constant<XPUType>(dev_ctx->x_context(),
+                                     reinterpret_cast<XPUType*>(data),
+                                     numel,
+                                     static_cast<XPUType>(*num));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+      dev_ctx->Wait();
+    } else {
+      std::unique_ptr<T[]> data_cpu(new T[numel]);
+      const T* num = reinterpret_cast<const T*>(value_);
+      std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(*num));
+      memory_utils::Copy(place_,
+                         data,
+                         phi::CPUPlace(),
+                         static_cast<void*>(data_cpu.get()),
+                         numel * sizeof(T));
+    }
   }
   const phi::DeviceContext& context_;
   phi::DenseTensor* tensor_;
