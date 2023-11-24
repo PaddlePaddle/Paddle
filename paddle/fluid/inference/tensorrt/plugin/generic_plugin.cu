@@ -403,6 +403,27 @@ bool GenericPlugin::supportsFormatCombination(
     if (pos == 2)
       return in_out[1].type == in_out[pos].type &&
              in_out[1].format == in_out[pos].format;
+  } else if (op_desc_.Type() == "scatter") {
+    // input X
+    if (pos == 0)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
+              (isFp16Supported() &&
+               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    // Ids
+    if (pos == 1)
+      return (in_out[pos].type == nvinfer1::DataType::kINT32) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    // input Updates
+    if (pos == 2)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
+              (isFp16Supported() &&
+               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    // output
+    if (pos == 3)
+      return in_out[0].type == in_out[pos].type &&
+             in_out[0].format == in_out[pos].format;
   } else {
     return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
             (isFp16Supported() &&
