@@ -1601,9 +1601,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             )
             insert_index = len(self._graph.pycode_gen._instructions) - 1
             for i, stack_arg in enumerate(self.stack):
-                var_loader.load(
-                    stack_arg, allow_push_null=i >= len(self.stack) - 1
-                )
+                var_loader.load(stack_arg)
             for name in if_inputs:
                 var_loader.load(self.get_var(name))
             self._graph.pycode_gen.gen_call_function(
@@ -1620,9 +1618,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             )
             jump_to = self._graph.pycode_gen._instructions[-1]
             for i, stack_arg in enumerate(self.stack):
-                var_loader.load(
-                    stack_arg, allow_push_null=i >= len(self.stack) - 1
-                )
+                var_loader.load(stack_arg)
             for name in else_inputs:
                 var_loader.load(self.get_var(name))
             self._graph.pycode_gen.gen_call_function(
@@ -1674,9 +1670,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         pop_n = push_n - stack_effect
 
         for i, stack_arg in enumerate(self.stack):
-            var_loader.load(
-                stack_arg, allow_push_null=i >= len(self.stack) - pop_n
-            )
+            var_loader.load(stack_arg)
 
         # gen call resume fn opcode
         # NOTE(SigureMo): In Python 3.11，we need generate KW_NAMES if the call shape is not None.
