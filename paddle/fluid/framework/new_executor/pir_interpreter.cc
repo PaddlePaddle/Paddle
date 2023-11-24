@@ -194,11 +194,6 @@ PirInterpreter::~PirInterpreter() {
 #endif
 }
 
-void PirInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "SetCopyProgram is not implemented in PirInterpreter."));
-}
-
 std::shared_ptr<ProgramDesc> PirInterpreter::GetMutableCopyProgram() {
   PADDLE_THROW(platform::errors::Unimplemented(
       "GetMutableCopyProgram is not implemented in PirInterpreter."));
