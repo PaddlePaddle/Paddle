@@ -127,6 +127,8 @@ COMPUTE_OP_TEMPLATE = """
     paddle::dialect::{op_class_name} {op_inst_name} = ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::{op_class_name}>({args});"""
 
 OP_INPUT = 'pir::Value'
+DENSE_TENSOR_TYPE = "paddle::dialect::DenseTensorType"
+DATA_TYPE = "paddle::dialect::DataTypeAttribute"
 VECTOR_TYPE = 'pir::VectorType'
 INTARRAY_ATTRIBUTE = "paddle::dialect::IntArrayAttribute"
 
@@ -519,8 +521,8 @@ class CodeGen:
             return 'return;'
 
     def _gen_check_data_type(self, op_info, op_name):
-        name_list = op_info.input_name_list
-        type_list = op_info.input_type_list
+        name_list = op_info.input_name_list + op_info.attribute_name_list
+        type_list = op_info.input_type_list + op_info.attribute_type_list
         if (
             op_name.endswith(('_grad', '_grad_', '_grad_dense', '_grad_sparse'))
             or len(name_list) == 0
@@ -537,11 +539,15 @@ class CodeGen:
                     continue
                 index = name_list.index(name)
                 type = type_list[index]
-                if VECTOR_TYPE in type:
+                if f"{VECTOR_TYPE}<{DENSE_TENSOR_TYPE}>" == type:
                     function_name = 'CheckVectorOfValueDataType'
-
-                else:
+                elif DENSE_TENSOR_TYPE == type:
                     function_name = 'CheckValueDataType'
+                elif DATA_TYPE == type:
+                    function_name = 'CheckDataType'
+                else:
+                    print(name, type, name_list, type_list)
+                    raise NotImplementedError(f"Unknown type: {type}")
                 ret += CHECK_DATA_TYPE_TEMPLATE.format(
                     function=function_name, input=name, op_name=op_name
                 )
@@ -563,7 +569,6 @@ class CodeGen:
         out_split, ret_list = self._gen_out_split_and_ret_list(
             op_info, op_name, op_inst_name
         )
-
         ret = API_IMPL_TEMPLATE.format(
             check_data_type=self._gen_check_data_type(op_info, op_name),
             ret_type=ret_type,
@@ -621,7 +626,6 @@ class CodeGen:
             os.remove(h_file_path)
         if os.path.exists(cpp_file_path):
             os.remove(cpp_file_path)
-
         op_info_items = self._parse_yaml(op_yaml_files, op_compat_yaml_file)
 
         self._gen_h_file(op_info_items, namespaces, h_file_path)
