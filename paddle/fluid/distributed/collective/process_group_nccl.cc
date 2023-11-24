@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
-
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -718,33 +718,33 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   if (FLAGS_enable_async_trace) {
     // gather global ranks in current group
-    int* gpu_global_rank = nullptr;
     size_t gpu_global_rank_size = sizeof(int);
-    CUDA_CHECK(cudaMalloc(&gpu_global_rank, gpu_global_rank_size));
+    auto gpu_global_rank =
+        phi::memory_utils::Alloc(phi::GPUPlace(), gpu_global_rank_size);
 
-    CUDA_CHECK(cudaMemcpy(gpu_global_rank,
-                          &global_rank_,
-                          gpu_global_rank_size,
-                          cudaMemcpyHostToDevice));
+    phi::memory_utils::Copy(phi::GPUPlace(),
+                            gpu_global_rank->ptr(),
+                            phi::CPUPlace(),
+                            &global_rank_,
+                            gpu_global_rank_size);
 
-    int* gpu_global_ranks = nullptr;
     size_t gpu_global_ranks_size = num_ranks * sizeof(int);
-    CUDA_CHECK(cudaMalloc(&gpu_global_ranks, gpu_global_ranks_size));
+    auto gpu_global_ranks =
+        phi::memory_utils::Alloc(phi::GPUPlace(), gpu_global_ranks_size);
 
-    NCCL_CHECK(phi::dynload::ncclAllGather(gpu_global_rank,
-                                           gpu_global_ranks,
+    NCCL_CHECK(phi::dynload::ncclAllGather(gpu_global_rank->ptr(),
+                                           gpu_global_ranks->ptr(),
                                            1,
                                            ncclInt,
                                            nccl_comm_ctx->GetNcclComm(),
                                            comm_ctx->stream()));
 
     std::vector<int> global_ranks(num_ranks);
-    CUDA_CHECK(cudaMemcpy(global_ranks.data(),
-                          gpu_global_ranks,
-                          gpu_global_ranks_size,
-                          cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaFree(gpu_global_rank));
-    CUDA_CHECK(cudaFree(gpu_global_ranks));
+    phi::memory_utils::Copy(phi::CPUPlace(),
+                            global_ranks.data(),
+                            phi::GPUPlace(),
+                            gpu_global_ranks->ptr(),
+                            gpu_global_ranks_size);
 
     // store global_ranks in current group_key
     std::once_flag flag;
