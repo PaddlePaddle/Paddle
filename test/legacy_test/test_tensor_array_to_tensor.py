@@ -309,7 +309,11 @@ class TestPirArrayOp(unittest.TestCase):
                     input=array, axis=1, use_stack=False
                 )
 
-            place = paddle.base.CUDAPlace(0)
+            place = (
+                paddle.base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else paddle.base.CUDAPlace(0)
+            )
             exe = paddle.base.Executor(place)
             [fetched_out0, fetched_out1] = exe.run(
                 main_program, feed={}, fetch_list=[output, output_index]
