@@ -369,8 +369,8 @@ class Fleet:
         iteration,
         x,
         group,
-        allreduce_size,
-        allreduce_thres_time,
+        perf_size,
+        perf_threshold_time,
         warmup=False,
     ):
         if group is None or group.nranks <= 1:
@@ -387,15 +387,15 @@ class Fleet:
         if warmup:
             return
         logger.info(
-            f"[AllReduceTest] nbytes {allreduce_size}B test result: {ret} s/iter"
+            f"[AllReduceTest] nbytes {perf_size}B test result: {ret} s/iter"
         )
-        if allreduce_thres_time > -1 and ret > allreduce_thres_time:
+        if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] AllReduce Test Timeout! {ret} > {allreduce_thres_time}"
+                f"[Perf Warnning] AllReduce Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test reduce perf
-    def reduce_perf(self, iteration, x, group, reduce_size, reduce_thres_time):
+    def reduce_perf(self, iteration, x, group, perf_size, perf_threshold_time):
         if group is None or group.nranks <= 1:
             logger.warning("reduce_perf is invalid, group invalid!")
             return
@@ -408,16 +408,16 @@ class Fleet:
         end_t = time.time()
         ret = (end_t - start_t) / iteration
         logger.info(
-            f"[ReduceTest] nbytes {reduce_size}B test result: {ret} s/iter"
+            f"[ReduceTest] nbytes {perf_size}B test result: {ret} s/iter"
         )
-        if reduce_thres_time > -1 and ret > reduce_thres_time:
+        if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] Reduce Test Timeout! {ret} > {reduce_thres_time}"
+                f"[Perf Warnning] Reduce Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test broadcast perf
     def broadcast_perf(
-        self, iteration, x, group, broadcast_size, broadcast_thres_time
+        self, iteration, x, group, perf_size, perf_threshold_time
     ):
         if group is None or group.nranks <= 1:
             logger.warning("broadcast_perf is invalid, group invalid!")
@@ -431,16 +431,16 @@ class Fleet:
         end_t = time.time()
         ret = (end_t - start_t) / iteration
         logger.info(
-            f"[BroadcastTest] nbytes {broadcast_size}B test result: {ret} s/iter"
+            f"[BroadcastTest] nbytes {perf_size}B test result: {ret} s/iter"
         )
-        if broadcast_thres_time > -1 and ret > broadcast_thres_time:
+        if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] Broadcast Test Timeout! {ret} > {broadcast_thres_time}"
+                f"[Perf Warnning] Broadcast Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test allgather perf
     def allgather_perf(
-        self, iteration, x, group, allgather_size, allgather_thres_time
+        self, iteration, x, group, perf_size, perf_threshold_time
     ):
         if group is None or group.nranks <= 1:
             logger.warning("allgather_perf is invalid, group invalid!")
@@ -455,11 +455,11 @@ class Fleet:
         end_t = time.time()
         ret = (end_t - start_t) / iteration
         logger.info(
-            f"[AllgatherTest] nbytes {allgather_size}B test result: {ret} s/iter"
+            f"[AllgatherTest] nbytes {perf_size}B test result: {ret} s/iter"
         )
-        if allgather_thres_time > -1 and ret > allgather_thres_time:
+        if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] Allgather Test Timeout! {ret} > {allgather_thres_time}"
+                f"[Perf Warnning] Allgather Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test reduce_scatter perf
@@ -468,8 +468,8 @@ class Fleet:
         iteration,
         x,
         group,
-        reduce_scatter_size,
-        reduce_scatter_thres_time,
+        perf_size,
+        perf_threshold_time,
     ):
         if group is None or group.nranks <= 1:
             logger.warning("reduce_scatter_perf is invalid, group invalid!")
@@ -498,109 +498,108 @@ class Fleet:
         end_t = time.time()
         ret = (end_t - start_t) / iteration
         logger.info(
-            f"[ReduceScatterTest] nbytes {reduce_scatter_size}B test result: {ret} s/iter"
+            f"[ReduceScatterTest] nbytes {perf_size}B test result: {ret} s/iter"
         )
-        if reduce_scatter_thres_time > -1 and ret > reduce_scatter_thres_time:
+        if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] ReduceScatter Test Timeout! {ret} > {reduce_scatter_thres_time}"
+                f"[Perf Warnning] ReduceScatter Test Timeout! {ret} > {perf_threshold_time}"
             )
 
-    def collective_perf(self, round=50, test_comm=[], context={}, hcg=None):
+    def _collective_perf_impl(self, round=50, context={}, hcg=None):
         if hcg is None:
             hcg = self.get_hybrid_communicate_group()
 
+        collective_perf_func_map = {
+            "allreduce": self.allreduce_perf,
+            "reduce": self.reduce_perf,
+            "broadcast": self.broadcast_perf,
+            "allgather": self.allgather_perf,
+            "reduce_scatter": self.reduce_scatter_perf,
+        }
         dp_group = hcg.get_data_parallel_group()
         sharding_group = hcg.get_sharding_parallel_group()
         mp_group = hcg.get_model_parallel_group()
-        test_group = None
+        data_group = None
         if dp_group.nranks > 1:
-            test_group = dp_group
+            data_group = dp_group
         elif sharding_group.nranks > 1:
-            test_group = sharding_group
+            data_group = sharding_group
 
-        # test 1M ~ 1G
-        nbytes = 1 << 20  # 1048576(1MB)
-        final_nbytes = 1 << 30  # 1073741824(1GB)
-        dtype = paddle.float32
+        collective_perf_group_map = {
+            "allreduce": data_group,
+            "reduce": data_group,
+            "broadcast": data_group,
+            "allgather": mp_group,
+            "reduce_scatter": mp_group,
+        }
 
-        # run once when test specific package size.
-        test_specific_size = False
-        for k, st in context.items():
-            if st[0] > 0:
-                test_specific_size = True
-                break
+        for comm_type, size_and_time in context.items():
+            # test 1M ~ 1G as default
+            nbytes = 1 << 20  # 1048576(1MB)
+            final_nbytes = 1 << 30  # 1073741824(1GB)
+            dtype = paddle.float32
+            time_threshold = 0
 
-        if test_specific_size:
-            test_comm = list(context.keys())
+            if size_and_time is not None:
+                nbytes = size_and_time[0]
+                # Run only once when test specific message size.
+                final_nbytes = nbytes
+                time_threshold = size_and_time[1]
+            if nbytes <= 0:
+                logger.warning(
+                    f"Size for collective performance check should be positive, but got {nbytes}"
+                )
+                return
 
-        if len(test_comm) == 0:
+            while nbytes <= final_nbytes:
+                x = paddle.zeros([nbytes // 4], dtype=dtype)
+                # warmup
+                self.allreduce_perf(10, x, None, nbytes, 1, warmup=True)
+
+                collective_perf_func_map[comm_type](
+                    iteration=round,
+                    x=x,
+                    group=collective_perf_group_map[comm_type],
+                    perf_size=nbytes,
+                    perf_threshold_time=time_threshold,
+                )
+                nbytes = nbytes << 1
+
+    def collective_perf(self, comm_type, round=50, size_and_time={}):
+        """
+        Run performance test for given communication type
+        and compare the time cost with the threshold.
+
+        Args:
+            comm_type (str): Communication type for performance test. Currently support
+                            "allreduce", "broadcast", "reduce", "allgather" and "reduce_scatter".
+            round (int, optional): Loop times for performance test. More loops will cost more time
+                            and provide more accurate result. Defaults to 50.
+            size_and_time (dict, optional): Message sizes and time thresholds for performance test.
+                            each pair will invoke a performance check. Defaults to {}, which indicates
+                            acting performance check from 1MB to 1GB without threshold set.
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+                :name: code-init-example1
+
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init(is_collective=True)
+                >>> # run two tests, one with 1MB (threshold 0.5s) and another with 1GB (threshold 1s)
+                >>> size_and_time = {1<<20: 0.5, 1<<30: 1}
+                >>> fleet.collective_perf("allreduce", round=50, size_and_time = size_and_time)
+        """
+        if not self.is_collective:
+            logger.warning(
+                "fleet.collective_perf is only for collective mode, will return with no test acted."
+            )
             return
-
-        while nbytes <= final_nbytes:
-            x = paddle.zeros([nbytes // 4], dtype=dtype)
-            # warmup
-            self.allreduce_perf(10, x, test_group, nbytes, -1, warmup=True)
-
-            allreduce_size, allreduce_thres_time = context.get(
-                "allreduce", [nbytes, -1]
-            )
-            reduce_size, reduce_thres_time = context.get("reduce", [nbytes, -1])
-            broadcast_size, broadcast_thres_time = context.get(
-                "broadcast", [nbytes, -1]
-            )
-            allgather_size, allgather_thres_time = context.get(
-                "allgather", [nbytes, -1]
-            )
-            reduce_scatter_size, reduce_scatter_thres_time = context.get(
-                "reduce_scatter", [nbytes, -1]
-            )
-
-            # inter machines
-            if "allreduce" in test_comm:
-                x = paddle.zeros([allreduce_size // 4], dtype=dtype)
-                self.allreduce_perf(
-                    round, x, test_group, allreduce_size, allreduce_thres_time
-                )
-
-            if "reduce" in test_comm:
-                x = paddle.zeros([reduce_size // 4], dtype=dtype)
-                self.reduce_perf(
-                    round, x, test_group, reduce_size, reduce_thres_time
-                )
-
-            if "broadcast" in test_comm:
-                x = paddle.zeros([broadcast_size // 4], dtype=dtype)
-                self.broadcast_perf(
-                    round, x, test_group, broadcast_size, broadcast_thres_time
-                )
-
-            # intra machines
-            if "allgather" in test_comm:
-                x = paddle.zeros([allgather_size // 4], dtype=dtype)
-                self.allgather_perf(
-                    round, x, mp_group, allgather_size, allgather_thres_time
-                )
-
-            if "reduce_scatter" in test_comm:
-                x = paddle.zeros([reduce_scatter_size // 4], dtype=dtype)
-                self.reduce_scatter_perf(
-                    round,
-                    x,
-                    mp_group,
-                    reduce_scatter_size,
-                    reduce_scatter_thres_time,
-                )
-
-            # run once when test specific package size.
-            if test_specific_size:
-                break
-
-            nbytes = nbytes << 1
-
-    def monitor_perf(self, comm_type, round=50, size_and_time={}, hcg=None):
-        for size, time_thres in size_and_time.items():
-            context = {comm_type: [size, time_thres]}
-            self.collective_perf(round=round, context=context, hcg=hcg)
+        for size, time_threshold in size_and_time.items():
+            context = {comm_type: [size, time_threshold]}
+            self._collective_perf_impl(round=round, context=context)
 
     def _init_hybrid_parallel_env(self):
         """initialize the hybrid environment."""

@@ -108,5 +108,4 @@ get_log_level_code = log_util.get_log_level_code
 get_log_level_name = log_util.get_log_level_name
 save_cache_table = fleet.save_cache_table
 collective_perf = fleet.collective_perf
-monitor_perf = fleet.monitor_perf
 from .. import auto_parallel as auto  # noqa: F401
