@@ -5034,6 +5034,112 @@ def digamma_(x, name=None):
         return _C_ops.digamma_(x)
 
 
+def igamma(x, a, name=None):
+    r"""
+    Computes the regularized upper incomplete gamma function.
+
+    .. math:: Q(a, x) = \frac{1}{\Gamma(a)} \int_{x}^{\infty} t^{a-1} e^{-t} dt
+
+    Args:
+        x (Tensor): The positive parameter Tensor. Must be one of the following types: float16, float32, float64, uint16.
+        a (Tensor): The non-negative argument Tensor. Must be one of the following types: float16, float32, float64, uint16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the igamma of the input Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0, 1, 10, 100, 1000], dtype="float32")
+            >>> a = paddle.to_tensor([0.5, 0.5, 0.5, 0.5, 0.5], dtype="float32")
+            >>> out = paddle.igamma(x, a)
+            >>> print(out)
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [1.        , 0.15729916, 0.00000774, 0.        , 0.        ])
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.igamma(x, a)
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'igamma'
+        )
+        check_variable_and_dtype(
+            a, 'a', ['float16', 'float32', 'float64', 'uint16'], 'igamma'
+        )
+        helper = LayerHelper('igamma', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='igamma', inputs={'x': x, 'a': a}, outputs={'out': out}
+        )
+        return out
+
+
+@inplace_apis_in_dygraph_only
+def igamma_(x, a, name=None):
+    r"""
+    Inplace version of ``igamma`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_igamma`.
+    """
+    if in_dynamic_mode():
+        return _C_ops.igamma_(x, a)
+
+
+def igammac(x, a, name=None):
+    r"""
+    Computes the regularized lower incomplete gamma function.
+
+    .. math:: P(a, x) = \frac{1}{\Gamma(a)} \int_{0}^{x} t^{a-1} e^{-t} dt
+
+    Args:
+        x (Tensor): The positive parameter Tensor. Must be one of the following types: float16, float32, float64, uint16.
+        a (Tensor): The non-negative argument Tensor. Must be one of the following types: float16, float32, float64, uint16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the igammac of the input Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0, 1, 10, 100, 1000], dtype="float32")
+            >>> a = paddle.to_tensor([0.5, 0.5, 0.5, 0.5, 0.5], dtype="float32")
+            >>> out = paddle.igammac(x, a)
+            >>> print(out)
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.        , 0.84270084, 0.99999225, 1.        , 1.        ])
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.igammac(x, a)
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'igammac'
+        )
+        check_variable_and_dtype(
+            a, 'a', ['float16', 'float32', 'float64', 'uint16'], 'igammac'
+        )
+        helper = LayerHelper('igammac', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='igammac', inputs={'x': x, 'a': a}, outputs={'out': out}
+        )
+        return out
+
+
+@inplace_apis_in_dygraph_only
+def igammac_(x, a, name=None):
+    r"""
+    Inplace version of ``igammac`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_igammac`.
+    """
+    if in_dynamic_mode():
+        return _C_ops.igammac_(x, a)
+
+
 def lgamma(x, name=None):
     r"""
     Calculates the lgamma of the given input tensor, element-wise.

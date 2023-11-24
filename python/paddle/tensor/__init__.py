@@ -294,6 +294,10 @@ from .math import neg  # noqa: F401
 from .math import neg_  # noqa: F401
 from .math import lgamma  # noqa: F401
 from .math import lgamma_  # noqa: F401
+from .math import igamma  # noqa: F401
+from .math import igamma_  # noqa: F401
+from .math import igammac  # noqa: F401
+from .math import igammac_  # noqa: F401
 from .math import diagonal  # noqa: F401
 from .math import acosh  # noqa: F401
 from .math import acosh_  # noqa: F401
@@ -535,6 +539,10 @@ tensor_method_func = [
     'neg_',
     'lgamma',
     'lgamma_',
+    'igamma',
+    'igamma_',
+    'igammac',
+    'igammac_',
     'equal',
     'equal_',
     'equal_all',
