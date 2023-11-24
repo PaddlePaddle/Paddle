@@ -780,6 +780,29 @@ phi::KernelKey GetKernelKey(
     kernel_backend = paddle::experimental::ParseBackend(place);
   }
 
+  for (size_t i = 0; i < op->num_operands(); ++i) {
+    auto input_tmp = op->operand_source(i);
+    if (!input_tmp) {
+      VLOG(8) << "input (" << i << ") is NULL (optional input)";
+      continue;
+    }
+    auto input = input_tmp.dyn_cast<pir::OpResult>();
+    if (!input) {
+      continue;
+    }
+
+    if (kernel_backend == phi::Backend::GPUDNN &&
+        (input.owner()->HasAttribute(kUseGPUDNN) &&
+         !input.owner()
+              ->attribute<pir::ArrayAttribute>(kUseGPUDNN)
+              .AsVector()[input.index()]
+              .dyn_cast<pir::BoolAttribute>()
+              .data())) {
+      kernel_backend = phi::Backend::GPU;
+      break;
+    }
+  }
+
   phi::KernelKey res(kernel_backend, kernel_layout, kernel_dtype);
 
   // kernel backend infered incorrectly from memcpy op operands,
