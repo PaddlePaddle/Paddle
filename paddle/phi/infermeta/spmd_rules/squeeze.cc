@@ -152,8 +152,6 @@ SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
           << "]\n Out dims_mapping: [" << str_join(dims_mapping_vec[1])
           << "]\n\n";
 
-  CleanUp();
-
   return {{x_dist_attr_dst}, {out_dist_attr}};
 }
 
@@ -218,8 +216,6 @@ SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
   VLOG(4) << "Out dims_mapping_src: [" << str_join(out_dims_mapping) << "] "
           << "dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "X dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
-
-  CleanUp();
 
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }
