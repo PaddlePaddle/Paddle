@@ -22,6 +22,7 @@ import paddle
 from paddle import base
 
 paddle.enable_static()
+paddle.device.set_device("cpu")
 
 
 def new_program():
@@ -418,6 +419,7 @@ class TestMathOpPatchesPir(unittest.TestCase):
 
     def test_cuda(self):
         if base.is_compiled_with_cuda():
+            paddle.device.set_device("gpu")
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
                 with paddle.pir_utils.IrGuard():
