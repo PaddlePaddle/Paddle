@@ -3752,7 +3752,7 @@ def householder_product(x, tau, name=None):
 
     Computes the first n columns of a product of Householder matrices.
 
-    This function can get the vector :math:`\omega_{i}` from matrix `x`(m x n), the :math:`i-1` elements are zeros, and the i-th is `1`, the rest of the elements are from i-th column of `x`.
+    This function can get the vector :math:`\omega_{i}` from matrix `x` (m x n), the :math:`i-1` elements are zeros, and the i-th is `1`, the rest of the elements are from i-th column of `x`.
     And with the vector `tau` can calculate the first n columns of a product of Householder matrices.
 
     :math:`H_i = I_m - \tau_i \omega_i \omega_i^H`
