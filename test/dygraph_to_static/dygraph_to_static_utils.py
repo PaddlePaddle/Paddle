@@ -139,7 +139,7 @@ def to_sot_test(fn):
 
     @wraps(fn)
     def impl(*args, **kwargs):
-        logger.info("[SOT] running SOT")
+        logger.info("[SOT] running SOT (MIN_GRAPH_SIZE=0)")
 
         OpcodeExecutorCache().clear()
         with sot_mode_guard(True):
@@ -156,7 +156,7 @@ def to_sot_mgs10_test(fn):
 
     @wraps(fn)
     def impl(*args, **kwargs):
-        logger.info("[SOT_MGS10] running SOT")
+        logger.info("[SOT_MGS10] running SOT (MIN_GRAPH_SIZE=10)")
 
         OpcodeExecutorCache().clear()
         with sot_mode_guard(True):
