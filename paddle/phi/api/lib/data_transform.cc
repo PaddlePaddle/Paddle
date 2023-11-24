@@ -271,6 +271,23 @@ void CheckAndTrans2Contiguous(phi::DenseTensor* tensor) {
   }
 }
 
+phi::DenseTensor CheckAndTrans2NewContiguousTensor(
+    const phi::DenseTensor& tensor) {
+  if (!tensor.meta().is_contiguous()) {
+    return Trans2Contiguous(tensor);
+  }
+  return tensor;
+}
+
+std::vector<phi::DenseTensor> CheckAndTrans2NewContiguousTensor(
+    const std::vector<phi::DenseTensor>& tensor) {
+  std::vector<phi::DenseTensor> out;
+  for (auto& t : tensor) {
+    out.emplace_back(std::move(CheckAndTrans2NewContiguousTensor(t)));
+  }
+  return out;
+}
+
 phi::DenseTensor TransformData(const phi::DenseTensor& tensor,
                                const phi::TensorArgDef& target_args_def,
                                const TransformFlag& transform_flag,
