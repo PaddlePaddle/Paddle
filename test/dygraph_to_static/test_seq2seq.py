@@ -20,6 +20,9 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
+    IrMode,
+    ToStaticMode,
+    disable_test_case,
 )
 from seq2seq_dygraph_model import AttentionModel, BaseModel
 from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
@@ -236,10 +239,13 @@ class TestSeq2seq(Dy2StTestBase):
             msg=f"\npred_dygraph = {pred_dygraph} \npred_static = {pred_static}",
         )
 
+    # Disable duplicated test case to avoid timeout
+    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.LEGACY_IR))
     def test_base_model(self):
         self._test_train(attn_model=False)
         self._test_predict(attn_model=False)
 
+    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.LEGACY_IR))
     def test_attn_model(self):
         self._test_train(attn_model=True)
         # TODO(liym27): add predict
