@@ -23,6 +23,7 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
     test_legacy_and_pt,
+    test_pt_only,
 )
 
 import paddle
@@ -199,6 +200,7 @@ class TestDecoratorTransform(Dy2StTestBase):
         np.testing.assert_allclose(outs[7], np.array(10), rtol=1e-05)
 
     @test_ast_only
+    @test_pt_only
     def test_contextmanager_warning(self):
         paddle.disable_static()
         with warnings.catch_warnings(record=True) as w:

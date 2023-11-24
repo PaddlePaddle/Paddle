@@ -380,6 +380,7 @@ class TestDeclarativeAPI(Dy2StTestBase):
             # AssertionError: We Only support to_variable in imperative mode,
             #  please use base.dygraph.guard() as context to run it in imperative Mode
             func(np.ones(5).astype("int32"))
+        paddle.jit.enable_to_static(True)
 
 
 class TestDecorateModelDirectly(Dy2StTestBase):

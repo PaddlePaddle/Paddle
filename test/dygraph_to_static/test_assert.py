@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import unittest
-from test.dygraph_to_static.dygraph_to_static_utils import (
+
+import numpy
+from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
     test_legacy_and_pt,
 )
-
-import numpy
 
 import paddle
 from paddle import base
