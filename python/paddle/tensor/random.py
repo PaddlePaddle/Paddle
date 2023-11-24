@@ -989,7 +989,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         dtype = core.VarDesc.VarType.INT64
         if in_pir_mode():
             dtype = DataType.INT64
-    elif not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+    elif not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
