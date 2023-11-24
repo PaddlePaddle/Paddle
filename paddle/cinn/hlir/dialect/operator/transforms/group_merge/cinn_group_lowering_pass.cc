@@ -217,7 +217,7 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
       auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
           *program, target, scope);
       if (FLAGS_cinn_enable_map_expr) {
-        group_->shape_analysis = CreateShapeAnalysis(program);
+        group->shape_analysis = CreateShapeAnalysis(program);
         cinn::adt::TryGenerateMapExprFromGroup(group);
       }
 
