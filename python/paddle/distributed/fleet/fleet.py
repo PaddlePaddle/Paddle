@@ -364,7 +364,7 @@ class Fleet:
         return self
 
     # test allreduce perf
-    def allreduce_test(
+    def allreduce_perf(
         self,
         iteration,
         x,
@@ -374,7 +374,7 @@ class Fleet:
         warmup=False,
     ):
         if group is None or group.nranks <= 1:
-            logger.warning("allreduce_test is invalid, group invalid!")
+            logger.warning("allreduce_perf is invalid, group invalid!")
             return
         paddle.distributed.barrier()
         paddle.device.cuda.synchronize()
@@ -395,9 +395,9 @@ class Fleet:
             )
 
     # test reduce perf
-    def reduce_test(self, iteration, x, group, reduce_size, reduce_thres_time):
+    def reduce_perf(self, iteration, x, group, reduce_size, reduce_thres_time):
         if group is None or group.nranks <= 1:
-            logger.warning("reduce_test is invalid, group invalid!")
+            logger.warning("reduce_perf is invalid, group invalid!")
             return
         paddle.distributed.barrier()
         paddle.device.cuda.synchronize()
@@ -416,11 +416,11 @@ class Fleet:
             )
 
     # test broadcast perf
-    def broadcast_test(
+    def broadcast_perf(
         self, iteration, x, group, broadcast_size, broadcast_thres_time
     ):
         if group is None or group.nranks <= 1:
-            logger.warning("broadcast_test is invalid, group invalid!")
+            logger.warning("broadcast_perf is invalid, group invalid!")
             return
         paddle.distributed.barrier()
         paddle.device.cuda.synchronize()
@@ -439,11 +439,11 @@ class Fleet:
             )
 
     # test allgather perf
-    def allgather_test(
+    def allgather_perf(
         self, iteration, x, group, allgather_size, allgather_thres_time
     ):
         if group is None or group.nranks <= 1:
-            logger.warning("allgather_test is invalid, group invalid!")
+            logger.warning("allgather_perf is invalid, group invalid!")
             return
         paddle.distributed.barrier()
         paddle.device.cuda.synchronize()
@@ -463,7 +463,7 @@ class Fleet:
             )
 
     # test reduce_scatter perf
-    def reduce_scatter_test(
+    def reduce_scatter_perf(
         self,
         iteration,
         x,
@@ -472,7 +472,7 @@ class Fleet:
         reduce_scatter_thres_time,
     ):
         if group is None or group.nranks <= 1:
-            logger.warning("reduce_scatter_test is invalid, group invalid!")
+            logger.warning("reduce_scatter_perf is invalid, group invalid!")
             return
         paddle.distributed.barrier()
         paddle.device.cuda.synchronize()
@@ -505,7 +505,7 @@ class Fleet:
                 f"[Perf Warnning] ReduceScatter Test Timeout! {ret} > {reduce_scatter_thres_time}"
             )
 
-    def perf_test(self, round=50, test_comm=[], context={}, hcg=None):
+    def collective_perf(self, round=50, test_comm=[], context={}, hcg=None):
         if hcg is None:
             hcg = self.get_hybrid_communicate_group()
 
@@ -539,7 +539,7 @@ class Fleet:
         while nbytes <= final_nbytes:
             x = paddle.zeros([nbytes // 4], dtype=dtype)
             # warmup
-            self.allreduce_test(10, x, test_group, nbytes, -1, warmup=True)
+            self.allreduce_perf(10, x, test_group, nbytes, -1, warmup=True)
 
             allreduce_size, allreduce_thres_time = context.get(
                 "allreduce", [nbytes, -1]
@@ -558,32 +558,32 @@ class Fleet:
             # inter machines
             if "allreduce" in test_comm:
                 x = paddle.zeros([allreduce_size // 4], dtype=dtype)
-                self.allreduce_test(
+                self.allreduce_perf(
                     round, x, test_group, allreduce_size, allreduce_thres_time
                 )
 
             if "reduce" in test_comm:
                 x = paddle.zeros([reduce_size // 4], dtype=dtype)
-                self.reduce_test(
+                self.reduce_perf(
                     round, x, test_group, reduce_size, reduce_thres_time
                 )
 
             if "broadcast" in test_comm:
                 x = paddle.zeros([broadcast_size // 4], dtype=dtype)
-                self.broadcast_test(
+                self.broadcast_perf(
                     round, x, test_group, broadcast_size, broadcast_thres_time
                 )
 
             # intra machines
             if "allgather" in test_comm:
                 x = paddle.zeros([allgather_size // 4], dtype=dtype)
-                self.allgather_test(
+                self.allgather_perf(
                     round, x, mp_group, allgather_size, allgather_thres_time
                 )
 
             if "reduce_scatter" in test_comm:
                 x = paddle.zeros([reduce_scatter_size // 4], dtype=dtype)
-                self.reduce_scatter_test(
+                self.reduce_scatter_perf(
                     round,
                     x,
                     mp_group,
@@ -600,7 +600,7 @@ class Fleet:
     def monitor_perf(self, comm_type, round=50, size_and_time={}, hcg=None):
         for size, time_thres in size_and_time.items():
             context = {comm_type: [size, time_thres]}
-            self.perf_test(round=round, context=context, hcg=hcg)
+            self.collective_perf(round=round, context=context, hcg=hcg)
 
     def _init_hybrid_parallel_env(self):
         """initialize the hybrid environment."""
