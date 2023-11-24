@@ -31,7 +31,7 @@ def ref_pdist(x, p=2.0):
     return np.array(res)
 
 
-class TestpdistAPI(unittest.TestCase):
+class TestPdistAPI(unittest.TestCase):
     def setUp(self):
         self.x = np.random.rand(10, 20).astype('float32')
         self.p = 2.0
@@ -70,42 +70,42 @@ class TestpdistAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestpdistAPICase1(TestpdistAPI):
+class TestPdistAPICase1(TestPdistAPI):
     def init_input(self):
         self.p = 0
 
 
-class TestpdistAPICase2(TestpdistAPI):
+class TestPdistAPICase2(TestPdistAPI):
     def init_input(self):
         self.p = 1.0
 
 
-class TestpdistAPICase3(TestpdistAPI):
+class TestPdistAPICase3(TestPdistAPI):
     def init_input(self):
         self.p = 3.0
 
 
-class TestpdistAPICase4(TestpdistAPI):
+class TestPdistAPICase4(TestPdistAPI):
     def init_input(self):
         self.p = 1.5
 
 
-class TestpdistAPICase5(TestpdistAPI):
+class TestPdistAPICase5(TestPdistAPI):
     def init_input(self):
         self.p = 2.5
 
 
-class TestpdistAPICase6(TestpdistAPI):
+class TestPdistAPICase6(TestPdistAPI):
     def init_input(self):
         self.p = float('inf')
 
 
-class TestpdistAPICase7(TestpdistAPI):
+class TestPdistAPICase7(TestPdistAPI):
     def init_input(self):
         self.x = np.random.rand(50, 20).astype('float64')
 
 
-class TestpdistAPICase8(TestpdistAPI):
+class TestPdistAPICase8(TestPdistAPI):
     def init_input(self):
         self.x = np.random.rand(500, 100).astype('float64')
 
@@ -134,10 +134,10 @@ class TestpdistAPICase8(TestpdistAPI):
         paddle.enable_static()
 
 
-class TestShapeError(unittest.TestCase):
+class TestPdistShapeError(unittest.TestCase):
     def test_error(self):
         with self.assertRaises(AssertionError):
-            self.x = np.random.rand(500, 100, 200).astype('float64')
+            self.x = np.random.rand(50, 10, 20).astype('float64')
             self.p = 2.0
             x = paddle.to_tensor(self.x)
             out0 = paddle.pdist(
