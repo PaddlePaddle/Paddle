@@ -31,6 +31,8 @@ using detail::OpOperandImpl;
 using detail::OpOutlineResultImpl;
 using detail::OpResultImpl;
 
+uint64_t Operation::uid_ = 0;
+
 Operation *Operation::Create(OperationArgument &&argument) {
   Operation *op = Create(argument.inputs,
                          argument.attributes,
@@ -130,6 +132,7 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
       throw e;
     }
   }
+  uid_++;
   return op;
 }
 

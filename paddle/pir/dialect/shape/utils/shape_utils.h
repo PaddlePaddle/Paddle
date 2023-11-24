@@ -82,12 +82,11 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
 class IR_API ShapeAnalysisManager {
  public:
   static ShapeAnalysisManager& Instance();
-  ShapeConstraintIRAnalysis& GetShapeConstraintIRAnalysis(
-      pir::Program* program);
+  ShapeConstraintIRAnalysis& Get(pir::Program* program);
 
  private:
   ShapeAnalysisManager() {}
-  std::unordered_map<pir::Program*, ShapeConstraintIRAnalysis> tables_;
+  std::unordered_map<uint64_t, ShapeConstraintIRAnalysis> tables_;
 };
 
 }  // namespace pir

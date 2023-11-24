@@ -139,13 +139,13 @@ ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
   return instance;
 }
 
-ShapeConstraintIRAnalysis& ShapeAnalysisManager::GetShapeConstraintIRAnalysis(
-    pir::Program* program) {
-  auto it = tables_.find(program);
+ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
+  auto it = tables_.find(program->module_op().operation()->id());
 
   if (it == tables_.end()) {
     it = tables_
-             .emplace(program, ShapeConstraintIRAnalysis(program->module_op()))
+             .emplace(program->module_op().operation()->id(),
+                      ShapeConstraintIRAnalysis(program->module_op()))
              .first;
   }
 
