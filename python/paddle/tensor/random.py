@@ -989,13 +989,16 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         dtype = core.VarDesc.VarType.INT64
         if in_pir_mode():
             dtype = DataType.INT64
-    elif not isinstance(dtype, core.VarDesc.VarType):
+    elif not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
-        shape = paddle.utils.convert_shape_to_list(shape)
         place = _current_expected_place()
-        return _C_ops.randint(low, high, shape, dtype, place)
+        if in_dynamic_mode():
+            shape = paddle.utils.convert_shape_to_list(shape)
+            return _C_ops.randint(low, high, shape, dtype, place)
+        else:
+            return _C_ops.randint(low, high, shape, dtype, place)
     else:
         check_shape(shape, 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
