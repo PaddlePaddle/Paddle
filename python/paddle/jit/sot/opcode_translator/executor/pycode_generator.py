@@ -827,20 +827,6 @@ class PyCodeGen:
         idx = self._code_options["co_names"].index(name)
         self._add_instr("IMPORT_NAME", arg=idx, argval=name)
 
-    def gen_push_null(self):
-        if sys.version_info >= (3, 11):
-            self._add_instr("PUSH_NULL")
-        else:
-            # There is no PUSH_NULL bytecode before python3.11, so we push
-            # a NULL element to the stack through the following bytecode
-            self.gen_load_const(0)
-            self.gen_load_const(None)
-            self.gen_import_name('sys')
-            self.gen_store_fast('sys')
-            self.gen_load_fast('sys')
-            self.gen_load_method('getsizeof')
-            self.gen_pop_top()
-
     def gen_store_fast(self, name):
         if name not in self._code_options["co_varnames"]:
             self._code_options["co_varnames"].append(name)

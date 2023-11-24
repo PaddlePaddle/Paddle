@@ -296,7 +296,7 @@ class FunctionGraph:
                 if isinstance(var, NullVariable):
                     var.reconstruct(self._pycode_gen)
                     return
-                self._pycode_gen.gen_load(self._store_var_info[var])
+                self._pycode_gen.gen_load(self._index_for_load[var])
 
         # var_id -> local_name mapping
         index_for_load = {}
