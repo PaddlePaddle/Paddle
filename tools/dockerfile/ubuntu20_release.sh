@@ -63,11 +63,11 @@ function base_image(){
 }
 
 
+export ref_CUDA_MAJOR=0
+base_image
 export ref_CUDA_MAJOR=11.2
 base_image
 export ref_CUDA_MAJOR=11.7
 base_image
 export ref_CUDA_MAJOR=12.0
-base_image
-export ref_CUDA_MAJOR=0
 base_image
