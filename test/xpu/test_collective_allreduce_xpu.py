@@ -15,10 +15,10 @@
 import unittest
 
 from get_test_cover_info import get_xpu_op_support_types
+from xpu.test_collective_api_base import TestDistBase
 
 import paddle
 from paddle import core
-from xpu.test_collective_api_base import TestDistBase
 
 paddle.enable_static()
 
