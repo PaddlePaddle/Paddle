@@ -48,7 +48,7 @@ function base_image(){
     dockerfile_name="Dockerfile-cpu"
     sed "s#<baseimg>#ubuntu:20.04#g" ./Dockerfile.release.ubuntu20 >${dockerfile_name}
     sed -i "s#<setcuda>##g" ${dockerfile_name}
-    sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
+    sed -i 's#<install_cpu_package>#RUN apt-get install -y gcc g++ make#g' ${dockerfile_name}
     sed -i "s#<install_gcc>#WORKDIR /usr/bin ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
     sed -i "s#gcc121#gcc82#g" ${dockerfile_name}
     sed -i "s#gcc-12.1#gcc-8.2#g" ${dockerfile_name}
