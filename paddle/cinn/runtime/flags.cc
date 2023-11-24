@@ -91,6 +91,10 @@ PD_DEFINE_bool(cinn_enable_map_expr_inline,
                BoolFromEnv("FLAGS_cinn_enable_map_expr_inline", false),
                "It controls whether to inline by map_expr");
 
+PD_DEFINE_bool(cinn_enable_map_expr_dynamic_shape,
+               BoolFromEnv("FLAGS_cinn_enable_map_expr_dynamic_shape", false),
+               "It controls whether map_expr uses dynamic_shape");
+
 PD_DEFINE_bool(cinn_map_expr_enable_index_detail,
                BoolFromEnv("FLAGS_cinn_map_expr_enable_index_detail", false),
                "It controls whether to display datail tensor index");

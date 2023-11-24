@@ -24,9 +24,12 @@
 #include "paddle/cinn/adt/unique_id.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/runtime/flags.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/shape/utils/shape_optimization_utils.h"
+
+PD_DECLARE_bool(cinn_enable_map_expr_dynamic_shape);
 
 namespace cinn::adt::config {
 
@@ -655,6 +658,9 @@ SolveShapeDialectConstraints(
 }  // namespace
 
 void GraphSymbolicDimInferCtx::InitTensorDimExpr() {
+  if (!FLAGS_cinn_enable_map_expr_dynamic_shape) {
+    return;
+  }
   DimFunctions dim_functions =
       BuildGraphShapeDialectConstraints(group_, group_->shape_analysis);
   std::unordered_map<DimVar, const DimExpr> equation_start =
