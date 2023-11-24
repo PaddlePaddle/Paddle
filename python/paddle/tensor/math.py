@@ -5041,8 +5041,8 @@ def igamma(x, a, name=None):
     .. math:: Q(a, x) = \frac{1}{\Gamma(a)} \int_{x}^{\infty} t^{a-1} e^{-t} dt
 
     Args:
-        x (Tensor): The positive parameter Tensor. Must be one of the following types: float16, float32, float64, uint16.
-        a (Tensor): The non-negative argument Tensor. Must be one of the following types: float16, float32, float64, uint16.
+        x (Tensor): The positive parameter Tensor. Must be one of the following types: float32, float64.
+        a (Tensor): The non-negative argument Tensor. Must be one of the following types: float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -5063,12 +5063,8 @@ def igamma(x, a, name=None):
     if in_dynamic_or_pir_mode():
         return _C_ops.igamma(x, a)
     else:
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'igamma'
-        )
-        check_variable_and_dtype(
-            a, 'a', ['float16', 'float32', 'float64', 'uint16'], 'igamma'
-        )
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'igamma')
+        check_variable_and_dtype(a, 'a', ['float32', 'float64'], 'igamma')
         helper = LayerHelper('igamma', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
@@ -5094,8 +5090,8 @@ def igammac(x, a, name=None):
     .. math:: P(a, x) = \frac{1}{\Gamma(a)} \int_{0}^{x} t^{a-1} e^{-t} dt
 
     Args:
-        x (Tensor): The positive parameter Tensor. Must be one of the following types: float16, float32, float64, uint16.
-        a (Tensor): The non-negative argument Tensor. Must be one of the following types: float16, float32, float64, uint16.
+        x (Tensor): The positive parameter Tensor. Must be one of the following types: float32, float64.
+        a (Tensor): The non-negative argument Tensor. Must be one of the following types: float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -5116,12 +5112,8 @@ def igammac(x, a, name=None):
     if in_dynamic_or_pir_mode():
         return _C_ops.igammac(x, a)
     else:
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'igammac'
-        )
-        check_variable_and_dtype(
-            a, 'a', ['float16', 'float32', 'float64', 'uint16'], 'igammac'
-        )
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'igammac')
+        check_variable_and_dtype(a, 'a', ['float32', 'float64'], 'igammac')
         helper = LayerHelper('igammac', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(

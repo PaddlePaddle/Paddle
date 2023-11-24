@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest
 from scipy import special
 
 import paddle
@@ -51,40 +51,6 @@ class TestIgammaOp(OpTest):
 class TestIgammaOpFp32(TestIgammaOp):
     def init_dtype_type(self):
         self.dtype = np.float32
-
-
-class TestIgammaFP16Op(TestIgammaOp):
-    def init_dtype_type(self):
-        self.dtype = np.float16
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA or not support bfloat16",
-)
-class TestIgammaBF16Op(OpTest):
-    def setUp(self):
-        self.op_type = 'igamma'
-        self.python_api = paddle.igamma
-        self.dtype = np.uint16
-        self.shape = (5, 30)
-        x = np.random.random(self.shape).astype("float32") + 1
-        a = np.random.random(self.shape).astype("float32") + 1
-        self.inputs = {
-            'x': convert_float_to_uint16(x),
-            'a': convert_float_to_uint16(a),
-        }
-        out = ref_igamma(x)
-        self.outputs = {'out': convert_float_to_uint16(out)}
-
-    def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
-
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            core.CUDAPlace(0), ['x'], 'out', check_pir=True
-        )
 
 
 class TestIgammaOpApi(unittest.TestCase):

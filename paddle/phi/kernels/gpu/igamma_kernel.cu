@@ -19,11 +19,4 @@
 
 #include "paddle/phi/kernels/impl/igamma_kernel_impl.h"
 
-PD_REGISTER_KERNEL(igamma,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::IgammaKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(igamma, GPU, ALL_LAYOUT, phi::IgammaKernel, float, double) {}
