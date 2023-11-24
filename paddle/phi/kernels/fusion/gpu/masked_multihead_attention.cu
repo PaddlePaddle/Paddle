@@ -549,8 +549,10 @@ __global__ void masked_multihead_attention_kernel(
         //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_right_offset])
         //         : k_right;
         if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
-          load_func.template load<Qk_vec>(
-              k_right, params.num_head * Dh + qk_right_offset);
+          load_func.template load<Qk_vec>(k_right,
+                                          params.num_head * Dh +
+                                              qk_right_offset - hi * Dh +
+                                              hi / num_head_per_group * Dh);
         }
 
         if (params.add_qkv_bias) {
