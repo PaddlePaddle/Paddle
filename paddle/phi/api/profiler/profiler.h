@@ -92,4 +92,7 @@ void PopEvent(const std::string& name,
 void EnableOpInfoRecorder();
 void DisableOpInfoRecorder();
 
+void EnableCommInfoRecorder();
+void DisableCommInfoRecorder();
+
 }  // namespace phi

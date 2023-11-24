@@ -20,6 +20,7 @@
 #include "paddle/fluid/platform/profiler/event_python.h"
 
 using paddle::framework::AttributeMap;
+using paddle::platform::CommunicationSupplementEvent;
 using paddle::platform::CudaRuntimeTraceEventNode;
 using paddle::platform::DeserializationReader;
 using paddle::platform::DeviceTraceEvent;
@@ -44,6 +45,7 @@ TEST(SerializationLoggerTest, dump_case0) {
   std::list<DeviceTraceEvent> device_events;
   std::list<MemTraceEvent> mem_events;
   std::list<OperatorSupplementEvent> op_supplement_events;
+  std::list<CommunicationSupplementEvent> comm_supplement_events;
   host_events.emplace_back(std::string("dataloader#1"),
                            TracerEventType::Dataloader,
                            1000,
@@ -55,7 +57,7 @@ TEST(SerializationLoggerTest, dump_case0) {
   host_events.emplace_back(
       std::string("op2"), TracerEventType::Operator, 21000, 30000, 10, 10);
   host_events.emplace_back(
-      std::string("op3"), TracerEventType::Operator, 31000, 40000, 10, 11);
+      std::string("op3"), TracerEventType::Communication, 31000, 40000, 10, 11);
   mem_events.emplace_back(11500,
                           0x1000,
                           TracerMemEventType::Allocate,
@@ -87,6 +89,21 @@ TEST(SerializationLoggerTest, dump_case0) {
   AttributeMap attrs;
   op_supplement_events.emplace_back(
       11600, "op1", input_shapes, dtypes, "op1()", attrs, 0, 10, 10);
+
+  const std::vector<int64_t> size_vec{1024};
+  const std::vector<int64_t> dtype_vec{10};
+  std::vector<int64_t> comm_group_(8);
+  uint64_t comm_id = 0;
+  std::map<std::string, std::vector<std::vector<int64_t>>> comm_groups{
+      {"size", {size_vec}},
+      {"dtype", {dtype_vec}},
+      {"group", {comm_group_}},
+  };
+  std::map<std::string, std::vector<std::string>> dtype{
+      {std::string("dtype"), {std::string("float32")}}};
+  comm_supplement_events.emplace_back(
+      31600, "op3", comm_groups, dtype, comm_id, 10, 11);
+
   runtime_events.emplace_back(
       std::string("cudalaunch1"), 15000, 17000, 10, 10, 1, 0);
   runtime_events.emplace_back(
@@ -148,7 +165,8 @@ TEST(SerializationLoggerTest, dump_case0) {
                  runtime_events,
                  device_events,
                  mem_events,
-                 op_supplement_events);
+                 op_supplement_events,
+                 comm_supplement_events);
   std::map<uint64_t, std::vector<HostTraceEventNode*>> nodes =
       tree.Traverse(true);
   EXPECT_EQ(nodes[10].size(), 4u);
@@ -170,6 +188,7 @@ TEST(SerializationLoggerTest, dump_case0) {
     if ((*it)->Name() == "op3") {
       EXPECT_EQ((*it)->GetChildren().size(), 0u);
       EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
+      EXPECT_NE((*it)->GetCommunicationSupplementEventNode(), nullptr);
     }
   }
   tree.LogMe(&logger);
@@ -182,6 +201,7 @@ TEST(SerializationLoggerTest, dump_case1) {
   std::list<DeviceTraceEvent> device_events;
   std::list<MemTraceEvent> mem_events;
   std::list<OperatorSupplementEvent> op_supplement_events;
+  std::list<CommunicationSupplementEvent> comm_supplement_events;
   runtime_events.emplace_back(
       std::string("cudalaunch1"), 15000, 17000, 10, 10, 1, 0);
   runtime_events.emplace_back(
@@ -243,7 +263,8 @@ TEST(SerializationLoggerTest, dump_case1) {
                  runtime_events,
                  device_events,
                  mem_events,
-                 op_supplement_events);
+                 op_supplement_events,
+                 comm_supplement_events);
   std::map<uint64_t, std::vector<HostTraceEventNode*>> nodes =
       tree.Traverse(true);
   EXPECT_EQ(nodes[10].size(), 1u);
@@ -290,6 +311,7 @@ TEST(DeserializationReaderTest, restore_case0) {
     if ((*it)->Name() == "op3") {
       EXPECT_EQ((*it)->GetChildren().size(), 0u);
       EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
+      EXPECT_NE((*it)->GetCommunicationSupplementEventNode(), nullptr);
     }
   }
 }

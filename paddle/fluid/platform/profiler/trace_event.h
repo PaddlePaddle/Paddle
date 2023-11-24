@@ -75,5 +75,39 @@ struct OperatorSupplementEvent {
   uint64_t thread_id;
 };
 
+struct CommunicationSupplementEvent {
+  CommunicationSupplementEvent() = default;
+  CommunicationSupplementEvent(
+      uint64_t timestamp_ns,
+      const std::string& comm_type,
+      const std::map<std::string, std::vector<std::vector<int64_t>>>&
+          comm_groups,
+      const std::map<std::string, std::vector<std::string>>& dtype,
+      uint64_t comm_id,
+      uint64_t process_id,
+      uint64_t thread_id)
+      : timestamp_ns(timestamp_ns),
+        comm_type(comm_type),
+        comm_groups(comm_groups),
+        dtype(dtype),
+        comm_id(comm_id),
+        process_id(process_id),
+        thread_id(thread_id) {}
+  // timestamp of the record
+  uint64_t timestamp_ns;
+  // comm type name
+  std::string comm_type;
+  // comm groups
+  std::map<std::string, std::vector<std::vector<int64_t>>> comm_groups;
+  // comm dtype
+  std::map<std::string, std::vector<std::string>> dtype;
+  // comm id
+  uint64_t comm_id;
+  // process id of the record
+  uint64_t process_id;
+  // thread id of the record
+  uint64_t thread_id;
+};
+
 }  // namespace platform
 }  // namespace paddle

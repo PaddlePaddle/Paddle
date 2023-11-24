@@ -173,6 +173,14 @@ void ChromeTracingLogger::LogHostTraceEventNode(
     callstack = std::regex_replace(callstack, std::regex("\""), "\'");
     callstack = std::regex_replace(callstack, std::regex("\n"), "\\n");
   }
+  std::map<std::string, std::vector<std::vector<int64_t>>> comm_groups;
+  std::map<std::string, std::vector<std::string>> comm_dtypes;
+  CommunicationSupplementEventNode* comm_supplement_node =
+      host_node.GetCommunicationSupplementEventNode();
+  if (comm_supplement_node != nullptr) {
+    comm_groups = comm_supplement_node->CommGroups();
+    comm_dtypes = comm_supplement_node->Dtypes();
+  }
   switch (host_node.Type()) {
     case TracerEventType::ProfileStep:
     case TracerEventType::Forward:
@@ -240,13 +248,41 @@ void ChromeTracingLogger::LogHostTraceEventNode(
           json_dict(input_dtypes).c_str(),
           callstack.c_str());
       break;
+    case TracerEventType::Communication:
+      output_file_stream_ << string_format(
+          std::string(
+              R"JSON(
+  {
+    "name": "%s[%s]", "pid": %lld, "tid": "%lld(C++)",
+    "ts": %lld, "dur": %.3f,
+    "ph": "X", "cat": "%s",
+    "cname": "thread_state_runnable",
+    "args": {
+      "start_time": "%.3f us",
+      "end_time": "%.3f us",
+      "types": %s,
+      "comm_info": %s
+    }
+  },
+  )JSON"),
+          host_node.Name().c_str(),
+          dur_display.c_str(),
+          host_node.ProcessId(),
+          host_node.ThreadId(),
+          nsToUs(host_node.StartNs()),
+          nsToUsFloat(host_node.Duration()),
+          StringTracerEventType(host_node.Type()),
+          nsToUsFloat(host_node.StartNs(), start_time_),
+          nsToUsFloat(host_node.EndNs(), start_time_),
+          json_dict(comm_dtypes).c_str(),
+          json_dict(comm_groups).c_str());
+      break;
     case TracerEventType::CudaRuntime:
     case TracerEventType::Kernel:
     case TracerEventType::Memcpy:
     case TracerEventType::Memset:
     case TracerEventType::UserDefined:
     case TracerEventType::OperatorInner:
-    case TracerEventType::Communication:
     case TracerEventType::NumTypes:
     default:
       output_file_stream_ << string_format(

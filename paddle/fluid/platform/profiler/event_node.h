@@ -88,6 +88,32 @@ class OperatorSupplementEventNode {
   OperatorSupplementEvent op_supplement_event_;
 };
 
+class CommunicationSupplementEventNode {
+ public:
+  // constructor
+  explicit CommunicationSupplementEventNode(
+      const CommunicationSupplementEvent& comm_supplement_event)
+      : comm_supplement_event_(comm_supplement_event) {}
+  // destructor
+  ~CommunicationSupplementEventNode() {}
+  // getter
+  std::string Name() const { return comm_supplement_event_.comm_type; }
+  uint64_t TimeStampNs() const { return comm_supplement_event_.timestamp_ns; }
+  std::map<std::string, std::vector<std::vector<int64_t>>>& CommGroups() {
+    return comm_supplement_event_.comm_groups;
+  }
+  std::map<std::string, std::vector<std::string>> Dtypes() {
+    return comm_supplement_event_.dtype;
+  }
+  uint64_t CommId() const { return comm_supplement_event_.comm_id; }
+  uint64_t ProcessId() const { return comm_supplement_event_.process_id; }
+  uint64_t ThreadId() const { return comm_supplement_event_.thread_id; }
+
+ private:
+  // data
+  CommunicationSupplementEvent comm_supplement_event_;
+};
+
 class DeviceTraceEventNode {
  public:
   // constructor
@@ -207,6 +233,9 @@ class HostTraceEventNode {
   void SetOperatorSupplementNode(OperatorSupplementEventNode* node) {
     op_supplement_node_ptr_ = node;
   }
+  void SetCommunicationSupplementNode(CommunicationSupplementEventNode* node) {
+    comm_supplement_node_ptr_ = node;
+  }
   const std::vector<HostTraceEventNode*>& GetChildren() const {
     return children_;
   }
@@ -221,6 +250,10 @@ class HostTraceEventNode {
   OperatorSupplementEventNode* GetOperatorSupplementEventNode() const {
     return op_supplement_node_ptr_;
   }
+  CommunicationSupplementEventNode* GetCommunicationSupplementEventNode()
+      const {
+    return comm_supplement_node_ptr_;
+  }
 
   void LogMe(BaseLogger* logger) { logger->LogHostTraceEventNode(*this); }
 
@@ -234,21 +267,25 @@ class HostTraceEventNode {
   // memory events happened in this event period
   std::vector<MemTraceEventNode*> mem_node_ptrs_;
   OperatorSupplementEventNode* op_supplement_node_ptr_ = nullptr;
+  CommunicationSupplementEventNode* comm_supplement_node_ptr_ = nullptr;
 };
 
 class NodeTrees {
  public:
   // constructor
-  NodeTrees(const std::list<HostTraceEvent>& host_events,
-            const std::list<RuntimeTraceEvent>& runtime_events,
-            const std::list<DeviceTraceEvent>& device_events,
-            const std::list<MemTraceEvent>& mem_events,
-            const std::list<OperatorSupplementEvent>& op_supplement_events) {
+  NodeTrees(
+      const std::list<HostTraceEvent>& host_events,
+      const std::list<RuntimeTraceEvent>& runtime_events,
+      const std::list<DeviceTraceEvent>& device_events,
+      const std::list<MemTraceEvent>& mem_events,
+      const std::list<OperatorSupplementEvent>& op_supplement_events,
+      const std::list<CommunicationSupplementEvent>& comm_supplement_events) {
     std::vector<HostTraceEventNode*> host_event_nodes;
     std::vector<CudaRuntimeTraceEventNode*> runtime_event_nodes;
     std::vector<DeviceTraceEventNode*> device_event_nodes;
     std::vector<MemTraceEventNode*> mem_event_nodes;
     std::vector<OperatorSupplementEventNode*> op_supplement_event_nodes;
+    std::vector<CommunicationSupplementEventNode*> comm_supplement_event_nodes;
     // encapsulate event into nodes
     for (auto it = host_events.begin(); it != host_events.end(); ++it) {
       host_event_nodes.push_back(new HostTraceEventNode(*it));
@@ -267,12 +304,19 @@ class NodeTrees {
          ++it) {
       op_supplement_event_nodes.push_back(new OperatorSupplementEventNode(*it));
     }
+    for (auto it = comm_supplement_events.begin();
+         it != comm_supplement_events.end();
+         ++it) {
+      comm_supplement_event_nodes.push_back(
+          new CommunicationSupplementEventNode(*it));
+    }
     // build tree
     BuildTrees(host_event_nodes,
                runtime_event_nodes,
                device_event_nodes,
                mem_event_nodes,
-               op_supplement_event_nodes);
+               op_supplement_event_nodes,
+               comm_supplement_event_nodes);
   }
 
   explicit NodeTrees(
@@ -287,7 +331,8 @@ class NodeTrees {
                    std::function<void(CudaRuntimeTraceEventNode*)>,
                    std::function<void(DeviceTraceEventNode*)>,
                    std::function<void(MemTraceEventNode*)>,
-                   std::function<void(OperatorSupplementEventNode*)>);
+                   std::function<void(OperatorSupplementEventNode*)>,
+                   std::function<void(CommunicationSupplementEventNode*)>);
   const std::map<uint64_t, HostTraceEventNode*>& GetNodeTrees() const {
     return thread_event_trees_map_;
   }
@@ -299,12 +344,15 @@ class NodeTrees {
                   const std::vector<CudaRuntimeTraceEventNode*>&,
                   const std::vector<DeviceTraceEventNode*>&,
                   const std::vector<MemTraceEventNode*>&,
-                  const std::vector<OperatorSupplementEventNode*>&);
+                  const std::vector<OperatorSupplementEventNode*>&,
+                  const std::vector<CommunicationSupplementEventNode*>&);
   HostTraceEventNode* BuildTreeRelationship(
       std::vector<HostTraceEventNode*> host_event_nodes,
       std::vector<CudaRuntimeTraceEventNode*> runtime_event_nodes,
       std::vector<MemTraceEventNode*> mem_event_nodes,
-      std::vector<OperatorSupplementEventNode*> op_supplement_event_nodes);
+      std::vector<OperatorSupplementEventNode*> op_supplement_event_nodes,
+      std::vector<CommunicationSupplementEventNode*>
+          comm_supplement_event_nodes);
 };
 
 }  // namespace platform

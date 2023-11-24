@@ -130,6 +130,44 @@ void ProcessOperatorSupplementEvents(
   }
 }
 
+void ProcessCommunicationSupplementEvents(
+    const HostEventSection<CommunicationSupplementOriginEvent>&
+        comm_supplement_events,
+    TraceEventCollector* collector) {
+  for (const auto& thr_sec : comm_supplement_events.thr_sections) {
+    uint64_t tid = thr_sec.thread_id;
+    if (thr_sec.thread_name != phi::kDefaultThreadName) {
+      collector->AddThreadName(tid, thr_sec.thread_name);
+    }
+    for (const auto& evt : thr_sec.events) {
+      CommunicationSupplementEvent event;
+      event.timestamp_ns = evt.timestamp_ns;
+      event.comm_type = evt.comm_type;
+      std::map<std::string, std::vector<std::vector<int64_t>>> comm_groups;
+      std::map<std::string, std::string> dtypes;
+      std::string callstack;
+      for (const auto& comm_group : evt.comm_groups) {
+        for (unsigned int idx = 0lu; idx < comm_group.second.size(); idx++) {
+          comm_groups[comm_group.first].push_back(std::vector<int64_t>());
+          for (unsigned int dim_idx = 0;
+               dim_idx < comm_group.second.at(idx).size();
+               dim_idx++) {
+            comm_groups[comm_group.first][idx].push_back(
+                comm_group.second.at(idx).at(dim_idx));
+          }
+        }
+      }
+
+      event.comm_groups = comm_groups;
+      event.comm_id = evt.comm_id;
+      event.process_id = comm_supplement_events.process_id;
+      event.thread_id = tid;
+      event.dtype = evt.dtypes_;
+      collector->AddCommunicationSupplementEvent(std::move(event));
+    }
+  }
+}
+
 }  // namespace
 
 void HostTracer::PrepareTracing() {
@@ -146,6 +184,8 @@ void HostTracer::StartTracing() {
   HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
   HostEventRecorder<CommonMemEvent>::GetInstance().GatherEvents();
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance()
+      .GatherEvents();
+  HostEventRecorder<CommunicationSupplementOriginEvent>::GetInstance()
       .GatherEvents();
   HostTraceLevel::GetInstance().SetLevel(options_.trace_level);
   state_ = TracerState::STARTED;
@@ -175,6 +215,10 @@ void HostTracer::CollectTraceData(TraceEventCollector* collector) {
       HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance()
           .GatherEvents();
   ProcessOperatorSupplementEvents(op_supplement_events, collector);
+  HostEventSection<CommunicationSupplementOriginEvent> comm_supplement_events =
+      HostEventRecorder<CommunicationSupplementOriginEvent>::GetInstance()
+          .GatherEvents();
+  ProcessCommunicationSupplementEvents(comm_supplement_events, collector);
 }
 
 }  // namespace platform

@@ -132,4 +132,33 @@ struct OperatorSupplementOriginEvent {
   uint64_t op_id;
 };
 
+struct CommunicationSupplementOriginEvent {
+ public:
+  CommunicationSupplementOriginEvent(
+      std::function<void *(size_t)> arena_allocator,
+      uint64_t timestamp_ns,
+      const std::string &type_name,
+      const std::map<std::string, std::vector<std::vector<int64_t>>>
+          &comm_groups,
+      const std::map<std::string, std::vector<std::string>> &dtypes,
+      uint64_t comm_id)
+      : timestamp_ns(timestamp_ns),
+        comm_groups(comm_groups),
+        dtypes_(dtypes),
+        comm_id(comm_id) {
+    auto buf = static_cast<char *>(arena_allocator(type_name.length() + 1));
+    strncpy(buf, type_name.c_str(), type_name.length() + 1);
+    comm_type = buf;
+  }
+
+  uint64_t timestamp_ns;
+  const char *comm_type = nullptr;  // not owned, designed for performance
+  // comm groups
+  std::map<std::string, std::vector<std::vector<int64_t>>> comm_groups;
+  // comm dtypes
+  std::map<std::string, std::vector<std::string>> dtypes_;
+  // comm id
+  uint64_t comm_id;
+};
+
 }  // namespace phi

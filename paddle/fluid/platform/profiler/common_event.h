@@ -30,6 +30,8 @@ using CommonEvent = phi::CommonEvent;
 
 using CommonMemEvent = phi::CommonMemEvent;
 
+using CommunicationSupplementOriginEvent =
+    phi::CommunicationSupplementOriginEvent;
 struct OperatorSupplementOriginEvent {
  public:
   OperatorSupplementOriginEvent(

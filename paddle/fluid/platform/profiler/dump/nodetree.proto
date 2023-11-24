@@ -196,6 +196,36 @@ message OperatorSupplementEventProto {
   required uint64 op_id = 8;
 }
 
+// TODO(songjc):
+message CommunicationSupplementEventProto {
+  // timestamp of the record
+  required uint64 timestamp_ns = 1;
+  // comm type name
+  required string comm_type = 2;
+  // process id of the record
+  required uint64 process_id = 3;
+  // thread id of the record
+  required uint64 thread_id = 4;
+  // comm groups
+  message comm_group_proto {
+    repeated string key = 1;
+    message group_vector {
+      message comm_group { repeated uint64 size = 1; }
+      repeated comm_group groups = 1;
+    }
+    repeated group_vector group_vecs = 2;
+  }
+  required comm_group_proto comm_groups = 5;
+  required uint64 comm_id = 6;
+  // comm dtypes
+  message comm_dtype_proto {
+    repeated string key = 1;
+    message dtype_vector { repeated string dtype = 1; }
+    repeated dtype_vector dtype_vecs = 2;
+  }
+  required comm_dtype_proto dtypes_map = 7;
+}
+
 message CudaRuntimeTraceEventProto {
   // record name
   required string name = 1;
@@ -245,6 +275,11 @@ message OperatorSupplementEventNodeProto {
   required OperatorSupplementEventProto op_supplement_event = 1;
 }
 
+// TODO(songjc):
+message CommunicationSupplementEventNodeProto {
+  required CommunicationSupplementEventProto comm_supplement_event = 1;
+}
+
 message MemTraceEventNodeProto { required MemTraceEventProto mem_event = 1; }
 
 message DeviceTraceEventNodeProto {
@@ -264,6 +299,8 @@ message HostTraceEventNodeProto {
   // below is added in version 1.0.1
   repeated MemTraceEventNodeProto mem_nodes = 5;
   repeated OperatorSupplementEventNodeProto op_supplement_nodes = 6;
+  // TODO(songjc):
+  repeated CommunicationSupplementEventNodeProto comm_supplement_nodes = 7;
 }
 
 message ThreadNodeTreeProto {

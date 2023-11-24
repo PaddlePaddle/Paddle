@@ -127,6 +127,16 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
     host_python_node->attributes = op_supplement_node->Attributes();
     host_python_node->op_id = op_supplement_node->OpId();
   }
+
+  // copy CommunicationSupplementEventNode's information if exists
+  CommunicationSupplementEventNode* comm_supplement_node =
+      root->GetCommunicationSupplementEventNode();
+  if (comm_supplement_node != nullptr) {
+    host_python_node->comm_groups = comm_supplement_node->CommGroups();
+    host_python_node->comm_dtypes = comm_supplement_node->Dtypes();
+    host_python_node->comm_id = comm_supplement_node->CommId();
+  }
+
   return host_python_node;
 }
 

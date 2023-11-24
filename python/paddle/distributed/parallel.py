@@ -1098,15 +1098,17 @@ def init_parallel_env():
         stop_check_timeout = int(os.getenv("FLAGS_stop_check_timeout", "900"))
         default_store = core.create_or_get_global_tcp_store()
         _set_default_store(default_store)
+        ranks = list(range(world_size))
         pg = _new_process_group_impl(
             backend,
             default_store,
             rank,
             world_size,
             _default_group_name,
+            ranks,
             pg_options=None,
         )
-        ranks = list(range(world_size))
+
         group = Group(rank, 0, ranks, pg=pg, name=_default_group_name)
         _set_group_map_by_name(_default_group_name, group)
         _set_group_map(0, group)

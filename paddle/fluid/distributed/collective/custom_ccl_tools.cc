@@ -33,5 +33,21 @@ phi::ccl::CCLReduceOp ToXCCLRedType(ReduceOp reduction) {
   return it->second;
 }
 
+const char* ToXCCLRedString(ReduceOp reduction) {
+  static const std::map<ReduceOp, const char*> red_type = {
+      {ReduceOp::MIN, "min"},
+      {ReduceOp::MAX, "max"},
+      {ReduceOp::SUM, "sum"},
+      {ReduceOp::PRODUCT, "product"},
+  };
+  auto it = red_type.find(reduction);
+  PADDLE_ENFORCE_EQ(
+      it != red_type.end(),
+      true,
+      platform::errors::InvalidArgument("Invalid CustomCCL reduction. "
+                                        "Must be Min | Max | Prod | Sum"));
+  return it->second;
+}
+
 }  //  namespace distributed
 }  //  namespace paddle

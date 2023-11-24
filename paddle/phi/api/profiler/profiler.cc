@@ -41,6 +41,10 @@ PHI_DEFINE_bool(enable_record_op_info,
                 false,
                 "enable operator supplement info recorder");
 
+PHI_DEFINE_bool(enable_record_comm_info,
+                false,
+                "enable communicator supplement info recorder");
+
 namespace phi {
 
 ProfilerState ProfilerHelper::g_state = ProfilerState::kDisabled;
@@ -287,6 +291,37 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
 }
 
 bool RecordOpInfoSupplement::IsEnabled() { return FLAGS_enable_record_op_info; }
+
+RecordCommInfoSupplement::RecordCommInfoSupplement(
+    const std::string &type,
+    const std::vector<
+        std::pair<const char *, std::vector<std::vector<int64_t>>>>
+        &comm_groups,
+    const std::pair<const char *, std::vector<std::string>> &dtypes) {
+  if (FLAGS_enable_host_event_recorder_hook == false) {
+    return;
+  }
+  if (IsEnabled() == false) {
+    return;
+  }
+  uint64_t comm_id = 0;
+  std::map<std::string, std::vector<std::vector<int64_t>>> comm_groups_;
+  std::map<std::string, std::vector<std::string>> dtypes_;
+  for (uint32_t i = 0; i < comm_groups.size(); ++i) {
+    comm_groups_[std::string(comm_groups[i].first)] = comm_groups[i].second;
+  }
+  dtypes_[std::string(dtypes.first)] = dtypes.second;
+  HostEventRecorder<CommunicationSupplementOriginEvent>::GetInstance()
+      .RecordEvent(PosixInNsec(), type, comm_groups_, dtypes_, comm_id);
+}
+
+bool RecordCommInfoSupplement::IsEnabled() {
+  return FLAGS_enable_record_comm_info;
+}
+
+void EnableCommInfoRecorder() { FLAGS_enable_record_comm_info = true; }
+
+void DisableCommInfoRecorder() { FLAGS_enable_record_comm_info = false; }
 
 void EnableOpInfoRecorder() { FLAGS_enable_record_op_info = true; }
 

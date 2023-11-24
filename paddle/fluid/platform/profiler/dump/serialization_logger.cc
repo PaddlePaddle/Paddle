@@ -221,6 +221,56 @@ void SerializationLogger::LogHostTraceEventNode(
     current_op_supplement_event_node_proto_->set_allocated_op_supplement_event(
         op_supplement_event_proto);
   }
+
+  CommunicationSupplementEventNode* comm_supplement_event_node =
+      host_node.GetCommunicationSupplementEventNode();
+  if (comm_supplement_event_node != nullptr) {
+    current_comm_supplement_event_node_proto_ =
+        current_host_trace_event_node_proto_->add_comm_supplement_nodes();
+    CommunicationSupplementEventProto* comm_supplement_event_proto =
+        new CommunicationSupplementEventProto();
+    comm_supplement_event_proto->set_comm_type(
+        comm_supplement_event_node->Name());
+    comm_supplement_event_proto->set_timestamp_ns(
+        comm_supplement_event_node->TimeStampNs());
+    comm_supplement_event_proto->set_process_id(
+        comm_supplement_event_node->ProcessId());
+    comm_supplement_event_proto->set_thread_id(
+        comm_supplement_event_node->ThreadId());
+    comm_supplement_event_proto->set_comm_id(
+        comm_supplement_event_node->CommId());
+
+    CommunicationSupplementEventProto::comm_group_proto* comm_group_proto =
+        comm_supplement_event_proto->mutable_comm_groups();
+    for (auto& item : comm_supplement_event_node->CommGroups()) {
+      comm_group_proto->add_key(item.first);
+      CommunicationSupplementEventProto::comm_group_proto::group_vector*
+          comm_groups_proto = comm_group_proto->add_group_vecs();
+      auto group_vectors = item.second;
+      for (auto group_vector : group_vectors) {
+        CommunicationSupplementEventProto::comm_group_proto::group_vector::
+            comm_group* group_proto = comm_groups_proto->add_groups();
+        for (auto& group_item : group_vector) {
+          group_proto->add_size(group_item);
+        }
+      }
+    }
+
+    CommunicationSupplementEventProto::comm_dtype_proto* comm_dtype_proto =
+        comm_supplement_event_proto->mutable_dtypes_map();
+    for (auto& item : comm_supplement_event_node->Dtypes()) {
+      comm_dtype_proto->add_key(item.first);
+      CommunicationSupplementEventProto::comm_dtype_proto::dtype_vector*
+          dtype_vec_proto = comm_dtype_proto->add_dtype_vecs();
+      auto dtype_vector = item.second;
+      for (auto& dtype : dtype_vector) {
+        dtype_vec_proto->add_dtype(dtype);
+      }
+    }
+
+    current_comm_supplement_event_node_proto_
+        ->set_allocated_comm_supplement_event(comm_supplement_event_proto);
+  }
 }
 
 void SerializationLogger::LogRuntimeTraceEventNode(
