@@ -335,6 +335,9 @@ class TensorVariable(VariableBase):
                     else:
                         return self.id == var.id
 
+                def __hash__(self):
+                    return hash(self.id)
+
             return SotTensor(self.id)
 
         raise BreakGraphError(

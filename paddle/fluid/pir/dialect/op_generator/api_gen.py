@@ -21,7 +21,9 @@ from op_gen import (
     PD_MANUAL_OP_LIST,
     OpCompatParser,
     OpInfoParser,
+    check_need_update_ops,
     to_pascal_case,
+    update_ops,
 )
 
 H_FILE_TEMPLATE = """
@@ -69,6 +71,7 @@ API_DECLARE_TEMPLATE = """
 
 API_IMPL_TEMPLATE = """
 {ret_type} {api_name}({args}){{
+    {check_data_type}
     {handle_optional_inputs}
     {in_combine}
     {compute_op}
@@ -79,12 +82,15 @@ API_IMPL_TEMPLATE = """
 
 """
 
+CHECK_DATA_TYPE_TEMPLATE = """
+    {function}({input}, "{input}", "{op_name}");"""
+
 OPTIONAL_VECTOR_VALUE_INPUT_TEMPLATE = """
     paddle::optional<pir::Value> optional_{name};
     if (!{name}) {{
         optional_{name} = paddle::make_optional<pir::Value>(pir::Value());
     }} else {{
-        auto optional_{name}_combine_op = APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({name}.get());
+        auto optional_{name}_combine_op = ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({name}.get());
         optional_{name} = paddle::make_optional<pir::Value>(optional_{name}_combine_op.out());
     }}"""
 
@@ -105,18 +111,18 @@ OPTIONAL_OPRESULT_OUTPUT_TEMPLATE = """
 OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE = """
     paddle::optional<std::vector<pir::OpResult>> optional_{name};
     if (!IsEmptyValue({op_name}_op.result({index}))) {{
-        auto optional_{name}_slice_op = APIBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({op_name}_op.result({index}));
+        auto optional_{name}_slice_op = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({op_name}_op.result({index}));
         optional_{name} = paddle::make_optional<std::vector<pir::OpResult>>(optional_{name}_slice_op.outputs());
     }}"""
 
 COMBINE_OP_TEMPLATE = """
-    auto {op_name} = APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({in_name});"""
+    auto {op_name} = ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({in_name});"""
 
 SPLIT_OP_TEMPLATE = """
-    auto {op_name} = APIBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({in_name});"""
+    auto {op_name} = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({in_name});"""
 
 COMPUTE_OP_TEMPLATE = """
-    paddle::dialect::{op_class_name} {op_inst_name} = APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::{op_class_name}>({args});"""
+    paddle::dialect::{op_class_name} {op_inst_name} = ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::{op_class_name}>({args});"""
 
 OP_INPUT = 'pir::Value'
 VECTOR_TYPE = 'pir::VectorType'
@@ -154,12 +160,18 @@ class CodeGen:
 
     def _parse_yaml(self, op_yaml_files, op_compat_yaml_file):
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
+        need_update_ops, update_yaml_file = check_need_update_ops(op_yaml_files)
 
         op_yaml_items = []
         for yaml_file in op_yaml_files:
+            if update_yaml_file == yaml_file:
+                continue
             with open(yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
                 op_yaml_items = op_yaml_items + ops
+        # replace old ir ops with pir ops
+        if need_update_ops:
+            update_ops(op_yaml_items, update_yaml_file)
         op_info_items = []
         for op in op_yaml_items:
             op_compat_item = op_compat_parser.get_compat(op['name'])
@@ -178,6 +190,13 @@ class CodeGen:
                 and 'scalar' in op_compat_item
             ):
                 op_compat_item = op_compat_item.pop('scalar')
+            if 'support_tensor' in op.keys() and op['support_tensor']:
+                (
+                    scalar_item,
+                    int_array_item,
+                ) = op_compat_parser.parse_support_tensor(op)
+                op_compat_item['scalar'] = scalar_item
+                op_compat_item['int_array'] = int_array_item
 
             op_info_items.append(OpInfoParser(op, op_compat_item))
         return op_info_items
@@ -502,6 +521,35 @@ class CodeGen:
         elif len(ret_list) == 0:
             return 'return;'
 
+    def _gen_check_data_type(self, op_info, op_name):
+        name_list = op_info.input_name_list
+        type_list = op_info.input_type_list
+        if (
+            op_name.endswith(('_grad', '_grad_', '_grad_dense', '_grad_sparse'))
+            or len(name_list) == 0
+        ):
+            return ''
+        try:
+            data_type_candidates = op_info.kernel_map['data_type']['candidates']
+        except Exception:
+            data_type_candidates = None
+        ret = ''
+        if data_type_candidates is not None:
+            for name in data_type_candidates:
+                if name not in name_list:
+                    continue
+                index = name_list.index(name)
+                type = type_list[index]
+                if VECTOR_TYPE in type:
+                    function_name = 'CheckVectorOfValueDataType'
+
+                else:
+                    function_name = 'CheckValueDataType'
+                ret += CHECK_DATA_TYPE_TEMPLATE.format(
+                    function=function_name, input=name, op_name=op_name
+                )
+        return ret
+
     def _gen_one_impl(
         self, op_info, op_name, is_mutable_attr, is_vector_mutable_attr
     ):
@@ -520,6 +568,7 @@ class CodeGen:
         )
 
         ret = API_IMPL_TEMPLATE.format(
+            check_data_type=self._gen_check_data_type(op_info, op_name),
             ret_type=ret_type,
             api_name=op_name,
             args=self._gen_api_args(

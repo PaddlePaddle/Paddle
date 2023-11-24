@@ -292,9 +292,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
             elif isinstance(item, numbers.Number):
                 if item <= 0:
                     raise ValueError(
-                        "Expected element in input size greater than zero, but got {}".format(
-                            item
-                        )
+                        f"Expected element in input size greater than zero, but got {item}"
                     )
             new_shape.append(item)
         return tuple(new_shape)

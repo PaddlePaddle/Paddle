@@ -15,11 +15,15 @@
 import unittest
 
 import numpy
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir_exe_and_pir_api,
+    test_legacy_only,
+    test_pir_api_only,
+)
 
 import paddle
 from paddle.base import core
-from paddle.base.framework import Program, program_guard
 
 
 def case0(x):
@@ -100,8 +104,7 @@ def case_to_tensor_default_dtype():
     return paddle.to_tensor(1)
 
 
-@dy2static_unittest
-class TestToTensorReturnVal(unittest.TestCase):
+class TestToTensorReturnVal(Dy2StTestBase):
     def test_to_tensor_badreturn(self):
         paddle.disable_static()
         x = paddle.to_tensor([3])
@@ -154,6 +157,7 @@ class TestToTensorReturnVal(unittest.TestCase):
         self.assertTrue(a.stop_gradient == b.stop_gradient)
         self.assertTrue(a.place._equals(b.place))
 
+    @test_legacy_and_pir_exe_and_pir_api
     def test_to_tensor_default_dtype(self):
         a = paddle.jit.to_static(case_to_tensor_default_dtype)()
         b = case_to_tensor_default_dtype()
@@ -161,6 +165,7 @@ class TestToTensorReturnVal(unittest.TestCase):
         self.assertTrue(a.stop_gradient == b.stop_gradient)
         self.assertTrue(a.place._equals(b.place))
 
+    @test_legacy_and_pir_exe_and_pir_api
     def test_to_tensor_err_log(self):
         paddle.disable_static()
         x = paddle.to_tensor([3])
@@ -173,13 +178,12 @@ class TestToTensorReturnVal(unittest.TestCase):
             )
 
 
-@dy2static_unittest
-class TestStatic(unittest.TestCase):
+class TestStatic(Dy2StTestBase):
     def test_static(self):
         paddle.enable_static()
-        main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        main_prog = paddle.static.Program()
+        starup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, starup_prog):
             if core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
             else:
@@ -202,7 +206,8 @@ class TestStatic(unittest.TestCase):
             res = exe.run(fetch_list=[x, out])
 
 
-class TestInt16(unittest.TestCase):
+class TestInt16(Dy2StTestBase):
+    @test_legacy_only
     def test_static(self):
         import numpy as np
 
@@ -213,6 +218,18 @@ class TestInt16(unittest.TestCase):
 
         y = paddle.to_tensor([1, 2], dtype="int16")
         self.assertTrue(y.dtype == paddle.framework.core.VarDesc.VarType.INT16)
+
+    @test_pir_api_only
+    def test_static_pir(self):
+        import numpy as np
+
+        paddle.enable_static()
+        data = np.array([1, 2], dtype="int16")
+        x = paddle.to_tensor(data)
+        self.assertTrue(x.dtype == paddle.base.libpaddle.DataType.INT16)
+
+        y = paddle.to_tensor([1, 2], dtype="int16")
+        self.assertTrue(y.dtype == paddle.base.libpaddle.DataType.INT16)
 
 
 if __name__ == '__main__':

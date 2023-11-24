@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import gc
 import traceback
 import types
 from typing import List, Tuple
@@ -228,3 +229,5 @@ def start_translate(frame: types.FrameType, **kwargs) -> GuardedFunction:
         raise InnerError(OpcodeExecutorBase.error_message_summary(e)) from e
     finally:
         simulator.cleanup()
+        del simulator
+        gc.collect()

@@ -17,7 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase
 
 import paddle
 
@@ -70,8 +70,7 @@ class NestSequentialNet(paddle.nn.Layer):
         return self.layers(x)
 
 
-@dy2static_unittest
-class TestSequential(unittest.TestCase):
+class TestSequential(Dy2StTestBase):
     def setUp(self):
         paddle.set_device('cpu')
         self.seed = 2021

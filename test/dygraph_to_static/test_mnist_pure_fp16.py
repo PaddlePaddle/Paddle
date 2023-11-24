@@ -16,7 +16,7 @@ import unittest
 from time import time
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils_new import test_legacy_and_pir
 from test_mnist import MNIST, SEED, TestMNIST
 
 import paddle
@@ -32,7 +32,7 @@ class TestPureFP16(TestMNIST):
     def train_dygraph(self):
         return self.train(to_static=False)
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
     def test_mnist_to_static(self):
         if paddle.base.is_compiled_with_cuda():
             dygraph_loss = self.train_dygraph()

@@ -74,6 +74,14 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
     imag = c.imag();
   }
 
+#if defined(PADDLE_WITH_CCCL)
+  template <typename T1>
+  HOSTDEVICE inline explicit complex(const cuda::std::complex<T1>& c) {
+    real = c.real();
+    imag = c.imag();
+  }
+#endif
+
   template <typename T1>
   HOSTDEVICE inline explicit operator thrust::complex<T1>() const {
     return thrust::complex<T1>(real, imag);

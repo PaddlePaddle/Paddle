@@ -54,8 +54,6 @@ import setuptools
 
 import paddle
 
-from ..utils import log
-
 NEED_SKIP_THIRD_PARTIY_MODULES = {
     abc,
     collections,
@@ -134,47 +132,15 @@ skip_file_name_re = re.compile(
     f"^({'|'.join(map(re.escape, skip_file_names))})"
 )
 
-customed_skip_code = set()
-
 no_skip_code = {paddle.nn.Sequential.forward.__code__}
 
-
-def need_skip_path(filepath: str) -> bool:
-    """
-    Check if the file should be skipped and not transcribed.
-
-    Args:
-        filepath: The path of the file to check.
-
-    Returns:
-        bool: True if the file should be skipped.
-    """
-    if not filepath.startswith("<"):
-        filepath = os.path.abspath(filepath)
-    return bool(skip_file_name_re.match(filepath))
+with_graph_codes = (
+    paddle.nn.Layer.__call__.__code__,
+    paddle.nn.Layer._dygraph_call_func.__code__,
+)
 
 
-def skip_function(function):
-    customed_skip_code.add(function.__code__)
-    return function
-
-
-def need_skip(frame):
-    pycode = frame.f_code
-    if pycode in no_skip_code:
-        return False
-    if pycode in customed_skip_code:
-        log(3, f"Skip frame by code: {pycode}\n")
-        return True
-    filename = pycode.co_filename
-    if sys.version_info >= (3, 11) and filename.startswith("<frozen"):
-        # NOTE(SigureMo): In Python 3.11, the core modules essential for
-        # Python startup are “frozen”. So we need get original filename from
-        # frame.
-        # see https://docs.python.org/3/whatsnew/3.11.html#faster-startup for more details.
-        # This workaround is refer to pdb.py
-        # https://github.com/python/cpython/blob/3.11/Lib/pdb.py#L1328-L1331
-        _filename = frame.f_globals.get('__file__', None)
-        if isinstance(_filename, str):
-            filename = _filename
-    return need_skip_path(filename)
+def setup_skip_files():
+    paddle.framework.core.eval_frame_skip_file_prefix(tuple(skip_file_names))
+    paddle.framework.core.eval_frame_no_skip_codes(tuple(no_skip_code))
+    paddle.framework.core.sot_setup_codes_with_graph(with_graph_codes)

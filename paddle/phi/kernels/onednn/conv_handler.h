@@ -180,7 +180,7 @@ class ConvOneDNNHandlerT
         weights_md = funcs::OneDNNMemDesc(
             weights_tz, data_type, funcs::OneDNNMemoryFormat::any);
       }
-      if (input->dims().size() == 4 && input->dims()[1] == 3) {
+      if (input->dims().size() == 4 && input->dims()[1] <= 4) {
         chosen_memory_format = funcs::OneDNNMemoryFormat::nhwc;
       }
       const auto dst_md = funcs::OneDNNMemDesc(

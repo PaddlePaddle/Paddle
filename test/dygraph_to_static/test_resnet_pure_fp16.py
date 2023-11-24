@@ -16,10 +16,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
-)
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
@@ -115,8 +112,7 @@ def train(to_static, build_strategy=None):
     return loss_data
 
 
-@dy2static_unittest
-class TestResnet(unittest.TestCase):
+class TestResnet(Dy2StTestBase):
     def train(self, to_static):
         paddle.jit.enable_to_static(to_static)
         build_strategy = paddle.static.BuildStrategy()
@@ -125,7 +121,7 @@ class TestResnet(unittest.TestCase):
         build_strategy.enable_inplace = False
         return train(to_static, build_strategy)
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
     def test_resnet(self):
         if base.is_compiled_with_cuda():
             static_loss = self.train(to_static=True)

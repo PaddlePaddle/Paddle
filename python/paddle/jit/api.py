@@ -233,9 +233,7 @@ def ignore_module(modules: list[Any]):
 def _check_and_set_backend(backend, build_strategy):
     if backend not in ['CINN', None]:
         raise ValueError(
-            "The backend of to_static should be 'CINN' or None, but received {}.".format(
-                backend
-            )
+            f"The backend of to_static should be 'CINN' or None, but received {backend}."
         )
     if backend == 'CINN':
         build_strategy.build_cinn_pass = True
@@ -1169,9 +1167,7 @@ def save(layer, path, input_spec=None, **configs):
 
                 if static_function._class_instance is None:
                     warnings.warn(
-                        '`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'.format(
-                            layer
-                        )
+                        f'`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {layer} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'
                     )
 
         # when save multi `StaticFunction`, all `StaticFunction` share params.
