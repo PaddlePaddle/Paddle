@@ -31,7 +31,7 @@ import astor
 import numpy as np
 
 import paddle
-from paddle import base  # noqa: F401
+from paddle import base, get_flags, set_flags  # noqa: F401
 from paddle.base import backward, core, framework, unique_name
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.layer_helper import LayerHelper

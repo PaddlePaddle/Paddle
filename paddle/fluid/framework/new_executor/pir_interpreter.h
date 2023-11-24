@@ -54,12 +54,16 @@ class PirInterpreter : public InterpreterBaseImpl {
       const std::vector<phi::DenseTensor>& feed_tensors,
       bool need_fetch = true) override;
 
-  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
-                                   bool need_fetch = true) override;
+  paddle::framework::FetchList Run(
+      const std::vector<std::string>& feed_names,
+      bool need_fetch = true,
+      bool enable_job_schedule_profiler = false) override;
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
   void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
+
+  std::tuple<double, double> InterpreterRunTime() override;
 
   std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
 
@@ -225,7 +229,7 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   std::vector<std::string> fetch_var_names_;
 
-  // Note(zhangbo): set_parameter_op's input and get_parameter_op's output
+  // Note(zhangbo): set_parameter_op's input and parameter_op's output
   // belongs to a parameter and cannot GC.
   std::unordered_set<std::string> parameter_var_names_;
 };

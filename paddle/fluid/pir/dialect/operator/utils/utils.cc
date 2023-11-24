@@ -12,11 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include <glog/logging.h>
+#include <sstream>
 #include <unordered_set>
+
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/phi/core/kernel_factory.h"
+#include "paddle/pir/core/builtin_type.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace dialect {
@@ -225,6 +232,76 @@ std::vector<int64_t> GetInt64Vector(const pir::Attribute& attr) {
   }
 
   return vec_int64;
+}
+
+std::set<std::string> GetRegisterDataType(const std::string& op_name) {
+  std::string non_inplace_op_name;
+  if (paddle::string::ends_with(op_name, "_")) {
+    non_inplace_op_name = op_name.substr(0, op_name.size() - 1);
+  }
+
+  std::set<std::string> data_type;
+  auto& phi_kernels = phi::KernelFactory::Instance().kernels();
+  for (auto& kernel_pair : phi_kernels) {
+    auto fluid_op_name = phi::TransToFluidOpName(kernel_pair.first);
+    if (kernel_pair.first != op_name && fluid_op_name != op_name &&
+        kernel_pair.first != non_inplace_op_name &&
+        fluid_op_name != non_inplace_op_name) {
+      continue;
+    }
+    for (auto& info_pair : kernel_pair.second) {
+      data_type.insert(phi::DataTypeToString(info_pair.first.dtype()));
+    }
+  }
+
+  return data_type;
+}
+
+void DoCheck(const pir::Value& value,
+             const std::string& input_name,
+             const std::set<std::string>& expected_dtype,
+             const std::string& op_name) {
+  if (value.type().isa<pir::DenseTensorType>()) {
+    std::string value_type = phi::DataTypeToString(dialect::TransToPhiDataType(
+        value.type().dyn_cast<pir::DenseTensorType>().dtype()));
+    if (expected_dtype.find(value_type) == expected_dtype.end()) {
+      std::ostringstream joined;
+      std::copy(expected_dtype.begin(),
+                expected_dtype.end(),
+                std::ostream_iterator<std::string>(joined, ","));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Check data type error for op: %s, input: %s, %s.dtype is %s, and "
+          "expected_dtype is %s",
+          op_name,
+          input_name,
+          input_name,
+          value_type,
+          joined.str()));
+    }
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get dtype for dense "
+        "tensor."));
+  }
+}
+
+void CheckValueDataType(const pir::Value& value,
+                        const std::string& input_name,
+                        const std::string& op_name) {
+  VLOG(6) << "CheckValueDataType for " << op_name << ", input: " << input_name;
+  std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
+  DoCheck(value, input_name, expected_dtype, op_name);
+}
+
+void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
+                                const std::string& input_name,
+                                const std::string& op_name) {
+  VLOG(6) << "CheckVectorOfValueDataType for " << op_name
+          << ", input: " << input_name;
+  std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
+  for (auto& value : vector_value) {
+    DoCheck(value, input_name, expected_dtype, op_name);
+  }
 }
 
 }  // namespace dialect

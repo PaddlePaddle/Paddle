@@ -105,6 +105,7 @@
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
@@ -772,6 +773,7 @@ bool AnalysisPredictor::PrepareExecutor() {
       ::pir::PassManager pm_for_op_program(::pir::IrContext::Instance(), 2);
       // TODO(liuyuanle): Uncomment constant_folding_pass after fix it
       // pm_for_op_program.AddPass(::pir::CreateConstantFoldingPass(sub_scope_));
+      pm_for_op_program.AddPass(::pir::CreateConv2dFusePass());
       pm_for_op_program.AddPass(::pir::CreateDeadCodeEliminationPass());
       pm_for_op_program.AddPass(
           ::pir::CreateReplaceFetchWithShadowOutputPass());
@@ -2924,6 +2926,8 @@ USE_TRT_CONVERTER(batch_norm);
 USE_TRT_CONVERTER(concat);
 USE_TRT_CONVERTER(dropout);
 USE_TRT_CONVERTER(pad);
+USE_TRT_CONVERTER(bitwise_and);
+USE_TRT_CONVERTER(bitwise_or);
 #if IS_TRT_VERSION_GE(8200)
 USE_TRT_CONVERTER(pad3d);
 USE_TRT_CONVERTER(einsum)

@@ -70,7 +70,5 @@ void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   SetDistProps(out, in.dims(), out_dist_attr);
 }
 
-REGISTER_RESHARD_FUNC(RToPReshardFunction);
-
 }  // namespace distributed
 }  // namespace phi
