@@ -4082,8 +4082,14 @@ def atleast_1d(*inputs, name=None):
             [[1.23000002]])]
     """
     out = []
-    for tensor in inputs:
-        tensor = paddle.to_tensor(tensor)
+    for input in inputs:
+        if not isinstance(
+            input, (paddle.Tensor, paddle.base.framework.Variable)
+        ):
+            tensor = paddle.to_tensor(input)
+        else:
+            tensor = input
+
         if tensor.dim() == 0:
             result = tensor.reshape((1,))
         else:
@@ -4139,8 +4145,14 @@ def atleast_2d(*inputs, name=None):
             [[[1.23000002]]])]
     """
     out = []
-    for tensor in inputs:
-        tensor = paddle.to_tensor(tensor)
+    for input in inputs:
+        if not isinstance(
+            input, (paddle.Tensor, paddle.base.framework.Variable)
+        ):
+            tensor = paddle.to_tensor(input)
+        else:
+            tensor = input
+
         if tensor.dim() == 0:
             result = tensor.reshape((1, 1))
         elif tensor.dim() == 1:
@@ -4198,8 +4210,14 @@ def atleast_3d(*inputs, name=None):
             [[[[1.23000002]]]])]
     """
     out = []
-    for tensor in inputs:
-        tensor = paddle.to_tensor(tensor)
+    for input in inputs:
+        if not isinstance(
+            input, (paddle.Tensor, paddle.base.framework.Variable)
+        ):
+            tensor = paddle.to_tensor(input)
+        else:
+            tensor = input
+
         if tensor.dim() == 0:
             result = tensor.reshape((1, 1, 1))
         elif tensor.dim() == 1:
