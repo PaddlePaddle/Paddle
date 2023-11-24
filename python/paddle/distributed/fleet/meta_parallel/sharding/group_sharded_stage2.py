@@ -155,6 +155,8 @@ class GroupShardedStage2(nn.Layer):
         # Set backward pass hooks
         self._bw_hooks = []
 
+        self.scale_in_opt = False
+
         # TODO (Baibaifan) Set tasks flow support asynchronous communicate
         # self._tasks_flow = deque()
 
@@ -238,7 +240,10 @@ class GroupShardedStage2(nn.Layer):
         """
 
         need_dp_scale = self._dp_group is not None and self._dp_group.nranks > 1
-        scale_factor = self._world_size_scaling
+        if self.scale_in_opt:
+            scale_factor = self._world_size_scaling
+        else:
+            scale_factor = 1.0
 
         if need_dp_scale:
             dp_scale_factor = 1.0 / (self._dp_group.nranks)
@@ -391,12 +396,13 @@ class GroupShardedStage2(nn.Layer):
             # For grad scale, we need to do it in the backward hook due to fp16 may overflow if we first add grad and then scale
             # For main_grad scale, we do scale in the optimizer.
             if not hasattr(param, "main_grad"):
+                # fused_linear_param_grad_add has no temprary grad
                 if grad is not None and grad._is_initialized():
                     grad.scale_(self._world_size_scaling)
                 else:
-                    assert param.grad is not None
-                    assert param.grad._is_initialized()
-                    param.grad.scale_(self._world_size_scaling)
+                    self.scale_in_opt = True
+            else:
+                self.scale_in_opt = True
 
         return scale
 
@@ -532,7 +538,7 @@ class GroupShardedStage2(nn.Layer):
             return
 
         for index, param in enumerate(self._trainable_params):
-            # param._register_grad_hook(self._get_scaled_grad_fn(param))
+            param._register_grad_hook(self._get_scaled_grad_fn(param))
 
             dst_rank = self._trainable_param2rank[param.name]
 
