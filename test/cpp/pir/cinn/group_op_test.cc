@@ -19,7 +19,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -29,6 +29,7 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/pass/pass_manager.h"
 
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 
@@ -204,12 +205,15 @@ TEST(GroupOp, CINNLowering) {
   // Step 1: Construct pir::Program
   std::shared_ptr<::pir::Program> program = BuildGroupProgramForLowering();
 
-  auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::PassManager pass_manager(ctx);
+  pass_manager.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+  pass_manager.Run(program.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+      paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
   paddle::framework::Scope exe_scope;
 

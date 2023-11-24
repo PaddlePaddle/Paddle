@@ -62,6 +62,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -675,7 +676,12 @@ static PyObject* tensor_method_copy_(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
   EAGER_TRY
-  paddle::Tensor src_tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  paddle::Tensor& src_tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, src_tensor, self->tensor)) {
+    ConvertAllInputsToDistTensor(mesh, src_tensor, self->tensor);
+  }
+
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
   VLOG(6) << "Start Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
@@ -1462,6 +1468,127 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__getitem_dygraph(TensorObject* self,
+                                         PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  PyObject* _index = PyTuple_GET_ITEM(args, 0);
+  VLOG(4) << "Call new indexing strategy _getitem_dygraph";
+
+  // Note(0x45f): Using defined() instead of initialized()
+  // to support slice tensor which shape like [0, 0, 0].
+  PADDLE_ENFORCE_EQ(
+      self->tensor.defined(),
+      true,
+      platform::errors::InvalidArgument(
+          "tensor %s has not been initialized, we can only slice initialized "
+          "tensor please init it first with numpy or other tensor.",
+          self->tensor.name()));
+
+  auto tensor = self->tensor;
+  const int rank = tensor.shape().size();
+  std::vector<int> slice_starts, slice_ends, slice_strides;
+  std::vector<int64_t> slice_axes, decrease_axis, infer_flags, none_axes;
+
+  bool has_advanced_index = false;
+  bool use_strided_slice = false;
+  std::vector<int> advanced_index_dim(
+      rank * 2,
+      -1);  // content is dim, multiply 2 is to avoid all index are None
+  std::vector<paddle::Tensor> advanced_index;  // content is index tensor
+
+  // step1: parsing the index and recording them
+  ParseIndex(tensor,
+             _index,
+             &slice_axes,
+             &slice_starts,
+             &slice_ends,
+             &slice_strides,
+             &decrease_axis,
+             &none_axes,
+             &infer_flags,
+             &advanced_index_dim,
+             &advanced_index,
+             &has_advanced_index,
+             &use_strided_slice);
+
+  // step2: Dealing with basic indexing
+  auto out = getTensorWithBasicIndexing(tensor,
+                                        &slice_axes,
+                                        &slice_starts,
+                                        &slice_ends,
+                                        &slice_strides,
+                                        &decrease_axis,
+                                        &none_axes,
+                                        &infer_flags,
+                                        &use_strided_slice);
+
+  if (!has_advanced_index) {
+    return ToPyObject(out);
+  }
+
+  // step3: Dealing with advanced indexing
+  std::vector<paddle::Tensor> transed_index;
+  std::vector<int> trans_back_dim;
+  int pos_of_new_dim = INT_MAX, rank_of_new_dim = 1;
+
+  paddle::Tensor transed_tensor = dealWithAdvancedIndex(out,
+                                                        &advanced_index_dim,
+                                                        &advanced_index,
+                                                        false,
+                                                        &transed_index,
+                                                        &trans_back_dim,
+                                                        &pos_of_new_dim,
+                                                        &rank_of_new_dim);
+
+  if (transed_index.size() == 1 &&
+      transed_index[0].dtype() == phi::DataType::BOOL) {
+    // get value for bool tensor
+    out = getValueForBoolTensor(transed_tensor, transed_index[0]);
+  } else {
+    // get value for int tensor
+    ParseBoolAndBroadcastIndices(&transed_index);
+    paddle::Tensor transed_advanced_index_tensor;
+    if (transed_index.size() > 1) {
+      transed_advanced_index_tensor = stack_ad_func(transed_index, -1);
+    } else {
+      // fast path for single index tensor, since stack is much slower than
+      // unsqueeze
+      transed_advanced_index_tensor = unsqueeze_ad_func(transed_index[0], {-1});
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, transed_tensor, transed_advanced_index_tensor)) {
+      ConvertAllInputsToDistTensor(
+          mesh, transed_tensor, transed_advanced_index_tensor);
+    }
+
+    out = gather_nd_ad_func(transed_tensor, transed_advanced_index_tensor);
+  }
+
+  if (pos_of_new_dim != 0) {
+    std::vector<int> perm(out.shape().size(), 0);
+    int tmp1 = pos_of_new_dim, tmp2 = 0,
+        tmp3 = pos_of_new_dim + rank_of_new_dim;
+    for (int i = 0; i < static_cast<int>(out.shape().size()); ++i) {
+      if (i < rank_of_new_dim) {
+        perm[i] =
+            tmp1++;  // range(pos_of_new_dim, pos_of_new_dim + rank_of_new_dim)
+      } else if (i >= rank_of_new_dim && i < pos_of_new_dim + rank_of_new_dim) {
+        perm[i] = tmp2++;  // range(0, pos_of_new_dim)
+      } else {
+        perm[i] = tmp3++;  // range(pos_of_new_dim + rank_of_new_dim, out.ndim)
+      }
+    }
+
+    out = transpose_ad_func(out, perm);
+  }
+
+  return ToPyObject(out);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__getitem_from_offset(TensorObject* self,
                                              PyObject* args,
                                              PyObject* kwargs) {
@@ -1573,6 +1700,211 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
 #undef TENSOR_TO_PY_SCALAR
   PADDLE_THROW(platform::errors::Unimplemented(
       "Unsupported tensor data type: %s", tensor.dtype()));
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__setitem_dygraph(TensorObject* self,
+                                         PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Call new indexing strategy _setitem_dygraph";
+
+  PyObject* _index = PyTuple_GET_ITEM(args, 0);
+  PyObject* value_obj = PyTuple_GET_ITEM(args, 1);
+
+  // NOTE(zhiqiu): PyTuple_Pack increases refcount while PyTuple_New
+  // https://github.com/python/cpython/blob/24b63c695ae0a95b06379eaadace66735abac1e2/Objects/tupleobject.c#L251
+  PyObject* index_ptr =
+      !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
+  DEFINE_PADDLE_SCOPE_GUARD([index_ptr, &_index]() {
+    if (!PyTuple_Check(_index)) {
+      Py_DECREF(index_ptr);
+      VLOG(4) << "Call Py_DECREF";
+    }
+  });
+
+  auto tensor = self->tensor;
+  if (egr::Controller::Instance().HasGrad()) {
+    PADDLE_ENFORCE_EQ(
+        egr::EagerUtils::IsLeafTensor(tensor) &&
+            !egr::EagerUtils::autograd_meta(&tensor)->StopGradient(),
+        false,
+        platform::errors::InvalidArgument(
+            "Leaf Tensor (%s) that doesn't stop gradient can't use "
+            "inplace strategy.",
+            tensor.name()));
+  }
+  const int rank = tensor.shape().size();
+  std::vector<int> slice_starts, slice_ends, slice_strides;
+  std::vector<int64_t> slice_axes, decrease_axis, infer_flags, none_axes;
+
+  bool has_advanced_index = false;
+  bool use_strided_slice = false;
+  std::vector<int> advanced_index_dim(
+      rank * 2,
+      -1);  // content is dim, multiply 2 is to avoid all index are None
+  std::vector<paddle::Tensor> advanced_index;  // content is index tensor
+
+  // step1: parsing the index and recording them
+  ParseIndex(tensor,
+             _index,
+             &slice_axes,
+             &slice_starts,
+             &slice_ends,
+             &slice_strides,
+             &decrease_axis,
+             &none_axes,
+             &infer_flags,
+             &advanced_index_dim,
+             &advanced_index,
+             &has_advanced_index,
+             &use_strided_slice);
+
+  // step2: Parse values
+  PADDLE_ENFORCE(
+      PyCheckTensor(value_obj),
+      platform::errors::InvalidArgument("The value must be a Tensor"));
+
+  paddle::Tensor value_tensor =
+      reinterpret_cast<TensorObject*>(value_obj)->tensor;
+
+  if (!has_advanced_index) {
+    // use set_value OP if there is no advanced index
+
+    // Release gil and do tracing
+    py::gil_scoped_release release;
+    // use inplace set_value_ operator
+    if (value_tensor.initialized() &&
+        (self->tensor.dtype() != value_tensor.dtype())) {
+      if (egr::Controller::Instance().GetAMPLevel() !=
+          paddle::imperative::AmpLevel::O0) {
+        paddle::small_vector<std::vector<paddle::Tensor>,
+                             egr::kSlotSmallVectorSize>
+            tmps = {{self->tensor}, {value_tensor}};
+        auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
+        self->tensor = egr::EagerAmpAutoCast(
+            self->tensor.name(), self->tensor, amp_dtype, "set_value");
+        value_tensor = egr::EagerAmpAutoCast(
+            value_tensor.name(), value_tensor, amp_dtype, "set_value");
+      }
+      if (self->tensor.dtype() != value_tensor.dtype()) {
+        value_tensor = cast_ad_func(value_tensor, self->tensor.dtype());
+      }
+    }
+
+    // step3.1: Only basic indexing, use OP set_value.
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self->tensor, value_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, self->tensor, value_tensor);
+    }
+    self->tensor = set_value_with_tensor__ad_func(self->tensor,
+                                                  value_tensor,
+                                                  slice_starts,
+                                                  slice_ends,
+                                                  slice_strides,
+                                                  slice_axes,
+                                                  decrease_axis,
+                                                  none_axes);
+    if (PyCheckTensor(value_obj)) {
+      // pass the stop_gradient from value to tensor.
+      // pass stop gradient should be done after CheckInplace in
+      // set_value__dygraph_function.
+      if (!egr::EagerUtils::autograd_meta(&value_tensor)->StopGradient() &&
+          egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient()) {
+        egr::EagerUtils::autograd_meta(&self->tensor)->SetStopGradient(false);
+      }
+    }
+  } else {
+    // step3.2: Case for there are advanced indexing.
+    //   1. get __getitem__ result of basic indexing;
+    //   2. transpose original tensor so that the axis with advanced indexing
+    //   will come to the first;
+    //   3. assign values to the sliced result by index_put OP;
+    //   4. transpose back and assign the result to original tensor by set_value
+    //   OP.
+    paddle::Tensor sub_tensor = getTensorWithBasicIndexing(tensor,
+                                                           &slice_axes,
+                                                           &slice_starts,
+                                                           &slice_ends,
+                                                           &slice_strides,
+                                                           &decrease_axis,
+                                                           &none_axes,
+                                                           &infer_flags,
+                                                           &use_strided_slice);
+
+    std::vector<paddle::Tensor> transed_index;
+    std::vector<int> trans_back_dim;
+
+    int pos_of_new_dim = 0, rank_of_new_dim = 0;
+
+    paddle::Tensor transed_sub_tensor =
+        dealWithAdvancedIndex(sub_tensor,
+                              &advanced_index_dim,
+                              &advanced_index,
+                              true,
+                              &transed_index,
+                              &trans_back_dim,
+                              &pos_of_new_dim,
+                              &rank_of_new_dim);
+
+    // Release gil and do tracing
+    py::gil_scoped_release release;
+
+    if (value_tensor.initialized() &&
+        (self->tensor.dtype() != value_tensor.dtype())) {
+      if (egr::Controller::Instance().GetAMPLevel() !=
+          paddle::imperative::AmpLevel::O0) {
+        paddle::small_vector<std::vector<paddle::Tensor>,
+                             egr::kSlotSmallVectorSize>
+            tmps = {{self->tensor}, {value_tensor}};
+        auto amp_dtype = egr::GetAmpDestDtype("index_put", tmps);
+        self->tensor = egr::EagerAmpAutoCast(
+            self->tensor.name(), self->tensor, amp_dtype, "index_put");
+        value_tensor = egr::EagerAmpAutoCast(
+            value_tensor.name(), value_tensor, amp_dtype, "index_put");
+      }
+      if (self->tensor.dtype() != value_tensor.dtype()) {
+        value_tensor = cast_ad_func(value_tensor, self->tensor.dtype());
+      }
+    }
+
+    // TODO(zoooo0820) 1.Using inplace version index_put
+    //                  2.Remove following code after backward bug fixed.
+    transed_sub_tensor = assign_ad_func(transed_sub_tensor);
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self->tensor, transed_sub_tensor, value_tensor)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self->tensor, transed_sub_tensor, value_tensor);
+    }
+
+    transed_sub_tensor =
+        index_put_ad_func(transed_sub_tensor, transed_index, value_tensor);
+
+    paddle::Tensor transback_sub_tensor =
+        transpose_ad_func(transed_sub_tensor, trans_back_dim);
+
+    self->tensor = set_value_with_tensor__ad_func(self->tensor,
+                                                  transback_sub_tensor,
+                                                  slice_starts,
+                                                  slice_ends,
+                                                  slice_strides,
+                                                  slice_axes,
+                                                  decrease_axis,
+                                                  none_axes);
+    if (PyCheckTensor(value_obj)) {
+      // pass the stop_gradient from value to tensor.
+      // pass stop gradient should be done after CheckInplace in
+      // set_value__dygraph_function.
+      if (!egr::EagerUtils::autograd_meta(&value_tensor)->StopGradient() &&
+          egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient()) {
+        egr::EagerUtils::autograd_meta(&self->tensor)->SetStopGradient(false);
+      }
+    }
+  }
+
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -3239,12 +3571,20 @@ PyMethodDef variable_methods[] = {  // NOLINT
      (PyCFunction)(void (*)())tensor__getitem_index_not_tensor,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
+    {"_getitem_dygraph",
+     (PyCFunction)(void (*)())tensor__getitem_dygraph,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
     {"_getitem_from_offset",
      (PyCFunction)(void (*)())tensor__getitem_from_offset,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"__setitem_eager_tensor__",
      (PyCFunction)(void (*)())tensor_method__setitem_eager_tensor,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_setitem_dygraph",
+     (PyCFunction)(void (*)())tensor__setitem_dygraph,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_register_grad_hook",
@@ -3419,7 +3759,8 @@ PyMethodDef variable_methods[] = {  // NOLINT
     {nullptr, nullptr, 0, nullptr}};
 
 // variable_methods for core.eager.StringTensor
-PyMethodDef string_tensor_variable_methods[] = {  // NOLINT
+PyMethodDef string_tensor_variable_methods[] = {
+    // NOLINT
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy_for_string_tensor,
      METH_VARARGS | METH_KEYWORDS,
@@ -3435,6 +3776,5 @@ PyMethodDef string_tensor_variable_methods[] = {  // NOLINT
      nullptr},
     // TODO(zhoushunjie): Need to add _copy_to, copy_ for StringTensor.
     {nullptr, nullptr, 0, nullptr}};
-
 }  // namespace pybind
 }  // namespace paddle

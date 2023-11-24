@@ -144,7 +144,6 @@ TEST(AnalysisPredictor, save_optimized_model_on) {
 TEST(AnalysisPredictor, ZeroCopy) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
-  config.SwitchUseFeedFetchOps(false);
   LOG(INFO) << config.Summary();
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
@@ -184,7 +183,6 @@ TEST(AnalysisPredictor, ZeroCopy) {
 TEST(AnalysisPredictor, CollectShapeRangeInfo) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
-  config.SwitchUseFeedFetchOps(false);
   config.EnableUseGpu(100, 0);
   config.CollectShapeRangeInfo(FLAGS_dirname + "/shape_range.pbtxt");
   LOG(INFO) << config.Summary();
@@ -225,7 +223,6 @@ TEST(AnalysisPredictor, CollectShapeRangeInfo) {
 TEST(AnalysisPredictor, Clone) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
-  config.SwitchUseFeedFetchOps(true);
   config.SwitchIrOptim(true);
   LOG(INFO) << config.Summary();
 

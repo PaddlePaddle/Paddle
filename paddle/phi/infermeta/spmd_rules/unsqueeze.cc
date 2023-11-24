@@ -29,15 +29,15 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-std::vector<DimTrans*> MakeUnsqueezeDimTrans(
+std::vector<std::shared_ptr<DimTrans>> MakeUnsqueezeDimTrans(
     const std::vector<int64_t>& x_shape,
     std::vector<int64_t>* out_shape,
     const std::vector<int64_t>& axis) {
   int64_t n = static_cast<int64_t>(x_shape.size() + axis.size());
-  std::vector<DimTrans*> ret;
+  std::vector<std::shared_ptr<DimTrans>> ret;
   ret.resize(n);
   out_shape->resize(n);
-  fill(ret.begin(), ret.end(), new Singleton());
+  fill(ret.begin(), ret.end(), std::make_shared<Singleton>());
   fill(out_shape->begin(), out_shape->end(), 1);
 
   for (int64_t i = 0, j = 0; i < n; i++) {
@@ -45,7 +45,7 @@ std::vector<DimTrans*> MakeUnsqueezeDimTrans(
 
     if (it == axis.end()) {
       if (x_shape[j] != 1) {
-        ret[i] = new InputDim(j);
+        ret[i] = std::make_shared<InputDim>(j);
         (*out_shape)[i] = x_shape[j];
       }
 
@@ -56,21 +56,21 @@ std::vector<DimTrans*> MakeUnsqueezeDimTrans(
   return ret;
 }
 
-std::vector<DimTrans*> MakeUnsqueezeDimTransReverse(
+std::vector<std::shared_ptr<DimTrans>> MakeUnsqueezeDimTransReverse(
     const std::vector<int64_t>& out_shape,
     const std::vector<int64_t>& axis,
     const int& x_ndim,
     const int& out_ndim) {
-  std::vector<DimTrans*> ret;
+  std::vector<std::shared_ptr<DimTrans>> ret;
   ret.resize(x_ndim);
-  fill(ret.begin(), ret.end(), new Singleton());
+  fill(ret.begin(), ret.end(), std::make_shared<Singleton>());
 
   for (int64_t i = 0, j = 0; i < out_ndim; i++) {
     auto it = find(axis.begin(), axis.end(), i);
 
     if (it == axis.end()) {
       if (out_shape[i] != 1) {
-        ret[j] = new InputDim(i);
+        ret[j] = std::make_shared<InputDim>(i);
       }
 
       j++;
@@ -107,7 +107,7 @@ SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
     }
   }
 
-  std::vector<DimTrans*> trans =
+  std::vector<std::shared_ptr<DimTrans>> trans =
       MakeUnsqueezeDimTrans(x_shape, &out_shape, axis_copy);
 
   // Step2: Infer the dims mapping of input (if reshard is
@@ -126,15 +126,13 @@ SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
           << "] Out shape: [" << str_join(out_shape) << "]";
   VLOG(4) << "Transformation from input to output:";
   for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
-    DimTrans* t = trans[i];
+    std::shared_ptr<DimTrans> t = trans[i];
     VLOG(4) << "\tOut axis[" << i << "]: " << t->to_string();
   }
   VLOG(4) << "X dims_mapping_src: [" << str_join(x_dims_mapping)
           << "] dims_mapping_dst: [" << str_join(dims_mapping_vec[0])
           << "]\n Out dims_mapping: [" << str_join(dims_mapping_vec[1])
           << "]\n\n";
-
-  CleanUp();
 
   return {{x_dist_attr_dst}, {out_dist_attr}};
 }
@@ -171,7 +169,7 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
     }
   }
 
-  std::vector<DimTrans*> trans =
+  std::vector<std::shared_ptr<DimTrans>> trans =
       MakeUnsqueezeDimTransReverse(out_shape, axis_copy, x_ndim, out_ndim);
 
   // Step2: Infer the dims mapping of input with
@@ -190,14 +188,12 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
           << "] X shape: [" << str_join(x_shape) << "]";
   VLOG(4) << "Transformation from output to input:";
   for (int64_t i = 0, n = trans.size(); i < n; i++) {
-    DimTrans* t = trans[i];
+    std::shared_ptr<DimTrans> t = trans[i];
     VLOG(4) << "\tX axis[" << i << "]: " << t->to_string();
   }
   VLOG(4) << "Out dims_mapping_src: [" << str_join(out_dims_mapping) << "] "
           << "dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "X dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
-
-  CleanUp();
 
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }
