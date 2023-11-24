@@ -803,6 +803,7 @@
   infer_meta :
     func : TransposeGradInferMeta
     param : [out_grad, perm]
+    spmd_rule: TransposeGradInferSpmd
   kernel :
     func : transpose_grad
   backward : transpose_double_grad
