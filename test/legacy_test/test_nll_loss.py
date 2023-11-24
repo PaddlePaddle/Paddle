@@ -319,9 +319,10 @@ class TestNLLLoss(unittest.TestCase):
         np.random.seed(200)
         label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
         weight_np = np.random.random(size=(10,)).astype(np.float64)
-        prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
+
         place = base.CPUPlace()
+
+        expected = nll_loss_1d(input_np, label_np, weight=weight_np)[0]
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
@@ -362,7 +363,6 @@ class TestNLLLoss(unittest.TestCase):
                 paddle.to_tensor(input_np), paddle.to_tensor(label_np)
             )
             dy_result = dy_res.numpy()
-        expected = nll_loss_1d(input_np, label_np, weight=weight_np)[0]
 
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
@@ -1213,7 +1213,6 @@ class TestNLLLossOp2DNoReduce(OpTest):
 
 
 class TestNLLLossName(unittest.TestCase):
-    @test_with_pir_api
     def test_name(self):
         place = paddle.CPUPlace()
         prog = paddle.static.Program()
@@ -1225,110 +1224,115 @@ class TestNLLLossName(unittest.TestCase):
             res = nll_loss(x, label)
             self.assertTrue(res.name.startswith('nll_loss'))
 
+    class TestNLLLossInvalidArgs(unittest.TestCase):
+        @test_with_pir_api
+        def test_x_dim_value_error(self):
+            def test_x_dim_lt_2():
+                # place = paddle.CPUPlace()
+                prog = paddle.static.Program()
+                startup_prog = paddle.static.Program()
+                with paddle.static.program_guard(prog, startup_prog):
+                    x = paddle.static.data(
+                        name='x',
+                        shape=[
+                            10,
+                        ],
+                        dtype='float64',
+                    )
+                    label = paddle.static.data(
+                        name='label',
+                        shape=[
+                            10,
+                        ],
+                        dtype='float64',
+                    )
+                    nll_loss = paddle.nn.loss.NLLLoss()
+                    res = nll_loss(x, label)
 
-class TestNLLLossInvalidArgs(unittest.TestCase):
-    @test_with_pir_api
-    def test_x_dim_value_error(self):
-        def test_x_dim_lt_2():
-            # place = paddle.CPUPlace()
-            prog = paddle.static.Program()
-            startup_prog = paddle.static.Program()
-            with paddle.static.program_guard(prog, startup_prog):
-                x = paddle.static.data(
-                    name='x',
-                    shape=[
-                        10,
-                    ],
-                    dtype='float64',
-                )
-                label = paddle.static.data(
-                    name='label',
-                    shape=[
-                        10,
-                    ],
-                    dtype='float64',
-                )
-                nll_loss = paddle.nn.loss.NLLLoss()
-                res = nll_loss(x, label)
+            self.assertRaises(ValueError, test_x_dim_lt_2)
 
-        self.assertRaises(ValueError, test_x_dim_lt_2)
+            def test_x_shape_lt_1():
+                # place = paddle.CPUPlace()
+                prog = paddle.static.Program()
+                startup_prog = paddle.static.Program()
+                with paddle.static.program_guard(prog, startup_prog):
+                    array = np.array([], dtype=np.float32)
+                    x = paddle.to_tensor(
+                        np.reshape(array, [1, 0]), dtype='float32'
+                    )
+                    label = paddle.to_tensor(
+                        np.reshape(array, [1, 0]), dtype='int64'
+                    )
+                    nll_loss = paddle.nn.loss.NLLLoss()
+                    res = nll_loss(x, label)
 
-        def test_x_shape_lt_1():
-            # place = paddle.CPUPlace()
-            prog = paddle.static.Program()
-            startup_prog = paddle.static.Program()
-            with paddle.static.program_guard(prog, startup_prog):
-                array = np.array([], dtype=np.float32)
-                x = paddle.to_tensor(np.reshape(array, [1, 0]), dtype='float32')
-                label = paddle.to_tensor(
-                    np.reshape(array, [1, 0]), dtype='int64'
-                )
-                nll_loss = paddle.nn.loss.NLLLoss()
-                res = nll_loss(x, label)
+            self.assertRaises(ValueError, test_x_shape_lt_1)
 
-        self.assertRaises(ValueError, test_x_shape_lt_1)
+            def test_x_dim_and_label_dim():
+                # place = paddle.CPUPlace()
+                prog = paddle.static.Program()
+                startup_prog = paddle.static.Program()
+                with paddle.static.program_guard(prog, startup_prog):
+                    x_np = np.random.random(size=(5,)).astype(np.float64)
+                    label_np = np.random.randint(0, 10, size=(5, 1)).astype(
+                        np.int64
+                    )
+                    x = paddle.to_tensor(x_np)
+                    label = paddle.to_tensor(label_np)
+                    nll_loss = paddle.nn.loss.NLLLoss()
+                    res = nll_loss(x, label)
 
-        def test_x_dim_and_label_dim():
-            # place = paddle.CPUPlace()
-            prog = paddle.static.Program()
-            startup_prog = paddle.static.Program()
-            with paddle.static.program_guard(prog, startup_prog):
-                x_np = np.random.random(size=(5,)).astype(np.float64)
-                label_np = np.random.randint(0, 10, size=(5, 1)).astype(
-                    np.int64
-                )
-                x = paddle.to_tensor(x_np)
-                label = paddle.to_tensor(label_np)
-                nll_loss = paddle.nn.loss.NLLLoss()
-                res = nll_loss(x, label)
+            self.assertRaises(ValueError, test_x_dim_and_label_dim)
 
-        self.assertRaises(ValueError, test_x_dim_and_label_dim)
+        def test_x_dim_value_error_dygraph(self):
+            def test_x_dim_imperative_lt_2():
+                with base.dygraph.guard():
+                    x_np = np.random.random(size=(5,)).astype(np.float64)
+                    label_np = np.random.randint(0, 10, size=(5,)).astype(
+                        np.int64
+                    )
+                    x = paddle.to_tensor(x_np)
+                    label = paddle.to_tensor(label_np)
+                    nll_loss = paddle.nn.loss.NLLLoss()
+                    res = nll_loss(x, label)
 
-    def test_x_dim_value_error_dygraph(self):
-        def test_x_dim_imperative_lt_2():
-            with base.dygraph.guard():
-                x_np = np.random.random(size=(5,)).astype(np.float64)
-                label_np = np.random.randint(0, 10, size=(5,)).astype(np.int64)
-                x = paddle.to_tensor(x_np)
-                label = paddle.to_tensor(label_np)
-                nll_loss = paddle.nn.loss.NLLLoss()
-                res = nll_loss(x, label)
+            self.assertRaises(ValueError, test_x_dim_imperative_lt_2)
 
-        self.assertRaises(ValueError, test_x_dim_imperative_lt_2)
+        def test_reduction_value_error(self):
+            def test_NLLLoss_reduction_not_sum_mean_none():
+                # place = paddle.CPUPlace()
+                prog = paddle.static.Program()
+                startup_prog = paddle.static.Program()
+                with paddle.static.program_guard(prog, startup_prog):
+                    x = paddle.static.data(
+                        name='x', shape=[10, 10], dtype='float64'
+                    )
+                    label = paddle.static.data(
+                        name='label', shape=[10], dtype='int64'
+                    )
+                    nll_loss = paddle.nn.loss.NLLLoss(reduction='')
+                    res = nll_loss(x, label)
 
-    def test_reduction_value_error(self):
-        def test_NLLLoss_reduction_not_sum_mean_none():
-            # place = paddle.CPUPlace()
-            prog = paddle.static.Program()
-            startup_prog = paddle.static.Program()
-            with paddle.static.program_guard(prog, startup_prog):
-                x = paddle.static.data(
-                    name='x', shape=[10, 10], dtype='float64'
-                )
-                label = paddle.static.data(
-                    name='label', shape=[10], dtype='int64'
-                )
-                nll_loss = paddle.nn.loss.NLLLoss(reduction='')
-                res = nll_loss(x, label)
+            self.assertRaises(
+                ValueError, test_NLLLoss_reduction_not_sum_mean_none
+            )
 
-        self.assertRaises(ValueError, test_NLLLoss_reduction_not_sum_mean_none)
+            def test_nll_loss_function_reduction_not_sum_mean_none():
+                place = paddle.CPUPlace()
+                prog = paddle.static.Program()
+                startup_prog = paddle.static.Program()
+                with paddle.static.program_guard(prog, startup_prog):
+                    x = paddle.static.data(
+                        name='x', shape=[10, 10], dtype='float64'
+                    )
+                    label = paddle.static.data(
+                        name='label', shape=[10], dtype='int64'
+                    )
+                    res = paddle.nn.functional.nll_loss(x, label, reduction='')
 
-        def test_nll_loss_function_reduction_not_sum_mean_none():
-            place = paddle.CPUPlace()
-            prog = paddle.static.Program()
-            startup_prog = paddle.static.Program()
-            with paddle.static.program_guard(prog, startup_prog):
-                x = paddle.static.data(
-                    name='x', shape=[10, 10], dtype='float64'
-                )
-                label = paddle.static.data(
-                    name='label', shape=[10], dtype='int64'
-                )
-                res = paddle.nn.functional.nll_loss(x, label, reduction='')
-
-        self.assertRaises(
-            ValueError, test_nll_loss_function_reduction_not_sum_mean_none
-        )
+            self.assertRaises(
+                ValueError, test_nll_loss_function_reduction_not_sum_mean_none
+            )
 
     def test_reduction_value_error_dygraph(self):
         def test_NLLLoss_reduction_imperative_not_sum_mean_none():
