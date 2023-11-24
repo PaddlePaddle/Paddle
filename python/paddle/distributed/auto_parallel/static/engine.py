@@ -1810,9 +1810,16 @@ class Engine:
         ):
             self._prepare_reader()
 
+        self._executor.enable_job_schedule_profiler = (
+            self.enable_job_schedule_profiler
+        )
+
         if self.enable_prim_in_distribute:
-            self._translate_to_pir_program(feed_dict)
-            self._decompose_pir_program()
+            if not (
+                self.pir_program_initialized and self.pir_program_decomposed
+            ):
+                self._translate_to_pir_program(feed_dict)
+                self._decompose_pir_program()
 
             fetch_list = []
             for fetch_name in fetch_names:
@@ -1824,6 +1831,11 @@ class Engine:
                 self.pir_program_after_decomposed,
                 self.pir_prune_startup_program,
             ):
+                all_ops_name = []
+                for op in self.pir_program_after_decomposed.global_block().ops:
+                    if op.name() not in all_ops_name:
+                        all_ops_name.append(op.name())
+                print("all_ops_name: ", all_ops_name)
                 outs = self._executor.run(
                     self.pir_program_after_decomposed,
                     feed=feed_dict,
@@ -1831,11 +1843,7 @@ class Engine:
                     use_program_cache=self._strategy.use_cache,
                     return_numpy=self._strategy.return_numpy,
                 )
-
         else:
-            self._executor.enable_job_schedule_profiler = (
-                self.enable_job_schedule_profiler
-            )
             outs = self._executor.run(
                 self.main_program,
                 feed=feed_dict,
