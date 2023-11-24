@@ -12,14 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/funcs/sequence_pooling.h"
 #include <float.h>
 #include <algorithm>
 #include <string>
+
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sequence_pooling.h"
 
 namespace phi {
 namespace funcs {
