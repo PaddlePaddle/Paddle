@@ -235,11 +235,12 @@ class GroupShardedStage2(nn.Layer):
     def _grad_scale(self):
         """
         this function will do 2 things:
-        1.  Before the optimization, scale main_grad to support gradient merge if param has main_grad.
+        1.  Before the optimization, scale main_grad to support gradient merge if param has main_grad, or to support fused_linear_param_grad_add gradient merge.
         2.  Before the optimization, scale the gradients before allreduce of dp_group.
         """
 
         need_dp_scale = self._dp_group is not None and self._dp_group.nranks > 1
+        # print(f"self.scale_in_opt = {self.scale_in_opt}")
         if self.scale_in_opt:
             scale_factor = self._world_size_scaling
         else:
@@ -255,7 +256,6 @@ class GroupShardedStage2(nn.Layer):
                 not self._offload
                 and self._rank in self._grad_storages[dtype].keys()
             ):
-                # if self.use_main_grad and param.main_grad is not None:
                 self._grad_storages[dtype][self._rank].buffer.scale_(
                     scale=scale_factor
                 )
