@@ -108,7 +108,7 @@ class TestOpProfiling(unittest.TestCase):
             num_ops = len(train_program.global_block().ops)
             for i in range(num_ops):
                 # all of program ops built in unit test supports runtime profiling,
-                # so assert their run time are all correctly set.
+                # so assert their run times are all correctly set.
                 op_run_time_us = (
                     train_program.global_block().ops[i].dist_attr.run_time_us
                 )
@@ -122,14 +122,6 @@ class TestOpProfiling(unittest.TestCase):
     def _compare_loss_between(self, loss_run1, loss_run2):
         s1, s2 = '%.6f' % loss_run1, '%.6f' % loss_run2
         return s1 == s2
-
-    def test_op_profiling_cpu(self):
-        self.assertTrue(
-            self._compare_loss_between(
-                self._run_op_profiling(paddle.CPUPlace(), run_profiling=True),
-                self._run_op_profiling(paddle.CPUPlace(), run_profiling=False),
-            )
-        )
 
     def test_op_profiling_cuda0(self):
         if not core.is_compiled_with_cuda():

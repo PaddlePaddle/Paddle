@@ -2639,7 +2639,6 @@ def measure_program_real_op_cost(
         % type(program).__name__
     )
     supported_places = [
-        paddle.CPUPlace,
         paddle.CUDAPlace,
     ]
     assert any(
