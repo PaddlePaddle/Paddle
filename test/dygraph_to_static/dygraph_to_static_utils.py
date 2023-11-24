@@ -93,6 +93,7 @@ DEFAULT_IR_MODE = IrMode.LEGACY_IR | IrMode.PT
 DISABLED_TO_STATIC_TEST_FILES = {
     ToStaticMode.AST: [],
     ToStaticMode.SOT: [],
+    ToStaticMode.SOT_MGS10: [],
 }
 
 DISABLED_IR_TEST_FILES = {
@@ -221,8 +222,8 @@ def to_pir_test(fn):
 # Metaclass and BaseClass
 class Dy2StTestMeta(type):
     TO_STATIC_HANDLER_MAP = {
-        ToStaticMode.SOT: to_sot_test,
         ToStaticMode.AST: to_ast_test,
+        ToStaticMode.SOT: to_sot_test,
         ToStaticMode.SOT_MGS10: to_sot_mgs10_test,
     }
 
