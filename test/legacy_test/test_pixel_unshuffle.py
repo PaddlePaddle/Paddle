@@ -69,8 +69,8 @@ def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
 
 
 def pixel_unshuffle_wrapper(x, downscale_factor, data_format):
-    return paddle._legacy_C_ops.pixel_unshuffle(
-        x, "downscale_factor", downscale_factor, "data_format", data_format
+    return paddle.nn.functional.pixel_unshuffle(
+        x, downscale_factor, data_format
     )
 
 

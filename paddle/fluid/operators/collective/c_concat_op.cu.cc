@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_concat_op.h"
 
 #include <vector>
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #include "paddle/fluid/operators/math/concat_and_split.h"

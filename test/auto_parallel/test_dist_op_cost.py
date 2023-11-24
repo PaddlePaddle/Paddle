@@ -122,6 +122,7 @@ class TestDistOpCost(unittest.TestCase):
         def make_program():
             main_program = paddle.static.Program()
             start_program = paddle.static.Program()
+            mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
             with paddle.static.program_guard(main_program, start_program):
                 x = paddle.static.data(name='x', shape=[4], dtype='float32')
                 x.stop_gradient = True
@@ -129,13 +130,11 @@ class TestDistOpCost(unittest.TestCase):
                     name="label", shape=[8, 1], dtype='float32'
                 )
                 label.stop_gradient = True
-                auto.shard_tensor(
-                    x, auto.ProcessMesh([0, 1], dim_names=["x"]), ["x"]
-                )
+                auto.shard_tensor(x, mesh, ["x"])
 
                 auto.shard_tensor(
                     label,
-                    auto.ProcessMesh([0, 1], dim_names=["x"]),
+                    mesh,
                     ["x", None],
                 )
                 # embedding
@@ -150,8 +149,8 @@ class TestDistOpCost(unittest.TestCase):
                         W = main_program.global_block().vars[op.input("W")[0]]
                         auto.shard_tensor(
                             W,
-                            auto.ProcessMesh([0, 1], dim_names=["x"]),
-                            ["x", None],
+                            mesh,
+                            ["y", None],
                         )
                 out = paddle.transpose(out, [1, 0])  # [8, 2] [-1, 0]
 
@@ -161,7 +160,7 @@ class TestDistOpCost(unittest.TestCase):
                 )  # [2, 8] [0, -1]
                 auto.shard_tensor(
                     param1,
-                    auto.ProcessMesh([0, 1], dim_names=["x"]),
+                    mesh,
                     ["x", None],
                 )
                 param2 = paddle.create_parameter(
@@ -169,8 +168,8 @@ class TestDistOpCost(unittest.TestCase):
                 )  # [8, 4] [-1, 0]
                 auto.shard_tensor(
                     param2,
-                    auto.ProcessMesh([0, 1], dim_names=["x"]),
-                    [None, "x"],
+                    mesh,
+                    [None, "y"],
                 )
                 out1 = paddle.matmul(out, param1)  # [8, 8] [-1, -1]
                 tmp_param = paddle.create_parameter(
@@ -178,7 +177,7 @@ class TestDistOpCost(unittest.TestCase):
                 )  # [8, 8] [-1, -1]
                 auto.shard_tensor(
                     param2,
-                    auto.ProcessMesh([0, 1], dim_names=["x"]),
+                    mesh,
                     [None, None],
                 )
                 tmp_out = paddle.matmul(out1, tmp_param)
@@ -206,7 +205,7 @@ class TestDistOpCost(unittest.TestCase):
         main_program, dist_context = parallelizer(make_program, 0)
         ops = main_program.global_block().ops
         cluster = Cluster()
-        cluster.gen_default_config_cluster(device_count=2)
+        cluster.gen_default_config_cluster(device_count=4)
         for idx, op in enumerate(ops):
             if op.type != "shape" and op.type != "slice":
                 dist_op = dist_context.get_dist_op_for_program(op)
@@ -231,6 +230,7 @@ class TestDistOpCost(unittest.TestCase):
         def make_program():
             main_program = paddle.static.Program()
             start_program = paddle.static.Program()
+            mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
             with paddle.static.program_guard(main_program, start_program):
                 x = paddle.static.data(name='x', shape=[4], dtype='float32')
                 x.stop_gradient = True
@@ -238,13 +238,11 @@ class TestDistOpCost(unittest.TestCase):
                     name="label", shape=[8, 1], dtype='float32'
                 )
                 label.stop_gradient = True
-                auto.shard_tensor(
-                    x, auto.ProcessMesh([0, 1], dim_names=["x"]), ["x"]
-                )
+                auto.shard_tensor(x, mesh, ["x"])
 
                 auto.shard_tensor(
                     label,
-                    auto.ProcessMesh([0, 1], dim_names=["x"]),
+                    mesh,
                     ["x", None],
                 )
                 # embedding
@@ -259,8 +257,8 @@ class TestDistOpCost(unittest.TestCase):
                         W = main_program.global_block().vars[op.input("W")[0]]
                         auto.shard_tensor(
                             W,
-                            auto.ProcessMesh([0, 1], dim_names=["x"]),
-                            ["x", None],
+                            mesh,
+                            ["y", None],
                         )
                 out = paddle.transpose(out, [1, 0])  # [8, 2] [-1, 0]
 
@@ -270,7 +268,7 @@ class TestDistOpCost(unittest.TestCase):
                 )  # [2, 8] [0, -1]
                 auto.shard_tensor(
                     param1,
-                    auto.ProcessMesh([0, 1], dim_names=["x"]),
+                    mesh,
                     ["x", None],
                 )
                 param2 = paddle.create_parameter(
@@ -278,8 +276,8 @@ class TestDistOpCost(unittest.TestCase):
                 )  # [8, 4] [-1, 0]
                 auto.shard_tensor(
                     param2,
-                    auto.ProcessMesh([0, 1], dim_names=["x"]),
-                    [None, "x"],
+                    mesh,
+                    [None, "y"],
                 )
                 out1 = paddle.matmul(out, param1)  # [8, 8] [-1, -1]
                 tmp_param = paddle.create_parameter(
@@ -287,7 +285,7 @@ class TestDistOpCost(unittest.TestCase):
                 )  # [8, 8] [-1, -1]
                 auto.shard_tensor(
                     param2,
-                    auto.ProcessMesh([0, 1], dim_names=["x"]),
+                    mesh,
                     [None, None],
                 )
 
@@ -316,7 +314,7 @@ class TestDistOpCost(unittest.TestCase):
         main_program, dist_context = parallelizer(make_program, 0)
         ops = main_program.global_block().ops
         cluster = Cluster()
-        cluster.gen_default_config_cluster(device_count=2)
+        cluster.gen_default_config_cluster(device_count=4)
         for idx, op in enumerate(ops):
             if op.type != "shape" and op.type != "slice":
                 dist_op = dist_context.get_dist_op_for_program(op)
@@ -341,6 +339,7 @@ class TestDistOpCost(unittest.TestCase):
         def make_program():
             main_program = paddle.static.Program()
             start_program = paddle.static.Program()
+            mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
             with paddle.static.program_guard(main_program, start_program):
                 x = paddle.static.data(name='x', shape=[4], dtype='float32')
                 x.stop_gradient = True
@@ -348,12 +347,10 @@ class TestDistOpCost(unittest.TestCase):
                     name="label", shape=[8, 1], dtype='float32'
                 )
                 label.stop_gradient = True
-                auto.shard_tensor(
-                    x, auto.ProcessMesh([0, 1], dim_names=["x"]), ["x"]
-                )
+                auto.shard_tensor(x, mesh, ["x"])
                 auto.shard_tensor(
                     label,
-                    auto.ProcessMesh([0, 1], dim_names=["x"]),
+                    mesh,
                     ["x", None],
                 )
                 # embedding
@@ -368,8 +365,8 @@ class TestDistOpCost(unittest.TestCase):
                         W = main_program.global_block().vars[op.input("W")[0]]
                         auto.shard_tensor(
                             W,
-                            auto.ProcessMesh([0, 1], dim_names=["x"]),
-                            ["x", None],
+                            mesh,
+                            ["y", None],
                         )
                 out = paddle.transpose(out, [1, 0])  # [8, 2] [-1, 0]
 
@@ -379,7 +376,7 @@ class TestDistOpCost(unittest.TestCase):
                 )  # [2, 8] [0, -1]
                 auto.shard_tensor(
                     param1,
-                    auto.ProcessMesh([0, 1], dim_names=["x"]),
+                    mesh,
                     ["x", None],
                 )
                 param2 = paddle.create_parameter(
@@ -387,8 +384,8 @@ class TestDistOpCost(unittest.TestCase):
                 )  # [8, 4] [-1, 0]
                 auto.shard_tensor(
                     param2,
-                    auto.ProcessMesh([0, 1], dim_names=["x"]),
-                    [None, "x"],
+                    mesh,
+                    [None, "y"],
                 )
 
                 out1 = paddle.matmul(out, param1)  # [8, 8] [-1, -1]
@@ -397,7 +394,7 @@ class TestDistOpCost(unittest.TestCase):
                 )  # [8, 8] [-1, -1]
                 auto.shard_tensor(
                     param2,
-                    auto.ProcessMesh([0, 1], dim_names=["x"]),
+                    mesh,
                     [None, None],
                 )
 
@@ -425,7 +422,7 @@ class TestDistOpCost(unittest.TestCase):
         main_program, dist_context = parallelizer(make_program, 0)
         ops = main_program.global_block().ops
         cluster = Cluster()
-        cluster.gen_default_config_cluster(device_count=2)
+        cluster.gen_default_config_cluster(device_count=4)
         for idx, op in enumerate(ops):
             if op.type != "shape" and op.type != "slice":
                 dist_op = dist_context.get_dist_op_for_program(op)

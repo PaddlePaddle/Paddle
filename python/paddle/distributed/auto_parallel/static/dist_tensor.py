@@ -42,9 +42,7 @@ class DistributedTensor:
             and all(isinstance(x, int) and x >= 0 for x in sizes)
         ):
             raise ValueError(
-                "The sizes must be list or tuple and item in sizes must be non-negative integer, but got {}".format(
-                    sizes
-                )
+                f"The sizes must be list or tuple and item in sizes must be non-negative integer, but got {sizes}"
             )
         if not (
             isinstance(dims_mapping, (list, tuple))
@@ -399,8 +397,8 @@ class DistributedTensor:
             annotated_str = "annotated"
         else:
             annotated_str = "non-annotated"
-        str += ", process_mesh ({}): {}".format(
-            annotated_str, self.dist_attr.process_mesh
+        str += (
+            f", process_mesh ({annotated_str}): {self.dist_attr.process_mesh}"
         )
 
         str += f", is_parameter: {self.serial_tensor.is_parameter}"
@@ -409,9 +407,7 @@ class DistributedTensor:
             annotated_str = "annotated"
         else:
             annotated_str = "non-annotated"
-        str += ", dims_mapping ({}): {} }}".format(
-            annotated_str, self.dist_attr.dims_mapping
-        )
+        str += f", dims_mapping ({annotated_str}): {self.dist_attr.dims_mapping} }}"
 
         # if self.dist_attr.is_annotated("shard_mask"):
         #     annotated_str = "annotated"

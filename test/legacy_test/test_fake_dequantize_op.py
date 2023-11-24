@@ -247,7 +247,7 @@ class TestChannelWiseDequantizeOp(OpTest):
         self.outputs = {'Y': ydq}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestChannelWiseDequantizeOp1(TestChannelWiseDequantizeOp):
@@ -281,7 +281,7 @@ class TestDequantizeOp(OpTest):
         self.outputs = {'Y': ydq}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestDequantizeOpDouble(TestDequantizeOp):

@@ -18,12 +18,21 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/utils/rw_lock.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
+#endif
 
 #define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
 #define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
@@ -262,15 +271,19 @@ class Instruction {
   const std::vector<size_t>& GCCheckVars() const;
 
   void ResetContext(const VariableValueMap& in_vars,
-                    const VariableValueMap& out_vars);
+                    const VariableValueMap& out_vars,
+                    const std::string& op_name);
 
   void ResetContextWithScope(const VariableValueMap& in_vars,
                              const VariableValueMap& out_vars,
-                             const framework::Scope& scope);
+                             const framework::Scope& scope,
+                             const std::string& op_name);
 
   std::shared_ptr<RuntimeContext> InnerRuntimeContext() const;
 
   std::shared_ptr<RuntimeInferShapeContext> InnerInferShapeContext() const;
+
+  const phi::InferMetaContext* InnerCompatInferMetaContext() const;
 
   std::shared_ptr<ExecutionContext> InnerExecutionContext() const;
 
@@ -290,6 +303,15 @@ class Instruction {
 
   const OpFuncNode* OpFunc() const { return &op_func_node_; }
 
+  // record stream for gc
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  bool need_record_stream_for_gc_ = false;
+  gpuStream_t stream_{nullptr};
+  void UpdataRecordStreamForGcInfo();
+#endif
+
+  bool can_use_infermeta_ctx_ = false;
+
  private:
   bool is_artificial_;  // Instruction is artificial means that it is only used
                         // to assist scheduling and no need to be executed.
@@ -307,6 +329,7 @@ class Instruction {
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;
   std::shared_ptr<RuntimeInferShapeContext> infershape_ctx_;
+  paddle::framework::CompatInferMetaContext compat_infermeta_ctx_;
   std::shared_ptr<ExecutionContext> execution_ctx_;
 
   std::vector<size_t> gc_check_vars_;

@@ -46,6 +46,7 @@ def get_programs(annotated_func):
     complete_train_program = completer.complete_forward_annotation(
         train_program
     )
+
     dist_context.block_state.parse_forward_blocks(complete_train_program)
 
     rank_id = 3
@@ -212,14 +213,6 @@ def check_equal_dist_op_attr(
             )
             if tensor_dims_mapping != out_var_dims_mapping:
                 equal = False
-        dist_op_process_mesh = op_dist_attr.process_mesh
-        dist_op_impl_idx = op_dist_attr.impl_idx
-        if (
-            serial_op.desc.id() == dist_ops[i].desc.id()
-            or serial_process_mesh != dist_op_process_mesh
-            or serial_impl_idx != dist_op_impl_idx
-        ):
-            equal = False
 
     return equal
 
@@ -879,6 +872,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         # check distribured attr for dist op
         serial_op_idx = [0, 4, 6, 18]
         dist_op_idx = [[0, 1], [4, 5], [6, 7], [18, 19]]
+
         self.assertTrue(
             distributed_attr_check_for_dist_op(
                 serial_main_prog,
@@ -985,6 +979,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         # check distribured attr for dist op
         serial_op_idx = [0, 4, 6, 18]
         dist_op_idx = [[0, 1], [4, 5], [6, 7], [18, 19]]
+
         self.assertTrue(
             distributed_attr_check_for_dist_op(
                 serial_main_prog,

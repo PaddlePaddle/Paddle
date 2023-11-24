@@ -133,9 +133,7 @@ class YoloDetectionBlock(paddle.nn.Layer):
     def __init__(self, ch_in, channel, is_test=True):
         super().__init__()
 
-        assert channel % 2 == 0, "channel {} cannot be divided by 2".format(
-            channel
-        )
+        assert channel % 2 == 0, f"channel {channel} cannot be divided by 2"
 
         self.conv0 = ConvBNLayer(
             ch_in=ch_in,

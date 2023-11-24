@@ -17,13 +17,15 @@
 #include <iostream>
 #include <string>
 
+#include "paddle/utils/test_macros.h"
+
 namespace paddle {
 namespace inference {
 
 /*
  * Helper class to calculate the performance.
  */
-struct Benchmark {
+struct TEST_API Benchmark {
   int batch_size() const { return batch_size_; }
   void SetBatchSize(int x) { batch_size_ = x; }
 

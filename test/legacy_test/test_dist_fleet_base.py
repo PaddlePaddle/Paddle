@@ -423,18 +423,14 @@ class TestFleetBase(unittest.TestCase):
         def catlog(logx):
             basename = os.path.basename(logx)
             print(
-                "\n================== Error {} begin =====================".format(
-                    basename
-                )
+                f"\n================== Error {basename} begin ====================="
             )
 
             if not os.path.isfile(logx):
                 raise FileNotFoundError(f"{logx} is not a file")
             os.system(f"cat {logx}")
             print(
-                "================== Error {} end =====================\n".format(
-                    basename
-                )
+                f"================== Error {basename} end =====================\n"
             )
 
         if tr0_ret != 0 or tr1_ret != 0:

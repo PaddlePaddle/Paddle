@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/utils/flat_hash_map.h"
-
+#include "paddle/utils/test_macros.h"
 namespace paddle {
 namespace framework {
 
@@ -48,6 +48,7 @@ class OpInfo {
   OpAttrChecker* checker_{nullptr};
   InferVarTypeFN infer_var_type_;
   InferShapeFN infer_shape_;
+  InferMetaFN infer_meta_;
   InferInplaceOpFN infer_inplace_;
   InferNoNeedBufferVarsFN infer_no_need_buffer_vars_;
   DygraphGradOpMakerFN dygraph_grad_op_maker_;
@@ -128,7 +129,7 @@ class OpInfo {
   }
 };
 
-class OpInfoMap {
+class TEST_API OpInfoMap {
  public:
   static OpInfoMap& Instance();
 

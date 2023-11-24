@@ -40,6 +40,7 @@ class OpYamlInfoInterface : public pir::OpInterfaceBase<OpYamlInfoInterface> {
     Model() : Concept(GetOpInfo) {}
   };
 
+  /// Constructor
   OpYamlInfoInterface(pir::Operation *op, Concept *impl)
       : pir::OpInterfaceBase<OpYamlInfoInterface>(op), impl_(impl) {}
 

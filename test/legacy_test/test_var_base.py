@@ -87,6 +87,10 @@ class TestVarBase(unittest.TestCase):
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(blocking=True)
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda(device_id=0, blocking=True)
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda(device_id=0, blocking=False)
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     with self.assertRaises(ValueError):
                         y = x.cuda("test")
 

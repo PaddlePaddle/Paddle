@@ -1167,8 +1167,8 @@ class DistributedOperatorContext:
         for input_name in src_op.desc.input_names():
             varnames = []
             for varname in src_op.desc.input(input_name):
-                assert varname in self.varname_mapping
-                varnames.append(self.varname_mapping[varname])
+                assert varname in self.varname_mapping[src_op.block.idx]
+                varnames.append(self.varname_mapping[src_op.block.idx][varname])
             kinputs[input_name] = varnames
 
         # build output varname mapping
@@ -1176,8 +1176,8 @@ class DistributedOperatorContext:
         for output_name in src_op.desc.output_names():
             varnames = []
             for varname in src_op.desc.output(output_name):
-                assert varname in self.varname_mapping
-                varnames.append(self.varname_mapping[varname])
+                assert varname in self.varname_mapping[src_op.block.idx]
+                varnames.append(self.varname_mapping[src_op.block.idx][varname])
             koutputs[output_name] = varnames
 
         return kinputs, koutputs
@@ -1209,9 +1209,9 @@ class BlockState:
         assert self.nblock >= 1
 
     def parse_backward_blocks(self, program):
-        assert 0 in self.forward_indices, "forward block idx are{}".format(
-            self.forward_indices
-        )
+        assert (
+            0 in self.forward_indices
+        ), f"forward block idx are{self.forward_indices}"
         self.backward_to_forward_index_map[0] = 0
 
         for idx, block in enumerate(program.blocks):

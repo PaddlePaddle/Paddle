@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import core
-import numpy as np
-import warnings
 import struct
 
+import numpy as np
+
+from ..pir import OpResult
+from ..pir.core import ParameterMeta
+from . import core
 from .framework import (
     Variable,
+    _cpu_num,
+    _cuda_ids,
     default_main_program,
     in_dygraph_mode,
     in_pir_mode,
 )
-from .framework import _cpu_num, _cuda_ids
 
-from ..ir import OpResult
-
-__all__ = ['DataFeeder']
+__all__ = []
 
 _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.BOOL: 'bool',
@@ -44,10 +45,25 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.COMPLEX128: 'complex128',
 }
 
-_PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE = {
+_NUMPY_DTYPE_2_PADDLE_DTYPE = {
+    'bool': core.VarDesc.VarType.BOOL,
+    'float16': core.VarDesc.VarType.FP16,
+    'uint16': core.VarDesc.VarType.BF16,
+    'float32': core.VarDesc.VarType.FP32,
+    'float64': core.VarDesc.VarType.FP64,
+    'int8': core.VarDesc.VarType.INT8,
+    'int16': core.VarDesc.VarType.INT16,
+    'int32': core.VarDesc.VarType.INT32,
+    'int64': core.VarDesc.VarType.INT64,
+    'uint8': core.VarDesc.VarType.UINT8,
+    'complex64': core.VarDesc.VarType.COMPLEX64,
+    'complex128': core.VarDesc.VarType.COMPLEX128,
+}
+
+_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
     core.DataType.BOOL: 'bool',
     core.DataType.FLOAT16: 'float16',
-    core.DataType.UINT16: 'uint16',
+    core.DataType.BFLOAT16: 'uint16',
     core.DataType.FLOAT32: 'float32',
     core.DataType.FLOAT64: 'float64',
     core.DataType.INT8: 'int8',
@@ -91,8 +107,8 @@ def convert_dtype(dtype):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
     if isinstance(dtype, core.DataType):
-        if dtype in _PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE:
-            return _PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE[dtype]
+        if dtype in _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE:
+            return _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[dtype]
     elif isinstance(dtype, type):
         # This branch is for NumPy scalar types
         if dtype in [
@@ -147,7 +163,9 @@ def check_variable_and_dtype(
     input, input_name, expected_dtype, op_name, extra_message=''
 ):
     if in_pir_mode():
-        check_type(input, input_name, OpResult, op_name, extra_message)
+        check_type(
+            input, input_name, (OpResult, ParameterMeta), op_name, extra_message
+        )
     else:
         check_type(input, input_name, Variable, op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
@@ -177,14 +195,13 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
     elif isinstance(input, core.eager.Tensor):
         raise TypeError(
             "Please use `with base.dygraph.guard()` as context or `base.enable_dygraph()` to switch to imperative mode firstly. "
-            "Because received '{}' in {} is a imperative Variable.".format(
-                input_name, op_name
-            )
+            f"Because received '{input_name}' in {op_name} is a imperative Variable."
         )
     if not isinstance(input, expected_type):
         raise TypeError(
-            "The type of '%s' in %s must be %s, but received %s. %s"
-            % (input_name, op_name, expected_type, type(input), extra_message)
+            "The type of '{}' in {} must be {}, but received {}. {}".format(
+                input_name, op_name, expected_type, type(input), extra_message
+            )
         )
 
 
@@ -194,24 +211,10 @@ def check_dtype(
     # See NOTE [ Why skip dynamic graph check ]
     if in_dygraph_mode():
         return
-    if convert_dtype(input_dtype) in ['float16']:
-        warnings.warn(
-            "The data type of '%s' in %s only support float16 in GPU now. %s"
-            % (input_name, op_name, extra_message)
-        )
-    if convert_dtype(input_dtype) in ['uint16'] and op_name not in [
-        'reshape',
-        'lookup_table',
-        'scale',
-    ]:
-        warnings.warn(
-            "The data type of '%s' in %s only support bfloat16 in OneDNN now. %s"
-            % (input_name, op_name, extra_message)
-        )
+
     if convert_dtype(input_dtype) not in expected_dtype:
         raise TypeError(
-            "The data type of '%s' in %s must be %s, but received %s. %s"
-            % (
+            "The data type of '{}' in {} must be {}, but received {}. {}".format(
                 input_name,
                 op_name,
                 expected_dtype,
@@ -358,12 +361,12 @@ class DataFeeder:
     Parameters:
         feed_list (list): Variables or names of Variables that need
             to feed.
-        place (:ref:`api_base_CPUPlace` | :ref:`api_base_CUDAPlace` ):
+        place (:ref:`api_paddle_CPUPlace` | :ref:`api_paddle_CUDAPlace` ):
             place indicates the device (CPU | GPU) the data will be fed into, if
             you want to feed data into GPU, please using :code:`base.CUDAPlace(i)`
             (:code:`i` represents the GPU id), or if you want to feed data into CPU,
             please using :code:`base.CPUPlace()`.
-        program (:ref:`api_base_Program` , optional): The Program that will
+        program (:ref:`api_paddle_static_Program` , optional): The Program that will
             feed data into, if program is None, it will use default_main_program().
             Default None.
 

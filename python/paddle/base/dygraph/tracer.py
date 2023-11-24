@@ -13,9 +13,8 @@
 # limitations under the License.
 
 
-from paddle.base import core
-from paddle.base import framework
 from paddle import _C_ops, _legacy_C_ops
+from paddle.base import core, framework
 
 name_mapping = {
     "graph_send_recv": {

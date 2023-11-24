@@ -30,8 +30,10 @@ class _LoweredFunc_;
  * the function signature of generated code.
  */
 struct Argument {
-  //! Input or output.
-  enum class IO { kInput = 0, kOutput = 1 };
+  //! kInput: arg is input
+  //! kOutput: arg is output
+  //! kUnknown: arg maybe input or output
+  enum class IO { kInput = 0, kOutput = 1, kUnknown = 2 };
 
   IO io{IO::kInput};
 
@@ -163,6 +165,13 @@ struct _LoweredFunc_ : ExprNode<_LoweredFunc_> {
                           const std::vector<Argument>& args,
                           const Expr& body,
                           const std::vector<ir::Buffer>& temp_bufs);
+
+  // A simple version of the make function method,
+  // regardless of the argument buffer information and IO information of
+  // Argument, after building the function to optimize the buffer through pass
+  static LoweredFunc Make(const std::string& name,
+                          const std::vector<Argument>& args,
+                          const Expr& body);
 
   bool is_gpu_host() const { return cuda_axis_info.valid(); }
 

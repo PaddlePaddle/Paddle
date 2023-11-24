@@ -20,13 +20,13 @@
 #include <vector>
 
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/pass/pass.h"
 
 namespace pir {
 
 class IrContext;
 class Operation;
 class Program;
-class Pass;
 class PassInstrumentation;
 class PassInstrumentor;
 

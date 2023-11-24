@@ -49,3 +49,6 @@
 - erf
 - tanh
 - full
+- cast
+- sign
+- slice

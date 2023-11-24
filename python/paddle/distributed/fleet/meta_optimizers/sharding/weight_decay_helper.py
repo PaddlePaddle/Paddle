@@ -33,7 +33,7 @@ class WeightDecayHelper:
             if OP_ROLE_VAR_KEY not in op.attr_names:
                 raise ValueError(
                     "The Weight Dacay op should hold op_role_var attribute"
-                    "but the {} op does not hold op_role_var".format(op.type)
+                    f"but the {op.type} op does not hold op_role_var"
                 )
             op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
             if not shard.has_param(op_role_var[0]):

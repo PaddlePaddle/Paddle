@@ -37,16 +37,17 @@ def sum(input, scope=None, util=None):
     Example:
         .. code-block:: python
 
-          # in model.py
-          input = paddle.cast(some_input, dtype='float32')
-          cnt = paddle.sum(input)
-          global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[], value=0)
-          tmp = paddle.add(cnt, global_cnt)
-          paddle.assign(tmp, global_cnt)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # in model.py
+            >>> input = paddle.cast(some_input, dtype='float32')
+            >>> cnt = paddle.sum(input)
+            >>> global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[], value=0)
+            >>> tmp = paddle.add(cnt, global_cnt)
+            >>> paddle.assign(tmp, global_cnt)
 
-          # in train.py, after train or infer
-          res = np.array(scope.find_var(global_cnt.name).get_tensor())
-          print("sum array: ", paddle.distributed.fleet.sum(res))
+            >>> # in train.py, after train or infer
+            >>> res = np.array(scope.find_var(global_cnt.name).get_tensor())
+            >>> print("sum array: ", paddle.distributed.fleet.sum(res))
     """
     if scope is None:
         scope = paddle.static.global_scope()
@@ -77,16 +78,17 @@ def max(input, scope=None, util=None):
     Example:
         .. code-block:: python
 
-          # in model.py
-          input = paddle.cast(some_input, dtype='float32')
-          cnt = paddle.sum(input)
-          global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[], value=0)
-          tmp = paddle.maximum(cnt, global_cnt)
-          paddle.assign(tmp, global_cnt)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # in model.py
+            >>> input = paddle.cast(some_input, dtype='float32')
+            >>> cnt = paddle.sum(input)
+            >>> global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[], value=0)
+            >>> tmp = paddle.maximum(cnt, global_cnt)
+            >>> paddle.assign(tmp, global_cnt)
 
-          # in train.py, after train or infer
-          res = np.array(scope.find_var(global_cnt.name).get_tensor())
-          print("max array: ", paddle.distributed.fleet.max(res))
+            >>> # in train.py, after train or infer
+            >>> res = np.array(scope.find_var(global_cnt.name).get_tensor())
+            >>> print("max array: ", paddle.distributed.fleet.max(res))
     """
     if scope is None:
         scope = paddle.static.global_scope()
@@ -117,16 +119,17 @@ def min(input, scope=None, util=None):
     Example:
         .. code-block:: python
 
-          # in model.py
-          input = paddle.cast(some_input, dtype='float32')
-          cnt = paddle.sum(input)
-          global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[], value=0)
-          tmp = paddle.minimum(cnt, global_cnt)
-          paddle.assign(tmp, global_cnt)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # in model.py
+            >>> input = paddle.cast(some_input, dtype='float32')
+            >>> cnt = paddle.sum(input)
+            >>> global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[], value=0)
+            >>> tmp = paddle.minimum(cnt, global_cnt)
+            >>> paddle.assign(tmp, global_cnt)
 
-          # in train.py, after train or infer
-          res = np.array(scope.find_var(global_cnt.name).get_tensor())
-          print("min array: ", paddle.distributed.fleet.min(res))
+            >>> # in train.py, after train or infer
+            >>> res = np.array(scope.find_var(global_cnt.name).get_tensor())
+            >>> print("min array: ", paddle.distributed.fleet.min(res))
     """
     if scope is None:
         scope = paddle.static.global_scope()
@@ -158,17 +161,18 @@ def auc(stat_pos, stat_neg, scope=None, util=None):
     Example:
         .. code-block:: python
 
-          # in model.py
-          similarity_norm = paddle.nn.functional.sigmoid(paddle.clip(output, min=-15.0, max=15.0))
-          binary_predict = paddle.concat(
-              input=[paddle.subtract(paddle.ceil(similarity_norm), similarity_norm), similarity_norm], axis=1)
-          self.auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg] =
-              paddle.static.auc(input=binary_predict, label=label, curve='ROC', num_thresholds=4096)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # in model.py
+            >>> similarity_norm = paddle.nn.functional.sigmoid(paddle.clip(output, min=-15.0, max=15.0))
+            >>> binary_predict = paddle.concat(
+            ...     input=[paddle.subtract(paddle.ceil(similarity_norm), similarity_norm), similarity_norm], axis=1)
+            >>> self.auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg] =
+            ...     paddle.static.auc(input=binary_predict, label=label, curve='ROC', num_thresholds=4096)
 
-          # in train.py, after train or infer
-          pos = np.array(scope.find_var(stat_pos.name).get_tensor())
-          neg = np.array(scope.find_var(stat_neg.name).get_tensor())
-          print("auc: ", paddle.distributed.fleet.auc(pos, neg))
+            >>> # in train.py, after train or infer
+            >>> pos = np.array(scope.find_var(stat_pos.name).get_tensor())
+            >>> neg = np.array(scope.find_var(stat_neg.name).get_tensor())
+            >>> print("auc: ", paddle.distributed.fleet.auc(pos, neg))
     """
     if scope is None:
         scope = paddle.static.global_scope()
@@ -241,12 +245,13 @@ def mae(abserr, total_ins_num, scope=None, util=None):
     Example:
         .. code-block:: python
 
-          # in model.py
-          sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, paddle.cast(x=label, dtype='float32'))
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # in model.py
+            >>> sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, paddle.cast(x=label, dtype='float32'))
 
-          # in train.py, after train or infer
-          res = np.array(scope.find_var(abserr.name).get_tensor())
-          print("mae: ", paddle.distributed.fleet.mae(res, total_ins_num))
+            >>> # in train.py, after train or infer
+            >>> res = np.array(scope.find_var(abserr.name).get_tensor())
+            >>> print("mae: ", paddle.distributed.fleet.mae(res, total_ins_num))
     """
     if scope is None:
         scope = paddle.static.global_scope()
@@ -291,12 +296,13 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
     Example:
         .. code-block:: python
 
-          # in model.py
-          sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, paddle.cast(x=label, dtype='float32'))
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # in model.py
+            >>> sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, paddle.cast(x=label, dtype='float32'))
 
-          # in train.py, after train or infer
-          res = np.array(scope.find_var(sqrerr.name).get_tensor())
-          print("rmse: ", paddle.distributed.fleet.rmse(res, total_ins_num))
+            >>> # in train.py, after train or infer
+            >>> res = np.array(scope.find_var(sqrerr.name).get_tensor())
+            >>> print("rmse: ", paddle.distributed.fleet.rmse(res, total_ins_num))
     """
     if scope is None:
         scope = paddle.static.global_scope()
@@ -341,12 +347,13 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
     Example:
         .. code-block:: python
 
-          # in model.py
-          sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, paddle.cast(x=label, dtype='float32'))
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # in model.py
+            >>> sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, paddle.cast(x=label, dtype='float32'))
 
-          # in train.py, after train or infer
-          metric = np.array(scope.find_var(sqrerr.name).get_tensor())
-          print("mse: ", paddle.distributed.fleet.mse(metric, total_ins_num))
+            >>> # in train.py, after train or infer
+            >>> metric = np.array(scope.find_var(sqrerr.name).get_tensor())
+            >>> print("mse: ", paddle.distributed.fleet.mse(metric, total_ins_num))
     """
     if scope is None:
         scope = paddle.static.global_scope()
@@ -390,23 +397,24 @@ def acc(correct, total, scope=None, util=None):
     Example:
         .. code-block:: python
 
-          # in model.py
-          correct = paddle.static.create_global_var(dtype='float32', shape=[1], value=0)
-          total = paddle.static.create_global_var(dtype='float32', shape=[1], value=0)
-          acc = paddle.metric.accuracy(predict, label, k=1, correct=correct, total=total)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # in model.py
+            >>> correct = paddle.static.create_global_var(dtype='float32', shape=[1], value=0)
+            >>> total = paddle.static.create_global_var(dtype='float32', shape=[1], value=0)
+            >>> acc = paddle.metric.accuracy(predict, label, k=1, correct=correct, total=total)
 
-          global_correct = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
-          tmp1 = paddle.minimum(correct, global_correct)
-          paddle.assign(tmp1, global_correct)
+            >>> global_correct = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+            >>> tmp1 = paddle.minimum(correct, global_correct)
+            >>> paddle.assign(tmp1, global_correct)
 
-          global_total = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
-          tmp2 = paddle.minimum(total, global_total)
-          paddle.assign(tmp2, global_total)
+            >>> global_total = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+            >>> tmp2 = paddle.minimum(total, global_total)
+            >>> paddle.assign(tmp2, global_total)
 
-          # in train.py, after train or infer
-          correct_num = np.array(scope.find_var(correct.name).get_tensor())
-          total_num = np.array(scope.find_var(total.name).get_tensor())
-          print("accuracy: ", paddle.distributed.fleet.acc(correct_num, total_num))
+            >>> # in train.py, after train or infer
+            >>> correct_num = np.array(scope.find_var(correct.name).get_tensor())
+            >>> total_num = np.array(scope.find_var(total.name).get_tensor())
+            >>> print("accuracy: ", paddle.distributed.fleet.acc(correct_num, total_num))
     """
     if scope is None:
         scope = paddle.static.global_scope()

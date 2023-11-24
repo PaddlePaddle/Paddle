@@ -617,7 +617,7 @@ class MSELoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MSELoss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction)
+                f"but received {reduction}."
             )
         self.reduction = reduction
 
@@ -1484,7 +1484,7 @@ class MultiLabelSoftMarginLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MultiLabelSoftMarginloss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction)
+                f"but received {reduction}."
             )
         self.weight = weight
         self.reduction = reduction
@@ -2009,7 +2009,7 @@ class MultiMarginLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MultiMarginLoss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction)
+                f"but received {reduction}."
             )
         self.p = p
         self.margin = margin

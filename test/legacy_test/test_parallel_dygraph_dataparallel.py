@@ -104,6 +104,7 @@ def start_local_trainers(
     training_script_args,
     allocator_strategy="auto_growth",
     log_dir=None,
+    need_envs={},
 ):
     current_env = copy.copy(os.environ.copy())
     # paddle broadcast ncclUniqueId use socket, and
@@ -121,6 +122,7 @@ def start_local_trainers(
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
+            "FLAGS_dynamic_static_unified_comm": "0",
         }
 
         proc_env["FLAGS_allocator_strategy"] = allocator_strategy
@@ -128,6 +130,7 @@ def start_local_trainers(
             proc_env["FLAGS_fraction_of_gpu_memory_to_use"] = "0.1"
 
         current_env.update(proc_env)
+        current_env.update(need_envs)
 
         print(f"trainer proc env:{current_env}")
 
@@ -158,6 +161,7 @@ class TestMultipleGpus(unittest.TestCase):
         self,
         target_file_name,
         allocator_strategy="auto_growth",
+        need_envs={},
     ):
         if (
             not base.core.is_compiled_with_cuda()
@@ -177,6 +181,7 @@ class TestMultipleGpus(unittest.TestCase):
             allocator_strategy=allocator_strategy,
             training_script=target_file_name,
             training_script_args=[],
+            need_envs=need_envs,
         )
 
         while True:

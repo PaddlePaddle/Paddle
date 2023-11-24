@@ -536,7 +536,7 @@ def create_mask(tensor, func_name=MaskAlgo.MASK_1D, n=2, m=4):
 
     assert isinstance(func_name, MaskAlgo), (
         "func_name argumet of create_mask is only accepted as type MaskAlgo. "
-        "But got {}".format(type(func_name))
+        f"But got {type(func_name)}"
     )
     func = getattr(sys.modules[__name__], func_name.value, None)
     if len(shape) == 1:
@@ -559,7 +559,7 @@ def create_mask(tensor, func_name=MaskAlgo.MASK_1D, n=2, m=4):
     else:
         raise ValueError(
             "The dimension of input tensor is not supported in create_mask, "
-            "Only dimension < 4 is supported but got {}".format(len(shape))
+            f"Only dimension < 4 is supported but got {len(shape)}"
         )
 
     mask = func(t, n=n, m=m)
@@ -606,7 +606,7 @@ def check_sparsity(tensor, func_name=CheckMethod.CHECK_1D, n=2, m=4):
 
     assert type(func_name) == CheckMethod, (
         "func_name argumet of check_sparsity is only accepted as type CheckMethod. "
-        "But got {}".format(type(func_name))
+        f"But got {type(func_name)}"
     )
     func = getattr(sys.modules[__name__], func_name.value, None)
     if len(shape) == 1:
@@ -623,7 +623,7 @@ def check_sparsity(tensor, func_name=CheckMethod.CHECK_1D, n=2, m=4):
     else:
         raise ValueError(
             "The dimension of input tensor is not supported in create_mask, "
-            "Only dimension < 4 is supported but got {}".format(len(shape))
+            f"Only dimension < 4 is supported but got {len(shape)}"
         )
 
     return func(t, n=n, m=m)

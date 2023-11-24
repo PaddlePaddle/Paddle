@@ -23,8 +23,6 @@ limitations under the License. */
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-#include "paddle/fluid/distributed/collective/utils.h"
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
 namespace paddle {

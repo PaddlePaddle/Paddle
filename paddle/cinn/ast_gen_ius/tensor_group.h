@@ -24,6 +24,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace ast_gen_ius {
@@ -42,9 +43,19 @@ class TensorGroup {
   explicit TensorGroup(const std::vector<ir::Tensor>& tensors);
 
   /**
+   * Constructor for a TensorGroup, the argument tensors should be output tensor
+   * arguments of the AST body to be generated. The dependent tensors of the
+   * output tensors will be collected during construction.
+   */
+  explicit TensorGroup(
+      const std::unordered_map<std::string, ir::Tensor>& tensor_map);
+
+  /**
    * Destructor.
    */
   ~TensorGroup();
+
+  void ShowLog() const;
 
   /**
    * Returns true if TensorGroup collection contains a tensor with input name.
@@ -118,6 +129,10 @@ class TensorGroup {
    */
   std::unordered_map<std::string, std::string> share_memory_tensor_;
 };
+
+// TODO(zhhsplendid): remove stage_map need to change all fcompute CINNValuePack
+// we will change it in the next PR
+TensorGroup ConvertStageMapToTensorGroup(const poly::StageMap& stage_map);
 
 }  // namespace ast_gen_ius
 }  // namespace cinn

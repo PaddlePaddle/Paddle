@@ -48,19 +48,17 @@ std::string GetMasterEndpoint() {
 
 int64_t GetCurGlobalRank() {
   const char* cur_rank = std::getenv("PADDLE_TRAINER_ID");
-  PADDLE_ENFORCE_NOT_NULL(
-      cur_rank,
-      phi::errors::NotFound(
-          "The environment variable 'PADDLE_TRAINER_ID' cannot be found."));
+  if (cur_rank == nullptr) {
+    return 0;
+  }
   return std::atoi(cur_rank);
 }
 
 int64_t GetGlobalWorldSize() {
   const char* world_size = std::getenv("PADDLE_TRAINERS_NUM");
-  PADDLE_ENFORCE_NOT_NULL(
-      world_size,
-      phi::errors::NotFound(
-          "The environment variable 'PADDLE_TRAINERS_NUM' cannot be found."));
+  if (world_size == nullptr) {
+    return 1;
+  }
   return std::atoi(world_size);
 }
 

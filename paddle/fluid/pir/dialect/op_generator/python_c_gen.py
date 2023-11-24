@@ -174,7 +174,7 @@ FULL_INT_ARRAY_OP_TEMPLATE = """
 """
 
 BUILTIN_STACK_OP_TEMPLATE = """
-            {name} = paddle::dialect::stack({name}_tmp, 0);
+            {name} = paddle::dialect::stack({name}_tmp, /*axis*/0);
 """
 TYPE_TO_FUNC_MAP = {
     "bool": "CastPyArg2Boolean",
@@ -243,14 +243,24 @@ class PythonCCodeGen(CodeGen):
     def _gen_inputs(self, op_info, op_name):
         name_list = op_info.input_name_list
         type_list = op_info.input_type_list
-        assert len(name_list) == len(type_list)
+        optional_list = op_info.input_optional_list
+        assert len(name_list) == len(type_list) == len(optional_list)
         ret = ''
-        for i, (name, type) in enumerate(zip(name_list, type_list)):
-            cast_func = (
-                'CastPyArg2VectorOfValue'
-                if VECTOR_TYPE in type
-                else 'CastPyArg2OpResult'
-            )
+        for i, (name, type, optional) in enumerate(
+            zip(name_list, type_list, optional_list)
+        ):
+            if optional == 'true':
+                cast_func = (
+                    'CastPyArg2OptionalVectorOfValue'
+                    if VECTOR_TYPE in type
+                    else 'CastPyArg2OptionalValue'
+                )
+            else:
+                cast_func = (
+                    'CastPyArg2VectorOfValue'
+                    if VECTOR_TYPE in type
+                    else 'CastPyArg2Value'
+                )
             ret += INPUT_TEMPLATE.format(
                 name=name, index=i, cast_func=cast_func, api_name=op_name
             )
@@ -316,7 +326,7 @@ class PythonCCodeGen(CodeGen):
                         type='',
                         name_=name,
                         name=name,
-                        cast_func='CastPyArg2OpResult',
+                        cast_func='CastPyArg2Value',
                         api_name=op_name,
                         index=input_size + i,
                     )
@@ -338,7 +348,7 @@ class PythonCCodeGen(CodeGen):
                         type='',
                         name_=name,
                         name=name,
-                        cast_func='CastPyArg2OpResult',
+                        cast_func='CastPyArg2Value',
                         api_name=op_name,
                         index=input_size + i,
                     )

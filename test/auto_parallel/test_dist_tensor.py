@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.nn.functional as F
 
 
 class TestDistTensor(unittest.TestCase):
@@ -118,75 +117,6 @@ class TestDistTensorFromFn(unittest.TestCase):
         paddle.enable_static()
         self.run_dtensor_from_fn()
         paddle.disable_static()
-
-
-class TestDistTensorForDygraphAPI(unittest.TestCase):
-    def check_tensor_eq(self, a, b):
-        np1 = a.numpy()
-        np2 = b.numpy()
-        np.testing.assert_allclose(np1, np2, rtol=1e-05)
-
-    def create_local_and_dist_tensor_pair(self, np_array):
-        if np_array.dtype == np.float32:
-            local_t = paddle.to_tensor(np_array, dtype='float32')
-        elif np_array.dtype == np.float16:
-            local_t = paddle.to_tensor(np_array, dtype='float16')
-        elif np_array.dtype == np.int32:
-            local_t = paddle.to_tensor(np_array, dtype='int32')
-        elif np_array.dtype == np.bool_:
-            local_t = paddle.to_tensor(np_array, dtype='bool')
-
-        mesh = dist.ProcessMesh([0], dim_names=["x"])
-        dist_attr = dist.DistAttr(
-            mesh=mesh, sharding_specs=[None] * np_array.ndim
-        )
-        dist_t = dist.shard_tensor(np_array, dist_attr=dist_attr)
-
-        local_t.stop_gradient = False
-        dist_t.stop_gradient = False
-
-        return local_t, dist_t
-
-    def create_local_and_dist_tensor_list_pair(self, np_array_list):
-        assert isinstance(
-            np_array_list, list
-        ), "input should be list of np_array!"
-        local_t_list = []
-        dist_t_list = []
-        for np_array in np_array_list:
-            local_t, dist_t = self.create_local_and_dist_tensor_pair(np_array)
-            local_t_list.append(local_t)
-            dist_t_list.append(dist_t)
-        return local_t_list, dist_t_list
-
-    # input: phi::Tensor
-    # output: phi::Tensor
-    def test_relu_api_for_dist_tensor(self):
-        x = np.random.random(size=[4, 4]).astype("float32")
-        local_in, dist_in = self.create_local_and_dist_tensor_pair(x)
-        local_out = F.relu(local_in)
-        dist_out = F.relu(dist_in)
-        self.check_tensor_eq(local_out, dist_out)
-
-        # test backward
-        local_out.backward()
-        dist_out.backward()
-        self.check_tensor_eq(local_in.grad, dist_in.grad)
-
-    def test_matmul_api_for_dist_tensor(self):
-        x = np.random.random(size=[4, 4]).astype("float32")
-        y = np.random.random(size=[4, 4]).astype("float32")
-        local_x, dist_x = self.create_local_and_dist_tensor_pair(x)
-        local_y, dist_y = self.create_local_and_dist_tensor_pair(y)
-        local_out = paddle.matmul(local_x, local_y)
-        dist_out = paddle.matmul(dist_x, dist_y)
-        self.check_tensor_eq(local_out, dist_out)
-
-        # test backward
-        local_out.backward()
-        dist_out.backward()
-        self.check_tensor_eq(local_x.grad, dist_x.grad)
-        self.check_tensor_eq(local_y.grad, dist_y.grad)
 
 
 if __name__ == "__main__":

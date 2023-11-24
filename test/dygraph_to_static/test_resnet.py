@@ -19,7 +19,10 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_with_new_ir
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_pir_only,
+)
 from predictor_utils import PredictorTools
 
 import paddle
@@ -143,9 +146,7 @@ class ResNet(paddle.nn.Layer):
         supported_layers = [50, 101, 152]
         assert (
             layers in supported_layers
-        ), "supported layers are {} but input layer is {}".format(
-            supported_layers, layers
-        )
+        ), f"supported layers are {supported_layers} but input layer is {layers}"
 
         if layers == 50:
             depth = [3, 4, 6, 3]
@@ -254,97 +255,89 @@ class ResNetHelper:
         """
         Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
         """
-        with base.dygraph.guard(place):
-            np.random.seed(SEED)
-            paddle.seed(SEED)
-            paddle.framework.random._manual_program_seed(SEED)
+        np.random.seed(SEED)
+        paddle.seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
-            dataset = TransedFlowerDataSet(
-                reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
-                batch_size * (10 + 1),
-            )
-            data_loader = paddle.io.DataLoader(
-                dataset, batch_size=batch_size, drop_last=True
-            )
+        dataset = TransedFlowerDataSet(
+            reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
+            batch_size * (10 + 1),
+        )
+        data_loader = paddle.io.DataLoader(
+            dataset, batch_size=batch_size, drop_last=True
+        )
 
-            resnet = ResNet()
-            if to_static:
-                resnet = paddle.jit.to_static(
-                    resnet, build_strategy=build_strategy
+        resnet = ResNet()
+        if to_static:
+            resnet = paddle.jit.to_static(resnet, build_strategy=build_strategy)
+        optimizer = optimizer_setting(parameter_list=resnet.parameters())
+
+        for epoch in range(epoch_num):
+            total_loss = 0.0
+            total_acc1 = 0.0
+            total_acc5 = 0.0
+            total_sample = 0
+
+            for batch_id, data in enumerate(data_loader()):
+                start_time = time.time()
+                img, label = data
+
+                pred = resnet(img)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=pred,
+                    label=label,
+                    reduction='none',
+                    use_softmax=False,
                 )
-            optimizer = optimizer_setting(parameter_list=resnet.parameters())
+                avg_loss = paddle.mean(x=loss)
+                acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
+                acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)
 
-            for epoch in range(epoch_num):
-                total_loss = 0.0
-                total_acc1 = 0.0
-                total_acc5 = 0.0
-                total_sample = 0
+                avg_loss.backward()
+                optimizer.minimize(avg_loss)
+                resnet.clear_gradients()
 
-                for batch_id, data in enumerate(data_loader()):
-                    start_time = time.time()
-                    img, label = data
+                total_loss += avg_loss
+                total_acc1 += acc_top1
+                total_acc5 += acc_top5
+                total_sample += 1
 
-                    pred = resnet(img)
-                    loss = paddle.nn.functional.cross_entropy(
-                        input=pred,
-                        label=label,
-                        reduction='none',
-                        use_softmax=False,
-                    )
-                    avg_loss = paddle.mean(x=loss)
-                    acc_top1 = paddle.static.accuracy(
-                        input=pred, label=label, k=1
-                    )
-                    acc_top5 = paddle.static.accuracy(
-                        input=pred, label=label, k=5
-                    )
-
-                    avg_loss.backward()
-                    optimizer.minimize(avg_loss)
-                    resnet.clear_gradients()
-
-                    total_loss += avg_loss
-                    total_acc1 += acc_top1
-                    total_acc5 += acc_top5
-                    total_sample += 1
-
-                    end_time = time.time()
-                    if batch_id % 2 == 0:
-                        print(
-                            "epoch %d | batch step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, time %f"
-                            % (
-                                epoch,
-                                batch_id,
-                                total_loss.numpy() / total_sample,
-                                total_acc1.numpy() / total_sample,
-                                total_acc5.numpy() / total_sample,
-                                end_time - start_time,
-                            )
+                end_time = time.time()
+                if batch_id % 2 == 0:
+                    print(
+                        "epoch %d | batch step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, time %f"
+                        % (
+                            epoch,
+                            batch_id,
+                            total_loss.numpy() / total_sample,
+                            total_acc1.numpy() / total_sample,
+                            total_acc5.numpy() / total_sample,
+                            end_time - start_time,
                         )
-                    if batch_id == 10:
-                        if to_static:
-                            paddle.jit.save(resnet, self.model_save_prefix)
-                        else:
-                            paddle.save(
-                                resnet.state_dict(),
-                                self.dy_state_dict_save_path + '.pdparams',
-                            )
-                        break
+                    )
+                if batch_id == 10:
+                    if to_static:
+                        paddle.jit.save(resnet, self.model_save_prefix)
+                    else:
+                        paddle.save(
+                            resnet.state_dict(),
+                            self.dy_state_dict_save_path + '.pdparams',
+                        )
+                    break
 
         return total_loss.numpy()
 
     def predict_dygraph(self, data):
         paddle.jit.enable_to_static(False)
-        with base.dygraph.guard(place):
-            resnet = ResNet()
+        resnet = ResNet()
 
-            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
-            resnet.set_dict(model_dict)
-            resnet.eval()
+        model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
+        resnet.set_dict(model_dict)
+        resnet.eval()
 
-            pred_res = resnet(base.dygraph.to_variable(data))
+        pred_res = resnet(base.dygraph.to_variable(data))
 
-            return pred_res.numpy()
+        return pred_res.numpy()
 
     def predict_static(self, data):
         paddle.enable_static()
@@ -366,6 +359,7 @@ class ResNetHelper:
             fetch_list=fetch_targets,
         )
 
+        paddle.disable_static()
         return pred_res[0]
 
     def predict_dygraph_jit(self, data):
@@ -388,7 +382,7 @@ class ResNetHelper:
         return out
 
 
-class TestResnet(unittest.TestCase):
+class TestResnet(Dy2StTestBase):
     def setUp(self):
         self.resnet_helper = ResNetHelper()
 
@@ -412,30 +406,24 @@ class TestResnet(unittest.TestCase):
             dy_jit_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
-                dy_jit_pre, st_pre
-            ),
+            err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
         np.testing.assert_allclose(
             predictor_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='predictor_pre:\n {}\n, st_pre: \n{}.'.format(
-                predictor_pre, st_pre
-            ),
+            err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_with_new_ir
-    def test_resnet_new_ir(self):
+    @test_pir_only
+    def test_resnet_pir(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
         np.testing.assert_allclose(
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
     def test_resnet(self):
@@ -445,9 +433,7 @@ class TestResnet(unittest.TestCase):
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
         self.verify_predict()
 
@@ -460,9 +446,7 @@ class TestResnet(unittest.TestCase):
             static_loss,
             dygraph_loss,
             rtol=1e-02,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
     def test_in_static_mode_mkldnn(self):

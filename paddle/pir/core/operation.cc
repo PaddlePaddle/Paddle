@@ -31,13 +31,19 @@ using detail::OpOperandImpl;
 using detail::OpOutlineResultImpl;
 using detail::OpResultImpl;
 
-Operation *Operation::Create(const OperationArgument &argument) {
-  return Create(argument.inputs,
-                argument.attributes,
-                argument.output_types,
-                argument.info,
-                argument.num_regions,
-                argument.successors);
+Operation *Operation::Create(OperationArgument &&argument) {
+  Operation *op = Create(argument.inputs,
+                         argument.attributes,
+                         argument.output_types,
+                         argument.info,
+                         argument.regions.size(),
+                         argument.successors);
+  for (size_t i = 0; i < argument.regions.size(); ++i) {
+    if (argument.regions[i]) {
+      op->region(i).TakeBody(std::move(*argument.regions[i]));
+    }
+  }
+  return op;
 }
 
 // Allocate the required memory based on the size and number of inputs, outputs,
@@ -117,7 +123,12 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
 
   // 0. Verify
   if (op_info) {
-    op_info.Verify(op);
+    try {
+      op_info.VerifySig(op);
+    } catch (const pir::IrNotMetException &e) {
+      op->Destroy();
+      throw e;
+    }
   }
   return op;
 }
@@ -276,10 +287,31 @@ void Operation::SetParent(Block *parent, const Block::Iterator &position) {
   position_ = position;
 }
 
+void Operation::MoveTo(Block *block, Block::Iterator position) {
+  IR_ENFORCE(parent_, "Operation does not have parent");
+  Operation *op = parent_->Take(this);
+  block->insert(position, op);
+}
+
 std::string Operation::name() const {
   auto p_name = info_.name();
   return p_name ? p_name : "";
 }
+
+void Operation::Erase() {
+  if (auto *parent = GetParent())
+    parent->erase(*this);
+  else
+    Destroy();
+}
+
+bool Operation::use_empty() {
+  auto res = results();
+  return std::all_of(res.begin(), res.end(), [](OpResult result) {
+    return result.use_empty();
+  });
+}
+
 void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
   IR_ENFORCE(num_results_ == values.size(),
              "the num of result should be the same.");
@@ -322,17 +354,12 @@ int32_t Operation::ComputeOpOperandOffset(uint32_t index) const {
                               sizeof(Operation));
 }
 
-#define COMPONENT_IMPL(component_lower, componnent_upper)                     \
-  componnent_upper##Impl *Operation::component_lower##_impl(uint32_t index) { \
-    int32_t offset = Compute##componnent_upper##Offset(index);                \
-    return reinterpret_cast<componnent_upper##Impl *>(                        \
-        reinterpret_cast<char *>(this) + offset);                             \
-  }                                                                           \
-  const componnent_upper##Impl *Operation::component_lower##_impl(            \
-      uint32_t index) const {                                                 \
-    int32_t offset = Compute##componnent_upper##Offset(index);                \
-    return reinterpret_cast<const componnent_upper##Impl *>(                  \
-        reinterpret_cast<const char *>(this) + offset);                       \
+#define COMPONENT_IMPL(component_lower, componnent_upper)                   \
+  componnent_upper##Impl *Operation::component_lower##_impl(uint32_t index) \
+      const {                                                               \
+    int32_t offset = Compute##componnent_upper##Offset(index);              \
+    return reinterpret_cast<componnent_upper##Impl *>(                      \
+        reinterpret_cast<char *>(const_cast<Operation *>(this)) + offset);  \
   }
 
 COMPONENT_IMPL(op_result, OpResult)

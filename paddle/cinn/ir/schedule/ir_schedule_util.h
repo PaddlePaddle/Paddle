@@ -22,9 +22,9 @@
 
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_error.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/utils/random_engine.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -193,7 +193,7 @@ Tensor GetReadTensor(const Expr& block, int index);
 int GetLoopExtent(const Expr& loop);
 
 /**
- * \brief Given a vector of Exors, return whether they contain a var with
+ * \brief Given a vector of Exprs, return whether they contain a var with
  * specific name.
  * @param exprs The given vector of Exprs
  * @param var_name The name of specific var
@@ -240,6 +240,15 @@ std::vector<Expr> GetIfThenElseInRange(const Expr& top, const Expr& bottom);
 void ReplaceExpr(Expr* source,
                  const std::vector<Var>& replaced,
                  const std::vector<Expr>& candidates);
+
+/**
+ * Replace Vars in replaced to Exprs in candidates in source.
+ * @param source The Expr we will implement the change.
+ * @param replacing_map The one-to-one corresponded Vars -> Exprs to be
+ * replaced.
+ */
+void ReplaceExpr(Expr* source,
+                 const std::map<Var, Expr, CompVar>& replacing_map);
 
 /**
  * Validate the factors param of Split. We will check if factors are validate
@@ -427,9 +436,11 @@ IterRange RangeUnion(const IterRange& range1, const IterRange& range2);
  * \param loop The loop where we will insert the block under it
  * @param root The root of the whole AST.
  * \param required_blocks vector of ScheduleBlockRealize nodes that require the
- * block \param is_store_provided Whether Store nodes of the block provide the
+ * block
+ * \param is_store_provided Whether Store nodes of the block provide the
  * tensor, true means it is in compute_at case, otherwise false means in
- * reverse_compuate_at case \return Each index's range of block's tensor.
+ * reverse_compuate_at case
+ * \return Each index's range and can_keep_loop flag of block's tensor.
  * Indicating the buffer region being required.
  */
 std::vector<IterRange> CalculateRequiredRegions(

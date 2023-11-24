@@ -13,11 +13,19 @@
 # limitations under the License.
 
 from . import base
-from .base import *  # noqa: F403
+from .base import (
+    no_grad,
+    no_grad_,
+    grad,
+    guard,
+    enable_dygraph,
+    disable_dygraph,
+    enabled,
+    to_variable,
+)
 
 from . import tracer
-from .tracer import *  # noqa: F403
+from .tracer import Tracer
 
 
 __all__ = []
-__all__ += base.__all__

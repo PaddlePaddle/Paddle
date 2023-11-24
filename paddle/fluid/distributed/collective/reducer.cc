@@ -571,7 +571,7 @@ void EagerReducer::InitializeGroups(
       tensor_locator.inside_group_index = inside_group_index++;
       variable_locators_[var_index] = tensor_locator;
     }
-    group.tensor_indices_ = std::move(tensor_indices_);
+    group.tensor_indices_ = tensor_indices_;
     groups_.emplace_back(std::move(group));
 
     VLOG(3) << "The Group[" << group_index << "]:" << groups_.back();
@@ -757,9 +757,7 @@ void EagerReducer::AddDistHook(size_t var_index) {
     auto *autograd_meta = tensors_[var_index].get_autograd_meta();
     auto &grad_tensor = static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
 
-    if (!HasGrad(var_index)) {
-      group_tensor.ShareDataWith(phi::DenseTensor());
-    } else {
+    if (HasGrad(var_index)) {
       auto grad_dense_tensor =
           *(std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor.impl()));
       group_tensor.ShareDataWith(grad_dense_tensor);
@@ -987,6 +985,7 @@ void EagerReducer::ProcessUnusedDenseVars() {
   opts.reduce_op = ReduceOp::SUM;
   std::vector<Tensor> reduce_tensors = {global_used_vars_};
   std::vector<phi::DenseTensor> in_out;
+  in_out.reserve(reduce_tensors.size());
   for (auto &t : reduce_tensors) {
     in_out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
@@ -1083,6 +1082,7 @@ void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
   // all_reduce
   std::vector<Tensor> reduce_tensors = {group->dense_contents_};
   std::vector<phi::DenseTensor> in_out;
+  in_out.reserve(reduce_tensors.size());
   for (auto &t : reduce_tensors) {
     in_out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
@@ -1168,6 +1168,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
   opts.reduce_op = ReduceOp::SUM;
   std::vector<Tensor> reduce_tensors = {rows_num_tensor};
   std::vector<phi::DenseTensor> in_out;
+  in_out.reserve(reduce_tensors.size());
   for (auto &t : reduce_tensors) {
     in_out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
@@ -1216,6 +1217,8 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     std::vector<Tensor> dst_rows_tensors = {dst_rows_tensor};
     std::vector<phi::DenseTensor> in;
     std::vector<phi::DenseTensor> out;
+    in.reserve(src_rows_tensors.size());
+    out.reserve(dst_rows_tensors.size());
     for (auto &t : src_rows_tensors) {
       in.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
     }
@@ -1247,6 +1250,8 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     std::vector<Tensor> dst_value_tensors = {dst_value_tensor};
     std::vector<phi::DenseTensor> src_dense;
     std::vector<phi::DenseTensor> dst_dense;
+    src_dense.reserve(src_value_tensors.size());
+    dst_dense.reserve(dst_value_tensors.size());
     for (auto &t : src_value_tensors) {
       src_dense.push_back(
           *std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));

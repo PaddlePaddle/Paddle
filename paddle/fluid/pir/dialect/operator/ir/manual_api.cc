@@ -18,60 +18,53 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_op.h"
-
+#include "paddle/pir/core/parameter.h"
 namespace paddle {
 namespace dialect {
 
 pir::OpResult builtin_combine(const std::vector<pir::Value>& x) {
   auto combine_op =
-      APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(x);
+      ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(x);
   return combine_op.out();
 }
 
-std::vector<pir::OpResult> add_n_grad(std::vector<pir::Value> inputs,
-                                      pir::Value out_grad) {
+std::vector<pir::OpResult> add_n_grad(const std::vector<pir::Value>& inputs,
+                                      const pir::Value& out_grad) {
   std::vector<pir::OpResult> inputs_grad;
   for (size_t i = 0; i < inputs.size(); i++) {
     paddle::dialect::ScaleOp scale_op =
-        APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::ScaleOp>(
+        ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::ScaleOp>(
             out_grad, 1.0, 0.0, true);
     inputs_grad.push_back(scale_op.result(0));
   }
   return inputs_grad;
 }
 
-pir::OpResult zeros_like(pir::Value x,
-                         phi::DataType dtype,
+pir::OpResult zeros_like(const pir::Value& x,
+                         const phi::DataType dtype,
                          const Place& place) {
   return paddle::dialect::full_like(x, 0, dtype, place);
 }
 
-pir::OpResult get_parameter(const std::string& name,
-                            phi::DataType dtype,
-                            const std::vector<int64_t>& shape) {
-  phi::LoD lod;
-  size_t offset{0};
-  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
-      pir::IrContext::Instance(),
-      TransToIrDataType(dtype),
-      phi::DDim(shape.data(), shape.size()),
-      phi::DataLayout::UNDEFINED,
-      lod,
-      offset);
-  pir::GetParameterOp get_parameter_op =
-      APIBuilder::Instance().GetBuilder()->Build<pir::GetParameterOp>(
-          name, out_dense_tensor_type);
-  return get_parameter_op.result(0);
+pir::OpResult parameter(const std::string& name) {
+  pir::Parameter* param = ApiBuilder::Instance().GetParameter(name);
+  pir::ParameterOp parameter_op =
+      ApiBuilder::Instance().GetBuilder()->Build<pir::ParameterOp>(
+          name, param->type());
+  return parameter_op.result(0);
 }
 
-void set_parameter(pir::Value parameter, const std::string& name) {
-  APIBuilder::Instance().GetBuilder()->Build<pir::SetParameterOp>(parameter,
+void set_parameter(const pir::Value& parameter, const std::string& name) {
+  std::unique_ptr<pir::Parameter> param(
+      new pir::Parameter(nullptr, 0, parameter.type()));
+  ApiBuilder::Instance().SetParameter(name, std::move(param));
+  ApiBuilder::Instance().GetBuilder()->Build<pir::SetParameterOp>(parameter,
                                                                   name);
 }
 
-pir::OpResult embedding_grad(pir::Value x,
-                             pir::Value weight,
-                             pir::Value out_grad,
+pir::OpResult embedding_grad(const pir::Value& x,
+                             const pir::Value& weight,
+                             const pir::Value& out_grad,
                              int64_t padding_idx,
                              bool sparse) {
   if (weight.type().isa<paddle::dialect::DenseTensorType>()) {
@@ -88,23 +81,72 @@ pir::OpResult embedding_grad(pir::Value x,
   }
 }
 
-pir::OpResult split_with_num_grad(std::vector<pir::Value> out_grad, int axis) {
+pir::OpResult split_with_num_grad(const std::vector<pir::Value>& out_grad,
+                                  int axis) {
   auto out_grad_combine_op =
-      APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grad);
+      ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grad);
   paddle::dialect::SplitGradOp split_grad_op =
-      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
+      ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
           out_grad_combine_op.out(), axis);
   return split_grad_op.result(0);
 }
 
-pir::OpResult split_with_num_grad(std::vector<pir::Value> out_grad,
-                                  pir::Value axis) {
+pir::OpResult split_with_num_grad(const std::vector<pir::Value>& out_grad,
+                                  const pir::Value& axis) {
   auto out_grad_combine_op =
-      APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grad);
+      ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grad);
   paddle::dialect::SplitGradOp split_grad_op =
-      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
+      ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
           out_grad_combine_op.out(), axis);
   return split_grad_op.result(0);
 }
+
+pir::OpResult ones(const std::vector<int64_t>& shape,
+                   phi::DataType dtype,
+                   const Place& place) {
+  return paddle::dialect::full(shape, 1, dtype, place);
+}
+
+pir::OpResult ones_like(pir::Value x_,
+                        phi::DataType dtype,
+                        const Place& place) {
+  return paddle::dialect::full_like(x_, 1, dtype, place);
+}
+
+pir::OpResult zeros(const std::vector<int64_t>& shape,
+                    phi::DataType dtype,
+                    const Place& place) {
+  return paddle::dialect::full(shape, 0, dtype, place);
+}
+
+pir::OpResult create_array(phi::DataType dtype) {
+  auto create_array_op = ApiBuilder::Instance()
+                             .GetBuilder()
+                             ->Build<paddle::dialect::CreateArrayOp>(dtype);
+  return create_array_op.out();
+}
+
+pir::OpResult array_length(pir::Value x) {
+  auto array_length_op = ApiBuilder::Instance()
+                             .GetBuilder()
+                             ->Build<paddle::dialect::ArrayLengthOp>(x);
+  return array_length_op.out();
+}
+
+pir::OpResult array_read(pir::Value array, pir::Value i) {
+  auto array_read_op =
+      ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::ArrayReadOp>(
+          array, i);
+  return array_read_op.out();
+}
+
+pir::OpResult array_write_(pir::Value array, pir::Value x, pir::Value i) {
+  auto array_write_op =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::ArrayWrite_Op>(array, x, i);
+  return array_write_op.out();
+}
+
 }  // namespace dialect
 }  // namespace paddle

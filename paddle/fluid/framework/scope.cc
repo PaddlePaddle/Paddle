@@ -28,7 +28,7 @@ PHI_DECLARE_bool(eager_delete_scope);
 
 namespace paddle {
 namespace framework {
-
+Scope::Scope() {}
 Scope::~Scope() { DropKids(); }  // NOLINT
 
 Scope& Scope::NewScope() const {

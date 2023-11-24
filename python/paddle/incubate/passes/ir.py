@@ -287,9 +287,7 @@ class PassDesc:
                 ops = [o for o in pattern_ops if o._type == op]
                 if len(ops) <= index:
                     raise ValueError(
-                        "Index '{}' of operator '{}' is incorrect.".format(
-                            index, op
-                        )
+                        f"Index '{index}' of operator '{op}' is incorrect."
                     )
                 return PassDesc.AttrHelper(
                     ops[index], name, element_index=element_index
@@ -336,12 +334,7 @@ class PassDesc:
             attrs_str += ", ".join([f"{k}={v}" for k, v in self._attrs.items()])
             attrs_str += "}"
 
-            op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".format(
-                outputs=outputs_str,
-                op_type=self._type,
-                inputs=inputs_str,
-                attrs=attrs_str,
-            )
+            op_str = f"{outputs_str} = {self._type}(inputs={inputs_str}, {attrs_str})"
             return op_str
 
         def __init__(self, type=None):
@@ -400,9 +393,7 @@ class PassDesc:
             self._proto = OpProtoHolder.instance().op_proto_map.get(self._type)
             if self._proto is None:
                 raise AttributeError(
-                    "type object 'OpHelper' has no attribute '{}'".format(
-                        self._type
-                    )
+                    f"type object 'OpHelper' has no attribute '{self._type}'"
                 )
             self._index = len(block.ops)
             self._desc = block.desc.append_op()
@@ -429,9 +420,7 @@ class PassDesc:
             output = self._outputs.get(name)
             if output is None:
                 raise ValueError(
-                    "Operator '{}' does not have output named '{}'.".format(
-                        self._type, name
-                    )
+                    f"Operator '{self._type}' does not have output named '{name}'."
                 )
             return output
 
@@ -470,7 +459,7 @@ def RegisterPass(function=None, input_specs={}):
         .. code-block:: python
 
             >>> import paddle
-            >>> from paddle.base.ir import RegisterPass
+            >>> from paddle.incubate.passes.ir import RegisterPass
 
             >>> @RegisterPass
             >>> def multi_add_to_addn():

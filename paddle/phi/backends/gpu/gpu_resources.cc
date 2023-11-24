@@ -146,19 +146,40 @@ void InitGpuProperties(Place place,
   }
 #else
   size_t cudnn_dso_ver = dynload::cudnnGetVersion();
+  auto get_cudnn_major = [](auto version) {
+    if (version < 9000) {
+      return version / 1000;
+    }
+    // CUDNN changes the CUDNN_VERSION rules after 9.0
+    return version / 10000;
+  };
+  auto get_cudnn_minor = [](auto version) {
+    if (version < 9000) {
+      return (version % 1000) / 100;
+    }
+    // CUDNN changes the CUDNN_VERSION rules after 9.0
+    return (version % 10000) / 100;
+  };
+
   LOG_FIRST_N(WARNING, 1) << "device: " << static_cast<int>(place.device)
-                          << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."
-                          << (cudnn_dso_ver % 1000) / 100 << ".";
+                          << ", cuDNN Version: "
+                          << get_cudnn_major(cudnn_dso_ver) << "."
+                          << get_cudnn_minor(cudnn_dso_ver) << ".";
 
   // Check CUDA/CUDNN version compatiblity
   auto local_cuda_version =
       (*driver_version / 1000) * 10 + (*driver_version % 100) / 10;
   auto compile_cuda_version =
       (CUDA_VERSION / 1000) * 10 + (CUDA_VERSION % 100) / 10;
+
+  // Compute cuDNN major
+  auto local_cudnn_major = get_cudnn_major(cudnn_dso_ver);
+  size_t compile_cudnn_major = CUDNN_MAJOR;
+
 #if defined(__linux__)
   PADDLE_ENFORCE_EQ(
       (local_cuda_version / 10 < compile_cuda_version / 10) &&
-          (cudnn_dso_ver / 1000 < CUDNN_VERSION / 1000),
+          (local_cudnn_major < compile_cudnn_major),
       false,
       phi::errors::InvalidArgument(
           "The installed Paddle is compiled with CUDA%d/cuDNN%d,"
@@ -167,9 +188,9 @@ void InitGpuProperties(Place place,
           "Please recompile or reinstall Paddle with compatible CUDA/cuDNN "
           "version.",
           compile_cuda_version / 10,
-          CUDNN_VERSION / 1000,
+          compile_cudnn_major,
           local_cuda_version / 10,
-          cudnn_dso_ver / 1000));
+          local_cudnn_major));
 #endif
   if (local_cuda_version < compile_cuda_version) {
     LOG_FIRST_N(WARNING, 1)
@@ -269,15 +290,17 @@ void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreate(handle));
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetStream(*handle, stream));
 #else
-    auto local_cudnn_version = phi::dynload::cudnnGetVersion() / 100;
-    auto compile_cudnn_version = CUDNN_VERSION / 100;
-    if (local_cudnn_version < static_cast<size_t>(compile_cudnn_version)) {
+    auto version = phi::dynload::cudnnGetVersion();
+    auto local_cudnn_major =
+        (version < 9000) ? version / 1000 : version / 10000;
+    auto local_cudnn_minor =
+        (version < 9000) ? (version % 1000) / 100 : (version % 10000) / 100;
+    if (version < static_cast<size_t>(CUDNN_VERSION)) {
       LOG_FIRST_N(WARNING, 1)
           << "WARNING: device: " << place.device
-          << ". The installed Paddle is compiled with CUDNN "
-          << compile_cudnn_version / 10 << "." << compile_cudnn_version % 10
-          << ", but CUDNN version in your machine is "
-          << local_cudnn_version / 10 << "." << local_cudnn_version % 10
+          << ". The installed Paddle is compiled with CUDNN " << CUDNN_MAJOR
+          << "." << CUDNN_MINOR << ", but CUDNN version in your machine is "
+          << local_cudnn_major << "." << local_cudnn_minor
           << ", which may cause serious incompatible bug. "
           << "Please recompile or reinstall Paddle with compatible CUDNN "
              "version.";

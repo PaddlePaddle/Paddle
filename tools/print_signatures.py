@@ -54,9 +54,7 @@ def md5(doc):
     except UnicodeDecodeError as e:
         md5sum = None
         print(
-            "Error({}) occurred when `md5({})`, discard it.".format(
-                str(e), doc
-            ),
+            f"Error({str(e)}) occurred when `md5({doc})`, discard it.",
             file=sys.stderr,
         )
 
@@ -319,9 +317,7 @@ def check_public_api():
             cur_name = module + '.' + member_name
             instance = eval(cur_name)
             doc_md5 = md5(instance.__doc__)
-            member_dict[cur_name] = "({}, ('document', '{}'))".format(
-                cur_name, doc_md5
-            )
+            member_dict[cur_name] = f"({cur_name}, ('document', '{doc_md5}'))"
 
 
 def check_allmodule_callable():

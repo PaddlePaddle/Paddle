@@ -19,9 +19,9 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 
 namespace cinn {

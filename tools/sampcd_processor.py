@@ -102,7 +102,7 @@ def _patch_float_precision(digits):
     pattern_number = re.compile(
         r"""
         (?:
-            (?<=[\s*\[\(\'\"\:])                        # number starts
+            (?:(?<=[\s*\[\(\'\"\:])|^)                  # number starts
             (?:                                         # int/float or complex-real
                 (?:
                     [+-]?
@@ -220,10 +220,46 @@ class TimeoutDirective(Directive):
         return docstring, float(self._timeout)
 
 
+class SingleProcessDirective(Directive):
+    pattern = re.compile(
+        r"""
+        (?:
+            (?:
+                \s*\>{3}\s*\#\s*x?doctest\:\s*
+            )
+            (?P<op>[\+\-])
+            (?:
+                SOLO
+            )
+            (?:
+                (?P<reason>.*?)
+            )
+            \s
+        )
+        """,
+        re.X | re.S,
+    )
+
+    def parse_directive(self, docstring):
+        match_obj = self.pattern.search(docstring)
+        if match_obj is not None:
+            op_reason = match_obj.group('reason')
+            match_start = match_obj.start()
+            match_end = match_obj.end()
+
+            return (
+                (docstring[:match_start] + '\n' + docstring[match_end:]),
+                op_reason,
+            )
+
+        return docstring, None
+
+
 class BadStatement:
     msg: str = ''
 
     def check(self, docstring: str) -> bool:
+        """Return `True` for bad statement detected."""
         raise NotImplementedError
 
 
@@ -276,11 +312,42 @@ class SkipNoReason(BadStatement):
         return False
 
 
+class DeprecatedRequired(BadStatement):
+    msg = 'Please use `# doctest: +REQUIRES({})` instead of `# {} {}`.'
+
+    _pattern = re.compile(
+        r"""
+        \#
+        \s*
+        (?P<directive>require[sd]?\s*:)
+        (?P<env>.+)
+        """,
+        re.X,
+    )
+
+    def check(self, docstring):
+        for match_obj in self._pattern.finditer(docstring):
+            dep_directive = match_obj.group('directive').strip()
+            dep_env = match_obj.group('env').strip()
+
+            if dep_env:
+                env = 'env:' + ', env:'.join(
+                    [e.strip().upper() for e in dep_env.split(',') if e.strip()]
+                )
+                self.msg = self.__class__.msg.format(
+                    env, dep_directive, dep_env
+                )
+                return True
+
+        return False
+
+
 class Xdoctester(DocTester):
     """A Xdoctest doctester."""
 
     directives: typing.Dict[str, typing.Tuple[typing.Type[Directive], ...]] = {
-        'timeout': (TimeoutDirective, TEST_TIMEOUT)
+        'timeout': (TimeoutDirective, TEST_TIMEOUT),
+        'solo': (SingleProcessDirective,),
     }
 
     bad_statements: typing.Dict[
@@ -288,6 +355,7 @@ class Xdoctester(DocTester):
     ] = {
         'fluid': (Fluid,),
         'skip': (SkipNoReason,),
+        'require': (DeprecatedRequired,),
     }
 
     def __init__(
@@ -394,11 +462,12 @@ class Xdoctester(DocTester):
 
         self._test_capacity = test_capacity
 
-    def _check_bad_statements(self, docstring: str) -> typing.Set[str]:
+    def _check_bad_statements(self, docstring: str) -> typing.Set[BadStatement]:
         bad_results = set()
-        for name, statement_cls in self.bad_statements.items():
-            if statement_cls[0](*statement_cls[1:]).check(docstring):
-                bad_results.add(name)
+        for _, statement_cls in self.bad_statements.items():
+            bad_statement = statement_cls[0](*statement_cls[1:])
+            if bad_statement.check(docstring):
+                bad_results.add(bad_statement)
 
         return bad_results
 
@@ -407,10 +476,8 @@ class Xdoctester(DocTester):
         # check bad statements
         bad_results = self._check_bad_statements(docstring)
         if bad_results:
-            for name in bad_results:
-                logger.warning(
-                    "%s >>> %s", api_name, str(self.bad_statements[name][0].msg)
-                )
+            for bad_statement in bad_results:
+                logger.warning("%s >>> %s", api_name, bad_statement.msg)
 
             return [
                 TestResult(
@@ -469,6 +536,10 @@ class Xdoctester(DocTester):
     def _execute_xdoctest(
         self, examples_to_test, examples_nocode, **directives
     ):
+        # if use solo(single process), execute without multiprocessing/thread
+        if directives.get('solo') is not None:
+            return self._execute(examples_to_test, examples_nocode)
+
         if self._use_multiprocessing:
             _ctx = multiprocessing.get_context('spawn')
             result_queue = _ctx.Queue()

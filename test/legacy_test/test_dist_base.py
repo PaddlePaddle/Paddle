@@ -1135,9 +1135,8 @@ class TestDistBase(unittest.TestCase):
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             cmd += " -m coverage run --branch -p"
 
-        cmd += " {} --role trainer --update_method local --lr {:f}".format(
-            model,
-            self._lr,
+        cmd += (
+            f" {model} --role trainer --update_method local --lr {self._lr:f}"
         )
 
         if batch_size != DEFAULT_BATCH_SIZE:
@@ -1522,9 +1521,7 @@ class TestDistBase(unittest.TestCase):
             tr_env["GLOG_vmodule"] = 'gloo_context=4'
             tr_env["GLOG_v"] = '3'
             print(
-                "use_hallreduce:{} tr_cmd:{}, env: {}".format(
-                    self._use_hallreduce, tr_cmd, tr_env
-                )
+                f"use_hallreduce:{self._use_hallreduce} tr_cmd:{tr_cmd}, env: {tr_env}"
             )
 
             path = os.path.join(
@@ -1596,9 +1593,7 @@ class TestDistBase(unittest.TestCase):
             )
             tr_env.update(envs)
             print(
-                "use_hallreduce:{} tr_cmd:{}, env: {}".format(
-                    self._use_hallreduce, tr_cmd, tr_env
-                )
+                f"use_hallreduce:{self._use_hallreduce} tr_cmd:{tr_cmd}, env: {tr_env}"
             )
 
             path = os.path.join(
@@ -1697,6 +1692,7 @@ class TestDistBase(unittest.TestCase):
             "NCCL_P2P_DISABLE": "1",
             "NCCL_SHM_DISABLE": "1",
             "FLAGS_new_executor_static_build": "1",
+            "FLAGS_dynamic_static_unified_comm": "0",
         }
 
         if check_error_log:

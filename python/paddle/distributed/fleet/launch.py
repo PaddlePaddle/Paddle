@@ -274,9 +274,7 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
     node_rank = node_ips.index(node_ip)
 
     logger.debug(
-        "parsed from args: node_ips:{} node_ip:{} node_rank:{}".format(
-            node_ips, node_ip, node_rank
-        )
+        f"parsed from args: node_ips:{node_ips} node_ip:{node_ip} node_rank:{node_rank}"
     )
 
     free_ports = None

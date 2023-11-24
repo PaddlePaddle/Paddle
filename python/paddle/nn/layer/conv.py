@@ -759,7 +759,10 @@ class Conv2DTranspose(_ConvNd):
     * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
     * :math:`\sigma`: Activation function.
-    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+    * :math:`Out`: Output value, a 4-D ``Tensor`` with NCHW or NHWC format, the shape of :math:`Out` and :math:`X` may be different.
+
+    Note:
+     If output_size is None, :math:`H_{out}` = :math:`H^\prime_{out}` , :math:`W_{out}` = :math:`W^\prime_{out}`. Otherwise, the specified output_size_height (the height of the output feature layer) :math:`H_{out}` should be between :math:`H^\prime_{out}` and :math:`H^\prime_{out} + strides[0]` (excluding :math:`H^\prime_{out} + strides[0]` ).
 
     Parameters:
         in_channels(int): The number of channels in the input image.

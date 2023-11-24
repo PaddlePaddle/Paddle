@@ -33,14 +33,6 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
-PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sum, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sum_grad, CPU, ALL_LAYOUT);
-
 using namespace egr;            // NOLINT
 using namespace egr_utils_api;  // NOLINT
 
@@ -253,8 +245,3 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
     }
   }
 }
-
-USE_OP_ITSELF(scale);
-USE_OP_ITSELF(elementwise_add);
-USE_OP_ITSELF(matmul_v2);
-USE_OP_ITSELF(reduce_sum);

@@ -55,4 +55,9 @@ TEST(block_argument_test, base) {
   EXPECT_FALSE(argument);
   op_result = value.dyn_cast<pir::OpResult>();
   EXPECT_TRUE(op_result);
+  block->AddArguments({builder.bool_type()});
+  EXPECT_EQ(block->args_size(), 4u);
+
+  value = block->AddArgument(builder.bool_type());
+  EXPECT_EQ(value.type(), builder.bool_type());
 }

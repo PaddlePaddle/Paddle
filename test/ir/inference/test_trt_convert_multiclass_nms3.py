@@ -167,12 +167,10 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-2
@@ -180,7 +178,6 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
@@ -226,9 +223,7 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                 arr,
                 rtol=rtol,
                 atol=atol,
-                err_msg='Output has diff, Maximum absolute error: {}'.format(
-                    np.amax(diff)
-                ),
+                err_msg=f'Output has diff, Maximum absolute error: {np.amax(diff)}',
             )
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):

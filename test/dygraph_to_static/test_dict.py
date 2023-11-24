@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
 
 import paddle
 from paddle import base
@@ -116,7 +116,7 @@ def update_cache(cache):
     return cache
 
 
-class TestNetWithDict(unittest.TestCase):
+class TestNetWithDict(Dy2StTestBase):
     """
     TestCase for the transformation from control flow `if/else`
     dependent on tensor in Dygraph into Static `base.layers.cond`.
@@ -126,7 +126,7 @@ class TestNetWithDict(unittest.TestCase):
         self.x = np.random.random([10, 16]).astype('float32')
         self.batch_size = self.x.shape[0]
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def _run_static(self):
         return self.train(to_static=True)
 
@@ -169,7 +169,7 @@ def test_dic_pop_2(x):
     return out
 
 
-class TestDictPop(unittest.TestCase):
+class TestDictPop(Dy2StTestBase):
     def setUp(self):
         self.input = np.random.random(3).astype('int32')
         self.place = (
@@ -182,7 +182,7 @@ class TestDictPop(unittest.TestCase):
     def _set_test_func(self):
         self.dygraph_func = test_dic_pop
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def _run_static(self):
         return self._run(to_static=True)
 
@@ -203,9 +203,7 @@ class TestDictPop(unittest.TestCase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph result is {}\nstatic result is {}'.format(
-                dygraph_res, static_res
-            ),
+            err_msg=f'dygraph result is {dygraph_res}\nstatic result is {static_res}',
         )
 
 
@@ -247,13 +245,11 @@ class TestDictPop3(TestNetWithDict):
 
         self.assertTrue(
             (dygraph_result == static_result).all(),
-            msg="dygraph result: {}\nstatic result: {}".format(
-                dygraph_result, static_result
-            ),
+            msg=f"dygraph result: {dygraph_result}\nstatic result: {static_result}",
         )
 
 
-class TestDictCmpInFor(unittest.TestCase):
+class TestDictCmpInFor(Dy2StTestBase):
     def test_with_for(self):
         def func():
             pos = [1, 3]

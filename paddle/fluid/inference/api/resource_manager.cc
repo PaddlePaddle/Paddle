@@ -361,6 +361,11 @@ std::array<int, 3> GPUContextResource::GetGpuMaxGridDimSize() const {
 
 #endif
 
+ResourceManager& ResourceManager::Instance() {
+  static ResourceManager* resource_manager = new ResourceManager;
+  return *resource_manager;
+}
+
 void ResourceManager::InitCPUResource() {
   std::lock_guard<std::mutex> lock_gurad(cpu_mutex_);
   if (cpu_resource_ == nullptr) {

@@ -422,6 +422,12 @@ CINN_BUILD_STEP_KIND(SetBuffer)
     .SetApplyFn(
         APPLY_FUNC_UNIFORM(FREE_FUNCTION_CONVERTER(&IRSchedule::SetBuffer)));
 
+CINN_BUILD_STEP_KIND(AddUnitLoop)
+    .Inputs({"block"})
+    .SetApplyFn(APPLY_FUNC_UNIFORM(
+        FREE_FUNCTION_CONVERTER(static_cast<Expr (IRSchedule::*)(const Expr&)>(
+            &IRSchedule::AddUnitLoop))));
+
 CINN_BUILD_STEP_KIND(Reorder).Inputs({"loops"}).SetApplyFn(
     APPLY_FUNC_UNIFORM(FREE_FUNCTION_CONVERTER(
         static_cast<Expr (IRSchedule::*)(const std::vector<Expr>&)>(
@@ -473,6 +479,12 @@ CINN_BUILD_STEP_KIND(Rfactor)
     .Attrs({"rf_axis"})
     .SetApplyFn(
         APPLY_FUNC_UNIFORM(FREE_FUNCTION_CONVERTER(&IRSchedule::Rfactor)));
+
+CINN_BUILD_STEP_KIND(FactorizeReduction)
+    .Inputs({"rf_loop"})
+    .Attrs({"rf_axis"})
+    .SetApplyFn(APPLY_FUNC_UNIFORM(
+        FREE_FUNCTION_CONVERTER(&IRSchedule::FactorizeReduction)));
 
 CINN_BUILD_STEP_KIND(MergeExprs)
     .SetApplyFn(

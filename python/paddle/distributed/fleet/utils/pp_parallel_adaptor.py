@@ -544,9 +544,9 @@ def parse_args():
     if args.dst_pp is None:
         args.dst_pp = args.src_pp
 
-    assert args.src_mp == args.dst_mp, "src mp {} dst mp {}".format(
-        args.src_mp, args.dst_mp
-    )
+    assert (
+        args.src_mp == args.dst_mp
+    ), f"src mp {args.src_mp} dst mp {args.dst_mp}"
 
     assert args.method in [
         'peek_model',

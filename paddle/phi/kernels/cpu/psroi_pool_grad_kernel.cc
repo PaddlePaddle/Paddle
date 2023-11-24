@@ -43,7 +43,7 @@ void PsroiPoolGradKernel(const Context& ctx,
     DenseTensor rois_batch_id_list;
     rois_batch_id_list.Resize({rois_num_t});
     int* rois_batch_id_data = ctx.template Alloc<int>(&rois_batch_id_list);
-    int rois_batch_size;
+    int rois_batch_size = 0;
     if (rois_num.get_ptr()) {
       rois_batch_size = static_cast<int>(rois_num->numel());
       auto* rois_num_t_data = rois_num->data<int>();

@@ -27,5 +27,11 @@ std::vector<std::vector<paddle::Tensor>> add_n_vjp(
     const std::vector<paddle::Tensor>& x,
     const Tensor& out_grad,
     const std::vector<std::vector<bool>>& stop_gradients);
+
+std::vector<std::vector<paddle::Tensor>> reshape_vjp(
+    const Tensor& xshape,
+    const Tensor& out_grad,
+    const std::vector<std::vector<bool>>& stop_gradients);
+
 }  // namespace primitive
 }  // namespace paddle

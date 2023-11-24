@@ -23,11 +23,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
 
-extern std::string DataTypeToString(const proto::VarType::Type type);
+TEST_API std::string DataTypeToString(const proto::VarType::Type type);
 extern size_t SizeOfType(proto::VarType::Type type);
 
 template <typename T>

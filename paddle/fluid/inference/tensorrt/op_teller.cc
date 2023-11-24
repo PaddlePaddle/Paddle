@@ -86,7 +86,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
-                  bool with_dynamic_shape = false) override {
+                  bool with_dynamic_shape = false,
+                  bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
 
     std::unordered_set<std::string> control_set = {"conditional_block",
@@ -328,7 +329,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #else
           LOG(INFO)
               << "Trt below 8.6 not support conv2d's filter is a intermedoate "
-                 "tensor in conv2d op, please upgarde your TenroRT.";
+                 "tensor in conv2d op, please upgarde your TensorRT.";
           return false;
 #endif
         }
@@ -1753,6 +1754,64 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "bitwise_and") {
+#if IS_TRT_VERSION_LT(8400)
+      VLOG(3) << "bitwise_and is not supported when TensorRT < 8.4";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto y_var_name = desc.Input("Y")[0];
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* y_var_desc = block->FindVar(y_var_name);
+      auto x_dtype = x_var_desc->GetDataType();
+      auto y_dtype = y_var_desc->GetDataType();
+      if (x_dtype != framework::proto::VarType::BOOL ||
+          y_dtype != framework::proto::VarType::BOOL) {
+        VLOG(3) << "the bitwise_and only support input of BOOL.";
+        return false;
+      }
+    }
+
+    if (op_type == "bitwise_or") {
+#if IS_TRT_VERSION_LT(8400)
+      VLOG(3) << "bitwise_or is not supported when TensorRT < 8.4";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto y_var_name = desc.Input("Y")[0];
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* y_var_desc = block->FindVar(y_var_name);
+      auto x_dtype = x_var_desc->GetDataType();
+      auto y_dtype = y_var_desc->GetDataType();
+      if (x_dtype != framework::proto::VarType::BOOL ||
+          y_dtype != framework::proto::VarType::BOOL) {
+        VLOG(3) << "the bitwise_or only support input of BOOL.";
+        return false;
+      }
+    }
+
     if (op_type == "pad3d") {
 #if !IS_TRT_VERSION_GE(8200)
       VLOG(3) << "pad3d is not supported when TensorRT < 8.2";
@@ -2197,11 +2256,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         for (auto x : dim) {
           if (x == 0 || (x + input_shape.size() == 0)) return false;
         }
-
-      } else {
-        if (PADDLE_GET_CONST(bool, desc.GetAttr("reduce_all")) &&
-            !PADDLE_GET_CONST(bool, desc.GetAttr("keep_dim")))
-          return false;
       }
 
       auto dtype = x_var_desc->GetDataType();
@@ -2917,7 +2971,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "assign",
       "flip",
       "quantize_linear",
-      "dequantize_linear"};
+      "dequantize_linear",
+      "share_data",
+      "bitwise_and",
+      "bitwise_or"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3085,7 +3142,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "assign",
       "flip",
       "quantize_linear",
-      "dequantize_linear"};
+      "dequantize_linear",
+      "share_data",
+      "bitwise_and",
+      "bitwise_or"};
 };
 
 struct GenericPluginTeller : public Teller {
@@ -3093,7 +3153,8 @@ struct GenericPluginTeller : public Teller {
   GenericPluginTeller() = default;
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
-                  bool with_dynamic_shape = false) override {
+                  bool with_dynamic_shape = false,
+                  bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
     // only consider dynamic_shape mode
     if (!with_dynamic_shape) {
@@ -3135,7 +3196,8 @@ struct CustomPluginTeller : public Teller {
   CustomPluginTeller() = default;
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
-                  bool with_dynamic_shape = false) override {
+                  bool with_dynamic_shape = false,
+                  bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
     std::string expect_plugin_name;
 
@@ -3158,7 +3220,8 @@ struct CustomPluginTeller : public Teller {
 
 bool OpTeller::Tell(const framework::ir::Node* node,
                     bool use_no_calib_int8,
-                    bool with_dynamic_shape) {
+                    bool with_dynamic_shape,
+                    bool use_explicit_quantization) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();
   // do not support the op which is labeled the `skip_quant`
@@ -3168,17 +3231,26 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       desc.HasAttr("skip_quant"))
     return false;
   auto& default_teller = GetDefaultTeller();
-  if ((*default_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
+  if ((*default_teller)(desc,
+                        use_no_calib_int8,
+                        with_dynamic_shape,
+                        use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::Default);
     return true;
   }
   auto& generic_plugin_teller = GetGenericPluginTeller();
-  if ((*generic_plugin_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
+  if ((*generic_plugin_teller)(desc,
+                               use_no_calib_int8,
+                               with_dynamic_shape,
+                               use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::GenericPluginCreater);
     return true;
   }
   auto& custom_plugin_teller = GetCustomPluginTeller();
-  if ((*custom_plugin_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
+  if ((*custom_plugin_teller)(desc,
+                              use_no_calib_int8,
+                              with_dynamic_shape,
+                              use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::CustomPluginCreater);
     return true;
   }

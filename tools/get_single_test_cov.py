@@ -67,15 +67,9 @@ def getFNDAFile(rootPath, test):
 
 
 def analysisFNDAFile(rootPath, test):
-    related_ut_map_file = '{}/build/ut_map/{}/related_{}.txt'.format(
-        rootPath,
-        test,
-        test,
-    )
-    notrelated_ut_map_file = '{}/build/ut_map/{}/notrelated_{}.txt'.format(
-        rootPath,
-        test,
-        test,
+    related_ut_map_file = f'{rootPath}/build/ut_map/{test}/related_{test}.txt'
+    notrelated_ut_map_file = (
+        f'{rootPath}/build/ut_map/{test}/notrelated_{test}.txt'
     )
     os.system('touch %s' % related_ut_map_file)
     os.system('touch %s' % notrelated_ut_map_file)

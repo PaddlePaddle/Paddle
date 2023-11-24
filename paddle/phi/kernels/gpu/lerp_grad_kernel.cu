@@ -25,6 +25,7 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -248,9 +249,8 @@ void LerpGradKernel(const Context& ctx,
                               b_xgrad.dims(),
                               -1);
       if (!reduce_axis_x.empty()) {
-        phi::funcs::
-            ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-                ctx, b_xgrad, x_grad, kps::IdentityFunctor<T>(), reduce_axis_x);
+        phi::SumKernel<T, Context>(
+            ctx, b_xgrad, reduce_axis_x, b_xgrad.dtype(), false, x_grad);
       } else {
         x_grad->ShareDataWith(b_xgrad);
       }
@@ -262,9 +262,8 @@ void LerpGradKernel(const Context& ctx,
                               b_ygrad.dims(),
                               -1);
       if (!reduce_axis_y.empty()) {
-        phi::funcs::
-            ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-                ctx, b_ygrad, y_grad, kps::IdentityFunctor<T>(), reduce_axis_y);
+        phi::SumKernel<T, Context>(
+            ctx, b_ygrad, reduce_axis_y, b_ygrad.dtype(), false, y_grad);
       } else {
         y_grad->ShareDataWith(b_ygrad);
       }

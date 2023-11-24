@@ -124,9 +124,7 @@ def is_unsupported(func):
             if func is v:
                 translator_logger.log(
                     2,
-                    "Whitelist: {} is part of built-in module and does not have to be transformed.".format(
-                        func
-                    ),
+                    f"Whitelist: {func} is part of built-in module and does not have to be transformed.",
                 )
                 return True
 
@@ -142,9 +140,7 @@ def is_unsupported(func):
     if is_paddle_func(func):
         translator_logger.log(
             2,
-            "Whitelist: {} is part of Paddle module and does not have to be transformed.".format(
-                func
-            ),
+            f"Whitelist: {func} is part of Paddle module and does not have to be transformed.",
         )
         return True
 
@@ -162,7 +158,7 @@ def convert_call(func):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> import paddle
             >>> from paddle.jit.dy2static import Call
 
@@ -198,9 +194,7 @@ def convert_call(func):
     if options is not None and options.not_convert:
         translator_logger.log(
             2,
-            "{} is not converted when it is decorated by 'paddle.jit.not_to_static'.".format(
-                func
-            ),
+            f"{func} is not converted when it is decorated by 'paddle.jit.not_to_static'.",
         )
         return func
 
@@ -280,9 +274,7 @@ def convert_call(func):
                 # If func is not in __globals__, it does not need to be transformed
                 # because it has been transformed before.
                 translator_logger.warn(
-                    "{} doesn't have to be transformed to static function because it has been transformed before, it will be run as-is.".format(
-                        func
-                    )
+                    f"{func} doesn't have to be transformed to static function because it has been transformed before, it will be run as-is."
                 )
                 converted_call = func
         except AttributeError:
@@ -334,9 +326,7 @@ def convert_call(func):
 
     if converted_call is None:
         translator_logger.warn(
-            "{} doesn't have to be transformed to static function, and it will be run as-is.".format(
-                func
-            )
+            f"{func} doesn't have to be transformed to static function, and it will be run as-is."
         )
         return func
 

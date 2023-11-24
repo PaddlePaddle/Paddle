@@ -1300,16 +1300,12 @@ class ReduceLROnPlateau(Callback):
                 lr = self.model._optimizer._learning_rate
                 if not isinstance(lr, float):
                     warnings.warn(
-                        'Expected learning_rate be float, bug got {}.'.format(
-                            type(lr)
-                        )
+                        f'Expected learning_rate be float, bug got {type(lr)}.'
                     )
                     return
             except Exception as e:
                 warnings.warn(
-                    'There are something wrong when get learning_rate from optimizer: {}.'.format(
-                        e
-                    )
+                    f'There are something wrong when get learning_rate from optimizer: {e}.'
                 )
                 return
 

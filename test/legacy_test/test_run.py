@@ -89,9 +89,7 @@ class Collective_Test(unittest.TestCase):
 
     def test_collective_2(self):
         log_dir = tempfile.TemporaryDirectory()
-        args = "--job_id test2 --devices 0,1,2 --log_dir {}".format(
-            log_dir.name
-        )
+        args = f"--job_id test2 --devices 0,1,2 --log_dir {log_dir.name}"
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
@@ -166,11 +164,7 @@ class PS_Test(unittest.TestCase):
 
     def test_ps_2(self):
         log_dir = tempfile.TemporaryDirectory()
-        args = (
-            "--job_id ps2 --server_num=2 --trainer_num=2 --log_dir {}".format(
-                log_dir.name
-            )
-        )
+        args = f"--job_id ps2 --server_num=2 --trainer_num=2 --log_dir {log_dir.name}"
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
@@ -213,4 +207,5 @@ class PS_Test(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    os.environ["FLAGS_dynamic_static_unified_comm"] = "0"
     unittest.main()

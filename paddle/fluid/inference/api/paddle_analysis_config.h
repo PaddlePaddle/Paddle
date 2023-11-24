@@ -33,7 +33,6 @@
 #include <vector>
 
 #include "paddle_infer_declare.h"  // NOLINT
-
 /*! \file */
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
@@ -105,23 +104,17 @@ struct PD_INFER_DECL XpuConfig {
   void* stream{nullptr};
 
   // Conv autotune level. Default 0 means no autotune.
-  // Note: Paddle-Lite only.
   int conv_autotune_level{0};
   // Base conv autotune info is read from conv_autotune_file.
-  // Note: Paddle-Lite only.
   std::string conv_autotune_file;
   // Whether write new conv autotune info to conv_autotune_file.
-  // Note: Paddle-Lite only.
   bool conv_autotune_file_writeback{false};
 
   // Fc autotune level. The Optional values are 0-9. Default 0 means no
-  // autotune. Note: Paddle-Lite only.
   int fc_autotune_level{0};
   // Base fc autotune info is read from fc_autotune_file.
-  // Note: Paddle-Lite only.
   std::string fc_autotune_file;
   // Whether write new fc autotune info to fc_autotune_file.
-  // Note: Paddle-Lite only.
   bool fc_autotune_file_writeback{false};
 
   // Gemm compute precision. Optional values are 0(int8),1(int16),2(int31).
@@ -617,14 +610,14 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param x Whether to use the feed and fetch operators.
   ///
-  void SwitchUseFeedFetchOps(int x = true) { use_feed_fetch_ops_ = x; }
+  void SwitchUseFeedFetchOps(int x = true) {}
   ///
   /// \brief A boolean state telling whether to use the feed and fetch
   /// operators.
   ///
   /// \return bool Whether to use the feed and fetch operators.
   ///
-  bool use_feed_fetch_ops_enabled() const { return use_feed_fetch_ops_; }
+  bool use_feed_fetch_ops_enabled() const { return false; }
 
   ///
   /// \brief Turn on the feed and fetch data with low precision.
@@ -880,6 +873,10 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   int tensorrt_optimization_level() { return trt_optimization_level_; }
 
+  void EnableNewExecutor(bool x = true) { use_new_executor_ = x; }
+
+  bool new_executor_enabled() const { return use_new_executor_; }
+
   void EnableDlnne(
       int min_subgraph_size = 3,
       int max_batch_size = 1,
@@ -931,6 +928,13 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void EnableMKLDNN();
+
+  ///
+  /// \brief Turn down MKLDNN.
+  ///
+  ///
+  void DisableMKLDNN();
+
   ///
   /// \brief Set the cache capacity of different input shapes for MKLDNN.
   /// Default value 0 means not caching any shape.
@@ -1291,17 +1295,24 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // memory reuse related.
   bool enable_memory_optim_{false};
-  bool trt_engine_memory_sharing_{false};
+  bool trt_engine_memory_sharing_{true};
   int trt_engine_memory_sharing_identifier_{0};
 
+  std::unordered_set<std::string> trt_ops_run_float_;
+
+#ifdef PADDLE_WITH_DNNL
+  bool use_mkldnn_{true};
+#else
   bool use_mkldnn_{false};
+#endif
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
   bool model_from_memory_{false};
 
   bool enable_ir_optim_{true};
-  bool use_feed_fetch_ops_{true};
   bool ir_debug_{false};
+
+  bool use_new_executor_{false};
 
   bool specify_input_name_{false};
 

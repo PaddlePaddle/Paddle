@@ -362,10 +362,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._persistent_workers = loader._persistent_workers
         self._resume_worker_cnt = 0
 
-        assert (
-            self._num_workers > 0
-        ), "Multi-process DataLoader " "invalid num_workers({})".format(
-            self._num_workers
+        assert self._num_workers > 0, (
+            "Multi-process DataLoader "
+            f"invalid num_workers({self._num_workers})"
         )
 
         # subprocess wrokers' result queue
@@ -706,8 +705,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._exit_thread_unexpectedly()
                     pids = ', '.join(str(w.pid) for w in failed_workers)
                     raise RuntimeError(
-                        "DataLoader {} workers exit unexpectedly, "
-                        "pids: {}".format(len(failed_workers), pids)
+                        f"DataLoader {len(failed_workers)} workers exit unexpectedly, "
+                        f"pids: {pids}"
                     )
 
                 # get(timeout) will call _poll(timeout) and may raise IOError
@@ -717,8 +716,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
                 self._exit_thread_unexpectedly()
                 logging.error(
-                    "DataLoader reader thread failed({}) to read data from "
-                    "workers' result queue.".format(e)
+                    f"DataLoader reader thread failed({e}) to read data from "
+                    "workers' result queue."
                 )
                 raise e
             else:

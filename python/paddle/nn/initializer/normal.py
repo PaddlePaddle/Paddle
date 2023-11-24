@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 
 from ...base import core, framework, unique_name
 from ...base.data_feeder import check_variable_and_dtype
-from ...base.framework import _current_expected_place, in_dygraph_mode
+from ...base.framework import (
+    _current_expected_place,
+    in_dygraph_mode,
+    in_pir_mode,
+)
 from .initializer import Initializer
 
 __all__ = []
@@ -54,7 +58,7 @@ class NormalInitializer(Initializer):
         """
         block = self._check_block(block)
 
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
 
         check_variable_and_dtype(
             var,
@@ -78,7 +82,17 @@ class NormalInitializer(Initializer):
             )
             out_var._share_underline_tensor_to(var)
             return None
-
+        elif in_pir_mode():
+            place = _current_expected_place()
+            out_var = _C_ops.gaussian(
+                var.shape,
+                self._mean,
+                self._std_dev,
+                self._seed,
+                var.dtype,
+                place,
+            )
+            return out_var
         else:
             op = block.append_op(
                 type="gaussian_random",

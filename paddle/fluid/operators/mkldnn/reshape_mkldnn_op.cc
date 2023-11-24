@@ -105,8 +105,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
         InferShapeSqueezeOp(ctx, x_dims, out_dims);
         break;
       case ReshapeKernelOpName::flatten:
-        InferShapeFlattenOp(ctx, x_dims, out_dims);
-        break;
       case ReshapeKernelOpName::flatten2:
         InferShapeFlattenOp(ctx, x_dims, out_dims);
         break;
@@ -163,7 +161,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     x_dims = x->dims();
     auto axes = ctx.Attr<int>("axis");
     out_dims = phi::make_ddim(
-        FlattenKernel<phi::CPUContext, float>::GetOutputShape(axes, x_dims));
+        Flatten2Kernel<phi::CPUContext, float>::GetOutputShape(axes, x_dims));
   }
 
  protected:

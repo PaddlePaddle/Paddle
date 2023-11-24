@@ -18,10 +18,23 @@
 
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/utils.h"
+
+namespace paddle {
+namespace dialect {
+bool HaveOpToMultiKernelsMap(std::string op_name) {
+  return op_to_multi_kernels_map.find(op_name) != op_to_multi_kernels_map.end();
+}
+
+const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name) {
+  return op_to_multi_kernels_map[op_name];
+}
+}  // namespace dialect
+}  // namespace paddle
 
 namespace paddle {
 namespace translator {
@@ -46,7 +59,7 @@ pir::Operation* InsertSliceOperationForTarget(
                              op_info);
   block->push_back(operation);
   pir::OpResult target_op_result = operation->result(0);
-  (*param_map)[arg_name] = VariableDefiningInfo(target_op_result);
+  param_map->PushValue(arg_name, VariableDefiningInfo(target_op_result));
   return operation;
 }
 

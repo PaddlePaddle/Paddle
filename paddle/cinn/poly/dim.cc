@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/poly/dim.h"
 
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/utils/string.h"
 

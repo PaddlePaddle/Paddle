@@ -171,7 +171,8 @@ packages = ["cinn",
             "cinn.auto_schedule.cost_model",
             "cinn.ir",
             "cinn.libs",
-            "cinn.version"
+            "cinn.version",
+            "cinn.runtime"
             ]
 
 with redirect_stdout():

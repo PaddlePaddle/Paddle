@@ -30,7 +30,7 @@ def max_pool3d(
 ):
     """
     Implements sparse max pooling 3d operation.
-    See more details in :ref:`api_sparse_pooling_MaxPool3d` .
+    See more details in :ref:`api_paddle_sparse_nn_MaxPool3D` .
 
     Args:
         x (Tensor): The input SparseCooTensor of pooling operator, which is a 5-D tensor with

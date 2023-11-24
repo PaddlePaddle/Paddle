@@ -17,6 +17,8 @@ from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from .common import find_compatible_distributed_operator_impls
+from .common import find_distributed_operator_impl_container
+
 from . import dist_embedding
 from . import dist_matmul
 from . import dist_reshape
@@ -39,3 +41,4 @@ from . import dist_assign
 from . import dist_scale
 from . import dist_dropout
 from . import dist_flash_attn
+from . import dist_layer_norm

@@ -41,14 +41,14 @@ class AddOp : public pir::Op<AddOp> {
   static const char *name() { return "test.add"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
-  void Verify();
+  void VerifySig();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value l_operand,
                     pir::Value r_operand,
                     pir::Type sum_type);
 };
-void AddOp::Verify() {
+void AddOp::VerifySig() {
   if (num_operands() != 2) {
     throw("The size of inputs must be equal to 2.");
   }
@@ -105,15 +105,15 @@ TEST(program_test, program) {
   program.SetParameter("b", std::move(parameter_b));
   EXPECT_EQ(program.parameters_num() == 2, true);
 
-  // (4) Def a = GetParameterOp("a"), and create DenseTensor for a.
+  // (4) Def a = ParameterOp("a"), and create DenseTensor for a.
   pir::Builder builder(ctx, program.block());
-  auto op1 = builder.Build<pir::GetParameterOp>("a", dense_tensor_dtype);
+  auto op1 = builder.Build<pir::ParameterOp>("a", dense_tensor_dtype);
 
   EXPECT_EQ(&program, op1->GetParentProgram());
-  EXPECT_EQ(op1->result(0).type().dialect().id(), paddle_dialect->id());
+  EXPECT_EQ(op1->result_type(0).dialect().id(), paddle_dialect->id());
   using Interface = paddle::dialect::ParameterConvertInterface;
   Interface *a_interface =
-      op1->result(0).type().dialect().GetRegisteredInterface<Interface>();
+      op1->result_type(0).dialect().GetRegisteredInterface<Interface>();
   std::shared_ptr<paddle::framework::Variable> a_var =
       a_interface->ParameterToVariable(program.GetParameter("a"));
   const phi::DenseTensor &a_tensor = a_var->Get<phi::DenseTensor>();
@@ -127,12 +127,12 @@ TEST(program_test, program) {
     EXPECT_EQ(*(a_tensor.data<float>() + i), data_a[i]);
   }
 
-  // (5) Def b = GetParameterOp("b"), and create DenseTensor for b.
-  auto op2 = builder.Build<pir::GetParameterOp>("b", dense_tensor_dtype);
+  // (5) Def b = ParameterOp("b"), and create DenseTensor for b.
+  auto op2 = builder.Build<pir::ParameterOp>("b", dense_tensor_dtype);
 
-  EXPECT_EQ(op2->result(0).type().dialect().id(), paddle_dialect->id());
+  EXPECT_EQ(op2->result_type(0).dialect().id(), paddle_dialect->id());
   Interface *b_interface =
-      op2->result(0).type().dialect().GetRegisteredInterface<Interface>();
+      op2->result_type(0).dialect().GetRegisteredInterface<Interface>();
   std::shared_ptr<paddle::framework::Variable> b_var =
       b_interface->ParameterToVariable(program.GetParameter("b"));
   const phi::DenseTensor &b_tensor = b_var->Get<phi::DenseTensor>();
@@ -217,8 +217,8 @@ TEST(program_test, slice_combine_test) {
   // (3) Create a float32 DenseTensor Parameter and save into Program
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
 
-  // (4) Def a = GetParameterOp("a")
-  std::string op1_name = pir::GetParameterOp::name();
+  // (4) Def a = ParameterOp("a")
+  std::string op1_name = pir::ParameterOp::name();
   pir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
   std::unordered_map<std::string, pir::Attribute> op1_attribute{
       {"parameter_name", pir::StrAttribute::get(ctx, "a")}};
@@ -269,9 +269,9 @@ TEST(program_test, builder) {
 
   paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.5, phi::DataType::FLOAT32, phi::CPUPlace());
-  pir::Type full_op_output = full_op->result(0).type();
+  pir::Type full_op_output = full_op->result_type(0);
   EXPECT_EQ(program.block()->size(), 1u);
-  EXPECT_EQ(program.block()->back(), full_op.operation());
+  EXPECT_EQ(program.block()->back(), *full_op.operation());
   EXPECT_EQ(full_op.num_operands(), 0u);
   EXPECT_EQ(full_op.num_results(), 1u);
   EXPECT_EQ(full_op.attributes().size(), 5u);

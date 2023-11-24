@@ -242,7 +242,7 @@ uint64_t Generator::GetCurrentSeed() {
 
 uint64_t Generator::Seed() {
   std::lock_guard<std::mutex> lock(this->mu_);
-  uint64_t seed;
+  uint64_t seed = 0;
   std::random_device de;
   seed = ((((uint64_t)de()) << 32) + de()) & 0x1FFFFFFFFFFFFF;
   this->state_.current_seed = seed;
@@ -281,6 +281,8 @@ std::pair<uint64_t, uint64_t> Generator::IncrementOffset(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::lock_guard<std::mutex> lock(this->mu_);
   uint64_t cur_offset = this->state_.thread_offset;
+  VLOG(10) << "cur_offset = " << cur_offset
+           << " increment_offset = " << increment_offset;
   this->state_.thread_offset += increment_offset;
   return std::make_pair(this->state_.current_seed, cur_offset);
 #else

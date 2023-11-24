@@ -82,7 +82,7 @@ ir::LoweredFunc LowerToAst(const std::string &name,
 std::vector<ir::LoweredFunc> LowerToAstVec(
     const std::string &name,
     const std::vector<Tensor> &tensor_args,
-    std::vector<ast_gen_ius::TensorGroup *> tensor_groups,
+    ast_gen_ius::TensorGroup *tensor_group,
     const Target &target = common::DefaultHostTarget());
 
 std::vector<ir::Buffer> GetTempBuffers(

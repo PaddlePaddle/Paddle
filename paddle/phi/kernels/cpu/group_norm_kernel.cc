@@ -91,7 +91,7 @@ void GroupNormKernel(const Context& dev_ctx,
 
       if (data_layout == DataLayout::kNCHW) {
         for (int cid = 0; cid < number; cid++) {
-          int imid;
+          int imid = 0;
           for (imid = 0; imid < imsize - (imsize % M);
                imid += M, iter_x_data += M) {
             // TODO(gaoxiang): Because AVX/AVX2/AVX512 can not directly used
@@ -128,7 +128,7 @@ void GroupNormKernel(const Context& dev_ctx,
       } else {
         for (int cid = 0; cid < number; cid++) {
           iter_x_data = tmp_x + cid;
-          int imid;
+          int imid = 0;
           for (imid = 0; imid < imsize - (imsize % M);
                imid += M, iter_x_data += M * C) {
             // TODO(gaoxiang): Because AVX/AVX2/AVX512 can not directly used

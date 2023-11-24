@@ -122,7 +122,7 @@ std::vector<phi::DenseTensor> FilterStraddleAnchor(
   int anchor_num = static_cast<int>(anchor->dims()[0]);
   auto* anchor_data = anchor->data<T>();
   if (rpn_straddle_thresh >= 0) {
-    int index;
+    int index = 0;
     for (int i = 0; i < anchor_num; ++i) {
       index = i * 4;
       if ((anchor_data[index + 0] >= -rpn_straddle_thresh) &&

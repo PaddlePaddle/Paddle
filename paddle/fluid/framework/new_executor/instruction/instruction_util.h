@@ -28,13 +28,10 @@
 namespace paddle {
 namespace framework {
 
-std::vector<int> GetValueIds(
-    pir::Value value,
-    Scope* inner_scope,
-    const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
-    const std::map<std::string, int>& var_name_2_id,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name);
+class ValueExecutionInfo;
+
+std::vector<int> GetValueIds(pir::Value value,
+                             const ValueExecutionInfo& value_exec_info);
 
 platform::DeviceContext* ParseDeviceContext(
     pir::Operation* op,
@@ -46,5 +43,17 @@ platform::DeviceContext* ParseDeviceContext(
 OpFuncType AnalyseOpFuncType(::pir::Operation* op,
                              const platform::Place& place);
 
+std::vector<pir::Value> GetYiedOpInputs(pir::Block* block);
+
+void GetInputIds(pir::Operation* op,
+                 const ValueExecutionInfo& value_exec_info,
+                 std::unordered_map<pir::Value, std::vector<int>>* input_ids);
+
+std::vector<pir::Value> GetOutsideOpInputs(
+    pir::Block* block,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* input_ids);
+
+bool GetCondData(const phi::DenseTensor& cond);
 }  // namespace framework
 }  // namespace paddle

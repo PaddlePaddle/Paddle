@@ -16,53 +16,67 @@
 
 #include <cstddef>
 #include <list>
+#include <memory>
 
 #include "paddle/pir/core/dll_decl.h"
+#include "paddle/pir/core/iterator.h"
 
 namespace pir {
 
 class Block;
 class Operation;
 class IrContext;
+class Program;
 
 class IR_API Region {
  public:
-  using iterator = std::list<Block *>::iterator;
-  using reverse_iterator = std::list<Block *>::reverse_iterator;
-  using const_iterator = std::list<Block *>::const_iterator;
+  using Element = Block;
+  using Iterator = PointerListIterator<Block>;
+  using ConstIterator = PointerListConstIterator<Block>;
+  using ReverseIterator = std::reverse_iterator<Iterator>;
+  using ConstReverseIterator = std::reverse_iterator<ConstIterator>;
+
+  explicit Region(Operation *op = nullptr) : parent_(op) {}
+  Region(const Region &) = delete;
+  Region &operator=(const Region &) = delete;
   ~Region();
   bool empty() const { return blocks_.empty(); }
   size_t size() const { return blocks_.size(); }
 
-  iterator begin() { return blocks_.begin(); }
-  iterator end() { return blocks_.end(); }
-  const_iterator begin() const { return blocks_.begin(); }
-  const_iterator end() const { return blocks_.end(); }
-  reverse_iterator rbegin() { return blocks_.rbegin(); }
-  reverse_iterator rend() { return blocks_.rend(); }
+  Iterator begin() { return blocks_.begin(); }
+  Iterator end() { return blocks_.end(); }
+  ConstIterator begin() const { return blocks_.begin(); }
+  ConstIterator end() const { return blocks_.end(); }
+  ReverseIterator rbegin() { return blocks_.rbegin(); }
+  ReverseIterator rend() { return blocks_.rend(); }
+  ConstReverseIterator rbegin() const { return blocks_.rbegin(); }
+  ConstReverseIterator rend() const { return blocks_.rend(); }
 
-  Block *back() const { return blocks_.back(); }
-  Block *front() const { return blocks_.front(); }
+  Block &front() { return *blocks_.front(); }
+  Block &back() { return *blocks_.back(); }
+
+  const Block &front() const { return *blocks_.front(); }
+  const Block &back() const { return *blocks_.back(); }
+
   void push_back(Block *block);
-  void emplace_back();
+  Block *emplace_back();
   void push_front(Block *block);
-  iterator insert(const_iterator position, Block *block);
-  iterator erase(const_iterator position);
+  Iterator insert(ConstIterator position, Block *block);
+  Iterator erase(ConstIterator position);
   void clear();
 
+  // take the last block of region.
+  // if region is empty, return nullptr;
+  std::unique_ptr<Block> TakeBack();
   void TakeBody(Region &&other);
 
   Operation *GetParent() const { return parent_; }
+  void set_parent(Operation *parent) { parent_ = parent; }
+  // return the program which contains this region.
+  // if region is not in a program, return nullptr.
+  Program *parent_program() const;
 
   IrContext *ir_context() const;
-
- private:
-  // region only support construncted by operation.
-  Region() = delete;
-  Region(Region &) = delete;
-  Region &operator=(const Region &) = delete;
-  friend class Operation;
-  explicit Region(Operation *op) : parent_(op) {}
 
  private:
   Operation *parent_{nullptr};  // not owned

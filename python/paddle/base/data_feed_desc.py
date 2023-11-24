@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.base.proto import data_feed_pb2
 from google.protobuf import text_format
 
-__all__ = ['DataFeedDesc']
+from paddle.base.proto import data_feed_pb2
+
+__all__ = []
 
 
 class DataFeedDesc:
@@ -92,7 +93,7 @@ class DataFeedDesc:
 
     def set_batch_size(self, batch_size):
         r"""
-        Set :attr:`batch_size` in :ref:`api_base_DataFeedDesc` . :attr:`batch_size` can be changed during training.
+        Set :attr:`batch_size` in ``paddle.base.DataFeedDesc`` . :attr:`batch_size` can be changed during training.
 
         Examples:
             .. code-block:: python

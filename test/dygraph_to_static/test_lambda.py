@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase
 
 import paddle
 import paddle.nn.functional as F
@@ -79,7 +80,7 @@ def call_lambda_with_ifExpr2(x):
     return out
 
 
-class TestLambda(unittest.TestCase):
+class TestLambda(Dy2StTestBase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.x = np.array([1, 3]).astype('float32')

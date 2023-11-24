@@ -480,9 +480,7 @@ class Tensor:
         attrs += f"fetch_var_name: \"{str(self.fetch_var_name)}\" "
         attrs += f"startup_program_id: {str(self.startup_program_id)} "
         attrs += f"main_program_id: {str(self.main_program_id)} "
-        attrs += "tensor_table_class: \"{}\" ".format(
-            str(self.tensor_table_class)
-        )
+        attrs += f"tensor_table_class: \"{str(self.tensor_table_class)}\" "
         attrs += "\n"
         return program_str.format(
             conv_indent(indent), attrs, conv_indent(indent)
@@ -898,9 +896,7 @@ class TheOnePSRuntime(RuntimeBase):
                 heter_device_type = self.role_maker._heter_device_type().upper()
                 if heter_device_type not in ["GPU", "XPU", "CPU"]:
                     raise ValueError(
-                        "Heter Worker Not Support Device {}".format(
-                            heter_device_type
-                        )
+                        f"Heter Worker Not Support Device {heter_device_type}"
                     )
                 if heter_device_type == "GPU":
                     executor = Executor(

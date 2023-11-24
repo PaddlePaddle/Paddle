@@ -17,8 +17,7 @@ from paddle.base import core
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import deprecated
 
-from .streams import Stream  # noqa: F401
-from .streams import Event  # noqa: F401
+from .streams import Stream, Event
 
 __all__ = [
     'Stream',
@@ -470,15 +469,15 @@ def get_device_properties(device=None):
                 device_id = int(device[4:])
             else:
                 raise ValueError(
-                    "The current string {} is not expected. Because paddle.device."
+                    f"The current string {device} is not expected. Because paddle.device."
                     "cuda.get_device_properties only support string which is like 'gpu:x'. "
-                    "Please input appropriate string again!".format(device)
+                    "Please input appropriate string again!"
                 )
         else:
             raise ValueError(
-                "The device type {} is not expected. Because paddle.device.cuda."
+                f"The device type {device} is not expected. Because paddle.device.cuda."
                 "get_device_properties only support int, str or paddle.CUDAPlace. "
-                "Please input appropriate device again!".format(device)
+                "Please input appropriate device again!"
             )
     else:
         device_id = -1

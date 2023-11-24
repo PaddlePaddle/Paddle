@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .version import full_version as __version__
+from .runtime.cinn_jit import to_cinn_llir
 import os
 
 cinndir = os.path.dirname(os.path.abspath(__file__))
@@ -189,4 +191,3 @@ from .lang import (  # noqa: F401
     reduce_mul,
     reduce_sum,
 )
-from .version import full_version as __version__

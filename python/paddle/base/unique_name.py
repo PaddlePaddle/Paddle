@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import collections
+
 from .wrapped_decorator import signature_safe_contextmanager
 
-__all__ = ['generate', 'switch', 'guard']
+__all__ = []
 
 
 class UniqueNameGenerator:
@@ -121,7 +122,7 @@ def generate(key):
 # NOTE(zhiqiu): use c++ unique_name_generator in dygraph mode,
 # in order to keep name consistency.
 def generate_with_ignorable_key(key):
-    from .framework import in_dygraph_mode, _dygraph_tracer
+    from .framework import _dygraph_tracer, in_dygraph_mode
 
     if in_dygraph_mode():
         return _dygraph_tracer()._generate_unique_name()

@@ -52,13 +52,7 @@ void ClipTiledBoxes(const phi::CPUContext& ctx,
   T im_h =
       is_scale ? round(im_info_data[0] / im_info_data[2]) : im_info_data[0];
   for (int64_t i = 0; i < input_boxes.numel(); ++i) {
-    if (i % 4 == 0) {
-      out_data[i] =
-          std::max(std::min(input_boxes_data[i], im_w - offset), zero);
-    } else if (i % 4 == 1) {
-      out_data[i] =
-          std::max(std::min(input_boxes_data[i], im_h - offset), zero);
-    } else if (i % 4 == 2) {
+    if ((i % 4 == 0) || (i % 4 == 2)) {
       out_data[i] =
           std::max(std::min(input_boxes_data[i], im_w - offset), zero);
     } else {

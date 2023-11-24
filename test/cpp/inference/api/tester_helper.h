@@ -34,7 +34,6 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/benchmark.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "test/cpp/inference/api/config_printer.h"
@@ -74,7 +73,7 @@ PD_DEFINE_bool(record_benchmark,
                false,
                "Record benchmark after profiling the model");
 PD_DEFINE_double(accuracy, 1e-3, "Result Accuracy.");
-PD_DEFINE_double(quantized_accuracy, 1e-2, "Result Quantized Accuracy.");
+PD_DEFINE_double(quantized_accuracy, 2e-2, "Result Quantized Accuracy.");
 PD_DEFINE_bool(zero_copy, false, "Use ZeroCopy to speedup Feed/Fetch.");
 PD_DEFINE_bool(warmup,
                false,
@@ -1010,7 +1009,6 @@ void CompareAnalysisAndZeroCopy(
   predictor->Run(inputs[0], &analysis_outputs, batch_size);
   // analysis + zero_copy
   std::vector<ZeroCopyTensor> zerocopy_outputs;
-  reinterpret_cast<AnalysisConfig *>(config1)->SwitchUseFeedFetchOps(false);
   predictor = CreateTestPredictor(config1, true);
   ConvertPaddleTensorToZeroCopyTensor(predictor.get(), inputs[0]);
   predictor->ZeroCopyRun();

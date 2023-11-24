@@ -41,7 +41,11 @@ __global__ void IndexPutCudaKernel(const T* x,
     return;
   }
   int64_t offset = 0;
-  for (int i = 0; i < rank; ++i) {
+#pragma unroll
+  for (int i = 0; i < DDim::kMaxRank; ++i) {
+    if (i >= rank) {
+      break;
+    }
     cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
     if (cur_ix < 0) {
       cur_ix += shape[i];
@@ -175,4 +179,10 @@ PD_REGISTER_KERNEL(index_put,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {}
+                   int16_t,
+                   uint8_t,
+                   int8_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

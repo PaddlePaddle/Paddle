@@ -29,6 +29,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
@@ -36,6 +37,8 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/pir/core/op_result.h"
 #include "paddle/utils/pybind.h"
@@ -50,6 +53,18 @@ class Scope;
 namespace pybind {
 
 namespace py = ::pybind11;
+
+template <typename T>
+static T PyObjectCast(PyObject* obj) {
+  try {
+    return py::cast<T>(py::handle(obj));
+  } catch (py::cast_error&) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Python object is not type of %s, the real type is %s",
+        typeid(T).name(),
+        obj->ob_type->tp_name));
+  }
+}
 
 int TensorDtype2NumpyDtype(phi::DataType dtype);
 
@@ -66,8 +81,10 @@ float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos);
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos);
 std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
                                                        ssize_t arg_pos);
-std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(PyObject* obj,
-                                                     ssize_t arg_pos);
+std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(
+    PyObject* obj,
+    ssize_t arg_pos,
+    const phi::distributed::ProcessMesh* mesh = nullptr);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
 phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
@@ -76,12 +93,17 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
 std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos);
 std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos);
 std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos);
-pir::OpResult CastPyArg2OpResult(PyObject* obj,
-                                 const std::string& op_type,
-                                 size_t arg_pos);
+pir::Value CastPyArg2Value(PyObject* obj,
+                           const std::string& op_type,
+                           size_t arg_pos);
+paddle::optional<pir::Value> CastPyArg2OptionalValue(PyObject* obj,
+                                                     const std::string& op_type,
+                                                     size_t arg_pos);
 std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
                                                 const std::string& op_type,
                                                 size_t arg_pos);
+paddle::optional<std::vector<pir::Value>> CastPyArg2OptionalVectorOfValue(
+    PyObject* obj, const std::string& op_type, size_t arg_pos);
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
@@ -121,6 +143,8 @@ PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const phi::DenseTensor* value);
 PyObject* ToPyObject(const phi::distributed::DistTensor* value);
 PyObject* ToPyObject(const phi::distributed::TensorDistAttr* value);
+PyObject* ToPyObject(const phi::distributed::ProcessMesh* value);
+PyObject* ToPyObject(const phi::distributed::Placements& value);
 PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
@@ -313,12 +337,19 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
 phi::distributed::TensorDistAttr CastPyArg2DistAttr(PyObject* obj,
                                                     ssize_t arg_pos);
 
+phi::distributed::ProcessMesh CastPyArg2ProcessMesh(PyObject* obj,
+                                                    ssize_t arg_pos);
+
+phi::distributed::Placements CastPyArg2VectorOfPlacement(PyObject* obj,
+                                                         ssize_t arg_pos);
+
 paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     const std::string& op_type,
     const std::string& arg_name,
     PyObject* args,
     ssize_t arg_idx,
-    bool dispensable = false);
+    bool dispensable = false,
+    const phi::distributed::ProcessMesh* mesh = nullptr);
 
 paddle::Tensor& GetTensorFromArgs(const std::string& op_type,
                                   const std::string& arg_name,
@@ -331,13 +362,16 @@ paddle::optional<std::vector<paddle::Tensor>> GetOptionalTensorListFromArgs(
     const std::string& arg_name,
     PyObject* args,
     ssize_t arg_idx,
-    bool dispensable = false);
+    bool dispensable = false,
+    const phi::distributed::ProcessMesh* mesh = nullptr);
 
-std::vector<paddle::Tensor> GetTensorListFromArgs(const std::string& op_type,
-                                                  const std::string& arg_name,
-                                                  PyObject* args,
-                                                  ssize_t arg_idx,
-                                                  bool dispensable = false);
+std::vector<paddle::Tensor> GetTensorListFromArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable = false,
+    const phi::distributed::ProcessMesh* mesh = nullptr);
 
 paddle::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
                                      const std::string& arg_name,
@@ -350,13 +384,18 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
     const std::string& arg_name,
     PyObject* args,
     ssize_t arg_idx,
-    bool dispensable = false);
+    bool dispensable = false,
+    const phi::distributed::ProcessMesh* mesh = nullptr);
 
 std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj);
 
 std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
                                                       bool allow_none = false);
 paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj);
+
+PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args);
+
+PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args);
 
 // end of Slice related methods
 
@@ -378,6 +417,74 @@ class eager_gil_scoped_release {
  private:
   PyThreadState* tstate{nullptr};
 };
+
+/* ------------------ for auto parallel ----------------------- */
+using paddle::experimental::detail::ArgsIterator;
+
+struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
+  bool result = false;
+  const phi::distributed::ProcessMesh** mesh = nullptr;
+
+  explicit DistTensorTypeParser(const phi::distributed::ProcessMesh** m)
+      : mesh(m) {}
+
+  bool short_circuit() { return result; }
+
+  void operator()(const Tensor& x);
+  void operator()(const paddle::optional<Tensor>& x);
+  void operator()(const std::vector<Tensor>& x);
+  void operator()(const paddle::optional<std::vector<Tensor>>& x);
+
+  // skip other type args, these args don't used in kernel selection
+  template <typename T>
+  void operator()(const T& x) {
+    // do nothing
+  }
+};
+
+struct DistTensorConverter : ArgsIterator<DistTensorConverter> {
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+
+  explicit DistTensorConverter(const phi::distributed::ProcessMesh* m) {
+    PADDLE_ENFORCE_NE(
+        m,
+        nullptr,
+        platform::errors::InvalidArgument(
+            "Input mesh of DistTensorConverter() shouldn't be nullptr."));
+    mesh = m;
+  }
+
+  void convert(Tensor* x);
+  void operator()(Tensor* x);
+  void operator()(paddle::optional<Tensor>* x);
+  void operator()(std::vector<Tensor>* x);
+  void operator()(paddle::optional<std::vector<Tensor>>* x);
+
+  // skip other type args, these args don't used in kernel selection
+  template <typename T>
+  void operator()(const T& x) {
+    // do nothing
+  }
+};
+
+template <typename... Args>
+bool InputsContainDistTensor(const phi::distributed::ProcessMesh** mesh,
+                             const Args&... args) {
+  return DistTensorTypeParser(mesh).apply(args...).result;
+}
+
+template <typename... Args>
+void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
+                                  Args&... args) {
+  PADDLE_ENFORCE_NE(
+      mesh,
+      nullptr,
+      platform::errors::InvalidArgument("Input mesh should not be nullptr."));
+  DistTensorConverter(mesh).apply(&args...);
+}
+
+void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh);
+void BindEagerUtils(PyObject* module);
 
 }  // namespace pybind
 }  // namespace paddle

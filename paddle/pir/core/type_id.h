@@ -53,9 +53,8 @@ class TypeId {
   ///
   /// \brief Support PointerLikeTypeTraits.
   ///
-  operator const void *() const { return storage_; }
-  void *AsOpaquePointer() const { return storage_; }
-  static TypeId RecoverFromOpaquePointer(void *pointer) {
+  operator void *() const { return storage_; }
+  static TypeId RecoverFromVoidPointer(void *pointer) {
     return TypeId(static_cast<Storage *>(pointer));
   }
 
@@ -93,7 +92,7 @@ class alignas(8) UniqueingId {
   UniqueingId &operator=(UniqueingId &&) = delete;
 
   operator TypeId() { return id(); }
-  TypeId id() { return TypeId::RecoverFromOpaquePointer(this); }
+  TypeId id() { return TypeId::RecoverFromVoidPointer(this); }
 };
 
 template <typename T>
@@ -146,7 +145,7 @@ namespace std {
 template <>
 struct hash<pir::TypeId> {
   std::size_t operator()(const pir::TypeId &obj) const {
-    return std::hash<const void *>()(obj);
+    return std::hash<void *>()(obj);
   }
 };
 }  // namespace std

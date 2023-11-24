@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from .reductions import init_reductions
-import multiprocessing
 
 __all__ = []
 

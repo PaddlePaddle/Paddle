@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -20,7 +22,9 @@
 #include <vector>
 
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
-#include "test/cpp/inference/api/tester_helper.h"
+#include "paddle/utils/flags.h"
+
+PD_DEFINE_string(infer_model, "", "model path");
 
 namespace paddle {
 namespace inference {

@@ -27,12 +27,30 @@ SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x);
 SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
                                           const DistMetaTensor& out);
 
+SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
+                                       const DistMetaTensor& out_grad);
+
+SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
+                                       const DistMetaTensor& out,
+                                       const DistMetaTensor& out_grad);
+
 SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
                                     const DistMetaTensor& y);
 
 SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
                                            const DistMetaTensor& y,
                                            const DistMetaTensor& out);
+
+SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
+                                        const DistMetaTensor& y,
+                                        const DistMetaTensor& out_grad,
+                                        int64_t axis = -1);
+
+SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
+                                        const DistMetaTensor& y,
+                                        const DistMetaTensor& out,
+                                        const DistMetaTensor& out_grad,
+                                        int64_t axis = -1);
 
 }  // namespace distributed
 }  // namespace phi

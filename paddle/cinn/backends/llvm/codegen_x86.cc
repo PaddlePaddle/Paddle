@@ -98,7 +98,7 @@ void CodeGenX86::CreateParallelLaunch(Expr body, int num_task) {
                                              llvm::Function::PrivateLinkage,
                                              "__parallel_lambda",
                                              m_);
-  std::vector<std::string> vars = ir::CollectUndefinedVars(&body);
+  std::vector<std::string> vars = ir::ir_utils::CollectUndefinedVars(&body);
   uint64_t nbytes;
   auto* data = PackVars(vars, &nbytes);
 

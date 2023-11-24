@@ -47,7 +47,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                                  const platform::Place &place) {
   VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
   framework::DDim dims = phi::make_ddim(input_data.shape);
-  void *input_tensor_ptr;
+  void *input_tensor_ptr = nullptr;
   if (input_data.dtype == DistModelDataType::INT64) {
     input_tensor_ptr = input_tensor->mutable_data<int64_t>(dims, place);
   } else if (input_data.dtype == DistModelDataType::FLOAT32) {
@@ -269,7 +269,7 @@ bool DistModel::CommInit() {
   }
   framework::NaiveExecutor e(place_);
   e.CreateVariables(*comm_init_program, 0, true, scope_.get());
-  e.Prepare(scope_.get(), *comm_init_program, 0, false);
+  e.Prepare(scope_.get(), *comm_init_program, 0);
   e.Run();
   VLOG(3) << "Comm init successful.";
   return true;
@@ -295,7 +295,7 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
      << ". The ring id is: " << ring_id << ". The group has: " << nranks
      << " ranks. Current rank in the group is: " << rank
      << ". The endpoint is: " << endpoint << ". Peer endpoints are: ";
-  for (auto ep : peer_endpoints) {
+  for (const auto &ep : peer_endpoints) {
     ss << ep << ", ";
   }
   VLOG(3) << ss.str();
@@ -468,7 +468,7 @@ bool DistModel::LoadParameters() {
   // Other non-persistable variables will be created in the micro scope
   // managed by fleet executor.
   e.CreateVariables(*program_, 0, true, scope_.get());
-  e.Prepare(scope_.get(), *load_program, 0, false);
+  e.Prepare(scope_.get(), *load_program, 0);
   e.Run();
   VLOG(3) << "After loading there are " << scope_->LocalVarNames().size()
           << " vars.";

@@ -76,7 +76,7 @@ class SumOp : public framework::OperatorWithKernel {
       // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
       if (!((data_type == framework::proto::VarType::FP32 ||
              data_type == framework::proto::VarType::BF16) &&
-            ctx.OutputVar("Out")->IsType<phi::DenseTensor>())) {
+            ctx.OutputVar("Out")->IsType<phi::DenseTensor>())) {  // NOLINT
         this->SetDnnFallback(true);
       } else if (!std::all_of(x_vars.begin(),
                               x_vars.end(),

@@ -20,10 +20,10 @@
 
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 
 namespace cinn {
@@ -535,7 +535,7 @@ std::vector<const Expr *> PolyFor::expr_fields() const {
 }
 
 Expr PolyFor::ExtractExtent() const {
-  auto nodes = CollectIRNodes(condition, [&](const Expr *e) {
+  auto nodes = ir::ir_utils::CollectIRNodes(condition, [&](const Expr *e) {
     return e->As<NE>() ||   //
            e->As<EQ>() ||   //
            e->As<Min>() ||  //

@@ -24,7 +24,7 @@ set -ex
 # remove others to expedite build and reduce docker image size. The original
 # manylinux docker image project builds many python versions.
 # NOTE We added back 3.5.1, since auditwheel requires python 3.3+
-CPYTHON_VERSIONS="3.11.0 3.10.0 3.9.0 3.8.0"
+CPYTHON_VERSIONS="3.12.0 3.11.0 3.10.0 3.9.0 3.8.0"
 
 # openssl version to build, with expected sha256 hash of .tar.gz
 # archive
@@ -82,6 +82,7 @@ PY38_BIN=/opt/python/cp38-cp38/bin
 PY39_BIN=/opt/python/cp39-cp39/bin
 PY310_BIN=/opt/python/cp310-cp310/bin
 PY311_BIN=/opt/python/cp311-cp311/bin
+PY312_BIN=/opt/python/cp312-cp312/bin
 # NOTE Since our custom manylinux image builds pythons with shared
 # libpython, we need to add libpython's dir to LD_LIBRARY_PATH before running
 # python.

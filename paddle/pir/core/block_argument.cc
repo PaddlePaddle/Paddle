@@ -73,9 +73,9 @@ BlockArgument BlockArgument::Create(Type type, Block *owner, uint32_t index) {
 /// Destroy the argument.
 void BlockArgument::Destroy() {
   if (impl_) {
-    LOG(WARNING) << "Destroying a null block argument.";
-  } else {
     delete IMPL_;
+  } else {
+    LOG(WARNING) << "Destroying a null block argument.";
   }
 }
 

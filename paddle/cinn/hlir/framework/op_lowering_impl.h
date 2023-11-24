@@ -22,6 +22,7 @@
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/op_lowering_impl_base.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/packed_func.h"
@@ -56,7 +57,16 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    */
   std::vector<ir::LoweredFunc> Lower(const GroupPtr& group,
                                      bool apply_op_schedule = true,
-                                     bool apply_group_schedule = true);
+                                     bool apply_group_schedule = true,
+                                     bool apply_pass = true);
+
+  std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>> BucketLower(
+      const GroupPtr& group,
+      bool apply_op_schedule = false,
+      bool apply_group_schedule = true,
+      bool apply_pass = true) {
+    CINN_NOT_IMPLEMENTED;
+  }
 
  private:
   /**
@@ -72,6 +82,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       const GroupPtr& group,
       bool apply_op_schedule,
       bool apply_group_schedule,
+      bool apply_pass,
       ScheduleDetermineFunction schedule_determine_func);
 
   /**
@@ -96,6 +107,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       const GroupPtr& group,
       const std::unordered_map<std::string, ir::Tensor>& tensor_map,
       bool done_op_schedule,
+      bool apply_pass,
       ir::IRSchedule* ir_sch,
       std::vector<ir::Tensor>* group_func_arg_tensors);
 

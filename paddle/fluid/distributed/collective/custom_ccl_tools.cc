@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/custom_ccl_tools.h"
-#include "paddle/fluid/distributed/collective/types.h"
 
 namespace paddle {
 namespace distributed {

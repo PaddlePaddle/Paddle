@@ -19,7 +19,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_with_new_ir
+from dygraph_to_static_utils_new import Dy2StTestBase, test_pir_only
 from predictor_utils import PredictorTools
 
 import paddle
@@ -148,9 +148,7 @@ class ResNet(paddle.nn.Layer):
         supported_layers = [50, 101, 152]
         assert (
             layers in supported_layers
-        ), "supported layers are {} but input layer is {}".format(
-            supported_layers, layers
-        )
+        ), f"supported layers are {supported_layers} but input layer is {layers}"
 
         if layers == 50:
             depth = [3, 4, 6, 3]
@@ -199,7 +197,6 @@ class ResNet(paddle.nn.Layer):
             ),
         )
 
-    @paddle.jit.to_static
     def forward(self, inputs):
         y = self.conv(inputs)
         y = self.pool2d_max(y)
@@ -244,7 +241,7 @@ class TransedFlowerDataSet(paddle.io.Dataset):
         return len(self.img)
 
 
-class TestResnet(unittest.TestCase):
+class TestResnet(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -282,7 +279,7 @@ class TestResnet(unittest.TestCase):
             dataset, batch_size=batch_size, drop_last=True
         )
 
-        resnet = ResNet()
+        resnet = paddle.jit.to_static(ResNet())
         optimizer = optimizer_setting(parameter_list=resnet.parameters())
 
         for epoch in range(epoch_num):
@@ -293,7 +290,16 @@ class TestResnet(unittest.TestCase):
 
             for batch_id, data in enumerate(data_loader()):
                 start_time = time.time()
-                img, label = data
+                img_, label = data
+
+                expected_place = paddle.framework._current_expected_place()
+                if img_.stop_gradient and not img_.place._equals(
+                    expected_place
+                ):
+                    img = img_._copy_to(expected_place, False)
+                    img.stop_gradient = True
+                else:
+                    img = img_
 
                 pred = resnet(img)
                 loss = paddle.nn.functional.cross_entropy(
@@ -341,7 +347,7 @@ class TestResnet(unittest.TestCase):
     def predict_dygraph(self, data):
         paddle.jit.enable_to_static(False)
         paddle.disable_static(place)
-        resnet = ResNet()
+        resnet = paddle.jit.to_static(ResNet())
 
         model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
         resnet.set_dict(model_dict)
@@ -419,30 +425,24 @@ class TestResnet(unittest.TestCase):
             dy_jit_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
-                dy_jit_pre, st_pre
-            ),
+            err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
         np.testing.assert_allclose(
             predictor_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='predictor_pre:\n {}\n, st_pre: \n{}.'.format(
-                predictor_pre, st_pre
-            ),
+            err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_with_new_ir
-    def test_resnet_new_ir(self):
+    @test_pir_only
+    def test_resnet_pir(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
         np.testing.assert_allclose(
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
     def test_resnet(self):
@@ -452,9 +452,7 @@ class TestResnet(unittest.TestCase):
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
         self.verify_predict()
 
@@ -468,9 +466,7 @@ class TestResnet(unittest.TestCase):
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
     def test_in_static_mode_mkldnn(self):

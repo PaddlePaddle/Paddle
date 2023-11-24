@@ -239,11 +239,3 @@ REGISTER_OPERATOR(
     ops::QuantizeLinearOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(dequantize_linear,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::DeQuantizeLinearKernel,
-                          float,
-                          int8_t,
-                          double) {}

@@ -105,11 +105,7 @@ def add_supported_layer(layer, pruning_func=None):
     elif issubclass(layer, paddle.nn.Layer):
         name = paddle.nn.layer.layers._convert_camel_to_snake(layer.__name__)
     else:
-        assert (
-            "The type of layer should be string of Layer, but got {}!".format(
-                type(layer)
-            )
-        )
+        assert f"The type of layer should be string of Layer, but got {type(layer)}!"
     if pruning_func is None:
         pruning_func = _default_pruning
     _supported_layers_and_prune_func_map_lock.acquire()

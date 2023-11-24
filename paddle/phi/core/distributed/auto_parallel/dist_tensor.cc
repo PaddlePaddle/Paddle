@@ -16,8 +16,10 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/backends/context_pool.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/phi/core/distributed/store/store_utils.h"
 
 namespace phi {
 namespace distributed {
@@ -32,28 +34,79 @@ inline void check_defined(const DistTensor& dist_tensor,
           method_hint));
 }
 
-DistTensor::DistTensor(const phi::DenseTensor& global_value,
-                       const TensorDistAttr& dist_attr)
-    : dims_(global_value.dims()), dist_attr_(dist_attr), value_(global_value) {
-  if (!dist_attr.is_replicated()) {
-    // 1. create replicated global tensor
-    int64_t dims_size = global_value.dims().size();
-    std::vector<int64_t> dims_mapping(dims_size, -1);
-    dist_attr_.set_dims_mapping(dims_mapping);
-    if (dist_attr_.is_partial()) {
-      dist_attr_.clean_partial_status();
-    }
-    dist_attr_.set_dims_mapping(dims_mapping);
+DistTensor::DistTensor() : value_(std::make_shared<DenseTensor>()) {}
 
-    // 2. reshard from replicated to other state
-    auto* func = ChooseProperReshardFunction(*this, dist_attr);
-    auto* dev_ctx = DeviceContextPool::Instance().Get(global_value.place());
-    func->Eval(dev_ctx, *this, dist_attr, this);
+DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
+                       const TensorDistAttr& dist_attr)
+    : dims_(global_value->dims()), dist_attr_(dist_attr) {
+  // If the current rank doesn't in process_mesh, we should create an
+  // uninitialized tensor only with tensor_meta.
+  if (IsCurRankInMesh(dist_attr.process_mesh())) {
+    if (!dist_attr.is_replicated()) {
+      value_ = std::make_shared<DenseTensor>();
+      // 1. create replicated global tensor
+      TensorDistAttr replicated_dist_attr(vectorize(global_value->dims()));
+      replicated_dist_attr.set_process_mesh(dist_attr.process_mesh());
+      DistTensor replicated_tensor(global_value, replicated_dist_attr);
+
+      // 2. reshard from replicated to other state
+      auto* func = ChooseProperReshardFunction(replicated_tensor, dist_attr);
+      auto* dev_ctx = DeviceContextPool::Instance().Get(global_value->place());
+      func->Eval(dev_ctx, replicated_tensor, dist_attr, this);
+    } else {
+      value_ = global_value;
+    }
+  } else {
+    value_ = std::make_shared<DenseTensor>(
+        std::make_shared<phi::Allocation>(nullptr, 0, global_value->place()),
+        phi::DenseTensorMeta(global_value->meta()));
+  }
+}
+
+DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
+                       const ProcessMesh& process_mesh,
+                       const Placements& placements)
+    : dims_(global_value->dims()) {
+  dist_tensor_meta_ = DistTensorMeta(
+      process_mesh,
+      placements,
+      DenseTensorMeta(global_value->dtype(), global_value->dims()));
+
+  TensorDistAttr dist_attr(vectorize(dist_tensor_meta_.dims()));
+  dist_attr.set_process_mesh(dist_tensor_meta_.process_mesh());
+  dist_attr.set_dims_mapping(dist_tensor_meta_.dim_mapping());
+  dist_attr.mark_annotated("process_mesh");
+  dist_attr.mark_annotated("dims_mapping");
+  dist_attr_ = dist_attr;
+
+  // If the current rank doesn't in process_mesh, we should create an
+  // uninitialized tensor only with dist_tensor_meta_.
+  if (IsCurRankInMesh(process_mesh)) {
+    if (!dist_tensor_meta_.is_replicated()) {
+      value_ = std::make_shared<DenseTensor>();
+      // 1. create replicated global tensor
+      TensorDistAttr replicated_dist_attr(vectorize(global_value->dims()));
+      replicated_dist_attr.set_process_mesh(process_mesh);
+      DistTensor replicated_tensor(global_value, replicated_dist_attr);
+
+      // 2. reshard from replicated to other state
+      auto* func = ChooseProperReshardFunction(replicated_tensor, dist_attr);
+      auto* dev_ctx = DeviceContextPool::Instance().Get(global_value->place());
+      func->Eval(dev_ctx, replicated_tensor, dist_attr, this);
+    } else {
+      value_ = global_value;
+    }
+  } else {
+    value_ = std::make_shared<DenseTensor>(
+        std::make_shared<phi::Allocation>(nullptr, 0, global_value->place()),
+        phi::DenseTensorMeta(global_value->meta()));
   }
 }
 
 DistTensor::DistTensor(const DDim& dims, const TensorDistAttr& dist_attr)
-    : dims_(dims), dist_attr_(dist_attr) {}
+    : dims_(dims),
+      dist_attr_(dist_attr),
+      value_(std::make_shared<DenseTensor>()) {}
 
 void DistTensor::unsafe_set_dims(const DDim& dims) {
   if (this->initialized()) {
@@ -63,40 +116,51 @@ void DistTensor::unsafe_set_dims(const DDim& dims) {
   dims_ = dims;
 }
 
+void DistTensor::unsafe_set_dist_attr(const TensorDistAttr& dist_attr) {
+  if (this->initialized()) {
+    VLOG(3) << "You try to set an initialized DistTensor's dist attr. "
+               "Make sure you are aware of where you change its dist attr.";
+  }
+  dist_attr_ = dist_attr;
+}
+
 int64_t DistTensor::numel() const {
-  check_defined(*this, "numel");
-  return value_.numel();
+  // DistTensor with uninitialized local tensor can
+  // also have numel.
+  return product(dims_);
 }
 
 const DDim& DistTensor::local_dims() const {
   check_defined(*this, "local_dims");
-  return value_.dims();
+  return value_->dims();
 }
 
 bool DistTensor::valid() const {
   check_defined(*this, "valid");
-  return value_.valid();
+  return value_->valid();
 }
 
-bool DistTensor::defined() const { return value_.holder_ != nullptr; }
+bool DistTensor::defined() const { return value_->holder_ != nullptr; }
 
 bool DistTensor::initialized() const {
-  return value_.holder_ != nullptr && value_.holder_->ptr();
+  return value_->holder_ != nullptr && value_->holder_->ptr();
 }
 
 DataType DistTensor::dtype() const {
-  check_defined(*this, "dtype");
-  return value_.dtype();
+  // DistTensor with uninitialized local tensor can
+  // also have dtype.
+  return value_->dtype();
 }
 
 DataLayout DistTensor::layout() const {
-  check_defined(*this, "layout");
-  return value_.layout();
+  // DistTensor with uninitialized local tensor can
+  // also have layout.
+  return value_->layout();
 }
 
 const Place& DistTensor::place() const {
   check_defined(*this, "place");
-  return value_.holder_->place();
+  return value_->holder_->place();
 }
 
 void* DistTensor::AllocateFrom(Allocator* allocator,

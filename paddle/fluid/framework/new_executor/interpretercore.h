@@ -47,10 +47,12 @@ class InterpreterCore {
 
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<phi::DenseTensor>& feed_tensors);
+      const std::vector<phi::DenseTensor>& feed_tensors,
+      bool need_fetch = true);
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
-                                   bool need_fetch = true);
+                                   bool need_fetch = true,
+                                   bool enable_job_schedule_profiler = false);
 
   void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
 
@@ -73,6 +75,13 @@ class InterpreterCore {
   const platform::Place& GetPlace() const;
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
+
+  void Build(const std::vector<std::string>& feed_names,
+             std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
+
+  bool IsStaticBuild() const;
+
+  std::tuple<double, double> InterpreterRunTime();
 
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);

@@ -19,9 +19,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-USE_OP_ITSELF(elementwise_add_grad);
-PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
-
 namespace paddle {
 namespace operators {
 

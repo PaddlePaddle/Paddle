@@ -37,7 +37,7 @@ void RoiPoolGradKernel(const Context& dev_ctx,
     DenseTensor box_batch_id_list = Empty<int>(dev_ctx, {rois_num});
     int* box_batch_id_data = box_batch_id_list.data<int>();
 
-    int boxes_batch_size;
+    int boxes_batch_size = 0;
     if (boxes_num) {
       boxes_batch_size = static_cast<int>(boxes_num->numel());
       auto* boxes_num_data = boxes_num->data<int>();

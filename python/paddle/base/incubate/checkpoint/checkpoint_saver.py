@@ -69,17 +69,15 @@ class CheckpointSaver:
         if not self._fs.is_exist(path):
             self._fs.mkdirs(path)
         else:
-            assert self._fs.is_dir(path), "path:{} must be a directory".format(
-                path
-            )
+            assert self._fs.is_dir(path), f"path:{path} must be a directory"
 
         max_no = self._get_last_checkpoint_no(path)
         if max_no < 0:
             max_no = -1
         max_no += 1
 
-        real_path = "{}/{}.{}".format(path, self._checkpoint_prefix, max_no)
-        tmp_path = "{}.tmp".format(real_path)
+        real_path = f"{path}/{self._checkpoint_prefix}.{max_no}"
+        tmp_path = f"{real_path}.tmp"
         saved_path = tmp_path
 
         from paddle.distributed.fleet.utils.fs import LocalFS
@@ -93,14 +91,14 @@ class CheckpointSaver:
             )
 
             if trainer_id is not None:
-                cache_path = "{}.{}".format(cache_path, trainer_id)
+                cache_path = f"{cache_path}.{trainer_id}"
 
             if not local_fs.is_exist(cache_path):
                 local_fs.mkdirs(cache_path)
             else:
                 assert local_fs.is_dir(
                     cache_path
-                ), "cache path:{} must be a directory".format(cache_path)
+                ), f"cache path:{cache_path} must be a directory"
 
             saved_path = cache_path
 
@@ -151,16 +149,14 @@ class CheckpointSaver:
             )
 
             if trainer_id is not None:
-                cache_path = "{}.{}".format(cache_path, trainer_id)
+                cache_path = f"{cache_path}.{trainer_id}"
 
             if not local_fs.is_exist(local_cache_path):
                 local_fs.mkdirs(local_cache_path)
             if local_fs.is_exist(cache_path):
                 local_fs.delete(cache_path)
 
-        real_path = "{}/{}.{}".format(
-            path, self._checkpoint_prefix, checkpoint_no
-        )
+        real_path = f"{path}/{self._checkpoint_prefix}.{checkpoint_no}"
         load_path = real_path
         if self._fs.need_upload_download():
             self._fs.download(real_path, cache_path)
@@ -225,9 +221,7 @@ class CheckpointSaver:
             try:
                 n = int(g[1])
                 if n not in s:
-                    path = "{}/{}.{}".format(
-                        root_path, self._checkpoint_prefix, n
-                    )
+                    path = f"{root_path}/{self._checkpoint_prefix}.{n}"
                     self._fs.delete(path)
             except Exception as e:
                 print(e)

@@ -197,8 +197,9 @@ class ETCDMaster(Master):
 
         host, port = self.endpoint.split(':')
         if ctx.is_auto_tuner_mode():
-            self.etcd_client = ETCDClient(host=host, port=port)
-        self.client = etcd3.client(host=host, port=port)
+            self.client = ETCDClient(host=host, port=port)
+        else:
+            self.client = etcd3.client(host=host, port=port)
 
     def sync_peers(self, prefix, key, value, size, rank=-1) -> (list, int):
         '''
@@ -256,22 +257,13 @@ class ETCDMaster(Master):
 
         self.job_prefix = f'/paddle/{job_id}'
         self.heartbeat_prefix = f'{self.job_prefix}/heartbeat'
-        if self.ctx.is_auto_tuner_mode():
-            self.etcd_client.delete_prefix(self.job_prefix)
-            lease = self.etcd_client.lease(ttl)
-        else:
-            self.client.delete_prefix(self.job_prefix)
-            lease = self.client.lease(ttl)
+        self.client.delete_prefix(self.job_prefix)
+        lease = self.client.lease(ttl)
 
         # self.client.delete_prefix(self.job_prefix)
 
         beat_path = f"{self.heartbeat_prefix}/{pod_id}"
-        if self.ctx.is_auto_tuner_mode():
-            self.etcd_client.put(
-                beat_path, pod_id.encode('latin-1'), lease=lease
-            )
-        else:
-            self.client.put(beat_path, pod_id.encode('latin-1'), lease=lease)
+        self.client.put(beat_path, pod_id.encode('latin-1'), lease=lease)
 
         def _beat_watch(event):
             self.ctx.status.restart()

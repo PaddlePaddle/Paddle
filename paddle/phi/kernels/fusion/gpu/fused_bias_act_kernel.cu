@@ -221,6 +221,11 @@ void ComputeImpl(const Context &dev_ctx,
       LaunchBiasAct<T, Context, GeluFunctor<T>, LoadFunc, StoreFunc, LoadT>(
           dev_ctx, bias_data, rows, cols, load_func, store_func);
     }
+  } else if (act_method == "relu") {
+    VLOG(8) << "Doing RELU";
+    // for opt model
+    LaunchBiasAct<T, Context, ReluFunctor<T>, LoadFunc, StoreFunc, LoadT>(
+        dev_ctx, bias_data, rows, cols, load_func, store_func);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Currently Only Support GeGLU, SwiGLU, GeLU"));

@@ -42,6 +42,7 @@ limitations under the License. */
 
 namespace phi {
 
+DenseTensor::~DenseTensor() = default;
 DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
     : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
@@ -232,9 +233,6 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   } else {
     meta_.strides = meta.strides;
   }
-#ifdef PADDLE_WITH_XPU
-  meta_.scale_value = meta.scale_value;
-#endif
 }
 
 /* @jim19930609: This interface will be further modified until we finalized the
@@ -270,9 +268,9 @@ void DenseTensor::ResizeAndAllocate(const DDim& dims) {
 
 void DenseTensor::ResetLoD(const LoD& lod) { meta_.lod = lod; }
 
-#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)      \
-  template const dtype* DenseTensor::data() const; \
-  template dtype* DenseTensor::data();
+#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)               \
+  template TEST_API const dtype* DenseTensor::data() const; \
+  template TEST_API dtype* DenseTensor::data();
 
 DATA_MEMBER_FUNC_INSTANTIATION(bool);
 DATA_MEMBER_FUNC_INSTANTIATION(int8_t);
@@ -310,6 +308,9 @@ const DeviceT& DenseTensor::storage_properties() const {
 template const NPUStorageProperties& DenseTensor::storage_properties() const;
 #ifdef PADDLE_WITH_DNNL
 template const OneDNNStorageProperties& DenseTensor::storage_properties() const;
+#endif
+#ifdef PADDLE_WITH_XPU
+template const XPUStorageProperties& DenseTensor::storage_properties() const;
 #endif
 
 bool DenseTensor::storage_properties_initialized() const {

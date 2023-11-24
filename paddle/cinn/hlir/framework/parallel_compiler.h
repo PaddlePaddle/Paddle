@@ -36,8 +36,14 @@ namespace framework {
 class ParallelCompiler {
  public:
   struct Task {
-    Task(int group_id, ParallelCompiler* compiler, CompilationContext* context)
-        : group_id(group_id), pcompiler(compiler), context(context) {}
+    Task(int device_id,
+         int group_id,
+         ParallelCompiler* compiler,
+         CompilationContext* context)
+        : device_id(device_id),
+          group_id(group_id),
+          pcompiler(compiler),
+          context(context) {}
     void Lowering();
     void CodegenAndJit();
     void BuildInstruction();
@@ -48,6 +54,7 @@ class ParallelCompiler {
     CompilationStatus status = CompilationStatus::SUCCESS;
     std::string message;
 
+    const int device_id;
     int group_id;
 
     std::unique_ptr<backends::ExecutionEngine> engine;

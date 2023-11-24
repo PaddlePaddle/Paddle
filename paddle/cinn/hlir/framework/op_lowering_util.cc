@@ -1046,7 +1046,7 @@ void LoopAssignReduce(
     auto first_reduce_loop = rloops.front();
     // collect if
     auto if_checker = [](const Expr* x) { return x->As<ir::IfThenElse>(); };
-    auto if_set = ir::CollectIRNodesWithoutTensor(
+    auto if_set = ir::ir_utils::CollectIRNodesWithoutTensor(
         first_reduce_loop.As<ir::For>()->body, if_checker);
     std::string reduce_block_name = reducer_data->id();
     for (auto if_expr : if_set) {
@@ -1056,10 +1056,11 @@ void LoopAssignReduce(
                        ->schedule_block.As<ir::ScheduleBlock>()
                        ->name == reduce_block_name;
       };
-      auto blocks_in_if = ir::CollectIRNodesWithoutTensor(if_expr, checker);
+      auto blocks_in_if =
+          ir::ir_utils::CollectIRNodesWithoutTensor(if_expr, checker);
       if (!blocks_in_if.empty()) {
         ir::Expr condition = if_expr.As<ir::IfThenElse>()->condition;
-        auto indices_in_if = ir::CollectIRNodesWithoutTensor(
+        auto indices_in_if = ir::ir_utils::CollectIRNodesWithoutTensor(
             condition, [](const Expr* x) { return x->As<ir::_Var_>(); });
         for (int i = 0; i < rloops.size(); ++i) {
           std::string var_name = rloops[i].As<ir::For>()->loop_var->name;

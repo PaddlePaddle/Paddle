@@ -382,7 +382,12 @@ class GroupShardedStage2(nn.Layer):
             if hasattr(param, "main_grad"):
                 param.main_grad.scale_(self._world_size_scaling)
             else:
-                grad.scale_(self._world_size_scaling)
+                if grad is not None and grad._is_initialized():
+                    grad.scale_(self._world_size_scaling)
+                else:
+                    assert param.grad is not None
+                    assert param.grad._is_initialized()
+                    param.grad.scale_(self._world_size_scaling)
 
         return scale
 

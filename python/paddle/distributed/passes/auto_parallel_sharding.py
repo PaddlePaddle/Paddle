@@ -804,10 +804,7 @@ class ShardingPass(PassBase):
                 )
             )
             _logger.debug(
-                "Bucket[{}] parameters: {}.".format(
-                    i,
-                    [p.name for p in param_group.vars],
-                )
+                f"Bucket[{i}] parameters: {[p.name for p in param_group.vars]}."
             )
 
             broadcast_var_to_group_map[
@@ -1647,9 +1644,7 @@ def partition_by_greedy_even(params, group_size):
         numel = reduce(lambda x, y: x * y, param.shape, 1)
         assert (
             numel > 0
-        ), "param [{}] should larger than 0, but it is [{}]".format(
-            param.name, numel
-        )
+        ), f"param [{param.name}] should larger than 0, but it is [{numel}]"
         sizes[rank] += numel
 
     return mapping
@@ -1664,9 +1659,7 @@ def partition_parameters(params, group_size, algor="greedy_even"):
     _logger.info("Sharding Parameter Partition:")
     for k, v in rank_to_params.items():
         _logger.info(
-            "Rank:{}, Parameter Size:{} MB.".format(
-                k, sum([get_var_size(var) for var in v])
-            )
+            f"Rank:{k}, Parameter Size:{sum([get_var_size(var) for var in v])} MB."
         )
         _logger.info(f"Params in this rank: {[var.name for var in v]}.")
 
@@ -1698,11 +1691,10 @@ def re_order_program(block, param_grads, dist_context):
     if is_optimize_op(last_op) and last_op.type in _supported_optimizer_type:
         # record optimizer
         for idx, op in reversed(list(enumerate(block.ops))):
-            if op.type not in _supported_optimizer_type:
-                break
-            assert len(op.input("Param")) == 1
-            pname_to_op[op.input("Param")[0]] = op
-            remove_op_indices.append(idx)
+            if op.type in _supported_optimizer_type:
+                assert len(op.input("Param")) == 1
+                pname_to_op[op.input("Param")[0]] = op
+                remove_op_indices.append(idx)
         assert len(use_order) == len(pname_to_op)
 
         # append new opts

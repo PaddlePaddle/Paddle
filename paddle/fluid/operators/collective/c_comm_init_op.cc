@@ -31,9 +31,10 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
@@ -63,8 +64,6 @@ class CCommInitOp : public framework::OperatorBase {
       PADDLE_ENFORCE_NOT_NULL(
           var, platform::errors::InvalidArgument("Input con not be empty."));
 
-      phi::ccl::CCLRootId* comm_id = var->GetMutable<phi::ccl::CCLRootId>();
-
       int nranks = Attr<int>("nranks");
       int rid = Attr<int>("ring_id");
 
@@ -73,8 +72,17 @@ class CCommInitOp : public framework::OperatorBase {
         device_id = Attr<int>("device_id");
       }
       int rank_id = Attr<int>("rank");
-      platform::XCCLCommContext::Instance(place.GetDeviceType())
-          .CreateComm(comm_id, nranks, rank_id, device_id, rid);
+      auto store = phi::distributed::CreateOrGetGlobalTCPStore();
+      if (!phi::distributed::CommContextManager::GetInstance().Has(
+              std::to_string(rid))) {
+        phi::distributed::CommContextManager::CreateXCCLCommContext(
+            store,
+            std::to_string(rid),
+            phi::CustomPlace(place.GetDeviceType(), device_id),
+            rank_id,
+            nranks,
+            "c_comm_init_op");
+      }
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with custom device."));
@@ -114,10 +122,7 @@ class CCommInitOp : public framework::OperatorBase {
       int rank_id = Attr<int>("rank");
 #endif
 #if defined(PADDLE_WITH_NCCL)
-      const char* dynamic_static_unified_comm =
-          getenv("FLAGS_dynamic_static_unified_comm");
-      if (dynamic_static_unified_comm &&
-          std::string(dynamic_static_unified_comm) == "1") {
+      if (FLAGS_dynamic_static_unified_comm) {
         VLOG(3) << "#### use new comm lab ####";
         auto store = phi::distributed::CreateOrGetGlobalTCPStore();
         phi::distributed::CommContextManager::SetDeviceId(device_id);

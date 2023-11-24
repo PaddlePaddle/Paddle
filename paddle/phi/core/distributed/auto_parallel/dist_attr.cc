@@ -349,7 +349,8 @@ std::string TensorDistAttr::partial_status_string() const {
 }
 
 bool TensorDistAttr::empty() const {
-  return process_mesh_.empty() || dims_mapping_.empty();
+  // dims_mapping is empty when the tensor is 0-dim, but it is also be valid.
+  return process_mesh_.empty();
 }
 
 std::vector<std::shared_ptr<PlacementStatus>> TensorDistAttr::to_placement()
@@ -398,7 +399,7 @@ bool TensorDistAttr::is_replicated(int64_t mesh_axis) const {
 bool TensorDistAttr::is_shard(int64_t mesh_axis, int64_t tensor_axis) const {
   auto placement = to_placement();
   if (mesh_axis == -1) {
-    return std::all_of(placement.begin(),
+    return std::any_of(placement.begin(),
                        placement.end(),
                        [tensor_axis](std::shared_ptr<PlacementStatus> status) {
                          return status->is_shard(tensor_axis);

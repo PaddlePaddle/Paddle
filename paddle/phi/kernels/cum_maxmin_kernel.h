@@ -22,7 +22,7 @@ template <typename T, typename Context>
 void CummaxKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
-                  int dtype,
+                  DataType dtype,
                   DenseTensor* out,
                   DenseTensor* indices);
 
@@ -30,7 +30,7 @@ template <typename T, typename Context>
 void CumminKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
-                  int dtype,
+                  DataType dtype,
                   DenseTensor* out,
                   DenseTensor* indices);
 

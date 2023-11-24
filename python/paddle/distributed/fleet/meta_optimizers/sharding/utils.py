@@ -167,14 +167,14 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                         _status = dp_grads_status[var_name]
                     if _status == -1:
                         raise ValueError(
-                            "{} is not generated, but you are"
-                            "trying to all-reduce it".format(var_name)
+                            f"{var_name} is not generated, but you are"
+                            "trying to all-reduce it"
                         )
                     if _status == 0:
                         raise ValueError(
                             "There should be a sync_calc op "
-                            "after generate Var: {} and before the"
-                            "c_allreduce_sum op".format(var_name)
+                            f"after generate Var: {var_name} and before the"
+                            "c_allreduce_sum op"
                         )
                     assert _status == 1
                     if var_name in vars_status:
@@ -212,7 +212,7 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                     if vars_status[input_name] != 3:
                         raise ValueError(
                             "There should be a sync_comm op "
-                            "after allreduce the Var: {}".format(input_name)
+                            f"after allreduce the Var: {input_name}"
                         )
                     raise ValueError(
                         "The reduce output grad [{}] should NOT be be used in Non-root rank.".format(
@@ -224,13 +224,13 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                         if dp_grads_status[input_name] != 3:
                             raise ValueError(
                                 "There should be a sync_comm op "
-                                "after allreduce the Var: {}".format(input_name)
+                                f"after allreduce the Var: {input_name}"
                             )
                     else:
                         if dp_grads_status[input_name] != 5:
                             raise ValueError(
                                 "The grad in shard should be allreduce and sync"
-                                "twice before usage {}".format(input_name)
+                                f"twice before usage {input_name}"
                             )
 
             for output_name in op.desc.output_arg_names():
@@ -538,9 +538,7 @@ def insert_fused_reduce_ops(
         root_id = get_grad_device(var, shard)
         assert 0 <= root_id < nranks, (
             "root_id should >=0 and < nranks, "
-            "but now nranks={}, the root_id of var={} is {}".format(
-                nranks, var, root_id
-            )
+            f"but now nranks={nranks}, the root_id of var={var} is {root_id}"
         )
         device_to_vars[root_id].append(var)
 
@@ -621,9 +619,7 @@ def insert_reduce_ops(
         root_id = get_grad_device(grad_var, shard)
         assert (
             root_id >= 0
-        ), "root id should be a positive int, but now root id is {}".format(
-            root_id
-        )
+        ), f"root id should be a positive int, but now root id is {root_id}"
         if rank is not None and rank == root_id:
             grad_in_this_device.append(var)
         block._insert_op_without_sync(
@@ -660,9 +656,7 @@ def insert_fused_broadcast_param_ops(
         root_id = shard.device(var)
         assert 0 <= root_id < nranks, (
             "root_id should >=0 and < nranks, "
-            "but now nranks={}, the root_id of var={} is {}".format(
-                nranks, var, root_id
-            )
+            f"but now nranks={nranks}, the root_id of var={var} is {root_id}"
         )
         device_to_vars[root_id].append(var)
 
@@ -731,9 +725,7 @@ def insert_broadcast_param_ops(
         root_id = shard.device(param)
         assert (
             root_id >= 0
-        ), "root id should be a positive int, but now root id is {}".format(
-            root_id
-        )
+        ), f"root id should be a positive int, but now root id is {root_id}"
         if rank is not None and rank == root_id:
             param_in_this_device.append(param)
         block._insert_op_without_sync(
@@ -801,9 +793,7 @@ def fuse_opt_broadcast_param_ops(
 
 
 def get_grad_device(grad_name, shard):
-    assert "@GRAD" in grad_name, "[{}] should be a grad variable.".format(
-        grad_name
-    )
+    assert "@GRAD" in grad_name, f"[{grad_name}] should be a grad variable."
     base_name = None
     # NOTE: mind the traversal order
     possible_suffixes = [
@@ -905,7 +895,7 @@ def insert_scale_loss_grad_ops(block, scale=1.0):
         if is_loss_grad_op(op):
             assert op.type == 'fill_constant', (
                 "loss_grad_op must be fill_constant op, "
-                "but this op is {}".format(op.type)
+                f"but this op is {op.type}"
             )
             assert op.has_attr('value')
             loss_scale = float(op.attr('value'))

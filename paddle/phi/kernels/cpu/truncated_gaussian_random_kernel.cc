@@ -59,4 +59,5 @@ PD_REGISTER_KERNEL(truncated_gaussian_random,
                    CPU,
                    ALL_LAYOUT,
                    phi::TruncatedGaussianRandomKernel,
-                   float) {}
+                   float,
+                   double) {}

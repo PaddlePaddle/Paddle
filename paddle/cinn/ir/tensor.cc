@@ -24,10 +24,10 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/operation.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/poly/stage.h"
@@ -53,6 +53,67 @@ Tensor _Tensor_::Make(const std::string &name,
 
   return Tensor(n);
 }
+Tensor _Tensor_::Make(const std::string &name,
+                      Type dtype,
+                      const std::vector<Expr> &shape,
+                      const std::vector<Expr> &domain,
+                      const std::vector<Var> &reduce_axis) {
+  CHECK(!name.empty()) << "Cannot set empty Tensor name in Tensor::Make";
+  auto n = make_shared<_Tensor_>();
+  n->name = name;
+  n->shape = shape;
+  n->domain = domain;
+  n->reduce_axis = reduce_axis;
+  n->operation = PlaceholderOp::Make(n->name, n->shape, Float(32));
+  n->set_type(dtype);
+  n->InitAxis();
+
+  return Tensor(n);
+}
+
+Tensor _Tensor_::Make(const std::string &name,
+                      Type dtype,
+                      const std::vector<Dim> &sym_shape,
+                      const std::vector<Expr> &domain,
+                      FunctionRef fn,
+                      const std::vector<Var> &reduce_axis) {
+  CHECK(!name.empty()) << "Tensor name is set empty";
+  auto n = make_shared<_Tensor_>();
+  n->name = name;
+  n->sym_shape = sym_shape;
+  n->shape.reserve(sym_shape.size());
+  for (int i = 0; i < sym_shape.size(); i++) {
+    n->shape[i] = sym_shape[i]->dim_expr;
+  }
+  n->domain = domain;
+  n->reduce_axis = reduce_axis;
+  n->set_type(dtype);
+  n->operation = fn;
+  n->InitAxis();
+
+  return Tensor(n);
+}
+Tensor _Tensor_::Make(const std::string &name,
+                      Type dtype,
+                      const std::vector<Dim> &sym_shape,
+                      const std::vector<Expr> &domain,
+                      const std::vector<Var> &reduce_axis) {
+  CHECK(!name.empty()) << "Cannot set empty Tensor name in Tensor::Make";
+  auto n = make_shared<_Tensor_>();
+  n->name = name;
+  n->sym_shape = sym_shape;
+  n->shape.reserve(sym_shape.size());
+  for (int i = 0; i < sym_shape.size(); i++) {
+    n->shape[i] = sym_shape[i]->dim_expr;
+  }
+  n->domain = domain;
+  n->reduce_axis = reduce_axis;
+  n->operation = PlaceholderOp::Make(n->name, n->shape, Float(32));
+  n->set_type(dtype);
+  n->InitAxis();
+
+  return Tensor(n);
+}
 
 size_t Tensor::ndims() const { return operator->()->shape.size(); }
 
@@ -60,7 +121,7 @@ std::set<std::string> _Tensor_::GetDependTensorNames() const {
   std::set<std::string> names;
 
   auto add_depend_tensors_from_expr = [&](Expr expr) {
-    auto tensors = CollectIRNodes(expr, [&](const Expr *x) {
+    auto tensors = ir::ir_utils::CollectIRNodes(expr, [&](const Expr *x) {
       return x->as_tensor() && x->as_tensor()->name != this->name;
     });
     for (auto &e : tensors) {
@@ -515,7 +576,7 @@ bool _Tensor_::IsDependOnStatement(absl::string_view statement) {
 std::set<std::string> _Tensor_::DependingTensorNames() {
   std::set<std::string> res;
   if (body().defined()) {
-    auto depend_tensors = ir::CollectIRNodes(
+    auto depend_tensors = ir::ir_utils::CollectIRNodes(
         body(), [](const Expr *x) -> bool { return x->as_tensor(); });
     for (const auto &x : depend_tensors) {
       if (x.get() != this) {
@@ -538,7 +599,7 @@ std::vector<Var> _Tensor_::axis_with_reduce() const {
 }
 
 bool _Tensor_::Uses(const Tensor &other) const {
-  auto loads = ir::CollectIRNodes(body(), [&](const Expr *x) {
+  auto loads = ir::ir_utils::CollectIRNodes(body(), [&](const Expr *x) {
     auto *loadn = x->As<ir::Load>();
     if (!loadn) return false;
     return loadn->tensor.as_tensor()->name == other->name;
