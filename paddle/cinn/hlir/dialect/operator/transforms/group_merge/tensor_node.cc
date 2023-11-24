@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,21 +14,21 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/tensor_node.h"
+
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_node.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-using GroupPtr = std::shared_ptr<Group>;
-using GroupList = std::vector<GroupPtr>;
+OpNode TensorNode::producer() const {
+  return OpNode(node_data_.dyn_cast<pir::OpResult>().owner());
+}
 
-GroupList OpFusionPassInternal(
-    const std::vector<pir::Operation*>& op_list,
-    const std::vector<pir::Operation*>& output_op_list = {});
-
-GroupList GeneralFusionMergePassInternal(const GroupList& group_list);
+OpNode TensorNode::ConsumerOpListView::Iterator::operator*() const {
+  return OpNode(iter_.owner());
+}
 
 }  // namespace ir
 }  // namespace dialect

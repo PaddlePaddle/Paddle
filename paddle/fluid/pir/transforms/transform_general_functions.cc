@@ -24,8 +24,8 @@
 namespace pir {
 
 std::string GetParameterNameFromValue(pir::Value value) {
-  pir::GetParameterOp op =
-      value.dyn_cast<OpResult>().owner()->dyn_cast<pir::GetParameterOp>();
+  pir::ParameterOp op =
+      value.dyn_cast<OpResult>().owner()->dyn_cast<pir::ParameterOp>();
   PADDLE_ENFORCE_NOT_NULL(
       op,
       phi::errors::InvalidArgument(

@@ -14,14 +14,32 @@
 
 #pragma once
 
-#include "paddle/pir/core/program.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/pass.h"
 
-namespace cinn {
-namespace dialect {
+namespace paddle {
+namespace framework {
 namespace ir {
 
-std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program);
+class Graph;
+
+/*
+ * Fuse the matmul_v2, quantize_linear and dequantize_linear to a quant_linear
+ * op.
+ */
+class QuantLinearFusePass : public FusePassBase {
+ public:
+  QuantLinearFusePass();
+  virtual ~QuantLinearFusePass() {}
+
+ protected:
+  void ApplyImpl(Graph* graph) const override;
+
+  int ApplyQuantLinearFusePattern(Graph* graph, bool with_relu) const;
+};
 
 }  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+}  // namespace framework
+}  // namespace paddle

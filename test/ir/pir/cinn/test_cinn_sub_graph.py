@@ -27,32 +27,6 @@ def apply_to_static(net, use_cinn):
     )
 
 
-def softmax(x, axis):
-    """define composite rule of op softmax"""
-    is_amp = False
-    from paddle.base.data_feeder import convert_dtype
-
-    # Softmax need fp32 compute since it has sum op in
-    dtype = convert_dtype(x.dtype)
-    if dtype in ["float16", "uint16"]:
-        is_amp = True
-        x = paddle.cast(x, "float32")
-    if not x.shape:
-        # do not return 1, to ensure gradients
-        res = paddle.exp(x - x)
-        if is_amp:
-            res = paddle.cast(res, "float16")
-        return res
-    max_temp = paddle.max(x, axis, keepdim=True)
-    max_temp.stop_gradient = True
-    molecular = paddle.exp(x - max_temp)
-    denominator = paddle.sum(molecular, axis=axis, keepdim=True)
-    res = paddle.divide(molecular, denominator)
-    if is_amp:
-        res = paddle.cast(res, dtype)
-    return res
-
-
 def exp_sub(x):
     y = paddle.exp(x)
     z = y - x
