@@ -28,12 +28,8 @@ from paddle.distribution.poisson import Poisson
     (parameterize.TEST_CASE_NAME, 'rate'),
     [
         ('one-dim', np.array([100.0]).astype('float32')),
-        (
-            'multi-dim',
-            parameterize.xrand((5,), min=1, max=20)
-            .astype('int32')
-            .astype('float32'),
-        ),
+        # bondary case and extreme case (`scipy.stats.poisson.entropy` cannot converge for very extreme cases such as rate=10000.0)
+        ('multi-dim', np.array([0.0, 1000.0]).astype('float32')),
     ],
 )
 class TestPoisson(unittest.TestCase):
@@ -45,7 +41,7 @@ class TestPoisson(unittest.TestCase):
         self.assertEqual(mean.numpy().dtype, self.rate.dtype)
         np.testing.assert_allclose(
             mean,
-            self._np_mean(),
+            scipy.stats.poisson.mean(self.rate),
             rtol=config.RTOL.get(str(self.rate.dtype)),
             atol=config.ATOL.get(str(self.rate.dtype)),
         )
@@ -55,7 +51,7 @@ class TestPoisson(unittest.TestCase):
         self.assertEqual(var.numpy().dtype, self.rate.dtype)
         np.testing.assert_allclose(
             var,
-            self._np_variance(),
+            scipy.stats.poisson.var(self.rate),
             rtol=config.RTOL.get(str(self.rate.dtype)),
             atol=config.ATOL.get(str(self.rate.dtype)),
         )
@@ -65,7 +61,7 @@ class TestPoisson(unittest.TestCase):
         self.assertEqual(entropy.numpy().dtype, self.rate.dtype)
         np.testing.assert_allclose(
             entropy,
-            self._np_entropy(),
+            scipy.stats.poisson.entropy(self.rate),
             rtol=config.RTOL.get(str(self.rate.dtype)),
             atol=config.ATOL.get(str(self.rate.dtype)),
         )
@@ -91,15 +87,6 @@ class TestPoisson(unittest.TestCase):
             sample_variance, self._dist.variance, atol=0, rtol=0.20
         )
 
-    def _np_variance(self):
-        return self._dist.rate
-
-    def _np_mean(self):
-        return self._dist.rate
-
-    def _np_entropy(self):
-        return scipy.stats.poisson.entropy(self.rate)
-
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
@@ -119,7 +106,7 @@ class TestPoisson(unittest.TestCase):
 )
 class TestPoissonProbs(unittest.TestCase):
     def setUp(self):
-        self._dist = Poisson(rate=self.rate)
+        self._dist = Poisson(rate=paddle.to_tensor(self.rate))
 
     def test_prob(self):
         np.testing.assert_allclose(
