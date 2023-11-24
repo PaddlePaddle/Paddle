@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/send_ue_recv_grad_kernel.h"
+#include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -113,6 +114,7 @@ void CalculateXGrad(const Context& ctx,
                     const DenseTensor& out_grad_tensor,
                     const DenseTensor* dst_count = nullptr,
                     const DenseTensor* out = nullptr) {
+  phi::DeviceGuard guard(ctx.GetPlace());
   int block = 1024;
   int64_t n = slice_size * index_size;
   int max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
@@ -471,6 +473,7 @@ void GraphSendUERecvGradOpCUDAKernelLaunchHelper(
     DenseTensor* e_grad,
     const DenseTensor* dst_count = nullptr,
     const DenseTensor* out = nullptr) {
+  phi::DeviceGuard guard(ctx.GetPlace());
   const int& index_size = dst_index.dims()[0];
 
   ctx.template Alloc<T>(x_grad);

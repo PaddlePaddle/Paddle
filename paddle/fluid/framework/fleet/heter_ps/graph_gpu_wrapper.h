@@ -40,7 +40,7 @@
 namespace paddle {
 namespace framework {
 
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
 typedef paddle::distributed::GraphTableType GraphTableType;
 
 enum GpuGraphStorageMode {

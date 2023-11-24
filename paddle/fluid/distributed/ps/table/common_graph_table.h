@@ -510,7 +510,7 @@ class GraphTable : public Table {
     use_cache = false;
     shard_num = 0;
     rw_lock.reset(new pthread_rwlock_t());
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
     next_partition = 0;
     total_memory_cost = 0;
 #endif
@@ -835,7 +835,7 @@ class GraphTable : public Table {
   bool build_sampler_on_cpu;
   bool is_load_reverse_edge = false;
   std::shared_ptr<pthread_rwlock_t> rw_lock;
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   // paddle::framework::GpuPsGraphTable gpu_graph_table;
   ::paddle::distributed::RocksDBHandler *_db;
   // std::shared_ptr<::ThreadPool> graph_sample_pool;

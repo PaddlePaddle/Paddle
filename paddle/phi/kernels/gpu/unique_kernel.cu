@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "cub/cub.cuh"
+#include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -116,6 +117,7 @@ UniqueFlattendCUDATensor(const Context& context,
                          bool return_inverse,
                          bool return_counts,
                          int64_t num_input) {
+  phi::DeviceGuard guard(context.GetPlace());
   // 0. Prepration
   auto equal = thrust::equal_to<InT>();
   auto not_equal = thrust::not_equal_to<InT>();
@@ -239,6 +241,7 @@ UniqueFlattendCUDATensor(const Context& context,
                          bool return_inverse,
                          bool return_counts,
                          int64_t num_input) {
+  phi::DeviceGuard guard(context.GetPlace());
   // 1. Sort indices
   DenseTensor in_resize;
   in_resize.ShareDataWith(in);
