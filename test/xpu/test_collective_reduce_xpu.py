@@ -1,4 +1,4 @@
-#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ from paddle import core
 paddle.enable_static()
 
 
-class TestCollectiveAllreduceAPI(TestDistBase):
+class TestCollectiveReduceAPI(TestDistBase):
     def _setup_config(self):
         pass
 
@@ -31,12 +31,12 @@ class TestCollectiveAllreduceAPI(TestDistBase):
         not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
         "run test when having at leaset 2 XPUs.",
     )
-    def test_allreduce(self):
-        support_types = get_xpu_op_support_types('c_allreduce_sum')
+    def test_reduce(self):
+        support_types = get_xpu_op_support_types('c_reduce_sum')
         for dtype in support_types:
             self.check_with_place(
-                "collective_allreduce_api.py",
-                "allreduce",
+                "collective_reduce_api.py",
+                "reduce",
                 dtype=dtype,
             )
 
@@ -44,12 +44,12 @@ class TestCollectiveAllreduceAPI(TestDistBase):
         not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
         "run test when having at leaset 2 XPUs.",
     )
-    def test_allreduce_dygraph(self):
-        support_types = get_xpu_op_support_types('c_allreduce_sum')
+    def test_reduce_dygraph(self):
+        support_types = get_xpu_op_support_types('c_reduce_sum')
         for dtype in support_types:
             self.check_with_place(
-                "collective_allreduce_api_dygraph.py",
-                "allreduce",
+                "collective_reduce_api_dygraph.py",
+                "reduce",
                 static_mode="0",
                 dtype=dtype,
             )
