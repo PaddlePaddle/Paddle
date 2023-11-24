@@ -1005,10 +1005,14 @@ void HandleForSpecialOp(
     op_output_types.push_back(t1);
   }
 
-  if (op_item->isa<::pir::ParameterOp>() ||
-      op_item->isa<::pir::ConstantTensorOp>()) {
+  if (op_item->isa<::pir::ParameterOp>()) {
     op_output_types.push_back(
         BuildOutputType(op_item->result(0).type(), place, ctx));
+  }
+
+  if (op_item->isa<::pir::ConstantTensorOp>()) {
+    op_output_types.push_back(
+        BuildOutputType(op_item->result(0).type(), phi::CPUPlace(), ctx));
   }
 
   if (op_item->isa<::pir::SliceOp>()) {

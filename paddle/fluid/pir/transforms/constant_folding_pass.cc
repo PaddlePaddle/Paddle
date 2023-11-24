@@ -86,7 +86,6 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     // execute program
     exe_config_->skip_gc_vars.insert(output_var_name);
-
     auto kernel_program =
         paddle::dialect::PdOpLowerToKernelPass(&new_program, phi::CPUPlace{});
     paddle::framework::InterpreterCore core(
@@ -94,6 +93,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     core.Run({});
 
+    rewriter.SetInsertionPointToStart(rewriter.block());
     // TODO(liuyuanle): support multiple output
     if (ReplaceResultByParameter(op)) {
       auto parameter_op = rewriter.Build<pir::ParameterOp>(
