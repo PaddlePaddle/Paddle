@@ -1711,14 +1711,18 @@ class Engine:
                 if hasattr(self.main_program, 'lr_scheduler')
                 else None
             )
-            lr_var = (
-                self.main_program.global_block().vars[lr_scheduler._var_name]
-                if lr_scheduler._var_name
-                in self.main_program.global_block().vars
-                else None
-            )
-            pir_program.lr_scheduler = lr_scheduler
-            pir_program.lr_var = lr_var
+            if lr_scheduler is not None:
+                pir_program.lr_scheduler = lr_scheduler
+                lr_var = (
+                    self.main_program.global_block().vars[
+                        lr_scheduler._var_name
+                    ]
+                    if lr_scheduler._var_name
+                    in self.main_program.global_block().vars
+                    else None
+                )
+                if lr_var is not None:
+                    pir_program.lr_var = lr_var
 
             self.pir_program = pir_program
             self.param_mapping = param_mapping

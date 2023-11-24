@@ -562,7 +562,7 @@ def _decomp_bwd_without_vjp(
     return tuple(res), has_decomposed
 
 
-def check_op(
+def _check_op(
     fwd_op: pir.Operation,
     bwd_op: pir.Operation,
 ):
@@ -581,7 +581,11 @@ def check_op(
     fwd_inputs = [x.source() for x in fwd_op.operands()]
     fwd_outputs = fwd_op.results()
     for operand in fwd_op_related_inputs_outputs:
-        if operand not in fwd_inputs and operand not in fwd_outputs:
+        if not (
+            operand in fwd_inputs
+            or operand in fwd_outputs
+            or operand.get_defining_op().name() == "pd_op.full_int_array"
+        ):
             return False
 
     return True
@@ -616,7 +620,7 @@ def decomp_bwd_op(
             "To decompose backward op, please set `core._set_prim_backward_enabled(True)` firstly"
         )
     fwd_op = _get_fwd_op(bwd_op, grad_var_to_var_map)
-    if not check_op(fwd_op, bwd_op):
+    if not _check_op(fwd_op, bwd_op):
         return None, False
 
     (
