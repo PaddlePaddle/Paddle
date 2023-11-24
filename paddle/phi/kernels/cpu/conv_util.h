@@ -251,7 +251,7 @@ inline std::vector<int64_t> ComputeOutputShape(
     } else {
       output_shape.push_back(ConvOutSize(in_data_dims[i],
                                          filter_data_dims[i],
-                                         dilations[i],
+                                         dilations_vec[i],
                                          paddings_vec[2 * i],
                                          paddings_vec[2 * i + 1],
                                          strides[i]));
