@@ -94,9 +94,9 @@ class TestNLLLoss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[10, 10], dtype='float64'
                 )
@@ -106,8 +106,9 @@ class TestNLLLoss(unittest.TestCase):
                 nll_loss = paddle.nn.loss.NLLLoss()
                 res = nll_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_result,) = exe.run(
+                    prog,
                     feed={"input": input_np, "label": label_np},
                     fetch_list=[res],
                 )
@@ -140,9 +141,9 @@ class TestNLLLoss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[10, 10], dtype='float64'
                 )
@@ -152,8 +153,9 @@ class TestNLLLoss(unittest.TestCase):
                 nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
                 res = nll_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_result,) = exe.run(
+                    prog,
                     feed={"input": input_np, "label": label_np},
                     fetch_list=[res],
                 )
@@ -198,9 +200,9 @@ class TestNLLLoss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[10, 10], dtype='float64'
                 )
@@ -213,8 +215,9 @@ class TestNLLLoss(unittest.TestCase):
                 nll_loss = paddle.nn.loss.NLLLoss(weight=weight)
                 res = nll_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_result,) = exe.run(
+                    prog,
                     feed={
                         "input": input_np,
                         "label": label_np,
@@ -268,9 +271,9 @@ class TestNLLLoss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[10, 10], dtype='float64'
                 )
@@ -285,8 +288,9 @@ class TestNLLLoss(unittest.TestCase):
                 )
                 res = nll_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_result,) = exe.run(
+                    prog,
                     feed={
                         "input": input_np,
                         "label": label_np,
@@ -321,6 +325,8 @@ class TestNLLLoss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[10, 10], dtype='float64'
@@ -334,8 +340,9 @@ class TestNLLLoss(unittest.TestCase):
                 nll_loss = paddle.nn.loss.NLLLoss(weight=weight)
                 res = nll_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_result,) = exe.run(
+                    prog,
                     feed={
                         "input": input_np,
                         "label": label_np,
@@ -368,6 +375,7 @@ class TestNLLLoss(unittest.TestCase):
         prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         place = base.CPUPlace()
+
         with paddle.static.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[10, 10], dtype='float64'
@@ -379,8 +387,9 @@ class TestNLLLoss(unittest.TestCase):
             nll_loss = paddle.nn.loss.NLLLoss(weight=weight, reduction='none')
             res = nll_loss(input, label)
 
-            exe = base.Executor(place)
+            exe = paddle.static.Executor(place)
             (static_result,) = exe.run(
+                prog,
                 feed={
                     "input": input_np,
                     "label": label_np,
@@ -421,9 +430,9 @@ class TestNLLLoss(unittest.TestCase):
         # place = base.CPUPlace()
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[5, 3, 5, 5], dtype='float64'
                 )
@@ -433,8 +442,9 @@ class TestNLLLoss(unittest.TestCase):
                 nll_loss = paddle.nn.loss.NLLLoss()
                 res = nll_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_result,) = exe.run(
+                    prog,
                     feed={"input": input_np, "label": label_np},
                     fetch_list=[res],
                 )
@@ -468,6 +478,8 @@ class TestNLLLoss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[5, 3, 5, 5], dtype='float64'
@@ -478,8 +490,9 @@ class TestNLLLoss(unittest.TestCase):
                 nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
                 res = nll_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_result,) = exe.run(
+                    prog,
                     feed={"input": input_np, "label": label_np},
                     fetch_list=[res],
                 )
@@ -511,9 +524,9 @@ class TestNLLLoss(unittest.TestCase):
         # place = base.CPUPlace()
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[5, 3, 5, 5], dtype='float64'
                 )
@@ -527,8 +540,9 @@ class TestNLLLoss(unittest.TestCase):
                 nll_loss = paddle.nn.loss.NLLLoss(weight=weight)
                 res = nll_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_result,) = exe.run(
+                    prog,
                     feed={
                         "input": input_np,
                         "label": label_np,
@@ -563,9 +577,9 @@ class TestNLLLoss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[5, 3, 5, 5], dtype='float64'
                 )
@@ -579,8 +593,9 @@ class TestNLLLoss(unittest.TestCase):
                 nll_loss = paddle.nn.loss.NLLLoss(weight=weight)
                 res = nll_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_result,) = exe.run(
+                    prog,
                     feed={
                         "input": input_np,
                         "label": label_np,
@@ -623,9 +638,9 @@ class TestNLLLoss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[5, 3, 5, 5], dtype='float64'
                 )
@@ -641,8 +656,9 @@ class TestNLLLoss(unittest.TestCase):
                 )
                 res = nll_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_result,) = exe.run(
+                    prog,
                     feed={
                         "input": input_np,
                         "label": label_np,
@@ -686,9 +702,9 @@ class TestNLLLoss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[5, 3, 5, 5, 5], dtype='float64'
                 )
@@ -698,8 +714,9 @@ class TestNLLLoss(unittest.TestCase):
                 nll_loss = paddle.nn.loss.NLLLoss()
                 res = nll_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_result,) = exe.run(
+                    prog,
                     feed={"input": input_np, "label": label_np},
                     fetch_list=[res],
                 )
@@ -742,9 +759,9 @@ class TestNLLLoss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[5, 3, 5, 5, 5], dtype='float64'
                 )
@@ -757,8 +774,9 @@ class TestNLLLoss(unittest.TestCase):
                 nll_loss = paddle.nn.loss.NLLLoss(weight=weight)
                 res = nll_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_result,) = exe.run(
+                    prog,
                     feed={
                         "input": input_np,
                         "label": label_np,
@@ -809,9 +827,9 @@ class TestNLLLoss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[5, 3, 5, 5, 5], dtype='float64'
                 )
@@ -826,8 +844,9 @@ class TestNLLLoss(unittest.TestCase):
                 )
                 res = nll_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_result,) = exe.run(
+                    prog,
                     feed={
                         "input": input_np,
                         "label": label_np,
@@ -880,9 +899,9 @@ class TestNLLLoss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[5, 3, 5, 5, 5], dtype='float64'
                 )
@@ -897,8 +916,9 @@ class TestNLLLoss(unittest.TestCase):
                 )
                 res = nll_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_result,) = exe.run(
+                    prog,
                     feed={
                         "input": input_np,
                         "label": label_np,
@@ -947,9 +967,9 @@ class TestNLLLoss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[5, 3, 5, 5, 5], dtype='float64'
                 )
@@ -964,8 +984,9 @@ class TestNLLLoss(unittest.TestCase):
                 )
                 res = nll_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_result,) = exe.run(
+                    prog,
                     feed={
                         "input": input_np,
                         "label": label_np,
@@ -1195,9 +1216,9 @@ class TestNLLLossName(unittest.TestCase):
     @test_with_pir_api
     def test_name(self):
         place = paddle.CPUPlace()
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
+        prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(prog, startup_prog):
             x = paddle.static.data(name='x', shape=[10, 10], dtype='float64')
             label = paddle.static.data(name='label', shape=[10], dtype='int64')
             nll_loss = paddle.nn.loss.NLLLoss(name='nll_loss')
@@ -1210,9 +1231,9 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
     def test_x_dim_value_error(self):
         def test_x_dim_lt_2():
             # place = paddle.CPUPlace()
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 x = paddle.static.data(
                     name='x',
                     shape=[
@@ -1234,9 +1255,9 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
 
         def test_x_shape_lt_1():
             # place = paddle.CPUPlace()
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 array = np.array([], dtype=np.float32)
                 x = paddle.to_tensor(np.reshape(array, [1, 0]), dtype='float32')
                 label = paddle.to_tensor(
@@ -1249,9 +1270,9 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
 
         def test_x_dim_and_label_dim():
             # place = paddle.CPUPlace()
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 x_np = np.random.random(size=(5,)).astype(np.float64)
                 label_np = np.random.randint(0, 10, size=(5, 1)).astype(
                     np.int64
@@ -1278,9 +1299,9 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
     def test_reduction_value_error(self):
         def test_NLLLoss_reduction_not_sum_mean_none():
             # place = paddle.CPUPlace()
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 x = paddle.static.data(
                     name='x', shape=[10, 10], dtype='float64'
                 )
@@ -1294,9 +1315,9 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
 
         def test_nll_loss_function_reduction_not_sum_mean_none():
             place = paddle.CPUPlace()
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 x = paddle.static.data(
                     name='x', shape=[10, 10], dtype='float64'
                 )
