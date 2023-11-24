@@ -190,7 +190,7 @@ std::unique_ptr<Program> IrParser::ParseProgram() {
 
 // Region := Block
 void IrParser::ParseRegion(Region& region) {  // NOLINT
-  ParseBlock(*region.front());
+  ParseBlock(region.front());
   IR_ENFORCE(PeekToken().val_ != "{",
              "Only one block in a region is supported");
 }

@@ -13,15 +13,13 @@
 // limitations under the License.
 
 #pragma once
+
 #include <algorithm>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/phi/common/data_type.h"
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
-#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
-#endif
+
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_compatible_info.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
@@ -32,11 +30,19 @@
 #include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/string/printf.h"
-#include "paddle/phi/core/dense_tensor.h"
+
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#endif
+
 #ifdef PADDLE_WITH_TESTING
 #include <gtest/gtest.h>
 #include <gtest/gtest_prod.h>
 #endif
+
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/pir/core/program.h"
 
 namespace paddle_infer {
 namespace experimental {
@@ -98,25 +104,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \param[in] AnalysisConfig config
   ///
-  explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
-    if (config_.shape_range_info_collected()) {
-      config_.SwitchIrOptim(false);
-    }
-    int trt_identifier = config_.trt_engine_memory_sharing_identifier_;
-    if (trt_identifier > 0) {
-      // NOTE(liuyuanle): For convenience, we set the id of the predictor to
-      // negative sharing_identifier directly. In the future, this may affect
-      // the meaning of negative predictor id.
-      predictor_id_ = -trt_identifier;
-      LOG(WARNING)
-          << "Since the engine context memory of multiple predictors "
-             "is enabled in Paddle-TRT, we set the id of these predictors to "
-             "negative sharing_identifier you specified : "
-          << predictor_id_;
-    } else {
-      predictor_id_ = inference::GetUniqueId();
-    }
-  }
+  explicit AnalysisPredictor(const AnalysisConfig &config);
   ///
   /// \brief Destroy the Analysis Predictor object
   ///
@@ -564,6 +552,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::shared_ptr<framework::Scope> scope_;
   framework::Scope *sub_scope_{nullptr};
   std::shared_ptr<framework::ProgramDesc> inference_program_;
+  std::shared_ptr<pir::Program> pir_program_;
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
   // Sorted according to the idx.

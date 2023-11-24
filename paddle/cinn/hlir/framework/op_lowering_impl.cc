@@ -17,9 +17,10 @@
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
-#include "paddle/cinn/hlir/framework/group_scheduler.h"
 #include "paddle/cinn/hlir/framework/op_lowering_util.h"
 #include "paddle/cinn/hlir/op/external_api_registry.h"
+#include "paddle/cinn/hlir/pe/map_expr_to_ir.h"
+#include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/runtime/flags.h"
@@ -470,8 +471,21 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
     const GroupPtr& group,
     const std::unordered_map<std::string, ir::Tensor>& tensor_map) {
   if (FLAGS_cinn_new_group_scheduler) {
-    GroupScheduler group_scheduler(&ir_sch, group, target_);
-    group_scheduler();
+    std::unordered_set<std::string> output_tensor_names;
+    std::transform(
+        group->output_nodes.begin(),
+        group->output_nodes.end(),
+        std::inserter(output_tensor_names, output_tensor_names.begin()),
+        [](const Node* node) {
+          NodeData* node_data =
+              (*node->outlinks().begin())->sink()->safe_as<NodeData>();
+          CHECK(node_data);
+          return node_data->id();
+        });
+    std::unique_ptr<ir::GroupScheduler> group_scheduler =
+        ir::GroupScheduler::Make(
+            &ir_sch, output_tensor_names, target_, /* is_dy_shape = */ false);
+    group_scheduler->Schedule();
     return ir_sch.GetModule().GetExprs().at(0);
   }
   // topological order.

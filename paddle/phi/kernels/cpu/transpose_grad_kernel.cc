@@ -31,6 +31,7 @@ PD_REGISTER_KERNEL(transpose_grad,
                    uint8_t,
                    int8_t,
                    int16_t,
+                   phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

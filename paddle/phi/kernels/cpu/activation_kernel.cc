@@ -230,7 +230,7 @@ PD_REGISTER_KERNEL(expm1,
 PD_REGISTER_KERNEL(logit, CPU, ALL_LAYOUT, phi::LogitKernel, float, double) {}
 PD_REGISTER_KERNEL(
     square, CPU, ALL_LAYOUT, phi::SquareKernel, float, double, int, int64_t) {}
-PD_REGISTER_ACTIVATION_KERNEL(softsign, SoftsignKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(softsign, SoftsignKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(logsigmoid, LogSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardsigmoid, HardSigmoidKernel)
