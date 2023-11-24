@@ -5898,3 +5898,104 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
 
     """
     return fill_diagonal_tensor(x, y, offset, axis1, axis2, name)
+
+
+def select_scatter(src, values, axis, index):
+    """
+    Embeds the values of the values tensor into src at the given index of axis.
+
+    Args:
+        src (Tensor) : The Destination Tensor.
+        values (Tensor) : The tensor to embed into src.
+        axis (int) : the dimension to insert the slice into.
+        index (int) : the index to select with.
+
+    Returns:
+        Tensor, same dtype and shape with src
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.zeros((2,3,4)).astype("float32")
+            >>> values = paddle.ones((2,4)).astype("float32")
+            >>> res = paddle.select_scatter(x,values,1,1)
+            >>> print(res)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0., 0., 0., 0.],
+              [1., 1., 1., 1.],
+              [0., 0., 0., 0.]],
+
+              [[0., 0., 0., 0.],
+              [1., 1., 1., 1.],
+              [0., 0., 0., 0.]]])
+
+    """
+    if src.dtype != values.dtype:
+        raise TypeError("the dtype of src and value must be equal.")
+    src_shape = src.shape
+    value_shape = values.shape
+    if not isinstance(src_shape, list):
+        src_shape = list(src_shape)
+    if index < 0:
+        index += src_shape[axis]
+    if axis < 0:
+        axis += len(src_shape)
+    del src_shape[axis]
+    if len(src_shape) != len(value_shape):
+        raise RuntimeError(
+            "expected values to have a size equal to the slice of src. value size = "
+            + str(value_shape)
+            + " slice size = "
+            + str(src_shape)
+        )
+    for i in range(len(src_shape)):
+        if src_shape[i] != value_shape[i]:
+            raise RuntimeError(
+                "expected values to have a size equal to the slice of src. value size = "
+                + str(value_shape)
+                + " slice size = "
+                + str(src_shape)
+            )
+    if in_dynamic_or_pir_mode():
+        return _C_ops.select_scatter(src, values, axis, index)
+    else:
+        check_variable_and_dtype(
+            src,
+            'src',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint8',
+                'uint16',
+            ],
+            'select_scatter',
+        )
+        check_variable_and_dtype(
+            values,
+            'values',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint8',
+                'uint16',
+            ],
+            'select_scatter',
+        )
+        helper = LayerHelper('select_scatter', **locals())
+        dtype = helper.input_dtype()
+        result = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type="select_scatter",
+            inputs={"Src": src, "Values": values},
+            attrs={"Axis": axis, "Index": index},
+            outputs={"Result": result},
+        )
+        return result

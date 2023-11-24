@@ -156,6 +156,7 @@ from .manipulation import tensordot  # noqa: F401
 from .manipulation import as_complex  # noqa: F401
 from .manipulation import take_along_axis  # noqa: F401
 from .manipulation import put_along_axis  # noqa: F401
+from .manipulation import select_scatter  # noqa: F401
 from .manipulation import put_along_axis_  # noqa: F401
 from .manipulation import as_real  # noqa: F401
 from .manipulation import moveaxis  # noqa: F401
@@ -677,6 +678,7 @@ tensor_method_func = [
     'repeat_interleave',
     'take_along_axis',
     'put_along_axis',
+    'select_scatter',
     'put_along_axis_',
     'exponential_',
     'heaviside',

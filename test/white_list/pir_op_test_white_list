@@ -262,6 +262,7 @@ test_searchsorted_op
 test_seed_op
 test_segment_ops
 test_segment_ops_static_build
+test_select_scatter_op
 test_selu_op
 test_sgd_op
 test_shape_mkldnn_op
