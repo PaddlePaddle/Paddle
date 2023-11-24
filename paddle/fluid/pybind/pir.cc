@@ -530,6 +530,8 @@ void BindValue(py::module *m) {
            [](Value &self, Value &op_value) {
              self.ReplaceAllUsesWith(op_value);
            })
+      .def("to_op_result",
+           [](Value &self) { return self.dyn_cast<pir::OpResult>(); })
       .def("__eq__", &Value::operator==)
       .def("__eq__",
            [](Value &self, OpResult &other) {
@@ -719,17 +721,11 @@ void BindOpResult(py::module *m) {
   OVERRIDE_COMPARE_OP_FOR_EACH(__gt__, greater_than);
   OVERRIDE_COMPARE_OP_FOR_EACH(__ge__, greater_equal);
 
-  op_result.def("__eq__", &OpResult::operator==)
-      .def("__eq__",
-           [](OpResult &self, Value &other) {
-             return self.Value::impl() == other.impl();
-           })
+  op_result
       .def("__neg__",
            [](OpResult &self) {
              return paddle::dialect::scale(self, -1.0, 0.0, true);
            })
-      .def("__hash__",
-           [](OpResult &self) { return std::hash<pir::Value>{}(self); })
       .def("__str__",
            [](OpResult &self) -> py::str {
              std::ostringstream print_stream;
@@ -824,6 +820,7 @@ void BindOpResult(py::module *m) {
            [](OpResult &self, OpResult &op_result) {
              self.ReplaceAllUsesWith(op_result);
            })
+      .def("to_value", [](OpResult &self) { return pir::Value(self.impl()); })
       .def_property(
           "stop_gradient",
           [](OpResult &self) {
