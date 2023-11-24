@@ -16,7 +16,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt
+from dygraph_to_static_utils import Dy2StTestBase
 from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
@@ -113,7 +113,6 @@ class TestResnet(Dy2StTestBase):
         paddle.jit.enable_to_static(to_static)
         return train(to_static)
 
-    @test_legacy_and_pt
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)

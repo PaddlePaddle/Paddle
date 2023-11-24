@@ -20,7 +20,6 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
     test_legacy_and_pir,
-    test_legacy_and_pt,
 )
 
 import paddle
@@ -188,7 +187,6 @@ class TestRecursiveCall2(Dy2StTestBase):
         paddle.jit.enable_to_static(True)
         return self._run()
 
-    @test_legacy_and_pt
     def test_transformed_static_result(self):
         self.set_func()
         dygraph_res = self.get_dygraph_output()

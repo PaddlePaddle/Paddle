@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 
@@ -48,7 +48,6 @@ class TestTensorCopyToCpuOnDefaultCPU(Dy2StTestBase):
         x2 = tensor_copy_to_cpu(x1)
         return x1.place, x2.place, x2.numpy()
 
-    @test_legacy_and_pt
     def test_tensor_cpu_on_default_cpu(self):
         paddle.base.framework._set_expected_place(paddle.CPUPlace())
         dygraph_x1_place, dygraph_place, dygraph_res = self._run(
@@ -69,7 +68,6 @@ class TestTensorCopyToCUDAOnDefaultCPU(Dy2StTestBase):
         x2 = tensor_copy_to_cuda(x1)
         return x1.place, x2.place, x2.numpy()
 
-    @test_legacy_and_pt
     def test_tensor_cuda_on_default_cpu(self):
         if not paddle.base.is_compiled_with_cuda():
             return

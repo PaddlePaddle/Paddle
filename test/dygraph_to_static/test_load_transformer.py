@@ -16,7 +16,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 
@@ -45,7 +45,6 @@ class TestFallback(Dy2StTestBase):
     def setUp(self):
         self.x = paddle.to_tensor(1.0).astype('int')
 
-    @test_legacy_and_pt
     def test_name_load(self):
         net_dy = Net()
         net_st = Net()
@@ -55,7 +54,6 @@ class TestFallback(Dy2StTestBase):
 
 
 class TestLoad2(Dy2StTestBase):
-    @test_legacy_and_pt
     def test_name_load_nograd(self):
         @paddle.no_grad()
         def func(x):

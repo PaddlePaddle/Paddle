@@ -16,7 +16,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt
+from dygraph_to_static_utils import Dy2StTestBase
 from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
@@ -121,7 +121,6 @@ class TestResnet(Dy2StTestBase):
         build_strategy.enable_inplace = False
         return train(to_static, build_strategy)
 
-    @test_legacy_and_pt
     def test_resnet(self):
         if base.is_compiled_with_cuda():
             static_loss = self.train(to_static=True)

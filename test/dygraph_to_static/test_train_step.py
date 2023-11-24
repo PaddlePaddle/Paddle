@@ -17,7 +17,7 @@ import unittest
 from functools import partial
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 
@@ -77,7 +77,6 @@ class TestTrainStepTinyModel(Dy2StTestBase):
             losses.append(loss)
         return losses
 
-    @test_legacy_and_pt
     def test_train_step(self):
         reset_seed()
         dygraph_losses = self.get_train_step_losses(

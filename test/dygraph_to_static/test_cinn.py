@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 
@@ -79,7 +79,6 @@ class TestCINN(Dy2StTestBase):
 
         return res
 
-    @test_legacy_and_pt
     def test_cinn(self):
         dy_res = self.train(use_cinn=False)
         cinn_res = self.train(use_cinn=True)

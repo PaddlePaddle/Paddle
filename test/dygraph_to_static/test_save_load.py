@@ -20,7 +20,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pt,
 )
 from test_fetch_feed import Linear
 
@@ -116,7 +115,6 @@ class TestDyToStaticSaveLoad(Dy2StTestBase):
         )
 
     @test_ast_only
-    @test_legacy_and_pt
     def test_save_load_prim(self):
         with base.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
@@ -158,7 +156,6 @@ class TestDyToStaticSaveLoad(Dy2StTestBase):
             np.testing.assert_allclose(res.numpy(), new_res.numpy(), rtol=1e-05)
 
     @test_ast_only
-    @test_legacy_and_pt
     def test_save_load_prim_with_hook(self):
         with base.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")

@@ -18,7 +18,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pt,
 )
 
 import paddle
@@ -134,7 +133,6 @@ class TestConvertShapeCompare(Dy2StTestBase):
             False,
         )
 
-    @test_legacy_and_pt
     def test_variable(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -209,7 +207,6 @@ class ShapeLayer(paddle.nn.Layer):
 
 
 class TestChooseShapeAttrOrApiWithLayer(Dy2StTestBase):
-    @test_legacy_and_pt
     def test_tensor_shape(self):
         x = paddle.zeros(shape=[4, 1], dtype='float32')
         net = ShapeLayer()
@@ -219,7 +216,6 @@ class TestChooseShapeAttrOrApiWithLayer(Dy2StTestBase):
 
 
 class TestIfElseNoValue(Dy2StTestBase):
-    @test_legacy_and_pt
     def test_else_ret_none(self):
         input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
 
@@ -249,7 +245,6 @@ class TestIfElseNoValue(Dy2StTestBase):
         out = without_common_value(input_x, False)
         self.assertIsNone(out)
 
-    @test_legacy_and_pt
     def test_else_ret_c(self):
         input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
 
@@ -282,7 +277,6 @@ class TestIfElseNoValue(Dy2StTestBase):
         self.assertListEqual(paddle.tolist(y), paddle.tolist(input_x + 1))
         self.assertListEqual(paddle.tolist(z), paddle.tolist(input_x + 2))
 
-    @test_legacy_and_pt
     def test_else_ret_cz(self):
         input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
 
