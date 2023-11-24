@@ -196,14 +196,14 @@ std::vector<GroupOpsVec> CinnSubgraphDetector::operator()() {
       continue;
     }
 
-    // sort group ops
+    // sort group ops by natural increasing index.
     std::vector<pir::Operation*> tmp_ops(subgraph->ops.begin(),
                                          subgraph->ops.end());
     auto& op2id = op2id_;
     std::sort(tmp_ops.begin(),
               tmp_ops.end(),
               [&op2id](pir::Operation* a, pir::Operation* b) {
-                return op2id.at(a) > op2id.at(b);
+                return op2id.at(a) < op2id.at(b);
               });
 
     groups.push_back(tmp_ops);
@@ -443,13 +443,10 @@ std::vector<pir::Value> AnalysisOutputs(
     const GroupOpsVec& group_ops) {  // NOLINT
   // Get output by ud chain
   std::unordered_set<pir::Value> used_by_outside;
-  std::unordered_set<pir::Operation*> op_set;
+  std::unordered_set<pir::Operation*> op_set(group_ops.begin(),
+                                             group_ops.end());
 
-  for (auto* op : group_ops) {
-    op_set.insert(op);
-  }
-
-  std::vector<pir::Value> vec_res;
+  std::vector<pir::Value> outputs;
   for (auto* op : group_ops) {
     for (size_t i = 0; i < op->num_results(); ++i) {
       auto result = op->result(i);
@@ -457,20 +454,20 @@ std::vector<pir::Value> AnalysisOutputs(
       for (auto use_iter = result.use_begin(); use_iter != result.use_end();
            ++use_iter) {
         if (!op_set.count(use_iter->owner())) {
-          vec_res.push_back(result);
+          outputs.push_back(result);
           break;
         }
       }
     }
   }
 
-  if (vec_res.size() == 0) {
+  if (outputs.size() == 0) {
     for (size_t i = 0; i < group_ops.back()->num_results(); ++i) {
       vec_res.push_back(group_ops.back()->result(i));
     }
   }
 
-  return vec_res;
+  return outputs;
 }
 
 void ReplaceWithGroupOp(pir::Block* block,
@@ -480,8 +477,8 @@ void ReplaceWithGroupOp(pir::Block* block,
   ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
   ::pir::Builder builder = ::pir::Builder(ctx, block);
   // step 1: Ensure the insert point and create GroupOp here.
-  auto* laste_input_op = group_ops.front();
-  builder.SetInsertionPointAfter(laste_input_op);
+  auto* last_op = group_ops.back();
+  builder.SetInsertionPointAfter(last_op);
   std::vector<pir::Type> output_types;
   std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);
 
@@ -493,7 +490,7 @@ void ReplaceWithGroupOp(pir::Block* block,
   pir::Block* group_block = new_group_op.block();
 
   for (auto op : group_ops) {
-    op->MoveTo(group_block, group_block->begin());
+    op->MoveTo(group_block, group_block->end());
   }
 
   // step 3: Replace outputs of inner ops

@@ -15,8 +15,8 @@
 #pragma once
 
 #include <memory>
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/tensor_node.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/tensor_node.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/core/operation.h"
 
@@ -30,7 +30,7 @@ class OpNode {
       : node_(node), input_tensors_(node), output_tensors_(node) {}
 
   OpPatternKind kind() const {
-    auto kind = GetOpKind(node_->name());
+    auto kind = hlir::framework::pir::CompatibleInfo::OpKind(*node_);
     if (kind == OpPatternKind::kBroadcast) {
       // As binary op was defined as broadcast, actually it should be
       // element-wise.
