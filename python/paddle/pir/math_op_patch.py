@@ -409,6 +409,22 @@ def monkey_patch_opresult():
         """
         pass
 
+    def append(self, var):
+        """
+        **Notes**:
+           **The type OpResult must be LoD Tensor Array.
+
+        """
+        if not self.is_dense_tensor_array_type():
+            raise TypeError(
+                "Only OpResult with pd_op.tensor_array support `append` method, but received type: {}".format(
+                    self.type()
+                )
+            )
+        from paddle.tensor.array import array_length, array_write
+
+        array_write(x=var, i=array_length(self), array=self)
+
     import paddle
 
     opresult_methods = [
@@ -421,6 +437,7 @@ def monkey_patch_opresult():
         ('size', _size_),
         ('clone', clone),
         ('clear_gradient', clear_gradient),
+        ('append', append),
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
