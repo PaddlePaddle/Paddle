@@ -128,7 +128,7 @@ class RunableProgram:
                 ret[op.result(0)] = op.attrs()["name"]
             if op.name() == "builtin.set_parameter":
                 ret[op.operand(0).source()] = op.attrs()["parameter_name"]
-            if op.name() == "builtin.get_parameter":
+            if op.name() == "builtin.parameter":
                 ret[op.result(0)] = op.attrs()["parameter_name"]
         return ret
 
@@ -328,7 +328,7 @@ class PirPassContext:
     """
 
     INPUT_OP_NAME = "pd_op.data"
-    PARM_OP_NAME = "builtin.get_parameter"
+    PARM_OP_NAME = "builtin.parameter"
     OUTPUT_OP_NAME = "builtin.set_parameter"
 
     @classmethod
@@ -371,10 +371,12 @@ class PirPassContext:
 
 
 class PartialProgramLayerHook:
-    def before_append_backward(self, forward_program):
+    def before_append_backward(self, forward_program, src_vars):
         ...
 
-    def after_append_backward(self, whole_program, backward_start_idx):
+    def after_append_backward(
+        self, whole_program, src_vars, backward_start_idx
+    ):
         ...
 
     def after_infer(self, infer_program):
@@ -448,7 +450,8 @@ class PartialProgramLayer:
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        in_vars, out_vars = self._prepare(inputs)
+        in_vars = self._prepare_inputs(inputs)
+        out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes()
         _legacy_C_ops.pir_run_program(
             self._valid_vars(in_vars),
@@ -460,9 +463,26 @@ class PartialProgramLayer:
             self._cuda_graph_vec,
             *attrs,
         )
-        self._update_stop_gradient(out_vars)
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
+
+    def sot_call(self, inputs):
+        """
+        In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
+        """
+        out_vars = self._prepare_outputs()
+        attrs = self._prepare_attributes()
+        _legacy_C_ops.pir_run_program(
+            self._valid_vars(inputs),
+            self._valid_vars(self._params),
+            self._valid_vars(out_vars),
+            self._create_scope_vec(
+                program_id=self.program_id, use_scope_cache=True
+            ),
+            self._cuda_graph_vec,
+            *attrs,
+        )
+        return out_vars
 
     @cached_property
     def origin_runable_program(self):
@@ -818,7 +838,9 @@ class PartialProgramLayer:
             if not param_value.use_empty():
                 required_params.append(param)
                 required_param_values.append(param_value)
-
+            else:
+                # in pir, we need remove the get_parameter op for unused parameters.
+                block.remove_op(param_value.get_defining_op())
         self._params = required_params
         self._param_values = required_param_values
 
@@ -848,7 +870,7 @@ class PartialProgramLayer:
             )
         return attrs
 
-    def _prepare(self, inputs):
+    def _prepare_inputs(self, inputs):
         """
         Prepare inputs, outputs, attrs.
         """
@@ -881,34 +903,12 @@ class PartialProgramLayer:
             else:
                 continue
             input_vars.append(var)
+        return input_vars
 
-        # mapping from name(string) -> Tensor
-        out_tensor_map = {}
-
-        def create_out(var):
-            assert isinstance(var, OpResult)
-
-            if id(var) in out_tensor_map:
-                return out_tensor_map[id(var)]
-
-            if var.is_dense_tensor_type():
-                tensor_type = paddle.dtype(7)  # LOD TENSOR
-            else:
-                tensor_type = paddle.dtype(8)  # SELECT ROW TENSOR
-            out = core.eager.Tensor(
-                framework.paddle_type_to_proto_type[var.dtype],
-                var.shape,
-                "",
-                tensor_type,
-                False,
-            )
-            out.stop_gradient = var.stop_gradient
-            out_tensor_map[id(var)] = out
-            return out
-
-        # Create Tensor to receive output data.
-        out_vars = list(map(create_out, self._outputs.var_list))
-        return input_vars, out_vars
+    def _prepare_outputs(self):
+        return paddle.framework.core.create_empty_tensors_with_op_results(
+            self._outputs.var_list
+        )
 
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
         inner_scope = self._get_scope(

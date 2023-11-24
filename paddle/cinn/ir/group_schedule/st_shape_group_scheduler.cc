@@ -150,7 +150,7 @@ void StaticShapeGroupScheduler::MapExprSchedule() {
 #endif
 }
 
-std::vector<std::pair<SymbolicCondition, ir::Expr>>
+std::vector<std::pair<SymbolicPredicate, ir::Expr>>
 StaticShapeGroupScheduler::GetIRs() {
   return {{Expr(1), ir_sch_->GetModule().GetExprs()[0]}};
 }

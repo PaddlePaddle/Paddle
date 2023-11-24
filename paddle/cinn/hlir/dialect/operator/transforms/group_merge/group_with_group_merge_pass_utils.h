@@ -185,7 +185,8 @@ static bool ReduceFuseReduce1(const OpGroupPtr& first,
   // }
   std::unique_ptr<cinn::dialect::ir::OpNode> reducer_0 = nullptr;
   for (auto op : first.GetGroup()->CollectOps()) {
-    if (GetOpKind(op->name()) == OpPatternKind::kReduction) {
+    if (hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
+        OpPatternKind::kReduction) {
       reducer_0.reset(new cinn::dialect::ir::OpNode(op));
       break;
     }

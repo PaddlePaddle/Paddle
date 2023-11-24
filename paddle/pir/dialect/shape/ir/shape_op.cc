@@ -244,7 +244,7 @@ void FuncOp::Build(Builder &builder, OperationArgument &argument) {
 Block *FuncOp::block() {
   Region &region = (*this)->region(0);
   if (region.empty()) region.emplace_back();
-  return region.front();
+  return &region.front();
 }
 
 void FuncOp::Print(IrPrinter &printer) {

@@ -18,6 +18,7 @@
 #include <vector>
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/enforce.h"
+#include "paddle/pir/core/iterator.h"
 #include "paddle/pir/core/macros.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/operation_utils.h"
@@ -34,7 +35,8 @@ class OpResultImpl;
 class OpOperendImpl;
 }  // namespace detail
 
-class IR_API alignas(8) Operation final {
+class IR_API alignas(8) Operation final
+    : public DoubleLevelContainer<Operation> {
  public:
   ///
   /// \brief Malloc memory and construct objects in the following order:
@@ -109,6 +111,7 @@ class IR_API alignas(8) Operation final {
   ///
   /// \brief region related public interfaces
   ///
+  using Element = Region;
   using Iterator = Region *;
   using ConstIterator = const Region *;
   uint32_t num_regions() const { return num_regions_; }
@@ -118,6 +121,10 @@ class IR_API alignas(8) Operation final {
   ConstIterator end() const { return regions_ + num_regions_; }
   Iterator begin() { return regions_; }
   Iterator end() { return regions_ + num_regions_; }
+
+  /// \brief block related public interfaces
+  using BlockContainer = DoubleLevelContainer<Operation>;
+  BlockContainer &blocks() { return *this; }
 
   ///
   /// \brief parent related public interfaces

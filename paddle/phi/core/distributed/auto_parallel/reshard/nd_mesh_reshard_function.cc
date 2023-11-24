@@ -266,7 +266,5 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   }
 }
 
-REGISTER_RESHARD_FUNC(SameNdMeshReshardFunction);
-
 }  // namespace distributed
 }  // namespace phi
