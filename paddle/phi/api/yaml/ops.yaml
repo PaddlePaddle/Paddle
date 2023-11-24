@@ -2056,6 +2056,18 @@
     func : qr
   backward : qr_grad
 
+- op : read_file
+  args : (str filename = "", DataType dtype = DataType::UINT8, Place place = CPUPlace())
+  output :  Tensor(out)
+  infer_meta :
+    func : ReadFileInferMeta
+    param : [filename, dtype]
+  kernel :
+    func : read_file
+    param : [filename, dtype]
+    data_type : dtype
+    backend : place
+
 - op : real
   args : (Tensor x)
   output : Tensor (out)

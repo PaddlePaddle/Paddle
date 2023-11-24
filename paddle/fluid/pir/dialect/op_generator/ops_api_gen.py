@@ -82,6 +82,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'layer_norm_act_xpu',
     'multi_encoder_xpu',
     'multihead_matmul',
+    'read_file',
     'squeeze_excitation_block',
     'yolo_box_xpu',
     'fusion_gru',
