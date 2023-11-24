@@ -1201,6 +1201,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             place = _current_expected_place()
             out = _C_ops.randint(low, high, shape, DataType.INT64, place)
         out = paddle.cast(out, dtype)
+        return out
     else:
         check_shape(shape, 'randint_like')
         check_dtype(
