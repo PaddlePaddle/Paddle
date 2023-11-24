@@ -718,7 +718,6 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
   Node* filter_intx = nullptr;
   Node* filter_max = nullptr;
   Node* scale_max = nullptr;
-  bool per_channel_quant = false;
 
   std::map<std::string, int> default_type;
   default_type.insert(std::make_pair("conv", -1));
