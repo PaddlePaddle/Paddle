@@ -1293,7 +1293,6 @@ def _topo_order_map(block, target_vars):
     get_defined_op = {}  # mapping from String -> OpDesc (defined op)
     for op in block.ops:
         for out_name in op.output_arg_names:
-            assert out_name not in get_defined_op, "Duplicated output found."
             get_defined_op[out_name] = op
 
     topo_order_map = {}  # mapping from OpDesc -> Topologic Order
