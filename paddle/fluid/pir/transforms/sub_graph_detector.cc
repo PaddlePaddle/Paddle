@@ -463,7 +463,7 @@ std::vector<pir::Value> AnalysisOutputs(
 
   if (outputs.size() == 0) {
     for (size_t i = 0; i < group_ops.back()->num_results(); ++i) {
-      vec_res.push_back(group_ops.back()->result(i));
+      outputs.push_back(group_ops.back()->result(i));
     }
   }
 
