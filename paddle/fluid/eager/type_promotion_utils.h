@@ -79,12 +79,7 @@ inline static phi::DataType promoteTypes(phi::DataType a, phi::DataType b) {
   constexpr auto b1 = phi::DataType::BOOL;
   constexpr auto bf = phi::DataType::BFLOAT16;
 
-  // this matrix has to be consistent with
-  // AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS undefined is used where we
-  // are not sure about the correct value for type promotion.
-  // clang-format off
-  static constexpr phi::DataType _promoteTypesLookup[
-      12][12] = {
+  static constexpr phi::DataType _promoteTypesLookup[12][12] = {
       /*        u1  i1  i2  i4  i8  f2  f4  f8  c4  c8  b1  bf*/
       /* u1 */ {u1, i2, i2, i4, i8, f2, f4, f8, c4, c8, u1, bf},
       /* i1 */ {i2, i1, i2, i4, i8, f2, f4, f8, c4, c8, i1, bf},
@@ -99,7 +94,7 @@ inline static phi::DataType promoteTypes(phi::DataType a, phi::DataType b) {
       /* b1 */ {u1, i1, i2, i4, i8, f2, f4, f8, c4, c8, b1, bf},
       /* bf */ {bf, bf, bf, bf, bf, f4, f4, f8, c4, c8, bf, bf},
   };
-  // clang-format on
+
   return _promoteTypesLookup[DataTypeToNum(a)][DataTypeToNum(b)];
 }
 
