@@ -545,6 +545,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                            void* workspace,
                            cudaStream_t stream) TRT_NOEXCEPT {
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
+  std::cout<<"GenericPlugin::enqueue"<<isFp16Supported()<<std::endl;
   // TODO(inference): generic plugin do not support INT8 precision now.
   auto nvType2PhiType =
       [&](nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
@@ -584,7 +585,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
     int input_numel = 1;
     for (int k = 0; k < input_shape.size(); k++) input_numel *= input_shape[k];
-
+    std::cout<<op_desc_.Type()<<"----------"<<inputs_data_type_[i]<<std::endl;
     auto data_type_and_size = nvType2PhiType(input_desc[i].type);
 
     phi::DenseTensorMeta input_meta(data_type_and_size.first,
