@@ -55,6 +55,10 @@ function base_image(){
     sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
     sed -i 's#RUN bash /build_scripts/install_cudnn.sh cudnn841##g' ${dockerfile_name}
     sed -i 's#ENV CUDNN_VERSION=8.4.1##g' ${dockerfile_name}
+    sed -i 's#RUN apt-key del 7fa2af80##g' ${dockerfile_name}
+    sed -i 's#RUN rm /etc/apt/sources.list.d/*##g' ${dockerfile_name}
+    sed -i 's#RUN apt-key adv --fetch-keys https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub##g' ${dockerfile_name}
+    sed -i 's#ENV WITH_GPU=${WITH_GPU:-ON}#ENV WITH_GPU=${WITH_GPU:-OFF}#g' ${dockerfile_name}
   else
     echo "Dockerfile ERROR!!!"
     exit 1
