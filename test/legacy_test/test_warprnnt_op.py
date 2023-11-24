@@ -233,9 +233,7 @@ class TestWarpRNNTOp(OpTest):
         self.outputs["warprnntgrad"] = self.gradient
         if core.is_compiled_with_rocm():
             self.check_grad(
-                ["input"],
-                "loss",
-                numeric_grad_delta=0.009,
+                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
             )
         else:
             self.check_grad(
@@ -253,15 +251,11 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
         self.outputs["warprnntgrad"] = self.gradient
         if core.is_compiled_with_rocm():
             self.check_grad(
-                ["input"],
-                "loss",
-                numeric_grad_delta=0.009,
+                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
             )
         else:
             self.check_grad(
-                ["input"],
-                "loss",
-                numeric_grad_delta=0.009,
+                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
             )
 
 
