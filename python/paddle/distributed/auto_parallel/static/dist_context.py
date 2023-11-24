@@ -135,9 +135,6 @@ class DistributedContext:
 
         self._json_config = json_config
 
-        # record vpp size
-        self._num_model_chunks = 0
-
     @property
     def serial_main_program(self):
         return self._serial_main_program
