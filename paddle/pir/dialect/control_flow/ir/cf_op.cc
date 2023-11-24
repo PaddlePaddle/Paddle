@@ -25,143 +25,93 @@ void YieldOp::Build(Builder &builder,
   argument.AddInputs(inputs);
 }
 
-void CreateStackOp::Build(Builder &builder, OperationArgument &argument) {
-  auto stack_type = StackType::get(builder.ir_context());
-  auto inlet_type = InletType::get(builder.ir_context());
-  auto outlet_type = OutletType::get(builder.ir_context());
-  argument.AddOutputs({stack_type, inlet_type, outlet_type});
-}
-void CreateStackOp::VerifySig() {
-  VLOG(4) << "Verifying inputs, outputs and attributes for: CreateStackOp.";
-  // Verify inputs:
-  IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
-
-  // No attributes should be verify.
-
-  // Verify outputs:
-  IR_ENFORCE(num_results() == 3u, "The size of outputs must be equal to 3.");
-
-  IR_ENFORCE(result(0).type().isa<StackType>(),
-             "The first outputs of cf.create_stack must be stack_type.");
-  IR_ENFORCE(result(1).type().isa<InletType>(),
-             "The first outputs of cf.create_stack must be inlet_type.");
-  IR_ENFORCE(result(2).type().isa<OutletType>(),
-             "The first outputs of cf.create_stack must be outlet_type.");
-
-  VLOG(4) << "End Verifying for CreateStackOp.";
-}
-size_t CreateStackOp::stack_size() { return push_op().stack_size(); }
-Value CreateStackOp::inlet_element(size_t index) {
-  return push_op().inlet_element(index);
-}
-Value CreateStackOp::outlet_element(size_t index) {
-  return pop_op().outlet_element(index);
-}
-PushBackOp CreateStackOp::push_op() {
-  auto inlet_value = inlet();
-  IR_ENFORCE(inlet_value.HasOneUse(), "The inlet value must has one use.");
-  return inlet_value.first_use().owner()->dyn_cast<PushBackOp>();
-}
-PopBackOp CreateStackOp::pop_op() {
-  auto outlet_value = outlet();
-  IR_ENFORCE(outlet_value.HasOneUse(), "The outlet value must has one use.");
-  return outlet_value.first_use().owner()->dyn_cast<PopBackOp>();
-}
-
-void CreateStackOp::Print(IrPrinter &printer) {  // NOLINT
-  static std::unordered_map<IrPrinter *,
-                            std::unordered_map<Operation *, size_t>>
-      kConunters;
-  auto &counter = kConunters[&printer];
-  auto iter = counter.insert({*this, counter.size()});
-  auto index = iter.first->second;
-  if (iter.second) {
-    printer.AddValueAlias(stack(), "%stack_" + std::to_string(index));
-    printer.AddValueAlias(inlet(), "%inlet_" + std::to_string(index));
-    printer.AddValueAlias(outlet(), "%outlet_" + std::to_string(index));
-  }
-  printer.PrintGeneralOperation(*this);
-}
-
-void PushBackOp::Build(Builder &builder,             // NOLINT
-                       OperationArgument &argument,  // NOLINT
-                       Value inlet,
-                       const std::vector<Value> &elements) {
+void TuplePushOp::Build(Builder &builder,             // NOLINT
+                        OperationArgument &argument,  // NOLINT
+                        Value inlet,
+                        const std::vector<Value> &elements) {
   argument.AddInput(inlet);
   argument.AddInputs(elements);
 }
 
-void PushBackOp::Build(Builder &builder,             // NOLINT
-                       OperationArgument &argument,  // NOLINT
-                       Value inlet,
-                       std::initializer_list<Value> element_list) {
+void TuplePushOp::Build(Builder &builder,             // NOLINT
+                        OperationArgument &argument,  // NOLINT
+                        Value inlet,
+                        std::initializer_list<Value> element_list) {
   argument.AddInput(inlet);
   argument.AddInputs(element_list);
 }
 
-void PushBackOp::VerifySig() {
-  VLOG(4) << "Verifying inputs, outputs ,attributes for: PushBackOp.";
+void TuplePushOp::VerifySig() {
+  VLOG(4) << "Verifying inputs, outputs ,attributes for: TuplePushOp.";
   // Verify inputs:
-  IR_ENFORCE(num_operands() >= 2u, "The size of inputs must no less than 2.");
+  IR_ENFORCE(num_operands() >= 1u, "The size of inputs must no less than 1.");
   IR_ENFORCE(operand_source(0).type().isa<InletType>(),
-             "The first input of cf.push_back must be inlet_type.");
+             "The first input of cf.tuple_push must be inlet_type.");
+  IR_ENFORCE(operand_source(0).HasOneUse(),
+             "The inlet value of cf.tuple_push can only be used once.");
 
   // No attributes should be verify.
 
   // Verify outputs:
   IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
-  VLOG(4) << "End Verifying for PushBackOp.";
+  VLOG(4) << "End Verifying for TuplePushOp.";
 }
 
-size_t PushBackOp::stack_size() {
+size_t TuplePushOp::tuple_size() {
   auto operands_size = num_operands();
-  IR_ENFORCE(operands_size >= 2u,
-             "The operands of push op must no less than 2.");
+  IR_ENFORCE(operands_size >= 1u,
+             "The operands of push op must no less than 1.");
   return operands_size - 1u;
 }
 
-PopBackOp PushBackOp::pop_op() { return create_op().pop_op(); }
-void PopBackOp::Build(Builder &builder,             // NOLINT
-                      OperationArgument &argument,  // NOLINT
-                      Value outlet) {
+TuplePopOp TuplePushOp::tuple_pop_op() {
+  return container_interface().tuple_pop_op();
+}
+
+void TuplePopOp::Build(Builder &builder,             // NOLINT
+                       OperationArgument &argument,  // NOLINT
+                       Value outlet) {
   argument.AddInput(outlet);
 
-  auto push_back_op = outlet.defining_op<CreateStackOp>().push_op();
+  auto push_op = outlet.defining_op<ContainerOpInterface>().tuple_push_op();
 
-  auto elements_size = push_back_op.stack_size();
+  auto elements_size = push_op.tuple_size();
 
   for (size_t index = 0; index < elements_size; ++index) {
-    argument.AddOutput(push_back_op.inlet_element(index).type());
+    argument.AddOutput(push_op.inlet_element(index).type());
   }
 }
 
-void PopBackOp::VerifySig() {
+void TuplePopOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs ,attributes  and stack validity for: "
-             "PopBackOp.";
+             "TuplePopOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 1u, "The size of inputs must equal to 1.");
   IR_ENFORCE(operand_source(0).type().isa<OutletType>(),
-             "The first input of cf.pop_back must be outlet_type.");
+             "The first input of cf.tuple_pop must be outlet_type.");
+  IR_ENFORCE(operand_source(0).HasOneUse(),
+             "The outlet value of cf.tuple_pop can only be used once.");
 
   // No attributes should be verify.
 
   // Verify outputs:
-  IR_ENFORCE(num_results() >= 1u,
-             "The size of outputs must no less than to 1.");
-  // Verify stack validity:
-  auto pop_back_op = create_op().pop_op();
-  IR_ENFORCE(*this == pop_back_op,
-             "The pop_op of stack_op must be this pop_op self.");
 
-  auto inlet_size = push_op().stack_size();
-  IR_ENFORCE(inlet_size == stack_size(),
+  // Verify stack validity:
+  auto pop_op = container_interface().tuple_pop_op();
+  IR_ENFORCE(*this == pop_op,
+             "The pop_op of tuple_pop_op must be this tuple_pop_op self.");
+
+  auto inlet_size = tuple_push_op().tuple_size();
+  IR_ENFORCE(inlet_size == tuple_size(),
              "The pop elements size must equal to push elements size.");
   for (size_t index = 0; index < inlet_size; ++index) {
     IR_ENFORCE(outlet_element(index).type() == inlet_element(index).type(),
-               "The %d element's push type isn't equal to pop type",
-               index);
+               "The %d element's push type (%s) isn't equal to pop type (%s)",
+               index,
+               outlet_element(index).type(),
+               inlet_element(index).type());
   }
-  VLOG(4) << "End Verifying for PopBackOp.";
+  VLOG(4) << "End Verifying for TuplePopOp.";
 }
 
 void HasElementsOp::Build(Builder &builder,             // NOLINT
@@ -185,10 +135,74 @@ void HasElementsOp::VerifySig() {
              "The type of cf.has_elements' output is not correct.");
 }
 
+void StackCreateOp::Build(Builder &builder, OperationArgument &argument) {
+  auto stack_type = StackType::get(builder.ir_context());
+  auto inlet_type = InletType::get(builder.ir_context());
+  auto outlet_type = OutletType::get(builder.ir_context());
+  argument.AddOutputs({stack_type, inlet_type, outlet_type});
+}
+
+void StackCreateOp::VerifySig() {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: StackCreateOp.";
+  // Verify inputs:
+  IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
+
+  // No attributes should be verify.
+
+  // Verify outputs:
+  IR_ENFORCE(num_results() == 3u, "The size of outputs must be equal to 3.");
+
+  IR_ENFORCE(result(0).type().isa<StackType>(),
+             "The first outputs of cf.stack_create must be stack_type.");
+  IR_ENFORCE(result(1).type().isa<InletType>(),
+             "The first outputs of cf.stack_create must be inlet_type.");
+  IR_ENFORCE(result(2).type().isa<OutletType>(),
+             "The first outputs of cf.stack_create must be outlet_type.");
+
+  VLOG(4) << "End Verifying for StackCreateOp.";
+}
+
+size_t StackCreateOp::tuple_size() { return tuple_push_op().tuple_size(); }
+
+Value StackCreateOp::inlet_element(size_t index) {
+  return tuple_push_op().inlet_element(index);
+}
+
+Value StackCreateOp::outlet_element(size_t index) {
+  return tuple_pop_op().outlet_element(index);
+}
+
+TuplePushOp StackCreateOp::tuple_push_op() {
+  auto inlet_value = inlet();
+  IR_ENFORCE(inlet_value.HasOneUse(), "The inlet value must has one use.");
+  return inlet_value.first_use().owner()->dyn_cast<TuplePushOp>();
+}
+
+TuplePopOp StackCreateOp::tuple_pop_op() {
+  auto outlet_value = outlet();
+  IR_ENFORCE(outlet_value.HasOneUse(), "The outlet value must has one use.");
+  return outlet_value.first_use().owner()->dyn_cast<TuplePopOp>();
+}
+
+void StackCreateOp::Print(IrPrinter &printer) {  // NOLINT
+  static std::unordered_map<IrPrinter *,
+                            std::unordered_map<Operation *, size_t>>
+      kConunters;
+  auto &counter = kConunters[&printer];
+  auto iter = counter.insert({*this, counter.size()});
+  auto index = iter.first->second;
+  if (iter.second) {
+    printer.AddValueAlias(stack(), "%stack_" + std::to_string(index));
+    printer.AddValueAlias(inlet(), "%inlet_" + std::to_string(index));
+    printer.AddValueAlias(outlet(), "%outlet_" + std::to_string(index));
+  }
+  printer.PrintGeneralOperation(*this);
+}
+
 }  // namespace pir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::YieldOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::CreateStackOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::PushBackOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::PopBackOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::StackCreateOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::TuplePushOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::TuplePopOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::HasElementsOp)

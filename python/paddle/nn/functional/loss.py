@@ -147,7 +147,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
             >>> prob = paddle.randn((10,1))
             >>> cost = F.log_loss(input=prob, label=label)
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.log_loss(input, label, epsilon)
 
     helper = LayerHelper('log_loss', **locals())
@@ -271,7 +271,7 @@ def base_softmax_with_cross_entropy(
         )
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         softmax, loss = _C_ops.cross_entropy_with_softmax(
             logits,
             label,

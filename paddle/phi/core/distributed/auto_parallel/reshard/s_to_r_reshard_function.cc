@@ -159,8 +159,5 @@ void SToRReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
   s_to_r_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
 }
 
-REGISTER_RESHARD_FUNC(SToRReshardFunction);
-REGISTER_RESHARD_FUNC(SToRReshardFunctionCrossMesh);
-
 }  // namespace distributed
 }  // namespace phi

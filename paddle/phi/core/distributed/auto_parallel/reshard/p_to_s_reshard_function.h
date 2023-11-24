@@ -27,6 +27,8 @@ class PToSReshardFunction final : public ReshardFunction {
             const DistTensor& in,
             const TensorDistAttr& out_dist_attr,
             DistTensor* out) override;
+
+  std::string Name() override { return "PToSReshard"; }
 };
 
 }  // namespace distributed

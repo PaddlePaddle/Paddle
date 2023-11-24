@@ -157,6 +157,13 @@ void TransDataBackend(const phi::SelectedRows* tensor,
 phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor);
 
 void CheckAndTrans2Contiguous(phi::DenseTensor* tensor);
+
+phi::DenseTensor CheckAndTrans2NewContiguousTensor(
+    const phi::DenseTensor& tensor);
+
+std::vector<phi::DenseTensor> CheckAndTrans2NewContiguousTensor(
+    const std::vector<phi::DenseTensor>& tensor);
+
 inline bool NeedTransformPlace(const phi::Place& src_place,
                                const Backend& target,
                                const TransformFlag& transform_flag) {
@@ -196,6 +203,30 @@ ReshardApiInputToKernelInput(
     phi::DeviceContext* dev_ctx,
     const paddle::optional<std::vector<Tensor>>& tensors,
     const phi::distributed::ArgDistAttr& dist_attr);
+
+void SetInplaceOutputCorrectDistAttr(
+    phi::DeviceContext* dev_ctx,
+    Tensor& tensor,  // NOLINT
+    const phi::distributed::TensorDistAttr& dist_attr,
+    bool use_general_spmd_rule = true);
+
+void SetInplaceOutputCorrectDistAttr(
+    phi::DeviceContext* dev_ctx,
+    Tensor& tensor,  // NOLINT
+    const phi::distributed::ArgDistAttr& dist_attr,
+    bool use_general_spmd_rule = true);
+
+void SetInplaceOutputCorrectDistAttr(
+    phi::DeviceContext* dev_ctx,
+    std::vector<Tensor>& tensors,  // NOLINT
+    const std::vector<phi::distributed::TensorDistAttr>& dist_attr,
+    bool use_general_spmd_rule = true);
+
+void SetInplaceOutputCorrectDistAttr(
+    phi::DeviceContext* dev_ctx,
+    std::vector<Tensor>& tensors,  // NOLINT
+    const phi::distributed::ArgDistAttr& dist_attr,
+    bool use_general_spmd_rule = true);
 
 void ReshardOutputPartialAxisToReplicated(
     phi::DeviceContext* dev_ctx, phi::distributed::DistTensor* out_tensor);
