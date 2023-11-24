@@ -46,11 +46,13 @@ template <typename T>
 void per_channel_scale(
     T* scale, const T* input, size_t m, size_t n, float bound) {
   for (size_t i = 0; i < n; ++i) {
-    T max = input[i];
+    float max = static_cast<float>(input[i]);
     for (size_t j = 0; j < m; ++j) {
-      max = xabs(input[j * n + i]) > max ? xabs(input[j * n + i]) : max;
+      max = static_cast<float>(xabs(input[j * n + i])) > max
+                ? static_cast<float>(xabs(input[j * n + i]))
+                : max;
     }
-    scale[i] = static_cast<T>(static_cast<float>(max) / bound);
+    scale[i] = static_cast<T>(max / bound);
   }
 }
 
