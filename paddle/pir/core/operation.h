@@ -175,7 +175,7 @@ class IR_API alignas(8) Operation final {
 
   void Verify();
 
-  static uint64_t id() { return uid_; }
+  uint64_t id() { return id_; }
 
  private:
   DISABLE_COPY_AND_ASSIGN(Operation);
@@ -213,6 +213,12 @@ class IR_API alignas(8) Operation final {
   AttributeMap attributes_;
 
   OpInfo info_;
+
+  static uint64_t GenerateId() {
+    static std::atomic<std::uint64_t> uid{0};
+    return ++uid;
+  }
+  const uint64_t id_ = 0;
 
   const uint32_t num_results_ = 0;
   const uint32_t num_operands_ = 0;
