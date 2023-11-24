@@ -123,9 +123,23 @@ class TestPir(unittest.TestCase):
             ),
         )
 
+    def check_results_prim(self, ref_losses, check_losses):
+        np.testing.assert_allclose(
+            ref_losses,
+            check_losses,
+            rtol=1e-6,
+            atol=1e-5,
+            err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
+                __class__, ref_losses, check_losses, ref_losses - check_losses
+            ),
+        )
+
     def enable_pir(self, flag):
         paddle.set_flags({'FLAGS_enable_pir_in_executor': flag})  # for c++
         os.environ['FLAGS_enable_pir_in_executor'] = str(flag)  # for python
+
+    def enable_prim_in_dist(self, flag):
+        os.environ['FLAGS_enable_prim_in_distribute'] = str(flag)
 
     def test_dp(self):
         self.enable_pir(False)
@@ -187,10 +201,28 @@ class TestPir(unittest.TestCase):
         out_mp_ir = engine_mp_ir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
-
         self.check_results(
             out_mp_prog.history["loss"][0], out_mp_ir.history["loss"][0]
         )
+
+        # # test prim enabled distributed engine
+        # self.enable_prim_in_dist(True)
+        # engine_mp_pir_prim = self.get_engine("mp", name="mp_pir_prim")
+        # dataloader_mp_pir_prim = engine_mp_pir_prim.dataloader(
+        #     self.dataset,
+        #     batch_size=self.batch_size,
+        #     sample_split=3,
+        #     mode="train",
+        # )
+        # engine_mp_pir_prim.prepare(mode="train")
+        # for data in dataloader_mp_pir_prim:
+        #     out_mp_pir_prim = engine_mp_pir_prim.run(data, mode="train")
+
+        # if paddle.distributed.get_rank() == 1:
+        #     self.check_results_prim(
+        #         out_mp_pir_prim["loss"], out_mp_ir.history["loss"][0]
+        #     )
+        # self.enable_prim_in_dist(False)
 
     def test_pp(self):
         # navie pipeline parallel without schedule
@@ -232,7 +264,8 @@ class TestPir(unittest.TestCase):
                 out_pp_prog1["loss"], out_pp_ir.history["loss"][0]
             )
 
-        os.environ['FLAGS_enable_prim_in_distribute'] = 'True'
+        # test prim enabled distributed engine
+        self.enable_prim_in_dist(True)
         engine_pp_pir_prim = self.get_engine("pp", name="pp_pir_prim")
         dataloader_pp_pir_prim = engine_pp_pir_prim.dataloader(
             self.dataset,
@@ -247,10 +280,11 @@ class TestPir(unittest.TestCase):
         for data in dataloader_pp_pir_prim:
             out_pp_pir_prim = engine_pp_pir_prim.run(data, mode="train")
 
-        # if paddle.distributed.get_rank() == 1:
-        #     self.check_results(
-        #         out_pp_pir_prim["loss"], out_pp_ir.history["loss"][0]
-        #     )
+        if paddle.distributed.get_rank() == 1:
+            self.check_results_prim(
+                out_pp_pir_prim["loss"], out_pp_ir.history["loss"][0]
+            )
+        self.enable_prim_in_dist(False)
 
     def test_pp_1f1b(self):
         self.enable_pir(False)
