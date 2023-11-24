@@ -11,36 +11,35 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from paddle.framework import dtype
 
-import paddle
-
-u1 = paddle.uint8
-i1 = paddle.int8
-i2 = paddle.int16
-i4 = paddle.int32
-i8 = paddle.int64
-f2 = paddle.float16
-f4 = paddle.float32
-f8 = paddle.float64
-c4 = paddle.complex64
-c8 = paddle.complex128
-b1 = paddle.bool
-bf = paddle.bfloat16
+u1 = dtype.uint8
+i1 = dtype.int8
+i2 = dtype.int16
+i4 = dtype.int32
+i8 = dtype.int64
+f2 = dtype.float16
+f4 = dtype.float32
+f8 = dtype.float64
+c4 = dtype.complex64
+c8 = dtype.complex128
+b1 = dtype.bool
+bf = dtype.bfloat16
 
 
 Number = {
-    paddle.uint8: 0,
-    paddle.int8: 1,
-    paddle.int16: 2,
-    paddle.int32: 3,
-    paddle.int64: 4,
-    paddle.float16: 5,
-    paddle.float32: 6,
-    paddle.float64: 7,
-    paddle.complex64: 8,
-    paddle.complex128: 9,
-    paddle.bool: 10,
-    paddle.bfloat16: 11,
+    dtype.uint8: 0,
+    dtype.int8: 1,
+    dtype.int16: 2,
+    dtype.int32: 3,
+    dtype.int64: 4,
+    dtype.float16: 5,
+    dtype.float32: 6,
+    dtype.float64: 7,
+    dtype.complex64: 8,
+    dtype.complex128: 9,
+    dtype.bool: 10,
+    dtype.bfloat16: 11,
 }
 
 promoteTypesLookup = [
