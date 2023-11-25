@@ -290,7 +290,7 @@ using DDim = common::DDim;
 
 namespace std {
 template <>
-struct hash<common::DDim> {
+struct TEST_API hash<common::DDim> {
   std::size_t operator()(common::DDim const& ddim) const;
 };
 }  // namespace std
