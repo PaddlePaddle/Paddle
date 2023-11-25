@@ -433,6 +433,9 @@ def GenBuildOutputs(
     CREATE_OUTPUT_METATENSOR_TEMPLATE = """  paddle::dialect::IrTensor dense_{name};
   paddle::dialect::IrMetaTensor meta_{name}(&dense_{name});
 """
+    CREATE_OUTPUT_METASELETEROWS_TEMPLATE = """  paddle::dialect::IrSelectedRows dense_{name};
+  paddle::dialect::IrMetaTensor meta_{name}(&dense_{name});
+"""
     CREATE_OUTPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrTensor> vec_dense_{name}(({output_size}), paddle::dialect::IrTensor());
   std::vector<paddle::dialect::IrMetaTensor> vec_meta_{name};
   for (size_t i=0; i < static_cast<size_t>({output_size}); i++) {{
@@ -553,10 +556,18 @@ def GenBuildOutputs(
             infer_meta_args.append(f"meta_{op_output_name_list[idx]}")
         # is a Tensor
         else:
-            build_output_str += CREATE_OUTPUT_METATENSOR_TEMPLATE.format(
-                name=op_output_name_list[idx]
-            )
-            infer_meta_args.append(f"&meta_{op_output_name_list[idx]}")
+            if op_output_type_list[idx] == "paddle::dialect::DenseTensorType":
+                build_output_str += CREATE_OUTPUT_METATENSOR_TEMPLATE.format(
+                    name=op_output_name_list[idx]
+                )
+                infer_meta_args.append(f"&meta_{op_output_name_list[idx]}")
+            else:
+                build_output_str += (
+                    CREATE_OUTPUT_METASELETEROWS_TEMPLATE.format(
+                        name=op_output_name_list[idx]
+                    )
+                )
+                infer_meta_args.append(f"&meta_{op_output_name_list[idx]}")
 
     # Execute infer meta function
     CREATE_INFER_META_FUNC_TEMPLATE = """
