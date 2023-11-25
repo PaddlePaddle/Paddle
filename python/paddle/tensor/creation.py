@@ -2809,7 +2809,9 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
 
 
 def polar(abs, angle, name=None):
-    """Return a Cartesian coordinates corresponding to the polar coordinates compelx tensor given the ``abs`` and ``angle`` component.
+    """
+
+    Return a Cartesian coordinates corresponding to the polar coordinates compelx tensor given the ``abs`` and ``angle`` component.
 
     Args:
         abs (Tensor): The abs component. The data type should be 'float32' or 'float64'.
@@ -2837,6 +2839,7 @@ def polar(abs, angle, name=None):
             Tensor(shape=[2], dtype=complex128, place=Place(cpu), stop_gradient=True,
             [ (6.123233995736766e-17+1j)             ,
              (-1.4142135623730954-1.414213562373095j)])
+
     """
     check_variable_and_dtype(abs, 'abs', ['float32', 'float64'], 'paddle.polar')
     check_variable_and_dtype(

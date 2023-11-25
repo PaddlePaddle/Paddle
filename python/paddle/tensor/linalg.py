@@ -717,6 +717,7 @@ def dist(x, y, p=2, name=None):
             >>> print(out)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             0.)
+
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.dist(x, y, p)
@@ -2373,6 +2374,7 @@ def qr(x, mode="reduced", name=None):
 
 def lu(x, pivot=True, get_infos=False, name=None):
     r"""
+
     Computes the LU factorization of an N-D(N>=2) matrix x.
 
     Returns the LU factorization(inplace x) and Pivots. low triangular matrix L and
@@ -2390,26 +2392,20 @@ def lu(x, pivot=True, get_infos=False, name=None):
 
     Args:
 
-        X (Tensor): the tensor to factor of N-dimensions(N>=2).
-
+        x (Tensor): the tensor to factor of N-dimensions(N>=2).
         pivot (bool, optional): controls whether pivoting is done. Default: True.
-
         get_infos (bool, optional): if set to True, returns an info IntTensor. Default: False.
-
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         factorization (Tensor), LU matrix, the factorization of input X.
-
         pivots (IntTensor), the pivots of size(∗(N-2), min(m,n)). `pivots` stores all the
         intermediate transpositions of rows. The final permutation `perm` could be
         reconstructed by this, details refer to upper example.
-
         infos (IntTensor, optional), if `get_infos` is `True`, this is a tensor of size (∗(N-2))
         where non-zero values indicate whether factorization for the matrix or each minibatch
         has succeeded or failed.
-
 
     Examples:
         .. code-block:: python
@@ -2449,6 +2445,7 @@ def lu(x, pivot=True, get_infos=False, name=None):
              [0.        , 0.80000000]])
 
             >>> # one can verify : X = P @ L @ U ;
+
     """
 
     if in_dynamic_or_pir_mode():
@@ -2475,6 +2472,7 @@ def lu(x, pivot=True, get_infos=False, name=None):
 
 def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
     r"""
+
     Unpack L U and P to single matrix tensor .
     unpack L and U matrix from LU, unpack permutation matrix P from Pivtos .
 
@@ -2489,23 +2487,16 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
 
     Args:
         x (Tensor): The LU tensor get from paddle.linalg.lu, which is combined by L and U.
-
         y (Tensor): Pivots get from paddle.linalg.lu.
-
         unpack_ludata (bool, optional): whether to unpack L and U from x. Default: True.
-
         unpack_pivots (bool, optional): whether to unpack permutation matrix P from Pivtos. Default: True.
-
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         P (Tensor), Permutation matrix P of lu factorization.
-
         L (Tensor), The lower triangular matrix tensor of lu factorization.
-
         U (Tensor), The upper triangular matrix tensor of lu factorization.
-
 
     Examples:
         .. code-block:: python
@@ -2545,6 +2536,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
              [0.        , 0.80000000]])
 
             >>> # one can verify : X = P @ L @ U ;
+
     """
     if x.ndim < 2:
         raise ValueError(

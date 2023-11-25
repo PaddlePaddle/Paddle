@@ -979,6 +979,7 @@ def monkey_patch_tensor():
     @framework.dygraph_only
     def values(self):
         """
+
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
@@ -998,12 +999,14 @@ def monkey_patch_tensor():
                 >>> print(sparse_x.values())
                 Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [1., 2., 3., 4., 5.])
+                
         """
         return _C_ops.sparse_values(self)
 
     @framework.dygraph_only
     def to_dense(self):
         """
+
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
@@ -1026,6 +1029,7 @@ def monkey_patch_tensor():
                 [[0., 1., 0., 2.],
                  [0., 0., 3., 0.],
                  [4., 5., 0., 0.]])
+
         """
 
         return _C_ops.sparse_to_dense(self)
@@ -1033,6 +1037,7 @@ def monkey_patch_tensor():
     @framework.dygraph_only
     def to_sparse_coo(self, sparse_dim):
         """
+
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
@@ -1053,6 +1058,7 @@ def monkey_patch_tensor():
                        indices=[[0, 0, 1, 1],
                                 [1, 3, 2, 3]],
                        values=[1., 2., 3., 4.])
+
         """
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)

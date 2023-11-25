@@ -464,6 +464,7 @@ def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
 def pow(x, y, name=None):
     """
+
     Compute the power of Tensor elements. The equation is:
 
     .. math::
@@ -484,7 +485,6 @@ def pow(x, y, name=None):
         N-D Tensor. A location into which the result is stored. Its dimension and data type are the same as `x`.
 
     Examples:
-
         .. code-block:: python
 
             >>> import paddle
@@ -779,6 +779,7 @@ def logaddexp(x, y, name=None):
 
 def subtract(x, y, name=None):
     """
+
     Substract two tensors element-wise. The equation is:
 
     .. math::
@@ -798,7 +799,6 @@ def subtract(x, y, name=None):
         N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
 
     Examples:
-
         .. code-block:: python
 
             >>> import paddle
@@ -832,6 +832,7 @@ def subtract(x, y, name=None):
             >>> print(res)
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [ 4.  ,  inf., -inf.])
+
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.subtract(x, y)
@@ -859,6 +860,7 @@ def subtract_(x, y, name=None):
 
 def divide(x, y, name=None):
     """
+
     Divide two tensors element-wise. The equation is:
 
     .. math::
@@ -915,6 +917,7 @@ def divide_(x, y, name=None):
 
 def floor_divide(x, y, name=None):
     """
+
     Floor divide two tensors element-wise and rounds the quotinents to the nearest integer toward zero. The equation is:
 
     .. math::
@@ -976,6 +979,7 @@ def floor_divide_(x, y, name=None):
 
 def remainder(x, y, name=None):
     r"""
+
     Mod two tensors element-wise. The equation is:
 
     .. math::
@@ -1059,6 +1063,7 @@ floor_mod_.__doc__ = r"""
 
 def multiply(x, y, name=None):
     """
+
     multiply two tensors element-wise. The equation is:
 
     .. math::
@@ -1191,6 +1196,7 @@ def _divide_with_axis(x, y, axis=-1, name=None):
 
 def maximum(x, y, name=None):
     """
+
     Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
 
     .. math::
@@ -1244,6 +1250,7 @@ def maximum(x, y, name=None):
             >>> print(res)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [5.  , 3.  , inf.])
+
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.maximum(x, y)
@@ -1253,6 +1260,7 @@ def maximum(x, y, name=None):
 
 def minimum(x, y, name=None):
     """
+
     Compare two tensors and return a new tensor containing the element-wise minima. The equation is:
 
     .. math::
@@ -1306,6 +1314,7 @@ def minimum(x, y, name=None):
             >>> print(res)
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [ 1.  , -inf.,  5.  ])
+
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.minimum(x, y)
@@ -1315,6 +1324,7 @@ def minimum(x, y, name=None):
 
 def fmax(x, y, name=None):
     """
+
     Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the maximum value of the element.
     If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
     The equation is:
@@ -1370,6 +1380,7 @@ def fmax(x, y, name=None):
             >>> print(res)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [5.  , 3.  , inf.])
+
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.fmax(x, y)
@@ -1379,6 +1390,7 @@ def fmax(x, y, name=None):
 
 def fmin(x, y, name=None):
     """
+
     Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the minimum value of the element.
     If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
     The equation is:
@@ -1434,6 +1446,7 @@ def fmin(x, y, name=None):
             >>> print(res)
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [ 1.  , -inf.,  5.  ])
+
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.fmin(x, y)
@@ -4903,6 +4916,7 @@ def any(x, axis=None, keepdim=False, name=None):
 
 def broadcast_shape(x_shape, y_shape):
     """
+
     The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape.
 
     Note:
@@ -6061,6 +6075,7 @@ def angle(x, name=None):
 
 def heaviside(x, y, name=None):
     r"""
+
     Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is
 
     .. math::
@@ -6101,6 +6116,7 @@ def heaviside(x, y, name=None):
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.        , 0.20000000, 1.        ],
              [0.        , 1.        , 0.30000001]])
+
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.heaviside(x, y)

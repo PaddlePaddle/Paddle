@@ -960,6 +960,7 @@ def zero_(x):
 @dygraph_only
 def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
     """
+
     Note:
         This API is ONLY available in Dygraph mode.
 
@@ -983,6 +984,7 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
             >>> x.fill_diagonal_(1.0)
             >>> print(x.tolist())
             [[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
+
     """
     if in_dynamic_mode():
         if len(x.shape) == 2:
@@ -1319,6 +1321,7 @@ def concat(x, axis=0, name=None):
 
 def broadcast_tensors(input, name=None):
     """
+
     Broadcast a list of tensors following broadcast semantics
 
     Note:
@@ -1344,6 +1347,7 @@ def broadcast_tensors(input, name=None):
             >>> x3 = paddle.rand([1, 1, 3, 1]).astype('float32')
             >>> out1, out2, out3 = paddle.broadcast_tensors(input=[x1, x2, x3])
             >>> # out1, out2, out3: tensors broadcasted from x1, x2, x3 with shape [1,2,3,4]
+
     """
 
     num_inputs = len(input)

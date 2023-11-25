@@ -200,6 +200,7 @@ def logical_or(x, y, out=None, name=None):
             Tensor(shape=[2, 2], dtype=bool, place=Place(cpu), stop_gradient=True,
             [[True , True ],
              [True , False]])
+
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.logical_or(x, y)
@@ -261,6 +262,7 @@ def logical_xor(x, y, out=None, name=None):
             Tensor(shape=[2, 2], dtype=bool, place=Place(cpu), stop_gradient=True,
             [[False, True ],
              [True , False]])
+
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.logical_xor(x, y)
@@ -321,6 +323,7 @@ def logical_not(x, out=None, name=None):
             >>> print(res)
             Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True , False, True ])
+
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.logical_not(x)
