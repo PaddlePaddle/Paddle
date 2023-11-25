@@ -176,8 +176,8 @@ def to_pir_api_test(fn):
 # Metaclass and BaseClass
 class Dy2StTestMeta(type):
     TO_STATIC_HANDLER_MAP = {
-        ToStaticMode.AST: to_legacy_ast_test,
         ToStaticMode.SOT: to_sot_test,
+        ToStaticMode.AST: to_legacy_ast_test,
         ToStaticMode.SOT_MGS10: to_sot_mgs10_test,
     }
 
