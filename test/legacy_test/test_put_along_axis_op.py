@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.framework import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -49,10 +50,10 @@ class TestPutAlongAxisOp(OpTest):
         self.outputs = {'Result': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["Input", "Value"], "Result")
+        self.check_grad(["Input", "Value"], "Result", check_pir=True)
 
     def init_data(self):
         self.dtype = 'float64'
@@ -114,10 +115,12 @@ class TestPutAlongAxisBF16Op(OpTest):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ["Input", "Value"], "Result")
+        self.check_grad_with_place(
+            self.place, ["Input", "Value"], "Result", check_pir=True
+        )
 
     def init_data(self):
         self.dtype = np.uint16
@@ -146,6 +149,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
+    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
 

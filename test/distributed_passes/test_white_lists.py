@@ -14,11 +14,12 @@
 
 import unittest
 
-from paddle.distributed.passes.pass_base import PassBase
 from paddle.distributed.passes.pass_base import (
+    PassBase,
     _make_rule_from_white_lists_dict as make_white_lists_rule,
+    new_pass,
+    register_pass,
 )
-from paddle.distributed.passes.pass_base import new_pass, register_pass
 
 
 class TestConcretePass(PassBase):

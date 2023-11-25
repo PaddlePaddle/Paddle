@@ -31,14 +31,14 @@ def check_param_mappings(param_mappings):
             raise ValueError("currently only support one-to-one param_mappings")
 
 
-def get_new_ir_grad_var_to_var_map(param_mappings, old_ir_grad_var_to_var_map):
-    new_ir_grad_var_to_var_map = {}
+def get_pir_grad_var_to_var_map(param_mappings, old_ir_grad_var_to_var_map):
+    pir_grad_var_to_var_map = {}
     for grad_var, var in old_ir_grad_var_to_var_map.items():
         if grad_var in param_mappings.keys():
             new_grad_var = param_mappings[grad_var][0]
             new_var = param_mappings[var][0]
-            new_ir_grad_var_to_var_map[new_grad_var] = new_var
-    return new_ir_grad_var_to_var_map
+            pir_grad_var_to_var_map[new_grad_var] = new_var
+    return pir_grad_var_to_var_map
 
 
 def get_fwd_op(bwd_op, grad_var_to_var_map):
@@ -82,12 +82,10 @@ def get_pir_program_and_param_map():
         # construct backward graph
         gradients = paddle.static.gradients(out, [x, y, z])
 
-    newir_program, param_mappings = pir.translate_to_new_ir_with_param_map(
-        mp.desc
-    )
+    pir_program, param_mappings = pir.translate_to_pir_with_param_map(mp.desc)
     check_param_mappings(param_mappings)
 
-    return newir_program, param_mappings
+    return pir_program, param_mappings
 
 
 class TestDecomposeOp(unittest.TestCase):
@@ -102,20 +100,20 @@ class TestDecomposeOp(unittest.TestCase):
 
     def net(self, flag=None):
         (
-            newir_program,
+            pir_program,
             param_mappings,
         ) = get_pir_program_and_param_map()
 
-        newir_ops = newir_program.global_block().ops
-        global_outputs = [newir_ops[9].result(0)]
+        pir_ops = pir_program.global_block().ops
+        global_outputs = [pir_ops[9].result(0)]
         global_grads = [
-            newir_ops[-1].result(0),
-            newir_ops[-3].result(1),
-            newir_ops[-4].result(1),
+            pir_ops[-1].result(0),
+            pir_ops[-3].result(1),
+            pir_ops[-4].result(1),
         ]
 
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            newir_program
+            pir_program
         ):
             if flag == "decompose":
                 core._set_prim_forward_enabled(True)
@@ -136,7 +134,7 @@ class TestDecomposeOp(unittest.TestCase):
                     'y@GRAD': 'y',
                     'z@GRAD': 'z',
                 }
-                grad_var_to_var_map = get_new_ir_grad_var_to_var_map(
+                grad_var_to_var_map = get_pir_grad_var_to_var_map(
                     param_mappings, old_ir_grad_var_to_var_map
                 )
                 # get global outputs and grads info, when decomposing an op that corresponds to global outputs and grads, then update the global outputs and grads
@@ -144,13 +142,13 @@ class TestDecomposeOp(unittest.TestCase):
                     fwd_leaf_ops,
                     fwd_leaf_ops_output_indexes,
                 ) = decomp.get_leaf_ops(
-                    newir_program.global_block(), global_outputs
+                    pir_program.global_block(), global_outputs
                 )  # without update during execution
                 (
                     bwd_leaf_ops,
                     bwd_leaf_ops_output_indexes,
                 ) = decomp.get_leaf_ops(
-                    newir_program.global_block(), global_grads
+                    pir_program.global_block(), global_grads
                 )
 
                 bwd_ops_to_be_decomposed = [
@@ -161,7 +159,7 @@ class TestDecomposeOp(unittest.TestCase):
                     "pd_op.multiply_grad",
                     "pd_op.rsqrt_grad",
                 ]
-                for bwd_op in newir_ops:
+                for bwd_op in pir_ops:
                     if (
                         flag == "decompose"
                         and bwd_op.name() in bwd_ops_to_be_decomposed
@@ -178,7 +176,7 @@ class TestDecomposeOp(unittest.TestCase):
                             new_grads,
                             bwd_has_decomposed,
                         ) = decomp.decompose_bwd_op_directly(
-                            newir_program.global_block(),
+                            pir_program.global_block(),
                             fwd_op,
                             bwd_op,
                             grad_var_to_var_map,
@@ -203,7 +201,7 @@ class TestDecomposeOp(unittest.TestCase):
                                 new_fwd_outputs,
                                 fwd_has_decomposed,
                             ) = decomp.decompose_fwd_op(
-                                newir_program.global_block(),
+                                pir_program.global_block(),
                                 fwd_op,
                                 grad_var_to_var_map,
                             )
@@ -223,7 +221,7 @@ class TestDecomposeOp(unittest.TestCase):
                                 )
                                 new_grads = (
                                     decomp.decompose_bwd_op_after_fwd_op(
-                                        newir_program.global_block(),
+                                        pir_program.global_block(),
                                         fwd_op,
                                         bwd_op,
                                         grad_var_to_var_map,
@@ -242,7 +240,7 @@ class TestDecomposeOp(unittest.TestCase):
             # execution
             exe = paddle.static.Executor()
             outs = exe.run(
-                newir_program,
+                pir_program,
                 feed={'x': self.x, 'y': self.y, 'z': self.z},
                 fetch_list=[
                     global_outputs[0],

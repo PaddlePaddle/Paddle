@@ -216,12 +216,12 @@ SearchState EvolutionarySearch::Mutate(
   // ir_schedule
   const auto& task_key = tune_task_.serialized_key;
   InitialTaskRegistry* task_registry = InitialTaskRegistry::Global();
-  ir::IRSchedule new_ir_sch(
+  ir::IRSchedule pir_sch(
       ir::ir_utils::IRCopy(task_registry->Get(task_key)->module_expr),
       utils::ForkRandomState(rand_seed));
-  new_trace.Replay(&new_ir_sch, true);
-  ApplyPostScheduleRules(&new_ir_sch, post_schedule_rules_);
-  auto res = SearchState(std::move(new_ir_sch));
+  new_trace.Replay(&pir_sch, true);
+  ApplyPostScheduleRules(&pir_sch, post_schedule_rules_);
+  auto res = SearchState(std::move(pir_sch));
 
   VLOG(5) << JoinStatesDebugString(
       "EvolutionarySearch::Mutate", {state, res}, /*verbose=*/VLOG_IS_ON(6));

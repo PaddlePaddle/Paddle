@@ -14,6 +14,8 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 import paddle.nn.functional as F
 from paddle import nn, static
@@ -240,6 +242,27 @@ class TestAutoParallelAPI(unittest.TestCase):
         self.assertEqual(tensor_dist_attr.dims_mapping, [0, -1, -1])
         self.assertTrue(tensor_dist_attr.is_annotated("process_mesh"))
         self.assertTrue(tensor_dist_attr.is_annotated("dims_mapping"))
+
+    def test_create_mesh(self):
+        arr = np.arange(32).reshape([2, 4, 4])
+        auto.create_mesh([('dp', 2), ('pp', 4), ('mp', 4)])
+        self.assertEqual(auto.get_mesh().shape, [2, 4, 4])
+        self.assertEqual(auto.get_mesh().get_dim_size('dp'), 2)
+        self.assertEqual(auto.get_mesh().get_dim_size('pp'), 4)
+        self.assertEqual(auto.get_mesh().get_dim_size('mp'), 4)
+        self.assertEqual(auto.get_mesh().process_ids, list(np.arange(32)))
+
+        first_pp_mesh = auto.get_mesh().get_mesh_with_dim("pp")
+        self.assertEqual(first_pp_mesh.shape, [4, 2, 4])
+        self.assertEqual(
+            first_pp_mesh.process_ids, list(arr.transpose([1, 0, 2]).flatten())
+        )
+
+        pp_stage_0_mesh = first_pp_mesh[0]
+        self.assertEqual(pp_stage_0_mesh.shape, [2, 4])
+        self.assertEqual(
+            pp_stage_0_mesh.process_ids, [0, 1, 2, 3, 16, 17, 18, 19]
+        )
 
 
 if __name__ == '__main__':

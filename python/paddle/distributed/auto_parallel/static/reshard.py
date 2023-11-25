@@ -34,17 +34,10 @@ from .cost import (
 from .dist_attribute import TensorDistAttr
 from .dist_context import DistributedContext
 from .process_group import new_process_group
-from .utils import is_gradient_clip_op, is_optimize_op
+from .utils import _g_gradient_clip_ops, is_gradient_clip_op, is_optimize_op
 
 # NOTE: If op in _g_special_ops or _g_gradient_clip_ops, it will not be resharded.
 _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
-_g_gradient_clip_ops = [
-    "sum",
-    "sqrt",
-    "fill_constant",
-    "elementwise_max",
-    "elementwise_div",
-]
 _g_subblock_ops = ["while", "conditional_block"]
 
 
@@ -1298,7 +1291,7 @@ class Resharder:
         return True
 
     def is_special_op(self, op):
-        global _g_special_ops, _g_gradient_clip_ops
+        global _g_special_ops
         if op.type in _g_special_ops:
             return True
         if is_gradient_clip_op(op) and op.type in _g_gradient_clip_ops:
