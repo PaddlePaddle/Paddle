@@ -5923,13 +5923,13 @@ def select_scatter(src, values, axis, index):
             >>> res = paddle.select_scatter(x,values,1,1)
             >>> print(res)
             Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[0., 0., 0., 0.],
-              [1., 1., 1., 1.],
-              [0., 0., 0., 0.]],
+                   [[[0., 0., 0., 0.],
+                     [1., 1., 1., 1.],
+                     [0., 0., 0., 0.]],
 
-             [[0., 0., 0., 0.],
-              [1., 1., 1., 1.],
-              [0., 0., 0., 0.]]])
+                    [[0., 0., 0., 0.],
+                     [1., 1., 1., 1.],
+                     [0., 0., 0., 0.]]])
 
     """
     if src.dtype != values.dtype:
