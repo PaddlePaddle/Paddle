@@ -85,7 +85,7 @@ API_IMPL_TEMPLATE = """
 """
 
 CHECK_DATA_TYPE_TEMPLATE = """
-    {function}({input}, "{input}", "{op_name}");"""
+    {function}({inputs}, "{op_name}");"""
 
 OPTIONAL_VECTOR_VALUE_INPUT_TEMPLATE = """
     paddle::optional<pir::Value> optional_{name};
@@ -534,9 +534,12 @@ class CodeGen:
             data_type_candidates = None
         ret = ''
         if data_type_candidates is not None:
-            for name in data_type_candidates:
+            if len(data_type_candidates) < 1 or len(data_type_candidates) > 2:
+                return ret
+            if len(data_type_candidates) == 1:
+                name = data_type_candidates[0]
                 if name not in name_list:
-                    continue
+                    return ret
                 index = name_list.index(name)
                 type = type_list[index]
                 if f"{VECTOR_TYPE}<{DENSE_TENSOR_TYPE}>" == type:
@@ -546,10 +549,29 @@ class CodeGen:
                 elif DATA_TYPE == type:
                     function_name = 'CheckDataType'
                 else:
-                    print(name, type, name_list, type_list)
-                    raise NotImplementedError(f"Unknown type: {type}")
+                    return ret
                 ret += CHECK_DATA_TYPE_TEMPLATE.format(
-                    function=function_name, input=name, op_name=op_name
+                    function=function_name,
+                    inputs=f"{name}, \"{name}\"",
+                    op_name=op_name,
+                )
+            else:
+                dtype_name = data_type_candidates[0]
+                value_name = data_type_candidates[1]
+                if dtype_name not in name_list or value_name not in name_list:
+                    return ret
+                dtype_index = name_list.index(dtype_name)
+                dtype_type = type_list[dtype_index]
+                value_index = name_list.index(value_name)
+                value_type = type_list[value_index]
+                if DENSE_TENSOR_TYPE == value_type and DATA_TYPE == dtype_type:
+                    function_name = 'CheckValueOrDataType'
+                else:
+                    return ret
+                ret += CHECK_DATA_TYPE_TEMPLATE.format(
+                    function=function_name,
+                    inputs=f"{dtype_name}, \"{dtype_name}\", {value_name}, \"{value_name}\"",
+                    op_name=op_name,
                 )
         return ret
 

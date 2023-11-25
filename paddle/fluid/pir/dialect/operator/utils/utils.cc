@@ -326,14 +326,15 @@ void CheckDataType(const phi::DataType& dtype,
   }
 }
 
-void CheckValueOrDataType(const pir::Value& value,
-                          const phi::DataType& dtype,
-                          const std::string& input_name,
+void CheckValueOrDataType(const phi::DataType& dtype,
+                          const std::string& dtype_name,
+                          const pir::Value& value,
+                          const std::string& value_name,
                           const std::string& op_name) {
   if (dtype == phi::DataType::UNDEFINED) {
-    CheckValueDataType(value, input_name, op_name);
+    CheckValueDataType(value, value_name, op_name);
   } else {
-    CheckDataType(dtype, input_name, op_name);
+    CheckDataType(dtype, dtype_name, op_name);
   }
 }
 
