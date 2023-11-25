@@ -192,8 +192,8 @@ class TEST_API DDim {
     PADDLE_VISIT_DDIM(ddim.rank_, (*this = ddim.UnsafeCast<kRank>()));
   }
 
-  friend DDim stride(const DDim& ddim);
-  friend DDim stride_numel(const DDim& ddim);
+  friend TEST_API DDim stride(const DDim& ddim);
+  friend TEST_API DDim stride_numel(const DDim& ddim);
 
  private:
   Dim<kMaxRank> dim_;
@@ -269,9 +269,9 @@ TEST_API DDim flatten_to_2d(const DDim& src, int num_col_dims);
 
 TEST_API DDim flatten_to_1d(const DDim& src);
 
-DDim stride(const DDim& ddim);
+TEST_API DDim stride(const DDim& ddim);
 
-DDim stride_numel(const DDim& ddim);
+TEST_API DDim stride_numel(const DDim& ddim);
 }  // namespace common
 
 namespace paddle {
