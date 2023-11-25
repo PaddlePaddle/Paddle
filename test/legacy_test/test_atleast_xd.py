@@ -172,9 +172,15 @@ class BaseTest(unittest.TestCase):
                         shape = shapes[i]
                         dtype = dtypes[i]
                         name = names[i]
+
+                        # TODO(megemini) reshape in pir need stop_gradient?
                         _x = paddle.static.data(name, shape, dtype)
                         _x.stop_gradient = False
                         x.append(_x)
+
+                        # TODO(megemini) reshape not works in pir
+                        # x.append(paddle.static.data(name, shape, dtype))
+
                         # the data feeded should NOT be a Tensor
                         feed[name] = (
                             input.numpy()
@@ -210,7 +216,7 @@ class BaseTest(unittest.TestCase):
                     # convert grad value to bool if dtype is bool
                     grad_value = 123.0 if dtypes[0] != 'bool' else True
                     np.testing.assert_allclose(
-                        res_grad, np.ones_like(res_grad) * grad_value
+                        res_grad, np.ones_like(y) * grad_value
                     )
 
                 out_ref = func_ref(

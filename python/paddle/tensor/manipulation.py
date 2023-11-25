@@ -4084,7 +4084,12 @@ def atleast_1d(*inputs, name=None):
     out = []
     for input in inputs:
         if not isinstance(
-            input, (paddle.Tensor, paddle.base.framework.Variable)
+            input,
+            (
+                paddle.Tensor,
+                paddle.base.framework.Variable,
+                paddle.base.libpaddle.pir.OpResult,
+            ),
         ):
             tensor = paddle.to_tensor(input)
         else:
@@ -4147,7 +4152,12 @@ def atleast_2d(*inputs, name=None):
     out = []
     for input in inputs:
         if not isinstance(
-            input, (paddle.Tensor, paddle.base.framework.Variable)
+            input,
+            (
+                paddle.Tensor,
+                paddle.base.framework.Variable,
+                paddle.base.libpaddle.pir.OpResult,
+            ),
         ):
             tensor = paddle.to_tensor(input)
         else:
@@ -4212,7 +4222,12 @@ def atleast_3d(*inputs, name=None):
     out = []
     for input in inputs:
         if not isinstance(
-            input, (paddle.Tensor, paddle.base.framework.Variable)
+            input,
+            (
+                paddle.Tensor,
+                paddle.base.framework.Variable,
+                paddle.base.libpaddle.pir.OpResult,
+            ),
         ):
             tensor = paddle.to_tensor(input)
         else:
