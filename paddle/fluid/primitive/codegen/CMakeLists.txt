@@ -1,9 +1,7 @@
 set(parsed_yaml_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops")
 set(fwd_path ${parsed_yaml_path}/ops.parsed.yaml)
-# set(fwd_legacy_path ${parsed_yaml_path}/legacy_ops.parsed.yaml)
 set(rev_path ${parsed_yaml_path}/backward_ops.parsed.yaml)
-# set(rev_legacy_path ${parsed_yaml_path}/legacy_backward_ops.parsed.yaml)
 set(fwd_pd_op_path
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/ops.parsed.yaml
 )
