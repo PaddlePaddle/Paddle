@@ -84,7 +84,7 @@ class LPPool {
   }
 
   DEVICE inline void compute(const T& x, T* y UNUSED) {
-    intermediate_res += static_cast<MT>(powf(x, norm_type));
+    intermediate_res += static_cast<MT>(powf(fabsf(x), norm_type));
   }
 
   DEVICE inline void finalize(const T& pool_field UNUSED, T* y) {
@@ -115,14 +115,14 @@ class AvgPoolGrad {
 template <class T>
 class LPPoolGrad {
  public:
-  static constexpr bool use_x = false;
-  // HOST能用 powf 吗
-  HOSTDEVICE inline void compute(const T& dy, T norm_type, T* dx) {
-    *dx += static_cast<T>(powf(dy, norm_type));
-  }
+  static constexpr bool use_x = true;
 
-  HOSTDEVICE inline void finalize(T norm_type, T* dx) {
-    *dx += static_cast<T>(powf(*dx, 1.0 / norm_type));
+  HOSTDEVICE inline void compute(
+      const T& x, const T& y, const T& dy, float norm_type, T* dx) {
+    *dx +=
+        static_cast<T>(static_cast<double>(dy) * static_cast<double>(x) *
+                       powf(fabsf(static_cast<double>(x)), norm_type - 2.0f) /
+                       powf(static_cast<double>(y), norm_type - 1.0f));
   }
 };
 

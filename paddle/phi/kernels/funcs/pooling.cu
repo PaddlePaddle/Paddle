@@ -436,8 +436,10 @@ __global__ void KernelLPPool2DGrad(const int nthreads,
                            : tmp_idx;
           T ouput_value = pool_process.use_x ? output_data[output_sub_idx]
                                              : static_cast<T>(0);
-          pool_process.compute(output_grad[output_sub_idx],
-                               static_cast<T>(norm_type),
+          pool_process.compute(input_data[index],
+                               output_data[output_sub_idx],
+                               output_grad[output_sub_idx],
+                               norm_type,
                                &input_grad_data);
         }
       }
@@ -465,8 +467,10 @@ __global__ void KernelLPPool2DGrad(const int nthreads,
                              : tmp_idx;
             T ouput_value = pool_process.use_x ? output_data[output_sub_idx]
                                                : static_cast<T>(0);
-            pool_process.compute(output_grad[output_sub_idx],
-                                 static_cast<T>(norm_type),
+            pool_process.compute(input_data[index],
+                                 output_data[output_sub_idx],
+                                 output_grad[output_sub_idx],
+                                 norm_type,
                                  &input_grad_data);
           }
         }
@@ -480,14 +484,16 @@ __global__ void KernelLPPool2DGrad(const int nthreads,
                              : tmp_idx;
             T ouput_value = pool_process.use_x ? output_data[output_sub_idx]
                                                : static_cast<T>(0);
-            pool_process.compute(output_grad[output_sub_idx],
-                                 static_cast<T>(norm_type),
+            pool_process.compute(input_data[index],
+                                 output_data[output_sub_idx],
+                                 output_grad[output_sub_idx],
+                                 norm_type,
                                  &input_grad_data);
           }
         }
       }
     }
-    input_grad[index] = static_cast<T>(powf(input_grad_data, 1.0 / norm_type));
+    input_grad[index] = input_grad_data;
   }
 }
 

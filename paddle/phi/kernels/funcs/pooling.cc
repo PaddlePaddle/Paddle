@@ -563,8 +563,10 @@ class LPPool2dGradFunctor<CPUContext, PoolProcess, T> {
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
                 pool_grad_process.compute(
+                    input_data[h * input_width + w],
+                    output_data[ph * output_width + pw],
                     output_grad_data[ph * output_width + pw],
-                    static_cast<T>(norm_type),
+                    norm_type,
                     input_grad_data + h * input_width + w);
               }
             }
@@ -575,11 +577,6 @@ class LPPool2dGradFunctor<CPUContext, PoolProcess, T> {
         input_grad_data += input_stride;
         output_grad_data += output_stride;
       }
-    }
-
-    for (int64_t i = 0; i < input_grad->numel(); i++) {
-      pool_grad_process.finalize(static_cast<T>(norm_type),
-                                 input_grad_data + i);
     }
   }
 };
