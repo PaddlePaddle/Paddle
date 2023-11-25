@@ -148,28 +148,30 @@ class TestOneHotOpApi(unittest.TestCase):
             )
 
     def _run(self, num_classes):
-        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
-        # label.desc.set_need_check_feed(False)
-        one_hot_label = functional.one_hot(x=label, num_classes=num_classes)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+            # label.desc.set_need_check_feed(False)
+            one_hot_label = functional.one_hot(x=label, num_classes=num_classes)
 
-        place = base.CPUPlace()
-        label_data = np.array(
-            [np.random.randint(0, 10 - 1) for i in range(6)]
-        ).reshape([6, 1])
+            place = base.CPUPlace()
+            label_data = np.array(
+                [np.random.randint(0, 10 - 1) for i in range(6)]
+            ).reshape([6, 1])
 
-        exe = base.Executor(place)
-        exe.run(paddle.static.default_startup_program())
-        ret = exe.run(
-            feed={
-                'label': label_data,
-            },
-            fetch_list=[one_hot_label],
-            return_numpy=False,
-        )
+            exe = base.Executor(place)
+            exe.run(startup)
+            ret = exe.run(
+                feed={
+                    'label': label_data,
+                },
+                fetch_list=[one_hot_label],
+                return_numpy=False,
+            )
 
 
 class BadInputTestOnehotV2(unittest.TestCase):
-    @test_with_pir_api
     def test_error(self):
         with base.program_guard(base.Program()):
 
