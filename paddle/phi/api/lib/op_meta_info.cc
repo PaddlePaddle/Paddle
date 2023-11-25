@@ -338,12 +338,12 @@ OpMetaInfo& OpMetaInfo::SetInferDtypeFn(InferDtypeFunc&& func) {
 }
 
 #ifdef PADDLE_WITH_TENSORRT
-OpMetaInfo& OpMetaInfo::SetTrtInferShapeFn(TrtGetOutputDims&& func) {
-  trt_infer_shape_fn_ = std::forward<TrtGetOutputDims>(func);
+OpMetaInfo& OpMetaInfo::SetTrtInferShapeFn(TrtGetOutputDimsFunc&& func) {
+  trt_infer_shape_fn_ = std::forward<TrtGetOutputDimsFunc>(func);
   return *this;
 }
-OpMetaInfo& OpMetaInfo::SetTrtSupportFormateFn(TrtSupportsFormateFunc&& func) {
-  trt_supports_formate_fn_ = std::forward<TrtSupportsFormateFunc>(func);
+OpMetaInfo& OpMetaInfo::SetTrtSupportFormatFn(TrtSupportsFormatFunc&& func) {
+  trt_supports_format_fn_ = std::forward<TrtSupportsFormatFunc>(func);
   return *this;
 }
 #endif
@@ -386,13 +386,13 @@ const InferDtypeFunc& OpMetaInfoHelper::GetInferDtypeFn(
 }
 
 #ifdef PADDLE_WITH_TENSORRT
-const TrtGetOutputDims& OpMetaInfoHelper::GetTrtInferShapeFn(
+const TrtGetOutputDimsFunc& OpMetaInfoHelper::GetTrtInferShapeFn(
     const paddle::OpMetaInfo& info) {
   return info.trt_infer_shape_fn_;
 }
-const TrtSupportsFormateFunc& OpMetaInfoHelper::GetTrtSupportsFormateFn(
+const TrtSupportsFormatFunc& OpMetaInfoHelper::GetTrtSupportsFormatFn(
     const paddle::OpMetaInfo& info) {
-  return info.trt_supports_formate_fn_;
+  return info.trt_supports_format_fn_;
 }
 #endif
 
@@ -534,14 +534,14 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
 
 #ifdef PADDLE_WITH_TENSORRT
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetTrtInferShapeFn(
-    TrtGetOutputDims func) {
-  info_ptr_->SetTrtInferShapeFn(std::forward<TrtGetOutputDims>(func));
+    TrtGetOutputDimsFunc func) {
+  info_ptr_->SetTrtInferShapeFn(std::forward<TrtGetOutputDimsFunc>(func));
   return *this;
 }
 
-OpMetaInfoBuilder& OpMetaInfoBuilder::SetTrtSupportFormateFn(
-    TrtSupportsFormateFunc func) {
-  info_ptr_->SetTrtSupportFormateFn(std::forward<TrtSupportsFormateFunc>(func));
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetTrtSupportFormatFn(
+    TrtSupportsFormatFunc func) {
+  info_ptr_->SetTrtSupportFormatFn(std::forward<TrtSupportsFormatFunc>(func));
   return *this;
 }
 #endif

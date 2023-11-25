@@ -3174,12 +3174,12 @@ struct CustomGenericPluginTeller : public Teller {
     if (meta_info_map.count(op_type) > 0) {
       auto& op_info = meta_info_map.at(op_type).front();
       auto& trt_supports_formate_fn =
-          OpMetaInfoHelper::GetTrtSupportsFormateFn(op_info);
+          OpMetaInfoHelper::GetTrtSupportsFormatFn(op_info);
       if (trt_supports_formate_fn == nullptr) {
         VLOG(3)
             << op_type
             << " has no trt supportsFormatCombination function. Please set by "
-               "SetTrtSupportFormateFn.";
+               "SetTrtSupportFormatFn.";
         return false;
       }
       auto& trt_infer_shape_fn = OpMetaInfoHelper::GetTrtInferShapeFn(op_info);

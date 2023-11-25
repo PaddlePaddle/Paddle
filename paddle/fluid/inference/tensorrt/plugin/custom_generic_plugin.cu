@@ -146,14 +146,13 @@ bool CustomGenericPlugin::supportsFormatCombination(
   auto& op_meta_info_map = OpMetaInfoMap::Instance();
   const auto& meta_info_map = op_meta_info_map.GetMap();
   auto& op_info = meta_info_map.at(op_desc_.Type()).front();
-  auto& supports_formate_fn =
-      OpMetaInfoHelper::GetTrtSupportsFormateFn(op_info);
+  auto& supports_formate_fn = OpMetaInfoHelper::GetTrtSupportsFormatFn(op_info);
   PADDLE_ENFORCE_NE(supports_formate_fn,
                     nullptr,
                     platform::errors::InvalidArgument(
                         "The %s op has no tensorrt plugin "
                         "supportsFormatCombination function!"
-                        "Please use SetTrtSupportFormateFn to regiser.",
+                        "Please use SetTrtSupportFormatFn to regiser.",
                         op_desc_.Type().c_str()));
   std::vector<paddle::any> custom_attrs;
   auto& attrs = op_desc_.GetAttrMap();
