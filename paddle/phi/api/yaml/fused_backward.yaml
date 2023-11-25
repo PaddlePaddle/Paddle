@@ -29,9 +29,9 @@
 
 - backward_op : fused_gemm_epilogue_grad
   forward: fused_gemm_epilogue (Tensor x, Tensor y, Tensor bias, bool trans_x, bool trans_y, str activation) -> Tensor(out), Tensor(reserve_space)
-  args : (Tensor d_out, Tensor x, Tensor y, Tensor reserve_space, bool trans_x = false, bool trans_y = false, str activation = "none")
-  output : Tensor(d_x), Tensor(d_y), Tensor(d_bias)
-  optional :  reserve_space, d_x, d_bias
+  args : (Tensor x, Tensor y, Tensor reserve_space, Tensor out_grad, bool trans_x = false, bool trans_y = false, str activation_grad = "none")
+  output : Tensor(x_grad), Tensor(y_grad), Tensor(bias_grad)
+  optional :  reserve_space, x_grad, bias_grad
   infer_meta :
     func : FusedGemmEpilogueGradInferMeta
   kernel :

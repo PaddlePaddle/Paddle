@@ -25,16 +25,16 @@ namespace fusion {
 template <typename T, typename Context>
 void FusedGemmEpilogueGradKernel(
     const Context& dev_ctx,
-    const DenseTensor& d_out,
     const DenseTensor& x,
     const DenseTensor& y,
     const paddle::optional<DenseTensor>& reserve_space,
+    const DenseTensor& out_grad,
     const bool trans_x,
     const bool trans_y,
-    const std::string& activation,
-    DenseTensor* d_x,
-    DenseTensor* d_y,
-    DenseTensor* d_bias) {
+    const std::string& activation_grad,
+    DenseTensor* x_grad,
+    DenseTensor* y_grad,
+    DenseTensor* bias_grad) {
 #if CUDA_VERSION < 11060
   PADDLE_THROW(phi::errors::Unimplemented(
       "The fused_gemm_epilogue operator only support CUDA 11.6 "
@@ -52,13 +52,13 @@ void FusedGemmEpilogueGradKernel(
   int64_t N = trans_y ? y.dims()[0] : y.dims()[1];
 
   VLOG(6) << "x.shape={" << x.dims() << "}, y.shape={" << y.dims()
-          << "}, dout.shape={" << d_out.dims() << "}, M=" << M << ", N=" << N
+          << "}, dout.shape={" << out_grad.dims() << "}, M=" << M << ", N=" << N
           << ", K=" << K << ", trans_x=" << trans_x << ", trans_y=" << trans_y
-          << ", activation=" << activation
+          << ", activation_grad=" << activation_grad
           << ", reserve_space=" << reserve_space.get_ptr();
 
   phi::funcs::ComputeFusedGemmEpilogueBackward<T>(dev_ctx,
-                                                  &d_out,
+                                                  &out_grad,
                                                   &x,
                                                   &y,
                                                   reserve_space.get_ptr(),
@@ -67,10 +67,10 @@ void FusedGemmEpilogueGradKernel(
                                                   K,
                                                   trans_x,
                                                   trans_y,
-                                                  activation,
-                                                  d_x,
-                                                  d_y,
-                                                  d_bias);
+                                                  activation_grad,
+                                                  x_grad,
+                                                  y_grad,
+                                                  bias_grad);
 #endif
 #endif
 }
