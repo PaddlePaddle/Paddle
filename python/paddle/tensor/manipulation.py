@@ -5217,7 +5217,15 @@ def take_along_axis(arr, indices, axis, broadcast=True):
         return result
 
 
-def put_along_axis(arr, indices, values, axis, reduce='assign', broadcast=True):
+def put_along_axis(
+    arr,
+    indices,
+    values,
+    axis,
+    reduce='assign',
+    include_self=True,
+    broadcast=True,
+):
     """
     Put values into the destination array by given indices matrix along the designated axis.
 
@@ -5227,7 +5235,8 @@ def put_along_axis(arr, indices, values, axis, reduce='assign', broadcast=True):
             and need to broadcast against arr. Supported data type are int and int64.
         axis (int) : The axis to put 1d slices along.
         reduce (str, optional): The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
-        broadcast (bool, optional): whether the indices broadcast.
+        include_self (bool, optional): whether to reduce with the elements of arr. (Only support True now)
+        broadcast (bool, optional): whether to broadcast indices.
 
     Returns:
         Tensor, The indexed element, same dtype with arr
@@ -5248,6 +5257,8 @@ def put_along_axis(arr, indices, values, axis, reduce='assign', broadcast=True):
              [60, 40, 50]])
 
     """
+    if not include_self:
+        raise ValueError("`include_self` is only support True now.")
     if len(arr.shape) != len(indices.shape):
         raise ValueError(
             "`indices` and `arr` must have the same number of dimensions!"

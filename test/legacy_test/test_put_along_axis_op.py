@@ -295,7 +295,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
             index_tensor1 = paddle.to_tensor(self.index_np1)
             value_tensor = paddle.to_tensor(self.value)
             out = paddle.put_along_axis(
-                x_tensor, index_tensor1, value_tensor, 0, 'assign', False
+                x_tensor, index_tensor1, value_tensor, 0, 'assign', True, False
             )
             out_ref = copy.deepcopy(self.x_np)
             for i in range(self.index1_shape[0]):
@@ -305,15 +305,15 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
 
             # for ci coverage, numpy put_along_axis did not support argument of 'reduce'
             paddle.put_along_axis(
-                x_tensor, index_tensor1, value_tensor, 0, 'mul', False
+                x_tensor, index_tensor1, value_tensor, 0, 'mul', True, False
             )
             paddle.put_along_axis(
-                x_tensor, index_tensor1, value_tensor, 0, 'add', False
+                x_tensor, index_tensor1, value_tensor, 0, 'add', True, False
             )
 
             index_tensor2 = paddle.to_tensor(self.index_np2)
             out = paddle.put_along_axis(
-                x_tensor, index_tensor2, value_tensor, 1, 'assign', False
+                x_tensor, index_tensor2, value_tensor, 1, 'assign', True, False
             )
             out_ref = copy.deepcopy(self.x_np)
             for i in range(self.index2_shape[0]):
@@ -323,10 +323,10 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
 
             # for ci coverage, numpy put_along_axis did not support argument of 'reduce'
             paddle.put_along_axis(
-                x_tensor, index_tensor2, value_tensor, 1, 'mul', False
+                x_tensor, index_tensor2, value_tensor, 1, 'mul', True, False
             )
             paddle.put_along_axis(
-                x_tensor, index_tensor2, value_tensor, 1, 'add', False
+                x_tensor, index_tensor2, value_tensor, 1, 'add', True, False
             )
 
             paddle.enable_static()
@@ -344,7 +344,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
                 index1 = paddle.static.data('Index', self.index1_shape, "int64")
                 value_tensor = paddle.to_tensor(self.value)
                 out1 = paddle.put_along_axis(
-                    x1, index1, value_tensor, 0, 'assign', False
+                    x1, index1, value_tensor, 0, 'assign', True, False
                 )
                 exe = paddle.static.Executor(place)
                 res = exe.run(
@@ -368,7 +368,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
                 index2 = paddle.static.data('Index', self.index2_shape, "int64")
                 value_tensor = paddle.to_tensor(self.value)
                 out2 = paddle.put_along_axis(
-                    x2, index2, value_tensor, 1, 'assign', False
+                    x2, index2, value_tensor, 1, 'assign', True, False
                 )
                 exe = paddle.static.Executor(place)
                 res = exe.run(
@@ -397,7 +397,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
         # len(arr.shape) != len(indices.shape)
         try:
             res = paddle.put_along_axis(
-                tensorx, indices, 1.0, 0, 'assign', False
+                tensorx, indices, 1.0, 0, 'assign', True, False
             )
         except Exception as error:
             self.assertIsInstance(error, ValueError)
@@ -405,7 +405,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
         # len(values.shape) != len(indices.shape)
         try:
             res = paddle.put_along_axis(
-                tensorx, indices, values, 0, 'assign', False
+                tensorx, indices, values, 0, 'assign', True, False
             )
         except Exception as error:
             self.assertIsInstance(error, ValueError)
@@ -415,7 +415,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
         # indices too large
         try:
             res = paddle.put_along_axis(
-                tensorx, indices, 1.0, 0, 'assign', False
+                tensorx, indices, 1.0, 0, 'assign', True, False
             )
         except Exception as error:
             self.assertIsInstance(error, RuntimeError)
@@ -423,10 +423,18 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
         # the element of indices out of range
         try:
             res = paddle.put_along_axis(
-                tensorx, indices, 1.0, 0, 'assign', False
+                tensorx, indices, 1.0, 0, 'assign', True, False
             )
         except Exception as error:
             self.assertIsInstance(error, RuntimeError)
+
+        # use includ_self=False
+        try:
+            res = paddle.put_along_axis(
+                tensorx, indices, 1.0, 0, 'assign', False
+            )
+        except Exception as error:
+            self.assertIsInstance(error, ValueError)
 
 
 if __name__ == "__main__":
