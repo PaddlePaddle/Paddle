@@ -3510,3 +3510,13 @@
     {x: X, i: I}
   outputs :
     out : Out
+
+- op: write_to_array
+  backward : fused_gemm_epilogue_grad
+  inputs :
+    x : X
+    y : Y
+    bias : Bias
+  outputs :
+    out : Out
+    reserve_space : ReserveSpace

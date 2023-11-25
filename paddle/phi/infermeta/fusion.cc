@@ -3166,4 +3166,100 @@ void SkipLayerNormInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void FusedGemmEpilogueInferMeta(const MetaTensor x,
+                                const MetaTensor y,
+                                const MetaTensor bias,
+                                const bool trans_x,
+                                const bool trans_y,
+                                const std::string& activation,
+                                MetaTensor* out,
+                                MetaTensor* reserve_space) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  auto bias_dims = bias.dims();
+
+  PADDLE_ENFORCE_EQ(y_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The Input tensor Y's dimension of FusedGemmEpilogueOp "
+                        " should be 2, but got %d.",
+                        y_dims.size()));
+
+  PADDLE_ENFORCE_GE(x_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The Input tensor X's dimension of FusedGemmEpilogueOp "
+                        " should be >= 2, but got %d.",
+                        x_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      bias_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The Input tensor bias's dimension of FusedGemmEpilogueOp "
+          " should be == 1, but got %d.",
+          bias_dims.size()));
+
+  PADDLE_ENFORCE_EQ(bias_dims[0],
+                    trans_y ? y_dims[0] : y_dims[1],
+                    phi::errors::InvalidArgument(
+                        "The Input tensor bias's dimension 0"
+                        " should be == Y[-1], but got bias's shape = [%s] "
+                        "and Y's shape = [%s]",
+                        bias_dims,
+                        y_dims));
+
+  auto x_mat_dims = phi::flatten_to_2d(x_dims, trans_x ? 1 : x_dims.size() - 1);
+
+  int K_from_x = trans_x ? x_mat_dims[0] : x_mat_dims[1];
+  int K_from_y = trans_y ? y_dims[1] : y_dims[0];
+
+  PADDLE_ENFORCE_EQ(
+      K_from_x,
+      K_from_y,
+      phi::errors::InvalidArgument(
+          "The last dimension of X should be equal with Y's first dimension."
+          "But received X[-1] = [%d], Y[0] = [%d].",
+          K_from_x,
+          K_from_y));
+
+  std::vector<int64_t> out_dims;
+  out_dims.reserve(static_cast<size_t>(x_dims.size()));
+  if (trans_x) {
+    for (int i = 1; i < x_dims.size(); ++i) out_dims.push_back(x_dims[i]);
+  } else {
+    for (int i = 0; i < x_dims.size() - 1; ++i) out_dims.push_back(x_dims[i]);
+  }
+
+  if (trans_y) {
+    out_dims.push_back(y_dims[0]);
+  } else {
+    out_dims.push_back(y_dims[1]);
+  }
+  out->set_dims(phi::make_ddim(out_dims));
+  out->set_dtype(x.dtype());
+
+  if (reserve_space) {
+    reserve_space->set_dims(phi::make_ddim(out_dims));
+    reserve_space->set_dtype(x.dtype());
+
+    if (activation == "none") {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The ReserveSpace would not be used when activation = \"none\""));
+    } else {
+      int min_size_of_n = activation == "relu" ? 128 : 8;
+      int N_size = trans_y ? y_dims[0] : y_dims[1];
+      PADDLE_ENFORCE_EQ(N_size % min_size_of_n,
+                        0,
+                        phi::errors::InvalidArgument(
+                            "The output dimension N (X(MxK) * Y(KxN) = C(MxN)) "
+                            "should be multiple of %d when auxiliary_key given "
+                            "and activation=%s, but got N = %d.",
+                            min_size_of_n,
+                            activation,
+                            N_size));
+    }
+  }
+}
+
 }  // namespace phi

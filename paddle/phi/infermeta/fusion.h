@@ -714,4 +714,14 @@ void FCInferMeta(const MetaTensor& input,
                  const float scale_out,
                  const bool force_fp32_output,
                  MetaTensor* out);
+
+void FusedGemmEpilogueInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                const MetaTensor& bias,
+                                const bool trans_x,
+                                const bool trans_y,
+                                const std::string& activation,
+                                MetaTensor* out,
+                                MetaTensor* reserve_space);
+
 }  // namespace phi
