@@ -344,7 +344,7 @@ void EmbeddingGradInferMeta(const MetaTensor& x,
                             const MetaTensor& weight,
                             MetaTensor* out) {
   if (weight) {
-    if (weight.is_selected_rows()) {
+    if (out->is_selected_rows()) {
       out->set_dims(x.dims());
       out->set_dtype(x.dtype());
     }
