@@ -3262,4 +3262,96 @@ void FusedGemmEpilogueInferMeta(const MetaTensor x,
   }
 }
 
+void FusedGemmEpilogueGradInferMeta(const MetaTensor& d_out,
+                                    const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& reserve_space,
+                                    const bool trans_x,
+                                    const bool trans_y,
+                                    const std::string& activation,
+                                    MetaTensor* d_x,
+                                    MetaTensor* d_y,
+                                    MetaTensor* d_bias) {
+  auto dout_dims = d_out.dims();
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  PADDLE_ENFORCE_GE(
+      dout_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The Input tensor DOut's dimension of FusedGemmEpilogueGradOp "
+          " should be >= 2, but got %d.",
+          dout_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      y_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The Input tensor Y's dimension of FusedGemmEpilogueGradOp "
+          " should be 2, but got %d.",
+          y_dims.size()));
+
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The Input tensor X's dimension of FusedGemmEpilogueGradOp "
+          " should be >= 2, but got %d.",
+          x_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      dout_dims.size(),
+      x_dims.size(),
+      phi::errors::InvalidArgument(
+          "The Input tensor DOut's and X's dimension of "
+          "FusedGemmEpilogueGradOp "
+          " should be the same, but got DOut's dim = %d and X's = %d.",
+          dout_dims.size(),
+          x_dims.size()));
+
+  auto dout_mat_dims = phi::flatten_to_2d(dout_dims, dout_dims.size() - 1);
+  auto x_mat_dims = phi::flatten_to_2d(x_dims, x_dims.size() - 1);
+
+  PADDLE_ENFORCE_EQ(
+      dout_mat_dims[1],
+      trans_y ? y_dims[0] : y_dims[1],
+      phi::errors::InvalidArgument(
+          "The last dimension of DOut should be equal with Y's last"
+          "dimension. But received DOut[-1] = [%d], Y[1] = [%d].",
+          dout_mat_dims[1],
+          y_dims[1]));
+
+  PADDLE_ENFORCE_EQ(
+      dout_mat_dims[0],
+      trans_x ? x_mat_dims[1] : x_mat_dims[0],
+      phi::errors::InvalidArgument(
+          "The first dimension of DOut should be equal with X's first"
+          "dimension. But received DOut[0] = [%d], Y[0] = [%d].",
+          dout_mat_dims[0],
+          x_mat_dims[0]));
+
+  std::string activation_grad = activation;
+  if (activation_grad != "none" && reserve_space) {
+    PADDLE_ENFORCE_EQ(true,
+                      false,
+                      phi::errors::InvalidArgument(
+                          "The ReserveSpace should not be empty. "
+                          "when activation == {relu_grad, gelu_grad}."));
+  }
+
+  if (d_x) {
+    d_x->set_dims(x_dims);
+    d_x->set_dtype(x.dtype());
+  }
+  d_y->set_dims(y_dims);
+  d_y->set_dtype(y.dtype());
+
+  if (d_bias) {
+    int64_t dbias_dim = trans_y ? y_dims[0] : y_dims[1];
+    d_bias->set_dims(phi::make_ddim({dbias_dim}));
+    d_bias->set_dtype(x.dtype());
+  }
+}
+
 }  // namespace phi

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "glog/logging.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -20,7 +21,8 @@
 
 namespace phi {
 namespace fusion {
-
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 11060
 template <typename T>
 phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
     const phi::GPUContext& ctx,
@@ -56,6 +58,8 @@ phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
   }
   return fused_type;
 }
+#endif
+#endif
 
 template <typename T, typename Context>
 void FusedGemmEpilogueKernel(const Context& dev_ctx,
@@ -72,6 +76,9 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
       "The fused_gemm_epilogue operator only support CUDA 11.6 "
       "or higher version."));
 #endif
+
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 11060
 
   dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
   // (M * K) * (K * N)
@@ -104,6 +111,8 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
       trans_x,
       trans_y,
       fused_type);
+#endif
+#endif
 }
 
 }  // namespace fusion

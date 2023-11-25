@@ -724,4 +724,15 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaTensor* reserve_space);
 
+void FusedGemmEpilogueGradInferMeta(const MetaTensor& d_out,
+                                    const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& reserve_space,
+                                    const bool trans_x,
+                                    const bool trans_y,
+                                    const std::string& activation,
+                                    MetaTensor* d_x,
+                                    MetaTensor* d_y,
+                                    MetaTensor* d_bias);
+
 }  // namespace phi

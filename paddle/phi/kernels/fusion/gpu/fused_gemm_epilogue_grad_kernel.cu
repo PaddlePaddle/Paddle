@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "glog/logging.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -40,6 +41,9 @@ void FusedGemmEpilogueGradKernel(
       "or higher version."));
 #endif
 
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 11060
+
   // (M * K) * (K * N)
   auto x_mat_dims =
       phi::flatten_to_2d(x.dims(), trans_x ? 1 : x.dims().size() - 1);
@@ -67,6 +71,8 @@ void FusedGemmEpilogueGradKernel(
                                                   d_x,
                                                   d_y,
                                                   d_bias);
+#endif
+#endif
 }
 
 }  // namespace fusion

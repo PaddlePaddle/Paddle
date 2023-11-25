@@ -33,7 +33,7 @@
   output : Tensor(d_x), Tensor(d_y), Tensor(d_bias)
   optional :  reserve_space, d_x, d_bias
   infer_meta :
-    func : UnchangedInferMeta
+    func : FusedGemmEpilogueGradInferMeta
   kernel :
     func : fused_gemm_epilogue_grad
     data_type : x

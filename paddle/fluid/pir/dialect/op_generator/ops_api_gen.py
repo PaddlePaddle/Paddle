@@ -79,6 +79,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'fusion_transpose_flatten_concat',
     'skip_layernorm',
     'generate_sequence_xpu',
+    'fused_gemm_epilogue',
     'layer_norm_act_xpu',
     'multi_encoder_xpu',
     'multihead_matmul',
