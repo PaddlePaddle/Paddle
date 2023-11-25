@@ -23,6 +23,7 @@ import paddle
 from paddle import base
 from paddle.base import core, framework
 from paddle.base.framework import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestEyeOp(OpTest):
@@ -89,7 +90,8 @@ class TestEyeOp2(OpTest):
 
 
 class API_TestTensorEye(unittest.TestCase):
-    def test_out(self):
+    @test_with_pir_api
+    def test_static_out(self):
         with paddle.static.program_guard(paddle.static.Program()):
             data = paddle.eye(10)
             place = base.CPUPlace()
@@ -114,10 +116,9 @@ class API_TestTensorEye(unittest.TestCase):
             expected_result = np.eye(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
 
-        paddle.disable_static()
+    def test_dynamic_out(self):
         out = paddle.eye(10, dtype="int64")
         expected_result = np.eye(10, dtype="int64")
-        paddle.enable_static()
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
     def test_errors(self):
