@@ -56,8 +56,8 @@ logger.setLevel(logging.WARNING)
 
 
 class ToStaticMode(Flag):
-    AST = auto()
     SOT = auto()
+    AST = auto()
     # SOT with MIN_GRAPH_SIZE=10, we only test SOT_MGS10 + LEGACY_IR to avoid regression
     SOT_MGS10 = auto()
 
@@ -176,8 +176,8 @@ def to_pir_api_test(fn):
 # Metaclass and BaseClass
 class Dy2StTestMeta(type):
     TO_STATIC_HANDLER_MAP = {
-        ToStaticMode.SOT: to_sot_test,
         ToStaticMode.AST: to_legacy_ast_test,
+        ToStaticMode.SOT: to_sot_test,
         ToStaticMode.SOT_MGS10: to_sot_mgs10_test,
     }
 
