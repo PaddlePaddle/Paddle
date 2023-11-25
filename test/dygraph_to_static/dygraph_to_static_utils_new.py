@@ -143,13 +143,13 @@ def to_pir_exe_test(fn):
     def impl(*args, **kwargs):
         logger.info("[PIR_EXE] running pir exe")
         ir_outs = None
-        if os.environ.get('FLAGS_use_stride_kernel', False):
+        if os.environ.get("FLAGS_use_stride_kernel", False):
             return
         with static.scope_guard(static.Scope()):
             with static.program_guard(static.Program()):
-                pir_flag = 'FLAGS_enable_pir_in_executor'
+                pir_flag = "FLAGS_enable_pir_in_executor"
                 try:
-                    os.environ[pir_flag] = 'True'
+                    os.environ[pir_flag] = "True"
                     set_flags({pir_flag: True})
                     ir_outs = fn(*args, **kwargs)
                 finally:
@@ -234,8 +234,8 @@ class Dy2StTestMeta(type):
             # Generate all test cases
             for to_static_mode, ir_mode in to_static_with_ir_modes:
                 if (
-                    to_static_mode != ToStaticMode.SOT
-                    or ir_mode != IrMode.LEGACY_IR
+                    to_static_mode == ToStaticMode.SOT_MGS10
+                    and ir_mode != IrMode.LEGACY_IR
                 ):
                     # SOT_MGS10 only test with LEGACY_IR
                     continue
@@ -244,6 +244,7 @@ class Dy2StTestMeta(type):
                         fn_name, to_static_mode, ir_mode
                     )
                 ] = Dy2StTestMeta.convert_test_case(fn, to_static_mode, ir_mode)
+                break
         return type.__new__(cls, name, bases, new_attrs)
 
     @staticmethod
@@ -341,9 +342,9 @@ def compare_legacy_with_pir(fn):
         np.testing.assert_equal(
             outs,
             ir_outs,
-            err_msg=f'Dy2St Unittest Check ({fn.__name__}) has diff \n'
-            + f'Expect {outs}\n'
-            + f'But Got {ir_outs}',
+            err_msg=f"Dy2St Unittest Check ({fn.__name__}) has diff \n"
+            + f"Expect {outs}\n"
+            + f"But Got {ir_outs}",
         )
         return outs
 
