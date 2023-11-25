@@ -585,7 +585,8 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
     int input_numel = 1;
     for (int k = 0; k < input_shape.size(); k++) input_numel *= input_shape[k];
-    std::cout<<op_desc_.Type()<<"----------"<<inputs_data_type_[i]<<std::endl;
+    std::cout<<op_desc_.Type()<<"----------"<<int(inputs_data_type_[i])<<std::endl;
+    std::cout<<op_desc_.Type()<<"----------"<<int(data_type)<<std::endl;
     auto data_type_and_size = nvType2PhiType(input_desc[i].type);
 
     phi::DenseTensorMeta input_meta(data_type_and_size.first,
@@ -628,9 +629,9 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
   CHECK_EQ(phi_kernel_contexts_[data_type]->InputsSize(), getNbInputs());
   CHECK_EQ(phi_kernel_contexts_[data_type]->OutputsSize(), getNbOutputs());
-
+  std::cout<<op_desc_.Type()<<"----------"<<"phi_kernel_contexts_ in"<<std::endl;
   (*phi_kernels_[data_type])(phi_kernel_contexts_[data_type].get());
-
+  std::cout<<op_desc_.Type()<<"----------"<<"phi_kernel_contexts_ out"<<std::endl;
   return cudaGetLastError() != cudaSuccess;
 }
 
