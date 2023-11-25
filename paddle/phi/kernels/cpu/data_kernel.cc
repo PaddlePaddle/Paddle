@@ -36,7 +36,7 @@ void ShadowOutputKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(data, CPU, ALL_LAYOUT, phi::DataKernel, float) {}
+PD_REGISTER_KERNEL(data, CPU, ALL_LAYOUT, phi::DataKernel, float, double) {}
 
 PD_REGISTER_KERNEL(shadow_feed,
                    CPU,
