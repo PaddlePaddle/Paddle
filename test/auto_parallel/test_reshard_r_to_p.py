@@ -40,6 +40,17 @@ class TestReshardRToP(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
+    def test_reshard_r_to_p_cross_mesh(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            if envs["backend"] != "cpu":
+                self.run_test_case(
+                    "reshard_r_to_p_cross_mesh.py",
+                    user_defined_envs=envs,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
