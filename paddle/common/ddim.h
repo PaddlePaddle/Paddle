@@ -221,7 +221,7 @@ TEST_API DDim make_ddim(const std::vector<int>& dims);
 TEST_API DDim make_ddim(std::initializer_list<int64_t> dims);
 
 template <typename T = int64_t>
-TEST_API std::vector<T> vectorize(const DDim& ddim) {
+std::vector<T> vectorize(const DDim& ddim) {
   if (ddim.size() == -1) {
     return std::vector<T>({0});
   }

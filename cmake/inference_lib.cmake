@@ -288,6 +288,10 @@ include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
 # copy api headers for phi & custom op
 copy(
   inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/common/*.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/common/)
+copy(
+  inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/api/ext/*.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/api/ext/)
 copy(
