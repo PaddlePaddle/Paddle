@@ -65,7 +65,7 @@ __global__ void LookupTableV2Grad(T *table,
     const T *out = output + idy * D;
     T *tab = table + id * D;
 #ifdef PADDLE_WITH_CUDA
-    common::vectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
+    phi::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
 #else
     for (int i = idx; i < D; i += blockDim.x) {
       phi::CudaAtomicAdd(&tab[i], out[i]);

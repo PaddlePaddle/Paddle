@@ -20,7 +20,6 @@
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/iterator.h"
-#include "paddle/pir/core/macros.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/core/type.h"

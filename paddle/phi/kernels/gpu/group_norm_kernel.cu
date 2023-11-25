@@ -841,7 +841,7 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
       phi::ScalarGetMeanAndVarNCHW<T, AccT>
           <<<grids, blocks, 0, stream>>>(input, mean, temp_variance, size);
     } else {
-      common::vectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
+      phi::VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
           <<<grids, blocks, 0, stream>>>(input, mean, temp_variance, size);
     }
   } else {
