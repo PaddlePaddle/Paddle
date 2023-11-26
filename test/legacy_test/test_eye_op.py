@@ -117,8 +117,10 @@ class API_TestTensorEye(unittest.TestCase):
         self.assertEqual((result == expected_result).all(), True)
 
     def test_dynamic_out(self):
+        paddle.disable_static()
         out = paddle.eye(10, dtype="int64")
         expected_result = np.eye(10, dtype="int64")
+        paddle.enable_static()
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
     def test_errors(self):
