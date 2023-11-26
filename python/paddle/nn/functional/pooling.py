@@ -2135,10 +2135,10 @@ def fractional_max_pool2d(
         )
         check_type(return_mask, 'return_mask', bool, 'fractional_max_pool2d')
 
-        check_variable_and_dtype(
+        check_type(
             random_u,
             'random_u',
-            ['float32', 'float64'],
+            float,
             'fractional_max_pool2d',
         )
 
@@ -2213,11 +2213,11 @@ def fractional_max_pool3d(
         )
         check_type(return_mask, 'return_mask', bool, 'fractional_max_pool3d')
 
-        check_variable_and_dtype(
+        check_type(
             random_u,
             'random_u',
-            ['float32', 'float64'],
-            'fractional_max_pool2d',
+            float,
+            'fractional_max_pool3d',
         )
 
         helper = LayerHelper(l_type, **locals())
