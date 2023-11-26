@@ -38,8 +38,10 @@ def get_cuda_version():
 
 
 @unittest.skipIf(
-    core.is_compiled_with_cuda() and get_cuda_version() < 11020,
-    "weight_only_linear needs CUDA version greater or euqal than 11.2",
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "weight_only_linear requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestMatmulToWeightOnly(unittest.TestCase):
     def test_matmul_to_weight_only(self):
