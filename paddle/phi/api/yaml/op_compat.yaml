@@ -338,7 +338,6 @@
     saved_mean: SavedMean
     saved_variance: SavedVariance
     reserve_space: ReserveSpace
-    grad_out_grad : DDY
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 

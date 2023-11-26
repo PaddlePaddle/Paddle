@@ -1273,6 +1273,8 @@ struct BatchNormDoubleGradOpTranscriber : public OpTranscriber {
         legacy_output_name = "DScale";
       } else if (info.name == "x_grad") {
         legacy_output_name = "DX";
+      } else if (info.name == "grad_out_grad") {
+        legacy_output_name = "DDY";
       }
       VLOG(10) << "[op:" << op_desc.Type() << "][output]" << info.name << " "
                << legacy_output_name;
