@@ -66,7 +66,6 @@ endif()
 
 set(DISABLE_PIR_PT_MODES
     test_error
-    test_gradname_parse
     test_seq2seq
     test_pylayer
     test_save_inference_model
