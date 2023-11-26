@@ -4009,6 +4009,59 @@ def reshape(x, shape, name=None):
         return out
 
 
+def masked_scatter(x, mask, value):
+    """
+    利用现有api实现masked_scatter功能
+    """
+    # make sure the dtype of x and source is the same
+    assert (
+        x.dtype == value.dtype
+    ), f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+    assert mask.dtype == paddle.bool
+
+    zeros_like_x = paddle.zeros_like(x, dtype=int)
+    mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
+    mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
+    assert (
+        mask_prefix[-1] <= value.numel()
+    ), f'mask true nums must be <= value size, but got mask true nums is {mask.sum().item()}, value size is {value.numel().item()}'
+
+    value = value.flatten()[mask_prefix].reshape(mask.shape)
+    return paddle.where(paddle.cast(mask, dtype="bool"), value, x)
+
+
+@inplace_apis_in_dygraph_only
+def masked_scatter_(x, mask, value):
+    """
+    利用现有api实现masked_scatter功能
+    """
+    # make sure the dtype of x and source is the same
+    assert (
+        x.dtype == value.dtype
+    ), f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+    assert mask.dtype == paddle.bool
+    if not x.stop_gradient:
+        raise ValueError(
+            "The inplace operation only support stop_gradient=True inplace tensor"
+        )
+    shape = paddle.broadcast_shape(x.shape, mask.shape)
+    if shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output should be equal to inplace tensor shape in the Inplace operation, but got output shape {} and inplace tensor {}.".format(
+                shape, x.shape
+            )
+        )
+    mask = paddle.broadcast_to(mask, shape)
+    mask_prefix = paddle.clip(mask.astype(int).cumsum() - 1, min=0)
+    assert (
+        mask_prefix[-1] <= value.numel()
+    ), f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
+
+    value = value.flatten()[mask_prefix].reshape(mask.shape)
+    mask = paddle.logical_not(mask)
+    paddle.where_(mask, x, value)
+
+
 @inplace_apis_in_dygraph_only
 def reshape_(x, shape, name=None):
     """
