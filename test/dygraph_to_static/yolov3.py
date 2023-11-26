@@ -20,7 +20,6 @@ from darknet import ConvBNLayer, DarkNet53_conv_body
 import paddle
 from paddle import _legacy_C_ops, base
 from paddle.base.param_attr import ParamAttr
-from paddle.jit.api import to_static
 from paddle.regularizer import L2Decay
 
 
@@ -274,7 +273,6 @@ class YOLOv3(paddle.nn.Layer):
                 self.route_blocks_2.append(route)
             self.upsample = Upsample()
 
-    @to_static
     def forward(
         self,
         inputs,
