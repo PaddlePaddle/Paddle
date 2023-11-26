@@ -232,21 +232,6 @@
   kernel :
     func : elementwise_pow_grad
 
-- backward_op : embedding_grad
-  forward : embedding (Tensor x, Tensor weight, int64_t padding_idx=-1) -> Tensor(out)
-  args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1)
-  output : Tensor(weight_grad)
-  infer_meta :
-    func : EmbeddingGradInferMeta
-    param : [x,weight]
-  kernel :
-    func : embedding_grad {dense, dense, dense -> dense}
-           embedding_sparse_grad {dense, dense, dense -> selected_rows}
-           sparse_weight_embedding_grad {selected_rows, dense, dense -> dense}
-           sparse_weight_embedding_sparse_grad {selected_rows, dense, dense -> selected_rows}
-    data_type : out_grad
-  no_need_buffer : weight
-
 - backward_op : exponential__grad
   forward : exponential_ (Tensor x, float lam) -> Tensor(out)
   args : (Tensor out_grad)
@@ -900,3 +885,24 @@
   kernel:
     func: unpool_grad
     data_type: x
+
+- op : embedding_dense_grad
+  args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1, bool sparse=false)
+  output : Tensor(weight_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [weight]
+  kernel :
+    func : embedding_grad
+    data_type : weight
+
+- op : embedding_sparse_grad
+  args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx = -1, bool sparse = false)
+  output : SelectedRows(weight_grad)
+  infer_meta:
+    func: EmbeddingGradSparseInferMeta
+    param: [weight]
+  kernel:
+    func: embedding_sparse_grad
+    param: [x, weight, out_grad, padding_idx, sparse]
+    data_type : weight

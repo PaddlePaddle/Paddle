@@ -50,7 +50,7 @@ BACKENDS_BLACK_LIST = [
     "isclose",
     "send_v2",
     "assert",
-    "embedding_grad_sparse",
+    "embedding_sparse_grad",
     "embedding_grad",
 ]
 

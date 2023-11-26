@@ -343,13 +343,9 @@ void EigvalshGradInferMeta(const MetaTensor& out_v,
 void EmbeddingGradInferMeta(const MetaTensor& x,
                             const MetaTensor& weight,
                             MetaTensor* out) {
+  (void)x;
   if (weight) {
-    if (out->is_selected_rows()) {
-      out->set_dims(x.dims());
-      out->set_dtype(x.dtype());
-    } else {
-      out->share_dims(weight);
-    }
+    out->share_dims(weight);
   }
 }
 

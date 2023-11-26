@@ -69,18 +69,11 @@ pir::OpResult embedding_grad(const pir::Value& x,
                              bool sparse) {
   if (weight.type().isa<paddle::dialect::DenseTensorType>()) {
     if (sparse) {
-      auto embedding_grad_op =
-          ApiBuilder::Instance()
-              .GetBuilder()
-              ->Build<paddle::dialect::EmbeddingSparseGradOp>(
-                  x, weight, out_grad, padding_idx);
-      return embedding_grad_op.weight_grad();
+      return paddle::dialect::embedding_sparse_grad(
+          x, weight, out_grad, padding_idx, sparse);
     } else {
-      auto embedding_grad_op = ApiBuilder::Instance()
-                                   .GetBuilder()
-                                   ->Build<paddle::dialect::EmbeddingGradOp>(
-                                       x, weight, out_grad, padding_idx);
-      return embedding_grad_op.weight_grad();
+      return paddle::dialect::embedding_dense_grad(
+          x, weight, out_grad, padding_idx, sparse);
     }
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
