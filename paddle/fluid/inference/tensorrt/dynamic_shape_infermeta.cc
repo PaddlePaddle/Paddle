@@ -834,7 +834,6 @@ nvinfer1::DimsExprs ArgsortInferMeta(int output_index,
                                      int nb_inputs,
                                      const nvinfer1::IExprBuilder& expr_builder,
                                      const framework::OpDesc& op_desc) {
-  // 确保输入数量是正确的
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       1,
@@ -845,11 +844,9 @@ nvinfer1::DimsExprs ArgsortInferMeta(int output_index,
                     phi::errors::InvalidArgument(
                         "argsort only has two output,but received asvector:%d.",
                         output_index));
-  // 获取输入张量的维度表达式
+
   const nvinfer1::DimsExprs input_dims = inputs[0];
-  // 创建一个用于存储输出形状的对象
   nvinfer1::DimsExprs output;
-  // Argsort的两个输出形状与输入形状相同
   output.nbDims = input_dims.nbDims;
   for (int i = 0; i < input_dims.nbDims; ++i) {
     output.d[i] = input_dims.d[i];
