@@ -31,6 +31,7 @@ class TestDirichletOp(OpTest):
 
     def setUp(self):
         self.op_type = "dirichlet"
+        self.python_api = paddle.distribution.Dirichlet
         self.alpha = np.array((1.0, 2.0))
         self.sample_shape = (100000, 2)
 
