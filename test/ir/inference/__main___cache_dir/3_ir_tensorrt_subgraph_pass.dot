@@ -1,0 +1,26 @@
+digraph G {
+   node_1099[label="feed(0)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_1098[label="feed(1)" shape="box" style="rounded,filled,bold" fontname="Arial" color="#148b97" fontcolor="#ffffff"]
+   node_1097[label="fetch(6)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_1096[label="input_data(2)
+1,3,32,32" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_1094[label="indices_data(4)
+1,3,32,32" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_1093[label="fetch(7)" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_1095[label="output_data(5)
+1,3,32,32" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_1092[label="fetch(9)" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_1091[label="fetch(8)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_1090[label="place_holder_weight(10)
+1" shape="box" style="rounded,filled,bold" fontname="Arial" color="#148b97" fontcolor="#ffffff"]
+   node_1089[label="tensorrt_engine(11)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_1089->node_1094
+   node_1089->node_1095
+   node_1091->node_1092
+   node_1094->node_1091
+   node_1095->node_1097
+   node_1096->node_1089
+   node_1097->node_1093
+   node_1098->node_1099
+   node_1099->node_1096
+} // end G

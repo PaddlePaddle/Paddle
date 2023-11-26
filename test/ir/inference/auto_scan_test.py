@@ -678,6 +678,12 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 arr.shape,
                 f"The output shapes are not equal, the baseline shape is {baseline[key].shape}, but got {str(arr.shape)}",
             )
+            
+            print("这个是paddle的结果")
+            print(key)
+            print(arr - baseline[key])
+            
+            
             np.testing.assert_allclose(arr, baseline[key], rtol=rtol, atol=atol)
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):
@@ -808,42 +814,43 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 if ignore_flag:
                     continue
 
-                try:
-                    model, params = create_fake_model(prog_config)
-                    if quant:
-                        model, params = create_quant_model(model, params)
-                    feed_data = prog_config.get_feed_data()
-                    pred_config_deserialize = paddle_infer.Config(pred_config)
-                    trt_result = self.run_test_config(
-                        model, params, prog_config, pred_config, feed_data
-                    )
-                    self.assert_tensors_near(
-                        atol, rtol, trt_result, baseline_result
-                    )
-                    trt_engine_num, paddle_op_num = nodes_num
-                    self.assert_op_size(trt_engine_num, paddle_op_num)
+                
+                model, params = create_fake_model(prog_config)
+                print("sdfjniwdkskfljfkldjn\n\n")
+                if quant:
+                    model, params = create_quant_model(model, params)
+                feed_data = prog_config.get_feed_data()
+                pred_config_deserialize = paddle_infer.Config(pred_config)
+                trt_result = self.run_test_config(
+                    model, params, prog_config, pred_config, feed_data
+                )
+                self.assert_tensors_near(
+                    atol, rtol, trt_result, baseline_result
+                )
+                trt_engine_num, paddle_op_num = nodes_num
+                self.assert_op_size(trt_engine_num, paddle_op_num)
 
-                    # deserialize test
-                    if trt_engine_num > 0:
-                        self.run_test_config(
-                            model,
-                            params,
-                            prog_config,
-                            pred_config_deserialize,
-                            feed_data,
-                        )
+                # deserialize test
+                if trt_engine_num > 0:
+                    self.run_test_config(
+                        model,
+                        params,
+                        prog_config,
+                        pred_config_deserialize,
+                        feed_data,
+                    )
 
-                    self.success_log(f"program_config: {prog_config}")
-                    self.success_log(
-                        f"predictor_config: {self.inference_config_str(pred_config)}"
-                    )
-                except Exception as e:
-                    self.fail_log(f"program_config: {prog_config}")
-                    self.fail_log(
-                        f"predictor_config: {self.inference_config_str(pred_config)}"
-                    )
-                    self.fail_log(f"\033[1;31m ERROR INFO: {e}\033[0m")
-                    all_passes = False
+                self.success_log(f"program_config: {prog_config}")
+                self.success_log(
+                    f"predictor_config: {self.inference_config_str(pred_config)}"
+                )
+                # except Exception as e:
+                #     self.fail_log(f"program_config: {prog_config}")
+                #     self.fail_log(
+                #         f"predictor_config: {self.inference_config_str(pred_config)}"
+                #     )
+                #     self.fail_log(f"\033[1;31m ERROR INFO: {e}\033[0m")
+                #     all_passes = False
 
         self.assertTrue(all_passes)
 

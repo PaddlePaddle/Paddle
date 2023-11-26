@@ -1,0 +1,26 @@
+digraph G {
+   node_1066[label="feed(0)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_1065[label="feed(1)" shape="box" style="rounded,filled,bold" fontname="Arial" color="#148b97" fontcolor="#ffffff"]
+   node_1064[label="fetch(6)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_1063[label="input_data(2)
+1,3,32,32" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_1061[label="argsort(3)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_1060[label="indices_data(4)
+1,3,32,32" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_1059[label="fetch(7)" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_1062[label="output_data(5)
+1,3,32,32" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_1058[label="fetch(9)" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_1057[label="fetch(8)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_1056[label="place_holder_weight(10)
+1" shape="box" style="rounded,filled,bold" fontname="Arial" color="#148b97" fontcolor="#ffffff"]
+   node_1057->node_1058
+   node_1060->node_1057
+   node_1061->node_1060
+   node_1061->node_1062
+   node_1062->node_1064
+   node_1063->node_1061
+   node_1064->node_1059
+   node_1065->node_1066
+   node_1066->node_1063
+} // end G
