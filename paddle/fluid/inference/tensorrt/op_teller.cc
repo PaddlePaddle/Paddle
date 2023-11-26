@@ -2727,12 +2727,12 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
 
-    // if (op_type == "argsort") {
-    //   if (!with_dynamic_shape) {
-    //     LOG(INFO)<<"argsort does not support static shape yet";
-    //     return false;
-    //   }
-    // }
+    if (op_type == "argsort") {
+      if (!with_dynamic_shape) {
+        LOG(INFO) << "argsort does not support static shape yet";
+        return false;
+      }
+    }
 
     if (op_type == "flip") {
       if (!with_dynamic_shape) {

@@ -234,9 +234,7 @@ void ArgsortKernel(const Context& dev_ctx,
                    DenseTensor* indices) {
   auto in_dims = input.dims();
   auto rank = in_dims.size();
-  std::cout<<"rank"<<rank<<std::endl;
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
-  std::cout<<"axis"<<axis<<std::endl;
   const T* in_data = input.data<T>();
   auto size = input.numel();
   T* out_data = dev_ctx.template Alloc<T>(output);
@@ -267,22 +265,18 @@ void ArgsortKernel(const Context& dev_ctx,
   if (axis == -1 || axis + 1 == in_dims.size()) {
     const int input_height =
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
-    // LOG(INFO)<<"axis==-1 || axis+1==in_dims.size()";
-    std::cout<<"axis==-1 || axis+1==in_dims.size()";
     const int input_width = in_dims[in_dims.size() - 1];
     ArgFullSort<T, int>(dev_ctx,
-                            &input,
-                            output,
-                            indices,
-                            input_height,
-                            input_width,
-                            descending);
-    
+                        &input,
+                        output,
+                        indices,
+                        input_height,
+                        input_width,
+                        descending);
+
   } else {
     // if not full sort, do transpose first
     std::vector<int> trans;
-    // LOG(INFO)<<"axis else的";
-    std::cout<<"axis else的";
     for (int i = 0; i < axis; i++) {
       trans.push_back(i);
     }
@@ -317,12 +311,12 @@ void ArgsortKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<int>(indices);
 
     ArgFullSort<T, int>(dev_ctx,
-                            &trans_inp,
-                            &tmp_out,
-                            &tmp_indices,
-                            input_height,
-                            input_width,
-                            descending);
+                        &trans_inp,
+                        &tmp_out,
+                        &tmp_indices,
+                        input_height,
+                        input_width,
+                        descending);
 
     TransposeKernel<int, Context>(dev_ctx, tmp_indices, trans, indices);
     // transpose back
