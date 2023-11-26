@@ -484,7 +484,34 @@ static inline T _igam_helper_asymptotic_series(T a, T x, bool igam) {
 }
 
 template <typename T>
-static T _igamc_helper_continued_fraction(T a, T x) {
+static inline T _igamc_helper_series(T a, T x) {
+  // Compute igamc using DLMF 8.7.3 [igam1]. This is related to the series in
+  // _igam_helper_series but extra care is taken to avoid cancellation.
+
+  int n;
+  T fac = 1;
+  T sum = 0;
+  T term, logx;
+  static T MAXITER = 2000;
+  static T MACHEP = std::is_same<T, double>::value ?
+    1.11022302462515654042E-16 : 5.9604644775390625E-8;
+
+  for (n = 1; n < MAXITER; n++) {
+    fac *= -x / n;
+    term = fac / (a + n);
+    sum += term;
+    if (std::fabs(term) <= MACHEP * std::fabs(sum)) {
+        break;
+    }
+  }
+
+  logx = std::log(x);
+  term = -std::expm1(a * logx - std::lgamma(1+a));
+  return term - std::exp(a * logx - std::lgamma(a)) * sum;
+} 
+
+template <typename T>
+static inline T _igamc_helper_continued_fraction(T a, T x) {
   // Compute igamc using DLMF 8.9.2. [igam1]
   int i;
   T ans, ax, c, yc, r, t, y, z;
@@ -545,10 +572,6 @@ static T _igamc_helper_continued_fraction(T a, T x) {
 
 template <typename T>
 struct IgammaFunctor {
-  static const T SMALL = 20.0;
-  static const T LARGE = 200.0;
-  static const T SMALLRATIO = 0.3;
-  static const T LARGERATIO = 4.5;
   IgammaFunctor(const T* input, const T* other, T* output, int64_t numel)
       : input_(input), other_(other), output_(output), numel_(numel) {}
 
@@ -563,10 +586,14 @@ struct IgammaFunctor {
      *   incomplete gamma
      * - otherwise, calculate the series from [igam2] eq (4)
      */
-    a = other_[idx];
-    x = input_[idx];
+    // static const T SMALL = 20.0;
+    // static const T LARGE = 200.0;
+    // static const T SMALLRATIO = 0.3;
+    // static const T LARGERATIO = 4.5;
+    // a = other_[idx];
+    // x = input_[idx];
 
-    T absxma_a;
+    // T absxma_a;
   }
 
  private:
@@ -578,10 +605,6 @@ struct IgammaFunctor {
 
 template <typename T>
 struct IgammacFunctor {
-  static const T SMALL = 20.0;
-  static const T LARGE = 200.0;
-  static const T SMALLRATIO = 0.3;
-  static const T LARGERATIO = 4.5;
   IgammacFunctor(const T* input, const T* other, T* output, int64_t numel)
       : input_(input), other_(other), output_(output), numel_(numel) {}
 
@@ -596,56 +619,75 @@ struct IgammacFunctor {
      *   incomplete gamma
      * - otherwise, calculate the series from [igam2] eq (5)
      */
-    a = other_[idx];
-    x = input_[idx];
+  static const T SMALL = 20.0;
+  static const T LARGE = 200.0;
+  static const T SMALLRATIO = 0.3;
+  static const T LARGERATIO = 4.5;
+    T a = other_[idx];
+    T x = input_[idx];
     T absxma_a;
 
     // note that in SciPy, a and x are non-negative, with exclusive 0s (i.e.,
     // at most 1 of them can be 0), where igammac(0, x) = 0.0 iff x > 0.
     if ((x < 0) || (a < 0)) {
       // out of defined-region of the function
-      return std::numeric_limits<T>::quiet_NaN();
+      output_[idx] = std::numeric_limits<T>::quiet_NaN();
+      return;
     } else if (a == 0) {
       if (x > 0) {
-        return 0.0;
+        output_[idx] = 0.0;
+        return;
       } else {
-        return std::numeric_limits<T>::quiet_NaN();
+        output_[idx] = std::numeric_limits<T>::quiet_NaN();
+        return;
       }
     } else if (x == 0) {
-      return 1.0;
+      output_[idx] = 1.0;
+      return;
     } else if (std::isinf(a)) {
       if (std::isinf(x)) {
-        return std::numeric_limits<T>::quiet_NaN();
+        output_[idx] = std::numeric_limits<T>::quiet_NaN();
+        return;
       }
-      return 1.0;
+      output_[idx] = 1.0;
+      return;
     } else if (std::isinf(x)) {
-      return 0.0;
+      output_[idx] = 0.0;
+      return;
     }
 
     absxma_a = std::fabs(x - a) / a;
     if ((a > SMALL) && (a < LARGE) && (absxma_a < SMALLRATIO)) {
-      return _igam_helper_asymptotic_series(a, x, 0);
+      output_[idx] = _igam_helper_asymptotic_series(a, x, 0);
+      return;
     } else if ((a > LARGE) && (absxma_a < LARGERATIO / std::sqrt(a))) {
-      return _igam_helper_asymptotic_series(a, x, 0);
+      output_[idx] = _igam_helper_asymptotic_series(a, x, 0);
+      return;
     }
 
     if (x > 1.1) {
       if (x < a) {
-        return 1.0 - _igam_helper_series(a, x);
+        output_[idx] = 1.0 - _igam_helper_series(a, x);
+        return;
       } else {
-        return _igamc_helper_continued_fraction(a, x);
+        output_[idx] = _igamc_helper_continued_fraction(a, x);
+        return;
       }
     } else if (x <= 0.5) {
       if (-0.4 / std::log(x) < a) {
-        return 1.0 - _igam_helper_series(a, x);
+        output_[idx] = 1.0 - _igam_helper_series(a, x);
+        return;
       } else {
-        return _igamc_helper_series(a, x);
+        output_[idx] = _igamc_helper_series(a, x);
+        return;
       }
     } else {
       if (x * 1.1 < a) {
-        return 1.0 - _igam_helper_series(a, x);
+        output_[idx] = 1.0 - _igam_helper_series(a, x);
+        return;
       } else {
-        return _igamc_helper_series(a, x);
+        output_[idx] = _igamc_helper_series(a, x);
+        return;
       }
     }
   }

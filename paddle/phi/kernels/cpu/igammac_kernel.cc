@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/impl/igamma_kernel_impl.h"
 
 namespace phi {
 
@@ -24,7 +25,16 @@ template <typename T, typename Context>
 void IgammacKernel(const Context& ctx,
                    const DenseTensor& x,
                    const DenseTensor& a,
-                   DenseTensor* out) {}
+                   DenseTensor* out) {
+  const int64_t size = x.numel();
+  const T* x_data = x.data<T>();
+  const T* a_data = a.data<T>();
+  T* out_data = ctx.template Alloc<T>(out);
+
+  phi::funcs::ForRange<Context> for_range(ctx, size);
+  IgammacFunctor<T> functor(x_data, a_data, out_data, size);
+  for_range(functor);
+}
 
 }  // namespace phi
 
@@ -33,6 +43,4 @@ PD_REGISTER_KERNEL(igammac,
                    ALL_LAYOUT,
                    phi::IgammacKernel,
                    float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   double) {}

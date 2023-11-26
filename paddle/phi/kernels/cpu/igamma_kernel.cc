@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/impl/igamma_kernel_impl.h"
 
 namespace phi {
 
@@ -42,6 +43,4 @@ PD_REGISTER_KERNEL(igamma,
                    ALL_LAYOUT,
                    phi::IgammaKernel,
                    float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   double) {}

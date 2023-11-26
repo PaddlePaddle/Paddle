@@ -1227,7 +1227,6 @@
   output : Tensor(out)
   infer_meta :
     func : IgammaInferMeta
-    param: [x]
   kernel :
     func : igamma
   inplace: (x -> out)
@@ -1237,7 +1236,6 @@
   output : Tensor(out)
   infer_meta :
     func : IgammacInferMeta
-    param: [x]
   kernel :
     func : igammac
   inplace: (x -> out)
