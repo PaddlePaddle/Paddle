@@ -295,6 +295,12 @@ void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void IsfiniteInferMeta(const MetaTensor& input, MetaTensor* out);
 
+void IgammaInferMeta(const MetaTensor& x, const MetaTensor& a, MetaTensor* out);
+
+void IgammacInferMeta(const MetaTensor& x,
+                      const MetaTensor& a,
+                      MetaTensor* out);
+
 void KthvalueInferMeta(const MetaTensor& x,
                        int k,
                        int axis,

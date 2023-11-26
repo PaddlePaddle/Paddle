@@ -5230,6 +5230,62 @@ void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_strides(x.strides());
 }
 
+void IgammaInferMeta(const MetaTensor& x,
+                     const MetaTensor& a,
+                     MetaTensor* out) {
+  out->share_meta(x);
+  out->set_dtype(x.dtype());
+
+  auto x_dims = x.dims();
+  auto a_dims = a.dims();
+  auto x_dims_size = x_dims.size();
+  auto a_dims_size = a_dims.size();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims_size == a_dims_size || x_dims_size == 1 || a_dims_size == 1,
+      false,
+      phi::errors::InvalidArgument(
+          "The size of tesnor x and tensor a should be same dimension, or one "
+          "of the two tensors should be 1, but received tensor x (%d) and "
+          "tensor a (%d).",
+          x_dims_size,
+          a_dims_size));
+
+  if (x_dims_size == 1) {
+    out->set_dims(a_dims);
+  } else {
+    out->set_dims(x_dims);
+  }
+}
+
+void IgammacInferMeta(const MetaTensor& x,
+                      const MetaTensor& a,
+                      MetaTensor* out) {
+  out->share_meta(x);
+  out->set_dtype(x.dtype());
+
+  auto x_dims = x.dims();
+  auto a_dims = a.dims();
+  auto x_dims_size = x_dims.size();
+  auto a_dims_size = a_dims.size();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims_size == a_dims_size || x_dims_size == 1 || a_dims_size == 1,
+      false,
+      phi::errors::InvalidArgument(
+          "The size of tesnor x and tensor a should be same dimension, or one "
+          "of the two tensors should be 1, but received tensor x (%d) and "
+          "tensor a (%d).",
+          x_dims_size,
+          a_dims_size));
+
+  if (x_dims_size == 1) {
+    out->set_dims(a_dims);
+  } else {
+    out->set_dims(x_dims);
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);
