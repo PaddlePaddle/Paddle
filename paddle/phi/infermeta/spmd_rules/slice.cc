@@ -148,7 +148,7 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
     int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
     // the sliced axis cannot be sharded, set its notation
     // with the special '1' to set its dim mapping to -1.
-    out_axes[axis] = '1';
+    input_axes[axis] = '1';
   }
 
   // Step2: Sharding Propogation
