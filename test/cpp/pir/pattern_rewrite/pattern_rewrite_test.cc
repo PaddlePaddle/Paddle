@@ -476,3 +476,75 @@ TEST(constant_folding, ConstantFolding_Combine) {
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(program.block()->size(), 12u);
 }
+
+void BuildWeightOnlyLinearProgram(pir::Program *program,
+                                  pir::IrContext *ctx,
+                                  paddle::framework::Scope *scope) {
+  pir::Builder builder = pir::Builder(ctx, program->block());
+
+  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
+  phi::DDim input_dims = {3, 64, 64};
+  phi::DDim w_dims = {64, 64};
+  phi::DDim bias_dims = {64};
+
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+  pir::Type input_dense_tensor_dtype = paddle::dialect::DenseTensorType::get(
+      ctx, fp32_dtype, input_dims, data_layout, lod, offset);
+  pir::Type w_dense_tensor_dtype = paddle::dialect::DenseTensorType::get(
+      ctx, fp32_dtype, w_dims, data_layout, lod, offset);
+  pir::Type bias_dense_tensor_dtype = paddle::dialect::DenseTensorType::get(
+      ctx, fp32_dtype, bias_dims, data_layout, lod, offset);
+
+  phi::DenseTensorMeta input_meta(
+      phi::DataType::FLOAT32, input_dims, data_layout, lod, offset);
+  phi::DenseTensorMeta w_meta(
+      phi::DataType::FLOAT32, w_dims, data_layout, lod, offset);
+  phi::DenseTensorMeta bias_meta(
+      phi::DataType::FLOAT32, bias_dims, data_layout, lod, offset);
+  paddle::platform::DeviceContext *dev_ctx =
+      paddle::platform::DeviceContextPool::Instance().Get(
+          paddle::platform::CPUPlace());
+
+  auto op1 = builder.Build<pir::ParameterOp>("input", input_dense_tensor_dtype);
+  auto op2 = builder.Build<pir::ParameterOp>("w", w_dense_tensor_dtype);
+
+  auto op3 =
+      builder.Build<paddle::dialect::MatmulOp>(op1->result(0), op2->result(0));
+
+  auto op4 = builder.Build<pir::ParameterOp>("bias", bias_dense_tensor_dtype);
+
+  auto op5 =
+      builder.Build<paddle::dialect::AddOp>(op3->result(0), op4->result(0));
+  builder.Build<paddle::dialect::FetchOp>(op5.out(), "out", 0);
+
+  auto *tensor_input = scope->Var("input")->GetMutable<phi::DenseTensor>();
+  auto *tensor_w = scope->Var("w")->GetMutable<phi::DenseTensor>();
+  auto *tensor_bias = scope->Var("bias")->GetMutable<phi::DenseTensor>();
+
+  tensor_input->set_meta(input_meta);
+  tensor_w->set_meta(w_meta);
+  tensor_bias->set_meta(bias_meta);
+
+  dev_ctx->Alloc(tensor_input, phi::DataType::FLOAT32);
+  dev_ctx->Alloc(tensor_w, phi::DataType::FLOAT32);
+  dev_ctx->Alloc(tensor_bias, phi::DataType::FLOAT32);
+}
+
+TEST(weight_only_linear, WeightOnlyLinear) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+
+  pir::Program program(ctx);
+  paddle::framework::Scope scope;
+  BuildWeightOnlyLinearProgram(&program, ctx, &scope);
+
+  pir::PassManager pm(ctx);
+  pm.AddPass(pir::CreateMatmulToWeightOnlyLinearPass());
+  pm.EnableIRPrinting();
+
+  CHECK_EQ(pm.Run(&program), true);
+  EXPECT_EQ(program.block()->size(), 6u);
+}

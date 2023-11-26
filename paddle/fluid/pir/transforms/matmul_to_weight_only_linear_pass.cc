@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
+#include "paddle/fluid/pir/transforms/matmul_to_weight_only_linear_pass.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
@@ -20,8 +20,8 @@
 
 namespace {
 
-class FusedWeightOnlyLinearPattern
-    : public pir::drr::DrrPatternBase<FusedWeightOnlyLinearPattern> {
+class MatmulToWeightOnlyLinearPattern
+    : public pir::drr::DrrPatternBase<MatmulToWeightOnlyLinearPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     //
@@ -85,21 +85,25 @@ class FusedWeightOnlyLinearPattern
         res.Op("pd_op.weight_only_linear",
                {{"weight_dtype", weight_dtype_attr},
                 {"arch", weight_only_linear_arch_attr}});
-    weight_only_linear({&res.Tensor("x"),
-                        &res.Tensor("quanted_weight_tensor"),
-                        &res.Tensor("bias"),
-                        &res.Tensor("weight_scale_tensor")},
-                       {&res.Tensor("add_out")});
+    weight_only_linear(
+        {
+            &res.Tensor("x"),
+            &res.Tensor("quanted_weight_tensor"),
+            &res.Tensor("bias"),
+            &res.Tensor("weight_scale_tensor"),
+        },
+        {&res.Tensor("add_out")});
   }
 };
 
-class FusedWeightOnlyLinearPass : public pir::Pass {
+class MatmulToWeightOnlyLinearPass : public pir::Pass {
  public:
-  FusedWeightOnlyLinearPass() : pir::Pass("fused_weight_only_linear_pass", 2) {}
+  MatmulToWeightOnlyLinearPass()
+      : pir::Pass("matmul_to_weight_only_linear_pass", 2) {}
 
   bool Initialize(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(FusedWeightOnlyLinearPattern().Build(context));
+    ps.Add(MatmulToWeightOnlyLinearPattern().Build(context));
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
@@ -122,9 +126,10 @@ class FusedWeightOnlyLinearPass : public pir::Pass {
 }  // namespace
 
 namespace pir {
-std::unique_ptr<Pass> CreateFusedWeightOnlyLinearPass() {
-  return std::make_unique<FusedWeightOnlyLinearPass>();
+std::unique_ptr<Pass> CreateMatmulToWeightOnlyLinearPass() {
+  return std::make_unique<MatmulToWeightOnlyLinearPass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(fused_weight_only_linear_pass, FusedWeightOnlyLinearPass);
+REGISTER_IR_PASS(matmul_to_weight_only_linear_pass,
+                 MatmulToWeightOnlyLinearPass);

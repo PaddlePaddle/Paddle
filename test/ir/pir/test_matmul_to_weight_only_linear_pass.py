@@ -74,7 +74,7 @@ class TestMatmulToWeightOnly(unittest.TestCase):
                         fetch_list=[res2],
                     )
                 pm = paddle.pir.PassManager()
-                pm.add_pass('fused_weight_only_linear_pass')
+                pm.add_pass('matmul_to_weight_only_linear_pass')
                 pm.run(main_program)
                 op_names = [op.name() for op in main_program.global_block().ops]
                 self.assertTrue('pd_op.weight_only_linear' in op_names)

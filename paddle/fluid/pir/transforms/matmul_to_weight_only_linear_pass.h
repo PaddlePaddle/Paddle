@@ -21,6 +21,6 @@ namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateFusedWeightOnlyLinearPass();
+IR_API std::unique_ptr<Pass> CreateMatmulToWeightOnlyLinearPass();
 
 }  // namespace pir
