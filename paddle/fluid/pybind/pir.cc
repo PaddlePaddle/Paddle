@@ -1519,7 +1519,7 @@ void BindUtils(pybind11::module *m) {
 
 static bool HasDynamicShape(const Program &program) {
   for (const auto &op : *program.block()) {
-    for (auto i = 0; i < op.num_results(); ++i) {
+    for (uint32_t i = 0; i < op.num_results(); ++i) {
       if (op.result(i)
               .type()
               .dyn_cast<pir::ShapedTypeInterface>()
