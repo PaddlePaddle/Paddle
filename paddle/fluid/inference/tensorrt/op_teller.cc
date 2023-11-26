@@ -1754,64 +1754,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
-    if (op_type == "bitwise_and") {
-#if IS_TRT_VERSION_LT(8400)
-      VLOG(3) << "bitwise_and is not supported when TensorRT < 8.4";
-      return false;
-#endif
-      if (!with_dynamic_shape) {
-        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
-        return false;
-      }
-      auto x_var_name = desc.Input("X")[0];
-      auto y_var_name = desc.Input("Y")[0];
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      auto* x_var_desc = block->FindVar(x_var_name);
-      auto* y_var_desc = block->FindVar(y_var_name);
-      auto x_dtype = x_var_desc->GetDataType();
-      auto y_dtype = y_var_desc->GetDataType();
-      if (x_dtype != framework::proto::VarType::BOOL ||
-          y_dtype != framework::proto::VarType::BOOL) {
-        VLOG(3) << "the bitwise_and only support input of BOOL.";
-        return false;
-      }
-    }
-
-    if (op_type == "bitwise_or") {
-#if IS_TRT_VERSION_LT(8400)
-      VLOG(3) << "bitwise_or is not supported when TensorRT < 8.4";
-      return false;
-#endif
-      if (!with_dynamic_shape) {
-        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
-        return false;
-      }
-      auto x_var_name = desc.Input("X")[0];
-      auto y_var_name = desc.Input("Y")[0];
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      auto* x_var_desc = block->FindVar(x_var_name);
-      auto* y_var_desc = block->FindVar(y_var_name);
-      auto x_dtype = x_var_desc->GetDataType();
-      auto y_dtype = y_var_desc->GetDataType();
-      if (x_dtype != framework::proto::VarType::BOOL ||
-          y_dtype != framework::proto::VarType::BOOL) {
-        VLOG(3) << "the bitwise_or only support input of BOOL.";
-        return false;
-      }
-    }
-
     if (op_type == "pad3d") {
 #if !IS_TRT_VERSION_GE(8200)
       VLOG(3) << "pad3d is not supported when TensorRT < 8.2";
@@ -2785,6 +2727,13 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
 
+    if (op_type == "argsort") {
+      if (!with_dynamic_shape) {
+        LOG(INFO) << "argsort does not support static shape yet";
+        return false;
+      }
+    }
+
     if (op_type == "flip") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the flip does not support "
@@ -2972,9 +2921,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flip",
       "quantize_linear",
       "dequantize_linear",
-      "share_data",
-      "bitwise_and",
-      "bitwise_or"};
+      "share_data"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3143,9 +3090,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flip",
       "quantize_linear",
       "dequantize_linear",
-      "share_data",
-      "bitwise_and",
-      "bitwise_or"};
+      "share_data"};
 };
 
 struct GenericPluginTeller : public Teller {

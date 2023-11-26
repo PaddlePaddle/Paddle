@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/tensorrt/plugin/generic_plugin.h"
+#include <iostream>
 #include <map>
-
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_registry.h"
-#include "paddle/fluid/inference/tensorrt/plugin/generic_plugin.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/op_utils.h"
@@ -403,6 +403,26 @@ bool GenericPlugin::supportsFormatCombination(
     if (pos == 2)
       return in_out[1].type == in_out[pos].type &&
              in_out[1].format == in_out[pos].format;
+  } else if (op_desc_.Type() == "argsort") {
+    LOG(INFO) << "argsort is supportion";
+    // input x
+    if (pos == 0) {
+      return ((in_out[pos].type == nvinfer1::DataType::kFLOAT ||
+               (isFp16Supported() &&
+                in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+              in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    }
+    // output out
+    if (pos == 1) {
+      return (in_out[pos].type == in_out[0].type &&
+              in_out[pos].format == in_out[0].format);
+    }
+    // 确保输出数据类型和输入一致
+    // output indices
+    if (pos == 2) {
+      return (in_out[pos].type == nvinfer1::DataType::kINT32 &&
+              in_out[pos].format == in_out[0].format);
+    }
   } else {
     return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
             (isFp16Supported() &&
@@ -418,6 +438,11 @@ nvinfer1::DataType GenericPlugin::getOutputDataType(
     int nb_inputs) const TRT_NOEXCEPT {
   if (op_desc_.Type() == "lookup_table_v2") {
     return input_types[1];
+  }
+  if (op_desc_.Type() == "argsort") {
+    if (index == 1) {
+      return nvinfer1::DataType::kINT32;
+    }
   }
   return input_types[0];
 }
@@ -524,6 +549,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                            void* workspace,
                            cudaStream_t stream) TRT_NOEXCEPT {
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
+
   // TODO(inference): generic plugin do not support INT8 precision now.
   auto nvType2PhiType =
       [&](nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
@@ -545,6 +571,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   } else {
     data_type = input_desc[0].type;
   }
+
   CHECK((data_type == nvinfer1::DataType::kFLOAT) ||
         (data_type == nvinfer1::DataType::kHALF));
 
@@ -577,6 +604,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     phi_kernel_contexts_[data_type]->EmplaceBackInput(
         &((*dense_tensor_inputs_)[i]));
   }
+
   // output
   for (int i = 0; i < getNbOutputs(); i++) {
     auto const& output_dims = output_desc[i].dims;

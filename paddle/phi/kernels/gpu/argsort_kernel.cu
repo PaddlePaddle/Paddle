@@ -238,7 +238,7 @@ void ArgsortKernel(const Context& dev_ctx,
   const T* in_data = input.data<T>();
   auto size = input.numel();
   T* out_data = dev_ctx.template Alloc<T>(output);
-  int64_t* ids_data = dev_ctx.template Alloc<int64_t>(indices);
+  int* ids_data = dev_ctx.template Alloc<int>(indices);
 
   if (rank == 0) {
     phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
@@ -263,16 +263,17 @@ void ArgsortKernel(const Context& dev_ctx,
 
   // Special case for full sort, speedup ~190x.
   if (axis == -1 || axis + 1 == in_dims.size()) {
-    const int64_t input_height =
+    const int input_height =
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
-    const int64_t input_width = in_dims[in_dims.size() - 1];
-    ArgFullSort<T, int64_t>(dev_ctx,
-                            &input,
-                            output,
-                            indices,
-                            input_height,
-                            input_width,
-                            descending);
+    const int input_width = in_dims[in_dims.size() - 1];
+    ArgFullSort<T, int>(dev_ctx,
+                        &input,
+                        output,
+                        indices,
+                        input_height,
+                        input_width,
+                        descending);
+
   } else {
     // if not full sort, do transpose first
     std::vector<int> trans;
@@ -306,18 +307,18 @@ void ArgsortKernel(const Context& dev_ctx,
     DenseTensor tmp_indices;
     // temp indices for sorting
     tmp_indices.Resize(trans_dims);
-    dev_ctx.template Alloc<int64_t>(&tmp_indices);
-    dev_ctx.template Alloc<int64_t>(indices);
+    dev_ctx.template Alloc<int>(&tmp_indices);
+    dev_ctx.template Alloc<int>(indices);
 
-    ArgFullSort<T, int64_t>(dev_ctx,
-                            &trans_inp,
-                            &tmp_out,
-                            &tmp_indices,
-                            input_height,
-                            input_width,
-                            descending);
+    ArgFullSort<T, int>(dev_ctx,
+                        &trans_inp,
+                        &tmp_out,
+                        &tmp_indices,
+                        input_height,
+                        input_width,
+                        descending);
 
-    TransposeKernel<int64_t, Context>(dev_ctx, tmp_indices, trans, indices);
+    TransposeKernel<int, Context>(dev_ctx, tmp_indices, trans, indices);
     // transpose back
     TransposeKernel<T, Context>(dev_ctx, tmp_out, trans, output);
     return;
