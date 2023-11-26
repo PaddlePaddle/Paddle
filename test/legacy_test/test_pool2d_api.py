@@ -146,7 +146,6 @@ class TestPool2D_API(unittest.TestCase):
                 norm_type,
                 ksize=[2, 2],
                 strides=[2, 2],
-                paddings=[0, 0],
                 ceil_mode=True,
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)

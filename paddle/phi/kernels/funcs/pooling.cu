@@ -385,8 +385,6 @@ __global__ void KernelLPPool2DGrad(const int nthreads,
                                    const int padding_height,
                                    FastDivModForPoolingWithMoreStaff divmods,
                                    PoolProcess pool_process,
-                                   bool exclusive,
-                                   bool adaptive,
                                    T* __restrict__ input_grad,
                                    bool channel_last = false) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
@@ -412,87 +410,36 @@ __global__ void KernelLPPool2DGrad(const int nthreads,
     }
     output_grad += output_offset;
 
-    if (adaptive) {
-      auto tmp_phend = divmods.height.Divmod((h_offset + 1) * output_height);
-      auto tmp_pwend = divmods.width.Divmod((w_offset + 1) * output_width);
-      phstart = divmods.height.Div(h_offset * output_height);
-      pwstart = divmods.width.Div(w_offset * output_width);
-      phend = tmp_phend.val[1] > 0 ? tmp_phend.val[0] + 1 : tmp_phend.val[0];
-      pwend = tmp_pwend.val[1] > 0 ? tmp_pwend.val[0] + 1 : tmp_pwend.val[0];
+    auto stride_height_div = divmods.stride_h.Div(h_offset - ksize_height);
+    auto stride_width_div = divmods.stride_w.Div(w_offset - ksize_width);
+    phstart = (h_offset < ksize_height) ? 0 : stride_height_div + 1;
+    pwstart = (w_offset < ksize_width) ? 0 : stride_width_div + 1;
+    phend = min(divmods.stride_h.Div(h_offset) + 1, output_height);
+    pwend = min(divmods.stride_w.Div(w_offset) + 1, output_width);
 
-      for (int ph = phstart; ph < phend; ++ph) {
-        for (int pw = pwstart; pw < pwend; ++pw) {
-          auto ksize_w_divmod = divmods.ksize_w.Divmod(input_width);
-          auto ksize_h_divmod = divmods.ksize_h.Divmod(input_height);
-          auto tmp_width = ksize_w_divmod.val[1] > 0 ? ksize_w_divmod.val[0] + 1
-                                                     : ksize_w_divmod.val[0];
-          auto tmp_height = ksize_h_divmod.val[1] > 0
-                                ? ksize_h_divmod.val[0] + 1
-                                : ksize_h_divmod.val[0];
-          int pool_size = tmp_height * tmp_width;
-          int tmp_idx = ph * output_width + pw;
-          int output_sub_idx =
-              channel_last ? tmp_idx * divmods.channel.divisor + c_offset
-                           : tmp_idx;
-          T ouput_value = pool_process.use_x ? output_data[output_sub_idx]
-                                             : static_cast<T>(0);
-          pool_process.compute(input_data[index],
-                               output_data[output_sub_idx],
-                               output_grad[output_sub_idx],
-                               norm_type,
-                               &input_grad_data);
-        }
-      }
-    } else {
-      auto stride_height_div = divmods.stride_h.Div(h_offset - ksize_height);
-      auto stride_width_div = divmods.stride_w.Div(w_offset - ksize_width);
-      phstart = (h_offset < ksize_height) ? 0 : stride_height_div + 1;
-      pwstart = (w_offset < ksize_width) ? 0 : stride_width_div + 1;
-      phend = min(divmods.stride_h.Div(h_offset) + 1, output_height);
-      pwend = min(divmods.stride_w.Div(w_offset) + 1, output_width);
-
-      if (exclusive) {
-        for (int ph = phstart; ph < phend; ++ph) {
-          for (int pw = pwstart; pw < pwend; ++pw) {
-            int hstart = ph * stride_height - padding_height;
-            int wstart = pw * stride_width - padding_width;
-            int hend = min(hstart + ksize_height, input_height);
-            int wend = min(wstart + ksize_width, input_width);
-            hstart = max(hstart, 0);
-            wstart = max(wstart, 0);
-            int pool_size = (hend - hstart) * (wend - wstart);
-            int tmp_idx = ph * output_width + pw;
-            int output_sub_idx =
-                channel_last ? tmp_idx * divmods.channel.divisor + c_offset
-                             : tmp_idx;
-            T ouput_value = pool_process.use_x ? output_data[output_sub_idx]
-                                               : static_cast<T>(0);
-            pool_process.compute(input_data[index],
-                                 output_data[output_sub_idx],
-                                 output_grad[output_sub_idx],
-                                 norm_type,
-                                 &input_grad_data);
-          }
-        }
-      } else {
-        for (int ph = phstart; ph < phend; ++ph) {
-          for (int pw = pwstart; pw < pwend; ++pw) {
-            int pool_size = ksize_height * ksize_width;
-            int tmp_idx = ph * output_width + pw;
-            int output_sub_idx =
-                channel_last ? tmp_idx * divmods.channel.divisor + c_offset
-                             : tmp_idx;
-            T ouput_value = pool_process.use_x ? output_data[output_sub_idx]
-                                               : static_cast<T>(0);
-            pool_process.compute(input_data[index],
-                                 output_data[output_sub_idx],
-                                 output_grad[output_sub_idx],
-                                 norm_type,
-                                 &input_grad_data);
-          }
-        }
+    for (int ph = phstart; ph < phend; ++ph) {
+      for (int pw = pwstart; pw < pwend; ++pw) {
+        int hstart = ph * stride_height - padding_height;
+        int wstart = pw * stride_width - padding_width;
+        int hend = min(hstart + ksize_height, input_height);
+        int wend = min(wstart + ksize_width, input_width);
+        hstart = max(hstart, 0);
+        wstart = max(wstart, 0);
+        int pool_size = (hend - hstart) * (wend - wstart);
+        int tmp_idx = ph * output_width + pw;
+        int output_sub_idx = channel_last
+                                 ? tmp_idx * divmods.channel.divisor + c_offset
+                                 : tmp_idx;
+        T ouput_value = pool_process.use_x ? output_data[output_sub_idx]
+                                           : static_cast<T>(0);
+        pool_process.compute(input_data[index],
+                             output_data[output_sub_idx],
+                             output_grad[output_sub_idx],
+                             norm_type,
+                             &input_grad_data);
       }
     }
+
     input_grad[index] = input_grad_data;
   }
 }
@@ -998,8 +945,6 @@ class LPPool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  bool exclusive,
-                  bool adaptive,
                   DenseTensor* input_grad,
                   PoolProcess pool_process) {
     const int batch_size = input.dims()[0];
@@ -1050,8 +995,6 @@ class LPPool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
                                                              padding_height,
                                                              pool_divmods,
                                                              pool_process,
-                                                             exclusive,
-                                                             adaptive,
                                                              input_grad_data);
   }
 };

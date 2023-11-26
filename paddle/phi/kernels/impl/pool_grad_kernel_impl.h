@@ -149,11 +149,8 @@ void LPPoolGradRawKernel(const Context& ctx,
                          const std::vector<int>& kernel_size,
                          const std::vector<int>& strides,
                          const std::vector<int>& paddings,
-                         bool exclusive,
                          const std::string& data_format,
                          const std::string& pooling_type,
-                         bool global_pooling,
-                         bool adaptive,
                          const std::string& padding_algorithm,
                          DenseTensor* dx) {
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
@@ -169,8 +166,8 @@ void LPPoolGradRawKernel(const Context& ctx,
     data_dims = slice_ddim(x_dims, 2, x_dims.size());
   }
   funcs::UpdatePadding(&paddings_,
-                       global_pooling,
-                       adaptive,
+                       false,
+                       false,
                        padding_algorithm,
                        data_dims,
                        strides,
@@ -179,10 +176,6 @@ void LPPoolGradRawKernel(const Context& ctx,
     for (int i = 0; i < data_dims.size(); ++i) {
       paddings_.erase(paddings_.begin() + i + 1);
     }
-  }
-
-  if (global_pooling) {
-    funcs::UpdateKernelSize(&kernel_size_, data_dims);
   }
 
   if (dx) {
@@ -204,8 +197,8 @@ void LPPoolGradRawKernel(const Context& ctx,
                           kernel_size_,
                           strides,
                           paddings_,
-                          exclusive,
-                          adaptive,
+                          true,
+                          false,
                           dx,
                           pool_process);
         }
@@ -306,11 +299,8 @@ void LPPool2dGradKernel(const Context& ctx,
                         const std::vector<int>& strides,
                         const std::vector<int>& paddings,
                         bool ceil_mode UNUSED,
-                        bool exclusive,
                         const std::string& data_format,
                         const std::string& pooling_type,
-                        bool global_pooling,
-                        bool adaptive,
                         const std::string& padding_algorithm,
                         DenseTensor* dx) {
   std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
@@ -323,11 +313,8 @@ void LPPool2dGradKernel(const Context& ctx,
                                   kernel_size_val,
                                   strides,
                                   paddings,
-                                  exclusive,
                                   data_format,
                                   pooling_type,
-                                  global_pooling,
-                                  adaptive,
                                   padding_algorithm,
                                   dx);
 }

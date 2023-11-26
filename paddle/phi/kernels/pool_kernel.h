@@ -45,11 +45,8 @@ void LPPool2dKernel(const Context& ctx,
                     const std::vector<int>& strides,
                     const std::vector<int>& paddings,
                     bool ceil_mode,
-                    bool exclusive,
                     const std::string& data_format,
                     const std::string& pooling_type,
-                    bool global_pooling,
-                    bool adaptive,
                     const std::string& padding_algorithm,
                     DenseTensor* out);
 

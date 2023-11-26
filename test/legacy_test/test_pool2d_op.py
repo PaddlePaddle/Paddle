@@ -146,55 +146,36 @@ def lp_pool2D_forward_naive(
     norm_type,
     ksize,
     strides,
-    paddings,
-    global_pool=0,
     ceil_mode=False,
-    exclusive=True,
-    adaptive=False,
     data_type=np.float64,
 ):
     if data_type == np.float64 and core.is_compiled_with_rocm():
         data_type = np.float32
     N, C, H, W = x.shape
-    if global_pool == 1:
-        ksize = [H, W]
-    if adaptive:
-        H_out, W_out = ksize
-    else:
-        H_out = (
-            (H - ksize[0] + 2 * paddings[0] + strides[0] - 1) // strides[0] + 1
-            if ceil_mode
-            else (H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
-        )
-        W_out = (
-            (W - ksize[1] + 2 * paddings[1] + strides[1] - 1) // strides[1] + 1
-            if ceil_mode
-            else (W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
-        )
+    H_out = (
+        (H - ksize[0] + strides[0] - 1) // strides[0] + 1
+        if ceil_mode
+        else (H - ksize[0]) // strides[0] + 1
+    )
+    W_out = (
+        (W - ksize[1] + strides[1] - 1) // strides[1] + 1
+        if ceil_mode
+        else (W - ksize[1]) // strides[1] + 1
+    )
     out = np.zeros((N, C, H_out, W_out))
     for i in range(H_out):
         for j in range(W_out):
-            if adaptive:
-                r_start = adaptive_start_index(i, H, ksize[0])
-                r_end = adaptive_end_index(i, H, ksize[0])
-                c_start = adaptive_start_index(j, W, ksize[1])
-                c_end = adaptive_end_index(j, W, ksize[1])
-            else:
-                r_start = i * strides[0] - paddings[0]
-                r_end = i * strides[0] + ksize[0] - paddings[0]
-                c_start = j * strides[1] - paddings[1]
-                c_end = j * strides[1] + ksize[1] - paddings[1]
-                field_size = (r_end - r_start) * (c_end - c_start)
-                r_start = np.max((r_start, 0))
-                r_end = np.min((r_end, H))
-                c_start = np.max((c_start, 0))
-                c_end = np.min((c_end, W))
+            r_start = i * strides[0]
+            r_end = i * strides[0] + ksize[0]
+            c_start = j * strides[1]
+            c_end = j * strides[1] + ksize[1]
+            r_start = np.max((r_start, 0))
+            r_end = np.min((r_end, H))
+            c_start = np.max((c_start, 0))
+            c_end = np.min((c_end, W))
 
             x_masked = x[:, :, r_start:r_end, c_start:c_end]
             x_masked = np.power(x_masked, norm_type)
-
-            if exclusive or adaptive:
-                field_size = (r_end - r_start) * (c_end - c_start)
 
             if data_type == np.int8 or data_type == np.uint8:
                 out[:, :, i, j] = (

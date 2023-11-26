@@ -237,8 +237,6 @@ class LPPool2dGradFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  bool exclusive,
-                  bool adaptive,
                   DenseTensor* input_grad,
                   PoolProcess pool_compute);
 };

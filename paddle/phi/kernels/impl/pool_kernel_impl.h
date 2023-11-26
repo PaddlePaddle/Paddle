@@ -191,11 +191,8 @@ void LPPoolRawKernel(const Context& ctx,
                      const std::vector<int>& kernel_size,
                      const std::vector<int>& strides,
                      const std::vector<int>& paddings,
-                     bool exclusive,
                      const std::string& data_format,
                      const std::string& pooling_type,
-                     bool global_pooling,
-                     bool adaptive,
                      const std::string& padding_algorithm,
                      DenseTensor* out) {
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
@@ -212,8 +209,8 @@ void LPPoolRawKernel(const Context& ctx,
   }
 
   funcs::UpdatePadding(&paddings_,
-                       global_pooling,
-                       adaptive,
+                       false,
+                       false,
                        padding_algorithm,
                        data_dims,
                        strides,
@@ -223,10 +220,6 @@ void LPPoolRawKernel(const Context& ctx,
     for (int i = 0; i < data_dims.size(); ++i) {
       paddings_.erase(paddings_.begin() + i + 1);
     }
-  }
-
-  if (global_pooling) {
-    funcs::UpdateKernelSize(&kernel_size_, data_dims);
   }
 
   switch (kernel_size_.size()) {
@@ -241,15 +234,15 @@ void LPPoolRawKernel(const Context& ctx,
                        strides,
                        paddings_,
                        data_format,
-                       exclusive,
-                       adaptive,
+                       true,
+                       false,
                        out,
                        pool_process);
       }
     } break;
     default: {
       PADDLE_THROW(
-          errors::InvalidArgument("Pool op only supports 2D and 3D input."));
+          errors::InvalidArgument("LPPool op only supports 2D input."));
     }
   }
 }
@@ -330,11 +323,8 @@ void LPPool2dKernel(const Context& ctx,
                     const std::vector<int>& strides,
                     const std::vector<int>& paddings,
                     bool ceil_mode UNUSED,
-                    bool exclusive,
                     const std::string& data_format,
                     const std::string& pooling_type,
-                    bool global_pooling,
-                    bool adaptive,
                     const std::string& padding_algorithm,
                     DenseTensor* out) {
   std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
@@ -345,11 +335,8 @@ void LPPool2dKernel(const Context& ctx,
                               kernel_size_val,
                               strides,
                               paddings,
-                              exclusive,
                               data_format,
                               pooling_type,
-                              global_pooling,
-                              adaptive,
                               padding_algorithm,
                               out);
 }

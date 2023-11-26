@@ -510,8 +510,6 @@ class LPPool2dGradFunctor<CPUContext, PoolProcess, T> {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  bool exclusive,
-                  bool adaptive,
                   DenseTensor* input_grad,
                   PoolProcess pool_grad_process) {
     const int batch_size = static_cast<int>(input.dims()[0]);
@@ -539,27 +537,17 @@ class LPPool2dGradFunctor<CPUContext, PoolProcess, T> {
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
         for (int ph = 0; ph < output_height; ++ph) {
-          if (adaptive) {
-            hstart = AdaptStartIndex(ph, input_height, output_height);
-            hend = AdaptEndIndex(ph, input_height, output_height);
-          }
           for (int pw = 0; pw < output_width; ++pw) {
-            if (adaptive) {
-              wstart = AdaptStartIndex(pw, input_width, output_width);
-              wend = AdaptEndIndex(pw, input_width, output_width);
-            } else {
-              hstart = ph * stride_height - padding_height;
-              wstart = pw * stride_width - padding_width;
-              hend = std::min(hstart + ksize_height,
-                              input_height + padding_height);
-              wend =
-                  std::min(wstart + ksize_width, input_width + padding_width);
+            hstart = ph * stride_height - padding_height;
+            wstart = pw * stride_width - padding_width;
+            hend =
+                std::min(hstart + ksize_height, input_height + padding_height);
+            wend = std::min(wstart + ksize_width, input_width + padding_width);
 
-              wstart = std::max(wstart, 0);
-              hstart = std::max(hstart, 0);
-              hend = std::min(hend, input_height);
-              wend = std::min(wend, input_width);
-            }
+            wstart = std::max(wstart, 0);
+            hstart = std::max(hstart, 0);
+            hend = std::min(hend, input_height);
+            wend = std::min(wend, input_width);
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
                 pool_grad_process.compute(

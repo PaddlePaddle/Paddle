@@ -456,11 +456,8 @@ def lp_pool2d(
             stride,
             padding,
             ceil_mode,
-            False,
             data_format,
             'lp',
-            False,
-            False,
             padding_algorithm,
         )
 
@@ -483,14 +480,12 @@ def lp_pool2d(
                 "pooling_type": "lp",
                 "norm_type": norm_type,
                 "ksize": kernel_size,
-                "global_pooling": False,
                 "strides": stride,
                 "paddings": padding,
                 "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
                 "use_mkldnn": False,
-                "exclusive": False,
                 "data_format": data_format,
             },
         )
