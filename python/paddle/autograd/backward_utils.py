@@ -22,9 +22,7 @@ from paddle import pir
 
 class ValueWrapper:
     def __init__(self, value) -> None:
-        if isinstance(value, ValueWrapper):
-            value = value.value
-        self.value = value
+        self.value = value.value if isinstance(value, ValueWrapper) else value
 
     def __hash__(self) -> int:
         if isinstance(self.value, pir.OpResult):
@@ -32,11 +30,10 @@ class ValueWrapper:
         return hash(self.value)
 
     def __eq__(self, other) -> bool:
-        if isinstance(other, ValueWrapper):
-            other = other.value
+        tmp_other = other.value if isinstance(other, ValueWrapper) else other
         if self.value is None:
-            return other is None
-        return self.value.is_same(other)
+            return tmp_other is None
+        return self.value.is_same(tmp_other)
 
 
 class ValueDict:
@@ -68,17 +65,17 @@ class ValueDict:
             yield key.value, val
 
     def __setitem__(self, key, val: Any):
-        if not isinstance(key, ValueWrapper):
-            key = ValueWrapper(key)
-        self._items[key] = val
+        tmp_key = key if isinstance(key, ValueWrapper) else ValueWrapper(key)
+        self._items[tmp_key] = val
 
     def __getitem__(self, key):
-        if not self.__contains__(key):
+        tmp_key = key if isinstance(key, ValueWrapper) else ValueWrapper(key)
+        if not self.__contains__(tmp_key):
             if self._default_factory is not None:
-                self[key] = self._default_factory()
+                self[tmp_key] = self._default_factory()
             else:
                 raise KeyError(f'{key} not in ValueDict')
-        return self._items[key]
+        return self._items[tmp_key]
 
     def __bool__(self):
         return bool(self._items)
@@ -105,9 +102,9 @@ class ValueSet:
                 self.add(val)
 
     def add(self, val):
-        val = ValueWrapper(val)
-        if not self.__contains__(val):
-            self._values.add(val)
+        tmp_val = ValueWrapper(val)
+        if not self.__contains__(tmp_val):
+            self._values.add(tmp_val)
 
     def update(self, other_set: set):
         for val in other_set:
