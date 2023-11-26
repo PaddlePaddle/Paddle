@@ -369,6 +369,57 @@ def monkey_patch_tensor():
         return np.array(self.grad)
 
     @framework.dygraph_only
+    def apply_(self, func):
+        """
+        Inplace apply the python function to the tensor.
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> x = paddle.to_tensor(5.)
+                >>> f = lambda x: 3*x+2
+                >>> x.apply_(f)
+                >>> print(x) # 17
+
+        """
+        if self.stop_gradient is True:
+            raise RuntimeError(
+                "Cannot apply function on a tensor that stop gradient."
+            )
+        self._apply_(func)
+
+    @framework.dygraph_only
+    def apply(self, func):
+        """
+        Apply the python function to the tensor.
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> x = paddle.to_tensor(5.)
+                >>> f = lambda x: 3*x+2
+                >>> y = x.apply(f)
+                >>> print(y) # 17
+                >>> print(x) # 5
+
+        """
+        if self.stop_gradient is True:
+            raise RuntimeError(
+                "Cannot apply function on a tensor that stop gradient."
+            )
+        return self._apply(func)
+
+    @framework.dygraph_only
     def register_hook(self, hook):
         """
         Registers a backward hook for current Tensor.
@@ -1105,6 +1156,8 @@ def monkey_patch_tensor():
         ("clear_grad", clear_grad),
         ("inplace_version", inplace_version),
         ("gradient", gradient),
+        ("apply_", apply_),
+        ("apply", apply),
         ("register_hook", register_hook),
         ("__str__", __str__),
         ("__repr__", __str__),
