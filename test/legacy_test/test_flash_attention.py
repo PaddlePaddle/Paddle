@@ -27,6 +27,7 @@ from paddle.nn.functional.flash_attention import (
     flash_attn_unpadded,
     scaled_dot_product_attention,
 )
+from paddle.pir_utils import test_with_pir_api
 
 
 def get_cuda_version():
@@ -102,9 +103,9 @@ class TestFlashAttentionAPI(unittest.TestCase):
         self.use_sdp_kernel = False
         self.use_sdp_api = False
 
-    def test_unpadded(self):
+    def test_dynamic_unpadded(self):
         print(
-            f"Test unpadded case shape {self.shape} dtype {self.dtype} causal {self.causal}"
+            f"Test dynamic unpadded case shape {self.shape} dtype {self.dtype} causal {self.causal}"
         )
 
         paddle.disable_static()
@@ -152,8 +153,19 @@ class TestFlashAttentionAPI(unittest.TestCase):
             q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=1e-03
         )
 
-        # test static
+    @test_with_pir_api
+    def test_static_unpadded(self):
+        print(
+            f"Test static unpadded case shape {self.shape} dtype {self.dtype} causal {self.causal}"
+        )
+
         paddle.enable_static()
+
+        bs = self.shape[0]
+        ms = self.shape[1]
+        nh = self.shape[2]
+        hd = self.shape[3]
+        scale = 1.0 / np.sqrt(hd)
 
         with paddle.static.program_guard(paddle.static.Program()):
             qs = paddle.static.data(
@@ -178,6 +190,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
             )
 
             exe = base.Executor(self.place)
+            query = np.random.random(self.shape)
             fetches_result = exe.run(
                 feed={
                     "q": query.astype('float16'),
@@ -187,15 +200,18 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 fetch_list=[outs],
             )
 
+            # Generate expected output using dynamic graph
+            out_ = attention_naive(qs, qs, qs, self.causal)
+            out_ = paddle.reshape(out_, [bs * ms, nh, hd])
+
             np.testing.assert_allclose(
-                fetches_result[0], out_, rtol=5e-03, atol=1e-03
+                fetches_result[0], out_.numpy(), rtol=5e-03, atol=1e-03
             )
 
-    def test_all(self):
+    def test_dynamic_all(self):
         print(
-            f"Test case shape {self.shape} dtype {self.dtype} causal {self.causal}"
+            f"Test dynamic case shape {self.shape} dtype {self.dtype} causal {self.causal}"
         )
-        # test dynamic
         paddle.disable_static()
 
         query = np.random.random(self.shape)
@@ -255,8 +271,29 @@ class TestFlashAttentionAPI(unittest.TestCase):
             q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=1e-03
         )
 
-        # test static
+    def test_static_all(self):
+        print(
+            f"Test static case shape {self.shape} dtype {self.dtype} causal {self.causal}"
+        )
         paddle.enable_static()
+
+        query = np.random.random(self.shape)
+        key = np.random.random(self.shape)
+        value = np.random.random(self.shape)
+
+        q_ = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        k_ = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        v_ = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        out_ = attention_naive(q_, k_, v_, self.causal)
+
+        out_.backward()
 
         with paddle.static.program_guard(paddle.static.Program()):
             qs = paddle.static.data(
