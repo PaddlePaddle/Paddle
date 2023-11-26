@@ -7075,17 +7075,22 @@ def hypot_(x, y, name=None):
 
 def combinations(x, r=2, with_replacement=False, name=None):
     """
-    Compute combinations of length r of the given tensor. The behavior is similar to python’s itertools.combinations
+
+    Compute combinations of length r of the given tensor. The behavior is similar to python's itertools.combinations
     when with_replacement is set to False, and itertools.combinations_with_replacement when with_replacement is set to True.
+
     Args:
         x (Tensor): 1-D input Tensor, the data type is float16, float32, float64, int32 or int64.
         r (int, optional):  number of elements to combine, default value is 2.
         with_replacement (bool, optional):  whether to allow duplication in combination, default value is False.
         name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
-        out (Tensor): tensor concatenated by combinations, same dtype with x
+        out (Tensor). Tensor concatenated by combinations, same dtype with x.
+
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> x = paddle.to_tensor([1, 2, 3], dtype='int32')
             >>> res = paddle.combinations(x)
@@ -7094,6 +7099,7 @@ def combinations(x, r=2, with_replacement=False, name=None):
                    [[1, 2],
                     [1, 3],
                     [2, 3]])
+
     """
     if len(x.shape) != 1:
         raise TypeError(f"Expect a 1-D vector, but got x shape {x.shape}")
