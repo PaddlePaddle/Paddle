@@ -91,7 +91,5 @@ void PToRReshardFunction::Eval(DeviceContext* dev_ctx,
   SetDistProps(out, in.dims(), out_dist_attr);
 }
 
-REGISTER_RESHARD_FUNC(PToRReshardFunction);
-
 }  // namespace distributed
 }  // namespace phi

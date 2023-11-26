@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -43,7 +44,8 @@ inline bool NeedTransformDataType(const DataType& input,
                                   const TransformFlag& transform_flag) {
   return input != target &&
          (transform_flag.need_trans_data_type() ||
-          target == DataType::COMPLEX64 || target == DataType::COMPLEX128);
+          ((target == DataType::COMPLEX64 || target == DataType::COMPLEX128) &&
+           (input != DataType::INT32 && input != DataType::INT64)));
 }
 
 inline bool NeedTransformLayout(const DataLayout& input,
@@ -267,6 +269,23 @@ void CheckAndTrans2Contiguous(phi::DenseTensor* tensor) {
     phi::DenseTensor tmp = Trans2Contiguous(*tensor);
     tensor->ShareDataWith(tmp);
   }
+}
+
+phi::DenseTensor CheckAndTrans2NewContiguousTensor(
+    const phi::DenseTensor& tensor) {
+  if (!tensor.meta().is_contiguous()) {
+    return Trans2Contiguous(tensor);
+  }
+  return tensor;
+}
+
+std::vector<phi::DenseTensor> CheckAndTrans2NewContiguousTensor(
+    const std::vector<phi::DenseTensor>& tensor) {
+  std::vector<phi::DenseTensor> out;
+  for (auto& t : tensor) {
+    out.emplace_back(std::move(CheckAndTrans2NewContiguousTensor(t)));
+  }
+  return out;
 }
 
 phi::DenseTensor TransformData(const phi::DenseTensor& tensor,

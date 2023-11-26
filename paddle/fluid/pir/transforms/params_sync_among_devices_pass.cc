@@ -47,7 +47,7 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
             "params_sync_among_devices_pass should run on module op."));
     auto* block = module_op.block();
     for (auto& inner_op : *block) {
-      if (inner_op.isa<pir::GetParameterOp>()) {
+      if (inner_op.isa<pir::ParameterOp>()) {
         std::string param_name = inner_op.attributes()
                                      .at("parameter_name")
                                      .dyn_cast<pir::StrAttribute>()

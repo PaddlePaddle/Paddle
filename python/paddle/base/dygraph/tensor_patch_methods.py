@@ -981,6 +981,7 @@ def monkey_patch_tensor():
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
+
         Get the values of current SparseTensor(COO or CSR).
 
         Returns:
@@ -1005,6 +1006,7 @@ def monkey_patch_tensor():
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
+
         Convert the current SparseTensor(COO or CSR) to DenseTensor.
 
         Returns:
@@ -1033,6 +1035,7 @@ def monkey_patch_tensor():
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
+
         Convert the current DenseTensor to SparseTensor in COO format.
 
         Returns:

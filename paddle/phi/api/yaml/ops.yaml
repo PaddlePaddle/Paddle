@@ -930,6 +930,7 @@
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
+    spmd_rule : FlashAttInferSpmd
   kernel :
     func : flash_attn
     data_type : q
@@ -1830,6 +1831,8 @@
     func : multiplex
     data_type : inputs
   backward : multiplex_grad
+  data_transform :
+    skip_transform : index
 
 - op : mv
   args : (Tensor x, Tensor vec)
