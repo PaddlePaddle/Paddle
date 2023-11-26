@@ -433,6 +433,7 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     self.assertTrue(
                         "blocking is not supported" in str(w[-1].message)
                     )
+            paddle.device.set_device("cpu")
 
     def test_some_dim(self):
         with paddle.pir_utils.IrGuard():
