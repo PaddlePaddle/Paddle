@@ -38,7 +38,7 @@ def get_cuda_version():
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    core.is_compiled_with_cuda() and get_cuda_version() < 11020,
     "weight_only_linear needs CUDA version greater than 11.2",
 )
 class TestMatmulToWeightOnly(unittest.TestCase):
@@ -74,9 +74,7 @@ class TestMatmulToWeightOnly(unittest.TestCase):
                         fetch_list=[res2],
                     )
                 pm = paddle.pir.PassManager()
-                pm.add_pass(
-                    'matmul_to_weight_only_linear_pass'
-                )  # apply pass to elimitate dead code
+                pm.add_pass('fused_weight_only_linear_pass')
                 pm.run(main_program)
                 op_names = [op.name() for op in main_program.global_block().ops]
                 self.assertTrue('pd_op.weight_only_linear' in op_names)
