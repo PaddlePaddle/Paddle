@@ -1486,6 +1486,105 @@ void FusedMultiTransformerXpuInferMeta(
   out->set_layout(x.layout());
 }
 
+void FusedMultiTransformerInt8XpuInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& ln_scale,
+    const std::vector<const MetaTensor*>& ln_bias,
+    const std::vector<const MetaTensor*>& qkv_in_max,
+    const std::vector<const MetaTensor*>& qkvw,
+    const std::vector<const MetaTensor*>& qkv_bias,
+    const std::vector<const MetaTensor*>& qkv_scales,
+    const std::vector<const MetaTensor*>& out_linear_in_max,
+    const std::vector<const MetaTensor*>& out_linear_w,
+    const std::vector<const MetaTensor*>& out_linear_bias,
+    const std::vector<const MetaTensor*>& out_linear_scales,
+    const std::vector<const MetaTensor*>& ffn_ln_scale,
+    const std::vector<const MetaTensor*>& ffn_ln_bias,
+    const std::vector<const MetaTensor*>& ffn1_in_max,
+    const std::vector<const MetaTensor*>& ffn1_weight,
+    const std::vector<const MetaTensor*>& ffn1_bias,
+    const std::vector<const MetaTensor*>& ffn1_scales,
+    const std::vector<const MetaTensor*>& ffn2_in_max,
+    const std::vector<const MetaTensor*>& ffn2_weight,
+    const std::vector<const MetaTensor*>& ffn2_bias,
+    const std::vector<const MetaTensor*>& ffn2_scales,
+    const std::vector<const MetaTensor*>& cache_kv,
+    const std::vector<const MetaTensor*>& pre_caches,
+    const MetaTensor& rotary_pos_emb,
+    const MetaTensor& time_step,
+    const MetaTensor& seq_lengths,
+    const MetaTensor& src_mask,
+    const MetaTensor& gather_index,
+    const MetaTensor& max_buffer,
+    bool pre_layer_norm,
+    int rotary_emb_dims,
+    float epsilon,
+    float dropout_rate,
+    bool is_test,
+    const std::string& dropout_implementation,
+    const std::string& act_method,
+    bool trans_qkvw,
+    int ring_id,
+    int gather_axis,
+    MetaTensor* out,
+    std::vector<MetaTensor*> cache_kv_out) {
+  auto x_dim = x.dims();
+  auto y_dim = qkvw[0]->dims();
+  PADDLE_ENFORCE_EQ(x_dim.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of x must be 3(batch_size, seq_len, "
+                        "dim_embed), but received dimensions of Input is [%d]",
+                        x_dim.size()));
+  PADDLE_ENFORCE_EQ(
+      y_dim.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The dimensions of qkv_weight must be 4(3, num_head, dim_head, "
+          "dim_embed), but received dimensions of qkv_weight is [%d]",
+          y_dim.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dim[2],
+      trans_qkvw ? y_dim[3] : y_dim[0],
+      phi::errors::InvalidArgument(
+          "The dimension of x_dim[2] and y_dim[3](trans_qkvw is  true) or "
+          "y_dim[0](trans_qkvw is false) must be equal, but received: the "
+          "shape of input x = [%s], and the shape of input qkv_weight = [%s]",
+          x_dim,
+          y_dim));
+  if (!cache_kv.empty()) {
+    const auto& c_dim = cache_kv[0]->dims();
+    PADDLE_ENFORCE_EQ(
+        c_dim.size(),
+        5,
+        phi::errors::InvalidArgument("The CacheKV must be 5 dims, but got %d",
+                                     c_dim.size()));
+    PADDLE_ENFORCE_EQ(c_dim[0],
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The first dim of CacheKV must be 2, but got %d",
+                          c_dim[0]));  // 2
+    PADDLE_ENFORCE_EQ(
+        c_dim[3],
+        trans_qkvw ? y_dim[1] : y_dim[2],
+        phi::errors::InvalidArgument("The fourth dim of CacheKV must be equal "
+                                     "with num head %d, but got %d",
+                                     trans_qkvw ? y_dim[1] : y_dim[2],
+                                     c_dim[3]));  // num_head
+    PADDLE_ENFORCE_EQ(
+        c_dim[4],
+        trans_qkvw ? y_dim[2] : y_dim[3],
+        phi::errors::InvalidArgument("The fifth dim of CacheKV must be equal "
+                                     "with head size %d, but got %d",
+                                     trans_qkvw ? y_dim[2] : y_dim[3],
+                                     c_dim[4]));  // head_size
+  }
+
+  out->set_dims(x_dim);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
 void YoloBoxXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& x_max,
                          const MetaTensor& grid,
@@ -2954,6 +3053,115 @@ void SelfDPAttenInferMeta(const MetaTensor& x,
                                    dim_input));
   DDim out_dims({dim_input[0], dim_input[1], dim_input[3], dim_input[4]});
   out->set_dims(out_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
+void FusedBiasDropoutResidualLnInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& residual,
+    const MetaTensor& bias,
+    const MetaTensor& ln_scale,
+    const MetaTensor& ln_bias,
+    const float dropout_rate,
+    const bool is_test,
+    const bool dropout_fix_seed,
+    const int dropout_seed,
+    const std::string& dropout_implementation,
+    const float ln_epsilon,
+    MetaTensor* y,
+    MetaTensor* bias_dropout_residual_out,
+    MetaTensor* dropout_mask_out,
+    MetaTensor* ln_mean,
+    MetaTensor* ln_variance) {
+  PADDLE_ENFORCE_EQ(dropout_rate >= 0.0f && dropout_rate <= 1.0f,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'dropout_rate' must be between 0.0 and 1.0."));
+  PADDLE_ENFORCE_EQ(
+      dropout_implementation == "downgrade_in_infer" ||
+          dropout_implementation == "upscale_in_train",
+      true,
+      phi::errors::InvalidArgument(
+          "dropout_implementation can only be downgrade_in_infer or "
+          "upscale_in_train"));
+  PADDLE_ENFORCE_EQ(ln_epsilon >= 0.0f && ln_epsilon <= 0.001f,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'epsilon' of the LayerNorm should be between "
+                        "0.0 and 0.001, But received [%s].",
+                        ln_epsilon));
+  auto x_dim = x.dims();
+  int left = 1;
+  for (int i = 0; i < x_dim.size() - 1; i++) {
+    left *= x_dim[i];
+  }
+  bias_dropout_residual_out->set_dims(x.dims());
+  if (is_test == false) {
+    dropout_mask_out->set_dims(x.dims());
+  }
+  ln_mean->set_dims({left});
+  ln_variance->set_dims({left});
+  y->set_dims(x.dims());
+}
+
+void FusedBiasDropoutResidualLnGradInferMeta(
+    const MetaTensor& y_grad,
+    const MetaTensor& x,
+    const MetaTensor& residual,
+    const MetaTensor& bias,
+    const MetaTensor& ln_scale,
+    const MetaTensor& ln_bias,
+    const MetaTensor& ln_mean,
+    const MetaTensor& ln_variance,
+    const MetaTensor& bias_dropout_residual_out,
+    const MetaTensor& dropout_mask_out,
+    const float dropout_rate,
+    const bool is_test,
+    const bool dropout_fix_seed,
+    const int dropout_seed,
+    const std::string& dropout_implementation,
+    const float ln_epsilon,
+    MetaTensor* x_grad,
+    MetaTensor* residual_grad,
+    MetaTensor* bias_grad,
+    MetaTensor* ln_scale_grad,
+    MetaTensor* ln_bias_grad) {
+  PADDLE_ENFORCE_EQ(is_test,
+                    false,
+                    phi::errors::InvalidArgument(
+                        "GradOp is only callable when is_test is false"));
+  if (ln_scale_grad) {
+    ln_scale_grad->set_dims(ln_scale.dims());
+    ln_scale_grad->set_dtype(y_grad.dtype());
+  }
+  if (ln_bias_grad) {
+    ln_bias_grad->set_dims(ln_bias.dims());
+    ln_bias_grad->set_dtype(y_grad.dtype());
+  }
+  if (residual_grad) {
+    residual_grad->set_dims(residual.dims());
+    residual_grad->set_dtype(y_grad.dtype());
+  }
+  if (bias_grad) {
+    bias_grad->set_dims(bias.dims());
+    bias_grad->set_dtype(y_grad.dtype());
+  }
+  if (x_grad) {
+    x_grad->set_dims(x.dims());
+    x_grad->set_dtype(y_grad.dtype());
+  }
+}
+
+void SkipLayerNormInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            const MetaTensor& scale,
+                            const MetaTensor& bias,
+                            const float epsilon,
+                            const int begin_norm_axis,
+                            MetaTensor* out) {
+  auto dim_input = x.dims();
+  out->set_dims(dim_input);
   out->share_lod(x);
   out->set_dtype(x.dtype());
 }

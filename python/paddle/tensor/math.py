@@ -391,7 +391,7 @@ def multiplex(inputs, index, name=None):
 
 
     Args:
-        inputs (list): The input Tensor list. The list elements are N-D Tensors of data types float32, float64, int32, int64. All input Tensor shapes should be the same and rank must be at least 2.
+        inputs (list): The input Tensor list. The list elements are N-D Tensors of data types float32, float64, int32, int64, complex64, complex128. All input Tensor shapes should be the same and rank must be at least 2.
         index (Tensor): Used to select some rows in the input Tensor to construct an index of the output Tensor. It is a 2-D Tensor with data type int32 or int64 and shape [M, 1], where M is the number of input Tensors.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -429,7 +429,14 @@ def multiplex(inputs, index, name=None):
             check_variable_and_dtype(
                 x,
                 'input[' + str(id) + ']',
-                ['float32', 'float64', 'int32', 'int64'],
+                [
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'complex64',
+                    'complex128',
+                ],
                 'multiplex',
             )
         check_variable_and_dtype(
@@ -1157,7 +1164,7 @@ def _add_with_axis(x, y, axis=-1, name=None):
 
 def _subtract_with_axis(x, y, axis=-1, name=None):
     # opt performance, only dynamic mode needs reshape
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _elementwise_op_with_axis(x, y, axis, name, "subtract")
     else:
         op_type = 'elementwise_sub'
@@ -1166,7 +1173,7 @@ def _subtract_with_axis(x, y, axis=-1, name=None):
 
 def _multiply_with_axis(x, y, axis=-1, name=None):
     # opt performance, only dynamic mode needs reshape
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _elementwise_op_with_axis(x, y, axis, name, "multiply")
     else:
         op_type = 'elementwise_mul'
@@ -1175,7 +1182,7 @@ def _multiply_with_axis(x, y, axis=-1, name=None):
 
 def _divide_with_axis(x, y, axis=-1, name=None):
     # opt performance, only dynamic mode needs reshape
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _elementwise_op_with_axis(x, y, axis, name, "divide")
     else:
         op_type = 'elementwise_div'
@@ -4958,7 +4965,7 @@ def conj(x, name=None):
              [(4-4j), (5-5j), (6-6j)]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.conj(x)
     else:
         check_variable_and_dtype(
@@ -5863,7 +5870,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         dtype = x.dtype
         axes = [axis]
         infer_flags = [1 for i in range(len(axes))]
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             has_pend = False
             input_list = []
             if prepend is not None and append is not None:
@@ -5900,7 +5907,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
                 new_input, axes, starts_2, ends_2, infer_flags, []
             )
 
-            if x.dtype == paddle.bool:
+            if x.dtype == paddle.bool or x.dtype == core.DataType.BOOL:
                 return _C_ops.logical_xor(input_back, input_front)
             else:
                 return _C_ops.subtract(input_back, input_front)

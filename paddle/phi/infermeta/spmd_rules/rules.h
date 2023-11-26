@@ -21,10 +21,12 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/embedding.h"
+#include "paddle/phi/infermeta/spmd_rules/flash_attention.h"
 #include "paddle/phi/infermeta/spmd_rules/flatten.h"
 #include "paddle/phi/infermeta/spmd_rules/layer_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/numel.h"
+#include "paddle/phi/infermeta/spmd_rules/optimizer.h"
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
@@ -33,6 +35,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/split.h"
 #include "paddle/phi/infermeta/spmd_rules/stack.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
+#include "paddle/phi/infermeta/spmd_rules/triu.h"
 #include "paddle/phi/infermeta/spmd_rules/unsqueeze.h"
 #include "paddle/phi/infermeta/spmd_rules/where.h"
 
@@ -448,6 +451,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
 
+PD_REGISTER_SPMD_RULE(
+    not_equal,
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
+
 // TODO(pkuzyc): add multiary elementwise rule
 
 // reduction rule
@@ -475,6 +483,12 @@ PD_REGISTER_SPMD_RULE(
     max,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    reduce_max,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
 PD_REGISTER_SPMD_RULE(
     min,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
@@ -561,6 +575,15 @@ PD_REGISTER_SPMD_RULE(log_softmax,
 PD_REGISTER_SPMD_RULE(where,
                       PD_INFER_SPMD(phi::distributed::WhereInferSpmd),
                       PD_INFER_SPMD(phi::distributed::WhereInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(triu,
+                      PD_INFER_SPMD(phi::distributed::TriuInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::TriuInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    tril_triu,
+    PD_INFER_SPMD(phi::distributed::TrilTriuInferSpmd),
+    PD_INFER_SPMD(phi::distributed::TrilTriuInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi

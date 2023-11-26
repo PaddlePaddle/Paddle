@@ -313,27 +313,25 @@ def slice(input, axes, starts, ends):
             >>> sliced_2 = paddle.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
             >>> # sliced_2 is input[1:3, 0:2, 2:4].
     """
+    if isinstance(axes, (list, tuple)):
+        axes = list(axes)
+        if len(axes) == 0:
+            raise ValueError("Input axes should not be an empty list/tuple.")
+        for i in range(len(axes)):
+            if axes[i] < 0:
+                axes[i] = max(0, axes[i] + len(input.shape))
+            else:
+                axes[i] = min(len(input.shape) - 1, axes[i])
+
+    else:
+        raise ValueError(
+            f"Input axes must be a python list or tuple, but reveived {type(axes)}"
+        )
+
     if in_dynamic_mode():
         attrs = ()
         starts_tensor = None
         ends_tensor = None
-
-        if isinstance(axes, (list, tuple)):
-            axes = list(axes)
-            if len(axes) == 0:
-                raise ValueError(
-                    "Input axes should not be an empty list/tuple."
-                )
-            for i in range(len(axes)):
-                if axes[i] < 0:
-                    axes[i] = max(0, axes[i] + len(input.shape))
-                else:
-                    axes[i] = min(len(input.shape) - 1, axes[i])
-
-        else:
-            raise ValueError(
-                f"Input axes must be a python list or tuple, but reveived {type(axes)}"
-            )
 
         infer_flags = [1 for i in range(len(axes))]
 
@@ -660,7 +658,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             [[-1]
              [ 1]]
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.shard_index(
             input, index_num, nshards, shard_id, ignore_value
         )
@@ -781,10 +779,16 @@ def crop(x, shape=None, offsets=None, name=None):
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'crop_tensor'
     )
     check_type(
-        shape, 'shape', (list, tuple, Variable, type(None)), 'crop_tensor'
+        shape,
+        'shape',
+        (list, tuple, Variable, type(None), paddle.pir.OpResult),
+        'crop_tensor',
     )
     check_type(
-        offsets, 'offsets', (list, tuple, Variable, type(None)), 'crop_tensor'
+        offsets,
+        'offsets',
+        (list, tuple, Variable, type(None), paddle.pir.OpResult),
+        'crop_tensor',
     )
 
     if offsets is None:
@@ -793,7 +797,7 @@ def crop(x, shape=None, offsets=None, name=None):
     if shape is None:
         shape = x.shape
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.crop(x, shape, offsets)
 
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -1015,11 +1019,11 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
     if len(y.shape) == 1:
         y = y.reshape([1, -1])
 
-    if inplace:
-        return _C_ops.fill_diagonal_tensor_(x, y, offset, dim1, dim2)
-
-    if in_dynamic_mode():
-        return _C_ops.fill_diagonal_tensor(x, y, offset, dim1, dim2)
+    if in_dynamic_or_pir_mode():
+        if inplace:
+            return _C_ops.fill_diagonal_tensor_(x, y, offset, dim1, dim2)
+        else:
+            return _C_ops.fill_diagonal_tensor(x, y, offset, dim1, dim2)
     else:
         check_variable_and_dtype(
             x,
@@ -1837,7 +1841,7 @@ def roll(x, shifts, axis=None, name=None):
     else:
         axis = []
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.roll(x, shifts, axis)
     else:
         check_variable_and_dtype(
@@ -2664,9 +2668,31 @@ def unique(
     else:
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         out, indices, inverse, counts = _C_ops.unique(
             x, return_index, return_inverse, return_counts, axis, attr_dtype
+        )
+        outs = [out]
+        if return_index:
+            outs.append(indices)
+        if return_inverse:
+            outs.append(inverse)
+        if return_counts:
+            outs.append(counts)
+
+        if len(outs) == 1:
+            return outs[0]
+
+        return tuple(outs)
+    elif in_pir_mode():
+        out, indices, inverse, counts = _C_ops.unique(
+            x,
+            return_index,
+            return_inverse,
+            return_counts,
+            axis,
+            attr_dtype,
+            True,
         )
         outs = [out]
         if return_index:
@@ -3025,7 +3051,7 @@ def unbind(input, axis=0):
             f'The axis must in range({-input.ndim}, {input.ndim}).'
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.unbind(input, axis)
     else:
         if isinstance(axis, np.generic):
@@ -4383,7 +4409,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             >>> sliced_2 = paddle.strided_slice(x, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
             >>> # sliced_2 is x[:, 1:3:1, 0:2:1, 2:4:2].
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.strided_slice(x, axes, starts, ends, strides)
     else:
         helper = LayerHelper('strided_slice', **locals())

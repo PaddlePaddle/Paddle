@@ -15,6 +15,10 @@
 import unittest
 
 import paddle
+from paddle.base.libpaddle.pir import (
+    build_pipe_for_block,
+    get_used_external_value,
+)
 
 paddle.enable_static()
 
@@ -39,11 +43,11 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             x = paddle.static.data(name="x", shape=[6, 1], dtype="float32")
             y = paddle.static.data(name="y", shape=[6, 1], dtype="float32")
             out = paddle.static.nn.cond(x < y, lambda: x + y, lambda: x - y)
-        self.assertEqual(
-            out[0].get_defining_op().name(),
-            "pd_op.if",
-        )
+        if_op = out[0].get_defining_op()
+        self.assertEqual(if_op.name(), "pd_op.if")
         self.assertEqual(len(out), 1)
+        value_list = get_used_external_value(if_op)
+        print(value_list)
 
     def test_if_with_multiple_output(self):
         main_program = paddle.static.Program()
@@ -55,6 +59,17 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             out = paddle.static.nn.cond(pred, true_func, false_func)
         self.assertEqual(out[0].get_defining_op().name(), "pd_op.if")
         self.assertEqual(len(out), 2)
+        if_op = out[0].get_defining_op().as_if_op()
+        true_block = if_op.true_block()
+        self.assertEqual(len(true_block), 3)
+        build_pipe_for_block(true_block)
+        self.assertEqual(len(true_block), 4)
+        block_list = []
+        for block in out[0].get_defining_op().blocks():
+            block_list.append(block)
+        self.assertEqual(len(block_list), 2)
+        self.assertEqual(block_list[0], true_block)
+        self.assertEqual(block_list[1], if_op.false_block())
 
 
 if __name__ == "__main__":

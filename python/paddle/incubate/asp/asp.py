@@ -24,12 +24,12 @@ import numpy as np
 import paddle
 from paddle.base import core, global_scope, program_guard
 from paddle.base.framework import dygraph_only
-from paddle.incubate import asp
 
 from .supported_layer_list import (
     _default_pruning,
     supported_layers_and_prune_func_map,
 )
+from .utils import MaskAlgo
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -437,9 +437,9 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
     place = paddle.set_device(device)
 
     MaskAlgo_mapping = {
-        'mask_1d': asp.MaskAlgo.MASK_1D,
-        'mask_2d_greedy': asp.MaskAlgo.MASK_2D_GREEDY,
-        'mask_2d_best': asp.MaskAlgo.MASK_2D_BEST,
+        'mask_1d': MaskAlgo.MASK_1D,
+        'mask_2d_greedy': MaskAlgo.MASK_2D_GREEDY,
+        'mask_2d_best': MaskAlgo.MASK_2D_BEST,
     }
     assert (
         mask_algo in MaskAlgo_mapping
@@ -568,7 +568,7 @@ class ASPHelper:
         main_program=None,
         n=2,
         m=4,
-        mask_algo=asp.MaskAlgo.MASK_1D,
+        mask_algo=MaskAlgo.MASK_1D,
         with_mask=True,
     ):
         r"""
@@ -620,7 +620,7 @@ class ASPHelper:
         layer,
         n=2,
         m=4,
-        mask_algo=asp.MaskAlgo.MASK_1D,
+        mask_algo=MaskAlgo.MASK_1D,
         with_mask=True,
     ):
         r"""

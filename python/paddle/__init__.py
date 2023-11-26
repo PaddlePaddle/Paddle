@@ -511,6 +511,7 @@ from .device import (  # noqa: F401
     is_compiled_with_xpu,
     is_compiled_with_ipu,
     is_compiled_with_cinn,
+    is_compiled_with_distribute,
     is_compiled_with_cuda,
     is_compiled_with_rocm,
     is_compiled_with_custom_device,

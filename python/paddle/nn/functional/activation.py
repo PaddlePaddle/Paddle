@@ -113,7 +113,7 @@ def elu(x, alpha=1.0, name=None):
              [ 1.        , 15.60000038]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.elu(x, alpha)
 
     else:

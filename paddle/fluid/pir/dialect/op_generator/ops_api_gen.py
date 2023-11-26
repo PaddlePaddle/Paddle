@@ -70,12 +70,14 @@ OPS_API_TEMPLATE = """
 
 NEED_GEN_STATIC_ONLY_APIS = [
     'fetch',
+    'fused_bias_dropout_residual_layer_norm',
     'fused_embedding_eltwise_layernorm',
     'fused_fc_elementwise_layernorm',
     'fused_multi_transformer_xpu',
     'fused_scale_bias_relu_conv_bn',
     'fused_scale_bias_add_relu',
     'fusion_transpose_flatten_concat',
+    'skip_layernorm',
     'generate_sequence_xpu',
     'layer_norm_act_xpu',
     'multi_encoder_xpu',
@@ -92,6 +94,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'fc',
     'self_dp_attention',
     'get_tensor_from_selected_rows',
+    'print',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -114,7 +117,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_scale_bias_relu_conv_bn',
     'fused_scale_bias_add_relu',
     'memcpy',
-    'print',
     'recv_v2',
     'rnn_',
     'seed',
@@ -125,6 +127,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'set_value_with_tensor_',
     'shadow_feed',
     'sparse_momentum',
+    'uniform_random_batch_size_like',
 ]
 
 

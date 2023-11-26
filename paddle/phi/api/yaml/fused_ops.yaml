@@ -140,6 +140,18 @@
   optional : bias, dequant_scales, shift, smooth
   support_dygraph_mode : true
 
+- op : fused_bias_dropout_residual_layer_norm
+  args : (Tensor x, Tensor residual, Tensor bias, Tensor ln_scale, Tensor ln_bias, float dropout_rate = 0.5f, bool is_test = false, bool dropout_fix_seed = true, int dropout_seed = true, str dropout_implementation = "downgrade_in_infer", float ln_epsilon = 1e-5)
+  optional : bias, ln_scale, ln_bias
+  output : Tensor(y), Tensor(bias_dropout_residual_out), Tensor(dropout_mask_out), Tensor(ln_mean), Tensor(ln_variance)
+  infer_meta :
+    func : FusedBiasDropoutResidualLnInferMeta
+  kernel :
+    func : fused_bias_dropout_residual_layer_norm
+    data_type : x
+  backward : fused_bias_dropout_residual_layer_norm_grad
+  intermediate : bias_dropout_residual_out, dropout_mask_out, ln_mean, ln_variance
+
 - op : fused_bias_residual_layernorm
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, float residual_alpha, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
   output : Tensor(out), Tensor(residual_out), Tensor(mean), Tensor(variance)
@@ -193,6 +205,16 @@
     func : fused_linear_param_grad_add
     data_type : dout
   support_dygraph_mode : true
+
+- op : fused_multi_transformer_int8_xpu
+  args : (Tensor x, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] qkv_in_max, Tensor[] qkvw, Tensor[] qkv_bias, Tensor[] qkv_scales, Tensor[] out_linear_in_max, Tensor[] out_linear_w, Tensor[] out_linear_bias, Tensor[] out_linear_scales, Tensor[] ffn_ln_scale, Tensor[] ffn_ln_bias, Tensor[] ffn1_in_max, Tensor[] ffn1_weight, Tensor[] ffn1_bias, Tensor[] ffn1_scales, Tensor[] ffn2_in_max, Tensor[] ffn2_weight, Tensor[] ffn2_bias, Tensor[] ffn2_scales, Tensor[] cache_kv, Tensor[] pre_caches, Tensor rotary_pos_emb, Tensor time_step, Tensor seq_lengths, Tensor src_mask, Tensor gather_index, Tensor max_buffer, bool pre_layer_norm, int rotary_emb_dims, float epsilon, float dropout_rate, bool is_test, str dropout_implementation, str act_method, bool trans_qkvw, int ring_id, int gather_axis)
+  output : Tensor(out), Tensor[](cache_kv_out){out_linear_w.size()}
+  infer_meta :
+    func : FusedMultiTransformerInt8XpuInferMeta
+  kernel :
+    func : fused_multi_transformer_int8_xpu
+    data_type : x
+  optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask, gather_index
 
 - op : fused_multi_transformer_xpu
   args : (Tensor x, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] qkvw, Tensor[] qkvw_max, Tensor[] qkv_bias, Tensor[] out_linear_w, Tensor[] out_linear_wmax, Tensor[] out_linear_bias, Tensor[] ffn_ln_scale, Tensor[] ffn_ln_bias, Tensor[] ffn1_weight, Tensor[] ffn1_weight_max, Tensor[] ffn1_bias, Tensor[] ffn2_weight, Tensor[] ffn2_weight_max, Tensor[] ffn2_bias, Tensor[] cache_kv, Tensor[] pre_caches, Tensor rotary_pos_emb, Tensor time_step, Tensor seq_lengths, Tensor src_mask, Tensor gather_index, Tensor max_buffer, bool pre_layer_norm, int rotary_emb_dims, float epsilon, float dropout_rate, bool is_test, str dropout_implementation, str act_method, bool trans_qkvw, int ring_id, int gather_axis)
@@ -351,6 +373,15 @@
     func : SelfDPAttenInferMeta
   kernel :
     func : self_dp_attention
+    data_type : x
+
+- op : skip_layernorm
+  args : (Tensor x, Tensor y, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis)
+  output : Tensor(out)
+  infer_meta :
+    func : SkipLayerNormInferMeta
+  kernel :
+    func : skip_layer
     data_type : x
 
 - op : squeeze_excitation_block

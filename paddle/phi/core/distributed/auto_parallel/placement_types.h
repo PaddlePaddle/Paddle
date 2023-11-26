@@ -196,23 +196,10 @@ class DistTensorMeta : public std::enable_shared_from_this<DistTensorMeta> {
 
 namespace std {
 template <>
-struct hash<phi::distributed::Shard> {
-  std::size_t operator()(const phi::distributed::Shard& p) const {
+struct hash<phi::distributed::Placement> {
+  std::size_t operator()(const phi::distributed::Placement& p) const {
     return p.hash();
   }
 };
 
-template <>
-struct hash<phi::distributed::Replicate> {
-  std::size_t operator()(const phi::distributed::Replicate& p) const {
-    return p.hash();
-  }
-};
-
-template <>
-struct hash<phi::distributed::Partial> {
-  std::size_t operator()(const phi::distributed::Partial& p) const {
-    return p.hash();
-  }
-};
 }  // namespace std
