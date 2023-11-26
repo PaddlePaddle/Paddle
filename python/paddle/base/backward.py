@@ -591,6 +591,7 @@ def _addup_repetitive_outputs_(
                     topo_order_for_grad_name[var_name] = (
                         topo_order_for_backward[op_desc]
                         if topo_order_for_backward
+                        and op_desc in topo_order_for_backward
                         else 1
                     )
                 else:
@@ -669,6 +670,7 @@ def _addup_repetitive_outputs_(
                     topo_order_for_grad_name[new_name] = (
                         topo_order_for_backward[op_desc]
                         if topo_order_for_backward
+                        and op_desc in topo_order_for_backward
                         else 1
                     )
 
