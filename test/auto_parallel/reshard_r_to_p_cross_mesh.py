@@ -59,7 +59,7 @@ class TestReshardRToPCrossMesh:
 
         out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
 
-        if dist.get_rank() == 0:
+        if dist.get_rank() == 1:
             np.testing.assert_equal(
                 out._local_value().numpy(), input_tensor.numpy()
             )

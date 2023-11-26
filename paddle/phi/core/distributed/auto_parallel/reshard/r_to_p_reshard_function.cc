@@ -95,29 +95,23 @@ void RToPReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
                                         const TensorDistAttr& out_dist_attr,
                                         DistTensor* out) {
   VLOG(3) << "Call RToPReshardFunctionCrossMesh Eval";
-  const auto& in_dist_attr = in.dist_attr();
+  const auto& out_process_mesh = out_dist_attr.process_mesh();
 
   DistTensor tmp_result;
-  TensorDistAttr in_dist_attr_shard = in_dist_attr;
-  in_dist_attr_shard.set_dims_mapping(out_dist_attr.dims_mapping());
+
+  SameStatusReshardFunction same_status_func;
+  TensorDistAttr tmp_dist_attr = in.dist_attr();
+  tmp_dist_attr.set_process_mesh(out_process_mesh);
+  same_status_func.Eval(dev_ctx, in, tmp_dist_attr, &tmp_result);
+
   RToPReshardFunction r_to_p_func;
   PADDLE_ENFORCE(
-      r_to_p_func.IsSuitable(in, in_dist_attr_shard),
+      r_to_p_func.IsSuitable(tmp_result, out_dist_attr),
       phi::errors::InvalidArgument(
           "Invoke the r to p reshard function is not valid from %s to %s.",
           tmp_result.dist_attr(),
           out_dist_attr));
-  r_to_p_func.Eval(dev_ctx, in, in_dist_attr_shard, &tmp_result);
-
-  // Same status from the input mesh to output mesh
-  SameStatusReshardFunction same_status_func;
-  PADDLE_ENFORCE(
-      same_status_func.IsSuitable(tmp_result, out_dist_attr),
-      phi::errors::InvalidArgument("Invoke the same status reshard function "
-                                   "is not valid from %s to %s.",
-                                   tmp_result.dist_attr(),
-                                   out_dist_attr));
-  same_status_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
+  r_to_p_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
 }
 
 }  // namespace distributed
