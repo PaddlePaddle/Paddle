@@ -21,22 +21,22 @@ import paddle
 
 class TestTensorApplyAPI(unittest.TestCase):
     def setUp(self):
-        self.x = paddle.to_tensor([1, 2, 3, 4, 5])
+        self.x = paddle.to_tensor([1, 2, 3, 4, 5], stop_gradient=True)
+        self.function = lambda x: 3 * x + 2
 
     def test_dygraph(self):
-        def f(x):
-            return 3 * x + 2
-
-        y = self.x.apply(f)
-        np.testing.assert_allclose(f(self.x).numpy(), y.numpy(), rtol=1e-05)
+        y = self.x.apply(self.function)
+        np.testing.assert_allclose(
+            self.function(self.x).numpy(), y.numpy(), rtol=1e-05
+        )
 
     def test_error(self):
         self.x.stop_gradient = False
 
-        def f(x):
-            x.apply_(x)
+        def fn(x):
+            x.apply_(self.function)
 
-        self.assertRaises(RuntimeError, f, self.x)
+        self.assertRaises(RuntimeError, fn, self.x)
 
 
 if __name__ == "__main__":
