@@ -23,10 +23,11 @@ class TestReshardRToP(test_base.CommunicationTestDistBase):
         self._default_envs = {
             "shape": "(10, 20)",
             "dtype": "float32",
-            "seeds": str(self._seeds),
+            "seeds": "2023",
         }
         self._changeable_envs = {
             "shape": ["(10, 20)"],
+            "shard": ["0", "1"],
             "backend": ["cpu", "gpu"],
         }
 

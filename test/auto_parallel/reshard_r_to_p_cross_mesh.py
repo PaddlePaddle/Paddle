@@ -39,13 +39,10 @@ class TestReshardRToPCrossMesh:
             place = paddle.CUDAPlace(dist.get_rank())
 
         dev_ctx = core.DeviceContext.create(place)
-
-        paddle.seed(self._seeds)
-        value = paddle.uniform(self._shape, self._dtype)
+        a = paddle.ones(self._shape)
 
         in_shard_specs = [None for i in range(len(self._shape))]
         out_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs[self._shard] = "x"
 
         dist_attr = dist.DistAttr(
             mesh=self._in_mesh, sharding_specs=in_shard_specs
@@ -53,40 +50,25 @@ class TestReshardRToPCrossMesh:
         out_dist_attr = dist.DistAttr(
             mesh=self._out_mesh, sharding_specs=out_shard_specs
         )
+        out_dist_attr._set_partial_dims([0])
 
-        input_tensor = dist.shard_tensor(value, dist_attr=dist_attr)
+        input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
 
-        reshard_func = core.RToSReshardFunctionCrossMesh()
+        reshard_func = core.RToPReshardFunctionCrossMesh()
         assert reshard_func.is_suitable(input_tensor, out_dist_attr)
 
         out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
-        out_shape = list(self._shape)
 
-        if out_shape[self._shard] % 2 == 0:
-            out_shape[self._shard] = out_shape[self._shard] // 2
-            split_shape = self._in_mesh.shape[0]
-        else:
-            split_shape = [
-                out_shape[self._shard] // 2 + 1,
-                out_shape[self._shard] // 2,
-            ]
-            out_shape[self._shard] = (
-                split_shape[0] if dist.get_rank() == 1 else split_shape[1]
+        if dist.get_rank() == 0:
+            np.testing.assert_equal(
+                out._local_value().numpy(), input_tensor.numpy()
             )
-
-        out_expected_local_tensor_list = paddle.split(
-            value, num_or_sections=split_shape, axis=self._shard
-        )
-
-        np.testing.assert_equal(
-            out._local_value().numpy(),
-            out_expected_local_tensor_list[0].numpy()
-            if dist.get_rank() == 1
-            else out_expected_local_tensor_list[1].numpy(),
-        )
+        else:
+            zeros = paddle.zeros(self._shape)
+            np.testing.assert_equal(out._local_value().numpy(), zeros.numpy())
 
         assert np.equal(out.shape, input_tensor.shape).all()
-        assert np.equal(out._local_shape, out_shape).all()
+        assert np.equal(out._local_shape, input_tensor._local_shape).all()
 
 
 if __name__ == '__main__':

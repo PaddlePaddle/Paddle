@@ -76,7 +76,7 @@ bool RToPReshardFunctionCrossMesh::IsSuitable(
   const auto& in_dist_attr = in.dist_attr();
 
   RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_replicated());
-  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_shard());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_partial());
 
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
@@ -109,7 +109,7 @@ void RToPReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
           out_dist_attr));
   r_to_p_func.Eval(dev_ctx, in, in_dist_attr_shard, &tmp_result);
 
-  // Step 2: Same status from the input mesh to output mesh
+  // Same status from the input mesh to output mesh
   SameStatusReshardFunction same_status_func;
   PADDLE_ENFORCE(
       same_status_func.IsSuitable(tmp_result, out_dist_attr),
