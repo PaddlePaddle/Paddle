@@ -16,6 +16,7 @@
 paddle::dialect::IfOp, paddle::dialect::WhileOp
 #else
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builder.h"
@@ -180,6 +181,45 @@ void IfOp::VerifyRegion() {
                           "The size of last of false block op's input must be "
                           "equal to IfOp's outputs num."));
   }
+}
+
+std::vector<std::vector<pir::OpResult>> IfOp::Vjp(
+    pir::Operation *op,
+    const std::vector<std::vector<pir::Value>> &inputs_,
+    const std::vector<std::vector<pir::OpResult>> &outputs,
+    const std::vector<std::vector<pir::Value>> &out_grads,
+    const std::vector<std::vector<bool>> &stop_gradients) {
+  PADDLE_ENFORCE_EQ(
+      inputs_.size() == 1u && inputs_[0].size() >= 1u,
+      1u,
+      phi::errors::InvalidArgument(
+          "if op's inputs size should be 1, but now is %d.", inputs_.size()));
+
+  VLOG(6) << "Prepare inputs for if_grad";
+  auto cond_val = inputs_[0][0];
+  VLOG(6) << "Prepare attributes for if_grad";
+
+  VLOG(6) << "Prepare outputs for if_grad";
+
+  std::vector<pir::Type> output_types;
+  for (size_t i = 0; i < inputs_[0].size(); ++i) {
+    if (!stop_gradients[0][i]) {
+      output_types.push_back(inputs_[0][i].type());
+    }
+  }
+
+  auto if_grad = ApiBuilder::Instance().GetBuilder()->Build<IfOp>(
+      cond_val, std::move(output_types));
+
+  std::vector<std::vector<pir::OpResult>> res{
+      std::vector<pir::OpResult>(inputs_[0].size())};
+
+  for (size_t i = 0, j = 0; i < inputs_[0].size(); ++i) {
+    if (!stop_gradients[0][i]) {
+      res[0][i] = if_grad->result(j++);
+    }
+  }
+  return res;
 }
 
 void WhileOp::Build(pir::Builder &builder,             // NOLINT

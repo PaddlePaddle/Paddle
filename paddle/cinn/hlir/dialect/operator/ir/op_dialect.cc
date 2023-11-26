@@ -39,6 +39,7 @@ void OperatorDialect::initialize() {
       >();
   RegisterOp<GroupOp>();
   RegisterOp<ConcatOp>();
+  RegisterOp<SplitOp>();
   RegisterAttribute<GroupInfoAttribute>();
   RegisterAttribute<CUDAJITInfoAttribute>();
 }

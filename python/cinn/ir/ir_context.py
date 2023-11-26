@@ -26,9 +26,7 @@ class IRBuilder:
         self.ir_builder.EnterWithContext()
         return self
 
-    def __exit__(
-        self, ptype, value, trace
-    ) -> None:  # pylint: disable=unused-argument
+    def __exit__(self, ptype, value, trace) -> None:
         if ptype is None and value is None:
             self.ir_builder.ExitWithContext()
 
