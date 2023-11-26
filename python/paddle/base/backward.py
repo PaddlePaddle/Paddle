@@ -588,9 +588,11 @@ def _addup_repetitive_outputs_(
                     # it's the first time we get the variable
                     renamed_vars[var_name] = [var_name]
                     renamed_var_start_idx[var_name] = idx
-                    topo_order_for_grad_name[
-                        var_name
-                    ] = topo_order_for_backward[op_desc]
+                    topo_order_for_grad_name[var_name] = (
+                        topo_order_for_backward[op_desc]
+                        if topo_order_for_backward
+                        else 1
+                    )
                 else:
                     if len(renamed_vars[var_name]) == 1:
                         new_name = (
@@ -664,9 +666,11 @@ def _addup_repetitive_outputs_(
                     renamed_vars[var_name].append(new_name)
                     # record the latest device
                     var_device[var_name] = op_device
-                    topo_order_for_grad_name[
-                        new_name
-                    ] = topo_order_for_backward[op_desc]
+                    topo_order_for_grad_name[new_name] = (
+                        topo_order_for_backward[op_desc]
+                        if topo_order_for_backward
+                        else 1
+                    )
 
     for var_name, inputs in renamed_vars.items():
         if len(renamed_vars[var_name]) > 1:
@@ -1198,7 +1202,6 @@ def _append_backward_ops_with_checkpoints_(
             grad_to_var.update(op_grad_to_var)
 
     # 3.d. add sum op for repetitive_outputs
-    topo_order = _topo_order_map(block, target_vars)
     grad_op_descs = _addup_repetitive_outputs_(
         grad_op_descs, block.idx, grad_op_id_to_fwd_op=grad_op_id_to_fwd_op
     )
