@@ -30,7 +30,8 @@ if(WITH_TESTING AND WITH_CINN)
     cinn_op_dialect
     add_broadcast_to_elementwise_pass
     pir)
-  set_tests_properties(dialect_convert_test PROPERTIES LABELS "RUN_TYPE=CINN")
+  set_tests_properties(add_broadcast_to_elementwise_test
+                       PROPERTIES LABELS "RUN_TYPE=CINN")
 
   paddle_test(
     ir_op_fusion_test
