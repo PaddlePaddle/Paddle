@@ -12,18 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
-from test_parallel_dygraph_dataparallel import TestMultipleXpus
+from xpu.test_parallel_dygraph_dataparallel import TestMultipleXpus
+
+import paddle
+from paddle import core
 
 
 class TestProcessGroup(TestMultipleXpus):
+    @unittest.skipIf(
+        not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
+        "run test when having at leaset 2 XPUs.",
+    )
     def test_process_group_bkcl(self):
         self.run_mnist_2xpu('process_group_bkcl.py')
 
 
 if __name__ == "__main__":
-    os.environ["BKCL_PCIE_RING"] = "1"
-    os.environ["BKCL_CCIX_RING"] = "0"
     unittest.main()
