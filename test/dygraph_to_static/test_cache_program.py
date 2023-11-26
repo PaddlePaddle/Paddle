@@ -19,7 +19,6 @@ import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir,
     test_legacy_and_pir_exe_and_pir_api,
 )
 from test_fetch_feed import Linear, Pool2D
@@ -173,7 +172,6 @@ def sum_under_while(limit):
 
 
 class TestToOutputWithCache(Dy2StTestBase):
-    @test_legacy_and_pir
     def test_output(self):
         ret = paddle.jit.to_static(sum_even_until_limit)(80, 10)
         self.assertEqual(ret.numpy(), 30)

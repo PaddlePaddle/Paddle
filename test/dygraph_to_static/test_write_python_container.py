@@ -16,7 +16,6 @@ import unittest
 
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
-    compare_legacy_with_pir,
     test_sot_only,
 )
 
@@ -110,7 +109,6 @@ class TestWriteContainer(Dy2StTestBase):
     def set_getitem_path(self):
         self.getitem_path = ("a",)
 
-    @compare_legacy_with_pir
     def get_raw_value(self, container, getitem_path):
         out = container
         for path in getitem_path:
