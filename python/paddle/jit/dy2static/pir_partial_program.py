@@ -72,7 +72,7 @@ class NestSequence:
         """
         Flattens the nested sequences into single list and remove duplicate variables + non-variable elements.
         """
-        variable_map = {}  # opresult -> list idx
+        variable_map = ValueDict()  # opresult -> list idx
         variable_list = []
         for value in paddle.utils.flatten(self._raw_input):
             if not isinstance(value, OpResult):
