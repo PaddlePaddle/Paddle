@@ -247,6 +247,26 @@ class ConcatOpPattern
   }
 };
 
+class PowOpPattern : public pir::OpRewritePattern<paddle::dialect::PowOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::PowOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::PowOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto factor = op->attribute("y").dyn_cast<pir::FloatAttribute>().data();
+    auto full_op =
+        rewriter.Build<paddle::dialect::FullOp>(std::vector<int64_t>({1}),
+                                                factor,
+                                                phi::DataType::FLOAT32,
+                                                phi::CPUPlace());
+
+    auto elementwise_pow = rewriter.Build<paddle::dialect::ElementwisePowOp>(
+        op->operand_source(0), full_op->result(0));
+    rewriter.ReplaceAllUsesWith(op.result(0), elementwise_pow.result(0));
+    rewriter.EraseOp(op);
+  }
+};
+
 class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::SplitOp>::OpRewritePattern;
@@ -452,6 +472,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<ReshapeOpPattern>(context);
   ps.Add<ConcatOpPattern>(context);
   ps.Add<SliceOpPattern>(context);
+  ps.Add<PowOpPattern>(context);
   ps.Add<SplitWithNumOpPattern>(context);
   ps.Add<AddNOpPattern>(context);
   ps.Add<SplitOpPattern>(context);
