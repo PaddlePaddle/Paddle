@@ -210,9 +210,10 @@ def to_pir_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
         logger.info("[PIR] running pir")
-        ir_outs = None
+        in_dygraph_mode = paddle.in_dynamic_mode()
         with paddle.pir_utils.IrGuard():
-            paddle.disable_static()
+            if in_dygraph_mode:
+                paddle.disable_static()
             ir_outs = fn(*args, **kwargs)
         return ir_outs
 
