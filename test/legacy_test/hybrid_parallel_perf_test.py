@@ -59,7 +59,6 @@ class TestDistDPTraning(unittest.TestCase):
         return scheduler, optimizer
 
     def test_communication_perf(self):
-        fleet.collective_perf(round=1)
         test_comm_types = [
             "allreduce",
             "reduce",
@@ -124,29 +123,25 @@ class TestDistMPTraning(unittest.TestCase):
 
     def test_communication_perf(self):
         # test comm type in test_comm(list), scan package from 1M to 1G
-        fleet.collective_perf(
-            round=1,
-            test_comm=["allreduce", "allgather", "reduce_scatter"],
-            hcg=self.hcg,
-        )
+        comm_types = ["allreduce", "allgather", "reduce_scatter"]
+        for comm_type in comm_types:
+            fleet.collective_perf(
+                comm_type=comm_type,
+                round=1,
+            )
         # context: {comm_type:[size, time]}
         # only test reduce for package(1024B) and time threshold(1s),
-        # and test allgather for package(8192B) and time threshold(0.00000002s),
+        # and test allgather for package(8192B) and time threshold(0.00000002s)
+        fleet.collective_perf("reduce", 30, size_and_time={1024: 1})
+        fleet.collective_perf("allgather", 30, size_and_time={8192: 0.00000002})
         fleet.collective_perf(
-            round=100000,
-            context={
-                "reduce": [1024, 1],
-                "allgather": [8192, 0.00000002],
-                "reduce_scatter": [8192, 0.00000002],
-            },
-            hcg=self.hcg,
+            "reduce_scatter", 30, size_and_time={8192: 0.00000002}
         )
         # test allgather for specific size and time.
-        fleet.monitor_perf(
+        fleet.collective_perf(
             "allgather",
             round=50,
             size_and_time={1024: 1, 4096: 0.01, 8192: 0.00000002},
-            hcg=self.hcg,
         )
 
 
