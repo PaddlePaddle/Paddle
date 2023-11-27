@@ -640,7 +640,6 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
       phi::DenseTensor& output_tensor = (*dense_tensor_outputs_)[i];
       phi::DataType dtype = output_tensor.dtype();
       if (dtype == phi::DataType::INT64) {
-        std::vector<int> int32_host(output_tensor.numel());
         auto& int32_tensor = output_tensor;
         auto ctx = pool.Get(output_tensor.place());
         int32_tensor = phi::funcs::TransDataType(
@@ -650,7 +649,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
         paddle::memory::Copy(output_tensor.place(),
                              outputs[i],
                              output_tensor.place(),
-                             int32_tensor.data<int32_t>(),  
+                             int32_tensor.data<int32_t>(),
                              int32_tensor.numel() * sizeof(int),
                              nullptr);
       }
