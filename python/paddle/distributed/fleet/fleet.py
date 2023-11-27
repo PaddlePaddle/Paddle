@@ -592,7 +592,7 @@ class Fleet:
                 >>> size_and_time = {1<<20: 0.5, 1<<30: 1}
                 >>> fleet.collective_perf("allreduce", round=50, size_and_time = size_and_time)
         """
-        if not self.is_collective:
+        if not self._is_collective:
             logger.warning(
                 "fleet.collective_perf is only for collective mode, will return with no test acted."
             )
