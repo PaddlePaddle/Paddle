@@ -195,7 +195,7 @@ struct TensorSetConstantXPU {
     auto* ctx = phi::DeviceContextPool::Instance().Get(place_);
     auto data = ctx->Alloc<T>(tensor_);
     const T* num = reinterpret_cast<const T*>(value_);
-    const T num_value = static_cast<T>(*num);
+    T num_value = static_cast<T>(*num);
     int numel = tensor_->numel();
     if (((std::is_same<T, float>::num_value) ||
          (std::is_same<T, phi::dtype::float16>::num_value)) &&
