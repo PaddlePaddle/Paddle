@@ -703,6 +703,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!has_attrs) return false;
     }
 
+    if (op_type == "argsort") {
+      if (!with_dynamic_shape) {
+        LOG(INFO) << "argsort does not support static shape yet";
+        return false;
+      }
+    }
+
     if (op_type == "arg_max" || op_type == "arg_min") {
       if (!desc.HasAttr("axis", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('axis') is "
