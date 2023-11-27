@@ -35,11 +35,15 @@ class TestReshardSToR:
         a = paddle.ones(self._shape)
 
         in_placement = [dist.Shard(0)]
-        input_tensor = dist.shard_tensor(a, placement=in_placement)
+        input_tensor = dist.shard_tensor(
+            a, mesh=self._mesh, placements=in_placement
+        )
         assert input_tensor._local_shape[0] == self._shape[0] // 2
 
         out = dist.reshard(
-            input_tensor, self._mesh, [dist.Partial(dist.ReduceType.kRedSum)]
+            input_tensor,
+            mesh=self._mesh,
+            placements=[dist.Partial(dist.ReduceType.kRedSum)],
         )
 
         if dist.get_rank() == 0:
