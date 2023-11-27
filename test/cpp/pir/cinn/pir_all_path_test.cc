@@ -465,10 +465,8 @@ TEST(GroupOp, TestBuildPower) {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-  program->Print(std::cout);
   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
 
-  program->Print(std::cout);
   pir::PassManager pm(ctx);
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
