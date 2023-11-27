@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+import os
+
 import numpy as np
 
 import paddle
@@ -78,7 +80,19 @@ class MLPLayer(nn.Layer):
         return out
 
 
+def enable_pir(flag):
+    paddle.set_flags({'FLAGS_enable_pir_in_executor': flag})  # for c++
+    os.environ['FLAGS_enable_pir_in_executor'] = str(flag)  # for python
+
+
+def enable_prim_in_dist(flag):
+    os.environ['FLAGS_enable_prim_in_distribute'] = str(flag)  # for python
+
+
 def train_low_level():
+    enable_pir(True)
+    enable_prim_in_dist(True)
+
     paddle.distributed.auto_parallel.static.dist_context.set_default_distributed_context(
         None
     )

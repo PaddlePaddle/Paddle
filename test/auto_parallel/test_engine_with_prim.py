@@ -44,13 +44,7 @@ class TestPrimDistributedEngine(unittest.TestCase):
             ]
         )
 
-        process = subprocess.Popen(
-            cmd,
-            env={
-                "FLAGS_enable_pir_in_executor": "True",
-                "FLAGS_enable_prim_in_distribute": "True",
-            },
-        )
+        process = subprocess.Popen(cmd)
         process.wait()
         self.assertEqual(process.returncode, 0)
 
