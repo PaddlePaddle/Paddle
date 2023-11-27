@@ -92,26 +92,24 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
           << loop;
 
   bool is_positive = true;
+  int num_minus1 = 0;
   std::vector<Expr> process_factors;
+  auto prod_size =
+      std::accumulate(factors.begin(), factors.end(), Expr(1)) * Expr(-1);
   std::for_each(factors.begin(), factors.end(), [&](int factor) {
-    process_factors.push_back(Expr(factor));
-    is_positive = is_positive && (factor > 0);
+    if (factor == -1) {
+      process_factors.push_back(tot_extent / prod_size + Expr(1));
+    } else {
+      process_factors.push_back(factor);
+    }
+    if (factor < 1 && factor != -1) is_positive = false;
+    if (factor == -1) ++num_minus1;
   });
-  CHECK(is_positive)
-      << "The params in factors of Split on dynamic shape should be positive\n";
-
-  // No Longer need to check factor is valid or not because they should be
-  // checked outside in group schedule
-  // // CINN_IR_SCHEDULE_BEGIN();
-  // processed_factors = ValidateFactors(factors, tot_extent,
-  // this->module_expr_); CINN_IR_SCHEDULE_END(this->err_msg_level_);
-
-  auto prod_size = std::accumulate(factors.begin(), factors.end(), Expr(1));
-  process_factors.insert(process_factors.begin(),
-                         tot_extent / prod_size + Expr(1));
+  CHECK((num_minus1 == 1) && is_positive)
+      << "The paramss in factors of Split on dynamic shape should contains a "
+         "-1 and the rest of them should be positive!\n";
 
   std::vector<Var> new_loop_vars;
-  new_loop_vars.push_back(Var(common::UniqName(for_node->loop_var->name)));
   Expr substitute_value(1);
   for (int i = 0; i < process_factors.size(); ++i) {
     Var temp_var(common::UniqName(for_node->loop_var->name));
