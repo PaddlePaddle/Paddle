@@ -129,6 +129,13 @@ def OpNameNormalizerInitialization(
     # special mapping list
     op_arg_name_mappings["set_value_grad"]["values_grad"] = "ValueTensor@GRAD"
     op_arg_name_mappings["fetch"] = {"x": "X"}
+    op_arg_name_mappings["elementwise_add_grad_grad"] = {
+        "y": "Y",
+        "grad_out": "DOut",
+        "grad_x_grad": "DDX",
+        "grad_y_grad": "DDY",
+        "grad_out_grad": "DDOut",
+    }
 
     op_name_normailzer_template = env.get_template("op_compat_info.cc.j2")
     with open(output_source_file, 'wt') as f:

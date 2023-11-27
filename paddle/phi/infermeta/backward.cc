@@ -584,10 +584,13 @@ void InverseGradInferMeta(const MetaTensor& out,
   }
 }
 
-void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx) {
+void KernelWithXShapeInferMeta(const MetaTensor& xshape,
+                               const MetaTensor& out,
+                               MetaTensor* dx) {
   auto xshape_dims = xshape.dims();
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
   dx->set_dims(x_dims);
+  dx->set_dtype(out.dtype());
   dx->share_lod(xshape);
 }
 
@@ -1164,7 +1167,13 @@ void WeightOnlyLinearGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& weight_scale,
                                    const MetaTensor& out_grad,
                                    const std::string& weight_dtype,
+                                   const int32_t arch,
                                    MetaTensor* x_grad) {
+  PADDLE_ENFORCE_EQ(
+      arch,
+      80,
+      phi::errors::InvalidArgument(
+          "Currently weightonly linear grad only support arch = 80. "));
   x_grad->set_dims(x.dims());
   x_grad->set_dtype(x.dtype());
 }

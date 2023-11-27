@@ -830,6 +830,7 @@
   infer_meta :
     func : FlashAttnGradInferMeta
     param : [q, k, v]
+    spmd_rule : FlashAttGradInferSpmd
   kernel :
     func : flash_attn_grad
     data_type: q
@@ -852,7 +853,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func :  KernelWithXShapeInferMeta
-    param : [xshape]
+    param : [xshape, out_grad]
   kernel :
     func : flatten_grad
     data_type : out_grad
@@ -1251,6 +1252,7 @@
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :
     func : LayerNormGradInferMeta
+    spmd_rule : LayerNormGradInferSpmd
     param : [x, scale, bias]
   kernel :
     func : layer_norm_grad
@@ -1570,6 +1572,8 @@
     func : multiplex_grad
     param : [index, out_grad]
     data_type : out_grad
+  data_transform :
+    skip_transform : index
 
 - backward_op : mv_grad
   forward : mv (Tensor x, Tensor vec) -> Tensor(out)
@@ -2276,7 +2280,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : KernelWithXShapeInferMeta
-    param: [xshape]
+    param: [xshape, out_grad]
   kernel :
     func : squeeze_grad
     data_type : out_grad
@@ -2521,7 +2525,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : KernelWithXShapeInferMeta
-    param: [xshape]
+    param: [xshape, out_grad]
   kernel :
     func : unsqueeze_grad
     param : [xshape, out_grad]
@@ -2584,8 +2588,8 @@
   no_need_buffer : input
 
 - backward_op : weight_only_linear_grad
-  forward : weight_only_linear(Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype) -> Tensor(out)
-  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, Tensor out_grad, str weight_dtype)
+  forward : weight_only_linear(Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch) -> Tensor(out)
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, Tensor out_grad, str weight_dtype, int arch)
   output : Tensor(x_grad)
   infer_meta :
     func : WeightOnlyLinearGradInferMeta

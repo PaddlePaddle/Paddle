@@ -978,7 +978,7 @@ void EighInferMeta(const MetaTensor& x,
   out_w->set_dims(phi::make_ddim(values_dim));
   out_w->set_dtype(dtype::ToReal(x.dtype()));
   out_v->set_dims(input_dim);
-  out_v->set_dtype(dtype::ToReal(x.dtype()));
+  out_v->set_dtype(x.dtype());
 }
 
 void EigvalsInferMeta(const MetaTensor& x, MetaTensor* out, MetaConfig config) {
@@ -4816,6 +4816,7 @@ void UnfoldInferMeta(const MetaTensor& x,
   }
   out_dims.push_back(output_col_length);
   out->set_dims(phi::make_ddim(out_dims));
+  out->set_dtype(x.dtype());
 }
 
 void UniformRandomInplaceInferMeta(const MetaTensor& x,
@@ -5120,8 +5121,15 @@ void UnStackInferMeta(const MetaTensor& x,
 
 void WeightQuantizeInferMeta(const MetaTensor& x,
                              const std::string& algo,
+                             const int32_t arch,
                              MetaTensor* out,
                              MetaTensor* scale) {
+  PADDLE_ENFORCE_EQ(
+      ((arch == 80) || (arch == 86) || (arch == 70) || (arch == 75)),
+      true,
+      phi::errors::InvalidArgument(
+          "Currently, arch only support 70, 75, 80, 86."));
+
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
