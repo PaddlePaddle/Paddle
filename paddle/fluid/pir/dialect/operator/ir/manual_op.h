@@ -261,6 +261,26 @@ class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
+class ArrayToTensorOp
+    : public pir::Op<ArrayToTensorOp, OpYamlInfoInterface, InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.array_to_tensor"; }
+  static constexpr uint32_t attributes_num = 2;
+  static const char *attributes_name[attributes_num];
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x,
+                    int axis,
+                    bool use_stack);
+  void VerifySig();
+  pir::Value x() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+  pir::OpResult out_index() { return result(2); }
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
 class ExpandOp : public pir::Op<ExpandOp,
                                 paddle::dialect::OpYamlInfoInterface,
                                 paddle::dialect::InferMetaInterface,
@@ -320,4 +340,5 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayLengthOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayReadOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayWrite_Op)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayToTensorOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)
