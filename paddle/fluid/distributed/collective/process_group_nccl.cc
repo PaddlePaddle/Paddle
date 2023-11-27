@@ -719,8 +719,9 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   if (FLAGS_enable_async_trace) {
     // gather global ranks in current group
     size_t gpu_global_rank_size = sizeof(int);
-    auto gpu_global_rank =
-        phi::memory_utils::Alloc(phi::GPUPlace(), gpu_global_rank_size);
+    auto gpu_global_rank = phi::memory_utils::Alloc(
+        phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
+        gpu_global_rank_size);
 
     phi::memory_utils::Copy(phi::GPUPlace(),
                             gpu_global_rank->ptr(),
@@ -729,8 +730,9 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
                             gpu_global_rank_size);
 
     size_t gpu_global_ranks_size = num_ranks * sizeof(int);
-    auto gpu_global_ranks =
-        phi::memory_utils::Alloc(phi::GPUPlace(), gpu_global_ranks_size);
+    auto gpu_global_ranks = phi::memory_utils::Alloc(
+        phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
+        gpu_global_ranks_size);
 
     NCCL_CHECK(phi::dynload::ncclAllGather(gpu_global_rank->ptr(),
                                            gpu_global_ranks->ptr(),
