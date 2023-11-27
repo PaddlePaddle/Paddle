@@ -11,7 +11,6 @@ gather_srcs(
   schedule_desc.cc)
 
 add_subdirectory(impl)
-add_subdirectory(utils)
 
 foreach(header ${schedule_desc_proto_HDRS})
   set(core_proto_includes

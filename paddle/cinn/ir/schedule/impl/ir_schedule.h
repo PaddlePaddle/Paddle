@@ -19,7 +19,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/ir/schedule/schedule_base.h"
-#include "paddle/cinn/ir/schedule/utils/ir_schedule_util.h"
+// #include "paddle/cinn/ir/schedule/utils/ir_schedule_util.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 
 PD_DECLARE_int32(cinn_error_message_level);
