@@ -97,16 +97,6 @@ class MockShapeConstraintIRAnalysis : public ShapeConstraintIRAnalysis {
   MockShapeConstraintIRAnalysis(const MockShapeConstraintIRAnalysis& other) =
       delete;
 
-  const std::unordered_map<Value, std::vector<shape::SymbolicDimOp>>&
-  value_to_sym_dims() const {
-    return value_to_sym_dims_;
-  }
-
-  std::unordered_map<Value, std::vector<shape::SymbolicDimOp>>*
-  mut_value_to_sym_dims() {
-    return &value_to_sym_dims_;
-  }
-
  private:
   std::unique_ptr<pir::Program> program_;
 };

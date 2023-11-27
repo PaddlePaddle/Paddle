@@ -143,62 +143,6 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     auto target = cinn::common::DefaultNVGPUTarget();
     auto* program = group_op->GetParentProgram();
     VLOG(4) << "Before GroupOpPattern: " << *program;
-
-    std::vector<pir::Value> test_values;
-    for (auto& block_op : *(program->block())) {
-      if (block_op.isa<paddle::dialect::DataOp>()) {
-        test_values.push_back(block_op.result(0));
-      }
-
-      if (block_op.isa<cinn::dialect::GroupOp>()) {
-        // GetOpList and Call cinn CodeGen
-        auto group_op = block_op.dyn_cast<cinn::dialect::GroupOp>();
-
-        for (auto* op : group_op.ops()) {
-          if (op->isa<paddle::dialect::ExpOp>()) {
-            test_values.push_back(op->result(0));
-          }
-          if (op->isa<paddle::dialect::SubtractOp>()) {
-            test_values.push_back(op->result(0));
-          }
-        }
-      }
-    }
-    // auto sym_vec0 =
-    // shape_analysis->GetOrCreateSymbolicDimsForRankedValue(test_values[0]);
-    auto sym_vec1 =
-        shape_analysis_->GetOrCreateSymbolicDimsForRankedValue(test_values[1]);
-    auto sym_vec2 =
-        shape_analysis_->GetOrCreateSymbolicDimsForRankedValue(test_values[2]);
-    auto sym_vec3 =
-        shape_analysis_->GetOrCreateSymbolicDimsForRankedValue(test_values[3]);
-    VLOG(1) << "%1 %2 IsShapeEqual:"
-            << shape_analysis_->IsShapeEqual(test_values[1], test_values[2]);
-    VLOG(1) << "%1 %3 IsShapeEqual: "
-            << shape_analysis_->IsShapeEqual(test_values[1], test_values[3]);
-    VLOG(1) << "%2 %3 IsShapeEqual: "
-            << shape_analysis_->IsShapeEqual(test_values[2], test_values[3]);
-    VLOG(1) << sym_vec1[0].GetSymName() << " == " << sym_vec2[0].GetSymName()
-            << " IsSymbolicDimEqual: "
-            << shape_analysis_->symbolicDimMgr().IsSymbolicDimEqual(
-                   sym_vec1[0], sym_vec2[0]);
-    VLOG(1) << sym_vec1[0].GetSymName() << " == " << sym_vec3[0].GetSymName()
-            << " IsSymbolicDimEqual: "
-            << shape_analysis_->symbolicDimMgr().IsSymbolicDimEqual(
-                   sym_vec1[0], sym_vec3[0]);
-    VLOG(1) << sym_vec1[1].GetSymName() << " == " << sym_vec2[1].GetSymName()
-            << " IsSymbolicDimEqual: "
-            << shape_analysis_->symbolicDimMgr().IsSymbolicDimEqual(
-                   sym_vec1[1], sym_vec2[1]);
-    VLOG(1) << sym_vec2[0].GetSymName() << " == " << sym_vec3[0].GetSymName()
-            << " IsSymbolicDimEqual: "
-            << shape_analysis_->symbolicDimMgr().IsSymbolicDimEqual(
-                   sym_vec2[0], sym_vec3[0]);
-    VLOG(1) << sym_vec2[0].GetSymName() << " == " << sym_vec3[1].GetSymName()
-            << " IsSymbolicDimEqual: "
-            << shape_analysis_->symbolicDimMgr().IsSymbolicDimEqual(
-                   sym_vec2[0], sym_vec2[1]);
-
     // TODO(Aurelius84): Remove scope after cleaning PirCompiler usless Build
     // Interface
     auto scope = std::make_shared<cinn::hlir::framework::Scope>();
