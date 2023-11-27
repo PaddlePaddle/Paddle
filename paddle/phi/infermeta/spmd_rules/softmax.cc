@@ -200,12 +200,9 @@ SpmdInfo SoftmaxGradInferSpmd(const DistMetaTensor& out,
   auto out_grad_dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
   out_grad_dist_attr.set_dims_mapping(out_grad_dims_mapping);
 
-  if (out_grad.dims().size() > 0) {
-    return ElementwiseBinaryInferSpmd(out, out_grad);
-  } else {
-    return {{out.dist_attr(), out_grad.dist_attr()},
-            {TensorDistAttr(out_grad.dist_attr())}};
-  }
+  return ElementwiseBinaryInferSpmd(
+      DistMetaTensor(out.dims(), out_dist_attr),
+      DistMetaTensor(out_grad.dims(), out_grad_dist_attr));
 }
 
 }  // namespace distributed

@@ -43,12 +43,11 @@ class TestSoftmaxApiForSemiAutoParallel:
         np2 = b.numpy()
         np.testing.assert_allclose(np1, np2, rtol=rtol, atol=atol, verbose=True)
 
-    def test_body(self, x_shape, out_shape, x_specs, func):
+    def test_body(self, x_shape, out_shape, x_placements, func):
         x = paddle.rand(x_shape, dtype=self._dtype)
         x.stop_gradient = False
-        x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=x_specs)
 
-        dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
+        dist_x = dist.shard_tensor(x, self._mesh, x_placements)
         dist_x.stop_gradient = False
 
         dist_out = func(dist_x)
@@ -65,7 +64,7 @@ class TestSoftmaxApiForSemiAutoParallel:
         self.test_body(
             x_shape=[20, 30],
             out_shape=[4, 4],
-            x_specs=['x', None],
+            x_placements=[dist.Shard(0)],
             func=lambda x: paddle.nn.functional.softmax(x, axis=1),
         )
 
@@ -73,7 +72,7 @@ class TestSoftmaxApiForSemiAutoParallel:
         self.test_body(
             x_shape=[20, 30],
             out_shape=[20, 30],
-            x_specs=[None, 'x'],
+            x_placements=[dist.Shard(1)],
             func=lambda x: paddle.nn.functional.softmax(x, axis=1),
         )
 
@@ -81,7 +80,7 @@ class TestSoftmaxApiForSemiAutoParallel:
         self.test_body(
             x_shape=[2, 4, 6, 10],
             out_shape=[2, 4, 6, 10],
-            x_specs=['x', None, None, None],
+            x_placements=[dist.Shard(0)],
             func=lambda x: paddle.nn.functional.softmax(x, axis=1),
         )
 
@@ -89,7 +88,7 @@ class TestSoftmaxApiForSemiAutoParallel:
         self.test_body(
             x_shape=[2, 4, 6, 10],
             out_shape=[2, 4, 6, 10],
-            x_specs=['x', None, None, None],
+            x_placements=[dist.Shard(0)],
             func=lambda x: paddle.nn.functional.softmax(x, axis=0),
         )
 
@@ -97,7 +96,7 @@ class TestSoftmaxApiForSemiAutoParallel:
         self.test_body(
             x_shape=[2, 4, 6, 10],
             out_shape=[2, 4, 6, 10],
-            x_specs=['x', None, None, None],
+            x_placements=[dist.Shard(0)],
             func=lambda x: paddle.nn.functional.softmax(x, axis=-4),
         )
 
