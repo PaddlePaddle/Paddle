@@ -15,10 +15,15 @@
 # TODO: define the initializers of Kaiming functions in neural network
 import math
 
+import paddle
 from paddle import _C_ops
 
 from ...base import core, framework, unique_name
-from ...base.framework import _current_expected_place, in_dygraph_mode
+from ...base.framework import (
+    _current_expected_place,
+    in_dygraph_mode,
+    in_pir_mode,
+)
 from .initializer import Initializer, calculate_gain
 
 __all__ = []
@@ -87,9 +92,10 @@ class MSRAInitializer(Initializer):
             The initialization op.
         """
         block = self._check_block(block)
-
-        assert isinstance(var, framework.Variable)
-        assert isinstance(block, framework.Block)
+        assert isinstance(
+            var, (framework.Variable, paddle.pir.core.ParameterMeta)
+        )
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
         f_in, f_out = self._compute_fans(var)
 
         # If fan_in is passed, use it
@@ -144,6 +150,32 @@ class MSRAInitializer(Initializer):
             else:
                 out_var._share_underline_tensor_to(var)
             return None
+        elif in_pir_mode():
+            if self._uniform:
+                gain = calculate_gain(self._nonlinearity, self._negative_slope)
+                limit = gain * math.sqrt(3.0 / float(fan_in))
+                out_var = _C_ops.uniform(
+                    var.shape,
+                    out_dtype,
+                    -limit,
+                    limit,
+                    self._seed,
+                    _current_expected_place(),
+                )
+            else:
+                gain = calculate_gain(self._nonlinearity, self._negative_slope)
+                std = gain / math.sqrt(float(fan_in))
+                place = _current_expected_place()
+                out_var = _C_ops.gaussian(
+                    out_var.shape, 0.0, std, self._seed, out_dtype, place
+                )
+
+            if var.dtype == core.DataType.FLOAT16 or (
+                var.dtype == core.DataType.BFLOAT16 and not self._uniform
+            ):
+                return _C_ops.cast(out_var, var.dtype)
+
+            return out_var
         else:
             if self._uniform:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
