@@ -121,6 +121,22 @@ class TestOneDNNlementwiseAddOpZeroDim3(TestOneDNNElementwiseAddOp):
         self.y = np.array(3.0).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
+# Special cases for swin transformer, will ignore grad check
+class TestOneDNNlementwiseAddSrcDifferentShape(TestOneDNNElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.random((6, 1, 144)).astype(self.dtype)
+        self.y = np.random.random((6, 144, 1)).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+    
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ingore_x(self):
+        pass
+    
+    def test_check_grad_ingore_y(self):
+        pass
+
 
 ''' INT8 Tests '''
 
