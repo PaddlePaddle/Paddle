@@ -22,7 +22,7 @@ import numpy as np
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 from paddle import _legacy_C_ops, base

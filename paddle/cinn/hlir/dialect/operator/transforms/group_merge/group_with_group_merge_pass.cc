@@ -1395,7 +1395,8 @@ class GeneralFusionMergePassHelper {
       }
       // master node
       for (auto& node : consumer->master_ops) {
-        if (GetOpKind(node->name()) == OpPatternKind::kReduction) {
+        if (hlir::framework::pir::CompatibleInfo::OpKind(*node) ==
+            OpPatternKind::kReduction) {
           fused_group->master_ops.insert(node);
         }
       }
@@ -1474,7 +1475,8 @@ class GeneralFusionMergePassHelper {
            ++consumer) {
         ::pir::Operation* master_node = nullptr;
         for (auto& node : (*consumer)->master_ops) {
-          if (GetOpKind(node->name()) != OpPatternKind::kReduction) {
+          if (hlir::framework::pir::CompatibleInfo::OpKind(*node) !=
+              OpPatternKind::kReduction) {
             master_node = node;
             break;
           }
@@ -1609,7 +1611,8 @@ class GeneralFusionMergePassHelper {
       }
       // master nodes
       for (auto& node : producer->master_ops) {
-        if (GetOpKind(node->name()) == OpPatternKind::kReduction) {
+        if (hlir::framework::pir::CompatibleInfo::OpKind(*node) ==
+            OpPatternKind::kReduction) {
           fused_group->master_ops.insert(node);
         }
       }

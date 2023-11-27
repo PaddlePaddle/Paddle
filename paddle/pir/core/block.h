@@ -25,6 +25,7 @@
 
 namespace pir {
 class Operation;
+class Program;
 
 class IR_API Block {
   using OpListType = std::list<Operation *>;
@@ -42,6 +43,12 @@ class IR_API Block {
   Region *GetParent() const { return parent_; }
   Operation *GetParentOp() const;
 
+  // return the program which contains this block.
+  // if block is not in a program, return nullptr.
+  Program *parent_program() const {
+    return parent_ ? parent_->parent_program() : nullptr;
+  }
+
   bool empty() const { return ops_.empty(); }
   size_t size() const { return ops_.size(); }
 
@@ -54,8 +61,11 @@ class IR_API Block {
   ReverseIterator rbegin() { return ops_.rbegin(); }
   ReverseIterator rend() { return ops_.rend(); }
 
-  Operation *back() const { return ops_.back(); }
-  Operation *front() const { return ops_.front(); }
+  Operation &back() { return *ops_.back(); }
+  Operation &front() { return *ops_.front(); }
+  const Operation &back() const { return *ops_.back(); }
+  const Operation &front() const { return *ops_.front(); }
+
   void push_back(Operation *op);
   void push_front(Operation *op);
   Iterator insert(ConstIterator iterator, Operation *op);

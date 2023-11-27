@@ -15,11 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir_api,
-    test_pir_api_only,
+    test_legacy_and_pir,
 )
 
 import paddle
@@ -73,7 +72,7 @@ class TestLen(Dy2StTestBase):
             return out
 
     @test_ast_only
-    @test_legacy_and_pir_api
+    @test_legacy_and_pir
     def test_len(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
@@ -173,7 +172,6 @@ class TestLenWithSelectedRows(Dy2StTestBase):
         self.assertEqual(selected_rows_var_len, var_tensor_len)
 
     @test_ast_only
-    @test_pir_api_only
     def test_len(self):
         selected_rows_var_len, var_tensor_len = len_with_selected_rows(
             self.place
