@@ -1452,6 +1452,7 @@ class FallbackProgramLayer:
         'training',
         '_cuda_graph_capture_mode',
         '_cuda_graph_pool_id',
+        '_debug_name',
     ]
 
     def __init__(self, instance, dy_func):

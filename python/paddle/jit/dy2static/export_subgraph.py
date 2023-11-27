@@ -17,7 +17,7 @@ import os
 from paddle import pir
 from paddle.base import core
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.base.framework import get_flags
+from paddle.base.framework import Variable, get_flags
 
 __all__ = []
 
@@ -116,8 +116,8 @@ class BaseExporter:
             type=core.VarDesc.VarType.FETCH_LIST,
             persistable=False,
         )
-
-        for i, var in enumerate(outputs):
+        for i, out in enumerate(outputs):
+            var = self.get_var(out)
             old_name = var.name
             new_name = rename_prefix + str(i)
             global_block._rename_var(old_name, new_name)
@@ -135,65 +135,111 @@ class BaseExporter:
             op._rename_input(old_name, new_name)
             op._rename_output(old_name, new_name)
 
+    def get_var(self, name_or_var):
+        if isinstance(name_or_var, Variable):
+            return name_or_var
+        assert isinstance(name_or_var, str)
+        global_block = self.program.block(0)
+        return global_block.var(name_or_var)
+
 
 class InferExporter(BaseExporter):
-    def __self__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def parse_inout(self):
-        inputs, outputs, inter_outs = [], [], []
+        inputs, outputs = [], []
         global_block = self.program.block(0)
         raw_inputs = self.pp_layer._inputs.tolist() + self.pp_layer._params
         raw_outputs = self.pp_layer._outputs.tolist()
         for var in raw_inputs:
-            new_var = global_block.vars[var.name]
+            new_var = global_block.var(var.name)
             inputs.append(new_var)
 
         for var in raw_outputs:
-            new_var = global_block.vars[var.name]
+            new_var = global_block.var(var.name)
             outputs.append(new_var)
 
-        return inputs, outputs, inter_outs
+        return inputs, outputs, []
 
 
 class TrainFwdExporter(BaseExporter):
-    def __self__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, pp_layer, copy_program, role, raw_inter_outs):
+        super().__init__(pp_layer, copy_program, role)
+        self.raw_inter_outs = raw_inter_outs
 
     def parse_inout(self):
-        inputs, outputs, inter_outs = [], [], []
+        inputs, outputs = [], []
         global_block = self.program.block(0)
         raw_inputs = self.pp_layer._inputs.tolist() + self.pp_layer._params
         raw_outputs = self.pp_layer._outputs.tolist()
+
+        inter_outs = {
+            name
+            for name in self.raw_inter_outs
+            if self.program.block(0).has_var(name)
+        }
         for var in raw_inputs:
-            new_var = global_block.vars[var.name]
+            new_var = global_block.var(var.name)
             inputs.append(new_var)
+            if var.name in inter_outs:
+                inter_outs.remove(var.name)
 
         for var in raw_outputs:
-            new_var = global_block.vars[var.name]
+            new_var = global_block.var(var.name)
             outputs.append(new_var)
+            if var.name in inter_outs:
+                inter_outs.remove(var.name)
 
-        return inputs, outputs, inter_outs
+        return inputs, outputs, list(inter_outs)
 
 
 class TrainBwdExporter(BaseExporter):
-    def __self__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, pp_layer, copy_program, role, raw_inputs, raw_outputs):
+        super().__init__(pp_layer, copy_program, role)
+        self.raw_inputs = raw_inputs
+        self.raw_outputs = raw_outputs
+
+    def parse_inout(self):
+        inputs, outputs = [], []
+        global_block = self.program.block(0)
+
+        for var_name in self.raw_inputs:
+            if global_block.has_var(var_name):
+                inputs.append(global_block.var(var_name))
+
+        # add fill_constant grad_var as input
+        for var in self.pp_layer._outputs.tolist():
+            init_grad_name = var.name + "@GRAD"
+            if init_grad_name not in self.raw_inputs and global_block.has_var(
+                init_grad_name
+            ):
+                inputs.append(global_block.var(init_grad_name))
+
+        for var_name in self.raw_outputs:
+            if (
+                global_block.has_var(var_name)
+                and var_name not in self.raw_inputs
+            ):
+                outputs.append(global_block.var(var_name))
+
+        return inputs, outputs, []
 
 
 @switch_to_static_graph
-def pir_exporter(pp_layer, program, role):
+def pir_exporter(pp_layer, program, role, shared_inputs=None, inter_outs=None):
     # skip it if not specify root_saving_dir by FLAGS.
     root_saving_dir = get_saving_dir()
-    # TODO(Aurelius84): Support Backward logic later
-    if not root_saving_dir or role == SubGraphRole.Backward:
+    if not root_saving_dir:
         return
     copy_program = program.clone()
     if role == SubGraphRole.Infer:
         InferExporter(pp_layer, copy_program, role).save()
     elif role == SubGraphRole.Forward:
-        TrainFwdExporter(pp_layer, copy_program, role).save()
+        TrainFwdExporter(pp_layer, copy_program, role, inter_outs).save()
     elif role == SubGraphRole.Backward:
-        TrainBwdExporter(pp_layer, copy_program, role).save()
+        TrainBwdExporter(
+            pp_layer, copy_program, role, shared_inputs, inter_outs
+        ).save()
     else:
         raise RuntimeError("role only support Infer/Forward/Backward")

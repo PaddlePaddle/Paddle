@@ -541,11 +541,15 @@ class PartialProgramLayer:
     @property
     def infer_program(self):
         if _in_amp_guard():
-            return self._infer_amp_program
+            infer_program = self._infer_amp_program
         elif _in_pure_fp16_guard():
-            return self._infer_pure_fp16_program
+            infer_program = self._infer_pure_fp16_program
         else:
-            return self._infer_program
+            infer_program = self._infer_program
+        # NOTE(Aurelius84): Export forward_program for SubGraphChecker,
+        # see export_subgraph for detail.
+        pir_exporter(self, infer_program, SubGraphRole.Infer)
+        return infer_program
 
     @property
     def forward_program(self):
@@ -557,14 +561,9 @@ class PartialProgramLayer:
                 progs = self._train_pure_fp16_forward_backward_program
             else:
                 progs = self._train_forward_backward_program
-            forward_program = progs[0]
-            role = SubGraphRole.Forward
+            return progs[0]
         else:
             forward_program = self.infer_program
-            role = SubGraphRole.Infer
-        # NOTE(Aurelius84): Export forward_program for SubGraphChecker,
-        # see export_subgraph for detail.
-        pir_exporter(self, forward_program, role)
         return forward_program
 
     @property
@@ -576,9 +575,6 @@ class PartialProgramLayer:
                 progs = self._train_pure_fp16_forward_backward_program
             else:
                 progs = self._train_forward_backward_program
-            # NOTE(Aurelius84): Export forward_program for SubGraphChecker,
-            # see export_subgraph for detail.
-            pir_exporter(self, progs[1], SubGraphRole.Backward)
             return progs[1]
         else:
             """
@@ -862,6 +858,23 @@ class PartialProgramLayer:
 
         self._apply_inplace_pass(
             forward_builded_program, backward_builded_program
+        )
+
+        # NOTE(Aurelius84): Export forward/backward program for SubGraphChecker,
+        # see export_subgraph for detail.
+        pir_exporter(
+            self,
+            forward_builded_program,
+            SubGraphRole.Forward,
+            set(),
+            set(forward_skip_vars),
+        )
+        pir_exporter(
+            self,
+            backward_builded_program,
+            SubGraphRole.Backward,
+            set(forward_skip_vars),
+            set(backward_skip_vars),
         )
         return [forward_builded_program, backward_builded_program]
 
