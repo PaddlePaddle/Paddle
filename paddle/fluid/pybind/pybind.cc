@@ -791,6 +791,30 @@ void BindDecomp(pybind11::module *m) {
     return res;
   });
 
+  m->def("decomp", [](pir::Operation &fwd_op) {
+    py::list res;
+    paddle::dialect::DecompInterface decomp_interface =
+        fwd_op.dyn_cast<paddle::dialect::DecompInterface>();
+    PADDLE_ENFORCE(
+        decomp_interface,
+        phi::errors::InvalidArgument(
+            "The decomp function is not registered in %s op ", fwd_op.name()));
+    std::vector<std::vector<pir::OpResult>> decomp_res =
+        decomp_interface.Decomp(&fwd_op);
+    for (size_t i = 0; i < decomp_res.size(); ++i) {
+      py::list sub_res;
+      for (size_t j = 0; j < decomp_res[i].size(); ++j) {
+        if (!decomp_res[i][j]) {
+          sub_res.append(nullptr);
+        } else {
+          sub_res.append(decomp_res[i][j]);
+        }
+      }
+      res.append(sub_res);
+    }
+    return res;
+  });
+
   m->def("has_decomp", [](pir::Operation &fwd_op) {
     pir::IrContext *ctx = pir::IrContext::Instance();
     pir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
