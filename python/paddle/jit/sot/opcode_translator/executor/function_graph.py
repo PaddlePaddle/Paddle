@@ -252,7 +252,7 @@ class FunctionGraph:
                 if isinstance(var, NullVariable):
                     var.reconstruct(self._pycode_gen)
                     return
-                self._pycode_gen.gen_load(self._store_var_info[var])
+                self._pycode_gen.gen_load(self._store_var_info[var.id])
 
         origin_instrs = get_instructions(self.pycode_gen._origin_code)
 
@@ -281,8 +281,8 @@ class FunctionGraph:
         name_gen = NameGenerator("__start_compile_saved_orig_")
 
         for var in stack_vars[::-1]:
-            store_var_info[var] = name_gen.next()
-            self.pycode_gen.gen_store_fast(store_var_info[var])
+            store_var_info[var.id] = name_gen.next()
+            self.pycode_gen.gen_store_fast(store_var_info[var.id])
 
         return VariableLoader(store_var_info, self.pycode_gen)
 
@@ -296,7 +296,7 @@ class FunctionGraph:
                 if isinstance(var, NullVariable):
                     var.reconstruct(self._pycode_gen)
                     return
-                self._pycode_gen.gen_load(self._index_for_load[var])
+                self._pycode_gen.gen_load(self._index_for_load[var.id])
 
         # var_id -> local_name mapping
         index_for_load = {}
