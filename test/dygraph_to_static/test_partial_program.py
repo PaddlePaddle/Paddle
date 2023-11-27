@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir,
-    test_legacy_and_pir_exe_and_pir_api,
-    test_pir_api_only,
+    test_legacy_and_pt,
+    test_legacy_and_pt_and_pir,
+    test_pir_only,
 )
 from test_fetch_feed import Linear
 
@@ -89,7 +89,7 @@ class TestWithNestedInput(Dy2StTestBase):
 
         return out.numpy()
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_nest(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
@@ -115,7 +115,7 @@ class TestWithNestedOutput(Dy2StTestBase):
 
         return out
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_nest(self):
         dygraph_res = self._run(to_static=False)
         dygraph_res = paddle.utils.flatten(dygraph_res)
@@ -136,7 +136,7 @@ class TestWithNestedOutput(Dy2StTestBase):
 
 class TestWithTrainAndEval(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pir
+    @test_legacy_and_pt
     def test_legacy_ir_switch_eval_and_train(self):
         # TODO(cleanup-legacy-ir): Remove this test case
         linear_net = Linear()
@@ -167,7 +167,7 @@ class TestWithTrainAndEval(Dy2StTestBase):
         )
 
     @test_ast_only
-    @test_pir_api_only
+    @test_pir_only
     def test_switch_eval_and_train(self):
         linear_net = Linear()
         linear_net = paddle.jit.to_static(linear_net, full_graph=True)
@@ -200,7 +200,7 @@ class TestWithTrainAndEval(Dy2StTestBase):
 
 class TestWithNoGrad(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pir
+    @test_legacy_and_pt
     def test_legacy_ir_with_no_grad(self):
         # TODO(cleanup-legacy-ir): Remove this test case
         linear_net = Linear()
@@ -218,7 +218,7 @@ class TestWithNoGrad(Dy2StTestBase):
             )
 
     @test_ast_only
-    @test_pir_api_only
+    @test_pir_only
     def test_with_no_grad(self):
         linear_net = Linear()
         linear_net = paddle.jit.to_static(linear_net, full_graph=True)
@@ -249,7 +249,6 @@ class GPT2LMHeadModel(paddle.nn.Layer):
 
 
 class TestPruneUnusedParamInProgram(Dy2StTestBase):
-    @test_legacy_and_pir
     def test_prune(self):
         input_ids = np.array([[15, 11, 6, 3, 18, 13]]).astype("float32")
 
