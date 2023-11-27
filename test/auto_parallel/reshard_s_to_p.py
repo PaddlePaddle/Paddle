@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.base import core
 
 
 class TestReshardSToR:
@@ -32,40 +31,22 @@ class TestReshardSToR:
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
-            place = paddle.CPUPlace()
-        elif self._backend == "gpu":
-            place = paddle.CUDAPlace(dist.get_rank())
 
-        dev_ctx = core.DeviceContext.create(place)
         a = paddle.ones(self._shape)
 
-        in_shard_specs = [None for i in range(len(self._shape))]
-        in_shard_specs[0] = "x"
-        out_shard_specs = [None for i in range(len(self._shape))]
-
-        dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=in_shard_specs
-        )
-        out_dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=out_shard_specs
-        )
-        out_dist_attr._set_partial_dims([0])
-
-        input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
-
+        in_placement = [dist.Shard(0)]
+        input_tensor = dist.shard_tensor(a, placement=in_placement)
         assert input_tensor._local_shape[0] == self._shape[0] // 2
 
-        reshard_func = core.SToPReshardFunction()
-        assert reshard_func.is_suitable(input_tensor, out_dist_attr)
-
-        out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
+        out = dist.reshard(
+            input_tensor, self._mesh, [dist.Partial(dist.ReduceType.kRedSum)]
+        )
 
         if dist.get_rank() == 0:
             np.testing.assert_equal(out._local_value().numpy(), a.numpy())
         else:
             zeros = paddle.zeros(self._shape)
             np.testing.assert_equal(out._local_value().numpy(), zeros.numpy())
-
         assert np.equal(out.shape, input_tensor.shape).all()
         assert np.equal(out._local_shape, input_tensor.shape).all()
 
