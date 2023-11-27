@@ -1136,7 +1136,7 @@ def searchsorted(
              [1, 3, 4, 5]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.searchsorted(sorted_sequence, values, out_int32, right)
     else:
         check_variable_and_dtype(

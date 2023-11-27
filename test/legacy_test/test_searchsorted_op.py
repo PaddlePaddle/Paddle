@@ -42,7 +42,7 @@ class TestSearchSorted(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init_test_case(self):
         self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype("float32")
@@ -102,6 +102,7 @@ class TestSearchSortedAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
+    # @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
 
