@@ -238,7 +238,7 @@ class PirInterpreter : public InterpreterBaseImpl {
   // belongs to a parameter and cannot GC.
   std::unordered_set<std::string> parameter_var_names_;
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
   std::unique_ptr<phi::CalculateStreamTimer> calculate_stream_timer_;
 #endif
   size_t last_calculate_instr_id_;

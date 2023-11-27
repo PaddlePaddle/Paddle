@@ -1324,10 +1324,10 @@ void PirInterpreter::TraceRunInstructionList(
       auto instr_id = trace_execute_order_[i];
       std::string op_name = vec_instruction_base_.at(instr_id)->Name();
       op_name = op_name.substr(op_name.find_first_of(".") + 1);
-      if (!interpreter::IsCommunicationOp(op_name)) {
+      if (op_name != "feed" && !interpreter::IsCommunicationOp(op_name)) {
         VLOG(3) << "Last calculated op type: "
                 << vec_instruction_base_.at(instr_id)->Name();
-        last_calculate_instr_id_ = instr_id;
+        last_calculate_instr_id_ = vec_instruction_base_.at(instr_id)->Id();
         break;
       }
     }
@@ -1347,17 +1347,6 @@ void PirInterpreter::TraceRunInstructionList(
     VLOG(6) << "Run InstructionBase " << instr_node->Name() << "[" << instr_id
             << "]";
     RunInstructionBase(instr_node);
-
-#if defined(PADDLE_WITH_CUDA)
-    if (enable_job_schedule_profiler_) {
-      if (instr_id == last_calculate_instr_id_ &&
-          calculate_stream_timer_->IsStarted()) {
-        VLOG(3) << "Stop calculated stream timer from op: "
-                << instr_node->Name();
-        calculate_stream_timer_->Stop();
-      }
-    }
-#endif
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";
@@ -1392,7 +1381,7 @@ void PirInterpreter::MultiThreadRunInstructionList(
     for (int i = vec_instr.size() - 1; i >= 0; --i) {
       std::string op_name = vec_instr.at(i)->Name();
       op_name = op_name.substr(op_name.find_first_of(".") + 1);
-      if (!interpreter::IsCommunicationOp(op_name)) {
+      if (op_name != "feed" && !interpreter::IsCommunicationOp(op_name)) {
         VLOG(3) << "Last calculated op type: " << op_name;
         last_calculate_instr_id_ = vec_instr.at(i)->Id();
         break;
@@ -1485,17 +1474,6 @@ void PirInterpreter::RunInstructionBaseAsync(size_t instr_id) {
 
     RunInstructionBase(instr_node);
 
-#if defined(PADDLE_WITH_CUDA)
-    if (enable_job_schedule_profiler_) {
-      if (instr_id == last_calculate_instr_id_ &&
-          calculate_stream_timer_->IsStarted()) {
-        VLOG(3) << "Stop calculated stream timer from op: "
-                << instr_node->Name();
-        calculate_stream_timer_->Stop();
-      }
-    }
-#endif
-
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";
       if (exception_notifier_ != nullptr) {
@@ -1555,8 +1533,10 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     if (enable_job_schedule_profiler_) {
       std::string op_name = instr_node->Name();
       op_name = op_name.substr(op_name.find_first_of(".") + 1);
-      if (!calculate_stream_timer_->IsStarted() &&
-          !interpreter::IsCommunicationOp(op_name)) {
+      ::pir::Operation* op = instr_node->Operation();
+      bool has_ring_id = op->HasAttribute("ring_id");
+      if (!calculate_stream_timer_->IsStarted() && op_name != "feed" &&
+          !interpreter::IsCommunicationOp(op_name, has_ring_id)) {
         VLOG(3) << "Start calculated stream timer from op: "
                 << instr_node->Name();
         calculate_stream_timer_->Start();
@@ -1604,6 +1584,16 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     }
     VLOG(5) << "after run kernel";
     instr_node->RecordEvent(cur_place);
+#if defined(PADDLE_WITH_CUDA)
+    if (enable_job_schedule_profiler_) {
+      if (instr_node->Id() == last_calculate_instr_id_ &&
+          calculate_stream_timer_->IsStarted()) {
+        VLOG(3) << "Stop calculated stream timer from op: "
+                << instr_node->Name();
+        calculate_stream_timer_->Stop();
+      }
+    }
+#endif
   } catch (platform::EnforceNotMet& ex) {
     auto* op = instr_node->Operation();
     const std::vector<std::string> op_callstack_attr =
