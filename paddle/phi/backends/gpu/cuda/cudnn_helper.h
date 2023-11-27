@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -24,7 +25,6 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/utils/flags.h"
 
 PD_DECLARE_bool(cudnn_deterministic);

@@ -12,8 +12,8 @@ limitations under the License. */
 #pragma once
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/detail/strided_memcpy.h"
 
 namespace phi {

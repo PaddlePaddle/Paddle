@@ -18,10 +18,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/macros.h"  // import FLT_MAX
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
-#include "paddle/phi/core/macros.h"  // import FLT_MAX
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_decls.h"

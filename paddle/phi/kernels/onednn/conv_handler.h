@@ -14,10 +14,10 @@
 
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/expect.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 

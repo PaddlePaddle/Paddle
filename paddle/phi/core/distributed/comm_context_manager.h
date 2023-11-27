@@ -19,9 +19,9 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/comm_context.h"
-#include "paddle/phi/core/macros.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/gpu/forwards.h"

@@ -18,9 +18,9 @@
 #include <condition_variable>
 #include <cstdint>
 #include <exception>
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/macros.h"
 
 #if defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/dynload/rccl.h"

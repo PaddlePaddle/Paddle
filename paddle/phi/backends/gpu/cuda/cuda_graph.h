@@ -26,6 +26,7 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/device_code.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -33,7 +34,6 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/utils/optional.h"
 
 #if CUDA_VERSION < 11000

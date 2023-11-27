@@ -12,10 +12,10 @@
  See the License for the specific language governing permissions and
  limitations under the License. */
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/macros.h"
 
 namespace phi {
 

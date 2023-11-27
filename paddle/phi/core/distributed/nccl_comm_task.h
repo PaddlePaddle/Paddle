@@ -13,11 +13,11 @@
 // limitations under the License.
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/distributed/comm_context.h"
 #include "paddle/phi/core/distributed/comm_task.h"
 #include "paddle/phi/core/distributed/utils.h"
-#include "paddle/phi/core/macros.h"
 
 #if defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/dynload/rccl.h"
