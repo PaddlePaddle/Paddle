@@ -547,7 +547,7 @@ class CodeGen:
             if len(op_info.input_name_list) == 0:
                 return ret
             name = op_info.input_name_list[-1]
-            type = mapping_name_to_type[name]
+            type = mapping_input_name_to_type[name]
             if f"{VECTOR_TYPE}<{DENSE_TENSOR_TYPE}>" == type:
                 function_name = 'CheckVectorOfValueDataType'
             elif DENSE_TENSOR_TYPE == type:
