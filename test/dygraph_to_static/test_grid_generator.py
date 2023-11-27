@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pir_exe_and_pir_api,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -147,7 +147,7 @@ class TestGridGenerator(Dy2StTestBase):
         ret = net(self.x, [32, 100])
         return ret.numpy()
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_to_static(self):
         st_out = self._run(to_static=True)
         dy_out = self._run(to_static=False)

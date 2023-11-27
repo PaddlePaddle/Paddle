@@ -26,10 +26,9 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pir,
-    test_legacy_and_pir_exe_and_pir_api,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -87,17 +86,15 @@ def train(model, to_static):
 
 
 class TestIsinstance(Dy2StTestBase):
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_isinstance_simple_return_layer(self):
         model = paddle.jit.to_static(IsInstanceLayer(SimpleReturnLayer()))
         self._test_model(model)
 
-    @test_legacy_and_pir
     def test_isinstance_add_attr_layer(self):
         model = paddle.jit.to_static(IsInstanceLayer(AddAttrLayer()))
         self._test_model(model)
 
-    @test_legacy_and_pir
     def test_sequential_layer(self):
         layers = []
         for i in range(5):
