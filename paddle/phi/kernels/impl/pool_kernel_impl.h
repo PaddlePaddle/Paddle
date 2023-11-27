@@ -190,16 +190,11 @@ void LPPoolRawKernel(const Context& ctx,
                      float norm_type,
                      const std::vector<int>& kernel_size,
                      const std::vector<int>& strides,
-                     const std::vector<int>& paddings,
                      const std::string& data_format,
-                     const std::string& pooling_type,
-                     const std::string& padding_algorithm,
                      DenseTensor* out) {
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-  std::vector<int> paddings_ = paddings;
   std::vector<int> kernel_size_ = kernel_size;
 
-  // update paddings
   auto x_dims = x.dims();
   DDim data_dims;
   if (channel_last) {
@@ -208,37 +203,13 @@ void LPPoolRawKernel(const Context& ctx,
     data_dims = slice_ddim(x_dims, 2, x_dims.size());
   }
 
-  funcs::UpdatePadding(&paddings_,
-                       false,
-                       false,
-                       padding_algorithm,
-                       data_dims,
-                       strides,
-                       kernel_size_);
-
-  if (data_dims.size() * 2 == static_cast<int>(paddings_.size())) {
-    for (int i = 0; i < data_dims.size(); ++i) {
-      paddings_.erase(paddings_.begin() + i + 1);
-    }
-  }
-
   switch (kernel_size_.size()) {
     case 2: {
-      if (pooling_type == "lp") {
-        funcs::Pool2dFunctor<Context, funcs::LPPool<T>, T> pool2d_forward;
-        funcs::LPPool<T> pool_process;
-        pool_process.setNormType(norm_type);
-        pool2d_forward(ctx,
-                       x,
-                       kernel_size_,
-                       strides,
-                       paddings_,
-                       data_format,
-                       true,
-                       false,
-                       out,
-                       pool_process);
-      }
+      funcs::LPPool2dFunctor<Context, funcs::LPPool<T>, T> pool2d_forward;
+      funcs::LPPool<T> pool_process;
+      pool_process.setNormType(norm_type);
+      pool2d_forward(
+          ctx, x, kernel_size_, strides, data_format, out, pool_process);
     } break;
     default: {
       PADDLE_THROW(
@@ -321,24 +292,13 @@ void LPPool2dKernel(const Context& ctx,
                     float norm_type,
                     const IntArray& kernel_size,
                     const std::vector<int>& strides,
-                    const std::vector<int>& paddings,
                     bool ceil_mode UNUSED,
                     const std::string& data_format,
-                    const std::string& pooling_type,
-                    const std::string& padding_algorithm,
                     DenseTensor* out) {
   std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
                                    kernel_size.GetData().end());
-  LPPoolRawKernel<T, Context>(ctx,
-                              x,
-                              norm_type,
-                              kernel_size_val,
-                              strides,
-                              paddings,
-                              data_format,
-                              pooling_type,
-                              padding_algorithm,
-                              out);
+  LPPoolRawKernel<T, Context>(
+      ctx, x, norm_type, kernel_size_val, strides, data_format, out);
 }
 
 template <typename T, typename Context>

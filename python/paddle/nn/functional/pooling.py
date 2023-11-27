@@ -444,9 +444,6 @@ def lp_pool2d(
     _check_value_limitation(stride, "stride", min_limit=1e-3)
 
     channel_last = _channel_last(data_format, 2)
-    padding, padding_algorithm = _update_padding_nd(
-        0, 2, channel_last, ceil_mode=ceil_mode
-    )
 
     if in_dynamic_or_pir_mode():
         output = _C_ops.lp_pool2d(
@@ -454,11 +451,8 @@ def lp_pool2d(
             norm_type,
             kernel_size,
             stride,
-            padding,
             ceil_mode,
             data_format,
-            'lp',
-            padding_algorithm,
         )
 
         return output
@@ -477,12 +471,9 @@ def lp_pool2d(
             inputs={"X": x},
             outputs={"Out": pool_out},
             attrs={
-                "pooling_type": "lp",
                 "norm_type": norm_type,
                 "ksize": kernel_size,
                 "strides": stride,
-                "paddings": padding,
-                "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
                 "use_mkldnn": False,

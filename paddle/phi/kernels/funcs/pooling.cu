@@ -367,6 +367,61 @@ __global__ void KernelPool2DGrad(const int nthreads,
   }
 }
 
+template <typename PoolProcess, typename T>
+__global__ void KernelLPPool2D(const int nthreads,
+                               const T* input_data,
+                               const int channels,
+                               const int input_height,
+                               const int input_width,
+                               const int output_height,
+                               const int output_width,
+                               const int ksize_height,
+                               const int ksize_width,
+                               const int stride_height,
+                               const int stride_width,
+                               FastDivModForPooling divmods,
+                               PoolProcess pool_process,
+                               T* output_data,
+                               bool channel_last = false) {
+  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
+       index += blockDim.x * gridDim.x) {
+    int hstart, hend, wstart, wend;
+    int w_offset, h_offset, c_offset, input_offset;
+    OffsetPreparationFor4Dimension<FastDivModForPooling>(index,
+                                                         channel_last,
+                                                         divmods,
+                                                         0,
+                                                         0,
+                                                         input_width,
+                                                         input_height,
+                                                         &w_offset,
+                                                         &h_offset,
+                                                         &c_offset,
+                                                         &input_offset);
+    input_data += input_offset;
+
+    hstart = h_offset * stride_height;
+    hend = min(hstart + ksize_height, input_height);
+    hstart = max(hstart, 0);
+    wstart = w_offset * stride_width;
+    wend = min(wstart + ksize_width, input_width);
+    wstart = max(wstart, 0);
+
+    T ele = pool_process.initial();
+    for (int h = hstart; h < hend; ++h) {
+      for (int w = wstart; w < wend; ++w) {
+        auto input_idx = channel_last
+                             ? (h * input_width + w) * channels + c_offset
+                             : h * input_width + w;
+        pool_process.compute(input_data[input_idx], &ele);
+      }
+    }
+    int pool_size = (hend - hstart) * (wend - wstart);
+    pool_process.finalize(&ele);
+    output_data[index] = ele;
+  }
+}
+
 template <typename T, typename PoolProcess>
 __global__ void KernelLPPool2DGrad(const int nthreads,
                                    const T* __restrict__ input_data,
@@ -381,8 +436,6 @@ __global__ void KernelLPPool2DGrad(const int nthreads,
                                    const int ksize_height,
                                    const int stride_width,
                                    const int stride_height,
-                                   const int padding_width,
-                                   const int padding_height,
                                    FastDivModForPoolingWithMoreStaff divmods,
                                    PoolProcess pool_process,
                                    T* __restrict__ input_grad,
@@ -396,8 +449,8 @@ __global__ void KernelLPPool2DGrad(const int nthreads,
     OffsetPreparationFor4Dimension<>(index,
                                      channel_last,
                                      divmods,
-                                     padding_width,
-                                     padding_height,
+                                     0,
+                                     0,
                                      output_width,
                                      output_height,
                                      &w_offset,
@@ -419,8 +472,8 @@ __global__ void KernelLPPool2DGrad(const int nthreads,
 
     for (int ph = phstart; ph < phend; ++ph) {
       for (int pw = pwstart; pw < pwend; ++pw) {
-        int hstart = ph * stride_height - padding_height;
-        int wstart = pw * stride_width - padding_width;
+        int hstart = ph * stride_height;
+        int wstart = pw * stride_width;
         int hend = min(hstart + ksize_height, input_height);
         int wend = min(wstart + ksize_width, input_width);
         hstart = max(hstart, 0);
@@ -935,6 +988,69 @@ class Pool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
 };
 
 template <typename PoolProcess, typename T>
+class LPPool2dFunctor<phi::GPUContext, PoolProcess, T> {
+ public:
+  void operator()(const phi::GPUContext& context,
+                  const DenseTensor& input,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::string data_format,
+                  DenseTensor* output,
+                  PoolProcess pool_process) {
+    bool channel_last = (data_format == "NHWC");
+    const int batch_size = input.dims()[0];
+
+    const int input_channels = channel_last ? input.dims()[3] : input.dims()[1];
+    const int input_height = channel_last ? input.dims()[1] : input.dims()[2];
+    const int input_width = channel_last ? input.dims()[2] : input.dims()[3];
+
+    const int output_channels =
+        channel_last ? output->dims()[3] : output->dims()[1];
+    const int output_height =
+        channel_last ? output->dims()[1] : output->dims()[2];
+    const int output_width =
+        channel_last ? output->dims()[2] : output->dims()[3];
+
+    const int ksize_height = ksize[0];
+    const int ksize_width = ksize[1];
+
+    const int stride_height = strides[0];
+    const int stride_width = strides[1];
+
+    const T* input_data = input.data<T>();
+    T* output_data = context.template Alloc<T>(output);
+
+    int nthreads = batch_size * output_channels * output_height * output_width;
+    auto pool_divmods =
+        FastDivModForPooling(input_channels, output_width, output_height);
+
+    int thread_num = 1024;
+#ifdef WITH_NV_JETSON
+    backends::gpu::ChangeThreadNum(context, &thread_num);
+#endif
+    int blocks = (nthreads + thread_num - 1) / thread_num;
+    dim3 threads(thread_num, 1);
+    dim3 grid(blocks, 1);
+    KernelLPPool2D<PoolProcess, T>
+        <<<grid, threads, 0, context.stream()>>>(nthreads,
+                                                 input_data,
+                                                 input_channels,
+                                                 input_height,
+                                                 input_width,
+                                                 output_height,
+                                                 output_width,
+                                                 ksize_height,
+                                                 ksize_width,
+                                                 stride_height,
+                                                 stride_width,
+                                                 pool_divmods,
+                                                 pool_process,
+                                                 output_data,
+                                                 channel_last);
+  }
+};
+
+template <typename PoolProcess, typename T>
 class LPPool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
  public:
   void operator()(const phi::GPUContext& context,
@@ -944,7 +1060,6 @@ class LPPool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
                   float norm_type,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
                   DenseTensor* input_grad,
                   PoolProcess pool_process) {
     const int batch_size = input.dims()[0];
@@ -957,8 +1072,6 @@ class LPPool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
     const int ksize_width = ksize[1];
     const int stride_height = strides[0];
     const int stride_width = strides[1];
-    const int padding_height = paddings[0];
-    const int padding_width = paddings[1];
 
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
@@ -991,8 +1104,6 @@ class LPPool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
                                                              ksize_height,
                                                              stride_width,
                                                              stride_height,
-                                                             padding_width,
-                                                             padding_height,
                                                              pool_divmods,
                                                              pool_process,
                                                              input_grad_data);
@@ -1139,13 +1250,13 @@ template class MaxPool2dGradFunctor<phi::GPUContext, dtype::bfloat16>;
 
 template class Pool2dFunctor<phi::GPUContext, MaxPool<float>, float>;
 template class Pool2dFunctor<phi::GPUContext, AvgPool<float>, float>;
-template class Pool2dFunctor<phi::GPUContext, LPPool<float>, float>;
+template class LPPool2dFunctor<phi::GPUContext, LPPool<float>, float>;
 template class Pool2dGradFunctor<phi::GPUContext, MaxPoolGrad<float>, float>;
 template class Pool2dGradFunctor<phi::GPUContext, AvgPoolGrad<float>, float>;
 template class LPPool2dGradFunctor<phi::GPUContext, LPPoolGrad<float>, float>;
 template class Pool2dFunctor<phi::GPUContext, MaxPool<double>, double>;
 template class Pool2dFunctor<phi::GPUContext, AvgPool<double>, double>;
-template class Pool2dFunctor<phi::GPUContext, LPPool<double>, double>;
+template class LPPool2dFunctor<phi::GPUContext, LPPool<double>, double>;
 template class Pool2dGradFunctor<phi::GPUContext, MaxPoolGrad<double>, double>;
 template class Pool2dGradFunctor<phi::GPUContext, AvgPoolGrad<double>, double>;
 template class LPPool2dGradFunctor<phi::GPUContext, LPPoolGrad<double>, double>;
@@ -1156,9 +1267,9 @@ template class Pool2dFunctor<phi::GPUContext,
 template class Pool2dFunctor<phi::GPUContext,
                              AvgPool<dtype::float16>,
                              dtype::float16>;
-template class Pool2dFunctor<phi::GPUContext,
-                             LPPool<dtype::float16>,
-                             dtype::float16>;
+template class LPPool2dFunctor<phi::GPUContext,
+                               LPPool<dtype::float16>,
+                               dtype::float16>;
 template class Pool2dGradFunctor<phi::GPUContext,
                                  MaxPoolGrad<dtype::float16>,
                                  dtype::float16>;
@@ -1174,9 +1285,9 @@ template class Pool2dFunctor<phi::GPUContext,
 template class Pool2dFunctor<phi::GPUContext,
                              AvgPool<dtype::bfloat16>,
                              dtype::bfloat16>;
-template class Pool2dFunctor<phi::GPUContext,
-                             LPPool<dtype::bfloat16>,
-                             dtype::bfloat16>;
+template class LPPool2dFunctor<phi::GPUContext,
+                               LPPool<dtype::bfloat16>,
+                               dtype::bfloat16>;
 template class Pool2dGradFunctor<phi::GPUContext,
                                  MaxPoolGrad<dtype::bfloat16>,
                                  dtype::bfloat16>;

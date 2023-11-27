@@ -148,34 +148,17 @@ void LPPoolGradRawKernel(const Context& ctx,
                          float norm_type,
                          const std::vector<int>& kernel_size,
                          const std::vector<int>& strides,
-                         const std::vector<int>& paddings,
                          const std::string& data_format,
-                         const std::string& pooling_type,
-                         const std::string& padding_algorithm,
                          DenseTensor* dx) {
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-  std::vector<int> paddings_ = paddings;
   std::vector<int> kernel_size_ = kernel_size;
 
-  // update paddings
   auto x_dims = x.dims();
   DDim data_dims;
   if (channel_last) {
     data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
   } else {
     data_dims = slice_ddim(x_dims, 2, x_dims.size());
-  }
-  funcs::UpdatePadding(&paddings_,
-                       false,
-                       false,
-                       padding_algorithm,
-                       data_dims,
-                       strides,
-                       kernel_size_);
-  if (data_dims.size() * 2 == static_cast<int>(paddings_.size())) {
-    for (int i = 0; i < data_dims.size(); ++i) {
-      paddings_.erase(paddings_.begin() + i + 1);
-    }
   }
 
   if (dx) {
@@ -185,23 +168,18 @@ void LPPoolGradRawKernel(const Context& ctx,
 
     switch (kernel_size_.size()) {
       case 2: {
-        if (pooling_type == "lp") {
-          funcs::LPPool2dGradFunctor<Context, funcs::LPPoolGrad<T>, T>
-              pool2d_backward;
-          funcs::LPPoolGrad<T> pool_process;
-          pool2d_backward(ctx,
-                          x,
-                          out,
-                          dout,
-                          norm_type,
-                          kernel_size_,
-                          strides,
-                          paddings_,
-                          true,
-                          false,
-                          dx,
-                          pool_process);
-        }
+        funcs::LPPool2dGradFunctor<Context, funcs::LPPoolGrad<T>, T>
+            pool2d_backward;
+        funcs::LPPoolGrad<T> pool_process;
+        pool2d_backward(ctx,
+                        x,
+                        out,
+                        dout,
+                        norm_type,
+                        kernel_size_,
+                        strides,
+                        dx,
+                        pool_process);
       } break;
       default: {
         PADDLE_THROW(
@@ -297,26 +275,13 @@ void LPPool2dGradKernel(const Context& ctx,
                         float norm_type,
                         const IntArray& kernel_size,
                         const std::vector<int>& strides,
-                        const std::vector<int>& paddings,
                         bool ceil_mode UNUSED,
                         const std::string& data_format,
-                        const std::string& pooling_type,
-                        const std::string& padding_algorithm,
                         DenseTensor* dx) {
   std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
                                    kernel_size.GetData().end());
-  LPPoolGradRawKernel<T, Context>(ctx,
-                                  x,
-                                  out,
-                                  dout,
-                                  norm_type,
-                                  kernel_size_val,
-                                  strides,
-                                  paddings,
-                                  data_format,
-                                  pooling_type,
-                                  padding_algorithm,
-                                  dx);
+  LPPoolGradRawKernel<T, Context>(
+      ctx, x, out, dout, norm_type, kernel_size_val, strides, data_format, dx);
 }
 
 template <typename T, typename Context>

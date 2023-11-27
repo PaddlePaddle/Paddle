@@ -499,6 +499,116 @@ class Pool2dGradFunctor<CPUContext, PoolProcess, T> {
   }
 };
 
+template <typename PoolProcess, typename T>
+class LPPool2dFunctor<CPUContext, PoolProcess, T> {
+ public:
+  void operator()(const CPUContext& context,
+                  const DenseTensor& input,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::string data_format,
+                  DenseTensor* output,
+                  PoolProcess pool_process) {
+    bool channel_last = (data_format == "NHWC");
+
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_channels =
+        static_cast<int>(channel_last ? input.dims()[3] : input.dims()[1]);
+    const int input_height =
+        static_cast<int>(channel_last ? input.dims()[1] : input.dims()[2]);
+    const int input_width =
+        static_cast<int>(channel_last ? input.dims()[2] : input.dims()[3]);
+
+    const int output_channels =
+        static_cast<int>(channel_last ? output->dims()[3] : output->dims()[1]);
+    const int output_height =
+        static_cast<int>(channel_last ? output->dims()[1] : output->dims()[2]);
+    const int output_width =
+        static_cast<int>(channel_last ? output->dims()[2] : output->dims()[3]);
+
+    const int ksize_height = ksize[0];
+    const int ksize_width = ksize[1];
+
+    const int stride_height = strides[0];
+    const int stride_width = strides[1];
+
+    const T* input_data = input.data<T>();
+    T* output_data = context.template Alloc<T>(output);
+
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
+    if (!channel_last) {
+      const int input_stride = input_height * input_width;
+      const int output_stride = output_height * output_width;
+      for (int i = 0; i < batch_size; i++) {
+        for (int c = 0; c < output_channels; ++c) {
+          for (int ph = 0; ph < output_height; ++ph) {
+            for (int pw = 0; pw < output_width; ++pw) {
+              hstart = ph * stride_height;
+              wstart = pw * stride_width;
+              hend = std::min(hstart + ksize_height, input_height);
+              wend = std::min(wstart + ksize_width, input_width);
+
+              wstart = std::max(wstart, 0);
+              hstart = std::max(hstart, 0);
+              hend = std::min(hend, input_height);
+              wend = std::min(wend, input_width);
+
+              T ele = pool_process.initial();
+              for (int h = hstart; h < hend; ++h) {
+                for (int w = wstart; w < wend; ++w) {
+                  pool_process.compute(input_data[h * input_width + w], &ele);
+                }
+              }
+
+              pool_process.finalize(&ele);
+              output_data[ph * output_width + pw] = ele;
+            }
+          }
+          input_data += input_stride;
+          output_data += output_stride;
+        }
+      }
+    } else {
+      const int input_stride = input_height * input_width * input_channels;
+      const int output_stride = output_height * output_width * output_channels;
+      for (int i = 0; i < batch_size; i++) {
+        for (int c = 0; c < output_channels; ++c) {
+          for (int ph = 0; ph < output_height; ++ph) {
+            for (int pw = 0; pw < output_width; ++pw) {
+              hstart = ph * stride_height;
+              wstart = pw * stride_width;
+              hend = std::min(hstart + ksize_height, input_height);
+              wend = std::min(wstart + ksize_width, input_width);
+
+              wstart = std::max(wstart, 0);
+              hstart = std::max(hstart, 0);
+              hend = std::min(hend, input_height);
+              wend = std::min(wend, input_width);
+
+              T ele = pool_process.initial();
+              for (int h = hstart; h < hend; ++h) {
+                for (int w = wstart; w < wend; ++w) {
+                  pool_process.compute(
+                      input_data[h * input_width * input_channels +
+                                 w * input_channels + c],
+                      &ele);
+                }
+              }
+
+              pool_process.finalize(&ele);
+              output_data[ph * output_width * output_channels +
+                          pw * output_channels + c] = ele;
+            }
+          }
+        }
+        input_data += input_stride;
+        output_data += output_stride;
+      }
+    }
+  }
+};
+
 template <typename PoolProcess, class T>
 class LPPool2dGradFunctor<CPUContext, PoolProcess, T> {
  public:
@@ -509,7 +619,6 @@ class LPPool2dGradFunctor<CPUContext, PoolProcess, T> {
                   float norm_type,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
                   DenseTensor* input_grad,
                   PoolProcess pool_grad_process) {
     const int batch_size = static_cast<int>(input.dims()[0]);
@@ -522,8 +631,6 @@ class LPPool2dGradFunctor<CPUContext, PoolProcess, T> {
     const int ksize_width = ksize[1];
     const int stride_height = strides[0];
     const int stride_width = strides[1];
-    const int padding_height = paddings[0];
-    const int padding_width = paddings[1];
     const int input_stride = input_height * input_width;
     const int output_stride = output_height * output_width;
 
@@ -538,11 +645,10 @@ class LPPool2dGradFunctor<CPUContext, PoolProcess, T> {
       for (int c = 0; c < output_channels; ++c) {
         for (int ph = 0; ph < output_height; ++ph) {
           for (int pw = 0; pw < output_width; ++pw) {
-            hstart = ph * stride_height - padding_height;
-            wstart = pw * stride_width - padding_width;
-            hend =
-                std::min(hstart + ksize_height, input_height + padding_height);
-            wend = std::min(wstart + ksize_width, input_width + padding_width);
+            hstart = ph * stride_height;
+            wstart = pw * stride_width;
+            hend = std::min(hstart + ksize_height, input_height);
+            wend = std::min(wstart + ksize_width, input_width);
 
             wstart = std::max(wstart, 0);
             hstart = std::max(hstart, 0);
@@ -756,13 +862,13 @@ template class MaxPool2dGradFunctor<CPUContext, double>;
 
 template class Pool2dFunctor<CPUContext, MaxPool<float>, float>;
 template class Pool2dFunctor<CPUContext, AvgPool<float>, float>;
-template class Pool2dFunctor<CPUContext, LPPool<float>, float>;
+template class LPPool2dFunctor<CPUContext, LPPool<float>, float>;
 template class Pool2dGradFunctor<CPUContext, MaxPoolGrad<float>, float>;
 template class Pool2dGradFunctor<CPUContext, AvgPoolGrad<float>, float>;
 template class LPPool2dGradFunctor<CPUContext, LPPoolGrad<float>, float>;
 template class Pool2dFunctor<CPUContext, MaxPool<double>, double>;
 template class Pool2dFunctor<CPUContext, AvgPool<double>, double>;
-template class Pool2dFunctor<CPUContext, LPPool<double>, double>;
+template class LPPool2dFunctor<CPUContext, LPPool<double>, double>;
 template class Pool2dGradFunctor<CPUContext, MaxPoolGrad<double>, double>;
 template class Pool2dGradFunctor<CPUContext, AvgPoolGrad<double>, double>;
 template class LPPool2dGradFunctor<CPUContext, LPPoolGrad<double>, double>;

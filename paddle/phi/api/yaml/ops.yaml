@@ -1607,14 +1607,14 @@
   backward : logsigmoid_grad
 
 - op : lp_pool2d
-  args : (Tensor x, float norm_type, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, str data_format, str pooling_type, str padding_algorithm)
+  args : (Tensor x, float norm_type, IntArray kernel_size, int[] strides, bool ceil_mode, str data_format)
   output : Tensor(out)
   infer_meta :
     func : LPPool2DInferMeta
-    param : [x, kernel_size, strides, paddings, ceil_mode, data_format, pooling_type, padding_algorithm]
+    param : [x, kernel_size, strides, ceil_mode, data_format]
   kernel :
     func : lp_pool2d
-    param : [x, norm_type, kernel_size, strides, paddings, ceil_mode, data_format, pooling_type, padding_algorithm]
+    param : [x, norm_type, kernel_size, strides, ceil_mode, data_format]
   backward : lp_pool2d_grad
 
 - op : lstsq

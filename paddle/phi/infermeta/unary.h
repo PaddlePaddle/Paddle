@@ -311,6 +311,22 @@ void LogsumexpInferMeta(const MetaTensor& input,
                         bool reduce_all,
                         MetaTensor* out);
 
+void LPPoolInferMeta(const MetaTensor& x,
+                     const std::vector<int>& kernel_size,
+                     const std::vector<int>& strides,
+                     bool ceil_mode,
+                     const std::string& data_format,
+                     MetaTensor* out,
+                     MetaConfig config = MetaConfig());
+
+void LPPool2DInferMeta(const MetaTensor& x,
+                       const IntArray& kernel_size,
+                       const std::vector<int>& strides,
+                       bool ceil_mode,
+                       const std::string& data_format,
+                       MetaTensor* out,
+                       MetaConfig config = MetaConfig());
+
 void LUInferMeta(const MetaTensor& x,
                  bool pivot,
                  MetaTensor* out,

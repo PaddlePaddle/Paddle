@@ -87,7 +87,7 @@ class LPPool {
     intermediate_res += static_cast<MT>(powf(fabsf(x), norm_type));
   }
 
-  DEVICE inline void finalize(const T& pool_field UNUSED, T* y) {
+  DEVICE inline void finalize(T* y) {
     *y = static_cast<T>(powf(intermediate_res, 1.0 / norm_type));
   }
 };
@@ -227,6 +227,18 @@ class Pool2dGradFunctor {
 };
 
 template <typename Context, typename PoolProcess, typename T>
+class LPPool2dFunctor {
+ public:
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::string data_format,
+                  DenseTensor* output,
+                  PoolProcess pool_compute);
+};
+
+template <typename Context, typename PoolProcess, typename T>
 class LPPool2dGradFunctor {
  public:
   void operator()(const Context& context,
@@ -236,7 +248,6 @@ class LPPool2dGradFunctor {
                   float norm_type,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
                   DenseTensor* input_grad,
                   PoolProcess pool_compute);
 };
