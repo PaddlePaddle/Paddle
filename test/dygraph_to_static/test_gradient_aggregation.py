@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pir_exe_and_pir_api,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -41,7 +41,7 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class TestGradientAggregationInDy2Static(Dy2StTestBase):
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_to_static(self):
         def simplenet_grad(inp, to_static=False):
             net = SimpleNet()
