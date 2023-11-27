@@ -59,6 +59,12 @@ class FusedWeightOnlyLinearPattern
         return false;
       }
 
+      int sm_vesion = getSMVersion();
+      if (sm_vesion != 70 || sm_vesion != 80 || sm_vesion != 86 ||
+          sm_vesion != 75) {
+        return false;
+      }
+
       return true;
     });
     //
