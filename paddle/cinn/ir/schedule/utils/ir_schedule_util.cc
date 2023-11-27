@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2022 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/macros.h"
-#include "paddle/cinn/ir/dy_schedule/ir_schedule.h"
+#pragma once
+
+#include "paddle/cinn/ir/schedule/utils/ir_schedule_util.h"
+
+#include <map>
+#include <random>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace cinn {
-namespace ir {
-
-Expr DyScheduleImpl::Rfactor(const Expr& rf_loop, int rf_axis) {
-  CINN_NOT_IMPLEMENTED;
-}
-
-Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
-  CINN_NOT_IMPLEMENTED;
-}
-
-}  // namespace ir
+namespace ir {}  // namespace ir
 }  // namespace cinn
