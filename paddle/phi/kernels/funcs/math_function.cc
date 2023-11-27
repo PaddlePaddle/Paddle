@@ -195,25 +195,26 @@ struct TensorSetConstantXPU {
     auto* ctx = phi::DeviceContextPool::Instance().Get(place_);
     auto data = ctx->Alloc<T>(tensor_);
     const T* num = reinterpret_cast<const T*>(value_);
+    const T num_value = static_cast<T>(*num);
     int numel = tensor_->numel();
-    if (((std::is_same<T, float>::(*num)) ||
-         (std::is_same<T, phi::dtype::float16>::(*num))) &&
+    if (((std::is_same<T, float>::num_value) ||
+         (std::is_same<T, phi::dtype::float16>::num_value)) &&
         (place_ == phi::XPUPlace())) {
       using XPUType = typename XPUTypeTrait<T>::Type;
       VLOG(0) << "TensorSetConstantXPU use xpu kernel, T type is float:"
-              << std::is_same<T, float>::(*num)
-              << " | float16:" << std::is_same<T, phi::dtype::float16>::(*num)
-              << "  XPUType:" << XPUType;
+              << std::is_same<T, float>::num_value << " | float16:"
+              << std::is_same<T, phi::dtype::float16>::num_value;
       auto* dev_ctx = static_cast<phi::XPUContext*>(ctx);
       int r = xpu::constant<XPUType>(dev_ctx->x_context(),
                                      reinterpret_cast<XPUType*>(data),
                                      numel,
-                                     static_cast<XPUType>(*num));
+                                     static_cast<XPUType>(num_value));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
       dev_ctx->Wait();
     } else {
       std::unique_ptr<T[]> data_cpu(new T[numel]);
-      std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(*num));
+      std::fill(
+          data_cpu.get(), data_cpu.get() + numel, static_cast<T>(num_value));
       memory_utils::Copy(place_,
                          data,
                          phi::CPUPlace(),
@@ -313,23 +314,21 @@ struct TensorSetConstantWithPlace {
 void set_constant(const phi::DeviceContext& context,
                   phi::DenseTensor* tensor,
                   const void* value) {
-  auto place = context.GetPlace();
-  if (place.GetType() == phi::AllocationType::GPU) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    TensorSetConstantWithPlace func(context, tensor, value);
-    phi::VisitPlace(tensor->place(), func);
-#endif
-  } else if (place.GetType() == phi::AllocationType::XPU) {
-#ifdef PADDLE_WITH_XPU
-    VLOG(0) << "XPU set_constant with const void value";
-    phi::VisitDataType(tensor->dtype(),
-                       TensorSetConstantXPU(context, tensor, value, place));
-#endif
-  } else {
-    VLOG(0) << "Ex set_constant with const void value";
-    phi::VisitDataType(tensor->dtype(),
-                       TensorSetConstantEx(tensor, value, place));
+  TensorSetConstantWithPlace func(context, tensor, value);
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (context.GetPlace().GetType() == phi::AllocationType::CUSTOM) {
+    func(phi::CustomPlace());
+    return;
   }
+#endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // tensor->place().apply_visitor(func);
+  phi::VisitPlace(tensor->place(), func);
+#elif defined(PADDLE_WITH_XPU)
+  func(phi::XPUPlace());
+#else
+  func(phi::CPUPlace());
+#endif
 }
 
 template struct ColwiseSum<phi::CPUContext, float>;
