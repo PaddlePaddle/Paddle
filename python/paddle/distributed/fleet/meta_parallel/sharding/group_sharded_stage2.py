@@ -240,7 +240,6 @@ class GroupShardedStage2(nn.Layer):
         """
 
         need_dp_scale = self._dp_group is not None and self._dp_group.nranks > 1
-        # print(f"self.scale_in_opt = {self.scale_in_opt}")
         if self.scale_in_opt:
             scale_factor = self._world_size_scaling
         else:
@@ -266,16 +265,11 @@ class GroupShardedStage2(nn.Layer):
                     if self.use_main_grad and param.main_grad is not None:
                         param.main_grad.scale_(scale=scale_factor)
                     elif param.grad is not None:
-                        assert param.grad is not None
-                        assert param.grad._is_initialized()
                         param.grad.scale_(scale=scale_factor)
 
         # Scale grads of master params with offload strategy
-        if need_dp_scale:
-            if self._offload:
-                self._sharding_optimizers[0]._offload_scale_grad(
-                    dp_scale_factor
-                )
+        if self._offload:
+            self._sharding_optimizers[0]._offload_scale_grad(dp_scale_factor)
 
     def _init_internal_storage(self, needs_fresh):
         """
