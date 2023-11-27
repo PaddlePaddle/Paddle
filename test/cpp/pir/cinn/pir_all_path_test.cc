@@ -967,7 +967,7 @@ std::shared_ptr<::pir::Program> BuildSplitSectionProgram() {
   return program;
 }
 
-TEST(GroupOp, TestBuildSplit) {
+TEST(GroupOp, TestBuildSplitSection) {
   // Step 1: Construct pir::Program
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   std::shared_ptr<::pir::Program> program = BuildSplitSectionProgram();

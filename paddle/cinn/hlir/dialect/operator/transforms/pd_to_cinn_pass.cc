@@ -293,7 +293,6 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
           op->result(0).first_use().owner()->dyn_cast<::pir::SplitOp>();
 
       for (size_t i = 0; i < build_split->num_results(); ++i) {
-        std::cerr << "i " << i << std::endl;
         rewriter.ReplaceAllUsesWith(build_split->result(i),
                                     cinn_split.result(i));
       }
