@@ -65,6 +65,7 @@ from .utils import (
     input_specs_compatible,
     is_paddle_func,
     make_hashable,
+    prim_is_enabled,
     prim_or_cinn_is_enabled,
     type_name,
     unwrap,
@@ -346,14 +347,8 @@ class StaticFunction:
         else:
             self._dygraph_function = function
             self._class_instance = None
-
-        if (
-            input_spec is not None
-            and prim_or_cinn_is_enabled(
-                kwargs.get("build_strategy", None), kwargs.get("backend", None)
-            )
-            and not use_pir_api()
-        ):
+        # TODO(chenzhuo): Remove this after lowering prim into C++
+        if input_spec is not None and prim_is_enabled():
             from paddle.static import InputSpec
 
             for spec in flatten(input_spec):
