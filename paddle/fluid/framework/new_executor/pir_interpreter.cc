@@ -84,12 +84,6 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
       enable_job_schedule_profiler_(false) {
   VLOG(4) << "PirInterpreter(): " << this << " on " << place_;
 
-  static_build_ = FLAGS_new_executor_static_build &&
-                  !FLAGS_new_executor_use_cuda_graph &&
-                  !execution_config.used_for_control_flow_op;
-  //    &&interpreter::BlockCanBeStaticBuilt(block);
-  static_build_ = true;
-
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
@@ -101,9 +95,10 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
   if (execution_config_.create_local_scope) {
     auto local_scope = &scope_->NewScope();
     local_scope_ = local_scope;
-    VLOG(6) << "new ir interpretercore scope: " << scope_ << "\t"
+    VLOG(6) << "pir interpretercore scope: " << scope_ << "\t"
             << "; local scope: " << local_scope_;
   }
+
   // TODO(zhangbo): delete var_scope
   var_scope_.SetLocalScope(local_scope_);
 
@@ -147,15 +142,10 @@ PirInterpreter::PirInterpreter(
       var_scope_(scope),
       scope_(scope),
       ir_block_(ir_block),
+      value_exe_info_(value_exe_info),
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
   VLOG(4) << "PirInterpreter(): " << this << " on " << place_;
-
-  static_build_ = FLAGS_new_executor_static_build &&
-                  !FLAGS_new_executor_use_cuda_graph &&
-                  !execution_config.used_for_control_flow_op;
-  //    &&interpreter::BlockCanBeStaticBuilt(block);
-  static_build_ = true;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
@@ -168,7 +158,7 @@ PirInterpreter::PirInterpreter(
   if (execution_config_.create_local_scope) {
     auto local_scope = &scope_->NewScope();
     local_scope_ = local_scope;
-    VLOG(6) << "new ir interpretercore scope: " << scope_ << "\t"
+    VLOG(6) << "pir interpretercore scope: " << scope_ << "\t"
             << "; local scope: " << local_scope_;
   }
   // TODO(zhangbo): delete var_scope
@@ -190,8 +180,6 @@ PirInterpreter::PirInterpreter(
 
   PrepareForCUDAGraphCapture();
 
-  value_exe_info_ = value_exe_info;
-
   std::stringstream ss;
   ss << this
      << std::chrono::high_resolution_clock::now().time_since_epoch().count();
@@ -209,11 +197,6 @@ PirInterpreter::~PirInterpreter() {
   // this is needed to have mkl-dnn unit tests working
   platform::ClearMKLDNNCache(place_, this);
 #endif
-}
-
-void PirInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "SetCopyProgram is not implemented in PirInterpreter."));
 }
 
 void PirInterpreter::SetSkipGcVars(const std::set<std::string>& skip_gc_vars) {
@@ -641,12 +624,8 @@ void PirInterpreter::AnalyseExecuteOrderForTrace(
   }
 }
 
-/// ======================== ///
-///        For new ir        ///
-/// ======================== ///
-
 void PirInterpreter::BuildInstruction() {
-  VLOG(6) << "Build Instructions for new ir ... ";
+  VLOG(6) << "Build Instructions for pir ... ";
   vec_instruction_base_.clear();
   size_t op_idx = 0;
   for (auto& op : *ir_block_) {
@@ -1140,16 +1119,17 @@ paddle::framework::FetchList PirInterpreter::Run(
   FeedInput();
 
   if (!is_build_) {
-    LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
-    // Build
-    VLOG(4) << "Done BuildScope";
+    LOG_FIRST_N(INFO, 1) << "New Executor is Running ...";
     VLOG(4) << DebugValueInfo();
 
     SolvePersisableVarNames();
 
-    VLOG(4) << "Parameter value include: ";
-    for (auto parameter : parameter_var_names_) {
-      VLOG(4) << "Parameter value: " << parameter;
+    if (VLOG_IS_ON(6)) {
+      std::stringstream ss;
+      for (auto parameter : parameter_var_names_) {
+        ss << parameter << ", ";
+      }
+      VLOG(6) << "Parameter value include: " << ss.str();
     }
 
     BuildInstruction();
@@ -1163,12 +1143,11 @@ paddle::framework::FetchList PirInterpreter::Run(
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
-      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
-                              "with trace version.";
+      LOG_FIRST_N(INFO, 1) << "pir interpreter is running by trace mode ...";
       TraceRunImpl();
     } else {
-      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
-                              "with multi thread version.";
+      LOG_FIRST_N(INFO, 1)
+          << "pir interpreter is running by multi-thread mode ...";
       MultiThreadRunImpl();
     }
 
@@ -1217,16 +1196,17 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
 #endif
 
   if (!is_build_) {
-    LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
-    // Build
-    VLOG(4) << "Done BuildScope";
+    LOG_FIRST_N(INFO, 1) << "New Executor is Running ...";
     VLOG(4) << DebugValueInfo();
 
     SolvePersisableVarNames();
 
-    VLOG(4) << "Parameter value include: ";
-    for (auto parameter : parameter_var_names_) {
-      VLOG(4) << "Parameter value: " << parameter;
+    if (VLOG_IS_ON(6)) {
+      std::stringstream ss;
+      for (auto parameter : parameter_var_names_) {
+        ss << parameter << ", ";
+      }
+      VLOG(6) << "Parameter value include: " << ss.str();
     }
 
     BuildInstruction();
@@ -1240,12 +1220,11 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
-      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
-                              "with trace version.";
+      LOG_FIRST_N(INFO, 1) << "pir interpreter is running by trace mode ...";
       TraceRunImpl();
     } else {
-      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
-                              "with multi thread version.";
+      LOG_FIRST_N(INFO, 1)
+          << "pir interpreter is running by multi-thread mode ...";
       MultiThreadRunImpl();
     }
 
@@ -1641,13 +1620,6 @@ void PirInterpreter::PreAnalysis() {
   VLOG(4) << "Done UpdateNcclOpNum";
 }
 
-void PirInterpreter::Build(
-    const std::vector<std::string>& feed_names,
-    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "Build is not implemented in PirInterpreter."));
-}
-
 ::pir::Value PirInterpreter::GetValueByName(const std::string& var_name) {
   for (auto kv : value_exe_info_->GetValue2VarName()) {
     if (kv.second == var_name) {
@@ -1679,6 +1651,23 @@ void PirInterpreter::SolvePersisableVarNames() {
       }
     }
   }
+}
+
+void PirInterpreter::Build(
+    const std::vector<std::string>& feed_names,
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Build is not implemented in PirInterpreter."));
+}
+
+std::tuple<double, double> PirInterpreter::InterpreterRunTime() {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "PirInterpreter::InterpreterRunTime is not implemented."));
+}
+
+void PirInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "SetCopyProgram is not implemented in PirInterpreter."));
 }
 
 }  // namespace framework

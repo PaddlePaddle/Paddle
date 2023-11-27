@@ -72,7 +72,9 @@ namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
+using paddle::dialect::IfOp;
 using paddle::dialect::SelectedRowsType;
+
 using pir::Attribute;
 using pir::Block;
 using pir::Operation;
@@ -246,7 +248,7 @@ void BindProgram(py::module *m) {
 }
 
 void RefreshOpStopgradients(Operation *op) {
-  if (op->num_operands() == 0 || op->isa<pir::GetParameterOp>() ||
+  if (op->num_operands() == 0 || op->isa<pir::ParameterOp>() ||
       op->isa<paddle::dialect::UniformOp>()) {
     return;
   } else if (op->isa<pir::SliceOp>()) {
@@ -266,7 +268,11 @@ void BindBlock(py::module *m) {
         The constructor of Block should not be invoked directly. You can
         use `Program.block()` to get a block.
   )DOC");
-  block.def("front", &Block::front, return_value_policy::reference)
+  block
+      .def(
+          "front",
+          [](Block &self) { return &self.front(); },
+          return_value_policy::reference)
       .def_property_readonly(
           "program",
           [](Block &self) { return self.GetParentOp()->GetParentProgram(); },
@@ -287,6 +293,7 @@ void BindBlock(py::module *m) {
            [](Block &self, py::object, py::object, py::object) {
              ApiBuilder::Instance().PopInsertionPoint();
            })
+      .def("__len__", [](Block &self) { return self.size(); })
       .def(
           "remove_op",
           [](Block &self, Operation *op) {
@@ -369,6 +376,10 @@ void BindOperation(py::module *m) {
       .def("operand_source", &Operation::operand_source)
       .def("operands", &Operation::operands)
       .def("results", &Operation::results)
+      .def(
+          "blocks",
+          [](Operation &self) { return &self.blocks(); },
+          return_value_policy::reference)
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
@@ -444,7 +455,19 @@ void BindOperation(py::module *m) {
       .def("replace_all_uses_with",
            [](Operation &self, const std::vector<OpResult> &op_results) {
              self.ReplaceAllUsesWith(op_results);
-           });
+           })
+      .def("as_if_op",
+           [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); });
+  py::class_<Operation::BlockContainer> block_container(
+      *m, "Operation_BlockContainer", R"DOC(
+    The Operation_BlockContainer only use to walk all blocks in the operation.
+     )DOC");
+  block_container.def(
+      "__iter__",
+      [](Operation::BlockContainer &self) {
+        return py::make_iterator(self.begin(), self.end());
+      },
+      py::keep_alive<0, 1>());
 }
 
 py::str Value2String(const Value &self) {
@@ -733,7 +756,7 @@ void BindOpResult(py::module *m) {
       .def_property_readonly(
           "name",
           [](OpResult &self) {
-            if (self.owner()->isa<::pir::GetParameterOp>()) {
+            if (self.owner()->isa<::pir::ParameterOp>()) {
               auto param_name =
                   self.owner()
                       ->attribute<pir::StrAttribute>("parameter_name")

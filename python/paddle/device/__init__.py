@@ -23,6 +23,7 @@ from paddle.base.framework import (
     is_compiled_with_cinn,
     is_compiled_with_cuda,
     is_compiled_with_rocm,
+    is_compiled_with_distribute,
 )
 from . import (  # noqa: F401
     cuda,
@@ -40,6 +41,7 @@ __all__ = [
     'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
+    'is_compiled_with_distribute',
     'is_compiled_with_custom_device',
     'get_all_device_type',
     'get_all_custom_device_type',

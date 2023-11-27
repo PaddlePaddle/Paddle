@@ -47,16 +47,24 @@ if version_detail < (3, 7):
         f"you are using Python {python_version}"
     )
 elif env_version is None:
-    print(f"export PY_VERSION = { python_version }")
+    print(f"Export PY_VERSION = { python_version }")
     os.environ["PY_VERSION"] = python_version
 
 elif env_version != version:
     warnings.warn(
         f"You set PY_VERSION={env_version}, but "
         f"your current python environment is {version} "
-        f"we will use your current python version to execute."
+        f"we will attempt to use the python version you set to execute."
     )
-    os.environ["PY_VERSION"] = python_version
+    cmd = 'which python' + env_version
+    res = subprocess.run(cmd, shell = True, stdout=subprocess.PIPE)
+    if res.returncode == 0:
+        os.environ["PYTHON_EXECUTABLE"] = res
+    else:
+        raise RuntimeError(
+            "We can't find the version you set in your machine"
+        )
+        
 
 # check cmake
 CMAKE = shutil.which('cmake3') or shutil.which('cmake')
