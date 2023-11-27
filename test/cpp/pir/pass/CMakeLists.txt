@@ -1,1 +1,1 @@
-paddle_test(pass_manager_test SRCS pass_manager_test.cc DEPS pir op_dialect_vjp)
+cc_test_old(pass_manager_test SRCS pass_manager_test.cc DEPS pir op_dialect_vjp)
