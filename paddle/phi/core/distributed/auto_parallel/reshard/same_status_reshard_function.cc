@@ -132,7 +132,5 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   SetDistProps(out, in.dims(), out_dist_attr);
 }
 
-REGISTER_RESHARD_FUNC(SameStatusReshardFunction);
-
 }  // namespace distributed
 }  // namespace phi

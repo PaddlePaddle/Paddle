@@ -38,18 +38,21 @@ class DeadCodeEliminationPattern : public pir::RewritePattern {
 
   bool Match(pir::Operation* op) const override {
     if (op->HasTrait<pir::SideEffectTrait>()) return false;
+
+    if (op->isa<paddle::dialect::DataOp>()) {
+      return false;
+    }
     return op->use_empty();
   }
 
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
-    if (op->isa<pir::GetParameterOp>()) {
+    if (op->isa<pir::ParameterOp>()) {
       // Delete parameter from program.
-      pir::GetParameterOp get_parameter_op =
-          op->dyn_cast<pir::GetParameterOp>();
-      get_parameter_op->GetParentProgram()->parameters().erase(
-          get_parameter_op->attributes()
-              .at(get_parameter_op.attributes_name[0])
+      pir::ParameterOp parameter_op = op->dyn_cast<pir::ParameterOp>();
+      parameter_op->GetParentProgram()->parameters().erase(
+          parameter_op->attributes()
+              .at(parameter_op.attributes_name[0])
               .dyn_cast<pir::StrAttribute>()
               .AsString());
     }

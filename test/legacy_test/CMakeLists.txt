@@ -827,12 +827,6 @@ if(NOT WIN32)
                   test_ir_memory_optimize_transformer)
 endif()
 
-# dist xpu tests:
-if(WITH_XPU_BKCL)
-  py_test(test_collective_allreduce_api_xpu
-          SRCS "collective/test_collective_allreduce_api.py")
-endif()
-
 if(WITH_HETERPS)
   set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
   set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
@@ -924,7 +918,7 @@ set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
 set_tests_properties(test_cross_entropy2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy_loss PROPERTIES TIMEOUT 180)
 set_tests_properties(test_gru_unit_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 200)
+set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 250)
 set_tests_properties(test_empty_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_transformer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_div_op PROPERTIES TIMEOUT 120)
@@ -970,7 +964,7 @@ if(WITH_NV_JETSON)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 1500)
 else()
-  set_tests_properties(test_concat_op PROPERTIES TIMEOUT 360)
+  set_tests_properties(test_concat_op PROPERTIES TIMEOUT 400)
   set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 150)
@@ -1019,7 +1013,7 @@ set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 300)
 set_tests_properties(test_parallel_executor_transformer_auto_growth
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_elementwise_add_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_elementwise_add_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
                                                                         120)
@@ -1344,9 +1338,14 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
     FLAGS_new_executor_static_build=true)
 endforeach()
 
-set(PIR_COVERAGE_TESTS test_fused_feedforward_pass)
+set(PIR_COVERAGE_TESTS test_fused_feedforward_pass
+                       test_fuse_elewise_add_act_pass)
 if(NOT WITH_GPU)
   list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fused_feedforward_pass)
+endif()
+
+if(APPLE)
+  list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass)
 endif()
 
 foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})

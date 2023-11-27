@@ -47,13 +47,9 @@ class TestPyLayerForSemiAutoParallel(unittest.TestCase):
         x2.stop_gradient = False
         x3.stop_gradient = False
 
-        x1_dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
-        x2_dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
-        x3_dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
-
-        dist_x1 = dist.shard_tensor(x1_np, dist_attr=x1_dist_attr)
-        dist_x2 = dist.shard_tensor(x2_np, dist_attr=x2_dist_attr)
-        dist_x3 = dist.shard_tensor(x3_np, dist_attr=x3_dist_attr)
+        dist_x1 = dist.shard_tensor(x1_np, mesh, [dist.Replicate()])
+        dist_x2 = dist.shard_tensor(x2_np, mesh, [dist.Replicate()])
+        dist_x3 = dist.shard_tensor(x3_np, mesh, [dist.Replicate()])
         dist_x1.stop_gradient = False
         dist_x2.stop_gradient = False
         dist_x3.stop_gradient = False

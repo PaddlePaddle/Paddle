@@ -293,7 +293,7 @@ class TestConvertPaddleAPI(Dy2StTestBase):
         bn = paddle.nn.SyncBatchNorm(2)
         paddle.jit.to_static(bn)
         self.assertNotIn("_jst.IfElse", bn.forward.code)
-        self.assertIn("if in_dynamic_mode()", bn.forward.code)
+        self.assertIn("if in_dynamic_or_pir_mode()", bn.forward.code)
 
     @test_ast_only
     @test_legacy_and_pir_api
