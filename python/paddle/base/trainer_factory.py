@@ -61,14 +61,12 @@ class TrainerFactory:
         device_worker = None
         if not opt_info:
             # default is MultiTrainer + Hogwild
-            print("not opt_info, use default trainer")
             trainer = MultiTrainer()
             device_worker = Hogwild()
             trainer._set_device_worker(device_worker)
         else:
             trainer_class = opt_info.get("trainer", "MultiTrainer")
             device_worker_class = opt_info.get("device_worker", "Hogwild")
-            print("have opt_info!!!, trainer_class:", trainer_class)
             trainer = globals()[trainer_class]()
             device_worker = globals()[device_worker_class]()
 

@@ -185,7 +185,7 @@ struct TensorSetConstantXPU {
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
       dev_ctx->Wait();
     } else {
-      VLOG(0) << "TensorSetConstantXPU use xpu normal kernel, T type is " << T;
+      VLOG(0) << "TensorSetConstantXPU use xpu normal kernel";
       std::unique_ptr<T[]> data_cpu(new T[numel]);
       std::fill(
           data_cpu.get(), data_cpu.get() + numel, static_cast<T>(num_value));
@@ -312,6 +312,13 @@ void set_constant(const phi::DeviceContext& context,
   VLOG(0) << "set_constant use cpu func";
   func(phi::CPUPlace());
 #endif
+}
+
+void set_constant(const phi::DeviceContext& context,
+                  phi::DenseTensor* tensor,
+                  float value) {
+  VLOG(0) << "set_constant with T value:" << value;
+  set_constant(context, tensor, reinterpret_cast<const void*>(&value));
 }
 
 template struct ColwiseSum<phi::CPUContext, float>;
