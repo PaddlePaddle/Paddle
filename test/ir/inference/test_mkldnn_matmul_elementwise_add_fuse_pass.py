@@ -83,6 +83,7 @@ class TestMatmulElementwiseAddMkldnnFusePass(PassAutoScanTest):
             quant=False, passes=['matmul_elementwise_add_mkldnn_fuse_pass']
         )
 
+
 class TestMatmulElementwiseAddMkldnnFuse1CHWPass(PassAutoScanTest):
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
