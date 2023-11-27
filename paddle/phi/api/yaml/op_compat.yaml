@@ -325,12 +325,6 @@
     variance : Variance
     scale : Scale
     bias : Bias
-    out_mean : OutMean
-    out_variance : OutVariance
-    grad_x_grad : DDX
-    grad_scale_grad : DDScale
-    grad_bias_grad : DDBias
-    grad_out : DY
   outputs :
     out : Y
     mean_out: MeanOut
