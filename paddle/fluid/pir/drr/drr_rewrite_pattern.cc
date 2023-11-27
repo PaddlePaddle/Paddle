@@ -240,16 +240,24 @@ bool DrrRewritePattern::MatchFromOutputToInput(
     ir_q.pop();
     if (drr_node->name() != ir_node->name()) {
       matched = false;
+      VLOG(8) << "Match failed: drr_node(" << drr_node->name()
+              << ") != pir_node(" << ir_node->name() << ").";
       break;
     }
     const auto& drr_input_tensors = drr_node->inputs();
     auto ir_input_value_size = ir_node->num_operands();
     if (drr_input_tensors.size() != ir_input_value_size) {
       matched = false;
+      VLOG(8) << drr_node->name() << " Match failed: drr input tensors("
+              << drr_input_tensors.size() << ") != pir input tensors("
+              << ir_input_value_size << ").";
       break;
     }
     if (drr_node->outputs().size() != ir_node->num_results()) {
       matched = false;
+      VLOG(8) << drr_node->name() << " Match failed: drr output tensors("
+              << drr_node->outputs().size() << ") != pir output tensors("
+              << ir_node->num_results() << ").";
       break;
     }
     source_pattern_match_ctx->BindIrOperation(
@@ -267,6 +275,10 @@ bool DrrRewritePattern::MatchFromOutputToInput(
           ir_node->operand(i).source().dyn_cast<pir::OpResult>().owner();
       if (drr_input_tensors[i]->consumers().size() !=
           ir_node->operand(i).source().use_count()) {
+        VLOG(8) << drr_node->name() << " Match failed: consumers of drr intput["
+                << i << "] { " << drr_node->outputs().size()
+                << " } != consumers of pir intput[" << i << "] { "
+                << ir_node->operand(i).source().use_count() << " }.";
         matched = false;
         break;
       }
@@ -282,6 +294,8 @@ bool DrrRewritePattern::MatchFromOutputToInput(
         drr_visited.insert(drr_producer_op);
         ir_visited.insert(ir_producer_op);
       } else {
+        VLOG(8) << "Match failed: status of visiting for" << drr_node->name()
+                << " is different.";
         matched = false;
         break;
       }
@@ -311,7 +325,10 @@ bool DrrRewritePattern::MatchFromOutputToInput(
   MatchContext match_context{source_pattern_match_ctx};
   for (const auto& constraint : constraints_) {
     matched = constraint(match_context);
-    if (!matched) break;
+    if (!matched) {
+      VLOG(6) << "Match failed: constraint is not satisfied.";
+      break;
+    }
   }
 
   return matched;
@@ -454,83 +471,32 @@ void DrrRewritePattern::DeleteSourcePatternOp(
     const ResultPatternGraph& result_pattern_graph,
     const MatchContextImpl& src_match_ctx,
     pir::PatternRewriter& rewriter) const {  // NOLINT
-  std::vector<const OpCall*> topo_order_ops;
+
+  std::queue<Operation*> delete_ops_que;
+  std::unordered_set<Operation*> delete_ops_set;
   GraphTopo graph_topo_visit(&source_pattern_graph);
-  graph_topo_visit.WalkGraphNodesTopoOrder(
-      [&topo_order_ops](const OpCall& op_call) {
-        topo_order_ops.push_back(&op_call);
-      });
+  graph_topo_visit.WalkGraphNodesTopoOrder([&](const OpCall& op_call) {
+    Operation* op = src_match_ctx.Operation(&op_call).get();
+    if (op->use_empty()) {
+      delete_ops_que.push(op);
+      delete_ops_set.insert(op);
+    }
+  });
 
-  // Filter the operations which are replaced by result pattern
-  // 1. Filter operations by forward walk
-  std::unordered_set<std::string> forward_visited_tensor_set(
-      result_pattern_graph.input_tensors());
-  std::unordered_set<const OpCall*> forward_deleted_ops;
-  std::for_each(topo_order_ops.begin(),
-                topo_order_ops.end(),
-                [&forward_deleted_ops,
-                 &forward_visited_tensor_set](const OpCall* op_call) {
-                  if (op_call->inputs().empty()) {
-                    forward_deleted_ops.insert(op_call);
-                    for (const auto* output : op_call->outputs()) {
-                      forward_visited_tensor_set.insert(output->name());
-                    }
-                  }
-                  for (const auto* input : op_call->inputs()) {
-                    if (forward_visited_tensor_set.count(input->name())) {
-                      forward_deleted_ops.insert(op_call);
-                      for (const auto* output : op_call->outputs()) {
-                        forward_visited_tensor_set.insert(output->name());
-                      }
-                      break;
-                    }
-                  }
-                });
-  // 2. Filter operations by backward walk and merge the forward result
-  std::unordered_set<std::string> backward_visited_tensor_set(
-      result_pattern_graph.output_tensors());
-  std::vector<const OpCall*> deleted_ops;
-  std::unordered_set<const OpCall*> deleted_ops_set;
-  std::for_each(topo_order_ops.rbegin(),
-                topo_order_ops.rend(),
-                [&deleted_ops,
-                 &deleted_ops_set,
-                 &backward_visited_tensor_set,
-                 &forward_deleted_ops](const OpCall* op_call) {
-                  bool all_comsumer_deleted = true;
-                  bool from_backward_visited_tensor = false;
-                  for (const auto* output : op_call->outputs()) {
-                    if (backward_visited_tensor_set.count(output->name())) {
-                      from_backward_visited_tensor = true;
-                    } else if (output->consumers().empty()) {
-                      continue;
-                    } else {
-                      all_comsumer_deleted = false;
-                    }
-                  }
-                  if (all_comsumer_deleted && from_backward_visited_tensor &&
-                      forward_deleted_ops.count(op_call)) {
-                    deleted_ops_set.insert(op_call);
-                    deleted_ops.push_back(op_call);
-                    for (const auto* input : op_call->inputs()) {
-                      backward_visited_tensor_set.insert(input->name());
-                    }
-                  }
-                });
-
-  // Delete Operation with topo order from output tensors.
-  for (const auto* op_call : deleted_ops) {
-    PADDLE_ENFORCE_NE(src_match_ctx.operation_map().count(op_call),
-                      0,
-                      phi::errors::NotFound(
-                          "Not found the OpCall."
-                          "Only Opcall [%s] that exist in match context can be "
-                          "deleted.",
-                          op_call->name()));
-    auto* op = src_match_ctx.operation_map().at(op_call)->get();
-    VLOG(6) << "Delete (" << op_call->name() << " @" << op_call << " :@" << op
-            << ") in source_pattern_graph ";
+  while (!delete_ops_que.empty()) {
+    Operation* op = delete_ops_que.front();
+    delete_ops_que.pop();
+    std::vector<Value> inputs = op->operands_source();
+    VLOG(5) << "Delete (" << op->name() << " @" << op
+            << ") in source_pattern_graph.";
     rewriter.EraseOp(op);
+    for (const auto& input : inputs) {
+      if (input && input.defining_op()->use_empty() &&
+          delete_ops_set.count(input.defining_op()) == 0) {
+        delete_ops_set.insert(input.defining_op());
+        delete_ops_que.push(input.defining_op());
+      }
+    }
   }
 }
 
