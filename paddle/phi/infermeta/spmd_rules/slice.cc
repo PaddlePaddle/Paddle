@@ -163,10 +163,6 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
   // Step2.2: infer input dims mapping from output dims mapping. the sliced
   // cannot be sharded, if it is sharded, set it to replicated.
   input_dims_mapping = GetDimsMappingForAxes(input_axes, axis_to_dim_map, true);
-  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
-    input_dims_mapping[axis] = -1;
-  }
   input_dist_attr.set_dims_mapping(input_dims_mapping);
 
   // step2.3 get new dist attribute for output. the sliced
@@ -256,13 +252,6 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
   // get einsum notation for input
   std::string align_axes = alphabet.substr(0, input_ndim);
   std::string input_axes = align_axes;
-
-  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
-    // the sliced axis cannot be sharded, set its notation
-    // with the special '1' to set its dim mapping to -1.
-    input_axes[axis] = '1';
-  }
 
   // get einsum notation for output
   std::string out_axes(input_axes);
