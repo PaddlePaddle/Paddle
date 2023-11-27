@@ -18,15 +18,6 @@
 
 namespace pir {
 
-namespace detail {
-void VerifySameOperandsShapeTrait(Operation *op);
-void VerifySameOperandsAndResultShapeTrait(Operation *op);
-void VerifySameOperandsElementTypeTrait(Operation *op);
-void VerifySameOperandsAndResultElementTypeTrait(Operation *op);
-void VerifySameOperandsAndResultTypeTrait(Operation *op);
-void VerifySameTypeOperandsTrait(Operation *op);
-}  // namespace detail
-
 ///
 /// \brief Provides verification for ops that are known to have the
 /// same operand shape.
@@ -35,9 +26,7 @@ class SameOperandsShapeTrait : public pir::OpTraitBase<SameOperandsShapeTrait> {
  public:
   explicit SameOperandsShapeTrait(pir::Operation *op)
       : pir::OpTraitBase<SameOperandsShapeTrait>(op) {}
-  static void Verify(Operation *op) {
-    return detail::VerifySameOperandsShapeTrait(op);
-  }
+  static void Verify(Operation *op);
 };
 
 ///
@@ -49,9 +38,7 @@ class SameOperandsAndResultShapeTrait
  public:
   explicit SameOperandsAndResultShapeTrait(pir::Operation *op)
       : pir::OpTraitBase<SameOperandsAndResultShapeTrait>(op) {}
-  static void Verify(Operation *op) {
-    return detail::VerifySameOperandsAndResultShapeTrait(op);
-  }
+  static void Verify(Operation *op);
 };
 
 ///
@@ -63,9 +50,7 @@ class SameOperandsElementTypeTrait
  public:
   explicit SameOperandsElementTypeTrait(pir::Operation *op)
       : pir::OpTraitBase<SameOperandsElementTypeTrait>(op) {}
-  static void Verify(Operation *op) {
-    return detail::VerifySameOperandsElementTypeTrait(op);
-  }
+  static void Verify(Operation *op);
 };
 
 ///
@@ -77,9 +62,7 @@ class SameOperandsAndResultElementTypeTrait
  public:
   explicit SameOperandsAndResultElementTypeTrait(pir::Operation *op)
       : pir::OpTraitBase<SameOperandsAndResultElementTypeTrait>(op) {}
-  static void Verify(Operation *op) {
-    return detail::VerifySameOperandsAndResultElementTypeTrait(op);
-  }
+  static void Verify(Operation *op);
 };
 
 ///
@@ -93,9 +76,7 @@ class SameOperandsAndResultTypeTrait
   explicit SameOperandsAndResultTypeTrait(pir::Operation *op)
       : pir::OpTraitBase<SameOperandsAndResultTypeTrait>(op) {}
 
-  static void Verify(Operation *op) {
-    return detail::VerifySameOperandsAndResultTypeTrait(op);
-  }
+  static void Verify(Operation *op);
 };
 
 ///
@@ -106,10 +87,33 @@ class SameTypeOperandsTrait : public pir::OpTraitBase<SameTypeOperandsTrait> {
  public:
   explicit SameTypeOperandsTrait(pir::Operation *op)
       : pir::OpTraitBase<SameTypeOperandsTrait>(op) {}
-  static void Verify(Operation *op) {
-    return detail::VerifySameTypeOperandsTrait(op);
-  }
+  static void Verify(Operation *op);
 };
+
+///
+/// \brief This trait provides return value APIs for ops that are known to have
+/// a single result returned by GetType().
+///
+class OneResultTrait : public OpTraitBase<OneResultTrait> {
+ public:
+  // Replace all uses of 'this' value with the new value, updating anything
+  // in the IR that uses 'this' to use the other value instead.
+  void ReplaceAllUsesWith(Value new_value) {
+    this->operation()->result(0).ReplaceAllUsesWith(new_value);
+  }
+
+  // Replace all uses of 'this' value with the result of 'op'.
+  void ReplaceAllUsesWith(Operation *op) {
+    this->operation()->ReplaceAllUsesWith(op->result(0));
+  }
+  static void Verify(Operation *op);
+};
+
+///
+/// \brief This trait marks the op can't be removed even if which has no output
+/// or the output isn't used.
+///
+class SideEffectTrait : public OpTraitBase<SideEffectTrait> {};
 
 }  // namespace pir
 
@@ -119,3 +123,5 @@ IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsElementTypeTrait)
 IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultElementTypeTrait)
 IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultTypeTrait)
 IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameTypeOperandsTrait)
+IR_DECLARE_EXPLICIT_TYPE_ID(pir::OneResultTrait)
+IR_DECLARE_EXPLICIT_TYPE_ID(pir::SideEffectTrait)

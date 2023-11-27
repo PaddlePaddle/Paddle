@@ -21,7 +21,7 @@ from paddle.base.core import has_custom_vjp
 paddle.enable_static()
 
 
-def get_gelu_program_new_ir():
+def get_gelu_program_pir():
     main_program, start_program = (
         paddle.static.Program(),
         paddle.static.Program(),
@@ -30,11 +30,11 @@ def get_gelu_program_new_ir():
         x = paddle.static.data('x', [2, 3, 3], dtype='float32')
         net = nn.GELU()
         out = net(x)
-    newir_program = pir.translate_to_new_ir(main_program.desc)
-    return newir_program
+    pir_program = pir.translate_to_pir(main_program.desc)
+    return pir_program
 
 
-def get_multiply_program_new_ir():
+def get_multiply_program_pir():
     main_program, start_program = (
         paddle.static.Program(),
         paddle.static.Program(),
@@ -43,20 +43,20 @@ def get_multiply_program_new_ir():
         x = paddle.static.data('x', [2, 3, 3], dtype='float32')
         y = paddle.static.data('y', [2, 3, 3], dtype='float32')
         out = paddle.multiply(x, y)
-    newir_program = pir.translate_to_new_ir(main_program.desc)
-    return newir_program
+    pir_program = pir.translate_to_pir(main_program.desc)
+    return pir_program
 
 
 class TestCustomVjpTrait(unittest.TestCase):
     def test_gelu_op_custom_vjp_trait(self):
-        newir_program = get_gelu_program_new_ir()
-        op = newir_program.global_block().ops[-1]
+        pir_program = get_gelu_program_pir()
+        op = pir_program.global_block().ops[-1]
         self.assertEqual(op.name(), "pd_op.gelu")
         self.assertEqual(has_custom_vjp(op), True)
 
     def test_multiply_op_custom_vjp_trait(self):
-        newir_program = get_multiply_program_new_ir()
-        op = newir_program.global_block().ops[-1]
+        pir_program = get_multiply_program_pir()
+        op = pir_program.global_block().ops[-1]
         self.assertEqual(op.name(), "pd_op.multiply")
         self.assertEqual(has_custom_vjp(op), False)
 

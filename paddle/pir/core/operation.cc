@@ -297,6 +297,21 @@ std::string Operation::name() const {
   auto p_name = info_.name();
   return p_name ? p_name : "";
 }
+
+void Operation::Erase() {
+  if (auto *parent = GetParent())
+    parent->erase(*this);
+  else
+    Destroy();
+}
+
+bool Operation::use_empty() {
+  auto res = results();
+  return std::all_of(res.begin(), res.end(), [](OpResult result) {
+    return result.use_empty();
+  });
+}
+
 void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
   IR_ENFORCE(num_results_ == values.size(),
              "the num of result should be the same.");
@@ -339,17 +354,12 @@ int32_t Operation::ComputeOpOperandOffset(uint32_t index) const {
                               sizeof(Operation));
 }
 
-#define COMPONENT_IMPL(component_lower, componnent_upper)                     \
-  componnent_upper##Impl *Operation::component_lower##_impl(uint32_t index) { \
-    int32_t offset = Compute##componnent_upper##Offset(index);                \
-    return reinterpret_cast<componnent_upper##Impl *>(                        \
-        reinterpret_cast<char *>(this) + offset);                             \
-  }                                                                           \
-  const componnent_upper##Impl *Operation::component_lower##_impl(            \
-      uint32_t index) const {                                                 \
-    int32_t offset = Compute##componnent_upper##Offset(index);                \
-    return reinterpret_cast<const componnent_upper##Impl *>(                  \
-        reinterpret_cast<const char *>(this) + offset);                       \
+#define COMPONENT_IMPL(component_lower, componnent_upper)                   \
+  componnent_upper##Impl *Operation::component_lower##_impl(uint32_t index) \
+      const {                                                               \
+    int32_t offset = Compute##componnent_upper##Offset(index);              \
+    return reinterpret_cast<componnent_upper##Impl *>(                      \
+        reinterpret_cast<char *>(const_cast<Operation *>(this)) + offset);  \
   }
 
 COMPONENT_IMPL(op_result, OpResult)

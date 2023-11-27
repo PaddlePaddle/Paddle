@@ -76,7 +76,7 @@ class ShapeConstraintIRAnalysis : public ShapeAnalysis {
   SymbolicDimMgr mgr_;
   // Map a ranked memref value to an array of symbolicDims, each represents one
   // dimension size of the memref value.
-  std::unordered_map<Value, std::vector<dialect::SymbolicDim>>
+  std::unordered_map<Value, std::vector<shape::SymbolicDimOp>>
       value_to_sym_dims_;
 };
 

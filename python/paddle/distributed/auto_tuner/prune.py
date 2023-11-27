@@ -85,10 +85,6 @@ def prune_by_mp(tuner_cfg, cur_cfg, history_cfgs=None):
         if mp_degree not in mp_degree_candidates:
             return True
 
-    # prune default candidates
-    if mp_degree > 8:
-        return True
-
     return False
 
 

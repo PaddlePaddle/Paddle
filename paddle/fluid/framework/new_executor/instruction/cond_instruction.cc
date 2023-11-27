@@ -16,8 +16,8 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
-#include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
@@ -93,13 +93,12 @@ CondInstruction::CondInstruction(size_t id,
   VLOG(6) << "finish process inputs outputs index";
 
   Scope* true_scope = &(value_exec_info->GetScope()->NewScope());
-  true_branch_inter_ =
-      new NewIRInterpreter(place,
-                           {},
-                           true_branch_block,
-                           true_scope,
-                           value_exec_info->NewChild(true_scope),
-                           {});
+  true_branch_inter_ = new PirInterpreter(place,
+                                          {},
+                                          true_branch_block,
+                                          true_scope,
+                                          value_exec_info->NewChild(true_scope),
+                                          {});
 
   std::set<std::string> true_skip_gc_names_set;
   for (auto value : GetYiedOpInputs(true_branch_block)) {
@@ -118,12 +117,12 @@ CondInstruction::CondInstruction(size_t id,
 
   Scope* false_scope = &(value_exec_info->GetScope()->NewScope());
   false_branch_inter_ =
-      new NewIRInterpreter(place,
-                           {},
-                           false_branch_block,
-                           false_scope,
-                           value_exec_info->NewChild(false_scope),
-                           {});
+      new PirInterpreter(place,
+                         {},
+                         false_branch_block,
+                         false_scope,
+                         value_exec_info->NewChild(false_scope),
+                         {});
 
   std::set<std::string> false_skip_gc_names_set;
   for (auto value : GetYiedOpInputs(false_branch_block)) {
@@ -149,7 +148,7 @@ CondInstruction::~CondInstruction() {
 }
 
 void CondInstruction::CopyBranchOutput(
-    const std::vector<std::string>& var_names, const NewIRInterpreter* inter) {
+    const std::vector<std::string>& var_names, const PirInterpreter* inter) {
   for (size_t i = 0; i < var_names.size(); ++i) {
     auto* inner_var = inter->InnerScope()->GetVar(var_names[i]);
 

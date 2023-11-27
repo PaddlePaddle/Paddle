@@ -19,8 +19,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/attr_type_uilts.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
 
@@ -83,6 +83,9 @@ static pir::Attribute CreateIrAttribute(const std::any& obj) {
   } else if (obj.type() == typeid(std::vector<int64_t>)) {
     return IrAttrbuteCreator<std::vector<int64_t>>()(
         std::any_cast<std::vector<int64_t>>(obj));
+  } else if (obj.type() == typeid(phi::IntArray)) {
+    return IrAttrbuteCreator<phi::IntArray>()(
+        std::any_cast<phi::IntArray>(obj));
   } else {
     PADDLE_THROW(
         phi::errors::Unimplemented("Type error. CreateIrAttribute for type(%s) "

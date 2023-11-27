@@ -12,6 +12,7 @@
 #include "paddle/pir/core/operation.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/utils/optional.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 
 PHI_DECLARE_string(tensor_operants_mode);
 
@@ -57,7 +58,7 @@ if({{i.name}}_define_op->name() != "pd_op.full_int_array"){
       "We don't support dynamic tensors attribute {{i.name}} for {{api_name}} composite "
       "for now. "));
 }
-auto {{i.name}} = {{i.name}}_define_op->attribute("value").dyn_cast<paddle::dialect::IntArrayAttribute>().data();
+auto {{i.name}} = phi::IntArray(paddle::dialect::GetInt64Vector({{i.name}}_define_op->attribute("value")));
       {% endif %}
     {% endif %}
   {% endfor %}
@@ -102,7 +103,7 @@ vjp_res = ConstructVjpResultByStopGradients(vjp_res, stop_gradients);
 
 {% macro body_prim(api) %}
 FLAGS_tensor_operants_mode = "static";
-VLOG(4) << "Call PIR Decomposed backward op {{api.name}}";
+VLOG(4) << "Call Pir Decomposed backward op {{api.name}}";
   {% for i in range(api.outputs|length) %}
     {% if api.outputs[i].typename=='Tensor' %}
 paddle::Tensor* {{api.outputs[i].name}} = !stop_gradients[{{i}}][0] ? &vjp_res[{{i}}][0] : nullptr; 

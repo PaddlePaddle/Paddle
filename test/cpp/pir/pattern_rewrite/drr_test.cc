@@ -19,11 +19,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
-#include "paddle/pir/transforms/dead_code_elimination_pass.h"
 
 class RemoveRedundentReshapePattern
     : public pir::drr::DrrPatternBase<RemoveRedundentReshapePattern> {
@@ -67,8 +65,15 @@ class FoldExpandToConstantPattern
 
     // Result patterns
     pir::drr::ResultPattern res = pat.ResultPattern();
+    const auto &new_perm_attr =
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> phi::IntArray {
+          auto shape =
+              match_ctx.Attr<std::vector<int64_t>>("expand_shape_value");
+
+          return phi::IntArray(shape);
+        });
     const auto &full2 = res.Op("pd_op.full",
-                               {{"shape", pat.Attr("expand_shape_value")},
+                               {{"shape", new_perm_attr},
                                 {"value", pat.Attr("value_1")},
                                 {"dtype", pat.Attr("dtype_1")},
                                 {"place", pat.Attr("place_1")}});
@@ -180,11 +185,12 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
   builder.Build<paddle::dialect::FetchOp>(relu_op_second.out(), "out", 0);
 }
 
-class DrrPatternRewritePass : public pir::Pass {
+class DrrPatternRewritePass : public pir::PatternRewritePass {
  public:
-  DrrPatternRewritePass() : pir::Pass("DrrPatternRewritePass", 1) {}
+  DrrPatternRewritePass()
+      : pir::PatternRewritePass("drr_pattern_rewrite_pass", 1) {}
 
-  bool Initialize(pir::IrContext *context) override {
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
     ps.Add(RemoveRedundentReshapePattern().Build(context));
     ps.Add(RemoveRedundentTransposePattern().Build(context));
@@ -192,23 +198,8 @@ class DrrPatternRewritePass : public pir::Pass {
     ps.Add(RemoveUselessCastPattern().Build(context));
     ps.Add(FoldExpandToConstantPattern().Build(context));
 
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
+    return ps;
   }
-
-  void Run(pir::Operation *op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
-  }
-
-  bool CanApplyOn(pir::Operation *op) const override {
-    return op->name() == "builtin.module" && op->num_regions() > 0;
-  }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
 TEST(DrrTest, drr_demo) {

@@ -41,6 +41,7 @@ namespace distributed {
     }                                                                  \
   } while (0)
 
+#ifdef PADDLE_WITH_NCCL
 #define CUDA_CHECK(expr)                                                    \
   do {                                                                      \
     cudaError_t r = expr;                                                   \
@@ -51,6 +52,18 @@ namespace distributed {
                                          cudaGetErrorString(r)));           \
     }                                                                       \
   } while (0)
+#else  // PADDLE_WITH_RCCL
+#define HIP_CHECK(expr)                                                    \
+  do {                                                                     \
+    hipError_t r = expr;                                                   \
+    if (r != hipSuccess) {                                                 \
+      PADDLE_THROW(phi::errors::External("Failed, hip error %s:%d '%s'\n", \
+                                         __FILE__,                         \
+                                         __LINE__,                         \
+                                         hipGetErrorString(r)));           \
+    }                                                                      \
+  } while (0)
+#endif
 
 ncclRedOp_t ToNCCLRedType(ReduceOp reduction);
 

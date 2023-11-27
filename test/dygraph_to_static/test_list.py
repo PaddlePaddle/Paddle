@@ -16,7 +16,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase
 
 import paddle
 from paddle import base
@@ -208,8 +208,7 @@ def test_list_pop_in_while_loop(x, iter_num):
     return a[0], b[2]
 
 
-@dy2static_unittest
-class TestListWithoutControlFlow(unittest.TestCase):
+class TestListWithoutControlFlow(Dy2StTestBase):
     def setUp(self):
         self.place = (
             base.CUDAPlace(0)
@@ -337,7 +336,6 @@ class ListWithCondNet(paddle.nn.Layer):
 
     # Add *args to test function.__self__ in FunctionSpec.
     # DO NOT remove *args.
-    @paddle.jit.to_static
     def forward(self, x, index, *args):
         y = paddle.nn.functional.relu(x)
         a = []
@@ -356,13 +354,12 @@ class ListWithCondNet(paddle.nn.Layer):
         return z
 
 
-@dy2static_unittest
-class TestListWithCondGradInferVarType(unittest.TestCase):
+class TestListWithCondGradInferVarType(Dy2StTestBase):
     def test_to_static(self):
         net = ListWithCondNet()
         x = paddle.to_tensor([2, 3, 4], dtype='float32')
         index = paddle.to_tensor([1])
-        res = net(x, index)
+        res = paddle.jit.to_static(net)(x, index)
         self.assertEqual(res, 48.0)
 
 

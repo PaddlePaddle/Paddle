@@ -19,7 +19,6 @@ import paddle
 from paddle import base
 from paddle.base import ParamAttr
 from paddle.base.dygraph.base import to_variable
-from paddle.jit.api import to_static
 from paddle.nn import Embedding, Layer
 
 INF = 1.0 * 1e5
@@ -203,7 +202,6 @@ class BaseModel(paddle.nn.Layer):
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         return paddle.gather_nd(x, topk_coordinates)
 
-    @to_static
     def forward(self, inputs):
         src, tar, label, src_sequence_length, tar_sequence_length = inputs
         if src.shape[0] < self.batch_size:
@@ -233,7 +231,7 @@ class BaseModel(paddle.nn.Layer):
 
         max_seq_len = src_emb.shape[0]
 
-        enc_len_mask = paddle.static.nn.sequence_lod.sequence_mask(
+        enc_len_mask = paddle.nn.functional.sequence_mask(
             src_sequence_length, maxlen=max_seq_len, dtype="float32"
         )
         enc_len_mask = paddle.transpose(enc_len_mask, [1, 0])
@@ -299,7 +297,7 @@ class BaseModel(paddle.nn.Layer):
         )
         loss = paddle.squeeze(loss, axis=[2])
         max_tar_seq_len = paddle.shape(tar)[1]
-        tar_mask = paddle.static.nn.sequence_lod.sequence_mask(
+        tar_mask = paddle.nn.functional.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
         loss = loss * tar_mask
@@ -308,7 +306,6 @@ class BaseModel(paddle.nn.Layer):
 
         return loss
 
-    @to_static
     def beam_search(self, inputs):
         src, tar, label, src_sequence_length, tar_sequence_length = inputs
         if src.shape[0] < self.batch_size:
@@ -335,7 +332,7 @@ class BaseModel(paddle.nn.Layer):
 
         max_seq_len = src_emb.shape[0]
 
-        enc_len_mask = paddle.static.nn.sequence_lod.sequence_mask(
+        enc_len_mask = paddle.nn.functional.sequence_mask(
             src_sequence_length, maxlen=max_seq_len, dtype="float32"
         )
         enc_len_mask = paddle.transpose(enc_len_mask, [1, 0])
@@ -720,7 +717,6 @@ class AttentionModel(paddle.nn.Layer):
 
         return array
 
-    @to_static
     def forward(self, inputs):
         src, tar, label, src_sequence_length, tar_sequence_length = inputs
         if src.shape[0] < self.batch_size:
@@ -752,7 +748,7 @@ class AttentionModel(paddle.nn.Layer):
 
         max_seq_len = src_emb.shape[0]
 
-        enc_len_mask = paddle.static.nn.sequence_lod.sequence_mask(
+        enc_len_mask = paddle.nn.functional.sequence_mask(
             src_sequence_length, maxlen=max_seq_len, dtype="float32"
         )
         enc_padding_mask = enc_len_mask - 1.0
@@ -837,7 +833,7 @@ class AttentionModel(paddle.nn.Layer):
         )
         loss = paddle.squeeze(loss, axis=[2])
         max_tar_seq_len = paddle.shape(tar)[1]
-        tar_mask = paddle.static.nn.sequence_lod.sequence_mask(
+        tar_mask = paddle.nn.functional.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
         loss = loss * tar_mask

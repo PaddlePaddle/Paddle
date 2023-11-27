@@ -86,7 +86,17 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
     return;
   }
 
-  if (auto s = attr.dyn_cast<StrAttribute>()) {
+  if (auto t = attr.dyn_cast<TensorNameAttribute>()) {
+    std::string t_val = t.data();
+    std::string replacement = "\\\"";
+    std::string search = "\"";
+    size_t found = t_val.find(search);
+    while (found != std::string::npos) {
+      t_val.replace(found, search.length(), replacement);
+      found = t_val.find(search, found + replacement.length());
+    }
+    os << "\"" << t_val << "\"";
+  } else if (auto s = attr.dyn_cast<StrAttribute>()) {
     std::string s_val = s.AsString();
     std::string replacement = "\\\"";
     std::string search = "\"";
@@ -110,6 +120,8 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
     os << "(Int32)" << i.data();
   } else if (auto i = attr.dyn_cast<Int64Attribute>()) {
     os << "(Int64)" << i.data();
+  } else if (auto i = attr.dyn_cast<IndexAttribute>()) {
+    os << "(Index)" << i.data();
   } else if (auto p = attr.dyn_cast<PointerAttribute>()) {
     os << "(Pointer)" << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
@@ -179,15 +191,15 @@ void IrPrinter::PrintFullOperation(Operation* op) {
 }
 
 void IrPrinter::PrintRegion(const Region& region) {
-  for (auto block : region) {
+  for (auto& block : region) {
     PrintBlock(block);
   }
 }
 
-void IrPrinter::PrintBlock(const Block* block) {
+void IrPrinter::PrintBlock(const Block& block) {
   os << "{\n";
-  for (auto item : *block) {
-    PrintOperation(item);
+  for (auto& item : block) {
+    PrintOperation(&item);
     os << newline;
   }
   os << "}\n";
@@ -198,7 +210,7 @@ void IrPrinter::PrintValue(Value v) {
     os << "<<NULL VALUE>>";
     return;
   }
-  const void* key = static_cast<const void*>(v.impl());
+  const void* key = v.impl();
   auto ret = aliases_.find(key);
   if (ret != aliases_.end()) {
     os << ret->second;
@@ -308,6 +320,11 @@ void IrPrinter::PrintOpReturnType(Operation* op) {
       [this]() { this->os << ", "; });
 }
 
+void IrPrinter::AddValueAlias(Value v, const std::string& alias) {
+  const void* key = v.impl();
+  IR_ENFORCE(aliases_.find(key) == aliases_.end(), "Value already has alias");
+  aliases_[key] = alias;
+}
 void Dialect::PrintOperation(Operation* op, IrPrinter& printer) const {
   printer.PrintGeneralOperation(op);
 }

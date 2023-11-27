@@ -24,7 +24,7 @@ namespace paddle {
 namespace framework {
 class Scope;
 class Value;
-class NewIRInterpreter;
+class PirInterpreter;
 class ValueExecutionInfo;
 
 class CondInstruction : public InstructionBase {
@@ -44,7 +44,7 @@ class CondInstruction : public InstructionBase {
 
  private:
   void CopyBranchOutput(const std::vector<std::string>& var_names,
-                        const NewIRInterpreter* inter);
+                        const PirInterpreter* inter);
 
   ::pir::Operation* op_;
 
@@ -54,9 +54,9 @@ class CondInstruction : public InstructionBase {
 
   std::vector<Variable*> output_vars_;
 
-  NewIRInterpreter* true_branch_inter_;
+  PirInterpreter* true_branch_inter_;
 
-  NewIRInterpreter* false_branch_inter_;
+  PirInterpreter* false_branch_inter_;
 
   std::vector<std::string> true_branch_outputs_;
 

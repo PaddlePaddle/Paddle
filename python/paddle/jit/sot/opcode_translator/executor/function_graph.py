@@ -26,7 +26,7 @@ from typing import Any, Callable
 
 from ...infer_meta import InferMetaCache, LayerInferMetaCache, MetaInfo
 from ...profiler import EventGuard, event_register
-from ...symbolic.statement_ir import Symbol
+from ...symbolic.statement_ir import Reference, Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
     ENV_SHOW_TRACKERS,
@@ -40,6 +40,7 @@ from ...utils import (
     map_if,
     tmp_name_guard,
 )
+from ..instruction_utils import get_instructions
 from .guard import Guard, StringifyExpression, make_guard
 from .mutable_data import MutationDel, MutationNew, MutationSet
 from .pycode_generator import PyCodeGen
@@ -241,7 +242,81 @@ class FunctionGraph:
 
             return make_guard(guards)
 
-    def start_compile_with_name_store(self, ret_vars, to_store_vars):
+    def _restore_origin_opcode(self, stack_vars, store_var_info, instr_idx):
+        class VariableLoader:
+            def __init__(self, store_var_info, pycode_gen):
+                self._store_var_info = store_var_info
+                self._pycode_gen: PyCodeGen = pycode_gen
+
+            def load(self, var, allow_push_null=True):
+                if isinstance(var, NullVariable):
+                    # PUSH_NULL is an opcode
+                    if allow_push_null:
+                        var.reconstruct(self._pycode_gen)
+                    else:
+                        # Avoid passing NULL as a parameter to the resume function
+                        self._pycode_gen.gen_load_null_variable()
+                    return
+                # only restored vars in stack, so used gen_load to process global var
+                self._pycode_gen.gen_load(self._store_var_info[var])
+
+        origin_instrs = get_instructions(self.pycode_gen._origin_code)
+
+        restore_instrs = origin_instrs[:instr_idx]
+        restore_instr_names = [
+            instr.opname for instr in restore_instrs[:instr_idx]
+        ]
+        # NOTE(SigureMo): Trailing KW_NAMES + PRECALL is no need to restore in Python 3.11+
+        if restore_instr_names[-2:] == ["KW_NAMES", "PRECALL"]:
+            restore_instrs = restore_instrs[:-2]
+
+        for instr in restore_instrs:
+            if (
+                instr.opname == 'LOAD_FAST'
+                and instr.argval in self.pycode_gen._frame.f_locals.keys()
+                and isinstance(
+                    self.pycode_gen._frame.f_locals[instr.argval], NullVariable
+                )
+            ):
+                self.pycode_gen._frame.f_locals[instr.argval].reconstruct(
+                    self.pycode_gen
+                )
+            elif (
+                instr.opname == 'LOAD_GLOBAL'
+                and instr.argval in self.pycode_gen._frame.f_globals.keys()
+                and isinstance(
+                    self.pycode_gen._frame.f_globals[instr.argval], NullVariable
+                )
+            ):
+                self.pycode_gen._frame.f_globals[instr.argval].reconstruct(
+                    self.pycode_gen
+                )
+            else:
+                self.pycode_gen.extend_instrs([instr])
+
+        nop = self.pycode_gen._add_instr("NOP")
+
+        for instr in origin_instrs:
+            if instr.jump_to == origin_instrs[instr_idx]:
+                instr.jump_to = nop
+
+        self.pycode_gen.hooks.append(
+            lambda: self.pycode_gen.extend_instrs(
+                iter(origin_instrs[instr_idx + 1 :])
+            )
+        )
+
+        self.pycode_gen.gen_enable_eval_frame()
+
+        name_gen = NameGenerator("__start_compile_saved_orig_")
+
+        for var in stack_vars[::-1]:
+            store_var_info[var] = name_gen.next()
+            self.pycode_gen.gen_store_fast(store_var_info[var])
+
+        return VariableLoader(store_var_info, self.pycode_gen)
+
+    def _build_compile_fn_with_name_store(self, ret_vars, to_store_vars):
         class VariableLoader:
             def __init__(self, index_for_load, pycode_gen):
                 self._index_for_load = index_for_load
@@ -249,12 +324,14 @@ class FunctionGraph:
 
             def load(self, var, allow_push_null=True):
                 if isinstance(var, NullVariable):
+                    # PUSH_NULL is an opcode
                     if allow_push_null:
                         var.reconstruct(self._pycode_gen)
                     else:
                         # Avoid passing NULL as a parameter to the resume function
                         self._pycode_gen.gen_load_null_variable()
                     return
+                # all vars to be load are saved by this function, so load_fast is correct
                 self._pycode_gen.gen_load_fast(self._index_for_load[var.id])
 
         # var_id -> local_name mapping
@@ -264,7 +341,8 @@ class FunctionGraph:
         )
         self.start_compile(*(ret_vars + to_store_vars))
         name_gen = NameGenerator("__start_compile_saved_")
-        for var in to_store_vars:
+
+        for var in to_store_vars[::-1]:
             index_for_load[var.id] = name_gen.next()
 
             def _log_fn():
@@ -275,8 +353,8 @@ class FunctionGraph:
 
             log_do(4, _log_fn)
 
-        for var in to_store_vars[::-1]:
             self.pycode_gen.gen_store_fast(index_for_load[var.id])
+
         return VariableLoader(index_for_load, self.pycode_gen)
 
     @event_register("start_compile", event_level=2)
@@ -426,6 +504,7 @@ class FunctionGraph:
     def call_layer(
         self,
         layer: PaddleLayerVariable,
+        weak_ref: bool,
         *args: VariableBase,
         **kwargs: VariableBase,
     ):
@@ -442,7 +521,7 @@ class FunctionGraph:
 
         def compute_fn(layer, inputs, outputs, stacks):
             self.sir_ctx.call_LAYER(
-                layer.value,
+                Reference(layer.value, weak_ref),
                 inputs=inputs,
                 outputs=outputs,
                 stacks=stacks,
@@ -551,6 +630,18 @@ class FunctionGraph:
         Args:
             outputs: output variables
         """
+
+        def collect_related_dummy_tensor(var):
+            if isinstance(var.tracker, DummyTracker):
+                if isinstance(var, TensorVariable):
+                    return [var]
+                else:
+                    retval = []
+                    for inp in var.tracker.inputs:
+                        retval.extend(collect_related_dummy_tensor(inp))
+                    return retval
+            return []
+
         output_tensors: OrderedSet[TensorVariable] = OrderedSet()
         # Find Tensor Variables from outputs.
         for output in outputs:
@@ -558,6 +649,9 @@ class FunctionGraph:
                 if isinstance(output, TensorVariable):
                     output_tensors.add(output)
                 else:
+                    for inp in output.tracker.inputs:
+                        for _var in collect_related_dummy_tensor(inp):
+                            output_tensors.add(_var)
                     # Guard output that can not be traced.
                     self.add_global_guarded_variable(output)
         # Find Tensor Variables from side effects Variables.

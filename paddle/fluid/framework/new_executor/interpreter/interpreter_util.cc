@@ -598,6 +598,11 @@ void BuildOpFuncList(const platform::Place& place,
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
     const std::string& op_type = op->Type();
+    if (execution_config.used_for_inference) {
+      if (op_type == "feed" || op_type == "fetch") {
+        continue;
+      }
+    }
 
     VLOG(6) << "Build OpFuncNode from : " << op_type;
 
@@ -1174,7 +1179,8 @@ std::unordered_set<std::string> GetSpecialOpNames() {
       "builtin.slice",
       "pd_op.feed",
       "builtin.set_parameter",
-      "builtin.get_parameter",
+      "builtin.parameter",
+      "builtin.constant",
       "pd_op.data",
       "builtin.shadow_output",
   };
@@ -1202,7 +1208,7 @@ const paddle::framework::Variable* GetVariableByName(
   return nullptr;
 }
 
-std::vector<std::string> GetOriginInputNames(std::string op_name) {
+std::vector<std::string> GetOriginInputNames(const std::string& op_name) {
   std::vector<std::string> ret;
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
@@ -1215,7 +1221,7 @@ std::vector<std::string> GetOriginInputNames(std::string op_name) {
   return ret;
 }
 
-std::vector<std::string> GetOriginOutputNames(std::string op_name) {
+std::vector<std::string> GetOriginOutputNames(const std::string& op_name) {
   std::vector<std::string> ret;
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
@@ -1233,15 +1239,15 @@ void PrintValuesAndVariables(
     const std::unordered_map<pir::Value, std::string>& value_2_var_name,
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
-  for (const auto& op : block) {
+  for (auto& op : block) {
     std::stringstream ss;
     VLOG(6) << "-----------------------------";
-    op->Print(ss);
+    op.Print(ss);
     VLOG(6) << ss.str();
 
-    std::string op_name = op->name();
-    if (op->attributes().count("op_name")) {
-      op_name = op->attributes()
+    std::string op_name = op.name();
+    if (op.attributes().count("op_name")) {
+      op_name = op.attributes()
                     .at("op_name")
                     .dyn_cast<pir::StrAttribute>()
                     .AsString();
@@ -1253,9 +1259,9 @@ void PrintValuesAndVariables(
     // 1. output string
     std::string ret_value_str = "Value   : (";
     std::string ret_variable_str = "Variable: (";
-    if (!op->results().empty()) {
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        pir::Value out_value = op->result(i);
+    if (!op.results().empty()) {
+      for (size_t i = 0; i < op.num_results(); ++i) {
+        pir::Value out_value = op.result(i);
         if (value_2_var_name.count(out_value)) {
           // get Variable by Value
           auto& var_name = value_2_var_name.at(out_value);
@@ -1302,9 +1308,9 @@ void PrintValuesAndVariables(
     // 3. input string
     ret_value_str += "(";
     ret_variable_str += "(";
-    if (!op->operands().empty()) {
-      for (size_t i = 0; i < op->num_operands(); ++i) {
-        ::pir::Value in_value = op->operand(i).source();
+    if (!op.operands().empty()) {
+      for (size_t i = 0; i < op.num_operands(); ++i) {
+        ::pir::Value in_value = op.operand(i).source();
         if (value_2_var_name.count(in_value)) {
           // get Variable by Value
           auto& var_name = value_2_var_name.at(in_value);

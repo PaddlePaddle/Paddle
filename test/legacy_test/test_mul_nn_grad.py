@@ -21,6 +21,7 @@ from decorator_helper import prog_scope
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -35,17 +36,14 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         self.transpose_x = False
         self.transpose_y = False
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = paddle.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x'
-        )
-        y = paddle.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y'
-        )
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
         out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )

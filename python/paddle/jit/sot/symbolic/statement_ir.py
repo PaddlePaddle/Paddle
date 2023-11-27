@@ -22,10 +22,24 @@ from __future__ import annotations
 import weakref
 from typing import Any, Callable
 
-import paddle
 from paddle.utils import is_sequence, map_structure
 
 from ..utils import NameGenerator, OrderedSet, Singleton, flatten_extend
+
+
+class Reference:  # to unify weak_ref and strong_ref
+    def __init__(self, value, is_weak):
+        self.is_weak = is_weak
+        if is_weak is True:
+            self.ref = weakref.ref(value)
+        else:
+            self.ref = value
+
+    def __call__(self):
+        if self.is_weak is True:
+            return self.ref()
+        else:
+            return self.ref
 
 
 class Symbol:
@@ -139,7 +153,7 @@ class MethodStatement(Statement):
 class LayerStatement(Statement):
     def __init__(
         self,
-        layer: paddle.nn.Layer,
+        layer: Reference,  # Reference of paddle.nn.Layer
         inputs: list[Symbol],
         outputs: list[Symbol],
         stacks: list[str],
@@ -147,7 +161,7 @@ class LayerStatement(Statement):
         super().__init__(
             "layer", layer.__class__.__name__, inputs, outputs, stacks
         )
-        self.layer = weakref.ref(layer)
+        self.layer = layer
 
 
 class StatementIR:

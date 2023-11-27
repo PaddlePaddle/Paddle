@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase, test_ast_only
 
 import paddle
 from paddle import base
@@ -58,9 +58,8 @@ class DoubleDecorated:
         return jit_decorated_func(x)
 
 
-@dy2static_unittest
-class TestFullNameDecorator(unittest.TestCase):
-    @ast_only_test
+class TestFullNameDecorator(Dy2StTestBase):
+    @test_ast_only
     def test_run_success(self):
         x = np.ones([1, 2]).astype("float32")
         answer = np.zeros([1, 2]).astype("float32")

@@ -363,17 +363,30 @@ def dist_tensor_to_string(tensor, prefix='Tensor'):
     if tensor.dtype == core.VarDesc.VarType.BF16:
         dtype = 'bfloat16'
 
-    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, dist_attr={dist_attr},\n{indent}{data})"
-    return _template.format(
-        prefix=prefix,
-        shape=tensor.shape,
-        dtype=dtype,
-        place=tensor._place_str,
-        stop_gradient=tensor.stop_gradient,
-        dist_attr=tensor.dist_attr,
-        indent=' ' * indent,
-        data=None,
-    )
+    if not tensor._is_dense_tensor_hold_allocation():
+        _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, dist_attr={dist_attr}, GlobalDenseTensor Not initialized)"
+        return _template.format(
+            prefix=prefix,
+            shape=tensor.shape,
+            dtype=dtype,
+            place=tensor._place_str,
+            stop_gradient=tensor.stop_gradient,
+            dist_attr=tensor.dist_attr,
+        )
+    else:
+        indent = len(prefix) + 1
+        data = _format_dense_tensor(tensor, indent)
+        _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, dist_attr={dist_attr}, GlobalDenseTensor=\n{indent}{data})"
+        return _template.format(
+            prefix=prefix,
+            shape=tensor.shape,
+            dtype=dtype,
+            place=tensor._place_str,
+            stop_gradient=tensor.stop_gradient,
+            dist_attr=tensor.dist_attr,
+            indent=' ' * indent,
+            data=data,
+        )
 
 
 def tensor_to_string(tensor, prefix='Tensor'):

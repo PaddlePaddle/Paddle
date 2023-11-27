@@ -20,10 +20,11 @@ import unittest
 import numpy as np
 from bert_dygraph_model import PretrainModelLayer
 from bert_utils import get_bert_config, get_feed_data_reader
-from dygraph_to_static_util import (
-    ast_only_test,
-    dy2static_unittest,
-    test_with_new_ir,
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_pir_only,
+    test_sot_only,
 )
 from predictor_utils import PredictorTools
 
@@ -78,8 +79,7 @@ class FakeBertDataset(paddle.io.Dataset):
         return len(self.src_ids)
 
 
-@dy2static_unittest
-class TestBert(unittest.TestCase):
+class TestBert(Dy2StTestBase):
     def setUp(self):
         self.bert_config = get_bert_config()
         self.data_reader = get_feed_data_reader(self.bert_config)
@@ -266,8 +266,8 @@ class TestBert(unittest.TestCase):
         out = output()
         return out
 
-    @test_with_new_ir
-    def test_train_new_ir(self):
+    @test_pir_only
+    def test_train_pir(self):
         static_loss, static_ppl = self.train_static(
             self.bert_config, self.data_reader
         )
@@ -277,7 +277,7 @@ class TestBert(unittest.TestCase):
         np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
         np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
 
-    @ast_only_test
+    @test_ast_only
     def test_train(self):
         static_loss, static_ppl = self.train_static(
             self.bert_config, self.data_reader
@@ -290,6 +290,7 @@ class TestBert(unittest.TestCase):
 
         self.verify_predict()
 
+    @test_sot_only
     def test_train_composite(self):
         core._set_prim_backward_enabled(True)
         # core._add_skip_comp_ops("layer_norm")

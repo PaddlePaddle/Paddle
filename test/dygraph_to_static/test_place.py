@@ -14,13 +14,12 @@
 
 import unittest
 
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase
 
 import paddle
 
 
-@dy2static_unittest
-class TestPlace(unittest.TestCase):
+class TestPlace(Dy2StTestBase):
     def test_place(self):
         paddle.enable_static()
         x = paddle.to_tensor([1, 2, 3, 4])

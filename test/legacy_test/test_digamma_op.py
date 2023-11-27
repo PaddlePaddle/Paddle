@@ -21,6 +21,7 @@ from scipy.special import psi
 import paddle
 from paddle import base, static
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestDigammaOp(OpTest):
@@ -42,10 +43,10 @@ class TestDigammaOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestDigammaOpFp32(TestDigammaOp):
@@ -53,7 +54,7 @@ class TestDigammaOpFp32(TestDigammaOp):
         self.dtype = np.float32
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestDigammaFP16Op(TestDigammaOp):
@@ -87,10 +88,12 @@ class TestDigammaBF16Op(OpTest):
 
     def test_check_output(self):
         # bfloat16 needs to set the parameter place
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
+        self.check_grad_with_place(
+            core.CUDAPlace(0), ['X'], 'Out', check_pir=True
+        )
 
 
 class TestDigammaAPI(unittest.TestCase):
@@ -104,6 +107,7 @@ class TestDigammaAPI(unittest.TestCase):
             self.places.append(paddle.CUDAPlace(0))
         self._shape = [8, 3, 32, 32]
 
+    @test_with_pir_api
     def test_in_static_mode(self):
         def init_input_output(dtype):
             input = np.random.random(self._shape).astype(dtype)
@@ -117,7 +121,7 @@ class TestDigammaAPI(unittest.TestCase):
                     out = paddle.digamma(x)
 
                     exe = static.Executor(place)
-                    out_value = exe.run(feed=input_dict, fetch_list=[out.name])
+                    out_value = exe.run(feed=input_dict, fetch_list=[out])
                     np.testing.assert_allclose(out_value[0], sc_res, rtol=1e-05)
 
     def test_in_dynamic_mode(self):

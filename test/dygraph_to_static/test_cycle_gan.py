@@ -26,14 +26,13 @@ from paddle import base
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
-from dygraph_to_static_util import (
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir_exe_and_pir_api,
 )
 
 import paddle
 from paddle.base.dygraph import to_variable
-from paddle.jit.api import to_static
 from paddle.nn import BatchNorm
 
 # Note: Set True to eliminate randomness.
@@ -74,7 +73,6 @@ class Cycle_Gan(paddle.nn.Layer):
                 input_channel
             )
 
-    @to_static
     def forward(self, input_A, input_B):
         """
         Generator of GAN model.
@@ -125,7 +123,6 @@ class Cycle_Gan(paddle.nn.Layer):
             g_loss,
         )
 
-    @to_static
     def discriminatorA(self, input_A, input_B):
         """
         Discriminator A of GAN model.
@@ -135,7 +132,6 @@ class Cycle_Gan(paddle.nn.Layer):
 
         return rec_B, fake_pool_rec_B
 
-    @to_static
     def discriminatorB(self, input_A, input_B):
         """
         Discriminator B of GAN model.
@@ -547,7 +543,6 @@ def train(args, to_static):
     )
 
     paddle.jit.enable_to_static(to_static)
-
     with base.dygraph.guard(place):
         max_images_num = args.max_images_num
         data_shape = [-1] + args.image_shape
@@ -561,7 +556,9 @@ def train(args, to_static):
         B_pool = ImagePool()
         A_reader = paddle.batch(reader_creater(), args.batch_size)()
         B_reader = paddle.batch(reader_creater(), args.batch_size)()
-        cycle_gan = Cycle_Gan(input_channel=data_shape[1], istrain=True)
+        cycle_gan = paddle.jit.to_static(
+            Cycle_Gan(input_channel=data_shape[1], istrain=True)
+        )
 
         t_time = 0
         vars_G = (
@@ -623,7 +620,10 @@ def train(args, to_static):
                 fake_pool_A = to_variable(fake_pool_A)
 
                 # optimize the d_A network
-                rec_B, fake_pool_rec_B = cycle_gan.discriminatorA(
+                discriminatorA_to_static = paddle.jit.to_static(
+                    cycle_gan.discriminatorA
+                )
+                rec_B, fake_pool_rec_B = discriminatorA_to_static(
                     data_B, fake_pool_B
                 )
                 d_loss_A = (
@@ -636,7 +636,10 @@ def train(args, to_static):
                 cycle_gan.clear_gradients()
 
                 # optimize the d_B network
-                rec_A, fake_pool_rec_A = cycle_gan.discriminatorB(
+                discriminatorB_to_static = paddle.jit.to_static(
+                    cycle_gan.discriminatorB
+                )
+                rec_A, fake_pool_rec_A = discriminatorB_to_static(
                     data_A, fake_pool_A
                 )
                 d_loss_B = (
@@ -679,8 +682,7 @@ def train(args, to_static):
         return np.array(loss_data)
 
 
-@dy2static_unittest
-class TestCycleGANModel(unittest.TestCase):
+class TestCycleGANModel(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
 
@@ -688,7 +690,7 @@ class TestCycleGANModel(unittest.TestCase):
         out = train(self.args, to_static)
         return out
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir_exe_and_pir_api
     def test_train(self):
         st_out = self.train(to_static=True)
         dy_out = self.train(to_static=False)

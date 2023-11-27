@@ -302,8 +302,8 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
   }
 }
 
-void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
-                                   paddle::Tensor &&paddle_tensor) {
+void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,     // NOLINT
+                                   paddle::Tensor &paddle_tensor) {  // NOLINT
   std::vector<int> shape;
   for (int i = 0; i < paddle_tensor.dims().size(); ++i) {
     shape.push_back(paddle_tensor.dims()[i]);  // NOLINT
@@ -855,6 +855,9 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_memory_optim",
            &AnalysisConfig::EnableMemoryOptim,
            py::arg("x") = true)
+      .def("enable_new_executor",
+           &AnalysisConfig::EnableNewExecutor,
+           py::arg("x") = true)
       .def("enable_profile", &AnalysisConfig::EnableProfile)
       .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
       .def("glog_info_disabled", &AnalysisConfig::glog_info_disabled)
@@ -960,6 +963,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true)
       .def("enable_mkldnn", &AnalysisConfig::EnableMKLDNN)
+      .def("disable_mkldnn", &AnalysisConfig::DisableMKLDNN)
       .def("mkldnn_enabled", &AnalysisConfig::mkldnn_enabled)
       .def("set_cpu_math_library_num_threads",
            &AnalysisConfig::SetCpuMathLibraryNumThreads)
@@ -1241,8 +1245,7 @@ void BindPaddleInferTensor(py::module *m) {
       .def("_share_external_data_paddle_tensor_bind",
            [](paddle_infer::Tensor &self, const py::handle &input) {
              PyObject *obj = input.ptr();
-             PaddleTensorShareExternalData(self,
-                                           std::move(CastPyArg2Tensor(obj, 0)));
+             PaddleTensorShareExternalData(self, CastPyArg2Tensor(obj, 0));
            })
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
       .def("shape", &paddle_infer::Tensor::shape)

@@ -33,10 +33,10 @@ Operation *Builder::Build(const std::vector<Value> &inputs,
 }
 
 Operation *Builder::Insert(Operation *op) {
-  if (insert_point_.first) {
-    insert_point_.first->insert(insert_point_.second, op);
-  } else {
-    LOG(WARNING) << "Builder's Block is nullptr, insert failed.";
+  if (insertion_point_.first) {
+    insertion_point_.first->insert(insertion_point_.second, op);
+  } else if (forbid_insert_without_position_) {
+    IR_THROW("Insertion position not set, insert failed.");
   }
   return op;
 }
@@ -73,6 +73,9 @@ DoubleAttribute Builder::double_attr(double value) {
 Int32Attribute Builder::int32_attr(int32_t value) {
   return Int32Attribute::get(context_, value);
 }
+IndexAttribute Builder::index_attr(int64_t value) {
+  return IndexAttribute::get(context_, value);
+}
 Int64Attribute Builder::int64_attr(int64_t value) {
   return Int64Attribute::get(context_, value);
 }
@@ -81,6 +84,9 @@ ArrayAttribute Builder::array_attr(const std::vector<Attribute> &value) {
 }
 PointerAttribute Builder::pointer_attr(void *value) {
   return PointerAttribute::get(context_, value);
+}
+TensorNameAttribute Builder::tensor_name_attr(const std::string &value) {
+  return TensorNameAttribute::get(context_, value);
 }
 
 }  // namespace pir

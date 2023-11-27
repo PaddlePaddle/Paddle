@@ -22,6 +22,8 @@ namespace distributed {
 
 class DistMetaTensor : public MetaTensor {
  public:
+  DistMetaTensor() : MetaTensor() {}
+
   // supporting implicit construction is easier to use
   DistMetaTensor(TensorBase* tensor)  // NOLINT
       : MetaTensor(tensor) {}

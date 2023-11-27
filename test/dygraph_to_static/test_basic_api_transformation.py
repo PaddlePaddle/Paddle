@@ -16,10 +16,7 @@ import inspect
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
-)
+from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
 
 import paddle
 from paddle import base, to_tensor
@@ -72,8 +69,7 @@ def dyfunc_bool_to_tensor(x):
     return paddle.to_tensor(True)
 
 
-@dy2static_unittest
-class TestDygraphBasicApi_ToVariable(unittest.TestCase):
+class TestDygraphBasicApi_ToVariable(Dy2StTestBase):
     def setUp(self):
         self.input = np.ones(5).astype("int32")
         self.test_funcs = [
@@ -96,7 +92,7 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
             res = self.dygraph_func(self.input).numpy()
             return res
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def get_static_output(self):
         main_program = base.Program()
         main_program.random_seed = SEED
@@ -234,8 +230,7 @@ def dyfunc_Prelu(input):
     return res
 
 
-@dy2static_unittest
-class TestDygraphBasicApi(unittest.TestCase):
+class TestDygraphBasicApi(Dy2StTestBase):
     # Compare results of dynamic graph and transformed static graph function which only
     # includes basic Api.
 
@@ -252,7 +247,7 @@ class TestDygraphBasicApi(unittest.TestCase):
 
             return res
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def get_static_output(self):
         startup_program = base.Program()
         startup_program.random_seed = SEED
@@ -286,7 +281,7 @@ class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
             res = self.dygraph_func(self.input1, self.input2).numpy()
             return res
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def get_static_output(self):
         startup_program = base.Program()
         startup_program.random_seed = SEED
@@ -401,8 +396,7 @@ def dyfunc_PolynomialDecay():
     return paddle.to_tensor(lr)
 
 
-@dy2static_unittest
-class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
+class TestDygraphBasicApi_CosineDecay(Dy2StTestBase):
     def setUp(self):
         self.dygraph_func = dyfunc_CosineDecay
 
@@ -413,7 +407,7 @@ class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
             res = self.dygraph_func().numpy()
             return res
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def get_static_output(self):
         startup_program = base.Program()
         startup_program.random_seed = SEED
@@ -444,7 +438,7 @@ class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
             res = self.dygraph_func()
             return res
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def get_static_output(self):
         startup_program = base.Program()
         startup_program.random_seed = SEED
@@ -471,7 +465,7 @@ class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
             res = self.dygraph_func()
             return res
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def get_static_output(self):
         startup_program = base.Program()
         startup_program.random_seed = SEED
@@ -498,7 +492,7 @@ class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
             res = self.dygraph_func()
             return res
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def get_static_output(self):
         startup_program = base.Program()
         startup_program.random_seed = SEED
@@ -545,8 +539,7 @@ def _dygraph_fn():
         np.random.random(1)
 
 
-@dy2static_unittest
-class TestDygraphApiRecognition(unittest.TestCase):
+class TestDygraphApiRecognition(Dy2StTestBase):
     def setUp(self):
         self.src = inspect.getsource(_dygraph_fn)
         self.root = gast.parse(self.src)

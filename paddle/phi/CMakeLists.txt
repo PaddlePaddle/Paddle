@@ -14,7 +14,6 @@ set(infermeta_srcs CACHE INTERNAL "" FORCE)
 
 # paddle experimental common components
 add_subdirectory(common)
-
 # phi (low level) api headers: include
 # phi (high level) api
 add_subdirectory(api)
@@ -113,6 +112,15 @@ else()
   set(PHI_BUILD_TYPE
       STATIC
       CACHE INTERNAL "" FORCE)
+endif()
+
+if(WITH_AVX
+   AND AVX512F_FOUND
+   AND AVX512F_FLAG
+   AND WITH_MKL)
+  set_source_files_properties(
+    kernels/fusion/cpu/self_dp_attention_kernel.cc
+    PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
 endif()
 
 if(WITH_GPU)

@@ -62,9 +62,9 @@ def new_process_group(
     global _g_process_group_map
     if not force_new_group:
         # A key constructed from ranks is used for avoiding duplication
-        new_key = ''.join(map(str, ranks))
+        new_key = '_'.join(map(str, ranks))
         for pg_id, pg in _g_process_group_map.items():
-            cur_key = ''.join(map(str, pg.ranks))
+            cur_key = '_'.join(map(str, pg.ranks))
             if pg_id != 0 and new_key == cur_key:
                 return pg
     # If not matching the existing one, construct a new process group

@@ -26,9 +26,12 @@ import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
 from paddle.base.executor import _to_name_str
 from paddle.distributed import fleet
-from paddle.framework import IrGraph
-from paddle.framework import _current_expected_place as _get_device
-from paddle.framework import core, in_dynamic_mode
+from paddle.framework import (
+    IrGraph,
+    _current_expected_place as _get_device,
+    core,
+    in_dynamic_mode,
+)
 from paddle.metric import Metric
 from paddle.static import InputSpec, Operator, Variable, global_scope
 
@@ -250,6 +253,8 @@ class Engine:
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
+
+        self.enable_job_schedule_profiler = False
 
     def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []
@@ -562,9 +567,8 @@ class Engine:
         self._parallel(mode)
         # Init comm
         self._init_comm()
-        if init_parameters:
-            # startup program
-            self._initialize(mode)
+        # startup program
+        self._initialize(mode, init_parameters)
         self._has_prepared[mode] = True
 
     def _build(self, mode):
@@ -804,7 +808,19 @@ class Engine:
                 for process_group in all_process_groups:
                     process_group.instantiate()
 
-    def _initialize(self, mode):
+    def _share_parameters(self):
+        # mapping from {variable -> parameter}
+        named_params = self.program_helper.named_parameters()
+        for name, param in named_params.items():
+            var = global_scope().var(name)
+            if param.is_dense():
+                dense_tensor = var.get_tensor()
+                dense_tensor._share_data_with(param.get_tensor())
+            elif param.is_dist():
+                dense_tensor = var.get_tensor()
+                dense_tensor._share_data_with(param.get_tensor().get_tensor())
+
+    def _initialize(self, mode, init_parameters=True):
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
             self._place = paddle.framework.CUDAPlace(
@@ -818,10 +834,24 @@ class Engine:
 
         dist_context = self._dist_contexts[mode]
         if self._dygraph_mode:
-            dist_main_program = dist_context.dist_main_programs[self._cur_rank]
-            self.program_helper.init(
-                dist_main_program, self._place, dist_context
-            )
+            if not init_parameters:
+                self._share_parameters()
+            else:
+                dist_main_program = dist_context.dist_main_programs[
+                    self._cur_rank
+                ]
+                self.program_helper.init(
+                    dist_main_program, self._place, dist_context
+                )
+            # The model's instance variables (not paramters), used in forward function,
+            # have been initialized when initialize model in dynamic mode.
+            if self._model and len(self._model.buffers()) > 0:
+                for buffer in self._model.buffers():
+                    scope_var = global_scope().find_var(buffer.name)
+                    buffer_tensor = global_scope().var(buffer.name).get_tensor()
+                    if scope_var and buffer_tensor._is_initialized():
+                        continue
+                    buffer_tensor.set(buffer.numpy(), self._place)
 
         if self._executor is None:
             self._executor = paddle.static.Executor(self._place)
@@ -938,11 +968,10 @@ class Engine:
         """
         self._mode = 'train'
 
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            train_data, train_sample_split, batch_size
-        )
-
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                train_data, train_sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1123,11 +1152,11 @@ class Engine:
 
         """
         self._mode = 'eval'
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            valid_data, valid_sample_split, batch_size
-        )
 
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                valid_data, valid_sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1257,11 +1286,11 @@ class Engine:
                 >>> engine.predict(valid_dataset, batch_size=64)
         """
         self._mode = 'predict'
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            test_data, test_sample_split, batch_size
-        )
 
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                test_data, test_sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1346,11 +1375,10 @@ class Engine:
         if mode is not None:
             self.to_mode(mode)
 
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            dataset, sample_split, batch_size
-        )
-
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                dataset, sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1391,11 +1419,11 @@ class Engine:
     ):
         if mode is not None:
             self.to_mode(mode)
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            dataset, sample_split, batch_size
-        )
 
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                dataset, sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1482,6 +1510,11 @@ class Engine:
             and not self._has_prepared_reader[self._mode]
         ):
             self._prepare_reader()
+
+        self._executor.enable_job_schedule_profiler = (
+            self.enable_job_schedule_profiler
+        )
+
         outs = self._executor.run(
             self.main_program,
             feed=feed_dict,
@@ -1679,9 +1712,7 @@ class Engine:
                     )
                 if spec.name is None:
                     raise ValueError(
-                        "Requires Input[{}].name != None, but receive `None` with {}.".format(
-                            i, spec
-                        )
+                        f"Requires Input[{i}].name != None, but receive `None` with {spec}."
                     )
                 if self._acc_steps > 1:
                     shape = list(spec.shape)
