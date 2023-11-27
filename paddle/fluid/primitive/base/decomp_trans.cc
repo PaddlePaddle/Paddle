@@ -25,6 +25,9 @@ DecompProgram::DecompProgram(const pir::Program* program,
                              const std::vector<pir::OpResult>& src_vars)
     : program_(program), src_vars_(src_vars) {}
 
-pir::Program DecompProgram::decomp_program() { auto block = program_->block(); }
+std::vector<pir::OpResult> DecompProgram::decomp_program() {
+  const pir::Block* block = program_->block();
+  VLOG(0) << "sink decomp in ===========================";
+}
 
 }  // namespace paddle

@@ -28,7 +28,7 @@ class DecompProgram {
   DecompProgram(const pir::Program* program,
                 const std::vector<pir::OpResult>& src_vars);
 
-  pir::Program decomp_program();
+  std::vector<pir::OpResult> decomp_program();
 
  private:
   const pir::Program* program_;
