@@ -11,19 +11,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef __GNUC__
-#include <cxxabi.h>  // for __cxa_demangle
-#endif               // __GNUC__
-
-#if !defined(_WIN32)
-#include <dlfcn.h>   // dladdr
-#include <unistd.h>  // sleep, usleep
-#else                // _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX  // msvc max/min macro conflict with std::min/max
-#endif
-#include <windows.h>  // GetModuleFileName, Sleep
-#endif
+#include "paddle/common/enforce.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cublas_v2.h>
@@ -57,7 +45,7 @@ limitations under the License. */
 #endif
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include "paddle/phi/core/errors.h"
+#include "paddle/common/errors.h"
 
 #include "paddle/utils/string/printf.h"
 #include "paddle/utils/string/to_string.h"
@@ -95,10 +83,6 @@ limitations under the License. */
 #endif
 
 #include "paddle/utils/variant.h"
-
-namespace phi {
-class ErrorSummary;
-}  // namespace phi
 
 namespace phi {
 namespace proto {}  // namespace proto
@@ -296,7 +280,7 @@ struct EnforceNotMet : public std::exception {
     simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
   }
 
-  EnforceNotMet(const phi::ErrorSummary& error, const char* file, int line)
+  EnforceNotMet(const common::ErrorSummary& error, const char* file, int line)
       : code_(error.code()),
         err_str_(GetTraceBackString(error.to_string(), file, line)) {
     simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
@@ -310,7 +294,7 @@ struct EnforceNotMet : public std::exception {
     }
   }
 
-  phi::ErrorCode code() const { return code_; }
+  common::ErrorCode code() const { return code_; }
 
   const std::string& error_str() const { return err_str_; }
 
@@ -328,7 +312,7 @@ struct EnforceNotMet : public std::exception {
 
  private:
   // Used to determine the final type of exception thrown
-  phi::ErrorCode code_ = phi::ErrorCode::LEGACY;
+  common::ErrorCode code_ = common::ErrorCode::LEGACY;
   // Complete error message
   // e.g. InvalidArgumentError: ***
   std::string err_str_;

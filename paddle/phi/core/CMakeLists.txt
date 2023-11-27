@@ -10,7 +10,6 @@ collect_srcs(
   core_srcs
   SRCS
   flags.cc
-  errors.cc
   enforce.cc
   storage_properties.cc
   os_info.cc

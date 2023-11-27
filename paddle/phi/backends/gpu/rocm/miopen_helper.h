@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/utils/flags.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/common/bfloat16.h"
@@ -26,7 +27,6 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 // MIOPEN do not have epslion definition
 #define CUDNN_BN_MIN_EPSILON 1e-05

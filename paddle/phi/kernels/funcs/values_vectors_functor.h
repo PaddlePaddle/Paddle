@@ -14,8 +14,8 @@
 
 #pragma once
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
-#include "paddle/phi/core/errors.h"
 #endif  // PADDLE_WITH_CUDA
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"

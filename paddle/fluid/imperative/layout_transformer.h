@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/tensor_utils.h"
 namespace paddle {
 namespace imperative {
