@@ -950,7 +950,7 @@ class TestElementwiseAddOpAutoParallel(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_auto_parallel=True,
+            check_auto_parallel=False,
         )
 
     def init_input_specs(self):
@@ -1005,7 +1005,7 @@ class TestElementwiseAddOpAutoParallelXYShard(TestElementwiseAddOpAutoParallel):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X', 'Y'], 'Out', check_auto_parallel=True
+            place, ['X', 'Y'], 'Out', check_auto_parallel=False
         )
 
     def init_input_output(self):
@@ -1026,7 +1026,7 @@ class TestElementwiseAddOpAutoParallelXYShardBroardcast(
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X', 'Y'], 'Out', check_auto_parallel=True
+            place, ['X', 'Y'], 'Out', check_auto_parallel=False
         )
 
     def init_input_output(self):

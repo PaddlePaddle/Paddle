@@ -68,6 +68,14 @@ from .communication import (  # noqa: F401
 
 from .auto_parallel.process_mesh import ProcessMesh
 
+from .auto_parallel.placement_type import (
+    ReduceType,
+    Placement,
+    Shard,
+    Replicate,
+    Partial,
+)
+
 from .auto_parallel import shard_op  # noqa: F401
 
 from .auto_parallel.api import (
@@ -144,4 +152,9 @@ __all__ = [
     "dtensor_from_fn",
     "reshard",
     "shard_layer",
+    "ReduceType",
+    "Placement",
+    "Shard",
+    "Replicate",
+    "Partial",
 ]
