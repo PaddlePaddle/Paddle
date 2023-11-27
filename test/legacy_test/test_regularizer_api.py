@@ -188,7 +188,7 @@ class TestRegularizer(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             x = paddle.uniform([2, 2, 3])
-            linear = paddle.nn.Linear(1, 5, weight_attr=fc_param_attr)
+            linear = paddle.nn.Linear(3, 5, weight_attr=fc_param_attr)
             out = linear(x)
             loss = paddle.sum(out)
             sgd = paddle.optimizer.SGD(learning_rate=0.1, weight_decay=l2)
