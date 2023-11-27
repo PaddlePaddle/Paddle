@@ -254,7 +254,7 @@ class Engine:
         self.history = None
 
         #
-        if os.getenv("FLAGS_enable_prim_in_distribute"):
+        if os.getenv("FLAGS_enable_prim_in_distribute") == "True":
             self.enable_prim_in_distribute = True
         else:
             self.enable_prim_in_distribute = False
