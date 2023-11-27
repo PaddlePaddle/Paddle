@@ -31,11 +31,11 @@ class TestInplaceForSemiAutoParallel(unittest.TestCase):
         x.stop_gradient = False
         y.stop_gradient = False
 
-        x_dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', None])
-        y_dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
+        x_dist_attr = [dist.Shard(0)]
+        y_dist_attr = [dist.Replicate()]
 
-        dist_x = dist.shard_tensor(x_np, dist_attr=x_dist_attr)
-        dist_y = dist.shard_tensor(y_np, dist_attr=y_dist_attr)
+        dist_x = dist.shard_tensor(x_np, mesh, x_dist_attr)
+        dist_y = dist.shard_tensor(y_np, mesh, y_dist_attr)
         dist_x.stop_gradient = False
         dist_y.stop_gradient = False
         dist_x = dist_x.add(dist_x)

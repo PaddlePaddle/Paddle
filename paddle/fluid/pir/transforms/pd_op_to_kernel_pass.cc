@@ -63,8 +63,9 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     pir::CombineOp::name(),
     pir::SliceOp::name(),
     pir::SplitOp::name(),
+    pir::ConstantTensorOp::name(),
     pir::SetParameterOp::name(),
-    pir::GetParameterOp::name(),
+    pir::ParameterOp::name(),
     pir::ShadowOutputOp::name(),
     FeedOp::name(),
     DataOp::name(),
@@ -73,8 +74,9 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
 };
 const std::unordered_set<std::string> SpecialLowerOps = {
     pir::CombineOp::name(),
+    pir::ConstantTensorOp::name(),
     pir::SetParameterOp::name(),
-    pir::GetParameterOp::name(),
+    pir::ParameterOp::name(),
     pir::ShadowOutputOp::name(),
     pir::SliceOp::name(),
     pir::SplitOp::name(),
@@ -113,7 +115,8 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
                                        const phi::KernelKey kernel_key) {
   // NOTE(phlrain): keep the same kernel select strategy with
   // GetExepectKernelKey
-  if (op->isa<Pool2dOp>() || op->isa<Pool2dGradOp>()) {
+  if (op->isa<Pool2dOp>() || op->isa<Pool2dGradOp>() || op->isa<Pool3dOp>() ||
+      op->isa<Pool3dGradOp>()) {
     if (kernel_key.backend() == phi::Backend::GPUDNN &&
         (op->attributes()
              .at("adaptive")
@@ -1003,9 +1006,14 @@ void HandleForSpecialOp(
     op_output_types.push_back(t1);
   }
 
-  if (op_item->isa<::pir::GetParameterOp>()) {
+  if (op_item->isa<::pir::ParameterOp>()) {
     op_output_types.push_back(
         BuildOutputType(op_item->result(0).type(), place, ctx));
+  }
+
+  if (op_item->isa<::pir::ConstantTensorOp>()) {
+    op_output_types.push_back(
+        BuildOutputType(op_item->result(0).type(), phi::CPUPlace(), ctx));
   }
 
   if (op_item->isa<::pir::SliceOp>()) {

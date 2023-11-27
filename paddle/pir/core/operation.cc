@@ -202,7 +202,8 @@ Operation::Operation(const AttributeMap &attributes,
       num_results_(num_results),
       num_operands_(num_operands),
       num_regions_(num_regions),
-      num_successors_(num_successors) {}
+      num_successors_(num_successors),
+      id_(GenerateId()) {}
 
 ///
 /// \brief op ouput related public interfaces implementation
