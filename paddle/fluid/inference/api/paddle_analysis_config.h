@@ -148,6 +148,13 @@ struct PD_INFER_DECL XpuConfig {
   // fc, conv2d
   // 0: int8 per tensor, 1: int8 per_channel, 2: int16 per_tensor, 3: int16
   // per-channel, 4: int31 per-tensor. Note: PaddleInference only.
+  enum quant_weight_type {
+    int_8_t = 0,
+    int_8_c = 1,
+    int_16_t = 2,
+    int_16_c = 3,
+    int_31_t = 4,
+  };
   std::map<std::string, int> quant_post_dynamic_weight_methods;
 };
 
