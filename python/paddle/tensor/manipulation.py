@@ -4009,9 +4009,37 @@ def reshape(x, shape, name=None):
         return out
 
 
-def masked_scatter(x, mask, value):
+def masked_scatter(x, mask, value, name=None):
     """
-    利用现有api实现masked_scatter功能
+    Copies elements from `value` into `x` tensor at positions where the `mask` is True.
+
+    Elements from source are copied into `x` starting at position 0 of `value` and continuing in order one-by-one for
+    each occurrence of `mask` being True. The shape of `mask` must be broadcastable with the shape of the underlying tensor.
+    The `value` should have at least as many elements as the number of ones in `mask`.
+
+    Args:
+        x (Tensor): An N-D Tensor. The data type is ``float16``, ``float32``, ``float64``, ``int16``, ``int32``, ``int64``, ``int8``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16`` or ``bool``.
+        shape (list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
+                        The data type is ``int32`` . If ``shape`` is a list or tuple, each element of it should be integer or Tensor with shape [].
+                        If ``shape`` is an Tensor, it should be an 1-D Tensor .
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, A reshaped Tensor with the same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.randn([3,4])
+            >>> mask = paddle.randn([3,4])
+            >>> mask = mask>0.6
+            >>> value = paddle.ones([2,4], dtype="float32")
+
+            >>> out = paddle.masked_scatter(x, mask, value)
+            >>> print(out.shape)
+
     """
     # make sure the dtype of x and source is the same
     assert (
@@ -4031,19 +4059,16 @@ def masked_scatter(x, mask, value):
 
 
 @inplace_apis_in_dygraph_only
-def masked_scatter_(x, mask, value):
+def masked_scatter_(x, mask, value, name=None):
     """
-    利用现有api实现masked_scatter功能
+    Inplace version of ``masked_scatter`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_masked_scatter`.
     """
     # make sure the dtype of x and source is the same
     assert (
         x.dtype == value.dtype
     ), f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
     assert mask.dtype == paddle.bool
-    if not x.stop_gradient:
-        raise ValueError(
-            "The inplace operation only support stop_gradient=True inplace tensor"
-        )
     shape = paddle.broadcast_shape(x.shape, mask.shape)
     if shape != x.shape:
         raise ValueError(
@@ -4059,7 +4084,8 @@ def masked_scatter_(x, mask, value):
 
     value = value.flatten()[mask_prefix].reshape(mask.shape)
     mask = paddle.logical_not(mask)
-    paddle.where_(mask, x, value)
+    out = paddle.where_(mask, x, value)
+    return out
 
 
 @inplace_apis_in_dygraph_only

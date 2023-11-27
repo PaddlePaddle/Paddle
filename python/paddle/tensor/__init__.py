@@ -171,6 +171,8 @@ from .manipulation import view_as  # noqa: F401
 from .manipulation import unfold  # noqa: F401
 from .manipulation import masked_fill  # noqa: F401
 from .manipulation import masked_fill_  # noqa: F401
+from .manipulation import masked_scatter
+from .manipulation import masked_scatter_
 from .manipulation import index_fill  # noqa: F401
 from .manipulation import index_fill_  # noqa: F401
 from .manipulation import diagonal_scatter  # noqa: F401
@@ -743,6 +745,8 @@ tensor_method_func = [
     'atleast_2d',
     'atleast_3d',
     'diagonal_scatter',
+    'masked_scatter',
+    'masked_scatter_',
 ]
 
 # this list used in math_op_patch.py for magic_method bind
