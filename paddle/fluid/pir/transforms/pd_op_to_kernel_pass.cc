@@ -63,8 +63,9 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     pir::CombineOp::name(),
     pir::SliceOp::name(),
     pir::SplitOp::name(),
+    pir::ConstantTensorOp::name(),
     pir::SetParameterOp::name(),
-    pir::GetParameterOp::name(),
+    pir::ParameterOp::name(),
     pir::ShadowOutputOp::name(),
     FeedOp::name(),
     DataOp::name(),
@@ -73,6 +74,10 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
 };
 const std::unordered_set<std::string> SpecialLowerOps = {
     pir::CombineOp::name(),
+    pir::ConstantTensorOp::name(),
+    pir::SetParameterOp::name(),
+    pir::ParameterOp::name(),
+    pir::ShadowOutputOp::name(),
     pir::SliceOp::name(),
     pir::SplitOp::name(),
     pir::YieldOp::name(),
@@ -110,7 +115,8 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
                                        const phi::KernelKey kernel_key) {
   // NOTE(phlrain): keep the same kernel select strategy with
   // GetExepectKernelKey
-  if (op->isa<Pool2dOp>() || op->isa<Pool2dGradOp>()) {
+  if (op->isa<Pool2dOp>() || op->isa<Pool2dGradOp>() || op->isa<Pool3dOp>() ||
+      op->isa<Pool3dGradOp>()) {
     if (kernel_key.backend() == phi::Backend::GPUDNN &&
         (op->attributes()
              .at("adaptive")
@@ -328,7 +334,6 @@ static pir::Type BuildDtypeTransferOutputType(pir::Type type,
 
 static pir::Type BuildOutputType(pir::Type type,
                                  const phi::Place& place,
-                                 phi::DataType data_type,
                                  pir::IrContext* ctx) {
   if (type.isa<DenseTensorType>()) {
     auto out_dtype = type.dyn_cast<DenseTensorType>().dtype();
@@ -561,6 +566,33 @@ static phi::Backend GetKernelBackendByYaml(
   }
 
   return kernel_backend;
+}
+
+std::unique_ptr<OpYamlInfoParser> GetOpYamlInfoParser(pir::Operation* op) {
+  OpYamlInfoInterface op_info_interface = op->dyn_cast<OpYamlInfoInterface>();
+
+  std::unique_ptr<OpYamlInfoParser> op_info_parser(nullptr);
+  if (op_info_interface) {
+    op_info_parser = std::make_unique<OpYamlInfoParser>(
+        op_info_interface.GetOpInfo(), IsLegacyOp(op->name()));
+  }
+
+  return op_info_parser;
+}
+
+std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
+                          pir::Operation* op_item) {
+  std::string kernel_fn_str;
+  if (op_info_parser != nullptr) {
+    kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func;
+  }
+
+  if (op_item->isa<AddN_Op>() || op_item->isa<AddNWithKernelOp>()) {
+    if (op_item->result(0).type().isa<SelectedRowsType>()) {
+      kernel_fn_str = "add_n_sr";
+    }
+  }
+  return kernel_fn_str;
 }
 
 phi::KernelKey GetKernelKey(
@@ -948,8 +980,10 @@ void HandleForSpecialOp(
     HandleForWhileOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
     return;
   }
+
   std::vector<pir::Value> vec_inputs;
   std::vector<pir::Type> op_output_types;
+
   if (op_item->isa<::pir::CombineOp>()) {
     // Copy op inputs
     std::vector<pir::Type> vec_inner_types;
@@ -970,6 +1004,16 @@ void HandleForSpecialOp(
 
     pir::Type t1 = pir::VectorType::get(ctx, vec_inner_types);
     op_output_types.push_back(t1);
+  }
+
+  if (op_item->isa<::pir::ParameterOp>()) {
+    op_output_types.push_back(
+        BuildOutputType(op_item->result(0).type(), place, ctx));
+  }
+
+  if (op_item->isa<::pir::ConstantTensorOp>()) {
+    op_output_types.push_back(
+        BuildOutputType(op_item->result(0).type(), phi::CPUPlace(), ctx));
   }
 
   if (op_item->isa<::pir::SliceOp>()) {
@@ -1023,7 +1067,7 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->isa<::pir::YieldOp>()) {
+  if (op_item->isa<::pir::YieldOp>() || op_item->isa<::pir::ShadowOutputOp>()) {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
         auto cur_in = op_item->operand_source(i);
@@ -1033,6 +1077,56 @@ void HandleForSpecialOp(
         }
         auto new_in = GetNewInput(
             cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        vec_inputs.push_back(new_in);
+      }
+    }
+  }
+
+  if (op_item->isa<::pir::SetParameterOp>()) {
+    if (op_item->num_operands() > 0) {
+      for (size_t i = 0; i < op_item->num_operands(); ++i) {
+        auto cur_in = op_item->operand_source(i);
+        if (!cur_in) {
+          vec_inputs.emplace_back();
+          continue;
+        }
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        // NOTE(zhangbo): parameter place is equal to exe place.
+        if (new_in.type().isa<AllocatedDenseTensorType>()) {
+          auto in_place =
+              new_in.type().dyn_cast<AllocatedDenseTensorType>().place();
+          auto dst_backend = phi::TransToPhiBackend(place);
+          bool need_trans =
+              (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
+              (paddle::experimental::NeedTransformPlace(
+                  in_place, dst_backend, {}));
+          if (need_trans) {
+            VLOG(6) << "need trans from " << in_place << " to " << dst_backend;
+            // build memcopy op
+            auto out_place = phi::TransToPhiPlace(dst_backend);
+            auto new_in_alloc_type =
+                new_in.type().dyn_cast<AllocatedDenseTensorType>();
+            auto out_type =
+                AllocatedDenseTensorType::get(ctx,
+                                              out_place,
+                                              new_in_alloc_type.dtype(),
+                                              new_in_alloc_type.dims(),
+                                              new_in_alloc_type.data_layout(),
+                                              new_in_alloc_type.lod(),
+                                              new_in_alloc_type.offset());
+            auto op_info_parser = GetOpYamlInfoParser(op_item);
+            auto kernel_name = GetKernelName(op_info_parser.get(), op_item);
+            auto kernel_key = GetKernelKey(op_item,
+                                           place,
+                                           kernel_name,
+                                           *map_value_pair,
+                                           op_info_parser.get());
+            VLOG(6) << "kernel type " << kernel_key;
+            new_in = AddPlaceTransferOp(
+                new_in, out_type, in_place, out_place, kernel_key, block);
+          }
+        }
         vec_inputs.push_back(new_in);
       }
     }
@@ -1077,6 +1171,7 @@ void HandleForSpecialOp(
       op_output_types.push_back(new_inlet_element.type());
     }
   }
+
   if (op_item->name() == "cinn_runtime.jit_kernel") {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
@@ -1136,12 +1231,9 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
 
   for (size_t i = 0; i < op_item->num_results(); ++i) {
     phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
-
-    phi::DataType out_phi_dtype = phi::DataType::UNDEFINED;
     if ((!UnchangeOutputOps.count(op_item->name())) &&
         (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
       out_place = phi::TransToPhiPlace(output_defs[i].backend);
-      out_phi_dtype = output_defs[i].dtype;
     }
 
     auto result_type = op_item->result(i).type();
@@ -1150,8 +1242,7 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
     } else if (result_type.isa<DenseTensorType>() ||
                result_type.isa<SelectedRowsType>() ||
                result_type.isa<DenseTensorArrayType>()) {
-      op_output_types.push_back(
-          BuildOutputType(result_type, out_place, out_phi_dtype, ctx));
+      op_output_types.push_back(BuildOutputType(result_type, out_place, ctx));
     } else if (result_type.isa<pir::VectorType>()) {
       std::vector<pir::Type> vec_inner_types;
       auto base_types = result_type.dyn_cast<pir::VectorType>().data();
@@ -1160,7 +1251,7 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
           if (base_type.isa<DenseTensorType>() ||
               base_type.isa<SelectedRowsType>()) {
             vec_inner_types.push_back(
-                BuildOutputType(base_type, out_place, out_phi_dtype, ctx));
+                BuildOutputType(base_type, out_place, ctx));
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
                 "only support dense tensor and selected rows in vector type "
@@ -1287,7 +1378,6 @@ std::vector<pir::Value> BuildInputs(
         // [ todo need update here, support combine data transfomer]
         // deal with pre combine op
         auto pre_define_op = cur_in.dyn_cast<pir::OpResult>().owner();
-
         if (pre_define_op->isa<::pir::CombineOp>()) {
           std::vector<pir::Value> inner_inputs;
           std::vector<pir::Type> types_in_vec;
@@ -1320,8 +1410,6 @@ std::vector<pir::Value> BuildInputs(
                 (paddle::experimental::NeedTransformPlace(
                     place, input_backend, {}));
             if (need_trans) {
-              VLOG(6) << "need trans from " << place << " to "
-                      << kernel_key.backend();
               // build memcopy op
               auto out_place = phi::TransToPhiPlace(input_backend);
               pir::Type out_type;
@@ -1526,33 +1614,6 @@ void AddShadowFeedOpForDataOrFeed(
       }
     }
   }
-}
-
-std::unique_ptr<OpYamlInfoParser> GetOpYamlInfoParser(pir::Operation* op) {
-  OpYamlInfoInterface op_info_interface = op->dyn_cast<OpYamlInfoInterface>();
-
-  std::unique_ptr<OpYamlInfoParser> op_info_parser(nullptr);
-  if (op_info_interface) {
-    op_info_parser = std::make_unique<OpYamlInfoParser>(
-        op_info_interface.GetOpInfo(), IsLegacyOp(op->name()));
-  }
-
-  return op_info_parser;
-}
-
-std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
-                          pir::Operation* op_item) {
-  std::string kernel_fn_str;
-  if (op_info_parser != nullptr) {
-    kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func;
-  }
-
-  if (op_item->isa<AddN_Op>() || op_item->isa<AddNWithKernelOp>()) {
-    if (op_item->result(0).type().isa<SelectedRowsType>()) {
-      kernel_fn_str = "add_n_sr";
-    }
-  }
-  return kernel_fn_str;
 }
 
 pir::Operation* BuildKernelOp(
