@@ -944,3 +944,62 @@ TEST(GroupOp, TestBuildAddN) {
   bool res0 = simple_cmp(out_tensor.data<float>()[0], 6.0);
   EXPECT_EQ(res0, true);
 }
+
+std::shared_ptr<::pir::Program> BuildSplitSectionProgram() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  auto program = std::make_shared<::pir::Program>(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+
+  auto x = builder
+               .Build<paddle::dialect::FullOp>(std::vector<int64_t>({16, 16}),
+                                               2.0,
+                                               phi::DataType::FLOAT32,
+                                               phi::GPUPlace())
+               .result(0);
+
+  auto split_arr = builder
+                       .Build<paddle::dialect::SplitOp>(
+                           x, std::vector<int64_t>({3, 5, 8}), -1)
+                       .out();
+  auto out_list = builder.Build<pir::SplitOp>(split_arr).outputs();
+  builder.Build<paddle::dialect::FetchOp>(out_list[0], "out", 0);
+  return program;
+}
+
+TEST(GroupOp, TestBuildSplit) {
+  // Step 1: Construct pir::Program
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  std::shared_ptr<::pir::Program> program = BuildSplitSectionProgram();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+
+  cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
+
+  pir::PassManager pm(ctx);
+  pm.AddPass(
+      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  pm.AddPass(pir::CreateBuildCinnPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+  CHECK_EQ(pm.Run(program.get()), true);
+
+  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+
+  auto kernel_program =
+      paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
+
+  paddle::framework::Scope exe_scope;
+
+  paddle::framework::InterpreterCore executor(
+      place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+
+  executor.Run({}, true);
+
+  auto out_tensor =
+      executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
+
+  bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
+  EXPECT_EQ(res0, true);
+}
