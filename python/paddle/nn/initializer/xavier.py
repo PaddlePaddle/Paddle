@@ -153,14 +153,31 @@ class XavierInitializer(Initializer):
         elif in_pir_mode():
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
-                return paddle._pir_ops.uniform(
-                    var.shape,
-                    var.dtype,
+                out_var = paddle._pir_ops.uniform(
+                    out_var.shape,
+                    out_dtype,
                     -limit,
                     limit,
                     self._seed,
                     _current_expected_place(),
                 )
+            else:
+                std = math.sqrt(2.0 / float(fan_in + fan_out))
+                out_var = _C_ops.gaussian(
+                    out_var.shape,
+                    0.0,
+                    std,
+                    self._seed,
+                    out_dtype,
+                    _current_expected_place(),
+                )
+
+            if var.dtype == core.DataType.FLOAT16 or (
+                var.dtype == core.DataType.BFLOAT16 and not self._uniform
+            ):
+                return _C_ops.cast(out_var, var.dtype)
+
+            return out_var
         else:
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
