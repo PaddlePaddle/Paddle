@@ -275,11 +275,11 @@ bool DrrRewritePattern::MatchFromOutputToInput(
           ir_node->operand(i).source().dyn_cast<pir::OpResult>().owner();
       if (drr_input_tensors[i]->consumers().size() !=
           ir_node->operand(i).source().use_count()) {
+        matched = false;
         VLOG(8) << drr_node->name() << " Match failed: consumers of drr intput["
                 << i << "] { " << drr_node->outputs().size()
                 << " } != consumers of pir intput[" << i << "] { "
                 << ir_node->operand(i).source().use_count() << " }.";
-        matched = false;
         break;
       }
       // bfs producer_op of current_op
@@ -294,9 +294,9 @@ bool DrrRewritePattern::MatchFromOutputToInput(
         drr_visited.insert(drr_producer_op);
         ir_visited.insert(ir_producer_op);
       } else {
+        matched = false;
         VLOG(8) << "Match failed: status of visiting for" << drr_node->name()
                 << " is different.";
-        matched = false;
         break;
       }
     }
