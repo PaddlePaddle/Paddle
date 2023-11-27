@@ -44,19 +44,30 @@ def get_cuda_version():
     or paddle.device.cuda.get_device_capability()[0] < 8,
     "weight_only_linear requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
-class TestMatmulToWeightOnlyPass(PassTest):
+class TestMatmulToWeightOnlyPass_Fp32(PassTest):
+    @classmethod
+    def setUpClass(self):
+        self.main_program = paddle.static.Program()
+        self.feeds = None
+        self.fetch_list = None
+        self.valid_op_map = {}
+        self.pass_list = []
+        self.pir_program = None
+        self.place_runtime = "cpu"
+        self.dtype = 'float32'
+
     def build_ir_progam(self):
         with paddle.pir_utils.IrGuard():
             self.pir_program = paddle.static.Program()
             with paddle.pir.core.program_guard(self.pir_program):
                 x = paddle.static.data(
-                    name='x', shape=[3, 64, 64], dtype='float32'
+                    name='x', shape=[3, 64, 64], dtype=self.dtype
                 )
                 w = paddle.static.data(
-                    name="w", shape=[64, 64], dtype="float32"
+                    name="w", shape=[64, 64], dtype=self.dtype
                 )
                 bias_ = paddle.static.data(
-                    name="bias", shape=[64], dtype="float32"
+                    name="bias", shape=[64], dtype=self.dtype
                 )
                 bias = paddle.assign(bias_)
                 res1 = paddle.matmul(x=x, y=w)
@@ -64,9 +75,9 @@ class TestMatmulToWeightOnlyPass(PassTest):
 
         self.pass_list = ['fused_weight_only_linear_pass']
         self.feeds = {
-            "x": np.random.random((3, 64, 64)).astype("float32"),
-            "w": np.random.random((64, 64)).astype("float32"),
-            "bias": np.random.random(64).astype("float32"),
+            "x": np.random.random((3, 64, 64)).astype(self.dtype),
+            "w": np.random.random((64, 64)).astype(self.dtype),
+            "bias": np.random.random(64).astype(self.dtype),
         }
         self.fetch_list = [out]
         self.valid_op_map = {
@@ -82,6 +93,19 @@ class TestMatmulToWeightOnlyPass(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
+
+
+class TestMatmulToWeightOnlyPass_Fp16(TestMatmulToWeightOnlyPass_Fp32):
+    @classmethod
+    def setUpClass(self):
+        self.main_program = paddle.static.Program()
+        self.feeds = None
+        self.fetch_list = None
+        self.valid_op_map = {}
+        self.pass_list = []
+        self.pir_program = None
+        self.place_runtime = "cpu"
+        self.dtype = 'float16'
 
 
 if __name__ == "__main__":
