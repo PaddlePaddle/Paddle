@@ -1534,7 +1534,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             for name in restore_names:
                 _var = self.get_var(name)
                 if _var not in self.stack:
-                    store_var_info[_var] = name
+                    store_var_info[_var.id] = name
             return self._graph._restore_origin_opcode(
                 list(self.stack), store_var_info, instr_idx
             )
