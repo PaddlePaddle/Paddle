@@ -193,6 +193,7 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
   x_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
   TensorDistAttr out_dist_attr(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
+  TensorDistAttr out_shape_dist_attr;
 
   VLOG(4) << "Transformation from input to output:";
   for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
@@ -203,7 +204,9 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
           << "] dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "Out dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
 
-  return {{x_dist_attr_dst}, {out_dist_attr}};
+  return {{x_dist_attr_dst},
+          ToArgDistAttr(std::vector<TensorDistAttr>(
+              {out_dist_attr, out_shape_dist_attr}))};
 }
 
 SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
