@@ -264,6 +264,7 @@ class FunctionGraph:
         if restore_instr_names[-2:] == ["KW_NAMES", "PRECALL"]:
             restore_instrs = restore_instrs[:-2]
 
+        self.pycode_gen.extend_instrs(restore_instrs)
         nop = self.pycode_gen._add_instr("NOP")
 
         for instr in origin_instrs:
