@@ -271,7 +271,12 @@ class DistributedBatchSampler(BatchSampler):
     def __iter__(self):
         num_samples = len(self.dataset)
         indices = np.arange(num_samples).tolist()
-        indices += indices[: (self.total_size - len(indices))]
+        # Repeat indices until matching the total_size
+        while len(indices) < self.total_size:
+            indices += indices[
+                : min(num_samples, self.total_size - len(indices))
+            ]
+
         assert len(indices) == self.total_size
         if self.shuffle:
             np.random.RandomState(self.epoch).shuffle(indices)
