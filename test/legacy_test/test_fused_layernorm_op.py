@@ -16,8 +16,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def quant_helper(
@@ -433,7 +433,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 self.epsilon,
                 begin_norm_axis=1,
             )
-            exe = base.Executor(self.place)
+            exe = paddle.static.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
@@ -483,7 +483,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 quant_max_bound=self.quant_max_bound,
                 quant_min_bound=self.quant_min_bound,
             )
-            exe = base.Executor(self.place)
+            exe = paddle.static.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
@@ -532,7 +532,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 quant_min_bound=self.quant_min_bound,
             )
 
-            exe = base.Executor(self.place)
+            exe = paddle.static.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
@@ -590,7 +590,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 residual=residual_static,
             )
 
-            exe = base.Executor(self.place)
+            exe = paddle.static.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
@@ -664,7 +664,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 quant_min_bound=self.quant_min_bound,
             )
 
-            exe = base.Executor(self.place)
+            exe = paddle.static.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
@@ -677,6 +677,7 @@ class TestlayernormStaticOp(unittest.TestCase):
             )
         return out_s, paddle_naive_layernorm_out, paddle_naive_residual_out
 
+    @test_with_pir_api
     def test_layernorm_fp16(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -691,6 +692,7 @@ class TestlayernormStaticOp(unittest.TestCase):
             atol=1e-3,
         )
 
+    @test_with_pir_api
     def test_layernorm_int8(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -704,6 +706,7 @@ class TestlayernormStaticOp(unittest.TestCase):
             atol=2,
         )
 
+    @test_with_pir_api
     def test_residual_bias_add(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -724,6 +727,7 @@ class TestlayernormStaticOp(unittest.TestCase):
             atol=1e-3,
         )
 
+    @test_with_pir_api
     def test_residual_bias_add_layernorm_fp16(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -754,6 +758,7 @@ class TestlayernormStaticOp(unittest.TestCase):
             atol=1e-3,
         )
 
+    @test_with_pir_api
     def test_residual_bias_add_layernorm_int8(self):
         if not paddle.is_compiled_with_cuda():
             return

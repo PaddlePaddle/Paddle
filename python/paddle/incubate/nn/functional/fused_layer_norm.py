@@ -15,7 +15,10 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import LayerHelper, in_dynamic_mode
+from paddle.framework import (
+    LayerHelper,
+    in_dynamic_or_pir_mode,
+)
 
 
 def fused_layer_norm(
@@ -69,7 +72,7 @@ def fused_layer_norm(
             >>> paddle_layernorm = paddle.incubate.nn.functional.fused_layer_norm(paddle_x, paddle_weight, paddle_bias, epsilon, 1)
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.fused_bias_residual_layernorm(
             x,
             bias,
