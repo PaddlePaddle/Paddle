@@ -38,9 +38,5 @@ void IgammacKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(igammac,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::IgammacKernel,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    igammac, CPU, ALL_LAYOUT, phi::IgammacKernel, float, double) {}

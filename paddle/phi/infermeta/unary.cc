@@ -5243,11 +5243,11 @@ void IgammaInferMeta(const MetaTensor& x,
 
   PADDLE_ENFORCE_EQ(
       x_dims_size == a_dims_size || x_dims_size == 1 || a_dims_size == 1,
-      false,
+      true,
       phi::errors::InvalidArgument(
           "The size of tesnor x and tensor a should be same dimension, or one "
-          "of the two tensors should be 1, but received tensor x (%d) and "
-          "tensor a (%d).",
+          "of the two tensors should be 1, but received tensor x (%u) and "
+          "tensor a (%u).",
           x_dims_size,
           a_dims_size));
 
@@ -5271,11 +5271,11 @@ void IgammacInferMeta(const MetaTensor& x,
 
   PADDLE_ENFORCE_EQ(
       x_dims_size == a_dims_size || x_dims_size == 1 || a_dims_size == 1,
-      false,
+      true,
       phi::errors::InvalidArgument(
           "The size of tesnor x and tensor a should be same dimension, or one "
-          "of the two tensors should be 1, but received tensor x (%d) and "
-          "tensor a (%d).",
+          "of the two tensors should be 1, but received tensor x (%u) and "
+          "tensor a (%u).",
           x_dims_size,
           a_dims_size));
 

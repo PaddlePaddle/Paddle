@@ -38,9 +38,4 @@ void IgammaKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(igamma,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::IgammaKernel,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(igamma, CPU, ALL_LAYOUT, phi::IgammaKernel, float, double) {}

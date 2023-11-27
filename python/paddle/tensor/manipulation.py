@@ -5896,3 +5896,100 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
 
     """
     return fill_diagonal_tensor(x, y, offset, axis1, axis2, name)
+
+
+def igamma(x, other, name=None):
+    r"""
+    Computes the regularized lower incomplete gamma function.
+    The equation is:
+
+    .. math::
+        \mathrm{igamma}(x, a)=\frac{1}{\Gamma(x)}\int_0^at^{x-1}e^{-t}dt
+    
+    
+    Args:
+        x (Tensor): ``x`` is the original Tensor. Must be at least 2-dimensional.
+        y (Tensor): ``y`` is the Tensor to embed into ``x``
+        offset (int, optional): which diagonal to consider. Default: 0 (main diagonal).
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, Tensor with diagonal embedeed with ``y``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.arange(6.0).reshape((2, 3))
+            >>> a = paddle.ones((2,))
+            >>> out = x.diagonal_scatter(y)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[1., 1., 2.],
+                    [3., 1., 5.]])
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.igamma(x, other)
+    else:
+        check_variable_and_dtype(x, "x", ["float32", "float64"], "igamma")
+        check_variable_and_dtype(
+            other, "other", ["float32", "float64"], "igamma"
+        )
+
+        helper = LayerHelper("igamma", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='igamma',
+            inputs={'x': x, 'a': other},
+            outputs={'out': out},
+            attrs={},
+        )
+    return out
+
+
+def igammac(x, other, name=None):
+    r"""
+    Computes the regularized upper incomplete gamma function.
+    The equation is:
+
+    .. math::
+        \mathrm{igammac}(x, a)=\frac{1}{\Gamma(x)}\int_a^{\infty}t^{x-1}e^{-t}dt
+    
+    Args:
+        x (Tensor): ``x`` is the original Tensor. Must be at least 2-dimensional.
+        y (Tensor): ``y`` is the Tensor to embed into ``x``
+        offset (int, optional): which diagonal to consider. Default: 0 (main diagonal).
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, Tensor with diagonal embedeed with ``y``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.arange(6.0).reshape((2, 3))
+            >>> y = paddle.ones((2,))
+            >>> out = x.diagonal_scatter(y)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[1., 1., 2.],
+                    [3., 1., 5.]])
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.igammac(x, other)
+    else:
+        check_variable_and_dtype(x, "x", ["float32", "float64"], "igammac")
+        check_variable_and_dtype(
+            other, "other", ["float32", "float64"], "igammac"
+        )
+
+        helper = LayerHelper("igammac", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='igammac',
+            inputs={'x': x, 'a': other},
+            outputs={'out': out},
+            attrs={},
+        )
+    return out

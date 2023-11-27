@@ -261,6 +261,8 @@ from .tensor.manipulation import (  # noqa: F401
     index_fill,
     index_fill_,
     diagonal_scatter,
+    igamma,
+    igammac,
 )
 
 from .tensor.math import (  # noqa: F401
@@ -931,4 +933,6 @@ __all__ = [
     'index_fill',
     "index_fill_",
     'diagonal_scatter',
+    'igamma',
+    'igammac',
 ]
