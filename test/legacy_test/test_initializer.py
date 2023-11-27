@@ -528,10 +528,10 @@ class TestXavierInitializerPir(unittest.TestCase):
                 self.assertEqual(len(checked_ops), 1)
                 init_op = checked_ops[0]
                 std = np.sqrt(2.0 / (param.shape[0] + param.shape[1]))
-                mean = init_op.attrs()["mean"]
-                std = init_op.attrs()["std"]
-                self.assertAlmostEqual(mean, 0.0, delta=DELTA)
-                self.assertAlmostEqual(std, std, delta=DELTA)
+                self.assertAlmostEqual(
+                    init_op.attrs()["mean"], 0.0, delta=DELTA
+                )
+                self.assertAlmostEqual(init_op.attrs()["std"], std, delta=DELTA)
                 self.assertEqual(init_op.attrs()['seed'], 0)
 
     def test_normal_xavier_initializer_conv(self):
