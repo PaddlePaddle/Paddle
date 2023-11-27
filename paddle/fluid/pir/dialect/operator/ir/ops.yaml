@@ -1336,7 +1336,6 @@
     func : uniform_random_batch_size_like
     data_type : dtype
 
-# The `axis` argument of Python API paddle.unique is not vector
 - op : unique
   args : (Tensor x, bool return_index=false, bool return_inverse=false, bool return_counts=false, int[] axis={}, DataType dtype=DataType::INT64, bool is_sorted=false)
   output : Tensor(out), Tensor(indices), Tensor(inverse), Tensor(counts)
