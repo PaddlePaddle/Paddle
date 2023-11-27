@@ -208,7 +208,11 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
           << "] dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "Out dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
 
-  return {{x_dist_attr_dst}, {out_dist_attr, x_dist_attr_dst}};
+  // auto result = SpmdInfo({{x_dist_attr_dst}, {out_dist_attr}});
+  // VLOG(4) << "After result.";
+
+  // return result;
+  return {{x_dist_attr_dst}, {out_dist_attr}};
 }
 
 SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
@@ -285,14 +289,25 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
           << "dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "X dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
 
+  // auto result = SpmdInfo({{x_dist_attr}, {out_dist_attr_dst}});
+  // VLOG(4) << "After result.";
+
+  // return result;
   return {{x_dist_attr}, {out_dist_attr_dst}};
+}
+
+SpmdInfo ReshapeInferSpmdDynamic(const DistMetaTensor& x,
+                                 const std::vector<int64_t>& shape) {
+  auto spmd_info = ReshapeInferSpmd(x, shape);
+  spmd_info.second.emplace_back(spmd_info.first[0]);
+  return spmd_info;
 }
 
 SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
                               const DistMetaTensor& out_grad) {
   std::vector<int64_t> out_grad_shape = phi::vectorize(out_grad.dims());
   const auto& x_shape_dist_src = x_shape.dist_attr();
-  auto tmp = ReshapeInferSpmd(x_shape, out_grad_shape);
+  auto tmp = ReshapeInferSpmdDynamic(x_shape, out_grad_shape);
   // check no shard is needed
   VLOG(3) << "after ReshapeInferSpmd";
   const auto& x_shape_dist_dst = PADDLE_GET_CONST(TensorDistAttr, tmp.first[0]);
