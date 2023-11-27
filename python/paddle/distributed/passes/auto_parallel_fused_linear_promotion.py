@@ -15,6 +15,8 @@
 
 import logging
 
+import numpy as np
+
 from paddle.distributed.auto_parallel.static.utils import (
     is_optimize_op,
     is_recompute_op,
@@ -42,11 +44,11 @@ _supported_optimizer_type = [
 
 FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
     # amp_level == 'o2' or 'o3'
-    {
+    {  # only MP
         "forward": ["matmul_v2", "c_allreduce_sum", "elementwise_add"],
         "backward": ["elementwise_add_grad", "matmul_v2_grad"],
     },
-    {
+    {  # MP + SP
         "forward": ["matmul_v2", "c_reducescatter", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
@@ -56,7 +58,7 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
             "matmul_v2_grad",
         ],
     },
-    {
+    {  # DP + MP
         "forward": ["matmul_v2", "c_allreduce_sum", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
@@ -65,7 +67,7 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
             "matmul_v2_grad",
         ],
     },
-    {
+    {  # DP + MP + SP
         "forward": ["matmul_v2", "c_reducescatter", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
@@ -155,6 +157,7 @@ class FusedLinearPromotionPass(PassBase):
             logger.warning(
                 "Don't support the case of enable_dp and enable_sp because the TP parallelism not ready, skip this pass"
             )
+            return
 
         pattern_offset = 4 if self._is_amp_o1 else 0
         if self._enable_sp:
@@ -178,6 +181,7 @@ class FusedLinearPromotionPass(PassBase):
         else:
             logger.warning("Neither of sp and mp is enabled, skip this pass")
             return
+
         # 1. get whether the current rank is first rank in mp
         self._is_first_rank = self._is_tp_sp_first_rank(
             self._dist_context, self._global_rank
@@ -231,8 +235,10 @@ class FusedLinearPromotionPass(PassBase):
 
     def _is_tp_sp_first_rank(self, dist_context, rank):
         for process_mesh in dist_context.process_meshes:
-            inner_mesh = process_mesh.mesh
-            inner_mesh_shape = inner_mesh.shape
+            inner_mesh_shape = process_mesh.shape
+            inner_mesh = (np.array(process_mesh.process_ids)).reshape(
+                inner_mesh_shape
+            )
             if len(inner_mesh_shape) == 1:
                 return rank == min(process_mesh.process_ids)
             elif len(inner_mesh.shape) == 2:
@@ -250,8 +256,10 @@ class FusedLinearPromotionPass(PassBase):
 
     def _is_enable_dp_mp(self, dist_context):
         for process_mesh in dist_context.process_meshes:
-            inner_mesh = process_mesh.mesh
-            inner_mesh_shape = inner_mesh.shape
+            inner_mesh_shape = process_mesh.shape
+            inner_mesh = (np.array(process_mesh.process_ids)).reshape(
+                inner_mesh_shape
+            )
             if len(inner_mesh_shape) == 1:
                 return False, inner_mesh_shape[0] > 1
             else:
@@ -652,11 +660,11 @@ class FusedLinearPromotionPass(PassBase):
                     to_delete_grad_of_param.append(
                         add_grad_op.output_arg_names[1]
                     )
-                    if self._enable_dp:
-                        c_all_reduce_op = global_block.ops[segment[0] + 1]
-                        scale_op = global_block.ops[segment[0] + 2]
-                        global_block._remove_op(segment[0] + 2)
-                        global_block._remove_op(segment[0] + 1)
+                    # if self._enable_dp:
+                    #     c_all_reduce_op = global_block.ops[segment[0] + 1]
+                    #     scale_op = global_block.ops[segment[0] + 2]
+                    #     global_block._remove_op(segment[0] + 2)
+                    #     global_block._remove_op(segment[0] + 1)
                     global_block._remove_op(segment[0])
                 global_block._sync_with_cpp()
             else:
@@ -679,15 +687,16 @@ class FusedLinearPromotionPass(PassBase):
                     global_block._remove_op(segment[0] + 2)  # scale
                     global_block._remove_op(segment[0] + 1)  # c_allreduce_sum
                     # remove vars and op
-                    if self._enable_dp:  # DP
-                        c_all_reduce_op = global_block.ops[segment[1]]
-                        scale_op = global_block.ops[segment[2]]
-                        global_block._remove_var(
-                            c_all_reduce_op.input_arg_names[0]
-                        )
-                        global_block._remove_var(scale_op.outpu_arg_names[0])
-                        global_block._remove_op(segment[2])
-                        global_block._remove_op(segment[1])
+                    # if self._enable_dp:  # DP
+                    #     c_all_reduce_op = global_block.ops[segment[1]]
+                    #     scale_op = global_block.ops[segment[2]]
+                    #     global_block._remove_var(
+                    #         c_all_reduce_op.input_arg_names[0]
+                    #     )
+                    #     global_block._remove_var(scale_op.outpu_arg_names[0])
+                    #     global_block._remove_op(segment[2])
+                    #     global_block._remove_op(segment[1])
+
                     global_block._remove_op(segment[0])
                 global_block._sync_with_cpp()
 
