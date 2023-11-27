@@ -1210,8 +1210,8 @@ class ConcreteProgram:
 
                 # 2. Builds program only once and returns the output Variables.
                 with param_guard(
-                    get_parameters(class_instance, False)
-                ), param_guard(get_buffers(class_instance, False)):
+                    get_parameters(class_instance, True)
+                ), param_guard(get_buffers(class_instance, True)):
                     try:
                         # only for jit.save, do nothing while train and eval process
                         inputs = hook_helper.apply_pre_hooks(static_inputs)
@@ -1314,8 +1314,8 @@ class ConcreteProgram:
 
                 # 2. Builds program only once and returns the output Variables.
                 with param_guard(
-                    get_parameters(class_instance, False)
-                ), param_guard(get_buffers(class_instance, False)):
+                    get_parameters(class_instance, True)
+                ), param_guard(get_buffers(class_instance, True)):
                     try:
                         # only for jit.save, do nothing while train and eval process
                         inputs = hook_helper.apply_pre_hooks(static_inputs)

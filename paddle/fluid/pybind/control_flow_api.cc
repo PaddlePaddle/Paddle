@@ -73,6 +73,7 @@ void BindIfOp(py::module* m) {
   if_op.def("true_block", &PyIfOp::true_block, return_value_policy::reference)
       .def("false_block", &PyIfOp::false_block, return_value_policy::reference)
       .def("update_output", &PyIfOp::UpdateOutput)
+      .def("as_operation", &PyIfOp::operation, return_value_policy::reference)
       .def("results", [](PyIfOp& self) -> py::list {
         py::list op_list;
         for (uint32_t i = 0; i < self->num_results(); i++) {
