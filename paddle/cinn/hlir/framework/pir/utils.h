@@ -36,7 +36,7 @@ struct CINNKernelInfo {
     int dim_idx;
   };
   std::map<int, ArgDimIdx> int_args_map;
-  void* compiler;  // instruction need backends::compiler stay alive
+  // void* compiler;  // instruction need backends::compiler stay alive
 };
 
 struct CompatibleInfo {

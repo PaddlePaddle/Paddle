@@ -30,6 +30,7 @@
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/ir/function_base.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/utils/error.h"
 #include "paddle/cinn/utils/small_vector.h"
 
 namespace cinn {

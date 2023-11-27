@@ -203,7 +203,8 @@ OpLowererImpl::BucketLower(const GroupPtr& group,
   // XX_0, XX_1, so we log them in tmp_tensor_info;
   std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
   std::vector<ir::Expr> func_bodies =
-      LowerOps(ops,
+      LowerOps(group,
+               ops,
                apply_op_schedule,
                &OpLowererImpl::DyShapeScheduleDetermineFunction,
                &group_func_arg_tensors,
@@ -231,7 +232,7 @@ OpLowererImpl::BucketLower(const GroupPtr& group,
     group_scheduler->Schedule();
     cond2func_bodies = group_scheduler->GetIRs();
   } else {
-    cond2func_bodies.emplace_back(ir::Expr(1),
+    cond2func_bodies.emplace_back(ir::Expr(true),
                                   ir_sch.GetModule().GetExprs()[0]);
   }
 
