@@ -29,9 +29,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/fpA_intB_gemm_template.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/enforce.h"
-
+#include "paddle/phi/core/errors.h"
+#include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/arch_define.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #pragma GCC diagnostic pop
@@ -173,6 +173,7 @@ void dispatch_gemm_to_cutlass(const T* A,
   // fpA_intB. We also only instantiate configs here where threadblockShapeM ==
   // warpShapeM since those usually perform the best for mixed type gemms.
   switch (gemm_config.tile_config) {
+#ifndef USE_FPAINTB_GEMM_WITH_SM70
     case CutlassTileConfig::CtaShape16x128x64_WarpShape16x32x64:
       dispatch_gemm_config<T,
                            WeightType,
@@ -194,6 +195,7 @@ void dispatch_gemm_to_cutlass(const T* A,
           stream,
           occupancy);
       break;
+#endif
     case CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64:
       dispatch_gemm_config<T,
                            WeightType,
@@ -215,7 +217,7 @@ void dispatch_gemm_to_cutlass(const T* A,
           stream,
           occupancy);
       break;
-    case CutlassTileConfig::CtaShape64x128x64_WarpShape64x32x64:
+    case CutlassTileConfig::CtaShape64x128x64_WarpShape64x64x64:
       dispatch_gemm_config<T,
                            WeightType,
                            arch,
@@ -236,6 +238,7 @@ void dispatch_gemm_to_cutlass(const T* A,
           stream,
           occupancy);
       break;
+#ifndef USE_FPAINTB_GEMM_WITH_SM70
     case CutlassTileConfig::CtaShape128x128x64_WarpShape64x64x64:
       dispatch_gemm_config<T,
                            WeightType,
@@ -279,6 +282,7 @@ void dispatch_gemm_to_cutlass(const T* A,
           stream,
           occupancy);
       break;
+#endif
     case CutlassTileConfig::Undefined:
       throw std::runtime_error(
           "[fpA_intB][dispatch_gemm_to_cutlass] gemm config undefined.");
