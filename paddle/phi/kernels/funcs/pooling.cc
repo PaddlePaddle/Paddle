@@ -616,23 +616,34 @@ class LPPool2dGradFunctor<CPUContext, PoolProcess, T> {
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
-                  float norm_type,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
+                  const std::string data_format,
                   DenseTensor* input_grad,
                   PoolProcess pool_grad_process) {
+    bool channel_last = (data_format == "NHWC");
+
     const int batch_size = static_cast<int>(input.dims()[0]);
-    const int input_height = static_cast<int>(input.dims()[2]);
-    const int input_width = static_cast<int>(input.dims()[3]);
-    const int output_channels = static_cast<int>(output.dims()[1]);
-    const int output_height = static_cast<int>(output.dims()[2]);
-    const int output_width = static_cast<int>(output.dims()[3]);
+
+    const int input_channels =
+        static_cast<int>(channel_last ? input.dims()[3] : input.dims()[1]);
+    const int input_height =
+        static_cast<int>(channel_last ? input.dims()[1] : input.dims()[2]);
+    const int input_width =
+        static_cast<int>(channel_last ? input.dims()[2] : input.dims()[3]);
+
+    const int output_channels =
+        static_cast<int>(channel_last ? output.dims()[3] : output.dims()[1]);
+    const int output_height =
+        static_cast<int>(channel_last ? output.dims()[1] : output.dims()[2]);
+    const int output_width =
+        static_cast<int>(channel_last ? output.dims()[2] : output.dims()[3]);
+
     const int ksize_height = ksize[0];
     const int ksize_width = ksize[1];
+
     const int stride_height = strides[0];
     const int stride_width = strides[1];
-    const int input_stride = input_height * input_width;
-    const int output_stride = output_height * output_width;
 
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
@@ -641,27 +652,68 @@ class LPPool2dGradFunctor<CPUContext, PoolProcess, T> {
 
     int hstart = 0, hend = 1;
     int wstart = 0, wend = 1;
-    for (int i = 0; i < batch_size; i++) {
-      for (int c = 0; c < output_channels; ++c) {
-        for (int ph = 0; ph < output_height; ++ph) {
-          for (int pw = 0; pw < output_width; ++pw) {
-            hstart = ph * stride_height;
-            wstart = pw * stride_width;
-            hend = std::min(hstart + ksize_height, input_height);
-            wend = std::min(wstart + ksize_width, input_width);
+    if (!channel_last) {
+      const int input_stride = input_height * input_width;
+      const int output_stride = output_height * output_width;
+      for (int i = 0; i < batch_size; i++) {
+        for (int c = 0; c < output_channels; ++c) {
+          for (int ph = 0; ph < output_height; ++ph) {
+            for (int pw = 0; pw < output_width; ++pw) {
+              hstart = ph * stride_height;
+              wstart = pw * stride_width;
+              hend = std::min(hstart + ksize_height, input_height);
+              wend = std::min(wstart + ksize_width, input_width);
 
-            wstart = std::max(wstart, 0);
-            hstart = std::max(hstart, 0);
-            hend = std::min(hend, input_height);
-            wend = std::min(wend, input_width);
-            for (int h = hstart; h < hend; ++h) {
-              for (int w = wstart; w < wend; ++w) {
-                pool_grad_process.compute(
-                    input_data[h * input_width + w],
-                    output_data[ph * output_width + pw],
-                    output_grad_data[ph * output_width + pw],
-                    norm_type,
-                    input_grad_data + h * input_width + w);
+              wstart = std::max(wstart, 0);
+              hstart = std::max(hstart, 0);
+              hend = std::min(hend, input_height);
+              wend = std::min(wend, input_width);
+
+              for (int h = hstart; h < hend; ++h) {
+                for (int w = wstart; w < wend; ++w) {
+                  pool_grad_process.compute(
+                      input_data[h * input_width + w],
+                      output_data[ph * output_width + pw],
+                      output_grad_data[ph * output_width + pw],
+                      input_grad_data + h * input_width + w);
+                }
+              }
+            }
+          }
+          input_data += input_stride;
+          output_data += output_stride;
+          input_grad_data += input_stride;
+          output_grad_data += output_stride;
+        }
+      }
+    } else {
+      const int input_stride = input_height * input_width * input_channels;
+      const int output_stride = output_height * output_width * output_channels;
+      for (int i = 0; i < batch_size; i++) {
+        for (int c = 0; c < output_channels; ++c) {
+          for (int ph = 0; ph < output_height; ++ph) {
+            for (int pw = 0; pw < output_width; ++pw) {
+              hstart = ph * stride_height;
+              wstart = pw * stride_width;
+              hend = std::min(hstart + ksize_height, input_height);
+              wend = std::min(wstart + ksize_width, input_width);
+
+              wstart = std::max(wstart, 0);
+              hstart = std::max(hstart, 0);
+              hend = std::min(hend, input_height);
+              wend = std::min(wend, input_width);
+
+              for (int h = hstart; h < hend; ++h) {
+                for (int w = wstart; w < wend; ++w) {
+                  auto input_idx =
+                      h * input_width * input_channels + w * input_channels + c;
+                  auto output_idx = ph * output_width * output_channels +
+                                    pw * output_channels + c;
+                  pool_grad_process.compute(input_data[input_idx],
+                                            output_data[output_idx],
+                                            output_grad_data[output_idx],
+                                            input_grad_data + input_idx);
+                }
               }
             }
           }

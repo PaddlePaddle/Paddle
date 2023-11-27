@@ -114,11 +114,12 @@ class AvgPoolGrad {
 
 template <class T>
 class LPPoolGrad {
- public:
-  static constexpr bool use_x = true;
+  float norm_type;
 
-  HOSTDEVICE inline void compute(
-      const T& x, const T& y, const T& dy, float norm_type, T* dx) {
+ public:
+  HOSTDEVICE inline void setNormType(float ntype) { norm_type = ntype; }
+
+  HOSTDEVICE inline void compute(const T& x, const T& y, const T& dy, T* dx) {
     *dx +=
         static_cast<T>(static_cast<double>(dy) * static_cast<double>(x) *
                        powf(fabsf(static_cast<double>(x)), norm_type - 2.0f) /
@@ -245,7 +246,6 @@ class LPPool2dGradFunctor {
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
-                  float norm_type,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   DenseTensor* input_grad,

@@ -171,13 +171,14 @@ void LPPoolGradRawKernel(const Context& ctx,
         funcs::LPPool2dGradFunctor<Context, funcs::LPPoolGrad<T>, T>
             pool2d_backward;
         funcs::LPPoolGrad<T> pool_process;
+        pool_process.setNormType(norm_type);
         pool2d_backward(ctx,
                         x,
                         out,
                         dout,
-                        norm_type,
                         kernel_size_,
                         strides,
+                        data_format,
                         dx,
                         pool_process);
       } break;

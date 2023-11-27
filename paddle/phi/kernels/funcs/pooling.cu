@@ -431,7 +431,6 @@ __global__ void KernelLPPool2DGrad(const int nthreads,
                                    const int output_height,
                                    const int input_width,
                                    const int input_height,
-                                   float norm_type,
                                    const int ksize_width,
                                    const int ksize_height,
                                    const int stride_width,
@@ -457,10 +456,8 @@ __global__ void KernelLPPool2DGrad(const int nthreads,
                                      &h_offset,
                                      &c_offset,
                                      &output_offset);
-    if (pool_process.use_x) {
-      input = input_data[index];
-      output_data += output_offset;
-    }
+    input = input_data[index];
+    output_data += output_offset;
     output_grad += output_offset;
 
     auto stride_height_div = divmods.stride_h.Div(h_offset - ksize_height);
@@ -483,12 +480,10 @@ __global__ void KernelLPPool2DGrad(const int nthreads,
         int output_sub_idx = channel_last
                                  ? tmp_idx * divmods.channel.divisor + c_offset
                                  : tmp_idx;
-        T ouput_value = pool_process.use_x ? output_data[output_sub_idx]
-                                           : static_cast<T>(0);
+        T ouput_value = output_data[output_sub_idx];
         pool_process.compute(input_data[index],
                              output_data[output_sub_idx],
                              output_grad[output_sub_idx],
-                             norm_type,
                              &input_grad_data);
       }
     }
@@ -1057,19 +1052,27 @@ class LPPool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
-                  float norm_type,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
+                  const std::string data_format,
                   DenseTensor* input_grad,
                   PoolProcess pool_process) {
+    bool channel_last = (data_format == "NHWC");
+
     const int batch_size = input.dims()[0];
-    const int input_channels = input.dims()[1];
-    const int input_height = input.dims()[2];
-    const int input_width = input.dims()[3];
-    const int output_height = output.dims()[2];
-    const int output_width = output.dims()[3];
+    const int input_channels = channel_last ? input.dims()[3] : input.dims()[1];
+    const int input_height = channel_last ? input.dims()[1] : input.dims()[2];
+    const int input_width = channel_last ? input.dims()[2] : input.dims()[3];
+
+    const int output_channels =
+        channel_last ? output.dims()[3] : output.dims()[1];
+    const int output_height =
+        channel_last ? output.dims()[1] : output.dims()[2];
+    const int output_width = channel_last ? output.dims()[2] : output.dims()[3];
+
     const int ksize_height = ksize[0];
     const int ksize_width = ksize[1];
+
     const int stride_height = strides[0];
     const int stride_width = strides[1];
 
@@ -1099,14 +1102,14 @@ class LPPool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
                                                              output_height,
                                                              input_width,
                                                              input_height,
-                                                             norm_type,
                                                              ksize_width,
                                                              ksize_height,
                                                              stride_width,
                                                              stride_height,
                                                              pool_divmods,
                                                              pool_process,
-                                                             input_grad_data);
+                                                             input_grad_data,
+                                                             channel_last);
   }
 };
 
