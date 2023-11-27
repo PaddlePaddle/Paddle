@@ -16,7 +16,7 @@ import inspect
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_sot_only
+from dygraph_to_static_utils import Dy2StTestBase, test_sot_only
 
 import paddle
 import paddle.nn.functional as F
