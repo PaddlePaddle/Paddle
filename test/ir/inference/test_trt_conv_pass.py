@@ -19,9 +19,9 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle import base
+from paddle.base import core
+from paddle.base.core import AnalysisConfig, PassVersionChecker
 
 os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
@@ -29,7 +29,7 @@ os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 class TensorRTSubgraphPassConvTest(InferencePassTest):
     def setUp(self):
         self.set_params()
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
@@ -107,7 +107,7 @@ class TensorRTSubgraphPassDepthwiseConv2Test(TensorRTSubgraphPassConvTest):
 class TensorRTSubgraphPassConvTransposeTest(InferencePassTest):
     def setUp(self):
         self.set_params()
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
@@ -206,7 +206,7 @@ class TensorRTSubgraphPassDepthwiseConvTransposeTest(
 class DynamicShapeTensorRTSubgraphPassConvTest(InferencePassTest):
     def setUp(self):
         self.set_params()
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[-1, 6, -1, -1], dtype="float32"
             )

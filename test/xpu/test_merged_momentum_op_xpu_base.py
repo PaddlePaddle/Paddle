@@ -21,7 +21,7 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper
 
 
 def run_momentum_op(
@@ -181,7 +181,7 @@ class TestMergedMomentumBase(unittest.TestCase):
         paddle.enable_static()
         self.shapes = [[3, 4], [2, 7], [5, 6], [7, 8]]
         self.seed = 10
-        self.place = paddle.fluid.XPUPlace(0)
+        self.place = paddle.base.XPUPlace(0)
         self.__class__.use_xpu = True
 
     def gen_rand_data(self, shapes, dtype):

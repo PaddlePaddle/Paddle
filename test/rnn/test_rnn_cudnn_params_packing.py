@@ -47,9 +47,9 @@ class TestRNNProgramClone(TestCase):
         # flattening rnn's parameters for the need to call cudnn kernel is such
         # a case.
         with paddle.static.program_guard(train_program, startup_prog):
-            with paddle.fluid.unique_name.guard():
+            with paddle.base.unique_name.guard():
                 bilstm = create_model()
 
-        with paddle.fluid.program_guard(test_program, startup_prog):
-            with paddle.fluid.unique_name.guard():
+        with paddle.base.program_guard(test_program, startup_prog):
+            with paddle.base.unique_name.guard():
                 bilstm = create_model()

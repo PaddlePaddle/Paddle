@@ -390,8 +390,9 @@ fused_attention_dygraph_function(
                                         p_autograd_CacheKVOut,
                                         p_autograd_Y);
       // Create GradOpNode
-      auto grad_node = std::shared_ptr<fused_attentionGradNodeCompat>(
-          new fused_attentionGradNodeCompat(20, 23));
+      auto grad_node =
+          std::shared_ptr<fused_attentionGradNodeCompat>(  // NOLINT
+              new fused_attentionGradNodeCompat(20, 23));
 
       bool pre_layer_norm = false;
       if (attrs.count("pre_layer_norm")) {

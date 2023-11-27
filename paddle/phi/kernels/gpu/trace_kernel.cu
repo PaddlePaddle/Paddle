@@ -18,6 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -36,8 +37,8 @@ void TraceKernel(const Context& ctx,
     auto out_dim_size = out->dims().size();
     if (out_dim_size == 0) out_dim_size = 1;
     reduce_dims.push_back(out_dim_size);
-    funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        ctx, diag, out, kps::IdentityFunctor<T>(), reduce_dims);
+    phi::SumKernel<T, Context>(
+        ctx, diag, reduce_dims, diag.dtype(), false, out);
   } else {
     phi::funcs::SetConstant<Context, T> functor;
     functor(ctx, out, static_cast<T>(0));

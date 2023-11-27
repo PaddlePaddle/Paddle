@@ -37,10 +37,12 @@ void LabelSmoothKernel(const Context& ctx,
       eigen_out.device(dev) =
           static_cast<T>(1 - epsilon) * eigen_in +
           static_cast<T>(epsilon) *
-              dist.broadcast(Eigen::DSizes<int, 1>(label.numel() / label_dim));
+              dist.broadcast(Eigen::DSizes<int, 1>(
+                  static_cast<int>(label.numel() / label_dim)));
     } else {
-      eigen_out.device(dev) = static_cast<T>(1 - epsilon) * eigen_in +
-                              static_cast<T>(epsilon / label_dim);
+      eigen_out.device(dev) =
+          static_cast<T>(1 - epsilon) * eigen_in +
+          static_cast<T>(epsilon / static_cast<float>(label_dim));
     }
   }
 }

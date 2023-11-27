@@ -21,7 +21,7 @@
 #include <cuda_runtime.h>
 #endif
 
-DECLARE_int64(cinn_self_check_accuracy_num);
+PD_DECLARE_int64(cinn_self_check_accuracy_num);
 
 namespace cinn {
 namespace hlir {

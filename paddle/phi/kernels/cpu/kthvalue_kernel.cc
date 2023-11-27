@@ -136,7 +136,7 @@ void KthvalueKernel(const Context& dev_ctx,
     DDim trans_dims(in_dims);
     DDim trans_out_dims(in_dims);
 
-    for (size_t i = 0; i < trans.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_dims[i] = in_dims[trans[i]];
       trans_out_dims[i] = in_dims[trans[i]];
     }
@@ -144,7 +144,7 @@ void KthvalueKernel(const Context& dev_ctx,
     DenseTensor trans_inp;
     trans_inp.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&trans_inp);
-    int ndims = trans.size();
+    int ndims = static_cast<int>(trans.size());
     funcs::TransCompute<phi::CPUContext, T>(
         ndims, dev_ctx, x, &trans_inp, trans);
 

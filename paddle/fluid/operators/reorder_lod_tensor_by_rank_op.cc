@@ -182,8 +182,8 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
       }
     }
 
-    auto x_sliced = x.Slice(x_offset, x_offset + len);
-    auto out_sliced = out->Slice(out_offset, out_offset + len);
+    auto x_sliced = x.Slice(x_offset, x_offset + len);           // NOLINT
+    auto out_sliced = out->Slice(out_offset, out_offset + len);  // NOLINT
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);

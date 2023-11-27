@@ -17,10 +17,15 @@ All layers just related to metric.
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import Variable, _create_tensor, in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle import _C_ops, _legacy_C_ops
+from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.base.framework import (
+    Variable,
+    _create_tensor,
+    in_dygraph_mode,
+    in_pir_mode,
+)
+from paddle.base.layer_helper import LayerHelper
 from paddle.nn.initializer import ConstantInitializer
 
 __all__ = []
@@ -87,6 +92,10 @@ def accuracy(input, label, k=1, correct=None, total=None):
         _acc, _, _ = _legacy_C_ops.accuracy(
             topk_out, topk_indices, label, correct, total
         )
+        return _acc
+    elif in_pir_mode():
+        topk_out, topk_indices = paddle.topk(input, k=k, sorted=False)
+        _acc, _, _ = _C_ops.accuracy(topk_out, topk_indices, label)
         return _acc
 
     helper = LayerHelper("accuracy", **locals())
@@ -525,7 +534,7 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         attrs={
             'shape': [-1, 1],
             'dtype': tmp_ones.dtype,
-            'value': float(1.0),
+            'value': 1.0,
         },
     )
     helper.append_op(

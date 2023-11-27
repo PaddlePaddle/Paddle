@@ -139,6 +139,7 @@ typedef struct edge_shape {
 } edge_node;
 
 inline bool gpc_eq(float a, float b) { return (fabs(a - b) <= 1e-6); }
+inline bool gpc_eq(double a, double b) { return (fabs(a - b) <= 1e-6); }
 
 inline bool gpc_prev_index(float a, float b) { return (fabs(a - b) <= 1e-6); }
 
@@ -189,7 +190,7 @@ inline void gpc_n_edge(edge_node *d, edge_node *e, int p) {
 }
 
 template <typename T>
-void gpc_malloc(T *&p, int b, char *s) {
+void gpc_malloc(T *&p, int b, char *s) {  // NOLINT
   if (b > 0) {
     p = reinterpret_cast<T *>(malloc(b));
 
@@ -202,7 +203,7 @@ void gpc_malloc(T *&p, int b, char *s) {
   }
 }
 template <typename T>
-void gpc_free(T *&p) {
+void gpc_free(T *&p) {  // NOLINT
   if (p) {
     free(p);
     p = NULL;

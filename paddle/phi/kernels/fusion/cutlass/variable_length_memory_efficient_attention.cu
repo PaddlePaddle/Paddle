@@ -37,6 +37,7 @@ void MultiHeadAttentionVariableForwardKernel(
 
   params.num_batches = query.dims()[0];
   params.num_heads = query.dims()[1];
+  params.kv_num_heads = key.dims()[1];
   params.query_seq_len = query.dims()[2];
   params.head_size = query.dims()[3];
   params.key_value_seq_len = key.dims()[2];
@@ -65,10 +66,11 @@ void MultiHeadAttentionVariableForwardKernel(
   if (mask) {
     // [B, 1, S, D]
     auto mask_tensor = mask.get();
+    int64_t mask_num_heads = mask_tensor.dims()[1];
     params.ldm = mask_tensor.dims()[3];
     params.ElementM = mask_tensor.dims()[2] * mask_tensor.dims()[3];
     params.mask_ptr = mask_tensor.data();
-    params.mask_broadcast_row = false;
+    params.mask_broadcast_head = mask_num_heads == 1 ? true : false;
   }
 
   bool kernel_launched = false;
@@ -82,10 +84,6 @@ void MultiHeadAttentionVariableForwardKernel(
       return;
     }
     if (!mask && KernelType::kAddMask) {
-      return;
-    }
-    if (KernelType::kMaskBroadcastRow) {
-      // not support mask_broad_cast
       return;
     }
     if (mask && reinterpret_cast<uintptr_t>(params.mask_ptr) % 16 == 0 &&

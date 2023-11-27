@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -26,15 +25,20 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/macros.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_bool(cudnn_deterministic);
+PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 namespace backends {
 namespace gpu {
 
+#define CUDNN_VERSION_COMPUTE(major, minor, patch)     \
+  ((major) <= 8 ? (major)*1000 + (minor)*100 + (patch) \
+                : (major)*10000 + (minor)*100 + (patch))
+
 #define CUDNN_VERSION_MIN(major, minor, patch) \
-  (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
+  (CUDNN_VERSION >= CUDNN_VERSION_COMPUTE(major, minor, patch))
 
 enum class DataLayout {  // Not use
   kNHWC,

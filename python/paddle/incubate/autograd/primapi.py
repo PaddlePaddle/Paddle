@@ -16,8 +16,8 @@ import logging
 import typing
 
 import paddle
-from paddle.fluid import backward, core, framework
-from paddle.fluid.core import prim_config
+from paddle.base import backward, core, framework
+from paddle.base.core import prim_config
 from paddle.incubate.autograd import primx, utils
 
 
@@ -240,12 +240,12 @@ def to_prim(
     """
     if not core._is_fwd_prim_enabled():
         return
-    if isinstance(blocks, paddle.fluid.framework.Block):
+    if isinstance(blocks, paddle.base.framework.Block):
         logging.info("Atomize composite op to primitive ops begin.")
         main_program = blocks.program
     elif isinstance(blocks, typing.Sequence):
         for item in blocks:
-            if not isinstance(item, paddle.fluid.framework.Block):
+            if not isinstance(item, paddle.base.framework.Block):
                 raise TypeError(
                     f"Expect block or sequence of blocks, but sequence contains {type(item)}."
                 )
@@ -266,7 +266,7 @@ def to_prim(
     blacklist = prim_config["forward_blacklist"] | blacklist
 
     with framework.program_guard(main_program):
-        print("Lowering composite forward ops begin...", flush=True)
+        logging.info("Lowering composite forward ops begin...")
 
         if len(blacklist) > 0 and len(whitelist) > 0:
             filter_ = lambda x: x.type in whitelist and x.type not in blacklist
@@ -283,6 +283,4 @@ def to_prim(
             backward_length=backward_length,
         )
         replace_ops = prim_config["composite_ops_record"]
-        print(
-            f"Lowering composite forward ops finish: {replace_ops}", flush=True
-        )
+        logging.info(f"Lowering composite forward ops finish: {replace_ops}")

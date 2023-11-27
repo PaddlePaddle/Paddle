@@ -14,8 +14,6 @@
 
 #include "paddle/cinn/hlir/op/contrib/one_hot.h"
 
-#include <gflags/gflags.h>
-
 #include <memory>
 #include <string>
 #include <utility>

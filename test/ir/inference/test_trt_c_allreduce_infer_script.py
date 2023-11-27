@@ -19,8 +19,8 @@ import tempfile
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.distributed import fleet
-from paddle.fluid import core
 from paddle.inference import Config, PrecisionType, create_predictor
 
 

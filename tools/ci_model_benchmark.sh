@@ -19,21 +19,6 @@ function check_whl {
     pip uninstall -y paddlepaddle_gpu
     pip install build/pr_whl/*.whl
     [ $? -ne 0 ] && echo "install paddle failed." && exit 1
-
-    unzip -q build/pr_whl/*.whl -d /tmp/pr
-    unzip -q build/dev_whl/*.whl -d /tmp/develop
-
-    sed -i '/version.py/d' /tmp/pr/*/RECORD
-    sed -i '/version.py/d' /tmp/develop/*/RECORD
-    diff_whl=`diff /tmp/pr/*/RECORD /tmp/develop/*/RECORD|wc -l`
-    [ $? -ne 0 ] && echo "diff paddle whl failed." && exit 1
-    if [ ${diff_whl} -eq 0 ];then
-        echo "paddle whl does not diff in PR-CI-Model-benchmark, so skip this ci"
-        echo "ipipe_log_param_isSkipTest_model_benchmark: 1" 
-        exit 0
-    else
-        echo "ipipe_log_param_isSkipTest_model_benchmark: 0"
-    fi
 }
 
 

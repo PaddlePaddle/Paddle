@@ -101,11 +101,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
   const dim3 grid(nbx, nby);
   const dim3 block(ntx, nty);
   int64_t input_size = x.dims()[0];
-#ifdef PADDLE_WITH_HIP
-  int block_ = 256;
-#else
   int block_ = 1024;
-#endif
   if (reduce_op == "SUM" || reduce_op == "MEAN") {
     GraphSendUERecvSumCUDAFunctor<T> sum_functor;
     if (message_op == "ADD") {

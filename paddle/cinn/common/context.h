@@ -14,7 +14,6 @@
 
 #pragma once
 #include <absl/types/any.h>
-#include <gflags/gflags.h>
 #include <isl/cpp.h>
 
 #include <mutex>
@@ -25,10 +24,11 @@
 #include "paddle/cinn/common/debug_manager.h"
 #include "paddle/cinn/common/info_registry.h"
 #include "paddle/cinn/common/target.h"
+#include "paddle/utils/flags.h"
 
 namespace cinn {
 
-DECLARE_bool(cinn_runtime_display_debug_info);
+PD_DECLARE_bool(cinn_runtime_display_debug_info);
 
 namespace ir {
 class Expr;
@@ -52,6 +52,22 @@ struct NameGenerator {
   mutable std::mutex mutex_;
 };
 
+struct PrettyNamer {
+  const std::string& GetOrNew(const size_t hash_key,
+                              const std::string& name_hint) {
+    if (pretty_names_.find(hash_key) == pretty_names_.end()) {
+      pretty_names_[hash_key] = name_generator_.New(name_hint);
+    }
+    return pretty_names_.at(hash_key);
+  }
+
+  NameGenerator& GetNameGenerator() { return name_generator_; }
+
+ private:
+  absl::flat_hash_map<size_t, std::string> pretty_names_;
+  NameGenerator name_generator_;
+};
+
 class Context {
  public:
   static Context& Global();
@@ -61,10 +77,15 @@ class Context {
    * @param name_hint The prefix.
    */
   std::string NewName(const std::string& name_hint) {
-    return name_generator_.New(name_hint);
+    return pretty_namer_.GetNameGenerator().New(name_hint);
   }
 
-  void ResetNameId() { name_generator_.ResetID(); }
+  std::string PrettyUniqName(const size_t hash_key,
+                             const std::string& name_hint) {
+    return pretty_namer_.GetOrNew(hash_key, name_hint);
+  }
+
+  void ResetNameId() { pretty_namer_.GetNameGenerator().ResetID(); }
 
   const std::vector<std::string>& runtime_include_dir();
 
@@ -82,7 +103,7 @@ class Context {
  private:
   Context() = default;
 
-  NameGenerator name_generator_;
+  PrettyNamer pretty_namer_;
   std::vector<std::string> runtime_include_dir_;
   mutable std::mutex mutex_;
 

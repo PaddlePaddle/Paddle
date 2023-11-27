@@ -15,76 +15,82 @@
 math functions
 """
 
+import math
+
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
-from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
+from paddle import _C_ops
+from paddle.base.libpaddle import DataType
+from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..common_ops_import import Variable
-from ..fluid.data_feeder import (
+from ..base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
+from ..common_ops_import import Variable
 from ..framework import (
     LayerHelper,
-    _dygraph_tracer,
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
-from .manipulation import cast
-from .ops import abs  # noqa: F401
-from .ops import abs_  # noqa: F401
-from .ops import acos  # noqa: F401
-from .ops import acos_  # noqa: F401
-from .ops import acosh  # noqa: F401
-from .ops import acosh_  # noqa: F401
-from .ops import asin  # noqa: F401
-from .ops import asin_  # noqa: F401
-from .ops import asinh  # noqa: F401
-from .ops import asinh_  # noqa: F401
-from .ops import atan  # noqa: F401
-from .ops import atan_  # noqa: F401
-from .ops import atanh  # noqa: F401
-from .ops import atanh_  # noqa: F401
-from .ops import ceil  # noqa: F401
-from .ops import ceil_  # noqa: F401
-from .ops import cos  # noqa: F401
-from .ops import cos_  # noqa: F401
-from .ops import cosh  # noqa: F401
-from .ops import cosh_  # noqa: F401
-from .ops import erf  # noqa: F401
-from .ops import erf_  # noqa: F401
-from .ops import exp  # noqa: F401
-from .ops import exp_  # noqa: F401
-from .ops import expm1  # noqa: F401
-from .ops import expm1_  # noqa: F401
-from .ops import floor  # noqa: F401
-from .ops import floor_  # noqa: F401
-from .ops import reciprocal  # noqa: F401
-from .ops import reciprocal_  # noqa: F401
-from .ops import round  # noqa: F401
-from .ops import round_  # noqa: F401
-from .ops import rsqrt  # noqa: F401
-from .ops import rsqrt_  # noqa: F401
-from .ops import sigmoid  # noqa: F401
-from .ops import sigmoid_  # noqa: F401
-from .ops import sin  # noqa: F401
-from .ops import sin_  # noqa: F401
-from .ops import sinh  # noqa: F401
-from .ops import sinh_  # noqa: F401
-from .ops import sqrt  # noqa: F401
-from .ops import sqrt_  # noqa: F401
-from .ops import square  # noqa: F401
-from .ops import square_  # noqa: F401
-from .ops import tan  # noqa: F401
-from .ops import tan_  # noqa: F401
+from .manipulation import cast, cast_
+from .ops import (  # noqa: F401
+    abs,
+    abs_,
+    acos,
+    acos_,
+    acosh,
+    acosh_,
+    asin,
+    asin_,
+    asinh,
+    asinh_,
+    atan,
+    atan_,
+    atanh,
+    atanh_,
+    ceil,
+    ceil_,
+    cos,
+    cos_,
+    cosh,
+    cosh_,
+    erf,
+    erf_,
+    exp,
+    exp_,
+    expm1,
+    expm1_,
+    floor,
+    floor_,
+    reciprocal,
+    reciprocal_,
+    round,
+    round_,
+    rsqrt,
+    rsqrt_,
+    sigmoid,
+    sigmoid_,
+    sin,
+    sin_,
+    sinh,
+    sinh_,
+    sqrt,
+    sqrt_,
+    square,
+    square_,
+    tan,
+    tan_,
+)
 
 __all__ = []
 
@@ -128,7 +134,7 @@ def _get_reduce_axis(axis, x):
 
 
 def _get_reduce_axis_with_tensor(axis, x):
-    if isinstance(axis, Variable):
+    if isinstance(axis, (Variable, paddle.pir.OpResult)):
         if axis.shape[0] == len(x.shape):
             reduce_all = True
         else:
@@ -169,7 +175,7 @@ def log(x, name=None):
             [[0.69314718, 1.09861231, 1.38629436],
              [1.94591010, 2.07944155, 2.19722462]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.log(x)
     else:
         check_variable_and_dtype(
@@ -265,12 +271,17 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             return _C_ops.scale(x, scale, float(bias), bias_after_scale)
         out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out, act)
+    elif in_pir_mode():
+        if act is None:
+            return _C_ops.scale(x, scale, float(bias), bias_after_scale)
+        raise ValueError("act is not implement in pir of scale api.")
     else:
         check_variable_and_dtype(
             x,
             "x",
             [
                 'float16',
+                'bfloat16',
                 'uint16',
                 'float32',
                 'float64',
@@ -279,6 +290,8 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
                 'int32',
                 'int64',
                 'uint8',
+                'complex64',
+                'complex128',
             ],
             "scale",
         )
@@ -331,7 +344,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.stanh(x, scale_a, scale_b)
     else:
         check_variable_and_dtype(
@@ -378,7 +391,7 @@ def multiplex(inputs, index, name=None):
 
 
     Args:
-        inputs (list): The input Tensor list. The list elements are N-D Tensors of data types float32, float64, int32, int64. All input Tensor shapes should be the same and rank must be at least 2.
+        inputs (list): The input Tensor list. The list elements are N-D Tensors of data types float32, float64, int32, int64, complex64, complex128. All input Tensor shapes should be the same and rank must be at least 2.
         index (Tensor): Used to select some rows in the input Tensor to construct an index of the output Tensor. It is a 2-D Tensor with data type int32 or int64 and shape [M, 1], where M is the number of input Tensors.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -402,7 +415,7 @@ def multiplex(inputs, index, name=None):
              [3., 4.]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multiplex(inputs, index)
     else:
         helper = LayerHelper('multiplex', **locals())
@@ -416,7 +429,14 @@ def multiplex(inputs, index, name=None):
             check_variable_and_dtype(
                 x,
                 'input[' + str(id) + ']',
-                ['float32', 'float64', 'int32', 'int64'],
+                [
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'complex64',
+                    'complex128',
+                ],
                 'multiplex',
             )
         check_variable_and_dtype(
@@ -436,7 +456,7 @@ def multiplex(inputs, index, name=None):
 def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
     Inplace version of ``scale`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_scale`.
+    Please refer to :ref:`api_paddle_scale`.
     """
     if in_dynamic_mode():
         return _C_ops.scale_(x, scale, float(bias), bias_after_scale)
@@ -489,15 +509,17 @@ def pow(x, y, name=None):
             [1., 4., 9.])
 
     """
+
     # in dynamic graph mode
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, y)
-        elif isinstance(y, (paddle.Tensor, Variable)):
+        elif isinstance(y, (paddle.Tensor, Variable, paddle.pir.OpResult)):
             return _C_ops.elementwise_pow(x, y)
         else:
             raise TypeError(
-                'y must be scalar or tensor type, but received: %s ' % (y.dtype)
+                'y must be scalar , Tensor(in dygraph mode), OpResult(in pir mode) but received: %s '
+                % (y.dtype)
             )
     else:
         # in static graph mode
@@ -632,16 +654,11 @@ def add(x, y, name=None):
     $X$ the tensor of any dimension.
     $Y$ the tensor whose dimensions must be less than or equal to the dimensions of $X$.
 
-    There are two cases for this operator:
+    This operator is used in the following cases:
 
     1. The shape of $Y$ is the same with $X$.
     2. The shape of $Y$ is a continuous subsequence of $X$.
 
-    For case 2:
-
-    1. Broadcast $Y$ to match the shape of $X$, where axis is the start dimension index for broadcasting $Y$ onto $X$.
-    2. If $axis$ is -1 (default), $axis$=rank($X$)-rank($Y$).
-    3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of subsequence, such as shape($Y$) = (2, 1) => (2).
 
         For example:
 
@@ -676,7 +693,7 @@ def add(x, y, name=None):
             [3., 8., 6.])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.add(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_add', **locals()))
@@ -686,7 +703,7 @@ def add(x, y, name=None):
 def add_(x, y, name=None):
     """
     Inplace version of ``add`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_add`.
+    Please refer to :ref:`api_paddle_add`.
     """
 
     out_shape = broadcast_shape(x.shape, y.shape)
@@ -816,7 +833,7 @@ def subtract(x, y, name=None):
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [ 4.  ,  inf., -inf.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.subtract(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
@@ -826,7 +843,7 @@ def subtract(x, y, name=None):
 def subtract_(x, y, name=None):
     """
     Inplace version of ``subtract`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_subtract`.
+    Please refer to :ref:`api_paddle_subtract`.
     """
 
     out_shape = broadcast_shape(x.shape, y.shape)
@@ -874,12 +891,26 @@ def divide(x, y, name=None):
             [2.        , 0.60000000, 2.        ])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.divide(x, y)
     else:
-        if paddle.ir.core._use_new_ir_api():
-            return paddle._ir_ops.divide(x, y)
         return _elementwise_op(LayerHelper('elementwise_div', **locals()))
+
+
+@inplace_apis_in_dygraph_only
+def divide_(x, y, name=None):
+    r"""
+    Inplace version of ``divide`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_divide`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    return _C_ops.divide_(x, y)
 
 
 def floor_divide(x, y, name=None):
@@ -921,10 +952,26 @@ def floor_divide(x, y, name=None):
             [2, 0, 2, 2])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.floor_divide(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
+
+
+@inplace_apis_in_dygraph_only
+def floor_divide_(x, y, name=None):
+    r"""
+    Inplace version of ``floor_divide`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_floor_divide`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    return _C_ops.floor_divide_(x, y)
 
 
 def remainder(x, y, name=None):
@@ -939,6 +986,8 @@ def remainder(x, y, name=None):
         ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+        And `mod`, `floor_mod` are all functions with the same name
 
     Args:
         x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
@@ -961,8 +1010,18 @@ def remainder(x, y, name=None):
             Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [0, 3, 2, 1])
 
+            >>> z = paddle.floor_mod(x, y)
+            >>> print(z)
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 3, 2, 1])
+
+            >>> z = paddle.mod(x, y)
+            >>> print(z)
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 3, 2, 1])
+
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.remainder(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
@@ -972,7 +1031,7 @@ def remainder(x, y, name=None):
 def remainder_(x, y, name=None):
     r"""
     Inplace version of ``remainder`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_remainder`.
+    Please refer to :ref:`api_paddle_remainder`.
     """
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
@@ -984,8 +1043,18 @@ def remainder_(x, y, name=None):
     return _C_ops.remainder_(x, y)
 
 
-mod = remainder  # noqa: F841
-floor_mod = remainder  # noqa: F841
+mod = remainder
+floor_mod = remainder
+mod_ = remainder_
+mod_.__doc__ = r"""
+    Inplace version of ``mod`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_mod`.
+    """
+floor_mod_ = remainder_
+floor_mod_.__doc__ = r"""
+    Inplace version of ``floor_mod_`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_floor_mod_`.
+    """
 
 
 def multiply(x, y, name=None):
@@ -996,6 +1065,9 @@ def multiply(x, y, name=None):
         out = x * y
 
     Note:
+        Supported shape of :attr:`x` and :attr:`y` for this operator:
+        1. `x.shape` == `y.shape`.
+        2. `x.shape` could be the continuous subsequence of `y.shape`.
         ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
@@ -1006,7 +1078,7 @@ def multiply(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+        N-D Tensor. A location into which the result is stored. If :attr:`x`, :attr:`y` have different shapes and are "broadcastable", the resulting tensor shape is the shape of :attr:`x` and :attr:`y` after broadcasting. If :attr:`x`, :attr:`y` have the same shape, its shape is the same as :attr:`x` and :attr:`y`.
 
     Examples:
 
@@ -1030,7 +1102,7 @@ def multiply(x, y, name=None):
               [2, 4, 6]]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multiply(x, y)
     else:
         if x.dtype != y.dtype:
@@ -1045,12 +1117,8 @@ def multiply(x, y, name=None):
 def multiply_(x, y, name=None):
     """
     Inplace version of ``multiply`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_multiply`.
+    Please refer to :ref:`api_paddle_multiply`.
     """
-
-    assert (
-        _dygraph_tracer()._has_grad is False
-    ), "The current inplace version of multiply_ needs to be used in the context of paddle.no_grad() since inplace multiply_grad is not yet supported."
 
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
@@ -1063,13 +1131,10 @@ def multiply_(x, y, name=None):
     return _C_ops.multiply_(x, y)
 
 
-@dygraph_only
-def _elementwise_op_with_axis_in_dygraph(
-    x, y, axis=-1, name=None, op_type="Undifined"
-):
+def _elementwise_op_with_axis(x, y, axis=-1, name=None, op_type="Undifined"):
     assert (
-        in_dynamic_mode()
-    ), "You can only call `_elementwise_op_with_axis_in_dygraph` function within in_dynamic_mode"
+        in_dynamic_or_pir_mode()
+    ), "You can only call `_elementwise_op_with_axis` function within in_dynamic_or_pir_mode"
     assert op_type in ["add", "subtract", "multiply", "divide"], (
         "op_name input error! _elementwise_op_with_axis is an inner function to replace elementwise_add/sub/mul/div. Input op_name=%s, Expect op_name=[add|subtract|multiply|divide]\n"
         % op_type
@@ -1090,8 +1155,8 @@ def _elementwise_op_with_axis_in_dygraph(
 
 def _add_with_axis(x, y, axis=-1, name=None):
     # opt performance, only dynamic mode needs reshape
-    if in_dynamic_mode():
-        return _elementwise_op_with_axis_in_dygraph(x, y, axis, name, "add")
+    if in_dynamic_or_pir_mode():
+        return _elementwise_op_with_axis(x, y, axis, name, "add")
     else:
         op_type = 'elementwise_add'
         return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -1099,10 +1164,8 @@ def _add_with_axis(x, y, axis=-1, name=None):
 
 def _subtract_with_axis(x, y, axis=-1, name=None):
     # opt performance, only dynamic mode needs reshape
-    if in_dynamic_mode():
-        return _elementwise_op_with_axis_in_dygraph(
-            x, y, axis, name, "subtract"
-        )
+    if in_dynamic_or_pir_mode():
+        return _elementwise_op_with_axis(x, y, axis, name, "subtract")
     else:
         op_type = 'elementwise_sub'
         return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -1110,10 +1173,8 @@ def _subtract_with_axis(x, y, axis=-1, name=None):
 
 def _multiply_with_axis(x, y, axis=-1, name=None):
     # opt performance, only dynamic mode needs reshape
-    if in_dynamic_mode():
-        return _elementwise_op_with_axis_in_dygraph(
-            x, y, axis, name, "multiply"
-        )
+    if in_dynamic_or_pir_mode():
+        return _elementwise_op_with_axis(x, y, axis, name, "multiply")
     else:
         op_type = 'elementwise_mul'
         return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -1121,8 +1182,8 @@ def _multiply_with_axis(x, y, axis=-1, name=None):
 
 def _divide_with_axis(x, y, axis=-1, name=None):
     # opt performance, only dynamic mode needs reshape
-    if in_dynamic_mode():
-        return _elementwise_op_with_axis_in_dygraph(x, y, axis, name, "divide")
+    if in_dynamic_or_pir_mode():
+        return _elementwise_op_with_axis(x, y, axis, name, "divide")
     else:
         op_type = 'elementwise_div'
         return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -1184,7 +1245,7 @@ def maximum(x, y, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [5.  , 3.  , inf.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.maximum(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_max', **locals()))
@@ -1246,7 +1307,7 @@ def minimum(x, y, name=None):
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [ 1.  , -inf.,  5.  ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.minimum(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_min', **locals()))
@@ -1310,7 +1371,7 @@ def fmax(x, y, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [5.  , 3.  , inf.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.fmax(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_fmax', **locals()))
@@ -1374,7 +1435,7 @@ def fmin(x, y, name=None):
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [ 1.  , -inf.,  5.  ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.fmin(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_fmin', **locals()))
@@ -1473,13 +1534,12 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         dtype_flag = True
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
     else:
-        if paddle.ir.core._use_new_ir_api():
-            return paddle._ir_ops.sum(x, axis, dtype, keepdim)
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-        attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
+
+        attrs = {'dim': axis, 'keep_dim': keepdim}
 
         if dtype_flag:
             attrs.update({'in_dtype': x.dtype, 'out_dtype': dtype})
@@ -1589,6 +1649,36 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
     x = paddle.where(paddle.isnan(x), nan, x)
     x = paddle.where(x == posinf_value, posinf, x)
     x = paddle.where(x == neginf_value, neginf, x)
+    return x
+
+
+@inplace_apis_in_dygraph_only
+def nan_to_num_(x, nan=0.0, posinf=None, neginf=None, name=None):
+    r"""
+    Inplace version of ``nan_to_num`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_nan_to_num`.
+    """
+    # NOTE(tiancaishaonvjituizi): it seems that paddle handles the dtype of python float number
+    # incorrectly, so we have to explicitly contruct tensors here
+    posinf_value = paddle.full_like(x, float("+inf"))
+    neginf_value = paddle.full_like(x, float("-inf"))
+    nan = paddle.full_like(x, nan)
+    assert x.dtype in [paddle.float32, paddle.float64]
+    is_float32 = x.dtype == paddle.float32
+    if posinf is None:
+        posinf = (
+            np.finfo(np.float32).max if is_float32 else np.finfo(np.float64).max
+        )
+    posinf = paddle.full_like(x, posinf)
+    if neginf is None:
+        neginf = (
+            np.finfo(np.float32).min if is_float32 else np.finfo(np.float64).min
+        )
+    neginf = paddle.full_like(x, neginf)
+    x_not_nan = paddle.logical_not(paddle.isnan(x))
+    x = paddle.where_(x_not_nan, x, nan)
+    x = paddle.where_(x != posinf_value, x, posinf)
+    x = paddle.where_(x != neginf_value, x, neginf)
     return x
 
 
@@ -1864,7 +1954,7 @@ def add_n(inputs, name=None):
 
     Args:
         inputs (Tensor|list[Tensor]|tuple[Tensor]):  A Tensor or a list/tuple of Tensors. The shape and data type of the list/tuple elements should be consistent.
-            Input can be multi-dimensional Tensor, and data types can be: float32, float64, int32, int64.
+            Input can be multi-dimensional Tensor, and data types can be: float32, float64, int32, int64, complex64, complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1883,14 +1973,11 @@ def add_n(inputs, name=None):
             [[8. , 10., 12.],
              [14., 16., 18.]])
     """
-    if in_dynamic_mode():
-        if isinstance(inputs, Variable):
+    if in_dynamic_or_pir_mode():
+        if isinstance(inputs, (Variable, paddle.pir.OpResult)):
             inputs = [inputs]
         return _C_ops.add_n(inputs)
     else:
-        if paddle.ir.core._use_new_ir_api():
-            return paddle._ir_ops.add_n(inputs)
-
         helper = LayerHelper('add_n', **locals())
         check_type(inputs, 'inputs', (Variable, tuple, list), 'add_n')
         if isinstance(inputs, (list, tuple)):
@@ -1906,6 +1993,8 @@ def add_n(inputs, name=None):
                             'int32',
                             'int64',
                             'uint16',
+                            'complex64',
+                            'complex128',
                         ],
                         'add_n',
                     )
@@ -1913,7 +2002,16 @@ def add_n(inputs, name=None):
             check_variable_and_dtype(
                 inputs,
                 "inputs",
-                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+                [
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'uint16',
+                    'complex64',
+                    'complex128',
+                ],
                 'add_n',
             )
 
@@ -1953,7 +2051,7 @@ def trunc(input, name=None):
             [[ 0.,  1.],
              [-0., -2.]])
     '''
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.trunc(input)
     else:
         inputs = {"X": input}
@@ -2049,7 +2147,7 @@ def mm(input, mat2, name=None):
 
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.matmul(input, mat2, False, False)
     else:
 
@@ -2220,7 +2318,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 def addmm_(input, x, y, beta=1.0, alpha=1.0, name=None):
     """
     Inplace version of ``addmm`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_label_addmm`.
+    Please refer to :ref:`api_paddle_addmm`.
     """
     input_shape = input.shape
     x_shape = x.shape
@@ -2327,7 +2425,7 @@ def renorm(x, p, axis, max_norm):
                 )
             )
         axis = axis + len(input_shape)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.renorm(x, p, axis, max_norm)
         return out
     else:
@@ -2341,6 +2439,32 @@ def renorm(x, p, axis, max_norm):
         helper.append_op(
             type="renorm", inputs=inputs, attrs=attrs, outputs={"Out": out}
         )
+        return out
+
+
+@inplace_apis_in_dygraph_only
+def renorm_(x, p, axis, max_norm):
+    """
+    Inplace version of ``renorm`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_renorm`.
+    """
+    input_shape = x.shape
+    if not axis < len(input_shape):
+        raise ValueError(
+            "the axis:{} should be less then the shape's size {}:{}".format(
+                axis, len(input_shape), input_shape
+            )
+        )
+    if not axis >= 0:
+        if not axis >= -1 * len(input_shape):
+            raise ValueError(
+                "the axis:{} should not be less than -1 * length of input_shape:{}".format(
+                    axis, -1 * len(input_shape)
+                )
+            )
+        axis = axis + len(input_shape)
+    if in_dynamic_mode():
+        out = _C_ops.renorm_(x, p, axis, max_norm)
         return out
 
 
@@ -2373,7 +2497,7 @@ def inner(x, y, name=None):
 
 
     """
-    if x.size == 1 or y.size == 1:
+    if in_dynamic_mode() and (x.size == 1 or y.size == 1):
         return multiply(x, y)
     else:
         xshape = x.shape
@@ -2383,8 +2507,10 @@ def inner(x, y, name=None):
         nx = x.reshape((-1, xshape[-1]))
         ny = y.reshape((-1, yshape[-1]))
 
-        if in_dynamic_mode():
-            return _C_ops.matmul(nx, ny.T, False, False).reshape(dstshape)
+        if in_dynamic_or_pir_mode():
+            return _C_ops.matmul(
+                nx, paddle.transpose(ny, [1, 0]), False, False
+            ).reshape(dstshape)
         else:
 
             def __check_input(x, y):
@@ -2408,7 +2534,6 @@ def inner(x, y, name=None):
                         )
 
             __check_input(nx, ny)
-
             helper = LayerHelper('inner', **locals())
             out = helper.create_variable_for_type_inference(dtype=nx.dtype)
             helper.append_op(
@@ -2452,7 +2577,7 @@ def outer(x, y, name=None):
     nx = x.reshape((-1, 1))
     ny = y.reshape((1, -1))
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.matmul(nx, ny, False, False)
     else:
 
@@ -2526,7 +2651,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     """
     reduce_all, axis = _get_reduce_axis(axis, x)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     else:
         check_variable_and_dtype(
@@ -2572,7 +2697,7 @@ def inverse(x, name=None):
              [0.        , 0.50000000]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.inverse(x)
     else:
 
@@ -2707,7 +2832,7 @@ def max(x, axis=None, keepdim=False, name=None):
               [1., 1.]]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.max(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
@@ -2843,7 +2968,7 @@ def min(x, axis=None, keepdim=False, name=None):
               [0., 0.]]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.min(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
@@ -2992,7 +3117,7 @@ def amax(x, axis=None, keepdim=False, name=None):
              [[0.50000000, 0.33333333],
               [0.        , 0.        ]]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.amax(x, axis, keepdim)
 
     else:
@@ -3140,7 +3265,7 @@ def amin(x, axis=None, keepdim=False, name=None):
              [[0.50000000, 0.33333333],
               [0.        , 0.        ]]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.amin(x, axis, keepdim)
 
     else:
@@ -3187,7 +3312,7 @@ def log1p(x, name=None):
              [0.69314718]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.log1p(x)
     else:
         check_variable_and_dtype(
@@ -3261,7 +3386,7 @@ def log2(x, name=None):
             Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
             [1.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.log2(x)
     else:
         check_variable_and_dtype(
@@ -3335,7 +3460,7 @@ def log10(x, name=None):
             Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
             [1.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.log10(x)
     else:
         check_variable_and_dtype(
@@ -3415,7 +3540,7 @@ def clip(x, min=None, max=None, name=None):
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(min, Variable):
             min = min.item(0)
         if isinstance(max, Variable):
@@ -3482,7 +3607,7 @@ def clip(x, min=None, max=None, name=None):
 def clip_(x, min=None, max=None, name=None):
     """
     Inplace version of ``clip`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_clip`.
+    Please refer to :ref:`api_paddle_clip`.
     """
     fmin = float(np.finfo(np.float32).min)
     fmax = float(np.finfo(np.float32).max)
@@ -3576,7 +3701,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             "But received axis1 = %d, axis2 = %d\n" % (axis1, axis2)
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.trace(x, offset, axis1, axis2)
     else:
         __check_input(x, offset, axis1, axis2)
@@ -3658,7 +3783,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
              [0.97020894, 0.97786582]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.diagonal(x, offset, axis1, axis2)
     else:
 
@@ -3760,8 +3885,8 @@ def kron(x, y, name=None):
              [12, 15, 18, 16, 20, 24],
              [21, 24, 27, 28, 32, 36]])
     """
-    if in_dynamic_mode():
-        return _legacy_C_ops.kron(x, y)
+    if in_dynamic_or_pir_mode():
+        return _C_ops.kron(x, y)
     else:
         helper = LayerHelper('kron', **locals())
         check_variable_and_dtype(
@@ -3831,7 +3956,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast(x, dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if axis is None:
             axis = -1
         return _C_ops.cumsum(x, axis, flatten, False, False)
@@ -3850,6 +3975,25 @@ def cumsum(x, axis=None, dtype=None, name=None):
                 kwargs[name] = val
         _cum_sum_ = generate_layer_fn('cumsum')
         return _cum_sum_(**kwargs)
+
+
+@inplace_apis_in_dygraph_only
+def cumsum_(x, axis=None, dtype=None, name=None):
+    r"""
+    Inplace version of ``cumprod`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_cumprod`.
+    """
+    if axis is None:
+        flatten = True
+    else:
+        flatten = False
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = cast_(x, dtype)
+
+    if in_dynamic_mode():
+        if axis is None:
+            axis = -1
+        return _C_ops.cumsum_(x, axis, flatten, False, False)
 
 
 def cummax(x, axis=None, dtype='int64', name=None):
@@ -3916,7 +4060,7 @@ def cummax(x, axis=None, dtype='int64', name=None):
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummax')
     dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cummax(x, axis, dtype)
     else:
         check_variable_and_dtype(
@@ -4001,7 +4145,7 @@ def cummin(x, axis=None, dtype='int64', name=None):
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummin')
     dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cummin(x, axis, dtype)
     else:
         check_variable_and_dtype(
@@ -4084,7 +4228,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast(x, dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if axis is None:
             axis = -1
         return _C_ops.logcumsumexp(x, axis, flatten, False, False)
@@ -4165,7 +4309,7 @@ def cumprod(x, dim=None, dtype=None, name=None):
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast(x, dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cumprod(x, dim)
     else:
         check_variable_and_dtype(
@@ -4196,6 +4340,19 @@ def cumprod(x, dim=None, dtype=None, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
+def cumprod_(x, dim=None, dtype=None, name=None):
+    r"""
+    Inplace version of ``cumprod`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_cumprod`.
+    """
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = cast_(x, dtype)
+
+    if in_dynamic_mode():
+        return _C_ops.cumprod_(x, dim)
+
+
 def isfinite(x, name=None):
     """
 
@@ -4219,7 +4376,7 @@ def isfinite(x, name=None):
             Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True , True , False, True , False, False])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.isfinite(x)
     else:
         helper = LayerHelper("isfinite_v2", **locals())
@@ -4266,7 +4423,7 @@ def isinf(x, name=None):
             Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False, False, True , False, False, False])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.isinf(x)
     else:
         helper = LayerHelper("isinf_v2", **locals())
@@ -4311,7 +4468,7 @@ def isnan(x, name=None):
             Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, False, False, False, False, True , True ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.isnan(x)
     else:
         helper = LayerHelper("isnan_v2", **locals())
@@ -4412,7 +4569,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             x = cast(x, dtype)
 
     reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.prod(x, axis, keepdim, reduce_all)
     else:
         helper = LayerHelper('reduce_prod', **locals())
@@ -4439,7 +4596,7 @@ def sign(x, name=None):
     Returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
 
     Args:
-        x (Tensor): The input tensor. The data type can be float16, float32 or float64.
+        x (Tensor): The input tensor. The data type can be int8, int16, int32, int64, float16, float32 or float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4456,11 +4613,23 @@ def sign(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [ 1.,  0., -1.,  1.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sign(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'sign'
+            x,
+            'x',
+            [
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'float16',
+                'float32',
+                'float64',
+                'uint16',
+            ],
+            'sign',
         )
         helper = LayerHelper("sign", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -4496,7 +4665,7 @@ def tanh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.tanh(x)
     else:
         check_variable_and_dtype(
@@ -4513,7 +4682,7 @@ def tanh(x, name=None):
 def tanh_(x, name=None):
     r"""
     Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_tanh`.
+    Please refer to :ref:`api_paddle_tanh`.
     """
     return _C_ops.tanh_(x)
 
@@ -4543,7 +4712,7 @@ def increment(x, value=1.0, name=None):
             [1.])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.increment_(x, value)
     else:
         check_variable_and_dtype(
@@ -4620,7 +4789,7 @@ def all(x, axis=None, keepdim=False, name=None):
              [True ]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.all(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis(axis, x)
@@ -4707,7 +4876,7 @@ def any(x, axis=None, keepdim=False, name=None):
              [True]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.any(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis(axis, x)
@@ -4796,7 +4965,7 @@ def conj(x, name=None):
              [(4-4j), (5-5j), (6-6j)]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.conj(x)
     else:
         check_variable_and_dtype(
@@ -4850,7 +5019,7 @@ def digamma(x, name=None):
              [ nan       ,  5.32286835]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.digamma(x)
     else:
         check_variable_and_dtype(
@@ -4898,7 +5067,7 @@ def lgamma(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.31452453, 1.76149762, 2.25271273, 1.09579790])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.lgamma(x)
     else:
         check_variable_and_dtype(
@@ -4918,6 +5087,57 @@ def lgamma_(x, name=None):
     """
     if in_dynamic_mode():
         return _C_ops.lgamma_(x)
+
+
+def multigammaln(x, p, name=None):
+    """
+    This function computes the log of multivariate gamma, also sometimes called the generalized gamma.
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64, uint16.
+        p (int): The dimension of the space of integration.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): The values of the log multivariate gamma at the given tensor x.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([2.5, 3.5, 4, 6.5, 7.8, 10.23, 34.25])
+            >>> p = 2
+            >>> out = paddle.multigammaln(x, p)
+            >>> print(out)
+            Tensor(shape=[7], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.85704780  , 2.46648574  , 3.56509781  , 11.02241898 , 15.84497833 ,
+                    26.09257698 , 170.68318176])
+    """
+    assert p >= 1, (
+        "The p must be greater than or equal to 1, "
+        "But received p is %s.\n" % p
+    )
+    c = 0.25 * p * (p - 1) * math.log(math.pi)
+    b = 0.5 * paddle.arange(start=(1 - p), end=1, step=1, dtype=x.dtype)
+    return paddle.sum(paddle.lgamma(x.unsqueeze(-1) + b), axis=-1) + c
+
+
+@inplace_apis_in_dygraph_only
+def multigammaln_(x, p, name=None):
+    r"""
+    Inplace version of ``multigammaln_`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_multigammaln`.
+    """
+    assert p >= 1, (
+        "The p must be greater than or equal to 1, "
+        "But received p is %s.\n" % p
+    )
+    c = 0.25 * p * (p - 1) * math.log(math.pi)
+    c = paddle.to_tensor(c, dtype=x.dtype)
+    b = 0.5 * paddle.arange(start=(1 - p), end=1, step=1, dtype=x.dtype)
+    paddle.assign((x.unsqueeze(-1) + b).lgamma_().sum(-1).add_(c), x)
+    return x
 
 
 def neg(x, name=None):
@@ -5005,7 +5225,7 @@ def atan2(x, y, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.atan2(x, y)
     else:
         check_variable_and_dtype(
@@ -5071,7 +5291,7 @@ def logit(x, eps=None, name=None):
     """
     if eps is None:
         eps = 0.0
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logit(x, eps)
     else:
         check_variable_and_dtype(
@@ -5135,7 +5355,7 @@ def lerp(x, y, weight, name=None):
     if isinstance(weight, float):
         weight = paddle.full(shape=[], fill_value=weight, dtype=x.dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.lerp(x, y, weight)
     else:
         check_variable_and_dtype(
@@ -5162,7 +5382,7 @@ def lerp(x, y, weight, name=None):
 def lerp_(x, y, weight, name=None):
     r"""
     Inplace version of ``lerp`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_lerp`.
+    Please refer to :ref:`api_paddle_lerp`.
     """
     out_shape = broadcast_shape(x.shape, y.shape)
     check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
@@ -5206,7 +5426,7 @@ def erfinv(x, name=None):
             [ 0.       , 0.47693631, -inf.     ])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.erfinv(x)
     else:
         check_variable_and_dtype(
@@ -5222,7 +5442,7 @@ def erfinv(x, name=None):
 def erfinv_(x, name=None):
     r"""
     Inplace version of ``erfinv`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_erfinv`.
+    Please refer to :ref:`api_paddle_erfinv`.
     """
     check_type(x, 'x', (paddle.Tensor, Variable), 'erfinv')
     return _C_ops.erfinv_(x)
@@ -5270,7 +5490,7 @@ def rad2deg(x, name=None):
             57.29578018)
     """
     rad2deg_scale = 180 / np.pi
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.scale(x, rad2deg_scale, 0.0, True)
@@ -5334,7 +5554,7 @@ def deg2rad(x, name=None):
             3.14159274)
     """
     deg2rad_scale = np.pi / 180.0
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.scale(x, deg2rad_scale, 0.0, True)
@@ -5449,6 +5669,51 @@ def gcd(x, y, name=None):
         return out
 
 
+def gcd_(x, y, name=None):
+    r"""
+    Inplace version of ``gcd`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_gcd`.
+    """
+    shape = paddle.broadcast_shape(x.shape, y.shape)
+    if shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                shape, x.shape
+            )
+        )
+    y = paddle.broadcast_to(y, shape)
+    x = paddle.abs_(x)
+    y = paddle.abs(y)
+
+    def _gcd_cond_fn(x, y):
+        return paddle.any(y != 0)
+
+    def _gcd_body_fn(x, y):
+        # paddle.mod will raise an error when any element of y is 0. To avoid
+        # that, we change those zeros to ones. Their values don't matter because
+        # they won't be used.
+        y_equal_0 = y == 0
+        y_safe = paddle.where(y_equal_0, paddle.ones(y.shape, y.dtype), y)
+        y, x = (
+            paddle.where(
+                y_equal_0,
+                paddle.zeros(y.shape, y.dtype),
+                paddle.mod(x, y_safe),
+            ),
+            paddle.where_(y_equal_0, x, y),
+        )
+        return (
+            paddle.where(x < y, x, y),
+            paddle.where_(x >= y, x, y),
+        )
+
+    if in_dynamic_mode():
+        while _gcd_cond_fn(x, y):
+            y, x = _gcd_body_fn(x, y)
+
+        return x
+
+
 def lcm(x, y, name=None):
     """
     Computes the element-wise least common multiple (LCM) of input |x| and |y|.
@@ -5509,6 +5774,25 @@ def lcm(x, y, name=None):
     return out
 
 
+def lcm_(x, y, name=None):
+    r"""
+    Inplace version of ``lcm`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_lcm`.
+    """
+    d = paddle.gcd(x, y)
+    # paddle.mod will raise an error when any element of y is 0. To avoid
+    # that, we change those zeros to ones. Their values don't matter because
+    # they won't be used.
+    d_not_equal_0 = d != 0
+    d_safe = paddle.where(d_not_equal_0, d, paddle.ones(d.shape, d.dtype))
+    out = paddle.where_(
+        d_not_equal_0,
+        paddle.abs_(x.multiply_(y)).floor_divide_(d_safe),
+        paddle.zeros(d.shape, d.dtype),
+    )
+    return out
+
+
 def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     r"""
     Computes the n-th forward difference along the given axis.
@@ -5519,12 +5803,12 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         out[i] = x[i+1] - x[i]
 
     Higher-order differences are computed by using paddle.diff() recursively.
-    Only n=1 is currently supported.
+    The number of n supports any positive integer value.
 
     Args:
         x (Tensor): The input tensor to compute the forward difference on, the data type is float16, float32, float64, bool, int32, int64.
         n (int, optional): The number of times to recursively compute the difference.
-                          Only support n=1. Default:1
+                            Supports any positive integer value. Default:1
         axis (int, optional): The axis to compute the difference along. Default:-1
         prepend (Tensor, optional): The tensor to prepend to input along axis before computing the difference.
                                    It's dimensions must be equivalent to that of x,
@@ -5548,6 +5832,12 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [ 3,  1, -3])
 
+            >>> x_2 = paddle.to_tensor([1, 4, 5, 2])
+            >>> out = paddle.diff(x_2, n=2)
+            >>> out
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [ -2,  -4])
+
             >>> y = paddle.to_tensor([7, 9])
             >>> out = paddle.diff(x, append=y)
             >>> out
@@ -5565,125 +5855,140 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             [[1, 1],
              [1, 1]])
     """
-
-    if axis < 0:
-        axis = axis + len(x.shape)
-    if axis > len(x.shape):
-        axis = len(x.shape)
-    if axis < 0:
-        axis = 0
-    dtype = x.dtype
-    axes = [axis]
-    infer_flags = [1 for i in range(len(axes))]
-    if in_dynamic_mode():
-        has_pend = False
-        input_list = []
-        if prepend is not None and append is not None:
-            input_list = [prepend, x, append]
-            has_pend = True
-        elif prepend is not None:
-            input_list = [prepend, x]
-            has_pend = True
-        elif append is not None:
-            input_list = [x, append]
-            has_pend = True
-        if has_pend:
-            new_input = _C_ops.concat(input_list, axis)
-        else:
-            new_input = x
-
-        attrs_1 = ()
-        attrs_2 = ()
-
-        dim_len = new_input.shape[axis]
-
-        starts_1 = [0]
-        attrs_1 += ('starts', starts_1)
-        ends_1 = [dim_len - 1]
-        attrs_1 += ('ends', ends_1)
-        input_front = _C_ops.slice(
-            new_input, axes, starts_1, ends_1, infer_flags, []
-        )
-        starts_2 = [1]
-        attrs_2 += ('starts', starts_2)
-        ends_2 = [dim_len]
-        attrs_2 += ('ends', ends_2)
-        input_back = _C_ops.slice(
-            new_input, axes, starts_2, ends_2, infer_flags, []
+    if n < 1:
+        raise ValueError(
+            f"Diff expects input to be at least one-dimensional but got {n}"
         )
 
-        if x.dtype == paddle.bool:
-            return _C_ops.logical_xor(input_back, input_front)
-        else:
-            return _C_ops.subtract(input_back, input_front)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['float16', 'float32', 'float64', 'bool', 'int32', 'int64'],
-            'diff',
-        )
-        check_type(axis, 'axis', (int), 'diff')
-        helper = LayerHelper('diff', **locals())
-        has_pend = False
-        input_list = []
-        if prepend is not None and append is not None:
-            input_list = [prepend, x, append]
-            has_pend = True
-        elif prepend is not None:
-            input_list = [prepend, x]
-            has_pend = True
-        elif append is not None:
-            input_list = [x, append]
-            has_pend = True
+    def _diff_handler(x, n=1, axis=-1, prepend=None, append=None, name=None):
+        if axis < 0:
+            axis = axis + len(x.shape)
+        if axis > len(x.shape):
+            axis = len(x.shape)
+        if axis < 0:
+            axis = 0
+        dtype = x.dtype
+        axes = [axis]
+        infer_flags = [1 for i in range(len(axes))]
+        if in_dynamic_or_pir_mode():
+            has_pend = False
+            input_list = []
+            if prepend is not None and append is not None:
+                input_list = [prepend, x, append]
+                has_pend = True
+            elif prepend is not None:
+                input_list = [prepend, x]
+                has_pend = True
+            elif append is not None:
+                input_list = [x, append]
+                has_pend = True
+            if has_pend:
+                new_input = _C_ops.concat(input_list, axis)
+            else:
+                new_input = x
 
-        if has_pend:
-            new_input = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='concat',
-                inputs={'X': input_list},
-                outputs={'Out': [new_input]},
-                attrs={'axis': axis},
+            attrs_1 = ()
+            attrs_2 = ()
+
+            dim_len = new_input.shape[axis]
+
+            starts_1 = [0]
+            attrs_1 += ('starts', starts_1)
+            ends_1 = [dim_len - 1]
+            attrs_1 += ('ends', ends_1)
+            input_front = _C_ops.slice(
+                new_input, axes, starts_1, ends_1, infer_flags, []
             )
-        else:
-            new_input = x
-
-        dim_len = new_input.shape[axis]
-        attrs_1 = {'axes': axes}
-        starts_1 = [0]
-        ends_1 = [dim_len - 1]
-        attrs_1['starts'] = starts_1
-        attrs_1['ends'] = ends_1
-        input_front = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type='slice',
-            inputs={'Input': new_input},
-            attrs=attrs_1,
-            outputs={'Out': input_front},
-        )
-        attrs_2 = {'axes': axes}
-        starts_2 = [1]
-        ends_2 = [dim_len]
-        attrs_2['starts'] = starts_2
-        attrs_2['ends'] = ends_2
-        input_back = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type='slice',
-            inputs={'Input': new_input},
-            attrs=attrs_2,
-            outputs={'Out': input_back},
-        )
-
-        if dtype == paddle.bool:
-            out = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='logical_xor',
-                inputs={"X": input_back, "Y": input_front},
-                outputs={"Out": out},
+            starts_2 = [1]
+            attrs_2 += ('starts', starts_2)
+            ends_2 = [dim_len]
+            attrs_2 += ('ends', ends_2)
+            input_back = _C_ops.slice(
+                new_input, axes, starts_2, ends_2, infer_flags, []
             )
+
+            if x.dtype == paddle.bool or x.dtype == core.DataType.BOOL:
+                return _C_ops.logical_xor(input_back, input_front)
+            else:
+                return _C_ops.subtract(input_back, input_front)
         else:
-            out = paddle.tensor.math.subtract(input_back, input_front)
-        return out
+            check_variable_and_dtype(
+                x,
+                'x',
+                ['float16', 'float32', 'float64', 'bool', 'int32', 'int64'],
+                'diff',
+            )
+            check_type(axis, 'axis', (int), 'diff')
+            helper = LayerHelper('diff', **locals())
+            has_pend = False
+            input_list = []
+            if prepend is not None and append is not None:
+                input_list = [prepend, x, append]
+                has_pend = True
+            elif prepend is not None:
+                input_list = [prepend, x]
+                has_pend = True
+            elif append is not None:
+                input_list = [x, append]
+                has_pend = True
+
+            if has_pend:
+                new_input = helper.create_variable_for_type_inference(dtype)
+                helper.append_op(
+                    type='concat',
+                    inputs={'X': input_list},
+                    outputs={'Out': [new_input]},
+                    attrs={'axis': axis},
+                )
+            else:
+                new_input = x
+
+            dim_len = new_input.shape[axis]
+            attrs_1 = {'axes': axes}
+            starts_1 = [0]
+            ends_1 = [dim_len - 1]
+            attrs_1['starts'] = starts_1
+            attrs_1['ends'] = ends_1
+            input_front = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='slice',
+                inputs={'Input': new_input},
+                attrs=attrs_1,
+                outputs={'Out': input_front},
+            )
+            attrs_2 = {'axes': axes}
+            starts_2 = [1]
+            ends_2 = [dim_len]
+            attrs_2['starts'] = starts_2
+            attrs_2['ends'] = ends_2
+            input_back = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='slice',
+                inputs={'Input': new_input},
+                attrs=attrs_2,
+                outputs={'Out': input_back},
+            )
+
+            if dtype == paddle.bool:
+                out = helper.create_variable_for_type_inference(dtype)
+                helper.append_op(
+                    type='logical_xor',
+                    inputs={"X": input_back, "Y": input_front},
+                    outputs={"Out": out},
+                )
+            else:
+                out = paddle.tensor.math.subtract(input_back, input_front)
+            return out
+
+    out = _diff_handler(
+        x, n=1, axis=axis, prepend=prepend, append=append, name=name
+    )
+    if n > 1:
+        for _ in range(n - 1):
+            out = _diff_handler(
+                out, n=1, axis=axis, prepend=prepend, append=append, name=name
+            )
+    return out
 
 
 def angle(x, name=None):
@@ -5727,7 +6032,7 @@ def angle(x, name=None):
              [-1.10714877, -0.78539819,  0.        ,  0.78539819]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.angle(x)
     else:
         check_variable_and_dtype(
@@ -5797,7 +6102,7 @@ def heaviside(x, y, name=None):
             [[0.        , 0.20000000, 1.        ],
              [0.        , 1.        , 0.30000001]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.heaviside(x, y)
     else:
         op_type = 'elementwise_heaviside'
@@ -5833,13 +6138,15 @@ def frac(x, name=None):
         paddle.int64,
         paddle.float32,
         paddle.float64,
+        DataType.INT32,
+        DataType.INT64,
+        DataType.FLOAT32,
+        DataType.FLOAT64,
     ]:
         raise TypeError(
-            "The data type of input must be one of ['int32', 'int64', 'float32', 'float64'], but got {}".format(
-                x.dtype
-            )
+            f"The data type of input must be one of ['int32', 'int64', 'float32', 'float64'], but got {x.dtype}"
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         y = _C_ops.trunc(x)
         return _C_ops.subtract(x, y)
     else:
@@ -5871,9 +6178,7 @@ def frac_(x, name=None):
         paddle.float64,
     ]:
         raise TypeError(
-            "The data type of input must be one of ['int32', 'int64', 'float32', 'float64'], but got {}".format(
-                x.dtype
-            )
+            f"The data type of input must be one of ['int32', 'int64', 'float32', 'float64'], but got {x.dtype}"
         )
     if in_dynamic_mode():
         y = _C_ops.trunc(x)
@@ -5920,9 +6225,7 @@ def sgn(x, name=None):
         paddle.complex128,
     ]:
         raise TypeError(
-            "The data type of input must be one of ['float16', 'float32', 'float64', 'complex64', 'complex128'], but got {}".format(
-                x.dtype
-            )
+            f"The data type of input must be one of ['float16', 'float32', 'float64', 'complex64', 'complex128'], but got {x.dtype}"
         )
     if paddle.is_complex(x):
         expand_x = paddle.as_real(x)
@@ -6004,17 +6307,13 @@ def take(x, index, mode='raise', name=None):
     """
     if mode not in ['raise', 'wrap', 'clip']:
         raise ValueError(
-            "'mode' in 'take' should be 'raise', 'wrap', 'clip', but received {}.".format(
-                mode
-            )
+            f"'mode' in 'take' should be 'raise', 'wrap', 'clip', but received {mode}."
         )
 
     if in_dynamic_mode():
         if not isinstance(index, (paddle.Tensor, Variable)):
             raise TypeError(
-                "The type of 'index' must be Tensor, but got {}".format(
-                    type(index)
-                )
+                f"The type of 'index' must be Tensor, but got {type(index)}"
             )
         if index.dtype not in [paddle.int32, paddle.int64]:
             raise TypeError(
@@ -6080,9 +6379,7 @@ def frexp(x, name=None):
     """
     if x.dtype not in [paddle.float32, paddle.float64]:
         raise TypeError(
-            "The data type of input must be one of ['float32', 'float64'], but got {}".format(
-                x.dtype
-            )
+            f"The data type of input must be one of ['float32', 'float64'], but got {x.dtype}"
         )
     input_x = paddle.abs(x)
     exponent = paddle.floor(paddle.log2(input_x))
@@ -6134,9 +6431,7 @@ def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
         raise ValueError("Not permitted to specify both x and dx input args.")
     if y.dtype not in [paddle.float16, paddle.float32, paddle.float64]:
         raise TypeError(
-            "The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64'], but got {}".format(
-                y.dtype
-            )
+            f"The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64'], but got {y.dtype}"
         )
 
     y_shape = y.shape
@@ -6152,9 +6447,7 @@ def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
     else:
         if x.dtype not in [paddle.float16, paddle.float32, paddle.float64]:
             raise TypeError(
-                "The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64'], but got {}".format(
-                    x.dtype
-                )
+                f"The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64'], but got {x.dtype}"
             )
         # Reshape to correct shape
         if x.dim() == 1:
@@ -6407,7 +6700,7 @@ def nextafter(x, y, name=None):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.00000012, 1.99999988])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.nextafter(x, y)
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'nextafter')
@@ -6447,7 +6740,7 @@ def i0(x, name=None):
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.99999994 , 1.26606596 , 2.27958512 , 4.88079262 , 11.30192089])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.i0(x)
     else:
         check_variable_and_dtype(x, "x", ["float32", "float64"], "i0")
@@ -6496,7 +6789,7 @@ def i0e(x, name=None):
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.99999994, 0.46575963, 0.30850831, 0.24300036, 0.20700191])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.i0e(x)
     else:
         check_variable_and_dtype(x, "x", ["float32", "float64"], "i0e")
@@ -6528,7 +6821,7 @@ def i1(x, name=None):
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 0.56515908, 1.59063685, 3.95337057, 9.75946712])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.i1(x)
     else:
         check_variable_and_dtype(x, "x", ["float32", "float64"], "i1")
@@ -6563,7 +6856,7 @@ def i1e(x, name=None):
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 0.20791042, 0.21526928, 0.19682673, 0.17875087])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.i1e(x)
     else:
         check_variable_and_dtype(x, "x", ["float32", "float64"], "i1e")
@@ -6616,7 +6909,7 @@ def polygamma(x, n, name=None):
     if n == 0:
         return digamma(x)
     else:
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.polygamma(x, n)
         else:
             check_variable_and_dtype(
@@ -6634,6 +6927,7 @@ def polygamma(x, n, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
 def polygamma_(x, n, name=None):
     r"""
     Inplace version of ``polygamma`` API, the output Tensor will be inplaced with input ``x``.
@@ -6705,3 +6999,75 @@ def ldexp(x, y, name=None):
     y = paddle.cast(y, dtype=out_dtype)
     two = paddle.to_tensor(2, dtype=out_dtype)
     return paddle.multiply(x, paddle.pow(two, y))
+
+
+def ldexp_(x, y, name=None):
+    r"""
+    Inplace version of ``polygamma`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_polygamma`.
+    """
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+    if not isinstance(y, (paddle.Tensor, Variable)):
+        raise TypeError(f"y must be tensor type, but got {type(y)}")
+    if x.dtype == paddle.float64 or y.dtype == paddle.float64:
+        out_dtype = paddle.float64
+    else:
+        out_dtype = paddle.get_default_dtype()
+    x = paddle.cast_(x, dtype=out_dtype)
+    y = paddle.cast(y, dtype=out_dtype)
+    two = paddle.to_tensor(2, dtype=out_dtype)
+    return paddle.multiply_(x, paddle.pow(two, y))
+
+
+def hypot(x, y, name=None):
+    """
+    Calculate the length of the hypotenuse of a right-angle triangle. The equation is:
+
+    .. math::
+        out = {\\sqrt{x^2 + y^2}}
+
+    Args:
+        x (Tensor): The input Tensor, the data type is float32, float64, int32 or int64.
+        y (Tensor): The input Tensor, the data type is float32, float64, int32 or int64.
+        name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y. And the data type is float32 or float64.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([3], dtype='float32')
+            >>> y = paddle.to_tensor([4], dtype='float32')
+            >>> res = paddle.hypot(x, y)
+            >>> print(res)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [5.])
+
+    """
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+    if not isinstance(y, (paddle.Tensor, Variable)):
+        raise TypeError(f"y must be tensor type, but got {type(y)}")
+
+    out = (paddle.pow(x, 2) + paddle.pow(y, 2)).sqrt()
+    return out
+
+
+@inplace_apis_in_dygraph_only
+def hypot_(x, y, name=None):
+    r"""
+    Inplace version of ``hypot`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_hypot`.
+    """
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+    if not isinstance(y, (paddle.Tensor, Variable)):
+        raise TypeError(f"y must be tensor type, but got {type(y)}")
+
+    out = x.pow_(2).add_(y.pow(2)).sqrt_()
+    return out

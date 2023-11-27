@@ -3,7 +3,7 @@ if(WITH_PSLIB)
     set(BRPC_DEPS pslib_brpc)
   else()
     if(NOT WITH_HETERPS)
-      set(BRPC_DEPS brpc)
+      set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS})
     endif()
   endif()
   cc_library(
@@ -119,8 +119,3 @@ cc_library(
   heter_wrapper
   SRCS heter_wrapper.cc
   DEPS framework_proto device_context heter_service_proto ${BRPC_DEPS})
-
-cc_test(
-  test_fleet_cc
-  SRCS test_fleet.cc
-  DEPS fleet_wrapper gloo_wrapper fs shell)

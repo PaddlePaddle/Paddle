@@ -21,7 +21,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.inference import Config, create_predictor
 
 paddle.enable_static()
@@ -281,7 +281,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         return set(map(int, string.split(',')))
 
     def test_graph_transformation(self):
-        if not fluid.core.is_compiled_with_mkldnn():
+        if not base.core.is_compiled_with_mkldnn():
             return
 
         quant_model_path = test_case_args.quant_model

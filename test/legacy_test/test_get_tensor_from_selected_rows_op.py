@@ -18,7 +18,7 @@ import numpy as np
 from op import Operator
 
 import paddle
-from paddle.fluid import Program, core, program_guard
+from paddle.base import Program, core, program_guard
 from paddle.nn import clip
 
 

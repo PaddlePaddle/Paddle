@@ -148,7 +148,7 @@ class CompileTimeStrategy:
             self.is_heter_ps_mode = role_maker._is_heter_parameter_server_mode
         except:
             warnings.warn(
-                "Using paddle.distributed.fleet instead of paddle.fluid.incubate.fleet"
+                "Using paddle.distributed.fleet instead of paddle.base.incubate.fleet"
             )
             self.is_heter_ps_mode = False
 

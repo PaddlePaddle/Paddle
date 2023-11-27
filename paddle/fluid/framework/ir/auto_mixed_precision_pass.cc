@@ -175,7 +175,7 @@ bool OpSupportPrecision(const std::string& op_type,
 // The set of ops that support fp16 calculation and are considered
 // numerically-dangerous, slower and whose effects may also be observed in
 // downstream ops.
-// ref to python/paddle/fluid/contrib/mixed_precision/fp16_lists.py
+// ref to python/paddle/base/contrib/mixed_precision/fp16_lists.py
 void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
   black_list_.insert({
       // numerically-dangerous
@@ -184,7 +184,6 @@ void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
       "log",
       "mean",
       "sum",
-      "cos_sim",
       "softmax_with_cross_entropy",
       "sigmoid_cross_entropy_with_logits",
       "c_softmax_with_cross_entropy",
@@ -300,10 +299,10 @@ void AutoMixedPrecisionPass::ApplyImpl(Graph* graph) const {
   VLOG(4) << "SetVarPrecision done";
   ConvertWeightsData();
   VLOG(4) << "ConvertWeightsData done";
-  ProcessOpWithDtypeAttr();
-  VLOG(4) << "ProcessOpWithDtypeAttr done";
   InsertCastOp();
   VLOG(4) << "InsertCastOp done";
+  ProcessOpWithDtypeAttr();
+  VLOG(4) << "ProcessOpWithDtypeAttr done";
   RestoreOpOriginType();
   VLOG(4) << "RestoreOpOriginType done";
   LOG(INFO) << "The number of ops run at low precision ["
@@ -355,7 +354,9 @@ void AutoMixedPrecisionPass::ProcessOpWithDtypeAttr() const {
 
       if (op_node->Op()->HasAttr("in_dtype")) {
         auto* var_node = op_node->inputs[0];
-        auto* real_var_node = real_vars_[var_node->Var()->Name()];
+        auto* real_var_node = real_vars_.count(var_node->Var()->Name())
+                                  ? real_vars_.at(var_node->Var()->Name())
+                                  : var_node;
         if (IsFP16AndBFP16(real_var_node->Var()->GetDataType())) {
           op_node->Op()->SetAttr(
               "in_dtype",
@@ -455,7 +456,7 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
         // not run at low precision.
         for (auto* in_var_node : op_node->inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
-          auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
+          auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name());
           if (real_in_var_node->Var()->Persistable()) continue;
 
           support_low_precision =
@@ -464,7 +465,7 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
         }
         for (auto* out_var_node : op_node->outputs) {
           CHECK_EQ(out_var_node->IsVar(), true);
-          auto* real_out_var_node = real_vars_[out_var_node->Var()->Name()];
+          auto* real_out_var_node = real_vars_.at(out_var_node->Var()->Name());
           if (real_out_var_node->Var()->Persistable()) continue;
 
           support_low_precision =
@@ -522,7 +523,6 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
             vars_should_not_low_precision.insert(in_var_node->Var()->Name());
           }
         }
-
         // when op_1 only support cpu kernel. if op_2's intput var is op_1's
         // output var, then op_2 should not run at low precision.
         if (GetOpOriginalType(op_type) != "feed" &&
@@ -554,7 +554,7 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
           CHECK_EQ(in_var_node->IsVar(), true);
           if (!VarNodeHasDtype(in_var_node)) continue;
 
-          auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
+          auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name());
           if (real_in_var_node->Var()->Persistable()) continue;
 
           if (vars_should_not_low_precision.count(
@@ -573,7 +573,7 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
           CHECK_EQ(out_var_node->IsVar(), true);
           if (!VarNodeHasDtype(out_var_node)) continue;
 
-          auto* real_out_var_node = real_vars_[out_var_node->Var()->Name()];
+          auto* real_out_var_node = real_vars_.at(out_var_node->Var()->Name());
           if (real_out_var_node->Var()->Persistable()) continue;
 
           bool not_run_low_precision = false;
@@ -686,6 +686,16 @@ bool AutoMixedPrecisionPass::InputVarsNotConvert(
       if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
         return true;
       }
+    } else if (GetOpOriginalType(op_desc->Type()) == "quantize_linear" ||
+               GetOpOriginalType(op_desc->Type()) == "dequantize_linear") {
+      auto vecs = op_desc->Input("Scale");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+      vecs = op_desc->Input("ZeroPoint");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
     }
   }
 
@@ -732,6 +742,11 @@ bool AutoMixedPrecisionPass::OutputVarsNotConvert(
 }
 
 void AutoMixedPrecisionPass::SetVarPrecision() const {
+  auto* scope = param_scope();
+  PADDLE_ENFORCE_NOT_NULL(scope,
+                          platform::errors::PreconditionNotMet(
+                              "During the auto_mixed_precision_pass, the scope "
+                              "should not be null."));
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
       if (op_run_low_precision_.count(op_node->Op()->Type()) == 0) {
@@ -742,13 +757,27 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
         for (auto* in_var_node : op_node->inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
 
-          auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
+          auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name());
           auto in_var_name = real_in_var_node->Var()->Name();
 
           if (!IsFP32AndFP64(real_in_var_node->Var()->GetDataType())) continue;
           if (!VarNodeHasDtype(real_in_var_node)) continue;
           if (InputVarsNotConvert(op_node, in_var_name)) continue;
-
+          // Judge the real tensor is same to variable, Paddle-Slim weight use
+          // fp32 variable to save int8 tensor.
+          if (real_in_var_node->Var()->Persistable()) {
+            auto* tensor = scope->Var(real_in_var_node->Name())
+                               ->GetMutable<phi::DenseTensor>();
+            if (framework::TransToProtoVarType(tensor->type()) !=
+                real_in_var_node->Var()->GetDataType()) {
+              VLOG(3) << "[AutoMixedPrecisionPass] variable "
+                      << real_in_var_node->Name() << "'s proto data type "
+                      << real_in_var_node->Var()->GetDataType()
+                      << " is different from real dense tensor "
+                      << framework::TransToProtoVarType(tensor->type());
+              continue;
+            }
+          }
           if (real_in_var_node->Var()->Persistable()) {
             real_in_var_node->Var()->SetDataType(
                 framework::TransToProtoVarType(low_precision_));
@@ -761,7 +790,7 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
         for (auto* out_var_node : op_node->outputs) {
           CHECK_EQ(out_var_node->IsVar(), true);
 
-          auto* real_out_var_node = real_vars_[out_var_node->Var()->Name()];
+          auto* real_out_var_node = real_vars_.at(out_var_node->Var()->Name());
           auto out_var_name = real_out_var_node->Var()->Name();
 
           if (!IsFP32AndFP64(real_out_var_node->Var()->GetDataType())) continue;
@@ -877,7 +906,7 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
         if (!VarNodeHasDtype(in_var_node)) continue;
         if (in_var_node->Var()->Persistable()) continue;
 
-        auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
+        auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name());
 
         auto in_var_type = real_in_var_node->Var()->GetDataType();
 

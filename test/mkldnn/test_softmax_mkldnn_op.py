@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
+from op_test import OpTest
 from test_softmax_op import (
     TestSoftmaxOp,
     TestSoftmaxOp2,
@@ -27,7 +27,10 @@ from test_softmax_op import (
     TestSoftmaxOp_ZeroDim1,
 )
 
-from paddle.fluid import core
+import paddle
+from paddle.base import core
+
+paddle.enable_static()
 
 
 def stable_softmax(x):
@@ -56,7 +59,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         out = np.apply_along_axis(stable_softmax, self.axis, x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {
             'axis': self.axis,

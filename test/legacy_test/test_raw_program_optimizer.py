@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 
 
@@ -52,8 +52,8 @@ class TestRawProgramOptimizer(unittest.TestCase):
         sharding_startup_program = paddle.static.Program()
         strategy = fleet.DistributedStrategy()
         strategy.without_graph_optimization = True
-        with fluid.program_guard(sharding_program, sharding_startup_program):
-            with fluid.unique_name.guard():
+        with base.program_guard(sharding_program, sharding_startup_program):
+            with base.unique_name.guard():
                 input_x = paddle.static.data(
                     name="x", shape=[None, 32], dtype='float32'
                 )

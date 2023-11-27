@@ -18,7 +18,7 @@ import unittest
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.distributed.fleet.meta_optimizers import DGCOptimizer
@@ -29,7 +29,7 @@ paddle.enable_static()
 class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
     def test_dgc_optimizer_backward(self):
         """test dgc optimizer backward"""
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
         self.set_strategy(strategy, 'dgc')
@@ -44,7 +44,7 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
 
     def test_dgc_optimizer_gradients(self):
         """test dgc optimizer backward + gradients"""
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
         self.set_strategy(strategy, 'dgc')
@@ -53,7 +53,7 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         dgc_opt._set_basic_info(avg_cost, role, opt, strategy)
         params_grads = dgc_opt.backward(avg_cost, startup_prog)
-        with fluid.program_guard(train_prog, startup_prog):
+        with base.program_guard(train_prog, startup_prog):
             dgc_opt.apply_gradients(params_grads)
 
         ops = [op.type for op in avg_cost.block.ops]
@@ -62,7 +62,7 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
 
     def test_dgc_optimizer_optimize(self):
         """test dgc optimizer backward + optimize"""
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
         self.set_strategy(strategy, 'dgc')
@@ -78,7 +78,7 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         self.assertIn('dgc_momentum', ops)
 
     def test_dgc_optimizer(self):
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'dgc')
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)
@@ -88,7 +88,7 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         self.assertIn('dgc_momentum', ops)
 
     def test_dgc_not_apply_with_adam(self):
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'dgc')
         self.optimizer(avg_cost, strategy, train_prog, startup_prog, 'adam')
@@ -101,7 +101,7 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
 
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'dgc')
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)
@@ -111,7 +111,7 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         self.assertNotIn('dgc_momentum', ops)
 
     def test_dgc_recompute_optimizer(self):
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'dgc')
         self.set_strategy(strategy, 'recompute')
@@ -131,7 +131,7 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         """test amp + recompute + lars + dgc,
         amp -/-> dgc, max_path is amp-->recompute-->lars
         """
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'dgc')
         self.set_strategy(strategy, 'amp')

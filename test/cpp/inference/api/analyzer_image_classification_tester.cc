@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "test/cpp/inference/api/tester_helper.h"
 
-DEFINE_bool(disable_mkldnn_fc, false, "Disable usage of MKL-DNN's FC op");
+PD_DEFINE_bool(disable_mkldnn_fc, false, "Disable usage of MKL-DNN's FC op");
 
 namespace paddle {
 namespace inference {

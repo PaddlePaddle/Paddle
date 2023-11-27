@@ -21,8 +21,8 @@ paddle.enable_static()
 
 
 def make_program():
-    main_program = paddle.fluid.Program()
-    start_program = paddle.fluid.Program()
+    main_program = paddle.base.Program()
+    start_program = paddle.base.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 4, 8], dtype='float32')
         y = paddle.static.data(name='y', shape=[4, 4, 8], dtype='float32')
@@ -65,7 +65,7 @@ class TestDistAssign(unittest.TestCase):
         for op in ops:
             if op.type == "assign":
                 dist_op = dist_context.get_dist_op_for_program(op)
-                assert dist_op.dist_attr.impl_type == "assign"
+                assert dist_op.dist_attr.impl_type == "default"
 
                 x_name = op.input_arg_names[0]
                 out_name = op.output_arg_names[0]

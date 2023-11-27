@@ -100,7 +100,7 @@ class XPUTestSequenceUnpadOp(XPUOpTestWrapper):
 class TestSequenceUnpadOpError(unittest.TestCase):
     def test_error(self):
         """
-        The type of 'x' in paddle.static.nn.sequence_unpad must be <class 'paddle.fluid.framework.Variable'>, but received <class 'numpy.ndarray'>.
+        The type of 'x' in paddle.static.nn.sequence_unpad must be <class 'paddle.base.framework.Variable'>, but received <class 'numpy.ndarray'>.
         """
 
         def test_x_variable():
@@ -110,7 +110,7 @@ class TestSequenceUnpadOpError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_x_variable)
         """
-        The type of 'length' in fluid.layers.sequence_unpad must be <class 'paddle.fluid.framework.Variable'>, but received <class 'numpy.ndarray'>.
+        The type of 'length' in base.layers.sequence_unpad must be <class 'paddle.base.framework.Variable'>, but received <class 'numpy.ndarray'>.
         """
 
         def test_length_variable():
@@ -120,7 +120,7 @@ class TestSequenceUnpadOpError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_length_variable)
         """
-        The data type of 'x' in fluid.layers.sequence_unpad must be ['float32', 'float64', 'int32', 'int64'], but received float16
+        The data type of 'x' in base.layers.sequence_unpad must be ['float32', 'float64', 'int32', 'int64'], but received float16
         """
 
         def test_x_dtype():
@@ -130,7 +130,7 @@ class TestSequenceUnpadOpError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_x_dtype)
         """
-        The data type of 'length' in fluid.layers.sequence_unpad must be ['int64'], but received int32
+        The data type of 'length' in base.layers.sequence_unpad must be ['int64'], but received int32
         """
 
         def test_length_dtype():

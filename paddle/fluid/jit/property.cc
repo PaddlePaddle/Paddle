@@ -340,7 +340,7 @@ void Property::SetStrings(const std::vector<std::string> &v) {
   auto type = proto::ValueProto::STRINGS;
   auto entry = property_.add_entrys();
   entry->set_type(type);
-  for (auto i : v) {
+  for (auto const &i : v) {
     entry->add_strings(i);
   }
   VLOG(3) << "Property: set_strings " << v.size();
@@ -352,7 +352,7 @@ void Property::SetStrings(const std::string &name,
   auto entry = property_.add_entrys();
   entry->set_name(name);
   entry->set_type(type);
-  for (auto i : v) {
+  for (auto const &i : v) {
     entry->add_strings(i);
   }
   VLOG(3) << "Property: set_strings " << v[0] << " name: " << name;

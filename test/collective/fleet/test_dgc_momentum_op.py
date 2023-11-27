@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 from op import Operator
 
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestDGCMomentumOp1(unittest.TestCase):
@@ -28,7 +28,7 @@ class TestDGCMomentumOp1(unittest.TestCase):
         return name, tensor
 
     def setup(self, place, step=0.0):
-        self.scope = fluid.global_scope()
+        self.scope = base.global_scope()
         self.place = place
         print("place:", place)
 

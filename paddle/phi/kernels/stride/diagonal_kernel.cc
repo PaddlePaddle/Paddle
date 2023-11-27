@@ -30,25 +30,27 @@ void DiagonalStridedKernel(const Context& dev_ctx,
                            DenseTensor* out) {
   size_t x_rank = x.dims().size();
   if (axis1 < 0) {
-    axis1 += x_rank;
+    axis1 += static_cast<int>(x_rank);
   }
   if (axis2 < 0) {
-    axis2 += x_rank;
+    axis2 += static_cast<int>(x_rank);
   }
 
-  int64_t diag_size;
-  int64_t x_offset = x.offset();
+  int64_t diag_size = 0;
+  int64_t x_offset = static_cast<int64_t>(x.offset());
   if (offset >= 0) {
     diag_size = std::max<int64_t>(
         std::min(x.dims()[axis1], x.dims()[axis2] - offset), 0);
     if (diag_size != 0) {
-      x_offset += offset * x.strides()[axis2] * SizeOf(x.dtype());
+      x_offset +=
+          static_cast<int64_t>(offset * x.strides()[axis2] * SizeOf(x.dtype()));
     }
   } else {
     diag_size = std::max<int64_t>(
         std::min(x.dims()[axis1] + offset, x.dims()[axis2]), 0);
     if (diag_size != 0) {
-      x_offset -= offset * x.strides()[axis1] * SizeOf(x.dtype());
+      x_offset -=
+          static_cast<int64_t>(offset * x.strides()[axis1] * SizeOf(x.dtype()));
     }
   }
 
@@ -62,7 +64,7 @@ void DiagonalStridedKernel(const Context& dev_ctx,
   stride.push_back(x.strides()[axis1] + x.strides()[axis2]);
 
   auto meta = out->meta();
-  auto tmp_dim = DDim(shape.data(), shape.size());
+  auto tmp_dim = DDim(shape.data(), static_cast<int>(shape.size()));
   // if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
   //   PADDLE_THROW(
   //       phi::errors::Fatal("Diagonal kernel stride compute diff, infer shape
@@ -72,7 +74,7 @@ void DiagonalStridedKernel(const Context& dev_ctx,
   //                          tmp_dim));
   // }
   meta.dims = tmp_dim;
-  meta.strides = DDim(stride.data(), stride.size());
+  meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));
   meta.offset = x_offset;
   out->set_meta(meta);
   out->ResetHolder(x.Holder());

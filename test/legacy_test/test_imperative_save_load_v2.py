@@ -19,9 +19,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import to_variable
 from paddle.nn import Embedding
 from paddle.optimizer import Adam
 from paddle.optimizer.lr import LRScheduler
@@ -47,7 +47,7 @@ class SimpleLSTMRNN(paddle.nn.Layer):
 
         for i in range(self._num_layers):
             weight_1 = self.create_parameter(
-                attr=fluid.ParamAttr(
+                attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
@@ -60,7 +60,7 @@ class SimpleLSTMRNN(paddle.nn.Layer):
             )
             self.weight_1_arr.append(self.add_parameter('w_%d' % i, weight_1))
             bias_1 = self.create_parameter(
-                attr=fluid.ParamAttr(
+                attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
@@ -170,7 +170,7 @@ class PtbModel(paddle.nn.Layer):
             vocab_size,
             hidden_size,
             sparse=False,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name='embedding_para',
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
@@ -179,7 +179,7 @@ class PtbModel(paddle.nn.Layer):
         )
 
         self.softmax_weight = self.create_parameter(
-            attr=fluid.ParamAttr(),
+            attr=base.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype="float32",
             default_initializer=paddle.nn.initializer.Uniform(
@@ -187,7 +187,7 @@ class PtbModel(paddle.nn.Layer):
             ),
         )
         self.softmax_bias = self.create_parameter(
-            attr=fluid.ParamAttr(),
+            attr=base.ParamAttr(),
             shape=[self.vocab_size],
             dtype="float32",
             default_initializer=paddle.nn.initializer.Uniform(
@@ -251,7 +251,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_size = 4
         batch_num = 200
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
@@ -272,9 +272,9 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 lr_arr.append(new_lr)
 
             place = (
-                fluid.CPUPlace()
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
             scheduler = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr_arr
@@ -354,7 +354,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_size = 4
         batch_num = 200
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
@@ -375,9 +375,9 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 lr_arr.append(new_lr)
 
             place = (
-                fluid.CPUPlace()
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
             scheduler = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr_arr
@@ -476,7 +476,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_size = 4
         batch_num = 200
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
@@ -497,9 +497,9 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 lr_arr.append(new_lr)
 
             place = (
-                fluid.CPUPlace()
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
             scheduler = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr_arr
@@ -594,7 +594,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_size = 4
         batch_num = 200
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
@@ -615,9 +615,9 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 lr_arr.append(new_lr)
 
             place = (
-                fluid.CPUPlace()
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
             scheduler = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr_arr
@@ -718,7 +718,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_size = 4
         batch_num = 200
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
@@ -731,9 +731,9 @@ class TestDygraphPtbRnn(unittest.TestCase):
             )
 
             place = (
-                fluid.CPUPlace()
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
             adam = Adam(
                 learning_rate=0.0,
@@ -806,7 +806,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_size = 4
         batch_num = 200
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
@@ -828,9 +828,9 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 lr_arr.append(new_lr)
 
             place = (
-                fluid.CPUPlace()
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
             adam = Adam(
                 learning_rate=0.0,
@@ -908,7 +908,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_size = 4
         batch_num = 200
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
@@ -930,9 +930,9 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 lr_arr.append(new_lr)
 
             place = (
-                fluid.CPUPlace()
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
             scheduler = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr_arr
@@ -1013,7 +1013,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 np.testing.assert_array_equal(new_t, base_t)
 
     def func_testOnlyLoadParams(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             emb = paddle.nn.Embedding(10, 10)
             state_dict = emb.state_dict()
             paddle.save(
@@ -1026,7 +1026,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             )
 
     def func_test_no_state_in_input_dict(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             emb = paddle.nn.Embedding(10, 10)
             state_dict = emb.state_dict()
             paddle.save(
@@ -1042,7 +1042,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             emb.set_state_dict(para_state_dict)
 
     def func_test_state_shape_mismatch(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             emb = paddle.nn.Embedding(10, 10)
             state_dict = emb.state_dict()
             paddle.save(

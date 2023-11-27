@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....fluid.core import copy_tensor  # noqa: F401
+from ....base.core import copy_tensor  # noqa: F401

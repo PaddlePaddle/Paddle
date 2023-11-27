@@ -52,8 +52,8 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
     } else {
       place_str = place_str.substr(0, place_str.length() - 1);
       std::istringstream sin(place_str);
-      sin.seekg(std::string("PLACE(GPU:").size(), std::ios::beg);
-      size_t num;
+      sin.seekg(std::string("PLACE(GPU:").size(), std::ios::beg);  // NOLINT
+      size_t num = 0;
       sin >> num;
       place = platform::CUDAPlace(static_cast<int>(num));
     }

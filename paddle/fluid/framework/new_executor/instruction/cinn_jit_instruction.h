@@ -17,7 +17,7 @@
 #include <memory>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 
-namespace ir {
+namespace pir {
 class Operation;
 }
 
@@ -29,8 +29,8 @@ class CinnJitInstruction : public InstructionBase {
  public:
   CinnJitInstruction(size_t id,
                      const platform::Place& place,
-                     ::ir::Operation* op,
-                     Scope* scope);
+                     ::pir::Operation* op,
+                     const ValueExecutionInfo& value_exec_info);
 
   // TODO(Aurelius84): Only implement core interface and need implement GC and
   // Event logic.
@@ -38,9 +38,22 @@ class CinnJitInstruction : public InstructionBase {
 
   const std::string& Name() const override;
 
+  ::pir::Operation* Operation() const override { return op_; }
+
  private:
-  class Impl;
-  std::shared_ptr<Impl> impl_{nullptr};
+  class FnPtrImpl;
+
+  std::shared_ptr<FnPtrImpl> fn_ptr_impl_{nullptr};
+
+  platform::Place place_;
+
+  phi::DeviceContext* dev_ctx_;
+
+  phi::DenseTensor* out_tensor_;
+
+  std::vector<phi::DenseTensor*> tensor_args_;
+
+  ::pir::Operation* op_{nullptr};  // not owned
 };
 
 }  // namespace framework

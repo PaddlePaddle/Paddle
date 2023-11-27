@@ -388,9 +388,8 @@ class Benchmark:
             message += ' {}: {:.5f} s'.format('batch_cost', batch_average)
         speed_average = self.current_event.speed_average()
         if speed_average:
-            message += ' ips: {:.3f} {}'.format(
-                speed_average,
-                self.current_event.speed_unit,
+            message += (
+                f' ips: {speed_average:.3f} {self.current_event.speed_unit}'
             )
         self.current_event.reset()
         return message

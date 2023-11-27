@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.framework import _apply_pass
+from paddle import base
+from paddle.base.framework import _apply_pass
 from paddle.framework.ir import apply_build_strategy
 from paddle.nn import CrossEntropyLoss
 from paddle.vision.models import resnet50
@@ -79,7 +79,7 @@ class TestIRPassBase(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         if paddle.is_compiled_with_cuda():
-            fluid.set_flags(
+            base.set_flags(
                 {
                     'FLAGS_cudnn_deterministic': 1,
                     'FLAGS_max_inplace_grad_add': 6,

@@ -15,11 +15,11 @@
 import os
 import sys
 
-from paddle import fluid
+from paddle import base
 
 
 def train(prefix):
-    if fluid.core.is_compiled_with_xpu():
+    if base.core.is_compiled_with_xpu():
         selected_devices = os.getenv("FLAGS_selected_xpus")
     else:
         selected_devices = os.getenv("FLAGS_selected_gpus")

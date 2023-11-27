@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
 
 
 def call_nonzero(x):
@@ -29,6 +29,7 @@ def call_nonzero(x):
 
 class TestNonZeroAPI(unittest.TestCase):
     def test_nonzero_api_as_tuple(self):
+        paddle.enable_static()
         data = np.array([[True, False], [False, True]])
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
@@ -37,7 +38,7 @@ class TestNonZeroAPI(unittest.TestCase):
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 2)
             z = paddle.concat(list(y), axis=1)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
 
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[z.name], return_numpy=False
@@ -53,7 +54,7 @@ class TestNonZeroAPI(unittest.TestCase):
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 1)
             z = paddle.concat(list(y), axis=1)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[z.name], return_numpy=False
             )
@@ -61,12 +62,13 @@ class TestNonZeroAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_nonzero_api(self):
+        paddle.enable_static()
         data = np.array([[True, False], [False, True]])
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
             x.desc.set_need_check_feed(False)
             y = paddle.nonzero(x)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[y.name], return_numpy=False
             )
@@ -78,7 +80,7 @@ class TestNonZeroAPI(unittest.TestCase):
             x = paddle.static.data(name='x', shape=[-1], dtype='float32')
             x.desc.set_need_check_feed(False)
             y = paddle.nonzero(x)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[y.name], return_numpy=False
             )
@@ -87,8 +89,8 @@ class TestNonZeroAPI(unittest.TestCase):
 
     def test_dygraph_api(self):
         data_x = np.array([[True, False], [False, True]])
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(data_x)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(data_x)
             z = paddle.nonzero(x)
             np_z = z.numpy()
         expect_out = np.array([[0, 0], [1, 1]])
@@ -108,7 +110,7 @@ class TestNonzeroOp(OpTest):
         self.outputs = self.return_outputs()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init_shape(self):
         self.shape = [8, 8]
@@ -156,7 +158,7 @@ class TestNonzeroBF16(OpTest):
         self.outputs = self.return_outputs()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init_shape(self):
         self.shape = [12, 9]

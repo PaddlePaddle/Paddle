@@ -22,7 +22,7 @@ class TestTCPStore(unittest.TestCase):
     def test_tcp_store(self):
         dist_port = int(os.getenv("PADDLE_DIST_UT_PORT", 6170))
         print("get dist_port:", dist_port)
-        store = paddle.fluid.core.TCPStore("127.0.0.1", dist_port, True, 1, 1)
+        store = paddle.base.core.TCPStore("127.0.0.1", dist_port, True, 1, 1)
         store.add("my", 3)
         ret1 = store.get('my')
         store.add("my", 3)

@@ -15,8 +15,8 @@
 from test_collective_base import TestCollectiveRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -28,7 +28,7 @@ class TestCollectiveReduceScatter(TestCollectiveRunnerBase):
     def get_model(self, main_prog, startup_program):
         ring_id = 0
         nranks = 2
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )

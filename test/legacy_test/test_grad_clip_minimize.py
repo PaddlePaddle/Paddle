@@ -16,8 +16,8 @@ import unittest
 
 import numpy as np
 
-from paddle import fluid
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base.dygraph.base import to_variable
 from paddle.nn import ClipGradByGlobalNorm, ClipGradByNorm, ClipGradByValue
 
 
@@ -60,7 +60,7 @@ class TestGradClipByGlobalNorm(unittest.TestCase):
         return new_np_p_g
 
     def get_dygrap_global_norm_result(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             gloabl_norm_clip = ClipGradByGlobalNorm(self.max_global_norm)
             p_g_var = []
             for p, g in self.para_and_grad:
@@ -132,7 +132,7 @@ class TestGradClipByNorm(unittest.TestCase):
         return new_p_g
 
     def get_dygrap_norm_result(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             norm_clip = ClipGradByNorm(self.max_norm)
             p_g_var = []
             for p, g in self.para_and_grad:
@@ -200,7 +200,7 @@ class TestGradClipByValue(unittest.TestCase):
         return new_p_g
 
     def get_dygrap_clip_result(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             value_clip = ClipGradByValue(max=self.max_value, min=self.min_value)
             p_g_var = []
             for p, g in self.para_and_grad:

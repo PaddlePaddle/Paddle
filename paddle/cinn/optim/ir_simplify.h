@@ -30,6 +30,8 @@ namespace optim {
  */
 void Simplify(Expr *expr);
 
+void SimplifyCast(Expr *expr);
+
 void SimplifyForLoops(Expr *expr);
 
 void SimplifyBlocks(Expr *expr);

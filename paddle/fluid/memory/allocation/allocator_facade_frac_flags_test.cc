@@ -22,7 +22,7 @@ PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
 PHI_DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
 PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
-DECLARE_int64(gpu_allocator_retry_time);
+PD_DECLARE_int64(gpu_allocator_retry_time);
 #endif
 PHI_DECLARE_string(allocator_strategy);
 

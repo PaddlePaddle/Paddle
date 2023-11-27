@@ -14,9 +14,9 @@
 import paddle
 from paddle import _C_ops
 
-from ...fluid import core, framework, unique_name
-from ...fluid.data_feeder import check_type
-from ...fluid.framework import _current_expected_place, in_dygraph_mode
+from ...base import core, framework, unique_name
+from ...base.data_feeder import check_type
+from ...base.framework import _current_expected_place, in_dygraph_mode
 from .initializer import Initializer
 
 __all__ = []
@@ -77,6 +77,9 @@ class NumpyArrayInitializer(Initializer):
 
         if out_dtype == core.VarDesc.VarType.FP32:
             value_name = "fp32_values"
+            values = [float(v) for v in np_value.flat]
+        elif out_dtype == core.VarDesc.VarType.FP64:
+            value_name = "fp64_values"
             values = [float(v) for v in np_value.flat]
         elif out_dtype == core.VarDesc.VarType.INT32:
             value_name = "int32_values"

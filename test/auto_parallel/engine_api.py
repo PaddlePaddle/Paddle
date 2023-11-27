@@ -306,7 +306,7 @@ def train_builtin_data_vars():
     with static.program_guard(engine.main_program, engine.startup_program):
         feed_list = engine.inputs + engine.labels
         print(feed_list)
-        loader = paddle.fluid.io.DataLoader.from_generator(
+        loader = paddle.base.io.DataLoader.from_generator(
             feed_list=feed_list, capacity=4 * batch_size, iterable=False
         )
 
@@ -318,7 +318,7 @@ def train_builtin_data_vars():
         try:
             while True:
                 engine.run()
-        except paddle.fluid.core.EOFException:
+        except paddle.base.core.EOFException:
             loader.reset()  # call DataLoader.reset() after catching EOFException
 
 
@@ -336,7 +336,7 @@ def train_non_builtin_data_vars():
         )
         label = static.data(name="label", shape=[batch_size, 1], dtype='int64')
 
-        loader = paddle.fluid.io.DataLoader.from_generator(
+        loader = paddle.base.io.DataLoader.from_generator(
             feed_list=[input, label], capacity=4 * batch_size, iterable=False
         )
         places = static.cuda_places()
@@ -380,7 +380,7 @@ def train_non_builtin_data_vars():
         try:
             while True:
                 engine.run()
-        except paddle.fluid.core.EOFException:
+        except paddle.base.core.EOFException:
             loader.reset()  # call DataLoader.reset() after catching EOFException
 
 
@@ -398,7 +398,7 @@ def get_cost():
         )
         label = static.data(name="label", shape=[batch_size, 1], dtype='int64')
 
-        loader = paddle.fluid.io.DataLoader.from_generator(
+        loader = paddle.base.io.DataLoader.from_generator(
             feed_list=[input, label], capacity=4 * batch_size, iterable=False
         )
         places = static.cuda_places()
@@ -455,7 +455,7 @@ def get_cost_by_default_program():
             input, process_mesh=PP_MESH_0, shard_spec=[None, None]
         )
 
-        loader = paddle.fluid.io.DataLoader.from_generator(
+        loader = paddle.base.io.DataLoader.from_generator(
             feed_list=[input, label], capacity=4 * batch_size, iterable=False
         )
         places = static.cuda_places()

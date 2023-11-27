@@ -15,9 +15,9 @@
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.base import core
 from paddle.distributed.transpiler import collective
-from paddle.fluid import core
 from paddle.incubate.layers.nn import _pull_box_sparse
 
 
@@ -32,8 +32,8 @@ class TestTranspile(unittest.TestCase):
         return t
 
     def test_transpile(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
+        main_program = base.Program()
+        startup_program = base.Program()
         t = self.get_transpile("single_process_multi_thread")
         t.transpile(
             trainer_id=0,
@@ -56,8 +56,8 @@ class TestTranspile(unittest.TestCase):
         transpiler = collective.GradAllReduce(0)
         try:
             transpiler.transpile(
-                startup_program=fluid.Program(),
-                main_program=fluid.Program(),
+                startup_program=base.Program(),
+                main_program=base.Program(),
                 rank=1,
                 endpoints="127.0.0.1:6174",
                 current_endpoint="127.0.0.1:6174",
@@ -68,8 +68,8 @@ class TestTranspile(unittest.TestCase):
         transpiler = collective.LocalSGD(0)
         try:
             transpiler.transpile(
-                startup_program=fluid.Program(),
-                main_program=fluid.Program(),
+                startup_program=base.Program(),
+                main_program=base.Program(),
                 rank=1,
                 endpoints="127.0.0.1:6174",
                 current_endpoint="127.0.0.1:6174",
@@ -94,8 +94,8 @@ class TestPullBoxSparseOP(unittest.TestCase):
 
     def test_pull_box_sparse_op(self):
         paddle.enable_static()
-        program = fluid.Program()
-        with fluid.program_guard(program):
+        program = base.Program()
+        with base.program_guard(program):
             x = paddle.static.data(
                 name='x', shape=[-1, 1], dtype='int64', lod_level=0
             )

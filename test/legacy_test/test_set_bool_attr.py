@@ -16,7 +16,7 @@
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestAttrSet(unittest.TestCase):
@@ -24,18 +24,18 @@ class TestAttrSet(unittest.TestCase):
         x = paddle.static.data(
             name='x', shape=[-1, 3, 7, 3, 7], dtype='float32'
         )
-        param_attr = fluid.ParamAttr(
+        param_attr = base.ParamAttr(
             name='batch_norm_w',
             initializer=paddle.nn.initializer.Constant(value=1.0),
         )
-        bias_attr = fluid.ParamAttr(
+        bias_attr = base.ParamAttr(
             name='batch_norm_b',
             initializer=paddle.nn.initializer.Constant(value=0.0),
         )
         bn = paddle.static.nn.batch_norm(
             input=x, param_attr=param_attr, bias_attr=bias_attr
         )
-        block = fluid.default_main_program().desc.block(0)
+        block = base.default_main_program().desc.block(0)
         op = block.op(0)
         before_type = op.attr_type('is_test')
         op._set_attr('is_test', True)

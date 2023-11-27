@@ -17,7 +17,7 @@ import unittest
 from test_standalone_controlflow import TestCompatibility
 
 import paddle
-from paddle.fluid.framework import Program
+from paddle.base.framework import Program
 
 paddle.enable_static()
 

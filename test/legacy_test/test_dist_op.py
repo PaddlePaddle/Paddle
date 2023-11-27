@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -113,13 +114,11 @@ class TestDistOp(OpTest):
         return x_grad, y_grad
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ["X", "Y"],
-            "Out",
-            user_defined_grads=self.gradient,
+            ["X", "Y"], "Out", user_defined_grads=self.gradient, check_pir=True
         )
 
 
@@ -244,11 +243,12 @@ class TestDistAPI(unittest.TestCase):
             'float32' if core.is_compiled_with_rocm() else 'float64'
         )
 
+    @test_with_pir_api
     def test_api(self):
         self.init_data_type()
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with base.program_guard(main_program, startup_program):
             x = paddle.static.data(
                 name='x', shape=[2, 3, 4, 5], dtype=self.data_type
             )
@@ -260,13 +260,13 @@ class TestDistAPI(unittest.TestCase):
             y_i = np.random.random((3, 1, 5)).astype(self.data_type)
             result = paddle.dist(x, y, p)
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             out = exe.run(
-                fluid.default_main_program(),
+                main_program,
                 feed={'x': x_i, 'y': y_i},
                 fetch_list=[result],
             )

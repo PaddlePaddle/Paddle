@@ -71,12 +71,12 @@ TEST(FCFusePass, basic) {
   auto pass = PassRegistry::Instance().Get("fc_fuse_pass");
   pass->Set("use_gpu", new bool(true));
   graph->Set("__param_scope__", CreateParamScope());
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   int num_mul_nodes_before = GetNumOpNodes(graph, "mul");
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   int num_fc_nodes_after = GetNumOpNodes(graph, "fc");
   VLOG(3) << DebugString(graph);
 

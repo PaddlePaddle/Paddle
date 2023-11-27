@@ -17,7 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def func_ref(func, x, num_or_sections):
@@ -52,6 +53,7 @@ class TestSplitsAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
         for func, func_type in test_list:
@@ -166,6 +168,7 @@ class TestSplitsError(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_error(self):
         paddle.enable_static()
         for func, _ in test_list:

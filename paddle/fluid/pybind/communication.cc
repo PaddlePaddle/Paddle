@@ -28,8 +28,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
 
 namespace py = pybind11;
@@ -38,18 +38,27 @@ namespace paddle {
 namespace pybind {
 
 void BindCommContextManager(py::module *m) {
+  auto P2POption = py::class_<phi::distributed::P2POption>(*m, "P2POption")
+                       .def(py::init<>());
+
   auto CommContextManager =
       py::class_<phi::distributed::CommContextManager,
                  std::shared_ptr<phi::distributed::CommContextManager>>(
           *m, "CommContextManager")
+          .def_static("set_device_id",
+                      &phi::distributed::CommContextManager::SetDeviceId,
+                      py::call_guard<py::gil_scoped_release>())
 #if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
           .def_static(
               "create_nccl_comm_context",
               &phi::distributed::CommContextManager::CreateNCCLCommContext,
+              py::arg("store"),
+              py::arg("unique_comm_key"),
+              py::arg("rank"),
+              py::arg("size"),
+              py::arg("hash_key") = "",
+              py::arg("p2p_opt") = nullptr,
               py::call_guard<py::gil_scoped_release>())
-          .def_static("set_cuda_device_id",
-                      &phi::distributed::CommContextManager::SetCUDADeviceId,
-                      py::call_guard<py::gil_scoped_release>())
 #endif
 #if defined(PADDLE_WITH_GLOO)
           .def_static(

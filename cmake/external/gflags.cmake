@@ -102,3 +102,15 @@ if(WIN32)
     set_property(GLOBAL PROPERTY OS_DEPENDENCY_MODULES shlwapi.lib)
   endif()
 endif()
+
+# We have implemented a custom flags tool paddle_flags to replace gflags.
+# User can also choose to use gflags by setting WITH_GFLAGS=ON. But when
+# using paddle_flags, gflags is also needed for other third party libraries
+# including glog and brpc. So we can not remove gflags completely.
+set(flags_dep)
+if(WITH_GFLAGS)
+  list(APPEND flags_dep gflags)
+  add_definitions(-DPADDLE_WITH_GFLAGS)
+else()
+  list(APPEND flags_dep paddle_flags)
+endif()

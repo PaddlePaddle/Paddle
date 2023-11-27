@@ -19,13 +19,12 @@ import sys
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils import Dy2StTestBase, test_default_mode_only
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
-from paddle.jit.api import to_static
+from paddle import base
+from paddle.base.dygraph import to_variable
 from paddle.nn import BatchNorm, Linear
 
 random.seed(0)
@@ -43,7 +42,7 @@ def parse_args():
     parser.add_argument(
         '--use_gpu',
         type=bool,
-        default=fluid.is_compiled_with_cuda(),
+        default=base.is_compiled_with_cuda(),
         help='default use gpu.',
     )
     args = parser.parse_args(
@@ -71,15 +70,15 @@ class ConvBNLayer(paddle.nn.Layer):
             stride=stride,
             padding=(filter_size - 1) // 2,
             groups=1,
-            weight_attr=fluid.param_attr.ParamAttr(),
+            weight_attr=base.param_attr.ParamAttr(),
             bias_attr=False,
         )
 
         self._batch_norm = BatchNorm(
             num_filters,
             act=act,
-            param_attr=fluid.param_attr.ParamAttr(),
-            bias_attr=fluid.param_attr.ParamAttr(),
+            param_attr=base.param_attr.ParamAttr(),
+            bias_attr=base.param_attr.ParamAttr(),
         )
 
     def forward(self, inputs):
@@ -202,7 +201,6 @@ class TSM_ResNet(paddle.nn.Layer):
             ),
         )
 
-    @to_static
     def forward(self, inputs):
         y = paddle.reshape(inputs, [-1] + self.reshape_list)
         y = self.conv(y)
@@ -301,15 +299,17 @@ def train(args, fake_data_reader, to_static):
     valid_config = merge_configs(config, 'valid', vars(args))
     print_configs(train_config, 'Train')
 
-    place = fluid.CUDAPlace(0) if args.use_gpu else fluid.CPUPlace()
+    place = base.CUDAPlace(0) if args.use_gpu else base.CPUPlace()
 
     random.seed(0)
     np.random.seed(0)
-    with fluid.dygraph.guard(place):
+    with base.dygraph.guard(place):
         paddle.seed(1000)
         paddle.framework.random._manual_program_seed(1000)
 
-        video_model = TSM_ResNet("TSM", train_config, 'Train')
+        video_model = paddle.jit.to_static(
+            TSM_ResNet("TSM", train_config, 'Train')
+        )
 
         optimizer = create_optimizer(
             train_config.TRAIN, video_model.parameters()
@@ -384,11 +384,11 @@ def train(args, fake_data_reader, to_static):
         return ret
 
 
-class TestTsm(unittest.TestCase):
-    @test_and_compare_with_new_ir(False)
+class TestTsm(Dy2StTestBase):
+    @test_default_mode_only
     def test_dygraph_static_same_loss(self):
-        if fluid.is_compiled_with_cuda():
-            fluid.set_flags({"FLAGS_cudnn_deterministic": True})
+        if base.is_compiled_with_cuda():
+            base.set_flags({"FLAGS_cudnn_deterministic": True})
         args = parse_args()
         fake_data_reader = FakeDataReader("train", parse_config(args.config))
         dygraph_loss = train(args, fake_data_reader, to_static=False)

@@ -141,6 +141,11 @@ if(NOT WIN32)
   set(COMMON_FLAGS
       -fPIC
       -fno-omit-frame-pointer
+      -pipe
+      -ffunction-sections
+      -fdata-sections
+      -Wl
+      -gc-sections
       -Werror
       -Wall
       -Wextra

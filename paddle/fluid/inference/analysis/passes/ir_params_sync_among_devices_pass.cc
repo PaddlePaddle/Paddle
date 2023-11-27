@@ -27,10 +27,12 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-DEFINE_bool(  // NOLINT
+PD_DEFINE_bool(  // NOLINT
     custom_model_save_cpu,
     false,
     "Keep old mode for developers, the model is saved on cpu not device.");
+
+PHI_DECLARE_bool(enable_pir_in_executor);
 
 namespace paddle {
 namespace inference {
@@ -188,7 +190,8 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
   for (size_t i = 0; i < main_graph.SubGraphsSize(); i++) {
     auto *graph = main_graph.GetSubGraph(i);
     for (auto *node : graph->Nodes()) {
-      if (!node->IsVar() || !node->Var()->Persistable()) continue;
+      if (!node->IsVar() || !node->Var() || !node->Var()->Persistable())
+        continue;
       auto *var = scope->FindVar(node->Name());
       if (!var->IsType<phi::DenseTensor>()) continue;
       auto *tensor = var->GetMutable<phi::DenseTensor>();
@@ -205,6 +208,9 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
 #endif
 
 void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
+  if (FLAGS_enable_pir_in_executor) {
+    return;
+  }
   PADDLE_ENFORCE_EQ(
       argument->scope_valid(),
       true,

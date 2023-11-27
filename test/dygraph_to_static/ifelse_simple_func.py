@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def add_fn(x):
@@ -249,7 +249,6 @@ class NetWithControlFlowIf(paddle.nn.Layer):
         self.alpha = 10.0
         self.constant_vars = {}
 
-    @paddle.jit.to_static
     def forward(self, input):
         hidden_dim = input.shape[-1]
         if hidden_dim != self.hidden_dim:
@@ -378,7 +377,7 @@ def if_with_class_var(x, y=None):
 
 
 def if_tensor_case(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
 
     mean = paddle.mean(x)
     # It is equivalent to `if mean != 0`

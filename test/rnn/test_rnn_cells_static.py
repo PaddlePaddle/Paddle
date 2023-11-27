@@ -37,7 +37,7 @@ class TestSimpleRNNCell(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 rnn2 = paddle.nn.SimpleRNNCell(
                     16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
@@ -45,7 +45,7 @@ class TestSimpleRNNCell(unittest.TestCase):
 
         place = self.place
         exe = paddle.static.Executor(place)
-        scope = paddle.fluid.Scope()
+        scope = paddle.base.Scope()
         with paddle.static.scope_guard(scope):
             exe.run(sp)
             convert_params_for_cell_static(rnn1, rnn2, place)
@@ -71,7 +71,7 @@ class TestSimpleRNNCell(unittest.TestCase):
 
         y1, h1 = rnn1(x, prev_h)
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.static.data(
                     "input",
@@ -103,7 +103,7 @@ class TestSimpleRNNCell(unittest.TestCase):
 
         y1, h1 = rnn1(x)
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.static.data(
                     "input",
@@ -139,7 +139,7 @@ class TestGRUCell(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 rnn2 = paddle.nn.GRUCell(
                     16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
@@ -147,7 +147,7 @@ class TestGRUCell(unittest.TestCase):
 
         place = self.place
         exe = paddle.static.Executor(place)
-        scope = paddle.fluid.Scope()
+        scope = paddle.base.Scope()
         with paddle.static.scope_guard(scope):
             exe.run(sp)
             convert_params_for_cell_static(rnn1, rnn2, place)
@@ -174,7 +174,7 @@ class TestGRUCell(unittest.TestCase):
 
         y1, h1 = rnn1(x, prev_h)
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.static.data(
                     "input",
@@ -206,7 +206,7 @@ class TestGRUCell(unittest.TestCase):
 
         y1, h1 = rnn1(x)
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.static.data(
                     "input",
@@ -242,7 +242,7 @@ class TestLSTMCell(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 rnn2 = paddle.nn.LSTMCell(
                     16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
@@ -250,7 +250,7 @@ class TestLSTMCell(unittest.TestCase):
 
         place = self.place
         exe = paddle.static.Executor(place)
-        scope = paddle.fluid.Scope()
+        scope = paddle.base.Scope()
         with paddle.static.scope_guard(scope):
             exe.run(sp)
             convert_params_for_cell_static(rnn1, rnn2, place)
@@ -278,7 +278,7 @@ class TestLSTMCell(unittest.TestCase):
 
         y1, (h1, c1) = rnn1(x, (prev_h, prev_c))
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.static.data(
                     "input",
@@ -316,7 +316,7 @@ class TestLSTMCell(unittest.TestCase):
 
         y1, (h1, c1) = rnn1(x)
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.static.data(
                     "input",
@@ -342,9 +342,7 @@ class TestLSTMCell(unittest.TestCase):
 
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
-    devices = (
-        ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() else ["cpu"]
-    )
+    devices = ["cpu", "gpu"] if paddle.base.is_compiled_with_cuda() else ["cpu"]
     for bias in [True, False]:
         for device in devices:
             for test_class in [TestSimpleRNNCell, TestGRUCell, TestLSTMCell]:

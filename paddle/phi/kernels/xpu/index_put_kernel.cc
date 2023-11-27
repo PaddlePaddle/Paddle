@@ -65,7 +65,9 @@ void XPUDealWithIndices(const Context& dev_ctx,
   }
 
   StackKernel<int64_t, Context>(dev_ctx, tmp_indices_ptr, -1, out);
-  dev_ctx.Wait();
+  if (dev_ctx.x_context()->xpu_stream) {
+    dev_ctx.Wait();
+  }
 }
 
 template <typename T, typename Context>
@@ -140,7 +142,9 @@ void IndexPutKernel(const Context& dev_ctx,
                                     index_shape,
                                     accumulate);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_put");
-  dev_ctx.Wait();
+  if (dev_ctx.x_context()->xpu_stream) {
+    dev_ctx.Wait();
+  }
 }
 }  // namespace phi
 

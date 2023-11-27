@@ -43,8 +43,8 @@
 #include "paddle/cinn/backends/llvm/llvm_util.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/type.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/var_mod_simplify.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
@@ -747,6 +747,9 @@ llvm::Value *CodeGenLLVM::Visit(const ir::ScheduleBlock *) {
 llvm::Value *CodeGenLLVM::Visit(const ir::ScheduleBlockRealize *) {
   CINN_NOT_IMPLEMENTED return nullptr;
 }
+llvm::Value *CodeGenLLVM::Visit(const ir::_Dim_ *) {
+  CINN_NOT_IMPLEMENTED return nullptr;
+}
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Call *op) {
   if (op->name == runtime::intrinsic::debug_log_repr) {
@@ -790,7 +793,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Call *op) {
 llvm::Value *CodeGenLLVM::Visit(const ir::_Module_ *op) {
   {
     Expr body_to_verify(&Reference(op));
-    ir::IrVerify(body_to_verify);
+    ir::ir_utils::IrVerify(body_to_verify);
   }
 
   for (auto &fn : op->functions) {

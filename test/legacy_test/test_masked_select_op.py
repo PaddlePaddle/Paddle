@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def np_masked_select(x, mask):
@@ -42,10 +43,10 @@ class TestMaskedSelectOp(OpTest):
         self.outputs = {'Y': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y')
+        self.check_grad(['X'], 'Y', check_pir=True)
 
     def init(self):
         self.shape = (50, 3)
@@ -77,10 +78,10 @@ class TestMaskedSelectFP16Op(OpTest):
         self.outputs = {'Y': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y')
+        self.check_grad(['X'], 'Y', check_pir=True)
 
     def init(self):
         self.shape = (50, 3)
@@ -114,10 +115,12 @@ class TestMaskedSelectBF16Op(OpTest):
         self.outputs = {'Y': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Y')
+        self.check_grad_with_place(
+            core.CUDAPlace(0), ['X'], 'Y', check_pir=True
+        )
 
     def init(self):
         self.shape = (50, 3)
@@ -146,6 +149,7 @@ class TestMaskedSelectAPI(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), np_out, rtol=1e-05)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static_mode(self):
         shape = [8, 9, 6]
         x = paddle.static.data(shape=shape, dtype='float32', name='x')

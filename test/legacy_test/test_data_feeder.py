@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -24,7 +24,7 @@ class TestDataFeeder(unittest.TestCase):
     def test_lod_level_0_converter(self):
         img = paddle.static.data(name='image', shape=[-1, 1, 28, 28])
         label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
-        feeder = fluid.DataFeeder([img, label], fluid.CPUPlace())
+        feeder = base.DataFeeder([img, label], base.CPUPlace())
         result = feeder.feed([([0] * 784, [9]), ([1] * 784, [1])])
 
         self.assertEqual(result['image'].shape(), [2, 1, 28, 28])
@@ -45,7 +45,7 @@ class TestDataFeeder(unittest.TestCase):
             name='sentences', shape=[-1, 1], dtype='int64', lod_level=1
         )
         label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
-        feeder = fluid.DataFeeder([sentences, label], fluid.CPUPlace())
+        feeder = base.DataFeeder([sentences, label], base.CPUPlace())
 
         # lod = [[0, 3, 5, 9]]
         # data = [[1, 2, 3], [4, 5], [6, 7, 8, 9]]
@@ -68,7 +68,7 @@ class TestDataFeeder(unittest.TestCase):
             name='paragraphs', shape=[-1, 1], dtype='int64', lod_level=2
         )
         label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
-        feeder = fluid.DataFeeder([paragraphs, label], fluid.CPUPlace())
+        feeder = base.DataFeeder([paragraphs, label], base.CPUPlace())
 
         # lod = [[0, 2, 3], [0, 3, 5, 9]]
         # data = [[[1, 2, 3], [4, 5]], [[6, 7, 8, 9]]]

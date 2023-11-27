@@ -18,8 +18,8 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class LinearTestCase(unittest.TestCase):
@@ -45,14 +45,14 @@ class LinearTestCase(unittest.TestCase):
     def paddle_nn_layer(self, place):
         paddle.disable_static(place)
         input = paddle.to_tensor(self.input)
-        weight_attr = fluid.ParamAttr(
+        weight_attr = base.ParamAttr(
             name="linear_weight",
             learning_rate=1.0,
             trainable=False,
             regularizer=None,
             initializer=paddle.nn.initializer.Constant(value=1.0),
         )
-        bias_attr = fluid.ParamAttr(
+        bias_attr = base.ParamAttr(
             name="linear_bias",
             learning_rate=1.0,
             trainable=False,

@@ -16,7 +16,7 @@ __all__ = []
 
 import os
 
-from paddle import fluid
+from paddle import base
 from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
     ServerRuntimeConfig,
@@ -171,13 +171,13 @@ class DistributedStrategy:
         self._server_runtime_config = ServerRuntimeConfig()
         num_threads = int(os.getenv("CPU_NUM", "1"))
 
-        self._execute_strategy = fluid.ExecutionStrategy()
-        self._build_strategy = fluid.BuildStrategy()
+        self._execute_strategy = base.ExecutionStrategy()
+        self._build_strategy = base.BuildStrategy()
 
         self._execute_strategy.num_threads = num_threads
         if num_threads > 1:
             self._build_strategy.reduce_strategy = (
-                fluid.BuildStrategy.ReduceStrategy.Reduce
+                base.BuildStrategy.ReduceStrategy.Reduce
             )
         self.debug_opt = None
         self.use_ps_gpu = False
@@ -212,9 +212,7 @@ class DistributedStrategy:
                     setattr(self._program_config, key, config[key])
                 else:
                     raise ValueError(
-                        "DistributeTranspilerConfig doesn't have key: {}".format(
-                            key
-                        )
+                        f"DistributeTranspilerConfig doesn't have key: {key}"
                     )
         else:
             raise TypeError(
@@ -287,7 +285,7 @@ class DistributedStrategy:
         return self._execute_strategy
 
     def set_execute_strategy(self, config):
-        if isinstance(config, fluid.ExecutionStrategy):
+        if isinstance(config, base.ExecutionStrategy):
             self._execute_strategy = config
         elif isinstance(config, dict):
             for key in config:
@@ -312,7 +310,7 @@ class DistributedStrategy:
         return self._build_strategy
 
     def set_build_strategy(self, config):
-        if isinstance(config, fluid.BuildStrategy):
+        if isinstance(config, base.BuildStrategy):
             self._build_strategy = config
         elif isinstance(config, dict):
             for key in config:

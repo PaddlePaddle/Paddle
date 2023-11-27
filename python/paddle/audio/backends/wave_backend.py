@@ -28,9 +28,9 @@ def _error_message():
     warn_msg = (
         "only PCM16 WAV supportted. \n"
         "if want support more other audio types, please "
-        "manually installed (usually with `pip install {}`). \n "
+        f"manually installed (usually with `pip install {package}`). \n "
         "and use paddle.audio.backends.set_backend('soundfile') to set audio backend"
-    ).format(package)
+    )
     return warn_msg
 
 

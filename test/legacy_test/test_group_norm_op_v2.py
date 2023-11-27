@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def group_norm_naive_for_general_dimension(x, scale, bias, epsilon, groups):
@@ -48,9 +48,9 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
             (2, 6, 6, 6, 2, 3),
         ]
         np.random.seed(10)
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
 
         for place in places:
             for shape in shapes:
@@ -87,9 +87,9 @@ class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
             (2, 6, 6, 6, 256, 3),
         ]
         np.random.seed(10)
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
 
         for place in places:
             for shape in shapes:

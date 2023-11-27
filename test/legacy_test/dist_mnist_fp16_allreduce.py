@@ -16,7 +16,7 @@ from dist_mnist import cnn_model
 from test_dist_base import TestDistRunnerBase, _insert_comm_op, runtime_main
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers import (
     FP16AllReduceOptimizer as FP16AllReduce,
@@ -26,8 +26,8 @@ DTYPE = "float32"
 paddle.dataset.mnist.fetch()
 
 # Fix seed for test
-fluid.default_startup_program().random_seed = 1
-fluid.default_main_program().random_seed = 1
+base.default_startup_program().random_seed = 1
+base.default_main_program().random_seed = 1
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
@@ -51,7 +51,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
             input=predict, label=label, total=batch_size_tensor
         )
 
-        inference_program = fluid.default_main_program().clone()
+        inference_program = base.default_main_program().clone()
         # Optimization
         opt = paddle.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
 

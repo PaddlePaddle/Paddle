@@ -268,13 +268,11 @@ else()
       SRCS ${paddle_phi_lib}
       DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
   endif()
-  if(WITH_SHARED_IR)
-    set(paddle_ir_lib ${PADDLE_BINARY_DIR}/paddle/ir/libir.*)
-    copy(
-      inference_lib_dist
-      SRCS ${paddle_ir_lib}
-      DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
-  endif()
+  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/libcommon.*)
+  copy(
+    inference_lib_dist
+    SRCS ${paddle_common_lib}
+    DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 endif()
 
 copy(
@@ -338,8 +336,23 @@ copy(
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
 copy(
   inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/flags.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
+copy(
+  inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/test_macros.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
+copy(
+  inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/extension.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/)
+
+if(NOT WITH_GFLAGS)
+  copy(
+    inference_lib_dist
+    SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/flags_native.h
+    DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
+endif()
 
 # the include path of phi needs to be changed to adapt to inference api path
 add_custom_command(

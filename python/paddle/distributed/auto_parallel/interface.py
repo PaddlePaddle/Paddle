@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import reduce
+from typing import List, Tuple
+
+import numpy as np
+
 import paddle
 from paddle.framework import core
 
@@ -56,22 +61,21 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distributed.fleet import auto
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle
+            >>> from paddle.distributed.fleet import auto
 
-            mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
-            x = paddle.ones([4, 6])
-            shard_spec = ["x", "y"]
-            auto.shard_tensor(x, mesh, shard_spec)
+            >>> mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+            >>> x = paddle.ones([4, 6])
+            >>> shard_spec = ["x", "y"]
+            >>> auto.shard_tensor(x, mesh, shard_spec)
 
     """
 
     if process_mesh is not None:
         assert isinstance(
             process_mesh, core.ProcessMesh
-        ), "Argument process_mesh {} is not an instance of ProcessMesh".format(
-            process_mesh
-        )
+        ), f"Argument process_mesh {process_mesh} is not an instance of ProcessMesh"
     else:
         process_mesh = get_current_process_mesh()
         assert (
@@ -145,25 +149,24 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distributed.fleet import auto
+            >>> import paddle
+            >>> from paddle.distributed.fleet import auto
 
-            x = paddle.ones([4, 6])
-            y = paddle.zeros([4, 6])
-            mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
-            dist_add = auto.shard_op(paddle.add,
-                                     in_shard_specs=[["x", "y"], ["y", None]],
-                                     out_shard_specs=[[None, "x"]])
-            dist_add(x, y)
+            >>> x = paddle.ones([4, 6])
+            >>> y = paddle.zeros([4, 6])
+            >>> mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+            >>> dist_add = auto.shard_op(paddle.add,
+            ...                          mesh,
+            ...                          in_shard_specs=[["x", "y"], ["y", None]],
+            ...                          out_shard_specs=[[None, "x"]])
+            >>> dist_add(x, y)
 
     """
 
     if process_mesh is not None:
         assert isinstance(
             process_mesh, ProcessMesh
-        ), "Argument process_mesh {} is not an instance of ProcessMesh".format(
-            process_mesh
-        )
+        ), f"Argument process_mesh {process_mesh} is not an instance of ProcessMesh"
     else:
         process_mesh = get_current_process_mesh()
         assert (
@@ -174,9 +177,7 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
         assert all(
             (isinstance(shard_spec, list) or shard_spec is None)
             for shard_spec in in_shard_specs
-        ), "in_shard_spec {} is not a list of list or None".format(
-            in_shard_specs
-        )
+        ), f"in_shard_spec {in_shard_specs} is not a list of list or None"
         for shard_spec in in_shard_specs:
             if shard_spec is not None:
                 in_dims_mappings.append(
@@ -189,9 +190,7 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
         assert all(
             (isinstance(shard_spec, list) or shard_spec is None)
             for shard_spec in out_shard_specs
-        ), "out_shard_spec {} is not a list of list or None".format(
-            out_shard_specs
-        )
+        ), f"out_shard_spec {out_shard_specs} is not a list of list or None"
         for shard_spec in out_shard_specs:
             if shard_spec is not None:
                 out_dims_mappings.append(
@@ -225,13 +224,55 @@ def recompute(op):
 
             for idx in range(op_size, new_op_size):
                 op = cur_block.ops[idx]
-                op._set_attr(
-                    'op_namescope', "/auto_parallel/rc_" + str(_g_recompute_idx)
-                )
+                if op.has_attr(
+                    "op_namescope"
+                ) and 'auto_parallel/exclude_rc' in op.attr("op_namescope"):
+                    op._set_attr(
+                        'op_namescope',
+                        "/auto_parallel/rc_"
+                        + str(_g_recompute_idx)
+                        + "_exclude_rc",
+                    )
+                else:
+                    op._set_attr(
+                        'op_namescope',
+                        '/auto_parallel/rc_' + str(_g_recompute_idx),
+                    )
 
             return output
 
     return RecomputeOperator(op)
+
+
+def exclude_ops_in_recompute(run_function):
+    """
+    Exclude some operators in recompute segements.
+        Args:
+        run_function (callabe): The callabe function to be excluded.
+
+    Returns:
+        ExcludeOperator: The callable object.
+
+    """
+
+    class ExcludeOperator:
+        def __init__(self, run_function):
+            self._run_function = run_function
+
+        def __call__(self, *args, **kwargs):
+            default_prog = paddle.static.default_main_program()
+            cur_block = default_prog.current_block()
+            op_size = len(cur_block.ops)
+            output = self._run_function(*args, **kwargs)
+            new_op_size = len(cur_block.ops)
+
+            for idx in range(op_size, new_op_size):
+                op = cur_block.ops[idx]
+                op._set_attr('op_namescope', "/auto_parallel/exclude_rc")
+
+            return output
+
+    return ExcludeOperator(run_function)
 
 
 _g_collections = {}
@@ -279,3 +320,28 @@ def fetch(tensor, name=None, logging=False):
     add_to_collection(CollectionNames.FETCHES, tensor, name)
     if logging:
         add_to_collection(CollectionNames.LOGGING, tensor, name)
+
+
+_g_mesh = None
+
+
+def get_mesh():
+    global _g_mesh
+    return _g_mesh
+
+
+def create_mesh(mesh_dims: List[Tuple[str, int]]):
+    """
+    Create a global process_mesh for auto parallel.
+
+    Args:
+        mesh_dims (list[tuple[str, int]]): A list of tuple, each element is (dim_name, dim_degree).
+    """
+    global _g_mesh
+    dim_names = [mesh_dim[0] for mesh_dim in mesh_dims]
+    mesh_shape = [mesh_dim[1] for mesh_dim in mesh_dims]
+    mesh_arr = np.arange(0, reduce(lambda x, y: x * y, mesh_shape, 1)).reshape(
+        mesh_shape
+    )
+    _g_mesh = ProcessMesh(mesh_arr, dim_names)
+    return _g_mesh

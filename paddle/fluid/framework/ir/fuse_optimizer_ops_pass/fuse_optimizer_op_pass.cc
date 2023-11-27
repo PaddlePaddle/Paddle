@@ -95,8 +95,14 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   const std::string prefix(details::kFusedVarNamePrefix);
   for (auto &var_name : aux_var_names) {
     // NOTE: the fused_var_name should be unique.
-    auto fused_var_name = prefix + "_" + fuse_op_type + "_" + var_name + "_" +
-                          aux_var_map[var_name][0];
+    std::string fused_var_name;
+    fused_var_name.append(prefix)
+        .append("_")
+        .append(fuse_op_type)
+        .append("_")
+        .append(var_name)
+        .append("_")
+        .append(aux_var_map[var_name][0]);
     VLOG(6) << var_name << ": " << fused_var_name;
     PADDLE_ENFORCE_EQ(
         fused_var_set.count(fused_var_name),
@@ -186,7 +192,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   // Pass pre-condition check: check dtype of fusing vars
   auto fusing_var_dtype =
       GetDtypeOfVar(vars_info, aux_var_map.at(kParam).front());
-  for (auto vars : aux_var_map) {
+  for (auto const &vars : aux_var_map) {
     for (auto &var_name : vars.second) {
       if (fusing_var_dtype != GetDtypeOfVar(vars_info, var_name)) {
         // Note(chenweihang): Currently the fuse_optimizer_ops strategy
@@ -198,7 +204,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
 
   // Pass pre-condition check: gradients generated op kernel
   auto fusing_grad_var_names = aux_var_map.at(kGrad);
-  for (auto grad_var_name : fusing_grad_var_names) {
+  for (auto const &grad_var_name : fusing_grad_var_names) {
     if (!GradGeneratedOpKernelCheck(vars_info, grad_var_name)) {
       // Note(chenweihang): Currently the fuse_optimizer_ops strategy is risky
       //   when gradient generated operator with kernel just support CPU or
@@ -330,7 +336,7 @@ bool FuseOptimizerOpPass::GradGeneratedOpKernelCheck(
       }
     }
   }
-  for (auto op_type : check_op_set) {
+  for (auto const &op_type : check_op_set) {
     if (!OpWithKernelSupportCPUAndGPU(op_type)) {
       return false;
     }
@@ -359,6 +365,7 @@ void FuseOptimizerOpPass::GradientsFilter(
     }
   }
   std::vector<Node *> sorted_ops;
+  sorted_ops.reserve(new_grad_idx.size());
   for (size_t i : new_grad_idx) {
     sorted_ops.emplace_back(opt_nodes->at(i));
   }

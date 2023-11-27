@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 
@@ -41,7 +42,7 @@ def apply_to_static(net, use_cinn):
     return paddle.jit.to_static(net, build_strategy=build_strategy)
 
 
-class TestCINN(unittest.TestCase):
+class TestCINN(Dy2StTestBase):
     def setUp(self):
         self.x = paddle.randn([2, 4])
         self.x.stop_gradient = False

@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestTakeAPI(unittest.TestCase):
@@ -44,9 +44,9 @@ class TestTakeAPI(unittest.TestCase):
         self.set_dtype()
         self.set_input()
         self.place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
 
     def test_static_graph(self):
@@ -62,9 +62,9 @@ class TestTakeAPI(unittest.TestCase):
             )
             out = paddle.take(x, index, mode=self.mode)
 
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             st_result = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={'input': self.input_np, 'index': self.index_np},
                 fetch_list=out,
             )
@@ -173,9 +173,9 @@ class TestTakeModeRaisePos(unittest.TestCase):
         self.set_dtype()
         self.set_input()
         self.place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
 
     def test_static_index_error(self):
@@ -225,9 +225,9 @@ class TestTakeModeRaiseNeg(TestTakeModeRaisePos):
         self.set_dtype()
         self.set_input()
         self.place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
 
 

@@ -16,9 +16,9 @@ import unittest
 
 import numpy as np
 
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.lod_tensor import (
+from paddle import base
+from paddle.base import core
+from paddle.base.lod_tensor import (
     create_lod_tensor,
     create_random_int_lodtensor,
 )
@@ -26,7 +26,7 @@ from paddle.fluid.lod_tensor import (
 
 class TestLoDTensor(unittest.TestCase):
     def test_pybind_recursive_seq_lens(self):
-        tensor = fluid.LoDTensor()
+        tensor = base.LoDTensor()
         recursive_seq_lens = []
         tensor.set_recursive_sequence_lengths(recursive_seq_lens)
         recursive_seq_lens = [[], [1], [3]]
@@ -43,9 +43,9 @@ class TestLoDTensor(unittest.TestCase):
         self.assertEqual(
             tensor.recursive_sequence_lengths(), recursive_seq_lens
         )
-        tensor.set(np.random.random([6, 1]), fluid.CPUPlace())
+        tensor.set(np.random.random([6, 1]), base.CPUPlace())
         self.assertTrue(tensor.has_valid_recursive_sequence_lengths())
-        tensor.set(np.random.random([9, 1]), fluid.CPUPlace())
+        tensor.set(np.random.random([9, 1]), base.CPUPlace())
         self.assertFalse(tensor.has_valid_recursive_sequence_lengths())
 
         # Each level's sum should be equal to the number of items in the next level
@@ -55,12 +55,12 @@ class TestLoDTensor(unittest.TestCase):
         self.assertEqual(
             tensor.recursive_sequence_lengths(), recursive_seq_lens
         )
-        tensor.set(np.random.random([8, 1]), fluid.CPUPlace())
+        tensor.set(np.random.random([8, 1]), base.CPUPlace())
         self.assertFalse(tensor.has_valid_recursive_sequence_lengths())
         recursive_seq_lens = [[2, 3], [1, 3, 1, 2, 1]]
         tensor.set_recursive_sequence_lengths(recursive_seq_lens)
         self.assertTrue(tensor.has_valid_recursive_sequence_lengths())
-        tensor.set(np.random.random([9, 1]), fluid.CPUPlace())
+        tensor.set(np.random.random([9, 1]), base.CPUPlace())
         self.assertFalse(tensor.has_valid_recursive_sequence_lengths())
 
     def test_create_lod_tensor(self):
@@ -76,10 +76,10 @@ class TestLoDTensor(unittest.TestCase):
             create_lod_tensor,
             data,
             wrong_recursive_seq_lens,
-            fluid.CPUPlace(),
+            base.CPUPlace(),
         )
         tensor = create_lod_tensor(
-            data, correct_recursive_seq_lens, fluid.CPUPlace()
+            data, correct_recursive_seq_lens, base.CPUPlace()
         )
         self.assertEqual(
             tensor.recursive_sequence_lengths(), correct_recursive_seq_lens
@@ -94,7 +94,7 @@ class TestLoDTensor(unittest.TestCase):
         # Create LoDTensor from numpy array
         data = np.random.random([10, 1]).astype('float64')
         recursive_seq_lens = [[2, 1], [3, 3, 4]]
-        tensor = create_lod_tensor(data, recursive_seq_lens, fluid.CPUPlace())
+        tensor = create_lod_tensor(data, recursive_seq_lens, base.CPUPlace())
         self.assertEqual(
             tensor.recursive_sequence_lengths(), recursive_seq_lens
         )
@@ -105,7 +105,7 @@ class TestLoDTensor(unittest.TestCase):
         # Create LoDTensor from another LoDTensor, they are differnt instances
         new_recursive_seq_lens = [[2, 2, 1], [1, 2, 2, 3, 2]]
         new_tensor = create_lod_tensor(
-            tensor, new_recursive_seq_lens, fluid.CPUPlace()
+            tensor, new_recursive_seq_lens, base.CPUPlace()
         )
         self.assertEqual(
             tensor.recursive_sequence_lengths(), recursive_seq_lens
@@ -122,7 +122,7 @@ class TestLoDTensor(unittest.TestCase):
         low = 0
         high = dict_size - 1
         tensor = create_random_int_lodtensor(
-            recursive_seq_lens, shape, fluid.CPUPlace(), low, high
+            recursive_seq_lens, shape, base.CPUPlace(), low, high
         )
         self.assertEqual(
             tensor.recursive_sequence_lengths(), recursive_seq_lens
@@ -136,51 +136,51 @@ class TestLoDTensor(unittest.TestCase):
         low = 0
         high = dict_size - 1
         tensor = create_random_int_lodtensor(
-            recursive_seq_lens, shape, fluid.CPUPlace(), low, high
+            recursive_seq_lens, shape, base.CPUPlace(), low, high
         )
         print(tensor)
         self.assertTrue(isinstance(str(tensor), str))
 
         if core.is_compiled_with_cuda():
             gtensor = create_random_int_lodtensor(
-                recursive_seq_lens, shape, fluid.CUDAPlace(0), low, high
+                recursive_seq_lens, shape, base.CUDAPlace(0), low, high
             )
             print(gtensor)
             self.assertTrue(isinstance(str(gtensor), str))
 
     def test_dlpack_support(self):
-        tensor = fluid.create_lod_tensor(
+        tensor = base.create_lod_tensor(
             np.array([[1], [2], [3], [4]]).astype('int'),
             [[1, 3]],
-            fluid.CPUPlace(),
+            base.CPUPlace(),
         )
         dltensor = tensor._to_dlpack()
-        tensor_from_dlpack = fluid.core.from_dlpack(dltensor)
-        self.assertTrue(isinstance(tensor_from_dlpack, fluid.core.Tensor))
+        tensor_from_dlpack = base.core.from_dlpack(dltensor)
+        self.assertTrue(isinstance(tensor_from_dlpack, base.core.Tensor))
         np.testing.assert_array_equal(
             np.array(tensor_from_dlpack),
             np.array([[1], [2], [3], [4]]).astype('int'),
         )
         # when build with cuda
         if core.is_compiled_with_cuda():
-            gtensor = fluid.create_lod_tensor(
+            gtensor = base.create_lod_tensor(
                 np.array([[1], [2], [3], [4]]).astype('int'),
                 [[1, 3]],
-                fluid.CUDAPlace(0),
+                base.CUDAPlace(0),
             )
             gdltensor = gtensor._to_dlpack()
-            gtensor_from_dlpack = fluid.core.from_dlpack(gdltensor)
-            self.assertTrue(isinstance(gtensor_from_dlpack, fluid.core.Tensor))
+            gtensor_from_dlpack = base.core.from_dlpack(gdltensor)
+            self.assertTrue(isinstance(gtensor_from_dlpack, base.core.Tensor))
             np.testing.assert_array_equal(
                 np.array(gtensor_from_dlpack),
                 np.array([[1], [2], [3], [4]]).astype('int'),
             )
 
     def test_as_type(self):
-        tensor = fluid.create_lod_tensor(
+        tensor = base.create_lod_tensor(
             np.array([[1], [2], [3], [4]]).astype('int'),
             [[1, 3]],
-            fluid.CPUPlace(),
+            base.CPUPlace(),
         )
         fp32_tensor = tensor._as_type(core.VarDesc.VarType.FP32)
         print(fp32_tensor)

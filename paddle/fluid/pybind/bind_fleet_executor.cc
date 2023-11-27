@@ -155,7 +155,7 @@ py::dtype DistModelTypeToNumpyDType(DistModelDataType dtype) {
 
 py::array DistModelTensorGetData(DistModelTensor& tensor) {  // NOLINT
   py::dtype dt = DistModelTypeToNumpyDType(tensor.dtype);
-  return py::array(std::move(dt), {tensor.shape}, tensor.data.data());
+  return py::array(dt, {tensor.shape}, tensor.data.data());
 }
 
 void BindFleetExecutor(py::module* m) {

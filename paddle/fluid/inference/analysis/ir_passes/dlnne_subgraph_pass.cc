@@ -39,7 +39,6 @@ void analysis::DlnneSubgraphPass::InferShapeForDlnneMainGraph() const {
       "fetch",
       "recurrent",
       "go",
-      "rnn_memory_helper_grad",
       "conditional_block",
       "while",
       "send",

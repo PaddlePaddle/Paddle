@@ -15,6 +15,7 @@
 import numpy as np
 
 from ...framework import core
+from ...tensor import randperm
 
 
 class Sampler:
@@ -208,7 +209,7 @@ class RandomSampler(Sampler):
         if not isinstance(self.replacement, bool):
             raise TypeError(
                 "expect boolean value for replacement, but got "
-                "replacement={}".format(self.replacement)
+                f"replacement={self.replacement}"
             )
 
         if self._num_samples is not None and not replacement:
@@ -219,7 +220,7 @@ class RandomSampler(Sampler):
         if not isinstance(self.num_samples, int) or self.num_samples <= 0:
             raise ValueError(
                 "num_samples should be a positive integer, "
-                "but got num_samples={}".format(self.num_samples)
+                f"but got num_samples={self.num_samples}"
             )
 
     @property
@@ -340,3 +341,45 @@ class WeightedRandomSampler(Sampler):
     def __len__(self):
         mul = np.prod(self.weights.shape) // self.weights.shape[-1]
         return self.num_samples * mul
+
+
+class SubsetRandomSampler(Sampler):
+    r"""
+    Randomly sample elements from a given list of indices, without replacement.
+
+    Args:
+        indices (sequence): a sequence of indices
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> from paddle.io import SubsetRandomSampler
+
+            >>> paddle.seed(2023)
+            >>> sampler = SubsetRandomSampler(indices=[1, 3, 5, 7, 9])
+
+            >>> for index in sampler:
+            ...     print(index)
+            9
+            3
+            7
+            5
+            1
+
+    """
+
+    def __init__(self, indices):
+        if len(indices) == 0:
+            raise ValueError(
+                "The length of `indices` in SubsetRandomSampler should be greater than 0."
+            )
+        self.indices = indices
+
+    def __iter__(self):
+        for i in randperm(len(self.indices)):
+            yield self.indices[i]
+
+    def __len__(self) -> int:
+        return len(self.indices)

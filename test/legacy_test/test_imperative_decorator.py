@@ -18,8 +18,8 @@ import unittest
 from test_imperative_base import new_program_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import framework
+from paddle import base
+from paddle.base import framework
 
 
 class TestTracerMode(unittest.TestCase):
@@ -29,7 +29,7 @@ class TestTracerMode(unittest.TestCase):
     def get_tracer_mode(self):
         assert framework.in_dygraph_mode(), "Dygraph mode must be enabled"
 
-    @fluid.dygraph.no_grad
+    @base.dygraph.no_grad
     def no_grad_func(self, a):
         self.assertEqual(self.tracer._has_grad, False)
         return a
@@ -47,7 +47,7 @@ class TestTracerMode(unittest.TestCase):
             self.assertEqual(rlt, ans)
 
     def test_main(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             self.tracer = framework._dygraph_tracer()
             self.tracer._train_mode = self.init_mode
 
@@ -57,7 +57,7 @@ class TestTracerMode(unittest.TestCase):
             def need_no_grad_func(a, b=1):
                 return a + b
 
-            decorated_func = fluid.dygraph.no_grad(need_no_grad_func)
+            decorated_func = base.dygraph.no_grad(need_no_grad_func)
             self.assertTrue(
                 str(inspect.getfullargspec(decorated_func))
                 == str(inspect.getfullargspec(need_no_grad_func))
@@ -65,7 +65,7 @@ class TestTracerMode(unittest.TestCase):
 
             self.assertEqual(self.tracer._train_mode, self.init_mode)
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             self.check_not_support_rlt(False)
 
         paddle.enable_static()

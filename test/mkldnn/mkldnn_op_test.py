@@ -14,8 +14,8 @@
 
 import numpy as np
 
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def __assert_close(test_case, tensor, np_array, msg, atol=1e-4):
@@ -33,8 +33,8 @@ def check_if_mkldnn_primitives_exist_in_bwd(
     var_names = list(var_dict.keys())
     ground_truth = {name: var_dict[name] for name in var_names}
 
-    program = fluid.Program()
-    with fluid.program_guard(program):
+    program = base.Program()
+    with base.program_guard(program):
         block = program.global_block()
         for name in ground_truth:
             block.create_var(
@@ -65,7 +65,7 @@ def check_if_mkldnn_primitives_exist_in_bwd(
             grad_var = block.desc.find_var(arg.encode('ascii'))
             grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
         # Do at least 2 iterations
         for i in range(2):
@@ -92,8 +92,8 @@ def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
         'saved_variance',
     ]
     ground_truth = {name: var_dict[name] for name in var_names}
-    program = fluid.Program()
-    with fluid.program_guard(program):
+    program = base.Program()
+    with base.program_guard(program):
         block = program.global_block()
         for name in ground_truth:
             block.create_var(
@@ -145,7 +145,7 @@ def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
             grad_var.set_dtype(core.VarDesc.VarType.FP32)
         program._sync_with_cpp()
 
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         # Do at least 2 iterations
         for i in range(2):
             out = exe.run(

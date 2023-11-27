@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
+from dataclasses import dataclass
 
 import numpy as np
 
 import paddle
-from paddle.fluid import core, framework, global_scope
-from paddle.fluid.log_helper import get_logger
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base import core, framework, global_scope
+from paddle.base.log_helper import get_logger
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 from .fp16_lists import (
     AutoMixedPrecisionLists,
@@ -38,6 +41,26 @@ _valid_types = [
 ]
 
 _fp16_guard_pattern = "__use_fp16__"
+
+
+@dataclass
+class AmpOptions:
+    enable: bool
+    custom_white_list: list[str] | None
+    custom_black_list: list[str] | None
+    level: str
+    dtype: str
+    use_promote: bool
+
+
+DEFAULT_AMP_OPTIONS = AmpOptions(
+    enable=True,
+    custom_white_list=None,
+    custom_black_list=None,
+    level='O1',
+    dtype='float16',
+    use_promote=True,
+)
 
 
 def _rename_arg(op, old_name, new_name):
@@ -492,9 +515,7 @@ def get_promote_dtype(op, amp_dtype, block):
         # for ipu, all inputs must be converted to fp16
         if not core.is_compiled_with_ipu() and _keep_fp32_input(op, in_name):
             _logger.debug(
-                "---- Input {} {} should be kept fp32 ----".format(
-                    in_name, op.input(in_name)
-                )
+                f"---- Input {in_name} {op.input(in_name)} should be kept fp32 ----"
             )
             continue
         # if this op has inputs
@@ -588,6 +609,43 @@ def process_op_input_and_outputs(op, block, global_block, dtype):
     return low_precison_var_names
 
 
+def map_block(block, fn, parent_op=None):
+    fn(block, parent_op)
+    program = block.program
+    for op in block.ops:
+        if not op.has_attr("sub_block"):
+            continue
+        sub_block = program.blocks[op.attr("sub_block").id]
+        map_block(sub_block, fn, op)
+
+
+def prepare_op_amp_options(
+    program: paddle.static.Program,
+    amp_records: dict[int, list[tuple[AmpOptions, int, int]]],
+    global_amp_options: AmpOptions,
+):
+    op_amp_options_map: dict[paddle.static.Operator, AmpOptions] = {}
+
+    def fill_amp_enable_op_map(block, parent_op):
+        block_idx = block.idx
+        ops = block.ops
+        for op in ops:
+            # Set the default options to global_amp_options if the op has not parent op.
+            current_op_amp_options = op_amp_options_map.get(
+                parent_op, global_amp_options
+            )
+            if block_idx in amp_records:
+                for amp_options, start, end in amp_records[block_idx]:
+                    if op.idx in range(start, end):
+                        current_op_amp_options = amp_options
+                        break
+            op_amp_options_map[op] = current_op_amp_options
+
+    map_block(program.global_block(), fill_amp_enable_op_map)
+    for op, enable in op_amp_options_map.items():
+        op.set_amp_options(enable)
+
+
 def cast_model_to_fp16(
     program,
     amp_lists=None,
@@ -642,6 +700,10 @@ def cast_model_to_fp16(
 
     def need_process(op):
         need_process = True
+        if op.type in ["set_value"]:
+            # NOTE(zoooo0820): OP set_value has attribute "dtype", but its output type is
+            # determined by the input.dtype instead of attribute. So, here we still process it.
+            return need_process
         if op.type in ["create_py_reader", "read"]:
             need_process = False
         else:
@@ -795,9 +857,9 @@ def cast_parameters_to_fp16(
     Traverse all parameters in the whole model and set them to the FP16 data type.
     Whereas, this function will keep parameters of batchnorms in FP32.
     Args:
-        place(fluid.CPUPlace|fluid.CUDAPlace): `place` is used to restore the FP16 weight tensors.
+        place(base.CPUPlace|base.CUDAPlace): `place` is used to restore the FP16 weight tensors.
         program (Program): The used program.
-        scope(fluid.Scope, optional): `scope` is used to get the FP32 weight tensor values.
+        scope(base.Scope, optional): `scope` is used to get the FP32 weight tensor values.
                                       Default is None.
         to_fp16_var_names(set|list, optional): The data types of vars in `to_fp16_var_names`
                                                will be set to FP16. Usually, it is the returned

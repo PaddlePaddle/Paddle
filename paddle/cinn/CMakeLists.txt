@@ -1,8 +1,10 @@
 if(WITH_TESTING)
-  cinn_cc_library(cinn_gtest_main SRCS gtest_main.cc DEPS gtest gflags)
+  cinn_cc_library(cinn_gtest_main SRCS gtest_main.cc DEPS gtest ${flags_dep})
 endif()
 
+add_subdirectory(adt)
 add_subdirectory(api)
+add_subdirectory(ast_gen_ius)
 add_subdirectory(auto_schedule)
 add_subdirectory(common)
 add_subdirectory(utils)

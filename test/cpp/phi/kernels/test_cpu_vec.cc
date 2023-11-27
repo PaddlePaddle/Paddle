@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
 
 namespace phi {
@@ -26,7 +27,7 @@ namespace tests {
 inline double GetCurrentUS() {
   struct timeval time;
   gettimeofday(&time, nullptr);
-  return 1e+6 * time.tv_sec + time.tv_usec;
+  return 1e+6 * time.tv_sec + time.tv_usec;  // NOLINT
 }
 constexpr int repeat = 1000;
 

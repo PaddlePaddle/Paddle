@@ -60,7 +60,7 @@ void PrepareCPUTensors(phi::DenseTensor* ids,
   // pre_scores
   pre_scores->Resize(phi::make_ddim({4, 1}));
   for (int i = 0; i < 4; i++) {
-    pre_scores->mutable_data<float>(place)[i] = 0.1 * (i + 1);
+    pre_scores->mutable_data<float>(place)[i] = 0.1 * (i + 1);  // NOLINT
   }
 }
 

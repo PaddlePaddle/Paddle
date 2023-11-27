@@ -50,11 +50,7 @@ void FillDiagonalTensorKernel(const Context &ctx,
                               int dim1,
                               int dim2,
                               DenseTensor *out) {
-#ifdef __HIPCC__
-  const int64_t kMaxBlockDim = 256;
-#else
   const int64_t kMaxBlockDim = 512;
-#endif
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
 
   T *out_data = ctx.template Alloc<T>(out);
@@ -128,6 +124,7 @@ PD_REGISTER_KERNEL(fill_diagonal_tensor,
                    double,
                    int64_t,
                    int,
+                   int16_t,
                    int8_t,
                    uint8_t,
                    phi::dtype::float16,

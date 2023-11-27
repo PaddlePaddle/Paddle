@@ -15,34 +15,41 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid, tensor
-from paddle.fluid import Program, program_guard
+from paddle import base, static, tensor
+from paddle.base import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestUnbind(unittest.TestCase):
+    @test_with_pir_api
     def test_unbind(self):
         paddle.enable_static()
 
-        x_1 = paddle.static.data(shape=[2, 3], dtype='float32', name='x_1')
-        [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
-        input_1 = np.random.random([2, 3]).astype("float32")
-        axis = paddle.static.data(shape=[], dtype='int32', name='axis')
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        main_program = static.Program()
+        startup_program = static.Program()
+        with static.program_guard(
+            main_program=main_program, startup_program=startup_program
+        ):
+            x_1 = paddle.static.data(shape=[2, 3], dtype='float32', name='x_1')
+            [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
+            input_1 = np.random.random([2, 3]).astype("float32")
+            axis = paddle.static.data(shape=[], dtype='int32', name='axis')
+            exe = base.Executor(place=base.CPUPlace())
 
-        [res_1, res_2] = exe.run(
-            fluid.default_main_program(),
-            feed={"x_1": input_1, "axis": 0},
-            fetch_list=[out_0, out_1],
-        )
+            [res_1, res_2] = exe.run(
+                feed={"x_1": input_1, "axis": 0},
+                fetch_list=[out_0, out_1],
+            )
 
-        np.testing.assert_array_equal(res_1, input_1[0, 0:100])
-        np.testing.assert_array_equal(res_2, input_1[1, 0:100])
+            np.testing.assert_array_equal(res_1, input_1[0, 0:100])
+            np.testing.assert_array_equal(res_2, input_1[1, 0:100])
 
+    @test_with_pir_api
     def test_unbind_static_fp16_gpu(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
@@ -65,7 +72,7 @@ class TestUnbind(unittest.TestCase):
                 np.testing.assert_array_equal(res[1], input[1, :])
 
     def test_unbind_dygraph(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             np_x = np.random.random([2, 3]).astype("float32")
             x = paddle.to_tensor(np_x)
             x.stop_gradient = False
@@ -81,6 +88,7 @@ class TestUnbind(unittest.TestCase):
 
 
 class TestLayersUnbind(unittest.TestCase):
+    @test_with_pir_api
     def test_layers_unbind(self):
         paddle.enable_static()
 
@@ -88,10 +96,9 @@ class TestLayersUnbind(unittest.TestCase):
         [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
         input_1 = np.random.random([2, 3]).astype("float32")
         axis = paddle.static.data(shape=[], dtype='int32', name='axis')
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe = base.Executor(place=base.CPUPlace())
 
         [res_1, res_2] = exe.run(
-            fluid.default_main_program(),
             feed={"x_1": input_1, "axis": 0},
             fetch_list=[out_0, out_1],
         )
@@ -137,10 +144,10 @@ class TestUnbindOp(OpTest):
         self.op_type = "unbind"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_pir=True)
 
 
 class TestUnbindOp1(TestUnbindOp):
@@ -149,7 +156,7 @@ class TestUnbindOp1(TestUnbindOp):
         self.num = 2
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1'])
+        self.check_grad(['X'], ['out0', 'out1'], check_pir=True)
 
     def outReshape(self):
         self.out[0] = self.out[0].reshape((3, 2))
@@ -162,7 +169,7 @@ class TestUnbindOp2(TestUnbindOp):
         self.num = 2
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1'])
+        self.check_grad(['X'], ['out0', 'out1'], check_pir=True)
 
     def outReshape(self):
         self.out[0] = self.out[0].reshape((3, 2))
@@ -178,7 +185,7 @@ class TestUnbindOp3(TestUnbindOp):
         self.attrs = {'axis': -1}
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1'])
+        self.check_grad(['X'], ['out0', 'out1'], check_pir=True)
 
     def outReshape(self):
         self.out[0] = self.out[0].reshape((3, 2))
@@ -194,7 +201,7 @@ class TestUnbindOp4(TestUnbindOp):
         self.attrs = {'axis': -2}
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1'])
+        self.check_grad(['X'], ['out0', 'out1'], check_pir=True)
 
     def outReshape(self):
         self.out[0] = self.out[0].reshape((3, 2))
@@ -228,7 +235,7 @@ class TestUnbindFP16Op(OpTest):
         return np.float16
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestUnbindBF16Op(OpTest):
@@ -264,13 +271,14 @@ class TestUnbindBF16Op(OpTest):
         self.op_type = "unbind"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         pass
 
 
 class TestUnbindAxisError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with program_guard(Program(), Program()):
             x = paddle.static.data(shape=[2, 3], dtype='float32', name='x')

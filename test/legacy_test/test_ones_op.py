@@ -45,7 +45,7 @@ class ApiOnesTest(unittest.TestCase):
             expected_result = np.ones(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
 
-    def test_fluid_ones(self):
+    def test_base_ones(self):
         with paddle.static.program_guard(paddle.static.Program()):
             ones = paddle.ones(shape=[10], dtype="int64")
             place = paddle.CPUPlace()

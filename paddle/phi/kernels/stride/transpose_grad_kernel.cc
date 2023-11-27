@@ -28,12 +28,12 @@ void TransposeGradStridedKernel(const Context& dev_ctx,
   std::vector<int> formated_axis = axis;
   for (size_t i = 0; i < axis_size; i++) {
     if (axis[i] < 0) {
-      formated_axis[i] = axis[i] + axis_size;
+      formated_axis[i] = static_cast<int>(axis[i] + axis_size);
     }
   }
 
   std::vector<int> reversed_axis(axis);
-  for (size_t i = 0; i < axis_size; i++) {
+  for (int i = 0; i < static_cast<int>(axis_size); i++) {
     reversed_axis[formated_axis[i]] = i;
   }
 

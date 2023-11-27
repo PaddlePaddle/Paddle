@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid, nn
+from paddle import base, nn
 from paddle.distributed import fleet
 
 paddle.enable_static()
@@ -48,8 +48,8 @@ class TestFleetWithQAT(unittest.TestCase):
         strategy.qat = True
 
     def generate_program(self, strategy):
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
-        with fluid.program_guard(train_prog, startup_prog):
+        train_prog, startup_prog = base.Program(), base.Program()
+        with base.program_guard(train_prog, startup_prog):
             input_x = paddle.static.data(
                 name='X',
                 shape=[self.batch_size, self.input_size],
@@ -73,12 +73,12 @@ class TestFleetWithQAT(unittest.TestCase):
 
     def execute_program(self, train_prog, startup_prog, input_x, input_y):
         place = (
-            fluid.CUDAPlace(0)
-            if paddle.fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if paddle.base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
-        feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
+        exe = base.Executor(place)
+        feeder = base.DataFeeder(feed_list=[input_x, input_y], place=place)
         exe.run(startup_prog)
         data = (
             np.random.randn(self.batch_size, self.input_size),
@@ -108,9 +108,9 @@ class TestFleetWithQAT(unittest.TestCase):
             optimizer,
         ) = self.generate_program(dist_strategy)
         place = (
-            fluid.CUDAPlace(0)
-            if paddle.fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if paddle.base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         eval_prog = train_prog.clone(for_test=True)
         optimizer.qat_init(

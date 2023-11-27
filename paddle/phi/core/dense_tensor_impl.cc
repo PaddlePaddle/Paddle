@@ -195,11 +195,11 @@ void DenseTensor::ShareBufferWith(const DenseTensor& tensor, bool only_buffer) {
   }
 }
 
-#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                \
-  template dtype* DenseTensor::mutable_data(                        \
-      const DDim& dims, const Place& place, size_t requested_size); \
-  template dtype* DenseTensor::mutable_data(const Place& place,     \
-                                            size_t requested_size);
+#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                     \
+  template TEST_API dtype* DenseTensor::mutable_data(                    \
+      const DDim& dims, const Place& place, size_t requested_size);      \
+  template TEST_API dtype* DenseTensor::mutable_data(const Place& place, \
+                                                     size_t requested_size);
 
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(bool)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int8_t)
@@ -340,7 +340,7 @@ std::vector<DenseTensor> DenseTensor::Split(int64_t split_size,
           "split expects split_size be non-negative, but got split_size is %d",
           split_size));
 
-  int64_t numel_size = meta_.dims[axis];
+  int64_t numel_size = meta_.dims[static_cast<int>(axis)];
 
   int64_t num_splits = 1;
   if (split_size != 0) {
@@ -371,7 +371,7 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
       phi::errors::OutOfRange(
           "chunks expects to be greater than 0, but got chunks is %d", chunks));
 
-  int64_t numel_size = meta_.dims[axis];
+  int64_t numel_size = meta_.dims[static_cast<int>(axis)];
   int64_t split_size = (numel_size + chunks - 1) / chunks;
   return Split(split_size, axis);
 }

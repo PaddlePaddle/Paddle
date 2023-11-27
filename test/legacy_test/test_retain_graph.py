@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.disable_static()
 SEED = 2020
@@ -152,7 +152,7 @@ class TestRetainGraph(unittest.TestCase):
 
     def test_retain(self):
         self.run_retain(need_retain=True)
-        if not fluid.framework.in_dygraph_mode():
+        if not base.framework.in_dygraph_mode():
             self.assertRaises(RuntimeError, self.run_retain, need_retain=False)
 
 

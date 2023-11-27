@@ -18,23 +18,23 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.nn.functional as F
+from paddle.distributed import Replicate
 
 
 class TestDistTensor(unittest.TestCase):
     def test_dist_tensor_creation(self):
         shape = [10, 5]
         mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
-        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
+        placements = [Replicate(), Replicate()]
 
         # create dist tensor using numpy
         dist_tensor_with_numpy = dist.shard_tensor(
-            np.ones(shape, dtype=np.float32), dist_attr=dist_attr
+            np.ones(shape, dtype=np.float32), mesh, placements
         )
 
         # create dist tensor using tensor
         dist_tensor_with_tensor = dist.shard_tensor(
-            paddle.ones(shape), dist_attr=dist_attr
+            paddle.ones(shape), mesh, placements
         )
 
         # create normal tensor
@@ -49,39 +49,68 @@ class TestDistTensor(unittest.TestCase):
         self.assertEqual(
             str(dist_tensor_with_numpy), str(dist_tensor_with_tensor)
         )
-        self.assertEqual(dist_tensor_with_numpy.dist_attr, dist_attr)
-        self.assertEqual(dist_tensor_with_tensor.dist_attr, dist_attr)
+        self.assertEqual(dist_tensor_with_numpy.placements, placements)
+        self.assertEqual(dist_tensor_with_tensor.placements, placements)
 
 
-class TestDistTensorForDygraphAPI(unittest.TestCase):
-    def check_tensor_eq(self, a, b):
-        np1 = a.numpy()
-        np2 = b.numpy()
-        np.testing.assert_allclose(np1, np2, rtol=1e-05)
+class TestDistTensorFromFn(unittest.TestCase):
+    def run_dtensor_from_fn(self):
+        # Create a dist_attr
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        placements = [Replicate()]
 
-    def create_local_and_dist_tensor_pair(self, np_array):
-        local_t = paddle.to_tensor(np_array, dtype='float32')
+        # for static graph here.
+        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None])
 
-        mesh = dist.ProcessMesh([0], dim_names=["x"])
-        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
-        dist_t = dist.shard_tensor(np_array, dist_attr=dist_attr)
+        # Call the function dtensor_from_fn with dist_attr parameter
+        result = dist.dtensor_from_fn(paddle.ones, mesh, placements, shape=[16])
+        # Verify the result
+        if paddle.in_dynamic_mode():
+            self.assertIsInstance(result, paddle.Tensor)
+            self.assertEqual(result.shape, [16])
+            self.assertEqual(result.placements, placements)
+        else:
+            dist_attr.dynamic_dims = [0]
+            self.assertIsInstance(result, paddle.static.Variable)
+            self.assertEqual(result.shape, (16,))
+            self.assertEqual(result.dist_attr, dist_attr)
 
-        local_t.stop_gradient = False
-        dist_t.stop_gradient = False
+        result_zeros = dist.dtensor_from_fn(
+            paddle.zeros, mesh, placements, shape=[16]
+        )
+        if paddle.in_dynamic_mode():
+            dist_attr.dynamic_dims = []
+            self.assertIsInstance(result, paddle.Tensor)
+            self.assertEqual(result.shape, [16])
+            self.assertEqual(result.placements, placements)
+        else:
+            dist_attr.dynamic_dims = [0]
+            self.assertIsInstance(result, paddle.static.Variable)
+            self.assertEqual(result.shape, (16,))
+            self.assertEqual(result.dist_attr, dist_attr)
 
-        return local_t, dist_t
+        result_random = dist.dtensor_from_fn(
+            paddle.rand, mesh, placements, shape=[16]
+        )
+        if paddle.in_dynamic_mode():
+            dist_attr.dynamic_dims = []
+            self.assertIsInstance(result, paddle.Tensor)
+            self.assertEqual(result.shape, [16])
+            self.assertEqual(result.placements, placements)
+        else:
+            dist_attr.dynamic_dims = [0]
+            self.assertIsInstance(result, paddle.static.Variable)
+            self.assertEqual(result.shape, (16,))
+            self.assertEqual(result.dist_attr, dist_attr)
 
-    def test_relu_api_for_dist_tensor(self):
-        x = np.random.random(size=[4, 4]).astype("float32")
-        local_in, dist_in = self.create_local_and_dist_tensor_pair(x)
-        local_out = F.relu(local_in)
-        dist_out = F.relu(dist_in)
-        self.check_tensor_eq(local_out, dist_out)
+    def test_dynamic_mode(self):
+        self.run_dtensor_from_fn()
 
-        # test backward
-        local_out.backward()
-        dist_out.backward()
-        self.check_tensor_eq(local_in.grad, dist_in.grad)
+    # Test exceptions when running in static mode
+    def test_static_mode(self):
+        paddle.enable_static()
+        self.run_dtensor_from_fn()
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

@@ -15,9 +15,9 @@
 import unittest
 
 import paddle
-from paddle.fluid import core, framework
-from paddle.fluid.executor import Executor
-from paddle.fluid.framework import default_startup_program
+from paddle.base import core, framework
+from paddle.base.executor import Executor
+from paddle.base.framework import default_startup_program
 
 
 class TestSwitch(unittest.TestCase):

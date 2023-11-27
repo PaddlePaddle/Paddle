@@ -18,10 +18,10 @@ import pickle
 import time
 from collections import namedtuple
 
+from paddle.base import core
 from paddle.distributed.launch.context import Node
 from paddle.distributed.rpc.internal import PythonFunc, _serialize
 from paddle.distributed.utils.launch_utils import logger
-from paddle.fluid import core
 
 WorkerInfo = namedtuple("WorkerInfo", ["name", "rank", "ip", "port"])
 
@@ -87,11 +87,13 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     Examples:
         .. code-block:: python
 
-            import paddle.distributed.rpc as rpc
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle.distributed.rpc as rpc
 
-            rpc.init_rpc("worker0", rank=0, world_size=1,
-                        master_endpoint="127.0.0.1:8001")
-            rpc.shutdown()
+            >>> rpc.init_rpc("worker0", rank=0, world_size=1,
+            ...             master_endpoint="127.0.0.1:8001")
+
+            >>> rpc.shutdown()
 
     """
     rank = int(os.environ["PADDLE_TRAINER_ID"]) if rank is None else rank
@@ -161,15 +163,17 @@ def rpc_sync(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
     Examples:
         .. code-block:: python
 
-            import paddle.distributed.rpc as rpc
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle.distributed.rpc as rpc
 
-            def add(a, b):
-                return a + b
+            >>> def add(a, b):
+            ...     return a + b
 
-            rpc.init_rpc("worker0", rank=0, world_size=1,
-                    master_endpoint="127.0.0.1:8002")
-            ret = rpc.rpc_sync("worker0", add, args=(2, 3))
-            rpc.shutdown()
+            >>> rpc.init_rpc("worker0", rank=0, world_size=1,
+            ...         master_endpoint="127.0.0.1:8002")
+
+            >>> ret = rpc.rpc_sync("worker0", add, args=(2, 3))
+            >>> rpc.shutdown()
 
     """
     fut = _invoke_rpc(to, fn, args, kwargs, timeout)
@@ -201,16 +205,20 @@ def rpc_async(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
     Examples:
         .. code-block:: python
 
-            import paddle.distributed.rpc as rpc
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle.distributed.rpc as rpc
 
-            def add(a, b):
-                return a + b
+            >>> def add(a, b):
+            ...     return a + b
 
-            rpc.init_rpc("worker0", rank=0, world_size=1,
-                    master_endpoint="127.0.0.1:8003")
-            fut = rpc.rpc_async("worker0", add, args=(2, 3))
-            print(fut.wait())
-            rpc.shutdown()
+            >>> rpc.init_rpc("worker0", rank=0, world_size=1,
+            ...         master_endpoint="127.0.0.1:8003")
+
+            >>> fut = rpc.rpc_async("worker0", add, args=(2, 3))
+            >>> print(fut.wait())
+            5
+
+            >>> rpc.shutdown()
 
     """
     return _invoke_rpc(to, fn, args, kwargs, timeout)
@@ -279,11 +287,13 @@ def shutdown():
     Examples:
         .. code-block:: python
 
-            import paddle.distributed.rpc as rpc
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle.distributed.rpc as rpc
 
-            rpc.init_rpc("worker0", rank=0, world_size=1,
-                        master_endpoint="127.0.0.1:8004")
-            rpc.shutdown()
+            >>> rpc.init_rpc("worker0", rank=0, world_size=1,
+            ...             master_endpoint="127.0.0.1:8004")
+
+            >>> rpc.shutdown()
 
     """
     info = get_current_worker_info()
@@ -309,17 +319,18 @@ def get_worker_info(name):
     Examples:
         .. code-block:: python
 
-            import paddle.distributed.rpc as rpc
-            import os
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle.distributed.rpc as rpc
+            >>> import os
 
-            os.environ["PADDLE_WORKER_ENDPOINT"] = "127.0.0.1:9002"
-            rpc.init_rpc("worker0", rank=0, world_size=1,
-                        master_endpoint="127.0.0.1:8005")
+            >>> os.environ["PADDLE_WORKER_ENDPOINT"] = "127.0.0.1:9002"
+            >>> rpc.init_rpc("worker0", rank=0, world_size=1,
+            ...             master_endpoint="127.0.0.1:8005")
 
-            print(rpc.get_worker_info("worker0"))
-            # {name: worker0, rank: 0, ip: 127.0.0.1, port: 9002}
+            >>> print(rpc.get_worker_info("worker0"))
+            {name: worker0, rank: 0, ip: 127.0.0.1, port: 9002}
 
-            rpc.shutdown()
+            >>> rpc.shutdown()
 
     """
     return core.rpc_get_worker_info(name)
@@ -335,17 +346,18 @@ def get_all_worker_infos():
     Examples:
         .. code-block:: python
 
-            import paddle.distributed.rpc as rpc
-            import os
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle.distributed.rpc as rpc
+            >>> import os
 
-            os.environ["PADDLE_WORKER_ENDPOINT"] = "127.0.0.1:9003"
-            rpc.init_rpc("worker0", rank=0, world_size=1,
-                    master_endpoint="127.0.0.1:8006")
+            >>> os.environ["PADDLE_WORKER_ENDPOINT"] = "127.0.0.1:9003"
+            >>> rpc.init_rpc("worker0", rank=0, world_size=1,
+            ...         master_endpoint="127.0.0.1:8006")
 
-            print(rpc.get_all_worker_infos())
-            # [{name: worker0, rank: 0, ip: 127.0.0.1, port: 9003}]
+            >>> print(rpc.get_all_worker_infos())
+            [{name: worker0, rank: 0, ip: 127.0.0.1, port: 9003}]
 
-            rpc.shutdown()
+            >>> rpc.shutdown()
 
     """
     return core.rpc_get_all_worker_infos()
@@ -361,17 +373,18 @@ def get_current_worker_info():
     Examples:
         .. code-block:: python
 
-            import paddle.distributed.rpc as rpc
-            import os
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle.distributed.rpc as rpc
+            >>> import os
 
-            os.environ["PADDLE_WORKER_ENDPOINT"] = "127.0.0.1:9004"
-            rpc.init_rpc("worker0", rank=0, world_size=1,
-                        master_endpoint="127.0.0.1:8007")
+            >>> os.environ["PADDLE_WORKER_ENDPOINT"] = "127.0.0.1:9004"
+            >>> rpc.init_rpc("worker0", rank=0, world_size=1,
+            ...             master_endpoint="127.0.0.1:8007")
 
-            print(rpc.get_current_worker_info())
-            # {name: worker0, rank: 0, ip: 127.0.0.1, port: 9004}
+            >>> print(rpc.get_current_worker_info())
+            {name: worker0, rank: 0, ip: 127.0.0.1, port: 9004}
 
-            rpc.shutdown()
+            >>> rpc.shutdown()
 
     """
     return core.rpc_get_current_worker_info()

@@ -13,18 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/api/lib/api_gen_utils.h"
-#include "gflags/gflags.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 
-DECLARE_bool(use_stride_kernel);
+PHI_DECLARE_bool(use_stride_kernel);
 
 #include "glog/logging.h"
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
 namespace paddle {
 namespace experimental {
@@ -193,8 +192,6 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
   }
   return meta_tensors;
 }
-
-/* ------------------ for output ----------------------- */
 
 phi::DenseTensor* SetKernelOutput(Tensor* out) {
   if (out) {
@@ -532,23 +529,167 @@ void TransStride(phi::DeviceContext* dev_ctx,
                  phi::SelectedRows* from,
                  phi::SelectedRows* to) {}
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 /* ------------------ for auto parallel ----------------------- */
 
-phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out) {
+phi::distributed::DistMetaTensor MakeDistMetaTensor(
+    const phi::TensorBase& tensor) {
+  return phi::distributed::DistMetaTensor(tensor);
+}
+
+std::vector<phi::distributed::DistMetaTensor> MakeDistMetaTensor(
+    const std::vector<const phi::TensorBase*>& tensors) {
+  std::vector<phi::distributed::DistMetaTensor> meta_tensors;
+  meta_tensors.reserve(tensors.size());
+  for (const auto* t : tensors) {
+    meta_tensors.emplace_back(*t);
+  }
+  return meta_tensors;
+}
+
+phi::distributed::DistTensor* SetKernelDistOutput(
+    Tensor* out, const phi::distributed::ArgDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(
+      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
+      true,
+      phi::errors::PreconditionNotMet("Arg must be a single TensorDistAttr"));
   if (out) {
-    // TODO(chenweihang): now all dist case are nullptr
     if (out->impl() == nullptr) {
-      // TODO(chenweihang): polish code, dist_attr is null now
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(
-          phi::DDim(), phi::distributed::TensorDistAttr());
+          phi::DDim(), paddle::get<0>(dist_attr));
       out->set_impl(dist_t);
     }
     return static_cast<phi::distributed::DistTensor*>(out->impl().get());
   }
   return nullptr;
 }
-#endif
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
+    size_t out_size, std::vector<Tensor>* out) {
+  std::vector<phi::distributed::DistTensor*> results(out_size);
+  if (out->size() != out_size) {
+    // Empty out vector
+    out->reserve(out_size);
+  }
+  for (size_t i = 0; i < out_size; ++i) {
+    if (out->size() != out_size) {
+      auto dist_t = std::make_shared<phi::distributed::DistTensor>();
+      out->emplace_back();
+      out->back().set_impl(dist_t);
+    }
+    results[i] =
+        static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
+  }
+  return results;
+}
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
+    const phi::distributed::ArgDistAttr& dist_attr, std::vector<Tensor>* out) {
+  PADDLE_ENFORCE_EQ(
+      paddle::holds_alternative<std::vector<phi::distributed::TensorDistAttr>>(
+          dist_attr),
+      true,
+      phi::errors::PreconditionNotMet(
+          "Arg must be a vector of TensorDistAttr"));
+  const std::vector<phi::distributed::TensorDistAttr>& dist_attrs =
+      PADDLE_GET_CONST(std::vector<phi::distributed::TensorDistAttr>,
+                       dist_attr);
+  auto out_size = dist_attrs.size();
+  std::vector<phi::distributed::DistTensor*> results(out_size);
+  // TODO(GhostScreaming): Inplace outputs are initialized, just set their
+  // dist_attr.
+  if (out->size() == out_size) {
+    VLOG(3) << "Outputs are inplace vector Tensors, just set their dist_attrs "
+            << "according to InferSPMD output result.";
+    for (size_t i = 0; i < out_size; ++i) {
+      results[i] =
+          static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
+      results[i]->unsafe_set_dist_attr(dist_attrs[i]);
+    }
+  } else {
+    out->reserve(out_size);
+    for (size_t i = 0; i < out_size; ++i) {
+      auto dist_t = std::make_shared<phi::distributed::DistTensor>(
+          phi::DDim(), dist_attrs[i]);
+      results[i] = dist_t.get();
+      out->emplace_back();
+      out->back().set_impl(dist_t);
+    }
+  }
+  return results;
+}
+
+// For backward
+std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
+    std::vector<Tensor*> out) {
+  std::vector<phi::distributed::DistTensor*> result;
+  for (auto tmp : out) {
+    if (tmp) {
+      // TODO(GhostScreaming): now all dist case are nullptr
+      if (tmp->impl() == nullptr) {
+        auto dist_t = std::make_shared<phi::distributed::DistTensor>();
+        tmp->set_impl(dist_t);
+      }
+      result.emplace_back(
+          static_cast<phi::distributed::DistTensor*>(tmp->impl().get()));
+    } else {
+      result.emplace_back(nullptr);
+    }
+  }
+  return result;
+}
+
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out,
+    bool set_dist_output_as_tensor_impl,
+    const phi::distributed::ArgDistAttr& dist_attr) {
+  if (out) {
+    PADDLE_ENFORCE_EQ(
+        paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
+        true,
+        phi::errors::PreconditionNotMet("Arg must be a single TensorDistAttr"));
+    auto dist_output = std::make_shared<phi::distributed::DistTensor>(
+        phi::DDim(), paddle::get<0>(dist_attr));
+    if (set_dist_output_as_tensor_impl) {
+      VLOG(3) << "CreateKernelDistOutput function set generated output "
+                 "dist_tensor as Tensor's impl";
+      if (out->is_dist_tensor()) {
+        VLOG(3)
+            << "out is DistTensor, set its DistAttr to generated DistOutput.";
+        dist_output->unsafe_set_dist_attr(
+            std::static_pointer_cast<phi::distributed::DistTensor>(out->impl())
+                ->dist_attr());
+      }
+      out->set_impl(dist_output);
+    }
+    return dist_output;
+  }
+  return nullptr;
+}
+
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out, const phi::distributed::ArgDistAttr& dist_attr) {
+  if (out) {
+    PADDLE_ENFORCE_EQ(
+        paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
+        true,
+        phi::errors::PreconditionNotMet("Arg must be a single TensorDistAttr"));
+    return std::make_shared<phi::distributed::DistTensor>(
+        phi::DDim(), paddle::get<0>(dist_attr));
+  }
+  return nullptr;
+}
+
+void SetReplicatedDistAttrForOutput(
+    phi::distributed::DistTensor* out,
+    const phi::distributed::ProcessMesh& process_mesh) {
+  if (out) {
+    // For inplace output, we also need to set replicated dist attr
+    auto dist_attr =
+        phi::distributed::TensorDistAttr(phi::vectorize(out->dims()));
+    dist_attr.set_process_mesh(process_mesh);
+    out->unsafe_set_dist_attr(dist_attr);
+  }
+}
 
 }  // namespace experimental
 }  // namespace paddle

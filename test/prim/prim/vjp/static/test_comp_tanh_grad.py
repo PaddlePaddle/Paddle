@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.fluid import core
+from paddle.base import core
 
 core._set_prim_backward_enabled(True)
 

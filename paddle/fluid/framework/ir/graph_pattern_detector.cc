@@ -24,9 +24,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-using string::PrettyLog;
-using string::Style;
-
 size_t PDPattern::id_ = 0UL;
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -75,10 +72,12 @@ PDNode *PDPattern::RetrieveNode(const std::string &id) const {
 }
 
 void PDPattern::AddEdge(PDNode *a, PDNode *b) {
-  PADDLE_ENFORCE_NOT_NULL(
-      a, platform::errors::NotFound("PDNode %s is not found.", a->name()));
-  PADDLE_ENFORCE_NOT_NULL(
-      b, platform::errors::NotFound("PDNode %s is not found.", b->name()));
+  PADDLE_ENFORCE_NOT_NULL(a,
+                          platform::errors::NotFound("PDNode %s is not found.",
+                                                     a->name()));  // NOLINT
+  PADDLE_ENFORCE_NOT_NULL(b,
+                          platform::errors::NotFound("PDNode %s is not found.",
+                                                     b->name()));  // NOLINT
   PADDLE_ENFORCE_NE(a,
                     b,
                     platform::errors::PermissionDenied(
@@ -2879,10 +2878,10 @@ PDNode *patterns::MultipleQuantize::operator()() {
 
   // find nodes that are inputs to quantize operators
   prev_out->assert_more([&](Node *node) {
-    int counter = std::count_if(
+    int counter = static_cast<int>(std::count_if(
         node->outputs.begin(), node->outputs.end(), [&](Node const *iter) {
           return iter && iter->IsOp() && iter->Op()->Type() == "quantize";
-        });
+        }));
     return (counter > 1);
   });
 
@@ -3330,6 +3329,115 @@ void patterns::DeleteWeightDequantLinearOpEncoderPattern::operator()() {
           {weight_dequantize_linear_op_x, weight_dequantize_linear_op_scale})
       .LinksTo({weight_dequantize_linear_op_out});
   any_op2->LinksFrom({weight_dequantize_linear_op_out});
+}
+
+PDNode *patterns::QuantLinearFusePattern::operator()(bool with_bias,
+                                                     bool with_relu) {
+  auto *quantize_linear_op_x = pattern->NewNode(quantize_linear_op_x_repr())
+                                   ->AsInput()
+                                   ->assert_is_op_input("quantize_linear", "X");
+
+  auto *quantize_linear_op_scale =
+      pattern->NewNode(quantize_linear_op_scale_repr())
+          ->AsInput()
+          ->assert_is_op_input("quantize_linear", "Scale")
+          ->assert_is_persistable_var();
+
+  auto *quantize_linear_op = pattern->NewNode(quantize_linear_op_repr())
+                                 ->assert_is_op("quantize_linear");
+
+  auto *quantize_linear_op_out =
+      pattern->NewNode(quantize_linear_op_out_repr())
+          ->AsIntermediate()
+          ->assert_is_op_output("quantize_linear", "Y")
+          ->assert_is_op_input("dequantize_linear", "X")
+          ->assert_var_not_persistable();
+
+  auto *dequantize_linear_op = pattern->NewNode(dequantize_linear_op_repr())
+                                   ->assert_is_op("dequantize_linear");
+
+  auto *dequantize_linear_op_out =
+      pattern->NewNode(dequantize_linear_op_out_repr())
+          ->AsIntermediate()
+          ->assert_is_op_output("dequantize_linear", "Y")
+          ->AsOutput();
+  // Add links.
+  quantize_linear_op
+      ->LinksFrom({quantize_linear_op_x, quantize_linear_op_scale})
+      .LinksTo({quantize_linear_op_out});
+  dequantize_linear_op->LinksFrom({quantize_linear_op_out})
+      .LinksTo({dequantize_linear_op_out});
+
+  auto *weight_dequantize_linear_op_x =
+      pattern->NewNode(weight_dequantize_linear_op_x_repr())
+          ->AsInput()
+          ->assert_is_op_input("dequantize_linear", "X")
+          ->assert_is_persistable_var();
+
+  auto *weight_dequantize_linear_op_scale =
+      pattern->NewNode(weight_dequantize_linear_op_scale_repr())
+          ->AsInput()
+          ->assert_is_op_input("dequantize_linear", "Scale")
+          ->assert_is_persistable_var();
+
+  auto *weight_dequantize_linear_op =
+      pattern->NewNode(weight_dequantize_linear_op_repr())
+          ->assert_is_op("dequantize_linear");
+
+  auto *weight_dequantize_linear_op_out =
+      pattern->NewNode(weight_dequantize_linear_op_out_repr())
+          ->AsIntermediate()
+          ->assert_is_op_output("dequantize_linear", "Y")
+          ->assert_is_op_input("matmul_v2", "Y");
+
+  // Add links.
+  weight_dequantize_linear_op
+      ->LinksFrom(
+          {weight_dequantize_linear_op_x, weight_dequantize_linear_op_scale})
+      .LinksTo({weight_dequantize_linear_op_out});
+
+  auto *mul = pattern->NewNode(mul_repr())->assert_is_op("matmul_v2");
+
+  auto *mul_out =
+      pattern->NewNode(mul_out_repr())->assert_is_op_output("matmul_v2");
+
+  // Add links.
+  mul->LinksFrom({dequantize_linear_op_out, weight_dequantize_linear_op_out})
+      .LinksTo({mul_out});
+
+  if (!with_bias) {  // not with bias
+    return mul_out;
+  } else {  // with bias
+    mul_out->AsIntermediate()->assert_is_op_input("elementwise_add", "X");
+
+    auto *elementwise_add = pattern->NewNode(elementwise_add_repr())
+                                ->assert_is_op("elementwise_add");
+
+    auto *bias = pattern->NewNode(bias_repr())
+                     ->assert_is_op_input("elementwise_add", "Y")
+                     ->assert_is_persistable_var();
+
+    auto *elementwise_add_out =
+        pattern->NewNode(elementwise_add_out_repr())
+            ->AsOutput()
+            ->assert_is_op_output("elementwise_add", "Out");
+
+    elementwise_add->LinksFrom({mul_out, bias}).LinksTo({elementwise_add_out});
+
+    if (!with_relu) {
+      return elementwise_add_out;
+    } else {
+      elementwise_add_out->AsIntermediate()->assert_is_op_input("relu");
+      // Create operators.
+      auto *relu = pattern->NewNode(relu_repr())->assert_is_op("relu");
+      auto *relu_out = pattern->NewNode(relu_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("relu", "Out");
+
+      relu->LinksFrom({elementwise_add_out}).LinksTo({relu_out});
+      return relu_out;
+    }
+  }
 }
 
 void patterns::DeleteWeightDequantLinearOpDecoderPattern::operator()() {

@@ -18,6 +18,7 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 
 namespace phi {
@@ -70,11 +71,7 @@ void ExpandAsKernel(const Context& ctx,
     }
   }
 
-  out->Resize(phi::make_ddim(target_shape));
-  ctx.template Alloc<T>(out);
-  std::vector<const DenseTensor*> ins = {&x};
-  std::vector<DenseTensor*> outs = {out};
-  phi::funcs::BroadcastKernel<T>(ctx, ins, &outs, kps::IdentityFunctor<T>());
+  ExpandKernel<T, Context>(ctx, x, target_shape, out);
 }
 
 }  // namespace phi

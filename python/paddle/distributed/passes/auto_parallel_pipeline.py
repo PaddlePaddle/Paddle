@@ -14,6 +14,8 @@
 
 import os
 
+from paddle.base import core
+from paddle.base.framework import Program
 from paddle.distributed.auto_parallel.static.process_group import (
     remove_process_group,
 )
@@ -24,8 +26,6 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_optimize_op,
 )
 from paddle.distributed.fleet.fleet_executor_utils import TaskNode
-from paddle.fluid import core
-from paddle.fluid.framework import Program
 
 from .pass_base import PassBase, register_pass
 from .pass_utils import _create_program, _insert_sync_for_fthenb_1f1b
@@ -85,7 +85,7 @@ class PipelinePass(PassBase):
         else:
             raise ValueError(
                 "Now only 'F-then-B', '1F1B' and 'stream' are supported."
-                "The given value is {}.".format(self._mode)
+                f"The given value is {self._mode}."
             )
 
     def _insert_sync_ops_for_stream(self):

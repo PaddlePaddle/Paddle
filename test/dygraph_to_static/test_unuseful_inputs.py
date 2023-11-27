@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 from paddle import nn
@@ -61,10 +62,10 @@ class Layer1(nn.Layer):
         return val
 
 
-class TestDuplicateOutput(unittest.TestCase):
+class TestDuplicateOutput(Dy2StTestBase):
     """
     TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `fluid.layers.cond`.
+    dependent on tensor in Dygraph into Static `base.layers.cond`.
     """
 
     def test_case(self):

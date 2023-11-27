@@ -72,11 +72,11 @@ void CrossKernel(const Context& dev_ctx,
   }
   auto outer_loops = 1;
   for (auto i = 0; i < dim; i++) {
-    outer_loops *= input_x_dims[i];
+    outer_loops *= static_cast<int>(input_x_dims[i]);
   }
   auto slice_size = 1;
   for (auto i = dim + 1; i < input_x_dims.size(); i++) {
-    slice_size *= input_x_dims[i];
+    slice_size *= static_cast<int>(input_x_dims[i]);
   }
 
   std::vector<T> input_x_vec, input_y_vec;

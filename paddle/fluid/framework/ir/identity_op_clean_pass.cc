@@ -124,7 +124,14 @@ FindTwoCastOpPattern::FindTwoCastOpPattern(PDPattern* pattern,
                          });
 
   auto* cast_op_1 = pattern->NewNode(cast_op_1_repr())->assert_is_op("cast");
-  auto* cast_op_1_out = pattern->NewNode(cast_op_1_out_repr())->assert_is_var();
+  auto* cast_op_1_out = pattern->NewNode(cast_op_1_out_repr())
+                            ->assert_is_var()
+                            ->assert_is_op_output("cast", "Out")
+                            ->assert_more([](Node* x) {
+                              const auto& var_type = x->Var()->GetDataType();
+                              return var_type != proto::VarType::INT32 &&
+                                     var_type != proto::VarType::INT64;
+                            });
   auto* cast_op_2 = pattern->NewNode(cast_op_2_repr())->assert_is_op("cast");
   auto* cast_op_2_out = pattern->NewNode(cast_op_2_out_repr())->assert_is_var();
 
@@ -201,7 +208,8 @@ int IdentityOpCleanPass::CleanTwoCastOp(ir::Graph* graph) const {
 
 void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
   Init(name_scope_, graph);
-  int found_count = CleanUselessOp(graph) + CleanTwoCastOp(graph);
+  int found_count = CleanUselessOp(graph);
+  found_count += CleanTwoCastOp(graph);
   AddStatis(found_count);
 }
 

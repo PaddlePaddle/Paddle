@@ -31,6 +31,7 @@ attr_types_map = {
     'Scalar(int)': 'const Scalar&',
     'Scalar(int64_t)': 'const Scalar&',
     'Scalar(float)': 'const Scalar&',
+    'Scalar(double)': 'const Scalar&',
     'Scalar[]': 'const std::vector<Scalar>&',
     'Place': 'Place',
     'DataLayout': 'DataLayout',
@@ -48,7 +49,7 @@ attr_types_map = {
     'int64_t[]': 'const std::vector<int64_t>&',
     'float[]': 'const std::vector<float>&',
     'double[]': 'const std::vector<double>&',
-    'str[]': 'const std::vector<<std::string>&',
+    'str[]': 'const std::vector<std::string>&',
 }
 
 opmaker_attr_types_map = {
@@ -59,6 +60,7 @@ opmaker_attr_types_map = {
     'Scalar(int)': 'int',
     'Scalar(int64_t)': 'int64_t',
     'Scalar(float)': 'float',
+    'Scalar(double)': 'double',
     'Scalar[]': 'std::vector<Scalar>',
     'Place': 'int',
     'DataLayout': 'int',
@@ -79,7 +81,16 @@ opmaker_attr_types_map = {
     'str[]': 'std::vector<std::string>',
 }
 
-output_type_map = {'Tensor': 'Tensor', 'Tensor[]': 'std::vector<Tensor>'}
+output_type_map = {
+    'Tensor': 'Tensor',
+    'Tensor[]': 'std::vector<Tensor>',
+    'SelectedRows': 'SelectedRows',
+}
+
+optional_output_type_map = {
+    'Tensor': 'const paddle::optional<Tensor>',
+    'Tensor[]': 'const paddle::optional<std::vector<Tensor>>',
+}
 
 # ------------------------------ phi attr ------------------------------
 phi_attr_types_map = attr_types_map.copy()

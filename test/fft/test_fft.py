@@ -117,7 +117,7 @@ def parameterize(fields, values=None):
 class TestFft(unittest.TestCase):
     def test_fft(self):
         """Test fft with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.fft(self.x, self.n, self.axis, self.norm),
                 paddle.fft.fft(
@@ -156,7 +156,7 @@ class TestFft(unittest.TestCase):
 class TestIfft(unittest.TestCase):
     def test_fft(self):
         """Test ifft with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.ifft(self.x, self.n, self.axis, self.norm),
                 paddle.fft.ifft(
@@ -242,7 +242,7 @@ class TestFftException(unittest.TestCase):
 class TestFft2(unittest.TestCase):
     def test_fft2(self):
         """Test fft2 with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.fft2(self.x, self.n, self.axis, self.norm),
                 paddle.fft.fft2(
@@ -314,7 +314,7 @@ class TestFft2Exception(unittest.TestCase):
         - axis type error
         - norm out of range
         """
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
                 paddle.fft.fft2(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
@@ -349,7 +349,7 @@ class TestFft2Exception(unittest.TestCase):
 class TestFftn(unittest.TestCase):
     def test_fftn(self):
         """Test fftn with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.fftn(self.x, self.n, self.axis, self.norm),
                 paddle.fft.fftn(
@@ -388,7 +388,7 @@ class TestFftn(unittest.TestCase):
 class TestIFftn(unittest.TestCase):
     def test_ifftn(self):
         """Test ifftn with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.ifftn(self.x, self.n, self.axis, self.norm),
                 paddle.fft.ifftn(
@@ -452,7 +452,7 @@ class TestIFftn(unittest.TestCase):
 class TestHfft(unittest.TestCase):
     def test_hfft(self):
         """Test hfft with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.hfft(self.x, self.n, self.axis, self.norm),
                 paddle.fft.hfft(
@@ -516,7 +516,7 @@ class TestHfft(unittest.TestCase):
 class TestIrfft(unittest.TestCase):
     def test_irfft(self):
         """Test irfft with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.irfft(self.x, self.n, self.axis, self.norm),
                 paddle.fft.irfft(
@@ -580,7 +580,7 @@ class TestIrfft(unittest.TestCase):
 class TestIrfftn(unittest.TestCase):
     def test_irfftn(self):
         """Test irfftn with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.irfftn(self.x, self.n, self.axis, self.norm),
                 paddle.fft.irfftn(
@@ -644,7 +644,7 @@ class TestIrfftn(unittest.TestCase):
 class TestHfftn(unittest.TestCase):
     def test_hfftn(self):
         """Test hfftn with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.hfftn(self.x, self.n, self.axis, self.norm),
                 paddle.fft.hfftn(
@@ -702,7 +702,7 @@ class TestHfftn(unittest.TestCase):
 class TestHfft2(unittest.TestCase):
     def test_hfft2(self):
         """Test hfft2 with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.hfft2(self.x, self.s, self.axis, self.norm),
                 paddle.fft.hfft2(
@@ -759,7 +759,7 @@ class TestHfft2(unittest.TestCase):
 class TestIrfft2(unittest.TestCase):
     def test_irfft2(self):
         """Test irfft2 with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.irfft2(self.x, self.s, self.axis, self.norm),
                 paddle.fft.irfft2(
@@ -845,7 +845,7 @@ class TestHfftException(unittest.TestCase):
         - axis type error
         - norm out of range
         """
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
                 paddle.fft.hfft(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
@@ -917,7 +917,7 @@ class TestIrfftException(unittest.TestCase):
         - axis out of range
         - norm out of range
         """
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
                 paddle.fft.irfft(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
@@ -1008,7 +1008,7 @@ class TestHfft2Exception(unittest.TestCase):
         - the dimensions of n and axis are different
         - norm out of range
         """
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
                 paddle.fft.hfft2(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
@@ -1097,7 +1097,7 @@ class TestIrfft2Exception(unittest.TestCase):
         - the dimensions of n and axis are different
         - norm out of range
         """
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
                 paddle.fft.irfft2(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
@@ -1187,7 +1187,7 @@ class TestHfftnException(unittest.TestCase):
         - the dimensions of n and axis are different
         - norm out of range
         """
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
                 paddle.fft.hfftn(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
@@ -1266,7 +1266,7 @@ class TestIrfftnException(unittest.TestCase):
         - norm out of range
         - the dimensions of n and axis are different
         """
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
                 paddle.fft.irfftn(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
@@ -1300,7 +1300,7 @@ class TestIrfftnException(unittest.TestCase):
 class TestRfft(unittest.TestCase):
     def test_rfft(self):
         """Test rfft with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.rfft(self.x, self.n, self.axis, self.norm),
                 paddle.fft.rfft(
@@ -1380,7 +1380,7 @@ class TestRfftException(unittest.TestCase):
 class TestRfft2(unittest.TestCase):
     def test_rfft2(self):
         """Test rfft2 with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.rfft2(self.x, self.n, self.axis, self.norm),
                 paddle.fft.rfft2(
@@ -1444,7 +1444,7 @@ class TestRfft2Exception(unittest.TestCase):
         - norm out of range
         - the dimensions of n and axis are different
         """
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
                 paddle.fft.rfft2(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
@@ -1478,7 +1478,7 @@ class TestRfft2Exception(unittest.TestCase):
 class TestRfftn(unittest.TestCase):
     def test_rfftn(self):
         """Test rfftn with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.rfftn(self.x, self.n, self.axis, self.norm),
                 paddle.fft.rfftn(
@@ -1531,7 +1531,7 @@ class TestRfftnException(unittest.TestCase):
         - norm out of range
         - the dimensions of n and axis are different
         """
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
                 paddle.fft.rfftn(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
@@ -1565,7 +1565,7 @@ class TestRfftnException(unittest.TestCase):
 class TestIhfft(unittest.TestCase):
     def test_ihfft(self):
         """Test ihfft with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.ihfft(self.x, self.n, self.axis, self.norm),
                 paddle.fft.ihfft(
@@ -1609,7 +1609,7 @@ class TestIhfftException(unittest.TestCase):
         - axis out of range
         - norm out of range
         """
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
                 paddle.fft.ihfft(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
@@ -1644,7 +1644,7 @@ class TestIhfftException(unittest.TestCase):
 class TestIhfft2(unittest.TestCase):
     def test_ihfft2(self):
         """Test ihfft2 with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.ihfft2(self.x, self.n, self.axis, self.norm),
                 paddle.fft.ihfft2(
@@ -1716,7 +1716,7 @@ class TestIhfft2Exception(unittest.TestCase):
         - axis out of range
         - norm out of range
         """
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
                 paddle.fft.ihfft2(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
@@ -1750,7 +1750,7 @@ class TestIhfft2Exception(unittest.TestCase):
 class TestIhfftn(unittest.TestCase):
     def test_ihfftn(self):
         """Test ihfftn with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.ihfftn(self.x, self.n, self.axis, self.norm),
                 paddle.fft.ihfftn(
@@ -1795,7 +1795,7 @@ class TestIhfftnException(unittest.TestCase):
         - axis out of range
         - norm out of range
         """
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
                 paddle.fft.ihfftn(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
@@ -1813,7 +1813,7 @@ class TestIhfftnException(unittest.TestCase):
 class TestFftFreq(unittest.TestCase):
     def test_fftfreq(self):
         """Test fftfreq with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.fftfreq(self.n, self.d).astype(self.dtype),
                 paddle.fft.fftfreq(self.n, self.d, self.dtype).numpy(),
@@ -1834,7 +1834,7 @@ class TestFftFreq(unittest.TestCase):
 class TestFftFreqException(unittest.TestCase):
     def test_fftfreq2(self):
         """Test fftfreq with d = 0"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
                 paddle.fft.fftfreq(self.n, self.d, self.dtype)
 
@@ -1850,7 +1850,7 @@ class TestFftFreqException(unittest.TestCase):
 class TestRfftFreq(unittest.TestCase):
     def test_rfftfreq(self):
         """Test rfftfreq with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.rfftfreq(self.n, self.d).astype(self.dtype),
                 paddle.fft.rfftfreq(self.n, self.d, self.dtype).numpy(),
@@ -1871,7 +1871,7 @@ class TestRfftFreq(unittest.TestCase):
 class TestRfftFreqException(unittest.TestCase):
     def test_rfftfreq2(self):
         """Test fftfreq with d = 0"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
                 paddle.fft.rfftfreq(self.n, self.d, self.dtype)
 
@@ -1894,7 +1894,7 @@ class TestRfftFreqException(unittest.TestCase):
 class TestFftShift(unittest.TestCase):
     def test_fftshift(self):
         """Test fftshift with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.fftshift(self.x, self.axes),
                 paddle.fft.fftshift(
@@ -1923,7 +1923,7 @@ class TestFftShift(unittest.TestCase):
 class TestIfftShift(unittest.TestCase):
     def test_ifftshift(self):
         """Test ifftshift with norm condition"""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.ifftshift(self.x, self.axes),
                 paddle.fft.ifftshift(

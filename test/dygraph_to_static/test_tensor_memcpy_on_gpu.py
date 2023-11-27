@@ -16,6 +16,7 @@ import os
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 
@@ -41,7 +42,7 @@ def tensor_copy_to_cuda_with_warning(x, device_id=None, blocking=True):
     return y
 
 
-class TestTensorCopyToCpuOnDefaultGPU(unittest.TestCase):
+class TestTensorCopyToCpuOnDefaultGPU(Dy2StTestBase):
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
         x1 = paddle.ones([1, 2, 3])
@@ -49,13 +50,13 @@ class TestTensorCopyToCpuOnDefaultGPU(unittest.TestCase):
         return x1.place, x2.place, x2.numpy()
 
     def test_tensor_cpu_on_default_gpu(self):
-        if paddle.fluid.is_compiled_with_cuda():
+        if paddle.base.is_compiled_with_cuda():
             place = paddle.CUDAPlace(
                 int(os.environ.get('FLAGS_selected_gpus', 0))
             )
         else:
             return
-        paddle.fluid.framework._set_expected_place(place)
+        paddle.base.framework._set_expected_place(place)
         dygraph_x1_place, dygraph_place, dygraph_res = self._run(
             to_static=False
         )
@@ -67,7 +68,7 @@ class TestTensorCopyToCpuOnDefaultGPU(unittest.TestCase):
         self.assertTrue(static_place.is_cpu_place())
 
 
-class TestTensorCopyToCUDAOnDefaultGPU(unittest.TestCase):
+class TestTensorCopyToCUDAOnDefaultGPU(Dy2StTestBase):
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
         x1 = paddle.ones([1, 2, 3])
@@ -75,13 +76,13 @@ class TestTensorCopyToCUDAOnDefaultGPU(unittest.TestCase):
         return x1.place, x2.place, x2.numpy()
 
     def test_tensor_cuda_on_default_gpu(self):
-        if paddle.fluid.is_compiled_with_cuda():
+        if paddle.base.is_compiled_with_cuda():
             place = paddle.CUDAPlace(
                 int(os.environ.get('FLAGS_selected_gpus', 0))
             )
         else:
             return
-        paddle.fluid.framework._set_expected_place(place)
+        paddle.base.framework._set_expected_place(place)
         dygraph_x1_place, dygraph_place, dygraph_res = self._run(
             to_static=False
         )
@@ -101,13 +102,13 @@ class TestTensorCopyToCUDAWithWarningOnGPU(unittest.TestCase):
         return x1.place, x2.place, x2.numpy()
 
     def test_with_warning_on_gpu(self):
-        if paddle.fluid.is_compiled_with_cuda():
+        if paddle.base.is_compiled_with_cuda():
             place = paddle.CUDAPlace(
                 int(os.environ.get('FLAGS_selected_gpus', 0))
             )
         else:
             return
-        paddle.fluid.framework._set_expected_place(place)
+        paddle.base.framework._set_expected_place(place)
 
         x1 = paddle.ones([1, 2, 3])
         with self.assertWarns(UserWarning, msg="ignored") as cm:

@@ -17,7 +17,7 @@ import math
 
 import numpy as np
 
-from ...fluid.framework import default_main_program, in_dygraph_mode
+from ...base.framework import default_main_program, in_dygraph_mode
 from .lazy_init import lazy_init_helper
 
 __all__ = []
@@ -160,7 +160,5 @@ def calculate_gain(nonlinearity, param=None):
         return recommended_gain[nonlinearity]
     else:
         raise ValueError(
-            "nonlinearity function {} is not suppported now.".format(
-                nonlinearity
-            )
+            f"nonlinearity function {nonlinearity} is not suppported now."
         )

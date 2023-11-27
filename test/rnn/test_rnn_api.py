@@ -21,8 +21,8 @@ import unittest
 
 import numpy as np
 
-from paddle import fluid
-from paddle.fluid import framework
+from paddle import base
+from paddle.base import framework
 
 bidirectional_list = ["bidirectional", "bidirect"]
 
@@ -53,7 +53,7 @@ class TestSimpleRNN(unittest.TestCase):
 
         paddle.enable_static()
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             with paddle.static.program_guard(
@@ -62,10 +62,10 @@ class TestSimpleRNN(unittest.TestCase):
                 paddle.seed(self.seed)
                 paddle.framework.random._manual_program_seed(self.seed)
 
-                self.exe = fluid.Executor(
-                    fluid.CPUPlace()
+                self.exe = base.Executor(
+                    base.CPUPlace()
                     if self.place == "cpu"
-                    else fluid.CUDAPlace(0)
+                    else base.CUDAPlace(0)
                 )
 
                 rnn_in_data = paddle.static.data(
@@ -158,7 +158,7 @@ class TestGRU(unittest.TestCase):
 
         paddle.enable_static()
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             with paddle.static.program_guard(
@@ -167,10 +167,10 @@ class TestGRU(unittest.TestCase):
                 paddle.seed(self.seed)
                 paddle.framework.random._manual_program_seed(self.seed)
 
-                self.exe = fluid.Executor(
-                    fluid.CPUPlace()
+                self.exe = base.Executor(
+                    base.CPUPlace()
                     if self.place == "cpu"
-                    else fluid.CUDAPlace(0)
+                    else base.CUDAPlace(0)
                 )
 
                 rnn_in_data = paddle.static.data(
@@ -261,7 +261,7 @@ class TestGRUBackward(unittest.TestCase):
 
         paddle.enable_static()
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             with paddle.static.program_guard(
@@ -270,10 +270,10 @@ class TestGRUBackward(unittest.TestCase):
                 paddle.seed(self.seed)
                 paddle.framework.random._manual_program_seed(self.seed)
 
-                self.exe = paddle.fluid.Executor(
-                    fluid.CPUPlace()
+                self.exe = paddle.base.Executor(
+                    base.CPUPlace()
                     if self.place == "cpu"
-                    else fluid.CUDAPlace(0)
+                    else base.CUDAPlace(0)
                 )
 
                 rnn_in_data = paddle.static.data(

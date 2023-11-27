@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.distributed.fleet.fleet_executor_utils import TaskNode
-from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -58,7 +58,7 @@ class TestFleetExecutor(unittest.TestCase):
             )  # loop length
             data = paddle.static.data(name='x', shape=[1])
 
-            loader = paddle.fluid.io.DataLoader.from_generator(
+            loader = paddle.base.io.DataLoader.from_generator(
                 feed_list=[data], capacity=num_micro_batches * 4, iterable=False
             )
             loader.set_batch_generator(

@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from ...fluid.framework import IrGraph
+from ...base.framework import IrGraph
 from ...framework import _get_paddle_place
 
 

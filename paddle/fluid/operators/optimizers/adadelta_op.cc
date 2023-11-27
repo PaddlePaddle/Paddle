@@ -89,7 +89,7 @@ $$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace ops = paddle::operators;
+
 DECLARE_INFER_SHAPE_FUNCTOR(adadelta,
                             AdadeltaInferMetaFunctor,
                             PD_INFER_META(phi::AdadeltaInferMeta));

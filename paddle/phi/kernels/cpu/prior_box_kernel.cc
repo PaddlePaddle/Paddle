@@ -57,9 +57,10 @@ void PriorBoxKernel(const Context& ctx,
     step_height = new_step_h;
   }
 
-  int num_priors = new_aspect_ratios.size() * min_sizes.size();
+  int num_priors =
+      static_cast<int>(new_aspect_ratios.size() * min_sizes.size());
   if (!max_sizes.empty()) {
-    num_priors += max_sizes.size();
+    num_priors += static_cast<int>(max_sizes.size());
   }
 
   ctx.template Alloc<T>(out);
@@ -148,7 +149,7 @@ void PriorBoxKernel(const Context& ctx,
     var_et(0, i) = variances[i];
   }
 
-  int box_num = feature_height * feature_width * num_priors;
+  int box_num = static_cast<int>(feature_height * feature_width * num_priors);
   auto var_dim = var->dims();
   var->Resize({box_num, static_cast<int>(variances.size())});
 

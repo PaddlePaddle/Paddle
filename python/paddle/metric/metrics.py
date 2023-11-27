@@ -17,11 +17,11 @@ import abc
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops
 
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.framework import _create_tensor
-from ..fluid.layer_helper import LayerHelper
+from ..base.data_feeder import check_variable_and_dtype
+from ..base.framework import _create_tensor, in_pir_mode
+from ..base.layer_helper import LayerHelper
 from ..framework import in_dynamic_mode
 
 __all__ = []
@@ -92,6 +92,7 @@ class Metric(metaclass=abc.ABCMeta):
             ...     correct = pred == label
             ...     return paddle.cast(correct, dtype='float32')
             ...
+
         With the :code:`compute`, we split some calculations to OPs (which
         may run on GPU devices, will be faster), and only fetch 1 tensor with
         shape as [N, 5] instead of 2 tensors with shapes as [N, 10] and [N, 1].
@@ -120,9 +121,7 @@ class Metric(metaclass=abc.ABCMeta):
         Reset states and result
         """
         raise NotImplementedError(
-            "function 'reset' not implemented in {}.".format(
-                self.__class__.__name__
-            )
+            f"function 'reset' not implemented in {self.__class__.__name__}."
         )
 
     @abc.abstractmethod
@@ -138,9 +137,7 @@ class Metric(metaclass=abc.ABCMeta):
         see :code:`Metric.compute`
         """
         raise NotImplementedError(
-            "function 'update' not implemented in {}.".format(
-                self.__class__.__name__
-            )
+            f"function 'update' not implemented in {self.__class__.__name__}."
         )
 
     @abc.abstractmethod
@@ -149,9 +146,7 @@ class Metric(metaclass=abc.ABCMeta):
         Accumulates statistics, computes and returns the metric value
         """
         raise NotImplementedError(
-            "function 'accumulate' not implemented in {}.".format(
-                self.__class__.__name__
-            )
+            f"function 'accumulate' not implemented in {self.__class__.__name__}."
         )
 
     @abc.abstractmethod
@@ -160,9 +155,7 @@ class Metric(metaclass=abc.ABCMeta):
         Returns metric name
         """
         raise NotImplementedError(
-            "function 'name' not implemented in {}.".format(
-                self.__class__.__name__
-            )
+            f"function 'name' not implemented in {self.__class__.__name__}."
         )
 
     def compute(self, *args):
@@ -293,7 +286,7 @@ class Accuracy(Metric):
         Return:
             Tensor: the accuracy of current step.
         """
-        if isinstance(correct, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
+        if isinstance(correct, (paddle.Tensor, paddle.base.core.eager.Tensor)):
             correct = np.array(correct)
         num_samples = np.prod(np.array(correct.shape[:-1]))
         accs = []
@@ -420,12 +413,12 @@ class Precision(Metric):
                 the shape should keep the same as preds.
                 The data type is 'int32' or 'int64'.
         """
-        if isinstance(preds, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
+        if isinstance(preds, (paddle.Tensor, paddle.base.core.eager.Tensor)):
             preds = np.array(preds)
         elif not _is_numpy_(preds):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
 
-        if isinstance(labels, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
+        if isinstance(labels, (paddle.Tensor, paddle.base.core.eager.Tensor)):
             labels = np.array(labels)
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
@@ -552,12 +545,12 @@ class Recall(Metric):
                 the shape should keep the same as preds.
                 Shape: [batch_size, 1], Dtype: 'int32' or 'int64'.
         """
-        if isinstance(preds, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
+        if isinstance(preds, (paddle.Tensor, paddle.base.core.eager.Tensor)):
             preds = np.array(preds)
         elif not _is_numpy_(preds):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
 
-        if isinstance(labels, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
+        if isinstance(labels, (paddle.Tensor, paddle.base.core.eager.Tensor)):
             labels = np.array(labels)
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
@@ -703,12 +696,12 @@ class Auc(Metric):
                 (batch_size, 1), labels[i] is either o or 1,
                 representing the label of the instance i.
         """
-        if isinstance(labels, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
+        if isinstance(labels, (paddle.Tensor, paddle.base.core.eager.Tensor)):
             labels = np.array(labels)
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
 
-        if isinstance(preds, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
+        if isinstance(preds, (paddle.Tensor, paddle.base.core.eager.Tensor)):
             preds = np.array(preds)
         elif not _is_numpy_(preds):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
@@ -814,6 +807,10 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
             topk_out, topk_indices, label, correct, total
         )
 
+        return _acc
+    elif in_pir_mode():
+        topk_out, topk_indices = paddle.topk(input, k=k)
+        _acc, _, _ = _C_ops.accuracy(topk_out, topk_indices, label)
         return _acc
 
     helper = LayerHelper("accuracy", **locals())

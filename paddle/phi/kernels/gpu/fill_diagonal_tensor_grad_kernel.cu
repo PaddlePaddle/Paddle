@@ -48,11 +48,7 @@ void FillDiagonalTensorGradKernel(const Context &ctx,
                                   int dim1,
                                   int dim2,
                                   DenseTensor *x_grad) {
-#ifdef __HIPCC__
-  const int64_t kMaxBlockDim = 256;
-#else
   const int64_t kMaxBlockDim = 512;
-#endif
   auto matrows = 1;
 
   if (x_grad) {
@@ -106,6 +102,7 @@ PD_REGISTER_KERNEL(fill_diagonal_tensor_grad,
                    double,
                    int64_t,
                    int,
+                   int16_t,
                    int8_t,
                    uint8_t,
                    phi::dtype::float16,

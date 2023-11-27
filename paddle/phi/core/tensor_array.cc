@@ -27,7 +27,7 @@ bool TensorArray::initialized() const {
     return false;
   }
 
-  for (auto tensor : tensors_) {
+  for (auto const& tensor : tensors_) {
     if (!tensor.initialized()) {
       return false;
     }
@@ -63,52 +63,22 @@ const Place& TensorArray::place() const {
   return place;
 }
 
-DataType TensorArray::dtype() const {
-  PADDLE_ENFORCE_NE(
-      tensors_.size(), 0, errors::Unavailable("TensorArray is not assigned."));
-
-  const DataType dtype = tensors_[0].dtype();
-  for (size_t i = 1; i < tensors_.size(); ++i) {
-    PADDLE_ENFORCE_EQ(
-        tensors_[i].dtype(),
-        dtype,
-        errors::Unavailable(
-            "The DataType of all tensors in TensorArray must be consistent. "
-            "The current dtype is %s, but the previous dtype is %s.",
-            tensors_[i].dtype(),
-            dtype));
-  }
-  return dtype;
-}
+DataType TensorArray::dtype() const { return dtype_; }
 
 void TensorArray::set_type(const DataType dtype) {
   for (auto& tensor : tensors_) {
     tensor.set_type(dtype);
   }
+  dtype_ = dtype;
 }
 
-DataLayout TensorArray::layout() const {
-  PADDLE_ENFORCE_NE(
-      tensors_.size(), 0, errors::Unavailable("TensorArray is not assigned."));
-
-  const DataLayout layout = tensors_[0].layout();
-  for (size_t i = 1; i < tensors_.size(); ++i) {
-    PADDLE_ENFORCE_EQ(
-        tensors_[i].layout(),
-        layout,
-        errors::Unavailable(
-            "The DataLayout of all tensors in TensorArray must be consistent. "
-            "The current layout is %s, but the previous layout is %s.",
-            tensors_[i].layout(),
-            layout));
-  }
-  return layout;
-}
+DataLayout TensorArray::layout() const { return layout_; }
 
 void TensorArray::set_layout(DataLayout layout) {
   for (auto& tensor : tensors_) {
     tensor.set_layout(layout);
   }
+  layout_ = layout;
 }
 
 bool TensorArray::valid() const {

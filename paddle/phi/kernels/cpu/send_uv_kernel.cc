@@ -57,7 +57,7 @@ void GraphSendUVOpKernelLaunchHelper(const Context& ctx,
                                      const DenseTensor& dst_index,
                                      const std::string& message_op,
                                      DenseTensor* out) {
-  const int& index_size = src_index.dims()[0];
+  const int& index_size = src_index.dims()[0];  // NOLINT
   PADDLE_ENFORCE_GT(
       index_size,
       0,

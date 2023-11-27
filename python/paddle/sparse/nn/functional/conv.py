@@ -15,7 +15,7 @@
 __all__ = []
 
 from paddle import _C_ops, in_dynamic_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper
 from paddle.nn.functional.conv import _update_padding_nd
 from paddle.utils import convert_to_list
 
@@ -43,28 +43,24 @@ def _conv3d(
     if data_format not in ["NDHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NDHWC'. Received "
-            "Attr(data_format): {}.".format(data_format)
+            f"Attr(data_format): {data_format}."
         )
     if len(x.shape) != 5:
         raise ValueError(
-            "Input x should be 5D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 5D tensor, but received x with the shape of {x.shape}"
         )
 
     channel_last = data_format == "NDHWC"
     channel_dim = -1 if channel_last else 1
     if len(x.shape) != 5:
         raise ValueError(
-            "Input x should be 5D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 5D tensor, but received x with the shape of {x.shape}"
         )
     num_channels = x.shape[channel_dim]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimension of the input({}) should be defined. "
-            "Received: {}.".format(x.shape, num_channels)
+            f"The channel dimension of the input({x.shape}) should be defined. "
+            f"Received: {num_channels}."
         )
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, dims)
@@ -136,28 +132,24 @@ def _conv2d(
     if data_format not in ["NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NHWC'. Received "
-            "Attr(data_format): {}.".format(data_format)
+            f"Attr(data_format): {data_format}."
         )
     if len(x.shape) != 4:
         raise ValueError(
-            "Input x should be 4D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 4D tensor, but received x with the shape of {x.shape}"
         )
 
     channel_last = data_format == "NHWC"
     channel_dim = -1 if channel_last else 1
     if len(x.shape) != 4:
         raise ValueError(
-            "Input x should be 4D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 4D tensor, but received x with the shape of {x.shape}"
         )
     num_channels = x.shape[channel_dim]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimension of the input({}) should be defined. "
-            "Received: {}.".format(x.shape, num_channels)
+            f"The channel dimension of the input({x.shape}) should be defined. "
+            f"Received: {num_channels}."
         )
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, dims)
@@ -282,18 +274,18 @@ def conv3d(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
-            values = [[1], [2], [3], [4]]
-            indices = paddle.to_tensor(indices, dtype='int32')
-            values = paddle.to_tensor(values, dtype='float32')
-            dense_shape = [1, 1, 3, 4, 1]
-            sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
-            weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
-            y = paddle.sparse.nn.functional.conv3d(sparse_x, weight)
-            print(y.shape)
-            # (1, 1, 1, 2, 1)
+            >>> indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+            >>> values = [[1], [2], [3], [4]]
+            >>> indices = paddle.to_tensor(indices, dtype='int32')
+            >>> values = paddle.to_tensor(values, dtype='float32')
+            >>> dense_shape = [1, 1, 3, 4, 1]
+            >>> sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+            >>> weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
+            >>> y = paddle.sparse.nn.functional.conv3d(sparse_x, weight)
+            >>> print(y.shape)
+            [1, 1, 1, 2, 1]
     """
     return _conv3d(
         x,
@@ -394,18 +386,18 @@ def subm_conv3d(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
-            values = [[1], [2], [3], [4]]
-            indices = paddle.to_tensor(indices, dtype='int32')
-            values = paddle.to_tensor(values, dtype='float32')
-            dense_shape = [1, 1, 3, 4, 1]
-            sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
-            weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
-            y = paddle.sparse.nn.functional.subm_conv3d(sparse_x, weight)
-            print(y.shape)
-            #(1, 1, 3, 4, 1)
+            >>> indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+            >>> values = [[1], [2], [3], [4]]
+            >>> indices = paddle.to_tensor(indices, dtype='int32')
+            >>> values = paddle.to_tensor(values, dtype='float32')
+            >>> dense_shape = [1, 1, 3, 4, 1]
+            >>> sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+            >>> weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
+            >>> y = paddle.sparse.nn.functional.subm_conv3d(sparse_x, weight)
+            >>> print(y.shape)
+            [1, 1, 3, 4, 1]
     """
     return _conv3d(
         x,
@@ -498,18 +490,18 @@ def conv2d(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            indices = [[0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
-            values = [[1], [2], [3], [4]]
-            indices = paddle.to_tensor(indices, dtype='int32')
-            values = paddle.to_tensor(values, dtype='float32')
-            dense_shape = [1, 3, 4, 1]
-            sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
-            weight = paddle.randn((3, 3, 1, 1), dtype='float32')
-            y = paddle.sparse.nn.functional.conv2d(sparse_x, weight)
-            print(y.shape)
-            # (1, 1, 2, 1)
+            >>> indices = [[0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+            >>> values = [[1], [2], [3], [4]]
+            >>> indices = paddle.to_tensor(indices, dtype='int32')
+            >>> values = paddle.to_tensor(values, dtype='float32')
+            >>> dense_shape = [1, 3, 4, 1]
+            >>> sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+            >>> weight = paddle.randn((3, 3, 1, 1), dtype='float32')
+            >>> y = paddle.sparse.nn.functional.conv2d(sparse_x, weight)
+            >>> print(y.shape)
+            [1, 1, 2, 1]
     """
     return _conv2d(
         x,
@@ -607,18 +599,18 @@ def subm_conv2d(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            indices = [[0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
-            values = [[1], [2], [3], [4]]
-            indices = paddle.to_tensor(indices, dtype='int32')
-            values = paddle.to_tensor(values, dtype='float32')
-            dense_shape = [1, 3, 4, 1]
-            sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
-            weight = paddle.randn((3, 3, 1, 1), dtype='float32')
-            y = paddle.sparse.nn.functional.subm_conv2d(sparse_x, weight)
-            print(y.shape)
-            # (1, 3, 4, 1)
+            >>> indices = [[0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+            >>> values = [[1], [2], [3], [4]]
+            >>> indices = paddle.to_tensor(indices, dtype='int32')
+            >>> values = paddle.to_tensor(values, dtype='float32')
+            >>> dense_shape = [1, 3, 4, 1]
+            >>> sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+            >>> weight = paddle.randn((3, 3, 1, 1), dtype='float32')
+            >>> y = paddle.sparse.nn.functional.subm_conv2d(sparse_x, weight)
+            >>> print(y.shape)
+            [1, 3, 4, 1]
     """
     return _conv2d(
         x,

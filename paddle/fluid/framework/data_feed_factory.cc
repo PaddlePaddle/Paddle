@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_feed_factory.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <memory>
 #include <string>

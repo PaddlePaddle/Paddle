@@ -29,7 +29,7 @@ void bilinear_interpolate_gradient(const int height,
                                    const T out_grad_this_bin,
                                    const T count,
                                    T* batch_grad_data) {
-  int x_low, y_low, x_high, y_high;
+  int x_low = 0, y_low = 0, x_high = 0, y_high = 0;
   T w1, w2, w3, w4;
   if (y < -1.0 || y > height || x < -1.0 || x > width) {
     w1 = w2 = w3 = w4 = 0;
@@ -85,7 +85,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   int channels = in_dims[1];
   int height = in_dims[2];
   int width = in_dims[3];
-  int rois_num = boxes.dims()[0];
+  int rois_num = static_cast<int>(boxes.dims()[0]);
 
   if (!dx) {
     return;
@@ -94,9 +94,9 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   DenseTensor roi_batch_id_list = Empty<int>(dev_ctx, {rois_num});
   int* box_batch_id_data = roi_batch_id_list.data<int>();
 
-  int boxes_batch_size;
+  int boxes_batch_size = 0;
   if (boxes_num) {
-    boxes_batch_size = boxes_num->numel();
+    boxes_batch_size = static_cast<int>(boxes_num->numel());
     auto* boxes_num_data = boxes_num->data<int>();
     int start = 0;
     for (int n = 0; n < boxes_batch_size; ++n) {
@@ -107,7 +107,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
     }
   } else {
     auto boxes_lod = boxes.lod().back();
-    boxes_batch_size = boxes_lod.size() - 1;
+    boxes_batch_size = static_cast<int>(boxes_lod.size() - 1);
     for (int n = 0; n < boxes_batch_size; ++n) {
       for (std::size_t i = boxes_lod[n]; i < boxes_lod[n + 1]; ++i) {
         box_batch_id_data[i] = n;
@@ -119,7 +119,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, dx, static_cast<T>(0));
 
-  int output_grad_size = out_grad.numel();
+  int output_grad_size = static_cast<int>(out_grad.numel());
 
   if ((!out_grad.IsInitialized()) || (output_grad_size <= 0)) {
     return;
@@ -170,11 +170,11 @@ void RoiAlignGradKernel(const Context& dev_ctx,
           T count = roi_bin_grid_h * roi_bin_grid_w;
           for (int iy = 0; iy < roi_bin_grid_h; iy++) {
             const T y = roi_ymin + ph * bin_size_h +
-                        static_cast<T>(iy + .5f) * bin_size_h /
+                        static_cast<T>(iy + .5f) * bin_size_h /  // NOLINT
                             static_cast<T>(roi_bin_grid_h);
             for (int ix = 0; ix < roi_bin_grid_w; ix++) {
               const T x = roi_xmin + pw * bin_size_w +
-                          static_cast<T>(ix + .5f) * bin_size_w /
+                          static_cast<T>(ix + .5f) * bin_size_w /  // NOLINT
                               static_cast<T>(roi_bin_grid_w);
               bilinear_interpolate_gradient(height,
                                             width,

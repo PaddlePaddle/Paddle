@@ -310,8 +310,9 @@ fused_feedforward_dygraph_function(
                                         p_autograd_Dropout1Out,
                                         p_autograd_Dropout2Out);
       // Create GradOpNode
-      auto grad_node = std::shared_ptr<fused_feedforwardGradNodeCompat>(
-          new fused_feedforwardGradNodeCompat(11, 11));
+      auto grad_node =
+          std::shared_ptr<fused_feedforwardGradNodeCompat>(  // NOLINT
+              new fused_feedforwardGradNodeCompat(11, 11));
 
       bool pre_layer_norm = false;
       if (attrs.count("pre_layer_norm")) {

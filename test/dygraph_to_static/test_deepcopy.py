@@ -16,13 +16,14 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
+from dygraph_to_static_utils import Dy2StTestBase
 from test_rollback import Net, foo
 
 import paddle
 from paddle.jit.dy2static.program_translator import StaticFunction
 
 
-class TestDeepCopy(unittest.TestCase):
+class TestDeepCopy(Dy2StTestBase):
     def test_net(self):
         net = Net()
         net = paddle.jit.to_static(net)

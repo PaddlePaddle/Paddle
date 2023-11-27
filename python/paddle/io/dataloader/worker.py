@@ -166,9 +166,7 @@ class WorkerInfo:
     def __setattr__(self, key, val):
         if self.__initialized:
             raise RuntimeError(
-                "Cannot assign attributes to {} objects".format(
-                    self.__class__.__name__
-                )
+                f"Cannot assign attributes to {self.__class__.__name__} objects"
             )
         return super().__setattr__(key, val)
 
@@ -370,7 +368,7 @@ def _worker_loop(
                     #       may copy CPU tensor to GPU even if users want to use
                     #       CPU tensor operation, so we add CPUPlace guard here
                     #       to make sure tensor will be operated only on CPU
-                    with paddle.fluid.dygraph.guard(place=paddle.CPUPlace()):
+                    with paddle.base.dygraph.guard(place=paddle.CPUPlace()):
                         batch = fetcher.fetch(indices)
             except Exception as e:
                 if (

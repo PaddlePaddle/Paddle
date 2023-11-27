@@ -15,7 +15,6 @@
 import platform
 import unittest
 
-from dygraph_to_static_util import enable_fallback_guard
 from test_train_step import (
     TestTrainStepTinyModel,
     loss_fn_tiny_model,
@@ -41,5 +40,4 @@ class TestTrainStepResNet18Sgd(TestTrainStepTinyModel):
 
 
 if __name__ == "__main__":
-    with enable_fallback_guard("False"):
-        unittest.main()
+    unittest.main()

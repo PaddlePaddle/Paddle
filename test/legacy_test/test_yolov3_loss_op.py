@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from scipy.special import expit, logit
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def l1loss(x, y):
@@ -272,11 +273,13 @@ class TestYolov3LossOp(OpTest):
 
     def test_check_output(self):
         place = core.CPUPlace()
-        self.check_output_with_place(place, atol=2e-3)
+        self.check_output_with_place(place, atol=2e-3, check_pir=True)
 
     def test_check_grad_ignore_gtbox(self):
         place = core.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Loss', max_relative_error=0.2)
+        self.check_grad_with_place(
+            place, ['X'], 'Loss', max_relative_error=0.2, check_pir=True
+        )
 
     def initTestCase(self):
         self.anchors = [
@@ -438,6 +441,7 @@ class TestYolov3LossDygraph(unittest.TestCase):
 
 
 class TestYolov3LossStatic(unittest.TestCase):
+    @test_with_pir_api
     def test_static(self):
         x = paddle.static.data('x', [2, 14, 8, 8], 'float32')
         gt_box = paddle.static.data('gt_box', [2, 10, 4], 'float32')

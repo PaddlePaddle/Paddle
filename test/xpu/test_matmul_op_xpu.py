@@ -23,7 +23,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -132,11 +132,11 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
 
     class API_TestMm(unittest.TestCase):
         def test_out(self):
-            with fluid.program_guard(fluid.Program()):
+            with base.program_guard(base.Program()):
                 x = paddle.static.data(name="x", shape=[2], dtype=self.in_type)
                 y = paddle.static.data(name='y', shape=[2], dtype=self.in_type)
                 result = paddle.mm(x, y)
-                exe = fluid.Executor(fluid.XPUPlace(0))
+                exe = base.Executor(base.XPUPlace(0))
                 data1 = np.random.rand(2).astype(self.in_type)
                 data2 = np.random.rand(2).astype(self.in_type)
                 np_res = exe.run(
@@ -147,12 +147,12 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
                 np.testing.assert_allclose(np_res, expected_result, atol=1e-3)
 
         def test_dygraph_without_out(self):
-            device = fluid.XPUPlace(0)
-            with fluid.dygraph.guard(device):
+            device = base.XPUPlace(0)
+            with base.dygraph.guard(device):
                 input_array1 = np.random.rand(3, 4).astype(self.in_type)
                 input_array2 = np.random.rand(4, 3).astype(self.in_type)
-                data1 = fluid.dygraph.to_variable(input_array1)
-                data2 = fluid.dygraph.to_variable(input_array2)
+                data1 = base.dygraph.to_variable(input_array1)
+                data2 = base.dygraph.to_variable(input_array2)
                 out = paddle.mm(data1, data2)
                 expected_result = np.matmul(input_array1, input_array2)
                 np.testing.assert_allclose(
@@ -161,14 +161,14 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
 
     class Test_API_Matmul(unittest.TestCase):
         def test_dygraph_without_out(self):
-            device = fluid.XPUPlace(0)
-            with fluid.dygraph.guard(device):
+            device = base.XPUPlace(0)
+            with base.dygraph.guard(device):
                 input_array1 = np.random.rand(3, 4).astype(self.in_type)
                 input_array2 = np.random.rand(4, 3).astype(self.in_type)
-                data1 = fluid.dygraph.to_variable(input_array1).astype(
+                data1 = base.dygraph.to_variable(input_array1).astype(
                     self.in_type
                 )
-                data2 = fluid.dygraph.to_variable(input_array2).astype(
+                data2 = base.dygraph.to_variable(input_array2).astype(
                     self.in_type
                 )
                 out = paddle.matmul(data1, data2)
@@ -180,7 +180,7 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
     class API_TestMmError(unittest.TestCase):
         def test_errors(self):
             def test_error1():
-                with fluid.program_guard(fluid.Program(), fluid.Program()):
+                with base.program_guard(base.Program(), base.Program()):
                     data1 = paddle.static.data(
                         name="data1", shape=[10, 2], dtype="float32"
                     )
@@ -192,7 +192,7 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
             self.assertRaises(ValueError, test_error1)
 
             def test_error2():
-                with fluid.program_guard(fluid.Program(), fluid.Program()):
+                with base.program_guard(base.Program(), base.Program()):
                     data1 = paddle.static.data(
                         name="data1", shape=[-1, 10, 2], dtype="float32"
                     )
@@ -204,7 +204,7 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
             test_error2()
 
             def test_error3():
-                with fluid.program_guard(fluid.Program(), fluid.Program()):
+                with base.program_guard(base.Program(), base.Program()):
                     data1 = paddle.static.data(
                         name="data1", shape=[10, 10, 2], dtype="float32"
                     )

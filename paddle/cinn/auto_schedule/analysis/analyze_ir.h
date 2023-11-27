@@ -48,5 +48,15 @@ ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target,
                                       const ir::LoweredFunc& old_func,
                                       ir::Expr& body);  // NOLINT
 
+/**
+ * Get loop var names of reduce axis
+ */
+std::unordered_set<std::string> GetReduceLoopVarNames(const ir::Expr block);
+
+/**
+ * Get name of a ScheduleBlock
+ */
+std::string GetBlockName(const ir::Expr block);
+
 }  // namespace auto_schedule
 }  // namespace cinn

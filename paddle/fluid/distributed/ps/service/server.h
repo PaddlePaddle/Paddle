@@ -57,8 +57,8 @@ namespace distributed {
 
 class Table;
 
-using paddle::distributed::PsRequestMessage;
-using paddle::distributed::PsResponseMessage;
+using ::paddle::distributed::PsRequestMessage;
+using ::paddle::distributed::PsResponseMessage;
 
 class PSServer {
  public:
@@ -134,7 +134,7 @@ class PSServer {
     return -1;
   }
 
-  paddle::framework::Channel<std::pair<uint64_t, std::string>> _shuffled_ins;
+  ::paddle::framework::Channel<std::pair<uint64_t, std::string>> _shuffled_ins;
 
  protected:
   virtual int32_t Initialize() = 0;

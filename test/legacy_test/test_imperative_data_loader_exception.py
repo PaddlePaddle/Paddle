@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def get_random_images_and_labels(image_shape, label_shape):
@@ -36,11 +36,11 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
         self.capacity = 5
 
     def test_not_capacity(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             with self.assertRaisesRegex(
                 ValueError, "Please give value to capacity."
             ):
-                fluid.io.DataLoader.from_generator()
+                base.io.DataLoader.from_generator()
 
     def test_single_process_with_thread_expection(self):
         def error_sample_genarator(batch_num):
@@ -50,12 +50,12 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
 
             return __reader__
 
-        with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(
+        with base.dygraph.guard():
+            loader = base.io.DataLoader.from_generator(
                 capacity=self.capacity, iterable=False, use_multiprocess=False
             )
             loader.set_batch_generator(
-                error_sample_genarator(self.batch_num), places=fluid.CPUPlace()
+                error_sample_genarator(self.batch_num), places=base.CPUPlace()
             )
             exception = None
             try:
@@ -74,12 +74,12 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
 
             return __reader__
 
-        with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(
+        with base.dygraph.guard():
+            loader = base.io.DataLoader.from_generator(
                 capacity=self.capacity, use_multiprocess=True
             )
             loader.set_batch_generator(
-                error_sample_genarator(self.batch_num), places=fluid.CPUPlace()
+                error_sample_genarator(self.batch_num), places=base.CPUPlace()
             )
             exception = None
             try:
@@ -101,13 +101,13 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
 
             return __reader__
 
-        with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(
+        with base.dygraph.guard():
+            loader = base.io.DataLoader.from_generator(
                 capacity=self.capacity, use_multiprocess=True
             )
             loader.set_batch_generator(
                 slow_batch_generator_creator(self.batch_size, self.batch_num),
-                places=fluid.CPUPlace(),
+                places=base.CPUPlace(),
             )
             exception = None
             try:

@@ -26,7 +26,7 @@
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass/lightware_fuse_pass_ctx.h"
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass_utils.h"
 
-DECLARE_bool(enhance_vertical_fusion_with_recompute);
+PD_DECLARE_bool(enhance_vertical_fusion_with_recompute);
 
 namespace cinn {
 namespace hlir {

@@ -16,11 +16,11 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 from scipy import special
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -43,10 +43,10 @@ class TestLgammaOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-7)
+        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-7, check_pir=True)
 
 
 class TestLgammaOpFp32(TestLgammaOp):
@@ -54,7 +54,7 @@ class TestLgammaOpFp32(TestLgammaOp):
         self.dtype = np.float32
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=0.005)
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.005, check_pir=True)
 
 
 class TestLgammaFP16Op(TestLgammaOp):
@@ -62,7 +62,7 @@ class TestLgammaFP16Op(TestLgammaOp):
         self.dtype = np.float16
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 @unittest.skipIf(
@@ -86,10 +86,12 @@ class TestLgammaBF16Op(OpTest):
 
     def test_check_output(self):
         # After testing, bfloat16 needs to set the parameter place
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
+        self.check_grad_with_place(
+            core.CUDAPlace(0), ['X'], 'Out', check_pir=True
+        )
 
 
 class TestLgammaOpApi(unittest.TestCase):

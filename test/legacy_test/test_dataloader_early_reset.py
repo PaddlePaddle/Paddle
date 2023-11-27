@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def infinite_reader():
@@ -40,30 +40,30 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
         optimizer.minimize(loss)
 
     def get_place(self):
-        if fluid.is_compiled_with_cuda():
-            return fluid.CUDAPlace(0)
+        if base.is_compiled_with_cuda():
+            return base.CUDAPlace(0)
         else:
-            return fluid.CPUPlace()
+            return base.CPUPlace()
 
     def create_data_loader(self):
         self.x = paddle.static.data(name='x', shape=[None, 32], dtype='float32')
-        return fluid.io.DataLoader.from_generator(
+        return base.io.DataLoader.from_generator(
             feed_list=[self.x], capacity=10, iterable=self.iterable
         )
 
     def test_main(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            with fluid.scope_guard(fluid.Scope()):
+        with base.program_guard(base.Program(), base.Program()):
+            with base.scope_guard(base.Scope()):
                 self.run_network()
 
     def run_network(self):
         loader = self.create_data_loader()
         self.build_network()
 
-        exe = fluid.Executor(self.get_place())
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(self.get_place())
+        exe.run(base.default_startup_program())
 
-        prog = fluid.default_main_program()
+        prog = base.default_main_program()
 
         loader.set_batch_generator(infinite_reader, places=self.get_place())
         for epoch_id in range(10):

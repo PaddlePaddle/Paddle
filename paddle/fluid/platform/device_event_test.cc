@@ -37,7 +37,7 @@ TEST(DeviceEvent, CUDA) {
 
   ASSERT_NE(context, nullptr);
   // case 1. test for event_creator
-  DeviceEvent event(place);
+  DeviceEvent event(place, paddle::platform::GenerateDeviceEventFlag());
   ASSERT_NE(event.GetEvent().get(), nullptr);
   bool status = event.Query();
   ASSERT_EQ(status, true);
@@ -86,7 +86,7 @@ TEST(DeviceEvent, CUDA) {
 
   ASSERT_NE(context, nullptr);
   // case 1. test for event_creator
-  DeviceEvent event(place);
+  DeviceEvent event(place, paddle::platform::GenerateDeviceEventFlag());
   ASSERT_NE(event.GetEvent().get(), nullptr);
   bool status = event.Query();
   ASSERT_EQ(status, true);
@@ -127,7 +127,7 @@ TEST(DeviceEvent, CUDA) {
 TEST(DeviceEvent, CPU) {
   using paddle::platform::CPUPlace;
   auto place = CPUPlace();
-  DeviceEvent event(place);
+  DeviceEvent event(place, paddle::platform::GenerateDeviceEventFlag());
   auto& pool = DeviceContextPool::Instance();
   auto* context = pool.Get(place);
 

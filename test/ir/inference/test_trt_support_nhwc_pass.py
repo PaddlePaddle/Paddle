@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import shutil
+import tempfile
 import unittest
 
 import numpy as np
@@ -53,6 +55,15 @@ class SimpleNet(nn.Layer):
             data_format='NHWC',
         )
         self.relu3 = nn.ReLU()
+        self.conv4 = nn.Conv2D(
+            in_channels=2,
+            out_channels=1,
+            kernel_size=3,
+            stride=2,
+            padding=0,
+            data_format='NHWC',
+        )
+        self.relu4 = nn.ReLU()
         self.flatten = nn.Flatten()
         self.fc = nn.Linear(729, 10)
         self.softmax = nn.Softmax()
@@ -62,8 +73,12 @@ class SimpleNet(nn.Layer):
         x = self.relu1(x)
         x = self.conv2(x)
         x = self.relu2(x)
+        res = x
         x = self.conv3(x)
         x = self.relu3(x)
+        res = self.conv4(res)
+        res = self.relu4(res)
+        x = x + res
         x = self.flatten(x)
         x = self.fc(x)
         x = self.softmax(x)
@@ -73,7 +88,15 @@ class SimpleNet(nn.Layer):
 class TRTNHWCConvertTest(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.path = './inference_pass/nhwc_convert/infer_model'
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.path = os.path.join(
+            self.temp_dir.name, 'inference_pass', 'nhwc_converter', ''
+        )
+        self.model_prefix = self.path + 'infer_model'
+        self.set_args()
+
+    def set_args(self):
+        self.precision_mode = inference.PrecisionType.Float32
 
     def create_model(self):
         image = static.data(
@@ -82,11 +105,13 @@ class TRTNHWCConvertTest(unittest.TestCase):
         predict = SimpleNet()(image)
         exe = paddle.static.Executor(self.place)
         exe.run(paddle.static.default_startup_program())
-        paddle.static.save_inference_model(self.path, [image], [predict], exe)
+        paddle.static.save_inference_model(
+            self.model_prefix, [image], [predict], exe
+        )
 
     def create_predictor(self):
         config = paddle.inference.Config(
-            self.path + '.pdmodel', self.path + '.pdiparams'
+            self.model_prefix + '.pdmodel', self.model_prefix + '.pdiparams'
         )
         config.enable_memory_optim()
         config.enable_use_gpu(100, 0)
@@ -94,7 +119,7 @@ class TRTNHWCConvertTest(unittest.TestCase):
             workspace_size=1 << 30,
             max_batch_size=1,
             min_subgraph_size=3,
-            precision_mode=inference.PrecisionType.Float32,
+            precision_mode=self.precision_mode,
             use_static=False,
             use_calib_mode=False,
         )
@@ -123,7 +148,46 @@ class TRTNHWCConvertTest(unittest.TestCase):
         result = self.infer(predictor, img=[img])
 
     def tearDown(self):
-        shutil.rmtree('./inference_pass/nhwc_convert/')
+        shutil.rmtree(self.path)
+
+
+class TRTNHWCConvertAMPTest(TRTNHWCConvertTest):
+    def set_args(self):
+        self.precision_mode = inference.PrecisionType.Half
+
+    def create_model(self):
+        train_prog = paddle.static.Program()
+        with paddle.static.program_guard(train_prog):
+            with paddle.static.amp.fp16_guard():
+                image = paddle.static.data(
+                    name='image', shape=[None, 224, 224, 4], dtype='float32'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[None, 1], dtype='int64'
+                )
+                predict = SimpleNet()(image)
+            cost = paddle.nn.functional.loss.cross_entropy(
+                input=predict, label=label
+            )
+            avg_cost = paddle.mean(x=cost)
+            optimizer = paddle.optimizer.Momentum(
+                momentum=0.9,
+                learning_rate=0.01,
+                weight_decay=paddle.regularizer.L2Decay(4e-5),
+            )
+            optimizer = paddle.static.amp.decorate(
+                optimizer,
+                use_dynamic_loss_scaling=False,
+                use_pure_fp16=False,
+            )
+            optimizer.minimize(avg_cost)
+        val_prog = train_prog.clone(for_test=True)
+
+        exe = paddle.static.Executor(self.place)
+        exe.run(paddle.static.default_startup_program())
+        paddle.static.save_inference_model(
+            self.model_prefix, [image], [predict], exe, program=val_prog
+        )
 
 
 if __name__ == '__main__':

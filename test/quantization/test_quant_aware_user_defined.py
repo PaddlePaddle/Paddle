@@ -25,7 +25,7 @@ logging.basicConfig(level="INFO", format="%(message)s")
 
 
 def pact(x):
-    helper = paddle.fluid.layer_helper.LayerHelper("pact", **locals())
+    helper = paddle.base.layer_helper.LayerHelper("pact", **locals())
     dtype = 'float32'
     init_thres = 20
     u_param_attr = paddle.ParamAttr(

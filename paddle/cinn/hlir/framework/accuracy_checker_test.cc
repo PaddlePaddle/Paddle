@@ -25,7 +25,7 @@
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 
-DECLARE_string(cinn_self_check_accuracy);
+PD_DECLARE_string(cinn_self_check_accuracy);
 
 namespace cinn {
 namespace hlir {

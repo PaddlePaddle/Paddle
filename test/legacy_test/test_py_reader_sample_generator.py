@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 os.environ['CPU_NUM'] = '1'
 
@@ -58,7 +58,7 @@ class TestCaseBase(unittest.TestCase):
             name='image', dtype='float32', shape=[-1, 784]
         )
         label = paddle.static.data(name='label', dtype='int64', shape=[-1, 1])
-        py_reader = fluid.io.PyReader(
+        py_reader = base.io.PyReader(
             feed_list=[image, label],
             capacity=16,
             iterable=iterable,
@@ -70,11 +70,11 @@ class TestCaseBase(unittest.TestCase):
 
         if not use_sample_generator:
             py_reader.decorate_sample_list_generator(
-                batch_reader, places=fluid.cpu_places()
+                batch_reader, places=base.cpu_places()
             )
         else:
             py_reader.decorate_sample_generator(
-                reader, self.batch_size, drop_last, places=fluid.cpu_places()
+                reader, self.batch_size, drop_last, places=base.cpu_places()
             )
 
         if drop_last:
@@ -82,8 +82,8 @@ class TestCaseBase(unittest.TestCase):
         else:
             batch_num = math.ceil(float(self.sample_num) / self.batch_size)
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(base.CPUPlace())
+        exe.run(base.default_startup_program())
         for _ in range(self.epoch_num):
             if py_reader.iterable:
                 step = 0
@@ -102,7 +102,7 @@ class TestCaseBase(unittest.TestCase):
                         self.assertArrayEqual(img, all_datas[step][0])
                         self.assertArrayEqual(lbl, all_datas[step][1])
                         step += 1
-                except fluid.core.EOFException:
+                except base.core.EOFException:
                     py_reader.reset()
                     self.assertEqual(step, len(all_datas))
                     break
@@ -116,7 +116,7 @@ class TestCaseBase(unittest.TestCase):
         for use_sample_generator in [False, True]:
             for iterable in [False, True]:
                 for drop_last in [False, True]:
-                    with fluid.program_guard(fluid.Program(), fluid.Program()):
+                    with base.program_guard(base.Program(), base.Program()):
                         self.run_main(
                             reader, use_sample_generator, iterable, drop_last
                         )

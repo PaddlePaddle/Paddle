@@ -15,8 +15,8 @@
 
 #include <set>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/diagonal_kernel.h"
@@ -27,7 +27,7 @@
 #include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/utils/string/string_helper.h"
 
-DECLARE_bool(einsum_opt);
+PD_DECLARE_bool(einsum_opt);
 
 namespace phi {
 

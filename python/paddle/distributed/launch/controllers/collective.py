@@ -75,9 +75,7 @@ class CollectiveController(Controller):
                     "PADDLE_CURRENT_ENDPOINT": endpoint,
                     "FLAGS_selected_gpus": "0",
                     "PADDLE_AUTO_PARALLEL_STAGE": "tuner",
-                    "PADDLE_GLOBAL_SIZE": "{}".format(
-                        pod_replicas * int(self.ctx.args.nnodes)
-                    ),
+                    "PADDLE_GLOBAL_SIZE": f"{pod_replicas * int(self.ctx.args.nnodes)}",
                     "PADDLE_LOCAL_SIZE": f"{pod_replicas}",
                 }
                 log_file = "tuner.log"

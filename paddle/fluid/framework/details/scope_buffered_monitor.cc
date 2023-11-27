@@ -169,14 +169,15 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
   if (VLOG_IS_ON(8)) {
     for (size_t idx = 0; idx < gpu_memory_size_per_gpu.size(); ++idx) {
       VLOG(8) << "history local exec scopes contains "
-              << string::HumanReadableSize(gpu_memory_size_per_gpu.at(idx))
+              << string::HumanReadableSize(
+                     gpu_memory_size_per_gpu.at(idx))  // NOLINT
               << " in " << places_.at(idx);
     }
   }
 
   if (FLAGS_local_exe_sub_scope_limit > 0) {
     for (size_t idx = 0; idx < gpu_memory_size_per_gpu.size(); ++idx) {
-      if (gpu_memory_size_per_gpu.at(idx) / kMB >=
+      if (gpu_memory_size_per_gpu.at(idx) / kMB >=  // NOLINT
           FLAGS_local_exe_sub_scope_limit) {
         platform::DeviceContextPool::Instance().Get(places_.at(idx))->Wait();
         local_exec_scopes_.at(idx)->DropKids();

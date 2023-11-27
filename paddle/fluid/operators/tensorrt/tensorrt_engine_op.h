@@ -841,6 +841,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       params.disable_trt_plugin_fp16 = Attr<bool>("disable_trt_plugin_fp16");
       params.enable_low_precision_io = Attr<bool>("enable_low_precision_io");
       params.use_inspector = Attr<bool>("use_inspector");
+      params.engine_info_path = Attr<std::string>("engine_info_path");
 
       if (!shape_range_info_path_.empty()) {
         inference::DeserializeShapeRangeInfo(shape_range_info_path_,

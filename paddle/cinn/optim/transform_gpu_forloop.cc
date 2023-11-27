@@ -24,9 +24,9 @@
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/poly/isl_utils.h"
@@ -185,7 +185,7 @@ class RestructureVarNodes : public ir::IRMutator<> {
   void Visit(const ir::Load *load, Expr *op) override {
     std::vector<ir::Expr> indices_copied;
     for (const ir::Expr &indice : load->indices) {
-      indices_copied.push_back(IRCopy(indice));
+      indices_copied.push_back(ir::ir_utils::IRCopy(indice));
     }
     op->As<ir::Load>()->indices = indices_copied;
 
@@ -195,7 +195,7 @@ class RestructureVarNodes : public ir::IRMutator<> {
   void Visit(const ir::Store *store, Expr *op) override {
     std::vector<ir::Expr> indices_copied;
     for (const ir::Expr &indice : store->indices) {
-      indices_copied.push_back(IRCopy(indice));
+      indices_copied.push_back(ir::ir_utils::IRCopy(indice));
     }
     op->As<ir::Store>()->indices = indices_copied;
 
@@ -396,7 +396,7 @@ class ReplaceLoopVarToGpu : public ir::IRMutator<> {
     auto bind_info = for_ir->bind_info();
 
     std::string var_name = "";
-    if (bind_info.offset == 0)
+    if (bind_info.offset <= 0)
       var_name = "x";
     else if (bind_info.offset == 1)
       var_name = "y";
@@ -585,8 +585,8 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
   }
 
   int BufferSize(ir::Expr indice) {
-    auto copy = IRCopy(indice);
-    auto vars = ir::CollectIRNodesInOrder(
+    auto copy = ir::ir_utils::IRCopy(indice);
+    auto vars = ir::ir_utils::CollectIRNodesInOrder(
         copy, [](const ir::Expr *expr) { return expr->As<ir::_Var_>(); });
 
     int max_range = 1;
@@ -598,7 +598,7 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
       auto extent = loop_2_extent_.find(var->name)->second;
 
       for (int idx = 0; idx < extent; ++idx) {
-        auto tmp = IRCopy(index);
+        auto tmp = ir::ir_utils::IRCopy(index);
         ReplaceVarWithExpr(&tmp, var, Expr(idx));
 
         if (deep == vars.size() - 1) {

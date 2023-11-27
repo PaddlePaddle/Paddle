@@ -371,7 +371,7 @@ SerializationLogger::SerializationLogger(const char* filename_cstr) {
   OpenFile();
 }
 
-SerializationLogger::~SerializationLogger() {
+SerializationLogger::~SerializationLogger() {  // NOLINT
   if (!output_file_stream_) {
     delete node_trees_proto_;
     return;

@@ -21,12 +21,12 @@ import unittest
 import numpy
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.executor import Executor
+from paddle import base
+from paddle.base import core
+from paddle.base.executor import Executor
 
 paddle.enable_static()
-fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
+base.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
 class TestEagerDeletionWhileOpBase(unittest.TestCase):
@@ -38,8 +38,8 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
             places.append(core.CUDAPlace(0))
 
         for p in places:
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                with fluid.scope_guard(fluid.Scope()):
+            with base.program_guard(base.Program(), base.Program()):
+                with base.scope_guard(base.Scope()):
                     self.run_main(p)
 
     def run_main(self, place):
@@ -121,14 +121,14 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         optim.minimize(loss)
 
         gc_vars = core._get_eager_deletion_vars(
-            fluid.default_main_program().desc, [loss.name]
+            base.default_main_program().desc, [loss.name]
         )
         self.assertEqual(len(gc_vars), 3)
 
         exe = Executor(self.place)
-        exe.run(fluid.default_startup_program())
+        exe.run(base.default_startup_program())
 
-        prog = fluid.default_main_program()
+        prog = base.default_main_program()
 
         for _ in range(5):
             d = []

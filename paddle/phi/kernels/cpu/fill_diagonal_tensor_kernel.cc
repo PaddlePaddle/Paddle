@@ -59,7 +59,7 @@ void CalMatDims(phi::DDim out_dims,
     dimprod *= out_dims[i];
   }
 
-  auto diagdim = dim1;
+  int64_t diagdim = dim1;
   if (*offset >= 0) {
     diagdim = std::min(out_dims[dim1], out_dims[dim2] - *offset);
     *offset *= strides[0];
@@ -140,6 +140,7 @@ PD_REGISTER_KERNEL(fill_diagonal_tensor,
                    double,
                    int64_t,
                    int,
+                   int16_t,
                    int8_t,
                    uint8_t,
                    phi::dtype::float16,

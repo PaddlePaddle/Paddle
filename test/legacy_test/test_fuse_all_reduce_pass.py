@@ -21,8 +21,8 @@ from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 from simple_nets import bow_net, fc_with_batchnorm, init_data, simple_fc_net
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -142,8 +142,8 @@ class TestFuseAllReduceOpsWithSparseGrad(TestFuseAllReduceOpsBase):
         cls.train_data = next(reader)
 
     def get_data_from_feeder(self):
-        place = fluid.CPUPlace()
-        feeder = fluid.DataFeeder(feed_list=["words", "label"], place=place)
+        place = base.CPUPlace()
+        feeder = base.DataFeeder(feed_list=["words", "label"], place=place)
         return feeder.feed(self.train_data)
 
     def _decorate_compare_fused_all_reduce(self, model, use_device):

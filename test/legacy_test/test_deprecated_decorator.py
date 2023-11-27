@@ -90,7 +90,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
     def test_ops_elementwise_mul(self):
         """
         Test for new C++ elementwise_op, expected result should be True,
-        because not matter what fluid.layers.elementwise_mul is deprecated.
+        because not matter what base.layers.elementwise_mul is deprecated.
         """
 
         a = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
@@ -118,7 +118,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             grad = x.gradient()
             assert (
-                'API "paddle.fluid.dygraph.tensor_patch_methods.gradient" is '
+                'API "paddle.base.dygraph.tensor_patch_methods.gradient" is '
                 'deprecated since 2.1.0'
             ) in str(w[-1].message)
 

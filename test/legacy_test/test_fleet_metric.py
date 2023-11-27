@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base.util_factory import UtilBase
 from paddle.distributed.fleet.metrics import metric
@@ -54,7 +54,7 @@ class TestFleetMetric(unittest.TestCase):
 
             def __init__(self):
                 """Init."""
-                self.gloo = fluid.core.Gloo()
+                self.gloo = base.core.Gloo()
                 self.gloo.set_rank(0)
                 self.gloo.set_size(1)
                 self.gloo.set_prefix("123")
@@ -76,9 +76,9 @@ class TestFleetMetric(unittest.TestCase):
 
     def test_metric_1(self):
         """Test cases for metrics."""
-        train = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(train, startup):
+        train = base.Program()
+        startup = base.Program()
+        with base.program_guard(train, startup):
             t = paddle.static.create_global_var(
                 shape=[1, 1],
                 value=1,
@@ -93,10 +93,10 @@ class TestFleetMetric(unittest.TestCase):
                 persistable=True,
                 force_cpu=True,
             )
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        scope = base.Scope()
+        with base.scope_guard(scope):
             exe.run(startup)
             metric.sum(t, scope, self.util)
             metric.max(t, scope, self.util)

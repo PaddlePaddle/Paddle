@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 from paddle import enable_static
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestConcatAxis0OneDNNOp(OpTest):
@@ -96,6 +96,44 @@ class TestConcatAxis3OneDNNOp(TestConcatAxis0OneDNNOp):
         self.x0_shape = [5, 3, 5, 5]
         self.x1_shape = [5, 3, 5, 6]
         self.x2_shape = [5, 3, 5, 7]
+
+
+class TestConcatLargeInputNum(OpTest):
+    def setUp(self):
+        self.op_type = "concat"
+        self.mkldnn_data_type = "float32"
+        self.init_axis()
+        self.init_shape()
+        self.init_test_data()
+        self.configure_datatype()
+        self.inputs = {'X': [(f'x{i}', self.x) for i in range(136)]}
+        self.attrs = {
+            'axis': self.axis,
+            'use_mkldnn': True,
+            'mkldnn_data_type': self.mkldnn_data_type,
+        }
+
+        self.output = np.concatenate(
+            [self.x for i in range(136)], axis=self.axis
+        ).astype(self.dtype)
+
+        self.outputs = {'Out': self.output}
+
+    def configure_datatype(self):
+        self.mkldnn_data_type = "float32"
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
+
+    def init_test_data(self):
+        self.x = np.ones(self.shape).astype(np.float32)
+
+    def init_axis(self):
+        self.axis = 0
+
+    def init_shape(self):
+        self.shape = [150, 9]
 
 
 if __name__ == '__main__':

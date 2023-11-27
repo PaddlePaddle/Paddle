@@ -122,8 +122,6 @@ def test_sharding_stage2_offload():
     except Exception as e:
         assert isinstance(e, AssertionError)
 
-    return
-
 
 if __name__ == '__main__':
     test_sharding_stage2_offload()

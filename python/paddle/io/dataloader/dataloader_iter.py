@@ -25,7 +25,7 @@ import numpy as np
 
 import paddle
 from paddle import profiler
-from paddle.fluid.framework import _current_expected_place, _set_expected_place
+from paddle.base.framework import _current_expected_place, _set_expected_place
 from paddle.profiler.timer import benchmark
 from paddle.profiler.utils import in_profiler_mode
 
@@ -230,7 +230,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 indices = next(self._sampler_iter)
 
                 # read data from dataset in mini-batch
-                # with paddle.fluid.dygraph.guard(place=paddle.CPUPlace()):
+                # with paddle.base.dygraph.guard(place=paddle.CPUPlace()):
                 # read data from dataset in mini-batch
                 batch = self._dataset_fetcher.fetch(
                     indices, self._thread_done_event
@@ -362,10 +362,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._persistent_workers = loader._persistent_workers
         self._resume_worker_cnt = 0
 
-        assert (
-            self._num_workers > 0
-        ), "Multi-process DataLoader " "invalid num_workers({})".format(
-            self._num_workers
+        assert self._num_workers > 0, (
+            "Multi-process DataLoader "
+            f"invalid num_workers({self._num_workers})"
         )
 
         # subprocess wrokers' result queue
@@ -397,7 +396,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
         # Note(zhangbo): shm_buffer_size is used for MemoryMapAllocationPool.
         # MemoryMapAllocationPool is used to cache and reuse shm, thus reducing munmap in dataloader.
-        # For more details, please see: paddle/fluid/memory/allocation/mmap_allocator.h
+        # For more details, please see: paddle/base/memory/allocation/mmap_allocator.h
         if os.environ.get('FLAGS_use_shm_cache', False) in [
             1,
             '1',
@@ -706,19 +705,19 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._exit_thread_unexpectedly()
                     pids = ', '.join(str(w.pid) for w in failed_workers)
                     raise RuntimeError(
-                        "DataLoader {} workers exit unexpectedly, "
-                        "pids: {}".format(len(failed_workers), pids)
+                        f"DataLoader {len(failed_workers)} workers exit unexpectedly, "
+                        f"pids: {pids}"
                     )
 
                 # get(timeout) will call _poll(timeout) and may raise IOError
-                if isinstance(e, queue.Empty) or isinstance(e, IOError):
+                if isinstance(e, (IOError, queue.Empty)):
                     # continue on timeout to keep getting data from queue
                     continue
 
                 self._exit_thread_unexpectedly()
                 logging.error(
-                    "DataLoader reader thread failed({}) to read data from "
-                    "workers' result queue.".format(e)
+                    f"DataLoader reader thread failed({e}) to read data from "
+                    "workers' result queue."
                 )
                 raise e
             else:

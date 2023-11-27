@@ -22,8 +22,8 @@ from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.optimizer as opt
-from paddle import fluid, nn
-from paddle.fluid import framework
+from paddle import base, nn
+from paddle.base import framework
 from paddle.optimizer import Adam
 from paddle.optimizer.lr import LRScheduler
 
@@ -168,7 +168,7 @@ class TestSaveLoadAny(unittest.TestCase):
 
     def set_zero(self, prog, place, scope=None):
         if scope is None:
-            scope = fluid.global_scope()
+            scope = base.global_scope()
         for var in prog.list_vars():
             if isinstance(var, framework.Parameter) or var.persistable:
                 ten = scope.find_var(var.name).get_tensor()
@@ -225,31 +225,31 @@ class TestSaveLoadAny(unittest.TestCase):
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(
-                        fluid.global_scope().find_var(var.name).get_tensor()
+                        base.global_scope().find_var(var.name).get_tensor()
                     )
                     base_map[var.name] = t
             path = os.path.join(
                 self.temp_dir.name, "test_replace_static_save_load", "model"
             )
-            # paddle.save, legacy paddle.fluid.load
+            # paddle.save, legacy paddle.base.load
             self.replace_static_save(prog, path)
             self.set_zero(prog, place)
             paddle.static.load(prog, path)
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
                     new_t = np.array(
-                        fluid.global_scope().find_var(var.name).get_tensor()
+                        base.global_scope().find_var(var.name).get_tensor()
                     )
                     base_t = base_map[var.name]
                     np.testing.assert_array_equal(new_t, np.array(base_t))
-            # legacy paddle.fluid.save, paddle.load
+            # legacy paddle.base.save, paddle.load
             paddle.static.save(prog, path)
             self.set_zero(prog, place)
             self.replace_static_load(prog, path)
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
                     new_t = np.array(
-                        fluid.global_scope().find_var(var.name).get_tensor()
+                        base.global_scope().find_var(var.name).get_tensor()
                     )
                     base_t = base_map[var.name]
                     np.testing.assert_array_equal(new_t, base_t)
@@ -257,13 +257,13 @@ class TestSaveLoadAny(unittest.TestCase):
             path_vars = 'test_replace_save_load_return_tensor_static/model'
             for var in prog.list_vars():
                 if var.persistable:
-                    tensor = var.get_value(fluid.global_scope())
+                    tensor = var.get_value(base.global_scope())
                     paddle.save(
                         tensor,
                         os.path.join(self.temp_dir.name, path_vars, var.name),
                     )
             with self.assertRaises(TypeError):
-                var.get_value('fluid.global_scope()')
+                var.get_value('base.global_scope()')
             with self.assertRaises(ValueError):
                 x.get_value()
             with self.assertRaises(TypeError):
@@ -285,7 +285,7 @@ class TestSaveLoadAny(unittest.TestCase):
                     )
                     var.set_value(tensor)
                     new_t = np.array(
-                        fluid.global_scope().find_var(var.name).get_tensor()
+                        base.global_scope().find_var(var.name).get_tensor()
                     )
                     base_t = base_map[var.name]
                     np.testing.assert_array_equal(new_t, base_t)
@@ -360,7 +360,7 @@ class TestSaveLoadAny(unittest.TestCase):
         self.assertTrue(
             isinstance(
                 t_dygraph,
-                paddle.fluid.core.eager.Tensor,
+                paddle.base.core.eager.Tensor,
             )
         )
         np.testing.assert_array_equal(tensor.numpy(), np_dygraph)
@@ -368,7 +368,7 @@ class TestSaveLoadAny(unittest.TestCase):
         paddle.enable_static()
         lod_static = paddle.load(path)
         np_static = paddle.load(path, return_numpy=True)
-        self.assertTrue(isinstance(lod_static, paddle.fluid.core.LoDTensor))
+        self.assertTrue(isinstance(lod_static, paddle.base.core.LoDTensor))
         np.testing.assert_array_equal(tensor.numpy(), np_static)
         np.testing.assert_array_equal(tensor.numpy(), np.array(lod_static))
 
@@ -383,9 +383,9 @@ class TestSaveLoadAny(unittest.TestCase):
             z = paddle.static.nn.fc(x, 128)
             loss = paddle.mean(z)
             place = (
-                fluid.CPUPlace()
-                if not paddle.fluid.core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
             )
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
@@ -394,7 +394,7 @@ class TestSaveLoadAny(unittest.TestCase):
                 if list(var.shape) == [IMAGE_SIZE, 128]:
                     tensor = var.get_value()
                     break
-            scope = fluid.global_scope()
+            scope = base.global_scope()
         origin_tensor = np.array(tensor)
         path = os.path.join(
             self.temp_dir.name, 'test_single_pickle_var_static/var'
@@ -438,9 +438,9 @@ class TestSaveLoadAny(unittest.TestCase):
             y_static = layer(data)
             program = paddle.static.default_main_program()
             place = (
-                fluid.CPUPlace()
-                if not paddle.fluid.core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
             )
             exe = paddle.static.Executor(paddle.CPUPlace())
             exe.run(paddle.static.default_startup_program())
@@ -570,9 +570,7 @@ class TestSaveLoadAny(unittest.TestCase):
             )
         self.assertTrue(load_tensor2['epoch'] == 123)
 
-        self.assertTrue(
-            isinstance(load_tensor3[0], paddle.fluid.core.LoDTensor)
-        )
+        self.assertTrue(isinstance(load_tensor3[0], paddle.base.core.LoDTensor))
         np.testing.assert_array_equal(
             np.array(load_tensor3[0]), obj3[0].numpy()
         )
@@ -582,7 +580,7 @@ class TestSaveLoadAny(unittest.TestCase):
             self.assertTrue(
                 isinstance(
                     load_tensor3[2]["state_dict"][k],
-                    paddle.fluid.core.LoDTensor,
+                    paddle.base.core.LoDTensor,
                 )
             )
             np.testing.assert_array_equal(
@@ -592,14 +590,14 @@ class TestSaveLoadAny(unittest.TestCase):
         for k, v in state_dict.items():
             self.assertTrue(
                 isinstance(
-                    load_tensor3[2]["opt"][k], paddle.fluid.core.LoDTensor
+                    load_tensor3[2]["opt"][k], paddle.base.core.LoDTensor
                 )
             )
             np.testing.assert_array_equal(
                 np.array(load_tensor3[2]['opt'][k]), v.numpy()
             )
 
-        self.assertTrue(load_tensor4[0], paddle.fluid.core.LoDTensor)
+        self.assertTrue(load_tensor4[0], paddle.base.core.LoDTensor)
         np.testing.assert_array_equal(np.array(load_tensor4[0]), obj4[0])
 
         load_array1 = paddle.load(path1, return_numpy=True)
@@ -641,9 +639,9 @@ class TestSaveLoadAny(unittest.TestCase):
             z = paddle.static.nn.fc(z, 128, bias_attr=False)
             loss = paddle.mean(z)
             place = (
-                fluid.CPUPlace()
-                if not paddle.fluid.core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
             )
             prog = paddle.static.default_main_program()
             exe = paddle.static.Executor(place)
@@ -705,15 +703,15 @@ class TestSaveLoadAny(unittest.TestCase):
                 )
             self.assertTrue(load_tensor2['epoch'] == 123)
 
-            self.assertTrue(isinstance(load_tensor3[0], fluid.core.LoDTensor))
+            self.assertTrue(isinstance(load_tensor3[0], base.core.LoDTensor))
             np.testing.assert_array_equal(np.array(load_tensor3[0]), obj3[0])
-            self.assertTrue(isinstance(load_tensor3[1], fluid.core.LoDTensor))
+            self.assertTrue(isinstance(load_tensor3[1], base.core.LoDTensor))
             np.testing.assert_array_equal(np.array(load_tensor3[1]), obj3[1])
 
             for k, v in state_dict.items():
                 self.assertTrue(
                     isinstance(
-                        load_tensor3[2]["state_dict"][k], fluid.core.LoDTensor
+                        load_tensor3[2]["state_dict"][k], base.core.LoDTensor
                     )
                 )
                 np.testing.assert_array_equal(
@@ -722,13 +720,13 @@ class TestSaveLoadAny(unittest.TestCase):
 
             for k, v in state_dict.items():
                 self.assertTrue(
-                    isinstance(load_tensor3[2]["opt"][k], fluid.core.LoDTensor)
+                    isinstance(load_tensor3[2]["opt"][k], base.core.LoDTensor)
                 )
                 np.testing.assert_array_equal(
                     np.array(load_tensor3[2]['opt'][k]), np.array(v)
                 )
 
-            self.assertTrue(isinstance(load_tensor4[0], fluid.core.LoDTensor))
+            self.assertTrue(isinstance(load_tensor4[0], base.core.LoDTensor))
             np.testing.assert_array_equal(np.array(load_tensor4[0]), obj4[0])
 
             load_array1 = paddle.load(path1, return_numpy=True)
@@ -788,14 +786,14 @@ class TestSaveLoadAny(unittest.TestCase):
             self.assertTrue(
                 isinstance(
                     load_tensor3[0],
-                    fluid.core.eager.Tensor,
+                    base.core.eager.Tensor,
                 )
             )
             np.testing.assert_array_equal(load_tensor3[0].numpy(), obj3[0])
             self.assertTrue(
                 isinstance(
                     load_tensor3[1],
-                    fluid.core.eager.Tensor,
+                    base.core.eager.Tensor,
                 )
             )
             np.testing.assert_array_equal(load_tensor3[1].numpy(), obj3[1])
@@ -804,7 +802,7 @@ class TestSaveLoadAny(unittest.TestCase):
                 self.assertTrue(
                     isinstance(
                         load_tensor3[2]["state_dict"][k],
-                        fluid.core.eager.Tensor,
+                        base.core.eager.Tensor,
                     )
                 )
                 np.testing.assert_array_equal(
@@ -815,7 +813,7 @@ class TestSaveLoadAny(unittest.TestCase):
                 self.assertTrue(
                     isinstance(
                         load_tensor3[2]["opt"][k],
-                        fluid.core.eager.Tensor,
+                        base.core.eager.Tensor,
                     )
                 )
                 np.testing.assert_array_equal(
@@ -825,7 +823,7 @@ class TestSaveLoadAny(unittest.TestCase):
             self.assertTrue(
                 isinstance(
                     load_tensor4[0],
-                    fluid.core.eager.Tensor,
+                    base.core.eager.Tensor,
                 )
             )
             np.testing.assert_array_equal(load_tensor4[0].numpy(), obj4[0])
@@ -874,8 +872,8 @@ class TestSaveLoadAny(unittest.TestCase):
         load_tensor = paddle.load(path, return_numpy=False)
         origin_array = varbase.numpy()
         load_tensor_array = load_tensor.numpy()
-        if paddle.fluid.core.is_compiled_with_cuda():
-            fluid.core._cuda_synchronize(paddle.CUDAPlace(0))
+        if paddle.base.core.is_compiled_with_cuda():
+            base.core._cuda_synchronize(paddle.CUDAPlace(0))
         np.testing.assert_array_equal(origin_array, load_array)
         np.testing.assert_array_equal(origin_array, load_tensor_array)
 
@@ -916,9 +914,9 @@ class TestSaveLoadToMemory(unittest.TestCase):
             z = paddle.static.nn.fc(z, 128, bias_attr=False)
             loss = paddle.mean(z)
             place = (
-                fluid.CPUPlace()
-                if not paddle.fluid.core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
             )
             prog = paddle.static.default_main_program()
             exe = paddle.static.Executor(place)

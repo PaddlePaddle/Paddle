@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid
+import paddle.base
 
 
 class TestFrexpAPI(unittest.TestCase):

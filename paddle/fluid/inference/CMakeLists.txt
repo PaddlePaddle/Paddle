@@ -37,6 +37,10 @@ get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
 get_property(not_infer_modules GLOBAL PROPERTY NOT_INFER_MODULES)
 set(utils_modules pretty_log string_helper benchmark utf8proc)
 
+if(NOT WITH_GFLAGS)
+  set(utils_modules ${utils_modules} paddle_flags)
+endif()
+
 add_subdirectory(api)
 
 # Create static inference library if needed
@@ -65,13 +69,8 @@ if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
-  if(WIN32)
-    create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                      ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
-  else()
-    create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                      ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
-  endif()
+  create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
+                    ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
 
 if(NOT APPLE)
@@ -99,8 +98,8 @@ set(SHARED_INFERENCE_SRCS
 
 # NOTE(Aurelius84): For inference library, some DEPS is usless
 # such as non-infer operator related targets et.al.
-list(REMOVE_ITEM fluid_modules cinn_dialect)
-# NOTE(Aurelisu84): Remove ir dialect related target DEPS for inference
+list(REMOVE_ITEM fluid_modules cinn_op_dialect)
+# NOTE(Aurelisu84): Remove pir dialect related target DEPS for inference
 # shared library to prune library size.
 list(REMOVE_ITEM fluid_modules ${not_infer_modules})
 
@@ -111,7 +110,7 @@ if(NOT WIN32)
 endif()
 
 if(WITH_CRYPTO)
-  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} framework_io)
 endif()
 
 if(WITH_PSCORE)
@@ -137,7 +136,8 @@ if(WIN32)
                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   target_link_libraries(paddle_inference_shared phi)
 endif()
-
+set_target_properties(paddle_inference_shared PROPERTIES LINK_FLAGS
+                                                         "-Wl,-rpath,'$ORIGIN'")
 set_target_properties(paddle_inference_shared PROPERTIES OUTPUT_NAME
                                                          paddle_inference)
 if(NOT APPLE

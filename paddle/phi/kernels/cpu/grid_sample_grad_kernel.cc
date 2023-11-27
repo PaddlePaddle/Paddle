@@ -154,9 +154,9 @@ static void CalcGridLocationsWithGrad(const CPUContext& ctx,
                                       DenseTensor* grid_y,
                                       DenseTensor* grid_x_scale,
                                       DenseTensor* grid_y_scale) {
-  const int n = grid.dims()[0];
-  const int out_h = grid.dims()[1];
-  const int out_w = grid.dims()[2];
+  const int n = static_cast<int>(grid.dims()[0]);
+  const int out_h = static_cast<int>(grid.dims()[1]);
+  const int out_w = static_cast<int>(grid.dims()[2]);
 
   // split grid with shape (n, h, w, 2) into (x, y) by the 3rd Dim
   grid_x->Resize({n, out_h, out_w});
@@ -193,10 +193,10 @@ static void Calc3DGridLocationsWithGrad(const CPUContext& ctx,
                                         DenseTensor* grid_x_scale,
                                         DenseTensor* grid_y_scale,
                                         DenseTensor* grid_z_scale) {
-  const int n = grid.dims()[0];
-  const int out_d = grid.dims()[1];
-  const int out_h = grid.dims()[2];
-  const int out_w = grid.dims()[3];
+  const int n = static_cast<int>(grid.dims()[0]);
+  const int out_d = static_cast<int>(grid.dims()[1]);
+  const int out_h = static_cast<int>(grid.dims()[2]);
+  const int out_w = static_cast<int>(grid.dims()[3]);
 
   // split grid with shape (n, d, h, w, 3) into (x, y, z) by the 3rd Dim
   grid_x->Resize({n, out_d, out_h, out_w});
@@ -232,12 +232,12 @@ static void GatherOutputGradToInputGrad(const DenseTensor& output_grad,
                                         const DenseTensor& y,
                                         const DenseTensor& d1,
                                         const DenseTensor& d2) {
-  const int n = output_grad.dims()[0];
-  const int c = output_grad.dims()[1];
-  const int out_h = output_grad.dims()[2];
-  const int out_w = output_grad.dims()[3];
-  const int in_h = input_grad->dims()[2];
-  const int in_w = input_grad->dims()[3];
+  const int n = static_cast<int>(output_grad.dims()[0]);
+  const int c = static_cast<int>(output_grad.dims()[1]);
+  const int out_h = static_cast<int>(output_grad.dims()[2]);
+  const int out_w = static_cast<int>(output_grad.dims()[3]);
+  const int in_h = static_cast<int>(input_grad->dims()[2]);
+  const int in_w = static_cast<int>(input_grad->dims()[3]);
   auto x_t = EigenTensor<T, 3>::From(x);
   auto y_t = EigenTensor<T, 3>::From(y);
   auto d1_t = EigenTensor<T, 3>::From(d1);
@@ -272,14 +272,14 @@ static void Gather3DOutputGradToInputGrad(const DenseTensor& output_grad,
                                           const DenseTensor& d1,
                                           const DenseTensor& d2,
                                           const DenseTensor& d3) {
-  const int n = output_grad.dims()[0];
-  const int c = output_grad.dims()[1];
-  const int out_d = output_grad.dims()[2];
-  const int out_h = output_grad.dims()[3];
-  const int out_w = output_grad.dims()[4];
-  const int in_d = input_grad->dims()[2];
-  const int in_h = input_grad->dims()[3];
-  const int in_w = input_grad->dims()[4];
+  const int n = static_cast<int>(output_grad.dims()[0]);
+  const int c = static_cast<int>(output_grad.dims()[1]);
+  const int out_d = static_cast<int>(output_grad.dims()[2]);
+  const int out_h = static_cast<int>(output_grad.dims()[3]);
+  const int out_w = static_cast<int>(output_grad.dims()[4]);
+  const int in_d = static_cast<int>(input_grad->dims()[2]);
+  const int in_h = static_cast<int>(input_grad->dims()[3]);
+  const int in_w = static_cast<int>(input_grad->dims()[4]);
   auto x_t = EigenTensor<T, 4>::From(x);
   auto y_t = EigenTensor<T, 4>::From(y);
   auto z_t = EigenTensor<T, 4>::From(z);
@@ -325,10 +325,10 @@ static void GatherBilinearGrad(const CPUContext& ctx,
                                DenseTensor* grid_y_scale,
                                DenseTensor* input_grad,
                                DenseTensor* grid_grad) {
-  const int n = grid_x->dims()[0];
-  const int out_h = grid_x->dims()[1];
-  const int out_w = grid_x->dims()[2];
-  const int c = input.dims()[1];
+  const int n = static_cast<int>(grid_x->dims()[0]);
+  const int out_h = static_cast<int>(grid_x->dims()[1]);
+  const int out_w = static_cast<int>(grid_x->dims()[2]);
+  const int c = static_cast<int>(input.dims()[1]);
 
   DenseTensor x_w, x_e, y_n, y_s;
   DenseTensor d_w, d_e, d_n, d_s;
@@ -427,11 +427,11 @@ static void Gather3DBilinearGrad(const CPUContext& ctx,
                                  DenseTensor* grid_z_scale,
                                  DenseTensor* input_grad,
                                  DenseTensor* grid_grad) {
-  const int n = grid_x->dims()[0];
-  const int out_d = grid_x->dims()[1];
-  const int out_h = grid_x->dims()[2];
-  const int out_w = grid_x->dims()[3];
-  const int c = input.dims()[1];
+  const int n = static_cast<int>(grid_x->dims()[0]);
+  const int out_d = static_cast<int>(grid_x->dims()[1]);
+  const int out_h = static_cast<int>(grid_x->dims()[2]);
+  const int out_w = static_cast<int>(grid_x->dims()[3]);
+  const int c = static_cast<int>(input.dims()[1]);
 
   DenseTensor x_w, x_e, y_n, y_s, z_t, z_b;
   DenseTensor d_w, d_e, d_n, d_s, d_t, d_b;
@@ -577,12 +577,12 @@ static void GatherOutputGradToInputGrad(const DenseTensor& output_grad,
                                         DenseTensor* input_grad,
                                         const DenseTensor& x,
                                         const DenseTensor& y) {
-  const int n = output_grad.dims()[0];
-  const int c = output_grad.dims()[1];
-  const int out_h = output_grad.dims()[2];
-  const int out_w = output_grad.dims()[3];
-  const int in_h = input_grad->dims()[2];
-  const int in_w = input_grad->dims()[3];
+  const int n = static_cast<int>(output_grad.dims()[0]);
+  const int c = static_cast<int>(output_grad.dims()[1]);
+  const int out_h = static_cast<int>(output_grad.dims()[2]);
+  const int out_w = static_cast<int>(output_grad.dims()[3]);
+  const int in_h = static_cast<int>(input_grad->dims()[2]);
+  const int in_w = static_cast<int>(input_grad->dims()[3]);
   auto x_t = EigenTensor<T, 3>::From(x);
   auto y_t = EigenTensor<T, 3>::From(y);
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
@@ -611,14 +611,14 @@ static void Gather3DOutputGradToInputGrad(const DenseTensor& output_grad,
                                           const DenseTensor& x,
                                           const DenseTensor& y,
                                           const DenseTensor& z) {
-  const int n = output_grad.dims()[0];
-  const int c = output_grad.dims()[1];
-  const int out_d = output_grad.dims()[2];
-  const int out_h = output_grad.dims()[3];
-  const int out_w = output_grad.dims()[4];
-  const int in_d = input_grad->dims()[2];
-  const int in_h = input_grad->dims()[3];
-  const int in_w = input_grad->dims()[4];
+  const int n = static_cast<int>(output_grad.dims()[0]);
+  const int c = static_cast<int>(output_grad.dims()[1]);
+  const int out_d = static_cast<int>(output_grad.dims()[2]);
+  const int out_h = static_cast<int>(output_grad.dims()[3]);
+  const int out_w = static_cast<int>(output_grad.dims()[4]);
+  const int in_d = static_cast<int>(input_grad->dims()[2]);
+  const int in_h = static_cast<int>(input_grad->dims()[3]);
+  const int in_w = static_cast<int>(input_grad->dims()[4]);
   auto x_t = EigenTensor<T, 4>::From(x);
   auto y_t = EigenTensor<T, 4>::From(y);
   auto z_t = EigenTensor<T, 4>::From(z);
@@ -660,12 +660,12 @@ void GridSampleGradKernel(const Context& dev_ctx,
                           DenseTensor* x_grad,
                           DenseTensor* grid_grad) {
   if (x.dims().size() == 4) {
-    const int n = grid.dims()[0];
-    const int out_h = grid.dims()[1];
-    const int out_w = grid.dims()[2];
-    const int c = x.dims()[1];
-    const int in_h = x.dims()[2];
-    const int in_w = x.dims()[3];
+    const int n = static_cast<int>(grid.dims()[0]);
+    const int out_h = static_cast<int>(grid.dims()[1]);
+    const int out_w = static_cast<int>(grid.dims()[2]);
+    const int c = static_cast<int>(x.dims()[1]);
+    const int in_h = static_cast<int>(x.dims()[2]);
+    const int in_w = static_cast<int>(x.dims()[3]);
 
     x_grad->Resize({n, c, in_h, in_w});
     dev_ctx.template Alloc<T>(x_grad);
@@ -708,14 +708,14 @@ void GridSampleGradKernel(const Context& dev_ctx,
       GatherOutputGradToInputGrad<T>(out_grid, x_grad, grid_x, grid_y);
     }
   } else {
-    const int n = grid.dims()[0];
-    const int out_d = grid.dims()[1];
-    const int out_h = grid.dims()[2];
-    const int out_w = grid.dims()[3];
-    const int c = x.dims()[1];
-    const int in_d = x.dims()[2];
-    const int in_h = x.dims()[3];
-    const int in_w = x.dims()[4];
+    const int n = static_cast<int>(grid.dims()[0]);
+    const int out_d = static_cast<int>(grid.dims()[1]);
+    const int out_h = static_cast<int>(grid.dims()[2]);
+    const int out_w = static_cast<int>(grid.dims()[3]);
+    const int c = static_cast<int>(x.dims()[1]);
+    const int in_d = static_cast<int>(x.dims()[2]);
+    const int in_h = static_cast<int>(x.dims()[3]);
+    const int in_w = static_cast<int>(x.dims()[4]);
 
     x_grad->Resize({n, c, in_d, in_h, in_w});
     dev_ctx.template Alloc<T>(x_grad);

@@ -17,10 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 # it should be set at the beginning
-if fluid.is_compiled_with_cuda():
+if base.is_compiled_with_cuda():
     paddle.set_flags(
         {
             'FLAGS_allocator_strategy': 'auto_growth',
@@ -32,24 +32,24 @@ if fluid.is_compiled_with_cuda():
 class TestMemoryLimit(unittest.TestCase):
     def setUp(self):
         self._limit = 10
-        if fluid.is_compiled_with_cuda():
+        if base.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_gpu_memory_limit_mb': 10})
 
     def test_allocate(self):
-        if not fluid.is_compiled_with_cuda():
+        if not base.is_compiled_with_cuda():
             return
 
         other_dim = int(1024 * 1024 / 4)
 
-        place = fluid.CUDAPlace(0)
-        t = fluid.LoDTensor()
+        place = base.CUDAPlace(0)
+        t = base.LoDTensor()
         t.set(
             np.ndarray([int(self._limit / 2), other_dim], dtype='float32'),
             place,
         )
         del t
 
-        t = fluid.LoDTensor()
+        t = base.LoDTensor()
         large_np = np.ndarray([2 * self._limit, other_dim], dtype='float32')
 
         try:
@@ -61,7 +61,7 @@ class TestMemoryLimit(unittest.TestCase):
 
 class TestChunkSize(unittest.TestCase):
     def test_allocate(self):
-        if not fluid.is_compiled_with_cuda():
+        if not base.is_compiled_with_cuda():
             return
 
         paddle.rand([1024])

@@ -17,14 +17,14 @@ import unittest
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
 
 class TestFleetLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
     def test_localsgd_optimizer(self):
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'localsgd')
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)
@@ -40,7 +40,7 @@ class TestFleetLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('@SNAPSHOT', ''.join(outs))
 
     def test_localsgd_amp_optimizer(self):
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'localsgd')
         self.set_strategy(strategy, 'amp')
@@ -63,7 +63,7 @@ class TestFleetLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
 
 class TestFleetAdaptiveLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
     def test_adaptive_localsgd_optimizer(self):
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'adaptive_localsgd')
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)
@@ -79,7 +79,7 @@ class TestFleetAdaptiveLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('@SNAPSHOT', ''.join(outs))
 
     def test_localsgd_amp_optimizer(self):
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'adaptive_localsgd')
         self.set_strategy(strategy, 'amp')

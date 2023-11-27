@@ -76,7 +76,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
                           i,
                           wh_dims[i].size(),
                           wh_dims[i]));
-    int frame_size = wh_dims[i][0];
+    int frame_size = static_cast<int>(wh_dims[i][0]);
     PADDLE_ENFORCE_EQ(
         wh_dims[i][1],
         3 * frame_size,
@@ -102,7 +102,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   if (ctx->HasInputs("Bias")) {
     auto b_dims = ctx->GetInputsDim("Bias");
     for (int i = 0; i < 2 * layers; ++i) {
-      int frame_size = wh_dims[i][0];
+      int frame_size = static_cast<int>(wh_dims[i][0]);
       PADDLE_ENFORCE_EQ(b_dims[i].size(),
                         2,
                         platform::errors::InvalidArgument(
@@ -131,7 +131,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
     }
   }
 
-  int last_frame_size = wh_dims.back()[0];
+  int last_frame_size = static_cast<int>(wh_dims.back()[0]);
   framework::DDim out_dims({x_mat_dims[0], 2 * last_frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
   ctx->ShareLoD("X", "Hidden");

@@ -46,6 +46,7 @@ def get_programs(annotated_func):
     complete_train_program = completer.complete_forward_annotation(
         train_program
     )
+
     dist_context.block_state.parse_forward_blocks(complete_train_program)
 
     rank_id = 3
@@ -212,14 +213,6 @@ def check_equal_dist_op_attr(
             )
             if tensor_dims_mapping != out_var_dims_mapping:
                 equal = False
-        dist_op_process_mesh = op_dist_attr.process_mesh
-        dist_op_impl_idx = op_dist_attr.impl_idx
-        if (
-            serial_op.desc.id() == dist_ops[i].desc.id()
-            or serial_process_mesh != dist_op_process_mesh
-            or serial_impl_idx != dist_op_impl_idx
-        ):
-            equal = False
 
     return equal
 
@@ -234,32 +227,17 @@ def distributed_attr_check_for_dist_op(
     for i in range(len(serial_op_idx)):
         serial_op = serial_ops[serial_op_idx[i]]
         dist_op_0 = dist_ops[dist_op_idx[i][0]]
-        if dist_op_0.type == "c_identity":
-            # serial op input's dist_attr
-            serial_in_dist_attr = get_input_var_dist_attr(
-                serial_op, serial_main_prog, dist_context
-            )
-            # c_identity output's(new var) dist_attr
-            identity_out_dist_attr = get_output_var_dist_attr(
-                dist_op_0, dist_main_prog, dist_context
-            )
-            # check var dist_attr
-            equal = check_equal_var_dist_attr(
-                serial_in_dist_attr, identity_out_dist_attr
-            )
-        else:
-            # serial op output's dist_attr
-            serial_out_dist_attr = get_output_var_dist_attr(
-                serial_op, serial_main_prog, dist_context
-            )
-            # dist op output's(new var) dist_attr
-            out_dist_attr = get_output_var_dist_attr(
-                dist_op_0, dist_main_prog, dist_context
-            )
-            # check var dist_attr
-            equal = check_equal_var_dist_attr(
-                serial_out_dist_attr, out_dist_attr
-            )
+
+        # serial op output's dist_attr
+        serial_out_dist_attr = get_output_var_dist_attr(
+            serial_op, serial_main_prog, dist_context
+        )
+        # dist op output's(new var) dist_attr
+        out_dist_attr = get_output_var_dist_attr(
+            dist_op_0, dist_main_prog, dist_context
+        )
+        # check var dist_attr
+        equal = check_equal_var_dist_attr(serial_out_dist_attr, out_dist_attr)
 
         # check op's dist_attr
         equal = check_equal_dist_op_attr(
@@ -471,7 +449,6 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
             'layer_norm',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'gelu',
@@ -505,7 +482,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         )
         # check distribured attr for dist op
         serial_op_idx = [1, 4]
-        dist_op_idx = [[1, 2], [5, 6]]
+        dist_op_idx = [[1, 2], [4, 5]]
         self.assertTrue(
             distributed_attr_check_for_dist_op(
                 serial_main_prog,
@@ -565,7 +542,6 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
             'layer_norm',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'gelu',
@@ -599,7 +575,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         )
         # check distribured attr for dist op
         serial_op_idx = [1, 4]
-        dist_op_idx = [[1, 2], [5, 6]]
+        dist_op_idx = [[1, 2], [4, 5]]
         self.assertTrue(
             distributed_attr_check_for_dist_op(
                 serial_main_prog,
@@ -849,15 +825,12 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         dist_ops = dist_main_prog.global_block().ops
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'reshape2',
             'transpose2',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'reshape2',
@@ -898,7 +871,8 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         )
         # check distribured attr for dist op
         serial_op_idx = [0, 4, 6, 18]
-        dist_op_idx = [[0, 1], [5, 6], [8, 9], [21, 22]]
+        dist_op_idx = [[0, 1], [4, 5], [6, 7], [18, 19]]
+
         self.assertTrue(
             distributed_attr_check_for_dist_op(
                 serial_main_prog,
@@ -958,15 +932,12 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         dist_ops = dist_main_prog.global_block().ops
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'reshape2',
             'transpose2',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'reshape2',
@@ -1007,7 +978,8 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         )
         # check distribured attr for dist op
         serial_op_idx = [0, 4, 6, 18]
-        dist_op_idx = [[0, 1], [5, 6], [8, 9], [21, 22]]
+        dist_op_idx = [[0, 1], [4, 5], [6, 7], [18, 19]]
+
         self.assertTrue(
             distributed_attr_check_for_dist_op(
                 serial_main_prog,
@@ -1329,15 +1301,12 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             'elementwise_add',
             'dropout',
             'layer_norm',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'reshape2',
             'transpose2',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'reshape2',
@@ -1357,7 +1326,6 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             'dropout',
             'elementwise_add',
             'layer_norm',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'gelu',
@@ -1399,13 +1367,13 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
         # check distribured attr
         serial_op_idx = [0, 5, 9, 11, 24, 29, 32]
         dist_op_idx = [
-            [0, 1],
+            [2, 3],
             [6, 7],
-            [11, 12],
-            [14, 15],
-            [28, 29],
+            [10, 11],
+            [12, 13],
+            [25, 26],
+            [31, 32],
             [34, 35],
-            [38, 39],
         ]
         self.assertTrue(
             distributed_attr_check_for_dist_op(

@@ -21,8 +21,8 @@ from bert_tokenizer import BertTokenizer
 
 import paddle
 from paddle import _legacy_C_ops, nn
-from paddle.fluid.framework import core
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.framework import core
+from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode
 
 
@@ -136,6 +136,7 @@ class Predictor:
 
         # fast_tokenizer op only support cpu.
         config.disable_gpu()
+        config.disable_mkldnn()
         config.set_cpu_math_library_num_threads(10)
 
         config.switch_use_feed_fetch_ops(False)

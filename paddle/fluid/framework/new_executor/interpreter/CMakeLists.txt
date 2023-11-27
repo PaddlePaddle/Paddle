@@ -14,8 +14,8 @@ set(INTERPRETER_DEPS
     trainer_desc_proto
     glog
     lod_rank_table
-    fs
-    shell
+    framework_io
+    string_helper
     fleet_wrapper
     heter_wrapper
     ps_gpu_wrapper
@@ -46,4 +46,4 @@ cc_library(
 cc_library(
   plan
   SRCS plan.cc
-  DEPS framework_proto)
+  DEPS proto_desc framework_proto)

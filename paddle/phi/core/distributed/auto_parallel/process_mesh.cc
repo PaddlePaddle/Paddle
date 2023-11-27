@@ -88,17 +88,17 @@ ProcessMesh ProcessMesh::from_proto(const ProcessMeshProto &proto) {
   ProcessMesh mesh;
 
   mesh.shape_.resize(proto.shape_size());
-  for (int64_t i = 0; i < proto.shape_size(); ++i) {
+  for (int i = 0; i < proto.shape_size(); ++i) {
     mesh.shape_[i] = proto.shape(i);
   }
 
   mesh.process_ids_.resize(proto.process_ids_size());
-  for (int64_t i = 0; i < proto.process_ids_size(); ++i) {
+  for (int i = 0; i < proto.process_ids_size(); ++i) {
     mesh.process_ids_[i] = proto.process_ids(i);
   }
 
   mesh.dim_names_.resize(proto.dim_names_size());
-  for (int64_t i = 0; i < proto.dim_names_size(); ++i) {
+  for (int i = 0; i < proto.dim_names_size(); ++i) {
     mesh.dim_names_[i] = proto.dim_names(i);
   }
 

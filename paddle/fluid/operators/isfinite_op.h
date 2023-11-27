@@ -156,12 +156,6 @@ struct NANFunctor {
   }
 };
 
-struct IsfiniteFunctor {
-  void operator()(const phi::DenseTensor& tensor, phi::DenseTensor* out) {
-    framework::TensorIsfinite(tensor, out);
-  }
-};
-
 template <typename DeviceContext, typename T, typename Functor>
 class OverflowKernel : public framework::OpKernel<T> {
  public:

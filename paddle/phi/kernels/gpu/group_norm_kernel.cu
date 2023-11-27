@@ -820,11 +820,7 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
       image_size *= input_ddim[i];
     }
   }
-#ifdef __HIPCC__
-  int block_size = std::max(std::min(256, image_size), 64);
-#else
   int block_size = std::min(1024, image_size);
-#endif
   dim3 grid(group_size, groups, input_ddim[0]);
   dim3 threads(block_size, 1, 1);
   if (data_layout == DataLayout::kNCHW) {
@@ -943,11 +939,7 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
     }
   }
 
-#ifdef __HIPCC__
-  int block_size = std::max(std::min(256, imsize), 64);
-#else
   int block_size = std::min(1024, imsize);
-#endif
 
   dim3 grid(group_size, groups, x_dims[0]);
   dim3 threads(block_size, 1, 1);

@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.dygraph as dg
+import paddle.base.dygraph as dg
 import paddle.nn.functional as F
-from paddle import fluid, nn
+from paddle import base, nn
 
 
 class Conv3DTestCase(unittest.TestCase):
@@ -85,11 +85,11 @@ class Conv3DTestCase(unittest.TestCase):
         else:
             self.bias = None
 
-    def fluid_layer(self, place):
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+    def base_layer(self, place):
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
                 input_shape = (
                     (-1, -1, -1, -1, self.num_channels)
                     if self.channel_last
@@ -116,16 +116,16 @@ class Conv3DTestCase(unittest.TestCase):
                     data_format=self.data_format,
                 )
         feed_dict = {"input": self.input}
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(start)
         (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
 
     def functional(self, place):
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
                 input_shape = (
                     (-1, -1, -1, -1, self.num_channels)
                     if self.channel_last
@@ -137,13 +137,16 @@ class Conv3DTestCase(unittest.TestCase):
                 w_var = paddle.static.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
-                b_var = paddle.static.data(
-                    "bias", (self.num_filters,), dtype=self.dtype
-                )
+                if not self.no_bias:
+                    b_var = paddle.static.data(
+                        "bias", (self.num_filters,), dtype=self.dtype
+                    )
+                else:
+                    b_var = None
                 y_var = F.conv3d(
                     x_var,
                     w_var,
-                    None if self.no_bias else b_var,
+                    b_var,
                     padding=self.padding,
                     stride=self.stride,
                     dilation=self.dilation,
@@ -153,7 +156,7 @@ class Conv3DTestCase(unittest.TestCase):
         feed_dict = {"input": self.input, "weight": self.weight}
         if self.bias is not None:
             feed_dict["bias"] = self.bias
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(start)
         (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
@@ -181,26 +184,34 @@ class Conv3DTestCase(unittest.TestCase):
         return y_np, t1
 
     def _test_equivalence(self, place):
-        place = fluid.CPUPlace()
-        result1 = self.fluid_layer(place)
+        result1 = self.base_layer(place)
         result2 = self.functional(place)
         with dg.guard(place):
             result3, g1 = self.paddle_nn_layer()
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
 
-    def runTest(self):
-        place = fluid.CPUPlace()
-        self._test_equivalence(place)
+    def _test_pir_equivalence(self, place):
+        with paddle.pir_utils.IrGuard():
+            result1 = self.functional(place)
+        with dg.guard(place):
+            result2, g1 = self.paddle_nn_layer()
+        np.testing.assert_array_almost_equal(result1, result2)
 
-        if fluid.core.is_compiled_with_cuda():
-            place = fluid.CUDAPlace(0)
+    def runTest(self):
+        place = base.CPUPlace()
+        self._test_equivalence(place)
+        self._test_pir_equivalence(place)
+
+        if base.core.is_compiled_with_cuda():
+            place = base.CUDAPlace(0)
             self._test_equivalence(place)
+            self._test_pir_equivalence(place)
 
 
 class Conv3DErrorTestCase(Conv3DTestCase):
     def runTest(self):
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         with dg.guard(place):
             with self.assertRaises(ValueError):
                 self.paddle_nn_layer()

@@ -113,9 +113,6 @@ struct EnforceNotMet : public std::exception {
   std::string err_str_;
 };
 
-#ifdef PADDLE_THROW
-#define CINN_THROW PADDLE_THROW
-#else
 #define CINN_THROW(...)                                                     \
   do {                                                                      \
     try {                                                                   \
@@ -125,7 +122,6 @@ struct EnforceNotMet : public std::exception {
       throw;                                                                \
     }                                                                       \
   } while (0)
-#endif
 }  // namespace enforce
 
 /**
@@ -165,6 +161,9 @@ class ErrorHandler {
    * \brief Format the error message.
    */
   std::string FormatErrorMessage(const ErrorMessageLevel& err_msg_level) const;
+
+ protected:
+  const std::string indent_str_{"  "};
 };
 
 }  // namespace utils

@@ -26,6 +26,10 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 from paddle import nn
@@ -51,7 +55,6 @@ class IsInstanceLayer(nn.Layer):
         super().__init__()
         self.layer = layer
 
-    @paddle.jit.to_static
     def forward(self, x):
         if isinstance(self.layer, (AddAttrLayer,)):
             self.layer.attr = x
@@ -64,7 +67,6 @@ class SequentialLayer(nn.Layer):
         super().__init__()
         self.layers = nn.LayerList(layers)
 
-    @paddle.jit.to_static
     def forward(self, x):
         res = x
         for layer in self.layers:
@@ -83,13 +85,14 @@ def train(model, to_static):
     return out.numpy()
 
 
-class TestIsinstance(unittest.TestCase):
+class TestIsinstance(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_isinstance_simple_return_layer(self):
-        model = IsInstanceLayer(SimpleReturnLayer())
+        model = paddle.jit.to_static(IsInstanceLayer(SimpleReturnLayer()))
         self._test_model(model)
 
     def test_isinstance_add_attr_layer(self):
-        model = IsInstanceLayer(AddAttrLayer())
+        model = paddle.jit.to_static(IsInstanceLayer(AddAttrLayer()))
         self._test_model(model)
 
     def test_sequential_layer(self):
@@ -97,7 +100,7 @@ class TestIsinstance(unittest.TestCase):
         for i in range(5):
             layers.append(SimpleReturnLayer())
             layers.append(AddAttrLayer())
-        model = SequentialLayer(layers)
+        model = paddle.jit.to_static(SequentialLayer(layers))
         self._test_model(model)
 
     def _test_model(self, model):

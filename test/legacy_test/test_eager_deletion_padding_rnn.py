@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.executor import Executor
+from paddle import base
+from paddle.base.executor import Executor
 
 os.environ["CPU_NUM"] = "1"
 
@@ -245,7 +245,7 @@ def lm_model(
         size=[vocab_size, hidden_size],
         dtype='float32',
         is_sparse=False,
-        param_attr=fluid.ParamAttr(
+        param_attr=base.ParamAttr(
             name='embedding_para',
             initializer=paddle.nn.initializer.Uniform(
                 low=-init_scale, high=init_scale
@@ -325,20 +325,20 @@ class PaddingRNNTestBase(unittest.TestCase):
 
         # The default exec_strategy used for PaddingRNN.
         # You can change it in set_customed_config.
-        self.exec_strategy = fluid.ExecutionStrategy()
+        self.exec_strategy = base.ExecutionStrategy()
         self.exec_strategy.num_threads = self.device_count
         self.exec_strategy.num_iteration_per_drop_scope = 100
 
         # The default build_strategy used for PaddingRNN.
         # You can change it in set_customed_config.
-        self.build_strategy = fluid.BuildStrategy()
+        self.build_strategy = base.BuildStrategy()
         self.build_strategy.enable_inplace = True
         self.build_strategy.memory_optimize = False
         self.build_strategy.fuse_all_optimizer_ops = True
 
         # CPU executor is used for PaddingRNN default.
         # You can change to CUDA executor in set_customed_config.
-        self.exe = Executor(fluid.CPUPlace())
+        self.exe = Executor(base.CPUPlace())
 
     def set_customed_config(self):
         # This function will be called before training.
@@ -347,10 +347,10 @@ class PaddingRNNTestBase(unittest.TestCase):
 
     def _prepare_program(self, config):
         paddle.seed(config.random_seed)
-        self.main_program = fluid.Program()
-        self.startup_program = fluid.Program()
-        with fluid.program_guard(self.main_program, self.startup_program):
-            with fluid.unique_name.guard():
+        self.main_program = base.Program()
+        self.startup_program = base.Program()
+        with base.program_guard(self.main_program, self.startup_program):
+            with base.unique_name.guard():
                 res_vars = lm_model(
                     config.hidden_size,
                     config.vocab_size,

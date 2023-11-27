@@ -57,12 +57,13 @@ limitations under the License. */
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#endif
+
 PHI_DECLARE_int32(paddle_num_threads);
-PADDLE_DEFINE_EXPORTED_int32(
-    multiple_of_cupti_buffer_size,
-    1,
-    "Multiple of the CUPTI device buffer size. If the timestamps have "
-    "been dropped when you are profiling, try increasing this value.");
+PHI_DECLARE_int32(multiple_of_cupti_buffer_size);
 
 namespace paddle {
 namespace framework {
@@ -87,7 +88,7 @@ bool InitGflags(std::vector<std::string> args) {
     args.insert(args.begin(), "dummy");
     std::vector<char *> argv;
     std::string line;
-    int argc = args.size();
+    int argc = static_cast<int>(args.size());
     for (auto &arg : args) {
       argv.push_back(const_cast<char *>(arg.data()));
       line += arg;
@@ -97,8 +98,8 @@ bool InitGflags(std::vector<std::string> args) {
             << ", Init commandline: " << line;
 
     char **arr = argv.data();
-    ::GFLAGS_NAMESPACE::AllowCommandLineReparsing();
-    ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &arr, true);
+    paddle::flags::AllowUndefinedFlags();
+    paddle::flags::ParseCommandLineFlags(&argc, &arr);
     successed = true;
 
     VLOG(1) << "After Parse: argc is " << argc;
@@ -141,7 +142,7 @@ void LoadCustomDevice(const std::string &library_dir) {
   LOG(INFO) << "Try loading custom device libs from: [" << library_dir << "]";
   std::vector<std::string> libs = phi::ListAllLibraries(library_dir);
   for (const auto &lib_path : libs) {
-    auto dso_handle = dlopen(lib_path.c_str(), RTLD_NOW);
+    auto dso_handle = dlopen(lib_path.c_str(), RTLD_LAZY);
     PADDLE_ENFORCE_NOT_NULL(
         dso_handle,
         platform::errors::InvalidArgument(
@@ -440,6 +441,41 @@ void InitMemoryMethod() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     memory_method->gpu_memory_usage = paddle::platform::GpuMemoryUsage;
 #endif
+
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+    // TODO(GhostScreaming): Use phi methods later.
+    memory_method->get_allocator =
+        [](int device_id, phi::gpuStream_t stream) -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::GPUPlace(device_id), stream)
+          .get();
+    };
+    memory_method->get_host_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::CPUPlace())
+          .get();
+    };
+    memory_method->get_zero_allocator = [](int device_id) -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(phi::GPUPlace(device_id))
+          .get();
+    };
+    memory_method->get_host_zero_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(phi::CPUPlace())
+          .get();
+    };
+    memory_method->get_pinned_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::GPUPinnedPlace())
+          .get();
+    };
+    memory_method->get_new_cuda_event = [](int device_id) {
+      return paddle::platform::CudaEventResourcePool::Instance().New(device_id);
+    };
+#endif
+
     memory_method->emplace_device_contexts =
         paddle::platform::EmplaceDeviceContexts;
     memory_method->init_devices = InitDevices;

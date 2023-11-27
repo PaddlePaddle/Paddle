@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
 
 
 class ApiZerosTest(unittest.TestCase):
@@ -52,7 +52,7 @@ class ApiZerosTest(unittest.TestCase):
             result = exe.run(fetch_list=[out])
             self.assertEqual((result == out_np).all(), True)
 
-    def test_fluid_out(self):
+    def test_base_out(self):
         with program_guard(Program()):
             zeros = paddle.zeros(shape=[10], dtype='int64')
             place = paddle.CPUPlace()
@@ -65,13 +65,13 @@ class ApiZerosTest(unittest.TestCase):
 class ApiZerosError(unittest.TestCase):
     def test_errors(self):
         def test_error1():
-            with paddle.static.program_guard(fluid.Program()):
+            with paddle.static.program_guard(base.Program()):
                 ones = paddle.zeros(shape=10, dtype='int64')
 
         self.assertRaises(TypeError, test_error1)
 
     def test_shape_errors(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             try:
                 shape = [-1, 5]
                 out = paddle.zeros(shape)

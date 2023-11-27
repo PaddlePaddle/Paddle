@@ -16,7 +16,7 @@ import sys
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 sys.path.append("../../test/sequence")
 from test_sequence_conv import seqconv
@@ -56,7 +56,7 @@ class TestSeqConvEltAddRelu(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestSeqConvEltAddReluBS1(TestSeqConvEltAddRelu):

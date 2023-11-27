@@ -22,14 +22,13 @@ for example, you can run cpu version testing like this:
 
 """
 
+import collections
 import functools
-import logging
 import multiprocessing
 import os
 import platform
 import queue
 import re
-import sys
 import threading
 import time
 import typing
@@ -39,6 +38,7 @@ from sampcd_processor_utils import (
     TEST_TIMEOUT,
     DocTester,
     TestResult,
+    log_exit,
     logger,
     parse_args,
     run_doctest,
@@ -102,7 +102,7 @@ def _patch_float_precision(digits):
     pattern_number = re.compile(
         r"""
         (?:
-            (?<=[\s*\[\(\'\"\:])                        # number starts
+            (?:(?<=[\s*\[\(\'\"\:])|^)                  # number starts
             (?:                                         # int/float or complex-real
                 (?:
                     [+-]?
@@ -220,11 +220,142 @@ class TimeoutDirective(Directive):
         return docstring, float(self._timeout)
 
 
+class SingleProcessDirective(Directive):
+    pattern = re.compile(
+        r"""
+        (?:
+            (?:
+                \s*\>{3}\s*\#\s*x?doctest\:\s*
+            )
+            (?P<op>[\+\-])
+            (?:
+                SOLO
+            )
+            (?:
+                (?P<reason>.*?)
+            )
+            \s
+        )
+        """,
+        re.X | re.S,
+    )
+
+    def parse_directive(self, docstring):
+        match_obj = self.pattern.search(docstring)
+        if match_obj is not None:
+            op_reason = match_obj.group('reason')
+            match_start = match_obj.start()
+            match_end = match_obj.end()
+
+            return (
+                (docstring[:match_start] + '\n' + docstring[match_end:]),
+                op_reason,
+            )
+
+        return docstring, None
+
+
+class BadStatement:
+    msg: str = ''
+
+    def check(self, docstring: str) -> bool:
+        """Return `True` for bad statement detected."""
+        raise NotImplementedError
+
+
+class Fluid(BadStatement):
+    msg = 'Please do NOT use `fluid` api.'
+
+    _pattern = re.compile(
+        r"""
+        (\>{3}|\.{3})
+        (?P<comment>.*)
+        import
+        .*
+        (\bfluid\b)
+        """,
+        re.X,
+    )
+
+    def check(self, docstring):
+        for match_obj in self._pattern.finditer(docstring):
+            comment = match_obj.group('comment').strip()
+            if not comment.startswith('#'):
+                return True
+
+        return False
+
+
+class SkipNoReason(BadStatement):
+    msg = 'Please add sample code skip reason.'
+
+    _pattern = re.compile(
+        r"""
+        \#
+        \s*
+        (x?doctest:)
+        \s*
+        [+]SKIP
+        (?P<reason>.*)
+        """,
+        re.X,
+    )
+
+    def check(self, docstring):
+        for match_obj in self._pattern.finditer(docstring):
+            reason = (
+                match_obj.group('reason').strip().strip('(').strip(')').strip()
+            )
+            if not reason:
+                return True
+
+        return False
+
+
+class DeprecatedRequired(BadStatement):
+    msg = 'Please use `# doctest: +REQUIRES({})` instead of `# {} {}`.'
+
+    _pattern = re.compile(
+        r"""
+        \#
+        \s*
+        (?P<directive>require[sd]?\s*:)
+        (?P<env>.+)
+        """,
+        re.X,
+    )
+
+    def check(self, docstring):
+        for match_obj in self._pattern.finditer(docstring):
+            dep_directive = match_obj.group('directive').strip()
+            dep_env = match_obj.group('env').strip()
+
+            if dep_env:
+                env = 'env:' + ', env:'.join(
+                    [e.strip().upper() for e in dep_env.split(',') if e.strip()]
+                )
+                self.msg = self.__class__.msg.format(
+                    env, dep_directive, dep_env
+                )
+                return True
+
+        return False
+
+
 class Xdoctester(DocTester):
     """A Xdoctest doctester."""
 
     directives: typing.Dict[str, typing.Tuple[typing.Type[Directive], ...]] = {
-        'timeout': (TimeoutDirective, TEST_TIMEOUT)
+        'timeout': (TimeoutDirective, TEST_TIMEOUT),
+        'solo': (SingleProcessDirective,),
+    }
+
+    bad_statements: typing.Dict[
+        str, typing.Tuple[typing.Type[BadStatement], ...]
+    ] = {
+        'fluid': (Fluid,),
+        'skip': (SkipNoReason,),
+        'require': (DeprecatedRequired,),
     }
 
     def __init__(
@@ -247,6 +378,7 @@ class Xdoctester(DocTester):
         self.mode = mode
         self.verbose = verbose
         self.config = {**XDOCTEST_CONFIG, **(config or {})}
+        self._test_capacity = set()
 
         self._patch_global_state = patch_global_state
         self._patch_tensor_place = patch_tensor_place
@@ -328,8 +460,32 @@ class Xdoctester(DocTester):
         logger.info("running under python %s", platform.python_version())
         logger.info("running under xdoctest %s", xdoctest.__version__)
 
+        self._test_capacity = test_capacity
+
+    def _check_bad_statements(self, docstring: str) -> typing.Set[BadStatement]:
+        bad_results = set()
+        for _, statement_cls in self.bad_statements.items():
+            bad_statement = statement_cls[0](*statement_cls[1:])
+            if bad_statement.check(docstring):
+                bad_results.add(bad_statement)
+
+        return bad_results
+
     def run(self, api_name: str, docstring: str) -> typing.List[TestResult]:
         """Run the xdoctest with a docstring."""
+        # check bad statements
+        bad_results = self._check_bad_statements(docstring)
+        if bad_results:
+            for bad_statement in bad_results:
+                logger.warning("%s >>> %s", api_name, bad_statement.msg)
+
+            return [
+                TestResult(
+                    name=api_name,
+                    badstatement=True,
+                )
+            ]
+
         # parse global directive
         docstring, directives = self._parse_directive(docstring)
 
@@ -380,6 +536,10 @@ class Xdoctester(DocTester):
     def _execute_xdoctest(
         self, examples_to_test, examples_nocode, **directives
     ):
+        # if use solo(single process), execute without multiprocessing/thread
+        if directives.get('solo') is not None:
+            return self._execute(examples_to_test, examples_nocode)
+
         if self._use_multiprocessing:
             _ctx = multiprocessing.get_context('spawn')
             result_queue = _ctx.Queue()
@@ -437,98 +597,62 @@ class Xdoctester(DocTester):
         queue.put(self._execute(examples_to_test, examples_nocode))
 
     def print_summary(self, test_results, whl_error=None):
-        summary_success = []
-        summary_failed = []
-        summary_skiptest = []
-        summary_timeout = []
-        summary_nocodes = []
+        summary = collections.defaultdict(list)
+        is_fail = False
 
-        stdout_handler = logging.StreamHandler(stream=sys.stdout)
-        logger.addHandler(stdout_handler)
-        logger.info("----------------End of the Check--------------------")
+        logger.warning("----------------Check results--------------------")
+        logger.warning(">>> Sample code test capacity: %s", self._test_capacity)
+
         if whl_error is not None and whl_error:
-            logger.info("%s is not in whl.", whl_error)
-            logger.info("")
-            logger.info("Please check the whl package and API_PR.spec!")
-            logger.info(
+            logger.warning("%s is not in whl.", whl_error)
+            logger.warning("")
+            logger.warning("Please check the whl package and API_PR.spec!")
+            logger.warning(
                 "You can follow these steps in order to generate API.spec:"
             )
-            logger.info("1. cd ${paddle_path}, compile paddle;")
-            logger.info("2. pip install build/python/dist/(build whl package);")
-            logger.info(
+            logger.warning("1. cd ${paddle_path}, compile paddle;")
+            logger.warning(
+                "2. pip install build/python/dist/(build whl package);"
+            )
+            logger.warning(
                 "3. run 'python tools/print_signatures.py paddle > paddle/fluid/API.spec'."
             )
             for test_result in test_results:
                 if test_result.failed:
-                    logger.info(
+                    logger.error(
                         "In addition, mistakes found in sample codes: %s",
                         test_result.name,
                     )
-            logger.info("----------------------------------------------------")
-            sys.exit(1)
+            log_exit(1)
+
         else:
             for test_result in test_results:
-                if not test_result.nocode:
-                    if test_result.passed:
-                        summary_success.append(test_result.name)
+                summary[test_result.state].append(test_result)
+                if test_result.state.is_fail:
+                    is_fail = True
 
-                    if test_result.skipped:
-                        summary_skiptest.append(test_result.name)
+            summary = sorted(summary.items(), key=lambda x: x[0].order)
 
-                    if test_result.failed:
-                        summary_failed.append(test_result.name)
-
-                    if test_result.timeout:
-                        summary_timeout.append(
-                            {
-                                'api_name': test_result.name,
-                                'run_time': test_result.time,
-                            }
-                        )
-                else:
-                    summary_nocodes.append(test_result.name)
-
-            if len(summary_success):
-                logger.info(
-                    ">>> %d sample codes ran success", len(summary_success)
+            for result_cls, result_list in summary:
+                logging_msg = result_cls.msg(
+                    len(result_list), self._test_capacity
                 )
-                logger.info('\n'.join(summary_success))
+                result_cls.logger(logging_msg)
+                result_cls.logger('\n'.join([str(r) for r in result_list]))
 
-            if len(summary_skiptest):
-                logger.info(
-                    ">>> %d sample codes skipped", len(summary_skiptest)
+            if is_fail:
+                logger.warning(
+                    ">>> Mistakes found in sample codes in env: %s!",
+                    self._test_capacity,
                 )
-                logger.info('\n'.join(summary_skiptest))
+                logger.warning(">>> Please recheck the sample codes.")
+                log_exit(1)
 
-            if len(summary_nocodes):
-                logger.info(
-                    ">>> %d apis could not run test or don't have sample codes",
-                    len(summary_nocodes),
-                )
-                logger.info('\n'.join(summary_nocodes))
-
-            if len(summary_timeout):
-                logger.info(
-                    ">>> %d sample codes ran timeout", len(summary_timeout)
-                )
-                for _result in summary_timeout:
-                    logger.info(
-                        f"{_result['api_name']} - more than {_result['run_time']}s"
-                    )
-
-            if len(summary_failed):
-                logger.info(
-                    ">>> %d sample codes ran failed", len(summary_failed)
-                )
-                logger.info('\n'.join(summary_failed))
-
-            if summary_failed or summary_timeout or summary_nocodes:
-                logger.info(
-                    "Mistakes found in sample codes. Please recheck the sample codes."
-                )
-                sys.exit(1)
-
-        logger.info("Sample code check is successful!")
+        logger.warning(
+            ">>> Sample code check is successful in env: %s!",
+            self._test_capacity,
+        )
+        logger.warning("----------------End of the Check--------------------")
 
 
 if __name__ == '__main__':

@@ -23,7 +23,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -76,10 +76,10 @@ for stype in support_types:
 
 class TestInverseSingularAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [fluid.XPUPlace(0)]
+        self.places = [base.XPUPlace(0)]
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[4, 4], dtype="float32"
             )
@@ -87,10 +87,10 @@ class TestInverseSingularAPI(unittest.TestCase):
 
             input_np = np.ones([4, 4]).astype("float32")
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             with self.assertRaises(OSError):
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"input": input_np},
                     fetch_list=[result],
                 )
@@ -101,9 +101,9 @@ class TestInverseSingularAPI(unittest.TestCase):
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_np = np.ones([4, 4]).astype("float32")
-                input = fluid.dygraph.to_variable(input_np)
+                input = base.dygraph.to_variable(input_np)
                 with self.assertRaises(OSError):
                     result = paddle.inverse(input)
 

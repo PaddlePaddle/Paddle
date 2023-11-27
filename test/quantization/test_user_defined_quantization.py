@@ -21,7 +21,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import IrGraph
+from paddle.base.framework import IrGraph
 from paddle.framework import LayerHelper, core
 from paddle.static.quantization import (
     AddQuantDequantPass,
@@ -200,7 +200,7 @@ class TestUserDefinedQuantization(unittest.TestCase):
             paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=500),
             batch_size=batch_size,
         )
-        feeder = paddle.fluid.DataFeeder(feed_list=feeds, place=place)
+        feeder = paddle.base.DataFeeder(feed_list=feeds, place=place)
         with paddle.static.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())

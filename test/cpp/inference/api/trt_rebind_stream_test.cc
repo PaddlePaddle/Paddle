@@ -16,8 +16,8 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <thread>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/utils/flags.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
 namespace paddle {

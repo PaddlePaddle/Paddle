@@ -130,7 +130,7 @@ class LogNormalTest(unittest.TestCase):
         )
 
     def test_probs(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             probs = self.paddle_lognormal.probs(paddle.to_tensor(self.value))
             np_probs = self.np_lognormal.probs(self.value)
             np.testing.assert_allclose(
@@ -141,7 +141,7 @@ class LogNormalTest(unittest.TestCase):
             )
 
     def test_log_prob(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             log_prob = self.paddle_lognormal.log_prob(
                 paddle.to_tensor(self.value)
             )
@@ -163,7 +163,7 @@ class TestLogNormalSample(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.paddle_lognormal = LogNormal(loc=self.loc, scale=self.scale)
-        n = 100000
+        n = 1000000
         self.sample_shape = (n,)
         self.rsample_shape = (n,)
         self.samples = self.paddle_lognormal.sample(self.sample_shape)

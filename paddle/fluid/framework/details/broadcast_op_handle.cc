@@ -90,7 +90,7 @@ void BroadcastOpHandle::BroadcastOneVar(
   } else if (platform::is_gpu_place(in_tensor.place())) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     VarHandle *out_handle = nullptr;
-    int root_id = in_tensor.place().device;
+    int root_id = in_tensor.place().device;  // NOLINT
     std::vector<std::function<void()>> broadcast_calls;
 
     int type = platform::ToNCCLDataType(
@@ -101,7 +101,7 @@ void BroadcastOpHandle::BroadcastOneVar(
       Variable *out_var = var_scopes.at(out_var_handle->scope_idx())
                               ->FindVar(out_var_handle->name());
 
-      int dst_id = out_var_handle->place().device;
+      int dst_id = out_var_handle->place().device;  // NOLINT
 
       auto &nccl_ctx = nccl_ctxs_->at(dst_id);
 

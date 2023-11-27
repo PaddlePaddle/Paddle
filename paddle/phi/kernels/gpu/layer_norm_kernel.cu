@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/layer_norm_kernel.h"
-#include "gflags/gflags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_bool(use_fast_math);
+PD_DECLARE_bool(use_fast_math);
 
 namespace phi {
 

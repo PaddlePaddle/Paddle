@@ -74,6 +74,12 @@ MultiplyGradNode::operator()(
   // Runtime check if we need next grad
   bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
 
+  // Set DistAttr of Out Tensor for semi-auto parallel
+  if (IsRunAutoParallel()) {
+    egr::EagerUtils::SetGradOutputDistAttr(
+        out_metas, {0, 1}, api_output_0, api_output_1);
+  }
+
   // Inplace Check
 
   // Inplace Strategy
@@ -158,7 +164,7 @@ MultiplyGradNode::operator()(
           1);
 
       // Node Construction
-      auto grad_node = std::shared_ptr<MultiplyDoubleGradNode>(
+      auto grad_node = std::shared_ptr<MultiplyDoubleGradNode>(  // NOLINT
           new MultiplyDoubleGradNode(2, 3));
       // SetAttributes if needed
       grad_node->SetAttributeaxis(axis);
@@ -594,6 +600,7 @@ MultiplyGradNode::operator()(
     std::string output_y_grad_str = paddle::string::Sprintf(
         TENSOR_Y_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(y_grad));
     output_str += output_y_grad_str;
+    VLOG(6) << "gradnode_ptr = " << this;
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }

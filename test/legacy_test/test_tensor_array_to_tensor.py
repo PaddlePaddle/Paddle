@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
@@ -52,7 +52,7 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
 
     def test_get_set(self):
         scope = core.Scope()
-        program = fluid.Program()
+        program = base.Program()
         block = program.global_block()
 
         input_arr = block.create_var(
@@ -122,7 +122,7 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
         fetch_list.append(block.var('Out'))
         fetch_list.append(block.var('OutIndex'))
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
         out = exe.run(program, fetch_list=fetch_list, scope=scope)
         # print ("index: ", np.array(out[1]))
 
@@ -179,8 +179,8 @@ class TestLoDTensorArrayStack(unittest.TestCase):
             var.persistable = True
 
     def set_program(self):
-        self.program = fluid.Program()
-        with fluid.program_guard(self.program):
+        self.program = base.Program()
+        with base.program_guard(self.program):
             self.array = array = paddle.tensor.create_array(dtype='float32')
             idx = paddle.tensor.fill_constant(shape=[1], dtype="int64", value=0)
             for i, x in enumerate(self.inputs):
@@ -190,7 +190,7 @@ class TestLoDTensorArrayStack(unittest.TestCase):
                 input=array, **self.attrs
             )
             loss = paddle.sum(output)
-            fluid.backward.append_backward(loss)
+            base.backward.append_backward(loss)
         self.output_vars = [output]
 
     def run_check(self, executor, scope):
@@ -208,14 +208,14 @@ class TestLoDTensorArrayStack(unittest.TestCase):
     def test_cpu(self):
         scope = core.Scope()
         place = core.CPUPlace()
-        executor = fluid.Executor(place)
+        executor = base.Executor(place)
         self.run_check(executor, scope)
 
     def test_gpu(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             scope = core.Scope()
-            executor = fluid.Executor(place)
+            executor = base.Executor(place)
             self.run_check(executor, scope)
 
 
@@ -246,18 +246,18 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
         inp1 = np.random.rand(2, 3, 4).astype("float32")
 
         _outs_static = self._test_case(inp0, inp1)
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         outs_static = exe.run(fetch_list=list(_outs_static))
 
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             outs_dynamic = self._test_case(inp0, inp1)
 
         for s, d in zip(outs_static, outs_dynamic):
             np.testing.assert_array_equal(s, d.numpy())
 
     def test_while_loop_case(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             zero = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=0
             )
@@ -289,6 +289,43 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
             np.testing.assert_array_equal(
                 paddle.tensor.array_read(array, last).numpy(), inp0
             )
+
+
+class TestPirArrayOp(unittest.TestCase):
+    def test_array(self):
+        paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program):
+                x = paddle.full(shape=[1, 3], fill_value=5, dtype="float32")
+                y = paddle.full(shape=[1, 3], fill_value=6, dtype="float32")
+                array = paddle.tensor.create_array(
+                    dtype="float32", initialized_list=[x, y]
+                )
+                (
+                    output,
+                    output_index,
+                ) = paddle.tensor.manipulation.tensor_array_to_tensor(
+                    input=array, axis=1, use_stack=False
+                )
+
+            place = (
+                paddle.base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else paddle.base.CUDAPlace(0)
+            )
+            exe = paddle.base.Executor(place)
+            [fetched_out0, fetched_out1] = exe.run(
+                main_program, feed={}, fetch_list=[output, output_index]
+            )
+
+        np.testing.assert_array_equal(
+            fetched_out0,
+            np.array([[5.0, 5.0, 5.0, 6.0, 6.0, 6.0]], dtype="float32"),
+        )
+        np.testing.assert_array_equal(
+            fetched_out1, np.array([3, 3], dtype="int32")
+        )
 
 
 if __name__ == '__main__':

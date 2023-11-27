@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.incubate.passes import ir
 from paddle.static import InputSpec
 
@@ -274,7 +274,7 @@ class TestGeneratePass(unittest.TestCase):
         core.get_pass(pass_type).apply(graph)
         after_node_nums = len(graph.nodes())
         self.assertEqual(after_node_nums, before_node_nums - 2)
-        after_program = paddle.fluid.framework.IrGraph(graph).to_program()
+        after_program = paddle.base.framework.IrGraph(graph).to_program()
         executor = paddle.static.Executor(paddle.CPUPlace())
         executor.run(startup_program)
         feed = {
@@ -309,7 +309,7 @@ class TestGeneratePass(unittest.TestCase):
         core.get_pass("generate_combine_mul_v1").apply(graph)
         after_node_nums = len(graph.nodes())
         self.assertEqual(after_node_nums, before_node_nums + 4)
-        after_program = paddle.fluid.framework.IrGraph(graph).to_program()
+        after_program = paddle.base.framework.IrGraph(graph).to_program()
         executor = paddle.static.Executor(paddle.CPUPlace())
         executor.run(startup_program)
         feed = {
@@ -357,7 +357,7 @@ class TestGeneratePass(unittest.TestCase):
         core.get_pass(pass_type).apply(graph)
         after_node_nums = len(graph.nodes())
         self.assertEqual(after_node_nums, before_node_nums - 6)
-        after_program = paddle.fluid.framework.IrGraph(graph).to_program()
+        after_program = paddle.base.framework.IrGraph(graph).to_program()
         executor = paddle.static.Executor(paddle.CPUPlace())
         executor.run(startup_program)
         feed = {"x": np.random.random([10, 16, 16]).astype("float32")}
@@ -393,7 +393,7 @@ class TestGeneratePass(unittest.TestCase):
         core.get_pass("generate_layer_norm_fuse_pass").apply(graph)
         after_node_nums = len(graph.nodes())
         self.assertEqual(after_node_nums, before_node_nums - 14)
-        after_program = paddle.fluid.framework.IrGraph(graph).to_program()
+        after_program = paddle.base.framework.IrGraph(graph).to_program()
         executor = paddle.static.Executor(paddle.CPUPlace())
         executor.run(startup_program)
         feed = {"x": np.random.random([3, 64, 120]).astype("float32")}

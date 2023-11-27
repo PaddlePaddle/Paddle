@@ -23,10 +23,6 @@ namespace paddle {
 namespace operators {
 
 using dnnl::memory;
-using dnnl::primitive;
-using dnnl::reorder;
-using dnnl::stream;
-using phi::DataLayout;
 
 template <typename T>
 class QuantOpKernel : public framework::OpKernel<T> {

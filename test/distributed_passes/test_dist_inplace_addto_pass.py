@@ -47,7 +47,7 @@ class TestInplaceAddtoPass(DistPassTestBase):
     def init(self):
         self.atol = 0.0
         self.rtol = 0.0
-        paddle.fluid.set_flags({"FLAGS_max_inplace_grad_add": 8})
+        paddle.base.set_flags({"FLAGS_max_inplace_grad_add": 8})
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
         image = paddle.static.data(

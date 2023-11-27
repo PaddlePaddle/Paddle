@@ -92,8 +92,9 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
                         block_desc) != old_block_desc.end()) {
             // The block is owned by the origin program. Just use id to get
             // the corresponding block.
-            int sub_block_id =
-                o.Block(block_id).Op(op_id)->GetBlockAttrId(attr_name);
+            int sub_block_id = o.Block(block_id)
+                                   .Op(static_cast<int>(op_id))
+                                   ->GetBlockAttrId(attr_name);
             op->SetBlockAttr(attr_name, MutableBlock(sub_block_id));
           } else {
             // The block is not owned by the origin program. Should copy
@@ -102,8 +103,9 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
             op->SetBlockAttr(attr_name, block_desc);
           }
         } else if (op->GetAttrType(attr_name) == proto::AttrType::BLOCKS) {
-          std::vector<int> sub_block_ids =
-              o.Block(block_id).Op(op_id)->GetBlocksAttrIds(attr_name);
+          std::vector<int> sub_block_ids = o.Block(block_id)
+                                               .Op(static_cast<int>(op_id))
+                                               ->GetBlocksAttrIds(attr_name);
           std::vector<BlockDesc *> block_descs;
           for (int block_id : sub_block_ids) {
             block_descs.push_back(MutableBlock(block_id));

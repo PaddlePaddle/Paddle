@@ -287,11 +287,7 @@ void FillHashTable(const framework::ExecutionContext& ctx,
                    thrust::device_vector<T>* keys,
                    thrust::device_vector<T>* values,
                    thrust::device_vector<int64_t>* key_index) {
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
   int block = 1024;
-#endif
   const auto& dev_ctx = ctx.cuda_device_context();
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_input + block - 1) / block;
@@ -377,12 +373,8 @@ void ReindexFunc(const framework::ExecutionContext& ctx,
   subset->resize(unique_items.size());
   thrust::copy(unique_items.begin(), unique_items.end(), subset->begin());
 
-// Fill outputs with reindex result.
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
+  // Fill outputs with reindex result.
   int block = 1024;
-#endif
   const auto& dev_ctx = ctx.cuda_device_context();
   int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (outputs->size() + block - 1) / block;

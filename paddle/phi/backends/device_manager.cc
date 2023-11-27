@@ -30,10 +30,17 @@
 namespace phi {
 
 void Device::CheckInitialized() {
-  std::call_once(initialized_, [&]() { this->impl_->InitDevice(dev_id_); });
+  std::call_once(initialized_once_flag_, [&]() {
+    this->impl_->InitDevice(dev_id_);
+    this->initialized_ = true;
+  });
 }
 
-Device::~Device() { impl_->DeInitDevice(dev_id_); }
+Device::~Device() {
+  if (initialized_) {
+    impl_->DeInitDevice(dev_id_);
+  }
+}
 
 void Device::CreateStream(stream::Stream* stream,
                           const stream::Stream::Priority& priority,
@@ -176,7 +183,7 @@ void Device::BlasAXPBY(const stream::Stream& stream,
                    phi::CppTypeToDataType<T>::Type(),
                    numel,
                    alpha,
-                   reinterpret_cast<void*>(const_cast<T*>(x)),
+                   reinterpret_cast<void*>(const_cast<T*>(x)),  // NOLINT
                    beta,
                    reinterpret_cast<void*>(y));
 }
@@ -487,11 +494,11 @@ std::vector<size_t> DeviceManager::GetSelectedDeviceList(
     auto FLAGS_selected_devices = getenv(FLAGS.c_str());
     if (FLAGS_selected_devices) {
       auto devices_str = paddle::string::Split(FLAGS_selected_devices, ',');
-      for (auto id : devices_str) {
+      for (auto const& id : devices_str) {
         device_list.push_back(atoi(id.c_str()));
       }
     } else {
-      int count = DeviceManager::GetDeviceCount(device_type);
+      int count = static_cast<int>(DeviceManager::GetDeviceCount(device_type));
       for (int i = 0; i < count; ++i) {
         device_list.push_back(i);
       }
@@ -690,8 +697,8 @@ DeviceManager& DeviceManager::Instance() {
 }
 
 void DeviceManager::Release() {
-  stream::Stream::ReleaseAll();
   event::Event::ReleaseAll();
+  stream::Stream::ReleaseAll();
   Instance().device_map_.clear();
   Instance().device_impl_map_.clear();
 }
@@ -717,7 +724,8 @@ std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
       std::string filename(ptr->d_name);
       if (std::regex_match(
               filename.begin(), filename.end(), results, express)) {
-        libraries.push_back(library_dir + '/' + filename);
+        libraries.push_back(
+            std::string(library_dir).append("/").append(filename));
         VLOG(4) << "Found lib: " << libraries.back();
       }
     }

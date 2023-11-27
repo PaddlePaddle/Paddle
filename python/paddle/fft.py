@@ -19,8 +19,8 @@ import numpy as np
 import paddle
 
 from . import _C_ops
-from .fluid.data_feeder import check_variable_and_dtype
-from .fluid.layer_helper import LayerHelper
+from .base.data_feeder import check_variable_and_dtype
+from .base.layer_helper import LayerHelper
 from .framework import in_dynamic_mode
 from .tensor.attribute import is_floating_point, is_integer
 from .tensor.creation import _complex_to_real_dtype, _real_to_complex_dtype
@@ -54,9 +54,7 @@ __all__ = [
 def _check_normalization(norm):
     if norm not in ['forward', 'backward', 'ortho']:
         raise ValueError(
-            "Unexpected norm: {}. Norm should be forward, backward or ortho".format(
-                norm
-            )
+            f"Unexpected norm: {norm}. Norm should be forward, backward or ortho"
         )
 
 
@@ -79,7 +77,7 @@ def _check_fft_shape(x, s):
     if len(s) > ndim:
         raise ValueError(
             "Length of FFT argument s should not be larger than the rank of input. "
-            "Received s: {}, rank of x: {}".format(s, ndim)
+            f"Received s: {s}, rank of x: {ndim}"
         )
     for size in s:
         if not isinstance(size, int) or size <= 0:
@@ -92,9 +90,7 @@ def _check_fft_axis(x, axis):
         raise ValueError(f"Invalid FFT axis ({axis}), it shoule be an integer.")
     if axis < -ndim or axis >= ndim:
         raise ValueError(
-            "Invalid FFT axis ({}), it should be in range [-{}, {})".format(
-                axis, ndim, ndim
-            )
+            f"Invalid FFT axis ({axis}), it should be in range [-{ndim}, {ndim})"
         )
 
 
@@ -102,14 +98,12 @@ def _check_fft_axes(x, axes):
     ndim = x.ndim
     if not isinstance(axes, Sequence):
         raise ValueError(
-            "Invalid FFT axes ({}), it should be a sequence of integers.".format(
-                axes
-            )
+            f"Invalid FFT axes ({axes}), it should be a sequence of integers."
         )
     if len(axes) > ndim:
         raise ValueError(
             "Length of fft axes should not be larger than the rank of input. "
-            "Received, len of axes: {}, rank of x: {}".format(len(axes), ndim)
+            f"Received, len of axes: {len(axes)}, rank of x: {ndim}"
         )
     for axis in axes:
         if not isinstance(axis, int) or axis < -ndim or axis >= ndim:
@@ -914,16 +908,12 @@ def fft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if s is not None:
         if not isinstance(s, Sequence) or len(s) != 2:
             raise ValueError(
-                "Invalid FFT argument s ({}), it should be a sequence of 2 integers.".format(
-                    s
-                )
+                f"Invalid FFT argument s ({s}), it should be a sequence of 2 integers."
             )
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".format(
-                    axes
-                )
+                f"Invalid FFT argument axes ({axes}), it should be a sequence of 2 integers."
             )
     return fftn(x, s, axes, norm, name)
 
@@ -984,16 +974,12 @@ def ifft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if s is not None:
         if not isinstance(s, Sequence) or len(s) != 2:
             raise ValueError(
-                "Invalid FFT argument s ({}), it should be a sequence of 2 integers.".format(
-                    s
-                )
+                f"Invalid FFT argument s ({s}), it should be a sequence of 2 integers."
             )
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".format(
-                    axes
-                )
+                f"Invalid FFT argument axes ({axes}), it should be a sequence of 2 integers."
             )
     return ifftn(x, s, axes, norm, name)
 
@@ -1048,16 +1034,12 @@ def rfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if s is not None:
         if not isinstance(s, Sequence) or len(s) != 2:
             raise ValueError(
-                "Invalid FFT argument s ({}), it should be a sequence of 2 integers.".format(
-                    s
-                )
+                f"Invalid FFT argument s ({s}), it should be a sequence of 2 integers."
             )
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".format(
-                    axes
-                )
+                f"Invalid FFT argument axes ({axes}), it should be a sequence of 2 integers."
             )
     return rfftn(x, s, axes, norm, name)
 
@@ -1104,16 +1086,12 @@ def irfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if s is not None:
         if not isinstance(s, Sequence) or len(s) != 2:
             raise ValueError(
-                "Invalid FFT argument s ({}), it should be a sequence of 2 integers.".format(
-                    s
-                )
+                f"Invalid FFT argument s ({s}), it should be a sequence of 2 integers."
             )
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".format(
-                    axes
-                )
+                f"Invalid FFT argument axes ({axes}), it should be a sequence of 2 integers."
             )
     return irfftn(x, s, axes, norm, name)
 
@@ -1153,16 +1131,12 @@ def hfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if s is not None:
         if not isinstance(s, Sequence) or len(s) != 2:
             raise ValueError(
-                "Invalid FFT argument s ({}), it should be a sequence of 2 integers.".format(
-                    s
-                )
+                f"Invalid FFT argument s ({s}), it should be a sequence of 2 integers."
             )
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".format(
-                    axes
-                )
+                f"Invalid FFT argument axes ({axes}), it should be a sequence of 2 integers."
             )
     return hfftn(x, s, axes, norm, name)
 
@@ -1216,16 +1190,12 @@ def ihfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if s is not None:
         if not isinstance(s, Sequence) or len(s) != 2:
             raise ValueError(
-                "Invalid FFT argument s ({}), it should be a sequence of 2 integers.".format(
-                    s
-                )
+                f"Invalid FFT argument s ({s}), it should be a sequence of 2 integers."
             )
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".format(
-                    axes
-                )
+                f"Invalid FFT argument axes ({axes}), it should be a sequence of 2 integers."
             )
     return ihfftn(x, s, axes, norm, name)
 

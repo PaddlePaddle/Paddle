@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestFeedFetch(unittest.TestCase):

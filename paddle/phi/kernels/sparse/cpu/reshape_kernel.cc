@@ -68,7 +68,7 @@ void ReshapeCooCPUKernel(const Context& dev_ctx,
     for (int i = 0; i < x.sparse_dim(); ++i) {
       location += x_indices_data[i * x_nnz + j] * x_sparse_part_strides[i];
     }
-    for (size_t i = 0; i < out_sparse_part_dims.size(); ++i) {
+    for (int i = 0; i < static_cast<int>(out_sparse_part_dims.size()); ++i) {
       out_indices_data[i * x_nnz + j] = location / out_sparse_part_strides[i];
       location %= out_sparse_part_strides[i];
     }

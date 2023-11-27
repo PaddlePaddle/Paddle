@@ -96,7 +96,7 @@ def test_static(
 def test_dygraph(
     place, input_np, label_np, weight=None, reduction='mean', functional=False
 ):
-    with paddle.fluid.dygraph.base.guard():
+    with paddle.base.dygraph.base.guard():
         input = paddle.to_tensor(input_np)
         label = paddle.to_tensor(label_np)
         if weight is not None:

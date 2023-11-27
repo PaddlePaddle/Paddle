@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-from eager_op_test import skip_check_grad_ci
 from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
@@ -33,19 +32,18 @@ class XPUTestStackOp(XPUOpTestWrapper):
         self.op_name = 'stack'
         self.use_dynamic_create_class = False
 
-    @skip_check_grad_ci(reason="There is no grad kernel for stack_xpu op.")
     class TestStackOp(XPUOpTest):
         def initDefaultParameters(self):
             self.num_inputs = 4
             self.input_dim = (5, 6, 7)
             self.axis = 0
-            self.dtype = np.float32
 
         def setUp(self):
             self.initDefaultParameters()
             self.initParameters()
             self.__class__.use_xpu = True
             self.__class__.op_type = 'stack'
+            self.dtype = self.in_type
             self.x = []
             for i in range(self.num_inputs):
                 self.x.append(
@@ -61,9 +59,6 @@ class XPUTestStackOp(XPUOpTestWrapper):
             self.outputs = {'Y': np.stack(self.x, axis=self.axis)}
             self.attrs = {'axis': self.axis}
 
-        def init_dtype(self):
-            self.dtype = self.in_type
-
         def initParameters(self):
             pass
 
@@ -77,12 +72,9 @@ class XPUTestStackOp(XPUOpTestWrapper):
             self.check_output_with_place(paddle.XPUPlace(0))
 
         def test_check_grad(self):
-            if self.dtype == np.int32 or self.dtype == np.int64:
-                pass
-            else:
-                self.check_grad_with_place(
-                    paddle.XPUPlace(0), self.get_x_names(), 'Y'
-                )
+            self.check_grad_with_place(
+                paddle.XPUPlace(0), self.get_x_names(), 'Y'
+            )
 
     class TestStackOp1(TestStackOp):
         def initParameters(self):
@@ -96,15 +88,9 @@ class XPUTestStackOp(XPUOpTestWrapper):
         def initParameters(self):
             self.axis = -1
 
-        def test_check_grad(self):
-            pass
-
     class TestStackOp4(TestStackOp):
         def initParameters(self):
             self.axis = -4
-
-        def test_check_grad(self):
-            pass
 
     class TestStackOp5(TestStackOp):
         def initParameters(self):
@@ -121,18 +107,12 @@ class XPUTestStackOp(XPUOpTestWrapper):
             self.axis = 0
             self.dtype = np.int64
 
-        def test_check_grad(self):
-            pass
-
     class TestStackOp8(TestStackOp):
         def initParameters(self):
             self.num_inputs = 4
             self.input_dim = (5, 6, 7)
             self.axis = 0
             self.dtype = np.int32
-
-        def test_check_grad(self):
-            pass
 
 
 support_types = get_xpu_op_support_types('stack')

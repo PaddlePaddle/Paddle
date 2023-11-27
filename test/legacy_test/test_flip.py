@@ -17,20 +17,21 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestFlipOp_API(unittest.TestCase):
     """Test flip api."""
 
     def test_static_graph(self):
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        startup_program = base.Program()
+        train_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             axis = [0]
             input = paddle.static.data(
                 name='input', dtype='float32', shape=[2, 3]
@@ -38,10 +39,10 @@ class TestFlipOp_API(unittest.TestCase):
             output = paddle.flip(input, axis)
             output = paddle.flip(output, -1)
             output = output.flip(0)
-            place = fluid.CPUPlace()
-            if fluid.core.is_compiled_with_cuda():
-                place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            if base.core.is_compiled_with_cuda():
+                place = base.CUDAPlace(0)
+            exe = base.Executor(place)
             exe.run(startup_program)
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
             res = exe.run(
@@ -56,8 +57,8 @@ class TestFlipOp_API(unittest.TestCase):
 
     def test_dygraph(self):
         img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-        with fluid.dygraph.guard():
-            inputs = fluid.dygraph.to_variable(img)
+        with base.dygraph.guard():
+            inputs = base.dygraph.to_variable(img)
             ret = paddle.flip(inputs, [0])
             ret = ret.flip(0)
             ret = paddle.flip(ret, 1)
@@ -100,10 +101,10 @@ class TestFlipOp(OpTest):
         self.attrs = {"axis": self.axis}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_cinn=True)
+        self.check_grad(["X"], "Out", check_cinn=True, check_pir=True)
 
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 3)
@@ -167,12 +168,16 @@ def create_test_fp16_class(parent):
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(place, check_cinn=True)
+                    self.check_output_with_place(
+                        place, check_cinn=True, check_pir=True
+                    )
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_grad_with_place(place, ["X"], "Out", check_cinn=True)
+                self.check_grad_with_place(
+                    place, ["X"], "Out", check_cinn=True, check_pir=True
+                )
 
     cls_name = "{}_{}".format(parent.__name__, "FP16OP")
     TestFlipFP16.__name__ = cls_name
@@ -202,12 +207,12 @@ def create_test_bf16_class(parent):
         def test_check_output(self):
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, check_pir=True)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(place, ["X"], "Out")
+                self.check_grad_with_place(place, ["X"], "Out", check_pir=True)
 
     cls_name = "{}_{}".format(parent.__name__, "BF16OP")
     TestFlipBF16.__name__ = cls_name
@@ -227,6 +232,7 @@ class TestFlipDoubleGradCheck(unittest.TestCase):
     def flip_wrapper(self, x):
         return paddle.flip(x[0], [0, 1])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -247,9 +253,9 @@ class TestFlipDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -258,6 +264,7 @@ class TestFlipTripleGradCheck(unittest.TestCase):
     def flip_wrapper(self, x):
         return paddle.flip(x[0], [0, 1])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -278,9 +285,9 @@ class TestFlipTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 

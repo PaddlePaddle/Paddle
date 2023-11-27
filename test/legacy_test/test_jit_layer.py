@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import _dygraph_place_guard
+from paddle.base.framework import _dygraph_place_guard
 from paddle.jit.layer import Layer
 from paddle.static import InputSpec
 

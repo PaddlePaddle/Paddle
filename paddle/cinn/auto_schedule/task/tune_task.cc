@@ -34,7 +34,7 @@ void TuneTask::Initialize(
     const absl::flat_hash_map<std::string, hlir::framework::shape_t>&
         shape_dict,
     const absl::flat_hash_map<std::string, cinn::common::Type>& dtype_dict,
-    hlir::framework::OpLowerer* lower_handler) {
+    hlir::framework::OpLowerer<GroupPtr>* lower_handler) {
   CHECK(lower_handler != nullptr) << "op_lowerer can't be nullptr";
   op_lowerer = lower_handler;
 

@@ -45,7 +45,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
       auto shape_dims = ctx->GetInputDim("ShapeTensor");
       int num_ele = 1;
       for (int i = 0; i < shape_dims.size(); ++i) {
-        num_ele *= shape_dims[i];
+        num_ele *= static_cast<int>(shape_dims[i]);
       }
       auto vec_dims = std::vector<int>(num_ele, -1);
       ctx->SetOutputDim("Out", phi::make_ddim(vec_dims));

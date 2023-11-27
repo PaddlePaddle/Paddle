@@ -97,14 +97,15 @@ class CorrelationOp : public framework::OperatorWithKernel {
                           "Input(Y) of CorrelationOp must be 4 dims."
                           "But received dims is %d.",
                           in2_dims.size()));
-    std::vector<int64_t> output_shape = CorrelationOutputSize(in_dims[0],
-                                                              in_dims[2],
-                                                              in_dims[3],
-                                                              stride1,
-                                                              stride2,
-                                                              kernel_size,
-                                                              pad_size,
-                                                              max_displacement);
+    std::vector<int64_t> output_shape =
+        CorrelationOutputSize(static_cast<int>(in_dims[0]),
+                              static_cast<int>(in_dims[2]),
+                              static_cast<int>(in_dims[3]),
+                              stride1,
+                              stride2,
+                              kernel_size,
+                              pad_size,
+                              max_displacement);
     ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
   }
 

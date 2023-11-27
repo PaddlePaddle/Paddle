@@ -448,7 +448,7 @@ void DeviceWorker::DumpField(const Scope& scope,
       if (!hit[i]) {
         continue;
       }
-      auto bound = GetTensorBound(tensor, i);
+      auto bound = GetTensorBound(tensor, static_cast<int>(i));
       ars[i] +=
           "\t" + field + ":" + std::to_string(bound.second - bound.first) + ":";
       ars[i] += PrintLodTensor(tensor, bound.first, bound.second);

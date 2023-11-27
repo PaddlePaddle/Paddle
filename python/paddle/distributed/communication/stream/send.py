@@ -13,12 +13,12 @@
 # limitations under the License.
 
 from paddle import framework
+from paddle.base import data_feeder
 from paddle.distributed.communication.group import (
     _get_global_group,
     _get_or_throw_group_rank,
     _warn_cur_rank_not_in_group,
 )
-from paddle.fluid import data_feeder
 
 
 def _send_in_dygraph(
@@ -58,7 +58,6 @@ def _send_in_static_mode(
             'use_calc_stream': sync_op,
         },
     )
-    return None
 
 
 def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
@@ -95,7 +94,7 @@ def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
             >>> task.wait()
             >>> out = data.numpy()
             >>> print(out)
-            >>> # [[4, 5, 6], [4, 5, 6]] (2 GPUs)
+            [[4, 5, 6], [4, 5, 6]]
     """
     if _warn_cur_rank_not_in_group(group):
         return

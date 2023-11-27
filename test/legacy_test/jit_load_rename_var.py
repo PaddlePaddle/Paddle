@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import unique_name
-from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.base import unique_name
+from paddle.base.dygraph.base import switch_to_static_graph
 
 
 @switch_to_static_graph

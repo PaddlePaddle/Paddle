@@ -20,7 +20,7 @@ import unittest
 import numpy
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -57,8 +57,8 @@ class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
         fleet.run_server()
 
     def run_trainer(self, role, strategy):
-        place = fluid.core.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.core.CPUPlace()
+        exe = base.Executor(place)
 
         fleet.init(role)
         avg_cost, x, y = self.net()
@@ -70,7 +70,7 @@ class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
         fleet.init_worker()
 
         train_reader = paddle.batch(self.fake_reader(), batch_size=24)
-        feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+        feeder = base.DataFeeder(place=place, feed_list=[x, y])
 
         for batch_id, data in enumerate(train_reader()):
             exe.run(
@@ -116,7 +116,7 @@ import numpy
 from test_communicator_half_async import TestCommunicatorHalfAsyncEnd2End
 
 import paddle
-import paddle.fluid as fluid
+import paddle.base as base
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 

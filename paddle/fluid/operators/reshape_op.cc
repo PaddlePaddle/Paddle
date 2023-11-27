@@ -96,7 +96,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
                   i,
                   in_dims.size(),
                   in_dims));
-          infer_shape[i] = in_dims[i];
+          infer_shape[i] = static_cast<int>(in_dims[static_cast<int>(i)]);
         }
       }
       auto infer_out_dims = phi::make_ddim(infer_shape);
@@ -109,7 +109,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
       auto shape_dims = ctx->GetInputDim("Shape");
       int num_ele = 1;
       for (int i = 0; i < shape_dims.size(); ++i) {
-        num_ele *= shape_dims[i];
+        num_ele *= static_cast<int>(shape_dims[i]);
       }
       auto vec_dims = std::vector<int>(num_ele, -1);
       auto out_dims = phi::make_ddim(vec_dims);
@@ -160,7 +160,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 "be -1. But received shape = [%s], shape[%d] is also -1.",
                 phi::make_ddim(shape),
                 i));
-        unk_dim_idx = i;
+        unk_dim_idx = static_cast<int>(i);
       } else if (shape[i] == copy_dim_val) {
         PADDLE_ENFORCE_LT(
             static_cast<int>(i),
@@ -189,9 +189,9 @@ class ReshapeOp : public framework::OperatorWithKernel {
 
       // NOTE all non-zero values will be converted to True (include negative
       // value)
-      capacity *= (shape[i] ? shape[i] : in_dims[i]);
-      output_shape[i] =
-          (shape[i] ? static_cast<int64_t>(shape[i]) : in_dims[i]);
+      capacity *= (shape[i] ? shape[i] : in_dims[static_cast<int>(i)]);
+      output_shape[i] = (shape[i] ? static_cast<int64_t>(shape[i])
+                                  : in_dims[static_cast<int>(i)]);
     }
 
     if (unk_dim_idx != -1) {
@@ -627,9 +627,12 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
     using CompatMetaTensor = framework::CompatMetaTensor;
     CompatMetaTensor xshape(ctx->GetInputVarPtrs("XShape")[0],
                             ctx->IsRuntime());
+    CompatMetaTensor out_grad(
+        ctx->GetInputVarPtrs(framework::GradVarName("Out"))[0],
+        ctx->IsRuntime());
     CompatMetaTensor dx(ctx->GetOutputVarPtrs(framework::GradVarName("X"))[0],
                         ctx->IsRuntime());
-    phi::KernelWithXShapeInferMeta(xshape, &dx);
+    phi::KernelWithXShapeInferMeta(xshape, out_grad, &dx);
   }
 
  protected:

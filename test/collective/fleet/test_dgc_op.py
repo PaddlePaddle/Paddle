@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 from op import Operator
 
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 g_array_size = 102400
 
@@ -28,7 +28,7 @@ class TestDGCOp(unittest.TestCase):
         size = array_size
         np.random.seed(5)  # fix seed
 
-        self.scope = fluid.global_scope()
+        self.scope = base.global_scope()
         self.place = place
         print("place:", place)
 
@@ -128,10 +128,10 @@ class TestDGCOp(unittest.TestCase):
             'm': 0.9,
             'sparsity': [0.75, 0.9375, 0.984375, 0.996, 0.999],
             'use_nesterov': True,
-            'rampup_begin_step': float(0.0),
-            'rampup_step': float(10.0),
-            'regular_coeff': float(1e-4),
-            'regular_type': int(2),
+            'rampup_begin_step': 0.0,
+            'rampup_step': 10.0,
+            'regular_coeff': 1e-4,
+            'regular_type': 2,
         }
 
         dgc_op = Operator('dgc', **kwargs)

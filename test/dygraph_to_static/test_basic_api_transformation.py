@@ -16,11 +16,12 @@ import inspect
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import Dy2StTestBase, test_default_mode_only
 
 import paddle
-from paddle import fluid, to_tensor
-from paddle.fluid import dygraph
-from paddle.fluid.dygraph import to_variable
+from paddle import base, to_tensor
+from paddle.base import dygraph
+from paddle.base.dygraph import to_variable
 from paddle.jit.api import dygraph_to_static_func
 from paddle.jit.dy2static.utils import is_dygraph_api
 from paddle.utils import gast
@@ -34,7 +35,7 @@ paddle.enable_static()
 
 
 def dyfunc_to_variable(x):
-    res = fluid.dygraph.to_variable(x, name=None, zero_copy=None)
+    res = base.dygraph.to_variable(x, name=None, zero_copy=None)
     return res
 
 
@@ -68,7 +69,7 @@ def dyfunc_bool_to_tensor(x):
     return paddle.to_tensor(True)
 
 
-class TestDygraphBasicApi_ToVariable(unittest.TestCase):
+class TestDygraphBasicApi_ToVariable(Dy2StTestBase):
     def setUp(self):
         self.input = np.ones(5).astype("int32")
         self.test_funcs = [
@@ -81,27 +82,28 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
             dyfunc_to_variable_3,
         ]
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
 
     def get_dygraph_output(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             res = self.dygraph_func(self.input).numpy()
             return res
 
     def get_static_output(self):
-        main_program = fluid.Program()
+        main_program = base.Program()
         main_program.random_seed = SEED
-        with fluid.program_guard(main_program):
+        with base.program_guard(main_program):
             static_out = dygraph_to_static_func(self.dygraph_func)(self.input)
 
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         static_res = exe.run(main_program, fetch_list=static_out)
 
         return static_res[0]
 
+    @test_default_mode_only
     def test_transformed_static_result(self):
         for func in self.test_funcs:
             self.dygraph_func = func
@@ -116,17 +118,17 @@ def dyfunc_BilinearTensorProduct(layer1, layer2):
         5,
         4,
         1000,
-        weight_attr=fluid.ParamAttr(
+        weight_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.99)
         ),
-        bias_attr=fluid.ParamAttr(
+        bias_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.5)
         ),
     )
 
     res = bilinearTensorProduct(
-        fluid.dygraph.base.to_variable(layer1),
-        fluid.dygraph.base.to_variable(layer2),
+        base.dygraph.base.to_variable(layer1),
+        base.dygraph.base.to_variable(layer2),
     )
     return res
 
@@ -155,7 +157,7 @@ def dyfunc_Conv3D(input):
         weight_attr=paddle.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.99)
         ),
-        bias_attr=fluid.ParamAttr(
+        bias_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.5)
         ),
     )
@@ -168,10 +170,10 @@ def dyfunc_Conv2DTranspose(input):
         3,
         12,
         12,
-        weight_attr=fluid.ParamAttr(
+        weight_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.99)
         ),
-        bias_attr=fluid.ParamAttr(
+        bias_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.5)
         ),
     )
@@ -220,7 +222,7 @@ def dyfunc_Pool2D(input):
 
 def dyfunc_Prelu(input):
     prelu0 = paddle.nn.PReLU(
-        weight_attr=fluid.ParamAttr(
+        weight_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(1.0)
         ),
     )
@@ -228,7 +230,7 @@ def dyfunc_Prelu(input):
     return res
 
 
-class TestDygraphBasicApi(unittest.TestCase):
+class TestDygraphBasicApi(Dy2StTestBase):
     # Compare results of dynamic graph and transformed static graph function which only
     # includes basic Api.
 
@@ -237,28 +239,29 @@ class TestDygraphBasicApi(unittest.TestCase):
         self.dygraph_func = dyfunc_Pool2D
 
     def get_dygraph_output(self):
-        with fluid.dygraph.guard():
-            fluid.default_startup_program.random_seed = SEED
-            fluid.default_main_program.random_seed = SEED
-            data = fluid.dygraph.to_variable(self.input)
+        with base.dygraph.guard():
+            base.default_startup_program.random_seed = SEED
+            base.default_main_program.random_seed = SEED
+            data = base.dygraph.to_variable(self.input)
             res = self.dygraph_func(data).numpy()
 
             return res
 
     def get_static_output(self):
-        startup_program = fluid.Program()
+        startup_program = base.Program()
         startup_program.random_seed = SEED
-        main_program = fluid.Program()
+        main_program = base.Program()
         main_program.random_seed = SEED
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             data = paddle.assign(self.input)
             static_out = dygraph_to_static_func(self.dygraph_func)(data)
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
         return static_res[0]
 
+    @test_default_mode_only
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
@@ -272,23 +275,23 @@ class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
         self.dygraph_func = dyfunc_BilinearTensorProduct
 
     def get_dygraph_output(self):
-        with fluid.dygraph.guard():
-            fluid.default_startup_program.random_seed = SEED
-            fluid.default_main_program.random_seed = SEED
+        with base.dygraph.guard():
+            base.default_startup_program.random_seed = SEED
+            base.default_main_program.random_seed = SEED
             res = self.dygraph_func(self.input1, self.input2).numpy()
             return res
 
     def get_static_output(self):
-        startup_program = fluid.Program()
+        startup_program = base.Program()
         startup_program.random_seed = SEED
-        main_program = fluid.Program()
+        main_program = base.Program()
         main_program.random_seed = SEED
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             static_out = dygraph_to_static_func(self.dygraph_func)(
                 self.input1, self.input2
             )
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
         return static_res[0]
@@ -392,30 +395,31 @@ def dyfunc_PolynomialDecay():
     return paddle.to_tensor(lr)
 
 
-class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
+class TestDygraphBasicApi_CosineDecay(Dy2StTestBase):
     def setUp(self):
         self.dygraph_func = dyfunc_CosineDecay
 
     def get_dygraph_output(self):
-        with fluid.dygraph.guard():
-            fluid.default_startup_program.random_seed = SEED
-            fluid.default_main_program.random_seed = SEED
+        with base.dygraph.guard():
+            base.default_startup_program.random_seed = SEED
+            base.default_main_program.random_seed = SEED
             res = self.dygraph_func().numpy()
             return res
 
     def get_static_output(self):
-        startup_program = fluid.Program()
+        startup_program = base.Program()
         startup_program.random_seed = SEED
-        main_program = fluid.Program()
+        main_program = base.Program()
         main_program.random_seed = SEED
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             static_out = dygraph_to_static_func(self.dygraph_func)()
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
         return static_res[0]
 
+    @test_default_mode_only
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
@@ -427,22 +431,22 @@ class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
         self.dygraph_func = dyfunc_ExponentialDecay
 
     def get_dygraph_output(self):
-        with fluid.dygraph.guard():
-            fluid.default_startup_program.random_seed = SEED
-            fluid.default_main_program.random_seed = SEED
+        with base.dygraph.guard():
+            base.default_startup_program.random_seed = SEED
+            base.default_main_program.random_seed = SEED
             res = self.dygraph_func()
             return res
 
     def get_static_output(self):
-        startup_program = fluid.Program()
+        startup_program = base.Program()
         startup_program.random_seed = SEED
-        main_program = fluid.Program()
+        main_program = base.Program()
         main_program.random_seed = SEED
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             static_out = dygraph_to_static_func(self.dygraph_func)()
             static_out = paddle.to_tensor(static_out)
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
         return static_res[0]
@@ -453,22 +457,22 @@ class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
         self.dygraph_func = dyfunc_InverseTimeDecay
 
     def get_dygraph_output(self):
-        with fluid.dygraph.guard():
-            fluid.default_startup_program.random_seed = SEED
-            fluid.default_main_program.random_seed = SEED
+        with base.dygraph.guard():
+            base.default_startup_program.random_seed = SEED
+            base.default_main_program.random_seed = SEED
             res = self.dygraph_func()
             return res
 
     def get_static_output(self):
-        startup_program = fluid.Program()
+        startup_program = base.Program()
         startup_program.random_seed = SEED
-        main_program = fluid.Program()
+        main_program = base.Program()
         main_program.random_seed = SEED
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             static_out = dygraph_to_static_func(self.dygraph_func)()
             static_out = paddle.to_tensor(static_out)
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
         return static_res[0]
@@ -479,22 +483,22 @@ class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
         self.dygraph_func = dyfunc_NaturalExpDecay
 
     def get_dygraph_output(self):
-        with fluid.dygraph.guard():
-            fluid.default_startup_program.random_seed = SEED
-            fluid.default_main_program.random_seed = SEED
+        with base.dygraph.guard():
+            base.default_startup_program.random_seed = SEED
+            base.default_main_program.random_seed = SEED
             res = self.dygraph_func()
             return res
 
     def get_static_output(self):
-        startup_program = fluid.Program()
+        startup_program = base.Program()
         startup_program.random_seed = SEED
-        main_program = fluid.Program()
+        main_program = base.Program()
         main_program.random_seed = SEED
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             static_out = dygraph_to_static_func(self.dygraph_func)()
             static_out = paddle.to_tensor(static_out)
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
         return static_res[0]
@@ -515,23 +519,23 @@ class TestDygraphBasicApi_PolynomialDecay(TestDygraphBasicApi_CosineDecay):
         self.dygraph_func = dyfunc_PolynomialDecay
 
     def get_dygraph_output(self):
-        with fluid.dygraph.guard():
-            fluid.default_startup_program.random_seed = SEED
-            fluid.default_main_program.random_seed = SEED
+        with base.dygraph.guard():
+            base.default_startup_program.random_seed = SEED
+            base.default_main_program.random_seed = SEED
             res = self.dygraph_func()
             return res
 
 
 def _dygraph_fn():
-    from paddle import fluid
+    from paddle import base
 
     x = np.random.random((1, 3)).astype('float32')
-    with fluid.dygraph.guard():
-        fluid.dygraph.to_variable(x)
+    with base.dygraph.guard():
+        base.dygraph.to_variable(x)
         np.random.random(1)
 
 
-class TestDygraphApiRecognition(unittest.TestCase):
+class TestDygraphApiRecognition(Dy2StTestBase):
     def setUp(self):
         self.src = inspect.getsource(_dygraph_fn)
         self.root = gast.parse(self.src)
@@ -542,6 +546,7 @@ class TestDygraphApiRecognition(unittest.TestCase):
     def _get_static_ast_node(self):
         return self.root.body[0].body[2].body[1].value
 
+    @test_default_mode_only
     def test_dygraph_api(self):
         self.assertTrue(is_dygraph_api(self._get_dygraph_ast_node()) is True)
         self.assertTrue(is_dygraph_api(self._get_static_ast_node()) is False)

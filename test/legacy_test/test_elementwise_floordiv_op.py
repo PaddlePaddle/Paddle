@@ -17,10 +17,10 @@ import unittest
 from contextlib import contextmanager
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from op_test import OpTest, paddle_static_guard
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestElementwiseModOp(OpTest):
@@ -38,14 +38,14 @@ class TestElementwiseModOp(OpTest):
         self.init_axis()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
@@ -105,19 +105,21 @@ def device_guard(device=None):
 
 class TestFloorDivideOp(unittest.TestCase):
     def test_name(self):
+        paddle.enable_static()
         with paddle_static_guard():
-            with fluid.program_guard(fluid.Program()):
+            with base.program_guard(base.Program()):
                 x = paddle.static.data(name="x", shape=[2, 3], dtype="int64")
                 y = paddle.static.data(name='y', shape=[2, 3], dtype='int64')
 
                 y_1 = paddle.floor_divide(x, y, name='div_res')
                 self.assertEqual(('div_res' in y_1.name), True)
+            paddle.disable_static()
 
     def test_dygraph(self):
         paddle.disable_static()
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
         for p in places:
             for dtype in (
                 'uint8',

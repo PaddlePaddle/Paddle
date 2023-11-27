@@ -43,7 +43,7 @@ struct DistModelConfig {
   framework::ProgramDesc* program_desc{nullptr};
   framework::Scope* scope{nullptr};
   std::string place{};
-  int64_t device_id{0};
+  int device_id{0};
   std::string device_type{};
   std::vector<std::string> trainer_endpoints{};
   std::string current_endpoint{};

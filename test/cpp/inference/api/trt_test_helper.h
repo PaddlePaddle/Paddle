@@ -17,17 +17,17 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/utils/flags.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
 
-DEFINE_bool(use_tensorrt, true, "Test the performance of TensorRT engine.");
-DEFINE_string(prog_filename, "", "Name of model file.");
-DEFINE_string(param_filename, "", "Name of parameters file.");
+PD_DEFINE_bool(use_tensorrt, true, "Test the performance of TensorRT engine.");
+PD_DEFINE_string(prog_filename, "", "Name of model file.");
+PD_DEFINE_string(param_filename, "", "Name of parameters file.");
 
 template <typename ConfigType>
 void SetConfig(ConfigType* config,

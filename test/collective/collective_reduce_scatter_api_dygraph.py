@@ -16,7 +16,7 @@ import legacy_test.test_collective_api_base as test_base
 
 import paddle
 import paddle.distributed as dist
-from paddle import fluid
+from paddle import base
 
 
 class TestCollectiveReduceScatterAPI(test_base.TestCollectiveAPIRunnerBase):
@@ -24,7 +24,7 @@ class TestCollectiveReduceScatterAPI(test_base.TestCollectiveAPIRunnerBase):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank, indata=None):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             # NOTE: this is a hack relying on an undocumented behavior that `to_tensor` uses uint16 to replace bfloat16
             if indata.dtype == "bfloat16":
                 tindata = paddle.to_tensor(indata, "float32").cast("uint16")

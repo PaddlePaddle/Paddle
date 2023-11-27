@@ -241,9 +241,7 @@ void benchmark_fluid_scale(const std::shared_ptr<imperative::VarBase>& X,
   for (size_t i = 0; i < max_num_runs; i++) {
     imperative::NameVarBaseMap ins = {{"X", {tmp_out}}};
     imperative::NameVarBaseMap outs = {
-        {"Out",
-         {std::shared_ptr<imperative::VarBase>(
-             new imperative::VarBase(true, "Out"))}}};
+        {"Out", {std::make_shared<imperative::VarBase>(true, "Out")}}};
 
     tracer.TraceOp<VarBase>("scale", ins, outs, attrs, place, true);
 
@@ -277,9 +275,7 @@ void benchmark_fluid_matmul(const std::shared_ptr<imperative::VarBase>& X,
     framework::AttributeMap attrs;
     imperative::NameVarBaseMap ins = {{"X", {tmp_out}}, {"Y", {Y}}};
     imperative::NameVarBaseMap outs = {
-        {"Out",
-         {std::shared_ptr<imperative::VarBase>(
-             new imperative::VarBase(true, "Out"))}}};
+        {"Out", {std::make_shared<imperative::VarBase>(true, "Out")}}};
 
     tracer.TraceOp<VarBase>("matmul_v2", ins, outs, attrs, place, true);
 
@@ -316,17 +312,13 @@ void benchmark_fluid_mlp(
   for (size_t i = 0; i < MLP_NUM_LINEAR; i++) {
     // Matmul0
     ins = {{"X", {input0}}, {"Y", {Ws[0]}}};
-    outs = {{"Out",
-             {std::shared_ptr<imperative::VarBase>(
-                 new imperative::VarBase(true, "Out"))}}};
+    outs = {{"Out", {std::make_shared<imperative::VarBase>(true, "Out")}}};
 
     tracer.TraceOp<VarBase>("matmul_v2", ins, outs, attrs, place, true);
 
     // EW-Add0
     ins = {{"X", outs["Out"]}, {"Y", {Bs[i]}}};
-    outs = {{"Out",
-             {std::shared_ptr<imperative::VarBase>(
-                 new imperative::VarBase(true, "Out"))}}};
+    outs = {{"Out", {std::make_shared<imperative::VarBase>(true, "Out")}}};
 
     tracer.TraceOp<VarBase>("elementwise_add", ins, outs, attrs, place, true);
     input0 = outs["Out"][0];
@@ -334,9 +326,7 @@ void benchmark_fluid_mlp(
 
   // ReduceSum
   ins = {{"X", {input0}}};
-  outs = {{"Out",
-           {std::shared_ptr<imperative::VarBase>(
-               new imperative::VarBase(true, "Out"))}}};
+  outs = {{"Out", {std::make_shared<imperative::VarBase>(true, "Out")}}};
   attrs = {{"reduce_all", true}};
 
   tracer.TraceOp<VarBase>("reduce_sum", ins, outs, attrs, place, true);

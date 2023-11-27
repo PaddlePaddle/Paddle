@@ -118,7 +118,7 @@ class Table {
   virtual int32_t SaveCache(
       const std::string &path UNUSED,
       const std::string &param UNUSED,
-      paddle::framework::Channel<std::pair<uint64_t, std::string>>
+      ::paddle::framework::Channel<std::pair<uint64_t, std::string>>
           &shuffled_channel UNUSED) {
     return 0;
   }
@@ -130,7 +130,7 @@ class Table {
       std::function<std::future<int32_t>(
           int msg_type, int to_pserver_id, std::string &msg)>  // NOLINT
           send_msg_func UNUSED,
-      paddle::framework::Channel<std::pair<uint64_t, std::string>>
+      ::paddle::framework::Channel<std::pair<uint64_t, std::string>>
           &shuffled_channel UNUSED,
       const std::vector<Table *> &table_ptrs UNUSED) {
     return 0;
@@ -161,7 +161,7 @@ class Table {
   virtual int32_t InitializeAccessor();
   virtual int32_t InitializeShard() = 0;
   virtual std::string TableDir(const std::string &model_dir) {
-    return paddle::string::format_string(
+    return ::paddle::string::format_string(
         "%s/%03d/", model_dir.c_str(), _config.table_id());
   }
 

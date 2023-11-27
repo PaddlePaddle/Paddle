@@ -19,8 +19,8 @@ from prim.composite_ops.utils import SUB_TOLERANCE
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid import core, framework
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base import core, framework
+from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode
 from paddle.incubate.autograd import primapi
 from paddle.nn import LayerNorm
@@ -70,7 +70,7 @@ def layer_norm_wrapper(
 
         # create output
         helper = LayerHelper('layer_norm', **locals())
-        from paddle.fluid.data_feeder import convert_dtype
+        from paddle.base.data_feeder import convert_dtype
 
         param_dtype = (
             x.dtype if convert_dtype(x.dtype) != 'float16' else 'float32'
@@ -107,14 +107,12 @@ class Attr:
 
     def set_dtype(self, dtype) -> None:
         self.dtype = dtype
-        return
 
     def set_shape(self, n_shape, shape1=[], shape2=[], shape3=[]) -> None:
         self.n_shape = n_shape
         self.shape1 = shape1
         self.shape2 = shape2
         self.shape3 = shape3
-        return
 
     def get_rtol(self, flag):
         rtol = SUB_TOLERANCE[self.dtype][flag].get("rtol")

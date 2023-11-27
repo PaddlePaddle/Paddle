@@ -15,7 +15,7 @@
 import typing
 
 import paddle
-from paddle.fluid import framework
+from paddle.base import framework
 from paddle.incubate.autograd import primapi, utils
 
 
@@ -582,7 +582,7 @@ def _grad(ys, xs, v=None):
         # xs_grad when the xs is a signle Tensor.
         xs_grad = paddle.grad(ys, xs, v, create_graph=True, allow_unused=True)
         if (
-            isinstance(xs, paddle.fluid.framework.Variable)
+            isinstance(xs, paddle.base.framework.Variable)
             and isinstance(xs_grad, typing.Sequence)
             and len(xs_grad) > 0
         ):

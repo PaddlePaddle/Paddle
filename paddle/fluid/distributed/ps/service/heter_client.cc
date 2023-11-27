@@ -19,8 +19,8 @@
 
 namespace paddle {
 namespace distributed {
-DEFINE_int32(heter_world_size, 100, "group size");  // group max size
-DEFINE_int32(switch_send_recv_timeout_s, 600, "switch_send_recv_timeout_s");
+PD_DEFINE_int32(heter_world_size, 100, "group size");  // group max size
+PD_DEFINE_int32(switch_send_recv_timeout_s, 600, "switch_send_recv_timeout_s");
 
 std::shared_ptr<HeterClient> HeterClient::s_instance_ = nullptr;
 std::mutex HeterClient::mtx_;
@@ -167,13 +167,13 @@ void HeterClient::SendAndRecvAsync(
     // int idx = 1;  // for test
     // LOG(INFO) << "xpu_channels_ size: " << xpu_channels_.size();
     // channel = xpu_channels_[idx].get();  // 为了适配 send_and_recv op
-    // ::paddle::distributed::PsService_Stub stub(channel);
+    // paddle::distributed::PsService_Stub stub(channel);
     // stub.SendToSwitch(&closure->cntl, &request, &closure->response,
     // closure); fut.wait();
     VLOG(4) << "calling switch service done";
     return;
   }
-  ::paddle::distributed::PsService_Stub stub(channel);
+  paddle::distributed::PsService_Stub stub(channel);
   stub.SendAndRecvVariable(
       &closure->cntl, &request, &closure->response, closure);
 }
@@ -204,7 +204,7 @@ std::future<int32_t> HeterClient::SendCmd(
     for (const auto& param : params) {
       closure->request(i)->add_params(param);
     }
-    ::paddle::distributed::PsService_Stub rpc_stub(xpu_channels_[i].get());
+    paddle::distributed::PsService_Stub rpc_stub(xpu_channels_[i].get());
     closure->cntl(i)->set_timeout_ms(
         FLAGS_pserver_timeout_ms);  // cmd msg don't limit timeout for save/load
     rpc_stub.service(
@@ -270,7 +270,7 @@ int HeterClient::Send(const platform::DeviceContext& ctx,
   }
   brpc::Channel* channel = send_switch_channels_[0].get();
   // brpc::Channel* channel = xpu_channels_[0].get();
-  ::paddle::distributed::PsService_Stub stub(channel);
+  paddle::distributed::PsService_Stub stub(channel);
   stub.SendToSwitch(&closure->cntl, &request, &closure->ps_response, closure);
 
   VLOG(4) << "waiting SendToSwitch response result......";
@@ -317,7 +317,7 @@ int HeterClient::Send(int group_id,
     send_switch_channels_.push_back(xpu_channels_[0]);
   }
   brpc::Channel* channel = send_switch_channels_[0].get();
-  ::paddle::distributed::PsService_Stub stub(channel);
+  paddle::distributed::PsService_Stub stub(channel);
   stub.SendToSwitch(&closure->cntl, &request, &closure->ps_response, closure);
   fut.wait();
   delete closure;
@@ -362,7 +362,7 @@ int HeterClient::Recv(const platform::DeviceContext& ctx,
     recv_switch_channels_.push_back(xpu_channels_[1]);
   }
   brpc::Channel* channel = recv_switch_channels_[0].get();
-  ::paddle::distributed::PsService_Stub stub(channel);
+  paddle::distributed::PsService_Stub stub(channel);
   stub.RecvFromSwitch(&closure->cntl, &request, &closure->response, closure);
   fut.wait();
   VLOG(4) << "RecvFromSwitch done";
@@ -412,7 +412,7 @@ int HeterClient::Recv(int group_id,
     recv_switch_channels_.push_back(xpu_channels_[0]);
   }
   brpc::Channel* channel = recv_switch_channels_[0].get();
-  ::paddle::distributed::PsService_Stub stub(channel);
+  paddle::distributed::PsService_Stub stub(channel);
   stub.RecvFromSwitch(&closure->cntl, &request, &closure->response, closure);
   fut.wait();
   VLOG(4) << "RecvFromSwitch done";

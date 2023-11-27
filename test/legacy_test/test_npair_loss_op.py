@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 def npairloss(anchor, positive, labels, l2_reg=0.002):
@@ -63,8 +63,8 @@ class TestNpairLossOp(unittest.TestCase):
         num_data, feat_dim, num_classes = 18, 6, 3
 
         place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
 
         embeddings_anchor = np.random.rand(num_data, feat_dim).astype(
             np.float32
@@ -199,7 +199,7 @@ class TestNpairLossOpError(unittest.TestCase):
 
 class TestNpairLossZeroError(unittest.TestCase):
     def test_errors(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
 
             def test_anchor_0_size():
                 array = np.array([], dtype=np.float32)

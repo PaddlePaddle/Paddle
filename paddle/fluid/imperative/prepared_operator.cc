@@ -36,7 +36,7 @@
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_bool(check_nan_inf);
-DECLARE_bool(benchmark);
+PD_DECLARE_bool(benchmark);
 PHI_DECLARE_bool(run_kp_kernel);
 
 namespace paddle {

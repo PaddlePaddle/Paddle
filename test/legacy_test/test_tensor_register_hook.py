@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid, nn
-from paddle.fluid import core
+from paddle import base, nn
+from paddle.base import core
 
 
 class SimpleNet(nn.Layer):
@@ -475,7 +475,7 @@ class TestTensorRegisterHook(unittest.TestCase):
         # after changed by hook: 8.0
 
         # TODO(wuweilong): enable this case when DoubleGrad in eager mode is ready
-        if fluid.in_dygraph_mode():
+        if base.in_dygraph_mode():
             pass
         else:
             z.backward()

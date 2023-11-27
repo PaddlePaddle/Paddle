@@ -127,11 +127,7 @@ void LUKernel(const Context& dev_ctx,
               DenseTensor* out,
               DenseTensor* pivots,
               DenseTensor* infos) {
-#ifdef __HIPCC__
-  const int64_t kMaxBlockDim = 256;
-#else
   const int64_t kMaxBlockDim = 512;
-#endif
 
   *out = Transpose2DTo6D<Context, T>(dev_ctx, x);
 

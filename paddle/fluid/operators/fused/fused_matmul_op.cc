@@ -82,7 +82,7 @@ class FusedMatmulOp : public framework::OperatorWithKernel {
       y_broadcasted = true;
     }
 
-    size_t M, N;
+    size_t M = 0, N = 0;
     if (trans_x) {
       M = dims_x[ndims_x - 1];
     } else {
@@ -106,10 +106,10 @@ class FusedMatmulOp : public framework::OperatorWithKernel {
       }
     }
     if (!x_broadcasted) {
-      new_dims.push_back(M);
+      new_dims.push_back(M);  // NOLINT
     }
     if (!y_broadcasted) {
-      new_dims.push_back(N);
+      new_dims.push_back(N);  // NOLINT
     }
 
     ctx->SetOutputDim("Out", phi::make_ddim(new_dims));

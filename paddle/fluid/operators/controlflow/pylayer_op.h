@@ -49,27 +49,5 @@ class PyLayerOp : public framework::OperatorBase {
  protected:
   mutable std::shared_ptr<framework::InterpreterCore> core_{nullptr};
 };
-
-class PyLayerForwardOpProtoMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput(PyLayerOp::kInputs, "The input variables of the sub-block.")
-        .AsDuplicable();
-    AddOutput(PyLayerOp::kOutputs, "The output variables of the sub-block.")
-        .AsDuplicable();
-    // TODO(MarioLulab): Must Use std::vector here ?
-    AddOutput(PyLayerOp::kScope,
-              "(std::vector<Scope*>) The scope of static pylayer block.");
-    AddAttr<std::vector<framework::BlockDesc *>>(
-        "blocks", "The blocks of PyLayer operator");
-    AddComment(R"DOC(PyLayer operator
-
-TO-DO: added by luqi
-
-
-)DOC");
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle

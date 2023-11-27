@@ -15,12 +15,13 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid.dygraph as dg
-from paddle import fluid
-from paddle.fluid import core
+import paddle.base.dygraph as dg
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestKronOp(OpTest):
@@ -38,16 +39,16 @@ class TestKronOp(OpTest):
         return "float64"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
     def test_check_grad_ignore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set('X'))
+        self.check_grad(['Y'], 'Out', no_grad_set=set('X'), check_pir=True)
 
     def test_check_grad_ignore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=True)
 
 
 class TestKronOp2(TestKronOp):
@@ -102,19 +103,21 @@ class TestKronBF16Op(TestKronOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
+        self.check_grad_with_place(
+            self.place, ['X', 'Y'], 'Out', check_pir=True
+        )
 
     def test_check_grad_ignore_x(self):
         self.check_grad_with_place(
-            self.place, ['Y'], 'Out', no_grad_set=set('X')
+            self.place, ['Y'], 'Out', no_grad_set=set('X'), check_pir=True
         )
 
     def test_check_grad_ignore_y(self):
         self.check_grad_with_place(
-            self.place, ['X'], 'Out', no_grad_set=set('Y')
+            self.place, ['X'], 'Out', no_grad_set=set('Y'), check_pir=True
         )
 
 
@@ -122,31 +125,29 @@ class TestKronLayer(unittest.TestCase):
     def test_case(self):
         a = np.random.randn(10, 10).astype(np.float64)
         b = np.random.randn(10, 10).astype(np.float64)
-
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         with dg.guard(place):
             a_var = dg.to_variable(a)
             b_var = dg.to_variable(b)
             c_var = paddle.kron(a_var, b_var)
             np.testing.assert_allclose(c_var.numpy(), np.kron(a, b))
 
+    @test_with_pir_api
     def test_case_with_output(self):
+        place = base.CPUPlace()
         a = np.random.randn(10, 10).astype(np.float64)
         b = np.random.randn(10, 10).astype(np.float64)
-
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+        out_np = np.kron(a, b)
+        paddle.enable_static()
+        prog = paddle.static.Program()
+        with base.unique_name.guard():
+            with paddle.static.program_guard(prog, prog):
                 a_var = paddle.static.data("a", [-1, -1], dtype="float64")
                 b_var = paddle.static.data("b", [-1, -1], dtype="float64")
                 out_var = paddle.kron(a_var, b_var)
-
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(start)
-        (c,) = exe.run(main, feed={'a': a, 'b': b}, fetch_list=[out_var])
-        np.testing.assert_allclose(c, np.kron(a, b))
+        exe = paddle.static.Executor(place=place)
+        (res,) = exe.run(prog, feed={'a': a, 'b': b}, fetch_list=[out_var])
+        np.testing.assert_allclose(res, out_np)
 
 
 class TestComplexKronOp(OpTest):
@@ -160,8 +161,8 @@ class TestComplexKronOp(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
@@ -179,12 +180,13 @@ class TestComplexKronOp(OpTest):
         self.out = np.kron(self.x, self.y)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
+            check_pir=True,
         )
 
     def test_check_grad_ingore_x(self):
@@ -192,6 +194,7 @@ class TestComplexKronOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
+            check_pir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -199,6 +202,7 @@ class TestComplexKronOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
+            check_pir=True,
         )
 
 

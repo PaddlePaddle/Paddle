@@ -24,7 +24,10 @@ cinn_whl_path=python/dist/cinn-0.0.0-py3-none-any.whl
 
 #export LLVM11_DIR=${workspace}/THIRDS/usr
 
-JOBS=8
+if [[ "" == ${JOBS} ]]; then
+  JOBS=`nproc`
+fi
+
 cuda_config=OFF
 cudnn_config=OFF
 
@@ -118,19 +121,6 @@ function prepare_model {
 
     proxy_on
     mkdir -p $build_dir/paddle
-    cd $build_dir/paddle
-    if [[ ! -f "libexternal_kernels.so.tgz" ]]; then
-        wget https://github.com/T8T9/files/raw/main/libexternal_kernels.so.tgz
-    fi
-    tar -zxvf libexternal_kernels.so.tgz
-    if [[ ! -f "paddle_1.8_fc_model.tgz" ]]; then
-        wget https://github.com/T8T9/files/raw/main/paddle_1.8_fc_model.tgz
-    fi
-    tar -zxvf paddle_1.8_fc_model.tgz
-    if [[ ! -f "mkldnn.tgz" ]]; then
-        wget https://github.com/T8T9/files/raw/main/mkldnn.tgz
-    fi
-    tar -zxvf mkldnn.tgz
     cd $build_dir/third_party
     python${py_version} $workspace/test/cinn/fake_model/naive_mul.py
     python${py_version} $workspace/test/cinn/fake_model/naive_multi_fc.py
@@ -164,9 +154,9 @@ function run_test {
     export runtime_include_dir=$workspace/paddle/cinn/runtime/cuda
 
     if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
-        ctest --parallel 10 -V
+        ctest --parallel 10 -V -E "test_frontend_interpreter|test_cinn_fake_resnet|test_dce_pass"
     else
-        ctest --parallel 10 --output-on-failure
+        ctest --parallel 10 --output-on-failure -E "test_frontend_interpreter|test_cinn_fake_resnet|test_dce_pass"
     fi
 }
 

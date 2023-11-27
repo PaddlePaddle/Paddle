@@ -23,7 +23,6 @@ limitations under the License. */
 
 namespace phi {
 
-// TODO(chenweihang): add other flags if needed
 struct MetaConfig {
   bool is_runtime{true};
   bool is_run_mkldnn_kernel{false};
@@ -65,6 +64,7 @@ class MetaTensor {
 
   virtual int64_t numel() const;
   virtual DDim dims() const;
+  DDim dims(int64_t index) const;
   virtual DataType dtype() const;
   virtual DataLayout layout() const;
   virtual DDim strides() const;
@@ -74,6 +74,8 @@ class MetaTensor {
   virtual void set_strides(const DDim& strides);
 
   virtual void share_lod(const MetaTensor& meta_tensor);
+  void share_lod(const LoD& lod);
+  void share_lod(const MetaTensor& meta_tensor, int64_t index);
   virtual void share_meta(const MetaTensor& meta_tensor);
   virtual void share_dims(const MetaTensor& meta_tensor);
   virtual void share_strides(const MetaTensor& meta_tensor);
@@ -82,9 +84,13 @@ class MetaTensor {
 
   virtual bool is_selected_rows() const;
   virtual bool is_dense() const;
+  virtual bool is_dist() const;
+
   // TODO(YuanRisheng) This API is for compatible with Fluid
   //  and it will be deleted in the future.
   virtual bool is_tensor_array() const;
+
+  virtual bool is_same_tensor(const MetaTensor& meta_tensor) const;
 
   virtual operator unspecified_bool_type() const {
     return tensor_ == nullptr ? 0 : unspecified_bool_true;
@@ -95,10 +101,11 @@ class MetaTensor {
  protected:
   static void unspecified_bool_true() {}
 
- private:
+ protected:
   // Because the lod in compiletime and runtime is different,
   // so `LoD` cannot in public methods
   const LoD& lod() const;
+  const LoD& lod(int64_t index) const;
   TensorBase* tensor() const;
 
   TensorBase* tensor_ = nullptr;

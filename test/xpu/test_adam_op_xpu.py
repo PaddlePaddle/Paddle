@@ -24,7 +24,7 @@ from op import Operator
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class XPUTestAdamOp(XPUOpTestWrapper):
@@ -271,7 +271,9 @@ def adam_step(inputs, attributes):
     moment1_out = beta1 * moment1 + (1 - beta1) * grad
     moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
     lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
-    param_out = param - lr_t * (moment1_out / (np.sqrt(moment2_out) + epsilon))
+    param_out = param - lr_t * (
+        moment1_out / (np.sqrt(moment2_out) + epsilon * np.sqrt(1 - beta2_pow))
+    )
     return param_out, moment1_out, moment2_out
 
 

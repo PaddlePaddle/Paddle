@@ -15,24 +15,39 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestMultiplexOp(OpTest):
     def setUp(self):
         self.op_type = "multiplex"
+        self.init_dtype()
         self.python_api = paddle.tensor.multiplex
         rows = 4
         index = np.arange(0, rows).astype('int32')
         np.random.shuffle(index)
         index = np.reshape(index, (rows, 1))
-        ins1 = np.random.random((rows, 25)).astype("float64")
-        ins2 = np.random.random((rows, 25)).astype("float64")
-        ins3 = np.random.random((rows, 25)).astype("float64")
-        ins4 = np.random.random((rows, 25)).astype("float64")
+        ins1 = np.random.random((rows, 25)).astype(self.dtype)
+        ins2 = np.random.random((rows, 25)).astype(self.dtype)
+        ins3 = np.random.random((rows, 25)).astype(self.dtype)
+        ins4 = np.random.random((rows, 25)).astype(self.dtype)
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            ins1 = (
+                np.random.random((rows, 25)) + 1j * np.random.random((rows, 25))
+            ).astype(self.dtype)
+            ins2 = (
+                np.random.random((rows, 25)) + 1j * np.random.random((rows, 25))
+            ).astype(self.dtype)
+            ins3 = (
+                np.random.random((rows, 25)) + 1j * np.random.random((rows, 25))
+            ).astype(self.dtype)
+            ins4 = (
+                np.random.random((rows, 25)) + 1j * np.random.random((rows, 25))
+            ).astype(self.dtype)
+
         self.inputs = {
             'Ids': index,
             'X': [('x1', ins1), ('x2', ins2), ('x3', ins3), ('x4', ins4)],
@@ -44,25 +59,44 @@ class TestMultiplexOp(OpTest):
             output[i] = self.inputs['X'][k][1][i]
         self.outputs = {'Out': output}
 
+    def init_dtype(self):
+        self.dtype = 'float64'
+
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['x1', 'x2', 'x3', 'x4'], 'Out')
+        self.check_grad(['x1', 'x2', 'x3', 'x4'], 'Out', check_pir=True)
 
     def test_check_grad_ignore_x1(self):
-        self.check_grad(['x2', 'x3', 'x4'], 'Out', no_grad_set=set('x1'))
+        self.check_grad(
+            ['x2', 'x3', 'x4'], 'Out', no_grad_set=set('x1'), check_pir=True
+        )
 
     def test_check_grad_ignore_x1_x2(self):
-        self.check_grad(['x3', 'x4'], 'Out', no_grad_set={'x1', 'x2'})
+        self.check_grad(
+            ['x3', 'x4'], 'Out', no_grad_set={'x1', 'x2'}, check_pir=True
+        )
 
     def test_check_grad_ignore_x3(self):
-        self.check_grad(['x1', 'x2', 'x4'], 'Out', no_grad_set=set('x3'))
+        self.check_grad(
+            ['x1', 'x2', 'x4'], 'Out', no_grad_set=set('x3'), check_pir=True
+        )
+
+
+class TestMultiplexOp_complex64(TestMultiplexOp):
+    def init_dtype(self):
+        self.dtype = "complex64"
+
+
+class TestMultiplexOp_complex128(TestMultiplexOp):
+    def init_dtype(self):
+        self.dtype = "complex128"
 
 
 class TestMultiplexOpError(unittest.TestCase):
     def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             x1 = paddle.static.data(name='x1', shape=[None, 2], dtype='int64')
             x2 = paddle.static.data(name='x2', shape=[None, 2], dtype='int64')
             index = paddle.static.data(
@@ -101,26 +135,40 @@ class TestMultiplexOpError(unittest.TestCase):
 
 
 class TestMultiplexODygrap(unittest.TestCase):
+    def setUp(self):
+        self.init_dtype()
+        self.img1 = np.array([[1, 2], [3, 4]]).astype(self.dtype)
+        self.img2 = np.array([[5, 6], [7, 8]]).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.img1 = (
+                np.array([[1, 2], [3, 4]]) + 1j * np.array([[1, 2], [3, 4]])
+            ).astype(self.dtype)
+            self.img2 = (
+                np.array([[5, 6], [7, 8]]) + 1j * np.array([[1, 2], [3, 4]])
+            ).astype(self.dtype)
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
     def test_multiplex_dygraph(self):
         paddle.disable_static()
-        img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
-        img2 = np.array([[5, 6], [7, 8]]).astype(np.float32)
-        inputs = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
+        inputs = [paddle.to_tensor(self.img1), paddle.to_tensor(self.img2)]
         index = paddle.to_tensor(np.array([[1], [0]]).astype(np.int32))
         res = paddle.multiplex(inputs, index)
         paddle.enable_static()
 
     def test_dygraph_api(self):
-        with fluid.dygraph.guard():
-            img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
-            img2 = np.array([[5, 6], [7, 8]]).astype(np.float32)
-            inputs = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
+        with base.dygraph.guard():
+            inputs = [paddle.to_tensor(self.img1), paddle.to_tensor(self.img2)]
             index = paddle.to_tensor(np.array([[1], [0]]).astype(np.int32))
             inputs[0].stop_gradient = False
             inputs[1].stop_gradient = False
             res = paddle.multiplex(inputs, index)
             res.backward()
-            inputs_eager = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
+            inputs_eager = [
+                paddle.to_tensor(self.img1),
+                paddle.to_tensor(self.img2),
+            ]
             index_eager = paddle.to_tensor(
                 np.array([[1], [0]]).astype(np.int32)
             )
@@ -137,6 +185,16 @@ class TestMultiplexODygrap(unittest.TestCase):
                 (inputs[1].grad.numpy() == inputs_eager[1].grad.numpy()).all(),
                 True,
             )
+
+
+class TestMultiplexODygrap_complex64(TestMultiplexODygrap):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestMultiplexODygrap_complex128(TestMultiplexODygrap):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 if __name__ == '__main__':

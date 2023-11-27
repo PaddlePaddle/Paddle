@@ -15,8 +15,8 @@
 
 from google.protobuf import text_format
 
-from paddle.fluid import core
-from paddle.fluid.proto import data_feed_pb2
+from paddle.base import core
+from paddle.base.proto import data_feed_pb2
 
 __all__ = []
 
@@ -79,9 +79,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.dataset.DatasetBase()
-              dataset._set_pipe_command("python my_script.py")
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.dataset.DatasetBase()
+                >>> dataset._set_pipe_command("python my_script.py")
 
         Args:
             pipe_command(str): pipe command
@@ -96,9 +96,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.DatasetBase()
-              dataset._set_batch_size(128)
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.DatasetBase()
+                >>> dataset._set_batch_size(128)
 
         Args:
             batch_size(int): batch size
@@ -113,9 +113,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.DatasetBase()
-              dataset._set_thread(12)
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.DatasetBase()
+                >>> dataset._set_thread(12)
 
         Args:
             thread_num(int): thread num
@@ -130,9 +130,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.DatasetBase()
-              dataset.set_filelist(['a.txt', 'b.txt'])
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.DatasetBase()
+                >>> dataset.set_filelist(['a.txt', 'b.txt'])
 
         Args:
             filelist(list[str]): list of file names of inputs.
@@ -150,9 +150,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.DatasetBase()
-              dataset._set_uid_slot('6048')
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.DatasetBase()
+                >>> dataset._set_uid_slot('6048')
 
         Args:
             set_uid_slot(string): user slot name
@@ -167,9 +167,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.DatasetBase()
-              dataset._set_use_var([data, label])
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.DatasetBase()
+                >>> dataset._set_use_var([data, label])
 
         Args:
             var_list(list): variable list
@@ -198,9 +198,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.DatasetBase()
-              dataset._set_hdfs_config("my_fs_name", "my_fs_ugi")
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.DatasetBase()
+                >>> dataset._set_hdfs_config("my_fs_name", "my_fs_ugi")
 
         Args:
             fs_name(str): fs name
@@ -215,9 +215,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.DatasetBase()
-              dataset._set_download_cmd("./read_from_afs")
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.DatasetBase()
+                >>> dataset._set_download_cmd("./read_from_afs")
 
         Args:
             download_cmd(str): customized download command
@@ -259,9 +259,10 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.DatasetBase()
-              print(dataset._desc())
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.DatasetBase()
+                >>> print(dataset._desc())
+                pipe_command: "cat"
 
         Returns:
             A string message
@@ -283,12 +284,12 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              # required: skiptest
-              import paddle
-              from dataset_generator import CTRDataset
-              dataset = paddle.distributed.fleet.DatasetBase()
-              generator_class = CTRDataset()
-              dataset._check_use_var_with_data_generator([data, label], generator_class, "data/part-00000")
+                >>> # doctest: +SKIP('need to work with real dataset')
+                >>> import paddle
+                >>> from dataset_generator import CTRDataset
+                >>> dataset = paddle.distributed.fleet.DatasetBase()
+                >>> generator_class = CTRDataset()
+                >>> dataset._check_use_var_with_data_generator([data, label], generator_class, "data/part-00000")
 
         Args:
             var_list(list): variable list
@@ -357,9 +358,9 @@ class InMemoryDataset(DatasetBase):
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
-            dataset = paddle.distributed.InMemoryDataset()
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> dataset = paddle.distributed.InMemoryDataset()
 
     """
 
@@ -400,20 +401,21 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle
-              paddle.enable_static()
-              dataset = paddle.distributed.InMemoryDataset()
-              dataset.init(
-                    batch_size=1,
-                    thread_num=2,
-                    input_type=1,
-                    pipe_command="cat",
-                    use_var=[])
-              dataset._init_distributed_settings(
-                    parse_ins_id=True,
-                    parse_content=True,
-                    fea_eval=True,
-                    candidate_size=10000)
+                >>> import paddle
+                >>> paddle.enable_static()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> dataset.init(
+                ...     batch_size=1,
+                ...     thread_num=2,
+                ...     input_type=1,
+                ...     pipe_command="cat",
+                ...     use_var=[])
+
+                >>> dataset._init_distributed_settings(
+                ...     parse_ins_id=True,
+                ...     parse_content=True,
+                ...     fea_eval=True,
+                ...     candidate_size=10000)
 
         """
         merge_size = kwargs.get("merge_size", -1)
@@ -473,22 +475,22 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                import paddle
-                paddle.enable_static()
+                >>> import paddle
+                >>> paddle.enable_static()
 
-                dataset = paddle.distributed.InMemoryDataset()
-                dataset.init(
-                    batch_size=1,
-                    thread_num=2,
-                    input_type=1,
-                    pipe_command="cat",
-                    use_var=[])
-                dataset._init_distributed_settings(
-                    parse_ins_id=True,
-                    parse_content=True,
-                    fea_eval=True,
-                    candidate_size=10000)
-                dataset.update_settings(batch_size=2)
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> dataset.init(
+                ...     batch_size=1,
+                ...     thread_num=2,
+                ...     input_type=1,
+                ...     pipe_command="cat",
+                ...     use_var=[])
+                >>> dataset._init_distributed_settings(
+                ...     parse_ins_id=True,
+                ...     parse_content=True,
+                ...     fea_eval=True,
+                ...     candidate_size=10000)
+                >>> dataset.update_settings(batch_size=2)
 
         """
         for key in kwargs:
@@ -543,45 +545,44 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                import paddle
-                import os
-                paddle.enable_static()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> import os
+                >>> paddle.enable_static()
 
-                with open("test_queue_dataset_run_a.txt", "w") as f:
-                    data = "2 1 2 2 5 4 2 2 7 2 1 3"
-                    f.write(data)
-                with open("test_queue_dataset_run_b.txt", "w") as f:
-                    data = "2 1 2 2 5 4 2 2 7 2 1 3"
-                    f.write(data)
+                >>> with open("test_queue_dataset_run_a.txt", "w") as f:
+                ...     data = "2 1 2 2 5 4 2 2 7 2 1 3"
+                ...     f.write(data)
+                >>> with open("test_queue_dataset_run_b.txt", "w") as f:
+                ...     data = "2 1 2 2 5 4 2 2 7 2 1 3"
+                ...     f.write(data)
+                >>> slots = ["slot1", "slot2", "slot3", "slot4"]
+                >>> slots_vars = []
+                >>> for slot in slots:
+                ...     var = paddle.static.data(
+                ...         name=slot, shape=[None, 1], dtype="int64", lod_level=1)
+                ...     slots_vars.append(var)
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> dataset.init(
+                ...     batch_size=1,
+                ...     thread_num=2,
+                ...     input_type=1,
+                ...     pipe_command="cat",
+                ...     use_var=slots_vars)
+                >>> dataset.set_filelist(
+                ...     ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"])
+                >>> dataset.load_into_memory()
 
-                slots = ["slot1", "slot2", "slot3", "slot4"]
-                slots_vars = []
-                for slot in slots:
-                    var = paddle.static.data(
-                        name=slot, shape=[None, 1], dtype="int64", lod_level=1)
-                    slots_vars.append(var)
+                >>> place = paddle.CPUPlace()
+                >>> exe = paddle.static.Executor(place)
+                >>> startup_program = paddle.static.Program()
+                >>> main_program = paddle.static.Program()
+                >>> exe.run(startup_program)
 
-                dataset = paddle.distributed.InMemoryDataset()
-                dataset.init(
-                    batch_size=1,
-                    thread_num=2,
-                    input_type=1,
-                    pipe_command="cat",
-                    use_var=slots_vars)
-                dataset.set_filelist(
-                    ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"])
-                dataset.load_into_memory()
+                >>> exe.train_from_dataset(main_program, dataset)
 
-                place = paddle.CPUPlace()
-                exe = paddle.static.Executor(place)
-                startup_program = paddle.static.Program()
-                main_program = paddle.static.Program()
-                exe.run(startup_program)
-
-                exe.train_from_dataset(main_program, dataset)
-
-                os.remove("./test_queue_dataset_run_a.txt")
-                os.remove("./test_queue_dataset_run_b.txt")
+                >>> os.remove("./test_queue_dataset_run_a.txt")
+                >>> os.remove("./test_queue_dataset_run_b.txt")
 
         """
         batch_size = kwargs.get("batch_size", 1)
@@ -668,10 +669,10 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle
-              paddle.enable_static()
-              dataset = paddle.distributed.InMemoryDataset()
-              dataset._set_queue_num(12)
+                >>> import paddle
+                >>> paddle.enable_static()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> dataset._set_queue_num(12)
 
         """
         self.is_user_set_queue_num = True
@@ -687,10 +688,10 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle
-              paddle.enable_static()
-              dataset = paddle.distributed.InMemoryDataset()
-              dataset._set_parse_ins_id(True)
+                >>> import paddle
+                >>> paddle.enable_static()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> dataset._set_parse_ins_id(True)
 
         """
         self.parse_ins_id = parse_ins_id
@@ -705,10 +706,10 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle
-              paddle.enable_static()
-              dataset = paddle.distributed.InMemoryDataset()
-              dataset._set_parse_content(True)
+                >>> import paddle
+                >>> paddle.enable_static()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> dataset._set_parse_content(True)
 
         """
         self.parse_content = parse_content
@@ -723,10 +724,10 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle
-              paddle.enable_static()
-              dataset = paddle.distributed.InMemoryDataset()
-              dataset._set_fleet_send_batch_size(800)
+                >>> import paddle
+                >>> paddle.enable_static()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> dataset._set_fleet_send_batch_size(800)
 
         """
         self.fleet_send_batch_size = fleet_send_batch_size
@@ -741,10 +742,10 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle
-              paddle.enable_static()
-              dataset = paddle.distributed.InMemoryDataset()
-              dataset._set_fleet_send_sleep_seconds(2)
+                >>> import paddle
+                >>> paddle.enable_static()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> dataset._set_fleet_send_sleep_seconds(2)
 
         """
         self.fleet_send_sleep_seconds = fleet_send_sleep_seconds
@@ -760,10 +761,10 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle
-              paddle.enable_static()
-              dataset = paddle.distributed.InMemoryDataset()
-              dataset._set_merge_by_lineid()
+                >>> import paddle
+                >>> paddle.enable_static()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> dataset._set_merge_by_lineid()
 
         """
         self.dataset.set_merge_by_lineid(merge_size)
@@ -780,10 +781,11 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle
-              paddle.enable_static()
-              dataset = paddle.distributed.InMemoryDataset()
-              dataset._set_shuffle_by_uid(True)
+                >>> import paddle
+                >>> paddle.enable_static()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> dataset._set_shuffle_by_uid(True)
+
         """
         self.dataset.set_shuffle_by_uid(enable_shuffle_uid)
 
@@ -811,23 +813,24 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                import paddle
-                paddle.enable_static()
+                >>> import paddle
+                >>> paddle.enable_static()
 
-                dataset = paddle.distributed.InMemoryDataset()
-                slots = ["slot1", "slot2", "slot3", "slot4"]
-                slots_vars = []
-                for slot in slots:
-                    var = paddle.static.data(
-                        name=slot, shape=[None, 1], dtype="int64", lod_level=1)
-                    slots_vars.append(var)
-                dataset.init(
-                    batch_size=1,
-                    thread_num=2,
-                    input_type=1,
-                    pipe_command="cat",
-                    use_var=slots_vars)
-                dataset.set_date("20211111")
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> slots = ["slot1", "slot2", "slot3", "slot4"]
+                >>> slots_vars = []
+                >>> for slot in slots:
+                ...     var = paddle.static.data(
+                ...         name=slot, shape=[None, 1], dtype="int64", lod_level=1)
+                ...     slots_vars.append(var)
+                >>> dataset.init(
+                ...     batch_size=1,
+                ...     thread_num=2,
+                ...     input_type=1,
+                ...     pipe_command="cat",
+                ...     use_var=slots_vars)
+                >>> dataset.set_date("20211111")
+
         """
         year = int(date[:4])
         month = int(date[4:6])
@@ -867,25 +870,27 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                import paddle
-                paddle.enable_static()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> paddle.enable_static()
 
-                dataset = paddle.distributed.InMemoryDataset()
-                slots = ["slot1", "slot2", "slot3", "slot4"]
-                slots_vars = []
-                for slot in slots:
-                    var = paddle.static.data(
-                        name=slot, shape=[None, 1], dtype="int64", lod_level=1)
-                    slots_vars.append(var)
-                dataset.init(
-                    batch_size=1,
-                    thread_num=2,
-                    input_type=1,
-                    pipe_command="cat",
-                    use_var=slots_vars)
-                filelist = ["a.txt", "b.txt"]
-                dataset.set_filelist(filelist)
-                dataset.load_into_memory()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> slots = ["slot1", "slot2", "slot3", "slot4"]
+                >>> slots_vars = []
+                >>> for slot in slots:
+                ...     var = paddle.static.data(
+                ...         name=slot, shape=[None, 1], dtype="int64", lod_level=1)
+                ...     slots_vars.append(var)
+                >>> dataset.init(
+                ...     batch_size=1,
+                ...     thread_num=2,
+                ...     input_type=1,
+                ...     pipe_command="cat",
+                ...     use_var=slots_vars)
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+
         """
         self._prepare_to_run()
         if not self.use_ps_gpu:
@@ -906,26 +911,28 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                import paddle
-                paddle.enable_static()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> paddle.enable_static()
 
-                dataset = paddle.distributed.InMemoryDataset()
-                slots = ["slot1", "slot2", "slot3", "slot4"]
-                slots_vars = []
-                for slot in slots:
-                    var = paddle.static.data(
-                        name=slot, shape=[None, 1], dtype="int64", lod_level=1)
-                    slots_vars.append(var)
-                dataset.init(
-                    batch_size=1,
-                    thread_num=2,
-                    input_type=1,
-                    pipe_command="cat",
-                    use_var=slots_vars)
-                filelist = ["a.txt", "b.txt"]
-                dataset.set_filelist(filelist)
-                dataset.preload_into_memory()
-                dataset.wait_preload_done()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> slots = ["slot1", "slot2", "slot3", "slot4"]
+                >>> slots_vars = []
+                >>> for slot in slots:
+                ...     var = paddle.static.data(
+                ...         name=slot, shape=[None, 1], dtype="int64", lod_level=1)
+                ...     slots_vars.append(var)
+                >>> dataset.init(
+                ...     batch_size=1,
+                ...     thread_num=2,
+                ...     input_type=1,
+                ...     pipe_command="cat",
+                ...     use_var=slots_vars)
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.preload_into_memory()
+                >>> dataset.wait_preload_done()
+
         """
         self._prepare_to_run()
         if thread_num is None:
@@ -943,26 +950,28 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                import paddle
-                paddle.enable_static()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> paddle.enable_static()
 
-                dataset = paddle.distributed.InMemoryDataset()
-                slots = ["slot1", "slot2", "slot3", "slot4"]
-                slots_vars = []
-                for slot in slots:
-                    var = paddle.static.data(
-                        name=slot, shape=[None, 1], dtype="int64", lod_level=1)
-                    slots_vars.append(var)
-                dataset.init(
-                    batch_size=1,
-                    thread_num=2,
-                    input_type=1,
-                    pipe_command="cat",
-                    use_var=slots_vars)
-                filelist = ["a.txt", "b.txt"]
-                dataset.set_filelist(filelist)
-                dataset.preload_into_memory()
-                dataset.wait_preload_done()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> slots = ["slot1", "slot2", "slot3", "slot4"]
+                >>> slots_vars = []
+                >>> for slot in slots:
+                ...     var = paddle.static.data(
+                ...         name=slot, shape=[None, 1], dtype="int64", lod_level=1)
+                ...     slots_vars.append(var)
+                >>> dataset.init(
+                ...     batch_size=1,
+                ...     thread_num=2,
+                ...     input_type=1,
+                ...     pipe_command="cat",
+                ...     use_var=slots_vars)
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.preload_into_memory()
+                >>> dataset.wait_preload_done()
+
         """
         self.dataset.wait_preload_done()
         self.dataset.destroy_preload_readers()
@@ -976,26 +985,28 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                import paddle
-                paddle.enable_static()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> paddle.enable_static()
 
-                dataset = paddle.distributed.InMemoryDataset()
-                slots = ["slot1", "slot2", "slot3", "slot4"]
-                slots_vars = []
-                for slot in slots:
-                    var = paddle.static.data(
-                        name=slot, shape=[None, 1], dtype="int64", lod_level=1)
-                    slots_vars.append(var)
-                dataset.init(
-                    batch_size=1,
-                    thread_num=2,
-                    input_type=1,
-                    pipe_command="cat",
-                    use_var=slots_vars)
-                filelist = ["a.txt", "b.txt"]
-                dataset.set_filelist(filelist)
-                dataset.load_into_memory()
-                dataset.local_shuffle()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> slots = ["slot1", "slot2", "slot3", "slot4"]
+                >>> slots_vars = []
+                >>> for slot in slots:
+                ...     var = paddle.static.data(
+                ...         name=slot, shape=[None, 1], dtype="int64", lod_level=1)
+                ...     slots_vars.append(var)
+                >>> dataset.init(
+                ...     batch_size=1,
+                ...     thread_num=2,
+                ...     input_type=1,
+                ...     pipe_command="cat",
+                ...     use_var=slots_vars)
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> dataset.local_shuffle()
+
         """
         self.dataset.local_shuffle()
 
@@ -1011,26 +1022,27 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                import paddle
-                paddle.enable_static()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> paddle.enable_static()
 
-                dataset = paddle.distributed.InMemoryDataset()
-                slots = ["slot1", "slot2", "slot3", "slot4"]
-                slots_vars = []
-                for slot in slots:
-                    var = paddle.static.data(
-                        name=slot, shape=[None, 1], dtype="int64", lod_level=1)
-                    slots_vars.append(var)
-                dataset.init(
-                    batch_size=1,
-                    thread_num=2,
-                    input_type=1,
-                    pipe_command="cat",
-                    use_var=slots_vars)
-                filelist = ["a.txt", "b.txt"]
-                dataset.set_filelist(filelist)
-                dataset.load_into_memory()
-                dataset.global_shuffle()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> slots = ["slot1", "slot2", "slot3", "slot4"]
+                >>> slots_vars = []
+                >>> for slot in slots:
+                ...     var = paddle.static.data(
+                ...         name=slot, shape=[None, 1], dtype="int64", lod_level=1)
+                ...     slots_vars.append(var)
+                >>> dataset.init(
+                ...     batch_size=1,
+                ...     thread_num=2,
+                ...     input_type=1,
+                ...     pipe_command="cat",
+                ...     use_var=slots_vars)
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> dataset.global_shuffle()
 
         Args:
             fleet(Fleet): fleet singleton. Default None.
@@ -1068,32 +1080,33 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                import paddle
-                paddle.enable_static()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> paddle.enable_static()
 
-                dataset = paddle.distributed.InMemoryDataset()
-                slots = ["slot1", "slot2", "slot3", "slot4"]
-                slots_vars = []
-                for slot in slots:
-                    var = paddle.static.data(
-                        name=slot, shape=[None, 1], dtype="int64", lod_level=1)
-                    slots_vars.append(var)
-                dataset.init(
-                    batch_size=1,
-                    thread_num=2,
-                    input_type=1,
-                    pipe_command="cat",
-                    use_var=slots_vars)
-                filelist = ["a.txt", "b.txt"]
-                dataset.set_filelist(filelist)
-                dataset.load_into_memory()
-                dataset.global_shuffle()
-                exe = paddle.static.Executor(paddle.CPUPlace())
-                startup_program = paddle.static.Program()
-                main_program = paddle.static.Program()
-                exe.run(startup_program)
-                exe.train_from_dataset(main_program, dataset)
-                dataset.release_memory()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> slots = ["slot1", "slot2", "slot3", "slot4"]
+                >>> slots_vars = []
+                >>> for slot in slots:
+                ...     var = paddle.static.data(
+                ...         name=slot, shape=[None, 1], dtype="int64", lod_level=1)
+                ...     slots_vars.append(var)
+                >>> dataset.init(
+                ...     batch_size=1,
+                ...     thread_num=2,
+                ...     input_type=1,
+                ...     pipe_command="cat",
+                ...     use_var=slots_vars)
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> dataset.global_shuffle()
+                >>> exe = paddle.static.Executor(paddle.CPUPlace())
+                >>> startup_program = paddle.static.Program()
+                >>> main_program = paddle.static.Program()
+                >>> exe.run(startup_program)
+                >>> exe.train_from_dataset(main_program, dataset)
+                >>> dataset.release_memory()
 
         """
         self.dataset.release_memory()
@@ -1117,26 +1130,29 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                import paddle
-                paddle.enable_static()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> paddle.enable_static()
 
-                dataset = paddle.distributed.InMemoryDataset()
-                slots = ["slot1", "slot2", "slot3", "slot4"]
-                slots_vars = []
-                for slot in slots:
-                    var = paddle.static.data(
-                        name=slot, shape=[None, 1], dtype="int64", lod_level=1)
-                    slots_vars.append(var)
-                dataset.init(
-                    batch_size=1,
-                    thread_num=2,
-                    input_type=1,
-                    pipe_command="cat",
-                    use_var=slots_vars)
-                filelist = ["a.txt", "b.txt"]
-                dataset.set_filelist(filelist)
-                dataset.load_into_memory()
-                print dataset.get_memory_data_size()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> slots = ["slot1", "slot2", "slot3", "slot4"]
+                >>> slots_vars = []
+                >>> for slot in slots:
+                ...     var = paddle.static.data(
+                ...         name=slot, shape=[None, 1], dtype="int64", lod_level=1)
+                ...     slots_vars.append(var)
+
+                >>> dataset.init(
+                ...     batch_size=1,
+                ...     thread_num=2,
+                ...     input_type=1,
+                ...     pipe_command="cat",
+                ...     use_var=slots_vars)
+
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> print(dataset.get_memory_data_size())
 
         """
         import numpy as np
@@ -1171,28 +1187,31 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                import paddle
-                paddle.enable_static()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> paddle.enable_static()
 
-                dataset = paddle.distributed.InMemoryDataset()
-                dataset = paddle.distributed.InMemoryDataset()
-                slots = ["slot1", "slot2", "slot3", "slot4"]
-                slots_vars = []
-                for slot in slots:
-                    var = paddle.static.data(
-                        name=slot, shape=[None, 1], dtype="int64", lod_level=1)
-                    slots_vars.append(var)
-                dataset.init(
-                    batch_size=1,
-                    thread_num=2,
-                    input_type=1,
-                    pipe_command="cat",
-                    use_var=slots_vars)
-                filelist = ["a.txt", "b.txt"]
-                dataset.set_filelist(filelist)
-                dataset.load_into_memory()
-                dataset.global_shuffle()
-                print dataset.get_shuffle_data_size()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> slots = ["slot1", "slot2", "slot3", "slot4"]
+                >>> slots_vars = []
+                >>> for slot in slots:
+                ...     var = paddle.static.data(
+                ...         name=slot, shape=[None, 1], dtype="int64", lod_level=1)
+                ...     slots_vars.append(var)
+
+                >>> dataset.init(
+                ...     batch_size=1,
+                ...     thread_num=2,
+                ...     input_type=1,
+                ...     pipe_command="cat",
+                ...     use_var=slots_vars)
+
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> dataset.global_shuffle()
+                >>> print(dataset.get_shuffle_data_size())
 
         """
         import numpy as np
@@ -1221,10 +1240,10 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
-            dataset = paddle.distributed.InMemoryDataset()
-            dataset._set_fea_eval(1000000, True)
+                >>> import paddle
+                >>> paddle.enable_static()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> dataset._set_fea_eval(1000000, True)
 
         """
         if fea_eval:
@@ -1245,27 +1264,28 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                import paddle
-                paddle.enable_static()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> paddle.enable_static()
 
-                dataset = paddle.distributed.InMemoryDataset()
-                dataset._init_distributed_settings(fea_eval=True)
-                slots = ["slot1", "slot2", "slot3", "slot4"]
-                slots_vars = []
-                for slot in slots:
-                    var = paddle.static.data(
-                        name=slot, shape=[None, 1], dtype="int64", lod_level=1)
-                    slots_vars.append(var)
-                dataset.init(
-                    batch_size=1,
-                    thread_num=2,
-                    input_type=1,
-                    pipe_command="cat",
-                    use_var=slots_vars)
-                filelist = ["a.txt", "b.txt"]
-                dataset.set_filelist(filelist)
-                dataset.load_into_memory()
-                dataset.slots_shuffle(['slot1'])
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> dataset._init_distributed_settings(fea_eval=True)
+                >>> slots = ["slot1", "slot2", "slot3", "slot4"]
+                >>> slots_vars = []
+                >>> for slot in slots:
+                ...     var = paddle.static.data(
+                ...         name=slot, shape=[None, 1], dtype="int64", lod_level=1)
+                ...     slots_vars.append(var)
+                >>> dataset.init(
+                ...     batch_size=1,
+                ...     thread_num=2,
+                ...     input_type=1,
+                ...     pipe_command="cat",
+                ...     use_var=slots_vars)
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> dataset.slots_shuffle(['slot1'])
         """
         if self.fea_eval:
             slots_set = set(slots)
@@ -1279,11 +1299,10 @@ class QueueDataset(DatasetBase):
     QueueDataset, it will process data streamly.
 
     Examples:
+        .. code-block:: python
 
-    .. code-block:: python
-
-    import paddle
-    dataset = paddle.distributed.QueueDataset()
+            >>> import paddle
+            >>> dataset = paddle.distributed.QueueDataset()
 
     """
 
@@ -1325,8 +1344,8 @@ class FileInstantDataset(DatasetBase):
     Examples:
         .. code-block:: python
 
-          import paddle
-          dataset = paddle.distributed.fleet.FileInstantDataset()
+            >>> import paddle
+            >>> dataset = paddle.distributed.fleet.FileInstantDataset()
     """
 
     def __init__(self):
@@ -1350,8 +1369,8 @@ class BoxPSDataset(InMemoryDataset):
     Examples:
         .. code-block:: python
 
-          import paddle
-          dataset = paddle.distributed.fleet.BoxPSDataset()
+            >>> import paddle
+            >>> dataset = paddle.distributed.fleet.BoxPSDataset()
     """
 
     def __init__(self):
@@ -1386,9 +1405,9 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.BoxPSDataset()
-              dataset._set_rank_offset("rank_offset")
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> dataset._set_rank_offset("rank_offset")
 
         Args:
             rank_offset(str): rank_offset's name
@@ -1403,9 +1422,9 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.BoxPSDataset()
-              dataset._set_pv_batch_size(128)
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> dataset._set_pv_batch_size(128)
         Args:
             pv_batch_size(int): pv batch size
 
@@ -1422,9 +1441,9 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.BoxPSDataset()
-              dataset._set_parse_logkey(True)
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> dataset._set_parse_logkey(True)
 
         """
         self.parse_logkey = parse_logkey
@@ -1439,9 +1458,9 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.BoxPSDataset()
-              dataset._set_merge_by_sid(True)
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> dataset._set_merge_by_sid(True)
 
         """
         self.merge_by_sid = merge_by_sid
@@ -1456,9 +1475,9 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.BoxPSDataset()
-              dataset._set_enable_pv_merge(True)
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> dataset._set_enable_pv_merge(True)
 
         """
         self.enable_pv_merge = enable_pv_merge
@@ -1480,9 +1499,9 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.BoxPSDataset()
-              dataset.begin_pass()
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> dataset.begin_pass()
         """
         self.boxps.begin_pass()
 
@@ -1490,12 +1509,13 @@ class BoxPSDataset(InMemoryDataset):
         """
         End Pass
         Notify BoxPS that current pass ended
+
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.BoxPSDataset()
-              dataset.end_pass(True)
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> dataset.end_pass(True)
         """
         self.boxps.end_pass(need_save_delta)
 
@@ -1503,29 +1523,33 @@ class BoxPSDataset(InMemoryDataset):
         """
         Wait async preload done
         Wait Until Feed Pass Done
+
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.BoxPSDataset()
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.preload_into_memory()
-              dataset.wait_preload_done()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.preload_into_memory()
+                >>> dataset.wait_preload_done()
         """
         self.boxps.wait_feed_pass_done()
 
     def load_into_memory(self):
         """
         Load next pass into memory and notify boxps to fetch its emb from SSD
+
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.BoxPSDataset()
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
         """
         self._prepare_to_run()
         self.boxps.load_into_memory()
@@ -1533,14 +1557,16 @@ class BoxPSDataset(InMemoryDataset):
     def preload_into_memory(self):
         """
         Begin async preload next pass while current pass may be training
+
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.BoxPSDataset()
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.preload_into_memory()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.preload_into_memory()
         """
         self._prepare_to_run()
         self.boxps.preload_into_memory()
@@ -1565,11 +1591,13 @@ class BoxPSDataset(InMemoryDataset):
             slots(list[string]): the set of slots(string) to do slots shuffle.
 
         Examples:
-            import paddle
-            dataset = paddle.distributed.fleet.BoxPSDataset()
-            dataset.set_merge_by_lineid()
-            #suppose there is a slot 0
-            dataset.slots_shuffle(['0'])
+            .. code-block:: python
+
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> dataset._set_merge_by_lineid()
+                >>> #suppose there is a slot 0
+                >>> dataset.slots_shuffle(['0'])
         """
         slots_set = set(slots)
         self.boxps.slots_shuffle(slots_set)
@@ -1582,12 +1610,13 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.BoxPSDataset()
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
-              dataset.set_current_phase(1)
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> dataset.set_current_phase(1)
 
         """
         self.dataset.set_current_phase(current_phase)
@@ -1606,12 +1635,13 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.BoxPSDataset()
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
-              print dataset.get_pv_data_size()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> print(dataset.get_pv_data_size())
 
         """
         return self.dataset.get_pv_data_size()
@@ -1624,12 +1654,13 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.BoxPSDataset()
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
-              dataset.preprocess_instance()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> dataset.preprocess_instance()
 
         """
         self.dataset.preprocess_instance()
@@ -1641,14 +1672,15 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle
-              dataset = paddle.distributed.fleet.BoxPSDataset()
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
-              dataset.preprocess_instance()
-              exe.train_from_dataset(dataset)
-              dataset.postprocess_instance()
+                >>> # doctest: +SKIP('No files to read')
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> dataset.preprocess_instance()
+                >>> exe.train_from_dataset(dataset)
+                >>> dataset.postprocess_instance()
 
         """
         self.dataset.postprocess_instance()

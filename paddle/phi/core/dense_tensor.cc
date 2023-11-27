@@ -42,6 +42,7 @@ limitations under the License. */
 
 namespace phi {
 
+DenseTensor::~DenseTensor() = default;
 DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
     : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
@@ -65,6 +66,9 @@ DenseTensor::DenseTensor(const DenseTensor& other) {
 }
 
 DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
+  if (this == &other) {
+    return *this;
+  }
   meta_ = other.meta();
   holder_ = other.holder_;
   storage_properties_ =
@@ -76,7 +80,7 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   return *this;
 }
 
-DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
+DenseTensor& DenseTensor::operator=(DenseTensor&& other) noexcept {
   meta_ = std::move(other.meta_);
   std::swap(holder_, other.holder_);
   storage_properties_ = std::move(other.storage_properties_);
@@ -264,9 +268,9 @@ void DenseTensor::ResizeAndAllocate(const DDim& dims) {
 
 void DenseTensor::ResetLoD(const LoD& lod) { meta_.lod = lod; }
 
-#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)      \
-  template const dtype* DenseTensor::data() const; \
-  template dtype* DenseTensor::data();
+#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)               \
+  template TEST_API const dtype* DenseTensor::data() const; \
+  template TEST_API dtype* DenseTensor::data();
 
 DATA_MEMBER_FUNC_INSTANTIATION(bool);
 DATA_MEMBER_FUNC_INSTANTIATION(int8_t);
@@ -304,6 +308,9 @@ const DeviceT& DenseTensor::storage_properties() const {
 template const NPUStorageProperties& DenseTensor::storage_properties() const;
 #ifdef PADDLE_WITH_DNNL
 template const OneDNNStorageProperties& DenseTensor::storage_properties() const;
+#endif
+#ifdef PADDLE_WITH_XPU
+template const XPUStorageProperties& DenseTensor::storage_properties() const;
 #endif
 
 bool DenseTensor::storage_properties_initialized() const {

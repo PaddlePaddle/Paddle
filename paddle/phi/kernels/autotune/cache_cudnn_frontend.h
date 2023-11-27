@@ -22,7 +22,7 @@
 
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
 
-DECLARE_int32(cudnn_cache_saturation_count);
+PD_DECLARE_int32(cudnn_cache_saturation_count);
 
 namespace phi {
 namespace autotune {
@@ -79,10 +79,10 @@ class CudnnFrontendPlanCache {
     return ret;
   }
 
-  void GetPlan(const cudnn_frontend::feature_vector_t &feature,
-               const cudnn_frontend::ExecutionPlan **plan,
-               int64_t *workspace_size,
-               cudnnHandle_t handle) {
+  void GetPlanAndWorkspaceSize(const cudnn_frontend::feature_vector_t &feature,
+                               const cudnn_frontend::ExecutionPlan **plan,
+                               int64_t *workspace_size,
+                               cudnnHandle_t handle) {
     // Note(tizheng): CUDNNv8 execution plan is not thread-safe.
     // A shared plan being executed by different threads is
     // generally not safe (for now).
@@ -90,11 +90,11 @@ class CudnnFrontendPlanCache {
     auto &local_map = map_[hasher(std::this_thread::get_id())];
 
     auto it = local_map.find(GetExtendedFeature(feature, handle));
-    if (it == local_map.end()) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "[cudnn_frontend] Cached Plan Not Found."));
-      return;
-    }
+    PADDLE_ENFORCE_NE(it,
+                      local_map.end(),
+                      phi::errors::InvalidArgument(
+                          "[cudnn_frontend] Cached Plan Not Found."));
+
     *plan = &(it->second);
     *workspace_size = (*plan)->getWorkspaceSize();
     VLOG(4) << "Cached execution plan found." << (*plan)->getTag()
@@ -133,11 +133,12 @@ class CudnnFrontendPlanCache {
     return FindPlan(op_graph.getFeatureVector(), handle);
   }
 
-  void GetPlan(const cudnn_frontend::OperationGraph &op_graph,
-               const cudnn_frontend::ExecutionPlan **plan,
-               int64_t *workspace_size,
-               cudnnHandle_t handle) {
-    GetPlan(op_graph.getFeatureVector(), plan, workspace_size, handle);
+  void GetPlanAndWorkspaceSize(const cudnn_frontend::OperationGraph &op_graph,
+                               const cudnn_frontend::ExecutionPlan **plan,
+                               int64_t *workspace_size,
+                               cudnnHandle_t handle) {
+    GetPlanAndWorkspaceSize(
+        op_graph.getFeatureVector(), plan, workspace_size, handle);
   }
 
   void InsertPlan(const cudnn_frontend::OperationGraph &op_graph,
@@ -175,6 +176,50 @@ class CudnnFrontendPlanCache {
   int64_t cache_hits_{0};
   int64_t cache_misses_{0};
 };  // class CudnnFrontendPlanCache
+
+template <typename T>
+inline void BuildFeatureVectorSingle(cudnn_frontend::feature_vector_t *v,
+                                     const T &value) {
+  v->push_back(static_cast<int64_t>(value));
+}
+
+template <>
+inline void BuildFeatureVectorSingle(cudnn_frontend::feature_vector_t *v,
+                                     const float &value) {
+  int64_t val = 0;
+  memcpy(&val, &value, sizeof(float));
+  v->push_back(val);
+}
+
+template <>
+inline void BuildFeatureVectorSingle<std::vector<int64_t>>(
+    cudnn_frontend::feature_vector_t *v, const std::vector<int64_t> &value) {
+  v->insert(v->end(), value.begin(), value.end());
+}
+
+template <>
+inline void BuildFeatureVectorSingle<std::vector<int>>(
+    cudnn_frontend::feature_vector_t *v, const std::vector<int> &value) {
+  for (auto &val : value) {
+    v->push_back(static_cast<int64_t>(val));
+  }
+}
+
+template <>
+inline void BuildFeatureVectorSingle<std::string>(
+    cudnn_frontend::feature_vector_t *v, const std::string &value) {
+  v->push_back(std::hash<std::string>()(value));
+}
+
+inline void BuildFeatureVector(cudnn_frontend::feature_vector_t *v) { return; }
+
+template <typename T, typename... Args>
+inline void BuildFeatureVector(cudnn_frontend::feature_vector_t *v,
+                               const T &value,
+                               Args... args) {
+  BuildFeatureVectorSingle(v, value);
+  BuildFeatureVector(v, args...);
+}
 
 }  // namespace autotune
 }  // namespace phi

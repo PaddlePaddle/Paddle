@@ -712,9 +712,9 @@ class GraphTable : public Table {
       int &actual_size);  // NOLINT
   virtual int32_t add_node_to_ssd(
       int type_id, int idx, uint64_t src_id, char *data, int len);
-  virtual paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
+  virtual ::paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
       int idx, const std::vector<uint64_t> &ids);
-  virtual paddle::framework::GpuPsCommGraphFea make_gpu_ps_graph_fea(
+  virtual ::paddle::framework::GpuPsCommGraphFea make_gpu_ps_graph_fea(
       int gpu_id, std::vector<uint64_t> &node_ids, int slot_num);  // NOLINT
   int32_t Load_to_ssd(const std::string &path, const std::string &param);
   int64_t load_graph_to_memory_from_ssd(int idx,
@@ -786,7 +786,7 @@ class GraphTable : public Table {
   std::shared_ptr<pthread_rwlock_t> rw_lock;
 #ifdef PADDLE_WITH_HETERPS
   // paddle::framework::GpuPsGraphTable gpu_graph_table;
-  paddle::distributed::RocksDBHandler *_db;
+  ::paddle::distributed::RocksDBHandler *_db;
   // std::shared_ptr<::ThreadPool> graph_sample_pool;
   // std::shared_ptr<GraphSampler> graph_sampler;
   // REGISTER_GRAPH_FRIEND_CLASS(2, CompleteGraphSampler, BasicBfsGraphSampler)
@@ -847,8 +847,8 @@ class BasicBfsGraphSampler : public GraphSampler {
 namespace std {
 
 template <>
-struct hash<paddle::distributed::SampleKey> {
-  size_t operator()(const paddle::distributed::SampleKey &s) const {
+struct hash<::paddle::distributed::SampleKey> {
+  size_t operator()(const ::paddle::distributed::SampleKey &s) const {
     return s.idx ^ s.node_key ^ s.sample_size;
   }
 };

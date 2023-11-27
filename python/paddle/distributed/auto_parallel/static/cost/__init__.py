@@ -22,6 +22,7 @@ from .base_cost import build_comp_desc_from_dist_op
 from .base_cost import build_comm_desc_from_dist_op
 from .base_cost import build_comm_costs_from_descs
 from .base_cost import build_comp_costs_from_descs
+from .base_cost import calc_time_by_cost_model
 
 from .comp_op_cost import EmbeddingOpCost
 from .comp_op_cost import EmbeddingGradOpCost

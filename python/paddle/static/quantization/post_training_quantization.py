@@ -23,8 +23,7 @@ try:
 except:
     from .utils import tqdm
 
-
-from paddle.fluid.framework import IrGraph, _get_var
+from paddle.base.framework import IrGraph, _get_var
 
 from ... import io, static
 from ...framework import core
@@ -152,7 +151,7 @@ class PostTrainingQuantization:
         return_graph=False,
         deploy_backend=None,
     ):
-        '''
+        """
         Constructor.
 
         Args:
@@ -248,41 +247,45 @@ class PostTrainingQuantization:
             None
 
         Examples:
-        .. code-block:: python
-            import paddle.static as static
-            from paddle.static.quantization import PostTrainingQuantization
+            .. code-block:: python
 
-            exe = static.Executor(paddle.CPUPlace())
-            model_dir = path/to/fp32_model_params
-            # set model_filename as None when the filename is __model__,
-            # otherwise set it as the real filename
-            model_filename = None
-            # set params_filename as None when all parameters were saved in
-            # separate files, otherwise set it as the real filename
-            params_filename = None
-            save_model_path = path/to/save_model_path
-            # prepare the sample generator according to the model, and the
-            # sample generator must return a sample every time. The reference
-            # document: https://www.paddlepaddle.org.cn/documentation/docs/zh
-            # /user_guides/howto/prepare_data/use_py_reader.html
-            sample_generator = your_sample_generator
-            batch_size = 10
-            batch_nums = 10
-            algo = "KL"
-            quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
-            ptq = PostTrainingQuantization(
-                        executor=exe,
-                        sample_generator=sample_generator,
-                        model_dir=model_dir,
-                        model_filename=model_filename,
-                        params_filename=params_filename,
-                        batch_size=batch_size,
-                        batch_nums=batch_nums,
-                        algo=algo,
-                        quantizable_op_type=quantizable_op_type)
-            ptq.quantize()
-            ptq.save_quantized_model(save_model_path)
-        '''
+                >>> # doctest: +SKIP("There are some example variables in the code.")
+                >>> import paddle.static as static
+                >>> from paddle.static.quantization import PostTrainingQuantization
+
+                >>> exe = static.Executor(paddle.CPUPlace())
+                >>> model_dir = "path/to/fp32_model_params"
+                >>> # set model_filename as None when the filename is __model__,
+                >>> # otherwise set it as the real filename
+                >>> model_filename = None
+                >>> # set params_filename as None when all parameters were saved in
+                >>> # separate files, otherwise set it as the real filename
+                >>> params_filename = None
+                >>> save_model_path = "path/to/save_model_path"
+                >>> # prepare the sample generator according to the model, and the
+                >>> # sample generator must return a sample every time. The reference
+                >>> # document: https://www.paddlepaddle.org.cn/documentation/docs/zh
+                >>> # /user_guides/howto/prepare_data/use_py_reader.html
+                >>> data_loader = your_data_loader
+                >>> batch_size = 10
+                >>> batch_nums = 10
+                >>> algo = "KL"
+                >>> quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
+                >>> ptq = PostTrainingQuantization(
+                ...     executor=exe,
+                ...     sample_generator=None,
+                ...     data_loader=data_loader,
+                ...     model_dir=model_dir,
+                ...     model_filename=model_filename,
+                ...     params_filename=params_filename,
+                ...     batch_size=batch_size,
+                ...     batch_nums=batch_nums,
+                ...     algo=algo,
+                ...     quantizable_op_type=quantizable_op_type
+                ... )
+                >>> ptq.quantize()
+                >>> ptq.save_quantized_model(save_model_path)
+        """
 
         self._support_activation_quantize_type = [
             'range_abs_max',

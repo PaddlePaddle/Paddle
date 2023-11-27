@@ -17,13 +17,13 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import dygraph
+from paddle import base
+from paddle.base import dygraph
 
 
 class TestImperativeLayerTrainable(unittest.TestCase):
     def test_set_trainable(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             label = np.random.uniform(-1, 1, [10, 10]).astype(np.float32)
 
             label = dygraph.to_variable(label)

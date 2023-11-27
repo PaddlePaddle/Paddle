@@ -15,14 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.static import Program, program_guard
 
 
@@ -87,7 +83,7 @@ class TestRandpermOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         out_np = np.array(outs[0])
@@ -148,7 +144,9 @@ class TestRandpermBF16Op(OpTest):
         self.np_dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place_customized(self.verify_output, self.place)
+        self.check_output_with_place_customized(
+            self.verify_output, self.place, check_pir=True
+        )
 
     def verify_output(self, outs):
         out_np = convert_uint16_to_float(np.array(outs[0]))

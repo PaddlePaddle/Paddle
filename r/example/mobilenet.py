@@ -14,11 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: skip-file
 
 import numpy as np
 
-from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
+from paddle.base.core import AnalysisConfig, create_paddle_predictor
 
 
 def main():

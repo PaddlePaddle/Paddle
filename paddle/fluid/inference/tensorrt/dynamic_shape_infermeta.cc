@@ -693,6 +693,39 @@ nvinfer1::DimsExprs LookupTableV2InferMeta(
   return output;
 }
 
+nvinfer1::DimsExprs MemoryEfficientAttentionInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  PADDLE_ENFORCE_LE(
+      output_index,
+      2,
+      phi::errors::InvalidArgument("memory_efficient_attention only has three "
+                                   "output, but received asvector: %d.",
+                                   output_index));
+  PADDLE_ENFORCE_EQ(
+      nb_inputs,
+      8,
+      phi::errors::InvalidArgument("memory_efficient_attention has three "
+                                   "input, but received asvector: %d.",
+                                   nb_inputs));
+  if (output_index == 0) {
+    return inputs[0];
+  } else if (output_index == 1) {
+    nvinfer1::DimsExprs output;
+    output.nbDims = 2;
+    output.d[0] = inputs[0].d[0];
+    output.d[1] = inputs[0].d[2];
+    return output;
+  } else {
+    nvinfer1::DimsExprs output;
+    output.nbDims = 1;
+    output.d[0] = expr_builder.constant(2);
+    return output;
+  }
+}
 nvinfer1::DimsExprs Conv2dTransposeInferMeta(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
@@ -809,6 +842,8 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_fusion, Conv2dFusionInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d, Conv2dFusionInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_transpose, Conv2dTransposeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(p_norm, PNormInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(memory_efficient_attention,
+                                  MemoryEfficientAttentionInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad, PadInferMeta);
 }  // namespace tensorrt
 }  // namespace inference

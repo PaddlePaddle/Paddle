@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle.fluid import Program, core, program_guard
+from paddle.base import Program, core, program_guard
 
 
 class TestApiStaticDataError(unittest.TestCase):

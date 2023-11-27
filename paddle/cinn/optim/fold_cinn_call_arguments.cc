@@ -17,8 +17,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {

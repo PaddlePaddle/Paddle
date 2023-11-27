@@ -46,7 +46,7 @@ struct LogSoftmaxFunctor {
     constexpr int kClassDim = 1;
     constexpr int kAxisDim = 1;
 
-    int axis_dim = X->dims()[axis];
+    int axis_dim = static_cast<int>(X->dims()[axis]);
     const int n = funcs::SizeToAxis(axis, X->dims());
     const int d = funcs::SizeFromAxis(axis, X->dims());
     phi::DDim dim_2d{n, d};

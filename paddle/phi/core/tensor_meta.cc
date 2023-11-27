@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/tensor_meta.h"
-#include "paddle/ir/core/enforce.h"
+#include "paddle/pir/core/enforce.h"
 
 namespace phi {
 
@@ -183,7 +183,8 @@ DenseTensorMeta& DenseTensorMeta::operator=(const DenseTensorMeta& other) {
   return *this;
 }
 
-DenseTensorMeta& DenseTensorMeta::operator=(DenseTensorMeta&& other) {
+DenseTensorMeta& DenseTensorMeta::operator=(  // NOLINT
+    DenseTensorMeta&& other) {
   is_scalar = other.is_scalar;
   use_gpudnn = other.use_gpudnn;
   dims = std::move(other.dims);
@@ -196,7 +197,6 @@ DenseTensorMeta& DenseTensorMeta::operator=(DenseTensorMeta&& other) {
   } else {
     strides = std::move(other.strides);
   }
-
   return *this;
 }
 

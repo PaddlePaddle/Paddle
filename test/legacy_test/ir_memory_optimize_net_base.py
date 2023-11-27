@@ -21,8 +21,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import compiler, core
+from paddle import base
+from paddle.base import compiler, core
 
 # open eager delete mode
 os.environ['FLAGS_eager_delete_tensor_gb'] = '0.0'
@@ -56,8 +56,8 @@ class BuildIrMemOptBase(unittest.TestCase):
                 'Skip use_parallel_executor=True because Paddle comes without parallel support on windows'
             )
             return
-        fluid.default_startup_program().random_seed = 100
-        fluid.default_main_program().random_seed = 100
+        base.default_startup_program().random_seed = 100
+        base.default_main_program().random_seed = 100
 
         data = paddle.static.data(
             name="words", shape=[-1, 1], dtype="int64", lod_level=1
@@ -68,19 +68,19 @@ class BuildIrMemOptBase(unittest.TestCase):
         cost = network(data, label, len(self.word_dict))
         optimizer = paddle.optimizer.Adam(learning_rate=0.001)
         optimizer.minimize(cost)
-        build_strategy = fluid.BuildStrategy()
+        build_strategy = base.BuildStrategy()
         build_strategy.enable_inplace = enable_inplace
         build_strategy.memory_optimize = use_ir_memory_optimize
 
         # execution
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-        feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
+        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+        feeder = base.DataFeeder(feed_list=[data, label], place=place)
         reader = feeder.feed(self.train_reader())
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
 
         train_cp = compiler.CompiledProgram(
-            fluid.default_main_program(), build_strategy=build_strategy
+            base.default_main_program(), build_strategy=build_strategy
         )
         fetch_list = [cost.name]
 
@@ -127,8 +127,8 @@ class TestIrMemOptBase(BuildIrMemOptBase):
 
         self.setup_reader()
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            with fluid.scope_guard(core.Scope()):
+        with base.program_guard(base.Program(), base.Program()):
+            with base.scope_guard(core.Scope()):
                 (
                     baseline_first_loss,
                     baseline_last_loss,

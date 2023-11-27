@@ -42,11 +42,10 @@ template <typename T>
 using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 inline static int GetDesiredBlockDim(int64_t block_dim) {
+  const int kMaxBlockDim = 512;
 #ifdef __HIPCC__
-  const int kMaxBlockDim = 256;
   const int lwarpSize = 64;
 #else
-  const int kMaxBlockDim = 512;
   const int lwarpSize = 32;
 #endif
   return block_dim >= kMaxBlockDim ? kMaxBlockDim : lwarpSize;
@@ -1875,11 +1874,7 @@ static void LayerNormBackward(
     int64_t feature_size,
     const phi::GPUContext &dev_ctx) {
   auto stream = dev_ctx.stream();
-#ifdef __HIPCC__
-  const int kMaxBlockDim = 256;
-#else
   const int kMaxBlockDim = 512;
-#endif
   const int kMaxBlockNum = 128;
   int gradient_flag = ((d_x != nullptr ? 1 : 0) << 2) |
                       ((d_scale != nullptr ? 1 : 0) << 1) |

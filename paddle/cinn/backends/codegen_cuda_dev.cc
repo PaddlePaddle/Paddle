@@ -24,7 +24,6 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/optim/remove_nested_block.h"
 
 namespace cinn {
 namespace backends {
@@ -57,7 +56,7 @@ std::string CodeGenCUDA_Dev::Compile(const ir::Module &module, bool for_nvrtc) {
 
 void CodeGenCUDA_Dev::Compile(const ir::Module &module,
                               const Outputs &outputs) {
-  ir::IrVerify(Expr(module));
+  ir::ir_utils::IrVerify(Expr(module));
 
   CodeGenC::inline_builtin_codes_ = false;
   if (!outputs.c_header_name.empty()) {
@@ -91,7 +90,7 @@ std::vector<Expr> CodeGenCUDA_Dev::GenerateBufferAliasExprs(
                                        temp_buffers.end());
   // prepare temp buffer alias
   std::vector<Expr> buffer_alias;
-  auto tensors = ir::CollectIRNodes(op->body, [&](const Expr *x) {
+  auto tensors = ir::ir_utils::CollectIRNodes(op->body, [&](const Expr *x) {
     return x->as_tensor() && x->as_tensor()->buffer.defined() &&
            temp_buffer_set.count(x->as_tensor()->buffer);
   });
@@ -141,7 +140,7 @@ void CodeGenCUDA_Dev::Visit(const ir::_LoweredFunc_ *op) {
 
   Expr func_body = ir::Block::Make(new_body);
 
-  optim::RemoveNestedBlock(&func_body);
+  optim::SimplifyBlocks(&func_body);
   // Make sure that the function's body is wrapped by a block
   if (!func_body.As<ir::Block>()) {
     func_body = ir::Block::Make({func_body});

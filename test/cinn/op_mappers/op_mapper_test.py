@@ -23,7 +23,7 @@ from cinn.framework import Scope
 from cinn.frontend import PaddleModelConvertor
 
 import paddle
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper
 from paddle.static import Variable as PaddleVariable
 
 sys.path.append("/work/dev_CINN/build/python/tests")
@@ -166,16 +166,12 @@ class OpMapperTest(OpTest):
             self.assertEqual(
                 var.shape,
                 self.feed_data[name].shape,
-                msg="The shape of input {} in feed_data is error".format(
-                    var.name
-                ),
+                msg=f"The shape of input {var.name} in feed_data is error",
             )
             self.assertEqual(
                 self.paddleddtype2nptype(var.dtype),
                 str(self.feed_data[name].dtype),
-                msg="The dtype of input {} in feed_data is error".format(
-                    var.name
-                ),
+                msg=f"The dtype of input {var.name} in feed_data is error",
             )
 
         for out_name, in_name in self.inplace_outputs.items():
@@ -426,7 +422,7 @@ class OpMapperTest(OpTest):
             paddle.int64: "int64",
             paddle.uint8: "uint8",
             paddle.bool: "bool",
-            paddle.fluid.core.VarDesc.VarType.RAW: "unk",
+            paddle.base.core.VarDesc.VarType.RAW: "unk",
         }
         assert dtype in switch_map, str(dtype) + " not support in CINN"
         return switch_map[dtype]
@@ -444,7 +440,7 @@ class OpMapperTest(OpTest):
             "uint8": paddle.uint8,
             "bool": paddle.bool,
             # The paddle's phi::DataType::UNDEFINED is mapped into ProtoDataType::RAW,
-            "unk": paddle.fluid.core.VarDesc.VarType.RAW,
+            "unk": paddle.base.core.VarDesc.VarType.RAW,
         }
         assert dtype in switch_map, dtype + " not support in CINN"
         return switch_map[dtype]

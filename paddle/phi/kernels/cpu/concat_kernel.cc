@@ -93,8 +93,8 @@ void ConcatKernel(const Context& dev_ctx,
           out_stride,
           in->data<T>(),
           in_stride,
-          in_stride[axis]);
-      output_offset += in_stride[axis];
+          in_stride[static_cast<int>(axis)]);
+      output_offset += in_stride[static_cast<int>(axis)];
     }
   } else {
     // TODO(chenweihang): concat functor support vector<DenseTensor*> input

@@ -15,7 +15,7 @@
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def simple_fc_net_with_inputs(img, label, class_num=10):
@@ -25,7 +25,7 @@ def simple_fc_net_with_inputs(img, label, class_num=10):
             hidden,
             size=100,
             activation='relu',
-            bias_attr=fluid.ParamAttr(
+            bias_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
@@ -52,7 +52,7 @@ def batchnorm_fc_with_inputs(img, label, class_num=10):
             hidden,
             size=200,
             activation='relu',
-            bias_attr=fluid.ParamAttr(
+            bias_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
@@ -87,7 +87,7 @@ def bow_net(
     """
     BOW net
     This model is from https://github.com/PaddlePaddle/models:
-    fluid/PaddleNLP/text_classification/nets.py
+    base/PaddleNLP/text_classification/nets.py
     """
     data = paddle.static.data(
         name="words", shape=[-1, 1], dtype="int64", lod_level=1

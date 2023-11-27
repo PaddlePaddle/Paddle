@@ -13,12 +13,12 @@
 # limitations under the License.
 
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.base.framework import in_dygraph_mode
 
+from ...base.data_feeder import check_variable_and_dtype
+from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...device import get_cudnn_version, is_compiled_with_rocm
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -267,9 +267,7 @@ def grid_sample(
     _padding_modes = ['zeros', 'reflection', 'border']
     if mode not in _modes:
         raise ValueError(
-            "The mode of grid sample function should be in {}, but got: {}".format(
-                _modes, mode
-            )
+            f"The mode of grid sample function should be in {_modes}, but got: {mode}"
         )
     if padding_mode not in _padding_modes:
         raise ValueError(
@@ -280,9 +278,7 @@ def grid_sample(
 
     if not isinstance(align_corners, bool):
         raise ValueError(
-            "The align corners should be bool, but got: {}".format(
-                align_corners
-            )
+            f"The align corners should be bool, but got: {align_corners}"
         )
 
     cudnn_version = get_cudnn_version()
@@ -342,7 +338,7 @@ def grid_sample(
 def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
     """
     This API implements pixel shuffle operation.
-    See more details in :ref:`PixelSuffle <api_paddle_nn_PixelSuffle>` .
+    See more details in :ref:`PixelSuffle <api_paddle_nn_PixelShuffle>` .
 
 
     Parameters:
@@ -371,7 +367,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
-            "But recevie Attr(data_format): {} ".format(data_format)
+            f"But recevie Attr(data_format): {data_format} "
         )
     if in_dygraph_mode():
         return _C_ops.pixel_shuffle(x, upscale_factor, data_format)
@@ -396,7 +392,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
 def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     """
     This API implements pixel unshuffle operation.
-    See more details in :ref:`PixelUnSuffle <api_paddle_nn_PixelUnSuffle>` .
+    See more details in :ref:`PixelUnSuffle <api_paddle_nn_PixelUnshuffle>` .
 
     Parameters:
         x (Tensor): 4-D tensor, the data type should be float32 or float64.
@@ -419,9 +415,7 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     """
     if len(x.shape) != 4:
         raise ValueError(
-            "Input x should be 4D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 4D tensor, but received x with the shape of {x.shape}"
         )
 
     if not isinstance(downscale_factor, int):
@@ -433,7 +427,7 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
-            "But recevie Attr(data_format): {} ".format(data_format)
+            f"But recevie Attr(data_format): {data_format} "
         )
 
     if in_dygraph_mode():
@@ -461,7 +455,7 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
 def channel_shuffle(x, groups, data_format="NCHW", name=None):
     """
     This API implements channel shuffle operation.
-    See more details in :ref:`api_nn_vision_ChannelShuffle`.
+    See more details in :ref:`api_paddle_nn_ChannelShuffle`.
 
     Parameters:
         x (Tensor): 4-D tensor, the data type should be float32 or float64.
@@ -499,9 +493,7 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
     """
     if len(x.shape) != 4:
         raise ValueError(
-            "Input x should be 4D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 4D tensor, but received x with the shape of {x.shape}"
         )
 
     if not isinstance(groups, int):
@@ -513,7 +505,7 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
-            "But recevie Attr(data_format): {} ".format(data_format)
+            f"But recevie Attr(data_format): {data_format} "
         )
 
     if in_dygraph_mode():

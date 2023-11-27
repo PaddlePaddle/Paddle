@@ -14,19 +14,18 @@
 
 #pragma once
 
-#include <gflags/gflags.h>
-
 #include <string>
 #include <vector>
 
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/intrinsic_ops.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/utils/flags.h"
 
 namespace cinn {
 

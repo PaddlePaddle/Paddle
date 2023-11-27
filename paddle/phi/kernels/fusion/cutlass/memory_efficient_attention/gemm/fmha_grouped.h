@@ -72,7 +72,6 @@ template <typename MM0_,  ///! Structure for computing P = Q @ K
                                                  /// perform
           bool kAddMask,
           // This is quite faster when mask need broadcast at row axis
-          bool kMaskBroadcastRow,
           bool kMaskIsAligned>
 struct FMHAGrouped {
  public:
@@ -165,6 +164,7 @@ struct FMHAGrouped {
     int problem_count;
     int threadblock_count;
     int num_heads;
+    int kv_num_heads;
 
     ElementQ *ptr_Q;
     ElementK *ptr_K;
@@ -191,6 +191,7 @@ struct FMHAGrouped {
 
     // Whether causal masking is to be performed
     bool causal;
+    bool mask_broadcast_head;
 
     // Only used by device-level operator
     GemmCoord *host_problem_sizes;
@@ -205,6 +206,7 @@ struct FMHAGrouped {
         : problem_count(0),
           threadblock_count(0),
           num_heads(0),
+          kv_num_heads(0),
           ptr_Q(nullptr),
           ptr_K(nullptr),
           ptr_P(nullptr),
@@ -224,6 +226,7 @@ struct FMHAGrouped {
           kElementV(0),
           kElementO(0),
           causal(false),
+          mask_broadcast_head(true),
           host_problem_sizes(nullptr) {}
 
     /// Ctor
@@ -233,6 +236,7 @@ struct FMHAGrouped {
               int problem_count,
               int threadblock_count,
               int num_heads,
+              int kv_num_heads,
               ElementQ *ptr_Q,
               ElementK *ptr_K,
               ElementM *ptr_M,
@@ -250,6 +254,7 @@ struct FMHAGrouped {
               int64_t kElementV,
               int64_t kElementO,
               bool causal,
+              bool mask_broadcast_head,
               ElementAccumulator scale,
               GemmCoord *host_problem_sizes = nullptr)
         : problem_sizes0(problem_sizes0),
@@ -257,6 +262,7 @@ struct FMHAGrouped {
           problem_count(problem_count),
           threadblock_count(threadblock_count),
           num_heads(num_heads),
+          kv_num_heads(kv_num_heads),
           ptr_Q(ptr_Q),
           ptr_K(ptr_K),
           ptr_M(ptr_M),
@@ -276,6 +282,7 @@ struct FMHAGrouped {
           kElementV(kElementV),
           kElementO(kElementO),
           causal(causal),
+          mask_broadcast_head(mask_broadcast_head),
           scale(scale),
           host_problem_sizes(host_problem_sizes) {}
 
@@ -304,6 +311,7 @@ struct FMHAGrouped {
     typename ProblemVisitor::Params problem_visitor;
     int threadblock_count;
     int num_heads;
+    int kv_num_heads;
 
     ElementQ *ptr_Q;
     ElementK *ptr_K;
@@ -327,6 +335,7 @@ struct FMHAGrouped {
 
     ElementAccumulator scale;
     bool causal;
+    bool mask_broadcast_head;
 
     //
     // Methods
@@ -352,6 +361,7 @@ struct FMHAGrouped {
           kElementV(0),
           kElementO(0),
           causal(false),
+          mask_broadcast_head(true),
           scale(0) {}
 
     explicit CUTLASS_HOST_DEVICE Params(Arguments const &args,
@@ -364,6 +374,7 @@ struct FMHAGrouped {
                           tile_count),
           threadblock_count(args.threadblock_count),
           num_heads(args.num_heads),
+          kv_num_heads(args.kv_num_heads),
           ptr_Q(args.ptr_Q),
           ptr_K(args.ptr_K),
           ptr_P(args.ptr_P),
@@ -384,6 +395,7 @@ struct FMHAGrouped {
           kElementV(args.kElementV),
           kElementO(args.kElementO),
           causal(args.causal),
+          mask_broadcast_head(args.mask_broadcast_head),
           scale(args.scale) {}
 
     //   CUTLASS_HOST_DEVICE
@@ -397,6 +409,7 @@ struct FMHAGrouped {
                                                         tile_count);
       threadblock_count = args.threadblock_count;
       num_heads = args.num_heads;
+      kv_num_heads = args.kv_num_heads;
       ptr_Q = args.ptr_Q;
       ptr_K = args.ptr_K;
       ptr_P = args.ptr_P;
@@ -574,6 +587,8 @@ struct FMHAGrouped {
 
       const int32_t problem_idx = problem_visitor.problem_index();
       const int32_t batch_idx = problem_idx / params.num_heads;
+      // how many query head share a kv head?
+      const int32_t qhead_per_kv_head = params.num_heads / params.kv_num_heads;
 
       if (thread_id() < kQueriesPerBlock) {
         s_prime[thread_id()] = ElementAccumulator(0);
@@ -633,7 +648,8 @@ struct FMHAGrouped {
         auto prologueV = [&](int blockN) {
           typename MM1::Mma::IteratorB iterator_V(
               typename MM1::IteratorB::Params{MM1::LayoutB(params.ldv)},
-              params.ptr_V + problem_idx * params.kElementV +
+              params.ptr_V +
+                  (problem_idx / qhead_per_kv_head) * params.kElementV +
                   iter_key_start * params.ldv,
               {problem_size_1_k, problem_size_1_n},
               thread_id(),
@@ -673,7 +689,8 @@ struct FMHAGrouped {
         typename MM0::IteratorB iterator_B(
             typename MM0::IteratorB::Params(
                 typename MM0::MmaCore::LayoutB(params.ldk)),
-            params.ptr_K + problem_idx * params.kElementK +
+            params.ptr_K +
+                (problem_idx / qhead_per_kv_head) * params.kElementK +
                 iter_key_start * params.ldk,
             {problem_size_0_k, problem_size_0_n},
             thread_id(),
@@ -704,6 +721,8 @@ struct FMHAGrouped {
 
         // apply attention mask if applicable
         if (kAddMask) {
+          const int mask_id =
+              params.mask_broadcast_head ? batch_idx : problem_idx;
           accum = cutlass::multiplies<typename MM0::Mma::FragmentC>()(
               params.scale, accum);
           // load mask tile Bij into shared memory
@@ -711,7 +730,7 @@ struct FMHAGrouped {
               {cutlass::layout::RowMajor(params.ldm)},
               // attn_mask_pointer points to matrix of size (n_queries, n_keys)
               // for the relevant batch_id and head_id
-              params.ptr_M + batch_idx * params.kElementM +
+              params.ptr_M + mask_id * params.kElementM +
                   TileParams::query_start(threadblock_idx) * params.ldm +
                   iter_key_start,
               {problem_size_0_m, problem_size_0_n},
@@ -826,7 +845,8 @@ struct FMHAGrouped {
 
           typename MM1::Mma::IteratorB iterator_V(
               typename MM1::IteratorB::Params{MM1::LayoutB(params.ldv)},
-              params.ptr_V + problem_idx * params.kElementV +
+              params.ptr_V +
+                  (problem_idx / qhead_per_kv_head) * params.kElementV +
                   iter_key_start * params.ldv,
               {problem_size_1_k, problem_size_1_n},
               thread_id(),

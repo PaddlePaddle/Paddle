@@ -56,7 +56,7 @@ class StringTensor : public TensorBase,
   /// \brief StringTensor shallow copy assignment.
   StringTensor& operator=(const StringTensor& other);
 
-  StringTensor& operator=(StringTensor&& other);
+  StringTensor& operator=(StringTensor&& other) noexcept;
   /// \brief Destroy the tensor object and release exclusive resources.
   virtual ~StringTensor() = default;
 

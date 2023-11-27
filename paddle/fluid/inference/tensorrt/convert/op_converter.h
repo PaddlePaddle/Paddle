@@ -371,6 +371,23 @@ class OpConverter {
     engine->ClearWeights();
   }
 
+  void SupportFP32MixPrecision(const std::string& output_name,
+                               const std::string& op_type,
+                               nvinfer1::ILayer* layer) {
+    if (engine_->OpIsRunFloat(output_name) || engine_->OpIsRunFloat(op_type)) {
+#if IS_TRT_VERSION_GE(8210)
+      VLOG(3) << op_type << "(output: " << output_name << ")"
+              << " is forced to run in FP32 precision.";
+      layer->resetPrecision();
+      layer->setPrecision(nvinfer1::DataType::kFLOAT);
+#else
+      VLOG(3)
+          << op_type << "(output: " << output_name << ")"
+          << ": Set layer precision needs TensorRT version 8.2.1 and after.";
+#endif
+    }
+  }
+
   nvinfer1::ITensor* Cast(nvinfer1::ITensor* input, nvinfer1::DataType dtype) {
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
     layer->setOutputType(0, dtype);

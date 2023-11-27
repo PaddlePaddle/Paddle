@@ -77,7 +77,7 @@ static framework::RuntimeContext PrepareRuntimeContext(
       out_ctx.emplace_back(out_var->MutableVar());
     }
   }
-  return framework::RuntimeContext(std::move(inputs), std::move(outputs));
+  return framework::RuntimeContext(inputs, outputs);
 }
 
 template <typename VarType>
@@ -387,7 +387,7 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
                             src.Name()));
       place = Place();
     } else {
-      dst_tensor->set_lod(src_tensor.lod());
+      dst_tensor->set_lod(src_tensor.lod());  // NOLINT
       dst_tensor->Resize(src_tensor.dims());
     }
     framework::TensorCopy(src_tensor, place, dst_tensor);

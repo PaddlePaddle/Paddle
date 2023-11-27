@@ -81,7 +81,6 @@ class LimitByCapacityOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(limit_by_capacity,
                              ops::LimitByCapacityOp,

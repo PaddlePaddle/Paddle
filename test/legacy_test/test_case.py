@@ -18,10 +18,10 @@ from functools import partial
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Program, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.base.backward import append_backward
+from paddle.base.framework import Program, program_guard
 
 paddle.enable_static()
 
@@ -84,11 +84,11 @@ class TestAPICase(unittest.TestCase):
             )
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
             res = exe.run(
                 main_program, fetch_list=[out_0, out_1, out_2, out_3, out_4]
@@ -145,11 +145,11 @@ class TestAPICase(unittest.TestCase):
             )
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
             res = exe.run(
                 main_program, fetch_list=[out_0, out_1, out_2, out_3, out_4]
@@ -180,11 +180,11 @@ class TestAPICase(unittest.TestCase):
             append_backward(out)
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
         res = exe.run(main_program, fetch_list=[out.name, x.grad_name])
         np.testing.assert_allclose(
@@ -289,11 +289,11 @@ class TestAPICase(unittest.TestCase):
             )
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             ret = exe.run(main_program, fetch_list=out)
 
             np.testing.assert_allclose(
@@ -411,11 +411,11 @@ class TestAPICase_Nested(unittest.TestCase):
             )
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
             res = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
 
@@ -511,11 +511,11 @@ class TestAPICase_Nested(unittest.TestCase):
             )
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
             res = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
 
@@ -630,15 +630,15 @@ class TestMutiTask(unittest.TestCase):
             pred_fn_pairs=[(switch_id == one, fn_1)], default=fn_2
         )
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(base.CPUPlace())
+        exe.run(base.default_startup_program())
 
         for epoch in range(EPOCH_NUM):
             np.random.seed(epoch)
             feed_image = np.random.random(size=[BATCH_SIZE, INPUT_SIZE]).astype(
                 'float32'
             )
-            main_program = fluid.default_main_program()
+            main_program = base.default_main_program()
             out = exe.run(
                 main_program,
                 feed={

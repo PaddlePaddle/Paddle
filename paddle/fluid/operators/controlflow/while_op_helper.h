@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/controlflow/op_variant.h"
 
 namespace phi {
@@ -57,6 +58,11 @@ bool GetCondData(const phi::DenseTensor &cond);
 
 bool StrInVaraiableNameMap(const std::string &,
                            const framework::VariableNameMap &);
+
+void TransferVariablePlace(const framework::Scope *scope,
+                           const std::string &var_name,
+                           const phi::Place &dst_place,
+                           const platform::DeviceContext &dev_ctx);
 
 }  // namespace operators
 }  // namespace paddle

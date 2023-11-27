@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
-DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");
+PD_DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");
 
 namespace paddle {
 namespace inference {
@@ -33,7 +33,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SwitchIrOptim();
   cfg->SwitchSpecifyInputNames();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_num_threads);
-  if (FLAGS_enable_mkldnn) cfg->EnableMKLDNN();
+  if (!FLAGS_enable_mkldnn) cfg->DisableMKLDNN();
 }
 
 TEST(Analyzer_bfloat16_image_classification, bfloat16) {

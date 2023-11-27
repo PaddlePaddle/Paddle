@@ -99,14 +99,14 @@ def run_resnet50(aot_choose_kernel=False, use_amp=False):
 
 class TestAOTChooseKernel(unittest.TestCase):
     def test_resnet50_aot_choose_kernel(self):
-        if not paddle.fluid.core.is_compiled_with_cuda():
+        if not paddle.base.core.is_compiled_with_cuda():
             return
         loss1 = run_resnet50(aot_choose_kernel=True)
         loss2 = run_resnet50(aot_choose_kernel=False)
         self.assertEqual(loss1, loss2)
 
     def test_resnet50_amp_aot_choose_kernel(self):
-        if not paddle.fluid.core.is_compiled_with_cuda():
+        if not paddle.base.core.is_compiled_with_cuda():
             return
         loss1 = run_resnet50(aot_choose_kernel=True, use_amp=True)
         loss2 = run_resnet50(aot_choose_kernel=False, use_amp=True)

@@ -13,7 +13,7 @@
 # limitations under the License.
 import warnings
 
-from ..fluid import framework
+from ..base import framework
 from .optimizer import Optimizer
 
 __all__ = []
@@ -53,7 +53,7 @@ class Adagrad(Optimizer):
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
             It canbe a float value as coeff of L2 regularization or
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_paddle_fluid_param_attr_aramAttr` already,
+            If a parameter has set regularizer using :ref:`api_paddle_base_param_attr_aramAttr` already,
             the regularization setting here in optimizer will be ignored for this parameter.
             Otherwise, the regularization setting here in optimizer will take effect.
             Default None, meaning there is no regularization.

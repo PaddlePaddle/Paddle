@@ -17,7 +17,8 @@
 #include "paddle/cinn/hlir/op/external_api_registry.h"
 #include "paddle/cinn/utils/string.h"
 
-DECLARE_string(cinn_custom_call_deny_ops);
+PD_DECLARE_string(cinn_custom_call_deny_ops);
+PD_DECLARE_bool(cinn_use_cutlass);
 
 namespace cinn {
 namespace hlir {
@@ -72,8 +73,10 @@ class GraphAlterHelper {
         }
       }
 
-      node->attrs.attr_store["original_op"] = node->op()->name;
-      node->attrs.op = framework::Operator::Get("custom_call");
+      if (!FLAGS_cinn_use_cutlass || node->op()->name != "matmul") {
+        node->attrs.attr_store["original_op"] = node->op()->name;
+        node->attrs.op = framework::Operator::Get("custom_call");
+      }
     }
   }
 

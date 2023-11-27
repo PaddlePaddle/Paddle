@@ -81,7 +81,7 @@ class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
     auto& lod = x->lod();
     const size_t level = lod.size() - 1;
 
-    x_grad->mutable_data<T>(ctx.GetPlace());
+    x_grad->mutable_data<T>(ctx.GetPlace());  // NOLINT
     for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
       int start_pos = static_cast<int>(lod[level][i]);
       int end_pos = static_cast<int>(lod[level][i + 1]);

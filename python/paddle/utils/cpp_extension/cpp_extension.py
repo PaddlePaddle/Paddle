@@ -59,7 +59,7 @@ from .extension_utils import (
 )
 from .extension_utils import CLANG_COMPILE_FLAGS, CLANG_LINK_FLAGS
 
-from ...fluid import core
+from ...base import core
 
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
@@ -650,9 +650,7 @@ class BuildExtension(build_ext):
         if self.no_python_abi_suffix:
             assert (
                 len(name_items) > 2
-            ), "Expected len(name_items) > 2, but received {}".format(
-                len(name_items)
-            )
+            ), f"Expected len(name_items) > 2, but received {len(name_items)}"
             name_items.pop(-2)
             ext_name = split_str.join(name_items)
 
@@ -909,9 +907,7 @@ def load(
         extra_cuda_cflags = []
     assert isinstance(
         extra_cxx_cflags, list
-    ), "Required type(extra_cxx_cflags) == list[str], but received {}".format(
-        extra_cxx_cflags
-    )
+    ), f"Required type(extra_cxx_cflags) == list[str], but received {extra_cxx_cflags}"
     assert isinstance(
         extra_cuda_cflags, list
     ), "Required type(extra_cuda_cflags) == list[str], but received {}".format(

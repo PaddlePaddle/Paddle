@@ -351,7 +351,7 @@ bool MultiDevSSAGraphBuilderBase::NeedCollectiveForGrad(
   // NOTE: This is for the case that all gradients should add collective ops
   for (auto *node : ops) {
     if (node->Op()->Type() != "allreduce") continue;
-    for (auto in_name : node->Op()->InputArgumentNames()) {
+    for (auto const &in_name : node->Op()->InputArgumentNames()) {
       if (in_name == grad_name) {
         return false;
       }
@@ -862,7 +862,7 @@ int BalanceVarSSAGraphBuilder::GetOpDeviceID(ir::Node *node) const {
 size_t BalanceVarSSAGraphBuilder::GetAppropriateDeviceID(
     const std::vector<std::string> &var_names) const {
   int64_t numel_sum = 0;
-  for (auto var_name : var_names) {
+  for (auto const &var_name : var_names) {
     if (all_vars_.find(var_name) == all_vars_.end()) continue;
     auto var_desc = all_vars_.at(var_name);
     PADDLE_ENFORCE_NOT_NULL(var_desc,
@@ -1137,6 +1137,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
             details::BuildStrategy::ReduceStrategy::kAllReduce &&
         node->inputs[0]->Name().find(".block") == std::string::npos) {
       std::vector<std::string> input_var_names;
+      input_var_names.reserve(node->inputs.size());
       for (ir::Node *n : node->inputs) {
         input_var_names.push_back(n->Name());
       }
@@ -1151,7 +1152,8 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
               "Parameter and Parameter@Grad.",
               node->Name(),
               OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-      op_dev_id = GetAppropriateDeviceID({send_param_grad[1]});
+      op_dev_id =
+          static_cast<int>(GetAppropriateDeviceID({send_param_grad[1]}));
       VLOG(10) << "send grad " << input_var_names[0] << " origin "
                << send_param_grad[1] << " place: " << op_dev_id;
       for (auto &varname : input_var_names) {
@@ -1161,6 +1163,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
     }
   } else if (node->Op()->Type() == "recv") {
     std::vector<std::string> output_var_names;
+    output_var_names.reserve(node->inputs.size());
     for (ir::Node *n : node->outputs) {
       output_var_names.push_back(n->Name());
     }
@@ -1173,7 +1176,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
                << " get grad place: " << recv_param_grad[1]
                << " place: " << op_dev_id;
     } else {
-      op_dev_id = GetAppropriateDeviceID(output_var_names);
+      op_dev_id = static_cast<int>(GetAppropriateDeviceID(output_var_names));
     }
     for (auto &varname : output_var_names) {
       sharded_var_device_.emplace(varname, op_dev_id);
@@ -1213,7 +1216,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
     op_handle->SetDeviceContext(p,
                                 platform::DeviceContextPool::Instance().Get(p));
 
-    SetOpInputsAllPlaces(result, node, places_.size());
+    SetOpInputsAllPlaces(result, node, static_cast<int>(places_.size()));
     for (ir::Node *output : node->outputs) {
       int outvar_dev_id = op_dev_id;
       if (node->Op()->Type() == "fetch_barrier") {
@@ -1244,6 +1247,8 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   int op_dev_id = -1;
   std::vector<std::string> input_var_names;
   std::vector<std::string> output_var_names;
+  input_var_names.reserve(node->inputs.size());
+  output_var_names.reserve(node->outputs.size());
   for (ir::Node *input : node->inputs) {
     input_var_names.push_back(input->Name());
   }
@@ -1258,7 +1263,7 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
     op_dev_id = GetVarDeviceID(input_var_names[0]);
     if (strategy_.reduce_ ==
         details::BuildStrategy::ReduceStrategy::kAllReduce) {
-      op_dev_id = GetAppropriateDeviceID(input_var_names);
+      op_dev_id = static_cast<int>(GetAppropriateDeviceID(input_var_names));
       for (auto &varname : input_var_names) {
         sharded_var_device_.emplace(varname, op_dev_id);
       }

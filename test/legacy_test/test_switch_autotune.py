@@ -85,7 +85,7 @@ class TestAutoTune(unittest.TestCase):
         self.assertEqual(self.get_flags("FLAGS_use_autotune"), True)
 
     def check_status(self, expected_res):
-        status = paddle.fluid.core.autotune_status()
+        status = paddle.base.core.autotune_status()
         for key in status.keys():
             v = status[key]
             if key == "cache_hit_rate":
@@ -134,7 +134,7 @@ class TestStaticAutoTuneStatus(TestAutoTune):
             loss = static_program(net, data)
         place = (
             paddle.CUDAPlace(0)
-            if paddle.fluid.core.is_compiled_with_cuda()
+            if paddle.base.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
         exe = paddle.static.Executor(place)
@@ -160,7 +160,7 @@ class TestStaticAutoTuneStatus(TestAutoTune):
 
         for i in range(3):
             exe.run(program=main_program, feed={'X': x}, fetch_list=[loss])
-            status = paddle.fluid.core.autotune_status()
+            status = paddle.base.core.autotune_status()
             expected_res = self.get_expected_res(i, enable_autotune)
             self.check_status(expected_res)
         paddle.disable_static()

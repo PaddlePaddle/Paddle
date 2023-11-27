@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def smooth_l1_loss_forward(val, delta):
@@ -46,14 +46,14 @@ class SmoothL1Loss(unittest.TestCase):
     def test_smooth_l1_loss_mean(self):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
+        prog = base.Program()
+        startup_prog = base.Program()
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
-        with fluid.program_guard(prog, startup_prog):
+        with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[100, 200], dtype='float32'
             )
@@ -63,7 +63,7 @@ class SmoothL1Loss(unittest.TestCase):
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
             ret = smooth_l1_loss(input, label)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             (static_ret,) = exe.run(
                 prog,
                 feed={
@@ -73,11 +73,11 @@ class SmoothL1Loss(unittest.TestCase):
                 fetch_list=[ret],
             )
             self.assertIsNotNone(static_ret)
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
             dy_ret = smooth_l1_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np),
+                base.dygraph.to_variable(input_np),
+                base.dygraph.to_variable(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -89,14 +89,14 @@ class SmoothL1Loss(unittest.TestCase):
     def test_smooth_l1_loss_sum(self):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
+        prog = base.Program()
+        startup_prog = base.Program()
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
-        with fluid.program_guard(prog, startup_prog):
+        with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[100, 200], dtype='float32'
             )
@@ -106,7 +106,7 @@ class SmoothL1Loss(unittest.TestCase):
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='sum')
             ret = smooth_l1_loss(input, label)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             (static_ret,) = exe.run(
                 prog,
                 feed={
@@ -116,11 +116,11 @@ class SmoothL1Loss(unittest.TestCase):
                 fetch_list=[ret],
             )
             self.assertIsNotNone(static_ret)
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='sum')
             dy_ret = smooth_l1_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np),
+                base.dygraph.to_variable(input_np),
+                base.dygraph.to_variable(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -132,14 +132,14 @@ class SmoothL1Loss(unittest.TestCase):
     def test_smooth_l1_loss_none(self):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
+        prog = base.Program()
+        startup_prog = base.Program()
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
-        with fluid.program_guard(prog, startup_prog):
+        with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[100, 200], dtype='float32'
             )
@@ -149,7 +149,7 @@ class SmoothL1Loss(unittest.TestCase):
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='none')
             ret = smooth_l1_loss(input, label)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             (static_ret,) = exe.run(
                 prog,
                 feed={
@@ -159,11 +159,11 @@ class SmoothL1Loss(unittest.TestCase):
                 fetch_list=[ret],
             )
             self.assertIsNotNone(static_ret)
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='none')
             dy_ret = smooth_l1_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np),
+                base.dygraph.to_variable(input_np),
+                base.dygraph.to_variable(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -176,14 +176,14 @@ class SmoothL1Loss(unittest.TestCase):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
         delta = np.random.rand()
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
+        prog = base.Program()
+        startup_prog = base.Program()
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
-        with fluid.program_guard(prog, startup_prog):
+        with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[100, 200], dtype='float32'
             )
@@ -193,7 +193,7 @@ class SmoothL1Loss(unittest.TestCase):
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(delta=delta)
             ret = smooth_l1_loss(input, label)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             (static_ret,) = exe.run(
                 prog,
                 feed={
@@ -203,11 +203,11 @@ class SmoothL1Loss(unittest.TestCase):
                 fetch_list=[ret],
             )
             self.assertIsNotNone(static_ret)
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(delta=delta)
             dy_ret = smooth_l1_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np),
+                base.dygraph.to_variable(input_np),
+                base.dygraph.to_variable(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)

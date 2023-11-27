@@ -34,18 +34,18 @@ void PsroiPoolGradKernel(const Context& ctx,
                          DenseTensor* dx) {
   if (dx) {
     const auto& in_dims = x.dims();
-    int input_channels = in_dims[1];
-    int height = in_dims[2];
-    int width = in_dims[3];
-    int rois_num_t = rois.dims()[0];
+    int input_channels = static_cast<int>(in_dims[1]);
+    int height = static_cast<int>(in_dims[2]);
+    int width = static_cast<int>(in_dims[3]);
+    int rois_num_t = static_cast<int>(rois.dims()[0]);
 
     // set roi batch id
     DenseTensor rois_batch_id_list;
     rois_batch_id_list.Resize({rois_num_t});
     int* rois_batch_id_data = ctx.template Alloc<int>(&rois_batch_id_list);
-    int rois_batch_size;
+    int rois_batch_size = 0;
     if (rois_num.get_ptr()) {
-      rois_batch_size = rois_num->numel();
+      rois_batch_size = static_cast<int>(rois_num->numel());
       auto* rois_num_t_data = rois_num->data<int>();
       int start = 0;
       for (int n = 0; n < rois_batch_size; ++n) {
@@ -56,7 +56,7 @@ void PsroiPoolGradKernel(const Context& ctx,
       }
     } else {
       auto rois_lod = rois.lod().back();
-      rois_batch_size = rois_lod.size() - 1;
+      rois_batch_size = static_cast<int>(rois_lod.size()) - 1;
       // calculate batch id index for each roi according to LoD
       for (int n = 0; n < rois_batch_size; ++n) {
         for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
@@ -73,7 +73,7 @@ void PsroiPoolGradKernel(const Context& ctx,
     set_zero(ctx, dx, static_cast<T>(0));
 
     // backpropagate gradient per output pixel
-    int dout_size = dout.numel();
+    int dout_size = static_cast<int>(dout.numel());
     for (int i = 0; i < dout_size; ++i) {
       // The output is in order (n, c, ph, pw)
       int pw = i % pooled_width;

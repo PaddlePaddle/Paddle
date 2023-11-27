@@ -21,7 +21,7 @@ from launch_function_helper import _find_free_port, wait
 os.environ['GLOG_vmodule'] = "gen_bkcl_id_op*=10,gen_comm_id*=10"
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 

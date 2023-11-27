@@ -39,7 +39,7 @@ class TestDirichlet(unittest.TestCase):
         )
 
     def test_mean(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_diric.mean,
                 scipy.stats.dirichlet.mean(self.concentration),
@@ -48,7 +48,7 @@ class TestDirichlet(unittest.TestCase):
             )
 
     def test_variance(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_diric.variance,
                 scipy.stats.dirichlet.var(self.concentration),
@@ -61,7 +61,7 @@ class TestDirichlet(unittest.TestCase):
         value = [v / v.sum() for v in value]
 
         for v in value:
-            with paddle.fluid.dygraph.guard(self.place):
+            with paddle.base.dygraph.guard(self.place):
                 np.testing.assert_allclose(
                     self._paddle_diric.prob(paddle.to_tensor(v)),
                     scipy.stats.dirichlet.pdf(v, self.concentration),
@@ -74,7 +74,7 @@ class TestDirichlet(unittest.TestCase):
         value = [v / v.sum() for v in value]
 
         for v in value:
-            with paddle.fluid.dygraph.guard(self.place):
+            with paddle.base.dygraph.guard(self.place):
                 np.testing.assert_allclose(
                     self._paddle_diric.log_prob(paddle.to_tensor(v)),
                     scipy.stats.dirichlet.logpdf(v, self.concentration),
@@ -83,7 +83,7 @@ class TestDirichlet(unittest.TestCase):
                 )
 
     def test_entropy(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_diric.entropy(),
                 scipy.stats.dirichlet.entropy(self.concentration),

@@ -19,9 +19,9 @@ import struct
 
 import numpy as np
 
-from paddle.fluid import core, framework, global_scope
-from paddle.fluid.log_helper import get_logger
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base import core, framework, global_scope
+from paddle.base.log_helper import get_logger
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 from ..fp16_utils import (
     _rename_arg,
@@ -341,16 +341,12 @@ def cast_model_to_bf16(
                         in_var = block.var(in_var_name)
                     except ValueError as e:
                         _logger.debug(
-                            "-- {}, try to get it in the global block --".format(
-                                e
-                            )
+                            f"-- {e}, try to get it in the global block --"
                         )
                         in_var = global_block.var(in_var_name)
                         if in_var is not None:
                             _logger.debug(
-                                "-- var {} is got in the global block --".format(
-                                    in_var_name
-                                )
+                                f"-- var {in_var_name} is got in the global block --"
                             )
 
                     if in_var is None or in_var.type not in _valid_types:
@@ -379,16 +375,12 @@ def cast_model_to_bf16(
                         out_var = block.var(out_var_name)
                     except ValueError as e:
                         _logger.debug(
-                            "-- {}, try to get it in the global block --".format(
-                                e
-                            )
+                            f"-- {e}, try to get it in the global block --"
                         )
                         out_var = global_block.var(out_var_name)
                         if out_var is not None:
                             _logger.debug(
-                                "-- var {} is got in the global block --".format(
-                                    out_var_name
-                                )
+                                f"-- var {out_var_name} is got in the global block --"
                             )
 
                     if out_var is None or out_var.type not in _valid_types:
@@ -483,9 +475,9 @@ def cast_parameters_to_bf16(place, program, scope=None, to_bf16_var_names=None):
     Traverse all parameters in the whole model and set them to the BF16 data type.
     Whereas, this function will keep parameters of batchnorms in FP32.
     Args:
-        place(fluid.CPUPlace|fluid.CUDAPlace): `place` is used to restore the BF16 weight tensors.
+        place(base.CPUPlace|base.CUDAPlace): `place` is used to restore the BF16 weight tensors.
         program (Program): The used program.
-        scope(fluid.Scope, optional): `scope` is used to get the FP32 weight tensor values.
+        scope(base.Scope, optional): `scope` is used to get the FP32 weight tensor values.
                                       Default is None.
         to_bf16_var_names(set|list, optional): The data types of vars in `to_bf16_var_names`
                                                will be set to BF16. Usually, it is the returned

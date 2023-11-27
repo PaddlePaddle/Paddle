@@ -28,7 +28,7 @@
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/optim/collect_undefined_vars.h"
+#include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 
 namespace cinn::backends {
@@ -98,7 +98,7 @@ void CodeGenX86::CreateParallelLaunch(Expr body, int num_task) {
                                              llvm::Function::PrivateLinkage,
                                              "__parallel_lambda",
                                              m_);
-  std::vector<std::string> vars = optim::CollectUndefinedVars(&body);
+  std::vector<std::string> vars = ir::ir_utils::CollectUndefinedVars(&body);
   uint64_t nbytes;
   auto* data = PackVars(vars, &nbytes);
 

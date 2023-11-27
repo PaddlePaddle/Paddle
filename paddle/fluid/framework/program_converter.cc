@@ -139,7 +139,7 @@ void ConvertProgram(ProgramDesc* program) {
     BlockDesc* block = program->MutableBlock(i);
     const size_t num_ops = block->OpSize();
     for (size_t j = 0; j < num_ops; j++) {
-      OpDesc* op = block->Op(j);
+      OpDesc* op = block->Op(static_cast<int>(j));
       const std::string op_type = op->Type();
       if (op_type == "set_value" || op_type == "set_value_grad") {
         ConvertSetValueOp(op);
@@ -230,7 +230,7 @@ void ConvertProgram(ProgramDesc* program) {
     BlockDesc* block = program->MutableBlock(i);
     const size_t num_ops = block->OpSize();
     for (size_t j = 0; j < num_ops; j++) {
-      OpDesc* op = block->Op(j);
+      OpDesc* op = block->Op(static_cast<int>(j));
       const std::string op_type = op->Type();
       if (!legacy_op_versions.count(op_type)) {
         continue;

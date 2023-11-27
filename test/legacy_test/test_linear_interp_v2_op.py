@@ -16,11 +16,11 @@ import platform
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 from paddle.nn.functional import interpolate
 
 
@@ -52,12 +52,12 @@ def linear_interp_test(
     align_corners=True,
     align_mode=0,
 ):
-    if isinstance(scale, float) or isinstance(scale, int):
+    if isinstance(scale, (float, int)):
         scale_list = []
         for _ in range(len(x.shape) - 2):
             scale_list.append(scale)
         scale = list(map(float, scale_list))
-    elif isinstance(scale, list) or isinstance(scale, tuple):
+    elif isinstance(scale, (list, tuple)):
         scale = list(map(float, scale))
     if SizeTensor is not None:
         if not isinstance(SizeTensor, list) and not isinstance(
@@ -153,7 +153,7 @@ class TestLinearInterpOp(OpTest):
             in_w = self.input_shape[1]
 
         if self.scale > 0:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 self.scale = float(self.scale)
             if isinstance(self.scale, list):
                 self.scale = float(self.scale[0])
@@ -185,19 +185,19 @@ class TestLinearInterpOp(OpTest):
             'data_layout': self.data_layout,
         }
         if self.scale > 0:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 self.scale = [float(self.scale)]
             self.attrs['scale'] = self.scale
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
         if platform.system() == "Linux":
-            self.check_output(atol=1e-7)
+            self.check_output(atol=1e-7, check_pir=True)
         else:
-            self.check_output(atol=1e-5)
+            self.check_output(atol=1e-5, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
 
     def init_test_case(self):
         create_test_case0(self)
@@ -267,7 +267,7 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
             in_w = self.input_shape[1]
 
         if self.scale > 0:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 self.scale = float(self.scale)
             if isinstance(self.scale, list):
                 self.scale = float(self.scale[0])
@@ -307,12 +307,21 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
             'data_layout': self.data_layout,
         }
         if self.scale > 0:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 self.scale = [self.scale[0], self.scale[0]]
             self.attrs['scale'] = self.scale
         self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        if platform.system() == "Linux":
+            self.check_output(atol=1e-7, check_pir=False)
+        else:
+            self.check_output(atol=1e-5, check_pir=False)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
 
 
 class TestLinearInterpOpAPI2_0(unittest.TestCase):
@@ -326,8 +335,8 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
             align_corners=False,
             data_format='NCW',
         )
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(x_data)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(x_data)
             interp = us_1(x)
 
             expect = linear_interp_np(
@@ -339,14 +348,11 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
 
 class TestLinearInterpOpFP16(TestLinearInterpOp):
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output(atol=1e-3, check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'],
-            'Out',
-            in_place=True,
-            max_relative_error=1e-2,
+            ['X'], 'Out', in_place=True, max_relative_error=1e-2, check_pir=True
         )
 
     def init_test_case(self):
@@ -377,7 +383,7 @@ class TestLinearInterpOpBF16(OpTest):
             in_w = self.input_shape[1]
 
         if self.scale > 0:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 self.scale = float(self.scale)
             if isinstance(self.scale, list):
                 self.scale = float(self.scale[0])
@@ -409,19 +415,24 @@ class TestLinearInterpOpBF16(OpTest):
             'data_layout': self.data_layout,
         }
         if self.scale > 0:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 self.scale = [float(self.scale)]
             self.attrs['scale'] = self.scale
         self.outputs = {'Out': convert_float_to_uint16(output_np)}
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-2)
+        self.check_output_with_place(place, atol=1e-2, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', in_place=True, max_relative_error=1e-2
+            place,
+            ['X'],
+            'Out',
+            in_place=True,
+            max_relative_error=1e-2,
+            check_pir=True,
         )
 
     def init_test_case(self):
@@ -438,7 +449,7 @@ class TestResizeLinearOpUint8(OpTest):
         input_np = np.random.random(self.input_shape).astype("uint8")
 
         if self.scale > 0:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 self.scale = float(self.scale)
             if isinstance(self.scale, list):
                 self.scale = float(self.scale[0])
@@ -466,7 +477,7 @@ class TestResizeLinearOpUint8(OpTest):
             'align_mode': self.align_mode,
         }
         if self.scale > 0:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 self.scale = [self.scale[0], self.scale[0]]
@@ -475,9 +486,13 @@ class TestResizeLinearOpUint8(OpTest):
 
     def test_check_output(self):
         if platform.system() == "Linux":
-            self.check_output_with_place(place=core.CPUPlace(), atol=1e-7)
+            self.check_output_with_place(
+                place=core.CPUPlace(), atol=1e-7, check_pir=True
+            )
         else:
-            self.check_output_with_place(place=core.CPUPlace(), atol=1e-5)
+            self.check_output_with_place(
+                place=core.CPUPlace(), atol=1e-5, check_pir=True
+            )
 
     def init_test_case(self):
         self.interp_method = 'linear'
@@ -531,7 +546,7 @@ class TestLinearInterpOpError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestLinearInterpOpForFloat16(unittest.TestCase):
     def init_test_case(self):

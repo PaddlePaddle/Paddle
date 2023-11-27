@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
+#include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -196,7 +197,7 @@ static std::vector<std::unique_ptr<OperatorBase>> CreateOpsFromBlock(
   size_t op_num = block.OpSize();
   ops.reserve(op_num);
   for (size_t i = 0; i < op_num; ++i) {
-    auto *op_desc = block.Op(i);
+    auto *op_desc = block.Op(static_cast<int>(i));
     ops.push_back(OpRegistry::CreateOp(*op_desc));
   }
   return ops;
@@ -226,6 +227,8 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
     auto global_block_ops = CreateOpsFromBlock(program.Block(0));
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
         program, 0, global_block_ops);
+    operators::PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
+        program, 0, global_block_ops);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
         program, 0, global_block_ops);
     operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
@@ -240,35 +243,54 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
 
   const char *kSubBlock = "sub_block";
   const char *kSkipEagerDeletionVars = "skip_eager_deletion_vars";
+  // NOTE: pylayer op contains may contain two blocks: forward block and
+  // backward block
+  const char *kBlocks = "blocks";
 
   for (size_t i = 0; i < block_num; ++i) {
     const auto &block = program.Block(i);
     size_t op_num = block.OpSize();
     for (size_t j = 0; j < op_num; ++j) {
-      auto *op = block.Op(j);
-      if (!op->HasAttr(kSubBlock) || !op->HasAttr(kSkipEagerDeletionVars)) {
+      auto *op = block.Op(static_cast<int>(j));
+      if ((!op->HasAttr(kSubBlock) && !op->HasAttr(kBlocks)) ||
+          !op->HasAttr(kSkipEagerDeletionVars)) {
         continue;
       }
-      auto sub_block_id = op->GetAttrIfExists<BlockDesc *>(kSubBlock)->ID();
-      PADDLE_ENFORCE_GE(sub_block_id,
-                        0,
-                        platform::errors::PermissionDenied(
-                            "sub_block id must be non-negative number"));
-      PADDLE_ENFORCE_LT(sub_block_id,
-                        block_num,
-                        platform::errors::PermissionDenied(
-                            "sub_block id exceeds max block num"));
-      PADDLE_ENFORCE_EQ(
-          found_skip_vars[sub_block_id],
-          false,
-          platform::errors::PermissionDenied(
-              "there are 2 ops which refer to the same sub_block %d",
-              sub_block_id));
 
-      found_skip_vars[sub_block_id] = true;
-      auto sub_block_skip_vars =
-          op->GetAttrIfExists<std::vector<std::string>>(kSkipEagerDeletionVars);
-      skip_vars_on_each_block[sub_block_id] = std::move(sub_block_skip_vars);
+      std::vector<int32_t> sub_block_ids;
+      if (op->HasAttr(kSubBlock)) {
+        sub_block_ids.push_back(
+            op->GetAttrIfExists<BlockDesc *>(kSubBlock)->ID());
+      } else if (op->HasAttr(kBlocks)) {
+        const auto &blocks =
+            op->GetAttrIfExists<std::vector<BlockDesc *>>(kBlocks);
+        for (const auto &block : blocks) {
+          sub_block_ids.push_back(block->ID());
+        }
+      }
+
+      for (auto sub_block_id : sub_block_ids) {
+        PADDLE_ENFORCE_GE(sub_block_id,
+                          0,
+                          platform::errors::PermissionDenied(
+                              "sub_block id must be non-negative number"));
+        PADDLE_ENFORCE_LT(sub_block_id,
+                          block_num,
+                          platform::errors::PermissionDenied(
+                              "sub_block id exceeds max block num"));
+        PADDLE_ENFORCE_EQ(
+            found_skip_vars[sub_block_id],
+            false,
+            platform::errors::PermissionDenied(
+                "there are 2 ops which refer to the same sub_block %d",
+                sub_block_id));
+
+        found_skip_vars[sub_block_id] = true;
+        auto sub_block_skip_vars =
+            op->GetAttrIfExists<std::vector<std::string>>(
+                kSkipEagerDeletionVars);
+        skip_vars_on_each_block[sub_block_id] = std::move(sub_block_skip_vars);
+      }
     }
   }
 

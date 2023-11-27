@@ -77,7 +77,8 @@ class SppOp : public framework::OperatorWithKernel {
                       4,
                       platform::errors::InvalidArgument(
                           "Spping intput must be of 4-dimensional."));
-    int outlen = ((std::pow(4, pyramid_height) - 1) / (4 - 1)) * in_x_dims[1];
+    int outlen =
+        ((std::pow(4, pyramid_height) - 1) / (4 - 1)) * in_x_dims[1];  // NOLINT
     std::vector<int64_t> output_shape({in_x_dims[0], outlen});
     ctx->SetOutputDim("Out", phi::make_ddim(output_shape));
   }

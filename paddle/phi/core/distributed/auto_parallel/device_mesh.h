@@ -96,8 +96,8 @@ inline bool operator!=(const Device& lhs, const Device& rhs) {
 }
 
 struct LinkCapability {
-  double bandwidth = 0.0;  // Bytes/s
-  double latency = 0.0;
+  int64_t bandwidth = 0.0;  // Bytes/s
+  int64_t latency = 0.0;
 
   // LinkCapability from_string(const std::string& str);
   std::string to_string() const;

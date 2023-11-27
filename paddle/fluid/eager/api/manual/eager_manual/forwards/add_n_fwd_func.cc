@@ -83,8 +83,8 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
 
     // Node Construction
-    auto grad_node =
-        std::shared_ptr<AddNGradNodeFinal>(new AddNGradNodeFinal(1, 1));
+    auto grad_node = std::shared_ptr<AddNGradNodeFinal>(  // NOLINT
+        new AddNGradNodeFinal(1, 1));
 
     // Set forward's stack
     if (FLAGS_check_nan_inf) {

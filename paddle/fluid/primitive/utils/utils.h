@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/ddim.h"
 
@@ -24,6 +25,19 @@ namespace primitive {
 
 template <typename T>
 void set_output(const Tensor& x_tmp, Tensor* x);
+
+template <typename T>
+void by_pass(const Tensor& x_tmp, Tensor* x);
+
+// This function determine whether dtype is in [float16, bfloat16, uint16]
+static bool is_half_dtype(const DataType& dtype) {
+  if (dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::BFLOAT16 ||
+      dtype == phi::DataType::UINT16) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
 // This fucction compute unsqueeze dims for reshape to replace unsqueeze.
 static std::vector<int64_t> get_unsqueeze_dims(
@@ -46,6 +60,47 @@ static std::vector<int64_t> get_unsqueeze_dims(
                                        origin_dims.size()));
       result.push_back(origin_dims[k]);
       k++;
+    }
+  }
+  return result;
+}
+
+// This fucction compute unsqueeze dims for reshape to replace unsqueeze.
+static std::vector<int64_t> get_squeeze_dims(const Tensor& origin,
+                                             const std::vector<int64_t>& axis) {
+  auto origin_dims = origin.shape();
+  auto total_shape_size = origin_dims.size();
+  std::vector<int64_t> result;
+  for (size_t i = 0; i < total_shape_size; ++i) {
+    if (origin_dims[i] != 1) {
+      result.push_back(origin_dims[i]);
+    } else if (origin_dims[i] == 1 &&
+               std::find(axis.begin(), axis.end(), int64_t(i)) == axis.end()) {
+      result.push_back(1);
+    } else {
+      continue;
+    }
+  }
+  return result;
+}
+
+static std::vector<int64_t> process_dims(const Tensor& origin,
+                                         const std::vector<int64_t>& axis) {
+  auto origin_dims = origin.shape();
+  auto total_shape_size = origin_dims.size();
+  std::vector<int64_t> result;
+  auto axis_size = axis.size();
+  if (axis_size == 0) {
+    for (size_t i = 0; i < total_shape_size; ++i) {
+      result.push_back(i);
+    }
+  } else {
+    for (size_t i = 0; i < axis_size; ++i) {
+      if (axis[i] < 0) {
+        result.push_back(axis[i] + total_shape_size);
+      } else {
+        result.push_back(axis[i]);
+      }
     }
   }
   return result;
@@ -85,6 +140,21 @@ static phi::DDim get_reduce_dims(const phi::DDim& x_dims,
                                  const phi::DDim& y_dims) {
   auto out_dims = paddle::operators::details::BroadcastTwoDims(x_dims, y_dims);
   return get_reduce_dims_from_out(out_dims, x_dims);
+}
+
+void SetEmptyGrad(const std::vector<std::vector<Tensor>>& outputs,
+                  const std::vector<std::vector<bool>>& stop_gradients);
+
+std::vector<std::vector<Tensor>> ConstructVjpResultByStopGradients(
+    const std::vector<std::vector<Tensor>>& outputs,
+    const std::vector<std::vector<bool>>& stop_gradients);
+
+static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
+  if (std::find(vec.begin(), vec.end(), value) != vec.end()) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 }  // namespace primitive

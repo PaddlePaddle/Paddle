@@ -17,9 +17,10 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
+from paddle.base.core import VarDesc
 from paddle.utils.flops import flops
 
-from ..cluster import LinkType
+from ..cluster import DeviceType, LinkType, get_default_cluster
 from ..dist_tensor import DistributedTensor
 from ..process_group import get_process_group
 from ..utils import _get_comm_group, _get_idx_in_axis
@@ -785,9 +786,12 @@ class CommOpCost(OpCost):
             if self.op is not None:
                 vars = self.op.block.vars
                 # NOTE: The tensor communicated input_name is "X" in default. Otherwise, this function should be overrided
-                var_name = self.op.input("X")[0]
+                try:
+                    var_name = self.op.input("X")[0]
+                except:
+                    var_name = self.op.output("Out")[0]
                 var = get_var_with_recursion(
-                    var_name, self.op.block, self.program
+                    var_name, self.op.block, self.op.block.program
                 )
                 dtype = var.dtype
                 shape = var.shape
@@ -838,13 +842,11 @@ class CommOpCost(OpCost):
             if self.op_desc is not None:
                 self._group_ranks = self.op_desc["group_ranks"]
             elif self.op is not None:
-                ring_id = self.op.attrs("ring_id")
+                ring_id = self.op.attr("ring_id")
                 process_group = get_process_group(ring_id)
                 if process_group is None:
                     raise ValueError(
-                        "There not exists process group whose ring_id is {}.".format(
-                            ring_id
-                        )
+                        f"There not exists process group whose ring_id is {ring_id}."
                     )
                 self._group_ranks = process_group.ranks
         return self._group_ranks
@@ -854,9 +856,7 @@ class CommOpCost(OpCost):
         if cls.OP_TYPE != "COMM":
             if cls.OP_TYPE not in COMM_OP_TYPE:
                 raise TypeError(
-                    "Please Check op type in {}, but got {}.".format(
-                        COMM_OP_TYPE, cls.OP_TYPE
-                    )
+                    f"Please Check op type in {COMM_OP_TYPE}, but got {cls.OP_TYPE}."
                 )
 
 
@@ -920,4 +920,76 @@ def calc_time_by_modeling(op=None, desc=None, cluster=None):
             op=op, op_desc=desc, cluster=cluster
         )
     time = op_cost.calc_time()
+    return time
+
+
+def calc_time_by_cost_model(op, cluster=None):
+    """Calc op time by cost model and the unit is microsecond."""
+    if not isinstance(op, paddle.base.framework.Operator):
+        raise TypeError(
+            f"OP must be paddle.base.framework.Operator, but got {type(op)}."
+        )
+    if not cluster:
+        cluster = get_default_cluster()
+
+    assert cluster._gpu_model in [
+        "V100",
+        "A100",
+    ], "Only A100 and V100 gpu has been supported currently."
+
+    time = 0.0  # microsecond
+    op_type = op.type
+    # calc comp op time by flops
+    if op_type not in NON_COMP_TYPE:
+        attrs = op.all_attrs()
+        # build comp op inputs desc to calc flops.
+        # for example, a matmul op inputs desc will be {"X": [(1024, 1024)], "Y": [(1024, 1024)]}
+        inputs = {}
+        for input_name in op.input_names:
+            var_names = op.input(input_name)
+            inputs[input_name] = []
+            for var_name in var_names:
+                var = op.block._var_recursive(var_name)
+                inputs[input_name].append(var.shape)
+
+        # the time of grad operator is twice than its forward operator empirically
+        if "_grad" in op_type:
+            op_type = op_type[: len(op_type) - 5]
+            flops_count = 2 * flops(op_type, inputs, attrs)
+        else:
+            flops_count = flops(op_type, inputs, attrs)
+
+        # FIXME(Ruibiao): Need a better way to get dtype
+        var_name = op.output_arg_names[0]
+        dtype = op.block._var_recursive(var_name).dtype
+        device = cluster.get_device(0)
+        assert (
+            device.type == DeviceType.GPU
+        ), "Only GPU device is supported currently."
+
+        gflops = 0.0
+        if dtype == VarDesc.VarType.FP64:
+            gflops = device.dp_gflops
+        elif dtype == VarDesc.VarType.FP32:
+            gflops = device.sp_gflops
+        elif dtype == VarDesc.VarType.FP16 or dtype == VarDesc.VarType.BF16:
+            gflops = device.hp_gflops
+        else:
+            raise ValueError(
+                f"Unsupported modeling compute time for dtype: {dtype}."
+            )
+
+        utilization_rate = 0.98
+        time = flops_count / (utilization_rate * gflops) * 1e-3
+
+    # calc comm op time by communication modeling formula
+    elif op_type in COMM_OP_TYPE:
+        op_cost = _g_op_cost_factory[op_type](
+            op=op, comm_context=CommContext(cluster)
+        )
+        time = op_cost.calc_time()
+
+    else:
+        raise ValueError(f"The {op_type} has not been supported now.")
+
     return time

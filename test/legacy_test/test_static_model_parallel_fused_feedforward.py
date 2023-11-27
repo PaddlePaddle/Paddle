@@ -32,9 +32,9 @@ class TestStaticModelParallel(TestDistBase):
         self._pipeline_mode = True
 
     def test_dist_static_model_parallel_fused_feedforward(self):
-        from paddle import fluid
+        from paddle import base
 
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 "static_model_parallel_fused_feedforward.py",
                 delta=1e-5,

@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.incubate.autograd import primapi
 
 paddle.framework.random._manual_program_seed(2023)

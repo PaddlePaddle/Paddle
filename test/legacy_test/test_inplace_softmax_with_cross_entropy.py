@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestSoftmaxWithXe(unittest.TestCase):
@@ -35,8 +35,8 @@ class TestSoftmaxWithXe(unittest.TestCase):
         self, x, y, place, inplace=True, numeric_stable_mode=True
     ):
         m, n = x.shape
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            with fluid.scope_guard(fluid.Scope()):
+        with base.program_guard(base.Program(), base.Program()):
+            with base.scope_guard(base.Scope()):
                 x_d = paddle.static.data(
                     name='x',
                     shape=[m, n],
@@ -57,14 +57,14 @@ class TestSoftmaxWithXe(unittest.TestCase):
                     numeric_stable_mode=numeric_stable_mode,
                 )
 
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
 
-                exe.run(fluid.default_startup_program())
+                exe.run(base.default_startup_program())
 
-                build_strategy = fluid.BuildStrategy()
+                build_strategy = base.BuildStrategy()
                 build_strategy.enable_inplace = inplace
-                prog = fluid.CompiledProgram(
-                    fluid.default_main_program(), build_strategy=build_strategy
+                prog = base.CompiledProgram(
+                    base.default_main_program(), build_strategy=build_strategy
                 )
 
                 fetch_list = [z_d.name, s_d.name]
@@ -113,9 +113,9 @@ class TestSoftmaxWithXe(unittest.TestCase):
             self.assertTrue((s1 == s2).all())
 
     def test_main(self):
-        self.main_with_place(fluid.CPUPlace())
-        if fluid.core.is_compiled_with_cuda():
-            self.main_with_place(fluid.CUDAPlace(0))
+        self.main_with_place(base.CPUPlace())
+        if base.core.is_compiled_with_cuda():
+            self.main_with_place(base.CUDAPlace(0))
 
 
 class TestSoftmaxWithXe1(TestSoftmaxWithXe):

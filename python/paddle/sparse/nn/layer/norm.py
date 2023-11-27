@@ -16,7 +16,7 @@ import warnings
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper
 from paddle.framework import no_grad
 from paddle.nn.layer.norm import _BatchNormBase
 
@@ -83,17 +83,16 @@ class BatchNorm(paddle.nn.BatchNorm1D):
     Examples:
         .. code-block:: python
 
-          import paddle
-
-          paddle.seed(123)
-          channels = 3
-          x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
-          dense_x = paddle.to_tensor(x_data)
-          sparse_x = dense_x.to_sparse_coo(4)
-          batch_norm = paddle.sparse.nn.BatchNorm(channels)
-          batch_norm_out = batch_norm(sparse_x)
-          print(batch_norm_out.shape)
-          # [1, 6, 6, 6, 3]
+            >>> import paddle
+            >>> paddle.seed(123)
+            >>> channels = 3
+            >>> x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
+            >>> dense_x = paddle.to_tensor(x_data)
+            >>> sparse_x = dense_x.to_sparse_coo(4)
+            >>> batch_norm = paddle.sparse.nn.BatchNorm(channels)
+            >>> batch_norm_out = batch_norm(sparse_x)
+            >>> print(batch_norm_out.shape)
+            [1, 6, 6, 6, 3]
     """
 
     def __init__(
@@ -281,25 +280,26 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
     Examples:
         .. code-block:: python
 
-          # required: gpu
-          import paddle
-          import paddle.sparse.nn as nn
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> import paddle.sparse.nn as nn
+            >>> paddle.device.set_device('gpu')
 
-          x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]], dtype='float32')
-          x = x.to_sparse_coo(len(x.shape)-1)
+            >>> x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]], dtype='float32')
+            >>> x = x.to_sparse_coo(len(x.shape)-1)
 
-          if paddle.is_compiled_with_cuda():
-              sync_batch_norm = nn.SyncBatchNorm(2)
-              hidden1 = sync_batch_norm(x)
-              print(hidden1)
-              # Tensor(shape=[1, 2, 2, 2], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-              #        indices=[[0, 0, 0, 0],
-              #                 [0, 0, 1, 1],
-              #                 [0, 1, 0, 1]],
-              #        values=[[-0.40730840, -0.13725480],
-              #                 [-0.40730840, -1.20299828],
-              #                 [ 1.69877410, -0.23414057],
-              #                 [-0.88415730,  1.57439375]])
+            >>> if paddle.is_compiled_with_cuda():
+            ...     sync_batch_norm = nn.SyncBatchNorm(2)
+            ...     hidden1 = sync_batch_norm(x)
+            ...     print(hidden1)
+            Tensor(shape=[1, 2, 2, 2], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=False,
+                   indices=[[0, 0, 0, 0],
+                            [0, 0, 1, 1],
+                            [0, 1, 0, 1]],
+                   values=[[-0.40730840, -0.13725480],
+                            [-0.40730840, -1.20299828],
+                            [ 1.69877410, -0.23414057],
+                            [-0.88415730,  1.57439375]])
     """
 
     def __init__(
@@ -354,11 +354,11 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
 
             .. code-block:: python
 
-                import paddle
-                import paddle.sparse.nn as nn
+                >>> import paddle
+                >>> import paddle.sparse.nn as nn
 
-                model = paddle.nn.Sequential(nn.Conv3D(3, 5, 3), nn.BatchNorm(5))
-                sync_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+                >>> model = paddle.nn.Sequential(nn.Conv3D(3, 5, 3), nn.BatchNorm(5))
+                >>> sync_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
         """
 
         layer_output = layer

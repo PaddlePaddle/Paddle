@@ -15,10 +15,14 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+)
 from ifelse_simple_func import (
     NetWithControlFlowIf,
     add_fn,
+    base,
     dyfunc_empty_nonlocal,
     dyfunc_ifelse_ret_int1,
     dyfunc_ifelse_ret_int2,
@@ -28,7 +32,6 @@ from ifelse_simple_func import (
     dyfunc_with_if_else2,
     dyfunc_with_if_else3,
     dyfunc_with_if_else_with_list_generator,
-    fluid,
     if_tensor_case,
     if_with_and_or,
     if_with_and_or_1,
@@ -44,38 +47,36 @@ from ifelse_simple_func import (
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 np.random.seed(1)
 
-if fluid.is_compiled_with_cuda():
-    place = fluid.CUDAPlace(0)
+if base.is_compiled_with_cuda():
+    place = base.CUDAPlace(0)
 else:
-    place = fluid.CPUPlace()
+    place = base.CPUPlace()
 
 
-@dy2static_unittest
-class TestDy2staticException(unittest.TestCase):
+class TestDy2staticException(Dy2StTestBase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = None
         self.error = "Your if/else have different number of return value."
 
-    @ast_only_test
+    @test_ast_only
     def test_error(self):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
                 paddle.jit.enable_to_static(True)
                 self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
-        paddle.fluid.dygraph.base.global_var._in_declarative_mode_ = False
+        paddle.base.dygraph.base.global_var._in_to_static_mode_ = False
         paddle.jit.enable_to_static(False)
 
 
-class TestDygraphIfElse(unittest.TestCase):
+class TestDygraphIfElse(Dy2StTestBase):
     """
     TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `fluid.layers.cond`.
+    dependent on tensor in Dygraph into Static `base.layers.cond`.
     """
 
     def setUp(self):
@@ -86,8 +87,8 @@ class TestDygraphIfElse(unittest.TestCase):
         return self._run_dygraph(to_static=True)
 
     def _run_dygraph(self, to_static=False):
-        with fluid.dygraph.guard(place):
-            x_v = fluid.dygraph.to_variable(self.x)
+        with base.dygraph.guard(place):
+            x_v = base.dygraph.to_variable(self.x)
             if to_static:
                 ret = paddle.jit.to_static(self.dyfunc)(x_v)
             else:
@@ -122,10 +123,25 @@ class TestDygraphIfElseWithListGenerator(TestDygraphIfElse):
         self.dyfunc = dyfunc_with_if_else_with_list_generator
 
 
-class TestDygraphNestedIfElse(TestDygraphIfElse):
+class TestDygraphNestedIfElse(Dy2StTestBase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = nested_if_else
+
+    def _run_static(self):
+        return self._run_dygraph(to_static=True)
+
+    def _run_dygraph(self, to_static=False):
+        with base.dygraph.guard(place):
+            x_v = paddle.to_tensor(self.x)
+            if to_static:
+                ret = paddle.jit.to_static(self.dyfunc)(x_v)
+            else:
+                ret = self.dyfunc(x_v)
+            return ret.numpy()
+
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
 
 class TestDygraphNestedIfElse2(TestDygraphIfElse):
@@ -232,16 +248,31 @@ class TestDygraphIfElseWithClassVar(TestDygraphIfElse):
         self.dyfunc = if_with_class_var
 
 
-class TestDygraphIfTensor(TestDygraphIfElse):
+class TestDygraphIfTensor(Dy2StTestBase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_tensor_case
 
+    def _run_static(self):
+        return self._run_dygraph(to_static=True)
 
-class TestDygraphIfElseNet(unittest.TestCase):
+    def _run_dygraph(self, to_static=False):
+        with base.dygraph.guard(place):
+            x_v = paddle.to_tensor(self.x)
+            if to_static:
+                ret = paddle.jit.to_static(self.dyfunc)(x_v)
+            else:
+                ret = self.dyfunc(x_v)
+            return ret.numpy()
+
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
+
+
+class TestDygraphIfElseNet(Dy2StTestBase):
     """
     TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `fluid.layers.cond`.
+    dependent on tensor in Dygraph into Static `base.layers.cond`.
     """
 
     def setUp(self):
@@ -257,9 +288,9 @@ class TestDygraphIfElseNet(unittest.TestCase):
     def _run(self, to_static=False):
         paddle.jit.enable_to_static(to_static)
 
-        with fluid.dygraph.guard(place):
-            net = self.Net()
-            x_v = fluid.dygraph.to_variable(self.x)
+        with base.dygraph.guard(place):
+            net = paddle.jit.to_static(self.Net())
+            x_v = base.dygraph.to_variable(self.x)
             ret = net(x_v)
             return ret.numpy()
 
@@ -292,7 +323,6 @@ class TestAst2FuncWithExternalFunc(TestDygraphIfElse):
 
 
 class NetWithExternalFunc(paddle.nn.Layer):
-    @paddle.jit.to_static
     def forward(self, x, label=None):
         if paddle.mean(x) < 0:
             x_v = x - 1
@@ -316,13 +346,15 @@ class TestNetWithExternalFunc(TestDygraphIfElseNet):
         self.x = np.random.random([10, 16]).astype('float32')
         self.Net = NetWithExternalFunc
 
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
+
 
 class DiffModeNet1(paddle.nn.Layer):
     def __init__(self, mode):
         super().__init__()
         self.mode = mode
 
-    @paddle.jit.to_static
     def forward(self, x, y):
         if self.mode == 'train':
             out = x + y
@@ -338,7 +370,6 @@ class DiffModeNet2(paddle.nn.Layer):
         super().__init__()
         self.mode = mode
 
-    @paddle.jit.to_static
     def forward(self, x, y):
         if self.mode == 'train':
             out = x + y
@@ -350,7 +381,7 @@ class DiffModeNet2(paddle.nn.Layer):
             raise ValueError('Illegal mode')
 
 
-class TestDiffModeNet(unittest.TestCase):
+class TestDiffModeNet(Dy2StTestBase):
     """
     TestCase for the net with different modes
     """
@@ -366,7 +397,7 @@ class TestDiffModeNet(unittest.TestCase):
     def _run(self, mode, to_static):
         paddle.jit.enable_to_static(to_static)
 
-        net = self.Net(mode)
+        net = paddle.jit.to_static(self.Net(mode))
         ret = net(self.x, self.y)
         return ret.numpy()
 
@@ -392,7 +423,7 @@ class TestDiffModeNet2(TestDiffModeNet):
         self.Net = DiffModeNet2
 
 
-class TestNewVarCreateInOneBranch(unittest.TestCase):
+class TestNewVarCreateInOneBranch(Dy2StTestBase):
     def test_var_used_in_another_for(self):
         def case_func(training):
             # targets and targets_list is dynamically defined by training
@@ -415,8 +446,7 @@ class TestNewVarCreateInOneBranch(unittest.TestCase):
         self.assertEqual(paddle.jit.to_static(case_func)(True), -2)
 
 
-@dy2static_unittest
-class TestDy2StIfElseRetInt1(unittest.TestCase):
+class TestDy2StIfElseRetInt1(Dy2StTestBase):
     def setUp(self):
         self.x = np.random.random([5]).astype('float32')
         self.dyfunc = paddle.jit.to_static(dyfunc_ifelse_ret_int1)
@@ -429,10 +459,10 @@ class TestDy2StIfElseRetInt1(unittest.TestCase):
         paddle.jit.enable_to_static(False)
         return out
 
-    @ast_only_test
+    @test_ast_only
     def test_ast_to_func(self):
         self.setUp()
-        self.assertIsInstance(self.out[0], (paddle.Tensor, core.eager.Tensor))
+        self.assertIsInstance(self.out[0], paddle.Tensor)
         self.assertIsInstance(self.out[1], int)
 
 
@@ -443,37 +473,35 @@ class TestDy2StIfElseRetInt2(TestDy2staticException):
         self.dyfunc = dyfunc_ifelse_ret_int2
 
 
-@dy2static_unittest
 class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
     def setUp(self):
         self.x = np.random.random([5]).astype('float32')
         self.dyfunc = paddle.jit.to_static(dyfunc_ifelse_ret_int3)
         self.out = self.get_dy2stat_out()
 
-    @ast_only_test
+    @test_ast_only
     def test_ast_to_func(self):
         self.setUp()
-        self.assertIsInstance(self.out, (paddle.Tensor, core.eager.Tensor))
+        self.assertIsInstance(self.out, paddle.Tensor)
 
 
-@dy2static_unittest
 class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
     def setUp(self):
         self.x = np.random.random([5]).astype('float32')
         self.dyfunc = paddle.jit.to_static(dyfunc_ifelse_ret_int4)
 
-    @ast_only_test
+    @test_ast_only
     def test_ast_to_func(self):
         paddle.jit.enable_to_static(True)
         with self.assertRaises(Dygraph2StaticException):
             static_func = paddle.jit.to_static(self.dyfunc)
             out = static_func(self.x)
-        # Why need set `_in_declarative_mode_` here?
-        # In Dy2St we use `with _switch_declarative_mode_guard_()` to indicate
+        # Why need set `_in_to_static_mode_` here?
+        # In Dy2St we use `with _to_static_mode_guard_()` to indicate
         # that the code block is under @to_static, but in this UT
-        # an exception is thrown during Dy2St, making the `_in_declarative_mode_`
-        # a wrong value. So We need set `_in_declarative_mode_` to False manually.
-        paddle.fluid.dygraph.base.global_var._in_declarative_mode_ = False
+        # an exception is thrown during Dy2St, making the `_in_to_static_mode_`
+        # a wrong value. So We need set `_in_to_static_mode_` to False manually.
+        paddle.base.dygraph.base.global_var._in_to_static_mode_ = False
         paddle.jit.enable_to_static(False)
 
 
@@ -484,7 +512,6 @@ class IfElseNet(paddle.nn.Layer):
             shape=[3, 2], dtype='float32', is_bias=False
         )
 
-    @paddle.jit.to_static
     def forward(self, a, b, c):
         a = paddle.matmul(a, self.param)
         a = paddle.reshape(a, (2, 4))
@@ -497,7 +524,8 @@ class IfElseNet(paddle.nn.Layer):
         return b
 
 
-class TestDy2StIfElseBackward(unittest.TestCase):
+class TestDy2StIfElseBackward(Dy2StTestBase):
+    # TODO(zhangbo): open pir test (IfOp grad execution not yet supported)
     def test_run_backward(self):
         a = paddle.randn((4, 3), dtype='float32')
         a.stop_gradient = False
@@ -506,7 +534,7 @@ class TestDy2StIfElseBackward(unittest.TestCase):
         c = paddle.to_tensor([2])
         c.stop_gradient = False
 
-        net = IfElseNet()
+        net = paddle.jit.to_static(IfElseNet())
         net.train()
         out = net(a, b, c)
         out.backward()

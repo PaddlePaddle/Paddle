@@ -15,12 +15,13 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 from paddle.nn.functional import interpolate
+from paddle.pir_utils import test_with_pir_api
 
 
 def create_test_case0(self):
@@ -104,12 +105,12 @@ def bicubic_interp_test(
     align_corners=True,
     align_mode=0,
 ):
-    if isinstance(scale, float) or isinstance(scale, int):
+    if isinstance(scale, (float, int)):
         scale_list = []
         for _ in range(len(x.shape) - 2):
             scale_list.append(scale)
         scale = list(map(float, scale_list))
-    elif isinstance(scale, list) or isinstance(scale, tuple):
+    elif isinstance(scale, (list, tuple)):
         scale = list(map(float, scale))
     if SizeTensor is not None:
         if not isinstance(SizeTensor, list) and not isinstance(
@@ -266,7 +267,7 @@ class TestBicubicInterpOp(OpTest):
             in_w = self.input_shape[2]
 
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0.0:
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -305,7 +306,7 @@ class TestBicubicInterpOp(OpTest):
             'data_layout': self.data_layout,
         }
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0.0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -314,10 +315,10 @@ class TestBicubicInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
 
     def init_test_case(self):
         create_test_case0(self)
@@ -355,14 +356,11 @@ class TestBicubicInterpCase6(TestBicubicInterpOp):
 
 class TestBicubicInterpOpFP16(TestBicubicInterpOp):
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output(atol=1e-3, check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'],
-            'Out',
-            in_place=True,
-            max_relative_error=1e-2,
+            ['X'], 'Out', in_place=True, max_relative_error=1e-2, check_pir=True
         )
 
     def init_test_case(self):
@@ -433,7 +431,7 @@ class TestBicubicInterpOpBF16(OpTest):
             in_w = self.input_shape[2]
 
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0.0:
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -472,7 +470,7 @@ class TestBicubicInterpOpBF16(OpTest):
             'data_layout': self.data_layout,
         }
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0.0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -481,10 +479,10 @@ class TestBicubicInterpOpBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output_np)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
 
     def init_test_case(self):
         create_test_case0(self)
@@ -583,6 +581,7 @@ class TestBicubicInterpDataLayout(TestBicubicInterpOp):
 
 
 class TestBicubicInterpOpAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_case(self):
         np.random.seed(200)
         x_data = np.random.random((2, 3, 6, 6)).astype("float32")
@@ -591,15 +590,15 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
         actual_size_data = np.array([12, 12]).astype("int32")
         scale_data = np.array([2.0]).astype("float32")
 
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
+        prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
 
-        with fluid.program_guard(prog, startup_prog):
+        with paddle.static.program_guard(prog, startup_prog):
             x = paddle.static.data(
                 name="x", shape=[2, 3, 6, 6], dtype="float32"
             )
@@ -640,10 +639,10 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
                 x, scale_factor=[2.0, 2.0], mode='bicubic', align_corners=False
             )
 
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(place)
+            exe.run(startup_prog)
             results = exe.run(
-                fluid.default_main_program(),
+                prog,
                 feed={
                     "x": x_data,
                     "dim": dim_data,
@@ -661,8 +660,8 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
             for res in results:
                 np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(x_data)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(x_data)
             interp = interpolate(
                 x, size=[12, 12], mode='bicubic', align_corners=False
             )
@@ -676,8 +675,8 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
 class TestBicubicOpError(unittest.TestCase):
     def test_imperative_errors(self):
         # the input of interpoalte must be Variable.
-        x1 = fluid.create_lod_tensor(
-            np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+        x1 = base.create_lod_tensor(
+            np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
         )
         self.assertRaises(TypeError, interpolate, x1)
 
@@ -720,8 +719,8 @@ class TestBicubicOpError(unittest.TestCase):
 
         def test_actual_shape():
             # the actual_shape  must be Variable.
-            x = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+            x = base.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
             )
             out = interpolate(
                 x, size=[12, 12], mode='BICUBIC', align_corners=False
@@ -754,8 +753,8 @@ class TestBicubicOpError(unittest.TestCase):
             x = paddle.static.data(
                 name="x", shape=[2, 3, 6, 6], dtype="float32"
             )
-            scale = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+            scale = base.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
             )
             out = interpolate(
                 x,
@@ -914,7 +913,7 @@ class TestBicubicOpError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestBicubicInterpOpForFloat16(unittest.TestCase):
     def init_test_case(self):

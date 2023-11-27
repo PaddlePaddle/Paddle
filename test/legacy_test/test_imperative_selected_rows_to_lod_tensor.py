@@ -18,9 +18,9 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core, framework
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base import core, framework
+from paddle.base.dygraph.base import to_variable
 from paddle.nn import Embedding
 
 
@@ -44,7 +44,7 @@ class SimpleNet(paddle.nn.Layer):
             vocab_size,
             hidden_size,
             sparse=is_sparse,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name='embedding_para',
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
@@ -52,7 +52,7 @@ class SimpleNet(paddle.nn.Layer):
             ),
         )
         self.softmax_weight = self.create_parameter(
-            attr=fluid.ParamAttr(),
+            attr=base.ParamAttr(),
             shape=[self.hidden_size, self.hidden_size],
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(
@@ -60,7 +60,7 @@ class SimpleNet(paddle.nn.Layer):
             ),
         )
         self.softmax_bias = self.create_parameter(
-            attr=fluid.ParamAttr(),
+            attr=base.ParamAttr(),
             shape=[self.hidden_size],
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(
@@ -96,9 +96,9 @@ class TestDygraphSimpleNet(unittest.TestCase):
                 self.simple_net_float(is_sparse, dtype)
 
     def simple_net_float(self, is_sparse, dtype):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
 
         for place in places:
             seed = 90
@@ -111,7 +111,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
 
             for is_sort_sum_gradient in [True, False]:
                 traced_layer = None
-                with fluid.dygraph.guard(place):
+                with base.dygraph.guard(place):
                     paddle.seed(seed)
                     paddle.framework.random._manual_program_seed(seed)
 
@@ -132,7 +132,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     dy_param_init = {}
                     dy_loss = None
 
-                    fluid.set_flags(
+                    base.set_flags(
                         {'FLAGS_sort_sum_gradient': is_sort_sum_gradient}
                     )
 
@@ -170,7 +170,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         dtype=dtype,
                     )
 
-                    exe = fluid.Executor(place)
+                    exe = base.Executor(place)
                     sgd = paddle.optimizer.SGD(learning_rate=1e-3)
                     x = paddle.static.data(
                         name="x", shape=[-1, num_steps], dtype='int64'
@@ -201,7 +201,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         fetch_list = [static_loss]
                         fetch_list.extend(static_param_name_list)
                         out = exe.run(
-                            fluid.default_main_program(),
+                            base.default_main_program(),
                             feed={"x": x_data, "y": y_data},
                             fetch_list=fetch_list,
                         )

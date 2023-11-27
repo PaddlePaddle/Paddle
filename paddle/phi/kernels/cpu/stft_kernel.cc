@@ -18,11 +18,5 @@
 #include "paddle/phi/kernels/impl/stft_kernel_impl.h"
 
 PD_REGISTER_KERNEL(stft, CPU, ALL_LAYOUT, phi::StftKernel, float, double) {
-  if (kernel_key.dtype() == phi::DataType::FLOAT16 &&
-      kernel_key.dtype() == phi::DataType::FLOAT32 &&
-      kernel_key.dtype() == phi::DataType::FLOAT64) {
-    kernel->OutputAt(0).SetDataType(phi::DataType::COMPLEX64);
-  } else {
-    kernel->OutputAt(0).SetDataType(phi::DataType::COMPLEX128);
-  }
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
 }

@@ -85,6 +85,8 @@ list(
   rnn_op.cc
   fill_constant_batch_size_like_op.cc
   sum_op.cc
+  bitwise_and_op.cc
+  bitwise_or_op.cc
   shape_op.cc
   fill_constant_op.cc
   fused_token_prune_op.cc
@@ -111,11 +113,12 @@ list(
   assign_op.cc
   flip_op.cc
   quantize_linear_op.cc
-  dequantize_linear_op.cc)
+  dequantize_linear_op.cc
+  share_data_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
-       preln_emb_eltwise_layernorm.cc)
+       preln_emb_eltwise_layernorm.cc prompt_tuning_emb_eltwise_layernorm.cc)
 endif()
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
@@ -158,7 +161,6 @@ elseif(WITH_CINN)
          custom_operator
          init_phi
          fleet_executor
-         cinn_compiler
          python)
 else()
   nv_test(

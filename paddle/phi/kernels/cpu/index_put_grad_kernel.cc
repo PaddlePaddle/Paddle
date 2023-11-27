@@ -210,7 +210,8 @@ void IndexPutGradKernel(const Context& dev_ctx,
   std::vector<DenseTensor> tmp_res_indices_v;
   std::vector<DenseTensor> range_tensor_v;
 
-  for (int i = int_indices_v.size(); i < x.dims().size(); ++i) {
+  for (int i = static_cast<int>(int_indices_v.size()); i < x.dims().size();
+       ++i) {
     range_tensor_v.emplace_back(funcs::GetRangeTensor<int64_t, Context>(
         dev_ctx, x.dims()[i], phi::DataType::INT64));
   }
@@ -237,4 +238,11 @@ PD_REGISTER_KERNEL(index_put_grad,
                    double,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   int16_t,
+                   uint8_t,
+                   int8_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

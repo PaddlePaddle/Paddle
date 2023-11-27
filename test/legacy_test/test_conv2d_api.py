@@ -19,8 +19,8 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestConv2DAPI(unittest.TestCase):
@@ -318,7 +318,7 @@ class TestConv2DAPI_Error(unittest.TestCase):
 )
 class TestConv2DEnviron(unittest.TestCase):
     def run1(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             inputs = paddle.static.data(
                 shape=[2, 3, 5, 5],
                 name="inputs",
@@ -334,17 +334,17 @@ class TestConv2DEnviron(unittest.TestCase):
                 groups=1,
                 data_format="NCHW",
             )
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"inputs": self.input_np},
                 fetch_list=[result],
             )
 
     def run2(self, place):
-        with fluid.dygraph.guard(place):
-            inputs = fluid.dygraph.to_variable(self.input_np)
+        with base.dygraph.guard(place):
+            inputs = base.dygraph.to_variable(self.input_np)
             conv = paddle.nn.Conv2D(
                 in_channels=3,
                 out_channels=4,
@@ -360,9 +360,9 @@ class TestConv2DEnviron(unittest.TestCase):
     def test_environ(self):
         self.input_np = np.random.random([2, 3, 5, 5]).astype("float32")
         for place in [paddle.CPUPlace(), paddle.CUDAPlace(0)]:
-            fluid.set_flags({'FLAGS_conv2d_disable_cudnn': False})
+            base.set_flags({'FLAGS_conv2d_disable_cudnn': False})
             self.run_all(place)
-            fluid.set_flags({'FLAGS_conv2d_disable_cudnn': True})
+            base.set_flags({'FLAGS_conv2d_disable_cudnn': True})
             self.run_all(place)
 
 

@@ -103,8 +103,8 @@ def start_local_trainers(
 
 class TestMultipleGpus(unittest.TestCase):
     def run_mnist_2gpu(self, target_file_name):
-        # if not fluid.core.is_compiled_with_cuda(
-        # ) or fluid.core.get_cuda_device_count() == 0:
+        # if not base.core.is_compiled_with_cuda(
+        # ) or base.core.get_cuda_device_count() == 0:
         #    return
 
         selected_gpus = get_gpus('0,1')

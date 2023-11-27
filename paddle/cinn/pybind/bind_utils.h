@@ -22,8 +22,8 @@
 #include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/pybind/bind.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 

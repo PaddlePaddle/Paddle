@@ -45,9 +45,6 @@ void RunAnalysis() {
   config.SetModel(FLAGS_modeldir + "/__model__",
                   FLAGS_modeldir + "/__params__");
 
-  // use ZeroCopyTensor, Must be set to false
-  config.SwitchUseFeedFetchOps(false);
-
   // 2. create predictor, prepare input data
   std::unique_ptr<PaddlePredictor> predictor = CreatePaddlePredictor(config);
   int batch_size = 1;
@@ -85,7 +82,7 @@ void RunAnalysis() {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   paddle::demo::RunAnalysis();
   std::cout << "=========================Runs successfully===================="
             << std::endl;

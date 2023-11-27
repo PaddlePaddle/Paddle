@@ -58,11 +58,7 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
                                                int* final_nodes_len) {
   const auto place = dev_ctx.GetPlace();
 
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
   int block = 1024;
-#endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_input + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
@@ -128,11 +124,7 @@ void FillBufferHashTable(const Context& dev_ctx,
                          thrust::device_vector<T>* unique_items,
                          int* values,
                          int* key_index) {
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
   int block = 1024;
-#endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_input + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
@@ -167,11 +159,7 @@ void ResetBufferHashTable(const Context& dev_ctx,
                           thrust::device_vector<T>* unique_items,
                           int* values,
                           int* key_index) {
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
   int block = 1024;
-#endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (unique_items->size() + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
@@ -189,12 +177,8 @@ void ReindexSrc(const Context& dev_ctx,
                 int* values,
                 int64_t num_edges,
                 int64_t table_size) {
-// Fill outputs with reindex result.
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
+  // Fill outputs with reindex result.
   int block = 1024;
-#endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_edges + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
@@ -289,12 +273,8 @@ void BufferReindex(const Context& dev_ctx,
   out_nodes->resize(unique_nodes.size());
   thrust::copy(unique_nodes.begin(), unique_nodes.end(), out_nodes->begin());
 
-// Fill outputs with reindex result.
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
+  // Fill outputs with reindex result.
   int block = 1024;
-#endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_edges + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;

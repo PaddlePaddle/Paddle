@@ -52,7 +52,7 @@ void CoalesceCooCPUKernel(const CPUContext& dev_ctx,
     IntT index = x_indexs[i];
     if (indices_to_index.find(index) == indices_to_index.end()) {
       std::vector<int64_t> indexs;
-      indexs.push_back(i);
+      indexs.push_back(static_cast<int>(i));
       indices_to_index[index] = indexs;
     } else {
       indices_to_index[index].push_back(i);

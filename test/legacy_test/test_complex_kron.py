@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.dygraph as dg
-from paddle import fluid
+import paddle.base.dygraph as dg
+from paddle import base
 
 
 class ComplexKronTestCase(unittest.TestCase):
@@ -30,7 +30,7 @@ class ComplexKronTestCase(unittest.TestCase):
     def setUp(self):
         self.ref_result = np.kron(self.x, self.y)
         self._places = [paddle.CPUPlace()]
-        if fluid.is_compiled_with_cuda():
+        if base.is_compiled_with_cuda():
             self._places.append(paddle.CUDAPlace(0))
 
     def runTest(self):

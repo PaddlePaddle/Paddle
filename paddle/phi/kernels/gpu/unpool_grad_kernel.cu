@@ -88,11 +88,7 @@ class Unpool2dMaxGradFunctor {
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
-#ifdef __HIPCC__
-    int threads = 256;
-#else
     int threads = 1024;
-#endif
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool2dMaxGrad<T>
         <<<grid, threads, 0, dev_ctx.stream()>>>(input.numel(),
@@ -131,11 +127,7 @@ class Unpool3dMaxGradFunctor {
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
-#ifdef __HIPCC__
-    int threads = 256;
-#else
     int threads = 1024;
-#endif
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool3dMaxGrad<T>
         <<<grid, threads, 0, dev_ctx.stream()>>>(input.numel(),

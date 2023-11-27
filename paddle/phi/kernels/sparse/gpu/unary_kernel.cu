@@ -17,21 +17,11 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 #include "paddle/phi/kernels/sparse/impl/unary_kernel_impl.h"
 
 namespace phi {
 namespace sparse {
-
-template <typename T>
-struct DivScalarFunctor {
-  T value_;
-
-  explicit DivScalarFunctor(T value) : value_(value) {}
-
-  __device__ __forceinline__ T operator()(const T x) const {
-    return x / value_;
-  }
-};
 
 template <typename T, typename Context>
 void DivScalarCooKernel(const Context& dev_ctx,
@@ -40,10 +30,8 @@ void DivScalarCooKernel(const Context& dev_ctx,
                         SparseCooTensor* out) {
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
 
-  std::vector<const DenseTensor*> ins = {&(x.values())};
-  std::vector<DenseTensor*> outs = {out->mutable_values()};
-  DivScalarFunctor<T> func(static_cast<T>(scalar));
-  funcs::ElementwiseKernel<T, DivScalarFunctor<T>>(dev_ctx, ins, &outs, func);
+  phi::ScaleKernel<T, Context>(
+      dev_ctx, x.values(), 1 / scalar, 0.0f, false, out->mutable_values());
 }
 
 template <typename T, typename Context>
@@ -53,10 +41,8 @@ void DivScalarCsrKernel(const Context& dev_ctx,
                         SparseCsrTensor* out) {
   EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
 
-  std::vector<const DenseTensor*> ins = {&(x.values())};
-  std::vector<DenseTensor*> outs = {out->mutable_values()};
-  DivScalarFunctor<T> func(static_cast<T>(scalar));
-  funcs::ElementwiseKernel<T, DivScalarFunctor<T>>(dev_ctx, ins, &outs, func);
+  phi::ScaleKernel<T, Context>(
+      dev_ctx, x.values(), 1 / scalar, 0.0f, false, out->mutable_values());
 }
 
 }  // namespace sparse

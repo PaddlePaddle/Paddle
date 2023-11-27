@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 np.random.seed(0)
@@ -52,10 +53,10 @@ class TestLerp(OpTest):
         self.wshape = [1]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
 
 class TestLerpWithDim2(TestLerp):
@@ -139,6 +140,7 @@ class TestLerpAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
+    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
 
@@ -268,7 +270,7 @@ class TestLerpBF16(TestLerp):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -277,6 +279,7 @@ class TestLerpBF16(TestLerp):
             ['X', 'Y'],
             'Out',
             user_defined_grads=[self.x_grad, self.y_grad],
+            check_pir=True,
         )
 
 

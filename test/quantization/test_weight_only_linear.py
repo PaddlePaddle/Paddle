@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import os
 import re
 import struct
@@ -21,9 +22,9 @@ import numpy as np
 
 import paddle
 import paddle.nn.quant as Q
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import default_main_program
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import default_main_program
 from paddle.framework import set_default_dtype
 
 np.random.seed(123)
@@ -73,6 +74,31 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
         self.weight_dtype = "int8"
         self.static = False
 
+    def weightQuantizeCPUGPUConsistenceCheck(self, weight_float):
+        for arch in [70, 75, 80, 86]:
+            weight_gpu, weight_scale_gpu = Q.weight_quantize(
+                weight_float.cuda()
+                if self.weight_dtype == "int8"
+                else self.weight.cpu(),
+                algo="weight_only_int8"
+                if self.weight_dtype == "int8"
+                else "weight_only_int4",
+                arch=arch,
+            )
+            weight_cpu, weight_scale_cpu = Q.weight_quantize(
+                weight_float.cpu(),
+                algo="weight_only_int8"
+                if self.weight_dtype == "int8"
+                else "weight_only_int4",
+                arch=arch,
+            )
+            np.testing.assert_allclose(weight_gpu.numpy(), weight_cpu.numpy())
+            np.testing.assert_allclose(
+                weight_scale_gpu.numpy(), weight_scale_cpu.numpy()
+            )
+            pass
+        pass
+
     def setUp(self):
         self.config()
         if self.dtype == "bfloat16" or self.weight_dtype == "int4":
@@ -80,7 +106,7 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
         x = np.random.random((self.batch, self.token, self.in_features))
         self.x = paddle.to_tensor(x, dtype=self.dtype)
         if self.bias:
-            bias_attr = fluid.ParamAttr(
+            bias_attr = base.ParamAttr(
                 trainable=False,
                 regularizer=None,
                 initializer=paddle.nn.initializer.Constant(value=1.0),
@@ -94,9 +120,15 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
 
         self.bias = self.linear.bias
         self.weight = self.linear.weight
+        self.float_weight = self.linear.weight
         self.weight_scale = None
+        # check weight quantize
+        self.weightQuantizeCPUGPUConsistenceCheck(self.float_weight)
+
         self.weight, self.weight_scale = Q.weight_quantize(
-            self.weight,
+            self.float_weight.cuda()
+            if self.weight_dtype == "int8"
+            else self.weight.cpu(),
             algo="weight_only_int8"
             if self.weight_dtype == "int8"
             else "weight_only_int4",
@@ -118,9 +150,9 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
 
     def get_weight_only_linear_out_static(self):
         paddle.enable_static()
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.program_guard(main, start):
+        main = base.Program()
+        start = base.Program()
+        with base.program_guard(main, start):
             x = paddle.static.data("x", self.x.shape, dtype=self.x.dtype)
 
             weight = paddle.static.data(
@@ -156,7 +188,7 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
                 'bias': bias_np,
                 "weight_scale": weight_scale_np,
             }
-            exe = fluid.Executor(paddle.CUDAPlace(0))
+            exe = base.Executor(paddle.CUDAPlace(0))
             exe.run(start)
             (out,) = exe.run(main, feed=feed_dict, fetch_list=[out])
         paddle.disable_static()
@@ -331,6 +363,40 @@ class WeightOnlyLinearTestCaseStatic(WeightOnlyLinearTestCase):
     def config(self):
         super().config()
         self.static = True
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
+    def test_weightonly_linear_backward(self):
+        x = paddle.rand(shape=(128, 4096), dtype='float16')
+        x.stop_gradient = False
+        quant_x = copy.deepcopy(x)
+        quant_x.stop_gradient = False
+        weight = paddle.rand(shape=(4096, 12288), dtype='float16')
+
+        quant_weight, quant_scale = Q.weight_quantize(
+            x=weight.cuda(), algo='weight_only_int8'
+        )
+        dequant_weight = Q.weight_dequantize(quant_weight.cuda(), quant_scale)
+        np.testing.assert_allclose(weight, dequant_weight, rtol=1e-2, atol=1e-2)
+
+        quant_out = Q.weight_only_linear(
+            x=quant_x,
+            weight=quant_weight,
+            weight_scale=quant_scale,
+            weight_dtype="int8",
+        )
+        out = paddle.matmul(x=x, y=weight)
+        np.testing.assert_allclose(quant_out, out, rtol=1e-3, atol=1e-3)
+
+        quant_out.backward()
+        out.backward()
+        np.testing.assert_allclose(quant_x.grad, x.grad, rtol=1e-3, atol=1e-3)
 
 
 if __name__ == '__main__':

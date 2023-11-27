@@ -27,7 +27,8 @@ namespace framework {
 namespace ir {
 
 Graph::Graph(const ProgramDesc &program)
-    : Graph(program, 0, program.Block(0).AllOps().size()) {}
+    : Graph(
+          program, 0, static_cast<int64_t>(program.Block(0).AllOps().size())) {}
 
 Graph::Graph(const ProgramDesc &program,
              const int64_t start_op_index,
@@ -52,7 +53,8 @@ Graph::Graph(const ProgramDesc &program,
       platform::errors::InvalidArgument("Can't construct a graph from this "
                                         "program, it doesn't have a block"));
 
-  const int64_t block_op_size = program_.Block(0).AllOps().size();
+  const int64_t block_op_size =
+      static_cast<int64_t>(program_.Block(0).AllOps().size());
   PADDLE_ENFORCE_LE(end_op_index,
                     block_op_size,
                     platform::errors::InvalidArgument(
@@ -70,7 +72,7 @@ Graph::Graph(const ProgramDesc &program,
     for (size_t idx = 1; idx < program_.Size(); ++idx) {
       std::unique_ptr<Graph> sub_graph =
           std::make_unique<Graph>(program_.Block(idx), this);
-      sub_graph->block_id_ = idx;
+      sub_graph->block_id_ = static_cast<int>(idx);
       sub_graphs_.push_back(std::move(sub_graph));
     }
   } else {
@@ -79,7 +81,8 @@ Graph::Graph(const ProgramDesc &program,
 }
 
 Graph::Graph(const BlockDesc &block, const Graph *main_graph)
-    : Graph(block, main_graph, 0, block.AllOps().size()) {}
+    : Graph(block, main_graph, 0, static_cast<int64_t>(block.AllOps().size())) {
+}
 
 Graph::Graph(const BlockDesc &block,
              const Graph *main_graph,
@@ -359,7 +362,7 @@ std::unique_ptr<Graph> Graph::CloneSubGraph(const size_t idx) {
       std::make_unique<Graph>(this->program_.Block(idx), this);
   cloned_sub_graph->ReleaseNodes();
   cloned_sub_graph->num_node_created_ = 0;
-  cloned_sub_graph->block_id_ = idx;
+  cloned_sub_graph->block_id_ = static_cast<int>(idx);
   std::unordered_map<ir::Node *, ir::Node *> origin_to_cloned;
   for (auto *n : this->sub_graphs_.at(idx)->Nodes()) {
     PADDLE_ENFORCE_NOT_NULL(

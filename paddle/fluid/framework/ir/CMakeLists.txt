@@ -46,7 +46,7 @@ cc_library(
 cc_library(
   op_compat_sensible_pass
   SRCS op_compat_sensible_pass.cc
-  DEPS graph_pattern_detector op_def_api pass)
+  DEPS graph_pattern_detector op_def_api pass pir)
 cc_library(
   subgraph_detector
   SRCS subgraph_detector.cc
@@ -59,6 +59,10 @@ cc_library(
   placement_pass_base
   SRCS placement_pass_base.cc
   DEPS pass)
+cc_library(
+  quantize_helper
+  SRCS quantize_helper.cc
+  DEPS graph graph_helper)
 
 cc_library(
   coalesce_grad_tensor_pass
@@ -99,6 +103,7 @@ pass_library(delete_quant_dequant_filter_op_pass inference)
 pass_library(trt_delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_op_device_pass inference)
 pass_library(delete_weight_dequant_linear_op_pass inference)
+pass_library(quant_linear_fuse_pass inference)
 pass_library(delete_quant_dequant_linear_op_pass inference)
 pass_library(delete_assign_op_pass inference)
 pass_library(delete_dropout_op_pass inference)
@@ -156,9 +161,12 @@ if(WITH_TENSORRT)
   pass_library(preln_elementwise_groupnorm_act_pass inference)
   pass_library(groupnorm_act_pass inference)
   pass_library(trans_layernorm_fuse_pass inference)
+  pass_library(trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass
+               inference)
   pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(split_layernorm_to_math_ops_pass inference)
+  pass_library(trt_remove_amp_strategy_op_pass inference)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
@@ -235,14 +243,22 @@ if(WITH_XPU)
     xpu_pass_utils
     SRCS xpu/pass_utils.cc
     DEPS pass xpu_quant_utils)
-  set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
+  cc_library(
+    xpu_graph_pattern_detector
+    SRCS xpu/xpu_graph_pattern_detector.cc
+    DEPS graph_pattern_detector)
+  set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils xpu_graph_pattern_detector)
   pass_library(cast_mixed_precision_op_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(yolo_box_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(cast_embedding_trans_ids_to_int32_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
-  pass_library(conv1d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(bn_act_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  # pass_library(conv1d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(conv2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(conv2d_bias_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(xpu_quantize_op_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(xpu_quantize_squash_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(redundant_unsqueeze_squeeze_elimination_pass inference DIR xpu
                DEPS ${XPU_PASS_DEPS})
   pass_library(redundant_squeeze_unsqueeze_elimination_pass inference DIR xpu
@@ -268,11 +284,15 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(fused_multi_transformer_xpu_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(fused_multi_transformer_int8_xpu_quant_pass inference DIR xpu
+               DEPS ${XPU_PASS_DEPS})
   pass_library(stack_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(duplicated_transpose_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(fused_multi_transformer_cachekv_layout_trans_pass inference DIR
                xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(fused_multi_transformer_int8_cachekv_layout_trans_pass inference
+               DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(add_activation_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(add_layernorm_xpu_fuse_pass inference DIR xpu DEPS
@@ -288,7 +308,13 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(gather_squeeze_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(fast_where_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(layer_norm_act_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(fast_layernorm_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(squeeze_excitation_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(elementwise_mul_add_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
 endif()
 
@@ -496,14 +522,14 @@ if(WITH_MKLDNN)
     test_depthwise_conv_mkldnn_pass
     SRCS mkldnn/depthwise_conv_mkldnn_pass_tester.cc
     DEPS depthwise_conv_mkldnn_pass)
-  cc_test_old(
-    test_int8_scale_calculation_mkldnn_pass SRCS
-    mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc DEPS
-    int8_scale_calculation_mkldnn_pass pass_test_util)
-  cc_test_old(
-    test_params_quantization_mkldnn_pass SRCS
-    mkldnn/params_quantization_mkldnn_pass_tester.cc DEPS
-    params_quantization_mkldnn_pass)
+  cc_test(
+    test_int8_scale_calculation_mkldnn_pass
+    SRCS mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc
+    DEPS int8_scale_calculation_mkldnn_pass pass_test_util)
+  cc_test(
+    test_params_quantization_mkldnn_pass
+    SRCS mkldnn/params_quantization_mkldnn_pass_tester.cc
+    DEPS params_quantization_mkldnn_pass)
   set(TEST_CONV_BN_PASS_DEPS
       conv_bn_fuse_pass
       graph_to_program_pass
@@ -574,6 +600,10 @@ if(WITH_XPU)
     SRCS xpu/fused_multi_transformer_xpu_pass_tester.cc
     DEPS fused_multi_transformer_xpu_pass)
   cc_test(
+    test_fused_multi_transformer_int8_xpu_quant_pass
+    SRCS xpu/fused_multi_transformer_int8_xpu_quant_pass_tester.cc
+    DEPS fused_multi_transformer_int8_xpu_quant_pass)
+  cc_test(
     test_one_beam_size_fuse_pass
     SRCS xpu/one_beam_size_fuse_pass_test.cc
     DEPS one_beam_size_fuse_pass)
@@ -585,6 +615,10 @@ if(WITH_XPU)
     test_fused_multi_transformer_cachekv_layout_trans_pass
     SRCS xpu/fused_multi_transformer_cachekv_layout_trans_pass_test.cc
     DEPS fused_multi_transformer_cachekv_layout_trans_pass)
+  cc_test(
+    test_fused_multi_transformer_int8_cachekv_layout_trans_pass
+    SRCS xpu/fused_multi_transformer_int8_cachekv_layout_trans_pass_test.cc
+    DEPS fused_multi_transformer_int8_cachekv_layout_trans_pass)
   cc_test(
     test_multi_encoder_xpu_adaptive_seqlen_fuse_pass
     SRCS xpu/multi_encoder_xpu_adaptive_seqlen_fuse_pass_test.cc
@@ -613,4 +647,8 @@ if(WITH_XPU)
     test_fast_where_xpu_fuse_pass
     SRCS xpu/fast_where_xpu_fuse_pass_test.cc
     DEPS fast_where_xpu_fuse_pass)
+  cc_test(
+    test_squeeze_excitation_fuse_pass
+    SRCS xpu/squeeze_excitation_fuse_pass_test.cc
+    DEPS squeeze_excitation_fuse_pass)
 endif()

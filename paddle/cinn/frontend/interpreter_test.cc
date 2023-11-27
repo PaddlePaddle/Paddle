@@ -18,7 +18,7 @@
 
 #include "paddle/cinn/runtime/use_extern_funcs.h"
 
-DEFINE_string(model_dir, "", "");
+PD_DEFINE_string(model_dir, "", "");
 
 namespace cinn::frontend {
 

@@ -99,8 +99,8 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
     } else if (matmul_desc->Inputs().at("Y").at(0) == input_var_name) {
       matmul_input_name = "Y";
     } else {
-      throw platform::errors::InvalidArgument("Unexpected input to " +
-                                              matmul_type + " encountered.");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unexpected input to %s encountered.", matmul_type));
     }
 
     // Return if input of fused_matmul is already fused

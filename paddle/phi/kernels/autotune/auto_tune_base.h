@@ -106,7 +106,7 @@ class AutoTuneBase {
     float min_time = std::numeric_limits<float>::max();
 
     // Time cost test estabulished in default stream.
-    for (int i = 0; i < kernels_.size(); ++i) {
+    for (size_t i = 0; i < kernels_.size(); ++i) {
       auto time = RunAndMeasureKernel<Context>(ctx, i, args...);
       if (time < min_time) {
         min_time = time;

@@ -62,7 +62,7 @@ class TestEngineAPI(unittest.TestCase):
                 "recompute_granularity": ["-o", "Model.recompute_granularity"],
             },
             "metric_cfg": {
-                "name": "step/s",
+                "name": "ms/step",
                 "OptimizationDirection": "Maximize",
             },
         }

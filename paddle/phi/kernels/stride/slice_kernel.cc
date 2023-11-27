@@ -49,17 +49,18 @@ void SliceStridedKernel(const Context& ctx,
 
   std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
   std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.strides());
-  int64_t output_offset = input.offset();
+  int64_t output_offset = static_cast<int64_t>(input.offset());
 
   for (size_t i = 0; i < new_axes.size(); ++i) {
-    output_offset = output_offset + starts[i] * output_stride[new_axes[i]] *
-                                        SizeOf(out->dtype());
+    output_offset = static_cast<int64_t>(
+        output_offset +
+        starts[i] * output_stride[new_axes[i]] * SizeOf(out->dtype()));
     output_dims[new_axes[i]] = ends[i] - starts[i];
   }
 
   std::vector<uint8_t> decrease_flag(output_dims.size(), 0);
   if (decrease_axis.size() > 0) {
-    for (size_t i = 0; i < decrease_axis.size(); ++i) {
+    for (int i = 0; i < static_cast<int>(decrease_axis.size()); ++i) {
       int64_t axis = decrease_axis[i];
       decrease_flag[axis] = 1;
     }
@@ -84,7 +85,7 @@ void SliceStridedKernel(const Context& ctx,
 
   auto meta = out->meta();
   meta.offset = output_offset;
-  auto tmp_dim = DDim(output_dims.data(), output_dims.size());
+  auto tmp_dim = DDim(output_dims.data(), static_cast<int>(output_dims.size()));
   // if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
   //   PADDLE_THROW(
   //       phi::errors::Fatal("Slice kernel stride compute diff, infer shape is
@@ -94,7 +95,8 @@ void SliceStridedKernel(const Context& ctx,
   //                          tmp_dim));
   // }
   meta.dims = tmp_dim;
-  meta.strides = DDim(output_stride.data(), output_stride.size());
+  meta.strides =
+      DDim(output_stride.data(), static_cast<int>(output_stride.size()));
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
 }

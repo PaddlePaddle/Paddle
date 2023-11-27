@@ -37,7 +37,8 @@ REGISTER_PSCORE_CLASS(PSClient, PsGraphClient);
 
 int32_t PSClient::Configure(  // called in FleetWrapper::InitWorker
     const PSParameter &config,
-    const std::map<uint64_t, std::vector<paddle::distributed::Region>> &regions,
+    const std::map<uint64_t, std::vector<::paddle::distributed::Region>>
+        &regions,
     PSEnvironment &env,
     size_t client_id) {
   _env = &env;
@@ -88,7 +89,7 @@ PSClient *PSClientFactory::Create(const PSParameter &ps_config) {
 
   PSClient *client = NULL;
 #if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_GPU_GRAPH)
-  auto gloo = paddle::framework::GlooWrapper::GetInstance();
+  auto gloo = ::paddle::framework::GlooWrapper::GetInstance();
   if (client_name == "PsLocalClient" && gloo->Size() > 1) {
     client = CREATE_PSCORE_CLASS(PSClient, "PsGraphClient");
     LOG(WARNING) << "change PsLocalClient to PsGraphClient";

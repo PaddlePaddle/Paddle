@@ -41,7 +41,7 @@ if(WITH_CINN)
 endif()
 
 file(GLOB UTILS_PY_FILES . ./paddle/legacy/utils/*.py)
-file(GLOB_RECURSE FLUID_PY_FILES ./paddle/fluid/*.py)
+file(GLOB_RECURSE FLUID_PY_FILES ./paddle/base/*.py)
 set(PY_FILES paddle/__init__.py ${UTILS_PY_FILES} ${FLUID_PY_FILES})
 
 if(WITH_GPU)
@@ -68,7 +68,7 @@ else()
                  ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 endif()
 
-set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/)
+set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/base/)
 
 if(WIN32)
   # Python would use the .pyd by default under Windows series platform

@@ -57,7 +57,7 @@ class TestNegOp(unittest.TestCase):
             self.run_static()
 
     def test_gpu(self):
-        if not paddle.fluid.core.is_compiled_with_cuda():
+        if not paddle.base.core.is_compiled_with_cuda():
             return
 
         paddle.disable_static(place=paddle.CUDAPlace(0))

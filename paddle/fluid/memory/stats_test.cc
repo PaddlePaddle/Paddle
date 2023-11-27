@@ -56,7 +56,7 @@ class StatsTest : public ::testing::Test {
     for (size_t i = 0; i < thread_num; ++i) {
       threads.emplace_back([&]() {
         for (size_t data = 0; data < data_num; ++data) {
-          update_func_(stat_type_, 0, data);
+          update_func_(stat_type_, 0, static_cast<int64_t>(data));
         }
         /* lock guard*/ {
           std::lock_guard<std::mutex> lock_guard{mutex};

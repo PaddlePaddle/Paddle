@@ -17,10 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.dygraph as dg
-from paddle.fluid import core
-from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+import paddle.base.dygraph as dg
+from paddle.base import core
+from paddle.base.data_feeder import convert_dtype
+from paddle.base.framework import convert_np_dtype_to_dtype_
 
 
 class TestComplexVariable(unittest.TestCase):

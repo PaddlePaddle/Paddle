@@ -19,8 +19,14 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
+#endif
 
 namespace paddle {
 namespace framework {
@@ -97,6 +103,15 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
                   platform::GenerateDeviceEventFlag());
           recorder_instr.AddEventToRecord(device_event,
                                           platform::kCUDA /*unused*/);
+          // It means the event will be waited for other interpreter that the
+          // event name of a operator is not 'default'.
+          if (recorder_instr.OpFunc()->force_record_event_ == true &&
+              (*program_force_events_to_wait_)
+                      .count(recorder_instr.OpFunc()->event_to_record_) == 0) {
+            (*program_force_events_to_wait_)[recorder_instr.OpFunc()
+                                                 ->event_to_record_] =
+                recorder_instr.EventToRecord();
+          }
           instr2event.emplace(recorder_instr_id, device_event);
         }
 
@@ -105,6 +120,65 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
         VLOG(6) << "Add event: " << recorder_instr.OpBase()->Type() << "("
                 << recorder_instr_id << ") -> " << waiter_instr.OpBase()->Type()
                 << "(" << waiter_instr_id << "), waiter type = " << waiter_type;
+      }
+    }
+  }
+  // NOTE(lizhiyu): The mannual event only support the program_interpreter to
+  // annalyze the streams across the sub_programs. construct mannual events to
+  // record
+  for (auto& instruction : *instructions) {
+    // create extra event to record
+    auto op_func_node = instruction.OpFunc();
+    if (op_func_node->force_record_event_ &&
+        instruction.EventToRecord() == nullptr) {
+      auto place = instruction.DeviceContext().GetPlace();
+      if (platform::is_gpu_place(place)) {
+        PADDLE_ENFORCE_NE(
+            op_func_node->event_to_record_,
+            "default",
+            phi::errors::InvalidArgument(
+                "If the attribute 'force_record_event_' of one "
+                "operator is 'true', the 'event_to_record_' of this "
+                "operator can not be 'default'. But the "
+                "'event_name' of the operator %s is 'default'.",
+                instruction.OpBase()->Type().c_str()));
+        PADDLE_ENFORCE_EQ(
+            (*program_force_events_to_wait_)
+                .find(op_func_node->event_to_record_),
+            (*program_force_events_to_wait_).end(),
+            phi::errors::InvalidArgument(
+                "The program_force_events_to_wait_ had the event "
+                "that belongs to the operator : %s before the operator create "
+                "the event, "
+                "This is is werid.",
+                instruction.OpBase()->Type().c_str()));
+        std::shared_ptr<DeviceEvent> device_event =
+            std::make_shared<DeviceEvent>(place,
+                                          platform::GenerateDeviceEventFlag());
+        instruction.AddEventToRecord(device_event, platform::kCUDA /*unused*/);
+        (*program_force_events_to_wait_)[op_func_node->event_to_record_] =
+            instruction.EventToRecord();
+        VLOG(6) << "Create mannual event: " << op_func_node->event_to_record_
+                << " for the operator: " << instruction.OpBase()->Type();
+      }
+    }
+    // add extra mannual events
+    if (!(op_func_node->events_to_wait_.empty())) {
+      for (auto event_name : op_func_node->events_to_wait_) {
+        PADDLE_ENFORCE_NE(
+            (*program_force_events_to_wait_).find(event_name),
+            (*program_force_events_to_wait_).end(),
+            phi::errors::InvalidArgument(
+                "The program_force_events_to_wait_ don't have the event %s "
+                "for the operator: %s to wait. The event should had been "
+                "created by the operator "
+                "whose event_to_record_ is %s.",
+                event_name.c_str(),
+                instruction.OpBase()->Type().c_str(),
+                event_name.c_str()));
+
+        instruction.AddEventToWait(
+            (*program_force_events_to_wait_)[event_name].get());
       }
     }
   }
@@ -167,9 +241,20 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
     if (op_type == "c_allreduce_sum" &&
         op->Attr<bool>("use_calc_stream") == false) {
       int ring_id = op->Attr<int>("ring_id");
-      return platform::NCCLCommContext::Instance()
-          .Get(ring_id, place_)
-          ->dev_context();
+
+      if (FLAGS_dynamic_static_unified_comm) {
+        const auto& comm_context_manager =
+            phi::distributed::CommContextManager::GetInstance();
+        dev_ctx = static_cast<platform::DeviceContext*>(
+            static_cast<phi::distributed::NCCLCommContext*>(
+                comm_context_manager.Get(std::to_string(ring_id)))
+                ->GetDevContext());
+      } else {
+        dev_ctx = platform::NCCLCommContext::Instance()
+                      .Get(ring_id, place_)
+                      ->dev_context();
+      }
+      return dev_ctx;
     }
 #endif
   }
@@ -189,7 +274,7 @@ const std::unordered_set<std::string> no_need_buffer_ins(Instruction* instr) {
   return std::unordered_set<std::string>();
 }
 
-const std::unordered_set<ir::Value> no_need_buffer_ins(
+const std::unordered_set<pir::Value> no_need_buffer_ins(
     const paddle::framework::InstructionBase* instr) {
   return instr->NoNeedBuffer();
 }
@@ -404,10 +489,10 @@ void analyse_event_info_for_two_instructions<
   // fused_var share the same tensor. However, as the dependency is implicit, we
   // can only add event for it with the help of depend_op.
 
-  if (has_data_dependency<paddle::framework::InstructionBase, ir::Value>(
+  if (has_data_dependency<paddle::framework::InstructionBase, pir::Value>(
           instructions[cur_instr_id], instructions[next_instr_id]) ||
       !run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty() ||
-      instructions[next_instr_id]->Name() == "pd.depend") {
+      instructions[next_instr_id]->Name() == "pd_op.depend") {
     waiter_instr_ids->insert(next_instr_id);
     return;
   }
@@ -568,7 +653,7 @@ void StreamAnalyzer::ShareEventInfoFrom(const StreamAnalyzer& src) {
 /// ======================== ///
 ///        For new ir        ///
 /// ======================== ///
-void NewIrStreamAnalyzer::ConstructEvents(
+void PirStreamAnalyzer::ConstructEvents(
     const std::vector<std::unique_ptr<paddle::framework::InstructionBase>>&
         instructions) {
   if (!is_event_info_build_) {
@@ -581,7 +666,7 @@ void NewIrStreamAnalyzer::ConstructEvents(
       cross_step_merged_instructions_ptr.emplace_back(instr.get());
     }
 
-    NewIrDependencyBuilder dependency_builder;
+    PirDependencyBuilder dependency_builder;
     dependency_builder.Build(cross_step_merged_instructions_ptr);
     const std::map<size_t, std::set<size_t>>& downstream_map =
         dependency_builder.OpDownstreamMap();
@@ -646,7 +731,7 @@ void NewIrStreamAnalyzer::ConstructEvents(
   }
 }
 
-void NewIrStreamAnalyzer::AnalyseAllRunType(
+void PirStreamAnalyzer::AnalyseAllRunType(
     const std::vector<paddle::framework::InstructionBase*>& instructions,
     const std::map<size_t, std::set<size_t>>& downstream_map,
     std::vector<std::vector<std::vector<size_t>>>* run_type_info) const {
@@ -654,7 +739,7 @@ void NewIrStreamAnalyzer::AnalyseAllRunType(
       instructions, downstream_map, place_, run_type_info);
 }
 
-void NewIrStreamAnalyzer::AnalyseAllEventInfo(
+void PirStreamAnalyzer::AnalyseAllEventInfo(
     const std::vector<paddle::framework::InstructionBase*>& instructions,
     const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
     std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
@@ -663,14 +748,14 @@ void NewIrStreamAnalyzer::AnalyseAllEventInfo(
       instructions, run_type_info, event_info);
 }
 
-void NewIrStreamAnalyzer::ShrinkEventInfo(
-    const NewIrDependencyBuilder& dependency_builder,
+void PirStreamAnalyzer::ShrinkEventInfo(
+    const PirDependencyBuilder& dependency_builder,
     std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
         event_info_map) const {
-  shrink_event_info<NewIrDependencyBuilder>(dependency_builder, event_info_map);
+  shrink_event_info<PirDependencyBuilder>(dependency_builder, event_info_map);
 }
 
-platform::DeviceType NewIrStreamAnalyzer::GetWaiterType(
+platform::DeviceType PirStreamAnalyzer::GetWaiterType(
     const paddle::framework::InstructionBase* instr) const {
   if (instr->KernelType() == OpFuncType::kCpuSync) {
     return platform::kCPU;
@@ -684,14 +769,14 @@ platform::DeviceType NewIrStreamAnalyzer::GetWaiterType(
   }
 }
 
-void NewIrStreamAnalyzer::ShareEventInfoFrom(const NewIrStreamAnalyzer& src) {
+void PirStreamAnalyzer::ShareEventInfoFrom(const PirStreamAnalyzer& src) {
   event_info_ = src.GetEventInfo();
   is_event_info_build_ = true;
 }
 
 std::shared_ptr<
     std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
-NewIrStreamAnalyzer::GetEventInfo() const {
+PirStreamAnalyzer::GetEventInfo() const {
   return event_info_;
 }
 

@@ -22,12 +22,12 @@
 #include <utility>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/core/macros.h"
+#include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
 // FIXME(zengjinle): these 2 flags may be removed by the linker when compiling
@@ -41,8 +41,8 @@ PADDLE_FORCE_LINK_FLAG(free_when_no_cache_hit);
 
 // NOTE: where are these 2 flags from?
 #ifdef PADDLE_WITH_DISTRIBUTE
-DECLARE_int32(rpc_get_thread_num);
-DECLARE_int32(rpc_prefetch_thread_num);
+PD_DECLARE_int32(rpc_get_thread_num);
+PD_DECLARE_int32(rpc_prefetch_thread_num);
 #endif
 
 namespace paddle {
