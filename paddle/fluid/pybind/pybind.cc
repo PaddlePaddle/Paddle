@@ -200,6 +200,7 @@ limitations under the License. */
 #include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
+#include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/include/operants_manager.h"
@@ -767,6 +768,22 @@ void BindVjp(pybind11::module *m) {
 }
 
 void BindDecomp(pybind11::module *m) {
+  m->def("decomp_tmp",
+         [](Program *program, std::vector<pir::OpResult> &src_vars) {
+           py::list res;
+           DecompProgram decomp_object(program, src_vars);
+           auto tar_vars = decomp_object.decomp_program();
+           VLOG(0) << "BindDecomp decomp_tmp in ++++++++++++++++++";
+           for (size_t i = 0; i < tar_vars.size(); ++i) {
+             if (!decomp_res[i]) {
+               res.append(nullptr);
+             } else {
+               res.append(decomp_res[i]);
+             }
+           }
+           return res;
+         });
+
   m->def("call_decomp", [](pir::Operation &fwd_op) {
     py::list res;
     paddle::dialect::DecompInterface decomp_interface =
