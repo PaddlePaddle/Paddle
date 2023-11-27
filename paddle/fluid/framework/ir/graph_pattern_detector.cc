@@ -3283,16 +3283,13 @@ void patterns::DeleteWeightQuantDequantLinearOpPattern::operator()() {
 
   auto weight_dequantize_linear_op_out =
       pattern->NewNode(weight_dequantize_linear_op_out_repr())
-          ->AsIntermediate()
+          ->AsOutput()
           ->assert_is_op_output("dequantize_linear", "Y");
-
-  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
 
   weight_dequantize_linear_op
       ->LinksFrom(
           {weight_dequantize_linear_op_x, weight_dequantize_linear_op_scale})
       .LinksTo({weight_dequantize_linear_op_out});
-  any_op2->LinksFrom({weight_dequantize_linear_op_out});
 }
 
 void patterns::DeleteWeightDequantLinearOpEncoderPattern::operator()() {
