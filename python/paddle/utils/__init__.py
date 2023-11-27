@@ -15,6 +15,7 @@
 from ..base.framework import require_version  # noqa: F401
 from . import (  # noqa: F401
     cpp_extension,
+    dlpack,
     download,
     image_util,
     layers_utils,
