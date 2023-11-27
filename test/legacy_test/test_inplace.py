@@ -1648,7 +1648,8 @@ class TestDygraphTensorApplyInplace(unittest.TestCase):
         return var.apply(f)
 
     def inplace_api_processing(self, var, f):
-        return var.apply_(f)
+        var.apply_(f)
+        return var
 
     def test_inplace_api(self):
         var = paddle.to_tensor(self.input_var_numpy, stop_gradient=True).astype(

@@ -387,9 +387,9 @@ def monkey_patch_tensor():
                 >>> print(x) # 17
 
         """
-        if self.stop_gradient is True:
+        if not self.stop_gradient:
             raise RuntimeError(
-                "Cannot apply function on a tensor that stop gradient."
+                "Cannot apply function on a tensor that required gradient."
             )
         self._apply_(func)
 
@@ -413,9 +413,9 @@ def monkey_patch_tensor():
                 >>> print(x) # 5
 
         """
-        if self.stop_gradient is True:
+        if not self.stop_gradient:
             raise RuntimeError(
-                "Cannot apply function on a tensor that stop gradient."
+                "Cannot apply function on a tensor that required gradient."
             )
         return self._apply(func)
 
