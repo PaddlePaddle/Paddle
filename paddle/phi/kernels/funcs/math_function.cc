@@ -194,43 +194,33 @@ struct TensorSetConstantXPU {
   void apply() const {
     auto* ctx = phi::DeviceContextPool::Instance().Get(place_);
     auto data = ctx->Alloc<T>(tensor_);
-    const T* num = reinterpret_cast<const T*>(value_);
-    T num_value = static_cast<T>(*num);
+    const float* num = reinterpret_cast<const float*>(value_);
+    float num_value = static_cast<float>(*num);
     int numel = tensor_->numel();
-    using XPUType = typename XPUTypeTrait<T>::Type;
-    VLOG(0) << "TensorSetConstantXPU use xpu kernel, T type is float:"
-            << std::is_same_v<T, float>;
-    auto* dev_ctx = static_cast<phi::XPUContext*>(ctx);
-    int r = xpu::constant<XPUType>(dev_ctx->x_context(),
-                                   reinterpret_cast<XPUType*>(data),
-                                   numel,
-                                   static_cast<XPUType>(num_value));
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-    dev_ctx->Wait();
-    // if (((std::is_same<T, float>::num_value) ||
-    //      (std::is_same<T, phi::dtype::float16>::num_value)) &&
-    //     (place_ == phi::XPUPlace())) {
-    //   using XPUType = typename XPUTypeTrait<T>::Type;
-    //   VLOG(0) << "TensorSetConstantXPU use xpu kernel, T type is float:"
-    //           << std::is_same<T, float>::num_value << " | float16:"
-    //           << std::is_same<T, phi::dtype::float16>::num_value;
-    //   auto* dev_ctx = static_cast<phi::XPUContext*>(ctx);
-    //   int r = xpu::constant<XPUType>(dev_ctx->x_context(),
-    //                                  reinterpret_cast<XPUType*>(data),
-    //                                  numel,
-    //                                  static_cast<XPUType>(num_value));
-    //   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-    //   dev_ctx->Wait();
-    // } else {
-    //   std::unique_ptr<T[]> data_cpu(new T[numel]);
-    //   std::fill(
-    //       data_cpu.get(), data_cpu.get() + numel, static_cast<T>(num_value));
-    //   memory_utils::Copy(place_,
-    //                      data,
-    //                      phi::CPUPlace(),
-    //                      static_cast<void*>(data_cpu.get()),
-    //                      numel * sizeof(T));
-    // }
+    if (((std::is_same<T, float>::num_value) ||
+         (std::is_same<T, phi::dtype::float16>::num_value)) &&
+        (place_ == phi::XPUPlace())) {
+      using XPUType = typename XPUTypeTrait<T>::Type;
+      VLOG(0) << "TensorSetConstantXPU use xpu kernel, T type is float:"
+              << std::is_same<T, float>::num_value << " | float16:"
+              << std::is_same<T, phi::dtype::float16>::num_value;
+      auto* dev_ctx = static_cast<phi::XPUContext*>(ctx);
+      int r = xpu::constant(dev_ctx->x_context(),
+                            reinterpret_cast<XPUType*>(data),
+                            numel,
+                            static_cast<XPUType>(num_value));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+      dev_ctx->Wait();
+    } else {
+      std::unique_ptr<T[]> data_cpu(new T[numel]);
+      std::fill(
+          data_cpu.get(), data_cpu.get() + numel, static_cast<T>(num_value));
+      memory_utils::Copy(place_,
+                         data,
+                         phi::CPUPlace(),
+                         static_cast<void*>(data_cpu.get()),
+                         numel * sizeof(T));
+    }
   }
   const phi::DeviceContext& context_;
   phi::DenseTensor* tensor_;
