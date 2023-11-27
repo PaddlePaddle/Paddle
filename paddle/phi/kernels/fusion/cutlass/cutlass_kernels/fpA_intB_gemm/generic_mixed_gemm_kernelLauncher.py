@@ -95,7 +95,7 @@ WarpShapes = [
     "cutlass::gemm::GemmShape<64, 64, 64>",
     "cutlass::gemm::GemmShape<64, 64, 64>",
 ]
-StagesList = {70: [2], 75: [2], 80: [2, 3, 4, 5]}
+StagesList = {70: [2], 75: [2, 3, 4 ,5], 80: [2, 3, 4, 5]}
 
 ElementTypes = {"fp16": "half", "bf16": "__nv_bfloat16"}
 Archs = {
@@ -168,15 +168,20 @@ def generate_source_cu(
     element_type: str, arch: int, epilogue_tag: str, stages: int
 ):
     all_code = CommonHead
+    ThreadblockShapes_arch = ThreadblockShapes.copy()
+    WarpShapes_arch = WarpShapes.copy()
+    if arch == 70:
+        ThreadblockShapes_arch.pop(0) # sm70 have compile error for [16 128 64]
+        WarpShapes_arch.pop(0) 
     for WeightType in WeightTypes:
-        for i in range(len(ThreadblockShapes)):
+        for i in range(len(ThreadblockShapes_arch)):
             value_dict = {
                 "T": ElementTypes[element_type],
                 "WeightType": WeightType,
                 "arch": Archs[arch],
                 "EpilogueTag": EpilogueTags[epilogue_tag],
-                "ThreadblockShape": ThreadblockShapes[i],
-                "WarpShape": WarpShapes[i],
+                "ThreadblockShape": ThreadblockShapes_arch[i],
+                "WarpShape": WarpShapes_arch[i],
                 "Stages": str(stages),
             }
             all_code += SubstituteTemplate(
@@ -197,7 +202,7 @@ if __name__ == "__main__":
             header_all += define_line
     with open(header_name, "w") as f:
         f.write(header_all)
-        f.close()
+        f.close()            
     if archs:
         for element_type in ElementTypes.keys():
             for arch in archs:
