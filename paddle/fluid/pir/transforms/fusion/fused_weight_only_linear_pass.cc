@@ -12,16 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/matmul_to_weight_only_linear_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace {
 
-class MatmulToWeightOnlyLinearPattern
-    : public pir::drr::DrrPatternBase<MatmulToWeightOnlyLinearPattern> {
+inline int getSMVersion() {
+  auto place = paddle::platform::CUDAPlace(0);
+  const phi::gpuDeviceProp prop =
+      paddle::platform::GetDeviceProperties(place.GetDeviceId());
+  return prop.major * 10 + prop.minor;
+}
+
+class FusedWeightOnlyLinearPattern
+    : public pir::drr::DrrPatternBase<FusedWeightOnlyLinearPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     //
@@ -63,9 +72,11 @@ class MatmulToWeightOnlyLinearPattern
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
           return "weight_only_int8";
         });
-
-    const auto &arch_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> std::any { return 80; });
+    int arch = getSMVersion();
+    const auto &arch_attr =
+        res.Attr([&](const pir::drr::MatchContext &match_ctx) -> std::any {
+          return arch;
+        });
 
     const auto &weight_quantize =
         res.Op("pd_op.weight_quantize",
@@ -80,43 +91,28 @@ class MatmulToWeightOnlyLinearPattern
         });
 
     const auto &weight_only_linear_arch_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> int { return 80; });
+        [&](const pir::drr::MatchContext &match_ctx) -> int { return arch; });
     const auto &weight_only_linear =
         res.Op("pd_op.weight_only_linear",
                {{"weight_dtype", weight_dtype_attr},
                 {"arch", weight_only_linear_arch_attr}});
-    weight_only_linear(
-        {
-            &res.Tensor("x"),
-            &res.Tensor("quanted_weight_tensor"),
-            &res.Tensor("bias"),
-            &res.Tensor("weight_scale_tensor"),
-        },
-        {&res.Tensor("add_out")});
+    weight_only_linear({&res.Tensor("x"),
+                        &res.Tensor("quanted_weight_tensor"),
+                        &res.Tensor("bias"),
+                        &res.Tensor("weight_scale_tensor")},
+                       {&res.Tensor("add_out")});
   }
 };
 
-class MatmulToWeightOnlyLinearPass : public pir::Pass {
+class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
  public:
-  MatmulToWeightOnlyLinearPass()
-      : pir::Pass("matmul_to_weight_only_linear_pass", 2) {}
+  FusedWeightOnlyLinearPass()
+      : pir::PatternRewritePass("fused_weight_only_linear_pass", 2) {}
 
-  bool Initialize(pir::IrContext *context) override {
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(MatmulToWeightOnlyLinearPattern().Build(context));
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
-  }
-
-  void Run(pir::Operation *op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
-  }
-
-  bool CanApplyOn(pir::Operation *op) const override {
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
+    ps.Add(FusedWeightOnlyLinearPattern().Build(context));
+    return ps;
   }
 
  private:
@@ -126,10 +122,9 @@ class MatmulToWeightOnlyLinearPass : public pir::Pass {
 }  // namespace
 
 namespace pir {
-std::unique_ptr<Pass> CreateMatmulToWeightOnlyLinearPass() {
-  return std::make_unique<MatmulToWeightOnlyLinearPass>();
+std::unique_ptr<Pass> CreateFusedWeightOnlyLinearPass() {
+  return std::make_unique<FusedWeightOnlyLinearPass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(matmul_to_weight_only_linear_pass,
-                 MatmulToWeightOnlyLinearPass);
+REGISTER_IR_PASS(fused_weight_only_linear_pass, FusedWeightOnlyLinearPass);

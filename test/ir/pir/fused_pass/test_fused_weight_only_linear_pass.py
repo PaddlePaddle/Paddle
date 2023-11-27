@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from pass_test import PassTest
 
 import paddle
 from paddle.base import core
@@ -43,16 +44,13 @@ def get_cuda_version():
     or paddle.device.cuda.get_device_capability()[0] < 8,
     "weight_only_linear requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
-class TestMatmulToWeightOnly(unittest.TestCase):
-    def test_matmul_to_weight_only(self):
+class TestMatmulToWeightOnlyPass(PassTest):
+    def build_ir_progam(self):
         with paddle.pir_utils.IrGuard():
-            x_np = np.random.normal(3, 2.5, size=(3, 64, 64)).astype(np.float32)
-            w_np = np.random.normal(3, 2.5, size=(64, 64)).astype(np.float32)
-            bias_np = np.random.normal(3, 2.5, size=(64)).astype(np.float32)
-            main_program = paddle.static.Program()
-            with paddle.static.program_guard(main_program):
+            self.pir_program = paddle.static.Program()
+            with paddle.pir.core.program_guard(self.pir_program):
                 x = paddle.static.data(
-                    name="x", shape=[3, 64, 64], dtype="float32"
+                    name='x', shape=[3, 64, 64], dtype='float32'
                 )
                 w = paddle.static.data(
                     name="w", shape=[64, 64], dtype="float32"
@@ -62,24 +60,28 @@ class TestMatmulToWeightOnly(unittest.TestCase):
                 )
                 bias = paddle.assign(bias_)
                 res1 = paddle.matmul(x=x, y=w)
-                res2 = paddle.add(res1, bias)
+                out = paddle.add(res1, bias)
 
-                op_names = [op.name() for op in main_program.global_block().ops]
-                self.assertTrue('pd_op.matmul' in op_names)
-                self.assertTrue('pd_op.add' in op_names)
+        self.pass_list = ['fused_weight_only_linear_pass']
+        self.feeds = {
+            "x": np.random.random((3, 64, 64)).astype("float32"),
+            "w": np.random.random((64, 64)).astype("float32"),
+            "bias": np.random.random(64).astype("float32"),
+        }
+        self.fetch_list = [out]
+        self.valid_op_map = {
+            "pd_op.weight_only_linear": 1,
+            "pd_op.weight_quantize": 1,
+            "pd_op.matmul": 0,
+            "pd_op.add": 0,
+        }
 
-                with paddle.static.scope_guard(paddle.static.Scope()):
-                    exe = paddle.base.Executor(paddle.base.CUDAPlace(0))
-                    fetches = exe.run(
-                        main_program,
-                        feed={"x": x_np, "w": w_np, "bias": bias_np},
-                        fetch_list=[res2],
-                    )
-                pm = paddle.pir.PassManager()
-                pm.add_pass('matmul_to_weight_only_linear_pass')
-                pm.run(main_program)
-                op_names = [op.name() for op in main_program.global_block().ops]
-                self.assertTrue('pd_op.weight_only_linear' in op_names)
+    def setUp(self):
+        self.place_runtime = "gpu"
+        self.build_ir_progam()
+
+    def test_check_output(self):
+        self.check_pass_correct()
 
 
 if __name__ == "__main__":
