@@ -21,20 +21,22 @@ from decorator_helper import prog_scope
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestInstanceNormDoubleGradCheck(unittest.TestCase):
-    @prog_scope()
+    @test_with_pir_api
     def func(self, place):
-        prog = base.Program()
-        with base.program_guard(prog):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
             np.random.seed()
             shape = [2, 3, 4, 5]
             dtype = "float32"
             eps = 0.005
             atol = 1e-4
-            x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
-            z = paddle.static.nn.instance_norm(input=x)
+            x = paddle.static.data(dtype=dtype, shape=shape, name='x')
+            z = paddle.nn.functional.instance_norm(x)
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
             gradient_checker.double_grad_check(
                 [x], z, x_init=x_arr, atol=atol, place=place, eps=eps
@@ -52,19 +54,18 @@ class TestInstanceNormDoubleGradCheck(unittest.TestCase):
 class TestInstanceNormDoubleGradCheckWithoutParamBias(
     TestInstanceNormDoubleGradCheck
 ):
-    @prog_scope()
+    @test_with_pir_api
     def func(self, place):
-        prog = base.Program()
-        with base.program_guard(prog):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
             np.random.seed()
             shape = [2, 3, 4, 5]
             dtype = "float32"
             eps = 0.005
             atol = 1e-4
-            x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
-            z = paddle.static.nn.instance_norm(
-                input=x, param_attr=False, bias_attr=False
-            )
+            x = paddle.static.data(dtype=dtype, shape=shape, name='x')
+            z = paddle.nn.functional.instance_norm(x, weight=None, bias=None)
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
             gradient_checker.double_grad_check(
                 [x], z, x_init=x_arr, atol=atol, place=place, eps=eps
@@ -75,16 +76,17 @@ class TestInstanceNormDoubleGradEagerCheck(unittest.TestCase):
     def instance_norm_wrapper(self, x):
         return paddle.nn.functional.instance_norm(x[0])
 
-    @prog_scope()
+    @test_with_pir_api
     def func(self, place):
-        prog = base.Program()
-        with base.program_guard(prog):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
             np.random.seed()
             shape = [2, 3, 4, 5]
             dtype = "float32"
             eps = 0.005
             atol = 1e-4
-            x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
+            x = paddle.static.data(dtype=dtype, shape=shape, name='x')
             z = paddle.nn.functional.instance_norm(x)
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
             # check for static graph mode
@@ -117,16 +119,17 @@ class TestInstanceNormDoubleGradEagerCheckWithParams(
         instance_norm = paddle.nn.InstanceNorm2D(3)
         return instance_norm(x[0])
 
-    @prog_scope()
+    @test_with_pir_api
     def func(self, place):
-        prog = base.Program()
-        with base.program_guard(prog):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
             np.random.seed()
             shape = [2, 3, 4, 5]
             dtype = "float32"
             eps = 0.005
             atol = 1e-4
-            x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
+            x = paddle.static.data(dtype=dtype, shape=shape, name='x')
             z = paddle.nn.InstanceNorm2D(3)(x)
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
             # check for static graph mode

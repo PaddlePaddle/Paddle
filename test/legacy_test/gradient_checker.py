@@ -498,16 +498,22 @@ def double_grad_check(
     x_init = _as_list(x_init)
 
     if in_pir_mode():
-        program, op_map = paddle.base.libpaddle.pir.clone_program(
+        main_program, op_map_main = paddle.base.libpaddle.pir.clone_program(
             paddle.static.default_main_program()
+        )
+        (
+            startup_program,
+            op_map_startup,
+        ) = paddle.base.libpaddle.pir.clone_program(
+            paddle.static.default_startup_program()
         )
         clone_x = []
         for xi in x:
-            clone_x.append(op_map[xi])
+            clone_x.append(op_map_main[xi])
         clone_y = []
         for yi in y:
-            clone_y.append(op_map[yi])
-        with paddle.static.program_guard(program):
+            clone_y.append(op_map_main[yi])
+        with paddle.static.program_guard(main_program, startup_program):
             (
                 grad_res,
                 x,
@@ -857,6 +863,7 @@ def get_pir_static_double_grad(
     # only fetch not None dx in exe.run
     filted = [(i, dxi) for i, dxi in enumerate(ddx) if dxi is not None]
     filted_idx, filted_ddx = zip(*filted)
+    exe.run(paddle.static.default_startup_program())
     ddx_res = exe.run(
         program=program, feed=feeds, fetch_list=[filted_ddx, filted_dx]
     )
