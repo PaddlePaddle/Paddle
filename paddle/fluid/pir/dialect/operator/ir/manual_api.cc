@@ -148,5 +148,15 @@ pir::OpResult array_write_(pir::Value array, pir::Value x, pir::Value i) {
   return array_write_op.out();
 }
 
+std::tuple<pir::OpResult, pir::OpResult> array_to_tensor(pir::Value x,
+                                                         int axis,
+                                                         bool use_stack) {
+  auto array_to_tensor =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::ArrayToTensorOp>(x, axis, use_stack);
+  return std::make_tuple(array_to_tensor.result(0), array_to_tensor.result(1));
+}
+
 }  // namespace dialect
 }  // namespace paddle

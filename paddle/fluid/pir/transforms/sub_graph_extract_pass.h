@@ -14,17 +14,13 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/tensor_utils.h"
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
 
-namespace phi {
+namespace pir {
 
-template <typename T, typename Context>
-void FetchKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  if (!x.IsInitialized()) {
-    return;
-  }
-  phi::Copy(ctx, x, phi::CPUPlace(), true, out);
-}
+class Pass;
 
-}  // namespace phi
+IR_API std::unique_ptr<Pass> CreateSubGraphExtractPass();
+
+}  // namespace pir

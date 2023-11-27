@@ -32,16 +32,16 @@ class TestReductionApiForSemiAutoParallel:
         np2 = b.numpy()
         np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
 
-    def test_body(self, x_shape, out_shape, x_specs, axis, keepdim, op_func):
+    def test_body(
+        self, x_shape, out_shape, x_placements, axis, keepdim, op_func
+    ):
         paddle.seed(self._seed)
         np.random.seed(self._seed)
 
         x = paddle.randn(x_shape, self._dtype)
         x.stop_gradient = False
 
-        x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=x_specs)
-
-        dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
+        dist_x = dist.shard_tensor(x, self._mesh, x_placements)
         dist_x.stop_gradient = False
 
         dist_out = op_func(dist_x, axis=axis, keepdim=keepdim)
@@ -57,7 +57,7 @@ class TestReductionApiForSemiAutoParallel:
         self.test_body(
             x_shape=[4, 8, 6],
             out_shape=[4, 6],
-            x_specs=['x', None, None],
+            x_placements=[dist.Shard(0)],
             axis=1,
             keepdim=False,
             op_func=paddle.sum,
@@ -67,7 +67,7 @@ class TestReductionApiForSemiAutoParallel:
         self.test_body(
             x_shape=[4, 8, 6],
             out_shape=[4],
-            x_specs=[None, 'x', None],
+            x_placements=[dist.Shard(1)],
             axis=[1, 2],
             keepdim=False,
             op_func=paddle.sum,
@@ -77,7 +77,7 @@ class TestReductionApiForSemiAutoParallel:
         self.test_body(
             x_shape=[4, 8, 6],
             out_shape=[4, 1, 6],
-            x_specs=[None, 'x', None],
+            x_placements=[dist.Shard(1)],
             axis=1,
             keepdim=True,
             op_func=paddle.sum,
@@ -87,7 +87,7 @@ class TestReductionApiForSemiAutoParallel:
         self.test_body(
             x_shape=[4, 8, 6],
             out_shape=[8, 6],
-            x_specs=['x', None, None],
+            x_placements=[dist.Shard(0)],
             axis=-3,
             keepdim=False,
             op_func=paddle.mean,
@@ -97,7 +97,7 @@ class TestReductionApiForSemiAutoParallel:
         self.test_body(
             x_shape=[4, 8, 6],
             out_shape=[4, 6],
-            x_specs=['x', None, None],
+            x_placements=[dist.Shard(0)],
             axis=1,
             keepdim=False,
             op_func=paddle.max,
@@ -107,7 +107,7 @@ class TestReductionApiForSemiAutoParallel:
         self.test_body(
             x_shape=[4, 8, 6],
             out_shape=[4, 6],
-            x_specs=[None, 'x', None],
+            x_placements=[dist.Shard(1)],
             axis=1,
             keepdim=False,
             op_func=paddle.max,
