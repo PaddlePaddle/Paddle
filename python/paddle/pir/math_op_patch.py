@@ -375,6 +375,9 @@ def monkey_patch_opresult():
     def op_result_hash(self):
         raise NotImplementedError('In python OpResult can not hash!')
 
+    def op_result_eq(self):
+        raise NotImplementedError('In python OpResult can not eq!')
+
     import paddle
 
     opresult_methods = [
@@ -388,6 +391,7 @@ def monkey_patch_opresult():
         ('clone', clone),
         ('append', append),
         ('__hash__', op_result_hash),
+        ('__eq__', op_result_eq),
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
