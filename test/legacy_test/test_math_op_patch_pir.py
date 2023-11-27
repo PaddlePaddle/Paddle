@@ -29,7 +29,7 @@ def new_program():
     # TODO(gouzil): Optimize program code
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
-    place = base.CPUPlace()
+    place = paddle.CPUPlace()
     exe = base.Executor(place)
     return (
         main_program,
@@ -443,6 +443,23 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 )
                 np.testing.assert_array_equal(x_np, a_np)
                 self.assertNotEqual(id(x), id(a))
+
+    def test_append(self):
+        with paddle.pir_utils.IrGuard():
+            _, _, program_guard = new_program()
+            with program_guard:
+                x = paddle.static.data(name='x', shape=[-1, 1], dtype="float32")
+                init_data = [
+                    np.random.random(shape).astype('float32')
+                    for shape in [[10, 4], [8, 12], [1]]
+                ]
+
+                array = paddle.tensor.create_array(
+                    'int64', [paddle.to_tensor(x) for x in init_data]
+                )
+                array.append(x)
+                with self.assertRaises(TypeError):
+                    x.append(array)
 
     def test_math_exists(self):
         with paddle.pir_utils.IrGuard():

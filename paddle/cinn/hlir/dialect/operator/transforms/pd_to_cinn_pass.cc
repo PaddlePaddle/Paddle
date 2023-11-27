@@ -246,6 +246,63 @@ class ConcatOpPattern
   }
 };
 
+class SplitWithNumOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::SplitWithNumOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::SplitWithNumOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::SplitWithNumOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto axis_gen_op = op->operand_source(1).dyn_cast<pir::OpResult>().owner();
+    if (auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>()) {
+      int axis = phi::Scalar(full_op.attribute("value")
+                                 .dyn_cast<::pir::FloatAttribute>()
+                                 .data())
+                     .to<int>();
+
+      auto input_ele = op->operand_source(0)
+                           .type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>();
+      if (axis < 0) {
+        axis += input_ele.dims().size();
+      }
+      std::vector<int> sections;
+
+      auto split_dim = input_ele.dims()[axis];
+
+      auto split_num =
+          op->attribute("num").dyn_cast<::pir::Int32Attribute>().data();
+      auto part_ele = (split_dim + split_num - 1) / split_num;
+
+      int total_split_num = 0;
+      for (int i = 0; i < split_num - 1; ++i) {
+        sections.push_back(part_ele);
+        total_split_num += part_ele;
+      }
+
+      sections.push_back(split_dim - total_split_num);
+
+      auto cinn_split = rewriter.Build<cinn::dialect::SplitOp>(
+          op->operand_source(0), sections, axis);
+
+      int index = 0;
+      auto orig_out = op.result(0);
+      for (auto it = orig_out.use_begin(); it != orig_out.use_end();) {
+        auto split_op = (it++)->owner();
+        rewriter.ReplaceAllUsesWith(split_op->result(0),
+                                    cinn_split.result(index++));
+        rewriter.EraseOp(split_op);
+      }
+
+      rewriter.EraseOp(op);
+
+      return true;
+    }
+    return false;
+  }
+};
+
 class UniformOpPattern : public pir::drr::DrrPatternBase<UniformOpPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
@@ -307,6 +364,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<ReshapeOpPattern>(context);
   ps.Add<ConcatOpPattern>(context);
   ps.Add<SliceOpPattern>(context);
+  ps.Add<SplitWithNumOpPattern>(context);
   // ps.Add(UniformOpPattern().Build(context));
 
   return ps;

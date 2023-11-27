@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 
 import numpy as np
 from get_test_cover_info import (
@@ -19,6 +20,8 @@ from get_test_cover_info import (
     is_empty_grad_op_type,
     type_dict_str_to_numpy,
 )
+
+sys.path.append("../legacy_test")
 from op_test import OpTest
 from testsuite import append_loss_ops, create_op, set_input
 from white_list import no_grad_set_white_list, op_threshold_white_list
