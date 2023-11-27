@@ -42,17 +42,15 @@ struct XPUContext::Impl {
     auto selected_xpus = backends::xpu::GetXPUSelectedDevices();
     for (unsigned int i = 0; i < selected_xpus.size(); i++) {
       if (place_.GetDeviceId() == selected_xpus[i]) {
-        if (l3ptrs[place_.GetDeviceId()] != nullptr) {
-          xpu_free(l3ptrs[place_.GetDeviceId()]);
-          l3ptrs[place_.GetDeviceId()] = nullptr;
-        }
-        xpu_malloc(static_cast<void**>(&l3ptrs[place_.GetDeviceId()]),
-                   l3_size,
-                   XPU_MEM_L3);
+        xpu::ctx_guard RAII_GUARD(context_);
+        l3ptrs[place_.GetDeviceId()] =
+            reinterpret_cast<void*>(RAII_GUARD.alloc_l3<int8_t>(l3_size));
         if (l3ptrs[place_.GetDeviceId()] != nullptr) {
           context_->_l3_mgr.set(l3ptrs[place_.GetDeviceId()], l3_size);
           VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
                   << " set l3 size " << l3_size;
+        } else {
+          VLOG(3) << "XPU memory is not enough";
         }
         break;
       }

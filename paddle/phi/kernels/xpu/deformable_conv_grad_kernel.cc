@@ -80,27 +80,28 @@ void DeformableConvGradKernel(const Context& dev_ctx,
   const T* filter_ptr = filter.data<T>();
   const float* offset_ptr = offset.data<float>();
   const float* mask_ptr = mask->data<float>();
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   if (dx_data == nullptr) {
-    PADDLE_ENFORCE_EQ(
-        xpu_malloc(reinterpret_cast<void**>(&dx_data), x.numel() * sizeof(T)),
-        XPU_SUCCESS,
-        errors::ResourceExhausted("XPU has no enough memory"));
+    dx_data = RAII_GUARD.alloc_l3_or_gm<T>(x.numel());
+    PADDLE_ENFORCE_EQ(dx_data != nullptr ? true : false,
+                      XPU_SUCCESS,
+                      errors::ResourceExhausted("XPU has no enough memory"));
   }
   if (dw_data == nullptr) {
-    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&dw_data),
-                                 filter.numel() * sizeof(T)),
+    dw_data = RAII_GUARD.alloc_l3_or_gm<T>(filter.numel());
+    PADDLE_ENFORCE_EQ(dx_data != nullptr ? true : false,
                       XPU_SUCCESS,
                       errors::ResourceExhausted("XPU has no enough memory"));
   }
   if (doffset_data == nullptr) {
-    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&doffset_data),
-                                 offset.numel() * sizeof(T)),
+    doffset_data = RAII_GUARD.alloc_l3_or_gm<T>(offset.numel());
+    PADDLE_ENFORCE_EQ(doffset_data != nullptr ? true : false,
                       XPU_SUCCESS,
                       errors::ResourceExhausted("XPU has no enough memory"));
   }
   if (dmask_data == nullptr) {
-    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&dmask_data),
-                                 mask->numel() * sizeof(T)),
+    dmask_data = RAII_GUARD.alloc_l3_or_gm<T>(mask->numel());
+    PADDLE_ENFORCE_EQ(dmask_data != nullptr ? true : false,
                       XPU_SUCCESS,
                       errors::ResourceExhausted("XPU has no enough memory"));
   }
@@ -178,19 +179,6 @@ void DeformableConvGradKernel(const Context& dev_ctx,
   }
 
   dev_ctx.Wait();
-  xpu_free(filter_grad_tmp);
-  if (dx == nullptr) {
-    xpu_free(dx_data);
-  }
-  if (filter_grad == nullptr) {
-    xpu_free(dw_data);
-  }
-  if (offset_grad == nullptr) {
-    xpu_free(doffset_data);
-  }
-  if (mask_grad == nullptr) {
-    xpu_free(dmask_data);
-  }
 }
 
 }  // namespace phi

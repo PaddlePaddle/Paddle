@@ -147,20 +147,20 @@ template <>
 void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
 #ifdef PADDLE_WITH_XPU
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
-  void *p = nullptr;
 
   platform::XPUDeviceGuard guard(place.device);
-  int ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
-  if (ret != XPU_SUCCESS) {
+  auto *ctx = static_cast<phi::XPUContext *>(
+      phi::DeviceContextPool::Instance().Get(place));
+
+  xpu::ctx_guard RAII_GUARD(ctx->x_context());
+  void *p = reinterpret_cast<void *>(RAII_GUARD.alloc_l3_or_gm<int8_t>(size));
+  if (p == nullptr) {
     VLOG(10) << "xpu memory malloc(" << size << ") failed, try again";
     xpu_wait();
-    ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
+    p = reinterpret_cast<void *>(RAII_GUARD.alloc_l3_or_gm<int8_t>(size));
   }
-  PADDLE_ENFORCE_EQ(
-      ret,
-      XPU_SUCCESS,
-      platform::errors::External(
-          "XPU API return wrong value[%d], no enough memory", ret));
+  PADDLE_ENFORCE_NOT_NULL(
+      p, paddle::platform::errors::Fatal("XPU memory is not enough"));
   if (FLAGS_init_allocated_mem) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "xpu memory FLAGS_init_allocated_mem is not implemented."));
@@ -183,7 +183,6 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place,
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
 
   platform::XPUDeviceGuard guard(place.device);
-  xpu_free(p);
 #else
   PADDLE_THROW(
       platform::errors::PermissionDenied("'XPUPlace' is not supported."));

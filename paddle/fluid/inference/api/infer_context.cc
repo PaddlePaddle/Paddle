@@ -86,11 +86,6 @@ void* InferXPUContext::Alloc(phi::TensorBase* tensor,
 void InferXPUContext::SetXContext(xpu::Context* x_context) {
   auto* old_x_context = this->x_context();
   if (old_x_context != x_context) {
-    if (l3_owned_ && l3_size_ > 0 &&
-        (x_context->_l3_mgr.get_size() != l3_size_ ||
-         x_context->_l3_mgr.get_ptr() != l3_ptr_)) {
-      xpu_free(l3_ptr_);
-    }
     old_x_context->_l3_mgr.set(nullptr, 0);
     l3_size_ = x_context->_l3_mgr.get_size();
     l3_ptr_ = x_context->_l3_mgr.get_ptr();
@@ -106,11 +101,9 @@ void InferXPUContext::SetL3Info(size_t l3_size,
   phi::backends::xpu::XPUDeviceGuard guard(place.GetDeviceId());
   if (l3_ptr == nullptr) {
     if (l3_size_ != l3_size) {
-      if (l3_owned_) {
-        xpu_free(l3_ptr_);
-      }
       if (l3_size > 0) {
-        xpu_malloc(&l3_ptr_, l3_size, XPU_MEM_L3);
+        xpu::ctx_guard RAII_GUARD(x_context());
+        l3_ptr_ = reinterpret_cast<void*>(RAII_GUARD.alloc_l3<int8_t>(l3_size));
         if (l3_ptr_ != nullptr) {
           VLOG(3) << "remalloc l3(" << l3_size << ") success.";
           l3_size_ = l3_size;
@@ -125,9 +118,6 @@ void InferXPUContext::SetL3Info(size_t l3_size,
       }
     }
   } else {
-    if (l3_owned_) {
-      xpu_free(l3_ptr_);
-    }
     l3_ptr_ = l3_ptr;
     l3_size_ = l3_size;
     l3_autotune_size_ = l3_autotune_size;

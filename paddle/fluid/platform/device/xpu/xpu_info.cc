@@ -171,7 +171,6 @@ class RecordedXPUMallocHelper {
    */
   void Free(void* ptr, size_t size) {
     XPUDeviceGuard guard(dev_id_);
-    xpu_free(ptr);
     cur_size_.fetch_sub(size);
   }
 
