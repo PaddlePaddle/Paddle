@@ -30,11 +30,8 @@ void LPPool2dGradKernel(const Context& ctx,
                         float norm_type,
                         const IntArray& kernel_size,
                         const std::vector<int>& strides,
-                        const std::vector<int>& paddings,
                         bool ceil_mode UNUSED,
                         const std::string& data_format,
-                        const std::string& pooling_type,
-                        const std::string& padding_algorithm,
                         DenseTensor* dx);
 
 template <typename T, typename Context>

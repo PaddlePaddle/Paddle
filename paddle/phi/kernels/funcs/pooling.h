@@ -248,6 +248,7 @@ class LPPool2dGradFunctor {
                   const DenseTensor& output_grad,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
+                  const std::string data_format,
                   DenseTensor* input_grad,
                   PoolProcess pool_compute);
 };
