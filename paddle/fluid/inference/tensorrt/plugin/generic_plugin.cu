@@ -588,7 +588,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     std::cout<<i<<op_desc_.Type()<<"----------"<<int(inputs_data_type_[i])<<std::endl;
     std::cout<<i<<op_desc_.Type()<<"----------"<<int(data_type)<<std::endl;
     auto data_type_and_size = nvType2PhiType(input_desc[i].type);
-
+    std::cout<<"in"<<int(data_type_and_size.first)<<data_type_and_size.second<<std::endl;
     phi::DenseTensorMeta input_meta(data_type_and_size.first,
                                     phi::make_ddim(input_shape));
     std::shared_ptr<phi::Allocation> input_alloc(
@@ -613,6 +613,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
       output_numel *= output_shape[k];
 
     auto data_type_and_size = nvType2PhiType(output_desc[i].type);
+    std::cout<<"out"<<int(data_type_and_size.first)<<data_type_and_size.second<<std::endl;
     phi::DenseTensorMeta output_meta(data_type_and_size.first,
                                      phi::make_ddim(output_shape));
     std::shared_ptr<phi::Allocation> output_alloc(
