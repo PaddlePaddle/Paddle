@@ -1526,7 +1526,7 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
-    def _translate_to_pir_program(self, feed_dict=None):
+    def _translate_to_pir_program(self, feed_dict=None, fetch_names=None):
         def _get_invalid_feeds(program, feed):
             current_feed_vars = []
             for op in program.global_block().ops:
@@ -1687,6 +1687,14 @@ class Engine:
                 param_mapping,
             ) = paddle.pir.translate_to_pir_with_param_map(tmp_program.desc)
 
+            fetch_list = []
+            for fetch_name in fetch_names:
+                result = param_mapping[fetch_name]
+                assert (
+                    len(result) == 1
+                ), "fetch list of program and pir program is not match"
+                fetch_list.append(result[0])
+
             data_ops = []
             global_block = pir_program.global_block()
             for op in global_block.ops:
@@ -1701,7 +1709,6 @@ class Engine:
             ]._dist_op_context.grad_var_to_var
             assert len(grad_var_to_var_map.keys()) == 1
             grad_var_to_var = grad_var_to_var_map[1]
-
             pir_grad_var_to_var = _get_pir_grad_var_to_var_map(
                 tmp_program, grad_var_to_var, param_mapping
             )
@@ -1729,7 +1736,9 @@ class Engine:
             self.pir_grad_var_to_var = pir_grad_var_to_var
             self.pir_program_initialized = True
 
-    def _decompose_pir_program(self):
+            return fetch_list
+
+    def _decompose_pir_program(self, fetch_list):
         if not self.pir_program_initialized:
             raise RuntimeError(
                 "To decompose pir program, please translate the main program to pir program first."
@@ -1767,6 +1776,7 @@ class Engine:
                             program.global_block(),
                             op,
                             self.pir_grad_var_to_var,
+                            fetch_list,
                         )
                         if has_decomposed:
                             num_bwd_ops_decomposed += 1
@@ -1810,17 +1820,14 @@ class Engine:
         )
 
         if self.enable_prim_in_distribute:
+            new_fetch_list = []
             if not (
                 self.pir_program_initialized and self.pir_program_decomposed
             ):
-                self._translate_to_pir_program(feed_dict)
-                self._decompose_pir_program()
-
-            fetch_list = []
-            for fetch_name in fetch_names:
-                result = self.param_mapping[fetch_name]
-                assert len(result) == 1
-                fetch_list.append(result[0])
+                new_fetch_list = self._translate_to_pir_program(
+                    feed_dict, fetch_names
+                )
+                self._decompose_pir_program(new_fetch_list)
 
             with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
                 self.pir_program_after_decomposed,
@@ -1829,7 +1836,7 @@ class Engine:
                 outs = self._executor.run(
                     self.pir_program_after_decomposed,
                     feed=feed_dict,
-                    fetch_list=fetch_list,
+                    fetch_list=new_fetch_list,
                     use_program_cache=self._strategy.use_cache,
                     return_numpy=self._strategy.return_numpy,
                 )
