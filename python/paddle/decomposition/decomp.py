@@ -591,7 +591,7 @@ def _check_op(
     return True
 
 
-def get_leaf_ops(block, global_outputs):
+def _get_leaf_ops(block, global_outputs):
     '''
     This API checks which op contributes to the outputs of the entire computation graph,
     as well as determining the corresponding output index.
@@ -642,7 +642,7 @@ def get_leaf_ops(block, global_outputs):
     return tuple(related_ops), tuple(related_ops_output_indexes)
 
 
-def replace_graph_outputs(
+def _replace_graph_outputs(
     global_outputs,
     op_outputs,
     op_index,
@@ -707,7 +707,7 @@ def decomp_bwd_op(
         (
             fwd_leaf_ops,
             fwd_leaf_ops_output_indexes,
-        ) = get_leaf_ops(block, fetch_list)
+        ) = _get_leaf_ops(block, fetch_list)
         fwd_leaf_op_index = (
             fwd_leaf_ops.index(fwd_op) if fwd_op in fwd_leaf_ops else None
         )
@@ -724,7 +724,7 @@ def decomp_bwd_op(
         if fwd_has_decomposed:
             # if the decomposed forward op is related to the outputs to be fetched, replace the outputs
             if fwd_leaf_op_index is not None:
-                replace_graph_outputs(
+                _replace_graph_outputs(
                     fetch_list,
                     new_fwd_outputs,
                     fwd_leaf_op_index,
