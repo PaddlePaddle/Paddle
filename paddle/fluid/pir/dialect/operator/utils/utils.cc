@@ -326,7 +326,7 @@ void CheckDataType(const phi::DataType& dtype,
   }
 }
 
-void CheckValueOrDataType(const phi::DataType& dtype,
+void CheckDataTypeOrValue(const phi::DataType& dtype,
                           const std::string& dtype_name,
                           const pir::Value& value,
                           const std::string& value_name,

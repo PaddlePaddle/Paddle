@@ -565,7 +565,7 @@ class CodeGen:
                 value_index = name_list.index(value_name)
                 value_type = type_list[value_index]
                 if DENSE_TENSOR_TYPE == value_type and DATA_TYPE == dtype_type:
-                    function_name = 'CheckValueOrDataType'
+                    function_name = 'CheckDataTypeOrValue'
                 else:
                     return ret
                 ret += CHECK_DATA_TYPE_TEMPLATE.format(
