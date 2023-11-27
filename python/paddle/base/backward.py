@@ -1307,6 +1307,8 @@ def _topo_order_map(block, target_vars):
     while len(queue) > 0:
         cur_var_name = queue.pop(0)
         visited.add(cur_var_name)
+        if cur_var_name not in get_defined_op:
+            continue
         cur_op = get_defined_op[cur_var_name]
         topo_order_map[cur_op] = topo_order_counter
         topo_order_counter += 1
