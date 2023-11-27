@@ -348,7 +348,9 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
   // a->c will not be shrinked in the following case: AddDownstreamOp(a, b) ->
   // AddDownstreamOp(a, c) -> AddDownstreamOp(b, c), it should be shrinked by
   // ShrinkDownstreamMap.
+  VLOG(0) << "000000000";
   for (size_t op_idx : downstream_ops) {
+    VLOG(0) << "11111111111";
     if (OpHappensBefore(op_idx, posterior_op_idx)) {
       VLOG(7) << "Find dependencies " << prior_op_idx << "->" << op_idx << "->"
               << posterior_op_idx << ", skip adding " << prior_op_idx << "->"
@@ -357,6 +359,7 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
     }
   }
   downstream_ops.insert(posterior_op_idx);
+  VLOG(0) << "22222222222222";
 
   std::vector<size_t> prior_of_prior = ops_before_[prior_op_idx];
   std::vector<size_t> posterior_of_posterior = ops_behind_[posterior_op_idx];
@@ -369,6 +372,7 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
       ops_behind_[prior_op_idx].push_back(posterior_op_idx);
     }
   };
+  VLOG(0) << "333333333333";
 
   update_op_happen_before(prior_op_idx, posterior_op_idx);
 
@@ -376,11 +380,13 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
   for (size_t op_idx : prior_of_prior) {
     update_op_happen_before(op_idx, posterior_op_idx);
   }
+  VLOG(0) << "44444444444";
 
   // All ops after posterior-op are also after prior-op
   for (size_t op_idx : posterior_of_posterior) {
     update_op_happen_before(prior_op_idx, op_idx);
   }
+  VLOG(0) << "5555555";
 
   VLOG(8) << prior_op_idx << "->" << posterior_op_idx;
   VLOG(8) << "Add dependency from "
@@ -571,14 +577,22 @@ void PirDependencyBuilder::AddDependencyForRandomOp() {
       dialect::ClassCenterSampleOp::name()};
 
   size_t dependence_op_idx = ULLONG_MAX;
+  VLOG(0) << "----------------------------------";
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+    VLOG(0) << "AddDependencyForRandomOp op_idx: " << op_idx;
+    VLOG(0) << instructions_.at(op_idx) << op_idx;
+    VLOG(0) << instructions_.at(op_idx)->Name() << op_idx;
     if (dynamic_cast<PhiKernelInstruction*>(instructions_.at(op_idx)) &&
         random_op_set.count(instructions_.at(op_idx)->Name())) {
+      VLOG(0) << "dynamic_cast<PhiKernelInstruction*>" << op_idx;
       if (dependence_op_idx != ULLONG_MAX) {
+        VLOG(0) << "AddDownstreamOp" << op_idx;
         AddDownstreamOp(dependence_op_idx, op_idx);
+        VLOG(0) << "After AddDownstreamOp" << op_idx;
       }
       dependence_op_idx = op_idx;
     }
+    VLOG(0) << "After AddDependencyForRandomOp" << op_idx;
   }
 }
 
@@ -592,6 +606,10 @@ const std::map<size_t, std::set<size_t>>& PirDependencyBuilder::Build(
 
   instructions_ = instructions;
   op_num_ = instructions_.size();
+
+  for (auto instruct : instructions_) {
+    VLOG(0) << "--------------------=============== " << instruct->Name();
+  }
 
   ops_before_.assign(op_num_, {});
   ops_behind_.assign(op_num_, {});

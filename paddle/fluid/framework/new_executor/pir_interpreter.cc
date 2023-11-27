@@ -754,16 +754,20 @@ void PirInterpreter::BuildInstructionDependences() {
   if (!is_shared_results_build_) {
     dependecy_count_->assign(instr_num, 0);
   }
-
+  VLOG(0) << "Begin BuildInstructionDependences " << instr_num;
   std::vector<paddle::framework::InstructionBase*> instructions_ptr;
   for (auto& instr : vec_instruction_base_) {
+    VLOG(0) << "Iter vec_instruction_base_ " << instr->Name();
     instructions_ptr.push_back(instr.get());
   }
   auto downstream_map = ir_dependency_builder_.Build(instructions_ptr);
+  VLOG(0) << "Finish ir_dependency_builder_ ";
 
   for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
+    VLOG(0) << "--" << instr_id << "--";
     InstructionBase* cur_instr = vec_instruction_base_[instr_id].get();
     const std::set<size_t>& next_instr_ids = downstream_map[instr_id];
+    VLOG(0) << "next_instr_ids";
 
     if (FLAGS_new_executor_serial_run) {
       for (size_t next_instr_id : next_instr_ids) {
@@ -793,6 +797,7 @@ void PirInterpreter::BuildInstructionDependences() {
         }
       }
     }
+    VLOG(0) << "FLAGS_new_executor_serial_run";
 
     if (!is_shared_results_build_) {
       for (size_t next_instr_id : next_instr_ids) {

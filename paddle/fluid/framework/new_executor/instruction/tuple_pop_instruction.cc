@@ -23,6 +23,7 @@ TuplePopInstruction::TuplePopInstruction(size_t id,
                                          ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
   tuple_pop_op_ = op->dyn_cast<pir::TuplePopOp>();
+  VLOG(6) << "construct tuple_pop instruction for: " << tuple_pop_op_->name();
   auto stack_value = tuple_pop_op_.container();
   auto& value_2_var_name = value_exe_info_->GetValue2VarName();
   PADDLE_ENFORCE_EQ(

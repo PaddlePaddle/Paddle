@@ -316,8 +316,8 @@ void DeepCopyVariable(const Variable* src_var,
     auto* dst_ref_array = dst_var->GetMutable<VariableRefArray>();
     dst_ref_array->clear();
     for (auto src_ref_var : src_ref_array) {
-      std::string new_name =
-          "copy_" + stack_size + '_' + value_exe_info->GetVarName(src_ref_var);
+      std::string new_name = "copied_" + stack_size + '_' +
+                             value_exe_info->GetVarName(src_ref_var);
       auto tmp_dst_var = value_exe_info->GetScope()->Var(new_name);
       DeepCopyVariable(src_ref_var, tmp_dst_var, value_exe_info, stack_size);
       dst_ref_array->emplace_back(tmp_dst_var);
@@ -560,6 +560,12 @@ void HandleForSpecialOp(pir::Operation* op,
     auto stack_value = stack_create_op.stack();
     std::string stack_var_name = var_name_prefix + "(stack)";
     BuildValue(stack_value, stack_var_name, value_exe_info);
+
+    stack_var_name = value_exe_info->GetVarName(stack_value);
+    auto inlet_value = stack_create_op.inlet();
+    auto outlet_value = stack_create_op.outlet();
+    value_exe_info->AddValue2VarName(inlet_value, stack_var_name);
+    value_exe_info->AddValue2VarName(outlet_value, stack_var_name);
   }
 }
 

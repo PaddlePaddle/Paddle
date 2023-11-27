@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/instruction/tuple_push_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 
 namespace paddle {
@@ -23,6 +24,7 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
                                            ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
   tuple_push_op_ = op->dyn_cast<pir::TuplePushOp>();
+  VLOG(6) << "construct tuple_push instruction for: " << tuple_push_op_->name();
   auto stack_value = tuple_push_op_.container();
   auto& value_2_var_name = value_exe_info_->GetValue2VarName();
   PADDLE_ENFORCE_EQ(
@@ -33,6 +35,14 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
   auto var_array =
       value_exe_info_->GetScope()->FindVar(value_2_var_name.at(stack_value));
   stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
+
+  std::unordered_map<pir::Value, std::vector<int>> inputs;
+  for (size_t i = 0; i < tuple_push_op_.tuple_size(); ++i) {
+    auto inlet_element_value = tuple_push_op_.inlet_element(i);
+    inputs.emplace(inlet_element_value,
+                   GetValueIds(inlet_element_value, *value_exe_info_));
+  }
+  SetInputs(inputs);
 }
 
 void TuplePushInstruction::Run() {
@@ -41,20 +51,16 @@ void TuplePushInstruction::Run() {
     stack_element_var_array_->emplace_back(var);
   } else {
     auto& value_2_var_name = value_exe_info_->GetValue2VarName();
-    for (size_t i = tuple_push_op_.tuple_size() - 1; i >= 0; ++i) {
-      auto inlet_element = tuple_push_op_.inlet_element(i);
-      Variable* var = value_exe_info_->GetScope()->FindVar(
-          value_2_var_name.at(inlet_element));
-
-      uint32_t stack_size = tuple_push_op_.tuple_size();
+    for (int i = tuple_push_op_.tuple_size() - 1; i >= 0; --i) {
+      auto inlet_element_value = tuple_push_op_.inlet_element(i);
+      auto var_name = value_2_var_name.at(inlet_element_value);
+      Variable* var = value_exe_info_->GetScope()->FindVar(var_name);
+      int stack_size = tuple_push_op_.tuple_size();
       std::string new_name =
-          "copy_" + stack_size + '_' + value_exe_info_->GetVarName(var);
+          "copied_" + std::to_string(stack_size) + "_" + var_name;
       auto copy_var = value_exe_info_->GetScope()->Var(new_name);
-      PADDLE_ENFORCE_EQ(
-          value_exe_info_->GetVarName(copy_var) != "",
-          true,
-          phi::errors::NotFound("copied_var of PushBackOp not in varname map"));
       DeepCopyVariable(var, copy_var, value_exe_info_, stack_size);
+      VLOG(10) << "done DeepCopyVariable " << new_name;
       stack_element_var_array_->emplace_back(copy_var);
     }
   }

@@ -23,7 +23,11 @@ HasElementsInstruction::HasElementsInstruction(
     const platform::Place& place,
     ::pir::Operation* op,
     ValueExecutionInfo* value_exe_info)
-    : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {}
+    : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
+  auto has_elements_op = op->dyn_cast<pir::TuplePopOp>();
+  VLOG(6) << "construct has_elements instruction for: "
+          << has_elements_op->name();
+}
 
 void HasElementsInstruction::Run() {
   auto stack_value = op_->dyn_cast<pir::HasElementsOp>().operand_source(0);
