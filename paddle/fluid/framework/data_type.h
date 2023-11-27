@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-TEST_API std::string DataTypeToString(const proto::VarType::Type type);
+std::string DataTypeToString(const proto::VarType::Type type);
 extern size_t SizeOfType(proto::VarType::Type type);
 
 template <typename T>
