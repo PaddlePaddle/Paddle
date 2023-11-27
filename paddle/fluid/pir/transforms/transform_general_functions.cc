@@ -24,19 +24,28 @@
 namespace pir {
 
 std::string GetParameterNameFromValue(pir::Value value) {
-  pir::ParameterOp op =
-      value.dyn_cast<OpResult>().owner()->dyn_cast<pir::ParameterOp>();
-  PADDLE_ENFORCE_NOT_NULL(
-      op,
-      phi::errors::InvalidArgument(
-          "Value must be a weight from a GetParameter op."));
-  pir::Program* program = op->GetParentProgram();
-  PADDLE_ENFORCE_NOT_NULL(
-      program, phi::errors::InvalidArgument("Program should not be null."));
-  std::string name = op->attributes()
-                         .at(op.attributes_name[0])
-                         .dyn_cast<pir::StrAttribute>()
-                         .AsString();
+  pir::Operation* owner = value.dyn_cast<OpResult>().owner();
+  std::string name;
+  if (owner->isa<ParameterOp>()) {
+    pir::ParameterOp op = owner->dyn_cast<pir::ParameterOp>();
+    pir::Program* program = op->GetParentProgram();
+    PADDLE_ENFORCE_NOT_NULL(
+        program, phi::errors::InvalidArgument("Program should not be null."));
+    name = op->attributes()
+               .at(op.attributes_name[0])
+               .dyn_cast<pir::StrAttribute>()
+               .AsString();
+  } else if (owner->isa<ConstantTensorOp>()) {
+    pir::ConstantTensorOp op = owner->dyn_cast<pir::ConstantTensorOp>();
+    pir::Program* program = op->GetParentProgram();
+    PADDLE_ENFORCE_NOT_NULL(
+        program, phi::errors::InvalidArgument("Program should not be null."));
+    name = op.tensor_name();
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Value must be a weight from a GetParameter "
+                                   "or a ConstantTensorOp op."));
+  }
   return name;
 }
 
