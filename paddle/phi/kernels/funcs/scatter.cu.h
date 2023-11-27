@@ -158,7 +158,6 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   } else {
     for (int i = 0; i < src_dims.size(); ++i) slice_size *= src_dims[i];
   }
-  std::cout<<"src.dtype :"<<int(src.dtype())<<std::endl;
   const T* p_src = src.data<T>();
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();

@@ -545,7 +545,6 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                            void* workspace,
                            cudaStream_t stream) TRT_NOEXCEPT {
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
-  std::cout<<"GenericPlugin::isFp16Supported"<<isFp16Supported()<<std::endl;
   // TODO(inference): generic plugin do not support INT8 precision now.
   auto nvType2PhiType =
       [&](nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
@@ -585,10 +584,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
     int input_numel = 1;
     for (int k = 0; k < input_shape.size(); k++) input_numel *= input_shape[k];
-    std::cout<<i<<op_desc_.Type()<<"----------"<<int(inputs_data_type_[i])<<std::endl;
-    std::cout<<i<<op_desc_.Type()<<"----------"<<int(data_type)<<std::endl;
     auto data_type_and_size = nvType2PhiType(input_desc[i].type);
-    std::cout<<"in"<<int(data_type_and_size.first)<<data_type_and_size.second<<std::endl;
     phi::DenseTensorMeta input_meta(data_type_and_size.first,
                                     phi::make_ddim(input_shape));
     std::shared_ptr<phi::Allocation> input_alloc(
@@ -613,7 +609,6 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
       output_numel *= output_shape[k];
 
     auto data_type_and_size = nvType2PhiType(output_desc[i].type);
-    std::cout<<"out"<<int(data_type_and_size.first)<<data_type_and_size.second<<std::endl;
     phi::DenseTensorMeta output_meta(data_type_and_size.first,
                                      phi::make_ddim(output_shape));
     std::shared_ptr<phi::Allocation> output_alloc(
@@ -630,9 +625,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
   CHECK_EQ(phi_kernel_contexts_[data_type]->InputsSize(), getNbInputs());
   CHECK_EQ(phi_kernel_contexts_[data_type]->OutputsSize(), getNbOutputs());
-  std::cout<<op_desc_.Type()<<"----------"<<"phi_kernel_contexts_ in"<<std::endl;
   (*phi_kernels_[data_type])(phi_kernel_contexts_[data_type].get());
-  std::cout<<op_desc_.Type()<<"----------"<<"phi_kernel_contexts_ out"<<std::endl;
   return cudaGetLastError() != cudaSuccess;
 }
 
