@@ -17,7 +17,10 @@
 #ifndef MMHA_UTIL_CU_H_
 #define MMHA_UTIL_CU_H_
 #ifdef __NVCC__
+#if defined(__CUDACC__) && CUDA_VERSION >= 11000
+#define PADDLE_CUDA_BF16
 #include <cuda_bf16.h>
+#endif
 #include <cuda_fp16.h>
 #include <cub/cub.cuh>
 #endif
@@ -729,6 +732,7 @@ inline __device__ static void convert_(__nv_bfloat16* result,
 
 template <>
 inline __device__ void mul_pointer_v2(__nv_bfloat162* c, float a, uint8_t* b) {
+#if __CUDA_ARCH__ >= 800
   __nv_bfloat16 a_prime = static_cast<__nv_bfloat16>(a);
   __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
   convert_(c_prime, static_cast<uint32_t>(*reinterpret_cast<uint16_t*>(b)));
@@ -736,10 +740,12 @@ inline __device__ void mul_pointer_v2(__nv_bfloat162* c, float a, uint8_t* b) {
   for (int i = 0; i < 2; ++i) {
     c_prime[i] *= a_prime;
   }
+#endif
 }
 
 template <>
 inline __device__ void mul_pointer_v2(__nv_bfloat162* c, float a, uint16_t* b) {
+#if __CUDA_ARCH__ >= 800
   using Packed_Int8_t = typename packed_type<uint8_t, 2>::type;
   Packed_Int8_t int8_vec_4_val = *reinterpret_cast<Packed_Int8_t*>(b);
   uint8_t* int8_vec_pointer = reinterpret_cast<uint8_t*>(&int8_vec_4_val);
@@ -765,10 +771,12 @@ inline __device__ void mul_pointer_v2(__nv_bfloat162* c, float a, uint16_t* b) {
   __nv_bfloat16 scale = static_cast<__nv_bfloat16>(a);
   c->x *= scale;
   c->y *= scale;
+#endif
 }
 
 template <>
 inline __device__ void mul_pointer_v2(bf16_4_t* c, float a, uint8_t* b) {
+#if __CUDA_ARCH__ >= 800
   __nv_bfloat16 a_prime = static_cast<__nv_bfloat16>(a);
   __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
   convert_(c_prime, *reinterpret_cast<uint32_t*>(b));
@@ -776,10 +784,12 @@ inline __device__ void mul_pointer_v2(bf16_4_t* c, float a, uint8_t* b) {
   for (int i = 0; i < 4; ++i) {
     c_prime[i] *= a_prime;
   }
+#endif
 }
 
 template <>
 inline __device__ void mul_pointer_v2(bf16_4_t* c, float a, uint32_t* b) {
+#if __CUDA_ARCH__ >= 800
   __nv_bfloat16 a_prime = static_cast<__nv_bfloat16>(a);
   __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
   convert_(c_prime, *b);
@@ -787,6 +797,7 @@ inline __device__ void mul_pointer_v2(bf16_4_t* c, float a, uint32_t* b) {
   for (int i = 0; i < 4; ++i) {
     c_prime[i] *= a_prime;
   }
+#endif
 }
 
 template <>

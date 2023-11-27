@@ -130,7 +130,9 @@ __inline__ __device__ half Rsqrt<half>(half x) {
 
 template <>
 __inline__ __device__ __nv_bfloat16 Rsqrt<__nv_bfloat16>(__nv_bfloat16 x) {
+#if __CUDA_ARCH__ >= 800
   return hrsqrt(x);
+#endif
 }
 
 template <class Func>
