@@ -359,14 +359,6 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     }
   }
 
-  if (result_pattern_graph.CountOfOpCalls() == 1) {
-    CreateOperation(*result_pattern_graph.owned_op_call()[0],
-                    src_match_ctx,
-                    rewriter,
-                    &res_match_ctx);
-    return res_match_ctx;
-  }
-
   std::vector<std::vector<Operation*>> temp_program;
   std::unordered_map<Operation*, size_t> op_2_temp_program_index;
   for (auto& op : *rewriter.block()) {

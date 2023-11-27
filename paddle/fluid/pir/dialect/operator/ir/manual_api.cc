@@ -46,12 +46,12 @@ pir::OpResult zeros_like(const pir::Value& x,
   return paddle::dialect::full_like(x, 0, dtype, place);
 }
 
-pir::OpResult get_parameter(const std::string& name) {
+pir::OpResult parameter(const std::string& name) {
   pir::Parameter* param = ApiBuilder::Instance().GetParameter(name);
-  pir::GetParameterOp get_parameter_op =
-      ApiBuilder::Instance().GetBuilder()->Build<pir::GetParameterOp>(
+  pir::ParameterOp parameter_op =
+      ApiBuilder::Instance().GetBuilder()->Build<pir::ParameterOp>(
           name, param->type());
-  return get_parameter_op.result(0);
+  return parameter_op.result(0);
 }
 
 void set_parameter(const pir::Value& parameter, const std::string& name) {
