@@ -824,12 +824,6 @@ void BindOpResult(py::module *m) {
            [](OpResult &self, OpResult &op_result) {
              self.ReplaceAllUsesWith(op_result);
            })
-      .def("_use_gpudnn",
-           [](OpResult &self, bool use_gpudnn) {
-             SetOpResultBoolAttr(
-                 self, kUseGPUDNN, use_gpudnn, /*default_value=*/true);
-             return self;
-           })
       .def_property(
           "stop_gradient",
           [](OpResult &self) {

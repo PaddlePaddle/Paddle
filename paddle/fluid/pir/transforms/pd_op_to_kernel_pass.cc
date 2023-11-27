@@ -113,7 +113,8 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
                                        const phi::KernelKey kernel_key) {
   // NOTE(phlrain): keep the same kernel select strategy with
   // GetExepectKernelKey
-  if (op->isa<Pool2dOp>() || op->isa<Pool2dGradOp>()) {
+  if (op->isa<Pool2dOp>() || op->isa<Pool2dGradOp>() || op->isa<Pool3dOp>() ||
+      op->isa<Pool3dGradOp>()) {
     if (kernel_key.backend() == phi::Backend::GPUDNN &&
         (op->attributes()
              .at("adaptive")
@@ -778,29 +779,6 @@ phi::KernelKey GetKernelKey(
   if (kernel_backend == phi::Backend::UNDEFINED) {
     VLOG(8) << "Kernel backend cannot be infered from op operands";
     kernel_backend = paddle::experimental::ParseBackend(place);
-  }
-
-  for (size_t i = 0; i < op->num_operands(); ++i) {
-    auto input_tmp = op->operand_source(i);
-    if (!input_tmp) {
-      VLOG(8) << "input (" << i << ") is NULL (optional input)";
-      continue;
-    }
-    auto input = input_tmp.dyn_cast<pir::OpResult>();
-    if (!input) {
-      continue;
-    }
-
-    if (kernel_backend == phi::Backend::GPUDNN &&
-        (input.owner()->HasAttribute(kUseGPUDNN) &&
-         !input.owner()
-              ->attribute<pir::ArrayAttribute>(kUseGPUDNN)
-              .AsVector()[input.index()]
-              .dyn_cast<pir::BoolAttribute>()
-              .data())) {
-      kernel_backend = phi::Backend::GPU;
-      break;
-    }
   }
 
   phi::KernelKey res(kernel_backend, kernel_layout, kernel_dtype);

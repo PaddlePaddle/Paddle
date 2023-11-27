@@ -19,7 +19,6 @@
 
 constexpr char kAttrStopGradients[] = "stop_gradient";
 constexpr char kAttrIsPersisable[] = "is_persisable";
-constexpr char kUseGPUDNN[] = "_use_gpudnn";
 
 namespace pir {
 class AttributeStorage;
