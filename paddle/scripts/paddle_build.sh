@@ -2846,6 +2846,27 @@ set -ex
     fi
 }
 
+function is_run_distribute_in_op_test() {
+    DISTRIBUTE_FILES=("python/paddle/distributed"
+                        "python/phi/infermeta/spmd_rules"
+                        "paddle/phi/core/distributed")
+    cd ${PADDLE_ROOT}
+    for DISTRIBUTE_FILE in ${DISTRIBUTE_FILES[*]}; do
+        DISTRIBUTE_CHANGE=`git diff --name-only upstream/$BRANCH | grep -F "${DISTRIBUTE_FILE}"|| true`
+        if [ "${DISTRIBUTE_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
+            export FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1
+        fi
+    done
+    ALL_CHANGE_FILES=`git diff --numstat upstream/$BRANCH | awk '{print $3}' | grep ".py"|| true`
+    echo ${ALL_CHANGE_FILES}
+    for CHANGE_FILE in ${ALL_CHANGE_FILES}; do
+        ALL_OPTEST_BAN_AUTO_PARALLEL_TEST=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CHANGE_FILE} | grep "+" | grep "check_auto_parallel=" || true`
+        if [ "${ALL_OPTEST_BAN_AUTO_PARALLEL_TEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+            export FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1
+        fi
+    done
+}
+
 function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -4146,6 +4167,7 @@ function main() {
         ;;
       gpu_cicheck_coverage)
         export FLAGS_PIR_OPTEST=True
+        is_run_distribute_in_op_test
         parallel_test
         check_coverage
         ;;

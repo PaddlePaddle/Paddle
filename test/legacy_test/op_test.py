@@ -30,6 +30,7 @@ from auto_parallel_op_test import (
     get_subprocess_command,
     get_subprocess_runtime_envs,
     get_test_info_and_generated_test_path,
+    is_ban_auto_parallel_test,
     run_subprocess,
 )
 from op import Operator
@@ -2569,11 +2570,7 @@ class OpTest(unittest.TestCase):
             return
 
         if check_auto_parallel:
-            if (
-                isinstance(place, paddle.base.libpaddle.CUDAPlace)
-                and paddle.device.cuda.device_count() < 2
-                or not paddle.is_compiled_with_distribute()
-            ):
+            if is_ban_auto_parallel_test(place):
                 pass
             else:
                 (
@@ -3034,11 +3031,7 @@ class OpTest(unittest.TestCase):
             return
 
         if check_auto_parallel:
-            if (
-                isinstance(place, paddle.base.libpaddle.CUDAPlace)
-                and paddle.device.cuda.device_count() < 2
-                or not paddle.is_compiled_with_distribute()
-            ):
+            if is_ban_auto_parallel_test(place):
                 pass
             else:
                 (
