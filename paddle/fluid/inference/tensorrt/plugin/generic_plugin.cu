@@ -414,13 +414,7 @@ bool GenericPlugin::supportsFormatCombination(
     if (pos == 1)
       return (in_out[pos].type == nvinfer1::DataType::kINT32) &&
              (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
-    // input Updates
-    // if (pos == 2)
-    //   return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
-    //           (isFp16Supported() &&
-    //            in_out[pos].type == nvinfer1::DataType::kHALF)) &&
-    //          (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
-    // output
+    // 3:output 2:input Updates
     if (pos == 3 || pos == 2)
       return in_out[0].type == in_out[pos].type &&
              in_out[0].format == in_out[pos].format;
