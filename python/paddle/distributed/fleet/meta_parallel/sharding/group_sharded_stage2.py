@@ -269,7 +269,11 @@ class GroupShardedStage2(nn.Layer):
 
         # Scale grads of master params with offload strategy
         if self._offload:
-            self._sharding_optimizers[0]._offload_scale_grad(dp_scale_factor)
+            if need_dp_scale is False:
+                return
+            self._sharding_optimizers[0]._offload_scale_grad(
+                scale=1.0 / (self._dp_group.nranks)
+            )
 
     def _init_internal_storage(self, needs_fresh):
         """
