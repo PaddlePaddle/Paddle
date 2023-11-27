@@ -5755,7 +5755,7 @@ class Program:
         self._appending_grad_times = 0
 
         # identifier for auto checkpoint
-        self._name_generator = unique_name.UniqueNameGenerator(self)
+        self._name_generator = unique_name.UniqueNameGenerator()
         self._auto_checkpoint_name = self._name_generator(
             "__auto_checkpoint_program__"
         )
