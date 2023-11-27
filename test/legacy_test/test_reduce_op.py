@@ -186,6 +186,60 @@ class TestSumOp3Dim(TestSumOp):
         )
 
 
+class TestSumOpAutoParallelXShard(OpTest):
+    def setUp(self):
+        self.init_dtype()
+        self.init_input()
+        self.init_attrs()
+        self.calc_output()
+
+        self.python_api = paddle.sum
+        self.public_python_api = paddle.sum
+        self.op_type = "reduce_sum"
+        self.prim_op_type = "prim"
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': self.out}
+        self.if_enable_cinn()
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_input(self):
+        self.x = np.random.random([4, 8, 6]).astype(self.dtype)
+        self.input_specs = {'X': ['x', None, None]}
+
+    def init_attrs(self):
+        self.attrs = {'dim': [1]}
+
+    def if_enable_cinn(self):
+        pass
+
+    def calc_output(self):
+        self.out = self.x.sum(axis=tuple(self.attrs['dim']))
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+            check_auto_parallel=True,
+        )
+
+
+# class TestSumOpAutoParallelXShardOnAxis(TestSumOpAutoParallelXShard):
+#     def init_input(self):
+#         self.x = np.random.random([4, 8, 6]).astype(self.dtype)
+#         self.input_specs={'X': [None, 'x', None]}
+
+#     def init_attrs(self):
+#         self.attrs = {'dim': [1, 2]}
+
+
 def create_test_fp16_class(parent):
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"

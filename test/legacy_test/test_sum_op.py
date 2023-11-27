@@ -648,6 +648,53 @@ class TestSumWithTensorAxis1(TestReduceOPTensorAxisBase):
         ]
 
 
+class TestSumOpAutoParallel(OpTest):
+    def setUp(self):
+        self.op_type = "sum"
+        self.python_api = paddle.add_n
+        self.public_python_api = paddle.add_n
+        self.prim_op_type = "comp"
+        self.init_kernel_type()
+        self.use_mkldnn = False
+        self.init_kernel_type()
+        x0 = np.random.random((3, 40)).astype(self.dtype)
+        x1 = np.random.random((3, 40)).astype(self.dtype)
+        x2 = np.random.random((3, 40)).astype(self.dtype)
+        self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
+        self.input_specs = {
+            "X": [
+                ("x0", [None, None]),
+                ("x1", [None, None]),
+                ("x2", [None, None]),
+            ]
+        }
+        y = x0 + x1 + x2
+        self.outputs = {'Out': y}
+        self.attrs = {'use_mkldnn': self.use_mkldnn}
+
+    def init_kernel_type(self):
+        self.dtype = np.float64
+
+    def test_check_output(self):
+        self.check_output(
+            check_prim=True,
+            check_cinn=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['x0'],
+            'Out',
+            check_prim=True,
+            check_cinn=True,
+            check_pir=True,
+            check_prim_pir=True,
+            check_auto_parallel=False,
+        )
+
+
 class TestAddNDoubleGradCheck(unittest.TestCase):
     def add_n_wrapper(self, x):
         return paddle.add_n(x)

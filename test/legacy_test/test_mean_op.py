@@ -74,6 +74,26 @@ class TestMeanOp_ZeroDim(OpTest):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+class TestMeanOpAutoParallelXshard(OpTest):
+    def setUp(self):
+        self.op_type = "mean"
+        self.python_api = paddle.mean
+        self.dtype = np.float64
+        self.init_dtype_type()
+        self.inputs = {'X': np.random.random([4, 8, 6]).astype(self.dtype)}
+        self.input_specs = {'X': ['x', None, None]}
+        self.outputs = {'Out': np.mean(self.inputs["X"])}
+
+    def init_dtype_type(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_checkout_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True, check_auto_parallel=True)
+
+
 class TestMeanOpError(unittest.TestCase):
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]

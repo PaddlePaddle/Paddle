@@ -892,6 +892,73 @@ class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
         self.check_prim = False
 
 
+class TestElementwiseSubOpAutoParallelXYShard(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
+        self.prim_op_type = "prim"
+        self.init_dtype()
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [4, 16, 32]).astype(self.dtype),
+            'Y': np.random.uniform(0.1, 1, [16, 32]).astype(self.dtype),
+        }
+        self.input_specs = {
+            'X': ['x', None, None],
+            'Y': [None, None],
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.if_check_prim()
+        self.if_enable_cinn()
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_prim=self.check_prim,
+            check_prim_pir=self.check_prim_pir,
+            check_pir=True,
+            check_auto_parallel=True,
+        )
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set("X"),
+            check_prim=self.check_prim,
+            check_prim_pir=self.check_prim_pir,
+            check_pir=True,
+            check_auto_parallel=True,
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set('Y'),
+            check_prim=self.check_prim,
+            check_prim_pir=self.check_prim_pir,
+            check_pir=True,
+            check_auto_parallel=True,
+        )
+
+    def if_check_prim(self):
+        self.check_prim = True
+        self.check_prim_pir = True
+
+    def if_enable_cinn(self):
+        pass
+
+
 class TestSubtractApi(unittest.TestCase):
     def _executed_api(self, x, y, name=None):
         return paddle.subtract(x, y, name)
