@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 
 import paddle
 from paddle.base import core
 
+from ..utils.log_utils import get_logger
 from .pass_base import PassBase
 from .pass_utils import set_skip_gc_vars
+
+logger = get_logger(logging.INFO)
 
 
 class PipelinePassBase(PassBase):
@@ -54,6 +58,10 @@ class PipelinePassBase(PassBase):
         to implement two interfaces above, 'create_job_list' and 'partial_programs'.
         """
         job_types, sub_programs = self._partial_programs(main_program)
+        for i in range(len(job_types)):
+            logger.debug(
+                f"sub_program type: {job_types[i]}, sum_program:\n{sub_programs[i]}"
+            )
         jobs = self._create_job_list()
 
         type_to_program = set_skip_gc_vars(
@@ -61,10 +69,10 @@ class PipelinePassBase(PassBase):
         )
 
         for type in type_to_program.keys():
-            if paddle.framework.get_flags("FLAGS_enable_new_ir_in_executor")[
-                'FLAGS_enable_new_ir_in_executor'
+            if paddle.framework.get_flags("FLAGS_enable_pir_in_executor")[
+                'FLAGS_enable_pir_in_executor'
             ]:
-                type_to_program[type] = paddle.pir.translate_to_new_ir(
+                type_to_program[type] = paddle.pir.translate_to_pir(
                     type_to_program[type].desc
                 )
             else:

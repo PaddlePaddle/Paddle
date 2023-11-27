@@ -29,6 +29,7 @@ from paddle.base import (
     Variable,
     core,
     default_main_program,
+    program_guard,
     unique_name,
 )
 from paddle.base.executor import Executor, global_scope
@@ -256,13 +257,14 @@ def normalize_program(program, feed_vars, fetch_vars, **kwargs):
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
-    # with program_guard(program):
-    #     uniq_fetch_vars = []
-    #     for i, var in enumerate(fetch_vars):
-    #         if var.dtype != paddle.bool:
-    #             var = paddle.scale(var, 1.0, name=f"save_infer_model/scale_{i}")
-    #         uniq_fetch_vars.append(var)
-    #     fetch_vars = uniq_fetch_vars
+    # TODO(Superjomn) add an IR pass to remove 1-scale op.
+    with program_guard(program):
+        uniq_fetch_vars = []
+        for i, var in enumerate(fetch_vars):
+            if var.dtype != paddle.bool:
+                var = paddle.scale(var, 1.0, name=f"save_infer_model/scale_{i}")
+            uniq_fetch_vars.append(var)
+        fetch_vars = uniq_fetch_vars
 
     # serialize program
     copy_program = program.clone()
@@ -948,9 +950,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
                     params_path = os.path.join(path_prefix, params_filename)
             _logger.warning(
                 "The old way to load inference model is deprecated. Please specify path_prefix."
-                " model path: {}, params path: {}".format(
-                    model_path, params_path
-                )
+                f" model path: {model_path}, params path: {params_path}"
             )
 
         program_bytes = load_from_file(model_path)

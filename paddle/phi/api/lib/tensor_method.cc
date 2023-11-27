@@ -29,7 +29,7 @@ limitations under the License. */
 // clang-format off
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #endif
 namespace paddle {
@@ -147,19 +147,21 @@ void Tensor::copy_(const Tensor &src,
 
     auto meta_dist_input_x = MakeDistMetaTensor(*src.impl());
 
-    auto this_dist_attr =
-              std::static_pointer_cast<phi::distributed::DistTensor>(
-              this->impl())->dist_attr();
-    PADDLE_ENFORCE_EQ((meta_dist_input_x.dist_attr() == this_dist_attr
-                       || this_dist_attr.empty()),
-                      true,
-                      phi::errors::PreconditionNotMet(
-                          "DistAttr is different of dst "
-                          "tensor and args %s, which "
-                          "current tensor holds %s "
-                          "Copy cannot be performed!",
-                          meta_dist_input_x.dist_attr(),
-                          this_dist_attr));
+    if (this->initialized()) {
+      auto this_dist_attr =
+                std::static_pointer_cast<phi::distributed::DistTensor>(
+                this->impl())->dist_attr();
+      PADDLE_ENFORCE_EQ((meta_dist_input_x.dist_attr() == this_dist_attr
+                        || this_dist_attr.empty()),
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "DistAttr is different of dst "
+                            "tensor and args %s, which "
+                            "current tensor holds %s "
+                            "Copy cannot be performed!",
+                            meta_dist_input_x.dist_attr(),
+                            this_dist_attr));
+    }
 
     auto dist_out = SetKernelDistOutput(this, meta_dist_input_x.dist_attr());
     auto dense_out = dist_out->unsafe_mutable_value();

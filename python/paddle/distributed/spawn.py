@@ -113,9 +113,7 @@ def _get_default_nprocs():
         return core.get_custom_device_count(device.split(":")[0])
     else:
         raise RuntimeError(
-            "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".format(
-                device
-            )
+            f"`paddle.distributed.spawn` does not support parallel training on device `{device}` now."
         )
 
 
@@ -131,9 +129,7 @@ def _get_default_backend():
         return 'xccl'
     else:
         raise RuntimeError(
-            "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".format(
-                device
-            )
+            f"`paddle.distributed.spawn` does not support parallel training on device `{device}` now."
         )
 
 

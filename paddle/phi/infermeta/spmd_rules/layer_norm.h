@@ -26,6 +26,15 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
                             float epsilon,
                             int begin_norm_axis);
 
+SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
+                                const DistMetaTensor& scale,
+                                const DistMetaTensor& bias,
+                                const DistMetaTensor& mean,
+                                const DistMetaTensor& variance,
+                                const DistMetaTensor out_grad,
+                                float epsilon = 1e-5,
+                                int begin_norm_axis = 1);
+
 SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& scale,
                                    const DistMetaTensor& bias,

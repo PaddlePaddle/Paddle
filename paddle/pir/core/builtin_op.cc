@@ -50,6 +50,32 @@ void PassStopGradientsDefaultly(OperationArgument &argument) {  // NOLINT
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
+void RefreshStopGradientsDefaultly(Operation *op) {
+  bool stop_gradient = true;
+  for (auto value : op->operands_source()) {
+    auto input = value.dyn_cast<OpResult>();
+    if (!input) continue;
+    auto *defining_op = input.owner();
+    bool input_stop_gradient = true;
+    if (defining_op->HasAttribute(kStopGradientAttrName)) {
+      auto attrs = defining_op->attribute(kStopGradientAttrName)
+                       .dyn_cast<pir::ArrayAttribute>()
+                       .AsVector();
+      input_stop_gradient =
+          attrs[input.index()].dyn_cast<pir::BoolAttribute>().data();
+    }
+    if (!input_stop_gradient) {
+      stop_gradient = false;
+      break;
+    }
+  }
+  std::vector<pir::Attribute> outs_stop_gradient(
+      op->results().size(),
+      pir::BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
+  op->set_attribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
+}
 Program *ModuleOp::program() {
   const AttributeMap &attr = this->attributes();
   auto iter = attr.find("program");
@@ -62,7 +88,7 @@ Block *ModuleOp::block() {
   assert(operation() != nullptr);
   assert(operation()->num_regions() == 1);
   assert(operation()->region(0).size() == 1);
-  return operation()->region(0).front();
+  return &operation()->region(0).front();
 }
 
 ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
@@ -97,20 +123,20 @@ void ModuleOp::VerifySig() const {
   IR_ENFORCE(num_results() == 0u, "The size of inputs must be equal to 0.");
 }
 
-const char *GetParameterOp::attributes_name[attributes_num] = {  // NOLINT
+const char *ParameterOp::attributes_name[attributes_num] = {  // NOLINT
     "parameter_name"};
 
-void GetParameterOp::Build(Builder &builder,
-                           OperationArgument &argument,
-                           const std::string &name,
-                           Type type) {
+void ParameterOp::Build(Builder &builder,
+                        OperationArgument &argument,
+                        const std::string &name,
+                        Type type) {
   argument.attributes[attributes_name[0]] =
       pir::StrAttribute::get(builder.ir_context(), name);
   argument.output_types.emplace_back(type);
   PassStopGradients(argument);
 }
 
-void GetParameterOp::PassStopGradients(OperationArgument &argument) {
+void ParameterOp::PassStopGradients(OperationArgument &argument) {
   std::vector<pir::Attribute> outs_stop_gradient(
       1, pir::BoolAttribute::get(pir::IrContext::Instance(), false));
   argument.AddAttribute(
@@ -118,8 +144,8 @@ void GetParameterOp::PassStopGradients(OperationArgument &argument) {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
-void GetParameterOp::VerifySig() const {
-  VLOG(4) << "Verifying inputs, outputs and attributes for: GetParameterOp.";
+void ParameterOp::VerifySig() const {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: ParameterOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
 
@@ -238,6 +264,9 @@ void SliceOp::Build(Builder &builder,
                                          .dyn_cast<pir::VectorType>()
                                          .data()[static_cast<size_t>(index)]);
   PassStopGradients(argument, index);
+
+  argument.AddAttribute(
+      "index", pir::Int32Attribute::get(pir::IrContext::Instance(), index));
 }
 
 void SliceOp::PassStopGradients(OperationArgument &argument, int index) {
@@ -256,6 +285,27 @@ void SliceOp::PassStopGradients(OperationArgument &argument, int index) {
     }
   }
   argument.AddAttribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
+}
+
+void SliceOp::RefreshStopGradients() {
+  std::vector<pir::Attribute> outs_stop_gradient(
+      1, pir::BoolAttribute::get(pir::IrContext::Instance(), true));
+  auto index = attribute("index").dyn_cast<pir::Int32Attribute>().data();
+  if (auto input = (*this)->operand_source(0).dyn_cast<pir::OpResult>()) {
+    auto *defining_op = input.owner();
+    if (defining_op && defining_op->isa<CombineOp>()) {
+      IR_ENFORCE(defining_op->HasAttribute(kStopGradientAttrName),
+                 "Required CombineOp must have attribute %s",
+                 kStopGradientAttrName);
+      auto attrs = defining_op->attribute(kStopGradientAttrName)
+                       .dyn_cast<pir::ArrayAttribute>()
+                       .AsVector();
+      outs_stop_gradient[0] = attrs[static_cast<int>(index)];
+    }
+  }
+  (*this)->set_attribute(
       kStopGradientAttrName,
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
@@ -364,6 +414,53 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
+void SplitOp::RefreshStopGradients() {
+  std::vector<bool> default_stop_gradients((*this)->num_results(), true);
+  if (auto input = (*this)->operand_source(0).dyn_cast<OpResult>()) {
+    auto *defining_op = input.owner();
+    if (defining_op && defining_op->isa<CombineOp>()) {
+      IR_ENFORCE((*this)->num_results(),
+                 defining_op->num_operands(),
+                 "Required SplitOp.output.size() == CombineOp.input.size(), "
+                 "but received %d != %d",
+                 (*this)->num_results(),
+                 defining_op->num_operands());
+      for (uint32_t i = 0; i < defining_op->num_operands(); ++i) {
+        auto value = defining_op->operand_source(i);
+        if (!value) continue;
+        auto *operand_defining_op = value.dyn_cast<OpResult>().owner();
+        if (operand_defining_op->HasAttribute(kStopGradientAttrName)) {
+          auto attrs = operand_defining_op->attribute(kStopGradientAttrName)
+                           .dyn_cast<pir::ArrayAttribute>()
+                           .AsVector();
+          default_stop_gradients[i] = attrs[value.dyn_cast<OpResult>().index()]
+                                          .dyn_cast<pir::BoolAttribute>()
+                                          .data();
+        }
+      }
+    } else if (defining_op &&
+               defining_op->HasAttribute(kStopGradientAttrName)) {
+      bool stop_gradient = defining_op->attribute(kStopGradientAttrName)
+                               .dyn_cast<pir::ArrayAttribute>()
+                               .AsVector()[0]
+                               .dyn_cast<pir::BoolAttribute>()
+                               .data();
+      default_stop_gradients.assign(default_stop_gradients.size(),
+                                    stop_gradient);
+    }
+  }
+
+  std::vector<pir::Attribute> outs_stop_gradient;
+  outs_stop_gradient.reserve(num_results());
+  for (auto stop_gradient : default_stop_gradients) {
+    outs_stop_gradient.push_back(
+        pir::BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
+  }
+  (*this)->set_attribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
+}
+
 void SplitOp::VerifySig() const {
   // inputs.size() == 1
   IR_ENFORCE(num_operands() == 1u, "The size of inputs must be equal to 1.");
@@ -401,10 +498,29 @@ void ConstantOp::VerifySig() const {
 
 Attribute ConstantOp::value() const { return attributes().at("value"); }
 
+void ConstantTensorOp::VerifySig() const {
+  ConstantOp::VerifySig();
+  IR_ENFORCE(value().isa<pir::TensorNameAttribute>(),
+             "Type of value must be strattribute");
+}
+
+ConstantTensorOp ConstantTensorOp::dyn_cast(Operation *op) {
+  if (ConstantTensorOp::classof(op)) return ConstantTensorOp(op);
+  return ConstantTensorOp(nullptr);
+}
+
+bool ConstantTensorOp::classof(const Operation *op) {
+  return ConstantOp::classof(op) && op &&
+         op->attribute("value").isa<TensorNameAttribute>();
+}
+
+std::string ConstantTensorOp::tensor_name() {
+  return value().dyn_cast<pir::TensorNameAttribute>().data();
+}
 }  // namespace pir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ModuleOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::GetParameterOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ParameterOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SetParameterOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ShadowOutputOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::CombineOp)
@@ -412,3 +528,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(pir::SliceOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantLikeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantTensorOp)

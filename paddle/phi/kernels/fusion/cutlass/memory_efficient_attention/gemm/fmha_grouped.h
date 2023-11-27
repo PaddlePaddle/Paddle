@@ -164,6 +164,7 @@ struct FMHAGrouped {
     int problem_count;
     int threadblock_count;
     int num_heads;
+    int kv_num_heads;
 
     ElementQ *ptr_Q;
     ElementK *ptr_K;
@@ -205,6 +206,7 @@ struct FMHAGrouped {
         : problem_count(0),
           threadblock_count(0),
           num_heads(0),
+          kv_num_heads(0),
           ptr_Q(nullptr),
           ptr_K(nullptr),
           ptr_P(nullptr),
@@ -234,6 +236,7 @@ struct FMHAGrouped {
               int problem_count,
               int threadblock_count,
               int num_heads,
+              int kv_num_heads,
               ElementQ *ptr_Q,
               ElementK *ptr_K,
               ElementM *ptr_M,
@@ -259,6 +262,7 @@ struct FMHAGrouped {
           problem_count(problem_count),
           threadblock_count(threadblock_count),
           num_heads(num_heads),
+          kv_num_heads(kv_num_heads),
           ptr_Q(ptr_Q),
           ptr_K(ptr_K),
           ptr_M(ptr_M),
@@ -307,6 +311,7 @@ struct FMHAGrouped {
     typename ProblemVisitor::Params problem_visitor;
     int threadblock_count;
     int num_heads;
+    int kv_num_heads;
 
     ElementQ *ptr_Q;
     ElementK *ptr_K;
@@ -369,6 +374,7 @@ struct FMHAGrouped {
                           tile_count),
           threadblock_count(args.threadblock_count),
           num_heads(args.num_heads),
+          kv_num_heads(args.kv_num_heads),
           ptr_Q(args.ptr_Q),
           ptr_K(args.ptr_K),
           ptr_P(args.ptr_P),
@@ -403,6 +409,7 @@ struct FMHAGrouped {
                                                         tile_count);
       threadblock_count = args.threadblock_count;
       num_heads = args.num_heads;
+      kv_num_heads = args.kv_num_heads;
       ptr_Q = args.ptr_Q;
       ptr_K = args.ptr_K;
       ptr_P = args.ptr_P;
@@ -580,6 +587,8 @@ struct FMHAGrouped {
 
       const int32_t problem_idx = problem_visitor.problem_index();
       const int32_t batch_idx = problem_idx / params.num_heads;
+      // how many query head share a kv head?
+      const int32_t qhead_per_kv_head = params.num_heads / params.kv_num_heads;
 
       if (thread_id() < kQueriesPerBlock) {
         s_prime[thread_id()] = ElementAccumulator(0);
@@ -639,7 +648,8 @@ struct FMHAGrouped {
         auto prologueV = [&](int blockN) {
           typename MM1::Mma::IteratorB iterator_V(
               typename MM1::IteratorB::Params{MM1::LayoutB(params.ldv)},
-              params.ptr_V + problem_idx * params.kElementV +
+              params.ptr_V +
+                  (problem_idx / qhead_per_kv_head) * params.kElementV +
                   iter_key_start * params.ldv,
               {problem_size_1_k, problem_size_1_n},
               thread_id(),
@@ -679,7 +689,8 @@ struct FMHAGrouped {
         typename MM0::IteratorB iterator_B(
             typename MM0::IteratorB::Params(
                 typename MM0::MmaCore::LayoutB(params.ldk)),
-            params.ptr_K + problem_idx * params.kElementK +
+            params.ptr_K +
+                (problem_idx / qhead_per_kv_head) * params.kElementK +
                 iter_key_start * params.ldk,
             {problem_size_0_k, problem_size_0_n},
             thread_id(),
@@ -834,7 +845,8 @@ struct FMHAGrouped {
 
           typename MM1::Mma::IteratorB iterator_V(
               typename MM1::IteratorB::Params{MM1::LayoutB(params.ldv)},
-              params.ptr_V + problem_idx * params.kElementV +
+              params.ptr_V +
+                  (problem_idx / qhead_per_kv_head) * params.kElementV +
                   iter_key_start * params.ldv,
               {problem_size_1_k, problem_size_1_n},
               thread_id(),
