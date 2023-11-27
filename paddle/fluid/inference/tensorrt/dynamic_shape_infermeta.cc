@@ -835,16 +835,18 @@ nvinfer1::DimsExprs ArgsortInferMeta(
     int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder,  // NOLINT
     const framework::OpDesc& op_desc) {
+  PADDLE_ENFORCE_LE(
+      output_index,
+      1,
+      phi::errors::InvalidArgument("argsort only has two "
+                                   "output, but received asvector: %d.",
+                                   output_index));
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       1,
-      phi::errors::InvalidArgument(
-          "argsort has one input,but received asvector:%d.", nb_inputs));
-  PADDLE_ENFORCE_LE(output_index,
-                    1,
-                    phi::errors::InvalidArgument(
-                        "argsort only has two output,but received asvector:%d.",
-                        output_index));
+      phi::errors::InvalidArgument("memory_efficient_attention has one "
+                                   "input, but received asvector: %d.",
+                                   nb_inputs));
   const nvinfer1::DimsExprs input_dims = inputs[0];
   nvinfer1::DimsExprs output;
   output.nbDims = input_dims.nbDims;
