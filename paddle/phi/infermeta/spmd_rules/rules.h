@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/slice.h"
 #include "paddle/phi/infermeta/spmd_rules/softmax.h"
 #include "paddle/phi/infermeta/spmd_rules/split.h"
+#include "paddle/phi/infermeta/spmd_rules/squeeze.h"
 #include "paddle/phi/infermeta/spmd_rules/stack.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
 #include "paddle/phi/infermeta/spmd_rules/triu.h"
@@ -520,6 +521,10 @@ PD_REGISTER_SPMD_RULE(reshape2,
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmdReverse));
 
+// squeeze rule
+PD_REGISTER_SPMD_RULE(squeeze,
+                      PD_INFER_SPMD(phi::distributed::SqueezeInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::SqueezeInferSpmdReverse));
 // flatten rule
 PD_REGISTER_SPMD_RULE(flatten,
                       PD_INFER_SPMD(phi::distributed::FlattenInferSpmd),
