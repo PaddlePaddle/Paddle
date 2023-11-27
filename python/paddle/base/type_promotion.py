@@ -65,8 +65,6 @@ def get_result_dtype(x_dtype, y_dtype):
         try:
             return promoteTypesLookup[Number[x_dtype]][Number[y_dtype]]
         except:
-            print(
-                "got unsupport dtype for type promotion: {} and {}.".format(
-                    x_dtype, y_dtype
-                )
+            raise TypeError(
+                f"got unsupport dtype for type promotion: {x_dtype} and {y_dtype}."
             )
