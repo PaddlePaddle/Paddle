@@ -637,9 +637,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
   if (op_desc_.Type() == "argsort") {
     for (int i = 0; i < getNbOutputs(); i++) {
-      // 获取输出的 DenseTensor
       phi::DenseTensor& output_tensor = (*dense_tensor_outputs_)[i];
-      // 获取并打印数据类型
       phi::DataType dtype = output_tensor.dtype();
       if (dtype == phi::DataType::INT64) {
         std::vector<int> int32_host(output_tensor.numel());
@@ -652,7 +650,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
         paddle::memory::Copy(output_tensor.place(),
                              outputs[i],
                              output_tensor.place(),
-                             int32_tensor.data<int32_t>(),  // 源地址
+                             int32_tensor.data<int32_t>(),  
                              int32_tensor.numel() * sizeof(int),
                              nullptr);
       }
