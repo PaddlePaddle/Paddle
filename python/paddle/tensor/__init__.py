@@ -359,6 +359,7 @@ from .math import (  # noqa: F401
     tan_,
     tanh,
     tanh_,
+    top_p_sampling,
     trace,
     trapezoid,
     trunc,
