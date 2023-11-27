@@ -86,10 +86,12 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
         main_program = self.construct_program_with_if()
         if_op = main_program.global_block().ops[-1]
         self.assertEqual(if_op.name(), "pd_op.if")
+        build_pipe_for_block(if_op.as_if_op().true_block())
         with paddle.pir.core.program_guard(main_program):
             out_grad = paddle.full(shape=[6, 1], dtype='float32', fill_value=3)
+            # check vjp interface for if_op
             if_input = [get_used_external_value(if_op)]
-            if_input_stop_graditents = [[True, False, False]]
+            if_input_stop_graditents = [[True, False, False, True]]
             if_output = [if_op.results()]
             if_output_grad = [[out_grad]]
             self.assertEqual(has_vjp(if_op), True)
@@ -101,6 +103,25 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
                 if_input_stop_graditents,
             )
             self.assertEqual(grad_outs[0][0], None)
+
+            if_grad_op = grad_outs[0][1].get_defining_op()
+            self.assertEqual(if_grad_op.name(), "pd_op.if")
+            with if_grad_op.as_if_op().true_block():
+                # check vjp interface for tupe_push_op
+                push_op = if_op.as_if_op().true_block().ops[-2]
+                self.assertEqual(push_op.name(), "cf.tuple_push")
+                self.assertEqual(has_vjp(push_op), True)
+                pop_outs = call_vjp(
+                    push_op,
+                    [push_op.operands_source()],
+                    [push_op.results()],
+                    [[out_grad]],
+                    [[True, False]],
+                )
+                self.assertEqual(len(pop_outs[0]), 2)
+                self.assertEqual(
+                    pop_outs[0][1].get_defining_op().name(), "cf.tuple_pop"
+                )
 
 
 if __name__ == "__main__":

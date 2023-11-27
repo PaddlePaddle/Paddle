@@ -32,6 +32,7 @@
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/dy_schedule/ir_schedule.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_visitor.h"
@@ -959,10 +960,7 @@ struct ChangeBodyToBlock : public ir::IRMutator<> {
 
 DeviceAPI StScheduleImpl::GetDeviceAPI() const {
   auto exprs = this->GetModule().GetExprs();
-  auto find_for_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
-      exprs.front(), [&](const Expr* x) { return x->As<ir::For>(); }, true);
-  CHECK(!find_for_nodes.empty());
-  return (*find_for_nodes.begin()).As<ir::For>()->device_api;
+  return analyzer::GetDeviceAPI(exprs);
 }
 
 Expr StScheduleImpl::CacheRead(const Expr& block,
@@ -1161,23 +1159,7 @@ Expr StScheduleImpl::Reorder(const Expr& block,
 
 Expr StScheduleImpl::GetRootBlock(const Expr& expr) const {
   auto exprs = this->GetModule().GetExprs();
-  for (auto& it_expr : exprs) {
-    auto find_expr = ir::ir_utils::CollectIRNodesWithoutTensor(
-        it_expr,
-        [&](const Expr* x) {
-          return x->node_type() == expr.node_type() && *x == expr;
-        },
-        true);
-    if (!find_expr.empty()) {
-      CHECK(it_expr.As<ir::Block>());
-      CHECK_EQ(it_expr.As<ir::Block>()->stmts.size(), 1U);
-      CHECK(it_expr.As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>());
-      return it_expr.As<ir::Block>()->stmts[0];
-    }
-  }
-  LOG(FATAL) << "Didn't find expr \n"
-             << expr << "in StScheduleImpl:\n"
-             << exprs[0];
+  return analyzer::GetRootBlock(exprs, expr);
 }
 
 // The struct used to reconstruct the new For node to replace the old For node.
@@ -1824,153 +1806,37 @@ struct FindBlockParent : public ir::IRMutator<> {
 
 Expr StScheduleImpl::AddUnitLoop(const Expr& block) const {
   auto exprs = module_expr_.GetExprs();
-  CHECK(block.As<ir::ScheduleBlockRealize>());
-  CHECK(block.As<ir::ScheduleBlockRealize>()
-            ->schedule_block.As<ir::ScheduleBlock>());
-  std::string block_name = block.As<ir::ScheduleBlockRealize>()
-                               ->schedule_block.As<ir::ScheduleBlock>()
-                               ->name;
-
-  FindBlockParent visitor(block_name);
-  for (auto expr : exprs) {
-    visitor(&expr);
-    if (visitor.target_) {
-      break;
-    }
-  }
-
-  CHECK(visitor.target_) << ", block name : " << block_name << "\n" << exprs;
-  if (visitor.target_->As<ir::Block>()) {
-    for (auto& stmt : visitor.target_->As<ir::Block>()->stmts) {
-      if (stmt.As<ir::ScheduleBlockRealize>()) {
-        if (stmt.As<ir::ScheduleBlockRealize>()
-                ->schedule_block.As<ir::ScheduleBlock>()
-                ->name == block_name) {
-          auto block = ir::Block::Make({GetBlock(block_name)});
-          auto loop = ir::For::Make(ir::Var(common::UniqName("ix")),
-                                    ir::Expr(0),
-                                    ir::Expr(1),
-                                    ir::ForType::Serial,
-                                    ir::DeviceAPI::UNK,
-                                    block);
-          stmt = loop;
-          return loop;
-        }
-      }
-    }
-  } else if (visitor.target_->As<ir::For>()) {
-    auto block = ir::Block::Make({visitor.target_->As<ir::For>()->body});
-    auto loop = ir::For::Make(ir::Var(common::UniqName("ix")),
-                              ir::Expr(0),
-                              ir::Expr(1),
-                              ir::ForType::Serial,
-                              ir::DeviceAPI::UNK,
-                              block);
-    visitor.target_->As<ir::For>()->body = loop;
-    return loop;
-  } else if (visitor.target_->As<ir::ScheduleBlock>()) {
-    auto block =
-        ir::Block::Make({visitor.target_->As<ir::ScheduleBlock>()->body});
-    auto loop = ir::For::Make(ir::Var(common::UniqName("ix")),
-                              ir::Expr(0),
-                              ir::Expr(1),
-                              ir::ForType::Serial,
-                              ir::DeviceAPI::UNK,
-                              block);
-    visitor.target_->As<ir::ScheduleBlock>()->body = loop;
-    return loop;
-  } else {
-    LOG(FATAL) << "Can't find block's parent!";
-  }
-  LOG(FATAL) << "Shouldn't reach code here in AddUnitLoop";
-  return Expr{nullptr};
+  return analyzer::AddUnitLoop(exprs, block);
 }
 
 std::vector<Expr> StScheduleImpl::GetLoops(const Expr& block) const {
-  std::vector<Expr> result;
   auto exprs = module_expr_.GetExprs();
-  CHECK(block.As<ir::ScheduleBlockRealize>());
-  CHECK(block.As<ir::ScheduleBlockRealize>()
-            ->schedule_block.As<ir::ScheduleBlock>());
-  std::string block_name = block.As<ir::ScheduleBlockRealize>()
-                               ->schedule_block.As<ir::ScheduleBlock>()
-                               ->name;
-
-  for (auto& it_expr : exprs) {
-    ir::FindLoopsVisitor visitor(block);
-    auto find_loops = visitor(&it_expr);
-    if (!find_loops.empty()) {
-      if (!result.empty())
-        LOG(FATAL) << "Find block with name: \n"
-                   << block_name << " appeared in more than one AST!";
-      result = find_loops;
-    }
-  }
-
-  if (result.empty()) {
-    result.push_back(AddUnitLoop(block));
-  }
-  return result;
+  return analyzer::GetLoops(exprs, block);
 }
 
 std::vector<Expr> StScheduleImpl::GetLoops(
     const std::string& block_name) const {
-  Expr block = this->GetBlock(block_name);
-  std::vector<Expr> result = this->GetLoops(block);
-  return result;
+  auto exprs = module_expr_.GetExprs();
+  return analyzer::GetLoops(exprs, block_name);
 }
 
 std::vector<Expr> StScheduleImpl::GetAllBlocks() const {
-  std::vector<Expr> result;
   auto exprs = module_expr_.GetExprs();
-  for (auto& it_expr : exprs) {
-    ir::FindBlocksVisitor visitor;
-    auto find_blocks = visitor(&it_expr);
-    result.insert(result.end(), find_blocks.begin(), find_blocks.end());
-  }
-  for (auto& it_expr : exprs) {
-    VLOG(3) << "it_expr is : " << it_expr;
-  }
-  CHECK(!result.empty()) << "Didn't find blocks in expr.";
-  return result;
+  return analyzer::GetAllBlocks(exprs);
 }
 
 std::vector<Expr> StScheduleImpl::GetChildBlocks(const Expr& expr) const {
-  CHECK(expr.As<ir::ScheduleBlockRealize>() || expr.As<ir::For>());
-  ir::FindBlocksVisitor visitor;
-  std::vector<Expr> result = visitor(&expr);
-  return result;
+  return analyzer::GetChildBlocks(expr);
 }
 
 bool StScheduleImpl::HasBlock(const std::string& block_name) const {
   auto exprs = module_expr_.GetExprs();
-  for (auto& it_expr : exprs) {
-    ir::FindBlocksVisitor visitor(block_name);
-    auto find_blocks = visitor(&it_expr);
-    if (!find_blocks.empty()) {
-      CHECK_EQ(find_blocks.size(), 1U)
-          << "There should not be more than 1 block with identical name!";
-      return true;
-    }
-  }
-  return false;
+  return analyzer::HasBlock(exprs, block_name);
 }
 
 Expr StScheduleImpl::GetBlock(const std::string& block_name) const {
-  Expr result;
   auto exprs = module_expr_.GetExprs();
-  for (auto& it_expr : exprs) {
-    ir::FindBlocksVisitor visitor(block_name);
-    auto find_blocks = visitor(&it_expr);
-    if (!find_blocks.empty()) {
-      CHECK_EQ(find_blocks.size(), 1U)
-          << "There should not be more than 1 block with identical name!";
-      result = find_blocks[0];
-      return result;
-    }
-  }
-  LOG(FATAL) << "Didn't find a block with name " << block_name
-             << " in this ModuleExpr!";
+  return analyzer::GetBlock(exprs, block_name);
 }
 
 void StScheduleImpl::Annotate(const Expr& block,
