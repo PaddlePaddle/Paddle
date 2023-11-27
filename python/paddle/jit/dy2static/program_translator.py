@@ -16,14 +16,13 @@ from __future__ import annotations
 
 import collections
 import inspect
-import os
 import threading
 import warnings
 import weakref
 from typing import TYPE_CHECKING
 
 import paddle.pir.core as ir_static
-from paddle import decomposition
+from paddle import decomposition, get_flags
 from paddle.base import core, framework
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
@@ -236,7 +235,14 @@ class CacheKey:
         self._spec_names_id = _hash_spec_names(
             input_args_with_spec, input_kwargs_with_spec
         )
-        self._pir_flags = os.environ.get('FLAGS_enable_pir_in_executor', None)
+        self._pir_flags = (
+            get_flags('FLAGS_enable_pir_in_executor')[
+                'FLAGS_enable_pir_in_executor'
+            ]
+            or get_flags('FLAGS_enable_pir_with_pt_in_dy2st')[
+                'FLAGS_enable_pir_with_pt_in_dy2st'
+            ]
+        )
 
     @classmethod
     def from_func_and_args(cls, function_spec, args, kwargs, class_instance):

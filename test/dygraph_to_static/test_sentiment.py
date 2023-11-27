@@ -15,10 +15,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
-    Dy2StTestBase,
-    test_legacy_and_pir,
-)
+from dygraph_to_static_utils import Dy2StTestBase
 from test_lac import DynamicGRU
 
 import paddle
@@ -385,7 +382,6 @@ class TestSentiment(Dy2StTestBase):
             err_msg=f'dy_out:\n {dy_out}\n st_out:\n {st_out}',
         )
 
-    @test_legacy_and_pir
     def test_train(self):
         model_types = ['cnn_net', 'bow_net', 'gru_net', 'bigru_net']
         for model_type in model_types:
