@@ -81,12 +81,14 @@ TEST(DistAttr, ctor) {
   x_dist_attr.set_process_mesh(process_mesh);
   x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1}));
   x_dist_attr.set_batch_dim(0);
-  x_dist_attr.set_dynamic_dims(std::vector<bool>({true, false}));
+  x_dist_attr.set_chunk_id(0)
+      x_dist_attr.set_dynamic_dims(std::vector<bool>({true, false}));
   x_dist_attr.mark_annotated("process_mesh");
   x_dist_attr.mark_annotated("dims_mapping");
   EXPECT_EQ(x_dist_attr.process_mesh(), process_mesh);
   EXPECT_EQ(x_dist_attr.dims_mapping(), std::vector<int64_t>({0, -1}));
   EXPECT_EQ(x_dist_attr.batch_dim(), 0);
+  EXPECT_EQ(x_dist_attr.chunk_id(), 0);
   EXPECT_EQ(x_dist_attr.dynamic_dims(), std::vector<bool>({true, false}));
   EXPECT_EQ(x_dist_attr.is_annotated("process_mesh"), true);
   EXPECT_EQ(x_dist_attr.is_annotated("dims_mapping"), true);
@@ -105,12 +107,14 @@ TEST(DistAttr, ctor) {
   y_dist_attr.set_process_mesh(process_mesh);
   y_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, 0}));
   y_dist_attr.set_batch_dim(-1);
+  y_dist_attr.set_chunk_id(0);
   y_dist_attr.set_dynamic_dims(std::vector<bool>({false, true}));
   x_dist_attr.mark_annotated("batch_dim");
   x_dist_attr.mark_annotated("dynamic_dims");
   EXPECT_EQ(y_dist_attr.process_mesh(), process_mesh);
   EXPECT_EQ(y_dist_attr.dims_mapping(), std::vector<int64_t>({-1, 0}));
   EXPECT_EQ(y_dist_attr.batch_dim(), -1);
+  EXPECT_EQ(y_dist_attr.chunk_id(), -1);
   EXPECT_EQ(y_dist_attr.dynamic_dims(), std::vector<bool>({false, true}));
   EXPECT_EQ(x_dist_attr.is_annotated("batch_dim"), true);
   EXPECT_EQ(x_dist_attr.is_annotated("dynamic_dims"), true);
@@ -130,6 +134,7 @@ TEST(DistAttr, ctor) {
   EXPECT_EQ(mul_dist_attr.impl_type(),
             paddle::distributed::auto_parallel::kDefault);
   EXPECT_EQ(mul_dist_attr.impl_idx(), 0);
+  EXPECT_EQ(mul_dist_attr.chunk_id(), 0);
   EXPECT_EQ(mul_dist_attr.is_recompute(), false);
   EXPECT_EQ(mul_dist_attr.is_annotated("process_mesh"), false);
   EXPECT_EQ(mul_dist_attr.is_annotated("impl_type"), false);
