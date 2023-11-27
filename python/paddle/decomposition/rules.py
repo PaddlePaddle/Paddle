@@ -52,7 +52,7 @@ def rsqrt(x):
     return res if not is_amp else cast(res, dtype)
 
 
-@register_decomp('pd_op.pow')
+# @register_decomp('pd_op.pow')
 def pow_composite(x, y):
     """
     define composite rule of op pow
