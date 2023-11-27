@@ -75,48 +75,37 @@ def fractional_pool2d_forward(
         else np.zeros((N, H_out, W_out, C))
     )
 
-    input_height = H
-    output_height = H_out
-    input_width = W
-    output_width = W_out
-
     u = random_u
 
-    alpha_height = input_height / output_height
-    alpha_width = input_width / output_width
+    alpha_height = H / H_out
+    alpha_width = W / W_out
 
-    u_height = fractional_rational_u(
-        u, alpha_height, input_height, output_height
-    )
-    u_width = fractional_rational_u(u, alpha_width, input_width, output_width)
+    u_height = fractional_rational_u(u, alpha_height, H, H_out)
+    u_width = fractional_rational_u(u, alpha_width, W, W_out)
 
     for i in range(H_out):
-        in_h_start = fractional_start_index(i, alpha_height, u_height)
-        in_h_end = fractional_end_index(i, alpha_height, u_height)
-        in_h_start = max(in_h_start, 0)
-        in_h_end = min(in_h_end, input_height)
+        h_start = fractional_start_index(i, alpha_height, u_height)
+        h_end = fractional_end_index(i, alpha_height, u_height)
+        h_start = max(h_start, 0)
+        h_end = min(h_end, H)
 
         for j in range(W_out):
-            in_w_start = fractional_start_index(j, alpha_width, u_width)
-            in_w_end = fractional_end_index(j, alpha_width, u_width)
-            in_w_start = max(in_w_start, 0)
-            in_w_end = min(in_w_end, input_width)
+            w_start = fractional_start_index(j, alpha_width, u_width)
+            w_end = fractional_end_index(j, alpha_width, u_width)
+            w_start = max(w_start, 0)
+            w_end = min(w_end, W)
 
             if data_format == 'NCHW':
-                x_masked = x[:, :, in_h_start:in_h_end, in_w_start:in_w_end]
+                x_masked = x[:, :, h_start:h_end, w_start:w_end]
                 if pool_type == 'avg':
-                    field_size = (in_h_end - in_h_start) * (
-                        in_w_end - in_w_start
-                    )
+                    field_size = (h_end - h_start) * (w_end - w_start)
                     out[:, :, i, j] = np.sum(x_masked, axis=(2, 3)) / field_size
                 elif pool_type == 'max':
                     out[:, :, i, j] = np.max(x_masked, axis=(2, 3))
             elif data_format == 'NHWC':
-                x_masked = x[:, in_h_start:in_h_end, in_w_start:in_w_end, :]
+                x_masked = x[:, h_start:h_end, w_start:w_end, :]
                 if pool_type == 'avg':
-                    field_size = (in_h_end - in_h_start) * (
-                        in_w_end - in_w_start
-                    )
+                    field_size = (h_end - h_start) * (w_end - w_start)
                     out[:, i, j, :] = np.sum(x_masked, axis=(1, 2)) / field_size
                 elif pool_type == 'max':
                     out[:, i, j, :] = np.max(x_masked, axis=(1, 2))

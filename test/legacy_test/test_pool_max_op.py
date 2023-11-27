@@ -75,34 +75,16 @@ def max_pool3D_forward_naive(
         H_out = (H - ksize[1] + 2 * paddings[1]) // strides[1] + 1
         W_out = (W - ksize[2] + 2 * paddings[2]) // strides[2] + 1
 
-    alpha_height = 0
-    alpha_width = 0
-    alpha_depth = 0
-    u_height = 0
-    u_width = 0
-    u_depth = 0
-    input_depth = D
-    output_depth = D_out
-    input_height = H
-    output_height = H_out
-    input_width = W
-    output_width = W_out
     if fractional:
         u = random_u
 
-        alpha_depth = input_depth / output_depth
-        alpha_height = input_height / output_height
-        alpha_width = input_width / output_width
+        alpha_depth = D / D_out
+        alpha_height = H / H_out
+        alpha_width = W / W_out
 
-        u_depth = fractional_rational_u(
-            u, alpha_depth, input_depth, output_depth
-        )
-        u_height = fractional_rational_u(
-            u, alpha_height, input_height, output_height
-        )
-        u_width = fractional_rational_u(
-            u, alpha_width, input_width, output_width
-        )
+        u_depth = fractional_rational_u(u, alpha_depth, D, D_out)
+        u_height = fractional_rational_u(u, alpha_height, H, H_out)
+        u_width = fractional_rational_u(u, alpha_width, W, W_out)
 
     out = np.zeros((N, C, D_out, H_out, W_out))
     mask = np.zeros((N, C, D_out, H_out, W_out))
@@ -114,7 +96,7 @@ def max_pool3D_forward_naive(
             d_start = fractional_start_index(k, alpha_depth, u_depth)
             d_end = fractional_end_index(k, alpha_depth, u_depth)
             d_start = max(d_start, 0)
-            d_end = min(d_end, input_depth)
+            d_end = min(d_end, D)
         else:
             d_start = np.max((k * strides[0] - paddings[0], 0))
             d_end = np.min((k * strides[0] + ksize[0] - paddings[0], D))
@@ -126,7 +108,7 @@ def max_pool3D_forward_naive(
                 h_start = fractional_start_index(i, alpha_height, u_height)
                 h_end = fractional_end_index(i, alpha_height, u_height)
                 h_start = max(h_start, 0)
-                h_end = min(h_end, input_height)
+                h_end = min(h_end, H)
             else:
                 h_start = np.max((i * strides[1] - paddings[1], 0))
                 h_end = np.min((i * strides[1] + ksize[1] - paddings[1], H))
@@ -138,7 +120,7 @@ def max_pool3D_forward_naive(
                     w_start = fractional_start_index(j, alpha_width, u_width)
                     w_end = fractional_end_index(j, alpha_width, u_width)
                     w_start = max(w_start, 0)
-                    w_end = min(w_end, input_width)
+                    w_end = min(w_end, W)
                 else:
                     w_start = np.max((j * strides[2] - paddings[2], 0))
                     w_end = np.min((j * strides[2] + ksize[2] - paddings[2], W))
@@ -184,26 +166,14 @@ def max_pool2D_forward_naive(
         H_out = (H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
         W_out = (W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
 
-    alpha_height = 0
-    alpha_width = 0
-    u_height = 0
-    u_width = 0
-    input_height = H
-    output_height = H_out
-    input_width = W
-    output_width = W_out
     if fractional:
         u = random_u
 
-        alpha_height = input_height / output_height
-        alpha_width = input_width / output_width
+        alpha_height = H / H_out
+        alpha_width = W / W_out
 
-        u_height = fractional_rational_u(
-            u, alpha_height, input_height, output_height
-        )
-        u_width = fractional_rational_u(
-            u, alpha_width, input_width, output_width
-        )
+        u_height = fractional_rational_u(u, alpha_height, H, H_out)
+        u_width = fractional_rational_u(u, alpha_width, W, W_out)
 
     out = np.zeros((N, C, H_out, W_out))
     mask = np.zeros((N, C, H_out, W_out))
@@ -218,12 +188,12 @@ def max_pool2D_forward_naive(
                 r_start = fractional_start_index(i, alpha_height, u_height)
                 r_end = fractional_end_index(i, alpha_height, u_height)
                 r_start = max(r_start, 0)
-                r_end = min(r_end, input_height)
+                r_end = min(r_end, H)
 
                 c_start = fractional_start_index(j, alpha_width, u_width)
                 c_end = fractional_end_index(j, alpha_width, u_width)
                 c_start = max(c_start, 0)
-                c_end = min(c_end, input_width)
+                c_end = min(c_end, W)
             else:
                 r_start = np.max((i * strides[0] - paddings[0], 0))
                 r_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))

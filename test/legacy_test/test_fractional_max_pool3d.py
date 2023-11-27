@@ -75,42 +75,33 @@ def fractional_pool3d_forward(
         else np.zeros((N, D_out, H_out, W_out, C))
     )
 
-    input_depth = D
-    output_depth = D_out
-    input_height = H
-    output_height = H_out
-    input_width = W
-    output_width = W_out
-
     u = random_u
 
-    alpha_depth = input_depth / output_depth
-    alpha_height = input_height / output_height
-    alpha_width = input_width / output_width
+    alpha_depth = D / D_out
+    alpha_height = H / H_out
+    alpha_width = W / W_out
 
-    u_depth = fractional_rational_u(u, alpha_depth, input_depth, output_depth)
-    u_height = fractional_rational_u(
-        u, alpha_height, input_height, output_height
-    )
-    u_width = fractional_rational_u(u, alpha_width, input_width, output_width)
+    u_depth = fractional_rational_u(u, alpha_depth, D, D_out)
+    u_height = fractional_rational_u(u, alpha_height, H, H_out)
+    u_width = fractional_rational_u(u, alpha_width, W, W_out)
 
     for k in range(D_out):
         d_start = fractional_start_index(k, alpha_depth, u_depth)
         d_end = fractional_end_index(k, alpha_depth, u_depth)
         d_start = max(d_start, 0)
-        d_end = min(d_end, input_depth)
+        d_end = min(d_end, D)
 
         for i in range(H_out):
             h_start = fractional_start_index(i, alpha_height, u_height)
             h_end = fractional_end_index(i, alpha_height, u_height)
             h_start = max(h_start, 0)
-            h_end = min(h_end, input_height)
+            h_end = min(h_end, H)
 
             for j in range(W_out):
                 w_start = fractional_start_index(j, alpha_width, u_width)
                 w_end = fractional_end_index(j, alpha_width, u_width)
                 w_start = max(w_start, 0)
-                w_end = min(w_end, input_width)
+                w_end = min(w_end, W)
 
                 if data_format == 'NCDHW':
                     x_masked = x[
