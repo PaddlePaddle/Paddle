@@ -42,6 +42,7 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.add", "elementwise_add"},
     {"pd_op.elementwise_pow", "pow"},
     {"pd_op.multiply", "elementwise_mul"},
+    {"pd_op.split_with_num", "split"},
     {"cinn_op.reshape", "reshape"},
     {"cinn_op.scale", "scale"},
     {"cinn_op.broadcast", "broadcast_to"},

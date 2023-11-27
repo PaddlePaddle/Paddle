@@ -78,9 +78,8 @@ CinnJitInstruction::CinnJitInstruction(
     auto in = op->operand_source(i);
 
     auto var_name = value_exec_info.GetVarName(in);
-
     auto tensor = value_exec_info.GetScope()
-                      ->Var(var_name)
+                      ->FindVar(var_name)
                       ->GetMutable<phi::DenseTensor>();
 
     tensor_args_.push_back(tensor);
