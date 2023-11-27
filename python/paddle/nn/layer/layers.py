@@ -895,7 +895,7 @@ class Layer:
         Returns a list of all Parameters from current layer and its sub-layers.
 
         Parameters:
-            include_sublayers (bool, optional): Whether to return the parameters of the sublayer.
+            include_sublayers(bool, optional): Whether to return the parameters of the sublayer.
                 If True, the returned list contains the parameters of the sublayer.
                 Default: True.
 
