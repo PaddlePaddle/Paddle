@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/dy_schedule/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace ir {
