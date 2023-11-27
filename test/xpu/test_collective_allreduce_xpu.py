@@ -14,26 +14,44 @@
 
 import unittest
 
-from test_collective_base_xpu import TestDistBase
+from get_test_cover_info import get_xpu_op_support_types
+from xpu.test_collective_api_base import TestDistBase
 
 import paddle
+from paddle import core
 
 paddle.enable_static()
 
 
-class TestCAllreduceOp(TestDistBase):
+class TestCollectiveAllreduceAPI(TestDistBase):
     def _setup_config(self):
         pass
 
+    @unittest.skipIf(
+        not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
+        "run test when having at leaset 2 XPUs.",
+    )
     def test_allreduce(self):
-        dtypes_to_test = [
-            "float16",
-            "float32",
-            "int32",
-        ]
-        for dtype in dtypes_to_test:
+        support_types = get_xpu_op_support_types('c_allreduce_sum')
+        for dtype in support_types:
             self.check_with_place(
-                "collective_allreduce_op_xpu.py", "allreduce", dtype=dtype
+                "collective_allreduce_api.py",
+                "allreduce",
+                dtype=dtype,
+            )
+
+    @unittest.skipIf(
+        not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
+        "run test when having at leaset 2 XPUs.",
+    )
+    def test_allreduce_dygraph(self):
+        support_types = get_xpu_op_support_types('c_allreduce_sum')
+        for dtype in support_types:
+            self.check_with_place(
+                "collective_allreduce_api_dygraph.py",
+                "allreduce",
+                static_mode="0",
+                dtype=dtype,
             )
 
 
