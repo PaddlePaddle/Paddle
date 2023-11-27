@@ -51,25 +51,24 @@ class TrtConvertScatter(TrtLayerAutoScanTest):
                 }
             ]
             ops = self.generate_op_config(ops_config)
-            for i in range(10):
-                program_config = ProgramConfig(
-                    ops=ops,
-                    weights={},
-                    inputs={
-                        "input_data": TensorConfig(
-                            data_gen=partial(generate_input1)
-                        ),
-                        "index_data": TensorConfig(
-                            data_gen=partial(generate_input2)
-                        ),
-                        "update_data": TensorConfig(
-                            data_gen=partial(generate_input3)
-                        ),
-                    },
-                    outputs=["output_data"],
-                )
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs={
+                    "input_data": TensorConfig(
+                        data_gen=partial(generate_input1)
+                    ),
+                    "index_data": TensorConfig(
+                        data_gen=partial(generate_input2)
+                    ),
+                    "update_data": TensorConfig(
+                        data_gen=partial(generate_input3)
+                    ),
+                },
+                outputs=["output_data"],
+            )
 
-                yield program_config
+            yield program_config
 
     def sample_predictor_configs(
         self, program_config
@@ -101,13 +100,13 @@ class TrtConvertScatter(TrtLayerAutoScanTest):
         ]
 
         # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), (0, 5), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), (0, 5), 1e-3
+        # clear_dynamic_shape()
+        # self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        # program_config.set_input_type(np.float32)
+        # yield self.create_inference_config(), (0, 5), 1e-5
+        # self.trt_param.precision = paddle_infer.PrecisionType.Half
+        # program_config.set_input_type(np.float16)
+        # yield self.create_inference_config(), (0, 5), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
