@@ -205,24 +205,24 @@ class TestPir(unittest.TestCase):
             out_mp_prog.history["loss"][0], out_mp_ir.history["loss"][0]
         )
 
-        # # test prim enabled distributed engine
-        # self.enable_prim_in_dist(True)
-        # engine_mp_pir_prim = self.get_engine("mp", name="mp_pir_prim")
-        # dataloader_mp_pir_prim = engine_mp_pir_prim.dataloader(
-        #     self.dataset,
-        #     batch_size=self.batch_size,
-        #     sample_split=3,
-        #     mode="train",
-        # )
-        # engine_mp_pir_prim.prepare(mode="train")
-        # for data in dataloader_mp_pir_prim:
-        #     out_mp_pir_prim = engine_mp_pir_prim.run(data, mode="train")
+        # test prim enabled distributed engine
+        self.enable_prim_in_dist(True)
+        engine_mp_pir_prim = self.get_engine("mp", name="mp_pir_prim")
+        dataloader_mp_pir_prim = engine_mp_pir_prim.dataloader(
+            self.dataset,
+            batch_size=self.batch_size,
+            sample_split=3,
+            mode="train",
+        )
+        engine_mp_pir_prim.prepare(mode="train")
+        for data in dataloader_mp_pir_prim:
+            out_mp_pir_prim = engine_mp_pir_prim.run(data, mode="train")
 
-        # if paddle.distributed.get_rank() == 1:
-        #     self.check_results_prim(
-        #         out_mp_pir_prim["loss"], out_mp_ir.history["loss"][0]
-        #     )
-        # self.enable_prim_in_dist(False)
+        if paddle.distributed.get_rank() == 1:
+            self.check_results_prim(
+                out_mp_pir_prim["loss"], out_mp_ir.history["loss"][0]
+            )
+        self.enable_prim_in_dist(False)
 
     def test_pp(self):
         # navie pipeline parallel without schedule
