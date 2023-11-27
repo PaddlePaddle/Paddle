@@ -31,7 +31,6 @@
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/context_pool.h"
-#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
 #endif
@@ -41,6 +40,7 @@
 
 #ifdef PADDLE_WITH_XPU_BKCL
 #include "paddle/phi/backends/xpu/xpu_info.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
 #endif
 
@@ -203,18 +203,6 @@ void CommContextManager::CreateBKCLCommContext(
 
   auto bkcl_comm_context =
       std::make_unique<BKCLCommContext>(rank, size, bkcl_id);
-  /*if (CommContextManager::device_id != -1) {
-    std::unique_ptr<phi::XPUContext> dev_ctx(
-        new phi::XPUContext(phi::XPUPlace(CommContextManager::device_id)));
-    dev_ctx->SetAllocator(phi::memory_utils::GetAllocator(
-        CommContextManager::device_id, dev_ctx->stream()));
-    dev_ctx->SetHostAllocator(phi::memory_utils::GetHostAllocator());
-    dev_ctx->SetZeroAllocator(
-        phi::memory_utils::GetZeroAllocator(CommContextManager::device_id));
-    dev_ctx->SetHostZeroAllocator(phi::memory_utils::GetHostZeroAllocator());
-    dev_ctx->SetPinnedAllocator(phi::memory_utils::GetPinnedAllocator());
-    bkcl_comm_context->SetDevContext(std::move(dev_ctx));
-  }*/
 
   comm_context_manager.SetStore(store);
   comm_context_manager.Emplace(unique_comm_key, std::move(bkcl_comm_context));
