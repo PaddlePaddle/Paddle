@@ -156,8 +156,8 @@ class Op : public OpBase {
     return op && op->info().id() == TypeId::get<ConcreteOp>();
   }
 
-  static std::vector<InterfaceValue> GetInterfaceMap() {
-    return pir::detail::GetInterfaceMap<ConcreteOp, InterfaceList>();
+  static std::set<InterfaceValue> interface_set() {
+    return pir::detail::GetInterfaceSet<ConcreteOp, InterfaceList>();
   }
 
   static std::vector<TypeId> GetTraitSet() {
