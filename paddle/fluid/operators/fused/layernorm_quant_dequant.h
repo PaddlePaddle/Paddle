@@ -94,12 +94,16 @@ __inline__ __device__ T Max(T a, T b) {
 template <>
 __inline__ __device__ __nv_bfloat16 Max<__nv_bfloat16>(__nv_bfloat16 a,
                                                        __nv_bfloat16 b) {
+#if __CUDA_ARCH__ >= 800
   return __hmax(a, b);
+#endif
 }
 
 template <>
 __inline__ __device__ half Max<half>(half a, half b) {
+#if __CUDA_ARCH__ >= 800
   return __hmax(a, b);
+#endif
 }
 
 template <typename T>
