@@ -95,8 +95,12 @@ class TestMatmul2(unittest.TestCase):
     def check_result(self, x_shape, y_shape):
         # origin_x = paddle.rand(x_shape)
         # origin_y = paddle.rand(y_shape)
-        origin_x = paddle.to_tensor([[1, -1], [0, 1]])
-        origin_y = paddle.to_tensor([[1, 1], [1, 1]])
+        origin_x = paddle.to_tensor(
+            [[1.0, -1.0, 1.0], [1.0, 1.0, 1.0]], dtype="float32"
+        )
+        origin_y = paddle.to_tensor(
+            [[1.0, 1.0], [1.0, 1.0], [1.0, 1.0]], dtype="float32"
+        )
 
         dense_x = origin_x.detach()
         dense_x.stop_gradient = False
@@ -110,6 +114,7 @@ class TestMatmul2(unittest.TestCase):
         sp_y = origin_y.detach().to_sparse_csr()
         sp_x.stop_gradient = False
         sp_y.stop_gradient = False
+        print(sp_x)
         sp_out = paddle.sparse.matmul(sp_x, sp_y)
         print(sp_out)
 

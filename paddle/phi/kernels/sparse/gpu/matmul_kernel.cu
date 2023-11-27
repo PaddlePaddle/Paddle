@@ -150,7 +150,14 @@ void MatmulKernelImpl(const Context& dev_ctx,
   // meta_out.set_dtype(x.dtype());
 
   // dev_ctx.template Alloc<T>(out);
-  VLOG(0) << "tyep " << out->crows().dtype();
+  // VLOG(0) << "tyep " << out->crows().dtype();
+  // EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
+
+  // VLOG(0) << "tyep " << out->crows().dtype();
+  // *(out->mutable_crows()) = x.crows();
+  // *(out->mutable_cols()) = DenseTensor(phi::DataType::INT64);
+  // *(out->mutable_values()) = DenseTensor(phi::DataType::INT64);
+
   // *(out->mutable_crows()) = x.crows();
   // *(out->mutable_cols()) = x.cols();
 
