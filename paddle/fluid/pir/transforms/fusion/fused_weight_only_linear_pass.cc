@@ -112,7 +112,7 @@ class FusedWeightOnlyLinearPattern
 class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
  public:
   FusedWeightOnlyLinearPass()
-      : pir::PatternRewritePass("fused_weight_only_linear_pass", 2) {}
+      : pir::PatternRewritePass("fused_weight_only_linear_pass", 4) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

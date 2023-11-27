@@ -59,6 +59,7 @@ struct PassInfo {
   // opt_level=1: constant fold, cse, memory optimize, etc.
   // opt_level=2: the fusion logical pass.
   // opt_level=3: layout, etc.
+  // opt_level=4: the radical pass.
   uint8_t opt_level;
 
   // The list which pass depends on.
