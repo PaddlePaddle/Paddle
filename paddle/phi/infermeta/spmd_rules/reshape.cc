@@ -144,6 +144,11 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
                           const std::vector<int64_t>& shape) {
   // Step0: Verify input args based on reshape logic
   auto x_shape = phi::vectorize(x.dims());
+  // For dynamic mode, deal with extra xshape dim.
+  if (x_shape[0] == 0) {
+    x_shape.erase(x_shape.begin());
+  }
+
   int x_ndim = x_shape.size();
   int out_ndim = shape.size();
   auto x_dist_attr_src = x.dist_attr();
@@ -193,7 +198,6 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
   x_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
   TensorDistAttr out_dist_attr(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
-  TensorDistAttr out_shape_dist_attr;
 
   VLOG(4) << "Transformation from input to output:";
   for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
@@ -204,9 +208,7 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
           << "] dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "Out dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
 
-  return {{x_dist_attr_dst},
-          ToArgDistAttr(std::vector<TensorDistAttr>(
-              {out_dist_attr, out_shape_dist_attr}))};
+  return {{x_dist_attr_dst}, {out_dist_attr, x_dist_attr_dst}};
 }
 
 SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
@@ -292,6 +294,7 @@ SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
   const auto& x_shape_dist_src = x_shape.dist_attr();
   auto tmp = ReshapeInferSpmd(x_shape, out_grad_shape);
   // check no shard is needed
+  VLOG(3) << "after ReshapeInferSpmd";
   const auto& x_shape_dist_dst = PADDLE_GET_CONST(TensorDistAttr, tmp.first[0]);
   const auto& out_grad_dist_dst =
       PADDLE_GET_CONST(TensorDistAttr, tmp.second[0]);
