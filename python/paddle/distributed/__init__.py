@@ -75,6 +75,7 @@ from .auto_parallel.api import (
     shard_tensor,
     dtensor_from_fn,
     reshard,
+    reshard_test,
     shard_layer,
 )
 
@@ -143,5 +144,6 @@ __all__ = [
     "shard_tensor",
     "dtensor_from_fn",
     "reshard",
+    "reshard_test",
     "shard_layer",
 ]
