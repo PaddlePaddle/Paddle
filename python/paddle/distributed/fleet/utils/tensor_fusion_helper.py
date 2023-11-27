@@ -264,7 +264,12 @@ class FusedCommBuffer:
         self._comm_group = comm_group
         self._release_grads = release_grads
 
-        self.use_main_grad = hasattr(self._params[0], "main_grad")
+        self.use_main_grad = all(
+            hasattr(param, "main_grad") for param in self._params
+        )
+        assert (
+            self.use_main_grad
+        ), "All parameters in FusedCommBuffer must have main_grad."
 
         self._task = None
         self._dtype = (
@@ -385,7 +390,12 @@ class FusedCommBuffer:
             param._copy_gradient_from(tmp_var)
 
     def add_grad(self, param, use_comm=True):
-        assert param.name in self._params_step_dict
+        assert (
+            param.name in self._params_step_dict
+        ), "{} not in params_dict, please check accumulation_steps".format(
+            param.name
+        )
+
         if not self._release_grads:
             current_ptr = get_grad_address(param, self.use_main_grad)
             if self._params_to_addr[param.name] != current_ptr:

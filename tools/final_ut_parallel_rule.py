@@ -62,7 +62,6 @@ def classify_cases_by_mem(rootPath):
     case_always_timeout = [
         'test_quant2_int8_resnet50_channelwise_mkldnn',
         'test_parallel_dygraph_unused_variables_gloo',
-        'test_seq2seq',
         'test_pool3d_op',
         'test_trilinear_interp_op',
         'test_trilinear_interp_v2_op',
