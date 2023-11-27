@@ -501,17 +501,7 @@ void DrrRewritePattern::DeleteSourcePatternOp(
        &result_pattern_graph](const OpCall* op_call) {
         bool all_comsumer_deleted = true;
         bool from_backward_visited_tensor = false;
-        std::cout << "&&&&&" << op_call->name() << std::endl;
         for (const auto* output : op_call->outputs()) {
-          for (auto& input : result_pattern_graph.input_tensors()) {
-            std::cout << "____" << input << std::endl;
-          }
-
-          if (result_pattern_graph.input_tensors().count(output->name())) {
-            all_comsumer_deleted = false;
-            std::cout << "&&&&&" << output->name() << std::endl;
-            break;
-          }
           if (backward_visited_tensor_set.count(output->name())) {
             from_backward_visited_tensor = true;
           } else if (output->consumers().empty()) {
@@ -520,10 +510,6 @@ void DrrRewritePattern::DeleteSourcePatternOp(
             all_comsumer_deleted = false;
           }
         }
-        std::cout << "all_comsumer_deleted" << all_comsumer_deleted
-                  << std::endl;
-        std::cout << "from_backward_visited_tensor"
-                  << from_backward_visited_tensor << std::endl;
         if (all_comsumer_deleted && from_backward_visited_tensor &&
             forward_deleted_ops.count(op_call)) {
           deleted_ops_set.insert(op_call);
