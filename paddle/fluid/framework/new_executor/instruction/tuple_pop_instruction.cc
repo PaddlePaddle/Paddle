@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/instruction/tuple_pop_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 
 namespace paddle {
@@ -34,6 +35,14 @@ TuplePopInstruction::TuplePopInstruction(size_t id,
   auto var_array =
       value_exe_info_->GetScope()->FindVar(value_2_var_name.at(stack_value));
   stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
+
+  std::unordered_map<pir::Value, std::vector<int>> outputs;
+  for (size_t i = 0; i < tuple_pop_op_.tuple_size(); ++i) {
+    auto outlet_element_value = tuple_pop_op_.outlet_element(i);
+    outputs.emplace(outlet_element_value,
+                    GetValueIds(outlet_element_value, *value_exe_info_));
+  }
+  SetOutputs(outputs);
 }
 
 void TuplePopInstruction::Run() {
@@ -55,8 +64,7 @@ void TuplePopInstruction::Run() {
 
       grad_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
           front_var->Get<phi::DenseTensor>());
-
-      tuple_pop_gc_var_ids_.insert(value_exe_info_->GetVarId(grad_var));
+      AddGCCheckVar(value_exe_info_->GetVarId(grad_var));
     }
   }
 }

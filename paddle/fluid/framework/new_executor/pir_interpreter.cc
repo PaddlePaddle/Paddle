@@ -656,12 +656,9 @@ void PirInterpreter::BuildInstruction() {
             std::make_unique<TuplePushInstruction>(
                 op_idx++, place_, &op, value_exe_info_.get()));
       } else if (op.isa<pir::TuplePopOp>()) {
-        auto node = std::make_unique<TuplePopInstruction>(
-            op_idx++, place_, &op, value_exe_info_.get());
-        vec_instruction_base_.emplace_back(node.get());
-        for (auto i : node->GetTuplePopGcVarIds()) {
-          node->AddGCCheckVar(i);
-        }
+        vec_instruction_base_.emplace_back(
+            std::make_unique<TuplePopInstruction>(
+                op_idx++, place_, &op, value_exe_info_.get()));
       } else if (op.isa<pir::HasElementsOp>()) {
         vec_instruction_base_.emplace_back(
             std::make_unique<HasElementsInstruction>(
@@ -757,6 +754,9 @@ void PirInterpreter::BuildInstructionDependences() {
   VLOG(0) << "Begin BuildInstructionDependences " << instr_num;
   std::vector<paddle::framework::InstructionBase*> instructions_ptr;
   for (auto& instr : vec_instruction_base_) {
+    VLOG(0) << "===============";
+    VLOG(0) << instr.get();
+    VLOG(0) << "Iter vec_instruction_base_ Operation" << instr->Operation();
     VLOG(0) << "Iter vec_instruction_base_ " << instr->Name();
     instructions_ptr.push_back(instr.get());
   }
