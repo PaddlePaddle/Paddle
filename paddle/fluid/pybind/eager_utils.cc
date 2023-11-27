@@ -2252,6 +2252,20 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     item = PyList_GetItem(obj, 0);
+    PyTypeObject* item_type = item->ob_type;
+    VLOG(6)
+        << "zyt----------------------------------------------------item type: "
+        << std::string(item_type->tp_name);
+    VLOG(6)
+        << "zyt--------------------------PyObject_CheckFloatOrToFloat(&item): "
+        << PyObject_CheckFloatOrToFloat(&item);
+    VLOG(6)
+        << "zyt--------------------------PyObject_CheckLongOrToLong(&item): "
+        << PyObject_CheckLongOrToLong(&item);
+    VLOG(6) << "zyt--------------------------PyObject_CheckComplexOrToComplex(&"
+               "item): "
+            << PyObject_CheckComplexOrToComplex(&item);
+
     if (PyObject_CheckFloatOrToFloat(&item)) {
       std::vector<phi::Scalar> value;
       for (Py_ssize_t i = 0; i < len; i++) {
@@ -2271,7 +2285,12 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
       std::vector<phi::Scalar> value;
       for (Py_ssize_t i = 0; i < len; i++) {
         item = PyList_GetItem(obj, i);
+        // Py_complex v = PyComplex_AsCComplex(item);
+        // value.emplace_back(phi::Scalar{std::complex<double>(v.real,
+        // v.imag)}); if type is numpy.complex, will call __complex__() first
         Py_complex v = PyComplex_AsCComplex(item);
+
+        VLOG(6) << "=================" << v.real << "====" << v.imag;
         value.emplace_back(phi::Scalar{std::complex<double>(v.real, v.imag)});
       }
       return value;
@@ -2285,6 +2304,7 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
 
+  VLOG(6) << "22222222222222222222222222222222222222222222222";
   // Fake a ScalarArray
   return std::vector<phi::Scalar>({phi::Scalar(1.0)});
 }

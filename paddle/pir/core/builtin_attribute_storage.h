@@ -14,9 +14,11 @@
 
 #pragma once
 
+#include <complex.h>
 #include <algorithm>
 #include <map>
 #include <type_traits>
+#include "paddle/phi/common/complex.h"
 
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/attribute_base.h"
@@ -56,6 +58,10 @@ DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(IndexAttributeStorage, int64_t);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(Int64AttributeStorage, int64_t);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(PointerAttributeStorage, void *);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(TypeAttributeStorage, Type);
+// DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(Complex64AttributeStorage,
+// phi::dtype::complex<float>);
+// DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(Complex128AttributeStorage,
+// phi::dtype::complex<double>);
 
 ///
 /// \brief Define Parametric AttributeStorage for StrAttribute.
@@ -148,4 +154,41 @@ struct ArrayAttributeStorage : public AttributeStorage {
   const size_t size_;
 };
 
+struct Complex64AttributeStorage : public AttributeStorage {
+  using ParamKey = phi::dtype::complex<float>;
+  explicit Complex64AttributeStorage(const ParamKey &key) { data_ = key; }
+  ~Complex64AttributeStorage();
+  static Complex64AttributeStorage *Construct(const ParamKey &key) {
+    return new Complex64AttributeStorage(key);
+  }
+  static std::size_t HashValue(const ParamKey &key) {
+    return std::hash<float>{}(key.real + key.imag);
+  }
+
+  bool operator==(ParamKey key) const { return data_ == key; }
+
+  phi::dtype::complex<float> data() const { return data_; }
+
+ private:
+  phi::dtype::complex<float> data_;
+};
+
+struct Complex128AttributeStorage : public AttributeStorage {
+  using ParamKey = phi::dtype::complex<double>;
+  explicit Complex128AttributeStorage(const ParamKey &key) { data_ = key; }
+  ~Complex128AttributeStorage();
+  static Complex128AttributeStorage *Construct(const ParamKey &key) {
+    return new Complex128AttributeStorage(key);
+  }
+  static std::size_t HashValue(const ParamKey &key) {
+    return std::hash<double>{}(key.real + key.imag);
+  }
+
+  bool operator==(ParamKey key) const { return data_ == key; }
+
+  phi::dtype::complex<double> data() const { return data_; }
+
+ private:
+  phi::dtype::complex<double> data_;
+};
 }  // namespace pir

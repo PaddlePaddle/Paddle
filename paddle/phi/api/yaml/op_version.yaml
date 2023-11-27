@@ -56,6 +56,22 @@
           comment : The attribute 'atol' is deleted. The reason why it is deleted is that
                     attributes do not support a float64 value and it is changed to a tensor.
 
+- op : assign_value
+  version :
+    - checkpoint : Upgrade assign_value, remove plain attributes in favor of generic attribute.
+      action :
+        - add_attr : values
+          comment : replace generic types with scalar.
+          default : std::vector<paddle::experimental::Scalar>()
+        - delete_attr : bool_values
+          comment : remove plain attributes.
+        - delete_attr : fp32_values
+          comment : remove plain attributes.
+        - delete_attr : int32_values
+          comment : remove plain attributes.
+        - delete_attr : int64_values
+          comment : remove plain attributes.
+
 - op : auc
   version :
     - checkpoint :  Upgrade auc, add a new input [InsTagWeight].

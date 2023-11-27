@@ -493,6 +493,10 @@ def _setitem_static(x, indices, values):
         # step3.1: Only basic indexing, use OP set_value to set value.
         if paddle.in_dynamic_mode():
             if value_tensor is None:
+                print(
+                    "set_value_set_value_set_value_set_value_ dtype=",
+                    values[0].dtype,
+                )
                 return paddle._C_ops.set_value_(
                     x,
                     starts,

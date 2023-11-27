@@ -24,24 +24,27 @@ KernelSignature AssignValueOpArgumentMapping(
   // heer we can't depend on the fluid proto::VarType, so we use the dtype enum
   // value directly, If the enum value is updated, the code also needs to be
   // updated here, but the probability of updating the enum value is very low
-  if (dtype == /*BOOL*/ 0) {
-    return KernelSignature(
-        "assign_value", {}, {"shape", "dtype", "bool_values"}, {"Out"});
-  } else if (dtype == /*INT32*/ 2) {
-    return KernelSignature(
-        "assign_value", {}, {"shape", "dtype", "int32_values"}, {"Out"});
-  } else if (dtype == /*FP32*/ 5) {
-    return KernelSignature(
-        "assign_value", {}, {"shape", "dtype", "fp32_values"}, {"Out"});
-  } else if (dtype == /*FP64*/ 6) {
-    return KernelSignature(
-        "assign_value", {}, {"shape", "dtype", "fp64_values"}, {"Out"});
-  } else if (dtype == /*INT64*/ 3) {
-    return KernelSignature(
-        "assign_value", {}, {"shape", "dtype", "int64_values"}, {"Out"});
-  } else {
-    return KernelSignature("unregistered", {}, {}, {});
-  }
+  // if (dtype == /*BOOL*/ 0) {
+  //   return KernelSignature(
+  //       "assign_value", {}, {"shape", "dtype", "bool_values"}, {"Out"});
+  // } else if (dtype == /*INT32*/ 2) {
+  //   return KernelSignature(
+  //       "assign_value", {}, {"shape", "dtype", "int32_values"}, {"Out"});
+  // } else if (dtype == /*FP32*/ 5) {
+  //   return KernelSignature(
+  //       "assign_value", {}, {"shape", "dtype", "fp32_values"}, {"Out"});
+  // } else if (dtype == /*FP64*/ 6) {
+  //   return KernelSignature(
+  //       "assign_value", {}, {"shape", "dtype", "fp64_values"}, {"Out"});
+  // } else if (dtype == /*INT64*/ 3) {
+  //   return KernelSignature(
+  //       "assign_value", {}, {"shape", "dtype", "int64_values"}, {"Out"});
+  // } else {
+  //   return KernelSignature("unregistered", {}, {}, {});
+  // }
+  VLOG(6) << "zyt===================================dtype=" << dtype;
+  return KernelSignature(
+      "assign_value", {}, {"shape", "dtype", "values"}, {"Out"});
 }
 
 }  // namespace phi

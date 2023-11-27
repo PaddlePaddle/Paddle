@@ -137,12 +137,16 @@ class AttributeVisitor {
       const std::vector<paddle::experimental::Scalar>& ss) {
     VLOG(10) << "translating vector<scalar>";
     std::vector<pir::Attribute> attrs;
-    attrs.reserve(ss.size());
-    for (const auto& v : ss) {
-      attrs.push_back(dialect::ScalarAttribute::get(ctx, v));
-    }
-    VLOG(10) << "translating vector<scalar> Done";
-    return pir::ArrayAttribute::get(ctx, attrs);
+
+    IR_THROW(
+        "not support translating std::vector<paddle::experimental::Scalar>");
+    // attrs.reserve(ss.size());
+    // for (const auto& v : ss) {
+    //   attrs.push_back(dialect::ScalarAttribute::get(ctx, v));
+    // }
+    // VLOG(6) << "zytzyt===========================translating vector<scalar>
+    // Done"; VLOG(10) << "translating vector<scalar> Done"; return
+    // pir::ArrayAttribute::get(ctx, attrs);
   }
 
   virtual pir::Attribute operator()(const paddle::blank& blank) {

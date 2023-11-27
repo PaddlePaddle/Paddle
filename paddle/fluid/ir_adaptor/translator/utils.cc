@@ -83,6 +83,7 @@ std::vector<std::string> CheckUnregisteredOperationInBlock(
     }
     OpTranscriber general_handler;
     try {
+      VLOG(6) << "===========IrNotMetException===============";
       general_handler.LoopkUpOpInfo(ctx, *op);
     } catch (pir::IrNotMetException& e) {
       unregistered_ops.push_back(op->Type());

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/complex.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/builtin_attribute_storage.h"
 #include "paddle/pir/core/utils.h"
@@ -26,6 +27,28 @@ class IR_API BoolAttribute : public Attribute {
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(BoolAttribute, BoolAttributeStorage);
 
   bool data() const;
+};
+
+class IR_API Complex64Attribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Complex64Attribute,
+                                    Complex64AttributeStorage);
+
+  phi::dtype::complex<float> data() const;
+  // std::complex<float> data() const;
+};
+
+class IR_API Complex128Attribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Complex128Attribute,
+                                    Complex128AttributeStorage);
+
+  phi::dtype::complex<double> data() const;
+  // std::complex<double> data() const;
 };
 
 class IR_API FloatAttribute : public Attribute {
@@ -141,6 +164,9 @@ class IR_API TensorNameAttribute : public Attribute {
 };
 
 }  // namespace pir
+
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::Complex64Attribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::Complex128Attribute)
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::StrAttribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::BoolAttribute)

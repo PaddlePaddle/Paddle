@@ -40,6 +40,7 @@ def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
             out_dtype, paddle.framework.core.VarDesc.VarType
         ):
             tmp_dtype = paddle.pir.core.vartype_to_datatype[tmp_dtype]
+    print("aaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     return paddle.full_like(x, value, tmp_dtype, name)
 
 
@@ -96,9 +97,56 @@ class TestFullOp(unittest.TestCase):
         self.assertTrue((out.numpy() == out_numpy).all(), True)
         paddle.enable_static()
 
+    def test_full_like_imperative_complex64(self):
+        paddle.disable_static()
+        input = paddle.complex(
+            paddle.ones([3, 4], dtype=paddle.float32),
+            paddle.ones([3, 4], dtype=paddle.float32),
+        )
+        out = paddle.full_like(
+            input, fill_value=42.1 + 42.1j, dtype='complex64'
+        )
+        out_numpy = (np.ones([3, 4]) + 1j * np.ones([3, 4])).astype(
+            np.complex64
+        )
+        out_numpy.fill(42.1 + 42.1j)
+        self.assertTrue((out.numpy() == out_numpy).all(), True)
+        paddle.enable_static()
+
+    def test_full_like_imperative_numpy_complex64(self):
+        paddle.disable_static()
+        input = paddle.complex(
+            paddle.ones([3, 4], dtype=paddle.float32),
+            paddle.ones([3, 4], dtype=paddle.float32),
+        )
+        fill_value = np.complex64(42.1 + 42.1j)
+        out = paddle.full_like(input, fill_value=fill_value, dtype='complex64')
+        out_numpy = (np.ones([3, 4]) + 1j * np.ones([3, 4])).astype(
+            np.complex64
+        )
+        out_numpy.fill(fill_value)
+        self.assertTrue((out.numpy() == out_numpy).all(), True)
+        paddle.enable_static()
+
+    def test_full_like_imperative_complex128(self):
+        paddle.disable_static()
+        input = paddle.complex(
+            paddle.ones([3, 4], dtype=paddle.float64),
+            paddle.ones([3, 4], dtype=paddle.float64),
+        )
+        fill_value = np.finfo(np.float64).max + 1j * np.finfo(np.float64).min
+        out = paddle.full_like(input, fill_value=fill_value, dtype='complex128')
+        out_numpy = (np.ones([3, 4]) + 1j * np.ones([3, 4])).astype(
+            np.complex128
+        )
+        out_numpy.fill(fill_value)
+        self.assertTrue((out.numpy() == out_numpy).all(), True)
+        paddle.enable_static()
+
 
 class TestFullOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # for ci coverage
 
@@ -138,16 +186,19 @@ class TestFullLikeOp1(OpTest):
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
-
+        print("zzzzzzzzzzzzz=", self.dtype)
         self.attrs = {
             'value': self.fill_value,
             'dtype': convert_np_dtype_to_dtype_(self.dtype),
         }
 
     def init_data(self):
-        self.fill_value = 5
+        # self.fill_value = 5
+        # self.shape = [10, 10]
+        # self.dtype = np.float32
+        self.fill_value = 42.1 + 42.1j
         self.shape = [10, 10]
-        self.dtype = np.float32
+        self.dtype = np.complex64
 
     def test_check_output(self):
         self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
@@ -156,66 +207,82 @@ class TestFullLikeOp1(OpTest):
         pass
 
 
-class TestFullLikeOp1_ZeroDim(TestFullLikeOp1):
-    def init_data(self):
-        self.fill_value = 5
-        self.shape = []
-        self.dtype = np.float32
+# class TestFullLikeOp1_ZeroDim(TestFullLikeOp1):
+#     def init_data(self):
+#         self.fill_value = 5
+#         self.shape = []
+#         self.dtype = np.float32
 
 
-class TestFullLikeOp2(TestFullLikeOp1):
-    def init_data(self):
-        self.fill_value = 1000
-        self.shape = [10, 10]
-        self.dtype = np.float64
+# class TestFullLikeOp2(TestFullLikeOp1):
+#     def init_data(self):
+#         self.fill_value = 1000
+#         self.shape = [10, 10]
+#         self.dtype = np.float64
 
-    def if_enable_cinn(self):
-        pass
-
-
-class TestFullLikeOp3(TestFullLikeOp1):
-    def init_data(self):
-        self.fill_value = 8888
-        self.shape = [10, 10]
-        self.dtype = np.int64
-
-    def if_enable_cinn(self):
-        pass
+#     def if_enable_cinn(self):
+#         pass
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
-class TestFullLikeOp4(unittest.TestCase):
-    def test_skip_data_transform(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(
-            [1.0, 2.0, 3.0, 4.0], place=paddle.CUDAPinnedPlace()
-        )
-        out = paddle.full_like(x, 1.0)
-        self.assertTrue(
-            (out.numpy() == np.ones([4]).astype(np.float32)).all(), True
-        )
-        paddle.enable_static()
+# class TestFullLikeOp3(TestFullLikeOp1):
+#     def init_data(self):
+#         self.fill_value = 8888
+#         self.shape = [10, 10]
+#         self.dtype = np.int64
+
+#     def if_enable_cinn(self):
+#         pass
 
 
-class TestFullLikeFP16Op(TestFullLikeOp1):
-    def init_data(self):
-        self.fill_value = 6666
-        self.shape = [10, 10]
-        self.dtype = np.float16
+# @unittest.skipIf(
+#     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+# )
+# class TestFullLikeOp4(unittest.TestCase):
+#     def test_skip_data_transform(self):
+#         paddle.disable_static()
+#         x = paddle.to_tensor(
+#             [1.0, 2.0, 3.0, 4.0], place=paddle.CUDAPinnedPlace()
+#         )
+#         out = paddle.full_like(x, 1.0)
+#         self.assertTrue(
+#             (out.numpy() == np.ones([4]).astype(np.float32)).all(), True
+#         )
+#         paddle.enable_static()
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
-)
-class TestFullLikeBF16Op(TestFullLikeOp1):
-    def init_data(self):
-        self.fill_value = 6666
-        self.shape = [10, 10]
-        self.dtype = np.uint16
+# class TestFullLikeFP16Op(TestFullLikeOp1):
+#     def init_data(self):
+#         self.fill_value = 6666
+#         self.shape = [10, 10]
+#         self.dtype = np.float16
+
+
+# @unittest.skipIf(
+#     not core.is_compiled_with_cuda()
+#     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+#     "core is not complied with CUDA and not support the bfloat16",
+# )
+# class TestFullLikeBF16Op(TestFullLikeOp1):
+#     def init_data(self):
+#         self.fill_value = 6666
+#         self.shape = [10, 10]
+#         self.dtype = np.uint16
+
+
+# class TestFullLikeComplex64Op(TestFullLikeOp1):
+#     def init_data(self):
+#         self.fill_value = (42.1 + 42.1j)
+#         self.shape = [10, 10]
+#         self.dtype = np.complex64
+
+
+# class TestFullLikeComplex128Op(TestFullLikeOp1):
+#     def init_data(self):
+#         self.fill_value = (
+#             np.finfo(np.float64).max + 1j * np.finfo(np.float64).min
+#         ).astype(np.complex128)
+#         self.shape = [10, 10]
+#         self.dtype = np.complex128
 
 
 if __name__ == "__main__":

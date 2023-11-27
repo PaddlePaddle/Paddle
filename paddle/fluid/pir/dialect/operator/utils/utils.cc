@@ -75,6 +75,7 @@ enum class AttrType {
 };
 
 static inline AttrType GetAttributeType(const pir::Attribute& attr) {
+  VLOG(6) << "zzzzzzzzzzzzzzzzzzzzzzz=" << attr.isa<pir::ArrayAttribute>();
   if (attr.isa<pir::BoolAttribute>()) {
     return AttrType::BOOL;
   } else if (attr.isa<pir::FloatAttribute>()) {

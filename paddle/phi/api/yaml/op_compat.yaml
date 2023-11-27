@@ -1199,10 +1199,10 @@
     x : X
   outputs :
     out : Out
-  scalar :
-    value :
-      data_type : float
-      support_tensor : true
+  # scalar :
+  #   value :
+  #     data_type : float
+  #     support_tensor : true
 
 - op : fused_attention
   backward: fused_attention_grad

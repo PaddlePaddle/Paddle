@@ -16,6 +16,7 @@
 
 #include <list>
 
+#include "paddle/phi/common/complex.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/operation.h"
@@ -44,6 +45,8 @@ class Int64Attribute;
 class ArrayAttribute;
 class PointerAttribute;
 class TensorNameAttribute;
+class Complex64Attribute;
+class Complex128Attribute;
 
 using InsertionPoint = std::pair<Block *, Block::Iterator>;
 ///
@@ -149,6 +152,8 @@ class Builder {
   IR_API ArrayAttribute array_attr(const std::vector<Attribute> &value);
   IR_API PointerAttribute pointer_attr(void *value);
   IR_API TensorNameAttribute tensor_name_attr(const std::string &value);
+  IR_API Complex64Attribute complex64_attr(std::complex<float> value);
+  IR_API Complex128Attribute complex128_attr(std::complex<double> value);
 
  private:
   Operation *Insert(Operation *op);
