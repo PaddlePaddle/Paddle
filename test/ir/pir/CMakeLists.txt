@@ -14,9 +14,10 @@ set(TEST_IR_SYSTEM_CASES
     test_stop_gradient
     test_override_operator)
 list(REMOVE_ITEM TEST_INTERP_CASES ${TEST_IR_SYSTEM_CASES})
-list(REMOVE_ITEM TEST_INTERP_CASES "test_subgraph_exporter")
-py_test_modules(${target} MODULES ${target} ENVS MIN_GRAPH_SIZE=0
-                FLAGS_pir_subgraph_saving_dir=${CMAKE_CURRENT_SOURCE_DIR})
+list(REMOVE_ITEM TEST_INTERP_CASES test_subgraph_exporter)
+py_test_modules(
+  test_subgraph_exporter MODULES test_subgraph_exporter ENVS MIN_GRAPH_SIZE=0
+  FLAGS_pir_subgraph_saving_dir=${CMAKE_CURRENT_SOURCE_DIR})
 
 foreach(target ${TEST_INTERP_CASES})
   py_test_modules(${target} MODULES ${target} ENVS GLOG_v=1
