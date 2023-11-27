@@ -23,10 +23,9 @@
 namespace {
 
 inline int getSMVersion() {
-  auto place = paddle::platform::CUDAPlace(0);
-  const phi::gpuDeviceProp prop =
-      paddle::platform::GetDeviceProperties(place.GetDeviceId());
-  return prop.major * 10 + prop.minor;
+  int sm_version = paddle::platform::GetGPUComputeCapability(
+      paddle::platform::GetCurrentDeviceId());
+  return sm_version;
 }
 
 class FusedWeightOnlyLinearPattern
