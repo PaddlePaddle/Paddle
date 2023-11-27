@@ -15,6 +15,7 @@
 import collections
 import copy
 import logging
+import os
 import re
 import warnings
 from collections.abc import Sequence
@@ -1596,9 +1597,16 @@ def _append_backward_ops_(
         ]
     # sum parameter's gradients' var given multiple var gradient
     topo_order = _topo_order_map(block, target_vars)
-    topo_order_for_backward = _topo_bwd_order_map(
-        topo_order, get_backward_op_desc
-    )
+    if os.environ.get("FLAGS_program_topo_reorder", "False") in [
+        'True',
+        '1',
+        'true',
+    ]:
+        topo_order_for_backward = _topo_bwd_order_map(
+            topo_order, get_backward_op_desc
+        )
+    else:
+        topo_order_for_backward = None
     grad_op_descs = _addup_repetitive_outputs_(
         grad_op_descs,
         block.idx,
