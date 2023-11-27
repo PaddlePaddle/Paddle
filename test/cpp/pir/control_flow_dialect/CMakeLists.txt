@@ -1,4 +1,4 @@
-paddle_test(
+cc_test_old(
   if_op_test
   SRCS
   if_op_test.cc
@@ -8,7 +8,7 @@ paddle_test(
   pir_transforms
   op_dialect)
 
-paddle_test(
+cc_test_old(
   while_op_test
   SRCS
   while_op_test.cc
