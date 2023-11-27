@@ -6,8 +6,12 @@ cc_test(
   test_dense_tensor
   SRCS test_dense_tensor.cc
   DEPS phi)
+
+
 cc_test(test_intrusive_ptr SRCS test_intrusive_ptr.cc)
 cc_test(test_type_info SRCS test_type_info.cc)
+
+
 cc_test(
   test_kernel_factory
   SRCS test_kernel_factory.cc
@@ -32,7 +36,9 @@ cc_test(
 cc_test(
   test_ddim
   SRCS test_ddim.cc
-  DEPS phi)
+  DEPS phi
+)
+
 if(WITH_GPU)
   nv_test(
     test_dim

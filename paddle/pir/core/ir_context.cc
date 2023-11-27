@@ -27,7 +27,7 @@
 namespace pir {
 // The implementation class of the IrContext class, cache registered
 // AbstractType, TypeStorage, AbstractAttribute, AttributeStorage, Dialect.
-class IrContextImpl {
+class  IrContextImpl {
  public:
   IrContextImpl() = default;
 
@@ -196,16 +196,16 @@ IrContext::IrContext() : impl_(new IrContextImpl()) {
   VLOG(4) << "==============================================";
 
   impl_->bfp16_type = TypeManager::get<BFloat16Type>(this);
-  impl_->fp16_type = TypeManager::get<Float16Type>(this);
-  impl_->fp32_type = TypeManager::get<Float32Type>(this);
-  impl_->fp64_type = TypeManager::get<Float64Type>(this);
+  impl_->fp16_type =  TypeManager::get<Float16Type>(this);
+  impl_->fp32_type =  TypeManager::get<Float32Type>(this);
+  impl_->fp64_type =  TypeManager::get<Float64Type>(this);
   impl_->uint8_type = TypeManager::get<UInt8Type>(this);
-  impl_->int8_type = TypeManager::get<Int8Type>(this);
+  impl_->int8_type =  TypeManager::get<Int8Type>(this);
   impl_->int16_type = TypeManager::get<Int16Type>(this);
   impl_->int32_type = TypeManager::get<Int32Type>(this);
   impl_->int64_type = TypeManager::get<Int64Type>(this);
   impl_->index_type = TypeManager::get<IndexType>(this);
-  impl_->bool_type = TypeManager::get<BoolType>(this);
+  impl_->bool_type =  TypeManager::get<BoolType>(this);
   impl_->complex64_type = TypeManager::get<Complex64Type>(this);
   impl_->complex128_type = TypeManager::get<Complex128Type>(this);
 }
@@ -274,6 +274,7 @@ Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
   LOG(WARNING) << "No dialect registered for " << dialect_name;
   return nullptr;
 }
+
 
 void IrContext::RegisterAbstractType(pir::TypeId type_id,
                                      AbstractType &&abstract_type) {

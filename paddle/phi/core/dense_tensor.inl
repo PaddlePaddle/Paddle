@@ -127,7 +127,7 @@ inline void set_mem_desc(const dnnl::memory::desc& mem_desc) {
 public:
 explicit DenseTensor(const LoD& lod);
 
-void set_lod(const LoD& lod);
+TEST_API void set_lod(const LoD& lod);
 
 LoD* mutable_lod();
 

@@ -20,6 +20,7 @@
 
 #include "paddle/pir/core/spin_lock.h"
 #include "paddle/pir/core/type_id.h"
+#include "paddle/utils/test_macros.h"
 
 namespace pir {
 ///
@@ -123,7 +124,7 @@ class IR_API StorageManager {
   }
 
  private:
-  StorageBase *GetParametricStorageImpl(
+  TEST_API StorageBase *GetParametricStorageImpl(
       TypeId type_id,
       std::size_t hash_value,
       std::function<bool(const StorageBase *)> equal_func,

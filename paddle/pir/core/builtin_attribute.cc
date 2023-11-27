@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/core/builtin_attribute.h"
-
+#include "paddle/utils/test_macros.h"
 namespace pir {
 
 bool BoolAttribute::data() const { return storage()->data(); }

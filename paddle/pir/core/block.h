@@ -147,6 +147,7 @@ void Block::AddArguments(TypeIter first, TypeIter last) {
   while (first != last) {
     AddArgument(*first++);
   }
+  
 }
 
 }  // namespace pir

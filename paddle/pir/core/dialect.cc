@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/core/dialect.h"
-
+#include "paddle/utils/test_macros.h"
 namespace pir {
 Dialect::Dialect(std::string name, pir::IrContext *context, pir::TypeId id)
     : name_(std::move(name)), context_(context), id_(id) {}

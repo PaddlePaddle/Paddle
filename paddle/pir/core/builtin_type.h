@@ -78,7 +78,7 @@ class DenseTensorType : public Type::TypeBase<DenseTensorType,
 };
 
 #define DECLARE_BUILTIN_TYPE(__name)                                       \
-  class IR_API __name : public Type::TypeBase<__name, Type, TypeStorage> { \
+  class IR_API TEST_API  __name : public Type::TypeBase<__name, Type, TypeStorage> { \
    public:                                                                 \
     using Base::Base;                                                      \
     static __name get(IrContext *context);                                 \

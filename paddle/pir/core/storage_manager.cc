@@ -18,7 +18,7 @@
 #include <unordered_map>
 
 #include "paddle/pir/core/enforce.h"
-
+#include "paddle/utils/test_macros.h"
 namespace pir {
 // This is a structure for creating, caching, and looking up Storage of
 // parametric types.
