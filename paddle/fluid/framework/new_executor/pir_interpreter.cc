@@ -1660,11 +1660,6 @@ void PirInterpreter::Build(
       "Build is not implemented in PirInterpreter."));
 }
 
-std::tuple<double, double> PirInterpreter::InterpreterRunTime() {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "PirInterpreter::InterpreterRunTime is not implemented."));
-}
-
 void PirInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
   PADDLE_THROW(platform::errors::Unimplemented(
       "SetCopyProgram is not implemented in PirInterpreter."));
