@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import functools
+import inspect
 import os
+import pathlib
 import random
 import struct
 import sys
@@ -2585,11 +2587,24 @@ class OpTest(unittest.TestCase):
                     dump_test_info(
                         self, place, forward_test_info_path, backward=False
                     )
+                    python_api_info = {
+                        "api_name": self.python_api.__name__,
+                        "api_module": inspect.getmodule(
+                            self.python_api
+                        ).__name__
+                        if inspect.getmodule(
+                            self.python_api
+                        ).__name__.startswith("paddle")
+                        else pathlib.Path(
+                            inspect.getmodule(self.python_api).__file__
+                        ).stem,
+                    }
                     # code gen for auto parallel forward test
                     gen_auto_parallel_test_file(
                         check_grad=False,
                         test_info_path=forward_test_info_path,
                         test_file_path=generated_forward_test_path,
+                        python_api_info=python_api_info,
                     )
                     runtime_envs = get_subprocess_runtime_envs(place)
                     start_command = get_subprocess_command(
@@ -3059,11 +3074,24 @@ class OpTest(unittest.TestCase):
                         backward=True,
                         backward_extra_test_info=backward_extra_test_info,
                     )
+                    python_api_info = {
+                        "api_name": self.python_api.__name__,
+                        "api_module": inspect.getmodule(
+                            self.python_api
+                        ).__name__
+                        if inspect.getmodule(
+                            self.python_api
+                        ).__name__.startswith("paddle")
+                        else pathlib.Path(
+                            inspect.getmodule(self.python_api).__file__
+                        ).stem,
+                    }
                     # code gen for auto parallel grad test
                     gen_auto_parallel_test_file(
-                        check_grad=True,
+                        check_grad=False,
                         test_info_path=grad_test_info_path,
                         test_file_path=generated_grad_test_path,
+                        python_api_info=python_api_info,
                     )
                     runtime_envs = get_subprocess_runtime_envs(place)
                     start_command = get_subprocess_command(

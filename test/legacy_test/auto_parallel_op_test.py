@@ -65,7 +65,7 @@ FORWARD_TEST_FUNCTION_TEMPLATE = """
 def run_forward_check(test_info):
     auto_parallel_forward_checker = AutoParallelForwardChecker(
         test_info["op_type"],
-        test_info["python_api"],
+        python_api,
         test_info["dtype"],
         convert_input_dims_map_to_placements(test_info["dims_map"], test_info["inputs"], 1),
         test_info["inputs"],
@@ -83,7 +83,7 @@ GRAD_TEST_FUNCTION_TEMPLATE = """
 def run_grad_check(test_info):
     auto_parallel_forward_checker = AutoParallelGradChecker(
         test_info["op_type"],
-        test_info["python_api"],
+        python_api,
         test_info["dtype"],
         convert_input_dims_map_to_placements(test_info["dims_map"], test_info["inputs"], 1),
         test_info["inputs"],
@@ -100,10 +100,16 @@ def run_grad_check(test_info):
     auto_parallel_forward_checker.check()
 """
 
+LOAD_PYTHON_API_TEMPLATE = """
+    from {module} import {function}
+    python_api = {function}
+"""
+
 TEST_BODY_TEMPLATE = """
 
 if __name__ == "__main__":
     test_info = load_test_info(r'{test_info_path}')
+    {load_python_api}
     {run_test}
 """
 
@@ -135,7 +141,9 @@ def gen_import_packages(check_grad):
     return import_code
 
 
-def gen_auto_parallel_test_file(check_grad, test_info_path, test_file_path):
+def gen_auto_parallel_test_file(
+    check_grad, test_info_path, test_file_path, python_api_info
+):
     test_code = ''
     test_code += gen_import_packages(check_grad)
     test_code += LOAD_TEST_INFO_TEMPLATE.format(test_info_path=test_info_path)
@@ -149,8 +157,14 @@ def gen_auto_parallel_test_file(check_grad, test_info_path, test_file_path):
         if check_grad
         else "run_forward_check(test_info)"
     )
+    load_python_api_str = LOAD_PYTHON_API_TEMPLATE.format(
+        module=python_api_info["api_module"],
+        function=python_api_info["api_name"],
+    )
     test_code += TEST_BODY_TEMPLATE.format(
-        test_info_path=test_info_path, run_test=run_test_str
+        test_info_path=test_info_path,
+        load_python_api=load_python_api_str,
+        run_test=run_test_str,
     )
     with open(test_file_path, "w") as f:
         f.write(test_code)
@@ -194,7 +208,6 @@ def dump_test_info(
     test_info = {}
     with open(test_info_path, "wb") as f:
         test_info["op_type"] = op_test.op_type
-        test_info["python_api"] = op_test.python_api
         test_info["dtype"] = op_test.dtype
         test_info["dims_map"] = convert_input_placements_to_dims_map(
             op_test.placements, op_test.inputs
@@ -357,8 +370,6 @@ def placements_to_dims_map(placements: List, tensor_ndim: int) -> Tuple[int]:
 # TODO: Add this method to
 # paddle/phi/core/distributed/auto_parallel/placement_types.h, and bind it to
 # python
-
-
 def dims_map_to_placements(
     dim_map: Tuple[int], mesh_ndim: int, sums: Tuple[int] = ()
 ) -> Tuple[dist.Placement]:

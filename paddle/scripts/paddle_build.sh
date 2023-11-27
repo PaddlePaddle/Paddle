@@ -2848,8 +2848,8 @@ set -ex
 
 function is_run_distribute_in_op_test() {
     DISTRIBUTE_FILES=("python/paddle/distributed"
-                        "python/phi/infermeta/spmd_rules"
-                        "paddle/phi/core/distributed")
+                      "python/phi/infermeta/spmd_rules"
+                      "paddle/phi/core/distributed")
     cd ${PADDLE_ROOT}
     for DISTRIBUTE_FILE in ${DISTRIBUTE_FILES[*]}; do
         DISTRIBUTE_CHANGE=`git diff --name-only upstream/$BRANCH | grep -F "${DISTRIBUTE_FILE}"|| true`
