@@ -386,8 +386,7 @@ std::tuple<Tensor, Tensor> dropout_decomp(
   }
 
   auto dtype_tmp = org_dtype;
-  if (org_dtype == phi::DataType::FLOAT16 ||
-      org_dtype == phi::DataType::UINT16) {
+  if (is_half_dtype(org_dtype)) {
     dtype_tmp = phi::DataType::FLOAT32;
   }
 
