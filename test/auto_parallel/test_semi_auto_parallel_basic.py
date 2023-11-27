@@ -168,7 +168,6 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
-
     def test_unary_elementwise_like_api(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
