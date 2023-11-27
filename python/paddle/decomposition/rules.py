@@ -52,7 +52,7 @@ def rsqrt(x):
     return res if not is_amp else cast(res, dtype)
 
 
-@register_decomp('pd_op.pow')
+# @register_decomp('pd_op.pow')
 def pow_composite(x, y):
     """
     define composite rule of op pow
@@ -140,25 +140,6 @@ def add_n(x):
     for xi in x[1:]:
         ans = xi + ans
     return ans
-
-
-@register_decomp('pd_op.silu')
-def silu(x):
-    """
-    define composite rule of op silu
-    res = x / (1 + exp(-x))
-    """
-    is_amp = False
-    from paddle.base.data_feeder import convert_dtype
-
-    dtype = convert_dtype(x.dtype)
-    if dtype in ["float16", "uint16"]:
-        is_amp = True
-        x = cast(x, "float32")
-
-    sum_temp = exp(-x) + 1
-    res = x / sum_temp
-    return res if not is_amp else cast(res, dtype)
 
 
 @register_decomp('pd_op.full_like')

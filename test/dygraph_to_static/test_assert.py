@@ -15,9 +15,10 @@
 import unittest
 
 import numpy
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pir_exe_and_pir_api,
+    test_ast_only,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -51,7 +52,8 @@ class TestAssertVariable(Dy2StTestBase):
         self._run(func, x, with_exception, True)
         self._run(func, x, with_exception, False)
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
+    @test_ast_only
     def test_non_variable(self):
         self._run_dy_static(
             dyfunc_assert_non_variable, x=False, with_exception=True
@@ -60,7 +62,8 @@ class TestAssertVariable(Dy2StTestBase):
             dyfunc_assert_non_variable, x=True, with_exception=False
         )
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
+    @test_ast_only
     def test_bool_variable(self):
         self._run_dy_static(
             dyfunc_assert_variable, x=numpy.array([False]), with_exception=True
@@ -69,7 +72,8 @@ class TestAssertVariable(Dy2StTestBase):
             dyfunc_assert_variable, x=numpy.array([True]), with_exception=False
         )
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
+    @test_ast_only
     def test_int_variable(self):
         self._run_dy_static(
             dyfunc_assert_variable, x=numpy.array([0]), with_exception=True
