@@ -230,7 +230,14 @@ struct ConvertDstFunc<__nv_bfloat162> {
 template <>
 struct ConvertDstFunc_2<__nv_bfloat162> {
   static __device__ __forceinline__ __nv_bfloat162 apply(const __nv_bfloat16& val) {
+  #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 800
+    __nv_bfloat162 val2;
+    val2.x = val;
+    val2.y = val;
+    return val2;
+  #else
     return __bfloat162bfloat162(val);
+  #endif
   }
 };
 #endif
