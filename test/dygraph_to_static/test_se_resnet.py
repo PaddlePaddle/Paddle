@@ -20,11 +20,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import (
-    Dy2StTestBase,
-    compare_legacy_with_pt,
-    test_ast_only,
-)
+from dygraph_to_static_utils import Dy2StTestBase, test_ast_only, test_pt_only
 from predictor_utils import PredictorTools
 
 import paddle
@@ -375,7 +371,6 @@ class TestSeResnet(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @compare_legacy_with_pt
     def train(self, train_reader, to_static):
         paddle.jit.enable_to_static(to_static)
 
@@ -497,7 +492,6 @@ class TestSeResnet(Dy2StTestBase):
 
             return pred_res.numpy()
 
-    @compare_legacy_with_pt
     def predict_static(self, data):
         paddle.enable_static()
         exe = base.Executor(place)
@@ -572,6 +566,7 @@ class TestSeResnet(Dy2StTestBase):
             )
 
     @test_ast_only
+    @test_pt_only
     def test_check_result(self):
         pred_1, loss_1, acc1_1, acc5_1 = self.train(
             self.train_reader, to_static=False

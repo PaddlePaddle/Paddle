@@ -19,13 +19,12 @@ import sys
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import Dy2StTestBase, test_default_mode_only
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 import paddle
 from paddle import base
 from paddle.base.dygraph import to_variable
-from paddle.jit.api import to_static
 from paddle.nn import BatchNorm, Linear
 
 random.seed(0)
@@ -202,7 +201,6 @@ class TSM_ResNet(paddle.nn.Layer):
             ),
         )
 
-    @to_static
     def forward(self, inputs):
         y = paddle.reshape(inputs, [-1] + self.reshape_list)
         y = self.conv(y)
@@ -309,7 +307,9 @@ def train(args, fake_data_reader, to_static):
         paddle.seed(1000)
         paddle.framework.random._manual_program_seed(1000)
 
-        video_model = TSM_ResNet("TSM", train_config, 'Train')
+        video_model = paddle.jit.to_static(
+            TSM_ResNet("TSM", train_config, 'Train')
+        )
 
         optimizer = create_optimizer(
             train_config.TRAIN, video_model.parameters()
@@ -385,6 +385,7 @@ def train(args, fake_data_reader, to_static):
 
 
 class TestTsm(Dy2StTestBase):
+    @test_default_mode_only
     def test_dygraph_static_same_loss(self):
         if base.is_compiled_with_cuda():
             base.set_flags({"FLAGS_cudnn_deterministic": True})
