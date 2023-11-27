@@ -135,19 +135,20 @@ class FusedMatmulOneDNNHandler
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
 
- dnnl::primitive_attr CreateMatmulAttrs(const OneDNNContext &dev_ctx,
-                                         const DenseTensor *residual_data,
-                                         const float matmul_alpha,
-                                         const std::string &fuse_activation,
-                                         const float fuse_alpha,
-                                         const float fuse_beta,
-                                         const float fused_output_scale,
-                                         const float scale_x,
-                                         const float scale_y,
-                                         const float scale_in_eltwise,
-                                         const float scale_out,
-                                         const bool force_fp32_output,
-                                         const std::vector<int64_t> &out_ddims) {
+  dnnl::primitive_attr CreateMatmulAttrs(
+      const OneDNNContext &dev_ctx,
+      const DenseTensor *residual_data,
+      const float matmul_alpha,
+      const std::string &fuse_activation,
+      const float fuse_alpha,
+      const float fuse_beta,
+      const float fused_output_scale,
+      const float scale_x,
+      const float scale_y,
+      const float scale_in_eltwise,
+      const float scale_out,
+      const bool force_fp32_output,
+      const std::vector<int64_t> &out_ddims) {
     dnnl::primitive_attr matmul_attrs;
     dnnl::post_ops post_operations;
 

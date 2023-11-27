@@ -145,5 +145,6 @@ class TestMatmulElementwiseAddMkldnnFuse1CHWPass(PassAutoScanTest):
             quant=False, passes=['matmul_elementwise_add_mkldnn_fuse_pass']
         )
 
+
 if __name__ == '__main__':
     unittest.main()
