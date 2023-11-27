@@ -22,28 +22,13 @@ limitations under the License. */
 #include <fstream>
 #include <iomanip>
 #include "paddle/phi/kernels/flash_attn_kernel.h"
-// #include
-// "paddle/fluid/operators/fused/cutlass/cutlass_kernels/fpA_intB_gemm/fpA_intB_gemm_template.h"
-// #include
-// "paddle/fluid/operators/fused/cutlass/cutlass_kernels/intA_intB_interleaved_gemm/intA_intB_gemm_template.h"
 
-#include "paddle/fluid/operators/fused/layernorm_quant_dequant.h"
-// #include "paddle/fluid/operators/fused/llm_int8.h"
 #include "paddle/fluid/operators/fused/mmha_util.cu.h"
-// #include "paddle/phi/kernels/gemv_weightonly_int8.h"
-// #include "paddle/phi/kernels/rms_norm_kernel.h"
-// #include
-// "paddle/fluid/operators/fused/cutlass/cutlass_extensions/interleaved_numeric_conversion.h"
-
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 
-// PHI_DECLARE_bool(gemm_use_half_precision_compute_type);
-// PHI_DECLARE_bool(custom_llm_int8_threshold);
 DECLARE_string(fmha_mode);
 DECLARE_int64(custom_allreduce_one_shot_threshold);
 DECLARE_int64(custom_allreduce_two_shot_threshold);
-// DECLARE_double(custom_llm_int8_threshold);
-// DECLARE_double(custom_llm_int8_threshold_ffn1);
 
 namespace paddle {
 namespace operators {
@@ -224,6 +209,30 @@ struct DequantLoad {
   const float *dequant_scales_;
   const int cols_;
 };
+
+template <typename T>
+__device__ __inline__ T ClipFunc(const T v, const T min, const T max) {
+  if (v > max) return max;
+  if (v < min) return min;
+  return v;
+}
+
+template <typename InType, typename OutType>
+__forceinline__ __device__ OutType QuantHelperFunc(const InType input,
+                                                   const float scale,
+                                                   const int round_type,
+                                                   const float max_bound,
+                                                   const float min_bound) {
+  float quant_value = max_bound * scale * static_cast<float>(input);
+
+  if (round_type == 0) {
+    quant_value = static_cast<float>(rint(quant_value));
+  } else {
+    quant_value = static_cast<float>(round(quant_value));
+  }
+  return static_cast<OutType>(
+      ClipFunc<float>(quant_value, min_bound, max_bound));
+}
 
 template <typename T, bool Smooth = false>
 struct QuantStore {

@@ -17,10 +17,7 @@
 #ifndef MMHA_UTIL_CU_H_
 #define MMHA_UTIL_CU_H_
 #ifdef __NVCC__
-#if defined(__CUDACC__) && CUDA_VERSION >= 11000
-#define PADDLE_CUDA_BF16
-#include <cuda_bf16.h>
-#endif
+
 #include <cuda_fp16.h>
 #include <cub/cub.cuh>
 #endif
@@ -55,7 +52,12 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
+#if defined(__CUDACC__) && CUDA_VERSION >= 11000
 #define ENABLE_BF16
+#include <cuda_bf16.h>
+#endif
+
+
 namespace paddle {
 namespace operators {
 
