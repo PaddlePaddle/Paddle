@@ -57,9 +57,15 @@ if(WIN32)
     add_custom_command(
       OUTPUT ${eager_generator_path}/phi.dll
       COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${eager_generator_path}
-      DEPENDS phi common)
+      DEPENDS phi)
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/phi.dll)
   endif()
+
+  add_custom_command(
+    OUTPUT ${eager_generator_path}/common.dll
+    COMMAND ${CMAKE_COMMAND} -E copy ${COMMON_LIB} ${eager_generator_path}
+    DEPENDS common)
+  list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/common.dll)
 
   if(WITH_SHARED_IR)
     add_custom_command(
