@@ -660,7 +660,7 @@ def decomp_bwd_op(
     block: Block,
     bwd_op: pir.Operation,
     grad_var_to_var_map: dict,
-    fetch_list: list,
+    fetch_list: list = None,
 ):
     '''
     Decompose a backward op in pir program.
@@ -704,13 +704,14 @@ def decomp_bwd_op(
     if not bwd_has_decomposed:
         # try to decompose the forward op firstly and then decompose the backward op
         # check whether the forward op is related to the outputs to be fetched
-        (
-            fwd_leaf_ops,
-            fwd_leaf_ops_output_indexes,
-        ) = _get_leaf_ops(block, fetch_list)
-        fwd_leaf_op_index = (
-            fwd_leaf_ops.index(fwd_op) if fwd_op in fwd_leaf_ops else None
-        )
+        if fetch_list is not None:
+            (
+                fwd_leaf_ops,
+                fwd_leaf_ops_output_indexes,
+            ) = _get_leaf_ops(block, fetch_list)
+            fwd_leaf_op_index = (
+                fwd_leaf_ops.index(fwd_op) if fwd_op in fwd_leaf_ops else None
+            )
         # try to decompose the forward op
         fwd_inputs = [x.source() for x in fwd_op.operands()]
         (
@@ -723,7 +724,7 @@ def decomp_bwd_op(
         )
         if fwd_has_decomposed:
             # if the decomposed forward op is related to the outputs to be fetched, replace the outputs
-            if fwd_leaf_op_index is not None:
+            if fetch_list is not None and fwd_leaf_op_index is not None:
                 _replace_graph_outputs(
                     fetch_list,
                     new_fwd_outputs,
