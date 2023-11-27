@@ -105,7 +105,8 @@ def to_sot_test(fn):
 def to_legacy_ir_test(fn):
     def impl(*args, **kwargs):
         logger.info("[LEGACY_IR] running legacy ir")
-        return fn(*args, **kwargs)
+        with paddle.base.unique_name.guard():
+            return fn(*args, **kwargs)
 
     return impl
 
@@ -137,10 +138,13 @@ def to_pir_api_test(fn):
     def impl(*args, **kwargs):
         logger.info("[PIR_API] running pir api")
         ir_outs = None
-        with paddle.pir_utils.IrGuard():
-            paddle.disable_static()
-            ir_outs = fn(*args, **kwargs)
-        return ir_outs
+        is_dygraph = paddle.in_dynamic_mode()
+        with paddle.base.unique_name.guard():
+            with paddle.pir_utils.IrGuard():
+                if is_dygraph:
+                    paddle.disable_static()
+                ir_outs = fn(*args, **kwargs)
+            return ir_outs
 
     return impl
 

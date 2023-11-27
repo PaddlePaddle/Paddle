@@ -576,8 +576,8 @@ def convert_len(var):
                 % type(var)
             )
     elif isinstance(var, OpResult):
-        assert var.ndim > 0, "len() of a 0-D tensor is wrong"
         if var.is_dense_tensor_type() or var.is_selected_row_type():
+            assert var.ndim > 0, "len() of a 0-D tensor is wrong"
             # Note: Length of var may be known ahead of time in dygraph,
             # but it probably represents batch size which can be variant.
             # so we return a variable dynamically inferred from var.shape.
