@@ -14,7 +14,7 @@
 
 import unittest
 
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_sot_only,
 )

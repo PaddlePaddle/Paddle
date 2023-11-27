@@ -18,11 +18,10 @@ import unittest
 from time import time
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    compare_legacy_with_pir,
-    test_ast_only,
-    test_legacy_and_pir_api,
+    test_default_mode_only,
+    test_legacy_and_pt_and_pir,
 )
 from predictor_utils import PredictorTools
 
@@ -158,14 +157,13 @@ class TestMNISTWithToStatic(TestMNIST):
     still works if model is trained in dygraph mode.
     """
 
-    @compare_legacy_with_pir
     def train_static(self):
         return self.train(to_static=True)
 
     def train_dygraph(self):
         return self.train(to_static=False)
 
-    @test_ast_only
+    @test_default_mode_only
     def test_mnist_to_static(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
@@ -176,7 +174,7 @@ class TestMNISTWithToStatic(TestMNIST):
             err_msg=f'dygraph is {dygraph_loss}\n static_res is \n{static_loss}',
         )
 
-    @test_legacy_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_mnist_declarative_cpu_vs_mkldnn(self):
         dygraph_loss_cpu = self.train_dygraph()
         paddle.set_flags({'FLAGS_use_mkldnn': True})

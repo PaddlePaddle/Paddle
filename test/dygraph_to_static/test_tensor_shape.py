@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
+    compare_legacy_with_pt,
     test_ast_only,
-    test_legacy_and_pir_exe_and_pir_api,
-    test_pir_api_only,
+    test_legacy_and_pt_and_pir,
+    test_pir_only,
 )
 
 import paddle
@@ -265,10 +266,11 @@ class TestTensorShapeBasic(Dy2StTestBase):
     def get_dygraph_output(self):
         return self._run(to_static=False)
 
+    @compare_legacy_with_pt
     def get_static_output(self):
         return self._run(to_static=True)
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         static_res = self.get_static_output()
         dygraph_res = self.get_dygraph_output()
@@ -326,7 +328,7 @@ class TestTensorShapeBasic(Dy2StTestBase):
         self.assertEqual(slice_op_num, self.expected_slice_op_num)
 
     @test_ast_only
-    @test_pir_api_only
+    @test_pir_only
     def test_pir_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
@@ -682,7 +684,7 @@ class TestOpNumBasicWithTensorShape(Dy2StTestBase):
         self.assertEqual(self.slice_op_num, self.expected_slice_op_num)
 
     @test_ast_only
-    @test_pir_api_only
+    @test_pir_only
     def test_pir_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
@@ -737,7 +739,7 @@ class TestOpNumWithTensorShapeInIf1(TestOpNumBasicWithTensorShape):
         self.pir_expected_slice_op_num = 0
 
     @test_ast_only
-    @test_pir_api_only
+    @test_pir_only
     def test_pir_op_num(self):
         # Remove this after we support control flow
         pass
@@ -758,7 +760,7 @@ class TestOpNumWithTensorShapeInFor1(TestOpNumBasicWithTensorShape):
         self.pir_expected_slice_op_num = 0
 
     @test_ast_only
-    @test_pir_api_only
+    @test_pir_only
     def test_pir_op_num(self):
         # Remove this after we support control flow
         pass
@@ -779,7 +781,7 @@ class TestOpNumWithTensorShapeInWhile1(TestOpNumBasicWithTensorShape):
         self.pir_expected_slice_op_num = 0
 
     @test_ast_only
-    @test_pir_api_only
+    @test_pir_only
     def test_pir_op_num(self):
         # Remove this after we support control flow
         pass
@@ -821,7 +823,7 @@ def dyfunc_with_static_convert_var_shape(x):
 
 class TestFindStatiConvertVarShapeSuffixVar(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test(self):
         x_spec = paddle.static.InputSpec(shape=[None, 10])
         func = paddle.jit.to_static(

@@ -190,6 +190,9 @@ int fast_gather_nd(Context* ctx,
                    const VectorParam<int64_t>& x_shape,
                    const std::vector<int64_t>& index_shape) {
   WRAPPER_CHECK_CTX(ctx);
+  if (std::is_same<T, bfloat16>::value) {
+    WRAPPER_UNIMPLEMENTED(ctx);
+  }
   WRAPPER_DUMP_FUNCTION_T2(ctx, "fast_gather_nd", T, TID);
   WRAPPER_DUMP_PARAM6(
       ctx, x, index, y, x_shape, index_shape, ctx->_l3_mgr.get_size());
@@ -272,6 +275,18 @@ template int fast_gather_nd(Context*,
                             const float16*,
                             const int64_t*,
                             float16*,
+                            const VectorParam<int64_t>&,
+                            const std::vector<int64_t>&);
+template int fast_gather_nd(Context*,
+                            const bfloat16*,
+                            const int*,
+                            bfloat16*,
+                            const VectorParam<int64_t>&,
+                            const std::vector<int64_t>&);
+template int fast_gather_nd(Context*,
+                            const bfloat16*,
+                            const int64_t*,
+                            bfloat16*,
                             const VectorParam<int64_t>&,
                             const std::vector<int64_t>&);
 

@@ -51,7 +51,7 @@ def convert_attr(x, attr):
 
 def convert_load(x):
     if in_to_static_mode():
-        if isinstance(x, paddle.base.core.eager.Tensor):
+        if isinstance(x, paddle.Tensor):
             """
             TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
             """
