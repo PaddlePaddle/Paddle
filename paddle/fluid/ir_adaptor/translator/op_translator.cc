@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/op_compat_info.h"
@@ -37,7 +38,6 @@
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"

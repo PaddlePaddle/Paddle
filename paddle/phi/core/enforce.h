@@ -112,25 +112,6 @@ namespace enforce {
 #define PADDLE_MAY_THROW noexcept(false)
 #endif
 
-// Because most enforce conditions would evaluate to true, we can use
-// __builtin_expect to instruct the C++ compiler to generate code that
-// always forces branch prediction of true.
-// This generates faster binary code. __builtin_expect is since C++11.
-// For more details, please check https://stackoverflow.com/a/43870188/724872.
-#if !defined(_WIN32)
-#define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
-#else
-// there is no equivalent intrinsics in msvc.
-#define UNLIKELY(condition) (condition)
-#endif
-
-#if !defined(_WIN32)
-#define LIKELY(condition) __builtin_expect(static_cast<bool>(condition), 1)
-#else
-// there is no equivalent intrinsics in msvc.
-#define LIKELY(condition) (condition)
-#endif
-
 #if defined _WIN32 && defined PADDLE_ON_INFERENCE && defined PADDLE_NO_PYTHON
 #define HANDLE_THE_ERROR try {
 #define END_HANDLE_THE_ERROR            \

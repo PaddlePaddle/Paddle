@@ -17,6 +17,7 @@
 #include <unordered_map>
 
 #include "glog/logging.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
@@ -33,7 +34,6 @@
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"

@@ -17,10 +17,10 @@
 #include <functional>
 #include <ostream>
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/attribute_base.h"
 #include "paddle/pir/core/dialect_interface.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/core/type_base.h"

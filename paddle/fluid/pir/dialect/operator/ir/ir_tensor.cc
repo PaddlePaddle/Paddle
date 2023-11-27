@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 
 namespace paddle {
 namespace dialect {

@@ -18,8 +18,8 @@
 #include <vector>
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/cast_utils.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/type.h"
 
 namespace pir {
