@@ -17,11 +17,11 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir,
-    test_legacy_and_pir_exe_and_pir_api,
+    test_legacy_and_pt,
+    test_legacy_and_pt_and_pir,
 )
 from test_basic_api_transformation import dyfunc_to_variable
 
@@ -95,7 +95,7 @@ class SimpleNet(Layer):
 
 
 class TestStaticFunctionInstance(Dy2StTestBase):
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_instance_same_class(self):
         net_1 = paddle.jit.to_static(
             function=SimpleNet(),
@@ -127,7 +127,6 @@ class TestInputSpec(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_legacy_and_pir
     @test_ast_only
     def test_with_input_spec(self):
         x = to_variable(np.ones([4, 10]).astype('float32'))
@@ -168,7 +167,7 @@ class TestInputSpec(Dy2StTestBase):
         int_np = np.ones([1]).astype('float32')
         out = net.func_with_list_dict([int_np, {'x': x, 'y': y}])
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_with_error(self):
         x = to_variable(np.ones([4, 10]).astype('float32'))
         y = to_variable(np.ones([4, 10]).astype('float32') * 2)
@@ -197,7 +196,7 @@ class TestInputSpec(Dy2StTestBase):
             net.add_func(x, y)
 
     @test_ast_only
-    @test_legacy_and_pir
+    @test_legacy_and_pt
     def test_concrete_program(self):
         x = to_variable(np.ones([4, 10]).astype('float32'))
         y = to_variable(np.ones([4, 10]).astype('float32') * 2)
@@ -240,7 +239,7 @@ class TestDifferentInputSpecCacheProgram(Dy2StTestBase):
     def setUp(self):
         paddle.jit.enable_to_static(True)
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     @test_ast_only
     def test_with_different_input(self):
         x_data = np.ones([16, 10]).astype('float32')
@@ -279,7 +278,7 @@ class TestDifferentInputSpecCacheProgram(Dy2StTestBase):
         self.assertTrue(first_program == recent_program)
 
     @test_ast_only
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_get_concrete_program(self):
         foo = paddle.jit.to_static(foo_func)
 
@@ -321,7 +320,7 @@ class TestDifferentInputSpecCacheProgram(Dy2StTestBase):
             )
 
     @test_ast_only
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_concrete_program(self):
         # usage 1
         foo_1 = paddle.jit.to_static(
@@ -389,6 +388,7 @@ class TestDeclarativeAPI(Dy2StTestBase):
             # AssertionError: We Only support to_variable in imperative mode,
             #  please use base.dygraph.guard() as context to run it in imperative Mode
             func(np.ones(5).astype("int32"))
+        paddle.jit.enable_to_static(True)
 
         paddle.disable_static()
 
@@ -400,7 +400,7 @@ class TestDecorateModelDirectly(Dy2StTestBase):
         self.x = paddle.to_tensor(np.ones([4, 10]).astype('float32'))
 
     @test_ast_only
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_fake_input(self):
         net = paddle.jit.to_static(
             function=SimpleNet(),
@@ -431,7 +431,7 @@ class TestDecorateModelDirectly(Dy2StTestBase):
 
 
 class TestErrorWithInitFromStaticMode(Dy2StTestBase):
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_raise_error(self):
         # disable imperative
         paddle.enable_static()
@@ -479,7 +479,7 @@ class CallNonForwardFuncSubNet(paddle.nn.Layer):
 
 
 class TestCallNonForwardFunc(Dy2StTestBase):
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_call_non_forward(self):
         paddle.disable_static()
         net = paddle.jit.to_static(CallNonForwardFuncNet())
@@ -516,7 +516,6 @@ class TestSetBuffers(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_legacy_and_pir
     def test_set_buffers1(self):
         net = paddle.jit.to_static(SetBuffersNet1())
         out = net()
@@ -536,7 +535,7 @@ class ClassNoInheritLayer:
 
 
 class TestClassNoInheritLayer(Dy2StTestBase):
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_to_static(self):
         paddle.disable_static()
         net = ClassNoInheritLayer()

@@ -217,6 +217,7 @@ const std::unordered_set<std::string> SpecialOps = {"pd_op.feed",
                                                     "builtin.combine",
                                                     "builtin.set_parameter",
                                                     "builtin.parameter",
+                                                    "builtin.constant",
                                                     "builtin.slice",
                                                     "builtin.split",
                                                     "pd_op.data",
@@ -355,7 +356,10 @@ void HandleForSpecialOp(pir::Operation* op,
 
     std::string name =
         op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
-    Variable* var = value_exe_info->GetScope()->Var(name);
+    Variable* var = value_exe_info->GetScope()->FindVar(name);
+    if (var == nullptr) {
+      var = value_exe_info->GetScope()->Var(name);
+    }
     PADDLE_ENFORCE(var,
                    paddle::platform::errors::InvalidArgument(
                        "The variable %s shoud exist", name));
@@ -438,6 +442,13 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->result(0);
 
     value_exe_info->Add(value, param_name);
+  } else if (op_name == "builtin.constant") {
+    VLOG(6) << "Handle for builtin.constant:";
+    if (op->isa<pir::ConstantTensorOp>()) {
+      auto param_name = op->dyn_cast<pir::ConstantTensorOp>().tensor_name();
+      auto value = op->result(0);
+      value_exe_info->Add(value, param_name);
+    }
   } else if (op_name == "builtin.slice") {
     VLOG(6) << "Handle for builtin.slice";
     auto out_value = op->result(0);

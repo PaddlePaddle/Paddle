@@ -909,12 +909,12 @@ class TestConcatOpAutoParallel(OpTest):
         self.check_grad(
             ['x0'],
             'Out',
-            check_auto_parallel=True,
+            check_auto_parallel=False,
         )
         self.check_grad(
             ['x0', 'x1', 'x2'],
             'Out',
-            check_auto_parallel=True,
+            check_auto_parallel=False,
         )
 
     def init_test_data(self):

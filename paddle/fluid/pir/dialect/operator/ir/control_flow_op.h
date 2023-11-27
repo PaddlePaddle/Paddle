@@ -15,12 +15,13 @@
 #pragma once
 #include <vector>
 
+#include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/pir/core/op_base.h"
 
 namespace paddle {
 namespace dialect {
 
-class IfOp : public pir::Op<IfOp> {
+class IfOp : public pir::Op<IfOp, VjpInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.if"; }
@@ -45,6 +46,13 @@ class IfOp : public pir::Op<IfOp> {
   void Print(pir::IrPrinter &printer);  // NOLINT
   void VerifySig();
   void VerifyRegion();
+
+  static std::vector<std::vector<pir::OpResult>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::OpResult>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
 };
 
 ///
@@ -73,6 +81,17 @@ class WhileOp : public pir::Op<WhileOp> {
   void Print(pir::IrPrinter &printer);  // NOLINT
   void VerifySig() {}
   void VerifyRegion() {}
+};
+
+struct TuplePushOpVjpInterfaceModel : public VjpInterface::Concept {
+  static std::vector<std::vector<pir::OpResult>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs,
+      const std::vector<std::vector<pir::OpResult>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
+
+  TuplePushOpVjpInterfaceModel() : VjpInterface::Concept(Vjp) {}
 };
 
 }  // namespace dialect

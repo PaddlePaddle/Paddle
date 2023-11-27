@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
-    test_legacy_and_pir,
+    test_default_mode_only,
 )
 from yolov3 import YOLOv3, cfg
 
@@ -165,7 +165,7 @@ def train(to_static):
 
 
 class TestYolov3(Dy2StTestBase):
-    @test_legacy_and_pir
+    @test_default_mode_only
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)

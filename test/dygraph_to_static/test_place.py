@@ -17,14 +17,14 @@ import warnings
 
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
-    test_legacy_and_pir_exe_and_pir_api,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
 
 
 class TestPlace(Dy2StTestBase):
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_place(self):
         paddle.enable_static()
         x = paddle.to_tensor([1, 2, 3, 4])
