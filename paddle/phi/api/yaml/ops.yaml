@@ -453,6 +453,15 @@
     func : cumprod
   backward : cumprod_grad
 
+- op : cutlass_fused_multihead_attention
+  args : (Tensor query, Tensor key, Tensor value, Tensor mask, float scale, bool causal)
+  output : Tensor
+  infer_meta :
+    func : FusedMultiHeadAttentionInferMeta
+  kernel :
+    func : fused_multihead_attention
+  optional : mask
+
 - op : det
   args : (Tensor x)
   output : Tensor
@@ -774,6 +783,16 @@
   kernel :
     func : frame
   backward : frame_grad
+
+- op : fused_multihead_attention_variable
+  args : (Tensor query, Tensor key, Tensor value, Tensor seq_lens, Tensor mask, float scale, bool causal)
+  output : Tensor
+  infer_meta :
+    func : FusedMultiHeadAttentionVariableInferMeta
+  kernel :
+    func : fused_multihead_attention_variable
+    data_type : query
+  optional : mask
 
 - op : gather_nd
   args : (Tensor x, Tensor index)

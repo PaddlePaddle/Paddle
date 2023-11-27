@@ -843,7 +843,8 @@ void LaunchLayernormResidualDropoutBias(
     const float quant_next_in_scale = 1.0,
     const int quant_round_type = 1,
     const float quant_max_bound = 127.0,
-    const float quant_min_bound = -127.0) {
+    const float quant_min_bound = -127.0,
+    const float residual_alpha = 1.0) {
   // dropout_prob == 1.0f
   // NOTE(minghaoBD): OutType should be T if drop_out_rate == 1.0
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {

@@ -885,7 +885,9 @@ def fused_multi_transformer(
     ffn2_biases,
     pre_layer_norm=True,
     epsilon=1e-05,
+    residual_alpha=1.0,
     cache_kvs=None,
+    beam_offset=None,
     pre_caches=None,
     seq_lens=None,
     rotary_embs=None,
@@ -898,6 +900,8 @@ def fused_multi_transformer(
     mode='upscale_in_train',
     trans_qkvw=True,
     ring_id=-1,
+    norm_type="layernorm",
+    use_neox_rotary_style=False,
     name=None,
 ):
     r"""
@@ -940,32 +944,55 @@ def fused_multi_transformer(
             out = ffn_layer_norm(out)
 
     Args:
-        x (Tensor): the input tensor could be 3-D tensor, the input data type could be float16 or float32, the shape is `[batch\_size, sequence\_length, d\_model]`.
-        ln_scales (list(Tensor)|tuple(Tensor)): The weight tensors of attention layer_norm, the shape is `[d\_model]`.
-        ln_biases (list(Tensor)|tuple(Tensor)): The bias tensors of attention layer_norm. the shape is `[d\_model]`.
-        qkv_weights (list(Tensor)|tuple(Tensor)): The weight tensors of attention qkv computation. The shape is `[3, num\_head, dim\_head, d\_model]`.
-        qkv_biases (list(Tensor)|tuple(Tensor)|None): The bias tensors of attention qkv computation. The shape is `[3, num\_head, dim\_head]`.
-        linear_weights (list(Tensor)|tuple(Tensor)): The weight tensors of attention linear. The shape is `[num\_head * dim\_head, d\_model]`.
-        linear_biases (list(Tensor)|tuple(Tensor)|None): The bias tensors of attention linear. The shape is `[d\_model]`.
-        ffn_ln_scales (list(Tensor)|tuple(Tensor)): The weight tensors of feedforward layer_norm, the shape is `[d\_model]`
-        ffn_ln_biases (list(Tensor)|tuple(Tensor)): The bias tensors of feedforward layer_norm, the shape is `[d\_model]`
-        ffn1_weights (list(Tensor)|tuple(Tensor)): The weight tensors of feedforward first linear, the shape is `[d\_model, dim\_feedforward]`.
-        ffn1_biases (list(Tensor)|tuple(Tensor)|None): The bias tensors of feedforward first linear, the shape is `[dim\_feedforward]`.
-        ffn2_weights (list(Tensor)|tuple(Tensor)): The weight tensors of feedforward second linear, the shape is `[dim\_feedforward, d\_model]`.
-        ffn2_biases (list(Tensor)|tuple(Tensor)|None): The bias tensors of feedforward second linear, the shape is `[d_model]`.
-        pre_layer_norm (bool, optional): whether it is pre_layer_norm(True) or post_layer_norm(False). Default True.
-        epsilon (float, optional): Small float value added to denominator of the layer_norm to avoid dividing by zero. Default is 1e-5.
-        cache_kvs (list(Tensor)|tuple(Tensor), optional): The cache structure tensors for the generation model. The shape is `[2, bsz, num\_head, max\_seq\_len, head\_dim]`. Default None.
-        pre_caches (list(Tensor)|tuple(Tensor), optional): The prefix caches for the generation model. The shape is `[2, bsz, num\_head, cache\_len, head\_dim]`. Default None.
+        x (Tensor): the input tensor could be 3-D tensor, the input data type could be float16 or float32,
+            the shape is `[batch\_size, sequence\_length, d\_model]`.
+        ln_scales (list(Tensor)|tuple(Tensor)): The weight tensors of attention layer_norm,
+            the shape is `[d\_model]`.
+        ln_biases (list(Tensor)|tuple(Tensor)): The bias tensors of attention layer_norm.
+            the shape is `[d\_model]`.
+        qkv_weights (list(Tensor)|tuple(Tensor)): The weight tensors of attention qkv computation.
+            The shape is `[3, num\_head, dim\_head, d\_model]`.
+        qkv_biases (list(Tensor)|tuple(Tensor)|None): The bias tensors of attention qkv computation.
+            The shape is `[3, num\_head, dim\_head]`.
+        linear_weights (list(Tensor)|tuple(Tensor)): The weight tensors of attention linear.
+            The shape is `[num\_head * dim\_head, d\_model]`.
+        linear_biases (list(Tensor)|tuple(Tensor)|None): The bias tensors of attention linear.
+            The shape is `[d\_model]`.
+        ffn_ln_scales (list(Tensor)|tuple(Tensor)): The weight tensors of feedforward layer_norm,
+            the shape is `[d\_model]`
+        ffn_ln_biases (list(Tensor)|tuple(Tensor)): The bias tensors of feedforward layer_norm,
+            the shape is `[d\_model]`
+        ffn1_weights (list(Tensor)|tuple(Tensor)): The weight tensors of feedforward first linear,
+            the shape is `[d\_model, dim\_feedforward]`.
+        ffn1_biases (list(Tensor)|tuple(Tensor)|None): The bias tensors of feedforward first linear,
+            the shape is `[dim\_feedforward]`.
+        ffn2_weights (list(Tensor)|tuple(Tensor)): The weight tensors of feedforward second linear,
+            the shape is `[dim\_feedforward, d\_model]`.
+        ffn2_biases (list(Tensor)|tuple(Tensor)|None): The bias tensors of feedforward second linear,
+            the shape is `[d_model]`.
+        pre_layer_norm (bool, optional): whether it is pre_layer_norm(True) or post_layer_norm(False).
+            Default True.
+        epsilon (float, optional): Small float value added to denominator of the layer_norm
+            to avoid dividing by zero. Default is 1e-5.
+        cache_kvs (list(Tensor)|tuple(Tensor), optional):
+            The cache structure tensors for the generation model.
+            The shape is `[2, bsz, num\_head, max\_seq\_len, head\_dim]`. Default None.
+        pre_caches (list(Tensor)|tuple(Tensor), optional): The prefix caches for the generation model.
+            The shape is `[2, bsz, num\_head, cache\_len, head\_dim]`. Default None.
         seq_lens (Tensor optional): The sequence lengths of this batch. The shape is `[bsz]`. Default None.
-        rotary_embs (Tensor optional): The RoPE embs for rotary computation. The shape is `[2, bsz, 1, seq\_len, head\_dim]`. Default None.
-        time_step (Tensor, optional): The time step tensor for the generation model. Which used in decode stage, to represent the time step, that is, the real seq_len of CacheKV. The shape is `[1]`, must be in CPUPlace. Default None.
+        rotary_embs (Tensor optional): The RoPE embs for rotary computation.
+            The shape is `[2, bsz, 1, seq\_len, head\_dim]`. Default None.
+        time_step (Tensor, optional): The time step tensor for the generation model.
+            Which used in decode stage, to represent the time step, that is, the real seq_len of CacheKV.
+            The shape is `[1]`, must be in CPUPlace. Default None.
         attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
             some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
             with shape `[batch_size, 1, sequence_length, sequence_length]`. Default None.
         dropout_rate (float, optional): The dropout probability of setting units to zero. Default 0.0.
-        rotary_emb_dims (int, optional): The rotary_emb_dims of rotary computation, and it is 0 when rotary_embs is None,
-            1 when rotary_embs is not None and pos_extra_ids is None, 2 when rotary_embs and pos_extra_ids are both not None. Default 0.
+        rotary_emb_dims (int, optional): The rotary_emb_dims of rotary computation,
+            and it is 0 when rotary_embs is None,
+            1 when rotary_embs is not None and pos_extra_ids is None,
+            2 when rotary_embs and pos_extra_ids are both not None. Default 0.
         activation (str, optional): The activation. Default "gelu".
         training (bool, optional): A flag indicating whether it is in train phrase or not. Default False.
         mode (str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
@@ -982,8 +1009,10 @@ def fused_multi_transformer(
         trans_qkvw (bool, optional): Whether to transpose for weights of qkv.
             If true, the shape eights of qkv should be [3, num_head, dim_head, dim_embed].
             Otherwise the shape of weights of qkv should be [dim_embed, 3, num_head, dim_head]. Default True.
-        ring_id (int, optional): For distributed forward in tensor model parallel, only support NCCL. Default is -1, means not using mp.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        ring_id (int, optional): For distributed forward in tensor model parallel, only support NCCL.
+            Default is -1, means not using mp.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor|tuple: If `cache_kvs` is None, return a tensor that has
@@ -1056,6 +1085,7 @@ def fused_multi_transformer(
             cache_kvs,
             pre_caches,
             rotary_embs,
+            beam_offset,
             time_step,
             seq_lens,
             attn_mask,
@@ -1072,6 +1102,8 @@ def fused_multi_transformer(
             pre_layer_norm,
             'epsilon',
             epsilon,
+            'residual_alpha',
+            residual_alpha,
             'dropout_rate',
             dropout_rate,
             'rotary_emb_dims',
@@ -1086,6 +1118,10 @@ def fused_multi_transformer(
             trans_qkvw,
             'ring_id',
             ring_id,
+            'norm_type',
+            norm_type,
+            'use_neox_rotary_style',
+            use_neox_rotary_style,
         )
         if cache_kvs is not None:
             return final_out, cache_kv_out
@@ -1095,18 +1131,23 @@ def fused_multi_transformer(
         dtype = x.dtype
         # check dtypes
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32'], 'fused_multi_transformer'
+            x, 'x', ['uint16', 'float16', 'float32'], 'fused_multi_transformer'
         )
         check_dtype(
-            dtype, 'dtype', ['float16', 'float32'], 'fused_multi_transformer'
+            dtype,
+            'dtype',
+            ['uint16', 'float16', 'float32'],
+            'fused_multi_transformer',
         )
 
         # set inputs
         inputs = {}
         inputs['X'] = [x]
         inputs['LnScale'] = ln_scales
-        inputs['LnBias'] = ln_biases
         inputs['QKVW'] = qkv_weights
+
+        if ln_biases is not None:
+            inputs['LnBias'] = ln_biases
         if qkv_biases is not None:
             inputs['QKVBias'] = qkv_biases
         if cache_kvs is not None:
@@ -1116,6 +1157,8 @@ def fused_multi_transformer(
                 inputs['TimeStep'] = time_step
         if pre_caches is not None:
             inputs['PreCaches'] = pre_caches
+        if beam_offset is not None:
+            inputs['BeamCacheOffset'] = beam_offset
         if rotary_emb_dims > 0:
             inputs['RotaryPosEmb'] = rotary_embs
         inputs['SeqLengths'] = seq_lens
@@ -1125,7 +1168,8 @@ def fused_multi_transformer(
             inputs['OutLinearBias'] = linear_biases
 
         inputs['FFNLnScale'] = ffn_ln_scales
-        inputs['FFNLnBias'] = ffn_ln_biases
+        if ffn_ln_biases is not None:
+            inputs['FFNLnBias'] = ffn_ln_biases
         inputs['FFN1Weight'] = ffn1_weights
         if ffn1_biases is not None:
             inputs['FFN1Bias'] = ffn1_biases
@@ -1137,6 +1181,7 @@ def fused_multi_transformer(
         attrs = {
             'pre_layer_norm': pre_layer_norm,
             'epsilon': epsilon,
+            'residual_alpha': residual_alpha,
             'dropout_rate': dropout_rate,
             'rotary_emb_dims': rotary_emb_dims,
             'is_test': not training,
@@ -1144,6 +1189,8 @@ def fused_multi_transformer(
             'act_method': activation,
             'trans_qkvw': trans_qkvw,
             'ring_id': ring_id,
+            'norm_type': norm_type,
+            'use_neox_rotary_style': use_neox_rotary_style,
         }
 
         outputs = {}

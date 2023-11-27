@@ -1714,6 +1714,7 @@ def roll(x, shifts, axis=None, name=None):
                 'float64',
                 'int32',
                 'int64',
+                'uint16',
                 'complex64',
                 'complex128',
             ],
@@ -2206,6 +2207,7 @@ def squeeze(x, axis=None, name=None):
                 'int8',
                 'int32',
                 'int64',
+                'uint16',
                 'complex64',
                 'complex128',
             ],
@@ -2603,6 +2605,7 @@ def unsqueeze(x, axis, name=None):
                 'int16',
                 'int32',
                 'int64',
+                'uint16',
                 'complex64',
                 'complex128',
             ],
@@ -4694,7 +4697,7 @@ def index_add(x, index, axis, value, name=None):
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'paddle.tensor.manipulation.index_add',
     )
     check_variable_and_dtype(
@@ -4706,7 +4709,7 @@ def index_add(x, index, axis, value, name=None):
     check_variable_and_dtype(
         value,
         'add_value',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'paddle.tensor.manipulation.index_add',
     )
 

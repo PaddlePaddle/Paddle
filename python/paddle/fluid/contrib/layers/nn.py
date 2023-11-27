@@ -583,7 +583,7 @@ def partial_concat(input, start_index=0, length=-1):
         check_variable_and_dtype(
             x,
             'input[' + str(id) + ']',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             'partial_concat',
         )
     check_type(start_index, 'start_index', (int), 'partial_concat')

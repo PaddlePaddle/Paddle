@@ -1072,20 +1072,23 @@ class FusedMultiTransformer(Layer):
             Otherwise, no pre-process and post-precess includes dropout, residual
             connection, layer normalization. Default True
         ln_scale_attrs(ParamAttr|list|tuple, optional): To specify the weight parameter property
-            for Attention layer_norm. For Attention layer_norm weight, if it is a list/tuple, `attrs[0]`
+            for Attention layer_norm. For Attention layer_norm weight,
+            if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
             `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
             `attr` to create parameters. Default: None, which means the default weight
             parameter property is used. See usage for details in :code:`ParamAttr`.
         ln_bias_attrs(ParamAttr|list|tuple|bool, optional): To specify the bias parameter property
-            for Attention layer_norm. For Attention layer_norm bias, if it is a list/tuple, `attrs[0]`
+            for Attention layer_norm. For Attention layer_norm bias, if it is a list/tuple,
+             `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
             `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
             `attr` to create parameters. The `False` value means the corresponding layer would
             not have trainable bias parameter. Default: None, which means the default bias
             parameter property is used. See usage for details in :code:`ParamAttr`.
         qkv_weight_attrs(ParamAttr|list|tuple, optional): To specify the weight parameter property
-            for Attention qkv computation. For Attention qkv weight, if it is a list/tuple, `attrs[0]`
+            for Attention qkv computation. For Attention qkv weight,
+            if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
             `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
             `attr` to create parameters. Default: None, which means the default weight
@@ -1097,14 +1100,17 @@ class FusedMultiTransformer(Layer):
             `attr` to create parameters. The `False` value means the corresponding layer would
             not have trainable bias parameter. Default: None, which means the default bias
             parameter property is used. See usage for details in :code:`ParamAttr`.
-        linear_weight_attrs(ParamAttr|list|tuple, optional): To specify the weight parameter property
+        linear_weight_attrs(ParamAttr|list|tuple, optional):
+            To specify the weight parameter property
             for Attention linear. For Attention linear weight, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
             `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
             `attr` to create parameters. Default: None, which means the default weight
             parameter property is used. See usage for details in :code:`ParamAttr`.
-        linear_bias_attrs(ParamAttr|list|tuple|bool, optional): To specify the bias parameter property
-            for Attention linear computation. For Attention linear bias, if it is a list/tuple, `attrs[0]`
+        linear_bias_attrs(ParamAttr|list|tuple|bool, optional):
+            To specify the bias parameter property
+            for Attention linear computation. For Attention linear bias,
+            if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
             `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
             `attr` to create parameters. The `False` value means the corresponding layer would
@@ -1116,7 +1122,8 @@ class FusedMultiTransformer(Layer):
             `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
             `attr` to create parameters. Default: None, which means the default weight
             parameter property is used. See usage for details in :code:`ParamAttr`.
-        ffn_ln_bias_attrs(ParamAttr|list|tuple|bool, optional): To specify the bias parameter property
+        ffn_ln_bias_attrs(ParamAttr|list|tuple|bool, optional):
+            To specify the bias parameter property
             for FFN layer_norm. For FFN layer_norm bias, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
             `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
@@ -1129,20 +1136,23 @@ class FusedMultiTransformer(Layer):
             `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
             `attr` to create parameters. Default: None, which means the default weight
             parameter property is used. See usage for details in :code:`ParamAttr`.
-        ffn1_bias_attrs(ParamAttr|list|tuple|bool, optional): To specify the bias parameter property
+        ffn1_bias_attrs(ParamAttr|list|tuple|bool, optional):
+            To specify the bias parameter property
             for FFN first linear. For FFN first linear bias, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
             `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
             `attr` to create parameters. The `False` value means the corresponding layer would
             not have trainable bias parameter. Default: None, which means the default bias
             parameter property is used. See usage for details in :code:`ParamAttr`.
-        ffn2_weight_attrs(ParamAttr|list|tuple, optional): To specify the weight parameter property
+        ffn2_weight_attrs(ParamAttr|list|tuple, optional):
+            To specify the weight parameter property
             for FFN second linear. For FFN second linear weight, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
             `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
             `attr` to create parameters. Default: None, which means the default weight
             parameter property is used. See usage for details in :code:`ParamAttr`.
-        ffn2_bias_attrs(ParamAttr|list|tuple|bool, optional): To specify the bias parameter property
+        ffn2_bias_attrs(ParamAttr|list|tuple|bool, optional):
+            To specify the bias parameter property
             for FFN second linear. For FFN second linear bias, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
             `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
@@ -1152,13 +1162,17 @@ class FusedMultiTransformer(Layer):
         epsilon (float, optional): Small float value added to denominator of the layer_norm to
             avoid dividing by zero. Default: 1e-05.
         num_layers (int, optional): The number of layers of the transformer. If `qkv_weight_attrs`
-            is a list or tuple, the number of layers is obtained from `qkv_weight_attrs`. num_layers
+            is a list or tuple, the number of layers is obtained from `qkv_weight_attrs`.
+            num_layers
             only takes effect when `qkv_weight_attrs` is not a list or tuple. Default: -1.
-        nranks (int, optional): Distributed tensor model parallel nranks. Default is 1, means not using mp.
+        nranks (int, optional): Distributed tensor model parallel nranks. Default is 1,
+            means not using mp.
         trans_qkvw (bool, optional): Whether to transpose for weights of qkv.
             If true, the shape eights of qkv should be [3, num_head, dim_head, dim_embed].
-            Otherwise the shape of weights of qkv should be [dim_embed, 3, num_head, dim_head]. Default: True.
-        ring_id (int, optional): For distributed tensor model parallel. Default is -1, means not using mp.
+            Otherwise the shape of weights of qkv should be [dim_embed, 3, num_head, dim_head].
+            Default: True.
+        ring_id (int, optional): For distributed tensor model parallel.
+            Default is -1, means not using mp.
         name (str, optional): The default value is None.  Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1199,10 +1213,13 @@ class FusedMultiTransformer(Layer):
         ffn2_weight_attrs=None,
         ffn2_bias_attrs=None,
         epsilon=1e-5,
+        residual_alpha=1.0,
         num_layers=-1,
         nranks=1,
         trans_qkvw=True,
         ring_id=-1,
+        norm_type="layernorm",
+        use_neox_rotary_style=False,
         name=None,
     ):
         super().__init__()
@@ -1225,8 +1242,14 @@ class FusedMultiTransformer(Layer):
         self.normalize_before = normalize_before
         self._dtype = self._helper.get_default_dtype()
         self._epsilon = epsilon
+        self._residual_alpha = residual_alpha
         self._trans_qkvw = trans_qkvw
         self._ring_id = ring_id
+        self._norm_type = norm_type
+        self._use_neox_rotary_style = use_neox_rotary_style
+        self._norm_weight_dtype = (
+            "float32" if self._norm_type == "layernorm" else self._dtype
+        )
 
         self.embed_dim = embed_dim
         self.num_heads = num_heads
@@ -1254,12 +1277,22 @@ class FusedMultiTransformer(Layer):
         self.ffn_ln_scales, self.ffn_ln_biases = [], []
         self.ffn1_weights, self.ffn1_biases = [], []
         self.ffn2_weights, self.ffn2_biases = [], []
+        self.qkv_weights_scales = []
+        self.linear_weights_scales = []
+        self.ffn1_weights_scales = []
+        self.ffn2_weights_scales = []
 
         def get_attr(attrs, idx):
             if isinstance(attrs, (list, tuple)):
                 assert len(attrs) == num_layers
                 return attrs[idx]
             return attrs
+
+        def _add_parameter(param):
+            if param is None:
+                return
+            assert param.name not in self._parameters
+            self._parameters[param.name] = param
 
         for i in range(num_layers):
             ln_scale_attr = get_attr(ln_scale_attrs, i)
@@ -1280,10 +1313,17 @@ class FusedMultiTransformer(Layer):
                 attr=ln_scale_attr,
                 shape=[embed_dim],
                 default_initializer=Constant(value=1.0),
+                dtype=self._norm_weight_dtype,
             )
-            ln_bias = self.create_parameter(
-                attr=ln_bias_attr, shape=[embed_dim], is_bias=True
-            )
+            ln_bias = None
+            if ln_bias_attr:
+                ln_bias = self.create_parameter(
+                    attr=ln_bias_attr,
+                    shape=[embed_dim],
+                    is_bias=True,
+                    dtype=self._norm_weight_dtype,
+                )
+
             qkv_weight = self.create_parameter(
                 shape=[3, num_heads, self.head_dim, embed_dim]
                 if trans_qkvw
@@ -1292,63 +1332,90 @@ class FusedMultiTransformer(Layer):
                 dtype=self._dtype,
                 is_bias=False,
             )
-            qkv_bias = self.create_parameter(
-                shape=[3, num_heads, self.head_dim],
-                attr=qkv_bias_attr,
-                dtype=self._dtype,
-                is_bias=True,
-            )
+
+            qkv_bias = None
+            if qkv_bias_attr:
+                qkv_bias = self.create_parameter(
+                    shape=[3, num_heads, self.head_dim],
+                    attr=qkv_bias_attr,
+                    dtype=self._dtype,
+                    is_bias=True,
+                )
+
             linear_weight = self.create_parameter(
                 shape=[num_heads * self.head_dim, embed_dim],
                 attr=linear_weight_attr,
                 dtype=self._dtype,
                 is_bias=False,
             )
-            linear_bias = self.create_parameter(
-                shape=[embed_dim],
-                attr=linear_bias_attr,
-                dtype=self._dtype,
-                is_bias=True,
-            )
+
+            linear_bias = None
+            if linear_bias_attr:
+                linear_bias = self.create_parameter(
+                    shape=[embed_dim],
+                    attr=linear_bias_attr,
+                    dtype=self._dtype,
+                    is_bias=True,
+                )
 
             ffn_ln_scale = self.create_parameter(
                 shape=[embed_dim],
                 attr=ffn_ln_scale_attr,
                 is_bias=False,
                 default_initializer=Constant(1.0),
+                dtype=self._norm_weight_dtype,
             )
-            ffn_ln_bias = self.create_parameter(
-                shape=[embed_dim], attr=ffn_ln_bias_attr, is_bias=True
-            )
+
+            ffn_ln_bias = None
+            if ffn_ln_bias_attr:
+                ffn_ln_bias = self.create_parameter(
+                    shape=[embed_dim],
+                    attr=ffn_ln_bias_attr,
+                    is_bias=True,
+                    dtype=self._norm_weight_dtype,
+                )
+
             ffn1_weight = self.create_parameter(
-                shape=[embed_dim, dim_feedforward],
+                shape=[embed_dim, dim_feedforward * 2]
+                if activation.endswith("glu")
+                else [embed_dim, dim_feedforward],
                 attr=ffn1_weight_attr,
                 dtype=self._dtype,
                 is_bias=False,
             )
-            ffn1_bias = self.create_parameter(
-                shape=[dim_feedforward],
-                attr=ffn1_bias_attr,
-                dtype=self._dtype,
-                is_bias=True,
-            )
+
+            ffn1_bias = None
+            if ffn1_bias_attr:
+                ffn1_bias = self.create_parameter(
+                    shape=[dim_feedforward * 2]
+                    if activation.endswith("glu")
+                    else [dim_feedforward],
+                    attr=ffn1_bias_attr,
+                    dtype=self._dtype,
+                    is_bias=True,
+                )
+
             ffn2_weight = self.create_parameter(
                 shape=[dim_feedforward, embed_dim],
                 attr=ffn2_weight_attr,
                 dtype=self._dtype,
                 is_bias=False,
             )
-            ffn2_bias = self.create_parameter(
-                shape=[embed_dim],
-                attr=ffn2_bias_attr,
-                dtype=self._dtype,
-                is_bias=True,
-            )
+
+            ffn2_bias = None
+            if ffn2_bias_attr:
+                ffn2_bias = self.create_parameter(
+                    shape=[embed_dim],
+                    attr=ffn2_bias_attr,
+                    dtype=self._dtype,
+                    is_bias=True,
+                )
 
             # tensor model parallel
             if nranks > 1:
                 # column parallel
                 _set_var_distributed(qkv_weight)
+
                 _set_var_distributed(qkv_bias)
                 _set_var_distributed(ffn1_weight)
                 _set_var_distributed(ffn1_bias)
@@ -1370,6 +1437,38 @@ class FusedMultiTransformer(Layer):
             self.ffn2_weights.append(ffn2_weight)
             self.ffn2_biases.append(ffn2_bias)
 
+            _add_parameter(ln_scale)
+            _add_parameter(ln_bias)
+            _add_parameter(qkv_weight)
+            _add_parameter(qkv_bias)
+            _add_parameter(linear_weight)
+            _add_parameter(linear_bias)
+
+            _add_parameter(ffn_ln_scale)
+            _add_parameter(ffn_ln_bias)
+            _add_parameter(ffn1_weight)
+            _add_parameter(ffn1_bias)
+            _add_parameter(ffn2_weight)
+            _add_parameter(ffn2_bias)
+
+        if self.ln_biases[0] is None:
+            self.ln_biases = None
+
+        if self.qkv_biases[0] is None:
+            self.qkv_biases = None
+
+        if self.linear_biases[0] is None:
+            self.linear_biases = None
+
+        if self.ffn_ln_biases[0] is None:
+            self.ffn_ln_biases = None
+
+        if self.ffn1_biases[0] is None:
+            self.ffn1_biases = None
+
+        if self.ffn2_biases[0] is None:
+            self.ffn2_biases = None
+
         self.dropout_rate = dropout_rate
         self.activation = activation
         self.name = name
@@ -1382,6 +1481,7 @@ class FusedMultiTransformer(Layer):
         pre_caches=None,
         rotary_embs=None,
         rotary_emb_dims=0,
+        beam_offset=None,
         seq_lens=None,
         time_step=None,
     ):
@@ -1403,11 +1503,16 @@ class FusedMultiTransformer(Layer):
                 inference and should be None for training. The shape is
                 `[2, batch_size, num_head, max_seq_len, head_dim]`. Default None.
             pre_caches (list(Tensor)|tuple(Tensor), optional): The prefix caches
-                for the generation model. The shape is `[2, bsz, num\_head, cache\_len, head\_dim]`. Default None.
-            rotary_embs (Tensor optional): The RoPE embs for the rotary computation. The shape is `[2, bsz, 1, seq\_len, head\_dim]`. Default None.
-            rotary_emb_dims (int, optional): The rotary_emb_dims of rotary computation, and it is 0 when rotary_embs is None,
-                1 when rotary_embs is not None and pos_extra_ids is None, 2 when rotary_embs and pos_extra_ids are both not None. Default 0.
-            seq_lens (Tensor optional): The sequence lengths of this batch. The shape is `[bsz]`. Default None.
+                for the generation model. The shape is
+                `[2, bsz, num\_head, cache\_len, head\_dim]`. Default None.
+            rotary_embs (Tensor optional): The RoPE embs for the rotary computation.
+                The shape is `[2, bsz, 1, seq\_len, head\_dim]`. Default None.
+            rotary_emb_dims (int, optional): The rotary_emb_dims of rotary computation,
+                and it is 0 when rotary_embs is None,
+                1 when rotary_embs is not None and pos_extra_ids is None,
+                2 when rotary_embs and pos_extra_ids are both not None. Default 0.
+            seq_lens (Tensor optional): The sequence lengths of this batch.
+                The shape is `[bsz]`. Default None.
             time_step (Tensor, optional): The time step tensor for the generation
                 model. Which used in decode stage, to represent the time step,
                 that is, the real seq_len of CacheKV. The shape is `[1]`, must be
@@ -1439,7 +1544,9 @@ class FusedMultiTransformer(Layer):
             self.ffn2_biases,
             pre_layer_norm=self.normalize_before,
             epsilon=self._epsilon,
+            residual_alpha=self._residual_alpha,
             cache_kvs=caches,
+            beam_offset=beam_offset,
             pre_caches=pre_caches,
             rotary_embs=rotary_embs,
             time_step=time_step,
@@ -1452,6 +1559,8 @@ class FusedMultiTransformer(Layer):
             mode='upscale_in_train',
             trans_qkvw=self._trans_qkvw,
             ring_id=self._ring_id,
+            norm_type=self._norm_type,
+            use_neox_rotary_style=self._use_neox_rotary_style,
             name=self.name,
         )
         return out

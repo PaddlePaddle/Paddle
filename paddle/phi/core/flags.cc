@@ -1283,3 +1283,21 @@ PADDLE_DEFINE_EXPORTED_int64(alloc_fill_value,
                              -1,
                              "Whether to fill fixed value after allocation. "
                              "This is usefull for debugging.");
+
+/**
+ * The fmha mode in FusedMultiTransformer
+ * Value Range: string, {naive, cutlass, flash_attention_v2}
+ */
+PADDLE_DEFINE_EXPORTED_string(fmha_mode,
+                              "cutlass",
+                              "The mode of fmha in FusedMultiTransformer.");
+
+PADDLE_DEFINE_EXPORTED_bool(print_matrix, false, "");
+PADDLE_DEFINE_EXPORTED_bool(fuse_softmax, false, "");
+
+PADDLE_DEFINE_EXPORTED_int64(custom_allreduce_one_shot_threshold,
+                             -1,
+                             "");  // 393216
+PADDLE_DEFINE_EXPORTED_int64(custom_allreduce_two_shot_threshold,
+                             -1,
+                             "");  // 50331648

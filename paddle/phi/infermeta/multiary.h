@@ -612,5 +612,19 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v);
-
+void FusedMultiHeadAttentionVariableInferMeta(const MetaTensor& query,
+                                              const MetaTensor& key,
+                                              const MetaTensor& value,
+                                              const MetaTensor& seq_lens,
+                                              const MetaTensor& mask,
+                                              float scale,
+                                              bool causal,
+                                              MetaTensor* out);
+void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
+                                      const MetaTensor& key,
+                                      const MetaTensor& value,
+                                      const MetaTensor& mask,
+                                      float scale,
+                                      bool causal,
+                                      MetaTensor* out);
 }  // namespace phi
