@@ -30,9 +30,6 @@ from paddle.base.framework import _current_expected_place
     "GPU is not supported",
 )
 class TestOneDNNElementwiseSubOp(OpTest):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
@@ -52,58 +49,37 @@ class TestOneDNNElementwiseSubOp(OpTest):
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
 
-    def check_dygraph(self):
-        return not self.use_mkldnn and self.axis == -1
-
-    def test_check_output(self):
-        self.check_output(
-            check_dygraph=self.check_dygraph(),
-            check_pir=self.check_dygraph(),
-        )
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
 
     def test_check_grad_normal(self):
-        # TODO: Enable grad check(Backward)
-        '''if self.dtype == np.float16:
-            return
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-            check_dygraph=self.check_dygraph(),
-            check_prim=self.check_prim,
-            check_prim_pir=self.check_dygraph(),
-            check_pir=self.check_dygraph(),
-        )'''
+        # TODO: Enable grad check (Backward)
+        #self.check_grad(['X', 'Y'], 'Out')
         pass
 
     def test_check_grad_ignore_x(self):
-        # TODO: Enable grad check(Backward)
-        '''if self.dtype == np.float16:
-            return
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-            check_dygraph=self.check_dygraph(),
-            check_prim=self.check_prim,
-            check_prim_pir=self.check_dygraph(),
-            check_pir=self.check_dygraph(),
-        )'''
+        # TODO: Enable grad check (Backward)
+        #self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
         pass
 
     def test_check_grad_ignore_y(self):
-        # TODO: Enable grad check(Backward)
-        '''if self.dtype == np.float16:
-            return
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-            check_dygraph=self.check_dygraph(),
-            check_prim=self.check_prim,
-            check_prim_pir=self.check_dygraph(),
-            check_pir=self.check_dygraph(),
-        )'''
+        # TODO: Enable grad check (Backward)
+        #self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
         pass
+
+    def init_axis(self):
+        self.axis = -1
+
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
