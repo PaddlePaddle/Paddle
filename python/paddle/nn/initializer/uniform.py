@@ -127,7 +127,10 @@ class UniformInitializer(Initializer):
                 self._seed,
                 _current_expected_place(),
             )
-            if var.dtype == core.DataType.FLOAT16:
+            if (
+                var.dtype == core.DataType.FLOAT16
+                and out_var.dtype != core.DataType.FLOAT16
+            ):
                 return _C_ops.cast(out_var, var.dtype)
             return out_var
         else:

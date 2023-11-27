@@ -375,11 +375,10 @@ void SubGraphChecker::AppendGetParameter(
   ::pir::Builder builder = ::pir::Builder(ctx, block);
   builder.SetInsertionPointToStart(block);
   for (size_t i = 0; i < input_values.size(); ++i) {
-    auto get_param =
-        builder
-            .Build<pir::GetParameterOp>("input_" + std::to_string(i),
-                                        input_values[i].type())
-            .result(0);
+    auto get_param = builder
+                         .Build<pir::ParameterOp>("input_" + std::to_string(i),
+                                                  input_values[i].type())
+                         .result(0);
 
     for (auto it = input_values[i].use_begin();
          it != input_values[i].use_end();) {

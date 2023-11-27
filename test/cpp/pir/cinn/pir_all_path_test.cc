@@ -606,7 +606,7 @@ TEST(GroupOp, TestBuildLayerNorm2) {
       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
 
   // TODO(phlrain): fix exec error
-  //   executor.Run({}, true);
+  executor.Run({}, true);
 
   //   auto out_tensor =
   //       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
@@ -659,7 +659,6 @@ TEST(GroupOp, TestBuildSum2Group) {
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
-  program->Print(std::cout);
   auto kernel_program =
       paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
@@ -782,10 +781,8 @@ std::shared_ptr<::pir::Program> BuildSliceProgram() {
 //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 //   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-//   program->Print(std::cout);
 //   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
 
-//   program->Print(std::cout);
 //   pir::PassManager pm(ctx);
 //   pm.AddPass(
 //       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
@@ -814,3 +811,62 @@ std::shared_ptr<::pir::Program> BuildSliceProgram() {
 // //     bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
 // //     EXPECT_EQ(res0, true);
 // }
+
+std::shared_ptr<::pir::Program> BuildSplitProgram() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  auto program = std::make_shared<::pir::Program>(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+
+  auto x = builder
+               .Build<paddle::dialect::FullOp>(std::vector<int64_t>({16, 16}),
+                                               2.0,
+                                               phi::DataType::FLOAT32,
+                                               phi::GPUPlace())
+               .result(0);
+
+  auto out_arr =
+      builder.Build<paddle::dialect::SplitWithNumOp>(x, 4, -1).result(0);
+  auto out = builder.Build<pir::SliceOp>(out_arr, 0).result(0);
+  builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+  return program;
+}
+
+TEST(GroupOp, TestBuildSplit) {
+  // Step 1: Construct pir::Program
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  std::shared_ptr<::pir::Program> program = BuildSplitProgram();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+
+  cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
+
+  pir::PassManager pm(ctx);
+  pm.AddPass(
+      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  pm.AddPass(pir::CreateBuildCinnPass());
+  CHECK_EQ(pm.Run(program.get()), true);
+
+  // TODO(phlrain): codengen will failed in split op
+  //   auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
+
+  //   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+
+  //   auto kernel_program =
+  //       paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+
+  //   paddle::framework::Scope exe_scope;
+
+  //   paddle::framework::InterpreterCore executor(
+  //       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+
+  // executor.Run({}, true);
+
+  //   auto out_tensor =
+  // executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
+
+  //     bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
+  //     EXPECT_EQ(res0, true);
+}
