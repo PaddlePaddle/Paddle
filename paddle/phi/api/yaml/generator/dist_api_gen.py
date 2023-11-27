@@ -449,7 +449,7 @@ SET_MULTI_SINGLE_OR_VECTOR_OPTIONAL_INPLACE_OUT_TEMPLATE = """
 NONEED_TO_SET_DIST_ATTR_COMMENT_TEMPLATE = """
     // API `{}` does not need to set DistAttr for output."""
 
-
+# TODO(GhostScreaming): Support aliquant condition.
 # Specialized Code, for example, reshape needs to calculate local_shape
 RESHAPE_CALCULATE_LOCAL_SHAPE_TEMPLATE = """
       std::vector<int64_t> local_shape;
@@ -457,6 +457,7 @@ RESHAPE_CALCULATE_LOCAL_SHAPE_TEMPLATE = """
         auto out_dist_attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.second[0]);
         if (out_dist_attr.dims_mapping()[i] >= 0) {
           int64_t mesh_dim = out_dist_attr.process_mesh().shape()[i];
+          // TODO: Support aliquant condition.
           local_shape.push_back(shape.GetData()[i] / mesh_dim);
         } else {
           local_shape.push_back(shape.GetData()[i]);
@@ -1630,8 +1631,6 @@ class DistForwardAPI(ForwardAPI):
                     self.need_to_generate_code_for_inplace_impl(i)
                     and self.outputs['names'][i] not in self.view_map
                 ):
-                    # if (len(self.view_map) > 0) and self.generate_general_infer_spmd:
-                    #     continue
                     need_reshard = (
                         "true" if self.generate_general_infer_spmd else "false"
                     )
