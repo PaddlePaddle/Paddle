@@ -22,12 +22,21 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/dim_trans.h"
+#include "paddle/phi/infermeta/spmd_rules/reshape.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi {
 namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
+
+TensorDistAttr CreateSqueezeXshape(const TensorDistAttr& x) {
+  TensorDistAttr out(x);
+  auto dims_mapping = x.dims_mapping();
+  dims_mapping.insert(dims_mapping.begin(), -1);
+  out.set_dims_mapping(dims_mapping);
+  return out;
+}
 
 void MakeSqueezeDimTransWithoutAxis(
     const std::vector<int64_t>& x_shape,
@@ -151,7 +160,8 @@ SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
           << "]\n Out dims_mapping: [" << str_join(dims_mapping_vec[1])
           << "]\n\n";
 
-  return {{x_dist_attr_dst}, {out_dist_attr}};
+  return {{x_dist_attr_dst},
+          {out_dist_attr, CreateSqueezeXshape(x_dist_attr_dst)}};
 }
 
 SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
@@ -216,6 +226,15 @@ SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
   VLOG(4) << "X dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
 
   return {{x_dist_attr}, {out_dist_attr_dst}};
+}
+
+SpmdInfo SqueezeGradInferSpmd(const DistMetaTensor& xshape,
+                              const DistMetaTensor& out_grad,
+                              const IntArray& axis) {
+  auto shape = phi::vectorize(xshape.dims());
+  shape = std::vector<int64_t>(shape.begin() + 1, shape.end());
+  const auto& spmd = ReshapeInferSpmd(out_grad, shape);
+  return {{xshape.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
 }
 
 }  // namespace distributed
