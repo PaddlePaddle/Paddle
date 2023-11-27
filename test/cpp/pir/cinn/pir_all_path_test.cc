@@ -445,11 +445,13 @@ std::shared_ptr<::pir::Program> BuildPowerProgram() {
                                           phi::GPUPlace())
           .result(0);
 
-  auto power =
+  auto power1 =
       builder.Build<paddle::dialect::ElementwisePowOp>(x, factor).result(0);
+
+  auto power2 = builder.Build<paddle::dialect::PowOp>(power1, 2.0).result(0);
   auto out =
       builder
-          .Build<paddle::dialect::ReshapeOp>(power, std::vector<int64_t>({-1}))
+          .Build<paddle::dialect::ReshapeOp>(power2, std::vector<int64_t>({-1}))
           .result(0);
 
   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
@@ -463,8 +465,10 @@ TEST(GroupOp, TestBuildPower) {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
+  program->Print(std::cout);
   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
 
+  program->Print(std::cout);
   pir::PassManager pm(ctx);
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
@@ -487,7 +491,7 @@ TEST(GroupOp, TestBuildPower) {
   auto out_tensor =
       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 
-  bool res0 = simple_cmp(out_tensor.data<float>()[0], 4.0);
+  bool res0 = simple_cmp(out_tensor.data<float>()[0], 16.0);
   EXPECT_EQ(res0, true);
 }
 
