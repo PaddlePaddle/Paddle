@@ -32,7 +32,7 @@ pir::OpResult zeros_like(const pir::Value& x,
                          phi::DataType dtype = phi::DataType::UNDEFINED,
                          const Place& place = {});
 
-pir::OpResult get_parameter(const std::string& name);
+pir::OpResult parameter(const std::string& name);
 
 void set_parameter(const pir::Value& parameter, const std::string& name);
 

@@ -33,13 +33,13 @@ MAIN_DIST_BRANCH_TEMPLATE = """
       // 5. Select Kernel{}
       // 6. Reshard Input{}\n
       // 7. PrepareData (DataTransform & Prepare Dense Input){}
-      // RecordOpInfoSupplement
-      {}
-      // 8. Infer Local DenseTensor Meta{}
-      // 9. DenseTensor Kernel Call{}
+      // 8. RecordOpInfoSupplement{}
+      // 9. Infer Local DenseTensor Meta{}
+      // 10. DenseTensor Kernel Call{}
+      // 11. Fallback{}
     }}
-    // 10. Reshard Kernel Output to API output{}\n
-    // 11. Return
+    // 12. Reshard Kernel Output to API output{}\n
+    // 13. Return
     {}
   }}
 """
@@ -310,6 +310,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
         )
         infer_meta_code = self.generate_infer_meta_code()
         kernel_call_code = self.generate_kernel_call_code()
+        fallback_code = self.generate_fallback_code()
         reshard_output_code = self.generate_reshard_output_code()
         return_code = self.generate_return_code()
 
@@ -324,6 +325,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             record_op_info_supplement_code,
             infer_meta_code,
             kernel_call_code,
+            fallback_code,
             reshard_output_code,
             return_code,
         )

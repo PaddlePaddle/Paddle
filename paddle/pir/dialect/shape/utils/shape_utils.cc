@@ -147,4 +147,22 @@ ShapeConstraintIRAnalysis::GetOrCreateSymbolicDimsForRankedValue(
   return value_to_sym_dims_.at(value);
 }
 
+ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
+  static ShapeAnalysisManager instance;
+  return instance;
+}
+
+ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
+  auto it = tables_.find(program->module_op().operation()->id());
+
+  if (it == tables_.end()) {
+    it = tables_
+             .emplace(program->module_op().operation()->id(),
+                      ShapeConstraintIRAnalysis(program->module_op()))
+             .first;
+  }
+
+  return it->second;
+}
+
 }  // namespace pir

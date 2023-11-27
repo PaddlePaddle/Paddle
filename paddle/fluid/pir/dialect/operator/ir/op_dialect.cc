@@ -20,15 +20,23 @@
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
 #include "paddle/fluid/pir/dialect/operator/transforms/param_to_variable.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/core/interface_value.h"
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/utils.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 namespace paddle {
 namespace dialect {
 
-OperatorDialect::OperatorDialect(pir::IrContext *context)
-    : pir::Dialect(name(), context, pir::TypeId::get<OperatorDialect>()) {
+OperatorDialect::OperatorDialect(pir::IrContext *ctx)
+    : pir::Dialect(name(), ctx, pir::TypeId::get<OperatorDialect>()) {
   initialize();
+  ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
+  auto info = ctx->GetRegisteredOpInfo(pir::TuplePushOp::name());
+  info.AttachInterface(std::move(
+      pir::InterfaceValue::
+          Get<pir::TuplePushOp, VjpInterface, TuplePushOpVjpInterfaceModel>()));
 }
 
 void OperatorDialect::initialize() {

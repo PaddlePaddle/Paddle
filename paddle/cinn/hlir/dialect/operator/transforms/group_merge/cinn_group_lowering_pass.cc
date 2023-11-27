@@ -167,7 +167,7 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
         op_fusion, shape_analysis_);
 
     for (auto group : group_list) {
-      auto ir_compiler = std::make_shared<cinn::hlir::framework::PirCompiler>(
+      auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
           *program, target, scope);
       group->shape_analysis = shape_analysis_;
       if (FLAGS_cinn_enable_map_expr) {
