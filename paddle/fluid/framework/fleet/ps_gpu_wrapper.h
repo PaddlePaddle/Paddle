@@ -814,9 +814,11 @@ class PSGPUWrapper {
   void SetPullFeatureSlotNum(int sparse_slot_num, int float_slot_num) {
     slot_num_for_pull_feature_ = sparse_slot_num;
     float_slot_num_ = float_slot_num;
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
     auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
     gpu_graph_ptr->set_feature_info(slot_num_for_pull_feature_,
                                     float_slot_num_);
+#endif
     VLOG(0) << "slot_num_for_pull_feature_ is " << slot_num_for_pull_feature_
             << ", float_slot_num is " << float_slot_num_;
   }
