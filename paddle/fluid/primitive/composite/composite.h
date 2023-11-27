@@ -273,14 +273,11 @@ Tensor relu_decomp(const Tensor& x) {
 template <typename T>
 Tensor rsqrt_decomp(const Tensor& x) {
   auto org_dtype = x.dtype();
-  bool need_cast =
-      org_dtype == phi::DataType::FLOAT16 || org_dtype == phi::DataType::UINT16;
+  Tensor x_cast = x;
 
-  Tensor x_cast;
+  bool need_cast = is_half_dtype(org_dtype);
   if (need_cast) {
     x_cast = cast<T>(x, phi::DataType::FLOAT32);
-  } else {
-    x_cast = x;
   }
 
   auto ans = elementwise_pow<T>(
