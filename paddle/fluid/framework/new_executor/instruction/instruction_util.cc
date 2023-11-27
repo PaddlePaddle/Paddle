@@ -196,10 +196,10 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
 std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
   std::vector<pir::Value> vec_res;
 
-  if (block && !block->empty() && block->back()->isa<pir::YieldOp>()) {
-    auto* op = block->back();
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      vec_res.emplace_back(op->operand_source(i));
+  if (block && !block->empty() && block->back().isa<pir::YieldOp>()) {
+    auto& op = block->back();
+    for (size_t i = 0; i < op.num_operands(); ++i) {
+      vec_res.emplace_back(op.operand_source(i));
     }
   }
   return vec_res;

@@ -32,8 +32,15 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
                                 const DenseTensor& weight_scale,
                                 const DenseTensor& out_grad,
                                 const std::string& weight_dtype,
+                                const int32_t arch,
                                 DenseTensor* x_grad) {
 #if defined(PADDLE_WITH_CUTLASS)
+  PADDLE_ENFORCE_EQ(
+      arch,
+      80,
+      phi::errors::InvalidArgument(
+          "Currently weightonly linear grad only support arch = 80. "));
+
   int n = weight_scale.dims()[0];
   int k = weight.dims()[1];
   dev_ctx.template Alloc<T>(x_grad);

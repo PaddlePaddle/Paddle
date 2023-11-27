@@ -94,6 +94,7 @@ PD_REGISTER_KERNEL(sum,
                    phi::SumKernel,
                    float,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int8_t,
                    int,
                    int64_t) {

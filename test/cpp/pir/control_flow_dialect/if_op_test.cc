@@ -87,23 +87,20 @@ using namespace paddle::dialect;  // NOLINT
 //       std::vector<int64_t>{2}, true, phi::DataType::BOOL);
 //   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_1.out()});
 
-//   // construct false block
-//   std::unique_ptr<pir::Block> false_block(new pir::Block());
-//   builder.SetInsertionPointToStart(false_block.get());
-//   auto full_op_2 = builder.Build<paddle::dialect::FullOp>(
-//       std::vector<int64_t>{2}, true, phi::DataType::BOOL);
-//   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_2.out()});
+//   auto if_op = builder.Build<paddle::dialect::IfOp>(
+//       full_op.out(), std::move(true_block), std::move(false_block));
 
 //   builder.SetInsertionPointToEnd(block);
 
-//   builder.Build<paddle::dialect::IfOp>(
-//       full_op.out(), std::move(true_block), std::move(false_block));
-
-//   EXPECT_FALSE(true_block);
-//   EXPECT_FALSE(false_block);
-//   EXPECT_EQ(full_op_2->GetParentProgram(), &program);
-
 //   LOG(INFO) << program;
+
+//   std::vector<pir::Block*> vec;
+//   for (auto& block : if_op->blocks()) {
+//     vec.push_back(&block);
+//   }
+//   EXPECT_EQ(vec.size(), 2u);
+//   EXPECT_EQ(vec[0], if_op.true_block());
+//   EXPECT_EQ(vec[1], if_op.false_block());
 // }
 
 TEST(if_op_test, network_with_backward) {
