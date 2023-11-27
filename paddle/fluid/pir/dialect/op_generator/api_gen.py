@@ -521,58 +521,80 @@ class CodeGen:
             return 'return;'
 
     def _gen_check_data_type(self, op_info, op_name):
-        name_list = op_info.input_name_list + op_info.attribute_name_list
-        type_list = op_info.input_type_list + op_info.attribute_type_list
+        mapping_input_name_to_type = dict(
+            zip(op_info.input_name_list, op_info.input_type_list)
+        )
+        mapping_attr_name_to_type = dict(
+            zip(op_info.attribute_name_list, op_info.attribute_type_list)
+        )
+
+        mapping_name_to_type = {
+            **mapping_input_name_to_type,
+            **mapping_attr_name_to_type,
+        }
+
         if (
             op_name.endswith(('_grad', '_grad_', '_grad_dense', '_grad_sparse'))
-            or len(name_list) == 0
+            or len(mapping_name_to_type) == 0
         ):
             return ''
         try:
             data_type_candidates = op_info.kernel_map['data_type']['candidates']
-        except Exception:
+        except (KeyError, TypeError):
             data_type_candidates = None
         ret = ''
-        if data_type_candidates is not None:
-            if len(data_type_candidates) < 1 or len(data_type_candidates) > 2:
+        if data_type_candidates is None or len(data_type_candidates) == 0:
+            if len(op_info.input_name_list) == 0:
                 return ret
-            if len(data_type_candidates) == 1:
-                name = data_type_candidates[0]
-                if name not in name_list:
-                    return ret
-                index = name_list.index(name)
-                type = type_list[index]
-                if f"{VECTOR_TYPE}<{DENSE_TENSOR_TYPE}>" == type:
-                    function_name = 'CheckVectorOfValueDataType'
-                elif DENSE_TENSOR_TYPE == type:
-                    function_name = 'CheckValueDataType'
-                elif DATA_TYPE == type:
-                    function_name = 'CheckDataType'
-                else:
-                    return ret
-                ret += CHECK_DATA_TYPE_TEMPLATE.format(
-                    function=function_name,
-                    inputs=f"{name}, \"{name}\"",
-                    op_name=op_name,
-                )
+            name = op_info.input_name_list[-1]
+            type = mapping_name_to_type[name]
+            if f"{VECTOR_TYPE}<{DENSE_TENSOR_TYPE}>" == type:
+                function_name = 'CheckVectorOfValueDataType'
+            elif DENSE_TENSOR_TYPE == type:
+                function_name = 'CheckValueDataType'
+            elif DATA_TYPE == type:
+                function_name = 'CheckDataType'
             else:
-                dtype_name = data_type_candidates[0]
-                value_name = data_type_candidates[1]
-                if dtype_name not in name_list or value_name not in name_list:
-                    return ret
-                dtype_index = name_list.index(dtype_name)
-                dtype_type = type_list[dtype_index]
-                value_index = name_list.index(value_name)
-                value_type = type_list[value_index]
-                if DENSE_TENSOR_TYPE == value_type and DATA_TYPE == dtype_type:
-                    function_name = 'CheckDataTypeOrValue'
-                else:
-                    return ret
-                ret += CHECK_DATA_TYPE_TEMPLATE.format(
-                    function=function_name,
-                    inputs=f"{dtype_name}, \"{dtype_name}\", {value_name}, \"{value_name}\"",
-                    op_name=op_name,
-                )
+                return ret
+            ret += CHECK_DATA_TYPE_TEMPLATE.format(
+                function=function_name,
+                inputs=f"{name}, \"{name}\"",
+                op_name=op_name,
+            )
+        elif len(data_type_candidates) == 1:
+            name = data_type_candidates[0]
+            if name not in mapping_name_to_type:
+                return ret
+            type = mapping_name_to_type[name]
+            if f"{VECTOR_TYPE}<{DENSE_TENSOR_TYPE}>" == type:
+                function_name = 'CheckVectorOfValueDataType'
+            elif DENSE_TENSOR_TYPE == type:
+                function_name = 'CheckValueDataType'
+            elif DATA_TYPE == type:
+                function_name = 'CheckDataType'
+            else:
+                return ret
+            ret += CHECK_DATA_TYPE_TEMPLATE.format(
+                function=function_name,
+                inputs=f"{name}, \"{name}\"",
+                op_name=op_name,
+            )
+        elif len(data_type_candidates) == 2:
+            dtype_name = data_type_candidates[0]
+            value_name = data_type_candidates[1]
+            dtype_type = mapping_name_to_type.get(dtype_name, None)
+            value_type = mapping_name_to_type.get(value_name, None)
+            if dtype_type is None or value_type is None:
+                return ret
+            if DENSE_TENSOR_TYPE == value_type and DATA_TYPE == dtype_type:
+                function_name = 'CheckDataTypeOrValue'
+            else:
+                return ret
+            ret += CHECK_DATA_TYPE_TEMPLATE.format(
+                function=function_name,
+                inputs=f"{dtype_name}, \"{dtype_name}\", {value_name}, \"{value_name}\"",
+                op_name=op_name,
+            )
         return ret
 
     def _gen_one_impl(
@@ -673,14 +695,14 @@ if __name__ == '__main__':
     op_compat_yaml_file = args.op_compat_yaml_file
     if args.namespaces is not None:
         namespaces = args.namespaces.split(",")
-    api_def_h_file = args.api_def_h_file
-    api_def_cc_file = args.api_def_cc_file
+        api_def_h_file = args.api_def_h_file
+        api_def_cc_file = args.api_def_cc_file
 
-    code_gen = CodeGen()
-    code_gen.gen_h_and_cpp_file(
-        op_yaml_files,
-        op_compat_yaml_file,
-        namespaces,
-        api_def_h_file,
-        api_def_cc_file,
-    )
+        code_gen = CodeGen()
+        code_gen.gen_h_and_cpp_file(
+            op_yaml_files,
+            op_compat_yaml_file,
+            namespaces,
+            api_def_h_file,
+            api_def_cc_file,
+        )
