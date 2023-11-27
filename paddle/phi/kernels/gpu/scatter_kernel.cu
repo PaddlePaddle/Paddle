@@ -29,6 +29,7 @@ void ScatterKernel(const Context &ctx,
                    const DenseTensor &updates,
                    bool overwrite,
                    DenseTensor *out) {
+  std::cout<<"size"<<sizeof(T)<<std::endl;
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
   // use template class to support int32_t and int64_t
   auto index_type = index.dtype();
