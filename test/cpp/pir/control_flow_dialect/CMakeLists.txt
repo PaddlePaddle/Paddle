@@ -6,7 +6,8 @@ cc_test_old(
   pir
   op_dialect_vjp
   pir_transforms
-  op_dialect)
+  op_dialect
+  gtest)
 
 cc_test_old(
   while_op_test
@@ -16,4 +17,5 @@ cc_test_old(
   pir
   op_dialect_vjp
   pir_transforms
-  op_dialect)
+  op_dialect
+  gtest)
