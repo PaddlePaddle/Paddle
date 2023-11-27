@@ -1127,7 +1127,7 @@ PyObject* ToPyObject(const phi::distributed::ProcessMesh* value) {
 }
 
 PyObject* ToPyObject(const phi::distributed::Placement& value) {
-  auto obj = ::pybind11::cast(value);
+  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
   return obj.ptr();
 }

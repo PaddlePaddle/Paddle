@@ -1572,6 +1572,8 @@
     func : multiplex_grad
     param : [index, out_grad]
     data_type : out_grad
+  data_transform :
+    skip_transform : index
 
 - backward_op : mv_grad
   forward : mv (Tensor x, Tensor vec) -> Tensor(out)

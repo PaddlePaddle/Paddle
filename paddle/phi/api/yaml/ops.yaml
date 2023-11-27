@@ -1831,6 +1831,8 @@
     func : multiplex
     data_type : inputs
   backward : multiplex_grad
+  data_transform :
+    skip_transform : index
 
 - op : mv
   args : (Tensor x, Tensor vec)
@@ -2319,7 +2321,7 @@
     func : ShapeInferMeta
   kernel :
     func : shape {dense -> dense},
-           shape_sr {selected_rows -> selected_rows}
+           shape_sr {selected_rows -> dense}
   data_transform:
     skip_transform : input
 
