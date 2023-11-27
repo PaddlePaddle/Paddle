@@ -172,6 +172,7 @@ class CodeGen:
         # replace old ir ops with pir ops
         if need_update_ops:
             update_ops(op_yaml_items, update_yaml_file)
+
         op_info_items = []
         for op in op_yaml_items:
             op_compat_item = op_compat_parser.get_compat(op['name'])
