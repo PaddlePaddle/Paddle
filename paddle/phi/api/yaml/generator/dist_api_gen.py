@@ -458,6 +458,13 @@ RESHAPE_CALCULATE_LOCAL_SHAPE_TEMPLATE = """
         if (out_dist_attr.dims_mapping()[i] >= 0) {
           int64_t mesh_dim = out_dist_attr.process_mesh().shape()[i];
           // TODO: Support aliquant condition.
+          PADDLE_ENFORCE_EQ(shape.GetData()[i] % mesh_dim,
+                0,
+                phi::errors::InvalidArgument(
+                    "Reshape only support local shape dim is divisible"
+                    "by the mesh dim, however local_shape[%d] is %d",
+                    "and shard mesh dims is %d",
+                    i, shape.GetData()[i], mesh_dim));
           local_shape.push_back(shape.GetData()[i] / mesh_dim);
         } else {
           local_shape.push_back(shape.GetData()[i]);
@@ -793,6 +800,11 @@ class DistForwardAPI(ForwardAPI):
         kernel_params = self.kernel['param']
         if kernel_params is None:
             kernel_params = input_names + attr_names
+
+        # TODO(GhostScreaming): specialized case for reshape_grad
+        # xshape is not kernel params, but inferspmd needs it.
+        if "reshape_grad" in self.kernel['func'][0]:
+            kernel_params = ["xshape"] + kernel_params
 
         input_decl_code = ""
         input_args_code = ""
