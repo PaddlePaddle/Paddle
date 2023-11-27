@@ -208,10 +208,6 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
           << "] dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "Out dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
 
-  // auto result = SpmdInfo({{x_dist_attr_dst}, {out_dist_attr}});
-  // VLOG(4) << "After result.";
-
-  // return result;
   return {{x_dist_attr_dst}, {out_dist_attr}};
 }
 
@@ -289,10 +285,6 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
           << "dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "X dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
 
-  // auto result = SpmdInfo({{x_dist_attr}, {out_dist_attr_dst}});
-  // VLOG(4) << "After result.";
-
-  // return result;
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }
 
