@@ -23,3 +23,11 @@
     func : unique
     data_type : x
   interfaces : paddle::dialect::ParseKernelKeyInterface
+
+- op: sequence_mask
+  args: (Tensor x, Tensor max_len, int out_dtype)
+  output: Tensor(y)
+  infer_meta:
+    func: SequenceMaskPIRInferMeta
+  kernel:
+    func: sequence_mask_pir

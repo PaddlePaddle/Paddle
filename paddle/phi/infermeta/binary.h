@@ -430,6 +430,11 @@ void SequenceMaskInferMeta(const MetaTensor& x,
                            int out_dtype,
                            MetaTensor* y);
 
+void SequenceMaskPIRInferMeta(const MetaTensor& x,
+                              const MetaTensor& max_len,
+                              int out_dtype,
+                              MetaTensor* y);
+
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,
                               MetaTensor* out);
