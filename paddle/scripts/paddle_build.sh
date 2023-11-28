@@ -3888,7 +3888,6 @@ function run_setup_mac(){
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.8.0/include/python3.8
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.8.0/lib/libpython3.so
                 pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
-                pip3.8 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp39-cp39" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
