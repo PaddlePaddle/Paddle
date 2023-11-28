@@ -77,14 +77,6 @@ def bernoulli(shape, dtype, p, seed=0):
     )
 
 
-@register_decomp('pd_op.add_n')
-def add_n(x):
-    ans = x[0]
-    for xi in x[1:]:
-        ans = xi + ans
-    return ans
-
-
 @register_decomp('pd_op.stack')
 def stack(x, axis):
     """
@@ -97,32 +89,6 @@ def stack(x, axis):
     out_shape = x_shape[:axis] + [1] + x_shape[axis:]
     out = concat([reshape(item, out_shape) for item in x], axis)
     return out
-
-
-@register_decomp('pd_op.squeeze')
-def squeeze(x, axis):
-    """define composite rule of squeeze"""
-    """
-    canonicalize dim within range 0 to rank and
-    determine new shape after squeeze op
-    if axis not specified, remove all dims equal to 1
-    otherwise, remove dims equal to 1 in axis
-    axis can only be list, not int
-    """
-    axis = axis.get_defining_op().attrs()["value"]
-    rank = len(x.shape)
-    if rank == 0:
-        return [assign(x), None]
-    if len(axis) == 0:
-        dims = set(range(rank))
-    else:
-        dims = {ax % rank for ax in axis}
-    new_shape = []
-    for d, s in enumerate(x.shape):
-        if not (s == 1 and (d in dims)):
-            new_shape.append(s)
-    out = reshape(x, new_shape)
-    return [out, None]
 
 
 @register_decomp('pd_op.unsqueeze')
