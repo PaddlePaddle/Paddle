@@ -21,7 +21,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/scope.h"
-// #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -52,6 +52,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   ConstantFoldingPattern(
       pir::IrContext* context,
       size_t* suffix,
+      const phi::Place& place,
       paddle::framework::Scope* scope,
       paddle::framework::interpreter::ExecutionConfig* exe_config,
       std::vector<std::string>* deleted_vars)
@@ -60,6 +61,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                        context,
                        {} /*generated_names*/),
         counter_(suffix),
+        place_(place),
         scope_(scope),
         exe_config_(exe_config),
         deleted_vars_(deleted_vars) {
@@ -67,12 +69,29 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   }
 
   bool Match(pir::Operation* op) const override {
+    // 1. Some ops do not need to be processed
     if (op->HasTrait<pir::SideEffectTrait>() ||
         op->isa<pir::ConstantTensorOp>() || op->isa<pir::ParameterOp>() ||
         op->isa<paddle::dialect::FeedOp>())
       return false;
-    if (!ValidOp(op)) {
-      return false;
+
+    for (uint32_t i = 0; i < op->num_operands(); i++) {
+      // 2. inputs must come from parameter op or constant op
+      // 3. inputs must be a dense tensor type
+      if (!(pir::GetDefiningOpForInput(op, i)->isa<pir::ParameterOp>() ||
+            pir::GetDefiningOpForInput(op, i)->isa<pir::ConstantTensorOp>()) ||
+          !op->operand_source(i)
+               .type()
+               .isa<paddle::dialect::DenseTensorType>()) {
+        return false;
+      }
+    }
+
+    for (uint32_t i = 0; i < op->num_results(); i++) {
+      // 4. outputs must be a dense tensor type
+      if (!op->result(i).type().isa<paddle::dialect::DenseTensorType>()) {
+        return false;
+      }
     }
 
     return true;
@@ -87,9 +106,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     // execute program
     exe_config_->skip_gc_vars.insert(output_var_name);
     auto kernel_program =
-        paddle::dialect::PdOpLowerToKernelPass(&new_program, phi::CPUPlace{});
+        paddle::dialect::PdOpLowerToKernelPass(&new_program, place_);
     paddle::framework::InterpreterCore core(
-        phi::CPUPlace{}, {}, kernel_program->block(), scope_, *exe_config_);
+        place_, {}, kernel_program->block(), scope_, *exe_config_);
 
     core.Run({});
 
@@ -144,50 +163,6 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     return true;
   }
 
-  bool ValidOp(pir::Operation* op) const {
-    for (uint32_t i = 0; i < op->num_operands(); i++) {
-      // 1. inputs must come from parameter op or constant op
-      // 2. inputs must be a dense tensor type
-      if (!(pir::GetDefiningOpForInput(op, i)->isa<pir::ParameterOp>() ||
-            pir::GetDefiningOpForInput(op, i)->isa<pir::ConstantTensorOp>()) ||
-          !op->operand_source(i)
-               .type()
-               .isa<paddle::dialect::DenseTensorType>()) {
-        return false;
-      }
-    }
-
-    for (uint32_t i = 0; i < op->num_results(); i++) {
-      // 3. outputs must be a dense tensor type
-      if (!op->result(i).type().isa<paddle::dialect::DenseTensorType>()) {
-        return false;
-      }
-      // TODO(liuyuanle): Uncomment follows doce after have a solution to slove
-      // the performance degradation
-      // auto use_ops = pir::GetUseOpsForOutput(op, i);
-      // for (auto* use_op : use_ops) {
-      //   if (use_op->isa<pir::CombineOp>()) {
-      //     return false;
-      //   }
-      //   if (use_op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
-      //     auto [input_infos, _1, _2, _3, _4] =
-      //         use_op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()
-      //             .GetOpInfo();
-      //     for (const auto& input_info : input_infos) {
-      //       if (input_info.type_name.find("IntArrayAttribute") !=
-      //               std::string::npos ||
-      //           input_info.type_name.find("ScalarAttribute") !=
-      //               std::string::npos) {
-      //         return false;
-      //       }
-      //     }
-      //   }
-      // }
-    }
-
-    return true;
-  }
-
   std::string BuildProgramFromOperation(pir::Operation* op,
                                         pir::Program* new_program) const {
     pir::Builder builder = pir::Builder(ir_context(), new_program->block());
@@ -233,16 +208,18 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   }
 
  private:
-  size_t* counter_{nullptr};
-  paddle::framework::Scope* scope_{nullptr};
-  paddle::framework::interpreter::ExecutionConfig* exe_config_{nullptr};
-  std::vector<std::string>* deleted_vars_{nullptr};
+  const size_t* counter_;
+  const phi::Place place_;
+  const paddle::framework::Scope* scope_;
+  const paddle::framework::interpreter::ExecutionConfig* exe_config_;
+  const std::vector<std::string>* deleted_vars_;
 };
 
 class ConstantFoldingPass : public pir::Pass {
  public:
-  explicit ConstantFoldingPass(paddle::framework::Scope* scope)
-      : pir::Pass("constant_folding_pass", 1), scope_(scope) {
+  explicit ConstantFoldingPass(const phi::Place& place,
+                               paddle::framework::Scope* scope)
+      : pir::Pass("constant_folding_pass", 1), place_(place), scope_(scope) {
     PADDLE_ENFORCE_NOT_NULL(
         scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
   }
@@ -251,7 +228,7 @@ class ConstantFoldingPass : public pir::Pass {
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<ConstantFoldingPattern>(
-        context, &counter_, scope_, &exe_config_, &deleted_vars_);
+        context, &counter_, place_, scope_, &exe_config_, &deleted_vars_);
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
@@ -276,6 +253,7 @@ class ConstantFoldingPass : public pir::Pass {
 
  private:
   size_t counter_{0};
+  phi::Place place_;
   paddle::framework::Scope* scope_{nullptr};
   paddle::framework::interpreter::ExecutionConfig exe_config_{};
   std::vector<std::string> deleted_vars_;
@@ -288,8 +266,8 @@ class ConstantFoldingPass : public pir::Pass {
 namespace pir {
 
 std::unique_ptr<Pass> CreateConstantFoldingPass(
-    paddle::framework::Scope* scope) {
-  return std::make_unique<ConstantFoldingPass>(scope);
+    const phi::Place& place, paddle::framework::Scope* scope) {
+  return std::make_unique<ConstantFoldingPass>(place, scope);
 }
 
 }  // namespace pir

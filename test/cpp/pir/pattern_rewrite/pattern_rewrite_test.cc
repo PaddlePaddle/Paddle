@@ -1127,11 +1127,11 @@ TEST(constant_folding, ConstantFolding_Combine) {
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
 
   pir::Program program(ctx);
-  paddle::framework::Scope scope;
   BuildConcatProgram(&program, ctx);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(pir::CreateConstantFoldingPass(&scope));
+  paddle::framework::Scope scope;
+  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
