@@ -110,7 +110,7 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
         self.initCommunicator(
             startup_prog, rank, self.nranks, True, current_endpoint, endpoints
         )
-        np_data_type = DataTypeCast(args["data_type"])
+        np_dtype = DataTypeCast(args["dtype"])
         loss, softmax = self.get_model(train_prog, startup_prog, rank)
         device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
         place = paddle.XPUPlace(device_id)
@@ -128,13 +128,13 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
         # use FAKE loss_grad here, only to examine the correctness of grad func
         loss_grad = np.random.uniform(
             low=-10.0, high=10.0, size=(self.batch_size, 1)
-        ).astype(np_data_type)
+        ).astype(np_dtype)
 
         # each xpu uses own half of logits
         np.random.seed(os.getpid())
         logits = np.random.uniform(
             low=-40.0, high=40.0, size=(self.batch_size, self.local_elements)
-        ).astype(np_data_type)
+        ).astype(np_dtype)
         out = exe.run(
             train_prog,
             feed={'Logits': logits, 'Label': label, 'Loss@GRAD': loss_grad},
@@ -144,5 +144,4 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
 
 
 if __name__ == "__main__":
-    os.environ["BKCL_PCIE_RING"] = "1"
     runtime_main(TestCollectiveSoftmaxWithCE, "softmax_with_ce", 0)

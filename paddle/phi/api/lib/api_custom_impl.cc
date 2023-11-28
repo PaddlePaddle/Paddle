@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
 namespace paddle {
@@ -118,8 +118,8 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
       }
 
       auto meta_dist_input_x = MakeDistMetaTensor(input_x);
-      auto spmd_info =
-          phi::distributed::VariadicReplicatedInferSpmd(meta_dist_input_x);
+      auto spmd_info = phi::distributed::VariadicReplicatedInferSpmdDynamic(
+          meta_dist_input_x);
 
       auto dist_out = SetKernelDistOutput(&api_output);
       auto dense_out = dist_out->unsafe_mutable_value();
@@ -139,7 +139,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
       phi::AddNInferMeta(x_metas, &meta_dist_out);
       if (rank_is_in_current_mesh) {
         auto dist_input_x =
-            ReshardApiInputToReplicatedKernelInput(dev_ctx, x, spmd_info.first);
+            ReshardApiInputToKernelInput(dev_ctx, x, spmd_info.first[0]);
         dist_input_x = PrepareDataForDistTensor(
             dist_input_x,
             GetKernelInputArgDef(kernel.InputAt(0), kernel_backend),
@@ -165,14 +165,15 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
         auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
         (*kernel_fn)(*dev_ctx, input_x, dense_out);
       }
-      PADDLE_ENFORCE_EQ(
-          paddle::holds_alternative<phi::distributed::TensorDistAttr>(
-              spmd_info.first[0]),
-          true,
-          phi::errors::PreconditionNotMet(
-              "Arg must be a single TensorDistAttr"));
+      PADDLE_ENFORCE_EQ(paddle::holds_alternative<
+                            std::vector<phi::distributed::TensorDistAttr>>(
+                            spmd_info.first[0]),
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "Arg must be a vector of TensorDistAttr"));
+
       auto current_process_mesh =
-          paddle::get<0>(spmd_info.first[0]).process_mesh();
+          paddle::get<1>(spmd_info.first[0]).at(0).process_mesh();
       SetReplicatedDistAttrForOutput(dist_out, current_process_mesh);
       return api_output;
     }
@@ -234,7 +235,8 @@ void embedding_grad_impl(const Tensor& x,
   VLOG(6) << "embedding_grad API kernel key: [" << kernel_key.backend() << ", "
           << kernel_key.layout() << ", " << kernel_data_type << "]";
 
-  if (phi::DenseTensor::classof(weight.impl().get())) {
+  if (phi::DenseTensor::classof(weight.impl().get()) ||
+      phi::distributed::DistTensor::classof(weight.impl().get())) {
     std::string kernel_name =
         sparse ? "embedding_sparse_grad" : "embedding_grad";
     auto kernel_result =
@@ -246,6 +248,108 @@ void embedding_grad_impl(const Tensor& x,
 
     auto* dev_ctx = GetDeviceContextByBackend(
         kernel_result.has_fallback_cpu ? Backend::CPU : kernel_key.backend());
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+    bool run_auto_parallel = AllInputsAreDistTensor(x, weight, out_grad);
+    // Auto Parallel condition
+    if (run_auto_parallel) {
+      bool rank_is_in_current_mesh = true;
+      auto mesh =
+          std::static_pointer_cast<phi::distributed::DistTensor>(x.impl())
+              ->dist_attr()
+              .process_mesh();
+      rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(mesh);
+
+      // 1. InferSpmd (Infer DistAttr of Inputs&Outputs)
+      auto meta_dist_input_x = MakeDistMetaTensor(*x.impl());
+      auto meta_dist_input_weight = MakeDistMetaTensor(*weight.impl());
+      auto meta_dist_input_out_grad = MakeDistMetaTensor(*out_grad.impl());
+      auto spmd_info = phi::distributed::VariadicReplicatedInferSpmdDynamic(
+          meta_dist_input_weight, meta_dist_input_x, meta_dist_input_out_grad);
+
+      // 2. Create Temporary Output & Prepare Dist and Dense Output
+      std::shared_ptr<phi::distributed::DistTensor> shared_dist_out =
+          CreateKernelDistOutput(weight_grad, !rank_is_in_current_mesh);
+      phi::distributed::DistTensor* dist_out = shared_dist_out.get();
+      phi::DenseTensor* dense_out = dist_out->unsafe_mutable_value();
+      if (dense_out && !rank_is_in_current_mesh && !dist_out->defined()) {
+        *dense_out = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(
+                nullptr, 0, phi::distributed::GetDefaultPlace()),
+            phi::DenseTensorMeta());
+      }
+
+      // 3. Infer DistTensor's Global Shape
+      phi::MetaTensor meta_dist_out(dist_out);
+      UnchangedInferMeta(MakeMetaTensor(*weight.impl()), &meta_dist_out);
+
+      // 4. Set Output Dist Attr For Default Impl
+      auto current_process_mesh =
+          paddle::holds_alternative<phi::distributed::TensorDistAttr>(
+              spmd_info.first[0])
+              ? paddle::get<0>(spmd_info.first[0]).process_mesh()
+              : paddle::get<1>(spmd_info.first[0]).at(0).process_mesh();
+      SetReplicatedDistAttrForOutput(dist_out, current_process_mesh);
+
+      if (rank_is_in_current_mesh) {
+        // 5. Reshard Input
+        auto dist_input_weight =
+            ReshardApiInputToKernelInput(dev_ctx, weight, spmd_info.first[0]);
+        auto dist_input_x =
+            ReshardApiInputToKernelInput(dev_ctx, x, spmd_info.first[1]);
+        auto dist_input_out_grad =
+            ReshardApiInputToKernelInput(dev_ctx, out_grad, spmd_info.first[2]);
+
+        // 6. PrepareData (DataTransform & Prepare Dense Input)
+        dist_input_weight = PrepareDataForDistTensor(
+            dist_input_weight,
+            GetKernelInputArgDef(kernel.InputAt(0), kernel_key.backend()),
+            {},
+            kernel_result.is_stride_kernel);
+        auto input_weight = &dist_input_weight->value();
+
+        dist_input_x = PrepareDataForDistTensor(
+            dist_input_x,
+            GetKernelInputArgDef(kernel.InputAt(1), kernel_key.backend()),
+            {},
+            kernel_result.is_stride_kernel);
+        auto input_x = &dist_input_x->value();
+
+        dist_input_out_grad = PrepareDataForDistTensor(
+            dist_input_out_grad,
+            GetKernelInputArgDef(kernel.InputAt(2), kernel_key.backend()),
+            {},
+            kernel_result.is_stride_kernel);
+        auto input_out_grad = &dist_input_out_grad->value();
+
+        // 7. Infer Local DenseTensor Meta
+        phi::MetaTensor meta_dense_out(dense_out);
+        phi::EmbeddingGradInferMeta(MakeMetaTensor(*input_x),
+                                    MakeMetaTensor(*input_weight),
+                                    &meta_dense_out);
+
+        // 8. DenseTensor Kernel Call
+        using kernel_signature = void (*)(const phi::DeviceContext&,
+                                          const phi::DenseTensor&,
+                                          const phi::DenseTensor&,
+                                          const phi::DenseTensor&,
+                                          int64_t,
+                                          phi::DenseTensor*);
+        auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+        (*kernel_fn)(*dev_ctx,
+                     *input_x,
+                     *input_weight,
+                     *input_out_grad,
+                     padding_idx,
+                     dense_out);
+      }
+      // 9. Reshard Kernel Output to API output
+      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, weight_grad);
+
+      // 10. Return
+      return;
+    }
+#endif  // PADDLE_WITH_DISTRIBUTE
 
     auto input_x = PrepareData(x, kernel.InputAt(0), {}, false);
     auto input_weight = PrepareData(weight, kernel.InputAt(1), {}, false);

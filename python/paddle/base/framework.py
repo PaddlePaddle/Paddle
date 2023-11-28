@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import copy
 import functools
@@ -26,6 +28,7 @@ import traceback
 import warnings
 from collections.abc import Iterable
 from types import FunctionType, MethodType
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -34,10 +37,15 @@ import paddle.version as paddle_version
 from .. import pir
 from . import core, unique_name
 from .libpaddle import DataType
-from .proto import data_feed_pb2  # noqa: F401
-from .proto import framework_pb2
-from .variable_index import _getitem_static, _setitem_impl_, _setitem_static
+from .proto import (
+    data_feed_pb2,  # noqa: F401
+    framework_pb2,
+)
+from .variable_index import _getitem_static, _setitem_static
 from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+
+if TYPE_CHECKING:
+    from paddle.static.amp.fp16_utils import AmpOptions
 
 __all__ = []
 
@@ -846,6 +854,22 @@ def is_compiled_with_cuda():
             >>> support_gpu = paddle.device.is_compiled_with_cuda()
     """
     return core.is_compiled_with_cuda()
+
+
+def is_compiled_with_distribute():
+    """
+    Whether this whl package can be used to run the model with distribute.
+
+    Returns:
+        Bool: `True` if distribute is currently available, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> support_distribute = paddle.device.is_compiled_with_distribute()
+    """
+    return core.is_compiled_with_distribute()
 
 
 def is_compiled_with_rocm():
@@ -2112,7 +2136,7 @@ class Variable(metaclass=VariableMetaClass):
     @property
     def lod_level(self):
         """
-        Indicating ``LoD`` info of current Variable, please refer to  :ref:`api_base_LoDTensor_en` to check the meaning
+        Indicating ``LoD`` info of current Variable, please refer to  :ref:`api_paddle_Tensor` to check the meaning
         of ``LoD``
 
         **Notes**:
@@ -2464,9 +2488,6 @@ class Variable(metaclass=VariableMetaClass):
         from .dygraph.base import in_to_static_mode
 
         if in_to_static_mode():
-            if is_compiled_with_xpu():
-                # (NOTE): Currently, there is no index_put_xpu kernel.
-                return _setitem_impl_(self, item, value)
             return _setitem_static(self, item, value)
         else:
             raise RuntimeError(
@@ -2934,6 +2955,12 @@ class Operator:
 
             # attr for static graph mode cuda graph
             self._cuda_graph_attr = _current_cuda_graph_mode
+
+            # attr for OP AMP mode
+            # using dynamic import to avoid cyclic dependency
+            from paddle.static.amp.fp16_utils import DEFAULT_AMP_OPTIONS
+
+            self._amp_options: AmpOptions = DEFAULT_AMP_OPTIONS
 
             op_maker = core.op_proto_and_checker_maker
 
@@ -3691,6 +3718,25 @@ class Operator:
         Set distributed attribute of this Variable.
         """
         self.desc.dist_attr = dist_attr
+
+    def set_amp_options(self, amp_options):
+        """
+        Set auto cast attribute of this Operator.
+
+        Args:
+            amp_options (AmpOptions): AmpOptions of this Operator.
+        """
+        self._amp_options = amp_options
+
+    @property
+    def amp_options(self):
+        """
+        Get auto cast attribute of this Operator.
+
+        Returns:
+            bool: AmpOptions of this Operator.
+        """
+        return self._amp_options
 
 
 @signature_safe_contextmanager
@@ -5676,6 +5722,7 @@ class Program:
 
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
+        self._pass_opt = None
 
         # assigned if this program has been parsed by a heter pipeline parameter server optimizer
         self._heter_pipeline_opt = None
@@ -6313,7 +6360,8 @@ class Program:
                 p.lr_scheduler = self.lr_scheduler
             if hasattr(self, '_pipeline_opt'):
                 p._pipeline_opt = self._pipeline_opt
-
+            if hasattr(self, '_pass_opt'):
+                p._pass_opt = self._pass_opt
             # NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.
             p._sync_with_cpp()
@@ -6321,6 +6369,7 @@ class Program:
         p._copy_param_info_from(self)
         p._copy_data_info_from(self, pruned_origin_block_id_map)
         p._copy_dist_param_info_from(self)
+        p._copy_operator_info_from(self)
         return p
 
     def _prune(self, targets):
@@ -6444,6 +6493,7 @@ class Program:
         res._copy_param_info_from(self)
         res._copy_data_info_from(self, pruned_origin_block_id_map)
         res._copy_dist_param_info_from(self)
+        res._copy_operator_info_from(self)
 
         return res
 
@@ -6959,6 +7009,24 @@ class Program:
                 if other_var.stop_gradient:
                     var.stop_gradient = True
 
+    def _copy_operator_info_from(self, other: Program):
+        """
+        Copy the information of Operator information from other program.
+
+        Args:
+            other(Program): Other program
+
+        Returns:
+            None
+        """
+        if not isinstance(other, Program):
+            raise TypeError(
+                f"Function Program._copy_operator_info_from() needs to pass in a source Program, but received {type(other)}"
+            )
+        for dst_block, src_block in zip(self.blocks, other.blocks):
+            for dst_op, src_op in zip(dst_block.ops, src_block.ops):
+                dst_op.set_amp_options(src_op.amp_options)
+
     def list_vars(self):
         """
         Get all Tensors from this Program. A iterable object is returned.
@@ -7394,10 +7462,13 @@ class EagerParamBase(core.eager.Tensor):
         param = cls(tensor.shape, tensor.dtype, **kwargs)
 
         # 2. transform data if needed
-        dist_attr = kwargs.get('dist_attr', None)
+        mesh = kwargs.get("process_mesh", None)
+        placements = kwargs.get("placements", None)
         src_tensor = tensor
-        if dist_attr is not None:
-            src_tensor = core.eager.Tensor(tensor, dist_attr=dist_attr)
+        if mesh is not None and placements is not None:
+            src_tensor = core.eager.Tensor(
+                tensor, process_mesh=mesh, placements=placements
+            )
 
         # 3. set param data
         param._set_impl(src_tensor)

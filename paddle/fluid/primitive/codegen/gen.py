@@ -50,7 +50,8 @@ BACKENDS_BLACK_LIST = [
     "isclose",
     "send_v2",
     "assert",
-    "embedding_grad_sparse",
+    "embedding_sparse_grad",
+    "embedding_grad",
 ]
 
 
@@ -59,6 +60,7 @@ PRIM_VJP = [
     'sum_grad',
     'cast_grad',
     'add_grad',
+    'subtract_grad',
     'multiply_grad',
     'elementwise_pow_grad',
     'reshape_grad',
@@ -73,6 +75,7 @@ PRIM_VJP = [
     'gather_nd_grad',
     'pad_grad',
     'max_grad',
+    'maximum_grad',
     'slice_grad',
     'tile_grad',
 ]  # vjp list of primitive op
@@ -83,6 +86,7 @@ CUSTOM_VJP = [
     'silu_grad',
     'softmax_grad',
     'sqrt_grad',
+    'relu_grad',
 ]  # custom vjp list of composite op
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
@@ -317,9 +321,7 @@ def update_apis(op_yaml_items, update_yaml_file):
 def gen(
     prim_path: pathlib.Path,
     fwd_path: pathlib.Path,
-    fwd_legacy_path: pathlib.Path,
     rev_path: pathlib.Path,
-    rev_legacy_path: pathlib.Path,
     compat_path: pathlib.Path,
     fwd_pd_op_path: pathlib.Path,
     update_fwd_pd_op_path: pathlib.Path,
@@ -333,11 +335,7 @@ def gen(
     Args:
         prim_path (pathlib.Path): The YAML file path of the primitive API.
         fwd_path (pathlib.Path):  The YAML file path of the forwad API.
-        fwd_legacy_path (pathlib.Path): The YAML file path of the legacy
-            forwad API.
         rev_path (pathlib.Path): The YAML file path of the backward API.
-        rev_legacy_path (pathlib.Path): The YAML file path of the legacy
-            backward API.
         compat_path: (pathlib.Path): The YAML file path of the ops compat.
         fwd_pd_op_path (pathlib.Path): The YAML file path of the ir forward API.
         update_fwd_pd_op_path (pathlib.Path): The YAML file path of the ir update_ops.
@@ -351,33 +349,27 @@ def gen(
     (
         prims,
         fwds,
-        legacy_fwds,
         revs,
-        legacy_revs,
         compats,
         ir_fwds,
         ir_revs,
     ) = (
         load(prim_path),
         load(fwd_path),
-        load(fwd_legacy_path),
         load(rev_path),
-        load(rev_legacy_path),
         load(compat_path),
         load(fwd_pd_op_path),
         load(rev_pd_op_path),
     )
     filter_compat_info(compats)
 
-    fwd_apis = fwds + legacy_fwds + ir_fwds
+    fwd_apis = fwds + ir_fwds
     # replace old ir ops with pir ops
     if os.path.exists(update_fwd_pd_op_path):
         update_apis(fwd_apis, update_fwd_pd_op_path)
 
     apis = [{**api, **{'is_fwd': True}} for api in fwd_apis]
-    apis = apis + [
-        {**api, **{'is_fwd': False}} for api in revs + legacy_revs + ir_revs
-    ]
+    apis = apis + [{**api, **{'is_fwd': False}} for api in revs + ir_revs]
     apis = [
         {**api, **{'is_prim': True}}
         if api['name'] in prims
@@ -411,17 +403,7 @@ if __name__ == "__main__":
         '--fwd_path', type=str, help='The parsed ops yaml file.'
     )
     parser.add_argument(
-        '--fwd_legacy_path',
-        type=str,
-        help='The parsed ops yaml file.',
-    )
-    parser.add_argument(
         '--rev_path', type=str, help='The parsed ops yaml file.'
-    )
-    parser.add_argument(
-        '--rev_legacy_path',
-        type=str,
-        help='The parsed ops yaml file.',
     )
     parser.add_argument(
         '--compat_path',
@@ -458,9 +440,7 @@ if __name__ == "__main__":
     gen(
         pathlib.Path(args.prim_path),
         pathlib.Path(args.fwd_path),
-        pathlib.Path(args.fwd_legacy_path),
         pathlib.Path(args.rev_path),
-        pathlib.Path(args.rev_legacy_path),
         pathlib.Path(args.compat_path),
         pathlib.Path(args.fwd_pd_op_path),
         pathlib.Path(args.update_fwd_pd_op_path),

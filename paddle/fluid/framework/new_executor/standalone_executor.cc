@@ -27,7 +27,7 @@
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(enable_pir_api);
 PHI_DECLARE_bool(pir_apply_inplace_pass);
 
@@ -56,7 +56,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     const std::string& job_type = job->Type();
     std::shared_ptr<ProgramDesc> program = nullptr;
     std::shared_ptr<::pir::Program> ir_program = nullptr;
-    if (FLAGS_enable_pir_api || FLAGS_enable_new_ir_in_executor) {
+    if (FLAGS_enable_pir_api || FLAGS_enable_pir_in_executor) {
       ir_program = plan_.IrProgram(job_type);
     } else {
       program = std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
@@ -70,7 +70,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                  micro_batch_id,
                                  micro_batch_num));
 
-    if (!FLAGS_enable_pir_api && !FLAGS_enable_new_ir_in_executor) {
+    if (!FLAGS_enable_pir_api && !FLAGS_enable_pir_in_executor) {
       SetColAttrForFeedFetchOps(program, micro_batch_num, micro_batch_id);
     }
 
@@ -79,23 +79,19 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     execution_config.skip_gc_vars = job->SkipGcVars();
 
     // TODO(phlrain) we only support cpu for now
-    if (FLAGS_enable_new_ir_in_executor) {
+    if (FLAGS_enable_pir_in_executor) {
       std::shared_ptr<::pir::Program> base_program = ir_program;
       auto block = base_program->block();
       for (auto it = block->begin(); it != block->end(); ++it) {
-        if ((*it)->isa<paddle::dialect::FetchOp>()) {
-          size_t index = (*it)
-                             ->attributes()
-                             .at("col")
-                             .dyn_cast<pir::Int32Attribute>()
-                             .data();
+        if (it->isa<paddle::dialect::FetchOp>()) {
+          size_t index =
+              it->attributes().at("col").dyn_cast<pir::Int32Attribute>().data();
 
           if (fetch_var_names_.size() < index + 1) {
             fetch_var_names_.resize(index + 1);
           }
 
-          fetch_var_names_[index] = (*it)
-                                        ->attributes()
+          fetch_var_names_[index] = it->attributes()
                                         .at("name")
                                         .dyn_cast<pir::StrAttribute>()
                                         .AsString() +
@@ -106,7 +102,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
       std::shared_ptr<pir::Program> shared_program = std::move(kernel_program);
-      plan_.UpdateIrProgram("job_" + std::to_string(job_idx), shared_program);
+      plan_.SetIrProgram("job_" + std::to_string(job_idx), shared_program);
 
       if (FLAGS_pir_apply_inplace_pass) {
         pir::PassManager pm(pir::IrContext::Instance(), 3);
@@ -156,7 +152,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 }
 
 paddle::framework::FetchList StandaloneExecutor::Run(
-    const std::vector<std::string>& feed_names) {
+    const std::vector<std::string>& feed_names,
+    const bool enable_job_schedule_profiler) {
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
 
@@ -178,7 +175,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   }
 
   std::vector<std::vector<phi::DenseTensor>> splited_feeds;
-  if (FLAGS_enable_new_ir_in_executor) {
+  if (FLAGS_enable_pir_in_executor) {
     SplitFeedTensors(feed_names, plan_.MicroBatchNum(), scope_, &splited_feeds);
   }
 
@@ -194,14 +191,14 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
             << ", micro_batch_id =" << job->MicroBatchId();
 
-    // Note(sonder): Share build results don't work for new IR now.
+    // NOTE(sonder): Share build results don't work for new IR now.
     if (type_to_first_id.count(job_type) != 0 &&
-        !FLAGS_enable_new_ir_in_executor) {
+        !FLAGS_enable_pir_in_executor) {
       interpretercores_[job_idx]->ShareBuildResultsFrom(
           interpretercores_[type_to_first_id[job_type]]);
     }
 
-    if (FLAGS_enable_new_ir_in_executor) {
+    if (FLAGS_enable_pir_in_executor) {
       interpretercores_[job_idx]->Run(feed_names,
                                       splited_feeds[job->MicroBatchId()],
                                       /*need_fetch = */ false);
@@ -215,15 +212,44 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       if (jobs.size() > 1 && job_type != "forward") {
         const std::vector<std::string> tmp_feed_names = {};
         interpretercores_[job_idx]->Run(tmp_feed_names,
-                                        /*need_fetch = */ false);
+                                        /*need_fetch = */ false,
+                                        /*enable_job_schedule_profiler = */
+                                        enable_job_schedule_profiler);
       } else {
-        interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
+        interpretercores_[job_idx]->Run(feed_names,
+                                        /*need_fetch = */ false,
+                                        /*enable_job_schedule_profiler = */
+                                        enable_job_schedule_profiler);
       }
     }
   }
 
+  // record each job's run time
+#if defined(PADDLE_WITH_CUDA)
+  if (enable_job_schedule_profiler) {
+    for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
+      const auto& job = jobs[job_idx];
+      const std::string& job_type = job->Type();
+      double start_time, end_time;
+      std::tie(start_time, end_time) =
+          interpretercores_[job_idx]->InterpreterRunTime();
+
+      // Note(sonder): Used to record the runtime of each job in order to
+      // generate a parallel pipeline timeline. Job runtime information can be
+      // extracted from the logs using the scripts "profiler_helper_static.py".
+      // Do not modify, as it may affect the results of regular expression
+      // matching.
+      VLOG(0) << "Profiler Info: Job (" << job->MicroBatchId()
+              << "), type = " << job_type
+              << ", micro_batch_id = " << job->MicroBatchId()
+              << ", job_start_time = " << std::to_string(start_time)
+              << ", job_end_time = " << std::to_string(end_time);
+    }
+  }
+#endif
+
   // return Fetch Tensors
-  if (FLAGS_enable_new_ir_in_executor) {
+  if (FLAGS_enable_pir_in_executor) {
     framework::FetchList fetch_res;
     MergeFetchTensors(fetch_list_, plan_.MicroBatchNum(), &fetch_res);
     return fetch_res;

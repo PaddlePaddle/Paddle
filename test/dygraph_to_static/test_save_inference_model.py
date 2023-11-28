@@ -17,11 +17,10 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    compare_legacy_with_pir,
+    compare_legacy_with_pt,
     test_ast_only,
-    test_legacy_and_pir,
 )
 
 import paddle
@@ -162,17 +161,17 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
 
         loss_out_numpy = float(loss_out)
         self.check_save_inference_model(
-            layer, [x_data], loss_out_numpy, enable_new_ir=False
+            layer, [x_data], loss_out_numpy, enable_pir=False
         )
         self.check_save_inference_model(
-            layer, [x_data], loss_out_numpy, fetch=[loss], enable_new_ir=False
+            layer, [x_data], loss_out_numpy, fetch=[loss], enable_pir=False
         )
         self.check_save_inference_model(
-            layer, [x_data], loss_out_numpy, feed=[x], enable_new_ir=False
+            layer, [x_data], loss_out_numpy, feed=[x], enable_pir=False
         )
 
     def check_save_inference_model(
-        self, model, inputs, gt_out, feed=None, fetch=None, enable_new_ir=True
+        self, model, inputs, gt_out, feed=None, fetch=None, enable_pir=True
     ):
         expected_persistable_vars = {p.name for p in model.parameters()}
 
@@ -190,8 +189,8 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
             input_spec=feed if feed else None,
             output_spec=fetch if fetch else None,
         )
-        if enable_new_ir:
-            wrapped_load_and_run_inference = compare_legacy_with_pir(
+        if enable_pir:
+            wrapped_load_and_run_inference = compare_legacy_with_pt(
                 self.load_and_run_inference
             )
             infer_out = wrapped_load_and_run_inference(
@@ -230,7 +229,6 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
 
 class TestPartialProgramRaiseError(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pir
     def test_param_type(self):
         paddle.jit.enable_to_static(True)
         x_data = np.random.random((20, 20)).astype('float32')
