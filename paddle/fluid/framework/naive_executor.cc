@@ -40,8 +40,7 @@ namespace paddle {
 namespace framework {
 void NaiveExecutor::Prepare(Scope *scope,
                             const ProgramDesc &program_desc,
-                            int block_id,
-                            bool with_feed_fetch_ops) {
+                            int block_id) {
   if (!scope) {
     scope_ = new framework::Scope;
   } else {
@@ -49,7 +48,7 @@ void NaiveExecutor::Prepare(Scope *scope,
   }
 
   VLOG(3) << "NaiveExecutor init with scope " << scope;
-  CreateOps(program_desc, block_id, with_feed_fetch_ops);
+  CreateOps(program_desc, block_id);
 }
 
 void NaiveExecutor::PrepareInterpreterCore(
@@ -195,12 +194,9 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
   VLOG(4) << "naive executor create " << num_vars << " vars";
 }
 
-void NaiveExecutor::CreateOps(const ProgramDesc &desc,
-                              int block_id,
-                              bool with_feed_fetch_ops) {
+void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id) {
   for (const auto &op_desc : desc.Block(block_id).AllOps()) {
-    if (!with_feed_fetch_ops &&
-        (op_desc->Type() == "feed" || op_desc->Type() == "fetch")) {
+    if (op_desc->Type() == "feed" || op_desc->Type() == "fetch") {
       LOG(INFO) << "---  skip [" << op_desc->Input("X")[0] << "], "
                 << op_desc->Type() << " -> " << op_desc->Output("Out")[0];
       continue;

@@ -24,7 +24,7 @@ from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import _apply_pass, get_flags
-from paddle.base.unique_name import guard as UniqueNameGuard
+from paddle.base.unique_name import switch
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
@@ -32,7 +32,6 @@ from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
     backend_guard,
     construct_grad_names,
-    tensor_name_guard,
 )
 
 __all__ = []
@@ -220,33 +219,70 @@ class PartialProgramLayer:
         self._backend = kwargs.get('backend', None)
         self._grad_var_names = {}
 
+        self._in_var_names = []
+        for var in self._inputs:
+            if isinstance(var, framework.Variable):
+                self._in_var_names.append(var.desc.name())
+        self._out_var_descs = [
+            self._outputs[var_id].desc for var_id in self._outputs.var_ids
+        ]
+
     def __call__(self, inputs):
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        with UniqueNameGuard(self._name_generator):
-            in_vars, out_vars, in_var_names = self._prepare(inputs)
-            self._cast_fp16_if_pure_fp16(in_vars)
-            attrs = self._prepare_attributes()
-            attrs.extend(["x_names", in_var_names])
+        old_generator, old_para_name_checker = switch(self._name_generator)
 
-            self._sync_lr_value_with_scheduler()
+        in_vars, in_var_names = self._prepare_inputs(inputs)
+        out_vars = self._prepare_outputs()
+        self._cast_fp16_if_pure_fp16(in_vars)
+        attrs = self._prepare_attributes()
+        attrs.extend(["x_names", in_var_names])
 
-            with tensor_name_guard(in_vars, in_var_names):
-                _legacy_C_ops.run_program(
-                    self._valid_vars(in_vars),
-                    self._valid_vars(self._params),
-                    self._valid_vars(out_vars),
-                    self._create_scope_vec(
-                        program_id=self.program_id, use_scope_cache=True
-                    ),
-                    self._cuda_graph_vec,
-                    *attrs
-                )
+        self._sync_lr_value_with_scheduler()
 
-            self._update_stop_gradient(out_vars)
-            restored_nest_out = self._restore_out(out_vars)
-            return self._remove_no_value(restored_nest_out)
+        _legacy_C_ops.run_program(
+            self._valid_vars(in_vars),
+            self._valid_vars(self._params),
+            self._valid_vars(out_vars),
+            self._create_scope_vec(
+                program_id=self.program_id, use_scope_cache=True
+            ),
+            self._cuda_graph_vec,
+            *attrs
+        )
+
+        restored_nest_out = self._restore_out(out_vars)
+        restored_nest_out = self._remove_no_value(restored_nest_out)
+
+        switch(old_generator, old_para_name_checker)
+        return restored_nest_out
+
+    def sot_call(self, inputs):
+        """
+        In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
+        """
+        old_generator, old_para_name_checker = switch(self._name_generator)
+
+        out_vars = self._prepare_outputs()
+        self._cast_fp16_if_pure_fp16(inputs)
+        attrs = self._prepare_attributes()
+        attrs.extend(["x_names", self._in_var_names])
+        self._sync_lr_value_with_scheduler()
+
+        _legacy_C_ops.run_program(
+            self._valid_vars(inputs),
+            self._valid_vars(self._params),
+            self._valid_vars(out_vars),
+            self._create_scope_vec(
+                program_id=self.program_id, use_scope_cache=True
+            ),
+            self._cuda_graph_vec,
+            *attrs
+        )
+
+        switch(old_generator, old_para_name_checker)
+        return out_vars
 
     def _sync_lr_value_with_scheduler(self):
         """Update lr_var value with calculated by lr_scheduler."""
@@ -267,9 +303,14 @@ class PartialProgramLayer:
         self._hooker = hooker
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
-        if get_flags('FLAGS_enable_pir_in_executor')[
-            'FLAGS_enable_pir_in_executor'
-        ]:
+        if (
+            get_flags('FLAGS_enable_pir_in_executor')[
+                'FLAGS_enable_pir_in_executor'
+            ]
+            or get_flags('FLAGS_enable_pir_with_pt_in_dy2st')[
+                'FLAGS_enable_pir_with_pt_in_dy2st'
+            ]
+        ):
             _scope_cache = self._pir_scope_cache
         else:
             _scope_cache = self._legacy_scope_cache
@@ -763,6 +804,18 @@ class PartialProgramLayer:
                     self._cuda_graph_pool_id,
                 )
             )
+
+        pir_dy2st_flag = 'FLAGS_enable_pir_with_pt_in_dy2st'
+        in_pir_pt_mode = get_flags(pir_dy2st_flag)[pir_dy2st_flag]
+        is_prim_enabled = (
+            core._is_fwd_prim_enabled() or core._is_bwd_prim_enabled()
+        )
+        in_cinn_backend = self._backend == "CINN"
+        is_cinn_enabled = self._build_strategy.build_cinn_pass
+        if is_prim_enabled or in_cinn_backend or is_cinn_enabled:
+            in_pir_pt_mode = False
+        attrs.extend(['in_pir_pt_mode', in_pir_pt_mode])
+
         return attrs
 
     @switch_to_static_graph
@@ -830,15 +883,21 @@ class PartialProgramLayer:
             forward_program, backward_program
         )
         backward_mem_opt_skip_vars = self._parse_skip_gc_vars(forward_program)
+        in_pir_pt_mode = (
+            get_flags('FLAGS_enable_pir_in_executor')[
+                'FLAGS_enable_pir_in_executor'
+            ]
+            or get_flags('FLAGS_enable_pir_with_pt_in_dy2st')[
+                'FLAGS_enable_pir_with_pt_in_dy2st'
+            ]
+        )
         if forward_program:
             attrs = {
                 "use_cuda": use_cuda,
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not get_flags('FLAGS_enable_pir_in_executor')[
-                'FLAGS_enable_pir_in_executor'
-            ]:
+            if not in_pir_pt_mode:
                 _apply_pass(
                     forward_program,
                     empty_startup_program,
@@ -852,9 +911,7 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not get_flags('FLAGS_enable_pir_in_executor')[
-                'FLAGS_enable_pir_in_executor'
-            ]:
+            if not in_pir_pt_mode:
                 _apply_pass(
                     backward_program,
                     empty_startup_program,
@@ -895,7 +952,7 @@ class PartialProgramLayer:
                 skip_vars.append(var_name)
         return skip_vars
 
-    def _prepare(self, inputs):
+    def _prepare_inputs(self, inputs):
         """
         Prepare inputs, outputs, attrs.
         """
@@ -932,32 +989,12 @@ class PartialProgramLayer:
             input_var_names.append(self._inputs[i].desc.name())
             input_vars.append(var)
 
-        # mapping from name(string) -> Tensor
-        out_tensor_map = {}
+        return input_vars, input_var_names
 
-        def create_out(var_id):
-            var = self._outputs[var_id]
-            assert isinstance(var, framework.Variable)
-            var_desc = var.desc
-
-            if var_desc.name() in out_tensor_map:
-                return out_tensor_map[var_desc.name()]
-
-            out = core.eager.Tensor(
-                var_desc.dtype(),
-                var_desc.shape(),
-                var_desc.name(),
-                var_desc.type(),
-                False,
-            )
-            out.stop_gradient = var.stop_gradient
-            out_tensor_map[var_desc.name()] = out
-            return out
-
-        # Create Tensor to receive output data.
-        out_vars = list(map(create_out, self._outputs.var_ids))
-
-        return input_vars, out_vars, input_var_names
+    def _prepare_outputs(self):
+        return paddle.framework.core.create_empty_tensors_with_var_descs(
+            self._out_var_descs
+        )
 
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
         inner_scope = self._get_scope(

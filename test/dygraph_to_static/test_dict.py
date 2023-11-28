@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
+from dygraph_to_static_utils import Dy2StTestBase, compare_legacy_with_pt
 
 import paddle
 from paddle import base
@@ -126,7 +126,7 @@ class TestNetWithDict(Dy2StTestBase):
         self.x = np.random.random([10, 16]).astype('float32')
         self.batch_size = self.x.shape[0]
 
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def _run_static(self):
         return self.train(to_static=True)
 
@@ -182,7 +182,7 @@ class TestDictPop(Dy2StTestBase):
     def _set_test_func(self):
         self.dygraph_func = test_dic_pop
 
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def _run_static(self):
         return self._run(to_static=True)
 

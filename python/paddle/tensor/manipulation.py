@@ -133,6 +133,27 @@ def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
         res = op(input, axis=axis)
         sizes = paddle.to_tensor(np.array([int(x.shape[axis]) for x in input]))
         return res, sizes
+    elif in_pir_mode():
+        check_type(
+            input,
+            'input',
+            (list, paddle.pir.OpResult),
+            'tensor_array_to_tensor',
+        )
+        if isinstance(input, list):
+            for i, input_x in enumerate(input):
+                check_type(
+                    input_x,
+                    'input[' + str(i) + ']',
+                    paddle.pir.OpResult,
+                    'tensor_array_to_tensor',
+                )
+                if not input_x.is_dense_tensor_array_type():
+                    raise TypeError("input should be tensor array vairable")
+        else:
+            if not input.is_dense_tensor_array_type():
+                raise TypeError("input should be tensor array vairable")
+        return paddle._pir_ops.array_to_tensor(input, axis, use_stack)
     else:
         check_type(input, 'input', (list, Variable), 'tensor_array_to_tensor')
         if isinstance(input, list):
@@ -313,27 +334,25 @@ def slice(input, axes, starts, ends):
             >>> sliced_2 = paddle.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
             >>> # sliced_2 is input[1:3, 0:2, 2:4].
     """
+    if isinstance(axes, (list, tuple)):
+        axes = list(axes)
+        if len(axes) == 0:
+            raise ValueError("Input axes should not be an empty list/tuple.")
+        for i in range(len(axes)):
+            if axes[i] < 0:
+                axes[i] = max(0, axes[i] + len(input.shape))
+            else:
+                axes[i] = min(len(input.shape) - 1, axes[i])
+
+    else:
+        raise ValueError(
+            f"Input axes must be a python list or tuple, but reveived {type(axes)}"
+        )
+
     if in_dynamic_mode():
         attrs = ()
         starts_tensor = None
         ends_tensor = None
-
-        if isinstance(axes, (list, tuple)):
-            axes = list(axes)
-            if len(axes) == 0:
-                raise ValueError(
-                    "Input axes should not be an empty list/tuple."
-                )
-            for i in range(len(axes)):
-                if axes[i] < 0:
-                    axes[i] = max(0, axes[i] + len(input.shape))
-                else:
-                    axes[i] = min(len(input.shape) - 1, axes[i])
-
-        else:
-            raise ValueError(
-                f"Input axes must be a python list or tuple, but reveived {type(axes)}"
-            )
 
         infer_flags = [1 for i in range(len(axes))]
 
@@ -660,7 +679,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             [[-1]
              [ 1]]
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.shard_index(
             input, index_num, nshards, shard_id, ignore_value
         )
@@ -1021,11 +1040,11 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
     if len(y.shape) == 1:
         y = y.reshape([1, -1])
 
-    if inplace:
-        return _C_ops.fill_diagonal_tensor_(x, y, offset, dim1, dim2)
-
-    if in_dynamic_mode():
-        return _C_ops.fill_diagonal_tensor(x, y, offset, dim1, dim2)
+    if in_dynamic_or_pir_mode():
+        if inplace:
+            return _C_ops.fill_diagonal_tensor_(x, y, offset, dim1, dim2)
+        else:
+            return _C_ops.fill_diagonal_tensor(x, y, offset, dim1, dim2)
     else:
         check_variable_and_dtype(
             x,
@@ -1843,7 +1862,7 @@ def roll(x, shifts, axis=None, name=None):
     else:
         axis = []
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.roll(x, shifts, axis)
     else:
         check_variable_and_dtype(
@@ -3053,7 +3072,7 @@ def unbind(input, axis=0):
             f'The axis must in range({-input.ndim}, {input.ndim}).'
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.unbind(input, axis)
     else:
         if isinstance(axis, np.generic):
@@ -4411,7 +4430,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             >>> sliced_2 = paddle.strided_slice(x, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
             >>> # sliced_2 is x[:, 1:3:1, 0:2:1, 2:4:2].
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.strided_slice(x, axes, starts, ends, strides)
     else:
         helper = LayerHelper('strided_slice', **locals())
