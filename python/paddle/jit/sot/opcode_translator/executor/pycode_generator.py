@@ -827,20 +827,6 @@ class PyCodeGen:
         idx = self._code_options["co_names"].index(name)
         self._add_instr("IMPORT_NAME", arg=idx, argval=name)
 
-    def gen_push_null(self):
-        if sys.version_info >= (3, 11):
-            self._add_instr("PUSH_NULL")
-        else:
-            # There is no PUSH_NULL bytecode before python3.11, so we push
-            # a NULL element to the stack through the following bytecode
-            self.gen_load_const(0)
-            self.gen_load_const(None)
-            self.gen_import_name('sys')
-            self.gen_store_fast('sys')
-            self.gen_load_fast('sys')
-            self.gen_load_method('getsizeof')
-            self.gen_pop_top()
-
     def gen_store_fast(self, name):
         if name not in self._code_options["co_varnames"]:
             self._code_options["co_varnames"].append(name)
@@ -1064,40 +1050,3 @@ class PyCodeGen:
 
     def pop_instr(self):
         self._instructions.pop()
-
-    def replace_null_variable(self):
-        """
-        Replace all NullVariables in the bytecode.
-
-        Returns:
-            Optional[Tuple[Any, Callable]]: The new code object and its guard function, or None if no dummy variables are found.
-        """
-        from .variables.basic import NullVariable
-
-        instructions = get_instructions(self._origin_code)
-        has_null_variable = False
-        for instr in instructions:
-            if (
-                instr.opname == 'LOAD_FAST'
-                and instr.argval in self._frame.f_locals.keys()
-                and isinstance(self._frame.f_locals[instr.argval], NullVariable)
-            ):
-                has_null_variable = True
-                self._frame.f_locals[instr.argval].reconstruct(self)
-            elif (
-                instr.opname == 'LOAD_GLOBAL'
-                and instr.argval in self._frame.f_globals.keys()
-                and isinstance(
-                    self._frame.f_globals[instr.argval], NullVariable
-                )
-            ):
-                has_null_variable = True
-                self._frame.f_globals[instr.argval].reconstruct(self)
-            else:
-                self.extend_instrs([instr])
-
-        if has_null_variable:
-            new_code = self.gen_pycode()
-            return new_code
-        else:
-            return None
