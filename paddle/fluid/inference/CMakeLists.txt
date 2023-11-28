@@ -136,6 +136,7 @@ if(WIN32)
                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   target_link_libraries(paddle_inference_shared phi)
 endif()
+
 if(NOT APPLE)
   # apple can't recognize disable-new-dtags
   set_target_properties(
