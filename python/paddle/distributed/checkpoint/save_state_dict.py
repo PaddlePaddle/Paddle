@@ -79,13 +79,11 @@ def save_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
     if len(state_dict) > 0:
         for val in state_dict.values():
             assert isinstance(val, (paddle.Tensor, paddle.base.framework.EagerParamBase)), "Only support dygraph Tensor now, support static DistributedTensor later"
-    #
+
     if process_group is None:
         # Init the default global process group
         not is_initialized() and paddle.distributed.init_parallel_env()
-        # TODO(pangengzheng): use global default process group
-        # process_group = paddle.distributed.new_group(list(range(paddle.distributed.ParallelEnv().nranks)), backend="nccl")
-    # calculate (global offset, local shape) of each DTensor
+
     unique_id = 0
     file_name = ""
     while(True):
@@ -128,9 +126,6 @@ def save_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
         print(f"metadata:{metadata}")
         paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))
     print(f"local_state_dict:{local_state_dict}")
-    # for k,v in local_state_dict.items():
-    #     local_state_dict[k] = np.array(v)
-        # print(f"local_state_dict name:{k}, val:{local_state_dict[k]}, type:{type(local_state_dict[k])}")
     paddle.save(local_state_dict, os.path.join(path, file_name))
     
 

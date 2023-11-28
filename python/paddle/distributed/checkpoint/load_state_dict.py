@@ -163,7 +163,7 @@ def compute_overlap(cur_chunk_metadata:ChunkMetadata, storage_chunk_metadata:Chu
             cur_offsets.append(0)
             storage_offsets.append(begin_offset - storage_offset)
         elif begin_offset == storage_offset:
-            cur_offsets.append(end_offset - cur_offset)
+            cur_offsets.append(begin_offset - cur_offset)
             storage_offsets.append(0)
         else:
             assert False, "Should not reach here."
@@ -200,6 +200,8 @@ def get_read_items(path, state_dict, process_group):
         if isinstance(val, paddle.Tensor):
             if val.is_dist():
                 local_shape, global_offset = compute_local_shape_and_global_offset(val.shape, val.dist_attr.process_mesh, val.dist_attr.dims_mapping)
+                if not local_shape or not global_offset:
+                    continue
                 cur_chunk_metadata = ChunkMetadata(local_shape, global_offset)
                 assert param_name in param_to_chunkmetadata, f"param_name:{param_name} not found in param_to_chunkmetadata:{param_to_chunkmetadata}."
                 for storage_chunk_metadata in param_to_chunkmetadata[param_name]:
@@ -223,6 +225,7 @@ def get_read_items(path, state_dict, process_group):
 def flatten_state_dict(state_dict):
     # TODO, {"model": {"w0": xxx}} -> {model.w0: xxx}
     return state_dict
+
 
 def load_state_dict(state_dict, path, process_group=None, coordinator_rank=0, use_dist=True) -> None:
     """
@@ -288,7 +291,8 @@ def load_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
             else:
                 paddle.distributed.broadcast(cur_sub_chunk_tensor, src=src_rank, group=process_group)
 
-    print(f"after load, state_dict:{state_dict}")
+    local_state_dict = { k:v._local_value() for k, v in state_dict.items()}
+    print(f"after load, local_state_dict:{local_state_dict} \n state_dict:{state_dict}")
 
 
 def test_get_local_load_files():
