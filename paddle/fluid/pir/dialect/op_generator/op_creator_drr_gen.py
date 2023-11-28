@@ -15,7 +15,13 @@
 import argparse
 
 import yaml
-from op_gen import OpCompatParser, OpInfoParser, to_pascal_case
+from op_gen import (
+    OpCompatParser,
+    OpInfoParser,
+    check_need_update_ops,
+    to_pascal_case,
+    update_ops,
+)
 
 CPP_FILE_TEMPLATE = """
 #include "paddle/fluid/pir/drr/ir_operation_factory.h"
@@ -77,12 +83,19 @@ class OpCreatorCodeGen:
 
     def parse_yaml(self, op_yaml_files, op_compat_yaml_file):
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
+        need_update_ops, update_yaml_file = check_need_update_ops(op_yaml_files)
 
         op_yaml_items = []
         for yaml_file in op_yaml_files:
+            if update_yaml_file == yaml_file:
+                continue
             with open(yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
                 op_yaml_items = op_yaml_items + ops
+        # replace old ir ops with pir ops
+        if need_update_ops:
+            update_ops(op_yaml_items, update_yaml_file)
+
         op_info_items = []
         for op in op_yaml_items:
             op_compat_item = op_compat_parser.get_compat(op['name'])
@@ -110,7 +123,10 @@ class OpCreatorCodeGen:
                 if len(op_info_item.attribute_name_list) > 0:
                     params_no_mutable_attr.append("attrs")
 
-                if len(op_info_item.mutable_attribute_name_list) == 0:
+                if (
+                    self.dialect_name != "pd_op"
+                    or len(op_info_item.mutable_attribute_name_list) == 0
+                ):
                     body_code += NORMAL_FUNCTION_TEMPLATE.format(
                         op_name=ir_op_name,
                         namespace=Dialect2NameSpaceMap[self.dialect_name],

@@ -22,6 +22,7 @@ from test_uniform_random_op import output_hist, output_hist_diag
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 from paddle.tensor import random
 
 
@@ -160,6 +161,7 @@ class TestUniformRandomOpBF16SelectedRowsWithDiagInit(
 
 
 class TestUniformRandomOpAPISeed(unittest.TestCase):
+    @test_with_pir_api
     def test_attr_tensor_API(self):
         _seed = 10
         gen = paddle.seed(_seed)
@@ -251,7 +253,11 @@ class TestUniformRandomBatchSizeLikeOpBF16API(unittest.TestCase):
             exe = base.Executor(place)
 
             exe.run(startup_program)
-            outs = exe.run(train_program, fetch_list=[out_1])
+            outs = exe.run(
+                train_program,
+                feed={"input": np.zeros((1, 3)).astype('uint16')},
+                fetch_list=[out_1],
+            )
 
 
 if __name__ == "__main__":

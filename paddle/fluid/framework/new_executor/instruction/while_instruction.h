@@ -66,6 +66,7 @@ class WhileInstruction : public InstructionBase {
   std::vector<Variable*> outputs_;
 
   std::unique_ptr<PirInterpreter> body_inter_;
+  std::vector<std::string> body_outputs_;
   std::vector<std::string> body_skip_gc_names_;
 
   ::pir::Block* body_block_;

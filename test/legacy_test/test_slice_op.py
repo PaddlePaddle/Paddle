@@ -22,6 +22,7 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
@@ -733,6 +734,73 @@ class TestSliceAPI(unittest.TestCase):
             np.testing.assert_array_equal(res_6, input[-3:3, 0:100, :, 2:-1])
             # np.testing.assert_array_equal(res_7, input[-1, 0:100, :, 2:-1])
 
+    # Test negative axis
+    def test_negative_axis_dygraph(self):
+        with paddle.base.dygraph.guard():
+            input = np.random.random([3, 4, 5, 6]).astype("float64")
+
+            res = paddle.slice(
+                paddle.to_tensor(input), axes=[-2], starts=[2], ends=[3]
+            )
+            np.testing.assert_array_equal(res, input[:, :, 2:3, :])
+
+    def test_negative_axis_static(self):
+        with paddle_static_guard(), paddle.static.program_guard(
+            paddle.static.Program()
+        ):
+            input = np.random.random([3, 4, 5, 6]).astype("float64")
+            x = paddle.static.data(
+                name="x",
+                shape=[3, 4, 5, 6],
+                dtype="float64",
+            )
+
+            out = paddle.slice(
+                x,
+                axes=[-2],
+                starts=[2],
+                ends=[3],
+            )
+
+            exe = base.Executor(place=base.CPUPlace())
+            res = exe.run(
+                feed={
+                    "x": input,
+                },
+                fetch_list=[out],
+            )[0]
+
+            np.testing.assert_array_equal(res, input[:, :, 2:3, :])
+
+    def test_negative_axis_pir(self):
+        with paddle.pir_utils.IrGuard(), paddle.static.program_guard(
+            paddle.static.Program()
+        ):
+            input = np.random.random([3, 4, 5, 6]).astype("float64")
+            x = paddle.static.data(
+                name="x",
+                shape=[3, 4, 5, 6],
+                dtype="float64",
+            )
+
+            out = paddle.slice(
+                x,
+                axes=[-2],
+                starts=[2],
+                ends=[3],
+            )
+
+            exe = base.Executor(place=base.CPUPlace())
+            res = exe.run(
+                paddle.static.default_main_program(),
+                feed={
+                    "x": input,
+                },
+                fetch_list=[out],
+            )[0]
+
+            np.testing.assert_array_equal(res, input[:, :, 2:3, :])
+
 
 class TestSliceApiWithTensor(unittest.TestCase):
     def test_starts_ends_is_tensor(self):
@@ -1048,6 +1116,7 @@ class TestSliceDoubleGradCheck(unittest.TestCase):
             x[0], axes=[0, 1, 2], starts=[-3, 0, 2], ends=[3, 2, 4]
         )
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -1083,6 +1152,7 @@ class TestSliceTripleGradCheck(unittest.TestCase):
             x[0], axes=[0, 1, 2], starts=[-3, 0, 2], ends=[3, 2, 4]
         )
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.

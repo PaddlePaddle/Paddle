@@ -32,3 +32,4 @@ from .opcode_analysis import (  # noqa: F401
     analysis_inputs,
     analysis_used_names_with_space,
 )
+from .instruction_pass import apply_instr_pass

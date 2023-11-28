@@ -950,9 +950,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
                     params_path = os.path.join(path_prefix, params_filename)
             _logger.warning(
                 "The old way to load inference model is deprecated. Please specify path_prefix."
-                " model path: {}, params path: {}".format(
-                    model_path, params_path
-                )
+                f" model path: {model_path}, params path: {params_path}"
             )
 
         program_bytes = load_from_file(model_path)

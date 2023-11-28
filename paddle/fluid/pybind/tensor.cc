@@ -444,6 +444,24 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("_set_complex128_element", TensorSetElement<paddle::complex128>)
       .def("_get_complex128_element", TensorGetElement<paddle::complex128>)
       .def("_place", [](phi::DenseTensor &self) { return self.place(); })
+#ifdef PADDLE_WITH_XPU
+      .def("get_xpu_scale_value",
+           [](phi::DenseTensor &self) {
+             if (self.storage_properties_initialized()) {
+               const phi::XPUStorageProperties &sp =
+                   self.storage_properties<phi::XPUStorageProperties>();
+               return sp.xpu_scale_value;
+             } else {
+               return phi::XPUStorageProperties::default_xpu_scale_value;
+             }
+           })
+      .def("set_xpu_scale_value",
+           [](phi::DenseTensor &self, float new_value) {
+             std::unique_ptr<phi::StorageProperties> sp =
+                 std::make_unique<phi::XPUStorageProperties>(new_value);
+             self.set_storage_properties(std::move(sp));
+           })
+#endif
       .def("_dtype",
            [](phi::DenseTensor &self) {
              return framework::TransToProtoVarType(self.type());

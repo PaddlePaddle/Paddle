@@ -34,11 +34,11 @@ __global__ void Range(T start, T step, int64_t size, OUT_TYPE* out) {
 }
 
 template <typename T, typename Context>
-void ArangeKernel(const Context& dev_ctx,
-                  const DenseTensor& start,
-                  const DenseTensor& end,
-                  const DenseTensor& step,
-                  DenseTensor* out) {
+void ArangeTensorKernel(const Context& dev_ctx,
+                        const DenseTensor& start,
+                        const DenseTensor& end,
+                        const DenseTensor& step,
+                        DenseTensor* out) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType start_value =
       static_cast<MPType>(GetValue<T, Context>(dev_ctx, start));
@@ -80,16 +80,30 @@ void ArangeNullaryKernel(const Context& dev_ctx,
   Range<T><<<grid, block, 0, stream>>>(start_value, step_value, size, out_data);
 }
 
+template <typename T, typename Context>
+void ArangeKernel(const Context& dev_ctx,
+                  const Scalar& start,
+                  const Scalar& end,
+                  const Scalar& step,
+                  DenseTensor* out) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType start_value = start.to<MPType>();
+  MPType end_value = end.to<MPType>();
+  MPType step_value = step.to<MPType>();
+  ArangeNullaryKernel<MPType, Context>(
+      dev_ctx, start_value, end_value, step_value, out);
+}
+
 template decltype(ArangeNullaryKernel<int64_t, phi::GPUContext>)
     ArangeNullaryKernel;
 template decltype(ArangeNullaryKernel<int, phi::GPUContext>)
     ArangeNullaryKernel;
 }  // namespace phi
 
-PD_REGISTER_KERNEL(arange,
+PD_REGISTER_KERNEL(arange_tensor,
                    GPU,
                    ALL_LAYOUT,
-                   phi::ArangeKernel,
+                   phi::ArangeTensorKernel,
                    float,
                    double,
                    int64_t,
@@ -100,3 +114,14 @@ PD_REGISTER_KERNEL(arange,
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
 }
+
+PD_REGISTER_KERNEL(arange,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ArangeKernel,
+                   float,
+                   double,
+                   int64_t,
+                   int,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

@@ -722,9 +722,7 @@ def cast_startup_program():
             if param_to_dtype.get(output_name, None) == __target_dtype__:
                 assert op.has_attr(
                     'dtype'
-                ), "initialization op is supported to has dtype attribute but got {}.".format(
-                    str(op)
-                )
+                ), f"initialization op is supported to has dtype attribute but got {str(op)}."
                 out_var = startup_program.global_block().var(output_name)
                 if out_var.dtype == core.VarDesc.VarType.FP32:
                     out_var.desc.set_dtype(__target_dtype__)

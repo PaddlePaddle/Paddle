@@ -1327,6 +1327,8 @@ class BatchNormOneDNNHandler
                          Place cpu_place,
                          const DenseTensor* x,
                          const float epsilon,
+                         const bool use_scale,
+                         const bool use_bias,
                          const bool fuse_with_relu,
                          const bool global_stats,
                          const bool test_mode)
@@ -1335,8 +1337,9 @@ class BatchNormOneDNNHandler
                                 dnnl::batch_normalization_backward>(engine,
                                                                     cpu_place) {
     // Flags are added by bitwise OR operation
-    auto flags = dnnl::normalization_flags::use_scale |
-                 dnnl::normalization_flags::use_shift;
+    auto flags = dnnl::normalization_flags::none;
+    if (use_scale) flags |= dnnl::normalization_flags::use_scale;
+    if (use_bias) flags |= dnnl::normalization_flags::use_shift;
     if (global_stats) flags |= dnnl::normalization_flags::use_global_stats;
     if (fuse_with_relu && test_mode)
       flags |= dnnl::normalization_flags::fuse_norm_relu;
@@ -1354,39 +1357,31 @@ class BatchNormOneDNNHandler
                          Place cpu_place,
                          const float epsilon,
                          const DenseTensor* in_x,
-                         const DenseTensor* scale,
+                         const bool use_scale,
+                         const bool use_bias,
                          const DenseTensor* out_grad)
       : OneDNNHandlerNoCachingT<T,
                                 dnnl::batch_normalization_forward,
                                 dnnl::batch_normalization_backward>(engine,
                                                                     cpu_place) {
-    auto scale_tz = vectorize<int64_t>(scale->dims());
-    PADDLE_ENFORCE_EQ(
-        scale_tz.size(),
-        1,
-        errors::InvalidArgument(
-            "Dims of scale tensor must be 1, but received scale's size is %d",
-            scale_tz.size()));
+    auto flags = dnnl::normalization_flags::none;
+    if (use_scale) flags |= dnnl::normalization_flags::use_scale;
+    if (use_bias) flags |= dnnl::normalization_flags::use_shift;
 
-    this->AcquireForwardPrimitiveDescriptor(
-        dnnl::prop_kind::forward_training,
-        in_x->mem_desc(),
-        in_x->mem_desc(),
-        epsilon,
-        dnnl::normalization_flags::use_scale |
-            dnnl::normalization_flags::use_shift);
-    this->AcquireBackwardPrimitiveDescriptor(
-        dnnl::prop_kind::backward,
-        out_grad->mem_desc(),
-        out_grad->mem_desc(),
-        in_x->mem_desc(),
-        epsilon,
-        dnnl::normalization_flags::use_scale |
-            dnnl::normalization_flags::use_shift);
+    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
+                                            in_x->mem_desc(),
+                                            in_x->mem_desc(),
+                                            epsilon,
+                                            flags);
+    this->AcquireBackwardPrimitiveDescriptor(dnnl::prop_kind::backward,
+                                             out_grad->mem_desc(),
+                                             out_grad->mem_desc(),
+                                             in_x->mem_desc(),
+                                             epsilon,
+                                             flags);
   }
 
-  std::tuple<std::shared_ptr<dnnl::memory>, std::shared_ptr<dnnl::memory>>
-  AcquireScaleShiftMemory(const DenseTensor* scale, const DenseTensor* shift) {
+  std::shared_ptr<dnnl::memory> AcquireScaleMemory(const DenseTensor* scale) {
     auto scale_tz = vectorize(scale->dims());
     PADDLE_ENFORCE_EQ(
         scale_tz.size(),
@@ -1397,20 +1392,37 @@ class BatchNormOneDNNHandler
 
     auto scale_memory = this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->weights_desc(), to_void_cast<T>(scale->data<T>()));
+
+    return scale_memory;
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireShiftMemory(const DenseTensor* shift) {
+    auto shift_tz = vectorize(shift->dims());
+    PADDLE_ENFORCE_EQ(
+        shift_tz.size(),
+        1,
+        errors::InvalidArgument(
+            "Dims of bias tensor must be 1, but received bias's size is %d",
+            shift_tz.size()));
+
     auto shift_memory = this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->weights_desc(), to_void_cast<T>(shift->data<T>()));
 
-    return std::make_tuple(scale_memory, shift_memory);
+    return shift_memory;
   }
 
-  std::tuple<std::shared_ptr<dnnl::memory>, std::shared_ptr<dnnl::memory>>
-  AcquireDiffScaleShiftMemory(T* diff_scale_data, T* diff_shift_data) {
+  std::shared_ptr<dnnl::memory> AcquireDiffScaleMemory(T* diff_scale_data) {
     auto diff_scale_memory = this->AcquireMemoryFromPrimitive(
         this->bwd_pd_->diff_weights_desc(), diff_scale_data);
+
+    return diff_scale_memory;
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireDiffShiftMemory(T* diff_shift_data) {
     auto diff_shift_memory = this->AcquireMemoryFromPrimitive(
         this->bwd_pd_->diff_weights_desc(), diff_shift_data);
 
-    return std::make_tuple(diff_scale_memory, diff_shift_memory);
+    return diff_shift_memory;
   }
 
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(const DenseTensor* mean) {
@@ -1519,8 +1531,11 @@ class PoolingOneDNNHandler
     }
 
     if (adaptive) {
-      ComputeAdaptivePoolParameters(
-          src_tz, &copied_kernel_size, &copied_strides);
+      ComputeAdaptivePoolParameters(src_tz,
+                                    onednn_paddings[0],
+                                    onednn_paddings[1],
+                                    &copied_kernel_size,
+                                    &copied_strides);
     }
 
     bool is_test = dev_ctx.HasDnnAttr("is_test")
@@ -1612,8 +1627,11 @@ class PoolingOneDNNHandler
     }
 
     if (adaptive) {
-      ComputeAdaptivePoolParameters(
-          diff_src_tz, &copied_kernel_size, &copied_strides);
+      ComputeAdaptivePoolParameters(src_tz,
+                                    onednn_paddings[0],
+                                    onednn_paddings[1],
+                                    &copied_kernel_size,
+                                    &copied_strides);
     }
     memory::dims dilation = {0, 0};
 
@@ -1672,23 +1690,45 @@ class PoolingOneDNNHandler
     return mem_p;
   }
 
-  static void ComputeAdaptivePoolParameters(const std::vector<int64_t>& src_tz,
-                                            std::vector<int64_t>* kernel_size,
-                                            std::vector<int64_t>* strides) {
+  static void ComputeAdaptivePoolParameters(
+      const std::vector<int64_t>& src_tz,
+      const std::vector<int64_t>& padding_l,
+      const std::vector<int64_t>& padding_r,
+      std::vector<int64_t>* kernel_size,
+      std::vector<int64_t>* strides) {
     // https://github.com/oneapi-src/oneDNN/tree/bkocot/adaptive-pooling/rfcs/20200818-adaptive-pooling
     auto IH = static_cast<double>(src_tz[src_tz.size() - 2]);
     auto IW = static_cast<double>(src_tz[src_tz.size() - 1]);
     auto OH = static_cast<double>(kernel_size->at(0));
     auto OW = static_cast<double>(kernel_size->at(1));
 
-    strides->at(0) =
-        static_cast<int64_t>(floor((IH * 2.0) / OH) - floor(IH / OH));
-    strides->at(1) =
-        static_cast<int64_t>(floor((IW * 2.0) / OW) - floor(IW / OW));
-    kernel_size->at(0) =
-        static_cast<int64_t>(ceil((IH * 2.0) / OH) - floor(IH / OH));
-    kernel_size->at(1) =
-        static_cast<int64_t>(ceil((IW * 2.0) / OW) - floor(IW / OW));
+    /*
+    The previous calculation formula is given by OneDNN rfc, but in some odd
+    cases(mod(I/O)>=O/2) there will be problems with the calculation results.
+    Now change the formula to the general calculation formula of
+    AdaptivePool when in mod(I/O)>=O/2 case:
+    stride=floor(input_size/output_size)
+    kernel_size=input_size-(output_size-1)*stride
+    */
+    int mod_H = IH - floor(IH / OH) * OH;
+    int mod_W = IW - floor(IW / OW) * OW;
+    if (2 * mod_H < OH && 2 * mod_W < OW) {
+      strides->at(0) =
+          static_cast<int64_t>(floor((IH * 2.0) / OH) - floor(IH / OH));
+      strides->at(1) =
+          static_cast<int64_t>(floor((IW * 2.0) / OW) - floor(IW / OW));
+      kernel_size->at(0) =
+          static_cast<int64_t>(ceil((IH * 2.0) / OH) - floor(IH / OH));
+      kernel_size->at(1) =
+          static_cast<int64_t>(ceil((IW * 2.0) / OW) - floor(IW / OW));
+    } else {
+      strides->at(0) = static_cast<int64_t>(floor(IH / OH));
+      strides->at(1) = static_cast<int64_t>(floor(IW / OW));
+      kernel_size->at(0) = static_cast<int64_t>(
+          IH + padding_l[0] + padding_r[0] - floor((OH - 1) * strides->at(0)));
+      kernel_size->at(1) = static_cast<int64_t>(
+          IW + padding_l[1] + padding_r[1] - floor((OW - 1) * strides->at(1)));
+    }
   }
 
  private:
