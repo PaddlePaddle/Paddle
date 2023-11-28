@@ -21,10 +21,17 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_optimize_op,
     is_recompute_op,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+    set_var_dist_attr,
 )
 from paddle.utils import unique_name
 
 from ..utils.log_utils import get_logger
+from .auto_parallel_sharding import (
+    _inference_data_parallel_group_for_operator,
+    _is_reshard_op,
+    _skip_ops,
+    is_forward_op,
+)
 from .pass_base import PassBase, register_pass
 
 logger = get_logger(logging.INFO, "FusedLinearPromotionPass")
@@ -73,6 +80,8 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
             "elementwise_add_grad",
             "c_allreduce_sum",
             "scale",
+            "c_allreduce_sum",
+            "scale",
             "c_allgather",
             "matmul_v2_grad",
         ],
@@ -105,6 +114,8 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
         "forward": ["matmul_v2", "c_reducescatter", "cast", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
+            "c_allreduce_sum",
+            "scale",
             "c_allreduce_sum",
             "scale",
             "c_allgather",
@@ -152,13 +163,6 @@ class FusedLinearPromotionPass(PassBase):
             self._dist_context
         )
 
-        # TODO(lizhiyu): We the TP with DP is ready, add this support.
-        if self._enable_dp and self._enable_sp:
-            logger.warning(
-                "Don't support the case of enable_dp and enable_sp because the TP parallelism not ready, skip this pass"
-            )
-            return
-
         pattern_offset = 4 if self._is_amp_o1 else 0
         if self._enable_sp:
             if self._enable_dp:
@@ -181,12 +185,17 @@ class FusedLinearPromotionPass(PassBase):
         else:
             logger.warning("Neither of sp and mp is enabled, skip this pass")
             return
+        dp_group = None
+        if self._enable_dp:
+            dp_group = self._collective_data_parallel_groups(
+                main_program.global_block()
+            )
 
         # 1. get whether the current rank is first rank in mp
         self._is_first_rank = self._is_tp_sp_first_rank(
             self._dist_context, self._global_rank
         )
-
+        logger.debug(f"before main_program: {main_program}")
         # 2. get the forward and backward op list idexs in source patterns
         (
             forward_segments,
@@ -198,7 +207,6 @@ class FusedLinearPromotionPass(PassBase):
             )
             return
         # 3 transform the forward ops
-        logger.debug(f"before main_program: {main_program}")
         rename_var_names_map, deleted_bias_names = self._transform_forward(
             main_program,
             forward_segments,
@@ -230,7 +238,7 @@ class FusedLinearPromotionPass(PassBase):
 
         # 6. transform the startup program
         self._transform_startup_program(
-            startup_program, deleted_bias_names, self._is_first_rank
+            startup_program, deleted_bias_names, dp_group, self._is_first_rank
         )
 
     def _is_tp_sp_first_rank(self, dist_context, rank):
@@ -266,23 +274,6 @@ class FusedLinearPromotionPass(PassBase):
                 # DP * MP
                 return inner_mesh_shape[-2] > 1, inner_mesh_shape[-1] > 1
         return False, False
-
-    def _is_enable_sp(self, main_program):
-        for op in main_program.global_block().ops:
-            forward_has_scatter_reduce_op = False
-            backward_has_all_gather_op = False
-            if (
-                int(op.desc.attr('op_role')) == 0
-                and op.type == 'c_reducescatter'
-            ):  # forward
-                forward_has_scatter_reduce_op = True
-            elif (
-                int(op.desc.attr('op_role')) == 1 and op.type == 'c_allgather'
-            ):  # backward
-                backward_has_all_gather_op = True
-            if forward_has_scatter_reduce_op and backward_has_all_gather_op:
-                return True
-        return False
 
     def _get_forward_backward_op_segments(self, main_program):
         """
@@ -364,6 +355,21 @@ class FusedLinearPromotionPass(PassBase):
         logger.info(f"backward_segmnets: {backward_segmnets}")
         return forward_segments, backward_segmnets
 
+    def _collective_data_parallel_groups(self, main_block):
+        for op in main_block.ops:
+            if not is_forward_op(op) or op.type in _skip_ops:
+                continue
+            # NOTE: there aren't dist_attr in the ops which reshard insert,
+            # and should be skip in sharding.
+            if _is_reshard_op(op):
+                continue
+            group = _inference_data_parallel_group_for_operator(
+                self._global_rank, op, self._dist_context
+            )
+            if group is not None:
+                return group
+        return None
+
     def _transform_forward(
         self,
         main_program,
@@ -423,18 +429,27 @@ class FusedLinearPromotionPass(PassBase):
             origin_matmul_output_new_name = unique_name.generate(
                 origin_matmul_output_name + "@promote"
             )
-            global_block.create_var(
+            origin_matmul_output_new_var = global_block.create_var(
                 name=origin_matmul_output_new_name,
                 dtype=global_block.var(origin_matmul_output_name).dtype,
                 shape=global_block.var(origin_matmul_output_name).shape,
                 persistable=False,
                 stop_gradient=False,
             )
+            set_var_dist_attr(
+                self._dist_context,
+                origin_matmul_output_new_var,
+                ref_mapping,
+                ref_mesh,
+            )
             rename_vars_map[
                 origin_matmul_output_name
             ] = origin_matmul_output_new_name
             origin_matmul_op._rename_output(
                 origin_matmul_output_name, origin_matmul_output_new_name
+            )
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                origin_matmul_op, ref_mesh, ref_mapping, self._dist_context
             )
 
             # 3. deal add op and cast op
@@ -505,9 +520,8 @@ class FusedLinearPromotionPass(PassBase):
                             new_add_op.input_arg_names[1]
                         )
             else:
-                origin_add_output_name = origin_add_op.output_arg_names[
-                    0
-                ]  # We can remove the origin_matmul_output now.
+                # We can remove the origin_matmul_output now.
+                origin_add_output_name = origin_add_op.output_arg_names[0]
                 global_block._remove_var(origin_add_output_name)
                 global_block._remove_var(origin_matmul_output_name)
 
@@ -642,11 +656,17 @@ class FusedLinearPromotionPass(PassBase):
                         add_grad_op.output_arg_names[0],
                     )
 
-                    global_block._remove_op(
-                        segment[-1] - 1
-                    )  # remove origin comm_op
-                    global_block._remove_op(segment[0] + 3)  # scale
-                    global_block._remove_op(segment[0] + 2)  # c_allreduce_sum
+                    global_block._remove_op(segment[-1] - 1)
+                    if self._enable_dp:
+                        global_block._remove_op(segment[0] + 5)  # scale
+                        global_block._remove_op(
+                            segment[0] + 4
+                        )  # c_allreduce_sum
+                    else:
+                        global_block._remove_op(segment[0] + 3)  # scale
+                        global_block._remove_op(
+                            segment[0] + 2
+                        )  # c_allreduce_sum
                 global_block._sync_with_cpp()
         else:  # not is_first_rank_in tp or sp
             # need to delete the grad op assosiated with the deleted bias var
@@ -660,11 +680,11 @@ class FusedLinearPromotionPass(PassBase):
                     to_delete_grad_of_param.append(
                         add_grad_op.output_arg_names[1]
                     )
-                    # if self._enable_dp:
-                    #     c_all_reduce_op = global_block.ops[segment[0] + 1]
-                    #     scale_op = global_block.ops[segment[0] + 2]
-                    #     global_block._remove_op(segment[0] + 2)
-                    #     global_block._remove_op(segment[0] + 1)
+                    if self._enable_dp:
+                        global_block._remove_op(segment[0] + 2)  # scale op
+                        global_block._remove_op(
+                            segment[0] + 1
+                        )  # c_allreduce_sum op
                     global_block._remove_op(segment[0])
                 global_block._sync_with_cpp()
             else:
@@ -679,25 +699,23 @@ class FusedLinearPromotionPass(PassBase):
                         add_grad_op.input_arg_names[0],
                     )
                     global_block._remove_var(add_grad_op.output_arg_names[0])
-
                     to_delete_grad_of_param.append(
                         add_grad_op.output_arg_names[1]
                     )
-                    # remove 'elementwise_add_grad' 'c_allreduce_sum' 'scale'
-                    global_block._remove_op(segment[0] + 2)  # scale
-                    global_block._remove_op(segment[0] + 1)  # c_allreduce_sum
-                    # remove vars and op
-                    # if self._enable_dp:  # DP
-                    #     c_all_reduce_op = global_block.ops[segment[1]]
-                    #     scale_op = global_block.ops[segment[2]]
-                    #     global_block._remove_var(
-                    #         c_all_reduce_op.input_arg_names[0]
-                    #     )
-                    #     global_block._remove_var(scale_op.outpu_arg_names[0])
-                    #     global_block._remove_op(segment[2])
-                    #     global_block._remove_op(segment[1])
-
-                    global_block._remove_op(segment[0])
+                    if self._enable_dp:  # DP
+                        global_block._remove_op(
+                            segment[0] + 4
+                        )  # scale op for dp
+                        global_block._remove_op(
+                            segment[0] + 3
+                        )  # c_allreduce_sum op for dp
+                    global_block._remove_op(segment[0] + 2)  # scale op for sp
+                    global_block._remove_op(
+                        segment[0] + 1
+                    )  # c_allreduce_sum op for sp
+                    global_block._remove_op(
+                        segment[0]
+                    )  # elementwise_add_grad op
                 global_block._sync_with_cpp()
 
         # rename input vars in gloabl_block
@@ -720,9 +738,6 @@ class FusedLinearPromotionPass(PassBase):
         is_first_rank,
         is_amp_o1,
     ):
-        """
-        Only support ClipGradByGlobalNorm and AMP-O2
-        """
         if is_first_rank:
             return
         deleted_bias_grads_names = []
@@ -793,7 +808,7 @@ class FusedLinearPromotionPass(PassBase):
         return
 
     def _transform_startup_program(
-        self, startup_program, deleted_bias_names, is_first_rank
+        self, startup_program, deleted_bias_names, dp_group, is_first_rank
     ):
         """
         Delete the vars and ops assosiated with deleted_bias_names in startup program.
@@ -801,9 +816,8 @@ class FusedLinearPromotionPass(PassBase):
         logger.debug(f"Before transform startup_program: {startup_program}")
         cur_glock = startup_program.global_block()
         to_delete_op_ids = []
-        to_delete_extra_vars = (
-            []
-        )  # for variables assosiated with deleted_bias_names in amp-o2, such as 'opt_linear_1.b_0_fp32_master_0'
+        # for variables assosiated with deleted_bias_names in amp-o2, such as 'opt_linear_1.b_0_fp32_master_0'
+        to_delete_extra_vars = []
         for id, op in enumerate(cur_glock.ops):
             if not is_first_rank:
                 output_var = op.output_arg_names[0]
@@ -818,9 +832,12 @@ class FusedLinearPromotionPass(PassBase):
             else:
                 if op.type == "c_broadcast":
                     input_vars = op.input_arg_names
-                    if input_vars[0] in deleted_bias_names:
-                        if id not in to_delete_op_ids:
-                            to_delete_op_ids.append(id)
+                    if (
+                        input_vars[0] in deleted_bias_names
+                        and op.attr("ring_id") != dp_group.id
+                        and id not in to_delete_op_ids
+                    ):
+                        to_delete_op_ids.append(id)
         for to_delete_id in reversed(to_delete_op_ids):
             cur_glock._remove_op(to_delete_id)
         if not is_first_rank:
