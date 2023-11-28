@@ -67,7 +67,6 @@ inline int compute_occupancy_for_kernel() {
   return max_active_blocks;
 }
 
-
 template <typename GemmKernel>
 inline int compute_occupancy_for_kernel2() {
   int smem_size = static_cast<int>(sizeof(typename GemmKernel::SharedStorage));
@@ -90,11 +89,11 @@ inline int compute_occupancy_for_kernel2() {
   }
 
   int max_active_blocks = -1;
-  check_cuda_error(
-      cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_active_blocks,
-                                                    cutlass::Kernel2<GemmKernel>,
-                                                    GemmKernel::kThreadCount,
-                                                    smem_size));
+  check_cuda_error(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+      &max_active_blocks,
+      cutlass::Kernel2<GemmKernel>,
+      GemmKernel::kThreadCount,
+      smem_size));
 
   return max_active_blocks;
 }
