@@ -2853,6 +2853,11 @@ void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
           }
         });
   });
+  if (config_.new_executor_enabled()) {
+    LOG(INFO) << "Please note that the new executor has been enabled, and the "
+                 "RegisterInputHook feature will only take effect after the "
+                 "second run.";
+  }
   input_hookfuncs_.push_back(hookfunc);
 }
 
@@ -2876,6 +2881,11 @@ void AnalysisPredictor::RegisterOutputHook(
           }
         });
   });
+  if (config_.new_executor_enabled()) {
+    LOG(INFO) << "Please note that the new executor has been enabled, and the "
+                 "RegisterOutputHook feature will only take effect after the "
+                 "second run.";
+  }
   output_hookfuncs_.push_back(hookfunc);
 }
 
