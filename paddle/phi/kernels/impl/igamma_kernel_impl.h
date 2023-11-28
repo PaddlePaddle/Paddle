@@ -27,8 +27,8 @@ namespace phi {
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
-__host__ __device__ T ratevl(
-    T x, const T num[], int64_t M, const T denom[], int64_t N) {
+__host__ __device__ T
+ratevl(T x, const T num[], int64_t M, const T denom[], int64_t N) {
   // evaluating rational function, i.e., the ratio of two polynomials
   // the coefficients for numerator are given by `num` while coeffs for
   // denumerator are given by `denom`
@@ -647,25 +647,20 @@ __host__ __device__ T compute_igamma(T x, T a) {
   if ((x < 0) || (a < 0)) {
     // out of defined-region of the function
     return std::numeric_limits<T>::quiet_NaN();
-  }
-  else if (a == 0) {
+  } else if (a == 0) {
     if (x > 0) {
       return 1.0;
-    }
-    else {
+    } else {
       return std::numeric_limits<T>::quiet_NaN();
     }
-  }
-  else if (x == 0) {
-    return 0.0; // zero integration limit
-  }
-  else if (std::isinf(a)) {
+  } else if (x == 0) {
+    return 0.0;  // zero integration limit
+  } else if (std::isinf(a)) {
     if (std::isinf(x)) {
       return std::numeric_limits<T>::quiet_NaN();
     }
     return 0.0;
-  }
-  else if (std::isinf(x)) {
+  } else if (std::isinf(x)) {
     return 1.0;
   }
 
@@ -673,8 +668,7 @@ __host__ __device__ T compute_igamma(T x, T a) {
   absxma_a = std::fabs(x - a) / a;
   if ((a > SMALL) && (a < LARGE) && (absxma_a < SMALLRATIO)) {
     return _igam_helper_asymptotic_series(a, x, 1);
-  }
-  else if ((a > LARGE) && (absxma_a < LARGERATIO / std::sqrt(a))) {
+  } else if ((a > LARGE) && (absxma_a < LARGERATIO / std::sqrt(a))) {
     return _igam_helper_asymptotic_series(a, x, 1);
   }
 
@@ -701,10 +695,9 @@ struct CudaIgammacFunctor {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     const MT mp_x = static_cast<MT>(_x);
     const MT mp_a = static_cast<MT>(_a);
-    return compute_igammac<MT>(mp_x, mp_a);                          zeta<MT>(static_cast<MT>(_n + 1), mp_x));
+    return compute_igammac<MT>(mp_x, mp_a);
   }
 };
-
 #else
 template <typename T>
 static inline T ratevl(
@@ -1327,25 +1320,20 @@ static inline T compute_igamma(T x, T a) {
   if ((x < 0) || (a < 0)) {
     // out of defined-region of the function
     return std::numeric_limits<T>::quiet_NaN();
-  }
-  else if (a == 0) {
+  } else if (a == 0) {
     if (x > 0) {
       return 1.0;
-    }
-    else {
+    } else {
       return std::numeric_limits<T>::quiet_NaN();
     }
-  }
-  else if (x == 0) {
-    return 0.0; // zero integration limit
-  }
-  else if (std::isinf(a)) {
+  } else if (x == 0) {
+    return 0.0;  // zero integration limit
+  } else if (std::isinf(a)) {
     if (std::isinf(x)) {
       return std::numeric_limits<T>::quiet_NaN();
     }
     return 0.0;
-  }
-  else if (std::isinf(x)) {
+  } else if (std::isinf(x)) {
     return 1.0;
   }
 
@@ -1353,8 +1341,7 @@ static inline T compute_igamma(T x, T a) {
   absxma_a = std::fabs(x - a) / a;
   if ((a > SMALL) && (a < LARGE) && (absxma_a < SMALLRATIO)) {
     return _igam_helper_asymptotic_series(a, x, 1);
-  }
-  else if ((a > LARGE) && (absxma_a < LARGERATIO / std::sqrt(a))) {
+  } else if ((a > LARGE) && (absxma_a < LARGERATIO / std::sqrt(a))) {
     return _igam_helper_asymptotic_series(a, x, 1);
   }
 
@@ -1420,5 +1407,6 @@ struct IgammacFunctor {
   T* output_;
   int64_t numel_;
 };
+#endif
 
 }  // namespace phi

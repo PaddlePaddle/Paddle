@@ -5905,8 +5905,8 @@ def igamma(x, other, name=None):
 
     .. math::
         \mathrm{igamma}(x, a)=\frac{1}{\Gamma(x)}\int_0^at^{x-1}e^{-t}dt
-    
-    
+
+
     Args:
         x (Tensor): ``x`` is the original Tensor. Must be at least 2-dimensional.
         y (Tensor): ``y`` is the Tensor to embed into ``x``
@@ -5954,7 +5954,7 @@ def igammac(x, other, name=None):
 
     .. math::
         \mathrm{igammac}(x, a)=\frac{1}{\Gamma(x)}\int_a^{\infty}t^{x-1}e^{-t}dt
-    
+
     Args:
         x (Tensor): ``x`` is the original Tensor. Must be at least 2-dimensional.
         y (Tensor): ``y`` is the Tensor to embed into ``x``

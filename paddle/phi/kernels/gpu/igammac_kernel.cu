@@ -26,13 +26,12 @@ void IgammacKernel(const Context& ctx,
                    const DenseTensor& x,
                    const DenseTensor& a,
                    DenseTensor* out) {
-ctx.template Alloc<T>(out);
+  ctx.template Alloc<T>(out);
   std::vector<const DenseTensor*> ins = {&x, &a};
   std::vector<DenseTensor*> outs = {out};
   auto functor = CudaIgammacFunctor<T>();
   phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, functor);
-
-                   }
+}
 
 }  // namespace phi
 
