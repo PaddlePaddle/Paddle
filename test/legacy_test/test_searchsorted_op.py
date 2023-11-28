@@ -19,6 +19,7 @@ from op_test import OpTest
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -102,7 +103,7 @@ class TestSearchSortedAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
 
