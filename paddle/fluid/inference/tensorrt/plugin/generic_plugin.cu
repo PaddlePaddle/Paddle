@@ -437,13 +437,13 @@ bool GenericPlugin::supportsFormatCombination(
     if (pos == 2) {
       return (in_out[pos].type == nvinfer1::DataType::kINT32 &&
               in_out[pos].format == in_out[0].format);
-    } else {
-      return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
-              (isFp16Supported() &&
-               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
-             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR) &&
-             (in_out[0].type == in_out[pos].type);
     }
+  } else {
+    return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
+            (isFp16Supported() &&
+             in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+           (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR) &&
+           (in_out[0].type == in_out[pos].type);
   }
 }
 
@@ -641,24 +641,22 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
     phi_kernel_contexts_[data_type]->EmplaceBackOutput(
         &((*dense_tensor_outputs_)[i]));
-    if (op_desc_.Type() == "argsort") {
-      for (int i = 0; i < getNbOutputs(); i++) {
-        phi::DenseTensor& output_tensor = (*dense_tensor_outputs_)[i];
-        phi::DataType dtype = output_tensor.dtype();
-        if (dtype == phi::DataType::INT64) {
-          auto& int32_tensor = output_tensor;
-          auto ctx = pool.Get(output_tensor.place());
-          int32_tensor = phi::funcs::TransDataType(
-              reinterpret_cast<const phi::GPUContext&>(*ctx),
-              output_tensor,
-              phi::DataType::INT32);
-          paddle::memory::Copy(output_tensor.place(),
-                               outputs[i],
-                               output_tensor.place(),
-                               int32_tensor.data<int32_t>(),
-                               int32_tensor.numel() * sizeof(int),
-                               nullptr);
-        }
+    for (int i = 0; i < getNbOutputs(); i++) {
+      phi::DenseTensor& output_tensor = (*dense_tensor_outputs_)[i];
+      phi::DataType dtype = output_tensor.dtype();
+      if (dtype == phi::DataType::INT64) {
+        auto& int32_tensor = output_tensor;
+        auto ctx = pool.Get(output_tensor.place());
+        int32_tensor = phi::funcs::TransDataType(
+            reinterpret_cast<const phi::GPUContext&>(*ctx),
+            output_tensor,
+            phi::DataType::INT32);
+        paddle::memory::Copy(output_tensor.place(),
+                             outputs[i],
+                             output_tensor.place(),
+                             int32_tensor.data<int32_t>(),
+                             int32_tensor.numel() * sizeof(int),
+                             nullptr);
       }
     }
   }
