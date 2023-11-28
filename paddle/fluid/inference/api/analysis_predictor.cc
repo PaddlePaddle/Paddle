@@ -106,6 +106,8 @@
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_gemm_epilogue_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
@@ -771,7 +773,7 @@ bool AnalysisPredictor::PrepareExecutor() {
 
       ::pir::PassManager pm_for_op_program(::pir::IrContext::Instance(), 2);
       pm_for_op_program.AddPass(::pir::CreateConv2dFusePass());
-
+      pm_for_op_program.AddPass(::pir::CreateFcFusePass());
       pm_for_op_program.AddPass(::pir::CreateConstantFoldingPass(sub_scope_));
       pm_for_op_program.AddPass(::pir::CreateDeadCodeEliminationPass());
       pm_for_op_program.AddPass(

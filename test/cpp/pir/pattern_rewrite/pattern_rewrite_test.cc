@@ -56,6 +56,7 @@
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/pir/core/op_base.h"
@@ -995,7 +996,11 @@ TEST(pattern_rewrite, Patterns) {
   paddle::framework::Scope scope;
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
+<<<<<<< Updated upstream
   pm.AddPass(pir::CreateConv2dFusePass());
+=======
+  pm.AddPass(pir::CreateFcFusePass());
+>>>>>>> Stashed changes
   pm.AddPass(pir::CreateConstantFoldingPass(&scope));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnablePassTiming();

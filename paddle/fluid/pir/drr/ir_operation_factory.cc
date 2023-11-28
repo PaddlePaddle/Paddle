@@ -86,6 +86,9 @@ static pir::Attribute CreateIrAttribute(const std::any& obj) {
   } else if (obj.type() == typeid(phi::IntArray)) {
     return IrAttrbuteCreator<phi::IntArray>()(
         std::any_cast<phi::IntArray>(obj));
+  } else if (obj.type() == typeid(std::vector<float>)) {
+    return IrAttrbuteCreator<std::vector<float>>()(
+        std::any_cast<std::vector<float>>(obj));
   } else {
     PADDLE_THROW(
         phi::errors::Unimplemented("Type error. CreateIrAttribute for type(%s) "
