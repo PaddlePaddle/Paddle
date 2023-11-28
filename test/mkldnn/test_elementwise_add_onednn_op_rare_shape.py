@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import skip_check_grad_ci
+from op_test import OpTestTool
 from test_elementwise_add_op import TestElementwiseAddOp
 
 from paddle import enable_static
+
 
 @OpTestTool.skip_if(
     not (isinstance(_current_expected_place(), core.CPUPlace)),
