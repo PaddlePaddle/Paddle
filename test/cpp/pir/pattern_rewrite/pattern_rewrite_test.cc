@@ -1065,11 +1065,10 @@ TEST(constant_folding, ConstantFolding) {
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
 
   pir::Program program(ctx);
-
+  paddle::framework::Scope scope;
   BuildConstantFoldingProgram(&program, ctx, &scope);
 
   pir::PassManager pm(ctx);
-  paddle::framework::Scope scope;
   pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
@@ -1138,5 +1137,5 @@ TEST(constant_folding, ConstantFolding_Combine) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  // EXPECT_EQ(program.block()->size(), 6u);
+  EXPECT_EQ(program.block()->size(), 12u);
 }
