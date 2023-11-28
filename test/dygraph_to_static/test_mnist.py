@@ -21,7 +21,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_default_mode_only,
-    test_legacy_and_pt_and_pir,
+    test_sot_with_pir_only,
 )
 from predictor_utils import PredictorTools
 
@@ -174,7 +174,7 @@ class TestMNISTWithToStatic(TestMNIST):
             err_msg=f'dygraph is {dygraph_loss}\n static_res is \n{static_loss}',
         )
 
-    @test_legacy_and_pt_and_pir
+    @test_sot_with_pir_only
     def test_mnist_declarative_cpu_vs_mkldnn(self):
         dygraph_loss_cpu = self.train_dygraph()
         paddle.set_flags({'FLAGS_use_mkldnn': True})
