@@ -35,10 +35,11 @@ void OperatorDialect::initialize() {
   // paddle/cinn/hlir/dialect/CMakeLists.txt.
   RegisterOps<
 #define GET_OP_LIST
-#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"  // NOLINT
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.cc"  // NOLINT
       >();
   RegisterOp<GroupOp>();
   RegisterOp<ConcatOp>();
+  RegisterOp<SplitOp>();
   RegisterAttribute<GroupInfoAttribute>();
   RegisterAttribute<CUDAJITInfoAttribute>();
 }

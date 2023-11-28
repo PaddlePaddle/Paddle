@@ -54,7 +54,7 @@ class TestPybind(unittest.TestCase):
         ops = block.ops
         self.assertEqual(
             len(ops), 6
-        )  # pir program add "builtin.get_parameter" by default, so size is 4
+        )  # pir program add "builtin.parameter" by default, so size is 4
         block.remove_op(ops[5])
         self.assertEqual(len(block.ops), 5)
 

@@ -62,6 +62,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -675,7 +676,12 @@ static PyObject* tensor_method_copy_(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
   EAGER_TRY
-  paddle::Tensor src_tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  paddle::Tensor& src_tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, src_tensor, self->tensor)) {
+    ConvertAllInputsToDistTensor(mesh, src_tensor, self->tensor);
+  }
+
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
   VLOG(6) << "Start Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();

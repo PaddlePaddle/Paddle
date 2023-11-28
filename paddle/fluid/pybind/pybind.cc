@@ -244,6 +244,14 @@ bool IsCompiledWithCUDA() {
 #endif
 }
 
+bool IsCompiledWithDISTRIBUTE() {
+#if !defined(PADDLE_WITH_DISTRIBUTE)
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithNCCL() {
 #ifdef PADDLE_WITH_NCCL
   return true;
@@ -526,18 +534,6 @@ static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
   }
 }
 
-template <typename T>
-static T PyObjectCast(PyObject *obj) {
-  try {
-    return py::cast<T>(py::handle(obj));
-  } catch (py::cast_error &) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Python object is not type of %s, the real type is %s",
-        typeid(T).name(),
-        obj->ob_type->tp_name));
-  }
-}
-
 using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
 
 static std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseList(
@@ -814,6 +810,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindJit(&m);
   BindEvalFrame(&m);
   BindCustomDevicePy(&m);
+  BindEagerUtils(m.ptr());
 
   // Not used, just make sure cpu_info.cc is linked.
   phi::backends::cpu::CpuTotalPhysicalMemory();
@@ -2091,6 +2088,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mpi", IsCompiledWithMPI);
   m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
+  m.def("is_compiled_with_distribute", IsCompiledWithDISTRIBUTE);
   m.def("is_run_with_cinn", IsRunWithCINN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
@@ -2417,6 +2415,10 @@ All parameter, weight, gradient are variables in Paddle.
 
 #ifdef PADDLE_WITH_IPU
   m.def("get_ipu_device_count", platform::GetIPUDeviceCount);
+#endif
+
+#ifdef PADDLE_WITH_XPU
+  m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
 #endif
 
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())

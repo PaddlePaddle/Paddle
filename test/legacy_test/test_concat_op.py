@@ -869,5 +869,71 @@ class TestConcatTripleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestConcatOpAutoParallel(OpTest):
+    def setUp(self):
+        self.op_type = "concat"
+        self.python_api = paddle.concat
+        self.public_python_api = paddle.concat
+        self.prim_op_type = "prim"
+        self.dtype = self.get_dtype()
+        self.init_test_data()
+        self.if_enable_cinn()
+        self.init_inputs()
+        self.attrs = {'axis': self.axis}
+        if self.axis < 0:
+            self.actual_axis = self.axis + len(self.x0.shape)
+            self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+        else:
+            self.actual_axis = self.axis
+
+        self.outputs = {
+            'Out': np.concatenate(
+                (self.x0, self.x1, self.x2), axis=self.actual_axis
+            )
+        }
+
+    def get_dtype(self):
+        return "float64"
+
+    def init_inputs(self):
+        self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
+        self.input_specs = {
+            'X': [
+                ('x0', [None, None, 'x']),
+                ('x1', [None, None, 'x']),
+                ('x2', [None, None, 'x']),
+            ]
+        }
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['x0'],
+            'Out',
+            check_auto_parallel=False,
+        )
+        self.check_grad(
+            ['x0', 'x1', 'x2'],
+            'Out',
+            check_auto_parallel=False,
+        )
+
+    def init_test_data(self):
+        if self.dtype == np.uint16:
+            x0 = np.random.random((16, 4, 4)).astype(np.float32)
+            self.x0 = convert_float_to_uint16(x0)
+            x1 = np.random.random((64, 4, 4)).astype(np.float32)
+            self.x1 = convert_float_to_uint16(x1)
+            x2 = np.random.random((16, 4, 4)).astype(np.float32)
+            self.x2 = convert_float_to_uint16(x2)
+        else:
+            self.x0 = np.random.random((16, 4, 4)).astype(self.dtype)
+            self.x1 = np.random.random((64, 4, 4)).astype(self.dtype)
+            self.x2 = np.random.random((16, 4, 4)).astype(self.dtype)
+        self.axis = 0
+
+    def if_enable_cinn(self):
+        pass
+
+
 if __name__ == '__main__':
     unittest.main()

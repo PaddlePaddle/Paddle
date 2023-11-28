@@ -34,7 +34,7 @@ class IR_API ModuleOp : public pir::Op<ModuleOp> {
   static const char *attributes_name[attributes_num];
   void VerifySig() const;
   Program *program();
-  Block *block();
+  Block &block();
 
   //
   // As the top operation, ModuleOp only support create&destroye through
@@ -44,13 +44,13 @@ class IR_API ModuleOp : public pir::Op<ModuleOp> {
 };
 
 ///
-/// \brief GetParameterOp: OpResult = GetParameterOp({StrAttribute,
+/// \brief ParameterOp: OpResult = ParameterOp({StrAttribute,
 /// StrAttribute})
 ///
-class IR_API GetParameterOp : public pir::Op<GetParameterOp> {
+class IR_API ParameterOp : public pir::Op<ParameterOp> {
  public:
   using Op::Op;
-  static const char *name() { return "builtin.get_parameter"; }
+  static const char *name() { return "builtin.parameter"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
   static void Build(Builder &builder,             // NOLINT
@@ -211,12 +211,28 @@ class IR_API ConstantOp : public Op<ConstantOp, ConstantLikeTrait> {
   Attribute value() const;
 };
 
+///
+/// \brief ConstantTensorOp: OpResult = ConstantTensorOp({StrAttribute,
+/// StrAttribute})
+///
+class IR_API ConstantTensorOp : public ConstantOp {
+ public:
+  using ConstantOp::ConstantOp;
+
+  static ConstantTensorOp dyn_cast(Operation *op);
+  static bool classof(const Operation *op);
+
+  void VerifySig() const;
+
+  std::string tensor_name();
+};
+
 void PassStopGradientsDefaultly(OperationArgument &argument);  // NOLINT
 void RefreshStopGradientsDefaultly(Operation *Op);
 }  // namespace pir
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ModuleOp)
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::GetParameterOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ParameterOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SetParameterOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ShadowOutputOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::CombineOp)
@@ -224,3 +240,4 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SliceOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SplitOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ConstantLikeTrait)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ConstantOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ConstantTensorOp)

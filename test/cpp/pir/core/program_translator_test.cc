@@ -69,7 +69,7 @@ TEST(OperatorDialectTest, MainProgram) {
   std::stringstream ss;
   program->Print(ss);
 
-  // ops.size() = op size in BlockDesc + get_parameter_op + combine op + int
+  // ops.size() = op size in BlockDesc + parameter_op + combine op + int
   // array op + full op (Note: p already has a full)
   EXPECT_EQ(program->block()->size(),
             p.Block(0).OpSize() + program->parameters_num() + 20 + 5 + 8);
@@ -205,7 +205,7 @@ TEST(OperatorDialectTest, StartupProgram) {
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 
   size_t op_size = program->block()->size();
-  // ops.size() = op size in BlockDesc + get_parameter_op +
+  // ops.size() = op size in BlockDesc + parameter_op +
   // consant_op_for_uniform
   // + consant_op for guassian
   EXPECT_EQ(op_size, p.Block(0).OpSize() + program->parameters_num() + 3 + 53);
@@ -293,10 +293,10 @@ TEST(OperatorDialectTest, WhileOpProgram) {
       EXPECT_TRUE(op.isa<paddle::dialect::WhileOp>());
       EXPECT_EQ(op.num_regions(), 1u);
       // body block
-      pir::Block *body_block =
+      pir::Block &body_block =
           op.dyn_cast<paddle::dialect::WhileOp>().body_block();
       size_t body_id = 0;
-      for (auto &op1 : *body_block) {
+      for (auto &op1 : body_block) {
         if (body_id == 0) {
           EXPECT_TRUE(op1.isa<paddle::dialect::FullOp>());
         }
@@ -307,10 +307,10 @@ TEST(OperatorDialectTest, WhileOpProgram) {
           EXPECT_TRUE(op1.isa<paddle::dialect::LessThanOp>());
         }
         if (body_id == 3) {
-          pir::Block *body_body_block =
+          pir::Block &body_body_block =
               op1.dyn_cast<paddle::dialect::WhileOp>().body_block();
           size_t body_body_id = 0;
-          for (auto &op2 : *body_body_block) {
+          for (auto &op2 : body_body_block) {
             if (body_body_id == 0) {
               EXPECT_TRUE(op2.isa<paddle::dialect::FullOp>());
             }

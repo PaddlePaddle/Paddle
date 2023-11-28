@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 import unittest
 
 import collective.test_communication_api_base as test_base
@@ -27,7 +27,7 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
         self._changeable_envs = {"backend": ["cpu", "gpu"]}
 
     def test_matmul_api(self):
-        default_envs = self._default_envs
+        default_envs = copy.deepcopy(self._default_envs)
         default_envs["NVIDIA_TF32_OVERRIDE"] = "0"
         envs_list = test_base.gen_product_envs_list(
             default_envs, self._changeable_envs
@@ -55,6 +55,16 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
         for envs in envs_list:
             self.run_test_case(
                 "semi_auto_parallel_for_concat.py",
+                user_defined_envs=envs,
+            )
+
+    def test_layernorm_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_layernorm.py",
                 user_defined_envs=envs,
             )
 
@@ -118,6 +128,16 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
+    def test_flash_attention_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            {"dtype": "float16", "seed": "2023"}, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_flash_attention.py",
+                user_defined_envs=envs,
+            )
+
     def test_custom_embedding_grad_api(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
@@ -135,6 +155,26 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
         for envs in envs_list:
             self.run_test_case(
                 "semi_auto_parallel_for_triu.py",
+                user_defined_envs=envs,
+            )
+
+    def test_transpose_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_transpose.py",
+                user_defined_envs=envs,
+            )
+
+    def test_unary_elementwise_like_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_unary_elementwise_like.py",
                 user_defined_envs=envs,
             )
 
