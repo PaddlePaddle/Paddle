@@ -18,8 +18,11 @@ import numpy as np
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(2021)
+
+paddle.enable_static()
 
 
 def tensordot_np(x, y, axes):
@@ -205,6 +208,7 @@ class TestTensordotAPI(unittest.TestCase):
                 np_res = tensordot_np(self.x, self.y, axes)
                 np.testing.assert_allclose(paddle_res, np_res, rtol=1e-6)
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         for axes in self.all_axes:

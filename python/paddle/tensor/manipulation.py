@@ -4669,7 +4669,7 @@ def tensordot(x, y, axes=2, name=None):
     check_type(axes, 'axes', (int, tuple, list, Variable), op_type)
 
     def _var_to_list(var):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return tolist(var)
         raise TypeError(
             "The 'axes' with type 'Tensor' in "
