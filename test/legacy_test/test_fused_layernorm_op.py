@@ -574,10 +574,10 @@ class TestlayernormStaticOp(unittest.TestCase):
                 name="bias_static", shape=[self.cols], dtype=dtype
             )
             gamma_static = paddle.static.data(
-                name="gamma_static", shape=[self.cols], dtype=paddle.float32
+                name="gamma_static", shape=[self.cols], dtype='float32'
             )
             beta_static = paddle.static.data(
-                name="beta_static", shape=[self.cols], dtype=paddle.float32
+                name="beta_static", shape=[self.cols], dtype='float32'
             )
             outs = paddle.incubate.nn.functional.fused_layer_norm(
                 x_static,
@@ -644,10 +644,10 @@ class TestlayernormStaticOp(unittest.TestCase):
                 name="bias_static", shape=[self.cols], dtype=dtype
             )
             gamma_static = paddle.static.data(
-                name="gamma_static", shape=[self.cols], dtype=paddle.float32
+                name="gamma_static", shape=[self.cols], dtype='float32'
             )
             beta_static = paddle.static.data(
-                name="beta_static", shape=[self.cols], dtype=paddle.float32
+                name="beta_static", shape=[self.cols], dtype='float32'
             )
             outs = paddle.incubate.nn.functional.fused_layer_norm(
                 x_static,
