@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pir_exe_and_pir_api,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -82,7 +82,7 @@ class TestPool2D(Dy2StTestBase):
     def train_dygraph(self):
         return self.train(to_static=False)
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_to_static(self):
         dygraph_res = self.train_dygraph()
         static_res = self.train_static()
