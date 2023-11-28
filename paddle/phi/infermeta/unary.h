@@ -178,7 +178,9 @@ void DistConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
 void DistReduceInferMeta(const MetaTensor& x, MetaTensor* out);
 
-void EmbeddingGradSparseInferMeta(const MetaTensor& x, MetaTensor* out);
+void EmbeddingGradSparseInferMeta(const MetaTensor& x,
+                                  const MetaTensor& weight,
+                                  MetaTensor* out);
 
 void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v);
 

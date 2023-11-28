@@ -17,63 +17,6 @@ from .primitives import *  # noqa: F403
 from .register import register_decomp
 
 
-def mean(x, axis, keepdim):
-    """define composite rule of op mean"""
-    x_shape = x.shape
-    if axis in (None, []):
-        axis = tuple(range(0, len(x_shape)))
-    axes = (axis,) if isinstance(axis, int) else axis
-    sum_x = sum(x, axis=axes, keepdim=keepdim)
-    value_to_fill = 1
-    for axis in axes:
-        value_to_fill *= x_shape[axis]
-    norm = fill_constant(
-        shape=[],
-        value=value_to_fill,
-        dtype=sum_x.dtype,
-    )
-    res = sum_x / norm
-    return res
-
-
-@register_decomp('pd_op.rsqrt')
-def rsqrt(x):
-    """define composite rule of op rsqrt."""
-    # rsqrt(x) = x^(-0.5)
-    is_amp = False
-    from paddle.base.data_feeder import convert_dtype
-
-    dtype = convert_dtype(x.dtype)
-    if dtype in ["float16", "uint16"]:
-        is_amp = True
-        x = cast(x, "float32")
-    y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
-    res = pow_composite(x, y)
-    return res if not is_amp else cast(res, dtype)
-
-
-# @register_decomp('pd_op.pow')
-def pow_composite(x, y):
-    """
-    define composite rule of op pow
-    res = x^y
-    """
-    is_amp = False
-    from paddle.base.data_feeder import convert_dtype
-
-    dtype = convert_dtype(x.dtype)
-    if dtype in ["float16", "uint16"]:
-        is_amp = True
-        x = cast(x, "float32")
-
-    if isinstance(y, (int, float)):
-        y = full(x.shape if len(x.shape) == 0 else [1], y, x.dtype)
-    res = pow(x, y)
-    if is_amp:
-        res = cast(res, dtype)
-    return res
-
-
 @register_decomp('pd_op.dropout')
 def dropout(x, seed_tensor, p, is_test, mode, seed, fix_seed):
     """define composite rule of op dropout.
@@ -140,25 +83,6 @@ def add_n(x):
     for xi in x[1:]:
         ans = xi + ans
     return ans
-
-
-@register_decomp('pd_op.silu')
-def silu(x):
-    """
-    define composite rule of op silu
-    res = x / (1 + exp(-x))
-    """
-    is_amp = False
-    from paddle.base.data_feeder import convert_dtype
-
-    dtype = convert_dtype(x.dtype)
-    if dtype in ["float16", "uint16"]:
-        is_amp = True
-        x = cast(x, "float32")
-
-    sum_temp = exp(-x) + 1
-    res = x / sum_temp
-    return res if not is_amp else cast(res, dtype)
 
 
 @register_decomp('pd_op.full_like')
