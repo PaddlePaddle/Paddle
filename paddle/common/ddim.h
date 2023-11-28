@@ -19,12 +19,9 @@
 #include <vector>
 
 #include "paddle/common/dim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/exception.h"
 #include "paddle/utils/test_macros.h"
-
-// TODO(zhangbopd): remove this header file after
-// move phi/core/enforce.h to commom/enforce.h
-#include "paddle/phi/core/enforce.h"
 
 namespace common {
 
