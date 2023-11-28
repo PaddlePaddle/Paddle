@@ -48,7 +48,16 @@ class LinearQuanterDequanter(Layer):
 class LinearQuanter(Layer):
     def __init__(self, scales, zero_point=None, quant_axis=None, bit_length=8):
         super().__init__()
-        self._scales = paddle.to_tensor(scales, dtype="float32")
+        scales = paddle.to_tensor(scales, dtype="float32")
+        scale_attr = paddle.framework.ParamAttr(
+            name=paddle.utils.unique_name.generate('quant_dequant.scale'),
+            initializer=paddle.nn.initializer.Constant(1.0),
+            trainable=False,
+        )
+        self._scales = self.create_parameter(
+            shape=scales.shape, attr=scale_attr, dtype="float32"
+        )
+        self._scales.set_value(scales)
         self._zero_point = (
             paddle.zeros([1], dtype="float32")
             if zero_point is None
@@ -98,7 +107,16 @@ class LinearQuanter(Layer):
 class LinearDequanter(Layer):
     def __init__(self, scales, zero_point=None, quant_axis=None, bit_length=8):
         super().__init__()
-        self._scales = paddle.to_tensor(scales, dtype="float32")
+        scales = paddle.to_tensor(scales, dtype="float32")
+        scale_attr = paddle.framework.ParamAttr(
+            name=paddle.utils.unique_name.generate('quant_dequant.scale'),
+            initializer=paddle.nn.initializer.Constant(1.0),
+            trainable=False,
+        )
+        self._scales = self.create_parameter(
+            shape=scales.shape, attr=scale_attr, dtype="float32"
+        )
+        self._scales.set_value(scales)
         self._zero_point = (
             paddle.zeros([1], dtype="float32")
             if zero_point is None

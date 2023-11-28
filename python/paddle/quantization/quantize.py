@@ -71,6 +71,8 @@ class Quantization(metaclass=abc.ABCMeta):
         for name, child in _model.named_children():
             quant_dequant = None
             if isinstance(child, ConvertibleQuantedLayer):
+                if child.weight_quanter.scales() is None:
+                    continue
                 child._convert()
             elif isinstance(child, BaseQuanter):
                 quant_dequant = LinearQuanterDequanter.from_quanter(child)
