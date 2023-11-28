@@ -15,15 +15,14 @@
 #pragma once
 
 #include <memory>
+#include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
-#include "paddle/pir/pass/pass.h"
 
-namespace cinn {
-namespace dialect {
-namespace ir {
-std::unique_ptr<::pir::Pass> CreateCinnGroupLoweringPass(
-    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis =
-        nullptr);
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+namespace pir {
+
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateInferSymbolicShapePass(
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis);
+
+}  // namespace pir
