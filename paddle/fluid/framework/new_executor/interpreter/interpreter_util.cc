@@ -127,10 +127,6 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
 
 bool IsCommunicationOp(const OperatorBase* op) {
   const std::string& op_name = op->Type();
-  return IsCommunicationOp(op_name, op->HasAttr("ring_id"));
-}
-
-bool IsCommunicationOp(const std::string& op_name, bool has_ring_id) {
   const std::set<std::string> special_comm_op_set = {
       "send",
       "recv",
@@ -142,7 +138,7 @@ bool IsCommunicationOp(const std::string& op_name, bool has_ring_id) {
       special_comm_op_set.count(op_name)) {
     return true;
   }
-  if (has_ring_id) {
+  if (op->HasAttr("ring_id")) {
     return true;
   }
   return false;
