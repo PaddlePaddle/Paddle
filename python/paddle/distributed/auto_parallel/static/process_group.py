@@ -147,6 +147,9 @@ class ProcessGroup:
         global_rank = genv.rank
 
         if self.nranks >= 2 and global_rank in self.ranks:
+            logger.info(
+                f"group_id: {self.id}, ranks: {self.ranks}, nranks: {self.nranks}, trainer_endpoints: {genv.current_endpoint}"
+            )
             strategy = core.ParallelStrategy()
             strategy.nranks = self.nranks
             strategy.local_rank = self.local_rank(global_rank)
