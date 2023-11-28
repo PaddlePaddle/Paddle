@@ -155,10 +155,30 @@ class TestPir(unittest.TestCase):
         out_dp_ir = engine_dp_ir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
-
         self.check_results(
             out_dp_prog.history["loss"][0], out_dp_ir.history["loss"][0]
         )
+
+        # test prim enabled distributed engine
+        self.enable_prim_in_dist(True)
+        engine_dp_pir_prim = self.get_engine(
+            "dp", name="dp_pir_prim", use_sharding=True
+        )
+        dataloader_dp_pir_prim = engine_dp_pir_prim.dataloader(
+            self.dataset,
+            batch_size=self.batch_size,
+            sample_split=3,
+            mode="train",
+        )
+        engine_dp_pir_prim.prepare(mode="train")
+        for data in dataloader_dp_pir_prim:
+            out_dp_pir_prim = engine_dp_pir_prim.run(data, mode="train")
+
+        if paddle.distributed.get_rank() == 1:
+            self.check_results_prim(
+                out_dp_pir_prim["loss"], out_dp_ir.history["loss"][0]
+            )
+        self.enable_prim_in_dist(False)
 
     def test_dp_with_fused_linear(self):
         if not get_cuda_version() >= 11060:
