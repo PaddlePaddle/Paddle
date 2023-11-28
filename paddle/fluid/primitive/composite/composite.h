@@ -93,7 +93,7 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
 
   Tensor y_full;
   if (valid_type(y.dtype())) {
-    y_full = full<T>(phi::vectorize(x_cast.dims()), y, x_cast.dtype());
+    y_full = full<T>(common::vectorize(x_cast.dims()), y, x_cast.dtype());
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Unsupported data type: %s", phi::DataTypeToString(y.dtype())));
@@ -255,9 +255,9 @@ Tensor silu_decomp(const Tensor& x) {
   }
 
   // res = x / (1 + exp(-x))
-  auto one = full<T>(phi::vectorize(x.dims()), 1, x_tmp.dtype());
+  auto one = full<T>(common::vectorize(x.dims()), 1, x_tmp.dtype());
   auto exp_temp =
-      exp<T>(full<T>(phi::vectorize(x.dims()), -1, x_tmp.dtype()) * x_tmp);
+      exp<T>(full<T>(common::vectorize(x.dims()), -1, x_tmp.dtype()) * x_tmp);
   auto res = x_tmp / (exp_temp + one);
   if (need_cast) {
     return cast<T>(res, org_dtype);
@@ -282,7 +282,7 @@ Tensor rsqrt_decomp(const Tensor& x) {
   }
 
   auto ans = elementwise_pow<T>(
-      x_cast, full<T>(phi::vectorize(x_cast.dims()), -0.5, x_cast.dtype()));
+      x_cast, full<T>(common::vectorize(x_cast.dims()), -0.5, x_cast.dtype()));
   if (need_cast) {
     return cast<T>(ans, org_dtype);
   } else {

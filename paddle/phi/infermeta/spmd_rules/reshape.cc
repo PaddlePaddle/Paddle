@@ -285,7 +285,7 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
 
 SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
                               const DistMetaTensor& out_grad) {
-  std::vector<int64_t> out_grad_shape = phi::vectorize(out_grad.dims());
+  std::vector<int64_t> out_grad_shape = common::vectorize(out_grad.dims());
   const auto& x_shape_dist_src = x_shape.dist_attr();
   auto tmp = ReshapeInferSpmd(x_shape, out_grad_shape);
   // check no shard is needed

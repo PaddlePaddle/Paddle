@@ -1256,7 +1256,7 @@ TEST(Reshape, Ctor) {
     t_dist_attr.set_dims_mapping(dim_mapping);
     t_dist_attr.set_dynamic_dims(std::vector<bool>(shape.size(), false));
     auto input =
-        phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
+        phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
     return input;
   };
 
@@ -1302,28 +1302,32 @@ TEST(ElementwiseUnaryLike, Ctor) {
 
   // cast
   auto input =
-      phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
   auto infered_dist_attrs =
       phi::distributed::CastInferSpmd(input, phi::DataType::FLOAT32);
 
   check_element_unary_like(infered_dist_attrs);
   // full like
-  input = phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
   infered_dist_attrs =
       phi::distributed::FullLikeInferSpmd(input, 1.0, phi::DataType::FLOAT32);
   check_element_unary_like(infered_dist_attrs);
 
   // pow
-  input = phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
   infered_dist_attrs = phi::distributed::PowInferSpmd(input, 2);
   check_element_unary_like(infered_dist_attrs);
 
   // pow backward
-  input = phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
   infered_dist_attrs = phi::distributed::PowGradInferSpmd(input, input, 2);
 
   // scale
-  input = phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
   infered_dist_attrs = phi::distributed::ScaleInferSpmd(input, 1.0, 1.0, false);
   check_element_unary_like(infered_dist_attrs);
 }

@@ -2516,7 +2516,7 @@ void Conv2dFusionInferMeta(const MetaTensor& input,
                                                       data_format,
                                                       channel_last,
                                                       config);
-  output->set_dims(phi::make_ddim(out_shape));
+  output->set_dims(common::make_ddim(out_shape));
   output->set_dtype(input.dtype());
   if (data_format == "NHWC") {
     output->set_layout(phi::DataLayout::NHWC);
@@ -2537,17 +2537,17 @@ void Conv2dFusionInferMeta(const MetaTensor& input,
             "Attr(split_channels) = %u, the content = [%s].",
             outputs.size(),
             split_channels.size(),
-            phi::make_ddim(split_channels)));
+            common::make_ddim(split_channels)));
 
     int split_channels_sum = 0;
     std::vector<phi::DDim> output_shapes(split_channels.size());
     for (size_t i = 0; i < split_channels.size(); ++i) {
       split_channels_sum += split_channels[i];
       if (channel_last) {
-        output_shapes[i] = phi::make_ddim(
+        output_shapes[i] = common::make_ddim(
             {out_shape[0], out_shape[1], out_shape[2], split_channels[i]});
       } else {
-        output_shapes[i] = phi::make_ddim(
+        output_shapes[i] = common::make_ddim(
             {out_shape[0], split_channels[i], out_shape[2], out_shape[3]});
       }
     }
