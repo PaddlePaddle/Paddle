@@ -20,7 +20,6 @@ import sys
 import tempfile
 import uuid
 from collections import defaultdict
-from typing import Dict, List, Tuple, cast
 
 import numpy as np
 from prim_op_test import OpTestUtils, _as_list, convert_uint16_to_float, flatten
@@ -41,7 +40,7 @@ IMPORT_FORWARD_TEST_CLASS_TEMPLATE = """
 sys.path.append(
     str(pathlib.Path(__file__).resolve().parents[0] / 'test/legacy_test')
 )
-from auto_parallel_op_test import AutoParallelForwardChecker, convert_input_dims_map_to_placements
+from auto_parallel_op_test import AutoParallelForwardChecker
 """
 
 IMPORT_GRAD_TEST_CLASS_TEMPLATE = """
@@ -49,7 +48,7 @@ IMPORT_GRAD_TEST_CLASS_TEMPLATE = """
 sys.path.append(
     str(pathlib.Path(__file__).resolve().parents[0] / 'test/legacy_test')
 )
-from auto_parallel_op_test import AutoParallelGradChecker, convert_input_dims_map_to_placements
+from auto_parallel_op_test import AutoParallelGradChecker
 """
 
 LOAD_TEST_INFO_TEMPLATE = """
@@ -65,14 +64,13 @@ FORWARD_TEST_FUNCTION_TEMPLATE = """
 def run_forward_check(test_info):
     auto_parallel_forward_checker = AutoParallelForwardChecker(
         test_info["op_type"],
-        python_api,
+        test_info["python_api"],
         test_info["dtype"],
-        convert_input_dims_map_to_placements(test_info["dims_map"], test_info["inputs"], 1),
+        test_info["input_specs"],
         test_info["inputs"],
         test_info["attrs"],
         test_info["outputs"],
         test_info["place"],
-        test_info["eager_auto_parallel_threshold"],
         test_info["python_out_sig"],
     )
     auto_parallel_forward_checker.check()
@@ -83,51 +81,27 @@ GRAD_TEST_FUNCTION_TEMPLATE = """
 def run_grad_check(test_info):
     auto_parallel_forward_checker = AutoParallelGradChecker(
         test_info["op_type"],
-        python_api,
+        test_info["python_api"],
         test_info["dtype"],
-        convert_input_dims_map_to_placements(test_info["dims_map"], test_info["inputs"], 1),
+        test_info["input_specs"],
         test_info["inputs"],
         test_info["attrs"],
         test_info["outputs"],
         test_info["place"],
         test_info["inputs_to_check"],
         test_info["output_names"],
-        test_info["no_grad_set"],
         test_info["user_defined_grad_outputs"],
-        test_info["eager_auto_parallel_threshold"],
         test_info["python_out_sig"],
     )
     auto_parallel_forward_checker.check()
-"""
-
-LOAD_PYTHON_API_TEMPLATE = """
-    from {module} import {function}
-    python_api = {function}
 """
 
 TEST_BODY_TEMPLATE = """
 
 if __name__ == "__main__":
     test_info = load_test_info(r'{test_info_path}')
-    {load_python_api}
     {run_test}
 """
-
-
-def is_ban_auto_parallel_test(place):
-    if (
-        isinstance(place, paddle.base.libpaddle.CUDAPlace)
-        and paddle.device.cuda.device_count() < 2
-        or not paddle.is_compiled_with_distribute()
-        or (
-            os.environ.get("WITH_COVERAGE") == "ON"
-            and os.environ.get("FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST")
-            != "1"
-        )
-    ):
-        return True
-    else:
-        return False
 
 
 def gen_import_packages(check_grad):
@@ -141,9 +115,7 @@ def gen_import_packages(check_grad):
     return import_code
 
 
-def gen_auto_parallel_test_file(
-    check_grad, test_info_path, test_file_path, python_api_info
-):
+def gen_auto_parallel_test_file(check_grad, test_info_path, test_file_path):
     test_code = ''
     test_code += gen_import_packages(check_grad)
     test_code += LOAD_TEST_INFO_TEMPLATE.format(test_info_path=test_info_path)
@@ -157,14 +129,8 @@ def gen_auto_parallel_test_file(
         if check_grad
         else "run_forward_check(test_info)"
     )
-    load_python_api_str = LOAD_PYTHON_API_TEMPLATE.format(
-        module=python_api_info["api_module"],
-        function=python_api_info["api_name"],
-    )
     test_code += TEST_BODY_TEMPLATE.format(
-        test_info_path=test_info_path,
-        load_python_api=load_python_api_str,
-        run_test=run_test_str,
+        test_info_path=test_info_path, run_test=run_test_str
     )
     with open(test_file_path, "w") as f:
         f.write(test_code)
@@ -193,8 +159,8 @@ def check_auto_parallel_info(op_test):
         op_test, 'python_api'
     ), "If you want to check auto parallel, please set python_api in setUp function."
     assert hasattr(
-        op_test, 'placements'
-    ), "If you want to check auto parallel, please set placements in setUp function."
+        op_test, 'input_specs'
+    ), "If you want to check auto parallel, please set input_specs in setUp function."
 
 
 def dump_test_info(
@@ -208,10 +174,9 @@ def dump_test_info(
     test_info = {}
     with open(test_info_path, "wb") as f:
         test_info["op_type"] = op_test.op_type
+        test_info["python_api"] = op_test.python_api
         test_info["dtype"] = op_test.dtype
-        test_info["dims_map"] = convert_input_placements_to_dims_map(
-            op_test.placements, op_test.inputs
-        )
+        test_info["input_specs"] = op_test.input_specs
         test_info["inputs"] = op_test.inputs
         test_info["attrs"] = op_test.attrs if hasattr(op_test, "attrs") else {}
         test_info["outputs"] = op_test.outputs
@@ -219,17 +184,6 @@ def dump_test_info(
             test_info["place"] = "cpu"
         if isinstance(place, paddle.base.libpaddle.CUDAPlace):
             test_info["place"] = "gpu"
-        eager_auto_parallel_threshold = {
-            "atol": op_test.eager_auto_parallel_atol
-            if hasattr(op_test, "eager_auto_parallel_atol")
-            else None,
-            "rtol": op_test.eager_auto_parallel_atol
-            if hasattr(op_test, "eager_auto_parallel_atol")
-            else None,
-        }
-        test_info[
-            "eager_auto_parallel_threshold"
-        ] = eager_auto_parallel_threshold
         test_info["python_out_sig"] = (
             op_test.python_out_sig
             if hasattr(op_test, "python_out_sig")
@@ -301,117 +255,6 @@ def run_subprocess(start_command, env, timeout):
         )
 
 
-def convert_input_placements_to_dims_map(placements: Dict, inputs: Dict):
-    all_dims_map = {}
-    for name, item in inputs.items():
-        if name not in placements:
-            continue
-        # such as inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
-        # placements = {"X": [("x0", [Shard(0)]), ("x1", [Shard(0)]), ("x2", [Shard(0)])]}
-        if isinstance(item, list):
-            all_dims_map[name] = []
-            for i in range(len(item)):
-                dims_map = placements_to_dims_map(
-                    placements[name][i][1], inputs[name][i][1].ndim
-                )
-                all_dims_map[name].append((item[i][0], dims_map))
-        # inputs like this : inputs = {'X': x}
-        # placements = {"X": [Shard(0)]}
-        else:
-            dims_map = placements_to_dims_map(
-                placements[name], inputs[name].ndim
-            )
-            all_dims_map[name] = dims_map
-    return all_dims_map
-
-
-def convert_input_dims_map_to_placements(
-    dims_map: Dict, inputs: Dict, mesh_ndim: int
-):
-    placements_map = {}
-    for name, item in inputs.items():
-        if name not in dims_map:
-            continue
-        # such as inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
-        # dims_map = {"X": [("x0", [-1, 0]), ("x1", [-1, 0]), ("x2", [-1, 0]}
-        if isinstance(item, list):
-            placements_map[name] = []
-            for i in range(len(item)):
-                placements = dims_map_to_placements(
-                    dims_map[name][i][1], mesh_ndim
-                )
-                placements_map[name].append((item[i][0], placements))
-        # inputs like this : inputs = {'X': x}
-        # placements = {"X": [Shard(0)]}
-        else:
-            placements = dims_map_to_placements(dims_map[name], mesh_ndim)
-            placements_map[name] = placements
-    return placements_map
-
-
-# TODO: This method has been implementd in
-# paddle/phi/core/distributed/auto_parallel/placement_types.h, bind it
-# python and it's logic.
-def placements_to_dims_map(placements: List, tensor_ndim: int) -> Tuple[int]:
-    r = [-1] * tensor_ndim
-    for i, placement in enumerate(placements):
-        if placement.is_shard():
-            shard_dim = cast(dist.Shard, placement).get_dim()
-            if r[shard_dim] > -1:
-                raise ValueError(
-                    f"Tensor dim {shard_dim} is already sharded on mesh dim {r[shard_dim]},"
-                    " DTensor operator implementation does not support things like hybrid"
-                    " sharding strategies yet (i.e. [Shard(0), Shard(0)])"
-                )
-            r[shard_dim] = i
-    return r
-
-
-# TODO: Add this method to
-# paddle/phi/core/distributed/auto_parallel/placement_types.h, and bind it to
-# python
-def dims_map_to_placements(
-    dim_map: Tuple[int], mesh_ndim: int, sums: Tuple[int] = ()
-) -> Tuple[dist.Placement]:
-    """
-    Construct a placements from dim_map list and pending sum.
-
-    Args:
-        dim_map (Tuple[int]): a list of integer that represents sharding on each
-            tensor dimension, see `dim_map` property doc for details
-        mesh_ndim (int): the ndim of Process mesh.
-        sums (Tuple[int]): a list of integer that represents the dist tensor have
-            pending sum on which device mesh dimension.
-
-    Return:
-        a placement sequence.
-    """
-    # by default replicate on device mesh dims
-    placements: List[dist.Placement] = [
-        dist.Replicate() for _ in range(mesh_ndim)
-    ]
-
-    # find all mesh dims that need pending reductions
-    for s in sums:
-        placements[s] = dist.Partial()
-
-    for i, m in enumerate(dim_map):
-        if m >= 0:
-            placement = placements[m]
-            if placement.is_shard():
-                placement = cast(dist.Shard, placement)
-                raise RuntimeError(
-                    f"DeviceMesh dimension cann't be mapped to two dimension of the same tensor: {i} and {placement.dim}"
-                )
-            elif placement.is_partial():
-                raise RuntimeError(
-                    f"DeviceMesh dimension {m} cannot be both shard and partial!"
-                )
-            placements[m] = dist.Shard(i)
-
-    return tuple(placements)
-
-
 TOLERANCE = {
     np.dtype('float64'): {"rtol": 1e-15, "atol": 0},
     np.dtype('float32'): {"rtol": 1e-6, "atol": 0},
@@ -427,12 +270,11 @@ class AutoParallelForwardChecker:
         op_type,
         pthon_api,
         dtype,
-        placements_map,
+        input_specs,
         inputs,
         attrs,
         outputs,
         place,
-        eager_auto_parallel_threshold,
         python_out_sig=None,
     ):
         self.checker_name = "AutoParallelForwardChecker"
@@ -440,12 +282,11 @@ class AutoParallelForwardChecker:
             op_type,
             pthon_api,
             dtype,
-            placements_map,
+            input_specs,
             inputs,
             attrs,
             outputs,
             place,
-            eager_auto_parallel_threshold,
             python_out_sig,
         )
 
@@ -454,18 +295,17 @@ class AutoParallelForwardChecker:
         op_type,
         pthon_api,
         dtype,
-        placements_map,
+        input_specs,
         inputs,
         attrs,
         outputs,
         place,
-        eager_auto_parallel_threshold,
         python_out_sig=None,
     ):
         self.op_type = op_type
         self.public_python_api = pthon_api
         self.dtype = np.dtype(dtype)
-        self.placements_map = placements_map
+        self.input_specs = input_specs
         self.inputs = inputs
         self.attrs = attrs
         self.outputs = outputs
@@ -477,10 +317,7 @@ class AutoParallelForwardChecker:
         self.python_out_sig = python_out_sig
         self.attrs = attrs
         self.outputs = outputs
-        self.init_checker_threshold(
-            eager_auto_parallel_threshold["atol"],
-            eager_auto_parallel_threshold["rtol"],
-        )
+        self.init_checker_threshold()
         self.kernel_sig = self.get_kernel_sig()
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
@@ -590,7 +427,7 @@ class AutoParallelForwardChecker:
         eager_inputs = defaultdict(list)
         for name, item in self.inputs.items():
             # such as inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
-            #  placements = {"X": [("x0", [Shard(0)]), ("x1", [Shard(0)]), ("x2", [Shard(0)])]}
+            # inputs_specs = {"X": [("x0", ["x", None]), ("x1", ["x", None]), ("x2", ["x", None])]}
             if isinstance(item, list):
                 for i in range(len(item)):
                     dtype = (
@@ -603,18 +440,20 @@ class AutoParallelForwardChecker:
                         stop_gradient=stop_gradient,
                         dtype=dtype,
                     )
-                    if not dist_mode or name not in self.placements_map:
+                    if not dist_mode or name not in self.input_specs:
                         eager_inputs[name].append(x)
                         input_dict.update({str(item[i][0]): x})
                     else:
-                        dist_x = dist.shard_tensor(
-                            x, self._mesh, self.placements_map[name][i][1]
+                        x_dist_attr = dist.DistAttr(
+                            mesh=self._mesh,
+                            sharding_specs=self.input_specs[name][i][1],
                         )
+                        dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
                         dist_x.stop_gradient = stop_gradient
                         eager_inputs[name].append(dist_x)
                         input_dict.update({str(item[i][0]): dist_x})
             # inputs like this : inputs = {'X': x}
-            # placements = {"X": [Shard(0)]}
+            # inputs_specs = {"X": ["x", None]}
             else:
                 dtype = (
                     "bfloat16"
@@ -626,13 +465,14 @@ class AutoParallelForwardChecker:
                     stop_gradient=stop_gradient,
                     dtype=dtype,
                 )
-                if not dist_mode or name not in self.placements_map:
+                if not dist_mode or name not in self.input_specs:
                     eager_inputs[name].append(x)
                     input_dict.update({name: x})
                 else:
-                    dist_x = dist.shard_tensor(
-                        x, self._mesh, self.placements_map[name]
+                    x_dist_attr = dist.DistAttr(
+                        mesh=self._mesh, sharding_specs=self.input_specs[name]
                     )
+                    dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
                     dist_x.stop_gradient = stop_gradient
                     eager_inputs[name].append(dist_x)
                     input_dict.update({name: dist_x})
@@ -675,7 +515,7 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
         op_type,
         pthon_api,
         dtype,
-        placements_map,
+        input_specs,
         inputs,
         attrs,
         outputs,
@@ -684,19 +524,17 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
         output_names,
         no_grad_set,
         grad_outputs,
-        eager_auto_parallel_threshold,
         python_out_sig=None,
     ):
         super().__init__(
             op_type,
             pthon_api,
             dtype,
-            placements_map,
+            input_specs,
             inputs,
             attrs,
             outputs,
             place,
-            eager_auto_parallel_threshold,
             python_out_sig,
         )
         self.checker_name = "AutoParallelGradChecker"
