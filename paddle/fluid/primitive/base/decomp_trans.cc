@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// #include <sstream>
+// #include <string>
+
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/pir/core/builtin_dialect.h"
@@ -26,7 +29,10 @@ DecompProgram::DecompProgram(const pir::Program* program,
     : program_(program), src_vars_(src_vars) {}
 
 std::vector<pir::OpResult> DecompProgram::decomp_program() {
-  const pir::Block* block = program_->block();
+  // const pir::Block* block = program_->block();
+  std::ostringstream print_stream;
+  program_->Print(print_stream);
+  std::cout << "program in sink decomp.  " << print_stream.str() << std::endl;
   VLOG(0) << "sink decomp in ===========================";
   return src_vars_;
 }

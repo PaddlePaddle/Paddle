@@ -168,7 +168,8 @@ set(op_dialect_vjp_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_vjp.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_dialect.cc
     ${op_decomp_source_file}
-    ${op_vjp_source_file})
+    ${op_vjp_source_file}
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/base/decomp_trans.cc)
 set(op_dialect_vjp_deps primitive_vjp_experimental op_dialect)
 
 cc_library(
