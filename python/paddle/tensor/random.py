@@ -1209,6 +1209,13 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
                 core.VarDesc.VarType.INT64,
             )
         else:
+            check_shape(shape, 'randint_like')
+            check_dtype(
+                dtype,
+                'dtype',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'randint_like',
+            )
             if paddle.utils._contain_var(shape):
                 shape = paddle.utils.get_int_tensor_list(
                     shape, _current_expected_place()
