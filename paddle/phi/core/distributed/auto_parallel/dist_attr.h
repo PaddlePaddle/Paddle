@@ -199,7 +199,7 @@ class TEST_API TensorDistAttr {
   int64_t batch_dim_{0};
   std::vector<bool> dynamic_dims_;
   std::map<std::string, bool> annotated_;
-  int64_t chunk_id_;
+  int64_t chunk_id_{0};
   // partial map would be small (less than mesh.size)
   // iterate operation (copy and comparision) would more frequency than random
   // element access. <key: dim on mesh, value: reduce type>

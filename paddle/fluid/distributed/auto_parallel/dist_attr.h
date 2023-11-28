@@ -244,7 +244,7 @@ class OperatorDistAttr {
   std::string op_type_;
   std::string impl_type_ = kDefault;
   int64_t impl_idx_ = 0;
-  int64_t chunk_id_;
+  int64_t chunk_id_ = 0;
   bool is_recompute_ = false;
   std::string execution_stream_ = kDefault;
   bool force_record_event_ = false;
