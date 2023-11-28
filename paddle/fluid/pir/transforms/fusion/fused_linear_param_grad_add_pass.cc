@@ -69,10 +69,6 @@ class FusedMatmulAddGradAddPattern
         [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
     const auto &false_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
-    const auto &matmul1 = res.Op(paddle::dialect::MatmulOp::name(),
-                                 {{"transpose_x", pat.Attr("trans_x")},
-                                  {"transpose_y", pat.Attr("trans_y")}});
-    const auto &add1 = res.Op(paddle::dialect::AddOp::name());
 
     const auto &matmul =
         res.Op(paddle::dialect::MatmulOp::name(),
@@ -81,8 +77,6 @@ class FusedMatmulAddGradAddPattern
         paddle::dialect::FusedLinearParamGradAddOp::name(),
         {{{"multi_precision", muti_precision_attr}, {"has_bias", true_attr}}});
 
-    res.Tensor("out") = matmul1(res.Tensor("x"), res.Tensor("weight"));
-    res.Tensor("fwd_add_out") = add1(res.Tensor("out"), res.Tensor("bias"));
     matmul({&res.Tensor("fwd_add_out_grad"), &res.Tensor("weight")},
            {&res.Tensor("x_grad")});
     fused_linear_param_grad_add({&res.Tensor("x"),
