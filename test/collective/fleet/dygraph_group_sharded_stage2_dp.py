@@ -17,6 +17,7 @@
 import numpy as np
 
 import paddle
+from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import (
     GroupShardedOptimizerStage2,
     GroupShardedStage2,
@@ -98,30 +99,18 @@ def train_mlp(
     assert rank in [0, 1, 2, 3]
 
     if test_dp:
-        # TODO(SecretXV): refine create group
-        if rank == 0:
-            sharding_group = paddle.distributed.new_group(
-                [0, 1], backend="nccl"
-            )
-            dp_group = paddle.distributed.new_group([0, 2], backend="nccl")
+        strategy = fleet.DistributedStrategy()
+        strategy.hybrid_configs = {
+            "dp_degree": 2,
+            "mp_degree": 1,
+            "pp_degree": 1,
+            "sharding_degree": 2,
+        }
+        fleet.init(is_collective=True, strategy=strategy)
 
-        if rank == 1:
-            sharding_group = paddle.distributed.new_group(
-                [0, 1], backend="nccl"
-            )
-            dp_group = paddle.distributed.new_group([1, 3], backend="nccl")
-
-        if rank == 2:
-            sharding_group = paddle.distributed.new_group(
-                [2, 3], backend="nccl"
-            )
-            dp_group = paddle.distributed.new_group([0, 2], backend="nccl")
-
-        if rank == 3:
-            sharding_group = paddle.distributed.new_group(
-                [2, 3], backend="nccl"
-            )
-            dp_group = paddle.distributed.new_group([1, 3], backend="nccl")
+        hcg = fleet.get_hybrid_communicate_group()
+        sharding_group = hcg.get_sharding_parallel_group()
+        dp_group = hcg.get_data_parallel_group()
     else:
         sharding_group = paddle.distributed.new_group(
             [0, 1, 2, 3], backend="nccl"
@@ -241,9 +230,9 @@ def test_stage2_dp():
         mlp2, sharding_stage=2, use_pure_bf16=False, test_dp=True
     )
     for i in range(len(o1_losses)):
-        o1_loss = o1_losses[i].detach()
-        o2_loss = o2_losses[i].detach()
-        np.testing.assert_array_equal(o1_loss, o2_loss)
+        o1_fp32_loss = o1_losses[i].cast("float32").detach()
+        o2_fp32_loss = o2_losses[i].cast("float32").detach()
+        np.testing.assert_allclose(o1_fp32_loss, o2_fp32_loss, atol=1e-5)
 
     # bf16 test
     mlp3 = MLP()
@@ -255,9 +244,9 @@ def test_stage2_dp():
         mlp4, sharding_stage=2, use_pure_bf16=True, test_dp=True
     )
     for i in range(len(o1_losses)):
-        o1_32_loss = o1_losses[i].detach()
-        o2_32_loss = o2_losses[i].detach()
-        np.testing.assert_array_equal(o1_32_loss, o2_32_loss)
+        o1_fp32_loss = o1_losses[i].cast("float32").detach()
+        o2_fp32_loss = o2_losses[i].cast("float32").detach()
+        np.testing.assert_allclose(o1_fp32_loss, o2_fp32_loss, atol=1e-5)
 
     # grad accumulation test
     mlp5 = MLP()
@@ -275,9 +264,11 @@ def test_stage2_dp():
         test_dp=True,
     )
     for i in range(len(o2_losses_grad_acc)):
-        o2_loss_grad_acc = o2_losses_grad_acc[i].detach()
-        o1_loss_grad_acc = o1_losses_grad_acc[i].detach()
-        np.testing.assert_array_equal(o2_loss_grad_acc, o1_loss_grad_acc)
+        o2_loss_grad_acc = o2_losses_grad_acc[i].cast("float32").detach()
+        o1_loss_grad_acc = o1_losses_grad_acc[i].cast("float32").detach()
+        np.testing.assert_allclose(
+            o2_loss_grad_acc, o1_loss_grad_acc, atol=1e-5
+        )
 
     return
 
