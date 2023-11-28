@@ -5809,6 +5809,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
 
+    @test_with_pir_api
     def test_randint(self):
         out1 = paddle.randint(-10, 10, [])
         out2 = paddle.randint(-10, 10, self.shape)
