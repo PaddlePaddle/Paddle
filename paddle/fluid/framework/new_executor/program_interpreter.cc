@@ -893,8 +893,13 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
                                        : var_scope_.GetMutableScope();
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
+  for (auto& hook : input_hookfuncs_) {
+    hook(op, local_scope);
+  }
+
   if (op->Type() == "while") {
-    op->SetOutputHooks(hookfuncs_);
+    op->SetInputHooks(input_hookfuncs_);
+    op->SetOutputHooks(output_hookfuncs_);
   }
 
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
@@ -1002,7 +1007,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
 #endif
   }
 
-  for (auto& hook : hookfuncs_) {
+  for (auto& hook : output_hookfuncs_) {
     hook(op, local_scope);
   }
 

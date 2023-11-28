@@ -97,6 +97,8 @@ class InterpreterBaseImpl {
 
   virtual void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) = 0;
 
+  virtual void SetInputHooks(const std::vector<HookFunc>& hookfuncs) = 0;
+
   virtual std::shared_ptr<std::vector<size_t>> GetDependencyCount() const = 0;
 
   virtual bool IsSharedResultsBuild() const = 0;
