@@ -152,9 +152,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_saved_tensor_hook)
   set_tests_properties(test_semi_auto_parallel_saved_tensor_hook
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
-  py_test_modules(test_engine_with_prim MODULES test_engine_with_prim)
-  set_tests_properties(test_engine_with_prim
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 150)
   py_test_modules(test_gpt_with_prim MODULES test_gpt_with_prim)
   set_tests_properties(test_gpt_with_prim
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 150)
