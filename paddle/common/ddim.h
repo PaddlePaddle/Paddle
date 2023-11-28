@@ -279,7 +279,18 @@ using DDim = common::DDim;
 
 namespace phi {
 using DDim = common::DDim;
-}
+using common::arity;
+using common::contain_unknown_dim;
+using common::flatten_to_1d;
+using common::flatten_to_2d;
+using common::flatten_to_3d;
+using common::make_ddim;
+using common::product;
+using common::slice_ddim;
+using common::stride;
+using common::stride_numel;
+using common::vectorize;
+}  // namespace phi
 
 namespace pir {
 using DDim = common::DDim;
