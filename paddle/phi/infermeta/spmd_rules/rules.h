@@ -13,9 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
-
 #include "paddle/phi/infermeta/spmd_rules/cast.h"
 #include "paddle/phi/infermeta/spmd_rules/concat.h"
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
@@ -23,13 +21,16 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/embedding.h"
 #include "paddle/phi/infermeta/spmd_rules/flash_attention.h"
 #include "paddle/phi/infermeta/spmd_rules/flatten.h"
+#include "paddle/phi/infermeta/spmd_rules/full_like.h"
 #include "paddle/phi/infermeta/spmd_rules/layer_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/numel.h"
 #include "paddle/phi/infermeta/spmd_rules/optimizer.h"
+#include "paddle/phi/infermeta/spmd_rules/pow.h"
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
+#include "paddle/phi/infermeta/spmd_rules/scale.h"
 #include "paddle/phi/infermeta/spmd_rules/slice.h"
 #include "paddle/phi/infermeta/spmd_rules/softmax.h"
 #include "paddle/phi/infermeta/spmd_rules/split.h"
