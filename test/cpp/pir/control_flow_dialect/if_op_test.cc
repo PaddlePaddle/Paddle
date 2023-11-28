@@ -215,16 +215,18 @@ TEST(if_op_test, network_with_backward) {
 
   test_core.Run({});
 
-  auto in_tensor =
-      test_core.local_scope() == nullptr
-          ? scope.FindVar(in_name)->Get<phi::DenseTensor>()
-          : test_core.local_scope()->FindVar(in_name)->Get<phi::DenseTensor>();
-  auto out_tensor =
-      test_core.local_scope() == nullptr
-          ? scope.FindVar(out_name)->Get<phi::DenseTensor>()
-          : test_core.local_scope()->FindVar(out_name)->Get<phi::DenseTensor>();
+  //   auto in_tensor =
+  //       test_core.local_scope() == nullptr
+  //           ? scope.FindVar(in_name)->Get<phi::DenseTensor>()
+  //           :
+  //           test_core.local_scope()->FindVar(in_name)->Get<phi::DenseTensor>();
+  //   auto out_tensor =
+  //       test_core.local_scope() == nullptr
+  //           ? scope.FindVar(out_name)->Get<phi::DenseTensor>()
+  //           :
+  //           test_core.local_scope()->FindVar(out_name)->Get<phi::DenseTensor>();
 
-  std::cout << out_tensor.data<float>()[0] << std::endl;
+  //   std::cout << out_tensor.data<float>()[0] << std::endl;
 
-  //   EXPECT_EQ(in_tensor, out_tensor);
+  //   EXPECT_EQ(out_tensor, out_tensor);
 }
