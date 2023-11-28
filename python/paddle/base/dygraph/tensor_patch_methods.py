@@ -32,7 +32,6 @@ from ..framework import (
     EagerParamBase,
     Parameter,
     Variable,
-    _setitem_impl_,
     convert_np_dtype_to_dtype_,
 )
 from .base import switch_to_static_graph
@@ -881,9 +880,6 @@ def monkey_patch_tensor():
         return self._getitem_dygraph(item)
 
     def __setitem__(self, item, value):
-        if core.is_compiled_with_xpu():
-            # (NOTE): Currently, there is no index_put_xpu kernel.
-            return _setitem_impl_(self, item, value)
         item, value = pre_deal_index_and_value(self, item, value)
         return self._setitem_dygraph(item, value)
 
@@ -981,6 +977,7 @@ def monkey_patch_tensor():
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
+
         Get the values of current SparseTensor(COO or CSR).
 
         Returns:
@@ -1005,6 +1002,7 @@ def monkey_patch_tensor():
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
+
         Convert the current SparseTensor(COO or CSR) to DenseTensor.
 
         Returns:
@@ -1033,6 +1031,7 @@ def monkey_patch_tensor():
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
+
         Convert the current DenseTensor to SparseTensor in COO format.
 
         Returns:

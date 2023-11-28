@@ -69,9 +69,9 @@ TEST(op_test, region_test) {
   region.push_back(new pir::Block());
   region.push_front(new pir::Block());
   region.insert(region.begin(), new pir::Block());
-  pir::Block *block = region.front();
-  block->push_front(op1);
-  block->insert(block->begin(), op_2);
+  auto &block = region.front();
+  block.push_front(op1);
+  block.insert(block.begin(), op_2);
   op3->Destroy();
 }
 
