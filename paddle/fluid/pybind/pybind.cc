@@ -773,7 +773,9 @@ void BindDecomp(pybind11::module *m) {
            py::list res;
            DecompProgram decomp_object(program, src_vars);
            auto tar_vars = decomp_object.decomp_program();
+           auto cap = tar_vars.size();
            VLOG(0) << "BindDecomp decomp_tmp in ++++++++++++++++++";
+           VLOG(0) << "BindDecomp tar_vars size ++++++++++++++++++ " << cap;
            for (size_t i = 0; i < tar_vars.size(); ++i) {
              if (!tar_vars[i]) {
                res.append(nullptr);
@@ -781,6 +783,7 @@ void BindDecomp(pybind11::module *m) {
                res.append(tar_vars[i]);
              }
            }
+           VLOG(0) << "BindDecomp decomp_tmp out ++++++++++++++++++";
            return res;
          });
 

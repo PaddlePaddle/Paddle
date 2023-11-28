@@ -50,11 +50,12 @@ DecompProgram::DecompProgram(const pir::Program* program,
     : program_(program), src_vars_(src_vars) {}
 
 std::vector<pir::OpResult> DecompProgram::decomp_program() {
-  std::ostringstream print_stream;
-  program_->Print(print_stream);
-  std::cout << "program in sink decomp.  " << print_stream.str() << std::endl;
+  // std::ostringstream print_stream;
+  // program_->Print(print_stream);
+  // VLOG(0) << "program in sink decomp ------" << print_stream.str();
+  std::vector<pir::OpResult> tar_vars;
   VLOG(0) << "sink decomp in ===========================";
-  const pir::Block* block = program_->block();
+  pir::Block* block = const_cast<pir::Block*>(program_->block());
   std::vector<pir::Operation*> ops_list;
   for (auto& op : *block) {
     ops_list.push_back(&op);
@@ -64,18 +65,19 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
     bool flag = has_decomp_rule(*op);
     if (flag) {
       std::vector<std::vector<pir::OpResult>> decomp_res = call_decomp_rule(op);
-      VLOG(0) << "decomp out size ======= " << decomp_res.size();
+      VLOG(4) << "decomp out size ======= " << decomp_res.size();
       op->ReplaceAllUsesWith(decomp_res[0]);
       auto op_iter = std::find(block->begin(), block->end(), *op);
       block->erase(op_iter);
+      tar_vars = decomp_res[0];
     }
-    VLOG(0) << "op name ======= " << op->name();
-    VLOG(0) << "decomp flag ======= " << flag;
-    program_->Print(print_stream);
-    std::cout << "program out sink decomp.  " << print_stream.str()
-              << std::endl;
+    VLOG(4) << "op name ======= " << op->name();
+    // std::ostringstream print_stream2;
+    // program_->Print(print_stream2);
+    // VLOG(4) << "program out sink decomp ------" << print_stream2.str();
+    VLOG(4) << "decomp flag ======= " << flag;
   }
-  return src_vars_;
+  return tar_vars;
 }
 
 }  // namespace paddle

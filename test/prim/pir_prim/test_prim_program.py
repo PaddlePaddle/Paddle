@@ -46,7 +46,8 @@ class TestPrimMode(unittest.TestCase):
             y.stop_gradient = False
             divide_out = paddle.divide(x, y)
             sum_out = paddle.mean(divide_out, axis=0)
-            [new_out] = paddle.base.core.decomp_tmp(main_program, [sum_out])
+            [new_out] = core.decomp_tmp(main_program, [sum_out])
+            print(core._is_bwd_prim_enabled())
             gradients = grad(new_out, (x, y))
 
             exe = paddle.static.Executor()
