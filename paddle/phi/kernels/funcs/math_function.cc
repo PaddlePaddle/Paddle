@@ -149,8 +149,11 @@ struct TensorSetConstantCPU {
   void apply() const {
     auto cpu = phi::CPUPlace();
     auto* begin = tensor_->mutable_data<T>(cpu);
-    const float* num = reinterpret_cast<const float*>(value_);
-    std::fill(begin, begin + tensor_->numel(), static_cast<T>(*num));
+    const T* num_ptr = reinterpret_cast<const T*>(value_);
+    T num = *num_ptr;
+    VLOG(0) << "TensorSetConstantCPU fill num:" << num;
+    std::fill(begin, begin + tensor_->numel(), num);
+    VLOG(0) << "TensorSetConstantCPU fill done, begin:" << begin[0];
   }
   phi::DenseTensor* tensor_;
   const void* value_;
@@ -176,7 +179,8 @@ struct TensorSetConstantXPU {
       using XPUType = typename XPUTypeTrait<T>::Type;
       VLOG(0) << "TensorSetConstantXPU use xpu kernel, T type is float:"
               << std::is_same<T, float>::value
-              << " | float16:" << std::is_same<T, phi::dtype::float16>::value;
+              << " | float16:" << std::is_same<T, phi::dtype::float16>::value
+              << "  num:" << num_value;
       auto* dev_ctx = static_cast<phi::XPUContext*>(ctx);
       int r = xpu::constant(dev_ctx->x_context(),
                             reinterpret_cast<XPUType*>(data),
@@ -243,7 +247,7 @@ void set_constant_with_place<phi::CustomPlace>(
                                     phi::DenseTensor*);
   const float* num_ptr = reinterpret_cast<const float*>(value);
   float num = static_cast<float>(*num_ptr);
-  VLOG(0) << "TensorSetConstantCustomPlace  T:" << T << " num:" << num
+  VLOG(0) << "TensorSetConstantCustomPlace num:" << num
           << " | tensor->dtype():" << tensor->dtype();
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(context,
