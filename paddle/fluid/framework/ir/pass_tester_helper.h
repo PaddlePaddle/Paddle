@@ -934,6 +934,19 @@ struct Layers {
   int idx_{0};
 };
 
+#ifdef PADDLE_WITH_GCU
+template <typename T>
+static std::string VectorToString(std::vector<T> vec) {
+  std::ostringstream os;
+  os << "[";
+  for (auto tmp : vec) {
+    os << std::fixed << tmp << "; ";
+  }
+  os << "]";
+  return os.str();
+}
+#endif
+
 static std::string DebugString(OpDesc* op) {
   std::ostringstream os;
   os << "Op(" << op->Type() << "), inputs:{";
@@ -988,6 +1001,21 @@ static std::string DebugString(const Node* node) {
         os << ", ";
       }
       os << in->Name();
+#ifdef PADDLE_WITH_GCU
+      if (in->IsVar() && in->Var()) {
+        os << "[";
+        bool shape_is_first = true;
+        for (auto dim : in->Var()->GetShape()) {
+          if (!shape_is_first) {
+            os << "x";
+          }
+          os << dim;
+          shape_is_first = false;
+        }
+        os << "x" << DataTypeToString(in->Var()->GetDataType());
+        os << "]";
+      }
+#endif
       is_first = false;
     }
     os << "}, outputs:{";
@@ -997,8 +1025,74 @@ static std::string DebugString(const Node* node) {
         os << ", ";
       }
       os << out->Name();
+#ifdef PADDLE_WITH_GCU
+      if (out->IsVar() && out->Var()) {
+        os << "[";
+        bool shape_is_first = true;
+        for (auto dim : out->Var()->GetShape()) {
+          if (!shape_is_first) {
+            os << "x";
+          }
+          os << dim;
+          shape_is_first = false;
+        }
+        os << "x" << DataTypeToString(out->Var()->GetDataType());
+        os << "]";
+      }
+#endif
       is_first = false;
     }
+#ifdef PADDLE_WITH_GCU
+    os << "}, attrs:{";
+    auto attrs_map = op->GetAttrMap();
+    static const char* dump_traceback_str =
+        std::getenv("ENFLAME_ENABLE_DUMP_TRACEBACK");
+    static bool dump_traceback = (dump_traceback_str != nullptr &&
+                                  std::string(dump_traceback_str) == "true");
+    for (auto iter : attrs_map) {
+      if (iter.first == "op_callstack" && !dump_traceback) {
+        continue;
+      }
+      auto& value = iter.second;
+      os << iter.first << ": ";
+      if (value.type() == typeid(paddle::blank)) {
+        os << "paddle::blank";
+      } else if (value.type() == typeid(int)) {
+        os << PADDLE_GET_CONST(int, attrs_map.at(iter.first));
+      } else if (value.type() == typeid(float)) {
+        os << PADDLE_GET_CONST(float, attrs_map.at(iter.first));
+      } else if (value.type() == typeid(std::string)) {
+        os << PADDLE_GET_CONST(std::string, attrs_map.at(iter.first));
+      } else if (value.type() == typeid(bool)) {
+        os << PADDLE_GET_CONST(bool, attrs_map.at(iter.first));
+      } else if (value.type() == typeid(int64_t)) {
+        os << PADDLE_GET_CONST(int64_t, attrs_map.at(iter.first));
+      } else if (value.type() == typeid(std::vector<int>)) {
+        os << VectorToString(
+            PADDLE_GET_CONST(std::vector<int>, attrs_map.at(iter.first)));
+      } else if (value.type() == typeid(std::vector<float>)) {
+        os << VectorToString(
+            PADDLE_GET_CONST(std::vector<float>, attrs_map.at(iter.first)));
+      } else if (value.type() == typeid(std::vector<std::string>)) {
+        os << VectorToString(PADDLE_GET_CONST(std::vector<std::string>,
+                                              attrs_map.at(iter.first)));
+      } else if (value.type() == typeid(std::vector<bool>)) {
+        os << VectorToString(
+            PADDLE_GET_CONST(std::vector<bool>, attrs_map.at(iter.first)));
+      } else if (value.type() == typeid(std::vector<int64_t>)) {
+        os << VectorToString(
+            PADDLE_GET_CONST(std::vector<int64_t>, attrs_map.at(iter.first)));
+      } else if (value.type() == typeid(std::vector<double>)) {
+        os << VectorToString(
+            PADDLE_GET_CONST(std::vector<double>, attrs_map.at(iter.first)));
+      } else if (value.type() == typeid(BlockDesc*)) {
+        os << " type is BlockDesc* ";
+      } else if (value.type() == typeid(std::vector<BlockDesc*>)) {
+        os << " type is std::vector<BlockDesc*> ";
+      }
+      os << "; ";
+    }
+#endif
     os << "}.";
   } else {
     os << "Node(" << node->Name();
@@ -1012,6 +1106,9 @@ static std::string DebugString(const Node* node) {
         os << dim;
         is_first = false;
       }
+#ifdef PADDLE_WITH_GCU
+      os << "x" << DataTypeToString(node->Var()->GetDataType());
+#endif
       os << "}";
     }
     os << "), inputs:{";

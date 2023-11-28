@@ -37,6 +37,8 @@ const char *AllocationTypeStr(AllocationType type) {
       return "xpu";
     case AllocationType::IPU:
       return "ipu";
+    case AllocationType::CUSTOM:
+      return "custom";
     default:
       PD_THROW("Invalid phi device type.");
       return {};

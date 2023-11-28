@@ -29,6 +29,10 @@ namespace imperative {
 template <typename VarType>
 class DygraphExecutionContext : public framework::ExecutionContext {
   using Variable = framework::Variable;
+#ifdef PADDLE_WITH_GCU
+  using VariableNameMap = std::map<std::string, std::vector<std::string>>;
+  using VariableValueMap = std::map<std::string, std::vector<Variable*>>;
+#endif
 
  public:
   DygraphExecutionContext(const framework::OperatorBase& op,
@@ -43,7 +47,37 @@ class DygraphExecutionContext : public framework::ExecutionContext {
         var_map_in_(var_map_in),
         var_map_out_(var_map_out),
         attrs_(attrs),
-        default_attrs_(default_attrs) {}
+        default_attrs_(default_attrs) {
+#ifdef PADDLE_WITH_GCU
+    GetAllNamesAndVars(var_map_in_, input_names_, input_vars_);
+    GetAllNamesAndVars(var_map_out_, output_names_, output_vars_);
+#endif
+  }
+
+#ifdef PADDLE_WITH_GCU
+  void GetAllNamesAndVars(const NameVarMap<VarType>& var_map,
+                          VariableNameMap& names,    // NOLINT
+                          VariableValueMap& vars) {  // NOLINT
+    for (auto it = var_map.begin(); it != var_map.end(); ++it) {
+      std::vector<std::string> vec_names;
+      std::vector<Variable*> vec_vars;
+      vec_names.reserve(it->second.size());
+      vec_vars.reserve(it->second.size());
+      for (size_t i = 0; i < it->second.size(); ++i) {
+        if (it->second[i]) {
+          vec_names.push_back(GetNameFromVar(it->second[i]));
+        } else {
+          vec_names.push_back(framework::kEmptyVarName);
+        }
+
+        vec_vars.push_back(it->second[i] ? it->second[i]->MutableVar()
+                                         : nullptr);
+      }
+      names[it->first] = vec_names;
+      vars[it->first] = vec_vars;
+    }
+  }
+#endif
 
   std::string InputName(const std::string& name) const override {
     auto it = var_map_in_.find(name);
@@ -100,6 +134,20 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     }
     return vec_res;
   }
+
+#ifdef PADDLE_WITH_GCU
+  const VariableNameMap& AllInputNames() const override { return input_names_; }
+
+  const VariableNameMap& AllOutputNames() const override {
+    return output_names_;
+  }
+
+  const VariableValueMap& AllInputVars() const override { return input_vars_; }
+
+  const VariableValueMap& AllOutputVars() const override {
+    return output_vars_;
+  }
+#endif
 
   bool HasAttr(const std::string& name) const override {
     return attrs_.find(name) != attrs_.end() ||
@@ -225,6 +273,12 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   const NameVarMap<VarType>& var_map_out_;
   const framework::AttributeMap& attrs_;
   const framework::AttributeMap& default_attrs_;
+#ifdef PADDLE_WITH_GCU
+  VariableNameMap input_names_;
+  VariableNameMap output_names_;
+  VariableValueMap input_vars_;
+  VariableValueMap output_vars_;
+#endif
 };
 
 }  // namespace imperative

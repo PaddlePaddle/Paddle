@@ -1084,7 +1084,19 @@ class Fleet:
                 optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
 
         """
-        self.user_defined_optimizer = optimizer
+        if (
+            paddle.framework.core.is_compiled_with_custom_device('gcu')
+            and not paddle.fluid.framework.in_dygraph_mode()
+        ):
+            from paddle.distributed.fleet.distributed_utils import (
+                GcuDistributedOptimizer,
+            )
+
+            self.user_defined_optimizer = GcuDistributedOptimizer(optimizer)
+            self._context = {}
+            return self.user_defined_optimizer
+        else:
+            self.user_defined_optimizer = optimizer
 
         if strategy is not None:
             if self._is_collective:

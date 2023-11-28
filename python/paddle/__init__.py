@@ -410,6 +410,11 @@ if is_compiled_with_cinn():
     if os.path.exists(cuh_file):
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
+if is_compiled_with_custom_device('gcu'):
+    import os
+
+    os.environ['PADDLE_XCCL_BACKEND'] = 'gcu'
+
 disable_static()
 __all__ = [  # noqa
     'iinfo',

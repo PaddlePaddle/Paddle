@@ -18,3 +18,7 @@ endif()
 if(WITH_CUSTOM_DEVICE)
   add_subdirectory(custom)
 endif()
+
+if(WITH_GCU)
+  add_subdirectory(gcu)
+endif()

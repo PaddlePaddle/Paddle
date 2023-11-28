@@ -120,6 +120,7 @@ def parse_args():
         "--gpus",
         "--npus",
         "--xpus",
+        "--gcus",
         type=str,
         default=None,
         help="accelerate devices. as --gpus,npus,xpus",
