@@ -2478,7 +2478,6 @@ def _measure_program_real_op_cost_multipass(program, place, run_iters, verbose):
             "paddle.bool",
         ]
         var = cloned_main_block.var(var_name)
-        var: Variable
         var_shape = var.shape
         var_dtype = var.dtype
         assert str(var_dtype) in supported_var_dtypes, (
@@ -2633,7 +2632,6 @@ def measure_program_real_op_cost(
     >>> measure_program_real_op_cost(program, verbose_level=1)
     '''
 
-    # parameter checks
     assert isinstance(program, Program), (
         '"program" should be a instance of "paddle.base.framework.Program" but got type "%s".'
         % type(program).__name__

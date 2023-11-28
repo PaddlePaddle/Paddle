@@ -961,11 +961,11 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
         1,
         platform::EventRole::kInnerOp);
 
-    if (is_in_op_profiling_mode_) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (is_in_op_profiling_mode_) {
       platform::GpuDeviceSync();
-#endif
     }
+#endif
 
     if (op_with_kernel == nullptr) {  // operator base
       instr_node.OpBase()->Run(*local_scope, place_);
@@ -993,15 +993,8 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
       }
     }
 
-    if (is_in_op_profiling_mode_) {
-      OperatorDistAttr* op_dist_attr = nullptr;
-      // Sometimes executor will automatically insert some new ops before
-      // executing. Under this situation, these new ops' id cannot be defined
-      // (as they don't exist in block desc) and are set to an invalid default
-      // value (uint64_max), and doesn't have op_dist_attr pointer. So adding a
-      // if statement to check.
-      if (op->Id() != UINT64_MAX)
-        op_dist_attr = block_.Op(op->Id())->MutableDistAttr();
+    if (is_in_op_profiling_mode_ && op->Id() != UINT64_MAX) {
+      OperatorDistAttr* op_dist_attr = block_.Op(op->Id())->MutableDistAttr();
       platform::Timer op_timer;
       op_timer.Start();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
