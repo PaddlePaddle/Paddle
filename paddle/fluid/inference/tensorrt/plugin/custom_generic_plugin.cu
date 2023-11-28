@@ -29,6 +29,152 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+void validate(const std::string& op_type,
+              const std::string& datatype,
+              const std::string& tensor_format) {
+  std::unordered_set<std::string> supports_dtypes = {
+      "float32", "float16", "int8", "int32"};
+  std::unordered_set<std::string> supports_tensor_formats = {
+      "LINEAR", "CHW32", "CHW2", "HWC8", "HWC16", "DHWC8", "CHW4"};
+  // refer to
+  // https://docs.nvidia.com/deeplearning/tensorrt/developer-guide/index.html#ipluginv2
+  PADDLE_ENFORCE_GE(supports_dtypes.count(datatype),
+                    0,
+                    platform::errors::InvalidArgument(
+                        "custorm op [%s] has unsupported datatype: [%s], "
+                        "now only support: [float32, float16, int8, int32].",
+                        op_type,
+                        datatype));
+  PADDLE_ENFORCE_GE(
+      supports_tensor_formats.count(tensor_format),
+      0,
+      paddle::platform::errors::InvalidArgument(
+          "custorm op [%s] has unsupported tensor format: [%s], "
+          "now only support: [LINEAR, CHW32, CHW2, HWC8, HWC16, DHWC8, CHW4].",
+          op_type,
+          tensor_format));
+
+  if (datatype == "float32") {
+    std::unordered_set<std::string> supports_formats_tmp = {"LINEAR", "CHW32"};
+    PADDLE_ENFORCE_GE(
+        supports_formats_tmp.count(tensor_format),
+        0,
+        paddle::platform::errors::InvalidArgument(
+            "custorm op [%s]: float32 only supports [LINEAR, CHW32], "
+            "but got tensor format: [%s], ",
+            op_type,
+            tensor_format));
+  }
+  if (datatype == "float16") {
+    std::unordered_set<std::string> supports_formats_tmp = {
+        "LINEAR", "CHW2", "HWC8", "HWC16", "DHWC8", "CHW4"};
+    PADDLE_ENFORCE_GE(supports_formats_tmp.count(tensor_format),
+                      0,
+                      paddle::platform::errors::InvalidArgument(
+                          "custorm op [%s]: float16 only supports [LINEAR, "
+                          "CHW2, HWC8, HWC16, DHWC8, CHW4], "
+                          "but got tensor format: [%s], ",
+                          op_type,
+                          tensor_format));
+  }
+  if (datatype == "int8") {
+    std::unordered_set<std::string> supports_formats_tmp = {
+        "LINEAR", "CHW32", "CHW4"};
+    PADDLE_ENFORCE_GE(
+        supports_formats_tmp.count(tensor_format),
+        0,
+        paddle::platform::errors::InvalidArgument(
+            "custorm op [%s]: int8 only supports [LINEAR, CHW32, CHW4], "
+            "but got tensor format: [%s], ",
+            op_type,
+            tensor_format));
+  }
+  if (datatype == "int32") {
+    std::unordered_set<std::string> supports_formats_tmp = {"LINEAR"};
+    PADDLE_ENFORCE_GE(supports_formats_tmp.count(tensor_format),
+                      0,
+                      paddle::platform::errors::InvalidArgument(
+                          "custorm op [%s]: int32 only supports [LINEAR], "
+                          "but got tensor format: [%s], ",
+                          op_type,
+                          tensor_format));
+  }
+}
+
+std::vector<std::pair<std::string, std::string>> parseConfig(
+    const std::string& op_type, const std::string& config) {
+  std::vector<std::pair<std::string, std::string>> res;
+  size_t start = 0;
+  size_t seg = config.find('+', start);
+  while (seg != std::string::npos) {
+    std::string dtype_format = config.substr(start, seg - start);
+    size_t split_pos = dtype_format.find(':');
+    std::string dtype = dtype_format.substr(0, split_pos);
+    std::string format;
+    if (split_pos == std::string::npos) {
+      format = "LINEAR";
+    } else {
+      format = dtype_format.substr(split_pos + 1);
+    }
+    transform(dtype.begin(), dtype.end(), dtype.begin(), ::tolower);
+    transform(format.begin(), format.end(), format.begin(), ::toupper);
+    validate(op_type, dtype, format);
+    res.emplace_back(dtype, format);
+    start = seg + 1;
+    seg = config.find('+', start);
+  }
+  std::string dtype_format = config.substr(start);
+  size_t split_pos = dtype_format.find(':');
+  std::string dtype = dtype_format.substr(0, split_pos);
+  std::string format;
+  if (split_pos == std::string::npos) {
+    format = "LINEAR";
+  } else {
+    format = dtype_format.substr(split_pos + 1);
+  }
+  transform(dtype.begin(), dtype.end(), dtype.begin(), ::tolower);
+  transform(format.begin(), format.end(), format.begin(), ::toupper);
+  validate(op_type, dtype, format);
+  res.emplace_back(dtype, format);
+  return res;
+}
+
+nvinfer1::DataType getTrtDtype(std::string dtype) {
+  if (dtype == "float32") {
+    return nvinfer1::DataType::kFLOAT;
+  } else if (dtype == "float16") {
+    return nvinfer1::DataType::kHALF;
+  } else if (dtype == "int8") {
+    return nvinfer1::DataType::kINT8;
+  } else if (dtype == "int32") {
+    return nvinfer1::DataType::kINT32;
+  } else {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("Unsupported data type [%s]", dtype));
+  }
+}
+
+nvinfer1::TensorFormat getTrtTensorFormat(std::string tensor_format) {
+  if (tensor_format == "LINEAR") {
+    return nvinfer1::TensorFormat::kLINEAR;
+  } else if (tensor_format == "CHW32") {
+    return nvinfer1::TensorFormat::kCHW32;
+  } else if (tensor_format == "CHW2") {
+    return nvinfer1::TensorFormat::kCHW2;
+  } else if (tensor_format == "HWC8") {
+    return nvinfer1::TensorFormat::kHWC8;
+  } else if (tensor_format == "HWC16") {
+    return nvinfer1::TensorFormat::kHWC16;
+  } else if (tensor_format == "DHWC8") {
+    return nvinfer1::TensorFormat::kDHWC8;
+  } else if (tensor_format == "CHW4") {
+    return nvinfer1::TensorFormat::kCHW4;
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported tensor format [%s]", tensor_format));
+  }
+}
+
 GenerateCustomGenericPluginDataType
 ProtoTypeToGenerateCustomGenericPluginDataType(
     framework::proto::VarType_Type proto_type) {
@@ -146,57 +292,62 @@ bool CustomGenericPlugin::supportsFormatCombination(
   auto& op_meta_info_map = OpMetaInfoMap::Instance();
   const auto& meta_info_map = op_meta_info_map.GetMap();
   auto& op_info = meta_info_map.at(op_desc_.Type()).front();
-  auto& supports_formate_fn = OpMetaInfoHelper::GetTrtSupportsFormatFn(op_info);
-  PADDLE_ENFORCE_NE(supports_formate_fn,
-                    nullptr,
+  auto& supports_formate_config =
+      OpMetaInfoHelper::GetTrtSupportsFormatConfig(op_info);
+  PADDLE_ENFORCE_NE(supports_formate_config.empty(),
+                    true,
                     platform::errors::InvalidArgument(
                         "The %s op has no tensorrt plugin "
-                        "supportsFormatCombination function!"
-                        "Please use SetTrtSupportFormatFn to regiser.",
+                        "supportsFormatCombination config!"
+                        "Please use SetTrtSupportFormatConfig to set.",
                         op_desc_.Type().c_str()));
-  std::vector<paddle::any> custom_attrs;
-  auto& attrs = op_desc_.GetAttrMap();
-  auto& op_attrs_names = OpMetaInfoHelper::GetAttrs(op_info);
-  for (auto& op_attrs_name : op_attrs_names) {
-    auto attr_name_and_type = paddle::ParseAttrStr(op_attrs_name);
-    auto attr_name = attr_name_and_type[0];
-    auto attr_type_str = attr_name_and_type[1];
-    if (attr_type_str == "bool") {
-      custom_attrs.emplace_back(PADDLE_GET_CONST(bool, attrs.at(attr_name)));
-    } else if (attr_type_str == "int") {
-      custom_attrs.emplace_back(PADDLE_GET_CONST(int, attrs.at(attr_name)));
-    } else if (attr_type_str == "float") {
-      custom_attrs.emplace_back(PADDLE_GET_CONST(float, attrs.at(attr_name)));
-    } else if (attr_type_str == "int64_t") {
-      custom_attrs.emplace_back(PADDLE_GET_CONST(int64_t, attrs.at(attr_name)));
-    } else if (attr_type_str == "std::string") {
-      custom_attrs.emplace_back(
-          PADDLE_GET_CONST(std::string, attrs.at(attr_name)));
-    } else if (attr_type_str == "std::vector<int>") {
-      custom_attrs.emplace_back(
-          PADDLE_GET_CONST(std::vector<int>, attrs.at(attr_name)));
-    } else if (attr_type_str == "std::vector<float>") {
-      custom_attrs.emplace_back(
-          PADDLE_GET_CONST(std::vector<float>, attrs.at(attr_name)));
-    } else if (attr_type_str == "std::vector<int64_t>") {
-      custom_attrs.emplace_back(
-          PADDLE_GET_CONST(std::vector<int64_t>, attrs.at(attr_name)));
-    } else if (attr_type_str == "std::vector<std::string>") {
-      custom_attrs.emplace_back(
-          PADDLE_GET_CONST(std::vector<std::string>, attrs.at(attr_name)));
+  // generate support format combaination function by config
+  size_t input_num = OpMetaInfoHelper::GetInputs(op_info).size();
+  size_t output_num = OpMetaInfoHelper::GetOutputs(op_info).size();
+  std::vector<std::vector<std::pair<std::string, std::string>>>
+      format_combinations;
+  for (auto& config : supports_formate_config) {
+    auto format_combination = parseConfig(op_desc_.Type(), config);
+    PADDLE_ENFORCE_EQ(input_num + output_num,
+                      format_combination.size(),
+                      phi::errors::InvalidArgument(
+                          "Expexted %d format_combination, but got %d.",
+                          input_num + output_num,
+                          format_combination.size()));
+    format_combinations.emplace_back(format_combination);
+  }
+
+  bool is_supported = false;
+  for (size_t i = 0; i < input_num + output_num; ++i) {
+    if (i < input_num) {
+      if (pos == i) {
+        for (auto& format_combination : format_combinations) {
+          is_supported |=
+              (in_out[pos].type == getTrtDtype(format_combination[i].first) &&
+               in_out[pos].format ==
+                   getTrtTensorFormat(format_combination[i].second));
+        }
+      }
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported `%s` type value as custom attribute now. "
-          "Supported data types include `bool`, `int`, `float`, "
-          "`int64_t`, `std::string`, `std::vector<int>`, "
-          "`std::vector<float>`, `std::vector<int64_t>`, "
-          "`std::vector<std::string>`, Please check whether "
-          "the attribute data type and data type string are matched.",
-          attr_type_str));
+      if (pos == i) {
+        for (auto& format_combination : format_combinations) {
+          bool is_supported_tmp = true;
+          for (size_t j = 0; j < input_num; ++j) {
+            is_supported_tmp &=
+                (in_out[j].type == getTrtDtype(format_combination[j].first) &&
+                 in_out[j].format ==
+                     getTrtTensorFormat(format_combination[j].second));
+          }
+          is_supported_tmp &=
+              (in_out[pos].type == getTrtDtype(format_combination[i].first) &&
+               in_out[pos].format ==
+                   getTrtTensorFormat(format_combination[i].second));
+          is_supported |= is_supported_tmp;
+        }
+      }
     }
   }
-  return supports_formate_fn(
-      {pos, nb_inputs, nb_outputs}, in_out, custom_attrs);
+  return is_supported;
 }
 
 nvinfer1::DataType CustomGenericPlugin::getOutputDataType(
@@ -232,7 +383,7 @@ nvinfer1::DimsExprs CustomGenericPlugin::getOutputDimensions(
                     nullptr,
                     platform::errors::InvalidArgument(
                         "The %s op has no getOutputDimensions function!"
-                        "Please use SetTrtInferShapeFn to regiser.",
+                        "Please use SetTrtInferShapeFn to set.",
                         op_desc_.Type().c_str()));
   std::vector<paddle::any> custom_attrs;
   auto& attrs = op_desc_.GetAttrMap();

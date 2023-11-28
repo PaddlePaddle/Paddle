@@ -74,19 +74,6 @@ nvinfer1::DimsExprs getOutputDimensions(
   return dimsOutput;
 }
 
-bool supportsFormatCombination(
-    std::tuple<int32_t, int32_t, int32_t> pos_nbInputs_nbOutputs,
-    const nvinfer1::PluginTensorDesc* inOut) noexcept {
-  auto [pos, nbInputs, nbOutputs] = pos_nbInputs_nbOutputs;
-  for (int i = 0; i < nbInputs + nbOutputs; ++i) {
-    if (!(inOut[pos].type == nvinfer1::DataType::kFLOAT &&
-          inOut[pos].format == nvinfer1::TensorFormat::kLINEAR)) {
-      return false;
-    }
-  }
-  return true;
-}
-
 PD_BUILD_OP(gap)
     .Inputs({"X"})
     .Outputs({"Out"})
@@ -95,4 +82,4 @@ PD_BUILD_OP(gap)
     .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(InferDtype))
     .SetTrtInferShapeFn(PD_TRT_INFER_SHAPE(getOutputDimensions))
-    .SetTrtSupportFormatFn(PD_TRT_SUPPORTS_FC(supportsFormatCombination));
+    .SetTrtSupportFormatConfig({"float32:LINEAR+float32:LINEAR"});
