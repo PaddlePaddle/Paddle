@@ -29,7 +29,7 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     // 2. Create Temporary Output & Prepare Dist and Dense Output{}
     // 3. Infer DistTensor's Global Shape{}\n
     // 4. Set Output Dist Attr For Default Impl{}\n
-    if (rank_is_in_current_mesh){{
+    if (rank_is_in_current_mesh) {{
       // 5. Select Kernel{}
       // 6. Reshard Input{}\n
       // 7. PrepareData (DataTransform & Prepare Dense Input){}

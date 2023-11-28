@@ -454,7 +454,7 @@ NONEED_TO_SET_DIST_ATTR_COMMENT_TEMPLATE = """
 RESHAPE_CALCULATE_LOCAL_SHAPE_TEMPLATE = """
       std::vector<int64_t> local_shape;
       for (size_t i = 0; i < shape.GetData().size(); i++) {
-        auto out_dist_attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.second[0]);
+        auto& out_dist_attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.second[0]);
         if (out_dist_attr.dims_mapping()[i] >= 0) {
           int64_t mesh_dim = out_dist_attr.process_mesh().shape()[i];
           // TODO: Support aliquant condition.
