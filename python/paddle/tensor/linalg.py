@@ -3500,13 +3500,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
             x, y, rcond, driver
         )
         if driver == "gels":
-            if in_dynamic_mode():
-                rank = paddle.empty(shape=[0], dtype=paddle.int32)
-
-            else:
-                rank = paddle.empty(
-                    shape=[0], dtype=paddle.base.core.DataType.INT32
-                )
+            rank = paddle.empty(shape=[0], dtype="int32")
             singular_values = paddle.empty(shape=[0], dtype=x.dtype)
         elif driver == "gelsy":
             singular_values = paddle.empty(shape=[0], dtype=x.dtype)

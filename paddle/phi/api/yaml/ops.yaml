@@ -1831,6 +1831,8 @@
     func : multiplex
     data_type : inputs
   backward : multiplex_grad
+  data_transform :
+    skip_transform : index
 
 - op : mv
   args : (Tensor x, Tensor vec)
@@ -1997,6 +1999,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule: PowInferSpmd
   kernel :
     func : pow
     data_type : x
@@ -2207,6 +2210,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ScaleInferSpmd
   kernel :
     func : scale {dense -> dense},
            scale_sr {selected_rows -> selected_rows}
@@ -2319,7 +2323,7 @@
     func : ShapeInferMeta
   kernel :
     func : shape {dense -> dense},
-           shape_sr {selected_rows -> selected_rows}
+           shape_sr {selected_rows -> dense}
   data_transform:
     skip_transform : input
 
