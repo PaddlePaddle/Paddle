@@ -68,7 +68,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
   bool Match(pir::Operation* op) const override {
     if (op->HasTrait<pir::SideEffectTrait>() ||
-        op->isa<pir::GetParameterOp>() || op->isa<paddle::dialect::FeedOp>())
+        op->isa<pir::ConstantTensorOp>() || op->isa<pir::ParameterOp>() ||
+        op->isa<paddle::dialect::FeedOp>())
       return false;
     if (!ValidOp(op)) {
       return false;
@@ -92,23 +93,63 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     core.Run({});
 
+    rewriter.SetInsertionPointToStart(rewriter.block());
     // TODO(liuyuanle): support multiple output
-    auto get_parameter_op = rewriter.Build<pir::GetParameterOp>(
-        output_var_name, op->result(0).type());
-    get_parameter_op->set_attribute(
-        kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+    if (ReplaceResultByParameter(op)) {
+      auto parameter_op = rewriter.Build<pir::ParameterOp>(
+          output_var_name, op->result(0).type());
+      parameter_op->set_attribute(
+          kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
 
+      rewriter.ReplaceAllUsesWith(op->result(0), parameter_op->result(0));
+    } else {
+      auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
+          rewriter.tensor_name_attr(output_var_name), op->result(0).type());
+      constant_op->set_attribute(
+          kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+
+      rewriter.ReplaceAllUsesWith(op->result(0), constant_op->result(0));
+    }
     VLOG(4) << "constant_folding_pass applied on [" << op->name() << "] op";
-    rewriter.ReplaceAllUsesWith(op->result(0), get_parameter_op->result(0));
     rewriter.EraseOp(op);
   }
 
  private:
+  bool CheckUseOps(const std::vector<pir::Operation*>& use_ops) const {
+    for (auto* use_op : use_ops) {
+      if (use_op->isa<pir::CombineOp>()) {
+        if (!ReplaceResultByParameter(use_op)) return false;
+      } else if (use_op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
+        auto [input_infos, _1, _2, _3, _4] =
+            use_op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()
+                .GetOpInfo();
+        for (const auto& input_info : input_infos) {
+          if (input_info.type_name.find("IntArrayAttribute") !=
+                  std::string::npos ||
+              input_info.type_name.find("ScalarAttribute") !=
+                  std::string::npos) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
+
+  bool ReplaceResultByParameter(pir::Operation* op) const {
+    for (uint32_t i = 0; i < op->num_results(); i++) {
+      auto use_ops = pir::GetUseOpsForOutput(op, i);
+      if (!CheckUseOps(use_ops)) return false;
+    }
+    return true;
+  }
+
   bool ValidOp(pir::Operation* op) const {
     for (uint32_t i = 0; i < op->num_operands(); i++) {
-      // 1. inputs must come from get_parameter op
+      // 1. inputs must come from parameter op or constant op
       // 2. inputs must be a dense tensor type
-      if (!pir::GetDefiningOpForInput(op, i)->isa<pir::GetParameterOp>() ||
+      if (!(pir::GetDefiningOpForInput(op, i)->isa<pir::ParameterOp>() ||
+            pir::GetDefiningOpForInput(op, i)->isa<pir::ConstantTensorOp>()) ||
           !op->operand_source(i)
                .type()
                .isa<paddle::dialect::DenseTensorType>()) {
@@ -164,9 +205,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         deleted_vars_->push_back(param_name);
       }
 
-      auto get_parameter_op = builder.Build<pir::GetParameterOp>(
+      auto parameter_op = builder.Build<pir::ParameterOp>(
           param_name, op->operand_source(i).type());
-      op_inputs.push_back(get_parameter_op->result(0));
+      op_inputs.push_back(parameter_op->result(0));
     }
 
     // prepare op outputs

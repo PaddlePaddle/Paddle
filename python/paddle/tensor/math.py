@@ -391,7 +391,7 @@ def multiplex(inputs, index, name=None):
 
 
     Args:
-        inputs (list): The input Tensor list. The list elements are N-D Tensors of data types float32, float64, int32, int64. All input Tensor shapes should be the same and rank must be at least 2.
+        inputs (list): The input Tensor list. The list elements are N-D Tensors of data types float32, float64, int32, int64, complex64, complex128. All input Tensor shapes should be the same and rank must be at least 2.
         index (Tensor): Used to select some rows in the input Tensor to construct an index of the output Tensor. It is a 2-D Tensor with data type int32 or int64 and shape [M, 1], where M is the number of input Tensors.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -429,7 +429,14 @@ def multiplex(inputs, index, name=None):
             check_variable_and_dtype(
                 x,
                 'input[' + str(id) + ']',
-                ['float32', 'float64', 'int32', 'int64'],
+                [
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'complex64',
+                    'complex128',
+                ],
                 'multiplex',
             )
         check_variable_and_dtype(

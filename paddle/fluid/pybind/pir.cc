@@ -41,6 +41,7 @@
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
+#include "paddle/fluid/pir/transforms/infer_symbolic_shape_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
@@ -66,6 +67,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
+#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #endif
 
 namespace py = pybind11;
@@ -248,7 +250,7 @@ void BindProgram(py::module *m) {
 }
 
 void RefreshOpStopgradients(Operation *op) {
-  if (op->num_operands() == 0 || op->isa<pir::GetParameterOp>() ||
+  if (op->num_operands() == 0 || op->isa<pir::ParameterOp>() ||
       op->isa<paddle::dialect::UniformOp>()) {
     return;
   } else if (op->isa<pir::SliceOp>()) {
@@ -756,7 +758,7 @@ void BindOpResult(py::module *m) {
       .def_property_readonly(
           "name",
           [](OpResult &self) {
-            if (self.owner()->isa<::pir::GetParameterOp>()) {
+            if (self.owner()->isa<::pir::ParameterOp>()) {
               auto param_name =
                   self.owner()
                       ->attribute<pir::StrAttribute>("parameter_name")
@@ -1538,11 +1540,36 @@ void BindUtils(pybind11::module *m) {
   });
 }
 
+static bool HasDynamicShape(const Program &program) {
+  for (const auto &op : *program.block()) {
+    if (op.isa<pir::CombineOp>()) {
+      continue;
+    }
+    for (uint32_t i = 0; i < op.num_results(); ++i) {
+      if (op.result(i) && op.result(i)
+                              .type()
+                              .dyn_cast<pir::ShapedTypeInterface>()
+                              .IsDynamicShape()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void ApplyPirPass(Program &forward_program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+
+  bool has_dynamic_shape = HasDynamicShape(forward_program);
+
+  auto shape_analysis =
+      has_dynamic_shape
+          ? std::make_shared<pir::MockShapeConstraintIRAnalysis>(ctx)
+          : nullptr;
 
   pir::PassManager pass_manager(ctx);
   cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
@@ -1551,7 +1578,13 @@ void ApplyPirPass(Program &forward_program) {  // NOLINT
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager.AddPass(pir::CreateBuildCinnPass());
-  pass_manager.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+
+  if (has_dynamic_shape) {
+    pass_manager.AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
+  }
+
+  pass_manager.AddPass(
+      cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
 
   pass_manager.Run(&forward_program);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;

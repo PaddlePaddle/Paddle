@@ -46,12 +46,7 @@ class TestSemiAutoParallelShardOptimizer:
         paddle.seed(self._seed)
         linear = paddle.nn.Linear(10, 10)
         batch = paddle.rand(shape=[10, 10])
-        batch = dist.shard_tensor(
-            batch,
-            dist_attr=dist.DistAttr(
-                mesh=self._mesh, sharding_specs=["x", None]
-            ),
-        )
+        batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
         opt = paddle.optimizer.AdamW(parameters=linear.parameters())
         for _ in range(5):
             loss = linear(batch)
@@ -65,14 +60,10 @@ class TestSemiAutoParallelShardOptimizer:
 
     def shard_fn(self, layer_name, layer, process_mesh):
         layer.weight = dist.shard_tensor(
-            layer.weight,
-            dist_attr=dist.DistAttr(
-                mesh=process_mesh, sharding_specs=[None, 'x']
-            ),
+            layer.weight, process_mesh, [dist.Shard(1)]
         )
         layer.bias = dist.shard_tensor(
-            layer.bias,
-            dist_attr=dist.DistAttr(mesh=process_mesh, sharding_specs=['x']),
+            layer.bias, process_mesh, [dist.Shard(0)]
         )
 
     def test_adamw_mp(self):
@@ -104,12 +95,7 @@ class TestSemiAutoParallelShardOptimizer:
         linear = paddle.nn.Linear(10, 10)
         batch = paddle.rand(shape=[10, 10])
         if stage1:
-            batch = dist.shard_tensor(
-                batch,
-                dist_attr=dist.DistAttr(
-                    mesh=self._mesh, sharding_specs=["x", None]
-                ),
-            )
+            batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
         opt = paddle.optimizer.AdamW(parameters=linear.parameters())
         opt.helper = paddle.base.layer_helper.LayerHelper(
             opt.__class__.__name__
@@ -122,25 +108,16 @@ class TestSemiAutoParallelShardOptimizer:
             for k, v in opt._accumulators[key].items():
                 if 'beta' in key:
                     opt._accumulators[key][k] = dist.shard_tensor(
-                        v,
-                        dist_attr=dist.DistAttr(
-                            mesh=self._mesh, sharding_specs=[None]
-                        ),
+                        v, self._mesh, [dist.Replicate()]
                     )
                 else:
                     if 'w' in k:
                         opt._accumulators[key][k] = dist.shard_tensor(
-                            v,
-                            dist_attr=dist.DistAttr(
-                                mesh=self._mesh, sharding_specs=['x', None]
-                            ),
+                            v, self._mesh, [dist.Shard(0)]
                         )
                     else:
                         opt._accumulators[key][k] = dist.shard_tensor(
-                            v,
-                            dist_attr=dist.DistAttr(
-                                mesh=self._mesh, sharding_specs=['x']
-                            ),
+                            v, self._mesh, [dist.Shard(0)]
                         )
         for _ in range(5):
             loss = linear(batch)
@@ -171,8 +148,7 @@ class TestSemiAutoParallelShardOptimizer:
         if self._backend == "gpu":
             self.test_adamw_mp()
             self.test_adamw_shard_optimizer(stage1=True)
-            # A problem has to be addressed if not shard batch.
-            # self.test_adamw_shard_optimizer(stage1=False)
+            self.test_adamw_shard_optimizer(stage1=False)
 
 
 if __name__ == '__main__':

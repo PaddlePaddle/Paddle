@@ -128,6 +128,16 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
+    def test_flash_attention_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            {"dtype": "float16", "seed": "2023"}, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_flash_attention.py",
+                user_defined_envs=envs,
+            )
+
     def test_custom_embedding_grad_api(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
@@ -145,6 +155,26 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
         for envs in envs_list:
             self.run_test_case(
                 "semi_auto_parallel_for_triu.py",
+                user_defined_envs=envs,
+            )
+
+    def test_transpose_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_transpose.py",
+                user_defined_envs=envs,
+            )
+
+    def test_unary_elementwise_like_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_unary_elementwise_like.py",
                 user_defined_envs=envs,
             )
 

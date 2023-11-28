@@ -70,12 +70,14 @@ OPS_API_TEMPLATE = """
 
 NEED_GEN_STATIC_ONLY_APIS = [
     'fetch',
+    'fused_bias_dropout_residual_layer_norm',
     'fused_embedding_eltwise_layernorm',
     'fused_fc_elementwise_layernorm',
     'fused_multi_transformer_xpu',
     'fused_scale_bias_relu_conv_bn',
     'fused_scale_bias_add_relu',
     'fusion_transpose_flatten_concat',
+    'skip_layernorm',
     'generate_sequence_xpu',
     'layer_norm_act_xpu',
     'multi_encoder_xpu',
@@ -85,6 +87,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'fusion_gru',
     'fusion_seqconv_eltadd_relu',
     'fusion_seqexpand_concat_fc',
+    'conv2d_fusion',
     'fusion_repeated_fc_relu',
     'fusion_squared_mat_sub',
     'fused_attention',

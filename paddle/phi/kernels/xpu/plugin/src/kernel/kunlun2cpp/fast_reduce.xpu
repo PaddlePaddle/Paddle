@@ -239,12 +239,14 @@ __global__ void fast_reduce_min_tiny(const T* x, T* y, int m, int t) {
       const DTYPE* x, DTYPE* y, int m, int t);
 _XPU_DEF__FAST_REDUCE_SUM_TINY_(float);
 _XPU_DEF__FAST_REDUCE_SUM_TINY_(float16);
+_XPU_DEF__FAST_REDUCE_SUM_TINY_(bfloat16);
 
 #define _XPU_DEF__FAST_REDUCE_MEAN_TINY_(DTYPE)          \
   template __global__ void fast_reduce_mean_tiny<DTYPE>( \
       const DTYPE* x, DTYPE* y, int m, int t);
 _XPU_DEF__FAST_REDUCE_MEAN_TINY_(float);
 _XPU_DEF__FAST_REDUCE_MEAN_TINY_(float16);
+_XPU_DEF__FAST_REDUCE_MEAN_TINY_(bfloat16);
 
 #define _XPU_DEF__FAST_REDUCE_MAX_TINY_(DTYPE)          \
   template __global__ void fast_reduce_max_tiny<DTYPE>( \

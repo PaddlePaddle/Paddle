@@ -1272,7 +1272,7 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
                            "Tensor operants mode");
 
 /**
- * Using new IR in executor  FLAG
+ * Using PIR in executor  FLAG
  * Name: enable_pir_in_executor
  * Since Version: 2.6.0
  * Value Range: bool, default=false
@@ -1284,7 +1284,21 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
                          "Enable new IR in executor");
 
 /**
- * Using new IR API in Python
+ * Using PIR by translating legacy program to pir program
+ * for dy2st mode  FLAG
+ * Name: enable_pir_in_executor
+ * Since Version: 2.6.0
+ * Value Range: bool, default=true
+ * Example:
+ * Note: If Ture, program will be translated to pir program
+ * and then run in executor for dy2st mode.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_pir_with_pt_in_dy2st,
+                         true,
+                         "Enable new IR in executor");
+
+/**
+ * Using PIR API in Python
  * Name: enable_pir_api
  * Since Version: 2.6.0
  * Value Range: bool, default=false
@@ -1294,7 +1308,7 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
 PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
 
 /**
- * Using new IR in executor FLAG
+ * Using PIR in executor FLAG
  * Name: enable_pir_in_executor_trace_run
  * Since Version: 2.6.0
  * Value Range: bool, default=false
@@ -1347,7 +1361,8 @@ PHI_DEFINE_EXPORTED_int32(
 
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
 /**
  * Communication library related FLAG
  * Name: FLAGS_dynamic_static_unified_comm
