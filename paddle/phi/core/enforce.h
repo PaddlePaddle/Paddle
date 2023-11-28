@@ -44,13 +44,6 @@ limitations under the License. */
 #include <execinfo.h>
 #endif
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include "paddle/common/errors.h"
-
-#include "paddle/utils/string/printf.h"
-#include "paddle/utils/string/to_string.h"
-#include "paddle/utils/test_macros.h"
-
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
@@ -58,7 +51,6 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/cusolver.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include <error.h>
-
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
@@ -70,7 +62,6 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/rocblas.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #include <error.h>  // NOLINT
-
 #include "paddle/phi/backends/dynload/rccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_HIP
@@ -82,32 +73,8 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_types.h"
 #endif
 
-#include "paddle/utils/variant.h"
-
-namespace phi {
-namespace proto {}  // namespace proto
-}  // namespace phi
-
 namespace phi {
 namespace enforce {
-
-/** HELPER MACROS AND FUNCTIONS **/
-#ifndef PADDLE_MAY_THROW
-#define PADDLE_MAY_THROW noexcept(false)
-#endif
-
-#if defined _WIN32 && defined PADDLE_ON_INFERENCE && defined PADDLE_NO_PYTHON
-#define HANDLE_THE_ERROR try {
-#define END_HANDLE_THE_ERROR            \
-  }                                     \
-  catch (const std::exception& e) {     \
-    std::cout << e.what() << std::endl; \
-    throw;                              \
-  }
-#else
-#define HANDLE_THE_ERROR
-#define END_HANDLE_THE_ERROR
-#endif
 
 #ifdef __GNUC__
 inline std::string demangle(std::string name) {

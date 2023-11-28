@@ -138,7 +138,13 @@ if(WITH_GPU)
   cc_test(
     copy_cross_scope_test
     SRCS copy_cross_scope_test.cc
-    DEPS op_registry copy_cross_scope_op scope device_context enforce executor)
+    DEPS op_registry
+         copy_cross_scope_op
+         scope
+         device_context
+         enforce
+         executor
+         common)
 endif()
 
 if(WITH_ONNXRUNTIME AND WIN32)

@@ -29,14 +29,15 @@
 #include <windows.h>  // GetModuleFileName, Sleep
 #endif
 
+#include "paddle/common/errors.h"
 #include "paddle/common/macros.h"
+
 #if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
 #include <execinfo.h>
 #endif
 
-// #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with
-// windows.h
-#include "paddle/common/errors.h"
+// msvc conflict logging with windows.h
+#define GLOG_NO_ABBREVIATED_SEVERITIES
 #include "paddle/utils/string/printf.h"
 #include "paddle/utils/string/to_string.h"
 #include "paddle/utils/test_macros.h"
@@ -56,6 +57,11 @@ class CommonNotMetException : public std::exception {
 
 namespace common {
 namespace enforce {
+
+/** HELPER MACROS AND FUNCTIONS **/
+#ifndef PADDLE_MAY_THROW
+#define PADDLE_MAY_THROW noexcept(false)
+#endif
 
 #if defined _WIN32 && defined PADDLE_ON_INFERENCE && defined PADDLE_NO_PYTHON
 #define HANDLE_THE_ERROR try {

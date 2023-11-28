@@ -43,7 +43,7 @@ if(WITH_CINN)
   cc_library(
     share_varinfo_into_cinn_pass
     SRCS share_varinfo_into_cinn_pass.cc
-    DEPS pass enforce graph_helper computation_op_handle
+    DEPS pass enforce common graph_helper computation_op_handle
          eager_deletion_op_handle)
   cc_test(
     share_varinfo_into_cinn_pass_test

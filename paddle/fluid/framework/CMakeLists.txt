@@ -245,7 +245,7 @@ cc_library(
 cc_library(
   attribute
   SRCS attribute.cc
-  DEPS framework_proto enforce)
+  DEPS framework_proto enforce common)
 cc_library(
   op_version_proto
   SRCS op_version_proto.cc
@@ -417,7 +417,7 @@ cc_library(
 cc_library(
   op_call_stack
   SRCS op_call_stack.cc
-  DEPS op_proto_maker enforce)
+  DEPS op_proto_maker enforce common)
 
 cc_library(
   program_utils

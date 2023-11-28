@@ -158,7 +158,7 @@ if(NOT WIN32)
   cc_library(
     data_loader
     SRCS data_loader.cc
-    DEPS enforce)
+    DEPS enforce common)
 endif()
 if(WITH_GLOO)
   cc_library(

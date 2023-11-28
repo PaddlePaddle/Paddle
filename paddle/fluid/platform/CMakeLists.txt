@@ -16,12 +16,12 @@ endif()
 cc_library(
   enforce INTERFACE
   SRCS enforce.cc
-  DEPS ${enforce_deps})
+  DEPS ${enforce_deps} common)
 cc_library(monitor SRCS monitor.cc)
 cc_test(
   enforce_test
   SRCS enforce_test.cc
-  DEPS enforce)
+  DEPS enforce common)
 
 cc_test(
   cpu_info_test
@@ -53,7 +53,7 @@ add_subdirectory(dynload)
 cc_library(
   cpu_helper
   SRCS cpu_helper.cc
-  DEPS cblas enforce)
+  DEPS cblas enforce common)
 cc_test(
   cpu_helper_test
   SRCS cpu_helper_test.cc
@@ -82,13 +82,13 @@ if(WITH_GPU)
   nv_library(
     stream_callback_manager
     SRCS stream_callback_manager.cc
-    DEPS simple_threadpool enforce)
+    DEPS simple_threadpool enforce common)
 endif()
 if(WITH_ROCM)
   hip_library(
     stream_callback_manager
     SRCS stream_callback_manager.cc
-    DEPS simple_threadpool enforce)
+    DEPS simple_threadpool enforce common)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
@@ -101,7 +101,7 @@ if(WITH_GLOO)
   cc_library(
     gloo_context
     SRCS gloo_context.cc
-    DEPS framework_proto gloo_wrapper enforce)
+    DEPS framework_proto gloo_wrapper enforce common)
 endif()
 
 # separate init from device_context to avoid cycle dependencies
@@ -136,7 +136,7 @@ cc_library(
 cc_library(
   collective_helper
   SRCS collective_helper.cc gen_comm_id_helper.cc
-  DEPS framework_proto device_context enforce)
+  DEPS framework_proto device_context enforce common)
 
 if(WITH_GPU OR WITH_ROCM)
   target_link_libraries(device_context gpu_resource_pool)
@@ -160,7 +160,7 @@ set(DEVICE_EVENT_LIBS)
 cc_library(
   device_event_base
   SRCS device_event_base.cc
-  DEPS place enforce device_context op_registry)
+  DEPS place enforce device_context op_registry common)
 set(DEVICE_EVENT_LIBS
     device_event_base
     CACHE INTERNAL "device event libs")
