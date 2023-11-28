@@ -222,17 +222,17 @@ int ValueExecutionInfo::GetVarId(const Variable* var) const {
 const std::unordered_set<std::string> SpecialOps = {
     paddle::dialect::FeedOp::name(),
     paddle::dialect::FetchOp::name(),
-    paddle::dialect::DataOp::name(),
     pir::CombineOp::name(),
+    pir::SetParameterOp::name(),
+    pir::ParameterOp::name(),
+    pir::ConstantOp::name(),
     pir::SliceOp::name(),
     pir::SplitOp::name(),
-    pir::SetParameterOp::name(),
+    paddle::dialect::DataOp::name(),
     pir::ShadowOutputOp::name(),
     paddle::dialect::IfOp::name(),
     paddle::dialect::WhileOp::name(),
     pir::StackCreateOp::name(),
-    pir::ShadowOutputOp::name(),
-    "builtin.constant",
 };
 
 Variable* CreateVar(pir::Value value,
@@ -491,7 +491,7 @@ void HandleForSpecialOp(pir::Operation* op,
     VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
 
     value_exe_info->Rename(value, var_name, orig_name);
-  } else if (op_name == "builtin.parameter") {
+  } else if (op->isa<pir::ParameterOp>()) {
     VLOG(6) << "Handle for builtin.parameter:";
     auto param_name = op->attributes()
                           .at("parameter_name")
@@ -500,7 +500,7 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->result(0);
 
     value_exe_info->Add(value, param_name);
-  } else if (op_name == "builtin.constant") {
+  } else if (op->isa<pir::ConstantOp>()) {
     VLOG(6) << "Handle for builtin.constant:";
     if (op->isa<pir::ConstantTensorOp>()) {
       auto param_name = op->dyn_cast<pir::ConstantTensorOp>().tensor_name();

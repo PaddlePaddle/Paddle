@@ -94,7 +94,7 @@ WhileInstruction::WhileInstruction(size_t id,
       std::vector<int> outputs_id = GetValueIds(value, *parent_exe_info);
       outputs.emplace(value, outputs_id);
     }
-    GetInsideStackOutputs(body_block_, *parent_exe_info, &outputs);
+    InsertTuplePushContinerToOuts(body_block_, *parent_exe_info, &outputs);
   }
   SetOutputs(outputs);
 

@@ -100,8 +100,9 @@ class InstructionBase {
 
   const std::vector<size_t>& GCCheckVars() const;
   void AddGCCheckVar(size_t id);
-  const std::vector<Variable*>& EagerGcVars() const;
+  const std::vector<Variable*>& EagerGCVars() const;
   void AddEagerGCVar(Variable* var);
+  void ClearEagerGCVars();
 
   const std::vector<std::pair<Variable*, Variable*>>& InplaceInfo() const;
   void AddInplace(Variable* in, Variable* out);

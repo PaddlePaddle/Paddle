@@ -595,9 +595,6 @@ const std::map<size_t, std::set<size_t>>& PirDependencyBuilder::Build(
   instructions_ = instructions;
   op_num_ = instructions_.size();
 
-  for (auto instruct : instructions_) {
-  }
-
   ops_before_.assign(op_num_, {});
   ops_behind_.assign(op_num_, {});
   op_happens_before_->assign(op_num_, std::vector<bool>(op_num_, false));

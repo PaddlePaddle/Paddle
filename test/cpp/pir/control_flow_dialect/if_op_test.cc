@@ -134,10 +134,16 @@ TEST(if_op_test, network_with_backward) {
   auto if_op = builder.Build<IfOp>(cond, std::vector<pir::Type>{x.type()});
 
   builder.SetInsertionPointToStart(if_op.true_block());
-  auto local1_z = builder.Build<AddOp>(x, y).out();
+
+  auto add_op = builder.Build<AddOp>(x, y);
+  auto local1_z = add_op.out();
   auto local1_w = builder.Build<AddOp>(local1_z, y).out();
   builder.Build<pir::TuplePushOp>(inlet_0,
                                   std::initializer_list<pir::Value>{local1_z});
+
+  std::string in_name = "tuple_in";
+  builder.Build<pir::ShadowOutputOp>(add_op, in_name);
+
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{local1_w});
 
   builder.SetInsertionPointToStart(if_op.false_block());
@@ -157,8 +163,13 @@ TEST(if_op_test, network_with_backward) {
 
   // construct the true block of if_grad
   builder.SetInsertionPointToStart(if_grad.true_block());
-  auto pop_local1_z =
-      builder.Build<pir::TuplePopOp>(outlet_0).outlet_element(0);
+  auto tuple_pop_op = builder.Build<pir::TuplePopOp>(outlet_0);
+
+  auto pop_local1_z = tuple_pop_op.outlet_element(0);
+
+  std::string out_name = "tuple_out";
+  builder.Build<pir::ShadowOutputOp>(tuple_pop_op->result(0), out_name);
+
   auto local1_add_grad_op = builder.Build<AddGradOp>(pop_local1_z, y, out_grad);
   auto pop_local1_z_grad = local1_add_grad_op.x_grad(),
        local1_y_grad_0 = local1_add_grad_op.y_grad();
@@ -200,5 +211,20 @@ TEST(if_op_test, network_with_backward) {
   paddle::framework::InterpreterCore test_core(
       place, {}, kernel_program->block(), &scope);
 
+  test_core.SetSkipGcVars({in_name, out_name});
+
   test_core.Run({});
+
+  auto in_tensor =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(in_name)->Get<phi::DenseTensor>()
+          : test_core.local_scope()->FindVar(in_name)->Get<phi::DenseTensor>();
+  auto out_tensor =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(out_name)->Get<phi::DenseTensor>()
+          : test_core.local_scope()->FindVar(out_name)->Get<phi::DenseTensor>();
+
+  std::cout << out_tensor.data<float>()[0] << std::endl;
+
+  //   EXPECT_EQ(in_tensor, out_tensor);
 }

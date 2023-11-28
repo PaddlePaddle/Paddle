@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/new_executor/instruction/has_elements_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
-#include "paddle/fluid/framework/tensor_ref_array.h"
 
 namespace paddle {
 namespace framework {
@@ -40,18 +39,21 @@ HasElementsInstruction::HasElementsInstruction(
   SetInputs(inputs);
 
   type_ = OpFuncType::kCpuSync;
-}
 
-void HasElementsInstruction::Run() {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  dev_ctx_ = pool.Get(platform::CPUPlace());
+
   auto stack_value = op_->dyn_cast<pir::HasElementsOp>().operand_source(0);
   auto var_array = value_exe_info_->GetVarByValue(stack_value);
   auto stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
+}
+
+void HasElementsInstruction::Run() {
   bool is_empty = stack_element_var_array_->size();
   auto bool_var = value_exe_info_->GetVarByValue(op_->result(0));
   auto* bool_tensor = bool_var->GetMutable<phi::DenseTensor>();
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  const platform::DeviceContext* dev_ctx = pool.Get(platform::CPUPlace());
-  bool* bool_ptr = dev_ctx->Alloc<bool>(bool_tensor);
+
+  bool* bool_ptr = dev_ctx_->Alloc<bool>(bool_tensor);
   *bool_ptr = is_empty;
 }
 }  // namespace framework

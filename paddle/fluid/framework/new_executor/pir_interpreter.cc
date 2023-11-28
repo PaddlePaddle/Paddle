@@ -993,9 +993,10 @@ void PirInterpreter::CheckGC(InstructionBase* instr) {
     }
   }
 
-  for (auto var : instr->EagerGcVars()) {
+  for (auto var : instr->EagerGCVars()) {
     gc_->Add(var, instr);
   }
+  instr->ClearEagerGCVars();
 }
 
 void PirInterpreter::CalculateLastLiveOps() {

@@ -88,8 +88,8 @@ CondInstruction::CondInstruction(size_t id,
       outputs.emplace(value, GetValueIds(value, *value_exec_info));
     }
   }
-  GetInsideStackOutputs(true_branch_block, *value_exec_info, &outputs);
-  GetInsideStackOutputs(false_branch_block, *value_exec_info, &outputs);
+  InsertTuplePushContinerToOuts(true_branch_block, *value_exec_info, &outputs);
+  InsertTuplePushContinerToOuts(false_branch_block, *value_exec_info, &outputs);
   SetOutputs(outputs);
   VLOG(6) << "finish process inputs outputs index";
 

@@ -20,17 +20,12 @@
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
-namespace ir {
-class Operation;
-}  // namespace ir
-
 namespace pir {
 class TuplePushOp;
 }  // namespace pir
 
 namespace paddle {
 namespace framework {
-class Value;
 class ValueExecutionInfo;
 
 class TuplePushInstruction : public InstructionBase {

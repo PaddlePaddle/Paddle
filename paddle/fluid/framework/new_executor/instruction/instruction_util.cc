@@ -297,15 +297,15 @@ std::vector<pir::Value> GetExternalInputs(
   return outside_op_inputs;
 }
 
-std::unordered_set<pir::Value> GetBlockInnerStackOutputs(pir::Block* block) {
+std::unordered_set<pir::Value> GetTuplePushContainer(pir::Block* block) {
   std::unordered_set<pir::Value> inner_outputs;
   for (auto& op : (*block)) {
-    VLOG(8) << "GetBlockInnerStackOutputs of " << op.name();
+    VLOG(8) << "GetTuplePushContainer of " << op.name();
     if (op.num_regions()) {
       for (size_t i = 0; i < op.num_regions(); ++i) {
         for (auto& sub_block : op.region(i)) {
           std::unordered_set<pir::Value> sub_set =
-              GetBlockInnerStackOutputs(&sub_block);
+              GetTuplePushContainer(&sub_block);
           inner_outputs.insert(sub_set.begin(), sub_set.end());
         }
       }
@@ -318,20 +318,17 @@ std::unordered_set<pir::Value> GetBlockInnerStackOutputs(pir::Block* block) {
   return inner_outputs;
 }
 
-std::vector<pir::Value> GetInsideStackOutputs(
+void InsertTuplePushContinerToOuts(
     pir::Block* block,
     const ValueExecutionInfo& value_exec_info,
     std::unordered_map<pir::Value, std::vector<int>>* outputs) {
   std::unordered_set<pir::Value> inner_stack_outputs;
-  inner_stack_outputs = GetBlockInnerStackOutputs(block);
+  inner_stack_outputs = GetTuplePushContainer(block);
 
-  std::vector<pir::Value> ret;
   for (pir::Value value : inner_stack_outputs) {
     outputs->emplace(value, GetValueIds(value, value_exec_info));
-    ret.push_back(value);
-    VLOG(6) << "GetInsideStackOutputs of " << value.impl();
+    VLOG(6) << "InsertTuplePushContinerToOuts of " << value.impl();
   }
-  return ret;
 }
 
 bool GetCondData(const phi::DenseTensor& cond) {

@@ -61,8 +61,7 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
 
 void TuplePushInstruction::Run() {
   if (tuple_push_op_.tuple_size() == 0) {
-    Variable* var = nullptr;
-    stack_element_var_array_->emplace_back(var);
+    stack_element_var_array_->emplace_back(nullptr);
   } else {
     auto& value_2_var_name = value_exe_info_->GetValue2VarName();
     for (int i = tuple_push_op_.tuple_size() - 1; i >= 0; --i) {

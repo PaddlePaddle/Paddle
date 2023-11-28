@@ -17,15 +17,11 @@
 #include <string>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-
-namespace ir {
-class Operation;
-}  // namespace ir
 
 namespace paddle {
 namespace framework {
-class Value;
 class ValueExecutionInfo;
 
 class HasElementsInstruction : public InstructionBase {
@@ -48,7 +44,11 @@ class HasElementsInstruction : public InstructionBase {
 
   std::string name_{"has_elelments_instruction"};
 
-  ValueExecutionInfo* value_exe_info_;
+  const platform::DeviceContext* dev_ctx_;  // not owned
+
+  ValueExecutionInfo* value_exe_info_;  // not owned
+
+  VariableRefArray* stack_element_var_array_;  // not owned
 };
 
 }  // namespace framework

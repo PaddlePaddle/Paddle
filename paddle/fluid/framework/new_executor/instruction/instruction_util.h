@@ -54,7 +54,7 @@ std::vector<pir::Value> GetExternalInputs(
     const ValueExecutionInfo& value_exec_info,
     std::unordered_map<pir::Value, std::vector<int>>* input_ids);
 
-std::vector<pir::Value> GetInsideStackOutputs(
+void InsertTuplePushContinerToOuts(
     pir::Block* block,
     const ValueExecutionInfo& value_exec_info,
     std::unordered_map<pir::Value, std::vector<int>>* outputs);
