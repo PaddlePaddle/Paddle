@@ -76,7 +76,7 @@ class WhileOp : public pir::Op<WhileOp> {
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value cond,
                     const std::vector<pir::Value> &inputs);
-  pir::Block &body_block();
+  pir::Block &body();
   pir::Value cond();
   void Print(pir::IrPrinter &printer);  // NOLINT
   void VerifySig() {}
