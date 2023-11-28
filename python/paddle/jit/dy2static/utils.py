@@ -1463,6 +1463,7 @@ def cinn_is_enabled(build_strategy, backend):
 
 
 def prim_is_enabled():
+    core.check_and_set_prim_all_enabled()
     return core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled()
 
 
