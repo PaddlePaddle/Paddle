@@ -11,3 +11,23 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+#pragma once
+
+#include <vector>
+
+#include "paddle/phi/common/int_array.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
+#include "paddle/phi/core/distributed/type_defs.h"
+
+namespace phi {
+namespace distributed {
+
+SpmdInfo ExpandInferSpmd(const DistMetaTensor& x, const IntArray& shape);
+
+SpmdInfo ExpandInferSpmdReverse(const DistMetaTensor& x,
+                                const DistMetaTensor& out,
+                                const IntArray& shape);
+
+}  // namespace distributed
+}  // namespace phi
