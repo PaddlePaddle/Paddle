@@ -43,7 +43,7 @@ __global__ void CEmbedding(T* out,
     size_t col = i % columns;
     auto id = ids[row];
 
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         id >= 0 && (vocab_size < 0 || id < vocab_size),
         "The index is out of bounds, "
         "please check whether the dimensions of index and "
