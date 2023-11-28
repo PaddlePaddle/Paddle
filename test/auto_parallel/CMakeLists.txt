@@ -155,6 +155,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_engine_with_prim MODULES test_engine_with_prim)
   set_tests_properties(test_engine_with_prim
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 150)
+  py_test_modules(test_gpt_with_prim MODULES test_gpt_with_prim)
+  set_tests_properties(test_gpt_with_prim
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 150)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
