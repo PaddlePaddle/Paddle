@@ -196,8 +196,19 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
   // and output with the inferred dims mapping.
   TensorDistAttr x_dist_attr_dst(x_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
+  x_dist_attr_dst.set_dims_mapping(dims_mapping_vec[1]);
+  if (x_dist_attr_dst.dynamic_dims().size() !=
+      x_dist_attr_dst.dims_mapping().size()) {
+    VLOG(3) << "Reshape InferSPMD change input dist attr dynamic dims";
+    x_dist_attr_dst.set_default_dynamic_dims(x_dist_attr_dst.dims_mapping());
+  }
   TensorDistAttr out_dist_attr(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
+  if (out_dist_attr.dynamic_dims().size() !=
+      out_dist_attr.dims_mapping().size()) {
+    VLOG(3) << "Reshape InferSPMD change output dist attr dynamic dims";
+    out_dist_attr.set_default_dynamic_dims(out_dist_attr.dims_mapping());
+  }
 
   VLOG(4) << "Transformation from input to output:";
   for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
@@ -273,8 +284,18 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   // and output with the inferred dims mapping
   TensorDistAttr out_dist_attr_dst(out_dist_attr_src);
   out_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
+  if (out_dist_attr_dst.dynamic_dims().size() !=
+      out_dist_attr_dst.dims_mapping().size()) {
+    VLOG(3) << "Reshape InferSPMD change output dist attr dynamic dims";
+    out_dist_attr_dst.set_default_dynamic_dims(
+        out_dist_attr_dst.dims_mapping());
+  }
   TensorDistAttr x_dist_attr(x.dist_attr());
   x_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
+  if (x_dist_attr.dynamic_dims().size() != x_dist_attr.dims_mapping().size()) {
+    VLOG(3) << "Reshape InferSPMD change input dist attr dynamic dims";
+    x_dist_attr.set_default_dynamic_dims(x_dist_attr.dims_mapping());
+  }
 
   VLOG(4) << "Transformation from output to input:";
   for (int64_t i = 0, n = trans.size(); i < n; i++) {
@@ -301,7 +322,6 @@ SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
   const auto& x_shape_dist_src = x_shape.dist_attr();
   auto tmp = ReshapeInferSpmdDynamic(x_shape, out_grad_shape);
   // check no shard is needed
-  VLOG(3) << "after ReshapeInferSpmd";
   const auto& x_shape_dist_dst = PADDLE_GET_CONST(TensorDistAttr, tmp.first[0]);
   const auto& out_grad_dist_dst =
       PADDLE_GET_CONST(TensorDistAttr, tmp.second[0]);
@@ -311,7 +331,7 @@ SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
                         "x_shape should not be re shared: [%s] => [%s]",
                         x_shape_dist_src.to_string(),
                         x_shape_dist_dst.to_string()));
-  return {{x_shape_dist_dst, out_grad_dist_dst}, {x_shape_dist_dst}};
+  return {{out_grad_dist_dst}, {x_shape_dist_dst}};
 }
 
 }  // namespace distributed
