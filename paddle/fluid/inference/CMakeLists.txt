@@ -142,6 +142,7 @@ if(APPLE)
   set_target_properties(paddle_inference_shared
                         PROPERTIES LINK_FLAGS "-Wl,-rpath,'$ORIGIN'")
 else()
+  # disable-new-dtags is used for compatible with higher version linux
   set_target_properties(
     paddle_inference_shared
     PROPERTIES LINK_FLAGS "-Wl,--disable-new-dtags,-rpath,'$ORIGIN'")
