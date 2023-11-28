@@ -83,19 +83,6 @@
   kernel :
     func : any
 
-- op : arange
-  args : (Scalar start, Scalar end, Scalar step, DataType dtype=DataType::FLOAT64, Place place=CPUPlace())
-  output : Tensor(out)
-  infer_meta :
-    func : ArangeInferMeta
-    param : [start, end, step, dtype]
-  kernel :
-    func : arange
-    param : [start, end, step]
-    data_type : dtype
-    backend : place
-  support_tensor : [start, end, step]
-
 - op : assert
   args : (Tensor cond, Tensor[] data, int64_t summarize = -1)
   output :
