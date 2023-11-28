@@ -49,6 +49,8 @@ graph:
                       |
                   layernorm
                       |
+                     act
+                      |
                     output
 ------------------------------------------------------
 After the pass is applied:
@@ -57,16 +59,19 @@ After the pass is applied:
                       |    /
                       |   /
    scale---- add_layernorm_fusion ---- bias
-                /     |    \     \
-               /      |     \     \
-          variance    |      meam  z_add
+        /      /     |    \     \
+       /      /      |     \     \
+    act  variance    |      meam  z_add
                     Output
 */
 struct AddLayernormXPUPattern : public PatternBase {
-  AddLayernormXPUPattern(PDPattern* pattern, const std::string& name_scope);
+  AddLayernormXPUPattern(PDPattern* pattern,
+                         const std::string& name_scope,
+                         const std::string& act_type);
   // declare operator node's name
   PATTERN_DECL_NODE(ele_add);
   PATTERN_DECL_NODE(l_norm);
+  PATTERN_DECL_NODE(act);
   // declare variable node's name
   PATTERN_DECL_NODE(add_x);
   PATTERN_DECL_NODE(add_y);
@@ -76,11 +81,16 @@ struct AddLayernormXPUPattern : public PatternBase {
   PATTERN_DECL_NODE(norm_mean);
   PATTERN_DECL_NODE(norm_variance);
   PATTERN_DECL_NODE(norm_out);
+  PATTERN_DECL_NODE(act_out);
+
+ private:
+  std::string act_type_;
 };
 
 AddLayernormXPUPattern::AddLayernormXPUPattern(PDPattern* pattern,
-                                               const std::string& name_scope)
-    : PatternBase(pattern, name_scope, name_scope) {
+                                               const std::string& name_scope,
+                                               const std::string& act_type)
+    : PatternBase(pattern, name_scope, name_scope), act_type_(act_type) {
   auto ele_add =
       pattern->NewNode(ele_add_repr())->assert_is_op("elementwise_add");
   auto add_x = pattern->NewNode(add_x_repr())
@@ -111,11 +121,26 @@ AddLayernormXPUPattern::AddLayernormXPUPattern(PDPattern* pattern,
                            ->AsOutput()
                            ->assert_is_op_output("layer_norm", "Variance")
                            ->assert_has_n_outputs(0);
-  auto norm_out = pattern->NewNode(norm_out_repr())
-                      ->AsOutput()
-                      ->assert_is_op_output("layer_norm", "Y");
+  auto norm_out =
+      pattern->NewNode(norm_out_repr())->assert_is_op_output("layer_norm", "Y");
+  if (!act_type_.empty()) {
+    norm_out->assert_has_n_outputs(1);
+  }
   l_norm->LinksFrom({ele_out, norm_bias, norm_scale})
       .LinksTo({norm_out, norm_mean, norm_variance});
+  // act op
+  PDNode* act = nullptr;
+  PDNode* act_out = nullptr;
+  if (!act_type_.empty()) {
+    norm_out->assert_is_op_input(act_type_, "X");
+    act = pattern->NewNode(act_repr())->assert_is_op(act_type_);
+    act_out =
+        pattern->NewNode(act_out_repr())->assert_is_op_output(act_type_, "Out");
+    act->LinksFrom({norm_out}).LinksTo({act_out});
+  } else {
+    act_out = norm_out;
+  }
+  act_out->AsOutput();
 }
 
 }  // namespace patterns
@@ -146,7 +171,7 @@ class AddLayernormXPUFusePass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void FuseAddLayernorm(ir::Graph* graph) const;
+  void FuseAddLayernorm(ir::Graph* graph, const std::string& act_type) const;
 
   const std::string name_scope_{"add_layernorm_xpu_fuse_pass"};
 };
@@ -155,13 +180,16 @@ void AddLayernormXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
-
-  FuseAddLayernorm(graph);
+  for (auto act_type : {"leaky_relu", ""}) {
+    FuseAddLayernorm(graph, act_type);
+  }
 }
 
-void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
+void AddLayernormXPUFusePass::FuseAddLayernorm(
+    ir::Graph* graph, const std::string& act_type) const {
   GraphPatternDetector gpd;
-  patterns::AddLayernormXPUPattern pattern(gpd.mutable_pattern(), name_scope_);
+  patterns::AddLayernormXPUPattern pattern(
+      gpd.mutable_pattern(), name_scope_, act_type);
 
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -170,6 +198,7 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     // declare operator node's name
     GET_IR_NODE(ele_add);
     GET_IR_NODE(l_norm);
+    GET_IR_NODE(act);
     // declare variable node's name
     GET_IR_NODE(add_x);
     GET_IR_NODE(add_y);
@@ -179,6 +208,7 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     GET_IR_NODE(norm_mean);
     GET_IR_NODE(norm_variance);
     GET_IR_NODE(norm_out);
+    GET_IR_NODE(act_out);
 
     auto* block = l_norm->Op()->Block();
     auto* scope = param_scope();
@@ -197,7 +227,11 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
         PADDLE_GET_CONST(int, l_norm->Op()->GetAttr("begin_norm_axis"));
 
     std::string fused_op_out_name;
-    fused_op_out_name = norm_out->Name();
+    if (!act_type.empty()) {
+      fused_op_out_name = act_out->Name();
+    } else {
+      fused_op_out_name = norm_out->Name();
+    }
     // Generate add_layernorm fused op
     framework::OpDesc fused_op_desc(block);
 
@@ -210,15 +244,34 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     fused_op_desc.SetAttr("epsilon", eps);
     fused_op_desc.SetAttr("begin_norm_axis", begin_norm_axis);
     fused_op_desc.SetOutput("out", {fused_op_out_name});
+    // set attrs of fused_op
+    float act_param_ = 0.0f;
+    if (!act_type.empty()) {
+      if (act_type == "leaky_relu") {
+        act_param_ = PADDLE_GET_CONST(float, act->Op()->GetAttr("alpha"));
+      } else if (act_type == "hard_sigmoid") {
+        act_param_ = PADDLE_GET_CONST(float, act->Op()->GetAttr("slope"));
+      }
+    }
+    fused_op_desc.SetAttr("act_type", ConvertActivationType(act_type));
+    fused_op_desc.SetAttr("act_param", act_param_);
     // relink fused op
     auto* fused_op = graph->CreateOpNode(&fused_op_desc);
     IR_NODE_LINK_TO(add_x, fused_op);
     IR_NODE_LINK_TO(add_y, fused_op);
     IR_NODE_LINK_TO(norm_scale, fused_op);
     IR_NODE_LINK_TO(norm_bias, fused_op);
-    IR_NODE_LINK_TO(fused_op, norm_out);
+    if (act_out) {
+      IR_NODE_LINK_TO(fused_op, act_out);
+    } else {
+      IR_NODE_LINK_TO(fused_op, norm_out);
+    }
 
     delete_nodes.insert({ele_add, l_norm, ele_out, norm_mean, norm_variance});
+    if (act != nullptr) {
+      delete_nodes.insert(act);
+      delete_nodes.insert(norm_out);
+    }
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
   };

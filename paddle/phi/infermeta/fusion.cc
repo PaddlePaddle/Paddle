@@ -100,6 +100,8 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
                               const MetaTensor& bias,
                               int begin_norm_axis,
                               float epsilon,
+                              int act_type,
+                              float act_param,
                               MetaTensor* out) {
   int axis = -1;
   auto x_dims = x.dims();
@@ -115,6 +117,8 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
   out->share_lod(x);
 }
+
+
 
 inline int ConvOutSize(int input_size,
                        int filter_size,
