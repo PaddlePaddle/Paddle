@@ -41,7 +41,7 @@ void OperatorDialect::initialize() {
   RegisterOp<ConcatOp>();
   RegisterOp<SplitOp>();
   RegisterAttribute<GroupInfoAttribute>();
-  RegisterAttribute<CUDAJITInfoAttribute>();
+  RegisterAttribute<CINNKernelInfoAttribute>();
 }
 
 void OperatorDialect::PrintType(pir::Type type, std::ostream &os) const {}
@@ -57,8 +57,8 @@ void OperatorDialect::PrintAttribute(pir::Attribute attr,
          << "[" << data.fn_name << "]";
     }
     { os << "<#AttrNotImplemented>"; }
-  } else if (attr.isa<CUDAJITInfoAttribute>()) {
-    auto cuda_jit_info = attr.dyn_cast<CUDAJITInfoAttribute>();
+  } else if (attr.isa<CINNKernelInfoAttribute>()) {
+    auto cuda_jit_info = attr.dyn_cast<CINNKernelInfoAttribute>();
 
     os << "(" << cuda_jit_info.data().fn_ptr;
     os << ')';

@@ -107,7 +107,7 @@ TEST(CinnJitInstruction, Run) {
       auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
       std::unordered_map<std::string, ::pir::Attribute> op_attrs{
           {cinn::dialect::JitKernelOp::kAttrName,
-           cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
+           cinn::dialect::CINNKernelInfoAttribute::get(ctx, fn_ptr_res[0])},
       };
 
       auto out_type = it->result(0).type();
@@ -170,7 +170,6 @@ TEST(CinnJitInstruction, Run) {
   bool res1 = simple_cmp(out_tensor.data<float>()[1], 1.35701);
   bool res2 = simple_cmp(out_tensor.data<float>()[2], 1.35701);
   bool res3 = simple_cmp(out_tensor.data<float>()[3], 1.35701);
-
   EXPECT_EQ(res0, true);
   EXPECT_EQ(res1, true);
   EXPECT_EQ(res2, true);
