@@ -1361,7 +1361,8 @@ PHI_DEFINE_EXPORTED_int32(
 
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
 /**
  * Communication library related FLAG
  * Name: FLAGS_dynamic_static_unified_comm
