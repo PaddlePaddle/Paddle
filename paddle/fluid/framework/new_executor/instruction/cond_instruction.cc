@@ -54,8 +54,7 @@ CondInstruction::CondInstruction(size_t id,
   VLOG(6) << "finish process analyse kernel type";
 
   auto cond_value = if_op.operand_source(0);
-  cond_var_ = value_exec_info->GetScope()->FindVar(
-      value_exec_info->GetValue2VarName().at(cond_value));
+  cond_var_ = value_exec_info->GetVarByValue(cond_value);
   for (size_t i = 0; i < if_op.num_results(); ++i) {
     output_vars_.push_back(value_exec_info->GetScope()->GetVar(
         value_exec_info->GetValue2VarName().at(if_op.result(i))));
@@ -70,9 +69,9 @@ CondInstruction::CondInstruction(size_t id,
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *value_exec_info, &inputs);
   auto true_outside_inputs =
-      GetOutsideOpInputs(true_branch_block, *value_exec_info, &inputs);
+      GetExternalInputs(true_branch_block, *value_exec_info, &inputs);
   auto false_outside_inputs =
-      GetOutsideOpInputs(false_branch_block, *value_exec_info, &inputs);
+      GetExternalInputs(false_branch_block, *value_exec_info, &inputs);
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;

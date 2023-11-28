@@ -16,6 +16,7 @@
 
 #include <string>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
@@ -51,6 +52,8 @@ class TuplePopInstruction : public InstructionBase {
   ::pir::Operation* op_;
 
   ::pir::TuplePopOp tuple_pop_op_;
+
+  OpFuncType type_;
 
   std::string name_{"tuple_pop_instruction"};
 

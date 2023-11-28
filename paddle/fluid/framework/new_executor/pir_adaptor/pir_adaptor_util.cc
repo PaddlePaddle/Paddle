@@ -133,6 +133,10 @@ std::string ValueExecutionInfo::GetNameById(int id) const {
   return "";
 }
 
+Variable* ValueExecutionInfo::GetVarByValue(pir::Value value) const {
+  return scope_->FindVar(GetVarName(value));
+}
+
 const std::unordered_map<::pir::Value, std::string>&
 ValueExecutionInfo::GetValue2VarName() const {
   return value_2_var_name_;
@@ -186,6 +190,7 @@ std::string ValueExecutionInfo::GetVarName(::pir::Value value) const {
   if (it != value_2_var_name_.end()) {
     return it->second;
   }
+  VLOG(8) << "can not find var name for value %s", value.impl();
   return "";
 }
 
@@ -222,7 +227,6 @@ const std::unordered_set<std::string> SpecialOps = {
     pir::SliceOp::name(),
     pir::SplitOp::name(),
     pir::SetParameterOp::name(),
-    pir::GetParameterOp::name(),
     pir::ShadowOutputOp::name(),
     paddle::dialect::IfOp::name(),
     paddle::dialect::WhileOp::name(),
@@ -341,7 +345,7 @@ void BuildValue(pir::Value value,
   Variable* var = nullptr;
   auto& value_2_var_name = value_exe_info->GetValue2VarName();
   if (value_2_var_name.find(value) != value_2_var_name.end()) {
-    var = value_exe_info->GetScope()->FindVar(value_2_var_name.at(value));
+    var = value_exe_info->GetVarByValue(value);
   } else {
     var = CreateVar(value, var_name_prefix, false, value_exe_info);
   }
@@ -421,7 +425,7 @@ void HandleForSpecialOp(pir::Operation* op,
     Variable* var = nullptr;
     auto& value_2_var_name = value_exe_info->GetValue2VarName();
     if (value_2_var_name.find(out_value) != value_2_var_name.end()) {
-      var = value_exe_info->GetScope()->FindVar(value_2_var_name.at(out_value));
+      var = value_exe_info->GetVarByValue(out_value);
     } else {
       var = CreateVar(out_value, var_name_prefix, false, value_exe_info);
     }
@@ -436,8 +440,7 @@ void HandleForSpecialOp(pir::Operation* op,
           value_2_var_name.count(value),
           true,
           phi::errors::PreconditionNotMet("can not found input of combine op"));
-      tensor_array->emplace_back(
-          value_exe_info->GetScope()->FindVar(value_2_var_name.at(value)));
+      tensor_array->emplace_back(value_exe_info->GetVarByValue(value));
     }
   } else if (op->isa<pir::SetParameterOp>()) {
     VLOG(6) << "Handle for builtin.set_parameter:";
@@ -503,8 +506,7 @@ void HandleForSpecialOp(pir::Operation* op,
 
     int index =
         op->attributes().at("index").dyn_cast<pir::Int32Attribute>().data();
-    auto in_var = value_exe_info->GetScope()->FindVar(
-        value_exe_info->GetValue2VarName().at(in_value));
+    auto in_var = value_exe_info->GetVarByValue(in_value);
     auto variable_array = in_var->Get<VariableRefArray>();
 
     PADDLE_ENFORCE_EQ(
@@ -525,8 +527,7 @@ void HandleForSpecialOp(pir::Operation* op,
                       phi::errors::PreconditionNotMet(
                           "input of buildin split not in name map"));
 
-    auto in_var = value_exe_info->GetScope()->FindVar(
-        value_exe_info->GetValue2VarName().at(in_value));
+    auto in_var = value_exe_info->GetVarByValue(in_value);
     auto variable_array = in_var->Get<VariableRefArray>();
 
     for (uint64_t idx = 0; idx < variable_array.size(); ++idx) {

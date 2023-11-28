@@ -177,10 +177,6 @@ TEST(if_op_test, network_with_backward) {
   builder.Build<pir::YieldOp>(
       std::vector<pir::Value>{local2_x_grad, local2_y_grad});
 
-  //   builder.SetInsertionPointToEnd(block);
-  //   std::string out_name = "if_out";
-  //   builder.Build<pir::ShadowOutputOp>(if_grad->result(0), out_name);
-
   LOG(INFO) << program;
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
@@ -191,18 +187,5 @@ TEST(if_op_test, network_with_backward) {
   paddle::framework::InterpreterCore test_core(
       place, {}, kernel_program->block(), &scope);
 
-  //   test_core.SetSkipGcVars({out_name});
   test_core.Run({});
-
-  //   auto out_tensor =
-  //       test_core.local_scope() == nullptr
-  //           ? scope.FindVar(out_name)->Get<phi::DenseTensor>()
-  //           :
-  //           test_core.local_scope()->FindVar(out_name)->Get<phi::DenseTensor>();
-
-  //   bool res0 = out_tensor.data<bool>()[0] == true;
-  //   bool res1 = out_tensor.data<bool>()[1] == true;
-
-  //   EXPECT_EQ(res0, true);
-  //   EXPECT_EQ(res1, true);
 }

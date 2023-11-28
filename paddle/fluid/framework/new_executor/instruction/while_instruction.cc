@@ -61,17 +61,15 @@ WhileInstruction::WhileInstruction(size_t id,
 
   auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
 
-  cond_var_ = parent_exe_info->GetScope()->FindVar(
-      parent_exe_info->GetValue2VarName().at(while_op.operand_source(0)));
+  cond_var_ = parent_exe_info->GetVarByValue(while_op.operand_source(0));
 
   for (size_t i = 1; i < while_op.num_operands(); ++i) {
-    inputs_.push_back(parent_exe_info->GetScope()->FindVar(
-        parent_exe_info->GetValue2VarName().at(while_op.operand_source(i))));
+    inputs_.push_back(
+        parent_exe_info->GetVarByValue(while_op.operand_source(i)));
   }
 
   for (size_t i = 0; i < while_op.num_results(); ++i) {
-    outputs_.push_back(parent_exe_info->GetScope()->FindVar(
-        parent_exe_info->GetValue2VarName().at(while_op.result(i))));
+    outputs_.push_back(parent_exe_info->GetVarByValue(while_op.result(i)));
   }
 
   body_block_ = while_op.body_block();
@@ -79,7 +77,7 @@ WhileInstruction::WhileInstruction(size_t id,
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *parent_exe_info, &inputs);
   auto body_outside_inputs =
-      GetOutsideOpInputs(body_block_, *parent_exe_info, &inputs);
+      GetExternalInputs(body_block_, *parent_exe_info, &inputs);
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;

@@ -100,6 +100,8 @@ class InstructionBase {
 
   const std::vector<size_t>& GCCheckVars() const;
   void AddGCCheckVar(size_t id);
+  const std::vector<Variable*>& EagerGcVars() const;
+  void AddEagerGCVar(Variable* var);
 
   const std::vector<std::pair<Variable*, Variable*>>& InplaceInfo() const;
   void AddInplace(Variable* in, Variable* out);
@@ -172,6 +174,8 @@ class InstructionBase {
   std::vector<EventInter> events_to_wait_;
 
   std::vector<size_t> gc_check_vars_;
+
+  std::vector<Variable*> eager_gc_vars_;
 
   std::vector<std::pair<Variable*, Variable*>>
       vec_inplace_in_to_out_;  // If not use share data, need this ?

@@ -16,6 +16,7 @@
 
 #include <string>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 namespace ir {
@@ -42,6 +43,8 @@ class HasElementsInstruction : public InstructionBase {
 
  private:
   ::pir::Operation* op_;
+
+  OpFuncType type_;
 
   std::string name_{"has_elelments_instruction"};
 

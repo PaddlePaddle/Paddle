@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/instruction/has_elements_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
 
@@ -24,21 +25,33 @@ HasElementsInstruction::HasElementsInstruction(
     ::pir::Operation* op,
     ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
-  auto has_elements_op = op->dyn_cast<pir::TuplePopOp>();
+  auto has_elements_op = op->dyn_cast<pir::HasElementsOp>();
   VLOG(6) << "construct has_elements instruction for: "
           << has_elements_op->name();
+
+  std::unordered_map<pir::Value, std::vector<int>> outputs;
+  outputs.emplace(has_elements_op.out(),
+                  GetValueIds(has_elements_op.out(), *value_exe_info_));
+  SetOutputs(outputs);
+
+  std::unordered_map<pir::Value, std::vector<int>> inputs;
+  inputs.emplace(has_elements_op.input(),
+                 GetValueIds(has_elements_op.input(), *value_exe_info_));
+  SetInputs(inputs);
+
+  type_ = OpFuncType::kCpuSync;
 }
 
 void HasElementsInstruction::Run() {
   auto stack_value = op_->dyn_cast<pir::HasElementsOp>().operand_source(0);
-  auto& value_2_var_name = value_exe_info_->GetValue2VarName();
-  auto var_array =
-      value_exe_info_->GetScope()->FindVar(value_2_var_name.at(stack_value));
+  auto var_array = value_exe_info_->GetVarByValue(stack_value);
   auto stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
-  bool is_empty = stack_element_var_array_->empty();
-  auto bool_var =
-      value_exe_info_->GetScope()->FindVar(value_2_var_name.at(op_->result(0)));
-  bool* bool_ptr = bool_var->GetMutable<phi::DenseTensor>()->data<bool>();
+  bool is_empty = stack_element_var_array_->size();
+  auto bool_var = value_exe_info_->GetVarByValue(op_->result(0));
+  auto* bool_tensor = bool_var->GetMutable<phi::DenseTensor>();
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  const platform::DeviceContext* dev_ctx = pool.Get(platform::CPUPlace());
+  bool* bool_ptr = dev_ctx->Alloc<bool>(bool_tensor);
   *bool_ptr = is_empty;
 }
 }  // namespace framework

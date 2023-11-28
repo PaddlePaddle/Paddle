@@ -106,6 +106,7 @@ class IR_API HasElementsOp : public Op<HasElementsOp> {
                     OperationArgument &argument,  // NOLINT
                     Value stack);
   void VerifySig();
+  Value input() { return operand_source(0); }
   Value out() { return result(0); }
 };
 class IR_API StackCreateOp : public Op<StackCreateOp, ContainerOpInterface> {

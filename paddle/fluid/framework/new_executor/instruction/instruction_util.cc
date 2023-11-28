@@ -223,18 +223,18 @@ void GetInputIds(pir::Operation* op,
   }
 }
 
-std::unordered_set<pir::Value> GetBlockInnerOutputs(pir::Block* block) {
+std::unordered_set<pir::Value> GetInternalOutputs(pir::Block* block) {
   std::unordered_set<pir::Value> inner_outputs;
   for (size_t arg_id = 0; arg_id < block->args_size(); ++arg_id) {
     inner_outputs.insert(block->argument(arg_id));
   }
   for (auto& op : (*block)) {
-    VLOG(8) << "GetBlockInnerOutputs of " << op.name();
+    VLOG(8) << "GetInternalOutputs of " << op.name();
     if (op.num_regions()) {
       for (size_t i = 0; i < op.num_regions(); ++i) {
         for (auto& sub_block : op.region(i)) {
           std::unordered_set<pir::Value> sub_set =
-              GetBlockInnerOutputs(&sub_block);
+              GetInternalOutputs(&sub_block);
           inner_outputs.insert(sub_set.begin(), sub_set.end());
         }
       }
@@ -246,15 +246,15 @@ std::unordered_set<pir::Value> GetBlockInnerOutputs(pir::Block* block) {
   return inner_outputs;
 }
 
-std::unordered_set<pir::Value> GetBlockInnerInputs(pir::Block* block) {
+std::unordered_set<pir::Value> GetInternalInputs(pir::Block* block) {
   std::unordered_set<pir::Value> inner_inputs;
   for (auto& op : (*block)) {
-    VLOG(8) << "GetBlockInnerInputs of " << op.name();
+    VLOG(8) << "GetInternalInputs of " << op.name();
     if (op.num_regions()) {
       for (size_t i = 0; i < op.num_regions(); ++i) {
         for (auto& sub_block : op.region(i)) {
           std::unordered_set<pir::Value> sub_set =
-              GetBlockInnerInputs(&sub_block);
+              GetInternalInputs(&sub_block);
           inner_inputs.insert(sub_set.begin(), sub_set.end());
         }
       }
@@ -272,15 +272,15 @@ std::unordered_set<pir::Value> GetBlockInnerInputs(pir::Block* block) {
   return inner_inputs;
 }
 
-std::vector<pir::Value> GetOutsideOpInputs(
+std::vector<pir::Value> GetExternalInputs(
     pir::Block* block,
     const ValueExecutionInfo& value_exec_info,
     std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
   std::unordered_set<pir::Value> inner_outputs;
-  inner_outputs = GetBlockInnerOutputs(block);
+  inner_outputs = GetInternalOutputs(block);
 
   std::unordered_set<pir::Value> inner_inputs;
-  inner_inputs = GetBlockInnerInputs(block);
+  inner_inputs = GetInternalInputs(block);
 
   std::vector<pir::Value> outside_op_inputs;
   for (pir::Value value : inner_inputs) {
@@ -291,7 +291,7 @@ std::vector<pir::Value> GetOutsideOpInputs(
                             "input %s should be in name map", value.impl()));
       input_ids->emplace(value, GetValueIds(value, value_exec_info));
       outside_op_inputs.push_back(value);
-      VLOG(6) << "GetOutsideOpInputs of " << value.impl();
+      VLOG(6) << "GetExternalInputs of " << value.impl();
     }
   }
   return outside_op_inputs;
@@ -300,7 +300,7 @@ std::vector<pir::Value> GetOutsideOpInputs(
 std::unordered_set<pir::Value> GetBlockInnerStackOutputs(pir::Block* block) {
   std::unordered_set<pir::Value> inner_outputs;
   for (auto& op : (*block)) {
-    VLOG(8) << "GetBlockInnerOutputs of " << op.name();
+    VLOG(8) << "GetBlockInnerStackOutputs of " << op.name();
     if (op.num_regions()) {
       for (size_t i = 0; i < op.num_regions(); ++i) {
         for (auto& sub_block : op.region(i)) {

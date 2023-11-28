@@ -66,6 +66,8 @@ class ValueExecutionInfo {
 
   std::string GetNameById(int id) const;
 
+  Variable* GetVarByValue(pir::Value value) const;
+
   const std::unordered_map<::pir::Value, std::string>& GetValue2VarName() const;
 
   void AddValue2VarName(::pir::Value value, const std::string& var_name);

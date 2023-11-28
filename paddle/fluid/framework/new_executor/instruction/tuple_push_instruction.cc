@@ -15,6 +15,8 @@
 #include "paddle/fluid/framework/new_executor/instruction/tuple_push_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/phi/core/compat/convert_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -26,23 +28,35 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
   tuple_push_op_ = op->dyn_cast<pir::TuplePushOp>();
   VLOG(6) << "construct tuple_push instruction for: " << tuple_push_op_->name();
   auto stack_value = tuple_push_op_.container();
-  auto& value_2_var_name = value_exe_info_->GetValue2VarName();
-  PADDLE_ENFORCE_EQ(
-      value_2_var_name.find(stack_value) != value_2_var_name.end(),
-      true,
-      phi::errors::NotFound(
-          "stack input of PushBackOp not in value2varname map"));
-  auto var_array =
-      value_exe_info_->GetScope()->FindVar(value_2_var_name.at(stack_value));
+  auto var_array = value_exe_info_->GetVarByValue(stack_value);
   stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
+
   for (size_t i = 0; i < tuple_push_op_.tuple_size(); ++i) {
     auto inlet_element_value = tuple_push_op_.inlet_element(i);
     inputs.emplace(inlet_element_value,
                    GetValueIds(inlet_element_value, *value_exe_info_));
   }
   SetInputs(inputs);
+  type_ = OpFuncType::kCpuSync;
+  for (size_t i = 0; i < tuple_push_op_.tuple_size(); ++i) {
+    auto inlet_element_value = tuple_push_op_.inlet_element(i);
+
+    if (inlet_element_value.type()
+            .isa<paddle::dialect::AllocatedDenseTensorType>()) {
+      auto place = inlet_element_value.type()
+                       .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                       .place();
+      if (place == phi::GPUPlace()) {
+        type_ = OpFuncType::kGpuAsync;
+        break;
+      }
+    } else {
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
+          "Only support AllocatedDenseTensorType now"));
+    }
+  }
 }
 
 void TuplePushInstruction::Run() {
@@ -53,12 +67,13 @@ void TuplePushInstruction::Run() {
     auto& value_2_var_name = value_exe_info_->GetValue2VarName();
     for (int i = tuple_push_op_.tuple_size() - 1; i >= 0; --i) {
       auto inlet_element_value = tuple_push_op_.inlet_element(i);
-      auto var_name = value_2_var_name.at(inlet_element_value);
-      Variable* var = value_exe_info_->GetScope()->FindVar(var_name);
+      Variable* var = value_exe_info_->GetVarByValue(inlet_element_value);
       int stack_size = tuple_push_op_.tuple_size();
+
+      auto var_name = value_2_var_name.at(inlet_element_value);
       std::string new_name =
           "copied_" + std::to_string(stack_size) + "_" + var_name;
-      auto copy_var = value_exe_info_->GetScope()->Var(new_name);
+      auto* copy_var = value_exe_info_->GetScope()->Var(new_name);
       DeepCopyVariable(var, copy_var, value_exe_info_, stack_size);
       VLOG(10) << "done DeepCopyVariable " << new_name;
       stack_element_var_array_->emplace_back(copy_var);

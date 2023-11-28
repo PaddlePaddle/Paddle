@@ -16,6 +16,7 @@
 
 #include <string>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
@@ -50,9 +51,11 @@ class TuplePushInstruction : public InstructionBase {
 
   ::pir::TuplePushOp tuple_push_op_;
 
+  OpFuncType type_;
+
   std::string name_{"tuple_push_instruction"};
 
-  VariableRefArray* stack_element_var_array_;
+  VariableRefArray* stack_element_var_array_;  // not owned
 
   ValueExecutionInfo* value_exe_info_;
 };
