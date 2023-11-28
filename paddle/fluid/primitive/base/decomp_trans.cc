@@ -62,8 +62,18 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
   for (size_t i = 0; i < ops_list.size(); i++) {
     auto op = ops_list[i];
     bool flag = has_decomp_rule(*op);
+    if (flag) {
+      std::vector<std::vector<pir::OpResult>> decomp_res = call_decomp_rule(op);
+      VLOG(0) << "decomp out size ======= " << decomp_res.size();
+      op->ReplaceAllUsesWith(decomp_res[0]);
+      auto op_iter = std::find(block->begin(), block->end(), *op);
+      block->erase(op_iter);
+    }
     VLOG(0) << "op name ======= " << op->name();
     VLOG(0) << "decomp flag ======= " << flag;
+    program_->Print(print_stream);
+    std::cout << "program out sink decomp.  " << print_stream.str()
+              << std::endl;
   }
   return src_vars_;
 }
