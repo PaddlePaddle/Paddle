@@ -51,7 +51,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
  public:
   ConstantFoldingPattern(
       pir::IrContext* context,
-      size_t* suffix,
+      size_t* counter,
       const phi::Place& place,
       paddle::framework::Scope* scope,
       paddle::framework::interpreter::ExecutionConfig* exe_config,
@@ -60,7 +60,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                        1 /*benefit*/,
                        context,
                        {} /*generated_names*/),
-        counter_(suffix),
+        counter_(counter),
         place_(place),
         scope_(scope),
         exe_config_(exe_config),
@@ -208,11 +208,11 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   }
 
  private:
-  const size_t* counter_;
-  const phi::Place place_;
-  const paddle::framework::Scope* scope_;
-  const paddle::framework::interpreter::ExecutionConfig* exe_config_;
-  const std::vector<std::string>* deleted_vars_;
+  size_t* counter_;
+  phi::Place place_;
+  paddle::framework::Scope* scope_;
+  paddle::framework::interpreter::ExecutionConfig* exe_config_;
+  std::vector<std::string>* deleted_vars_;
 };
 
 class ConstantFoldingPass : public pir::Pass {

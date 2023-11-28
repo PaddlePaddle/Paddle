@@ -992,11 +992,12 @@ TEST(pattern_rewrite, Patterns) {
   BuildProgram(builder);
 
   EXPECT_EQ(program.block()->size(), 11u);
-  paddle::framework::Scope scope;
+
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
   pm.AddPass(pir::CreateConv2dFusePass());
-  pm.AddPass(pir::CreateConstantFoldingPass(&scope));
+  paddle::framework::Scope scope;
+  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
@@ -1064,11 +1065,12 @@ TEST(constant_folding, ConstantFolding) {
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
 
   pir::Program program(ctx);
-  paddle::framework::Scope scope;
+
   BuildConstantFoldingProgram(&program, ctx, &scope);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(pir::CreateConstantFoldingPass(&scope));
+  paddle::framework::Scope scope;
+  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
