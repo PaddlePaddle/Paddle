@@ -38,7 +38,7 @@ from setuptools.dist import Distribution
 # check python
 python_version = platform.python_version()
 version_detail = sys.version_info
-version = str(version_detail[0]) + '.' + str(version_detail[1]) 
+version = str(version_detail[0]) + '.' + str(version_detail[1])
 env_version = str(os.getenv("PY_VERSION"))
 
 if version_detail < (3, 7):
@@ -57,14 +57,12 @@ elif env_version != version:
         f"we will attempt to use the python version you set to execute."
     )
     cmd = 'which python' + env_version
-    res = subprocess.run(cmd, shell = True, stdout=subprocess.PIPE)
+    res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
     if res.returncode == 0:
         os.environ["PYTHON_EXECUTABLE"] = res
     else:
-        raise RuntimeError(
-            "We can't find the version you set in your machine"
-        )
-        
+        raise RuntimeError("We can't find the version you set in your machine")
+
 
 # check cmake
 CMAKE = shutil.which('cmake3') or shutil.which('cmake')
@@ -1012,13 +1010,6 @@ def get_package_data_and_package_dir():
             os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
         ]
         shutil.copy(env_dict.get("FLASHATTN_LIBRARIES"), libs_path)
-
-    if len(env_dict.get("FLASHATTN_V1_LIBRARIES", "")) > 1:
-        package_data['paddle.libs'] += [
-            os.path.basename(env_dict.get("FLASHATTN_V1_LIBRARIES"))
-        ]
-        shutil.copy(env_dict.get("FLASHATTN_V1_LIBRARIES"), libs_path)
-
     if env_dict.get("WITH_LITE") == 'ON':
         shutil.copy(env_dict.get("LITE_SHARED_LIB"), libs_path)
         package_data['paddle.libs'] += [
