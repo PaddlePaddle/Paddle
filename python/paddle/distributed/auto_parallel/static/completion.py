@@ -35,6 +35,7 @@ from .operators import (
 from .process_group import get_world_process_group
 from .utils import (
     __no_shape_var_type__,
+    _g_gradient_clip_ops,
     is_gradient_clip_op,
     is_naive_data_parallel,
 )
@@ -365,7 +366,7 @@ class Completer:
             )
             # update_op_dims_mapping_v1()
             op_dist_impls = find_compatible_distributed_operator_impls(
-                dist_op, fwd=True
+                dist_op, fwd=fwd
             )
             if op_dist_impls is not None:
                 not_compatible = True
@@ -1391,6 +1392,124 @@ class Completer:
                     return op
             return None
 
+        def _complete_grad_op_with_forward_op(forward_op, grad_op, vars):
+            fwd_op_dist_attr = self._dist_context.get_op_dist_attr_for_program(
+                forward_op
+            )
+            if grad_op.type == "concat" and forward_op.type == "split":
+                output_var = vars[grad_op.desc.output('Out')[0]]
+                split_input_var_name = forward_op.input("X")[0]
+                ref_dims_mapping = fwd_op_dist_attr.get_input_dims_mapping(
+                    split_input_var_name
+                )
+                ref_mesh = fwd_op_dist_attr.process_mesh
+
+                grad_op_dist_attr = OperatorDistAttr()
+                for input_name in grad_op.input_arg_names:
+                    grad_op_dist_attr.set_input_dims_mapping(
+                        input_name, ref_dims_mapping
+                    )
+
+                output_var_dist_attr = TensorDistAttr()
+                output_var_dist_attr.dims_mapping = ref_dims_mapping
+                output_var_dist_attr.process_mesh = ref_mesh
+                self._dist_context.set_tensor_dist_attr_for_program(
+                    output_var, output_var_dist_attr
+                )
+
+                grad_op_dist_attr.set_output_dims_mapping(
+                    output_var.name, ref_dims_mapping
+                )
+                grad_op_dist_attr.process_mesh = ref_mesh
+                self._dist_context.set_op_dist_attr_for_program(
+                    grad_op, grad_op_dist_attr
+                )
+                grad_op_dist_attr.impl_type = (
+                    fwd_op_dist_attr.impl_type  # noqa: F821
+                )
+                grad_op_dist_attr.impl_idx = (
+                    fwd_op_dist_attr.impl_idx  # noqa: F821
+                )
+                return
+
+            fwd_op_process_mesh = fwd_op_dist_attr.process_mesh
+            grad_op_dist_attr = OperatorDistAttr()
+            grad_op_dist_attr.process_mesh = fwd_op_process_mesh
+
+            for input_name in grad_op.input_arg_names:
+                if (
+                    input_name not in forward_op.input_arg_names
+                    and input_name not in forward_op.output_arg_names
+                ):
+                    if input_name in grad_var_to_var:
+                        fwd_name = grad_var_to_var[input_name]
+                        ref_dims_mapping = (
+                            fwd_op_dist_attr.get_output_dims_mapping(fwd_name)
+                        )
+                    else:
+                        input_var = vars[input_name]
+                        ref_dims_mapping = (
+                            self._dist_context.get_tensor_dist_attr_for_program(
+                                input_var
+                            ).dims_mapping
+                        )
+                else:
+                    if input_name in forward_op.input_arg_names:
+                        ref_dims_mapping = (
+                            fwd_op_dist_attr.get_input_dims_mapping(input_name)
+                        )
+                    else:
+                        ref_dims_mapping = (
+                            fwd_op_dist_attr.get_output_dims_mapping(input_name)
+                        )
+                assert (
+                    ref_dims_mapping is not None
+                ), f"[{input_name}] 's dims mapping is NONE"
+                grad_op_dist_attr.set_input_dims_mapping(
+                    input_name, ref_dims_mapping
+                )
+
+            for output_name in grad_op.output_arg_names:
+                if output_name == "@EMPTY@":
+                    output_var = vars[output_name]
+                    tensor_dist_attr = TensorDistAttr()
+                    ref_dims_mapping = [
+                        -1 for _ in range(len(output_var.shape))
+                    ]
+                    tensor_dist_attr.dims_mapping = ref_dims_mapping
+                    tensor_dist_attr.process_mesh = fwd_op_process_mesh
+                    self._dist_context.set_tensor_dist_attr_for_program(
+                        output_var, tensor_dist_attr
+                    )
+                    grad_op_dist_attr.set_output_dims_mapping(
+                        output_name, ref_dims_mapping
+                    )
+                    continue
+
+                assert output_name in grad_var_to_var
+                fwd_name = grad_var_to_var[output_name]
+                ref_dims_mapping = fwd_op_dist_attr.get_input_dims_mapping(
+                    fwd_name
+                )
+                # var
+                output_var = vars[output_name]
+                tensor_dist_attr = TensorDistAttr()
+                tensor_dist_attr.dims_mapping = ref_dims_mapping
+                tensor_dist_attr.process_mesh = fwd_op_process_mesh
+                self._dist_context.set_tensor_dist_attr_for_program(
+                    output_var, tensor_dist_attr
+                )
+                # op
+                grad_op_dist_attr.set_output_dims_mapping(
+                    output_name, ref_dims_mapping
+                )
+
+            grad_op_dist_attr.impl_type = fwd_op_dist_attr.impl_type
+            grad_op_dist_attr.impl_idx = fwd_op_dist_attr.impl_idx
+            self._dist_context.set_op_dist_attr_for_program(
+                grad_op, grad_op_dist_attr
+            )
+
         first_backward_op_idx = -1
         for idx, op in enumerate(serial_main_program.global_block().ops):
             if int(op.attr('op_role')) == int(
@@ -1477,118 +1596,31 @@ class Completer:
                 )
                 assert forward_op is not None
 
-                if grad_op.type == "concat" and forward_op.type == "split":
-                    forward_op_dist_attr = (
-                        self._dist_context.get_op_dist_attr_for_program(
-                            forward_op
+                if grad_op.has_attr('sub_block') and forward_op.has_attr(
+                    'sub_block'
+                ):
+                    _complete_grad_op_with_forward_op(forward_op, grad_op, vars)
+                    grad_sub_block_id = grad_op.attr('sub_block').id
+                    forward_sub_block_id = forward_op.attr('sub_block').id
+                    grad_sub_block = serial_main_program.blocks[
+                        grad_sub_block_id
+                    ]
+                    forward_sub_block = serial_main_program.blocks[
+                        forward_sub_block_id
+                    ]
+                    for sub_grad_op in grad_sub_block.ops:
+                        sub_forward_op = _get_op_by_id(
+                            forward_sub_block.ops,
+                            dist_op_context.grad_op_id_to_op_id[
+                                sub_grad_op.desc.original_id()
+                            ],
                         )
-                    )
-                    output_var = vars[grad_op.desc.output('Out')[0]]
-                    split_input_var_name = forward_op.input("X")[0]
-                    ref_dims_mapping = (
-                        forward_op_dist_attr.get_input_dims_mapping(
-                            split_input_var_name
+                        _complete_grad_op_with_forward_op(
+                            sub_forward_op, sub_grad_op, grad_sub_block.vars
                         )
-                    )
-                    ref_mesh = forward_op_dist_attr.process_mesh
+                else:
+                    _complete_grad_op_with_forward_op(forward_op, grad_op, vars)
 
-                    grad_op_dist_attr = OperatorDistAttr()
-                    for input_name in grad_op.input_arg_names:
-                        grad_op_dist_attr.set_input_dims_mapping(
-                            input_name, ref_dims_mapping
-                        )
-
-                    output_var_dist_attr = TensorDistAttr()
-                    output_var_dist_attr.dims_mapping = ref_dims_mapping
-                    output_var_dist_attr.process_mesh = ref_mesh
-                    self._dist_context.set_tensor_dist_attr_for_program(
-                        output_var, output_var_dist_attr
-                    )
-
-                    grad_op_dist_attr.set_output_dims_mapping(
-                        output_var.name, ref_dims_mapping
-                    )
-                    grad_op_dist_attr.process_mesh = ref_mesh
-                    self._dist_context.set_op_dist_attr_for_program(
-                        grad_op, grad_op_dist_attr
-                    )
-                    grad_op_dist_attr.impl_type = (
-                        fwd_op_dist_attr.impl_type  # noqa: F821
-                    )
-                    grad_op_dist_attr.impl_idx = (
-                        fwd_op_dist_attr.impl_idx  # noqa: F821
-                    )
-
-                    continue
-
-                fwd_op_dist_attr = (
-                    self._dist_context.get_op_dist_attr_for_program(forward_op)
-                )
-                fwd_op_process_mesh = fwd_op_dist_attr.process_mesh
-                grad_op_dist_attr = OperatorDistAttr()
-                grad_op_dist_attr.process_mesh = fwd_op_process_mesh
-
-                for input_name in grad_op.input_arg_names:
-                    if (
-                        input_name not in forward_op.input_arg_names
-                        and input_name not in forward_op.output_arg_names
-                    ):
-                        if input_name in grad_var_to_var:
-                            fwd_name = grad_var_to_var[input_name]
-                            ref_dims_mapping = (
-                                fwd_op_dist_attr.get_output_dims_mapping(
-                                    fwd_name
-                                )
-                            )
-                        else:
-                            input_var = vars[input_name]
-                            ref_dims_mapping = self._dist_context.get_tensor_dist_attr_for_program(
-                                input_var
-                            ).dims_mapping
-                    else:
-                        if input_name in forward_op.input_arg_names:
-                            ref_dims_mapping = (
-                                fwd_op_dist_attr.get_input_dims_mapping(
-                                    input_name
-                                )
-                            )
-                        else:
-                            ref_dims_mapping = (
-                                fwd_op_dist_attr.get_output_dims_mapping(
-                                    input_name
-                                )
-                            )
-                    assert (
-                        ref_dims_mapping is not None
-                    ), f"[{input_name}] 's dims mapping is NONE"
-                    grad_op_dist_attr.set_input_dims_mapping(
-                        input_name, ref_dims_mapping
-                    )
-
-                for output_name in grad_op.output_arg_names:
-                    assert output_name in grad_var_to_var
-                    fwd_name = grad_var_to_var[output_name]
-                    ref_dims_mapping = fwd_op_dist_attr.get_input_dims_mapping(
-                        fwd_name
-                    )
-                    # var
-                    output_var = vars[output_name]
-                    tensor_dist_attr = TensorDistAttr()
-                    tensor_dist_attr.dims_mapping = ref_dims_mapping
-                    tensor_dist_attr.process_mesh = fwd_op_process_mesh
-                    self._dist_context.set_tensor_dist_attr_for_program(
-                        output_var, tensor_dist_attr
-                    )
-                    # op
-                    grad_op_dist_attr.set_output_dims_mapping(
-                        output_name, ref_dims_mapping
-                    )
-
-                grad_op_dist_attr.impl_type = fwd_op_dist_attr.impl_type
-                grad_op_dist_attr.impl_idx = fwd_op_dist_attr.impl_idx
-                self._dist_context.set_op_dist_attr_for_program(
-                    grad_op, grad_op_dist_attr
-                )
             # grad ops that have not a corresponding mapping in grad_op_id_to_op_id
             else:
                 if grad_op.type == 'sum':
@@ -1689,13 +1721,7 @@ class Completer:
             op = ops[idx]
             if int(op.attr('op_role')) == int(OpRole.Optimize):
                 if is_gradient_clip_op(op):
-                    if op.type in [
-                        "sum",
-                        "sqrt",
-                        "fill_constant",
-                        "elementwise_max",
-                        "elementwise_div",
-                    ]:
+                    if op.type in _g_gradient_clip_ops:
                         # complete op dist_attr with global world ranks
                         op_dist_attr = OperatorDistAttr()
                         op_dist_attr.process_mesh = ProcessMesh(world_ranks)

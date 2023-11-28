@@ -127,17 +127,17 @@ class StreamAnalyzer {
 /// ======================== ///
 ///        For new ir        ///
 /// ======================== ///
-class NewIrStreamAnalyzer {
+class PirStreamAnalyzer {
  public:
   using DeviceContext = platform::DeviceContext;
   using Place = platform::Place;
 
-  explicit NewIrStreamAnalyzer(const Place& place) : place_(place) {
+  explicit PirStreamAnalyzer(const Place& place) : place_(place) {
     event_info_ = std::make_shared<
         std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>();
   }
 
-  ~NewIrStreamAnalyzer() {}
+  ~PirStreamAnalyzer() {}
 
   void ConstructEvents(
       const std::vector<std::unique_ptr<paddle::framework::InstructionBase>>&
@@ -146,7 +146,7 @@ class NewIrStreamAnalyzer {
   platform::DeviceType GetWaiterType(
       const paddle::framework::InstructionBase* instr) const;
 
-  void ShareEventInfoFrom(const NewIrStreamAnalyzer& src);
+  void ShareEventInfoFrom(const PirStreamAnalyzer& src);
 
   std::shared_ptr<
       std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
@@ -165,7 +165,7 @@ class NewIrStreamAnalyzer {
           event_info) const;
 
   void ShrinkEventInfo(
-      const NewIrDependencyBuilder& dependency_builder,
+      const PirDependencyBuilder& dependency_builder,
       std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
           event_info_map) const;
 

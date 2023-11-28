@@ -38,10 +38,7 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
             local_t = paddle.to_tensor(np_array, dtype='bool')
 
         mesh = dist.ProcessMesh([0], dim_names=["x"])
-        dist_attr = dist.DistAttr(
-            mesh=mesh, sharding_specs=[None] * np_array.ndim
-        )
-        dist_t = dist.shard_tensor(np_array, dist_attr=dist_attr)
+        dist_t = dist.shard_tensor(np_array, mesh, [dist.Replicate()])
 
         local_t.stop_gradient = False
         dist_t.stop_gradient = False
@@ -114,28 +111,28 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
         self.check_tensor_eq(local_in3.grad, dist_in3.grad)
 
     # TODO(GhostScreaming): Support paddle.concat backward later.
-    # # input: std::vector<phi::Tensor>
-    # # output: std::vector<phi::Tensor>
-    # def test_broadcast_tensors_for_dist_tensor(self):
-    #     x1 = np.random.random(size=[4, 4]).astype("float32")
-    #     x2 = np.random.random(size=[4, 4]).astype("float32")
-    #     local_in1, dist_in1 = self.create_local_and_dist_tensor_pair(x1)
-    #     local_in2, dist_in2 = self.create_local_and_dist_tensor_pair(x2)
+    # input: std::vector<phi::Tensor>
+    # output: std::vector<phi::Tensor>
+    def test_broadcast_tensors_for_dist_tensor(self):
+        x1 = np.random.random(size=[4, 4]).astype("float32")
+        x2 = np.random.random(size=[4, 4]).astype("float32")
+        local_in1, dist_in1 = self.create_local_and_dist_tensor_pair(x1)
+        local_in2, dist_in2 = self.create_local_and_dist_tensor_pair(x2)
 
-    #     local_out1, local_out2 = paddle.broadcast_tensors(
-    #         [local_in1, local_in2]
-    #     )
-    #     dist_out1, dist_out2 = paddle.broadcast_tensors([dist_in1, dist_in2])
-    #     self.check_tensor_eq(local_out1, dist_out1)
-    #     self.check_tensor_eq(local_out2, dist_out2)
+        local_out1, local_out2 = paddle.broadcast_tensors(
+            [local_in1, local_in2]
+        )
+        dist_out1, dist_out2 = paddle.broadcast_tensors([dist_in1, dist_in2])
+        self.check_tensor_eq(local_out1, dist_out1)
+        self.check_tensor_eq(local_out2, dist_out2)
 
-    #     local_out = paddle.concat([local_out1, local_out2])
-    #     dist_out = paddle.concat([dist_out1, dist_out2])
+        local_out = paddle.concat([local_out1, local_out2])
+        dist_out = paddle.concat([dist_out1, dist_out2])
 
-    #     local_out.backward()
-    #     dist_out.backward()
-    #     self.check_tensor_eq(local_in1.grad, dist_in1.grad)
-    #     self.check_tensor_eq(local_in2.grad, dist_in2.grad)
+        local_out.backward()
+        dist_out.backward()
+        self.check_tensor_eq(local_in1.grad, dist_in1.grad)
+        self.check_tensor_eq(local_in2.grad, dist_in2.grad)
 
     # input: paddle::optional<phi::Tensor>
     # output: phi::Tensor
@@ -396,6 +393,32 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
             self.check_tensor_eq(
                 local_master_param_out[i], dist_master_param_out[i]
             )
+
+    # intermediate dygraph api test
+    def test_layer_norm_for_intermediate_dist_tensor(self):
+        x = np.random.random((2, 3, 10, 10)).astype("float32")
+        weight = np.random.random(300).astype("float32")
+        bias = np.random.random(300).astype("float32")
+
+        local_x, dist_x = self.create_local_and_dist_tensor_pair(x)
+        local_weight, dist_weight = self.create_local_and_dist_tensor_pair(
+            weight
+        )
+        local_bias, dist_bias = self.create_local_and_dist_tensor_pair(bias)
+
+        local_out = paddle.nn.functional.layer_norm(
+            local_x,
+            local_x.shape[1:],
+            local_weight,
+            local_bias,
+        )
+        dist_out = paddle.nn.functional.layer_norm(
+            dist_x,
+            dist_x.shape[1:],
+            dist_weight,
+            dist_bias,
+        )
+        self.check_tensor_eq(local_out, dist_out)
 
 
 if __name__ == "__main__":

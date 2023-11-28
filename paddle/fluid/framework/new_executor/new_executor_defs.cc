@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
@@ -312,6 +313,41 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
 }
 
 void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void Instruction::UpdataRecordStreamForGcInfo() {
+  if (!IsInterpretercoreFastGCEnabled() ||
+      KernelType() != OpFuncType::kGpuAsync) {
+    return;
+  }
+  if (DeviceContext().GetPlace().GetType() == phi::AllocationType::CUSTOM) {
+    return;
+  }
+  need_record_stream_for_gc_ = true;
+
+  stream_ = reinterpret_cast<const phi::GPUContext&>(DeviceContext()).stream();
+// TODO(lizhiyu): Only analyse the 'send_v2' for GPT pp strategy right now.
+// To support all the operators for communicating in the future.
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  auto operator_base_ptr = OpBase();
+  if ((operator_base_ptr->Type() == "send_v2") &&
+      (operator_base_ptr->Attr<bool>("use_calc_stream") == false)) {
+    int ring_id = operator_base_ptr->Attr<int>("ring_id");
+    if (FLAGS_dynamic_static_unified_comm) {
+      const auto& comm_context_manager =
+          phi::distributed::CommContextManager::GetInstance();
+      stream_ = static_cast<phi::distributed::NCCLCommContext*>(
+                    comm_context_manager.Get(std::to_string(ring_id)))
+                    ->GetStream();
+    } else {
+      stream_ = platform::NCCLCommContext::Instance()
+                    .Get(ring_id, DeviceContext().GetPlace())
+                    ->stream();
+    }
+  }
+#endif
+}
+#endif
 
 }  // namespace framework
 }  // namespace paddle

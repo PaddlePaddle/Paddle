@@ -56,10 +56,10 @@ void CumprodGradKernel(const Context& dev_ctx,
   Allocator::AllocationPtr x_conj;
   Allocator::AllocationPtr out_conj;
   if (phi::IsComplexType(x.dtype())) {
-    x_conj = const_cast<Allocator&>(dev_ctx.GetAllocator())
+    x_conj = const_cast<Allocator&>(dev_ctx.GetAllocator())  // NOLINT
                  .Allocate(numel * sizeof(T));
     auto* x_data_conj = reinterpret_cast<T*>(x_conj->ptr());
-    out_conj = const_cast<Allocator&>(dev_ctx.GetAllocator())
+    out_conj = const_cast<Allocator&>(dev_ctx.GetAllocator())  // NOLINT
                    .Allocate(numel * sizeof(T));
     auto* out_data_conj = reinterpret_cast<T*>(out_conj->ptr());
 

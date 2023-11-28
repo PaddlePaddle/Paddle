@@ -335,6 +335,10 @@ template struct SelectedRowsAddToTensor<phi::GPUContext, double>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, int>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, int64_t>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, phi::dtype::float16>;
+template struct SelectedRowsAddToTensor<phi::GPUContext,
+                                        phi::dtype::complex<float>>;
+template struct SelectedRowsAddToTensor<phi::GPUContext,
+                                        phi::dtype::complex<double>>;
 
 namespace scatter {
 

@@ -19,7 +19,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_pir_only
+from dygraph_to_static_utils import Dy2StTestBase, test_pt_only
 from predictor_utils import PredictorTools
 
 import paddle
@@ -197,7 +197,6 @@ class ResNet(paddle.nn.Layer):
             ),
         )
 
-    @paddle.jit.to_static
     def forward(self, inputs):
         y = self.conv(inputs)
         y = self.pool2d_max(y)
@@ -280,7 +279,7 @@ class TestResnet(Dy2StTestBase):
             dataset, batch_size=batch_size, drop_last=True
         )
 
-        resnet = ResNet()
+        resnet = paddle.jit.to_static(ResNet())
         optimizer = optimizer_setting(parameter_list=resnet.parameters())
 
         for epoch in range(epoch_num):
@@ -291,7 +290,16 @@ class TestResnet(Dy2StTestBase):
 
             for batch_id, data in enumerate(data_loader()):
                 start_time = time.time()
-                img, label = data
+                img_, label = data
+
+                expected_place = paddle.framework._current_expected_place()
+                if img_.stop_gradient and not img_.place._equals(
+                    expected_place
+                ):
+                    img = img_._copy_to(expected_place, False)
+                    img.stop_gradient = True
+                else:
+                    img = img_
 
                 pred = resnet(img)
                 loss = paddle.nn.functional.cross_entropy(
@@ -339,7 +347,7 @@ class TestResnet(Dy2StTestBase):
     def predict_dygraph(self, data):
         paddle.jit.enable_to_static(False)
         paddle.disable_static(place)
-        resnet = ResNet()
+        resnet = paddle.jit.to_static(ResNet())
 
         model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
         resnet.set_dict(model_dict)
@@ -426,8 +434,8 @@ class TestResnet(Dy2StTestBase):
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_pir_only
-    def test_resnet_new_ir(self):
+    @test_pt_only
+    def test_resnet_pir(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
         np.testing.assert_allclose(
