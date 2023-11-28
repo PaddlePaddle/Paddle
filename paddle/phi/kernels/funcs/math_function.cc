@@ -314,13 +314,6 @@ void set_constant(const phi::DeviceContext& context,
 #endif
 }
 
-void set_constant(const phi::DeviceContext& context,
-                  phi::DenseTensor* tensor,
-                  float value) {
-  VLOG(0) << "set_constant with T value:" << value;
-  set_constant(context, tensor, reinterpret_cast<const void*>(&value));
-}
-
 template struct ColwiseSum<phi::CPUContext, float>;
 template struct ColwiseSum<phi::CPUContext, double>;
 template struct ColwiseSum<phi::CPUContext, int>;
