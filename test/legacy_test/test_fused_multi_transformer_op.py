@@ -1396,6 +1396,7 @@ class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
             initializer=paddle.paddle.nn.initializer.Constant(0.0)
         )
 
+    @test_with_pir_api
     def test_fused_multi_transformer_op(self):
         self.has_pre_cache = True
         self.remove_padding = False
