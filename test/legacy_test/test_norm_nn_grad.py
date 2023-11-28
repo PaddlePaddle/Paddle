@@ -26,6 +26,7 @@ from paddle.pir_utils import test_with_pir_api
 
 class TestInstanceNormDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
+    @prog_scope()
     def func(self, place):
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -55,6 +56,7 @@ class TestInstanceNormDoubleGradCheckWithoutParamBias(
     TestInstanceNormDoubleGradCheck
 ):
     @test_with_pir_api
+    @prog_scope()
     def func(self, place):
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -77,6 +79,7 @@ class TestInstanceNormDoubleGradEagerCheck(unittest.TestCase):
         return paddle.nn.functional.instance_norm(x[0])
 
     @test_with_pir_api
+    @prog_scope()
     def func(self, place):
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -120,6 +123,7 @@ class TestInstanceNormDoubleGradEagerCheckWithParams(
         return instance_norm(x[0])
 
     @test_with_pir_api
+    @prog_scope()
     def func(self, place):
         main = paddle.static.Program()
         startup = paddle.static.Program()
