@@ -30,14 +30,17 @@ paddle.enable_static()
 
 class TestPrintOpCPU(unittest.TestCase):
     def setUp(self):
+        self.dtype = 'float32'
         self.place = paddle.CPUPlace()
         self.x_tensor = base.core.LoDTensor()
-        tensor_np = np.random.random(size=(2, 3)).astype('float32')
+        tensor_np = np.random.random(size=(2, 3)).astype(self.dtype)
         self.x_tensor.set(tensor_np, self.place)
         self.x_tensor.set_recursive_sequence_lengths([[1, 1]])
 
     def build_network(self, only_forward, **kargs):
-        x = paddle.static.data('x', shape=[-1, 3], dtype='float32', lod_level=1)
+        x = paddle.static.data(
+            'x', shape=[-1, 3], dtype=self.dtype, lod_level=1
+        )
         x.stop_gradient = False
         paddle.static.Print(input=x, **kargs)
         loss = paddle.mean(x)
@@ -77,7 +80,7 @@ class TestPrintOpCPU(unittest.TestCase):
         prog = paddle.static.Program()
         with paddle.static.program_guard(prog, paddle.static.Program()):
             x = paddle.static.data(
-                'x', shape=[-1, 3], dtype='float32', lod_level=1
+                'x', shape=[-1, 3], dtype=self.dtype, lod_level=1
             )
             x.stop_gradient = False
 
@@ -136,9 +139,36 @@ class TestPrintOpError(unittest.TestCase):
 )
 class TestPrintOpGPU(TestPrintOpCPU):
     def setUp(self):
+        self.dtype = 'float32'
         self.place = paddle.CUDAPlace(0)
         self.x_tensor = base.core.LoDTensor()
-        tensor_np = np.random.random(size=(2, 3)).astype('float32')
+        tensor_np = np.random.random(size=(2, 3)).astype(self.dtype)
+        self.x_tensor.set(tensor_np, self.place)
+        self.x_tensor.set_recursive_sequence_lengths([[1, 1]])
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestPrintOpGPUFP16(TestPrintOpCPU):
+    def setUp(self):
+        self.dtype = 'float16'
+        self.place = paddle.CUDAPlace(0)
+        self.x_tensor = base.core.LoDTensor()
+        tensor_np = np.random.random(size=(2, 3)).astype(self.dtype)
+        self.x_tensor.set(tensor_np, self.place)
+        self.x_tensor.set_recursive_sequence_lengths([[1, 1]])
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestPrintOpGPUBFP16(TestPrintOpCPU):
+    def setUp(self):
+        self.dtype = 'bfloat16'
+        self.place = paddle.CUDAPlace(0)
+        self.x_tensor = base.core.LoDTensor()
+        tensor_np = np.random.random(size=(2, 3)).astype(self.dtype)
         self.x_tensor.set(tensor_np, self.place)
         self.x_tensor.set_recursive_sequence_lengths([[1, 1]])
 
