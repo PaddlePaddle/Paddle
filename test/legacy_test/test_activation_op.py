@@ -3170,7 +3170,7 @@ class TestELU(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
     def get_alpha(self):
         return 1.0
@@ -4877,7 +4877,7 @@ create_test_act_fp16_class(
 create_test_act_fp16_class(TestBRelu, check_pir=True)
 create_test_act_fp16_class(TestRelu6)
 create_test_act_fp16_class(TestSoftRelu, check_dygraph=False)
-create_test_act_fp16_class(TestELU)
+create_test_act_fp16_class(TestELU, check_pir=True)
 create_test_act_fp16_class(TestCELU)
 create_test_act_fp16_class(TestReciprocal, check_pir=True)
 create_test_act_fp16_class(TestLog, check_prim=True, check_pir=True)
@@ -5032,7 +5032,7 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(TestBRelu, check_pir=True)
 create_test_act_bf16_class(TestRelu6)
 create_test_act_bf16_class(TestSoftRelu, check_dygraph=False)
-create_test_act_bf16_class(TestELU)
+create_test_act_bf16_class(TestELU, check_pir=True)
 create_test_act_bf16_class(TestCELU)
 create_test_act_bf16_class(TestReciprocal, check_pir=True)
 create_test_act_bf16_class(TestLog, check_prim=True, check_pir=True)

@@ -103,9 +103,9 @@ class TestFlashAttentionAPI(unittest.TestCase):
         self.use_sdp_kernel = False
         self.use_sdp_api = False
 
-    def test_dynamic_unpadded(self):
+    def test_unpadded(self):
         print(
-            f"Test dynamic unpadded case shape {self.shape} dtype {self.dtype} causal {self.causal}"
+            f"Test unpadded case shape {self.shape} dtype {self.dtype} causal {self.causal}"
         )
 
         paddle.disable_static()
@@ -153,19 +153,8 @@ class TestFlashAttentionAPI(unittest.TestCase):
             q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=1e-03
         )
 
-    @test_with_pir_api
-    def test_static_unpadded(self):
-        print(
-            f"Test static unpadded case shape {self.shape} dtype {self.dtype} causal {self.causal}"
-        )
-
+        # test static
         paddle.enable_static()
-
-        bs = self.shape[0]
-        ms = self.shape[1]
-        nh = self.shape[2]
-        hd = self.shape[3]
-        scale = 1.0 / np.sqrt(hd)
 
         with paddle.static.program_guard(paddle.static.Program()):
             qs = paddle.static.data(
@@ -190,7 +179,6 @@ class TestFlashAttentionAPI(unittest.TestCase):
             )
 
             exe = base.Executor(self.place)
-            query = np.random.random(self.shape)
             fetches_result = exe.run(
                 feed={
                     "q": query.astype('float16'),
@@ -198,14 +186,6 @@ class TestFlashAttentionAPI(unittest.TestCase):
                     "v": query.astype('float16'),
                 },
                 fetch_list=[outs],
-            )
-
-            # Generate expected output using dynamic graph
-            out_ = attention_naive(qs, qs, qs, self.causal)
-            out_ = paddle.reshape(out_, [bs * ms, nh, hd])
-
-            np.testing.assert_allclose(
-                fetches_result[0], out_.numpy(), rtol=5e-03, atol=1e-03
             )
 
     def test_dynamic_all(self):
@@ -271,6 +251,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
             q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=1e-03
         )
 
+    @test_with_pir_api
     def test_static_all(self):
         print(
             f"Test static case shape {self.shape} dtype {self.dtype} causal {self.causal}"

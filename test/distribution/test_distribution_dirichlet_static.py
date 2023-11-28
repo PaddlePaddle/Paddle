@@ -20,6 +20,7 @@ from distribution.config import ATOL, DEVICES, RTOL
 from parameterize import TEST_CASE_NAME, parameterize_cls, place
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(2022)
 paddle.enable_static()
@@ -41,6 +42,7 @@ class TestDirichlet(unittest.TestCase):
             self._paddle_diric = paddle.distribution.Dirichlet(conc)
             self.feeds = {'conc': self.concentration}
 
+    @test_with_pir_api
     def test_mean(self):
         with paddle.static.program_guard(self.program):
             [out] = self.executor.run(
@@ -55,6 +57,7 @@ class TestDirichlet(unittest.TestCase):
                 atol=ATOL.get(str(self.concentration.dtype)),
             )
 
+    @test_with_pir_api
     def test_variance(self):
         with paddle.static.program_guard(self.program):
             [out] = self.executor.run(
@@ -69,6 +72,7 @@ class TestDirichlet(unittest.TestCase):
                 atol=ATOL.get(str(self.concentration.dtype)),
             )
 
+    @test_with_pir_api
     def test_prob(self):
         with paddle.static.program_guard(self.program):
             random_number = np.random.rand(*self.concentration.shape)
@@ -88,6 +92,7 @@ class TestDirichlet(unittest.TestCase):
                 atol=ATOL.get(str(self.concentration.dtype)),
             )
 
+    @test_with_pir_api
     def test_log_prob(self):
         with paddle.static.program_guard(self.program):
             random_number = np.random.rand(*self.concentration.shape)
@@ -107,6 +112,7 @@ class TestDirichlet(unittest.TestCase):
                 atol=ATOL.get(str(self.concentration.dtype)),
             )
 
+    @test_with_pir_api
     def test_entropy(self):
         with paddle.static.program_guard(self.program):
             [out] = self.executor.run(
