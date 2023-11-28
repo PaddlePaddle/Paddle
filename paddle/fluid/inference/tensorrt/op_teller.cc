@@ -3179,7 +3179,7 @@ struct GenericPluginTeller : public Teller {
       auto y_dtype = y_var_desc->GetDataType();
       if (x_dtype == framework::proto::VarType::FP64 ||
           y_dtype == framework::proto::VarType::FP64) {
-        VLOG(3) << op_type <<" not support input of FP64.";
+        VLOG(3) << op_type << " not support input of FP64.";
         return false;
       }
     }

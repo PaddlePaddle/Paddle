@@ -29,10 +29,10 @@ class TrtConvertSolve(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1():
-            return np.random.random([2,8,8]).astype(np.float32)
+            return np.random.random([2, 8, 8]).astype(np.float32)
 
         def generate_input2():
-            return np.random.random([2,8,6]).astype(np.float32)
+            return np.random.random([2, 8, 6]).astype(np.float32)
 
         ops_config = [
             {
@@ -50,12 +50,8 @@ class TrtConvertSolve(TrtLayerAutoScanTest):
             ops=ops,
             weights={},
             inputs={
-                "x_input_data": TensorConfig(
-                    data_gen=partial(generate_input1)
-                ),
-                "y_input_data": TensorConfig(
-                    data_gen=partial(generate_input2)
-                ),
+                "x_input_data": TensorConfig(data_gen=partial(generate_input1)),
+                "y_input_data": TensorConfig(data_gen=partial(generate_input2)),
             },
             outputs=["output_data"],
         )
@@ -67,16 +63,16 @@ class TrtConvertSolve(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "x_input_data": [1,8,8],
-                "y_input_data": [1,8,6],
+                "x_input_data": [1, 8, 8],
+                "y_input_data": [1, 8, 6],
             }
             self.dynamic_shape.max_input_shape = {
-                "x_input_data": [4,8,8],
-                "y_input_data": [4,8,6],
+                "x_input_data": [4, 8, 8],
+                "y_input_data": [4, 8, 6],
             }
             self.dynamic_shape.opt_input_shape = {
-                "x_input_data": [2,8,8],
-                "y_input_data": [2,8,6],
+                "x_input_data": [2, 8, 8],
+                "y_input_data": [2, 8, 6],
             }
 
         def clear_dynamic_shape():

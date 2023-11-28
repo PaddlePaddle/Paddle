@@ -851,12 +851,12 @@ nvinfer1::DimsExprs SolveInferMeta(
     int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder,  // NOLINT
     const framework::OpDesc& op_desc) {
-  PADDLE_ENFORCE_EQ(nb_inputs,
-                    2,
-                    phi::errors::InvalidArgument(
-                        "inputs of solve should be equal to 2, "
-                        "But received (%s)",
-                        nb_inputs));
+  PADDLE_ENFORCE_EQ(
+      nb_inputs,
+      2,
+      phi::errors::InvalidArgument("inputs of solve should be equal to 2, "
+                                   "But received (%s)",
+                                   nb_inputs));
   const nvinfer1::DimsExprs ref_dims = inputs[1];
   return ref_dims;
 }
