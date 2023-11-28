@@ -22,7 +22,6 @@ from dygraph_to_static_utils import (
 
 import paddle
 from paddle import base
-from paddle.jit import to_static
 
 PLACE = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 
@@ -82,7 +81,6 @@ class MainNetWithDict(paddle.nn.Layer):
         self.output_size = output_size
         self.sub_net = SubNetWithDict(hidden_size, output_size)
 
-    @to_static
     def forward(self, input, max_len=4):
         input = base.dygraph.to_variable(input)
         cache = {
@@ -138,7 +136,9 @@ class TestNetWithDict(Dy2StTestBase):
     def train(self, to_static=False):
         paddle.jit.enable_to_static(to_static)
         with base.dygraph.guard(PLACE):
-            net = MainNetWithDict(batch_size=self.batch_size)
+            net = paddle.jit.to_static(
+                MainNetWithDict(batch_size=self.batch_size)
+            )
             ret = net(self.x)
             return ret.numpy()
 
@@ -148,8 +148,7 @@ class TestNetWithDict(Dy2StTestBase):
 
 
 # Tests for dict pop
-@paddle.jit.to_static
-def test_dic_pop(x):
+def test_dict_pop(x):
     x = paddle.to_tensor(x)
     dict_a = {"red": 0, "green": 1, "blue": 2}
 
@@ -160,8 +159,7 @@ def test_dic_pop(x):
     return out
 
 
-@paddle.jit.to_static
-def test_dic_pop_2(x):
+def test_dict_pop_2(x):
     x = paddle.to_tensor(x)
     dict_a = {"red": x, "green": x + 1, "blue": x + 3}
 
@@ -183,7 +181,7 @@ class TestDictPop(Dy2StTestBase):
         self._set_test_func()
 
     def _set_test_func(self):
-        self.dygraph_func = test_dic_pop
+        self.dygraph_func = paddle.jit.to_static(test_dict_pop)
 
     def _run_static(self):
         return self._run(to_static=True)
@@ -212,14 +210,13 @@ class TestDictPop(Dy2StTestBase):
 
 class TestDictPop2(TestDictPop):
     def _set_test_func(self):
-        self.dygraph_func = test_dic_pop_2
+        self.dygraph_func = paddle.jit.to_static(test_dict_pop_2)
 
 
 class NetWithDictPop(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
-    @to_static
     def forward(self, x, **kwargs):
         x = paddle.to_tensor(x)
         y = kwargs.pop('y', None)
@@ -238,7 +235,7 @@ class TestDictPop3(TestNetWithDict):
     def train(self, to_static=False):
         paddle.jit.enable_to_static(to_static)
         with base.dygraph.guard(PLACE):
-            net = NetWithDictPop()
+            net = paddle.jit.to_static(NetWithDictPop())
             ret = net(z=0, x=self.x, y=True)
             return ret.numpy()
 
