@@ -2691,6 +2691,11 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
+    if (op_type == "argsort") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+    }
 
     if (op_type == "unbind") {
       if (!with_dynamic_shape) {

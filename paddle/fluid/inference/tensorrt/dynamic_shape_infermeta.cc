@@ -845,6 +845,32 @@ nvinfer1::DimsExprs ScatterInferMeta(
   return ref_dims;
 }
 
+nvinfer1::DimsExprs ArgsortInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  PADDLE_ENFORCE_LE(output_index,
+                    1,
+                    phi::errors::InvalidArgument("argsort only has two output,"
+                                                 "but received asvector: (%s)",
+                                                 output_index));
+  PADDLE_ENFORCE_EQ(
+      nb_inputs,
+      1,
+      phi::errors::InvalidArgument("inputs of argsort should be equal to 1, "
+                                   "But received (%s)",
+                                   nb_inputs));
+  const nvinfer1::DimsExprs input_dims = inputs[0];
+  nvinfer1::DimsExprs output;
+  output.nbDims = input_dims.nbDims;
+  for (int i = 0; i < input_dims.nbDims; ++i) {
+    output.d[i] = input_dims.d[i];
+  }
+  return output;
+}
+
 PD_REGISTER_DYNAMIC_INFER_META_FN(gather_nd, GatherNdInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(yolo_box, YoloBoxInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(instance_norm, InstanceNormInferMeta);
