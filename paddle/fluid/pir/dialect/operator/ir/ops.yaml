@@ -1,5 +1,4 @@
-# The apis in this file are unstandardized that may caused by a variety of reasons,
-# we are trying to fix these apis and will move standardized apis into ops.yaml.
+# The operators included in this file are: (1) operators defined only in PIR, dynamic graphs do not exist; (2) the definitions of static graphs and dynamic graphs are inconsistent, but the final definition plan has not yet been clarified. After the definition is clearly defined, migrate to paddle /fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
 
 - op : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor learning_rate, Tensor master_param, float rho, float epsilon, bool multi_precision)
