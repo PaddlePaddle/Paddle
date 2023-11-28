@@ -5242,20 +5242,14 @@ void IgammaInferMeta(const MetaTensor& x,
   auto a_dims_size = a_dims.size();
 
   PADDLE_ENFORCE_EQ(
-      x_dims_size == a_dims_size || x_dims_size == 1 || a_dims_size == 1,
+      x_dims_size == a_dims_size,
       true,
       phi::errors::InvalidArgument(
-          "The size of tesnor x and tensor a should be same dimension, or one "
-          "of the two tensors should be 1, but received tensor x (%u) and "
-          "tensor a (%u).",
+          "The size of tesnor x and tensor a should be same dimension,"
+          "but received tensor x (%u) and tensor a (%u).",
           x_dims_size,
           a_dims_size));
-
-  if (x_dims_size == 1) {
-    out->set_dims(a_dims);
-  } else {
-    out->set_dims(x_dims);
-  }
+  out->set_dims(x.dims());
 }
 
 void IgammacInferMeta(const MetaTensor& x,
@@ -5270,20 +5264,14 @@ void IgammacInferMeta(const MetaTensor& x,
   auto a_dims_size = a_dims.size();
 
   PADDLE_ENFORCE_EQ(
-      x_dims_size == a_dims_size || x_dims_size == 1 || a_dims_size == 1,
+      x_dims_size == a_dims_size,
       true,
       phi::errors::InvalidArgument(
-          "The size of tesnor x and tensor a should be same dimension, or one "
-          "of the two tensors should be 1, but received tensor x (%u) and "
-          "tensor a (%u).",
+          "The size of tesnor x and tensor a should be same dimension,"
+          "but received tensor x (%u) and tensor a (%u).",
           x_dims_size,
           a_dims_size));
-
-  if (x_dims_size == 1) {
-    out->set_dims(a_dims);
-  } else {
-    out->set_dims(x_dims);
-  }
+  out->set_dims(x.dims());
 }
 
 }  // namespace phi

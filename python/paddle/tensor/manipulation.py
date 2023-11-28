@@ -5908,25 +5908,23 @@ def igamma(x, other, name=None):
 
 
     Args:
-        x (Tensor): ``x`` is the original Tensor. Must be at least 2-dimensional.
-        y (Tensor): ``y`` is the Tensor to embed into ``x``
-        offset (int, optional): which diagonal to consider. Default: 0 (main diagonal).
+        x (Tensor): ``x`` is the non-negative input tensor.
+        other (Tensor): ``other`` is the Tensor to the upper boundary of Integral.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, Tensor with diagonal embedeed with ``y``.
+        - out (Tensor), A Tensor. the igamma of the input Tensor, the shape and data type is the same with input.
 
     Examples:
         .. code-block:: python
 
             >>> import paddle
-            >>> x = paddle.arange(6.0).reshape((2, 3))
-            >>> a = paddle.ones((2,))
-            >>> out = x.diagonal_scatter(y)
+            >>> x = paddle.to_tensor([4.0, 2.5, 1.0])
+            >>> other = paddle.to_tensor([4.0, 3.0, 2.5])
+            >>> out = paddle.igamma(x, other)
             >>> print(out)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                   [[1., 1., 2.],
-                    [3., 1., 5.]])
+            Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.56652987, 0.45618692, 0.15085495])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.igamma(x, other)
@@ -5956,25 +5954,23 @@ def igammac(x, other, name=None):
         \mathrm{igammac}(x, a)=\frac{1}{\Gamma(x)}\int_a^{\infty}t^{x-1}e^{-t}dt
 
     Args:
-        x (Tensor): ``x`` is the original Tensor. Must be at least 2-dimensional.
-        y (Tensor): ``y`` is the Tensor to embed into ``x``
-        offset (int, optional): which diagonal to consider. Default: 0 (main diagonal).
+        x (Tensor): ``x`` is the non-negative input tensor.
+        other (Tensor): ``other`` is the Tensor to the upper boundary of Integral.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, Tensor with diagonal embedeed with ``y``.
+        - out (Tensor), A Tensor. the igamma of the input Tensor, the shape and data type is the same with input.
 
     Examples:
         .. code-block:: python
 
             >>> import paddle
-            >>> x = paddle.arange(6.0).reshape((2, 3))
-            >>> y = paddle.ones((2,))
-            >>> out = x.diagonal_scatter(y)
+            >>> x = paddle.to_tensor([4.0, 2.5, 1.0])
+            >>> other = paddle.to_tensor([4.0, 3.0, 2.5])
+            >>> out = paddle.igammac(x, other)
             >>> print(out)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                   [[1., 1., 2.],
-                    [3., 1., 5.]])
+            Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.43347010, 0.54381311, 0.84914505])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.igammac(x, other)
