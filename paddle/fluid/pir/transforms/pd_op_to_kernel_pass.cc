@@ -115,7 +115,8 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
                                        const phi::KernelKey kernel_key) {
   // NOTE(phlrain): keep the same kernel select strategy with
   // GetExepectKernelKey
-  if (op->isa<Pool2dOp>() || op->isa<Pool2dGradOp>()) {
+  if (op->isa<Pool2dOp>() || op->isa<Pool2dGradOp>() || op->isa<Pool3dOp>() ||
+      op->isa<Pool3dGradOp>()) {
     if (kernel_key.backend() == phi::Backend::GPUDNN &&
         (op->attributes()
              .at("adaptive")
@@ -925,16 +926,16 @@ void HandleForWhileOp(
   pir::Builder builder(ctx, block);
   auto base_while_op = op_item->dyn_cast<WhileOp>();
   auto new_while_op = builder.Build<WhileOp>(cond_val, vec_in);
-  pir::Block* body_block = new_while_op.body_block();
+  pir::Block& body_block = new_while_op.body_block();
   for (size_t i = 0; i < vec_in.size(); ++i) {
-    auto block_arg = body_block->AddArgument(vec_in[i].type());
-    (*map_value_pair)[base_while_op.body_block()->argument(i)] = block_arg;
+    auto block_arg = body_block.AddArgument(vec_in[i].type());
+    (*map_value_pair)[base_while_op.body_block().argument(i)] = block_arg;
   }
 
   // process body block
   ProcessBlock(place,
-               base_while_op.body_block(),
-               body_block,
+               &base_while_op.body_block(),
+               &body_block,
                ctx,
                map_op_pair,
                map_value_pair);
