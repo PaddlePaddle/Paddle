@@ -226,7 +226,7 @@ void GetInputIds(pir::Operation* op,
 std::unordered_set<pir::Value> GetInternalOutputs(pir::Block* block) {
   std::unordered_set<pir::Value> inner_outputs;
   for (size_t arg_id = 0; arg_id < block->args_size(); ++arg_id) {
-    inner_outputs.insert(block->argument(arg_id));
+    inner_outputs.insert(block->arg(arg_id));
   }
   for (auto& op : (*block)) {
     VLOG(8) << "GetInternalOutputs of " << op.name();
