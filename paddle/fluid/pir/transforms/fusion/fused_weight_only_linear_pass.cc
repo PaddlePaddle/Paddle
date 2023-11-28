@@ -23,8 +23,11 @@
 namespace {
 
 inline int getSMVersion() {
-  int sm_version = paddle::platform::GetGPUComputeCapability(
+  int sm_version = 80;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  sm_version = paddle::platform::GetGPUComputeCapability(
       paddle::platform::GetCurrentDeviceId());
+#endif
   return sm_version;
 }
 
