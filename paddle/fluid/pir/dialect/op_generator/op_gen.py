@@ -135,6 +135,7 @@ CC_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
+#include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
