@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <initializer_list>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -25,6 +26,7 @@
 
 namespace pir {
 class Dialect;
+class InterfaceValue;
 
 ///
 /// \brief OpInfoImpl class.
@@ -38,7 +40,7 @@ class OpInfoImpl {
   static OpInfo Create(Dialect *dialect,
                        TypeId op_id,
                        const char *op_name,
-                       std::vector<InterfaceValue> &&interface_map,
+                       std::set<InterfaceValue> &&interface_set,
                        const std::vector<TypeId> &trait_set,
                        size_t attributes_num,
                        const char *attributes_name[],
@@ -61,6 +63,8 @@ class OpInfoImpl {
 
   bool HasInterface(TypeId interface_id) const;
 
+  void AttachInterface(InterfaceValue &&interface_value);
+
   void *GetInterfaceImpl(TypeId interface_id) const;
 
   const char *name() const { return op_name_; }
@@ -72,25 +76,19 @@ class OpInfoImpl {
   }
 
  private:
-  OpInfoImpl(pir::Dialect *dialect,
+  OpInfoImpl(std::set<InterfaceValue> &&interface_set,
+             pir::Dialect *dialect,
              TypeId op_id,
              const char *op_name,
-             uint32_t num_interfaces,
              uint32_t num_traits,
              uint32_t num_attributes,
              const char **p_attributes,
              VerifyPtr verify_sig,
-             VerifyPtr verify_region)
-      : dialect_(dialect),
-        op_id_(op_id),
-        op_name_(op_name),
-        num_interfaces_(num_interfaces),
-        num_traits_(num_traits),
-        num_attributes_(num_attributes),
-        p_attributes_(p_attributes),
-        verify_sig_(verify_sig),
-        verify_region_(verify_region) {}
+             VerifyPtr verify_region);
+  ~OpInfoImpl() = default;
   void Destroy();
+
+  std::set<InterfaceValue> interface_set_;
 
   /// The dialect of this Op belong to.
   Dialect *dialect_;
@@ -100,9 +98,6 @@ class OpInfoImpl {
 
   /// The name of this Op.
   const char *op_name_;
-
-  /// Interface will be recorded by std::pair<TypeId, void*>.
-  uint32_t num_interfaces_ = 0;
 
   /// Trait will be recorded by TypeId.
   uint32_t num_traits_ = 0;

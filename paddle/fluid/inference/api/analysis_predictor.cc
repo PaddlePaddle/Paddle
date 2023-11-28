@@ -770,12 +770,14 @@ bool AnalysisPredictor::PrepareExecutor() {
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
 
       ::pir::PassManager pm_for_op_program(::pir::IrContext::Instance(), 2);
-      // TODO(liuyuanle): Uncomment constant_folding_pass after fix it
-      // pm_for_op_program.AddPass(::pir::CreateConstantFoldingPass(sub_scope_));
       pm_for_op_program.AddPass(::pir::CreateConv2dFusePass());
+
+      pm_for_op_program.AddPass(::pir::CreateConstantFoldingPass(sub_scope_));
       pm_for_op_program.AddPass(::pir::CreateDeadCodeEliminationPass());
       pm_for_op_program.AddPass(
           ::pir::CreateReplaceFetchWithShadowOutputPass());
+      pm_for_op_program.AddPass(
+          ::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
       // pm_for_op_program.EnableIRPrinting();
       pm_for_op_program.Run(pir_program_.get());
 
@@ -786,8 +788,6 @@ bool AnalysisPredictor::PrepareExecutor() {
       if (FLAGS_pir_apply_inplace_pass) {
         pm_for_kernel_program.AddPass(::pir::CreateInplacePass());
       }
-      pm_for_kernel_program.AddPass(
-          ::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
       pm_for_kernel_program.Run(pir_program_.get());
 
       executor_->PrepareInterpreterCore(

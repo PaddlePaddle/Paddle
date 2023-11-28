@@ -116,19 +116,6 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-inline int ConvOutSize(int input_size,
-                       int filter_size,
-                       int dilation,
-                       int pad_left,
-                       int pad_right,
-                       int stride) {
-  const int dkernel = dilation * (filter_size - 1) + 1;
-  int output_size =
-      (input_size + (pad_left + pad_right) - dkernel) / stride + 1;
-
-  return output_size;
-}
-
 void Conv1dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
                         const MetaTensor& filter,
@@ -2499,6 +2486,98 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
     variance->set_dtype(x.dtype());
   }
   out->share_lod(x);
+}
+
+void Conv2dFusionInferMeta(const MetaTensor& input,
+                           const MetaTensor& filter,
+                           const MetaTensor& bias,
+                           const MetaTensor& residual_data,
+                           const std::vector<int>& strides,
+                           const std::vector<int>& paddings,
+                           const std::string& padding_algorithm,
+                           const std::vector<int>& dilations,
+                           int groups,
+                           const std::string& data_format,
+                           const std::string& activation,
+                           const std::vector<int>& split_channels,
+                           MetaTensor* output,
+                           std::vector<MetaTensor*> outputs,
+                           MetaConfig config) {
+  // TODO(liuyuanle): mkldnn seems only support nchw.
+  const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+  std::vector<int64_t> out_shape = ComputeOutputShape(input,
+                                                      filter,
+                                                      bias,
+                                                      strides,
+                                                      paddings,
+                                                      padding_algorithm,
+                                                      dilations,
+                                                      groups,
+                                                      data_format,
+                                                      channel_last,
+                                                      config);
+  output->set_dims(phi::make_ddim(out_shape));
+  output->set_dtype(input.dtype());
+  if (data_format == "NHWC") {
+    output->set_layout(phi::DataLayout::NHWC);
+  } else if (data_format == "NDHWC") {
+    output->set_layout(phi::DataLayout::NDHWC);
+  }
+
+  output->share_lod(input);
+
+  if (split_channels.size()) {
+    PADDLE_ENFORCE_EQ(
+        outputs.size(),
+        split_channels.size(),
+        phi::errors::InvalidArgument(
+            "The number of Output(Outputs) of operator 'conv2d_fusion' is "
+            "expected to be equal to the length of Attr(split_channels). But "
+            "reiceved: the number of Output(Outputs) = %u; the length of "
+            "Attr(split_channels) = %u, the content = [%s].",
+            outputs.size(),
+            split_channels.size(),
+            phi::make_ddim(split_channels)));
+
+    int split_channels_sum = 0;
+    std::vector<phi::DDim> output_shapes(split_channels.size());
+    for (size_t i = 0; i < split_channels.size(); ++i) {
+      split_channels_sum += split_channels[i];
+      if (channel_last) {
+        output_shapes[i] = phi::make_ddim(
+            {out_shape[0], out_shape[1], out_shape[2], split_channels[i]});
+      } else {
+        output_shapes[i] = phi::make_ddim(
+            {out_shape[0], split_channels[i], out_shape[2], out_shape[3]});
+      }
+    }
+    int output_channels = out_shape[1];
+    // for NHWC
+    if (channel_last) output_channels = out_shape[3];
+    PADDLE_ENFORCE_EQ(
+        split_channels_sum,
+        output_channels,
+        phi::errors::InvalidArgument(
+            "The sum of Attr(split_channels) is expected to be equal to "
+            "the "
+            "total output split_channels. But received: the sum of "
+            "Attr(split_channels) = %d, the total output split_channels = %d.",
+            split_channels_sum,
+            output_channels));
+    for (size_t i = 0; i < outputs.size(); ++i) {
+      if (outputs[i]) {
+        outputs[i]->set_dims(output_shapes[i]);
+        outputs[i]->set_dtype(input.dtype());
+        if (data_format == "NHWC") {
+          outputs[i]->set_layout(phi::DataLayout::NHWC);
+        } else if (data_format == "NDHWC") {
+          outputs[i]->set_layout(phi::DataLayout::NDHWC);
+        }
+
+        outputs[i]->share_lod(input);
+      }
+    }
+  }
 }
 
 void FusionRepeatedFCReluInferMeta(const MetaTensor& x,

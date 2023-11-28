@@ -587,7 +587,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
 
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(&mesh, *(ctx.AllMutableInput()))) {
-    ctx.AllMutableInput()->clear();
+    paddle::CustomOpKernelContext empty_ctx;
+    ctx = empty_ctx;
     for (size_t i = 0; i < inputs.size(); ++i) {
       const auto& input = inputs.at(i);
       // Parse op_type first, so that use i + 1
@@ -610,7 +611,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                 << " to CustomOpKernelContext. Add vector<Tensor> size = "
                 << ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
       } else {
-        const paddle::Tensor& tensor = CastPyArg2Tensor(obj, i + 1);  // NOLINT
+        paddle::Tensor& tensor = CastPyArg2Tensor(obj, i + 1);  // NOLINT
         ConvertAllInputsToDistTensor(mesh, tensor);
         ctx.EmplaceBackInput(tensor);
         VLOG(7) << "Custom operator add input " << input

@@ -26,6 +26,10 @@ from op_gen import (
     update_ops,
 )
 
+PD_MANUAL_API_LIST = {
+    'embedding_grad',
+}
+
 H_FILE_TEMPLATE = """
 
 #pragma once
@@ -172,6 +176,7 @@ class CodeGen:
         # replace old ir ops with pir ops
         if need_update_ops:
             update_ops(op_yaml_items, update_yaml_file)
+
         op_info_items = []
         for op in op_yaml_items:
             op_compat_item = op_compat_parser.get_compat(op['name'])
@@ -204,7 +209,7 @@ class CodeGen:
     def _need_skip(self, op_info, op_name):
         return (
             op_info.infer_meta_func is None and op_name not in PD_MANUAL_OP_LIST
-        )
+        ) or op_name in PD_MANUAL_API_LIST
 
     def _is_optional_input(self, op_info, input_name):
         name_list = op_info.input_name_list
