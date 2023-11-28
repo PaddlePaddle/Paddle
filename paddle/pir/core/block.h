@@ -106,8 +106,8 @@ class IR_API Block {
   bool args_empty() const { return arguments_.empty(); }
   uint32_t args_size() const { return arguments_.size(); }
   const BlockArgListType &args() const { return arguments_; }
-  BlockArgument argument(uint32_t index) { return arguments_[index]; }
-  Type argument_type(uint32_t index) const { return arguments_[index].type(); }
+  BlockArgument arg(uint32_t index) { return arguments_[index]; }
+  Type arg_type(uint32_t index) const { return arguments_[index].type(); }
   void ClearArguments();
   BlockArgument AddArgument(Type type);
   template <class TypeIter>
