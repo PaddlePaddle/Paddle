@@ -16,13 +16,11 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, OpTestTool, convert_float_to_uint16
-from test_elementwise_sub_op import TestElementwiseOp
 
 import paddle
 from paddle import enable_static
 from paddle.base import core
 from paddle.base.framework import _current_expected_place
-
 
 
 @OpTestTool.skip_if(
@@ -56,17 +54,17 @@ class TestOneDNNElementwiseSubOp(OpTest):
 
     def test_check_grad_normal(self):
         # TODO: Enable grad check (Backward)
-        #self.check_grad(['X', 'Y'], 'Out')
+        # self.check_grad(['X', 'Y'], 'Out')
         pass
 
     def test_check_grad_ignore_x(self):
         # TODO: Enable grad check (Backward)
-        #self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+        # self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
         pass
 
     def test_check_grad_ignore_y(self):
         # TODO: Enable grad check (Backward)
-        #self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+        # self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
         pass
 
     def init_axis(self):
@@ -97,6 +95,7 @@ class TestOneDNNElementwiseSubOp(OpTest):
 
     def if_enable_cinn(self):
         pass
+
 
 class TestOneDNNElementwiseSubOp2(TestOneDNNElementwiseSubOp):
     def init_input_output(self):
@@ -207,19 +206,20 @@ class TestOneDNNElementwiseSubOpZeroDim3(TestOneDNNElementwiseSubOp):
     def test_check_grad_ignore_y(self):
         pass
 
+
 # Special cases for swin transformer, will ignore grad check
 class TestOneDNNlementwiseSubSrcDifferentShape(TestOneDNNElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.random((1, 4, 16, 12, 12)).astype(self.dtype)
         self.y = np.random.random((1, 4, 1, 12, 12)).astype(self.dtype)
         self.out = np.subtract(self.x, self.y)
-    
+
     def test_check_grad_normal(self):
         pass
 
     def test_check_grad_ignore_x(self):
         pass
-    
+
     def test_check_grad_ignore_y(self):
         pass
 
