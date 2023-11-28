@@ -20,8 +20,8 @@ from .envs import (  # noqa: F401
     ENV_SOT_LOG_LEVEL,
     ENV_STRICT_MODE,
     cost_model_guard,
-    strict_mode_guard,
     min_graph_size_guard,
+    strict_mode_guard,
 )
 from .exceptions import (  # noqa: F401
     BreakGraphError,

@@ -41,7 +41,7 @@ from .proto import (
     data_feed_pb2,  # noqa: F401
     framework_pb2,
 )
-from .variable_index import _getitem_static, _setitem_impl_, _setitem_static
+from .variable_index import _getitem_static, _setitem_static
 from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 
 if TYPE_CHECKING:
@@ -2488,9 +2488,6 @@ class Variable(metaclass=VariableMetaClass):
         from .dygraph.base import in_to_static_mode
 
         if in_to_static_mode():
-            if is_compiled_with_xpu():
-                # (NOTE): Currently, there is no index_put_xpu kernel.
-                return _setitem_impl_(self, item, value)
             return _setitem_static(self, item, value)
         else:
             raise RuntimeError(
