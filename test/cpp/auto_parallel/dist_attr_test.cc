@@ -114,7 +114,7 @@ TEST(DistAttr, ctor) {
   EXPECT_EQ(y_dist_attr.process_mesh(), process_mesh);
   EXPECT_EQ(y_dist_attr.dims_mapping(), std::vector<int64_t>({-1, 0}));
   EXPECT_EQ(y_dist_attr.batch_dim(), -1);
-  EXPECT_EQ(y_dist_attr.chunk_id(), -1);
+  EXPECT_EQ(y_dist_attr.chunk_id(), 0);
   EXPECT_EQ(y_dist_attr.dynamic_dims(), std::vector<bool>({false, true}));
   EXPECT_EQ(x_dist_attr.is_annotated("batch_dim"), true);
   EXPECT_EQ(x_dist_attr.is_annotated("dynamic_dims"), true);
@@ -145,6 +145,7 @@ TEST(DistAttr, ctor) {
   mul_dist_attr.set_process_mesh(process_mesh2);
   mul_dist_attr.set_impl_type("dist_mul");
   mul_dist_attr.set_impl_idx(0);
+  mul_dist_attr.set_chunk_id(1);
   mul_dist_attr.set_is_recompute(true);
   mul_dist_attr.mark_annotated("process_mesh");
   mul_dist_attr.mark_annotated("impl_type");
@@ -159,6 +160,7 @@ TEST(DistAttr, ctor) {
             process_mesh2);
   EXPECT_EQ(mul_dist_attr.impl_type(), "dist_mul");
   EXPECT_EQ(mul_dist_attr.impl_idx(), 0);
+  EXPECT_EQ(mul_dist_attr.chunk_id(), 1);
   EXPECT_EQ(mul_dist_attr.is_recompute(), true);
   EXPECT_EQ(mul_dist_attr.is_annotated("process_mesh"), true);
   EXPECT_EQ(mul_dist_attr.is_annotated("impl_type"), true);
