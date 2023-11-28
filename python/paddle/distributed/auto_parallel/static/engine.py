@@ -1582,9 +1582,7 @@ class Engine:
                     )
             return tmp_program
 
-        def _update_old_ir_grad_var_to_var(
-            old_ir_program, old_ir_grad_var_to_var
-        ):
+        def _update_grad_var_to_var(old_ir_program, old_ir_grad_var_to_var):
             # process @RESHARD variable in distributed training
             for op in old_ir_program.global_block().ops:
                 if (
@@ -1611,14 +1609,12 @@ class Engine:
                                 output_names[0]
                             ] = old_ir_grad_var_to_var[original_var_name]
 
-        def _get_pir_grad_var_to_var_map(
+        def _get_pir_grad_var_to_var(
             old_ir_program, old_ir_grad_var_to_var, param_mapping
         ):
-            _update_old_ir_grad_var_to_var(
-                old_ir_program, old_ir_grad_var_to_var
-            )
+            _update_grad_var_to_var(old_ir_program, old_ir_grad_var_to_var)
 
-            pir_grad_var_to_var_map = {}
+            pir_grad_var_to_var = {}
             for grad_var, var in old_ir_grad_var_to_var.items():
                 if (
                     grad_var in param_mapping.keys()
@@ -1630,7 +1626,7 @@ class Engine:
                     ):
                         new_grad_var = param_mapping[grad_var][0]
                         new_var = param_mapping[var][0]
-                        pir_grad_var_to_var_map[new_grad_var] = new_var
+                        pir_grad_var_to_var[new_grad_var] = new_var
                     else:
                         new_grad_vars = []
                         new_vars = []
@@ -1667,43 +1663,30 @@ class Engine:
                         assert (
                             len(new_grad_vars) == 1 and len(new_vars) == 1
                         ), "translate pir_grad_var_to_var error"
-                        pir_grad_var_to_var_map[new_grad_vars[0]] = new_vars[0]
+                        pir_grad_var_to_var[new_grad_vars[0]] = new_vars[0]
 
-            return pir_grad_var_to_var_map
+            return pir_grad_var_to_var
 
         if not self.pir_program_initialized:
+            # process feed
             if feed_dict is not None:
                 invalid_feed_var_names = _get_invalid_feeds(
                     self.main_program, feed_dict
                 )
-                if invalid_feed_var_names:
-                    new_feed_dict = {}
-                    for invalid_feed_var_name in invalid_feed_var_names:
-                        new_feed_dict[invalid_feed_var_name] = feed_dict[
-                            invalid_feed_var_name
-                        ]
+            tmp_program = self.main_program.clone()
+            if invalid_feed_var_names:
+                new_feed_dict = {}
+                for invalid_feed_var_name in invalid_feed_var_names:
+                    new_feed_dict[invalid_feed_var_name] = feed_dict[
+                        invalid_feed_var_name
+                    ]
+                tmp_program = _add_data_ops(tmp_program, new_feed_dict)
 
-                    tmp_program = _add_data_ops(
-                        self.main_program, new_feed_dict
-                    )
-                else:
-                    tmp_program = self.main_program.clone()
-            else:
-                tmp_program = self.main_program.clone()
-
+            # translate to pir program and ensure the data ops are at the begining of pir program
             (
                 pir_program,
                 param_mapping,
             ) = paddle.pir.translate_to_pir_with_param_map(tmp_program.desc)
-
-            fetch_list = []
-            for fetch_name in fetch_names:
-                result = param_mapping[fetch_name]
-                assert (
-                    len(result) == 1
-                ), "fetch list of program and pir program is not match"
-                fetch_list.append(result[0])
-
             data_ops = []
             global_block = pir_program.global_block()
             for op in global_block.ops:
@@ -1713,15 +1696,28 @@ class Engine:
             for data_op in data_ops:
                 global_block.move_op(data_op, insert_point)
 
+            # translate fetch list to pir OpResult
+            fetch_list = []
+            for fetch_name in fetch_names:
+                result = param_mapping[fetch_name]
+                assert (
+                    len(result) == 1
+                ), "fetch list of program and pir program is not match"
+                fetch_list.append(result[0])
+
+            # translate variables in grad_var_to_var to pir OpResults, thus get pir_grad_var_to_var for further use
             grad_var_to_var_map = self._dist_contexts[
                 self._mode
             ]._dist_op_context.grad_var_to_var
-            assert len(grad_var_to_var_map.keys()) == 1
+            assert (
+                len(grad_var_to_var_map.keys()) == 1
+            ), "invalid grad_var_to_var in distributed engine"
             grad_var_to_var = grad_var_to_var_map[1]
-            pir_grad_var_to_var = _get_pir_grad_var_to_var_map(
+            pir_grad_var_to_var = _get_pir_grad_var_to_var(
                 tmp_program, grad_var_to_var, param_mapping
             )
 
+            # set lr_scheduler in pir program
             lr_scheduler = (
                 self.main_program.lr_scheduler
                 if hasattr(self.main_program, 'lr_scheduler')
@@ -1739,7 +1735,7 @@ class Engine:
                 )
                 if lr_var is not None:
                     pir_program.lr_var = lr_var
-
+            # set pir program infos
             self.pir_program = pir_program
             self.param_mapping = param_mapping
             self.pir_grad_var_to_var = pir_grad_var_to_var
