@@ -237,10 +237,10 @@ void WhileOp::Build(pir::Builder &builder,             // NOLINT
   }
   argument.AddRegion(nullptr);
 }
-pir::Block *WhileOp::body_block() {
+pir::Block &WhileOp::body_block() {
   pir::Region &body_region = (*this)->region(0);
   if (body_region.empty()) body_region.emplace_back();
-  return &body_region.front();
+  return body_region.front();
 }
 pir::Value WhileOp::cond() { return (*this)->operand_source(0); }
 
@@ -259,11 +259,11 @@ void WhileOp::Print(pir::IrPrinter &printer) {
       [&]() { os << ", "; });
   os << "] { \n ^";
   pir::PrintInterleave(
-      body_block()->args_begin(),
-      body_block()->args_end(),
+      body_block().args_begin(),
+      body_block().args_end(),
       [&](pir::Value v) { printer.PrintValue(v); },
       [&]() { os << ", "; });
-  for (auto &item : *body_block()) {
+  for (auto &item : body_block()) {
     os << "\n  ";
     printer.PrintOperation(&item);
   }

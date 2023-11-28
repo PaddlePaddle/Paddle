@@ -50,15 +50,15 @@ class SubGraphExtractPass : public pir::Pass {
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "build_cinn_pass should run on module op.");
-    auto* block = module_op.block();
+    auto& block = module_op.block();
 
     std::vector<GroupOpsVec> groups =
-        ::pir::SubgraphDetector(block, IsSplitOp)();
+        ::pir::SubgraphDetector(&block, IsSplitOp)();
     LOG(INFO) << "--- [build_cinn_pass] detected " << groups.size()
               << " cinn supported subgraphs";
     for (auto& group_ops : groups) {
       VLOG(4) << "current group_ops.size(): " << group_ops.size();
-      ::pir::ReplaceWithGroupOp(block, group_ops);
+      ::pir::ReplaceWithGroupOp(&block, group_ops);
     }
   }
 
