@@ -239,5 +239,29 @@ inline ncclDataType_t ToNCCLDataType(DataType type) {
   }
 }
 #endif
+#if defined(PADDLE_WITH_XPU_BKCL)
+inline BKCLDataType ToBKCLDataType(DataType type) {
+  if (type == DataType::FLOAT32) {
+    return BKCL_FLOAT;
+  } else if (type == DataType::FLOAT64) {
+    return BKCL_FLOAT64;
+  } else if (type == DataType::INT32) {
+    return BKCL_INT32;
+  } else if (type == DataType::INT64) {
+    return BKCL_INT64;
+  } else if (type == DataType::FLOAT16) {
+    return BKCL_FLOAT16;
+  } else if (type == DataType::UINT8) {
+    return BKCL_UINT8;
+  } else if (type == DataType::BOOL) {
+    return BKCL_UINT8;
+  } else if (type == DataType::BFLOAT16) {
+    return BKCL_BFLOAT16;
+  } else {
+    PADDLE_THROW(
+        errors::Unimplemented("This datatype in bkcl is not supported."));
+  }
+}
+#endif
 
 }  // namespace phi

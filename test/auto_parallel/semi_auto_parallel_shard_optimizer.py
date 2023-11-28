@@ -148,8 +148,7 @@ class TestSemiAutoParallelShardOptimizer:
         if self._backend == "gpu":
             self.test_adamw_mp()
             self.test_adamw_shard_optimizer(stage1=True)
-            # A problem has to be addressed if not shard batch.
-            # self.test_adamw_shard_optimizer(stage1=False)
+            self.test_adamw_shard_optimizer(stage1=False)
 
 
 if __name__ == '__main__':
