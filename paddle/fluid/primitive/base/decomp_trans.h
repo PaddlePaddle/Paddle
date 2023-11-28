@@ -46,6 +46,19 @@ static bool has_decomp_rule(const pir::Operation& op) {
   return true;
 }
 
+static std::vector<std::vector<pir::OpResult>> call_decomp_rule(
+    pir::Operation* op) {
+  paddle::dialect::DecompInterface decomp_interface =
+      op->dyn_cast<paddle::dialect::DecompInterface>();
+  PADDLE_ENFORCE(
+      decomp_interface,
+      phi::errors::InvalidArgument(
+          "The decomp function is not registered in %s op ", op->name()));
+  std::vector<std::vector<pir::OpResult>> decomp_res =
+      decomp_interface.Decomp(op);
+  return decomp_res;
+}
+
 // pir::Program decomp_program(
 //     const pir::Program& program);
 
