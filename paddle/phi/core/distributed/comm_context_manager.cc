@@ -31,6 +31,7 @@
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
 #endif
@@ -40,7 +41,6 @@
 
 #ifdef PADDLE_WITH_XPU_BKCL
 #include "paddle/phi/backends/xpu/xpu_info.h"
-#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
 #endif
 
