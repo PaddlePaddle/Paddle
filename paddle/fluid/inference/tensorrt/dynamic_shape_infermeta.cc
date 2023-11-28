@@ -851,12 +851,6 @@ nvinfer1::DimsExprs ArgsortInferMeta(
     int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder,  // NOLINT
     const framework::OpDesc& op_desc) {
-  PADDLE_ENFORCE_LE(
-      output_index,
-      1,
-      phi::errors::InvalidArgument("argsort only has two "
-                                   "output, but received asvector: %d.",
-                                   output_index));
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       1,
