@@ -17,22 +17,17 @@ import unittest
 import numpy
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_ast_only,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
 from paddle import base
-from paddle.jit.api import to_static
 
 
-@paddle.jit.to_static
 def dyfunc_assert_variable(x):
     x_v = base.dygraph.to_variable(x)
     assert x_v
 
 
-@to_static
 def dyfunc_assert_non_variable(x=True):
     assert x
 
@@ -52,34 +47,40 @@ class TestAssertVariable(Dy2StTestBase):
         self._run(func, x, with_exception, True)
         self._run(func, x, with_exception, False)
 
-    @test_legacy_and_pt_and_pir
-    @test_ast_only
     def test_non_variable(self):
         self._run_dy_static(
-            dyfunc_assert_non_variable, x=False, with_exception=True
+            paddle.jit.to_static(dyfunc_assert_non_variable),
+            x=False,
+            with_exception=True,
         )
         self._run_dy_static(
-            dyfunc_assert_non_variable, x=True, with_exception=False
+            paddle.jit.to_static(dyfunc_assert_non_variable),
+            x=True,
+            with_exception=False,
         )
 
-    @test_legacy_and_pt_and_pir
-    @test_ast_only
     def test_bool_variable(self):
         self._run_dy_static(
-            dyfunc_assert_variable, x=numpy.array([False]), with_exception=True
+            paddle.jit.to_static(dyfunc_assert_variable),
+            x=numpy.array([False]),
+            with_exception=True,
         )
         self._run_dy_static(
-            dyfunc_assert_variable, x=numpy.array([True]), with_exception=False
+            paddle.jit.to_static(dyfunc_assert_variable),
+            x=numpy.array([True]),
+            with_exception=False,
         )
 
-    @test_legacy_and_pt_and_pir
-    @test_ast_only
     def test_int_variable(self):
         self._run_dy_static(
-            dyfunc_assert_variable, x=numpy.array([0]), with_exception=True
+            paddle.jit.to_static(dyfunc_assert_variable),
+            x=numpy.array([0]),
+            with_exception=True,
         )
         self._run_dy_static(
-            dyfunc_assert_variable, x=numpy.array([1]), with_exception=False
+            paddle.jit.to_static(dyfunc_assert_variable),
+            x=numpy.array([1]),
+            with_exception=False,
         )
 
 
