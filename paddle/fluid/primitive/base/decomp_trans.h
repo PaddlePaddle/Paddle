@@ -37,29 +37,8 @@ class DecompProgram {
   std::vector<pir::OpResult> tar_vars_;
 };
 
-static bool has_decomp_rule(const pir::Operation& op) {
-  pir::IrContext* ctx = pir::IrContext::Instance();
-  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op.name());
-  auto decomp_interface_impl =
-      op_info.GetInterfaceImpl<paddle::dialect::DecompInterface>();
-  if (decomp_interface_impl == nullptr) return false;
-  return true;
-}
+bool has_decomp_rule(const pir::Operation& op);
 
-static std::vector<std::vector<pir::OpResult>> call_decomp_rule(
-    pir::Operation* op) {
-  paddle::dialect::DecompInterface decomp_interface =
-      op->dyn_cast<paddle::dialect::DecompInterface>();
-  PADDLE_ENFORCE(
-      decomp_interface,
-      phi::errors::InvalidArgument(
-          "The decomp function is not registered in %s op ", op->name()));
-  std::vector<std::vector<pir::OpResult>> decomp_res =
-      decomp_interface.Decomp(op);
-  return decomp_res;
-}
-
-// pir::Program decomp_program(
-//     const pir::Program& program);
+std::vector<std::vector<pir::OpResult>> call_decomp_rule(pir::Operation* op);
 
 }  // namespace paddle

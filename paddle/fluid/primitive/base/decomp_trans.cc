@@ -24,14 +24,26 @@ namespace paddle {
 
 using Program = pir::Program;
 
-// static bool has_decomp_rule(const pir::Operation &op) {
-//   pir::IrContext *ctx = pir::IrContext::Instance();
-//   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op.name());
-//   auto decomp_interface_impl =
-//       op_info.GetInterfaceImpl<paddle::dialect::DecompInterface>();
-//   if (decomp_interface_impl == nullptr) return false;
-//   return true;
-// }
+bool has_decomp_rule(const pir::Operation& op) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op.name());
+  auto decomp_interface_impl =
+      op_info.GetInterfaceImpl<paddle::dialect::DecompInterface>();
+  if (decomp_interface_impl == nullptr) return false;
+  return true;
+}
+
+std::vector<std::vector<pir::OpResult>> call_decomp_rule(pir::Operation* op) {
+  paddle::dialect::DecompInterface decomp_interface =
+      op->dyn_cast<paddle::dialect::DecompInterface>();
+  PADDLE_ENFORCE(
+      decomp_interface,
+      phi::errors::InvalidArgument(
+          "The decomp function is not registered in %s op ", op->name()));
+  std::vector<std::vector<pir::OpResult>> decomp_res =
+      decomp_interface.Decomp(op);
+  return decomp_res;
+}
 
 DecompProgram::DecompProgram(const pir::Program* program,
                              const std::vector<pir::OpResult>& src_vars)
