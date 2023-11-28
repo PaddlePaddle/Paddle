@@ -472,7 +472,7 @@ def pow(x, y, name=None):
     Note:
         ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensors
+            .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensors
 
 
     Args:
@@ -4908,7 +4908,7 @@ def broadcast_shape(x_shape, y_shape):
     Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x_shape (list[int]|tuple[int]): A shape of tensor.
@@ -6075,8 +6075,7 @@ def heaviside(x, y, name=None):
 
     Note:
         ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+            .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): The input tensor of Heaviside step function, it's data type should be float16, float32, float64, int32 or int64.
