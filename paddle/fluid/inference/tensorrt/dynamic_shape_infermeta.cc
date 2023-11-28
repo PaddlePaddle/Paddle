@@ -883,6 +883,7 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(memory_efficient_attention,
                                   MemoryEfficientAttentionInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad, PadInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(scatter, ScatterInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(argsort, ArgsortInferMeta);
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
