@@ -21,42 +21,16 @@ import paddle
 from paddle import base
 from paddle.base import framework
 
-# def assign_value_wrapper(
-#     shape=[], dtype=base.core.VarDesc.VarType.FP32, values=0.0
-# ):
-#     if paddle.framework.in_dynamic_mode():
-#         print("paddle.framework.in_dynamic_mode()")
-#         tensor = paddle.Tensor()
-#     else:
-#         np_type = paddle.base.data_feeder._PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
-#         tensor = paddle.zeros(list(shape), np_type)
-#         dtype = paddle.pir.core.convert_np_dtype_to_dtype_(np_type)
 
-
-#     print("zyt--------------------------dtype={},tensor_type=".format(dtype,tensor.dtype))
-#     return paddle._C_ops.assign_value_(
-#         tensor, shape, dtype, values, framework._current_expected_place()
-#     )
 def wrap_assign_value_wrapper(dtype=base.core.VarDesc.VarType.FP32):
     def assign_value_wrapper(shape=[], dtype=dtype, values=0.0):
         if paddle.framework.in_dynamic_mode():
-            # tensor = paddle.Tensor()
-            # tensor = paddle.to_tensor([], dtype='complex64')
-            tensor = paddle.ones(shape=[2, 5], dtype=dtype)
+            tensor = paddle.Tensor()
         else:
             np_type = paddle.base.data_feeder._PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
             tensor = paddle.zeros(list(shape), np_type)
             dtype = paddle.pir.core.convert_np_dtype_to_dtype_(np_type)
-        print(
-            "zyt--------------------------dtype={},tensor_type={},values.dtype={}".format(
-                dtype, tensor.dtype, values[0].dtype
-            )
-        )
-        """
-            TODO(走到assign_value_的时候会丢失虚部)
-        """
-        print(type(values), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", dtype)
-        values = values.ravel().tolist()
+
         return paddle._C_ops.assign_value_(
             tensor, shape, dtype, values, framework._current_expected_place()
         )
@@ -79,126 +53,127 @@ class TestAssignValueOp(op_test.OpTest):
         self.outputs = {"Out": self.value}
 
     def init_data(self):
-        # self.value = np.random.random(size=(2, 5)).astype(np.float32)
-        # self.attrs["values"] = [float(v) for v in self.value.flat]
-        self.value = (
-            np.random.random(size=(2, 5)) + 1j * np.random.random(size=(2, 5))
-        ).astype('complex64')
+        self.value = np.random.random(size=(2, 5)).astype(np.float32)
+        self.attrs["values"] = [float(v) for v in self.value.flat]
+        # self.value = (
+        #     np.random.random(size=(2, 5)) + 1j * np.random.random(size=(2, 5))
+        # ).astype('complex64')
         # print("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz=",type(self.value),type(list(self.value.flat)))
         # self.attrs["values"] = list(self.value.flat)
-        self.attrs["values"] = self.value
+        # self.attrs["values"] = self.value
 
     def test_forward(self):
         self.check_output(check_cinn=True, check_pir=True)
 
 
-# class TestAssignValueOp2(TestAssignValueOp):
-#     def init_data(self):
-#         self.value = np.random.random(size=(2, 5)).astype(np.int32)
-#         self.attrs["values"] = [int(v) for v in self.value.flat]
+class TestAssignValueOp2(TestAssignValueOp):
+    def init_data(self):
+        self.value = np.random.random(size=(2, 5)).astype(np.int32)
+        self.attrs["values"] = [int(v) for v in self.value.flat]
 
 
-# class TestAssignValueOp3(TestAssignValueOp):
-#     def init_data(self):
-#         self.value = np.random.random(size=(2, 5)).astype(np.int64)
-#         self.attrs["values"] = [int(v) for v in self.value.flat]
+class TestAssignValueOp3(TestAssignValueOp):
+    def init_data(self):
+        self.value = np.random.random(size=(2, 5)).astype(np.int64)
+        self.attrs["values"] = [int(v) for v in self.value.flat]
 
 
-# class TestAssignValueOp4(TestAssignValueOp):
-#     def init_data(self):
-#         self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
-#             np.bool_
-#         )
-#         self.attrs["values"] = [int(v) for v in self.value.flat]
-
-# class TestAssignValueOp5(TestAssignValueOp):
-#     def init_data(self):
-#         self.value = np.random.random(size=(2, 5)).astype(np.float64)
-#         self.attrs["values"] = [float(v) for v in self.value.flat]
+class TestAssignValueOp4(TestAssignValueOp):
+    def init_data(self):
+        self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
+            np.bool_
+        )
+        self.attrs["values"] = [int(v) for v in self.value.flat]
 
 
-# class TestAssignValueOp6(TestAssignValueOp):
-#     def init_data(self):
-#         self.value = (
-#             np.random.random(size=(2, 5)) + 1j * np.random.random(size=(2, 5))
-#         ).astype(np.complex64)
-#         self.attrs["values"] = list(self.value.flat)
+class TestAssignValueOp5(TestAssignValueOp):
+    def init_data(self):
+        self.value = np.random.random(size=(2, 5)).astype(np.float64)
+        self.attrs["values"] = [float(v) for v in self.value.flat]
 
 
-# class TestAssignValueOp7(TestAssignValueOp):
-#     def init_data(self):
-#         self.value = (
-#             np.random.random(size=(2, 5)) + 1j * np.random.random(size=(2, 5))
-#         ).astype(np.complex128)
-#         self.attrs["values"] = list(self.value.flat)
+class TestAssignValueOp6(TestAssignValueOp):
+    def init_data(self):
+        self.value = (
+            np.random.random(size=(2, 5)) + 1j * np.random.random(size=(2, 5))
+        ).astype(np.complex64)
+        self.attrs["values"] = list(self.value.flat)
 
 
-# class TestAssignApi(unittest.TestCase):
-#     def setUp(self):
-#         with op_test.paddle_static_guard():
-#             self.init_dtype()
-#             self.value = (-100 + 200 * np.random.random(size=(2, 5))).astype(
-#                 self.dtype
-#             )
-#             self.place = (
-#                 base.CUDAPlace(0)
-#                 if base.is_compiled_with_cuda()
-#                 else base.CPUPlace()
-#             )
-
-#     def init_dtype(self):
-#         self.dtype = "float32"
-
-#     def test_assign(self):
-#         with op_test.paddle_static_guard():
-#             main_program = base.Program()
-#             with base.program_guard(main_program):
-#                 x = paddle.tensor.create_tensor(dtype=self.dtype)
-#                 paddle.assign(self.value, output=x)
-
-#             exe = base.Executor(self.place)
-#             [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
-#             np.testing.assert_array_equal(fetched_x, self.value)
-#             self.assertEqual(fetched_x.dtype, self.value.dtype)
-
-#     def test_pir_assign(self):
-#         with paddle.pir_utils.IrGuard():
-#             main_program = paddle.pir.Program()
-#             with paddle.static.program_guard(main_program):
-#                 x = paddle.zeros(shape=[1], dtype=self.dtype)
-#                 paddle.assign(self.value, output=x)
-
-#             exe = base.Executor(self.place)
-#             [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
-#             np.testing.assert_array_equal(fetched_x, self.value)
-#             self.assertEqual(fetched_x.dtype, self.value.dtype)
+class TestAssignValueOp7(TestAssignValueOp):
+    def init_data(self):
+        self.value = (
+            np.random.random(size=(2, 5)) + 1j * np.random.random(size=(2, 5))
+        ).astype(np.complex128)
+        self.attrs["values"] = list(self.value.flat)
 
 
-# class TestAssignApi2(TestAssignApi):
-#     def init_dtype(self):
-#         self.dtype = "int32"
+class TestAssignApi(unittest.TestCase):
+    def setUp(self):
+        with op_test.paddle_static_guard():
+            self.init_dtype()
+            self.value = (-100 + 200 * np.random.random(size=(2, 5))).astype(
+                self.dtype
+            )
+            self.place = (
+                base.CUDAPlace(0)
+                if base.is_compiled_with_cuda()
+                else base.CPUPlace()
+            )
+
+    def init_dtype(self):
+        self.dtype = "float32"
+
+    def test_assign(self):
+        with op_test.paddle_static_guard():
+            main_program = base.Program()
+            with base.program_guard(main_program):
+                x = paddle.tensor.create_tensor(dtype=self.dtype)
+                paddle.assign(self.value, output=x)
+
+            exe = base.Executor(self.place)
+            [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
+            np.testing.assert_array_equal(fetched_x, self.value)
+            self.assertEqual(fetched_x.dtype, self.value.dtype)
+
+    def test_pir_assign(self):
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.pir.Program()
+            with paddle.static.program_guard(main_program):
+                x = paddle.zeros(shape=[1], dtype=self.dtype)
+                paddle.assign(self.value, output=x)
+
+            exe = base.Executor(self.place)
+            [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
+            np.testing.assert_array_equal(fetched_x, self.value)
+            self.assertEqual(fetched_x.dtype, self.value.dtype)
 
 
-# class TestAssignApi3(TestAssignApi):
-#     def init_dtype(self):
-#         self.dtype = "int64"
+class TestAssignApi2(TestAssignApi):
+    def init_dtype(self):
+        self.dtype = "int32"
 
 
-# class TestAssignApi4(TestAssignApi):
-#     def setUp(self):
-#         with op_test.paddle_static_guard():
-#             self.init_dtype()
-#             self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
-#                 np.bool_
-#             )
-#             self.place = (
-#                 base.CUDAPlace(0)
-#                 if base.is_compiled_with_cuda()
-#                 else base.CPUPlace()
-#             )
+class TestAssignApi3(TestAssignApi):
+    def init_dtype(self):
+        self.dtype = "int64"
 
-#     def init_dtype(self):
-#         self.dtype = "bool"
+
+class TestAssignApi4(TestAssignApi):
+    def setUp(self):
+        with op_test.paddle_static_guard():
+            self.init_dtype()
+            self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
+                np.bool_
+            )
+            self.place = (
+                base.CUDAPlace(0)
+                if base.is_compiled_with_cuda()
+                else base.CPUPlace()
+            )
+
+    def init_dtype(self):
+        self.dtype = "bool"
 
 
 if __name__ == '__main__':

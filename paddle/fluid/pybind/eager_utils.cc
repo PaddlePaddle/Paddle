@@ -2291,7 +2291,8 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
         Py_complex v = PyComplex_AsCComplex(item);
 
         VLOG(6) << "=================" << v.real << "====" << v.imag;
-        value.emplace_back(phi::Scalar{std::complex<double>(v.real, v.imag)});
+        value.emplace_back(
+            phi::Scalar{phi::dtype::complex<double>(v.real, v.imag)});
       }
       return value;
     }

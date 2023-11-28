@@ -157,7 +157,7 @@ struct ArrayAttributeStorage : public AttributeStorage {
 struct Complex64AttributeStorage : public AttributeStorage {
   using ParamKey = phi::dtype::complex<float>;
   explicit Complex64AttributeStorage(const ParamKey &key) { data_ = key; }
-  ~Complex64AttributeStorage();
+  // ~Complex64AttributeStorage();
   static Complex64AttributeStorage *Construct(const ParamKey &key) {
     return new Complex64AttributeStorage(key);
   }
@@ -176,7 +176,7 @@ struct Complex64AttributeStorage : public AttributeStorage {
 struct Complex128AttributeStorage : public AttributeStorage {
   using ParamKey = phi::dtype::complex<double>;
   explicit Complex128AttributeStorage(const ParamKey &key) { data_ = key; }
-  ~Complex128AttributeStorage();
+  // ~Complex128AttributeStorage();
   static Complex128AttributeStorage *Construct(const ParamKey &key) {
     return new Complex128AttributeStorage(key);
   }
