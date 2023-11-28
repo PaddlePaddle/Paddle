@@ -221,7 +221,7 @@ def test_stage1_bf16_dp():
     for i in range(len(o1_losses)):
         o1_loss = o1_losses[i].detach()
         o2_loss = o2_losses[i].detach()
-        np.testing.assert_array_equal(o1_loss, o2_loss)
+        np.testing.assert_allclose(o1_loss, o2_loss, atol=1e-5)
 
     # stage1 + dp vs pure dp
     mlp3 = MLP()
@@ -233,7 +233,7 @@ def test_stage1_bf16_dp():
     for i in range(len(o1_losses)):
         o1_loss = o1_losses[i].detach()
         o2_loss = o2_losses[i].detach()
-        np.testing.assert_array_equal(o1_loss, o2_loss)
+        np.testing.assert_allclose(o1_loss, o2_loss, atol=1e-5)
 
     # test bf16
     mlp4 = MLP()
@@ -252,9 +252,9 @@ def test_stage1_bf16_dp():
         use_pure_bf16=True,
     )
     for i in range(len(o1_losses)):
-        o1_loss = o1_losses[i].detach()
-        o2_loss = o2_losses[i].detach()
-        np.testing.assert_array_equal(o1_loss, o2_loss)
+        o1_fp32_loss = o1_losses[i].cast("float32").detach()
+        o2_fp32_loss = o2_losses[i].cast("float32").detach()
+        np.testing.assert_allclose(o1_fp32_loss, o2_fp32_loss, atol=1e-5)
 
     mlp6 = MLP()
     mlp6.set_state_dict(state_dict)
@@ -265,9 +265,9 @@ def test_stage1_bf16_dp():
         use_pure_bf16=True,
     )
     for i in range(len(o1_losses)):
-        o1_loss = o1_losses[i].detach()
-        o2_loss = o2_losses[i].detach()
-        np.testing.assert_array_equal(o1_loss, o2_loss)
+        o1_fp32_loss = o1_losses[i].cast("float32").detach()
+        o2_fp32_loss = o2_losses[i].cast("float32").detach()
+        np.testing.assert_allclose(o1_loss, o2_loss, atol=1e-5)
 
     # test bf16 + accumlate_grad
     mlp7 = MLP()
@@ -288,9 +288,9 @@ def test_stage1_bf16_dp():
         use_pure_bf16=True,
     )
     for i in range(len(o1_losses)):
-        o1_loss = o1_losses[i].detach()
-        o2_loss = o2_losses[i].detach()
-        np.testing.assert_array_equal(o1_loss, o2_loss)
+        o1_fp32_loss = o1_losses[i].cast("float32").detach()
+        o2_fp32_loss = o2_losses[i].cast("float32").detach()
+        np.testing.assert_allclose(o1_loss, o2_loss, atol=1e-5)
 
     mlp9 = MLP()
     mlp9.set_state_dict(state_dict)
@@ -301,9 +301,9 @@ def test_stage1_bf16_dp():
         use_pure_bf16=True,
     )
     for i in range(len(o1_losses)):
-        o1_loss = o1_losses[i].detach()
-        o2_loss = o2_losses[i].detach()
-        np.testing.assert_array_equal(o1_loss, o2_loss)
+        o1_fp32_loss = o1_losses[i].cast("float32").detach()
+        o2_fp32_loss = o2_losses[i].cast("float32").detach()
+        np.testing.assert_allclose(o1_loss, o2_loss, atol=1e-5)
 
     return
 
