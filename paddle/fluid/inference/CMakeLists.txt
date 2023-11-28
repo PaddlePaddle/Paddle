@@ -137,14 +137,14 @@ if(WIN32)
   target_link_libraries(paddle_inference_shared phi)
 endif()
 
-if(NOT APPLE)
+if(APPLE)
   # apple can't recognize disable-new-dtags
+  set_target_properties(paddle_inference_shared
+                        PROPERTIES LINK_FLAGS "-Wl,-rpath,'$ORIGIN'")
+else()
   set_target_properties(
     paddle_inference_shared
     PROPERTIES LINK_FLAGS "-Wl,--disable-new-dtags,-rpath,'$ORIGIN'")
-else()
-  set_target_properties(paddle_inference_shared
-                        PROPERTIES LINK_FLAGS "-Wl,-rpath,'$ORIGIN'")
 endif()
 set_target_properties(paddle_inference_shared PROPERTIES OUTPUT_NAME
                                                          paddle_inference)
