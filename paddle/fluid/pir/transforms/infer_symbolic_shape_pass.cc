@@ -76,7 +76,7 @@ class InferSymbolicShapePass : public pir::Pass {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "infer_symbolic_shape_pass should run on module op.");
 
-    for (auto& op : *module_op.block()) {
+    for (auto& op : module_op.block()) {
       if (op.isa<cinn::dialect::GroupOp>()) {
         for (auto* local_op : op.dyn_cast<cinn::dialect::GroupOp>().ops()) {
           InferSymbolicShape(*local_op);
