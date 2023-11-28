@@ -15,7 +15,7 @@
 import unittest
 import warnings
 
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_legacy_and_pt_and_pir,
 )

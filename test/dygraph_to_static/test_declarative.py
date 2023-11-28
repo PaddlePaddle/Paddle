@@ -20,7 +20,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pt,
     test_legacy_and_pt_and_pir,
 )
 from test_basic_api_transformation import dyfunc_to_variable
@@ -35,78 +34,80 @@ from paddle.nn import Layer
 from paddle.static import InputSpec
 
 
-class SimpleNet(Layer):
-    def __init__(self):
-        super().__init__()
-        self.linear = paddle.nn.Linear(10, 3)
+def create_simple_net():
+    class SimpleNet(Layer):
+        def __init__(self):
+            super().__init__()
+            self.linear = paddle.nn.Linear(10, 3)
 
-    def forward(self, x, a=1, b=2):
-        y = self.inner_function(x)
-        return y
+        @paddle.jit.to_static(
+            input_spec=[InputSpec(shape=[None, 10], dtype='float32')],
+            full_graph=True,
+        )
+        def forward(self, x, a=1, b=2):
+            y = self.inner_function(x)
+            return y
 
-    @paddle.jit.to_static(full_graph=True)
-    def inner_function(self, x):
-        y = self.linear(x)
-        return y
+        @paddle.jit.to_static(full_graph=True)
+        def inner_function(self, x):
+            y = self.linear(x)
+            return y
 
-    def add_func(self, x, y):
-        z = x + y
-        return z
+        def add_func(self, x, y):
+            z = x + y
+            return z
 
-    @paddle.jit.to_static(
-        input_spec=[[InputSpec([None, 10]), InputSpec([None, 10])]],
-        full_graph=True,
-    )
-    def func_with_list(self, l, int_val=1):
-        x, y = l
-        z = x + y
-        z = z + int_val
-        return z
+        @paddle.jit.to_static(
+            input_spec=[[InputSpec([None, 10]), InputSpec([None, 10])]],
+            full_graph=True,
+        )
+        def func_with_list(self, l, int_val=1):
+            x, y = l
+            z = x + y
+            z = z + int_val
+            return z
 
-    @paddle.jit.to_static(
-        input_spec=[{'x': InputSpec([None, 10]), 'y': InputSpec([None, 10])}],
-        full_graph=True,
-    )
-    def func_with_dict(self, d):
-        x = d['x']
-        y = d['y']
-        z = x + y
+        @paddle.jit.to_static(
+            input_spec=[
+                {'x': InputSpec([None, 10]), 'y': InputSpec([None, 10])}
+            ],
+            full_graph=True,
+        )
+        def func_with_dict(self, d):
+            x = d['x']
+            y = d['y']
+            z = x + y
 
-        return z
+            return z
 
-    @paddle.jit.to_static(
-        input_spec=[
-            [
-                InputSpec([None]),
-                {'x': InputSpec([None, 10]), 'y': InputSpec([None, 10])},
-            ]
-        ],
-        full_graph=True,
-    )
-    def func_with_list_dict(self, dl):
-        bias = dl[0]
-        x = dl[1]['x']
-        y = dl[1]['y']
+        @paddle.jit.to_static(
+            input_spec=[
+                [
+                    InputSpec([None]),
+                    {'x': InputSpec([None, 10]), 'y': InputSpec([None, 10])},
+                ]
+            ],
+            full_graph=True,
+        )
+        def func_with_list_dict(self, dl):
+            bias = dl[0]
+            x = dl[1]['x']
+            y = dl[1]['y']
 
-        z = x + y
-        z = z + bias
+            z = x + y
+            z = z + bias
 
-        return z
+            return z
+
+    return SimpleNet
 
 
 class TestStaticFunctionInstance(Dy2StTestBase):
     @test_legacy_and_pt_and_pir
     def test_instance_same_class(self):
-        net_1 = paddle.jit.to_static(
-            function=SimpleNet(),
-            input_spec=[InputSpec(shape=[None, 10], dtype='float32')],
-            full_graph=True,
-        )
-        net_2 = paddle.jit.to_static(
-            function=SimpleNet(),
-            input_spec=[InputSpec(shape=[None, 10], dtype='float32')],
-            full_graph=True,
-        )
+        SimpleNet = create_simple_net()
+        net_1 = SimpleNet()
+        net_2 = SimpleNet()
 
         self.assertTrue(isinstance(net_1.forward, StaticFunction))
         self.assertTrue(isinstance(net_2.forward, StaticFunction))
@@ -132,12 +133,9 @@ class TestInputSpec(Dy2StTestBase):
         x = to_variable(np.ones([4, 10]).astype('float32'))
         y = to_variable(np.ones([4, 10]).astype('float32') * 2)
         int_val = 4.0
+        SimpleNet = create_simple_net()
 
-        net = paddle.jit.to_static(
-            function=SimpleNet(),
-            input_spec=[InputSpec(shape=[None, 10], dtype='float32')],
-            full_graph=True,
-        )
+        net = SimpleNet()
 
         # 1. each method holds independent program cache
         out = net(x)
@@ -172,12 +170,9 @@ class TestInputSpec(Dy2StTestBase):
         x = to_variable(np.ones([4, 10]).astype('float32'))
         y = to_variable(np.ones([4, 10]).astype('float32') * 2)
         int_val = 4.0
+        SimpleNet = create_simple_net()
 
-        net = paddle.jit.to_static(
-            function=SimpleNet(),
-            input_spec=[InputSpec(shape=[None, 10], dtype='float32')],
-            full_graph=True,
-        )
+        net = SimpleNet()
 
         # 1. kwargs and input_spec should not be specificed in same time
         with self.assertRaises(ValueError):
@@ -196,17 +191,13 @@ class TestInputSpec(Dy2StTestBase):
             net.add_func(x, y)
 
     @test_ast_only
-    @test_legacy_and_pt
     def test_concrete_program(self):
         x = to_variable(np.ones([4, 10]).astype('float32'))
         y = to_variable(np.ones([4, 10]).astype('float32') * 2)
         int_val = 4.0
+        SimpleNet = create_simple_net()
 
-        net = paddle.jit.to_static(
-            function=SimpleNet(),
-            input_spec=[InputSpec(shape=[None, 10], dtype='float32')],
-            full_graph=True,
-        )
+        net = SimpleNet()
         # We can get concrete_program by specificing InputSpec information. Faking input is no need.
         net.add_func = paddle.jit.to_static(
             net.add_func,
@@ -348,11 +339,8 @@ class TestInputDefaultName(Dy2StTestBase):
         paddle.disable_static()
 
     def assert_default_name(self, func_name, input_names):
-        net = paddle.jit.to_static(
-            function=SimpleNet(),
-            input_spec=[InputSpec(shape=[None, 10], dtype='float32')],
-            full_graph=True,
-        )
+        SimpleNet = create_simple_net()
+        net = SimpleNet()
         decorated_func = getattr(net, func_name)
 
         spec_names = [x.name for x in decorated_func.inputs]
@@ -373,6 +361,7 @@ class TestInputDefaultName(Dy2StTestBase):
 
 class TestDeclarativeAPI(Dy2StTestBase):
     @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_error(self):
         func = paddle.jit.to_static(dyfunc_to_variable)
 
@@ -402,22 +391,16 @@ class TestDecorateModelDirectly(Dy2StTestBase):
     @test_ast_only
     @test_legacy_and_pt_and_pir
     def test_fake_input(self):
-        net = paddle.jit.to_static(
-            function=SimpleNet(),
-            input_spec=[InputSpec(shape=[None, 10], dtype='float32')],
-            full_graph=True,
-        )
+        SimpleNet = create_simple_net()
+        net = SimpleNet()
         net = paddle.jit.to_static(net)
         y = net(self.x)
         self.assertTrue(len(net.forward.program_cache) == 1)
 
     @test_ast_only
     def test_input_spec(self):
-        net = paddle.jit.to_static(
-            function=SimpleNet(),
-            input_spec=[InputSpec(shape=[None, 10], dtype='float32')],
-            full_graph=True,
-        )
+        SimpleNet = create_simple_net()
+        net = SimpleNet()
         net = paddle.jit.to_static(net, input_spec=[InputSpec([None, 8, 10])])
         self.assertTrue(len(net.forward.inputs) == 1)
         self.assertTrue(len(net.forward.program_cache) == 1)
@@ -435,12 +418,9 @@ class TestErrorWithInitFromStaticMode(Dy2StTestBase):
     def test_raise_error(self):
         # disable imperative
         paddle.enable_static()
+        SimpleNet = create_simple_net()
 
-        net = paddle.jit.to_static(
-            function=SimpleNet(),
-            input_spec=[InputSpec(shape=[None, 10], dtype='float32')],
-            full_graph=True,
-        )
+        net = SimpleNet()
         with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):

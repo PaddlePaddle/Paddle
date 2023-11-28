@@ -17,7 +17,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_default_mode_only,
 )
