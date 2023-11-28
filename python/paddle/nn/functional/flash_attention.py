@@ -498,22 +498,59 @@ def scaled_dot_product_attention(
             >>> print(output)
             >>> # doctest: -SKIP
     """
+
     if attn_mask is None:
+        # downgraded to ordinary flash attention implementation
         out, _ = flash_attention(query, key, value, dropout_p, is_causal)
+        return out
     else:
-        fixed_seed_offset = (None,)
-        return_softmax = False
-        rng_name = ""
-        out, _ = _C_ops.flash_attn(
-            query,
-            key,
-            value,
-            fixed_seed_offset,
-            attn_mask,
-            dropout_p,
-            is_causal,
-            return_softmax,
-            not training,
-            rng_name,
+        if in_dynamic_mode():
+            fixed_seed_offset = (None,)
+            return_softmax = False
+            rng_name = ""
+            out, _ = _C_ops.flash_attn(
+                query,
+                key,
+                value,
+                fixed_seed_offset,
+                attn_mask,
+                dropout_p,
+                is_causal,
+                return_softmax,
+                not training,
+                rng_name,
+            )
+            return out
+
+        helper = LayerHelper('flash_attn', **locals())
+        dtype = helper.input_dtype(input_param_name='q')
+        out = helper.create_variable_for_type_inference(dtype)
+        softmax = helper.create_variable_for_type_inference(dtype)
+        softmax_lse = helper.create_variable_for_type_inference(paddle.float32)
+        seed_offset = helper.create_variable_for_type_inference(paddle.int64)
+        inputs = {
+            'q': query,
+            'k': key,
+            'v': value,
+            'fixed_seed_offset': fixed_seed_offset,
+            'attn_mask': attn_mask,
+        }
+        outputs = {
+            'out': out,
+            'softmax': softmax,
+            'softmax_lse': softmax_lse,
+            'seed_offset': seed_offset,
+        }
+        helper.append_op(
+            type='flash_attn',
+            inputs=inputs,
+            outputs=outputs,
+            attrs={
+                'dropout': dropout_p,
+                'causal': is_causal,
+                'return_softmax': False,
+                'is_test': not training,
+                'rng_name': '',
+            },
         )
-    return out
+        return out
