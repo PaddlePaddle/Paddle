@@ -571,7 +571,7 @@ if(WITH_MKLDNN)
   cc_test(
     test_cpu_quantize_squash_pass
     SRCS mkldnn/cpu_quantize_squash_pass_tester.cc
-    DEPS cpu_quantize_squash_pass naive_executor)
+    DEPS cpu_quantize_squash_pass naive_executor device_event_base)
   cc_test(
     test_shuffle_channel_mkldnn_detect_pass
     SRCS mkldnn/shuffle_channel_mkldnn_detect_pass_tester.cc
