@@ -641,6 +641,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
     phi_kernel_contexts_[data_type]->EmplaceBackOutput(
         &((*dense_tensor_outputs_)[i]));
+        
     for (int i = 0; i < getNbOutputs(); i++) {
       phi::DenseTensor& output_tensor = (*dense_tensor_outputs_)[i];
       phi::DataType dtype = output_tensor.dtype();
