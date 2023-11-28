@@ -79,17 +79,6 @@ class TestOneDNNElementwiseSubOp(OpTest):
     def test_check_output(self):
         self.check_output(check_pir=True)
 
-    def init_input_output(self):
-        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
-        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
-        self.out = np.subtract(self.x, self.y)
-
-    def init_dtype(self):
-        self.dtype = np.float32
-
-    def init_axis(self):
-        self.axis = -1
-
     def if_check_prim(self):
         self.check_prim = self.axis == -1
 

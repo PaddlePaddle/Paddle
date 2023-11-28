@@ -19,13 +19,16 @@ from op_test import OpTestTool
 from test_elementwise_add_op import TestElementwiseAddOp
 
 from paddle import enable_static
+from paddle.base import core
+from paddle.base.framework import _current_expected_place
 
 
 @OpTestTool.skip_if(
     not (isinstance(_current_expected_place(), core.CPUPlace)),
     "GPU is not supported",
 )
-class TestOneDNNElementwiseAddOp(TestElementwiseAddOp):
+# Special cases for swin transformer, will ignore grad check
+class TestOneDNNlementwiseAddSrcDifferentShape(TestElementwiseAddOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
 
@@ -41,9 +44,6 @@ class TestOneDNNElementwiseAddOp(TestElementwiseAddOp):
     def test_check_grad_ignore_x(self):
         pass
 
-
-# Special cases for swin transformer, will ignore grad check
-class TestOneDNNlementwiseAddSrcDifferentShape(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.random((1, 4, 16, 12, 12)).astype(self.dtype)
         self.y = np.random.random((1, 4, 1, 12, 12)).astype(self.dtype)
