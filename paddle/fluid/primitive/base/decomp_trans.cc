@@ -24,16 +24,35 @@ namespace paddle {
 
 using Program = pir::Program;
 
+// static bool has_decomp_rule(const pir::Operation &op) {
+//   pir::IrContext *ctx = pir::IrContext::Instance();
+//   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op.name());
+//   auto decomp_interface_impl =
+//       op_info.GetInterfaceImpl<paddle::dialect::DecompInterface>();
+//   if (decomp_interface_impl == nullptr) return false;
+//   return true;
+// }
+
 DecompProgram::DecompProgram(const pir::Program* program,
                              const std::vector<pir::OpResult>& src_vars)
     : program_(program), src_vars_(src_vars) {}
 
 std::vector<pir::OpResult> DecompProgram::decomp_program() {
-  // const pir::Block* block = program_->block();
   std::ostringstream print_stream;
   program_->Print(print_stream);
   std::cout << "program in sink decomp.  " << print_stream.str() << std::endl;
   VLOG(0) << "sink decomp in ===========================";
+  const pir::Block* block = program_->block();
+  std::vector<pir::Operation*> ops_list;
+  for (auto& op : *block) {
+    ops_list.push_back(&op);
+  }
+  for (size_t i = 0; i < ops_list.size(); i++) {
+    auto op = ops_list[i];
+    bool flag = has_decomp_rule(*op);
+    VLOG(0) << "op name ======= " << op->name();
+    VLOG(0) << "decomp flag ======= " << flag;
+  }
   return src_vars_;
 }
 

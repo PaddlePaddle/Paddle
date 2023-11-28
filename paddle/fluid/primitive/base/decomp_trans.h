@@ -17,6 +17,7 @@
 #include <memory>
 
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/program.h"
@@ -35,6 +36,15 @@ class DecompProgram {
   std::vector<pir::OpResult> src_vars_;
   std::vector<pir::OpResult> tar_vars_;
 };
+
+static bool has_decomp_rule(const pir::Operation& op) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op.name());
+  auto decomp_interface_impl =
+      op_info.GetInterfaceImpl<paddle::dialect::DecompInterface>();
+  if (decomp_interface_impl == nullptr) return false;
+  return true;
+}
 
 // pir::Program decomp_program(
 //     const pir::Program& program);

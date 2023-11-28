@@ -767,15 +767,6 @@ void BindVjp(pybind11::module *m) {
            )DOC");
 }
 
-static bool has_decomp_rule(const pir::Operation &op) {
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op.name());
-  auto decomp_interface_impl =
-      op_info.GetInterfaceImpl<paddle::dialect::DecompInterface>();
-  if (decomp_interface_impl == nullptr) return false;
-  return true;
-}
-
 void BindDecomp(pybind11::module *m) {
   m->def("decomp_tmp",
          [](pir::Program *program, std::vector<pir::OpResult> &src_vars) {
@@ -841,8 +832,9 @@ void BindDecomp(pybind11::module *m) {
     return res;
   });
 
-  m->def("has_decomp",
-         [](pir::Operation &fwd_op) { return has_decomp_rule(fwd_op); });
+  m->def("has_decomp", [](pir::Operation &fwd_op) {
+    return paddle::has_decomp_rule(fwd_op);
+  });
 }
 
 PYBIND11_MODULE(libpaddle, m) {
