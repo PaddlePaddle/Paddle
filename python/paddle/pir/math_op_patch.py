@@ -15,6 +15,7 @@
 
 import warnings
 
+from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 
 from . import OpResult
@@ -46,7 +47,7 @@ def create_tensor_with_batchsize(ref_var, value, dtype):
         else:
             out_shape.append(d)
     assert batch_dim != -1
-    from paddle import _C_ops
+
     from paddle.framework import core
 
     out = _C_ops.full_batch_size_like(
@@ -84,7 +85,6 @@ def monkey_patch_opresult():
                 >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
                 >>> y = x.cpu()
         """
-        from paddle import _C_ops
 
         # 0 means cpu place, see paddle/phi/kernels/memcpy_kernel.cc
         return _C_ops.memcpy(self, 0)
@@ -116,7 +116,6 @@ def monkey_patch_opresult():
                 >>> y = x.cpu()
                 >>> z = y.cuda()
         """
-        from paddle import _C_ops
 
         if device_id is not None:
             warnings.warn("device_id is not supported, and it will be ignored.")
@@ -246,7 +245,6 @@ def monkey_patch_opresult():
                 new OpResult's dtype is: paddle.int64
 
         """
-        from paddle import _C_ops
 
         if not isinstance(dtype, DataType):
             dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
