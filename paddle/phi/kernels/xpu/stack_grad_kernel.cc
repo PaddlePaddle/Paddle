@@ -49,5 +49,12 @@ void StackGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    stack_grad, XPU, ALL_LAYOUT, phi::StackGradKernel, float, int) {}
+PD_REGISTER_KERNEL(stack_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::StackGradKernel,
+                   float,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

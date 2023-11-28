@@ -48,38 +48,8 @@ using pir::Value;
 using pir::YieldOp;
 using pybind11::return_value_policy;
 
+using paddle::pybind::PyIfOp;
 namespace {
-class PyIfOp : public IfOp {
- public:
-  explicit PyIfOp(IfOp if_op);
-  void UpdateOutput();
-};
-
-PyIfOp::PyIfOp(IfOp if_op) : IfOp(if_op) {
-  PADDLE_ENFORCE_NOT_NULL(
-      if_op,
-      paddle::platform::errors::InvalidArgument(
-          "The if_op used to construct PyIfOp can't be nullptr"));
-}
-
-void PyIfOp::UpdateOutput() {
-  PADDLE_ENFORCE_NOT_NULL(
-      *this,
-      paddle::platform::errors::InvalidArgument(
-          "The if_op in PyIfOp used to update output can't be nullptr"));
-  auto block = parent();
-  PADDLE_ENFORCE_NOT_NULL(block,
-                          paddle::platform::errors::InvalidArgument(
-                              "The parent block of if_op which used to update "
-                              "output can't be nullptr"));
-  Block::Iterator iter = **this;
-  Builder builder(ir_context(), false);
-  auto new_if_op = builder.Build<IfOp>(
-      cond(), true_region().TakeBack(), false_region().TakeBack());
-  block->Assign(iter, new_if_op);
-  IfOp::operator=(new_if_op);
-  VerifyRegion();
-}
 
 PyIfOp BuildPyIfOp(Value cond) {
   return PyIfOp(ApiBuilder::Instance().GetBuilder()->Build<IfOp>(
@@ -103,6 +73,7 @@ void BindIfOp(py::module* m) {
   if_op.def("true_block", &PyIfOp::true_block, return_value_policy::reference)
       .def("false_block", &PyIfOp::false_block, return_value_policy::reference)
       .def("update_output", &PyIfOp::UpdateOutput)
+      .def("as_operation", &PyIfOp::operation, return_value_policy::reference)
       .def("results", [](PyIfOp& self) -> py::list {
         py::list op_list;
         for (uint32_t i = 0; i < self->num_results(); i++) {
@@ -185,11 +156,35 @@ void BuildPipeForBlock(Block* block) {
 
 namespace paddle {
 namespace pybind {
+PyIfOp::PyIfOp(IfOp if_op) : IfOp(if_op) {
+  PADDLE_ENFORCE_NOT_NULL(
+      if_op,
+      paddle::platform::errors::InvalidArgument(
+          "The if_op used to construct PyIfOp can't be nullptr"));
+}
+
+void PyIfOp::UpdateOutput() {
+  PADDLE_ENFORCE_NOT_NULL(
+      *this,
+      paddle::platform::errors::InvalidArgument(
+          "The if_op in PyIfOp used to update output can't be nullptr"));
+  auto block = parent();
+  PADDLE_ENFORCE_NOT_NULL(block,
+                          paddle::platform::errors::InvalidArgument(
+                              "The parent block of if_op which used to update "
+                              "output can't be nullptr"));
+  Block::Iterator iter = **this;
+  Builder builder(ir_context(), false);
+  auto new_if_op = builder.Build<IfOp>(
+      cond(), true_region().TakeBack(), false_region().TakeBack());
+  block->Assign(iter, new_if_op);
+  IfOp::operator=(new_if_op);
+  VerifyRegion();
+}
+
 void BindControlFlowApi(py::module* m) {
   m->def("get_used_external_value", GetUsedExternalValue);
   m->def("build_pipe_for_block", BuildPipeForBlock);
-  m->def("cvt_as_if_op",
-         [](Operation& op) { return PyIfOp(op.dyn_cast<IfOp>()); });
   BindIfOp(m);
 }
 }  // namespace pybind
