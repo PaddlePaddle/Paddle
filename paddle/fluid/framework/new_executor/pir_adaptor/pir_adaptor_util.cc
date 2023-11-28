@@ -569,7 +569,6 @@ void HandleForSpecialOp(pir::Operation* op,
     }
   } else if (op->isa<pir::StackCreateOp>()) {
     auto stack_create_op = op->dyn_cast<pir::StackCreateOp>();
-    auto& value_2_var_name = value_exe_info->GetValue2VarName();
     auto stack_value = stack_create_op.stack();
     std::string stack_var_name = var_name_prefix + "(stack)";
     BuildValue(stack_value, stack_var_name, value_exe_info);
