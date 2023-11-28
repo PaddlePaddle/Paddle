@@ -17,6 +17,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/fluid/pir/drr/api/match_context.h"
@@ -354,6 +355,54 @@ class AddNOpPattern : public pir::OpRewritePattern<paddle::dialect::AddNOp> {
   }
 };
 
+class ExpandOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::ExpandOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::ExpandOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::ExpandOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto out_shape_gen_op = op->operand_source(1)
+                                .dyn_cast<pir::OpResult>()
+                                .owner()
+                                ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+
+    if (out_shape_gen_op) {
+      auto section_attr = out_shape_gen_op.attribute("value")
+                              .dyn_cast<pir::ArrayAttribute>()
+                              .AsVector();
+
+      std::vector<int64_t> output_shape;
+      if (section_attr.size() > 0) {
+        for (size_t i = 0; i < section_attr.size(); ++i) {
+          output_shape.push_back(
+              section_attr[i].dyn_cast<::pir::Int64Attribute>().data());
+        }
+      }
+
+      auto in_dim = op.operand_source(0)
+                        .type()
+                        .dyn_cast<paddle::dialect::DenseTensorType>()
+                        .dims();
+
+      auto broadcast_axis =
+          cinn::hlir::framework::pir::GetBroadcastAxis(in_dim, output_shape);
+
+      auto out = rewriter
+                     .Build<cinn::dialect::BroadcastOp>(
+                         op.operand_source(0), broadcast_axis, output_shape)
+                     .result(0);
+
+      rewriter.ReplaceAllUsesWith(op.result(0), out);
+
+      rewriter.EraseOp(op);
+      return true;
+    }
+
+    return false;
+  }
+};
+
 class SplitWithNumOpPattern
     : public pir::OpRewritePattern<paddle::dialect::SplitWithNumOp> {
  public:
@@ -476,6 +525,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<SplitWithNumOpPattern>(context);
   ps.Add<AddNOpPattern>(context);
   ps.Add<SplitOpPattern>(context);
+  ps.Add<ExpandOpPattern>(context);
   // ps.Add(UniformOpPattern().Build(context));
 
   return ps;
