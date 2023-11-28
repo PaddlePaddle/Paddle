@@ -23,8 +23,8 @@ limitations under the License. */
 #endif
 
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/sequence_mask.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -92,27 +92,28 @@ void SequenceMaskPIRKernel(const Context& ctx,
                            const DenseTensor& max_len,
                            int out_dtype,
                            DenseTensor* y) {
-  if (max_len) {
-    bool is_gpu_place = ctx.GetPlace().GetType() == phi::AllocationType::GPU;
-    if (is_gpu_place) {
-      phi::DenseTensor temp;
-      phi::Copy(ctx, *max_len.get_ptr(), phi::CPUPlace(), false, &temp);
-      maxlen = *temp.data<int32_t>();
-    } else {
-      maxlen = *max_len.get_ptr()->data<int32_t>();
-    }
-
-    auto y_dim = phi::vectorize<int>(x.dims());
-    y_dim.push_back(maxlen);
-    y->Resize(phi::make_ddim(y_dim));
-
-    PADDLE_ENFORCE_GT(maxlen,
-                      0,
-                      phi::errors::InvalidArgument(
-                          "Input(max_len) value should be greater than 0. But "
-                          "received Input(max_len) value = %d.",
-                          maxlen));
+  int maxlen;
+  DenseTensor max_len_tensor =
+      Cast<T, Context>(ctx, max_len, phi::DataType::INT32);
+  bool is_gpu_place = ctx.GetPlace().GetType() == phi::AllocationType::GPU;
+  if (is_gpu_place) {
+    phi::DenseTensor temp;
+    phi::Copy(ctx, max_len_tensor, phi::CPUPlace(), false, &temp);
+    maxlen = *(temp.data<int>());
+  } else {
+    maxlen = *(max_len_tensor.data<int>());
   }
+
+  auto y_dim = phi::vectorize<int>(x.dims());
+  y_dim.push_back(maxlen);
+  y->Resize(phi::make_ddim(y_dim));
+
+  PADDLE_ENFORCE_GT(maxlen,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Input(max_len) value should be greater than 0. But "
+                        "received Input(max_len) value = %d.",
+                        maxlen));
 
   auto* x_data = x.data<T>();
   auto x_numel = x.numel();

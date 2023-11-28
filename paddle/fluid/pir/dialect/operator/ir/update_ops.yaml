@@ -13,10 +13,11 @@
     backend : place
   support_tensor : [start, end, step]
 
-- op: sequence_mask
+- op : sequence_mask
   args: (Tensor x, Tensor max_len, int out_dtype)
   output: Tensor(y)
   infer_meta:
     func: SequenceMaskPIRInferMeta
   kernel:
     func: sequence_mask_pir
+    data_type : x

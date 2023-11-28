@@ -1208,3 +1208,12 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor(out)
   invoke : full_like(x, 0, dtype, place)
+
+- op: sequence_mask
+  args: (Tensor x, Tensor max_len_tensor, int maxlen, int out_dtype)
+  output: Tensor(y)
+  infer_meta:
+    func: SequenceMaskInferMeta
+  kernel:
+    func: sequence_mask
+  optional: max_len_tensor
