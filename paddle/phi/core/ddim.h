@@ -64,7 +64,7 @@ inline void dynamic_dim_assign(const T1* in, T2* out, int n) {
  *
  * The number of dimensions must be between [1, 9].
  */
-class TEST_API DDim {
+class DDim {
  public:
   constexpr static int kMaxRank = 9;
 
@@ -248,7 +248,7 @@ DDim slice_ddim(const DDim& dim, int begin, int end);
 
 int arity(const DDim& ddim);
 
-TEST_API std::ostream& operator<<(std::ostream&, const DDim&);
+std::ostream& operator<<(std::ostream&, const DDim&);
 
 /**
  * \brief Flatten dim to 3d
