@@ -265,6 +265,8 @@ class PowOpPattern : public pir::OpRewritePattern<paddle::dialect::PowOp> {
         op->operand_source(0), full_op->result(0));
     rewriter.ReplaceAllUsesWith(op.result(0), elementwise_pow.result(0));
     rewriter.EraseOp(op);
+
+    return true;
   }
 };
 

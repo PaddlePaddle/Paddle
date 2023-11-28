@@ -74,7 +74,7 @@ WhileInstruction::WhileInstruction(size_t id,
         parent_exe_info->GetValue2VarName().at(while_op.result(i))));
   }
 
-  body_block_ = while_op.body_block();
+  body_block_ = &while_op.body_block();
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *parent_exe_info, &inputs);
