@@ -84,6 +84,7 @@ class CublasLtAlgoCache {
                      cudaEvent_t& start_event,          // NOLINT
                      cudaEvent_t& stop_event,           // NOLINT
                      cudaStream_t stream) {
+
     cublasStatus_t status;
     cublasLtMatmulHeuristicResult_t heuristic_result;
     status = dyl::cublasLtMatmulAlgoCheck(handle,
@@ -160,6 +161,7 @@ class CublasLtAlgoCache {
                                            void* workspace,
                                            size_t workspace_size,
                                            cudaStream_t stream) {
+#if CUDA_VERSION >= 11010
     // If we don't have config file and we donot search, here return nullptr
     if (!has_config_file_ && search_times_ <= 0) {
       return nullptr;
@@ -484,6 +486,7 @@ class CublasLtAlgoCache {
     auto& algo_in_map = map_[seed];
     algo_in_map = ret;
     return &algo_in_map;
+#endif // #if CUDA_VERSION >= 11010
   }
 
   ~CublasLtAlgoCache() {
@@ -699,6 +702,7 @@ class CublasLtHelper {
       compute_type_ = CUBLAS_COMPUTE_32F;
 #endif
     } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
+#if defined(__CUDACC__) && CUDA_VERSION >= 11000
       scale_type_ = CUDA_R_32F;
       a_type_ = CUDA_R_16BF;
       b_type_ = CUDA_R_16BF;
@@ -707,6 +711,7 @@ class CublasLtHelper {
       compute_type_ = CUDA_R_32F;
 #else
       compute_type_ = CUBLAS_COMPUTE_32F;
+#endif
 #endif
     } else if (std::is_same<T, int32_t>::value) {
       scale_type_ = CUDA_R_32I;
@@ -755,6 +760,7 @@ class CublasLtHelper {
     status = dyl::cublasLtMatrixLayoutCreate(&c_desc_, c_type_, n, m, n);
     PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatrixLayoutCreate);
 
+#if CUDA_VERSION >= 11010
     int algoId = 21;
     int swizzle = 0;
     int customOption = 0;
@@ -814,6 +820,7 @@ class CublasLtHelper {
         sizeof(int));
     dyl::cublasLtMatmulAlgoConfigSetAttribute(
         &algo_, CUBLASLT_ALGO_CONFIG_STAGES_ID, &(stages), sizeof(stages));
+#endif // #if CUDA_VERSION >= 11010
   }
   ~CublasLtHelper() {
     dyl::cublasLtMatmulDescDestroy(matmul_desc_);

@@ -29,6 +29,10 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
+#if defined(__CUDACC__) && CUDA_VERSION >= 11000
+#define CUSTOMAR_ENABLE_BF16
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -168,7 +172,7 @@ struct AlignedVectorAddHelper<phi::dtype::float16, N> {
     }
   }
 };
-
+#ifdef CUSTOMAR_ENABLE_BF16
 inline __device__ __nv_bfloat162 float2bf162(const float2 a) {
   __nv_bfloat162 a_;
 #if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
@@ -205,6 +209,8 @@ struct AlignedVectorAddHelper<phi::dtype::bfloat16, N> {
     }
   }
 };
+
+#endif //CUSTOMAR_ENABLE_BF16
 
 template <typename T, int N, int VecSize, bool HasLeftValue = true>
 static __device__ __forceinline__ void AllReduceFunc(
