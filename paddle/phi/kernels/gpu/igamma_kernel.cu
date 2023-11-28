@@ -17,12 +17,17 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/impl/igamma_kernel_impl.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void IgammaKernel(const Context& ctx, const DenseTensor& x, const DenseTensor& a, DenseTensor* out) {
-
+  ctx.template Alloc<T>(out);
+  std::vector<const DenseTensor*> ins = {&x, &a};
+  std::vector<DenseTensor*> outs = {out};
+  auto functor = CudaIgammaFunctor<T>();
+  phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, functor);
 }
 
 }  // namespace phi
