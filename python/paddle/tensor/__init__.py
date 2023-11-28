@@ -265,6 +265,8 @@ from .math import (  # noqa: F401
     frexp,
     gcd,
     gcd_,
+    gammaln,
+    gammaln_,
     heaviside,
     hypot,
     hypot_,
