@@ -92,7 +92,7 @@ struct bf16_8_t {
   __nv_bfloat162 z;
   __nv_bfloat162 w;
 };
-#endif
+#endif // ENABLE_BF16
 
 //------------------------------------
 template <typename T>
@@ -136,7 +136,7 @@ template <>
 struct num_elems<bf16_8_t> {
   static constexpr int value = 8;
 };
-#endif
+#endif // ENABLE_BF16
 
 //------------------------------------
 template <typename T, int N>
@@ -276,7 +276,7 @@ template <>
 struct Qk_vec_RoPE_<bfloat16, float, 256> {
   using Type = Float8_;
 };
-#endif
+#endif // ENABLE_BF16
 //------------------------------------
 
 template <typename T, int THREADS_PER_KEY>
@@ -383,6 +383,8 @@ struct V_vec_<bfloat16, 8> {
 };
 #endif  // ENABLE_BF16
 
+
+#ifdef ENABLE_BF16
 inline __device__ __nv_bfloat162 bf16hmul2(const __nv_bfloat162 x,
                                            const __nv_bfloat162 y) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 800
@@ -405,6 +407,7 @@ inline __device__ __nv_bfloat16 bf16hmul(const __nv_bfloat16 x,
   return __hmul(x, y);
 #endif
 }
+#endif  // ENABLE_BF16
 
 inline __device__ float half_to_float(uint16_t h) {
   float f;
@@ -701,6 +704,8 @@ inline __device__ void mul_pointer_v2(uint4* c, float a, uint64_t* b) {
   }
 }
 
+
+#ifdef ENABLE_BF16
 inline __device__ static void convert_(__nv_bfloat16* result,
                                        uint32_t const& source) {
 #if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
@@ -821,6 +826,7 @@ inline __device__ void mul_pointer_v2(bf16_8_t* c, float a, uint64_t* b) {
     mul_pointer_v2<bf16_4_t>(tmp_c + i, a, tmp_b + i);
   }
 }
+#endif  // ENABLE_BF16
 
 template <typename Acc, typename A, typename B>
 inline __device__ Acc mul(A a, B b);
@@ -830,6 +836,8 @@ inline __device__ float mul<float, float>(float a, float b) {
   return a * b;
 }
 
+
+#ifdef ENABLE_BF16
 template <>
 inline __device__ __nv_bfloat162 mul(float a, __nv_bfloat162 b) {
   __nv_bfloat162 ret;
@@ -855,6 +863,7 @@ inline __device__ bf16_8_t mul(float a, bf16_8_t b) {
   ret.w = mul<__nv_bfloat162, float, __nv_bfloat162>(a, b.w);
   return ret;
 }
+#endif  // ENABLE_BF16
 
 template <>
 inline __device__ uint32_t mul(float a, uint32_t b) {
@@ -1424,6 +1433,8 @@ inline __device__ Float4_ fma(float a, Float4_ b, Float4_ c) {
   return d;
 }
 
+
+#ifdef ENABLE_BF16
 inline __device__ __nv_bfloat162 fma(float a, float2 b, __nv_bfloat162 c) {
   return bf16hfma2(__float2bfloat162_rn(a), float22bf162(b), c);
 }
@@ -1434,6 +1445,7 @@ inline __device__ bf16_4_t fma(float a, Float4_ b, bf16_4_t c) {
   d.y = fma(a, b.y, c.y);
   return d;
 }
+#endif  // ENABLE_BF16
 
 inline __device__ uint32_t h0_h0(uint16_t a) {
   uint32_t b;
@@ -1742,6 +1754,8 @@ inline __device__ uint64_t round_tmp(uint4 val) {
   return ret;
 }
 
+
+#ifdef ENABLE_BF16
 template <>
 inline __device__ uint16_t round_tmp(__nv_bfloat162 val) {
   union {
@@ -1776,6 +1790,7 @@ inline __device__ uint64_t round_tmp(bf16_8_t val) {
   int16[3] = round_tmp<uint16_t, __nv_bfloat162>(val.w);
   return int64;
 }
+#endif // ENABLE_BF16
 
 inline __device__ float2 rotary_embedding_coefficient(const int zid,
                                                       const int rot_embed_dim,

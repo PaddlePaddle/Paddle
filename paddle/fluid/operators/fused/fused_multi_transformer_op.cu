@@ -1030,6 +1030,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+
+#if CUDA_VERSION >= 11000
 PD_REGISTER_STRUCT_KERNEL(fused_multi_transformer,
                           GPU,
                           ALL_LAYOUT,
@@ -1037,3 +1039,11 @@ PD_REGISTER_STRUCT_KERNEL(fused_multi_transformer,
                           float,
                           plat::float16,
                           plat::bfloat16) {}
+#else
+PD_REGISTER_STRUCT_KERNEL(fused_multi_transformer,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedMultiTransformerOpKernel,
+                          float,
+                          plat::float16) {}
+#endif   
