@@ -41,7 +41,7 @@ from .proto import (
     data_feed_pb2,  # noqa: F401
     framework_pb2,
 )
-from .variable_index import _getitem_static, _setitem_impl_, _setitem_static
+from .variable_index import _getitem_static, _setitem_static
 from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 
 if TYPE_CHECKING:
@@ -1464,7 +1464,7 @@ class Variable(metaclass=VariableMetaClass):
     ):
         self.block = block
         if name is None:
-            name = unique_name.generate('_generated_var')
+            name = self.block.program._name_generator('_generated_var')
 
         if dtype is not None:
             if not isinstance(dtype, core.VarDesc.VarType):
@@ -1591,16 +1591,21 @@ class Variable(metaclass=VariableMetaClass):
             or self.type == core.VarDesc.VarType.LOD_TENSOR
         ), "only support a variable with SELECTED_ROWS or LOD_TENSOR to be detached"
 
-        output = self.block.create_var(
-            name=unique_name.generate_with_ignorable_key("detach_" + self.name),
-            dtype=self.dtype,
-            type=self.type,
-            persistable=self.persistable,
-            stop_gradient=True,
-        )
+        with unique_name.guard(self.block.program._name_generator):
+            output = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(
+                    "detach_" + self.name
+                ),
+                dtype=self.dtype,
+                type=self.type,
+                persistable=self.persistable,
+                stop_gradient=True,
+            )
 
         self.block.append_op(
-            type='share_data', inputs={'X': [self]}, outputs={'Out': [output]}
+            type='share_data',
+            inputs={'X': [self]},
+            outputs={'Out': [output]},
         )
         return output
 
@@ -2216,28 +2221,33 @@ class Variable(metaclass=VariableMetaClass):
         for i in range(len(self.shape)):
             perm.insert(0, i)
 
-        out = self.block.create_var(
-            name=unique_name.generate_with_ignorable_key(self.name + '.tmp'),
-            dtype=self.dtype,
-            type=self.type,
-            persistable=False,
-            stop_gradient=False,
-        )
-        input_shape = self.block.create_var(
-            name=unique_name.generate_with_ignorable_key(self.name + '.tmp'),
-            dtype=self.dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            persistable=False,
-            stop_gradient=False,
-        )
+        with unique_name.guard(self.block.program._name_generator):
+            out = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(
+                    self.name + '.tmp'
+                ),
+                dtype=self.dtype,
+                type=self.type,
+                persistable=False,
+                stop_gradient=False,
+            )
+            input_shape = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(
+                    self.name + '.tmp'
+                ),
+                dtype=self.dtype,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+                stop_gradient=False,
+            )
 
-        self.block.append_op(
-            type='transpose2',
-            inputs={'X': [self]},
-            outputs={'Out': [out], 'XShape': [input_shape]},
-            attrs={'axis': perm},
-        )
-        return out
+            self.block.append_op(
+                type='transpose2',
+                inputs={'X': [self]},
+                outputs={'Out': [out], 'XShape': [input_shape]},
+                attrs={'axis': perm},
+            )
+            return out
 
     def clone(self):
         """
@@ -2262,18 +2272,23 @@ class Variable(metaclass=VariableMetaClass):
                 >>> y = x.clone()
 
         """
-        output = self.block.create_var(
-            name=unique_name.generate_with_ignorable_key(self.name + "_clone"),
-            dtype=self.dtype,
-            type=self.type,
-            persistable=self.persistable,
-            stop_gradient=self.stop_gradient,
-        )
+        with unique_name.guard(self.block.program._name_generator):
+            output = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(
+                    self.name + "_clone"
+                ),
+                dtype=self.dtype,
+                type=self.type,
+                persistable=self.persistable,
+                stop_gradient=self.stop_gradient,
+            )
 
-        self.block.append_op(
-            type='assign', inputs={'X': [self]}, outputs={'Out': [output]}
-        )
-        return output
+            self.block.append_op(
+                type='assign',
+                inputs={'X': [self]},
+                outputs={'Out': [output]},
+            )
+            return output
 
     def _set_error_clip(self, error_clip):
         """
@@ -2417,13 +2432,14 @@ class Variable(metaclass=VariableMetaClass):
         return True, [starts, ends]
 
     def _cloneVar(self, copy=False):
-        if not copy:
-            return self.block.create_var(
-                name=unique_name.generate_with_ignorable_key(self.name),
-                dtype=self.dtype,
-            )
-        else:
-            return self
+        with unique_name.guard(self.block.program._name_generator):
+            if not copy:
+                return self.block.create_var(
+                    name=unique_name.generate_with_ignorable_key(self.name),
+                    dtype=self.dtype,
+                )
+            else:
+                return self
 
     def _sliceVar(self, axes, starts, ends):
         new_var = self._cloneVar()
@@ -2488,9 +2504,6 @@ class Variable(metaclass=VariableMetaClass):
         from .dygraph.base import in_to_static_mode
 
         if in_to_static_mode():
-            if is_compiled_with_xpu():
-                # (NOTE): Currently, there is no index_put_xpu kernel.
-                return _setitem_impl_(self, item, value)
             return _setitem_static(self, item, value)
         else:
             raise RuntimeError(
@@ -2692,15 +2705,20 @@ class Variable(metaclass=VariableMetaClass):
 
         """
 
-        output = self.block.create_var(
-            name=unique_name.generate_with_ignorable_key(self.name + "_size"),
-            dtype=core.VarDesc.VarType.INT64,
-        )
+        with unique_name.guard(self.block.program._name_generator):
+            output = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(
+                    self.name + "_size"
+                ),
+                dtype=core.VarDesc.VarType.INT64,
+            )
 
-        self.block.append_op(
-            type='size', inputs={'Input': [self]}, outputs={'Out': [output]}
-        )
-        return output
+            self.block.append_op(
+                type='size',
+                inputs={'Input': [self]},
+                outputs={'Out': [output]},
+            )
+            return output
 
     def _set_attr(self, name, val):
         """
@@ -5734,7 +5752,8 @@ class Program:
         self._appending_grad_times = 0
 
         # identifier for auto checkpoint
-        self._auto_checkpoint_name = unique_name.generate(
+        self._name_generator = unique_name.UniqueNameGenerator()
+        self._auto_checkpoint_name = self._name_generator(
             "__auto_checkpoint_program__"
         )
 
