@@ -81,8 +81,8 @@ TEST(DistAttr, ctor) {
   x_dist_attr.set_process_mesh(process_mesh);
   x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1}));
   x_dist_attr.set_batch_dim(0);
-  x_dist_attr.set_chunk_id(0)
-      x_dist_attr.set_dynamic_dims(std::vector<bool>({true, false}));
+  x_dist_attr.set_chunk_id(0);
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({true, false}));
   x_dist_attr.mark_annotated("process_mesh");
   x_dist_attr.mark_annotated("dims_mapping");
   EXPECT_EQ(x_dist_attr.process_mesh(), process_mesh);
