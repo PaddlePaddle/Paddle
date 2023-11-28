@@ -2185,7 +2185,7 @@ static PyObject* tensor_apply_(TensorObject* self,
   PyTensorHook func = PyTensorHook(apply_func);
   paddle::Tensor out = func(self->tensor);
   self->tensor.set_impl(out.impl());
-  RETURN_PY_NONE
+  return ToPyObject(self->tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 

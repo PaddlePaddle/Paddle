@@ -391,7 +391,7 @@ def monkey_patch_tensor():
             raise RuntimeError(
                 "Cannot apply function on a tensor that required gradient."
             )
-        self._apply_(func)
+        return self._apply_(func)
 
     @framework.dygraph_only
     def apply(self, func):
