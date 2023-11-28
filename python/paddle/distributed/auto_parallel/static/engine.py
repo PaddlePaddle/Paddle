@@ -1532,6 +1532,15 @@ class Engine:
             for op in program.global_block().ops:
                 if op.desc.type() == "data":
                     output_name = op.desc.output("out")[0]
+                    if self.main_program.global_block().has_var(output_name):
+                        output_shape = (
+                            self.main_program.global_block()
+                            .var(output_name)
+                            .desc.shape()
+                        )
+                        op_shape = op.desc.attr("shape")
+                        if output_shape != op_shape:
+                            op.desc._set_attr("shape", output_shape)
                     current_feed_vars.append(output_name)
             return [
                 var_name
