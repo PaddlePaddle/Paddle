@@ -215,7 +215,7 @@
   backward: fused_feedforward_grad
 
 - op: sequence_mask
-  args: (Tensor x, Tensor max_len_tensor, int maxlen, int out_dtype)
+  args: (Tensor x, Tensor max_len, int out_dtype)
   output: Tensor(y)
   infer_meta:
     func: SequenceMaskInferMeta

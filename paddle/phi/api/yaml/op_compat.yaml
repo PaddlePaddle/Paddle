@@ -3410,9 +3410,14 @@
 - op: sequence_mask
   inputs:
     x : X
-    max_len_tensor : MaxLenTensor
+  attrs:
+    max_len: maxlen
   outputs:
     y : Y
+  scalar :
+    max_len :
+      data_type : float
+      tensor_name : MaxLenTensor
 
 - op: set_value
   backward: set_value_grad
