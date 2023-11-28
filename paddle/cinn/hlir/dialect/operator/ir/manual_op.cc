@@ -48,7 +48,7 @@ void GroupOp::Build(pir::Builder &builder,             // NOLINT
       argument.AddOutput(op.operand(i).type());
     }
   }
-  argument.AddRegion()->push_back(block.release());
+  argument.AddRegion().push_back(block.release());
 }
 
 pir::Block *GroupOp::block() {
