@@ -180,7 +180,7 @@ def pop_jump_if_op_wrapper(fns: list[Callable[[Any], Any]]):
 
     """
 
-    @jump_break_graph_decorator
+    @if_break_graph_decorator
     def inner(self: OpcodeExecutorBase, instr: Instruction):
         """
         Inner function that represents the wrapped POP_JUMP_IF opcode operation.
@@ -214,7 +214,7 @@ def pop_jump_if_op_wrapper(fns: list[Callable[[Any], Any]]):
     return inner
 
 
-def jump_break_graph_decorator(normal_jump: Callable):
+def if_break_graph_decorator(normal_jump: Callable):
     """
     A decorator function that breaks off the graph when a JUMP-related instruction is encountered.
 
@@ -231,8 +231,8 @@ def jump_break_graph_decorator(normal_jump: Callable):
         if isinstance(result, TensorVariable):
             # fallback when in OpcodeExecutor
             # raise error in OpcodeInlineExecutor
-            log(3, "[BreakGraph] jump break graph, because if tensor\n")
-            self._break_graph_in_jump(result, instr)
+            log(3, "[BreakGraph] break graph for if jump tensor\n")
+            self._break_graph_when_if(result, instr)
             return Stop(state="BreakGraph")
         else:
             return normal_jump(self, instr)
@@ -265,7 +265,7 @@ def call_break_graph_decorator(push_n: int | Callable[[int | None], int]):
                     )
                 if isinstance(self, OpcodeExecutor):
                     log(3, f"[BreakGraph] call function Break graph: {e}\n")
-                    self._break_graph_in_call(origin_stack, instr, push_n)
+                    self._break_graph_when_call(origin_stack, instr, push_n)
                     return Stop(state="BreakGraph")
                 else:
                     raise e
@@ -384,7 +384,7 @@ class OpcodeExecutorBase:
         """
         raise NotImplementedError("Please implement virtual_env.")
 
-    def _break_graph_in_jump(self, result, instr: Instruction):
+    def _break_graph_when_if(self, result, instr: Instruction):
         """
         Breaks the graph in JUMP instructions.
 
@@ -506,7 +506,7 @@ class OpcodeExecutorBase:
         Executes the opcode.
 
         """
-        log(3, f"start execute opcode: {self._code}\n")
+        log(3, f"[EXECUTOR RUN] Start execute opcode: {self._code}\n")
         self._lasti = 0
         while True:
             if self._lasti >= len(self._instructions):
@@ -518,6 +518,7 @@ class OpcodeExecutorBase:
                 self.stop_state = is_stop.state
                 self.pop_call_stack_until_self()
                 break
+        log(3, f"[EXECUTOR RUN] End execute opcode: {self._code}\n")
 
     def step(self, instr: Instruction):
         """
@@ -1249,7 +1250,7 @@ class OpcodeExecutorBase:
             )(left, right)
         )
 
-    @jump_break_graph_decorator
+    @if_break_graph_decorator
     def JUMP_IF_FALSE_OR_POP(self, instr: Instruction):
         pred_obj = self.stack.top
         if isinstance(pred_obj, (ConstantVariable, ContainerVariable)):
@@ -1265,7 +1266,7 @@ class OpcodeExecutorBase:
             "Currently don't support predicate a non-const / non-tensor obj."
         )
 
-    @jump_break_graph_decorator
+    @if_break_graph_decorator
     def JUMP_IF_TRUE_OR_POP(self, instr: Instruction):
         pred_obj = self.stack.top
         if isinstance(pred_obj, (ConstantVariable, ContainerVariable)):
@@ -1563,7 +1564,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         return fn, inputs
 
     @fallback_when_occur_error
-    def _break_graph_in_jump(self, result: TensorVariable, instr: Instruction):
+    def _break_graph_when_if(self, result: TensorVariable, instr: Instruction):
         """
         Break the graph at a JUMP instruction.
 
@@ -1638,7 +1639,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self.guard_fn = self._graph.guard_fn
 
     @fallback_when_occur_error
-    def _break_graph_in_call(
+    def _break_graph_when_call(
         self,
         origin_stack: VariableStack,
         instr: Instruction,
@@ -1763,7 +1764,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         return pycode_gen.create_fn_with_inputs(inputs)
 
     @fallback_when_occur_error
-    def _break_graph_in_for_loop(
+    def _break_graph_when_for_loop(
         self, iterator: VariableBase, for_iter: Instruction
     ):
         '''
@@ -2034,7 +2035,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 iterator.idx = backup_iter_idx
             self._graph.remove_global_guarded_variable(iterator)
             self.stack.push(iterator)
-            self._break_graph_in_for_loop(iterator, instr)
+            self._break_graph_when_for_loop(iterator, instr)
             return Stop(state="BreakGraph")
 
     def RETURN_VALUE(self, instr: Instruction):
