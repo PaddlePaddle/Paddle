@@ -497,6 +497,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     analyzer_transformer_compare_tester.cc
     EXTRA_DEPS
+    common
     paddle_inference_shared
     ARGS
     --infer_model=${TRANSFORMER_INSTALL_DIR}/model
