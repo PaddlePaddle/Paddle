@@ -834,10 +834,13 @@ class FusedLinearPromotionPass(PassBase):
                     input_vars = op.input_arg_names
                     if (
                         input_vars[0] in deleted_bias_names
-                        and op.attr("ring_id") != dp_group.id
                         and id not in to_delete_op_ids
                     ):
-                        to_delete_op_ids.append(id)
+                        if dp_group is None or (
+                            dp_group is not None
+                            and op.attr("ring_id") != dp_group.id
+                        ):
+                            to_delete_op_ids.append(id)
         for to_delete_id in reversed(to_delete_op_ids):
             cur_glock._remove_op(to_delete_id)
         if not is_first_rank:
