@@ -286,12 +286,14 @@ void DoValueCheck(const pir::Value& value,
   }
 }
 
-void CheckValueDataType(const pir::Value& value,
+void CheckValueDataType(const paddle::optional<pir::Value>& value,
                         const std::string& input_name,
                         const std::string& op_name) {
   VLOG(6) << "CheckValueDataType for " << op_name << ", input: " << input_name;
   std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
-  DoValueCheck(value, input_name, expected_dtype, op_name);
+  if (value.is_initialized()) {
+    DoValueCheck(*value.get_ptr(), input_name, expected_dtype, op_name);
+  }
 }
 
 void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
