@@ -4456,12 +4456,22 @@ void RebuildPaddingInferMeta(const MetaTensor& x,
                              const MetaTensor& seq_lens,
                              const MetaTensor& input_ids,
                              MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      padding_offset.dtype(),
+      phi::DataType::INT32,
+      phi::errors::InvalidArgument("padding_offset must be of type int32_t"));
+  PADDLE_ENFORCE_EQ(
+      seq_lens.dtype(),
+      phi::DataType::INT32,
+      phi::errors::InvalidArgument("seq_lens must be of type int32_t"));
+
   int bsz = seq_lens.dims()[0];
   int dim_embed = x.dims()[1];
   auto out_shape = phi::make_ddim({bsz, dim_embed});
   out->set_dims(out_shape);
   out->set_dtype(x.dtype());
 }
+
 void QkvTransposeSplitInferMeta(const MetaTensor& qkv,
                                 const MetaTensor& padding_offset,
                                 const MetaTensor& seq_lens,
@@ -4489,25 +4499,21 @@ void GetPaddingOffsetInferMeta(const MetaTensor& input_ids,
                                MetaTensor* x_remove_padding,
                                MetaTensor* cum_offsets_out,
                                MetaTensor* padding_offset) {
-  // 确保 input_ids 是 int64_t 类型
   PADDLE_ENFORCE_EQ(
       input_ids.dtype(),
       phi::DataType::INT64,
       phi::errors::InvalidArgument("input_ids must be of type int64_t"));
 
-  // 确保 cum_offsets 是 int 类型
   PADDLE_ENFORCE_EQ(
       cum_offsets.dtype(),
       phi::DataType::INT32,
       phi::errors::InvalidArgument("cum_offsets must be of type int"));
 
-  // 确保 token_num 是 int64_t 类型
   PADDLE_ENFORCE_EQ(
       token_num.dtype(),
       phi::DataType::INT64,
       phi::errors::InvalidArgument("token_num must be of type int64_t"));
 
-  // 确保 seq_len 是 int 类型
   PADDLE_ENFORCE_EQ(
       seq_len.dtype(),
       phi::DataType::INT32,
@@ -4520,5 +4526,7 @@ void GetPaddingOffsetInferMeta(const MetaTensor& input_ids,
   padding_offset->set_dims(phi::make_ddim({-1}));
   padding_offset->set_dtype(seq_len.dtype());
 }
+
 }  // namespace phi
+
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

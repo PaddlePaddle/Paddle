@@ -1532,9 +1532,9 @@ void FusedGetRotaryEmbeddingInferMeta(const MetaTensor& input_ids,
                                       int prompt_num,
                                       bool use_neox,
                                       MetaTensor* rotary_embedding) {
-  const int64_t batch_size = static_cast<int>(position_ids.dims()[0]);
-  const int64_t max_seq_length = static_cast<int>(input_ids.dims()[1]);
-  const int64_t head_dim = static_cast<int>(head_dim_shape_tensor.dims()[0]);
+  const int64_t batch_size = position_ids.dims()[0];
+  const int64_t max_seq_length = input_ids.dims()[1];
+  const int64_t head_dim = head_dim_shape_tensor.dims()[0];
   rotary_embedding->set_dims(
       phi::make_ddim({2, batch_size, 1, max_seq_length, head_dim}));
   rotary_embedding->set_dtype(DataType::FLOAT32);

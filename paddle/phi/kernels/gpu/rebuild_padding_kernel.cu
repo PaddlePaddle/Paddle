@@ -53,26 +53,22 @@ void RebuildPaddingKernel(const Context &dev_ctx,
                           const DenseTensor &padding_offset,
                           const DenseTensor &seq_lens,
                           const DenseTensor &input_ids,
-                          DenseTensor *output) {
-  dev_ctx.template Alloc<T>(output);
-
-  // 获取输入张量的维度信息
-  const int token_num = x.dims()[0];
-  const int dim_embed = x.dims()[1];
+                          DenseTensor *out) {
   const int bsz = seq_lens.dims()[0];
+  const int dim_embed = x.dims()[1];
+  out->Resize(phi::make_ddim({bsz, dim_embed}));
+  auto out_ptr = dev_ctx.template Alloc<T>(out);
 
-  // 计算用于 CUDA 内核的参数
   constexpr int PackSize = VEC_16B / sizeof(T);
-  int elem_nums = output->numel();
+  int elem_nums = out->numel();
   int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
   const int grid_size = (pack_num + blocksize - 1) / blocksize;
 
-  // 调用 CUDA 内核
   RebuildPaddingKernelImpl<T, PackSize>
       <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
-          reinterpret_cast<T *>(output->data<T>()),
-          reinterpret_cast<const T *>(x.data<T>()),
+          out_ptr,
+          x.data<T>(),
           padding_offset.data<int>(),
           seq_lens.data<int>(),
           input_ids.dims()[1],

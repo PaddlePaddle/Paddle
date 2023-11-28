@@ -64,8 +64,6 @@ def encode_rotary_qk(
         'kv': kv,
         'rotary_emb': rotary_emb,
         'seq_lens': seq_lens,
-        'rotary_emb_dims': rotary_emb_dims,
-        'use_neox': use_neox,
     }
 
     rotary_q_out = helper.create_variable_for_type_inference(dtype=q.dtype)
@@ -79,6 +77,10 @@ def encode_rotary_qk(
     helper.append_op(
         type='encode_rotary_qk',
         inputs=inputs,
+        attrs={
+            'rotary_emb_dims': rotary_emb_dims,
+            'use_neox': use_neox,
+        },
         outputs=outputs_dict,
     )
 

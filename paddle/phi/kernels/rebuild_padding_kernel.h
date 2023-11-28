@@ -19,10 +19,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void rebuild_paddingKernel(const Context &dev_ctx,
-                           const DenseTensor &tmp_out,
-                           const DenseTensor &padding_offset,
-                           const DenseTensor &seq_lens,
-                           const DenseTensor &input_ids,
-                           DenseTensor *output);
+void RebuildPaddingKernel(const Context &dev_ctx,
+                          const DenseTensor &x,
+                          const DenseTensor &padding_offset,
+                          const DenseTensor &seq_lens,
+                          const DenseTensor &input_ids,
+                          DenseTensor *out);
+
 }  // namespace phi

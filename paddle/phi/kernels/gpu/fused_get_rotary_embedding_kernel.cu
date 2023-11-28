@@ -207,6 +207,8 @@ void FusedGetRotaryEmbeddingKernel(const Context& dev_ctx,
 
   auto cu_stream = dev_ctx.stream();
 
+  rotary_embedding->Resize(
+      phi::make_ddim({2, batch_size, 1, max_seq_length, head_dim}));
   float* rotary_embedding_ptr = dev_ctx.template Alloc<float>(rotary_embedding);
   funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, rotary_embedding, static_cast<T>(0));
@@ -247,8 +249,6 @@ PD_REGISTER_KERNEL(fused_get_rotary_embedding,
                    GPU,
                    ALL_LAYOUT,
                    phi::FusedGetRotaryEmbeddingKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16) {}
+                   float) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
+}

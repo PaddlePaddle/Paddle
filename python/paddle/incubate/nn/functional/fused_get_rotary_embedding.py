@@ -50,7 +50,7 @@ def fused_get_rotary_embedding(
     }
 
     rotary_embedding = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.FLOAT32
+        dtype=core.VarDesc.VarType.FP32
     )
 
     outputs_dict = {

@@ -1047,6 +1047,7 @@
     func : FusedGetRotaryEmbeddingInferMeta
   kernel :
     func : fused_get_rotary_embedding
+    data_type : DataType::FLOAT32
 
 - op : gather
   args : (Tensor x, Tensor index, Scalar axis=0)

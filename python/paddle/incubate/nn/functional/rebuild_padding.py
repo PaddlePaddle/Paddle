@@ -16,11 +16,11 @@ from paddle import _C_ops
 from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
 
-def rebuild_padding(x, padding_offset, seq_lens, input_ids, name=None):
+def rebuild_padding(x, padding_offset, seq_lens, input_ids):
     """
     Apply rebuild_padding kernel.
     Args:
-        tmp_out (Tensor): the input tmp_out Tensor.
+        x (Tensor): the input tmp_out Tensor.
         padding_offset (Tensor): the input padding_offset Tensor.
         seq_lens (Tensor): the input seq_lens Tensor.
         input_ids (Tensor): the input input_ids Tensor.
@@ -28,13 +28,13 @@ def rebuild_padding(x, padding_offset, seq_lens, input_ids, name=None):
     if in_dynamic_or_pir_mode():
         return _C_ops.rebuild_padding(x, padding_offset, seq_lens, input_ids)
 
-    helper = LayerHelper("rebuild_padding", **locals())
+    helper = LayerHelper('rebuild_padding', **locals())
 
     inputs = {
         'x': x,
         'padding_offset': padding_offset,
         'seq_lens': seq_lens,
-        'in_ids': input_ids,
+        'input_ids': input_ids,
     }
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     output_dict = {'out': out}
