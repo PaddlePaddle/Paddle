@@ -110,8 +110,10 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       label_tmp.Resize({batch_size, 1});
       alpha_tmp.Resize({batch_size, tag_num});
       emission_exps_tmp.Resize({batch_size, tag_num});
-      phi::funcs::set_constant(ctx.device_context(), emission_exps, 0.0);
-      phi::funcs::set_constant(ctx.device_context(), alpha, 0.0);
+      phi::funcs::set_constant(
+          ctx.device_context(), emission_exps, static_cast<T>(0.0));
+      phi::funcs::set_constant(
+          ctx.device_context(), alpha, static_cast<T>(0.0));
     } else {
       in_lod = ctx.Input<phi::DenseTensor>("Label")->lod();
       PADDLE_ENFORCE_NE(in_lod.size(),
@@ -300,7 +302,8 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     // data reader operator, it can have no gradients.
     if (transition_grad) {
       transition_grad->mutable_data<T>(platform::CPUPlace());
-      phi::funcs::set_constant(ctx.device_context(), transition_grad, 0.);
+      phi::funcs::set_constant(
+          ctx.device_context(), transition_grad, static_cast<T>(0.));
     }
     // Now, all the inputs and outputs should be on the CPU memory.
     auto emission_dims = emission_exps->dims();
