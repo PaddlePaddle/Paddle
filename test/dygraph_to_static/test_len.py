@@ -19,6 +19,7 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
     test_legacy_and_pir,
+    test_pir_only,
 )
 
 import paddle
@@ -172,6 +173,7 @@ class TestLenWithSelectedRows(Dy2StTestBase):
         self.assertEqual(selected_rows_var_len, var_tensor_len)
 
     @test_ast_only
+    @test_pir_only
     def test_len(self):
         selected_rows_var_len, var_tensor_len = len_with_selected_rows(
             self.place
