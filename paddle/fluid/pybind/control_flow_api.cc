@@ -27,68 +27,35 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/pir/core/block.h"
 #include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
 using paddle::dialect::IfOp;
+using paddle::dialect::WhileOp;
 using pir::Block;
 using pir::Builder;
 using pir::Operation;
+using pir::Program;
 using pir::Region;
+using pir::StackCreateOp;
+using pir::TuplePushOp;
 using pir::Type;
 using pir::Value;
 using pir::YieldOp;
 using pybind11::return_value_policy;
 
+using paddle::pybind::PyIfOp;
 namespace {
-class PyIfOp : public IfOp {
- public:
-  explicit PyIfOp(IfOp if_op);
-  void UpdateOutput();
-};
-
-PyIfOp::PyIfOp(IfOp if_op) : IfOp(if_op) {
-  PADDLE_ENFORCE_NOT_NULL(
-      if_op,
-      paddle::platform::errors::InvalidArgument(
-          "The if_op used to construct PyIfOp can't be nullptr"));
-}
-
-void PyIfOp::UpdateOutput() {
-  PADDLE_ENFORCE_NOT_NULL(
-      *this,
-      paddle::platform::errors::InvalidArgument(
-          "The if_op in PyIfOp used to update output can't be nullptr"));
-  auto block = parent();
-  PADDLE_ENFORCE_NOT_NULL(block,
-                          paddle::platform::errors::InvalidArgument(
-                              "The parent block of if_op which used to update "
-                              "output can't be nullptr"));
-  Block::Iterator iter = **this;
-  Builder builder(ir_context(), false);
-  auto new_if_op = builder.Build<IfOp>(
-      cond(), true_region().TakeBack(), false_region().TakeBack());
-  block->Assign(iter, new_if_op);
-  IfOp::operator=(new_if_op);
-  VerifyRegion();
-}
-
-PyIfOp BuildPyIfOp(Value cond) {
-  return PyIfOp(ApiBuilder::Instance().GetBuilder()->Build<IfOp>(
-      cond, std::vector<Type>{}));
-}
 
 void BindIfOp(py::module* m) {
-  m->def("build_if_op", BuildPyIfOp);
-  m->def("cf_yield", [](py::list inputs) {
-    std::vector<Value> input_values;
-    for (auto input : inputs) {
-      input_values.push_back(input.cast<Value>());
-    }
-    ApiBuilder::Instance().GetBuilder()->Build<YieldOp>(input_values);
+  m->def("build_if_op", [](Value cond) {
+    return PyIfOp(ApiBuilder::Instance().GetBuilder()->Build<IfOp>(
+        cond, std::vector<Type>{}));
   });
   py::class_<PyIfOp> if_op(*m, "IfOp", R"DOC(
     The PyIfOp is a encapsulation of IfOp. Compared with ifOp, it provides an additional 'update_output' interface.
@@ -98,6 +65,7 @@ void BindIfOp(py::module* m) {
   if_op.def("true_block", &PyIfOp::true_block, return_value_policy::reference)
       .def("false_block", &PyIfOp::false_block, return_value_policy::reference)
       .def("update_output", &PyIfOp::UpdateOutput)
+      .def("as_operation", &PyIfOp::operation, return_value_policy::reference)
       .def("results", [](PyIfOp& self) -> py::list {
         py::list op_list;
         for (uint32_t i = 0; i < self->num_results(); i++) {
@@ -105,6 +73,17 @@ void BindIfOp(py::module* m) {
         }
         return op_list;
       });
+}
+
+void BindWhileOp(py::module* m) {
+  m->def("build_while_op", [](Value cond, py::list loop_vars) {
+    std::vector<Value> loop_values;
+    for (auto var : loop_vars) {
+      loop_values.push_back(var.cast<Value>());
+    }
+    return ApiBuilder::Instance().GetBuilder()->Build<WhileOp>(cond,
+                                                               loop_values);
+  });
 }
 
 void GetUsedExternalValueImpl(
@@ -142,13 +121,83 @@ std::vector<Value> GetUsedExternalValue(const Operation& op) {
   return used_values;
 }
 
+void BuildPipeForBlock(Block* block) {
+  PADDLE_ENFORCE_NOT_NULL(
+      block,
+      paddle::platform::errors::InvalidArgument(
+          "The block used to hook local value can't be nullptr"));
+  auto& builder = *(ApiBuilder::Instance().GetBuilder());
+  Program* program = block->parent_program();
+  PADDLE_ENFORCE_NOT_NULL(
+      program,
+      paddle::platform::errors::InvalidArgument(
+          "The block used to hook local value must belong to a program"));
+
+  auto original_position = builder.insertion_point();
+
+  builder.SetInsertionPointToStart(program->block());
+  auto inlet = builder.Build<StackCreateOp>().inlet();
+  auto iter = block->end();
+  if (!block->empty() && block->back().isa<YieldOp>()) {
+    --iter;
+  }
+  std::vector<Value> local_values;
+  for (auto arg_value : block->args()) {
+    local_values.push_back(arg_value);
+  }
+  for (auto& op : *block) {
+    for (auto result_value : op.results()) {
+      local_values.push_back(result_value);
+    }
+  }
+  builder.set_insertion_point(block, iter);
+  builder.Build<TuplePushOp>(inlet, local_values);
+  builder.set_insertion_point(original_position);
+}
+
 }  // namespace
 
 namespace paddle {
 namespace pybind {
+PyIfOp::PyIfOp(IfOp if_op) : IfOp(if_op) {
+  PADDLE_ENFORCE_NOT_NULL(
+      if_op,
+      paddle::platform::errors::InvalidArgument(
+          "The if_op used to construct PyIfOp can't be nullptr"));
+}
+
+void PyIfOp::UpdateOutput() {
+  PADDLE_ENFORCE_NOT_NULL(
+      *this,
+      paddle::platform::errors::InvalidArgument(
+          "The if_op in PyIfOp used to update output can't be nullptr"));
+  auto block = parent();
+  PADDLE_ENFORCE_NOT_NULL(block,
+                          paddle::platform::errors::InvalidArgument(
+                              "The parent block of if_op which used to update "
+                              "output can't be nullptr"));
+  Block::Iterator iter = **this;
+  Builder builder(ir_context(), false);
+  auto new_if_op = builder.Build<IfOp>(
+      cond(), true_region().TakeBack(), false_region().TakeBack());
+  block->Assign(iter, new_if_op);
+  IfOp::operator=(new_if_op);
+  VerifyRegion();
+}
+
 void BindControlFlowApi(py::module* m) {
   m->def("get_used_external_value", GetUsedExternalValue);
+  m->def("build_pipe_for_block", BuildPipeForBlock);
+  m->def("cf_yield", [](py::list inputs) {
+    std::vector<Value> input_values;
+    for (auto input : inputs) {
+      input_values.push_back(input.cast<Value>());
+    }
+    ApiBuilder::Instance().GetBuilder()->Build<YieldOp>(input_values);
+  });
+
   BindIfOp(m);
+  BindWhileOp(m);
 }
 }  // namespace pybind
 }  // namespace paddle

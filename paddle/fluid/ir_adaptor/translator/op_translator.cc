@@ -978,9 +978,9 @@ struct EmbeddingGradOpTranscriber : public OpTranscriber {
     bool is_sparse = paddle::get<bool>(op_desc.GetAttr("is_sparse"));
 
     if (is_sparse) {
-      target_op_name = "pd_op.embedding_grad_sparse";
+      target_op_name = "pd_op.embedding_sparse_grad";
     } else {
-      target_op_name = "pd_op.embedding_grad_dense";
+      target_op_name = "pd_op.embedding_grad";
     }
     VLOG(6) << "[op name normalizing: " << op_desc.Type() << " to "
             << target_op_name;
@@ -2014,12 +2014,12 @@ struct ElementwiseTranscriber : public OpTranscriber {
     }
 
     int append_size = static_cast<int>(x_shape.size() - axis - y_shape.size());
-    if (append_size < 0) {  // which means x.rank <= y.rank, mostly
-                            // x.rank=y.rank
+    if (append_size <= 0) {  // which means x.rank <= y.rank, mostly
+                             // x.rank=y.rank
       return {x_value, y_value};
     }
-    IR_ENFORCE(append_size >= 0,
-               "Expected op[%s] have append size >= 0 with axis=%d but got %d",
+    IR_ENFORCE(append_size > 0,
+               "Expected op[%s] have append size > 0 with axis=%d but got %d",
                op_desc.Type(),
                axis,
                append_size);
@@ -2126,9 +2126,23 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
                y_type);
     dialect::DenseTensorType y_tensor_type =
         y_type.dyn_cast<dialect::DenseTensorType>();
-    std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
 
     pir::OpResult value = operation->result(idx_in_op);
+
+    // if y_grad' shape is same with y, we don't need a reshape
+    pir::Type y_grad_type = value.type();
+    IR_ENFORCE(y_grad_type.isa<dialect::DenseTensorType>(),
+               "Expected op[%s]'s input %s is DenseTensor but got %s",
+               op_desc.Type(),
+               y_grad_var_name,
+               y_grad_type);
+    dialect::DenseTensorType y_grad_tensor_type =
+        y_grad_type.dyn_cast<dialect::DenseTensorType>();
+    if (y_grad_tensor_type.dims() == y_tensor_type.dims()) {
+      return;
+    }
+
+    std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
     pir::Builder builder(ctx, operation->GetParent());
     auto reshape_op = builder.Build<dialect::ReshapeOp>(value, y_shape);
     param_map->PushValue(y_grad_var_name,

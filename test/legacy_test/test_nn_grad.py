@@ -374,8 +374,7 @@ class TestConstantPadDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        # places = [base.CPUPlace()]
-        places = []
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:

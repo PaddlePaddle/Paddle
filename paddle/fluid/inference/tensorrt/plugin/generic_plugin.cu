@@ -403,6 +403,21 @@ bool GenericPlugin::supportsFormatCombination(
     if (pos == 2)
       return in_out[1].type == in_out[pos].type &&
              in_out[1].format == in_out[pos].format;
+  } else if (op_desc_.Type() == "scatter") {
+    // input X
+    if (pos == 0)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
+              (isFp16Supported() &&
+               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    // Ids
+    if (pos == 1)
+      return (in_out[pos].type == nvinfer1::DataType::kINT32) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    // 3:output 2:input Updates
+    if (pos == 3 || pos == 2)
+      return in_out[0].type == in_out[pos].type &&
+             in_out[0].format == in_out[pos].format;
   } else {
     return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
             (isFp16Supported() &&
@@ -563,9 +578,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
     int input_numel = 1;
     for (int k = 0; k < input_shape.size(); k++) input_numel *= input_shape[k];
-
     auto data_type_and_size = nvType2PhiType(input_desc[i].type);
-
     phi::DenseTensorMeta input_meta(data_type_and_size.first,
                                     phi::make_ddim(input_shape));
     std::shared_ptr<phi::Allocation> input_alloc(
@@ -606,9 +619,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
   CHECK_EQ(phi_kernel_contexts_[data_type]->InputsSize(), getNbInputs());
   CHECK_EQ(phi_kernel_contexts_[data_type]->OutputsSize(), getNbOutputs());
-
   (*phi_kernels_[data_type])(phi_kernel_contexts_[data_type].get());
-
   return cudaGetLastError() != cudaSuccess;
 }
 

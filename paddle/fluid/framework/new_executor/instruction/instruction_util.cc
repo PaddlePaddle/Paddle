@@ -196,10 +196,10 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
 std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
   std::vector<pir::Value> vec_res;
 
-  if (block && !block->empty() && block->back()->isa<pir::YieldOp>()) {
-    auto* op = block->back();
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      vec_res.emplace_back(op->operand_source(i));
+  if (block && !block->empty() && block->back().isa<pir::YieldOp>()) {
+    auto& op = block->back();
+    for (size_t i = 0; i < op.num_operands(); ++i) {
+      vec_res.emplace_back(op.operand_source(i));
     }
   }
   return vec_res;
@@ -226,7 +226,7 @@ void GetInputIds(pir::Operation* op,
 std::unordered_set<pir::Value> GetBlockInnerOutputs(pir::Block* block) {
   std::unordered_set<pir::Value> inner_outputs;
   for (size_t arg_id = 0; arg_id < block->args_size(); ++arg_id) {
-    inner_outputs.insert(block->argument(arg_id));
+    inner_outputs.insert(block->arg(arg_id));
   }
   for (auto& op : (*block)) {
     VLOG(8) << "GetBlockInnerOutputs of " << op.name();

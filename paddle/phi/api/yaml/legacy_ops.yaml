@@ -507,6 +507,7 @@
   infer_meta :
     func : CreateLikeInferMeta
     param : [x, dtype]
+    spmd_rule : FullLikeInferSpmd
   kernel :
     func : full_like
     param : [x, value, dtype]
@@ -712,6 +713,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceIntArrayAxisInferMeta
+    spmd_rule: ReductionMaxInferSpmdDynamic
   kernel :
     func : max
   backward : max_grad
@@ -1100,6 +1102,7 @@
   output : Tensor(out)
   infer_meta :
     func : TransposeInferMeta
+    spmd_rule: TransposeInferSpmd
   kernel :
     func : transpose
   inplace : (x -> out)
