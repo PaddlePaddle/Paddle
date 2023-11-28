@@ -219,11 +219,13 @@ class FusedMatmulOneDNNHandler
     size_t size = this->fwd_pd_->dst_desc().get_size() / sizeof(XT);
     XT *dst = static_cast<XT *>(src_mem->get_data_handle());
 
+#if defined(_OPENMP)
 #pragma omp parallel for
+#endif
     for (size_t i = 0; i < size; ++i) {
       auto mod_i =
           static_cast<int>(i - floor(i / (IC * IH * IW)) * (IC * IH * IW));
-      // Use stride to make 1*C*H*W to N*C*H*W to avoid broadcast overhead
+      // Make 1*C*H*W to N*C*H*W to avoid broadcast overhead
       dst[i] = input_data[mod_i];
     }
     return src_mem;
