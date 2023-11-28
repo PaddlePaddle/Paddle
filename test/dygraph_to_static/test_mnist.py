@@ -20,14 +20,13 @@ from time import time
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_default_mode_only,
+    test_legacy_and_pir,
 )
 from predictor_utils import PredictorTools
 
 import paddle
 from paddle import base
 from paddle.base.dygraph import to_variable
-from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import Linear
 from paddle.optimizer import Adam
@@ -162,7 +161,7 @@ class TestMNISTWithToStatic(TestMNIST):
     def train_dygraph(self):
         return self.train(to_static=False)
 
-    @test_default_mode_only
+    @test_legacy_and_pir
     def test_mnist_to_static(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
@@ -173,7 +172,7 @@ class TestMNISTWithToStatic(TestMNIST):
             err_msg=f'dygraph is {dygraph_loss}\n static_res is \n{static_loss}',
         )
 
-    @test_default_mode_only
+    @test_legacy_and_pir
     def test_mnist_declarative_cpu_vs_mkldnn(self):
         dygraph_loss_cpu = self.train_dygraph()
         base.set_flags({'FLAGS_use_mkldnn': True})
@@ -239,14 +238,16 @@ class TestMNISTWithToStatic(TestMNIST):
                         prediction, acc, avg_loss = mnist(img, label)
                         loss_data.append(float(avg_loss))
                         # new save load check
-                        self.check_jit_save_load(
-                            mnist,
-                            [dy_x_data],
-                            [img, label],
-                            to_static,
-                            prediction,
-                            [img.name],
-                        )
+                        # TODO(@xiongkun): enable this after new save load is supported in pir.
+                        if not paddle.base.framework.use_pir_api():
+                            self.check_jit_save_load(
+                                mnist,
+                                [dy_x_data],
+                                [img, label],
+                                to_static,
+                                prediction,
+                                [img.name],
+                            )
                         break
         return loss_data
 
@@ -298,7 +299,6 @@ class TestMNISTWithToStatic(TestMNIST):
                 gt_out.numpy(), predictor_infer_out, rtol=1e-05
             )
 
-    @switch_to_static_graph
     def jit_load_and_run_inference_static(
         self, model_path, model_filename, params_filename, inputs
     ):
@@ -320,6 +320,7 @@ class TestMNISTWithToStatic(TestMNIST):
             feed=dict(zip(feed_target_names, inputs)),
             fetch_list=fetch_targets,
         )
+        paddle.disable_static()
 
         return np.array(results[0])
 
