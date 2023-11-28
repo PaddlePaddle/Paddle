@@ -19,14 +19,14 @@ import numpy as np
 import paddle
 from paddle.base import core
 from paddle.base.framework import Block
+from paddle.distributed.auto_parallel.static.cost import (
+    measure_program_real_op_cost,
+)
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
 )
 from paddle.distributed.auto_parallel.static.dist_context import (
     DistributedContext,
-)
-from paddle.distributed.auto_parallel.static.utils import (
-    measure_program_real_op_cost,
 )
 from paddle.static import Executor, Program, program_guard
 
