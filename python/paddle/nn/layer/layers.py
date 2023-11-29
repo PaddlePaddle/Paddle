@@ -892,31 +892,31 @@ class Layer:
     def parameters(self, include_sublayers=True):
         """
 
-                Returns a list of all Parameters from current layer and its sub-layers.
+        Returns a list of all Parameters from current layer and its sub-layers.
 
-                Parameters:
-        <<<<<<< HEAD
-                    include_sublayers(bool, optional): Whether to return the parameters of the sublayer.
-        =======
-                    include_sublayers(bool, optional): Whether to return the parameters of the sublayer.
-        >>>>>>> 21b694bc751d3778bf13b25b95f794bda002b441
+        Parameters:
+            include_sublayers(bool, optional): Whether to return the parameters of the sublayer.
+                If True, the returned list contains the parameters of the sublayer.
+                Default: True.
 
-                Returns:
-                    list of Tensor, a list of Parameters.
 
-                Examples:
-                    .. code-block:: python
 
-                        >>> import paddle
-                        >>> paddle.seed(100)
+        Returns:
+            list of Tensor, a list of Parameters.
 
-                        >>> linear = paddle.nn.Linear(1, 1)
-                        >>> print(linear.parameters())
-                        [Parameter containing:
-                        Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
-                        [[0.18551230]]), Parameter containing:
-                        Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=False,
-                        [0.])]
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.seed(100)
+
+                >>> linear = paddle.nn.Linear(1, 1)
+                >>> print(linear.parameters())
+                [Parameter containing:
+                Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[0.18551230]]), Parameter containing:
+                Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [0.])]
 
         """
         ret = [
