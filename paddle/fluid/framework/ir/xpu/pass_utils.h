@@ -121,18 +121,6 @@ inline std::string FindInputNameByVarName(framework::OpDesc* op,
   return ret;
 }
 
-// int_8_t:  per-tensor
-// int_8_c:  per-channel
-// int_16_t: per-tensor
-// int_16_c: per-channel
-// int_31_t: per-tensor
-enum quant_weight_type {
-  int_8_t = 0,
-  int_8_c = 1,
-  int_16_t = 2,
-  int_16_c = 3,
-  int_31_t = 4,
-};
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

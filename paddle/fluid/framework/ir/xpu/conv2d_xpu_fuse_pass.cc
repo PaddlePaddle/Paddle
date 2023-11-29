@@ -489,8 +489,9 @@ void Conv2dXPUFusePass::CreateTheReplicatedWeights(
       true,
       platform::errors::InvalidArgument("conv node ptr can not be null"));
   auto conv_filter_name = conv->Op()->Input("Filter")[0];
-  std::string replicated_filter_name =
-      conv_filter_name + "_copy_" + std::to_string(conv->id());
+  std::string replicated_filter_name = conv_filter_name + "_copy_" +
+                                       std::to_string(block->ID()) + "_" +
+                                       std::to_string(conv->id());
   auto* replicated_filter_var = scope->FindVar(replicated_filter_name);
   if (replicated_filter_var == nullptr) {
     auto* filter_tensor =
@@ -536,8 +537,9 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
   auto conv_filter_name = conv->Op()->Input("Filter")[0];
   Node* conv_filter = FindNodeWithName(graph, conv_filter_name);
   CreateTheReplicatedWeights(graph, scope, block, nodes_map);
-  std::string replicated_filter_name =
-      conv_filter_name + "_copy_" + std::to_string(conv->id());
+  std::string replicated_filter_name = conv_filter_name + "_copy_" +
+                                       std::to_string(block->ID()) + "_" +
+                                       std::to_string(conv->id());
   auto* conv_filter_replicated_node =
       FindNodeWithName(graph, replicated_filter_name);
   auto* filter_t =
@@ -720,7 +722,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
   Node* scale_max = nullptr;
 
   std::map<std::string, int> default_type;
-  default_type.insert(std::make_pair("conv", -1));
+  default_type.insert(std::make_pair("conv2d", -1));
   auto quant_post_type =
       Has("quant_post_dynamic_weight_methods")
           ? Get<std::map<std::string, int>>("quant_post_dynamic_weight_methods")
@@ -731,76 +733,58 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
     VLOG(5) << "Value:" << it->second;
   }
 
-  switch (quant_post_type.find("conv2d")->second) {
-    if (op_weights_precision != "int8") {
-      case quant_weight_type::int_16_t:
-        VLOG(5) << "Use int16 per-tensor weight";
-        PrepareWeight<float, int16_t>(graph,
-                                      scope,
-                                      block,
-                                      conv_filter_replicated_node,
-                                      &filter_intx,
-                                      &filter_max,
-                                      &scale_max,
-                                      false,
-                                      weight_scale,
-                                      false);
-        break;
-      case quant_weight_type::int_16_c:
-        VLOG(5) << "Use int16 per-channel weight";
-        PrepareWeight<float, int16_t>(graph,
-                                      scope,
-                                      block,
-                                      conv_filter_replicated_node,
-                                      &filter_intx,
-                                      &filter_max,
-                                      &scale_max,
-                                      false,
-                                      weight_scale,
-                                      true);
-        break;
-      case quant_weight_type::int_31_t:
-        VLOG(5) << "No support int31 per-tensor weight";
-        break;
-      default:
-        VLOG(5) << "Use int16 per-tensor weight";
-        PrepareWeight<float, int16_t>(graph,
-                                      scope,
-                                      block,
-                                      conv_filter_replicated_node,
-                                      &filter_intx,
-                                      &filter_max,
-                                      &scale_max,
-                                      false,
-                                      weight_scale,
-                                      false);
+  if (op_weights_precision != "int8") {
+    if (quant_post_type.find("conv2d") != quant_post_type.end() &&
+            quant_post_type.find("conv2d")->second == 2 ||
+        quant_post_type.find("conv2d") != quant_post_type.end() &&
+            quant_post_type.find("conv2d")->second == -1) {
+      VLOG(5) << "Use int16 per-tensor weight";
+      PrepareWeight<float, int16_t>(graph,
+                                    scope,
+                                    block,
+                                    conv_filter_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    false,
+                                    weight_scale,
+                                    false);
+    } else if (quant_post_type.find("conv2d") != quant_post_type.end() &&
+               quant_post_type.find("conv2d")->second == 3) {
+      VLOG(5) << "Use int16 per-channel weight";
+      PrepareWeight<float, int16_t>(graph,
+                                    scope,
+                                    block,
+                                    conv_filter_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    false,
+                                    weight_scale,
+                                    true);
     } else {
-      case quant_weight_type::int_8_t:
-        VLOG(5) << "Use int8 per-tensor weight";
-        PrepareWeight<int8_t, int8_t>(graph,
-                                      scope,
-                                      block,
-                                      conv_filter_replicated_node,
-                                      &filter_intx,
-                                      &filter_max,
-                                      &scale_max,
-                                      false,
-                                      weight_scale);
-        break;
-      case quant_weight_type::int_8_c:
-        VLOG(5) << "Use int8 per-channel weight";
-        PrepareWeight<int8_t, int8_t>(graph,
-                                      scope,
-                                      block,
-                                      conv_filter_replicated_node,
-                                      &filter_intx,
-                                      &filter_max,
-                                      &scale_max,
-                                      false,
-                                      weight_scale);
-        break;
+      VLOG(5) << "Unsupported type weight by non-int8!";
+    }
+
+  } else {
+    if (quant_post_type.find("conv2d") != quant_post_type.end() &&
+            quant_post_type.find("conv2d")->second == 0 ||
+        quant_post_type.find("conv2d") != quant_post_type.end() &&
+            quant_post_type.find("conv2d")->second == 1) {
+      PrepareWeight<int8_t, int8_t>(graph,
+                                    scope,
+                                    block,
+                                    conv_filter_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    false,
+                                    weight_scale);
+    } else {
+      VLOG(5) << "Unsupported type weight!";
     }
   }
+
   (*fusion_nodes_map)["filter"] = filter_intx;
   (*fusion_nodes_map)["filter_max"] = filter_max;
   (*fusion_nodes_map)["scale_max"] = scale_max;
