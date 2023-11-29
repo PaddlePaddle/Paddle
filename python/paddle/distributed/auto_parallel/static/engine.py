@@ -253,21 +253,22 @@ class Engine:
 
         self.history = None
 
-        #
+        # whether to enable prim in distributed engine
         if os.getenv("FLAGS_enable_prim_in_distribute") == "True":
             self.enable_prim_in_distribute = True
         else:
             self.enable_prim_in_distribute = False
-        #
+
+        # pir program infos
         self.pir_prune_startup_program = None
-        #
+
         self.pir_program = None
         self.param_mapping = None
         self.pir_grad_var_to_var = None
-        self.pir_program_initialized = False
-        #
+        self.is_pir_program_initialized = False
+
         self.pir_program_after_decomposed = None
-        self.pir_program_decomposed = False
+        self.is_pir_program_decomposed = False
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
@@ -1667,7 +1668,7 @@ class Engine:
 
             return pir_grad_var_to_var
 
-        if not self.pir_program_initialized:
+        if not self.is_pir_program_initialized:
             # process feed
             if feed_dict is not None:
                 invalid_feed_var_names = _get_invalid_feeds(
@@ -1739,12 +1740,12 @@ class Engine:
             self.pir_program = pir_program
             self.param_mapping = param_mapping
             self.pir_grad_var_to_var = pir_grad_var_to_var
-            self.pir_program_initialized = True
+            self.is_pir_program_initialized = True
 
             return fetch_list
 
     def _decompose_pir_program(self, fetch_list):
-        if not self.pir_program_initialized:
+        if not self.is_pir_program_initialized:
             raise RuntimeError(
                 "To decompose pir program, please translate the main program to pir program first."
             )
@@ -1757,7 +1758,7 @@ class Engine:
                     bwd_ops.append(op.name())
             return bwd_ops
 
-        if not self.pir_program_decomposed:
+        if not self.is_pir_program_decomposed:
             prev_fwd_prim_state = core._is_fwd_prim_enabled()
             prev_bwd_prim_state = core._is_bwd_prim_enabled()
             core._set_prim_forward_enabled(True)
@@ -1805,7 +1806,7 @@ class Engine:
                 )
 
                 self.pir_program_after_decomposed = program
-                self.pir_program_decomposed = True
+                self.is_pir_program_decomposed = True
                 core._set_prim_forward_enabled(prev_fwd_prim_state)
                 core._set_prim_backward_enabled(prev_bwd_prim_state)
 
@@ -1827,7 +1828,8 @@ class Engine:
         if self.enable_prim_in_distribute:
             new_fetch_list = []
             if not (
-                self.pir_program_initialized and self.pir_program_decomposed
+                self.is_pir_program_initialized
+                and self.is_pir_program_decomposed
             ):
                 new_fetch_list = self._translate_to_pir_program(
                     feed_dict, fetch_names
