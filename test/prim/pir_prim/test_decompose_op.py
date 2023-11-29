@@ -66,7 +66,8 @@ def get_pir_program_and_param_map():
             tmp4, tmp4.shape[1:], scale, None, 1e-5
         )
         tmp6 = paddle.nn.functional.dropout(tmp5, p=0.5)
-        out = paddle.add(x, tmp6)
+        tmp7 = paddle.add(x, tmp6)
+        out = paddle.mean(tmp7)
         # construct backward graph
         gradients = paddle.static.gradients(out, [x, y, z])
 
@@ -93,7 +94,7 @@ class TestDecomposeOp(unittest.TestCase):
         ) = get_pir_program_and_param_map()
 
         pir_ops = pir_program.global_block().ops
-        global_outputs = [pir_ops[10].result(0)]
+        global_outputs = [pir_ops[11].result(0)]
 
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
             pir_program
@@ -109,8 +110,9 @@ class TestDecomposeOp(unittest.TestCase):
                     'elementwise_add_3@GRAD': 'elementwise_add_3',
                     'elementwise_mul_1@GRAD': 'elementwise_mul_1',
                     'layer_norm_1.tmp_2@GRAD': 'layer_norm_1.tmp_2',
+                    'mean_2.tmp_0@GRAD': 'mean_2.tmp_0',
+                    'mean_3.tmp_0@GRAD': 'mean_3.tmp_0',
                     'rsqrt_1.tmp_0@GRAD': 'rsqrt_1.tmp_0',
-                    'mean_1.tmp_0@GRAD': 'mean_1.tmp_0',
                     'x@GRAD': 'x',
                     'x@GRAD@RENAME@block0@0': 'x',
                     'x@GRAD@RENAME@block0@1': 'x',
@@ -137,6 +139,7 @@ class TestDecomposeOp(unittest.TestCase):
                             pir_program.global_block(),
                             bwd_op,
                             grad_var_to_var_map,
+                            global_outputs,
                         )
 
             # execution
