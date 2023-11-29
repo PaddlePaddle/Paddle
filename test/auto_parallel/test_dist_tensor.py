@@ -71,6 +71,7 @@ class TestDistTensorFromFn(unittest.TestCase):
             self.assertEqual(result.placements, placements)
         else:
             dist_attr.dynamic_dims = [0]
+            dist_attr.chunk_id = 0
             self.assertIsInstance(result, paddle.static.Variable)
             self.assertEqual(result.shape, (16,))
             self.assertEqual(result.dist_attr, dist_attr)
@@ -85,6 +86,7 @@ class TestDistTensorFromFn(unittest.TestCase):
             self.assertEqual(result.placements, placements)
         else:
             dist_attr.dynamic_dims = [0]
+            dist_attr.chunk_id = 0
             self.assertIsInstance(result, paddle.static.Variable)
             self.assertEqual(result.shape, (16,))
             self.assertEqual(result.dist_attr, dist_attr)
@@ -99,6 +101,7 @@ class TestDistTensorFromFn(unittest.TestCase):
             self.assertEqual(result.placements, placements)
         else:
             dist_attr.dynamic_dims = [0]
+            dist_attr.chunk_id = 0
             self.assertIsInstance(result, paddle.static.Variable)
             self.assertEqual(result.shape, (16,))
             self.assertEqual(result.dist_attr, dist_attr)

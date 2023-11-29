@@ -36,9 +36,10 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
                  pir::Value cond,
                  std::vector<pir::Type> &&output_types) {
   VLOG(4) << "Start build IfOp";
-  argument.AddRegions(2u);
   argument.AddInput(cond);
   argument.output_types.swap(output_types);
+  argument.AddRegion().emplace_back();
+  argument.AddRegion().emplace_back();
 }
 
 void IfOp::Build(pir::Builder &builder,             // NOLINT
@@ -80,8 +81,8 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
                        "equal. but they are %u and 0, respectively",
                        argument.output_types.size()));
   }
-  argument.AddRegion()->push_back(true_block.release());
-  argument.AddRegion()->push_back(false_block.release());
+  argument.AddRegion().push_back(true_block.release());
+  argument.AddRegion().push_back(false_block.release());
   argument.AddInput(cond);
 }
 
@@ -232,12 +233,13 @@ void WhileOp::Build(pir::Builder &builder,             // NOLINT
                     const std::vector<pir::Value> &inputs) {
   argument.AddInput(cond);
   argument.AddInputs(inputs);
+  auto &body = argument.AddRegion().emplace_back();
   for (auto val : inputs) {
     argument.AddOutput(val.type());
+    body.AddArgument(val.type());
   }
-  argument.AddRegion(nullptr);
 }
-pir::Block &WhileOp::body_block() {
+pir::Block &WhileOp::body() {
   pir::Region &body_region = (*this)->region(0);
   if (body_region.empty()) body_region.emplace_back();
   return body_region.front();
@@ -259,11 +261,11 @@ void WhileOp::Print(pir::IrPrinter &printer) {
       [&]() { os << ", "; });
   os << "] { \n ^";
   pir::PrintInterleave(
-      body_block().args_begin(),
-      body_block().args_end(),
+      body().args_begin(),
+      body().args_end(),
       [&](pir::Value v) { printer.PrintValue(v); },
       [&]() { os << ", "; });
-  for (auto &item : body_block()) {
+  for (auto &item : body()) {
     os << "\n  ";
     printer.PrintOperation(&item);
   }
