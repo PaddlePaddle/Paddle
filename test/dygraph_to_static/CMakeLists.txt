@@ -63,3 +63,19 @@ if(WITH_GPU)
   set_tests_properties(test_train_step_resnet18_sgd PROPERTIES TIMEOUT 240)
   set_tests_properties(test_train_step_resnet18_adam PROPERTIES TIMEOUT 240)
 endif()
+
+# Legacy IR only tests for dygraph_to_static
+set(LEGACY_ONLY_TEST_FILES test_legacy_error test_pylayer)
+foreach(ITEST ${LEGACY_ONLY_TEST_FILES})
+  if(TEST ${ITEST})
+    set_tests_properties(
+      ${ITEST} PROPERTIES ENVIRONMENT "FLAGS_enable_pir_with_pt_in_dy2st=0")
+    message(
+      STATUS
+        "PT Disabled OpTest: set FLAGS_enable_pir_with_pt_in_dy2st to False for ${ITEST}"
+    )
+  else()
+    message(
+      STATUS "PT Disabled OpTest: not found ${ITEST} in dygraph_to_static")
+  endif()
+endforeach()

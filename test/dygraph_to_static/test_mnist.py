@@ -18,10 +18,10 @@ import unittest
 from time import time
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    compare_legacy_with_pir,
-    test_ast_only,
+    test_default_mode_only,
+    test_sot_with_pir_only,
 )
 from predictor_utils import PredictorTools
 
@@ -35,8 +35,8 @@ from paddle.optimizer import Adam
 
 SEED = 2020
 
-if paddle.base.is_compiled_with_cuda():
-    paddle.base.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.is_compiled_with_cuda():
+    paddle.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 class SimpleImgConvPool(paddle.nn.Layer):
@@ -135,9 +135,9 @@ class TestMNIST(Dy2StTestBase):
         self.epoch_num = 1
         self.batch_size = 64
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
         self.train_reader = paddle.batch(
             paddle.dataset.mnist.train(),
@@ -157,14 +157,13 @@ class TestMNISTWithToStatic(TestMNIST):
     still works if model is trained in dygraph mode.
     """
 
-    @compare_legacy_with_pir
     def train_static(self):
         return self.train(to_static=True)
 
     def train_dygraph(self):
         return self.train(to_static=False)
 
-    @test_ast_only
+    @test_default_mode_only
     def test_mnist_to_static(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
@@ -175,13 +174,14 @@ class TestMNISTWithToStatic(TestMNIST):
             err_msg=f'dygraph is {dygraph_loss}\n static_res is \n{static_loss}',
         )
 
+    @test_sot_with_pir_only
     def test_mnist_declarative_cpu_vs_mkldnn(self):
         dygraph_loss_cpu = self.train_dygraph()
-        base.set_flags({'FLAGS_use_mkldnn': True})
+        paddle.set_flags({'FLAGS_use_mkldnn': True})
         try:
             dygraph_loss_mkldnn = self.train_dygraph()
         finally:
-            base.set_flags({'FLAGS_use_mkldnn': False})
+            paddle.set_flags({'FLAGS_use_mkldnn': False})
         np.testing.assert_allclose(
             dygraph_loss_cpu,
             dygraph_loss_mkldnn,
@@ -193,62 +193,61 @@ class TestMNISTWithToStatic(TestMNIST):
 
     def train(self, to_static=False):
         loss_data = []
-        with base.dygraph.guard(self.place):
-            base.default_main_program().random_seed = SEED
-            base.default_startup_program().random_seed = SEED
-            mnist = MNIST()
-            if to_static:
-                mnist = paddle.jit.to_static(mnist, full_graph=True)
-            adam = Adam(learning_rate=0.001, parameters=mnist.parameters())
+        base.default_main_program().random_seed = SEED
+        base.default_startup_program().random_seed = SEED
+        mnist = MNIST()
+        if to_static:
+            mnist = paddle.jit.to_static(mnist, full_graph=True)
+        adam = Adam(learning_rate=0.001, parameters=mnist.parameters())
 
-            for epoch in range(self.epoch_num):
-                start = time()
-                for batch_id, data in enumerate(self.train_reader()):
-                    dy_x_data = np.array(
-                        [x[0].reshape(1, 28, 28) for x in data]
-                    ).astype('float32')
-                    y_data = (
-                        np.array([x[1] for x in data])
-                        .astype('int64')
-                        .reshape(-1, 1)
+        for epoch in range(self.epoch_num):
+            start = time()
+            for batch_id, data in enumerate(self.train_reader()):
+                dy_x_data = np.array(
+                    [x[0].reshape(1, 28, 28) for x in data]
+                ).astype('float32')
+                y_data = (
+                    np.array([x[1] for x in data])
+                    .astype('int64')
+                    .reshape(-1, 1)
+                )
+
+                img = to_variable(dy_x_data)
+                label = to_variable(y_data)
+
+                label.stop_gradient = True
+                prediction, acc, avg_loss = mnist(img, label=label)
+                avg_loss.backward()
+
+                adam.minimize(avg_loss)
+                loss_data.append(float(avg_loss))
+                # save checkpoint
+                mnist.clear_gradients()
+                if batch_id % 10 == 0:
+                    print(
+                        "Loss at epoch {} step {}: loss: {:}, acc: {}, cost: {}".format(
+                            epoch,
+                            batch_id,
+                            avg_loss.numpy(),
+                            acc.numpy(),
+                            time() - start,
+                        )
                     )
-
-                    img = to_variable(dy_x_data)
-                    label = to_variable(y_data)
-
-                    label.stop_gradient = True
-                    prediction, acc, avg_loss = mnist(img, label=label)
-                    avg_loss.backward()
-
-                    adam.minimize(avg_loss)
+                    start = time()
+                if batch_id == 50:
+                    mnist.eval()
+                    prediction, acc, avg_loss = mnist(img, label)
                     loss_data.append(float(avg_loss))
-                    # save checkpoint
-                    mnist.clear_gradients()
-                    if batch_id % 10 == 0:
-                        print(
-                            "Loss at epoch {} step {}: loss: {:}, acc: {}, cost: {}".format(
-                                epoch,
-                                batch_id,
-                                avg_loss.numpy(),
-                                acc.numpy(),
-                                time() - start,
-                            )
-                        )
-                        start = time()
-                    if batch_id == 50:
-                        mnist.eval()
-                        prediction, acc, avg_loss = mnist(img, label)
-                        loss_data.append(float(avg_loss))
-                        # new save load check
-                        self.check_jit_save_load(
-                            mnist,
-                            [dy_x_data],
-                            [img, label],
-                            to_static,
-                            prediction,
-                            [img.name],
-                        )
-                        break
+                    # new save load check
+                    self.check_jit_save_load(
+                        mnist,
+                        [dy_x_data],
+                        [img, label],
+                        to_static,
+                        prediction,
+                        [img.name],
+                    )
+                    break
         return loss_data
 
     def check_jit_save_load(

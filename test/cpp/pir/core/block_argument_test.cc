@@ -37,14 +37,14 @@ TEST(block_argument_test, base) {
 
   uint32_t index = 0;
   for (auto iter = block->args_begin(); iter != block->args_end(); ++iter) {
-    EXPECT_EQ(iter->arg_index(), index++);
+    EXPECT_EQ(iter->dyn_cast<pir::BlockArgument>().index(), index++);
   }
 
-  pir::Value value = block->argument(0);
+  pir::Value value = block->arg(0);
   pir::BlockArgument argument = value.dyn_cast<pir::BlockArgument>();
   EXPECT_TRUE(argument);
   EXPECT_EQ(argument.owner(), block);
-  EXPECT_EQ(block->argument_type(0), types[0]);
+  EXPECT_EQ(block->arg_type(0), types[0]);
   pir::OpResult op_result = value.dyn_cast<pir::OpResult>();
   EXPECT_FALSE(op_result);
 

@@ -25,6 +25,7 @@
 
 namespace pir {
 class Operation;
+class Program;
 
 class IR_API Block {
   using OpListType = std::list<Operation *>;
@@ -42,6 +43,12 @@ class IR_API Block {
   Region *GetParent() const { return parent_; }
   Operation *GetParentOp() const;
 
+  // return the program which contains this block.
+  // if block is not in a program, return nullptr.
+  Program *parent_program() const {
+    return parent_ ? parent_->parent_program() : nullptr;
+  }
+
   bool empty() const { return ops_.empty(); }
   size_t size() const { return ops_.size(); }
 
@@ -54,8 +61,11 @@ class IR_API Block {
   ReverseIterator rbegin() { return ops_.rbegin(); }
   ReverseIterator rend() { return ops_.rend(); }
 
-  Operation *back() const { return ops_.back(); }
-  Operation *front() const { return ops_.front(); }
+  Operation &back() { return *ops_.back(); }
+  Operation &front() { return *ops_.front(); }
+  const Operation &back() const { return *ops_.back(); }
+  const Operation &front() const { return *ops_.front(); }
+
   void push_back(Operation *op);
   void push_front(Operation *op);
   Iterator insert(ConstIterator iterator, Operation *op);
@@ -85,9 +95,9 @@ class IR_API Block {
   ///
   /// \brief Block argument management
   ///
-  using BlockArgListType = std::vector<BlockArgument>;
-  using ArgsIterator = BlockArgListType::iterator;
-  using ConstArgsIterator = BlockArgListType::const_iterator;
+  using ArgListType = std::vector<Value>;
+  using ArgsIterator = ArgListType::iterator;
+  using ConstArgsIterator = ArgListType::const_iterator;
 
   ArgsIterator args_begin() { return arguments_.begin(); }
   ArgsIterator args_end() { return arguments_.end(); }
@@ -95,11 +105,11 @@ class IR_API Block {
   ConstArgsIterator args_end() const { return arguments_.end(); }
   bool args_empty() const { return arguments_.empty(); }
   uint32_t args_size() const { return arguments_.size(); }
-  const BlockArgListType &args() const { return arguments_; }
-  BlockArgument argument(uint32_t index) { return arguments_[index]; }
-  Type argument_type(uint32_t index) const { return arguments_[index].type(); }
+  const ArgListType &args() const { return arguments_; }
+  Value arg(uint32_t index) { return arguments_[index]; }
+  Type arg_type(uint32_t index) const { return arguments_[index].type(); }
   void ClearArguments();
-  BlockArgument AddArgument(Type type);
+  Value AddArgument(Type type);
   template <class TypeIter>
   void AddArguments(TypeIter first, TypeIter last);
   template <class TypeContainer>
@@ -127,9 +137,9 @@ class IR_API Block {
  private:
   Region::Iterator position_;
   BlockOperand first_use_;
-  OpListType ops_;              // owned
-  BlockArgListType arguments_;  // owned
-  Region *parent_;              // not owned
+  OpListType ops_;         // owned
+  ArgListType arguments_;  // owned
+  Region *parent_;         // not owned
 };
 
 template <class TypeIter>
