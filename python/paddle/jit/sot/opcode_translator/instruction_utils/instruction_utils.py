@@ -46,6 +46,9 @@ class Instruction:
     def __hash__(self):
         return id(self)
 
+    def __eq__(self, instr):
+        return id(self) == id(instr)
+
 
 def gen_instr(name, arg=None, argval=None, gened=True, jump_to=None):
     return Instruction(
@@ -355,7 +358,7 @@ def replace_instr(instructions, instr, new_instr):
     instructions[idx : idx + 1] = new_instr
 
 
-def instrs_info(instrs, mark=None, range=None):
+def instrs_info(instrs, mark=None, range=None, want_str=True):
     ret = []
     start = -1
     end = 1000000
@@ -382,6 +385,8 @@ def instrs_info(instrs, mark=None, range=None):
         )
         if idx == mark:
             ret[-1] = "\033[31m" + ret[-1] + "\033[0m"
+    if want_str:
+        return "\n".join(ret)
     return ret
 
 

@@ -68,8 +68,8 @@ def weight_quantize(x, algo="weight_only_int8", arch=None):
         arch = _get_arch_info()
 
     assert (
-        arch == 70 or arch == 80
-    ), "Currently weight_quantize only support SM70/80. "
+        arch == 70 or arch == 80 or arch == 86 or arch == 75
+    ), f"Currently weight_quantize only support SM70/75/80/86. but got {arch} "
 
     if in_dynamic_mode():
         return _C_ops.weight_quantize(x, algo, arch)
