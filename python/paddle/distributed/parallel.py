@@ -48,9 +48,12 @@ from paddle.distributed.fleet.base.private_helper_function import (
 from paddle.distributed.fleet.launch_utils import check_backend
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.framework import _set_expected_place
-from paddle.framework import base as imperative_base
-from paddle.framework import core, in_dynamic_mode
+from paddle.framework import (
+    _set_expected_place,
+    base as imperative_base,
+    core,
+    in_dynamic_mode,
+)
 from paddle.nn.layer import layers
 from paddle.utils import deprecated
 

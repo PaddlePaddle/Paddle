@@ -1,6 +1,3 @@
-if(WITH_CINN)
-  set(CINN_DEPS cinn_compiler python)
-endif()
 if(WITH_GPU OR WITH_ROCM)
   # fusion_group
   if(NOT APPLE AND NOT WIN32)

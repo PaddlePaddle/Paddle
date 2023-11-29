@@ -53,6 +53,8 @@ def replace_symbol(
 def _append_opstack_between(start, end, stack):
     # NOTE(xiongkun): we don't sync for speed. careful!!
     # [start, end)
+    if paddle.base.framework.use_pir_api():
+        return
     from paddle.framework import core
 
     op_maker = core.op_proto_and_checker_maker
@@ -65,14 +67,14 @@ def for_each_ops_between(start, end):
     # NOTE(xiongkun): we don't sync for speed. careful!!
     # [start, end)
     program = paddle.static.default_main_program()
-    ops = program.current_block().ops[start:end]
+    ops = program.global_block().ops[start:end]
     yield from ops
 
 
 def opnum_in_program():
     # NOTE(xiongkun): we don't sync for speed. careful!!
     program = paddle.static.default_main_program()
-    return len(program.current_block().ops)
+    return len(program.global_block().ops)
 
 
 class Interpreter:

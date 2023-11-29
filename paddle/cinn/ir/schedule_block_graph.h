@@ -24,8 +24,6 @@
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 
-using Group = cinn::hlir::framework::Graph::Group;
-
 namespace cinn {
 namespace ir {
 

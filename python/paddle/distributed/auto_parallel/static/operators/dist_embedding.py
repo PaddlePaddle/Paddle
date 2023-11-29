@@ -46,6 +46,7 @@ from ..utils import (
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
+    ParallelMode,
     get_default_distributed_operator_impl,
     gradient_synchronization,
     infer_shape,
@@ -544,6 +545,9 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 'use_model_parallel': True,
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
+        )
+        c_allreduce_sum_op._set_attr(
+            'op_namescope', '/' + ParallelMode.TensorParallel
         )
         if Out_var.shape != ref_shape:
             Out_var.desc.set_shape(ref_shape)

@@ -199,6 +199,9 @@ from .tensor.logic import (  # noqa: F401
 
 
 from .tensor.manipulation import (  # noqa: F401
+    atleast_1d,
+    atleast_2d,
+    atleast_3d,
     cast,
     cast_,
     concat,
@@ -257,6 +260,7 @@ from .tensor.manipulation import (  # noqa: F401
     masked_fill_,
     index_fill,
     index_fill_,
+    diagonal_scatter,
 )
 
 from .tensor.math import (  # noqa: F401
@@ -315,6 +319,8 @@ from .tensor.math import (  # noqa: F401
     square_,
     stanh,
     sum,
+    multigammaln,
+    multigammaln_,
     nan_to_num,
     nan_to_num_,
     nansum,
@@ -451,6 +457,8 @@ from .tensor.to_string import set_printoptions
 
 from .tensor.einsum import einsum
 
+from .framework import async_save, clear_async_save_task_queue  # noqa: F401
+
 from .framework.random import (
     seed,
     get_cuda_rng_state,
@@ -504,6 +512,7 @@ from .device import (  # noqa: F401
     is_compiled_with_xpu,
     is_compiled_with_ipu,
     is_compiled_with_cinn,
+    is_compiled_with_distribute,
     is_compiled_with_cuda,
     is_compiled_with_rocm,
     is_compiled_with_custom_device,
@@ -833,6 +842,9 @@ __all__ = [
     'logspace',
     'reshape',
     'reshape_',
+    'atleast_1d',
+    'atleast_2d',
+    'atleast_3d',
     'reverse',
     'nonzero',
     'CUDAPinnedPlace',
@@ -881,6 +893,8 @@ __all__ = [
     'renorm_',
     'take_along_axis',
     'put_along_axis',
+    'multigammaln',
+    'multigammaln_',
     'nan_to_num',
     'nan_to_num_',
     'heaviside',
@@ -918,4 +932,5 @@ __all__ = [
     'hypot_',
     'index_fill',
     "index_fill_",
+    'diagonal_scatter',
 ]
