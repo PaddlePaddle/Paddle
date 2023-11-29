@@ -978,9 +978,9 @@ struct EmbeddingGradOpTranscriber : public OpTranscriber {
     bool is_sparse = paddle::get<bool>(op_desc.GetAttr("is_sparse"));
 
     if (is_sparse) {
-      target_op_name = "pd_op.embedding_grad_sparse";
+      target_op_name = "pd_op.embedding_sparse_grad";
     } else {
-      target_op_name = "pd_op.embedding_grad_dense";
+      target_op_name = "pd_op.embedding_grad";
     }
     VLOG(6) << "[op name normalizing: " << op_desc.Type() << " to "
             << target_op_name;

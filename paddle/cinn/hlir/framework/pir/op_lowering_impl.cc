@@ -35,6 +35,7 @@
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 PD_DECLARE_bool(cinn_enable_map_expr);
 PD_DECLARE_bool(cinn_enable_map_expr_schedule);
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
 namespace hlir {
@@ -514,6 +515,16 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       group_func_args.emplace_back(tensor_pair.second->buffer,
                                    ir::Argument::IO::kOutput);
     }
+  }
+
+  // add fake symbolic args for test
+  if (FLAGS_cinn_bucket_compile) {
+    group_func_args.emplace_back(ir::_Var_::Make("fake_symbol1", Int(32)),
+                                 ir::Argument::IO::kOutput);
+    group_func_args.emplace_back(ir::_Var_::Make("fake_symbol2", Int(32)),
+                                 ir::Argument::IO::kOutput);
+    group->output_names.push_back("fake_symbol1");
+    group->output_names.push_back("fake_symbol2");
   }
 
 #ifdef CINN_WITH_CUDA
