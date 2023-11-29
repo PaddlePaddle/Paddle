@@ -93,7 +93,7 @@ class TestDistSharding(unittest.TestCase):
         )
         if diff_lr:
             for param in model.parameters():
-                if 'weight' in param.name:
+                if 'w' in param.name:
                     param.optimize_attr = {"learning_rate": 1.0}
                 else:
                     param.optimize_attr = {"learning_rate": 2.0}
