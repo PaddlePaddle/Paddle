@@ -398,6 +398,12 @@ def test_default_mode_only(fn):
     return fn
 
 
+def test_sot_with_pir_only(fn):
+    fn = set_to_static_mode(ToStaticMode.SOT)(fn)
+    fn = set_ir_mode(IrMode.PIR)(fn)
+    return fn
+
+
 # NOTE: This is a special decorator for comparing legacy and pt
 def compare_legacy_with_pt(fn):
     @wraps(fn)

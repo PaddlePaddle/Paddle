@@ -376,6 +376,16 @@ class StaticFunction:
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
         self._property = kwargs.get("property", False)
+        self._get_debug_name()
+
+    def _get_debug_name(self):
+        try:
+            if self._class_instance:
+                self._debug_name = self._class_instance.__class__.__name__
+            else:
+                self._debug_name = self._dygraph_function.__name__
+        except Exception:
+            self._debug_name = "static_function"
 
     @property
     def is_property(self):
@@ -778,7 +788,7 @@ class ASTStaticFunction(StaticFunction):
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
 
         try:
-            concrete_program, partial_program_layer = self.get_concrete_program(
+            _, partial_program_layer = self.get_concrete_program(
                 *args, **kwargs, is_train=self._is_train_mode()
             )
             # 2. synchronize self.training attribute.
@@ -863,6 +873,7 @@ class ASTStaticFunction(StaticFunction):
             concrete_program, partial_program_layer = self._program_cache[
                 cache_key
             ]
+        partial_program_layer._debug_name = self._debug_name
         return concrete_program, partial_program_layer
 
     def get_concrete_program_with_cache_key(self, cached_key):
@@ -1442,6 +1453,7 @@ class FallbackProgramLayer:
         'training',
         '_cuda_graph_capture_mode',
         '_cuda_graph_pool_id',
+        '_debug_name',
     ]
 
     def __init__(self, instance, dy_func):
