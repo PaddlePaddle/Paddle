@@ -307,7 +307,7 @@ ConvBNFusePass::ConvBNFusePass() {
       .End();
 }
 
-void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
+void ConvBNFusePass::ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
@@ -607,7 +607,8 @@ ConvEltwiseAddBNFusePass::ConvEltwiseAddBNFusePass() {
       .End();
 }
 
-void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
+void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph,
+                                         ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);

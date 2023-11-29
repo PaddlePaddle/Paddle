@@ -23,31 +23,32 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
+void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph,
+                                             Graph* main_graph) const {
   auto act_types = GetSupportedActivations();
   act_types.erase(std::remove(act_types.begin(), act_types.end(), "sqrt"),
                   act_types.end());
   std::vector<std::string> conv_types = {"fused_conv2d", "conv2d"};
 
   for (auto& act_type : act_types) {
-    FuseConvConcatAct(graph, act_type);
+    FuseConvConcatAct(graph, &act_type);
     for (const auto& conv_type : conv_types) {
-      FuseConvAct(graph, conv_type, act_type);
+      FuseConvAct(graph, conv_type, &act_type);
     }
   }
 }
 
 void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
                                                const std::string& conv_type,
-                                               std::string& act_type) const {
+                                               std::string* act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init(conv_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
+  FusePassBase::Init(conv_type + "_" + *act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
   patterns::OperatorActivation conv_act_pattern(gpd.mutable_pattern(),
                                                 "conv_activation_mkldnn_fuse");
-  conv_act_pattern(conv_type, act_type);
+  conv_act_pattern(conv_type, *act_type);
 
   int found_conv_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -68,7 +69,7 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
       ConvertToFusedOp(conv_op);
     }
 
-    SetActivationAttrs(conv_op, activation->Op(), act_type);
+    SetActivationAttrs(conv_op, activation->Op(), *act_type);
 
     conv_op->SetOutput("Output", {activation_out->Name()});
 
@@ -84,21 +85,21 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
     PrettyLogDetail("---    fused %d %s with %s activation",
                     found_conv_activation_count,
                     conv_type,
-                    act_type);
+                    *act_type);
   }
 }
 
 void ConvActivationMkldnnFusePass::FuseConvConcatAct(
-    Graph* graph, std::string& act_type) const {
+    Graph* graph, std::string* act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init("conv2d_concat_" + act_type + "_mkldnn_fuse_pass", graph);
+  FusePassBase::Init("conv2d_concat_" + *act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::OperatorActivation conv_concat_act(
-      pattern, "conv2d_concat_" + act_type + "_mkldnn_fuse_pass");
-  conv_concat_act("concat", act_type);
+      pattern, "conv2d_concat_" + *act_type + "_mkldnn_fuse_pass");
+  conv_concat_act("concat", *act_type);
 
   int found_conv_concat_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -140,7 +141,7 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
         ConvertToFusedOp(conv_op);
       }
 
-      SetActivationAttrs(conv_op, activation_op->Op(), act_type);
+      SetActivationAttrs(conv_op, activation_op->Op(), *act_type);
     }
 
     concat_op->Op()->SetOutput("Out", {activation_out->Name()});
@@ -155,7 +156,7 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
       found_conv_concat_activation_count > 0) {
     PrettyLogDetail("---    fused %d conv_concat with %s activation",
                     found_conv_concat_activation_count,
-                    act_type);
+                    *act_type);
   }
 }
 

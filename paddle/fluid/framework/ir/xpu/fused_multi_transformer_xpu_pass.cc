@@ -265,7 +265,7 @@ int16
 */
 class FusedMultiTransformerXPUPass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   /*
@@ -298,7 +298,8 @@ class FusedMultiTransformerXPUPass : public FusePassBase {
   const std::string name_scope_{"fused_multi_transformer_xpu_pass"};
 };
 
-void FusedMultiTransformerXPUPass::ApplyImpl(ir::Graph* graph) const {
+void FusedMultiTransformerXPUPass::ApplyImpl(ir::Graph* graph,
+                                             ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);

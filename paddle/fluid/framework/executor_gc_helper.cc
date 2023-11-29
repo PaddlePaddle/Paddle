@@ -63,7 +63,7 @@ bool OpInOutInfo::IsInArgBufferNeeded(const std::string &in_arg_name) const {
 }
 
 static bool VarCanBeDeleted(const std::string &name,
-                            const BlockDesc &block,
+                            const BlockDesc *block,
                             const std::unordered_set<std::string> &skip_vars) {
   if (skip_vars.count(name) != 0) {
     return false;
@@ -82,7 +82,7 @@ static bool VarCanBeDeleted(const std::string &name,
 }
 
 std::unordered_map<const OperatorBase *, std::vector<std::string>>
-GetUnusedVars(const BlockDesc &block,
+GetUnusedVars(const BlockDesc *block,
               const std::vector<std::unique_ptr<OperatorBase>> &ops,
               const std::vector<std::string> &skip_var_list) {
   std::unordered_set<std::string> skip_vars(skip_var_list.begin(),
@@ -192,7 +192,7 @@ void DeleteUnusedTensors(
 }
 
 static std::vector<std::unique_ptr<OperatorBase>> CreateOpsFromBlock(
-    const BlockDesc &block) {
+    const BlockDesc *block) {
   std::vector<std::unique_ptr<OperatorBase>> ops;
   size_t op_num = block.OpSize();
   ops.reserve(op_num);

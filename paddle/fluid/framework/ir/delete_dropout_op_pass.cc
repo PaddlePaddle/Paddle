@@ -27,7 +27,8 @@ namespace ir {
 
 #define GET_IR_NODE(node_) GET_IR_NODE_FROM_SUBGRAPH(node_, node_, pattern)
 
-void DeleteDropoutOpPass::ApplyImpl(ir::Graph* graph) const {
+void DeleteDropoutOpPass::ApplyImpl(ir::Graph* graph,
+                                    ir::Graph* main_graph) const {
   const std::string pattern_name = "delete_dropout_op_pattern";
   FusePassBase::Init(pattern_name, graph);
   int found_subgraph_count = 0;
@@ -97,7 +98,8 @@ DeleteDropoutOpXPass::DeleteDropoutOpXPass() {
       .End();
 }
 
-void DeleteDropoutOpXPass::ApplyImpl(ir::Graph* graph) const {
+void DeleteDropoutOpXPass::ApplyImpl(ir::Graph* graph,
+                                     ir::Graph* main_graph) const {
   VLOG(3) << "delte dropout op.";
   std::unordered_set<const Node*> del_node_set;
   for (Node* n : graph->Nodes()) {

@@ -27,7 +27,7 @@ namespace ir {
 
 class FuseAllReduceOpPass : public ir::Pass {
  protected:
-  void ApplyImpl(ir::Graph *graph) const override {
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override {
     if (Get<size_t>(details::kNRanks) <= 1) {
       VLOG(6) << "The number of place is" << Get<size_t>(details::kNRanks)
               << ", there doesn't need apply FuseAllReduceOpPass.";

@@ -171,7 +171,7 @@ class Pass {
   static void AddSupportSubgraphPass(const std::string &pass_type);
 
  protected:
-  virtual void ApplyImpl(Graph *graph UNUSED) const {
+  virtual void ApplyImpl(Graph *graph UNUSED, Graph *main_graph UNUSED) const {
     PADDLE_THROW(platform::errors::Unimplemented(
         "The virtual pass called is not implemented."));
   }

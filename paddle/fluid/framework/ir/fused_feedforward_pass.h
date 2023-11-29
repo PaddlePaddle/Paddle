@@ -68,7 +68,7 @@ class FusedFeedForwardPass : public FusePassBase {
 
   const std::string scope_name{"fused_feedforward"};
 
-  void ApplyImpl(ir::Graph *graph) const override;
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override;
 
   ir::Graph *FusedFeedForwardFwd(ir::Graph *graph,
                                  bool use_mp,

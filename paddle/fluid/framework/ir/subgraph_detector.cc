@@ -47,7 +47,10 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
     for (auto *out : node->outputs) {
       // we forbid out is a persistable var, for case when weight is shared
       // between within and outside this tensorrt_engine op.
+      std::cout << "out node name  : " << out->Name() << std::endl;
+
       if (!nodes.count(out) && out->IsVar() && !out->Var()->Persistable()) {
+        std::cout << "success  out node name  : " << out->Name() << std::endl;
         outputs.insert(out);
       }
     }
@@ -396,10 +399,14 @@ void RemoveIntermediateOutputInSubgraph(const std::vector<Node *> &subgraph,
   std::unordered_set<Node *> valid_output;
 
   for (auto *output : *outputs) {
-    int num_used = 0;
-    for (auto *node : output->outputs) {
-      if (!subgraph_set.count(node)) ++num_used;
-      if (num_used > 0) valid_output.insert(output);
+    if (output->IsSubgraphOutput()) {
+      valid_output.insert(output);
+    } else {
+      int num_used = 0;
+      for (auto *node : output->outputs) {
+        if (!subgraph_set.count(node)) ++num_used;
+        if (num_used > 0) valid_output.insert(output);
+      }
     }
   }
 
@@ -432,8 +439,16 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
     block_node->inputs = std::move(io.first);
     block_node->outputs = std::move(io.second);
 
+    for (auto *out : block_node->outputs) {
+      std::cout << "pre block_node out node name  : " << out->Name()
+                << std::endl;
+    }
+
     RemoveIntermediateOutputInSubgraph(subgraph, graph_, &block_node->outputs);
 
+    for (auto *out : block_node->outputs) {
+      std::cout << "block_node out node name  : " << out->Name() << std::endl;
+    }
     for (auto *node : subgraph) {
       // TODO(Superjomn) need a unified mechanism to treat deleted node in each
       // pass.

@@ -25,7 +25,8 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void MatmulElementwiseAddMKLDNNFusePass::ApplyImpl(Graph* graph) const {
+void MatmulElementwiseAddMKLDNNFusePass::ApplyImpl(Graph* graph,
+                                                   Graph* main_graph) const {
   auto matmul_types = {"fused_matmul", "matmul", "matmul_v2"};
   auto matmul_as_x = {true, false};
 

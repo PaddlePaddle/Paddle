@@ -57,7 +57,8 @@ const bool is_regularization_op(const std::string& op_namescope) {
   return startswith(op_namescope, "/regularization");
 }
 
-void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
+void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph,
+                                        ir::Graph* main_graph) const {
   // optimizer values will be extracted when lowering optimizer in ipu_backend
   OpDesc new_op("popart_optimizer", {}, {}, {});
   new_op.SetAttr("op_role", 0);

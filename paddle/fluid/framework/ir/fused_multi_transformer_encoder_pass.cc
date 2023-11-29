@@ -2392,7 +2392,8 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
   return fusion_count;
 }
 
-void FusedMultiTransformerEncoderPass::ApplyImpl(Graph* graph) const {
+void FusedMultiTransformerEncoderPass::ApplyImpl(Graph* graph,
+                                                 Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
@@ -3202,7 +3203,8 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
   return fusion_count;
 }
 
-void FusedMultiTransformerEncoderFuseQKVPass::ApplyImpl(Graph* graph) const {
+void FusedMultiTransformerEncoderFuseQKVPass::ApplyImpl(
+    Graph* graph, Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
@@ -4005,7 +4007,7 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
 }
 
 void MultiDevicesFusedMultiTransformerEncoderPass::ApplyImpl(
-    Graph* graph) const {
+    Graph* graph, Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
@@ -4863,7 +4865,7 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
 }
 
 void MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::ApplyImpl(
-    Graph* graph) const {
+    Graph* graph, Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(

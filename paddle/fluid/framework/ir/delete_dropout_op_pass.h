@@ -32,7 +32,7 @@ class DeleteDropoutOpPass : public FusePassBase {
   virtual ~DeleteDropoutOpPass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 };
 
 class DeleteDropoutOpXPass : public OpCompatSensiblePass {
@@ -41,7 +41,7 @@ class DeleteDropoutOpXPass : public OpCompatSensiblePass {
   virtual ~DeleteDropoutOpXPass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   bool DelDropout(Graph* graph,

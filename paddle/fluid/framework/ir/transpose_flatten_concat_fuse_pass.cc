@@ -206,7 +206,8 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
   gpd(graph, handler);
 }
 
-void TransposeFlattenConcatFusePass::ApplyImpl(ir::Graph *graph) const {
+void TransposeFlattenConcatFusePass::ApplyImpl(ir::Graph *graph,
+                                               ir::Graph *main_graph) const {
   const int pattern_nums = 6;
   const std::string pattern_name = "transpose_flatten_concat_fuse";
   FusePassBase::Init(pattern_name, graph);

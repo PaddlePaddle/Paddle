@@ -1275,7 +1275,7 @@ void CPUQuantizePass::QuantizeFusionLSTM(Graph* graph) const {
   LogQuantizedOpsCounter("fusion_lstm", quantize_count);
 }
 
-void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
+void CPUQuantizePass::ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const {
   VLOG(3) << "Quantizing the graph.";
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));

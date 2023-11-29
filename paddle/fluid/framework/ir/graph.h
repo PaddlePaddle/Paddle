@@ -94,10 +94,10 @@ class Graph {
         const int64_t end_op_index);
 
   // Construct a sub_graph
-  Graph(const BlockDesc &block, const Graph *main_graph);
+  Graph(BlockDesc *block, const Graph *main_graph);
 
   // Construct a sub_graph with ops[start_op_index, end_op_index)
-  Graph(const BlockDesc &block,
+  Graph(BlockDesc *block,
         const Graph *main_graph,
         const int64_t start_op_index,
         const int64_t end_op_index);
@@ -411,6 +411,7 @@ class Graph {
         platform::errors::InvalidArgument("This graph is not main_graph"));
     return sub_graphs_.size();
   }
+  int block_id_{0};
 
  private:
   // TODO(levi): delete this interface after when we can convert all
@@ -421,7 +422,7 @@ class Graph {
       const int64_t end_op_index);
 
   std::map<std::string, std::vector<ir::Node *>> InitFromBlock(
-      const BlockDesc &block,
+      BlockDesc *block,
       const int64_t start_op_index,
       const int64_t end_op_index);
 
@@ -465,7 +466,6 @@ class Graph {
   // independently.
   bool is_partial_{false};
   // The block this SubGraph belongs to.
-  int block_id_{0};
 };
 
 bool IsControlDepVar(const ir::Node &var);

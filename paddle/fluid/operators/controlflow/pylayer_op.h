@@ -42,7 +42,7 @@ class PyLayerOp : public framework::OperatorBase {
 
  protected:
   void CreateInterpreter(const platform::Place &dev_place,
-                         const framework::BlockDesc &block,
+                         const framework::BlockDesc *block,
                          framework::Scope *scope,
                          const std::vector<std::string> &skip_vars) const;
 

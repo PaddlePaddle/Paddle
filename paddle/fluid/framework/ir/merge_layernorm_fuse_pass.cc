@@ -120,7 +120,8 @@ MergeLayernormFusePass::MergeLayernormFusePass() {
       .IsNumEQ(2)
       .End();
 }
-void MergeLayernormFusePass::ApplyImpl(ir::Graph* graph) const {
+void MergeLayernormFusePass::ApplyImpl(ir::Graph* graph,
+                                       ir::Graph* main_graph) const {
   GraphPatternDetector gpd;
   const std::string pattern_name = "merge_layernorm";
   FusePassBase::Init(pattern_name, graph);

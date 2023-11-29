@@ -161,7 +161,7 @@ class MultiHeadMatmulRoformerFusePass : public FusePassBase {
   MultiHeadMatmulRoformerFusePass();
 
  protected:
-  void ApplyImpl(Graph* graph) const;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const;
 
   const std::string name_scope_{"multihead_matmul_roformer_fuse"};
 

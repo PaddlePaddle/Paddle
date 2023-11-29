@@ -166,7 +166,8 @@ void ElementWise::operator()() {
 }
 }  // namespace patterns
 
-void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
+void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph,
+                                                ir::Graph* main_graph) const {
   bool use_varseqlen = Get<bool>("use_varseqlen");
   std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
   std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");

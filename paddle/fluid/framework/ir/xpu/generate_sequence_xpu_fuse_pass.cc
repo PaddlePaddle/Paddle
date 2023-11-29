@@ -123,13 +123,14 @@ Fused subgraph:
 */
 class GenerateSequenceXPUFusePass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   const std::string name_scope_{"generate_sequence_xpu_fuse_pass"};
 };
 
-void GenerateSequenceXPUFusePass::ApplyImpl(ir::Graph* graph) const {
+void GenerateSequenceXPUFusePass::ApplyImpl(ir::Graph* graph,
+                                            ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);

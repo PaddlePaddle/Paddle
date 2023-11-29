@@ -30,7 +30,7 @@ namespace ir {
 
 class Node;
 
-void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
+void FusionGroupPass::ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const {
   FusePassBase::Init("fusion_group_pass", graph);
   if (Get<bool>("use_gpu")) {
     // TODO(liuyiqun): open this check.

@@ -36,7 +36,7 @@ class AutoMixedPrecisionPass : public FusePassBase {
   ~AutoMixedPrecisionPass() = default;
 
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
 
  private:
   void Init(Graph* graph) const;

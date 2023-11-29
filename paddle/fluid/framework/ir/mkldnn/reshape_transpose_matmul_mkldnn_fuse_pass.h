@@ -25,7 +25,7 @@ class ReshapeTransposeMatmulMkldnnFusePass : public FusePassBase {
   virtual ~ReshapeTransposeMatmulMkldnnFusePass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
   void Fuse(Graph* graph,
             const std::string& matmul_type,
             bool with_reshape_xshape,

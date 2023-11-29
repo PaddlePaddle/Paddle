@@ -24,7 +24,7 @@ class Graph;
 
 class AddReaderDependencyPass : public Pass {
  protected:
-  void ApplyImpl(Graph *graph) const override;
+  void ApplyImpl(Graph *graph, Graph *main_graph) const override;
 };
 
 static std::unordered_set<Node *> FindAllPrecedingOpNodes(Node *node) {
@@ -49,7 +49,7 @@ static std::unordered_set<Node *> FindAllPrecedingOpNodes(Node *node) {
   return result;
 }
 
-void AddReaderDependencyPass::ApplyImpl(Graph *graph) const {
+void AddReaderDependencyPass::ApplyImpl(Graph *graph, Graph *main_graph) const {
   const auto &nodes = graph->Nodes();
   std::unordered_set<Node *> ops;
   std::unordered_set<Node *> read_ops;

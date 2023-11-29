@@ -116,7 +116,8 @@ void DuplicatedTransposeFusePass::DuplicatedTranspose(ir::Graph* graph) const {
   }
 }
 
-void DuplicatedTransposeFusePass::ApplyImpl(ir::Graph* graph) const {
+void DuplicatedTransposeFusePass::ApplyImpl(ir::Graph* graph,
+                                            ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);

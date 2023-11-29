@@ -34,7 +34,7 @@ const char PyLayerOp::kBlocks[] = "blocks";
 
 void PyLayerOp::CreateInterpreter(
     const platform::Place &dev_place,
-    const framework::BlockDesc &block,
+    const framework::BlockDesc *block,
     framework::Scope *cur_scope,
     const std::vector<std::string> &skip_vars) const {
   if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {

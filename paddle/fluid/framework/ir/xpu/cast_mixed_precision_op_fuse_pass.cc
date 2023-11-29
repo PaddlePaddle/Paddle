@@ -111,7 +111,7 @@ CastAfterPattern::CastAfterPattern(PDPattern* pattern,
 
 class CastMixedPrecisionOpFusePass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   int ApplyCastBeforePass(ir::Graph* graph,
@@ -180,7 +180,8 @@ int CastMixedPrecisionOpFusePass::ApplyCastAfterPass(
   return found_subgraph_count;
 }
 
-void CastMixedPrecisionOpFusePass::ApplyImpl(ir::Graph* graph) const {
+void CastMixedPrecisionOpFusePass::ApplyImpl(ir::Graph* graph,
+                                             ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);

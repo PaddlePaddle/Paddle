@@ -87,7 +87,7 @@ class PrelnGroupNormActFusePass : public FusePassBase {
   virtual ~PrelnGroupNormActFusePass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
   int ApplyAddGNPattern(ir::Graph* graph, bool with_act) const;
 };
 

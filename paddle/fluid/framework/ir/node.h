@@ -253,6 +253,14 @@ class Node {
   // so expose it is a good idea
   static constexpr int NO_DESC_ORDER = INT_MAX;
 
+  // Set whether the node is an edge of the subgraph.
+  void SetSubgraphOutput() { subgraph_output_ = true; }
+  void SetSubgraphInput() { subgraph_input_ = true; }
+
+  // Get whether the node is an edge of the subgraph.
+  bool IsSubgraphOutput() { return subgraph_output_; }
+  bool IsSubgraphInput() { return subgraph_input_; }
+
  protected:
   std::string name_;
   std::unique_ptr<VarDesc> var_desc_;
@@ -267,6 +275,10 @@ class Node {
   // Only use this for auto parallel.
   uint64_t original_desc_id_{0};
   int graph_id_{-1};
+
+  // Is it the edge of the subgraph.
+  bool subgraph_output_ = false;
+  bool subgraph_input_ = false;
 
  private:
   // ID can only set by a Graph.

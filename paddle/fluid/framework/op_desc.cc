@@ -34,7 +34,7 @@ namespace framework {
 
 class CompileTimeInferShapeContext : public InferShapeContext {
  public:
-  CompileTimeInferShapeContext(const OpDesc &op, const BlockDesc &block);
+  CompileTimeInferShapeContext(const OpDesc &op, const BlockDesc *block);
 
   bool HasInput(const std::string &name) const override;
 
@@ -412,7 +412,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                        const std::vector<DDim> &dims) override;
 
   const OpDesc &op_;
-  const BlockDesc &block_;
+  const BlockDesc *block_;
 };
 
 static void InitRuntimeAttributeMapByOpExtraInfo(const std::string &op_type,
@@ -1103,7 +1103,7 @@ void OpDesc::CheckAttrs() {
   }
 }
 
-void OpDesc::InferShape(const BlockDesc &block) {
+void OpDesc::InferShape(const BlockDesc *block) {
   try {
     VLOG(3) << "CompileTime infer shape on " << Type();
     auto &op_info = OpInfoMap::Instance().Get(this->Type());
@@ -1216,7 +1216,7 @@ VarDesc *OpDesc::FindVarRecursive(const std::string &name) {
 }
 
 CompileTimeInferShapeContext::CompileTimeInferShapeContext(
-    const OpDesc &op, const BlockDesc &block)
+    const OpDesc &op, const BlockDesc *block)
     : op_(op), block_(block) {}
 
 bool CompileTimeInferShapeContext::HasInput(const std::string &name) const {

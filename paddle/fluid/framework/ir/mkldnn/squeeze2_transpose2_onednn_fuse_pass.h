@@ -26,7 +26,7 @@ class FuseSqueeze2Transpose2OneDNNPass : public FusePassBase {
   virtual ~FuseSqueeze2Transpose2OneDNNPass() {}
 
  protected:
-  void ApplyImpl(Graph *graph) const override;
+  void ApplyImpl(Graph *graph, Graph *main_graph) const override;
 };
 
 }  // namespace ir

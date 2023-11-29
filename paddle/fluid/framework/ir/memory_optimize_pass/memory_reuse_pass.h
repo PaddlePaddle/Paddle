@@ -87,7 +87,7 @@ class Graph;
 
 class MemoryReusePass : public Pass {
  protected:
-  void ApplyImpl(Graph *graph) const final;
+  void ApplyImpl(Graph *graph, Graph *main_graph) const final;
 
   virtual void Run(Graph *graph) const = 0;
 

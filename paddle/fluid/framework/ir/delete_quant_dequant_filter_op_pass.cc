@@ -72,7 +72,8 @@ DeleteQuantDequantFilterOpPass::DeleteQuantDequantFilterOpPass() {
       .End();
 }
 // Delete quant_dequant_op, then quantize and dequantize weight
-void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
+void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph,
+                                               ir::Graph* main_graph) const {
   const std::string pattern_name = "delete_quantdequant_filter_op_pattern";
   FusePassBase::Init(pattern_name, graph);
 

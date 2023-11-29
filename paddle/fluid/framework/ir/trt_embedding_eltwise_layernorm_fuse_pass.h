@@ -156,7 +156,7 @@ class TrtEmbeddingEltwiseLayerNormFusePass : public FusePassBase {
   virtual ~TrtEmbeddingEltwiseLayerNormFusePass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const;
   int BuildFusion(Graph* graph, const std::string& name_scope
                   /*const Scope* scope*/) const;
   const std::string name_scope_{"trt_embedding_eltwise_layernorm_fuse"};

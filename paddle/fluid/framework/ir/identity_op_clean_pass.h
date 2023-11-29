@@ -24,7 +24,7 @@ class Graph;
 
 class IdentityOpCleanPass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   int CleanUselessOp(ir::Graph* graph) const;

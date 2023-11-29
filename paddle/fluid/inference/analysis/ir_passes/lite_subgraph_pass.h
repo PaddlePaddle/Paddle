@@ -29,7 +29,8 @@ namespace analysis {
 
 class LiteSubgraphPass : public framework::ir::FusePassBase {
  public:
-  void ApplyImpl(framework::ir::Graph* graph) const override;
+  void ApplyImpl(framework::ir::Graph* graph,
+                 framework::ir::Graph* main_graph) const override;
 
  private:
   void BuildOperator(framework::ir::Node* merged_node,

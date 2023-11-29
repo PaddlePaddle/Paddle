@@ -101,7 +101,8 @@ PDNode *SkipLayerNorm::operator()(PDNode *x, PDNode *y) {
 
 }  // namespace patterns
 
-void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
+void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph,
+                                      ir::Graph *main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("skip_layernorm_fuse", graph);

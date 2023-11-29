@@ -26,7 +26,8 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
+void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph,
+                                                Graph *main_graph) const {
   auto act_types = GetSupportedActivations();
   std::vector<std::string> elt_types = {
       "elementwise_add", "elementwise_sub", "elementwise_mul"};

@@ -273,7 +273,7 @@ YoloBoxXPUPattern::YoloBoxXPUPattern(PDPattern* pattern,
 
 class YoloBoxXPUFusePass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   int ApplyImpl(ir::Graph* graph, bool with_left_ew_sub) const;
@@ -281,7 +281,8 @@ class YoloBoxXPUFusePass : public FusePassBase {
   const std::string name_scope_{"yolo_box_xpu_fuse_pass"};
 };
 
-void YoloBoxXPUFusePass::ApplyImpl(ir::Graph* graph) const {
+void YoloBoxXPUFusePass::ApplyImpl(ir::Graph* graph,
+                                   ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);

@@ -184,7 +184,8 @@ int SkipGroupNormActFusePass::ApplyGNSiluPattern(ir::Graph *graph) const {
   return found_subgraph_count;
 }
 
-void SkipGroupNormActFusePass::ApplyImpl(ir::Graph *graph) const {
+void SkipGroupNormActFusePass::ApplyImpl(ir::Graph *graph,
+                                         ir::Graph *main_graph) const {
   FusePassBase::Init("skip_groupnorm_act_fuse_pass", graph);
   int found_subgraph_count = ApplyGNSiluPattern(graph);
   AddStatis(found_subgraph_count);

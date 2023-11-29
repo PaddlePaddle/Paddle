@@ -464,7 +464,8 @@ EmbeddingEltwiseLayerNormFusePass::EmbeddingEltwiseLayerNormFusePass() {
       .End();
 }
 
-void EmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
+void EmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph,
+                                                  Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
   int fusion_count =
       EmbeddingEltwiseLayerNormFusePass::BuildFusion(graph, name_scope_);

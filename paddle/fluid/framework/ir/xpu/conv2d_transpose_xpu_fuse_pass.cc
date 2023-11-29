@@ -218,7 +218,7 @@ Conv2dTransposeXPUPattern::Conv2dTransposeXPUPattern(
 /*                                                              */
 class Conv2dTransposeXPUFusePass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   int ApplyImpl(ir::Graph* graph,
@@ -229,7 +229,8 @@ class Conv2dTransposeXPUFusePass : public FusePassBase {
   const std::string name_scope_{"conv2d_transpose_xpu_fuse_pass"};
 };
 
-void Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph) const {
+void Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
+                                           ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);

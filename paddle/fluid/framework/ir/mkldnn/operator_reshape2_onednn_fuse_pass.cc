@@ -25,7 +25,8 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void FuseOperatorReshape2OneDNNPass::ApplyImpl(Graph *graph) const {
+void FuseOperatorReshape2OneDNNPass::ApplyImpl(Graph *graph,
+                                               Graph *main_graph) const {
   // THIS FUSE WILL WORK ONLY WITH OPERATORS THAT OUTPUTS PLAIN MEMORY, F.E.
   // ABCD FOR 4D! BE AWARE OF THAT!
   std::vector<std::pair<std::string, int>> ops_and_outputs = {

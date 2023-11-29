@@ -131,7 +131,7 @@ void ProgramProcessor::GetInputsOutputsInBlock(
   }
 }
 
-void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
+void ProgramProcessor::AddDepToBlockOp(const BlockDesc *block) {
   VLOG(3) << "Op size:" << block.AllOps().size();
   for (OpDesc *op : block.AllOps()) {
     if (op->HasAttr("sub_block")) {

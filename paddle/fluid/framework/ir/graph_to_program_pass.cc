@@ -29,7 +29,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
+void GraphToProgramPass::ApplyImpl(ir::Graph* graph,
+                                   ir::Graph* main_graph) const {
   auto& program = Get<ProgramDesc>("program");
   if (Has(kGraphToProgramSortKind)) {
     auto sort_kind = static_cast<SortKind>(Get<int>(kGraphToProgramSortKind));

@@ -33,10 +33,11 @@ namespace ir {
 // place of op kernel, so we use "delete_op_device_pass" to remove it.
 class DeleteOpDevicePass : public Pass {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 };
 
-void DeleteOpDevicePass::ApplyImpl(ir::Graph* graph) const {
+void DeleteOpDevicePass::ApplyImpl(ir::Graph* graph,
+                                   ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   int delete_counts = 0;

@@ -24,7 +24,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void InferencePostprocessPass::ApplyImpl(ir::Graph *graph) const {
+void InferencePostprocessPass::ApplyImpl(ir::Graph *graph,
+                                         ir::Graph *main_graph) const {
   VLOG(10) << "enter InferencePostprocessPass::ApplyImpl";
 
   std::vector<std::string> feed_list;

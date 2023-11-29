@@ -23,7 +23,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void MapOp2AnotherPass::ApplyImpl(ir::Graph* graph) const {
+void MapOp2AnotherPass::ApplyImpl(ir::Graph* graph,
+                                  ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("map_op_to_another_pass", graph);

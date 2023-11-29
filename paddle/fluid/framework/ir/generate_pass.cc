@@ -479,7 +479,7 @@ GeneratePass::GeneratePass(const proto::MultiPassDesc& multi_pass_desc,
   VerifyDesc();
 }
 
-void GeneratePass::ApplyImpl(Graph* graph) const {
+void GeneratePass::ApplyImpl(Graph* graph, Graph* main_graph) const {
   for (const proto::PassDesc& pass_desc : multi_pass_desc_.pass_descs()) {
     GraphPatternDetector detector;
     InitGeneratePattern(pass_desc, detector.mutable_pattern());

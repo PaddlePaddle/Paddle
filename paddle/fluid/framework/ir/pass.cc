@@ -39,6 +39,10 @@ namespace ir {
 static const char kParamScopeAttr[] = "__param_scope__";  // NOLINT
 
 static const std::vector<std::string> support_subgraph_passes = {
+    "feed_fetch_subgraph_pass",
+    "set_subgraph_edge_pass",
+    "trt_map_ops_to_matrix_multiply_pass",
+    "tensorrt_subgraph_pass",
     "simplify_with_basic_ops_pass",
     "fused_multi_transformer_encoder_pass",
     "fused_multi_transformer_decoder_pass",
@@ -102,7 +106,9 @@ Graph *Pass::Apply(Graph *graph) const {
                       platform::errors::InvalidArgument(
                           "Required atrribute %s for graph is not set.", attr));
   }
-  ApplyImpl(graph);
+
+  auto main_graph = graph;
+  ApplyImpl(graph, main_graph);
   // TODO(panyx0718): Add more verifications.
   PADDLE_ENFORCE_EQ(
       HasCircle(*graph),
@@ -139,7 +145,7 @@ Graph *Pass::Apply(Graph *graph) const {
             &graph->Get<Scope>(framework::ir::kParamScopeAttr));
       }
 
-      ApplyImpl(sub_graph);
+      ApplyImpl(sub_graph, main_graph);
       PADDLE_ENFORCE_EQ(
           HasCircle(*sub_graph),
           false,

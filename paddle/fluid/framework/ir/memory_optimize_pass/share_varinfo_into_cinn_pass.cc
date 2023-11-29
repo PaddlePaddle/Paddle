@@ -120,7 +120,7 @@ static void TakeVarInfoFromMainGraph(
 // if such one found.
 class ShareMemOptInfoToSubGraphPass : public ir::Pass {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override {
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override {
     auto all_ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*graph);
     const auto& varinfo_maps = Get<MemOptVarInfoMapList>(kMemOptVarInfoMapList);
 

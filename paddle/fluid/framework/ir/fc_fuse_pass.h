@@ -34,7 +34,7 @@ class FCFusePass : public FusePassBase {
   virtual ~FCFusePass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
 
   int ApplyFCPattern(Graph* graph, bool with_relu) const;
 };

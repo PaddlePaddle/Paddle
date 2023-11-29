@@ -196,7 +196,8 @@ int PrelnGroupNormActFusePass::ApplyAddGNPattern(ir::Graph *graph,
   return found_subgraph_count;
 }
 
-void PrelnGroupNormActFusePass::ApplyImpl(ir::Graph *graph) const {
+void PrelnGroupNormActFusePass::ApplyImpl(ir::Graph *graph,
+                                          ir::Graph *main_graph) const {
   FusePassBase::Init("preln_groupnorm_act_fuse_pass", graph);
   int found_subgraph_count = ApplyAddGNPattern(graph, true);
   found_subgraph_count += ApplyAddGNPattern(graph, false);

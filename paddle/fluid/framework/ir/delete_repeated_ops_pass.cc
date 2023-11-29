@@ -98,7 +98,7 @@ Optimized subgraph:
 */
 class DeleteRepeatedOpsPass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   void DeleteRepeatedOps(ir::Graph* graph,
@@ -271,7 +271,8 @@ std::string GenSqueeze2AttrKey(Node* squeeze2_op_node) {
   return attr_key;
 }
 
-void DeleteRepeatedOpsPass::ApplyImpl(ir::Graph* graph) const {
+void DeleteRepeatedOpsPass::ApplyImpl(ir::Graph* graph,
+                                      ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);

@@ -23,7 +23,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void FuseElewiseAddActPass::ApplyImpl(ir::Graph *graph) const {
+void FuseElewiseAddActPass::ApplyImpl(ir::Graph *graph,
+                                      ir::Graph *main_graph) const {
   std::unordered_set<std::string> act_types = {"relu", "scale", "tanh"};
   graph = FuseActElewiseAdd(graph, act_types);
   graph = FuseElewiseAddAct(graph, act_types);

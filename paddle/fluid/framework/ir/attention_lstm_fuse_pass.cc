@@ -352,7 +352,8 @@ void PrepareLSTMBias(const phi::DenseTensor& B_forget,
 
 // Parameters
 
-void AttentionLSTMFusePass::ApplyImpl(ir::Graph* graph) const {
+void AttentionLSTMFusePass::ApplyImpl(ir::Graph* graph,
+                                      ir::Graph* main_graph) const {
   PDPattern external_pattern, subblock_pattern;
 
   // Use the following variables to tell whether this model is RNN1.

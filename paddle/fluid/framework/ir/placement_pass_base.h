@@ -30,7 +30,7 @@ class Graph;
 
 class PlacementPassBase : public Pass {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
   virtual const std::string GetPlacementName() const = 0;
   virtual const std::string GetAttrName() const = 0;

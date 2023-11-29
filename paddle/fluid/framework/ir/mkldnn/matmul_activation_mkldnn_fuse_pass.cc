@@ -25,31 +25,33 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
+void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph,
+                                               Graph* main_graph) const {
   auto act_types = GetSupportedActivations();
   auto matmul_types = {"fused_matmul", "matmul", "matmul_v2"};
 
   for (const auto& matmul_type : matmul_types)
     for (auto& act_type : act_types) {
-      FuseMatmulAct(graph, matmul_type, act_type);
+      FuseMatmulAct(graph, matmul_type, &act_type);
     }
 }
 
 void MatmulActivationMkldnnFusePass::FuseMatmulAct(
-    Graph* graph, const std::string& matmul_type, std::string& act_type) const {
+    Graph* graph, const std::string& matmul_type, std::string* act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init(matmul_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
+  FusePassBase::Init(matmul_type + "_" + *act_type + "_mkldnn_fuse_pass",
+                     graph);
 
   GraphPatternDetector gpd;
   patterns::OperatorActivation matmul_act_pattern(
       gpd.mutable_pattern(), "matmul_activation_mkldnn_fuse");
-  matmul_act_pattern(matmul_type, act_type);
+  matmul_act_pattern(matmul_type, *act_type);
 
   int found_matmul_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "handle " + matmul_type + "+" + act_type + " fuse";
+    VLOG(4) << "handle " + matmul_type + "+" + *act_type + " fuse";
 
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING) << "matmul_activation_mkldnn_fuse_pass op compat failed.";
@@ -65,7 +67,7 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
     OpDesc* matmul_op = matmul->Op();
 
     ConvertToFusedOp(matmul_op);
-    SetActivationAttrs(matmul_op, activation->Op(), act_type);
+    SetActivationAttrs(matmul_op, activation->Op(), *act_type);
     matmul_op->SetOutput("Out", {activation_out->Name()});
 
     IR_NODE_LINK_TO(matmul, activation_out);
@@ -80,7 +82,7 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
     PrettyLogDetail("---    fused %d %s with %s activation",
                     found_matmul_activation_count,
                     matmul_type,
-                    act_type);
+                    *act_type);
   }
 }
 

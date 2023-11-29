@@ -27,7 +27,8 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void CPUBfloat16PlacementPass::ApplyImpl(ir::Graph* graph) const {
+void CPUBfloat16PlacementPass::ApplyImpl(ir::Graph* graph,
+                                         ir::Graph* main_graph) const {
   int bfloat16_operators = 0;
   bfloat16_operators += SetMkldnnDataType(graph);
   bfloat16_operators -= RemoveOrphanedOperators(graph);

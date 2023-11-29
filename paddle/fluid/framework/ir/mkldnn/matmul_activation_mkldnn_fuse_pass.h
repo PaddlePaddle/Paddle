@@ -29,11 +29,11 @@ class MatmulActivationMkldnnFusePass : public FusePassBase {
   virtual ~MatmulActivationMkldnnFusePass() {}
 
  protected:
-  void ApplyImpl(Graph *graph) const override;
+  void ApplyImpl(Graph *graph, Graph *main_graph) const override;
 
   void FuseMatmulAct(Graph *graph,
                      const std::string &matmul_type,
-                     std::string &act_type) const;
+                     std::string *act_type) const;
 };
 
 }  // namespace ir

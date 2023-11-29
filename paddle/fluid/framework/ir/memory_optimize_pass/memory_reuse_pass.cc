@@ -27,7 +27,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void MemoryReusePass::ApplyImpl(Graph *graph) const {
+void MemoryReusePass::ApplyImpl(Graph *graph, Graph *main_graph) const {
   graph_ = graph;
   use_cuda_ = Get<bool>(kUseCuda);
   all_vars_ = &(graph_->Get<details::GraphVars>(details::kGraphVars));

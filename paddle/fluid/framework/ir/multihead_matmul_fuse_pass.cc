@@ -700,7 +700,7 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
 }
 }  // namespace
 
-void MultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
+void MultiHeadMatmulFusePass::ApplyImpl(Graph* graph, Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count = patterns::BuildFusion(graph, name_scope_);
@@ -1160,7 +1160,8 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
   return fusion_count;
 }
 
-void MultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
+void MultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph,
+                                          Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
@@ -1600,7 +1601,8 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
   return fusion_count;
 }
 
-void MultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
+void MultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph,
+                                          Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(

@@ -352,7 +352,7 @@ static void ShareTensorsFromScopeWithPartialBlock(
 
 static void BuildScopeByBlock(
     const paddle::framework::InterpreterCore &interpreter_core,
-    const paddle::framework::BlockDesc &block,
+    const paddle::framework::BlockDesc *block,
     paddle::framework::Scope *scope) {
   for (auto &var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();

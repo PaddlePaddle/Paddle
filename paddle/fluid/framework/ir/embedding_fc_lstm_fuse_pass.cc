@@ -279,7 +279,8 @@ static int BuildFusion(Graph* graph,
   return fusion_count;
 }
 
-void EmbeddingFCLSTMFusePass::ApplyImpl(ir::Graph* graph) const {
+void EmbeddingFCLSTMFusePass::ApplyImpl(ir::Graph* graph,
+                                        ir::Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count =

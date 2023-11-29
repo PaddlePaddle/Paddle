@@ -24,7 +24,8 @@ namespace paddle {
 namespace framework {
 namespace paddle2cinn {
 
-void CinnZeroTensorTrickPass::ApplyImpl(ir::Graph* graph) const {
+void CinnZeroTensorTrickPass::ApplyImpl(ir::Graph* graph,
+                                        ir::Graph* main_graph) const {
   // fix shape attr of these ops
   const std::unordered_set<std::string> op_cases_fix_attr{"fill_constant",
                                                           "uniform_random",

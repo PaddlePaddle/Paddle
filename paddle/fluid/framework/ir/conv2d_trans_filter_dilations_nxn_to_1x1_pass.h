@@ -33,7 +33,7 @@ namespace ir {
 
 class Conv2dTransFilterDilationsNxNTo1x1Pass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   void conv2d_dilation_trans(ir::Graph* graph) const;

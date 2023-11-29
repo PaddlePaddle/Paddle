@@ -409,7 +409,8 @@ void LiteSubgraphPass::BuildOperator(
   op_desc->SetAttr("zero_copy", Get<bool>("zero_copy"));
 }
 
-void LiteSubgraphPass::ApplyImpl(framework::ir::Graph* graph) const {
+void LiteSubgraphPass::ApplyImpl(framework::ir::Graph* graph,
+                                 framework::ir::Graph* main_graph) const {
   framework::ir::FusePassBase::Init("lite_subgraph_pass", graph);
   framework::ProgramDesc* global_program =
       Get<framework::ProgramDesc*>("program");

@@ -64,7 +64,7 @@ class FuseAdamWPass : public FusePassBase {
   virtual ~FuseAdamWPass() {}
 
  protected:
-  void ApplyImpl(ir::Graph *graph) const override;
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override;
 
   ir::Graph *FuseAdamWFun(ir::Graph *graph,
                           const bool with_decay,

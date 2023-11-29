@@ -32,7 +32,7 @@ class ConvBNFusePass : public FusePassBase {
   virtual std::string conv_type() const { return "conv2d"; }
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
   const std::string name_scope_{"conv_bn_fuse"};
 };
 
@@ -42,7 +42,7 @@ class ConvEltwiseAddBNFusePass : public FusePassBase {
   virtual std::string conv_type() const { return "conv2d"; }
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
   const std::string name_scope_{"conv_eltwiseadd_bn_fuse"};
 };
 

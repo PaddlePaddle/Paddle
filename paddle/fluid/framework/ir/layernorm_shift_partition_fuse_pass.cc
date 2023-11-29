@@ -249,7 +249,8 @@ int LayerNormShiftPartitionFusePass::ApplyPattern(ir::Graph* graph,
   return found_count;
 }
 
-void LayerNormShiftPartitionFusePass::ApplyImpl(ir::Graph* graph) const {
+void LayerNormShiftPartitionFusePass::ApplyImpl(ir::Graph* graph,
+                                                ir::Graph* main_graph) const {
   int found_count = 0;
   found_count += ApplyPattern(graph, true);
   found_count += ApplyPattern(graph, false);

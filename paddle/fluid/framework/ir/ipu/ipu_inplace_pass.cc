@@ -24,7 +24,7 @@ std::string GenerateVarName(Node *node) {
   return node->Name() + "_" + std::to_string(node->id());
 }
 
-void IpuInplacePass::ApplyImpl(ir::Graph *graph) const {
+void IpuInplacePass::ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const {
   // use this pass after forward_graph_extract_pass
   // raise error if the inplaced var both in feed_list & fetch_list
   VLOG(10) << "enter IpuInplacePass::ApplyImpl";

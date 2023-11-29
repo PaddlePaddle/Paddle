@@ -35,7 +35,7 @@ class FCLstmFusePass : public FusePassBase {
   virtual ~FCLstmFusePass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
   int BuildFusion(Graph* graph,
                   const std::string& name_scope,
                   Scope* scope,
@@ -49,7 +49,7 @@ class MulLstmFusePass : public FCLstmFusePass {
   virtual ~MulLstmFusePass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
   const std::string name_scope_{"fc_nobias_lstm_fuse"};
 };
 

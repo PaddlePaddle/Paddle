@@ -165,7 +165,7 @@ static std::string GetFirstVarName(const OpDesc &op,
 }
 
 static std::vector<std::vector<std::pair<std::string, std::string>>>
-GetInplaceVars(const BlockDesc &block,
+GetInplaceVars(const BlockDesc *block,
                bool use_cuda,
                const std::vector<std::string> &skip_vars,
                const bool &for_partial_block) {

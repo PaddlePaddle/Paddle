@@ -23,7 +23,8 @@ namespace ir {
 
 class Graph;
 
-void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
+void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph,
+                                         ir::Graph* main_graph) const {
   VLOG(3) << "Marks operators which are to be quantized.";
   std::unordered_set<std::string> supported_op_types =
       std::unordered_set<std::string>({"concat",

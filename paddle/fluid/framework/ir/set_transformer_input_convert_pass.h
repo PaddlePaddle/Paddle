@@ -66,7 +66,7 @@ class SetTransformerInputConvertPass : public FusePassBase {
   virtual ~SetTransformerInputConvertPass() {}
 
  protected:
-  void ApplyImpl(Graph *graph) const;
+  void ApplyImpl(Graph *graph, Graph *main_graph) const;
   const std::string name_scope_{"transformer_input_convert_pass"};
 };
 

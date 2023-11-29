@@ -44,7 +44,7 @@ constexpr char kLearningRate[] = "LearningRate";
 
 class FuseOptimizerOpPass : public ir::Pass {
  protected:
-  void ApplyImpl(ir::Graph *graph) const override;
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override;
 
  protected:
   virtual void SortParametersAndAuxVars(

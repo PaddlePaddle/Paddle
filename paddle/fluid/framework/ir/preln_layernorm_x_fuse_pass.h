@@ -60,7 +60,7 @@ class PrelnLayerNormXFusePass : public FusePassBase {
   virtual ~PrelnLayerNormXFusePass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
   int ApplyLayerNormShiftPattern(ir::Graph* graph) const;
   int ApplyMergeLayerNormPattern(ir::Graph* graph) const;
 };

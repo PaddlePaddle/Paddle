@@ -27,7 +27,7 @@ class TransferLayoutElimPass : public FusePassBase {
   virtual ~TransferLayoutElimPass() {}
 
  protected:
-  void ApplyImpl(ir::Graph *graph) const override;
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override;
   bool AllInputIsTransferlayout(const Node *op_node) const;
   void PutTranferlayoutAfterOp(Node *op_node,
                                ir::Graph *graph,

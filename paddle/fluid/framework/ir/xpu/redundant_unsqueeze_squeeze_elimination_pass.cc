@@ -466,7 +466,8 @@ void RedundantUnsqueeze2EliminationPass::FoldGatherSqueeze2Ops(
   AddStatis(found_subgraph_count);
 }
 
-void RedundantUnsqueeze2EliminationPass::ApplyImpl(ir::Graph* graph) const {
+void RedundantUnsqueeze2EliminationPass::ApplyImpl(
+    ir::Graph* graph, ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);

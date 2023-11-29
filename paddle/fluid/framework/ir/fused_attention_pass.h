@@ -302,7 +302,7 @@ class FusedAttentionsPass : public FusePassBase {
   virtual ~FusedAttentionsPass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const;
 
   const std::string name_scope_{"fused_attention_pass"};
 

@@ -193,7 +193,8 @@ int TransLayernormFusePass::ApplyConvTransLayernormPattern(
   return found_subgraph_count;
 }
 
-void TransLayernormFusePass::ApplyImpl(ir::Graph *graph) const {
+void TransLayernormFusePass::ApplyImpl(ir::Graph *graph,
+                                       ir::Graph *main_graph) const {
   FusePassBase::Init("trans_layernorm_fuse_pass", graph);
   int found_subgraph_count = ApplyConvTransLayernormPattern(graph);
   AddStatis(found_subgraph_count);

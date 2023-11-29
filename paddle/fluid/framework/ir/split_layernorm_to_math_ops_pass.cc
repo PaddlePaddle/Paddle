@@ -140,7 +140,7 @@ SplitLayerNormPass::SplitLayerNormPass() {
       .End();
 }
 
-void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
+void SplitLayerNormPass::ApplyImpl(Graph* graph, Graph* main_graph) const {
   FusePassBase::Init(scope_name_, graph);
 
   auto* scope = param_scope();

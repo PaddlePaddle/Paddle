@@ -27,7 +27,7 @@ class AttentionLSTMFusePass : public FusePassBase {
   AttentionLSTMFusePass();
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   void FindWhileOp(Graph* graph) const;

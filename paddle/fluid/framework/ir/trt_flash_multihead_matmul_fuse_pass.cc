@@ -505,7 +505,8 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
   return fusion_count;
 }
 
-void TrtFlashMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
+void TrtFlashMultiHeadMatmulFusePass::ApplyImpl(Graph* graph,
+                                                Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
 

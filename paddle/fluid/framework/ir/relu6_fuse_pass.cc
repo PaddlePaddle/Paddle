@@ -23,7 +23,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void Relu6FusePass::ApplyImpl(ir::Graph* graph) const {
+void Relu6FusePass::ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const {
   // This pass is now used for xpu, because xpu can fuse conv + bias + relu6
   const std::string pattern_name = "relu6_fuse";
   FusePassBase::Init(pattern_name, graph);

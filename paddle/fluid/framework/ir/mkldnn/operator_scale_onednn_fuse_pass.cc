@@ -25,7 +25,8 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph) const {
+void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph,
+                                            Graph *main_graph) const {
   const std::vector<std::string> fusable_ops{
       "fc",
       "fused_matmul",

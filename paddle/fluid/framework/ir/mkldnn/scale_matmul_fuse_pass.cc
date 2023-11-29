@@ -69,7 +69,8 @@ ScaleMatmulFusePass::ScaleMatmulFusePass() {
       .End();
 }
 
-void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
+void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph,
+                                    ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));

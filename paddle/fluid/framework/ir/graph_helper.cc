@@ -863,7 +863,7 @@ void GraphToProgram(const Graph &graph,
 }
 
 static std::vector<std::vector<ir::Node::Dep>> GetOpDependencies(
-    const BlockDesc &block, const std::unordered_set<ir::Node *> &nodes) {
+    const BlockDesc *block, const std::unordered_set<ir::Node *> &nodes) {
   auto block_ops = block.AllOps();
   size_t op_num = block_ops.size();
   std::unordered_map<const ir::Node *, std::unordered_set<const ir::Node *>>

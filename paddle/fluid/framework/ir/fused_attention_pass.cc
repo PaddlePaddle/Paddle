@@ -838,7 +838,7 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
 
 }  // namespace patterns
 
-void FusedAttentionsPass::ApplyImpl(Graph* graph) const {
+void FusedAttentionsPass::ApplyImpl(Graph* graph, Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
   FusedAttentionPassCache cache;
 

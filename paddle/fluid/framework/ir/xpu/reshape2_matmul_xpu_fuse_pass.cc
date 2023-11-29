@@ -245,7 +245,8 @@ void Reshape2MatmulXPUFusePass::FuseReshape2Matmul(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-void Reshape2MatmulXPUFusePass::ApplyImpl(ir::Graph* graph) const {
+void Reshape2MatmulXPUFusePass::ApplyImpl(ir::Graph* graph,
+                                          ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
@@ -301,7 +302,8 @@ void MapMatmulV2ToMatmulXPUPass::MapMatmulV2ToMatmul(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-void MapMatmulV2ToMatmulXPUPass::ApplyImpl(ir::Graph* graph) const {
+void MapMatmulV2ToMatmulXPUPass::ApplyImpl(ir::Graph* graph,
+                                           ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
@@ -354,7 +356,8 @@ void Squeeze2MatmulXPUFusePass::FuseSqueeze2Matmul(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-void Squeeze2MatmulXPUFusePass::ApplyImpl(ir::Graph* graph) const {
+void Squeeze2MatmulXPUFusePass::ApplyImpl(ir::Graph* graph,
+                                          ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);

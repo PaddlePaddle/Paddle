@@ -182,7 +182,7 @@ class TEST_API OpDesc {
 
   void CheckAttrs();
 
-  void InferShape(const BlockDesc &block);
+  void InferShape(const BlockDesc *block);
 
   void InferVarType(BlockDesc *block) const;
 

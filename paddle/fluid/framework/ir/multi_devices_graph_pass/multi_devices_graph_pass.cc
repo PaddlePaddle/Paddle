@@ -194,7 +194,8 @@ void MultiDevSSAGraphBuilderBase::Init() const {
           local_scopes_.size()));
 }
 
-void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
+void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph,
+                                            ir::Graph *main_graph) const {
   Init();
   CheckGraph(*graph);
   std::vector<ir::Node *> sorted_ops = SortOperations(*graph);

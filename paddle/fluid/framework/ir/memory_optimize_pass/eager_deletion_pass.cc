@@ -201,10 +201,10 @@ static OpToVarNameSetMap ShrinkGCVars(
 
 class EagerDeletionPass : public ir::Pass {
  protected:
-  void ApplyImpl(ir::Graph *graph) const override;
+  void ApplyImpl(ir::Graph *graph, Graph *main_graph) const override;
 };
 
-void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
+void EagerDeletionPass::ApplyImpl(ir::Graph *graph, Graph *main_graph) const {
   auto &var_infos = Get<MemOptVarInfoMapList>(kMemOptVarInfoMapList);
 
   const auto &vars = graph->Get<details::GraphVars>(details::kGraphVars);

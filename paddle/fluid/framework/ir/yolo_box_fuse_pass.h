@@ -48,7 +48,7 @@ class YoloBoxFusePass : public FusePassBase {
   virtual ~YoloBoxFusePass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   std::string name_scope_{"yolo_box_fuse_pass"};

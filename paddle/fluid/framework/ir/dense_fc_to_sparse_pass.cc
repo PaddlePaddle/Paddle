@@ -65,7 +65,7 @@ DenseFCToSparsePass::DenseFCToSparsePass() {
       .End();
 }
 
-void DenseFCToSparsePass::ApplyImpl(Graph *graph) const {
+void DenseFCToSparsePass::ApplyImpl(Graph *graph, Graph *main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
 

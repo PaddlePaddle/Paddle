@@ -78,7 +78,8 @@ SeqConvEltAddReluFusePass::SeqConvEltAddReluFusePass() {
 
 class Node;
 
-void SeqConvEltAddReluFusePass::ApplyImpl(ir::Graph* graph) const {
+void SeqConvEltAddReluFusePass::ApplyImpl(ir::Graph* graph,
+                                          ir::Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();

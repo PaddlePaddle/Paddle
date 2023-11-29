@@ -35,7 +35,7 @@ class AdaptivePool2dConvertGlobalPass : public FusePassBase {
   virtual ~AdaptivePool2dConvertGlobalPass() = default;
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 };
 
 }  // namespace ir

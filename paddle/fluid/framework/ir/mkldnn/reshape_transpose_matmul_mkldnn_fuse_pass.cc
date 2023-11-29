@@ -22,7 +22,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(Graph *graph) const {
+void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(Graph *graph,
+                                                     Graph *main_graph) const {
   auto matmul_types = {"matmul", "matmul_v2", "fused_matmul"};
 
   for (const auto &matmul_type : matmul_types) {

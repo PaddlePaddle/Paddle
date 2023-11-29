@@ -27,7 +27,7 @@ class FuseQuantTranspose2DequantOneDNNPass : public FusePassBase {
   FuseQuantTranspose2DequantOneDNNPass();
 
  protected:
-  void ApplyImpl(Graph *graph) const override;
+  void ApplyImpl(Graph *graph, Graph *main_graph) const override;
   void FuseQuantizeTranspose2(Graph *graph,
                               const std::string &transpose_type) const;
   void FuseTranspose2Dequantize(Graph *graph,

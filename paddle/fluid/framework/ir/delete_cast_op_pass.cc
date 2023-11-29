@@ -767,7 +767,8 @@ int DeleteCastOpPass::ApplyCastPass(ir::Graph* graph) const {
   return found_subgraph_count;
 }
 
-void DeleteCastOpPass::ApplyImpl(ir::Graph* graph) const {
+void DeleteCastOpPass::ApplyImpl(ir::Graph* graph,
+                                 ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   if (!graph->IsMainGraph()) {

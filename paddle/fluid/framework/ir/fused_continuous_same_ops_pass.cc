@@ -116,7 +116,7 @@ After:
 
 class FusedContinuousSameOpsPass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   void FusedReshapeOps(ir::Graph* graph) const;
@@ -198,7 +198,8 @@ void FusedContinuousSameOpsPass::FusedUnsqueezeOps(ir::Graph* graph) const {
               << " ops";
   }
 }
-void FusedContinuousSameOpsPass::ApplyImpl(ir::Graph* graph) const {
+void FusedContinuousSameOpsPass::ApplyImpl(ir::Graph* graph,
+                                           ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);

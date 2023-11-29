@@ -157,7 +157,7 @@ class PrelnEmbeddingEltwiseLayerNormFusePass : public FusePassBase {
   virtual ~PrelnEmbeddingEltwiseLayerNormFusePass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const;
   int BuildFusion(Graph* graph, const std::string& name_scope
                   /*const Scope* scope*/) const;
   const std::string name_scope_{"preln_embedding_eltwise_layernorm_fuse"};

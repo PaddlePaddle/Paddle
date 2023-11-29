@@ -26,7 +26,7 @@ class Conv2dFusionLayoutTransferPass : public FusePassBase {
   virtual ~Conv2dFusionLayoutTransferPass() = default;
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 };
 
 }  // namespace ir

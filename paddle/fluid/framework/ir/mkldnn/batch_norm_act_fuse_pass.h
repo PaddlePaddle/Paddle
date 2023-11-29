@@ -35,7 +35,7 @@ class FuseBatchNormActOneDNNPass : public FusePassBase {
   virtual ~FuseBatchNormActOneDNNPass() {}
 
  protected:
-  void ApplyImpl(ir::Graph *graph) const override;
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override;
 
   void FuseBatchNormAct(ir::Graph *graph, const std::string &act_types) const;
 };

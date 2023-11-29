@@ -743,7 +743,8 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
   return fusion_count;
 }
 
-void MultiHeadMatmulRoformerFusePass::ApplyImpl(Graph* graph) const {
+void MultiHeadMatmulRoformerFusePass::ApplyImpl(Graph* graph,
+                                                Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(

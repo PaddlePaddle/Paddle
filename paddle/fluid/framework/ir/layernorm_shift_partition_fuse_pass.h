@@ -63,8 +63,8 @@ class LayerNormShiftPartitionFusePass : public FusePassBase {
   virtual ~LayerNormShiftPartitionFusePass() {}
 
  protected:
-  void ApplyImpl(ir::Graph *graph) const override;
-  int ApplyPattern(ir::Graph *graph, bool with_roll) const;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
+  int ApplyPattern(ir::Graph* graph, bool with_roll) const;
 
  private:
   const std::string scope_name_{"layernorm_shift_partition_fuse"};

@@ -75,7 +75,8 @@ ConvElementwiseAddFusePass::ConvElementwiseAddFusePass() {
       .End();
 }
 
-void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
+void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph,
+                                           ir::Graph* main_graph) const {
   const std::string pattern_name = "conv_elementwise_add_fuse";
   FusePassBase::Init(pattern_name, graph);
 

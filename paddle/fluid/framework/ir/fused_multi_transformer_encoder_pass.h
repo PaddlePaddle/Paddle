@@ -463,7 +463,7 @@ class FusedMultiTransformerEncoderPass : public FusePassBase {
   virtual ~FusedMultiTransformerEncoderPass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const;
 
   const std::string name_scope_{"fused_multi_transformer_encoder"};
 
@@ -479,7 +479,7 @@ class FusedMultiTransformerEncoderFuseQKVPass : public FusePassBase {
   virtual ~FusedMultiTransformerEncoderFuseQKVPass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const;
 
   const std::string name_scope_{"fused_multi_transformer_encoder_fuse_qkv"};
 
@@ -495,7 +495,7 @@ class MultiDevicesFusedMultiTransformerEncoderPass : public FusePassBase {
   virtual ~MultiDevicesFusedMultiTransformerEncoderPass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const;
 
   const std::string name_scope_{
       "multi_devices_fused_multi_transformer_encoder"};
@@ -513,7 +513,7 @@ class MultiDevicesFusedMultiTransformerEncoderFuseQKVPass
   virtual ~MultiDevicesFusedMultiTransformerEncoderFuseQKVPass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const;
 
   const std::string name_scope_{
       "multi_devices_fused_multi_transformer_encoder_fuse_qkv"};

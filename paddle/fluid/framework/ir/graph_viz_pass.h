@@ -32,7 +32,7 @@ class GraphVizPass : public Pass {
   using marked_nodes_t = std::unordered_set<const Node*>;
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
   // Tell whether there are any marked nodes in the graph. Consume the
   // corresponding attribute.

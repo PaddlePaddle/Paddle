@@ -22,7 +22,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
+void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph,
+                                    ir::Graph *main_graph) const {
   ir::Graph &result = *graph;
 
   const std::string fuse_op_type = GetOpType();

@@ -33,7 +33,7 @@ class SelfAttentionFusePass : public FusePassBase {
   virtual ~SelfAttentionFusePass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override;
 };
 
 }  // namespace ir

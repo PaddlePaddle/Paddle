@@ -29,7 +29,8 @@ namespace ir {
 using paddle::operators::OpAndGradOpPair;
 using paddle::operators::OpVariantSet;
 
-void RecurrentOpEagerDeletionPass::ApplyImpl(Graph *graph) const {
+void RecurrentOpEagerDeletionPass::ApplyImpl(Graph *graph,
+                                             Graph *main_graph) const {
   // Find all recurrent_op and recurrent_grad_op in graph
   // Note the graph only contains ops and block 0
   std::unordered_map<size_t, OpAndGradOpPair> target_ops =

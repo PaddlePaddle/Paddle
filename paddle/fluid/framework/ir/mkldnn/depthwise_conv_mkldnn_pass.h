@@ -28,7 +28,7 @@ class DepthwiseConvMKLDNNPass : public FusePassBase {
   virtual ~DepthwiseConvMKLDNNPass() = default;
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override;
 };
 
 }  // namespace ir

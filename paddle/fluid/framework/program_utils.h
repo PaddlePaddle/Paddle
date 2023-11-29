@@ -30,7 +30,7 @@ class ProgramProcessor {
                                std::set<std::string> *inner_inputs,
                                std::set<std::string> *inner_outputs);
 
-  void AddDepToBlockOp(const BlockDesc &block);
+  void AddDepToBlockOp(const BlockDesc *block);
 };
 
 }  // namespace framework

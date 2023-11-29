@@ -59,7 +59,7 @@ class LockFreeOptimizePass : public Pass {
   virtual ~LockFreeOptimizePass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   // Create a new sgd node via current optimizer node

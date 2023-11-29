@@ -259,7 +259,8 @@ SeqConcatFcFusePass::SeqConcatFcFusePass() {
       .End();
 }
 
-void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
+void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph,
+                                    ir::Graph* main_graph) const {
   FusePassBase::Init("seq_concat_fc_fuse", graph);
   GraphPatternDetector detector;
   auto* pattern = detector.mutable_pattern();

@@ -214,7 +214,8 @@ bool analysis::DlnneSubgraphPass::IsDynamicOp(std::string var_name,
   return true;
 }
 
-void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
+void analysis::DlnneSubgraphPass::ApplyImpl(
+    framework::ir::Graph *graph, framework::ir::Graph *main_graph) const {
   framework::ir::FusePassBase::Init("dlnne_subgraph_pass", graph);
 
   InferShapeForDlnneMainGraph();

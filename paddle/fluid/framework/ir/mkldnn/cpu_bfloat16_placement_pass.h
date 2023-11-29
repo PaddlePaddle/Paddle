@@ -26,7 +26,7 @@ namespace ir {
  */
 class CPUBfloat16PlacementPass : public Pass {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
   int SetMkldnnDataType(ir::Graph* graph) const;
   int RemoveOrphanedOperators(ir::Graph* graph) const;

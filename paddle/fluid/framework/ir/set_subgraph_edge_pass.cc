@@ -1,0 +1,115 @@
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "paddle/fluid/framework/ir/set_subgraph_edge_pass.h"
+
+#include <algorithm>
+#include <memory>
+#include <string>
+#include <unordered_set>
+#include <vector>
+
+namespace paddle {
+namespace framework {
+namespace ir {
+
+#define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
+#define GET_NODES GET_IR_NODE(ops);
+
+// Delete dequantize_linear_op, then dequantize weight
+void SetSubgraphEdge::ApplyImpl(Graph* graph, Graph* main_graph) const {
+  const std::string pattern_name = "subgraph_edge_pattern";
+  FusePassBase::Init(pattern_name, graph);
+
+  GraphPatternDetector gpd;
+  auto* scope = param_scope();
+  PADDLE_ENFORCE_NOT_NULL(scope,
+                          platform::errors::InvalidArgument(
+                              "Scope in SetSubgraphEdge should not be "
+                              "null."));
+  // Create pattern
+  patterns::SubgraphEdgePattern pattern(gpd.mutable_pattern(), pattern_name);
+
+  std::unordered_set<std::string> ops_type = {"conditional_block", "while"};
+  pattern(ops_type);
+
+  int found_count = 0;
+
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    GET_NODES;
+    std::unordered_set<const Node*> nodes2rm = {};
+
+    // block ops
+    auto* block_op = ops->Op();
+
+    // block inputs
+    auto block_inputs = block_op->Input("Input");
+
+    // block outputs
+    auto block_outputs = block_op->Output("Out");
+
+    // block id
+    size_t block_id = -1;
+    for (const auto& attr : block_op->Proto()->attrs()) {
+      if (attr.type() == proto::AttrType::BLOCK) {
+        block_id = attr.block_idx();
+      }
+    }
+    auto* sub_graph = main_graph->GetSubGraph(block_id);
+
+    for (auto input_name : block_inputs) {
+      ir::Node* subgraph_node = nullptr;
+      for (auto* node : sub_graph->Nodes()) {
+        if (node->IsVar()) {
+          if (node->Var()->Name() == input_name) {
+            subgraph_node = node;
+          }
+        }
+      }
+      if (subgraph_node) {
+        subgraph_node->SetSubgraphInput();
+      } else {
+        PADDLE_THROW(
+            platform::errors::Fatal("Subgraph don't have block node."));
+      }
+    }
+
+    for (auto output_name : block_outputs) {
+      ir::Node* subgraph_node = nullptr;
+      for (auto* node : sub_graph->Nodes()) {
+        if (node->IsVar()) {
+          if (node->Var()->Name() == output_name) {
+            subgraph_node = node;
+          }
+        }
+      }
+      if (subgraph_node) {
+        subgraph_node->SetSubgraphOutput();
+      } else {
+        PADDLE_THROW(
+            platform::errors::Fatal("Subgraph don't have block node."));
+      }
+    }
+    found_count++;
+  };
+  gpd(graph, handler);
+  AddStatis(found_count);
+}
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+REGISTER_PASS(set_subgraph_edge_pass, paddle::framework::ir::SetSubgraphEdge);

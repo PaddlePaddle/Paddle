@@ -23,7 +23,7 @@ namespace operators {
 
 static void BuildScopeForControlFlowOp(
     const framework::InterpreterCore &interpreter_core,
-    const framework::BlockDesc &block,
+    const framework::BlockDesc *block,
     framework::Scope *scope) {
   for (auto &var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();

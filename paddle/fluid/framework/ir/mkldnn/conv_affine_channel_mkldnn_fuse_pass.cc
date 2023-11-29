@@ -214,7 +214,8 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
       .End();
 }
 
-void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
+void ConvAffineChannelFusePass::ApplyImpl(Graph* graph,
+                                          Graph* main_graph) const {
   FuseConvAffineChannel(graph, "conv2d");
   FuseConvAffineChannel(graph, "fused_conv2d");
 }

@@ -72,7 +72,7 @@ class GroupNormActFusePass : public FusePassBase {
   virtual ~GroupNormActFusePass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
   int ApplyGNSiluPattern(ir::Graph* graph) const;
 };
 

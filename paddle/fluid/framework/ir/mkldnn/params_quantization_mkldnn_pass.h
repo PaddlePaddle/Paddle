@@ -30,7 +30,7 @@ class ParamsQuantizationMkldnnPass : public FusePassBase {
   virtual ~ParamsQuantizationMkldnnPass() = default;
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
   void QuantizeConv(Graph* graph,
                     const std::string& conv_type,

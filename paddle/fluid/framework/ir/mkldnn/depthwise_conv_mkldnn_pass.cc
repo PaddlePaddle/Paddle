@@ -73,7 +73,8 @@ DepthwiseConvMKLDNNPass::DepthwiseConvMKLDNNPass() {  // NOLINT
       .End();
 }
 
-void DepthwiseConvMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
+void DepthwiseConvMKLDNNPass::ApplyImpl(ir::Graph* graph,
+                                        ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("depthwise_conv_mkldnn_pass", graph);

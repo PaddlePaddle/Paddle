@@ -30,7 +30,8 @@ class Node;
 
 TrtMapOpsToMatrixMultiplyPass::TrtMapOpsToMatrixMultiplyPass() = default;
 
-void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph) const {
+void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph,
+                                              ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   std::string name_scope = "trt_map_ops_to_matrix_multiply_pass";

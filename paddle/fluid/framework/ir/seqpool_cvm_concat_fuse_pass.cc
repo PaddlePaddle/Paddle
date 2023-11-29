@@ -99,7 +99,8 @@ SeqPoolCVMConcatFusePass::SeqPoolCVMConcatFusePass() {
       .End();
 }
 
-void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
+void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph,
+                                         ir::Graph* main_graph) const {
   FusePassBase::Init("seqpool_cvm_concat_fuse", graph);
   std::vector<Node*> concat_nodes;
   GetConcatNodes(graph, &concat_nodes);
