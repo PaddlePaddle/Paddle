@@ -555,6 +555,7 @@ class CodeGen:
 
         if (
             op_name.endswith(('_grad', '_grad_', '_grad_dense', '_grad_sparse'))
+            or op_name in ["print", "hardshrink", "det"]
             or len(mapping_name_to_type) == 0
         ):
             return ""
