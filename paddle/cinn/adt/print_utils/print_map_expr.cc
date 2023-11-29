@@ -24,7 +24,7 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/runtime/flags.h"
 
-PD_DECLARE_bool(cinn_map_expr_enable_index_detail);
+PD_DECLARE_bool(cinn_enable_map_expr_index_detail);
 
 namespace cinn::adt {
 
@@ -136,7 +136,7 @@ std::string ToTxtStringImpl(const OpStmt& op_stmt,
   ret += ToTxtString(op);
 
   const auto& GetPrevArgStr = [&](Arg) -> std::string {
-    if (FLAGS_cinn_map_expr_enable_index_detail) {
+    if (FLAGS_cinn_enable_map_expr_index_detail) {
       if (anchored_map_stmt != nullptr) {
         return std::string("\n") +
                GetIndentString((indent_size + 2) * kIndentSpaceSize);
@@ -147,7 +147,7 @@ std::string ToTxtStringImpl(const OpStmt& op_stmt,
 
   const auto& GetPostArgStr = [&](Arg arg) -> std::string {
     std::string tmp;
-    if (FLAGS_cinn_map_expr_enable_index_detail) {
+    if (FLAGS_cinn_enable_map_expr_index_detail) {
       if (anchored_map_stmt != nullptr) {
         tmp += "[";
         tmp += ToTxtString(anchored_map_stmt->GetTensorIndexExpr(arg));

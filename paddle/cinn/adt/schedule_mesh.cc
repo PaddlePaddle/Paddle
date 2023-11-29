@@ -196,7 +196,7 @@ class NaiveInjectiveScheduleMeshPolicy final : public ScheduleMeshPolicy {
 
   std::tuple<ScheduleMesh, List<LoopType>> Optimize(
       const List<ScheduleDim>& loop_sizes) const override {
-    VLOG(1) << "Match NaiveInjectiveScheduleMeshPolicy";
+    VLOG(4) << "Match NaiveInjectiveScheduleMeshPolicy";
     ScheduleMesh sched_mesh{loop_sizes};
     List<LoopType> loop_types{};
     for (const auto& _ : *loop_sizes) {

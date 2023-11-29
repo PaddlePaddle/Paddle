@@ -346,7 +346,7 @@ void GenerateDimEqualConstraints(
                 ->IsSymbolicDimEqual(lhs_dim, rhs_dim)) {
           ShapeDialectTensorDim lhs_adt_dim{lhs_tensor, lhs_idx};
           ShapeDialectTensorDim rhs_adt_dim{rhs_tensor, rhs_idx};
-          VLOG(1) << "Dim Equal: " << ToTxtString(lhs_adt_dim)
+          VLOG(4) << "Dim Equal: " << ToTxtString(lhs_adt_dim)
                   << " == " << ToTxtString(rhs_adt_dim);
           (*ret)->emplace_back(DimIdentity<tOut<ShapeDialectTensorDim>,
                                            tIn<ShapeDialectTensorDim>>{
