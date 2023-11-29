@@ -32,12 +32,24 @@ TuplePopInstruction::TuplePopInstruction(size_t id,
   auto var_array = value_exe_info_->GetVarByValue(stack_value);
   stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
 
+  std::unordered_map<pir::Value, std::vector<int>> inputs;
+  inputs.emplace(tuple_pop_op_.outlet(),
+                 std::initializer_list<int>{
+                     value_exe_info_->GetVarId(tuple_pop_op_.outlet())});
+  SetInputs(inputs);
+
   std::unordered_map<pir::Value, std::vector<int>> outputs;
   for (size_t i = 0; i < tuple_pop_op_.tuple_size(); ++i) {
     auto outlet_element_value = tuple_pop_op_.outlet_element(i);
     outputs.emplace(outlet_element_value,
                     GetValueIds(outlet_element_value, *value_exe_info_));
   }
+
+  // NOTE(zhangbo): TuplePop will change the variables corresponding to the
+  // outlet, so it needs to be marked as output.
+  outputs.emplace(tuple_pop_op_.outlet(),
+                  std::initializer_list<int>{
+                      value_exe_info_->GetVarId(tuple_pop_op_.outlet())});
   SetOutputs(outputs);
 
   type_ = OpFuncType::kCpuSync;
@@ -62,6 +74,7 @@ static std::stack<const Variable*> PopElements(VariableRefArray* var_array,
 }
 
 void TuplePopInstruction::Run() {
+  VLOG(6) << "run tuple_pop instruction";
   if (tuple_pop_op_.tuple_size() == 0) {
     stack_element_var_array_->pop_back();
   } else {
@@ -70,8 +83,8 @@ void TuplePopInstruction::Run() {
     for (size_t i = 0; i < tuple_pop_op_.tuple_size(); ++i) {
       auto front_var = var_elements.top();
       var_elements.pop();
+      VLOG(6) << "pop back var: " << front_var;
       auto outlet_element_value = tuple_pop_op_.outlet_element(i);
-
       auto grad_var = value_exe_info_->GetVarByValue(outlet_element_value);
       grad_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
           front_var->Get<phi::DenseTensor>());

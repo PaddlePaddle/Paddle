@@ -35,14 +35,18 @@ HasElementsInstruction::HasElementsInstruction(
   SetOutputs(outputs);
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
-  inputs.emplace(has_elements_op.input(),
-                 GetValueIds(has_elements_op.input(), *value_exe_info_));
+  std::vector<int> inputs_id = {
+      value_exe_info_->GetVarId(has_elements_op.input())};
+  inputs.emplace(has_elements_op.input(), inputs_id);
   SetInputs(inputs);
 
   type_ = OpFuncType::kCpuSync;
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  dev_ctx_ = pool.Get(platform::CPUPlace());
+  auto* bool_tensor = value_exe_info_->GetVarByValue(op_->result(0))
+                          ->GetMutable<phi::DenseTensor>();
+  bool_tensor->Resize(phi::make_ddim({1}));
+  has_elements_ = pool.Get(platform::CPUPlace())->Alloc<bool>(bool_tensor);
 
   auto stack_value =
       op_->dyn_cast<paddle::dialect::HasElementsOp>().operand_source(0);
@@ -51,12 +55,9 @@ HasElementsInstruction::HasElementsInstruction(
 }
 
 void HasElementsInstruction::Run() {
+  VLOG(6) << "run has_elements instruction";
   bool is_empty = stack_element_var_array_->size();
-  auto bool_var = value_exe_info_->GetVarByValue(op_->result(0));
-  auto* bool_tensor = bool_var->GetMutable<phi::DenseTensor>();
-
-  bool* bool_ptr = dev_ctx_->Alloc<bool>(bool_tensor);
-  *bool_ptr = is_empty;
+  *has_elements_ = is_empty;
 }
 }  // namespace framework
 }  // namespace paddle
