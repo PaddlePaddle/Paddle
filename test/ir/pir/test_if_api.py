@@ -16,6 +16,7 @@ import unittest
 
 import paddle
 from paddle.base.core import call_vjp, has_vjp
+from paddle.autograd.ir_backward import grad
 from paddle.base.libpaddle.pir import (
     build_pipe_for_block,
     get_used_external_value,
@@ -43,9 +44,11 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
         with paddle.static.program_guard(main_program, startup_program):
             x = paddle.static.data(name="x", shape=[6, 1], dtype="float32")
             y = paddle.static.data(name="y", shape=[6, 1], dtype="float32")
+            x.stop_gradient = False
+            y.stop_gradient = False
             paddle.static.nn.cond(x < y, lambda: x + y, lambda: x - y)
         return main_program
-
+    
     def test_if_with_single_output(self):
         main_program = self.construct_program_with_if()
         if_op = main_program.global_block().ops[-1]
@@ -90,8 +93,8 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
         with paddle.pir.core.program_guard(main_program):
             out_grad = paddle.full(shape=[6, 1], dtype='float32', fill_value=3)
             # check vjp interface for if_op
-            if_input = [get_used_external_value(if_op)]
-            if_input_stop_graditents = [[True, False, False, True]]
+            if_input = [[input] for input in get_used_external_value(if_op)]
+            if_input_stop_graditents = [[True], [False], [False], [True]]
             if_output = [if_op.results()]
             if_output_grad = [[out_grad]]
             self.assertEqual(has_vjp(if_op), True)
@@ -102,9 +105,10 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
                 if_output_grad,
                 if_input_stop_graditents,
             )
+
             self.assertEqual(grad_outs[0][0], None)
 
-            if_grad_op = grad_outs[0][1].get_defining_op()
+            if_grad_op = grad_outs[1][0].get_defining_op()
             self.assertEqual(if_grad_op.name(), "pd_op.if")
             with if_grad_op.as_if_op().true_block():
                 # check vjp interface for tupe_push_op
@@ -113,16 +117,34 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
                 self.assertEqual(has_vjp(push_op), True)
                 pop_outs = call_vjp(
                     push_op,
-                    [push_op.operands_source()],
-                    [push_op.results()],
-                    [[out_grad]],
-                    [[True, False]],
+                    [[value] for value in push_op.operands_source()],
+                    [[opresult] for opresult in push_op.results()],
+                    [[]],
+                    [[True], [False]],
                 )
                 self.assertEqual(len(pop_outs[0]), 2)
                 self.assertEqual(
                     pop_outs[0][1].get_defining_op().name(), "cf.tuple_pop"
                 )
+    
+    def test_if_op_backward(self):
+        main_program = self.construct_program_with_if()
+        dataop0 = main_program.global_block().ops[0]
+        dataop1 = main_program.global_block().ops[1]
+        if_op = main_program.global_block().ops[-1]
+        self.assertEqual(if_op.name(), "pd_op.if")
+        with paddle.pir.core.program_guard(main_program):
+            if_op.result(0).stop_gradient = False
+            # check vjp interface for if_op
+            print("main_program ", main_program)
+            grad_outs = grad(
+               if_op.results(),
+               [dataop0.result(0), dataop1.result(0)],
+            )
 
+            print("main_program ", main_program)
+            self.assertEqual(grad_outs[0].get_defining_op().name(), "pd_op.if")
+            self.assertEqual(grad_outs[1].get_defining_op().name(), "pd_op.if")
 
 if __name__ == "__main__":
     unittest.main()
