@@ -129,8 +129,12 @@ class ReplaceSameAxisToZero : public ir::IRMutator<> {
     ir::Tensor tensor = store->tensor.as_tensor_ref();
     std::set<int> replace_zero_indice = GetReplaceIndice(tensor);
     for (int r : replace_zero_indice) {
-      ir::ir_utils::IrReplace(
-          &(store->indices[r]), store->indices[r], ir::Expr(0));
+      // After optimization, some store indice may be removed, so we need this
+      // conditioin
+      if (store->indices.size() > r) {
+        ir::ir_utils::IrReplace(
+            &(store->indices[r]), store->indices[r], ir::Expr(0));
+      }
     }
     ir::IRMutator<>::Visit(op, expr);
   }
@@ -141,8 +145,12 @@ class ReplaceSameAxisToZero : public ir::IRMutator<> {
     ir::Tensor tensor = load->tensor.as_tensor_ref();
     std::set<int> replace_zero_indice = GetReplaceIndice(tensor);
     for (int r : replace_zero_indice) {
-      ir::ir_utils::IrReplace(
-          &(load->indices[r]), load->indices[r], ir::Expr(0));
+      // After optimization, some load indice may be removed, so we need this
+      // conditioin
+      if (load->indices.size() > r) {
+        ir::ir_utils::IrReplace(
+            &(load->indices[r]), load->indices[r], ir::Expr(0));
+      }
     }
     ir::IRMutator<>::Visit(op, expr);
   }
