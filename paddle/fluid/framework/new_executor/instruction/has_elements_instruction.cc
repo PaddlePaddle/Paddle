@@ -45,7 +45,7 @@ HasElementsInstruction::HasElementsInstruction(
 
   auto stack_value = op_->dyn_cast<pir::HasElementsOp>().operand_source(0);
   auto var_array = value_exe_info_->GetVarByValue(stack_value);
-  auto stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
+  stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
 }
 
 void HasElementsInstruction::Run() {

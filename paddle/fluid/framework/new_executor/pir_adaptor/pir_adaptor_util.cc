@@ -394,7 +394,7 @@ void HandleForSpecialOp(pir::Operation* op,
         op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   }
 
-  if (op->isa<paddle::dialect::FetchOp>()) {
+  if (op_name == paddle::dialect::FetchOp::name()) {
     // fetch is a very special op, with no output
     auto fetch_src_name =
         op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
@@ -406,8 +406,8 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->result(0);
 
     value_exe_info->Add(value, fetch_var_name);
-  } else if (op->isa<paddle::dialect::FeedOp>() ||
-             op->isa<paddle::dialect::DataOp>()) {
+  } else if (op_name == paddle::dialect::FeedOp::name() ||
+             op_name == paddle::dialect::DataOp::name()) {
     VLOG(6) << "Handle for" << op_name;
     auto value = op->result(0);
     VLOG(6) << "link feed output to feed in variable"

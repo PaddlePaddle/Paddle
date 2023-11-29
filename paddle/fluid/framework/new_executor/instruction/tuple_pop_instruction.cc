@@ -43,11 +43,8 @@ TuplePopInstruction::TuplePopInstruction(size_t id,
 void TuplePopInstruction::Run() {
   if (tuple_pop_op_.tuple_size() == 0) {
     stack_element_var_array_->pop_back();
-    auto outlet_element = tuple_pop_op_.outlet_element(0);
-    auto grad_var = value_exe_info_->GetVarByValue(outlet_element);
-    grad_var = nullptr;
   } else {
-    for (int i = 0; i < tuple_pop_op_.tuple_size(); ++i) {
+    for (size_t i = 0; i < tuple_pop_op_.tuple_size(); ++i) {
       auto front_var =
           stack_element_var_array_->at(tuple_pop_op_.tuple_size() - i - 1);
       auto outlet_element_value = tuple_pop_op_.outlet_element(i);
