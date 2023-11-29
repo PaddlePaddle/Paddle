@@ -519,10 +519,18 @@ def monkey_patch_variable():
                         current_block(self), value=other_var, dtype=lhs_dtype
                     )
 
-            # 3. unify right var type to left var
+            # 3. type promotion
             rhs_dtype = safe_get_dtype(other_var)
+
             if lhs_dtype != rhs_dtype:
-                other_var = astype(other_var, lhs_dtype)
+                from ..type_promotion import get_result_dtype
+
+                common_dtype = get_result_dtype(lhs_dtype, rhs_dtype)
+                if rhs_dtype != common_dtype:
+                    other_var = astype(other_var, common_dtype)
+                if lhs_dtype != common_dtype:
+                    self = astype(self, common_dtype)
+
             if reverse:
                 tmp = self
                 self = other_var
