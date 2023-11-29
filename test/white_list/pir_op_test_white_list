@@ -77,6 +77,7 @@ test_cummax_op
 test_cummin_op
 test_cumprod_op
 test_cumsum_op
+test_decayed_adagrad_op
 test_deformable_conv_op
 test_dequantize_mkldnn_op
 test_determinant_op

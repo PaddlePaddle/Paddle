@@ -3345,6 +3345,12 @@
   outputs:
     {out: Out}
 
+- op: decayed_adagrad
+  inputs:
+    {param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate}
+  outputs:
+    {param_out : ParamOut, moment_out : MomentOut}
+
 - op: dpsgd
   inputs:
     {param: Param,grad: Grad,learning_rate: LearningRate}
