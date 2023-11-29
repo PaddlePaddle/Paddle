@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -20,8 +19,9 @@ from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph, check_no_fallback
+from paddle.jit.sot.utils import ENV_MIN_GRAPH_SIZE
 
-os.environ['MIN_GRAPH_SIZE'] = '-1'
+ENV_MIN_GRAPH_SIZE.set(-1)
 
 
 @check_no_breakgraph

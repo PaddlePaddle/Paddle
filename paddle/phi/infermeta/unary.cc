@@ -144,6 +144,37 @@ void AllToAllInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(dim);
 }
 
+void ArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(phi::DataType::INT64);
+  out->set_dims(make_ddim({1}));
+}
+
+void ArrayToTensorInferMeta(const MetaTensor& x,
+                            int axis,
+                            bool use_stack,
+                            MetaTensor* out,
+                            MetaTensor* out_index,
+                            MetaConfig config) {
+  if (config.is_runtime) return;
+  auto dims = x.dims();
+  // if the shape is empty
+  if (dims == phi::make_ddim({0UL})) return;
+  // otherwise, suppose the shape of array is the shape of tensor in the
+  // array, which is consistent with what tensor_array_read_write dose
+  if (use_stack) {
+    auto dim_vec = phi::vectorize<int>(dims);
+    // use -1 for the stack dim size
+    dim_vec.insert(dim_vec.begin() + axis, -1);
+    dims = phi::make_ddim(dim_vec);
+  } else {
+    // use -1 for the concat dim size
+    dims[axis] = -1;
+  }
+  out->set_dims(dims);
+  out_index->set_dtype(DataType::INT32);
+  out_index->set_dims(phi::make_ddim({-1}));
+}
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
@@ -549,17 +580,17 @@ void CumScalarAxisInferMeta(const MetaTensor& x,
 
 void CumWithIndicesInferMeta(const MetaTensor& x,
                              int axis,
-                             int dtype,
+                             DataType dtype,
                              MetaTensor* out,
                              MetaTensor* indices) {
   auto x_dims = x.dims();
-  auto indices_type = phi::TransToPhiDataType(dtype);
   PADDLE_ENFORCE_EQ(
-      (indices_type == DataType::INT32 || indices_type == DataType::INT64),
+      (dtype == DataType::INT32 || dtype == DataType::INT64),
       true,
-      phi::errors::InvalidArgument("dtype of indices must be int32 or int64"));
+      phi::errors::InvalidArgument(
+          "dtype of indices must be DataType::INT32 or DataType::INT64"));
 
-  if (indices_type == DataType::INT32) {
+  if (dtype == DataType::INT32) {
     int _axis = 0;
     if (axis < 0) {
       _axis = axis + x_dims.size();
@@ -606,7 +637,7 @@ void CumWithIndicesInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   out->share_lod(x);
   indices->set_dims(x_dims);
-  indices->set_dtype(indices_type);
+  indices->set_dtype(dtype);
   indices->share_lod(x);
 }
 
@@ -670,6 +701,15 @@ void DecodeJpegInferMeta(const MetaTensor& x,
     out->set_dims(phi::make_ddim(out_dims));
     out->set_dtype(x.dtype());
   }
+}
+
+void DeQuantizeXPUInferMeta(const MetaTensor& x,
+                            DataType out_dtype,
+                            float scale,
+                            MetaTensor* y) {
+  auto x_dims = x.dims();
+  y->set_dims(x_dims);
+  y->set_dtype(out_dtype);
 }
 
 void DiagEmbedInferMeta(
@@ -928,9 +968,17 @@ void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
   out_v->set_dtype(out_dtype);
 }
 
-void EmbeddingGradSparseInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims(x.dims());
-  out->set_dtype(x.dtype());
+void EmbeddingGradSparseInferMeta(const MetaTensor& x,
+                                  const MetaTensor& weight,
+                                  MetaTensor* out) {
+  if (weight) {
+    if (out->is_selected_rows()) {
+      out->set_dims(x.dims());
+      out->set_dtype(x.dtype());
+    } else {
+      out->share_dims(weight);
+    }
+  }
 }
 
 void EighInferMeta(const MetaTensor& x,
@@ -964,7 +1012,7 @@ void EighInferMeta(const MetaTensor& x,
   out_w->set_dims(phi::make_ddim(values_dim));
   out_w->set_dtype(dtype::ToReal(x.dtype()));
   out_v->set_dims(input_dim);
-  out_v->set_dtype(dtype::ToReal(x.dtype()));
+  out_v->set_dtype(x.dtype());
 }
 
 void EigvalsInferMeta(const MetaTensor& x, MetaTensor* out, MetaConfig config) {
@@ -3263,6 +3311,7 @@ void ReduceInferMeta(const MetaTensor& x,
   if (axis.empty()) {
     reduce_all = true;
   }
+
   ReduceInferMetaBase(x, axis, keep_dim, reduce_all, out);
 }
 
@@ -3768,6 +3817,15 @@ void FillSplitOutDims(const MetaTensor& x,
   }
 }
 
+void QuantizeXPUInferMeta(const MetaTensor& x,
+                          DataType out_dtype,
+                          float scale,
+                          MetaTensor* y) {
+  auto x_dims = x.dims();
+  y->set_dims(x_dims);
+  y->set_dtype(out_dtype);
+}
+
 void SplitInferMeta(const MetaTensor& x,
                     const IntArray& sections,
                     const Scalar& axis,
@@ -3969,8 +4027,8 @@ void SqueezeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaTensor* xshape,
                                 MetaConfig config) {
-  SqueezeInferMeta(x, axes, out, config);
   const auto& x_dims = x.dims();
+  SqueezeInferMeta(x, axes, out, config);
   std::vector<int64_t> xshape_dims(x_dims.size() + 1);
   xshape_dims[0] = 0;
   for (int i = 0; i < x_dims.size(); ++i) {
@@ -4790,6 +4848,7 @@ void UnfoldInferMeta(const MetaTensor& x,
   }
   out_dims.push_back(output_col_length);
   out->set_dims(phi::make_ddim(out_dims));
+  out->set_dtype(x.dtype());
 }
 
 void UniformRandomInplaceInferMeta(const MetaTensor& x,
@@ -4833,7 +4892,7 @@ void UniqueConsecutiveInferMeta(const MetaTensor& x,
                                 bool return_inverse,
                                 bool return_counts,
                                 const std::vector<int>& axis,
-                                int dtype,
+                                DataType dtype,
                                 MetaTensor* out,
                                 MetaTensor* index,
                                 MetaTensor* counts) {
@@ -5094,8 +5153,15 @@ void UnStackInferMeta(const MetaTensor& x,
 
 void WeightQuantizeInferMeta(const MetaTensor& x,
                              const std::string& algo,
+                             const int32_t arch,
                              MetaTensor* out,
                              MetaTensor* scale) {
+  PADDLE_ENFORCE_EQ(
+      ((arch == 80) || (arch == 86) || (arch == 70) || (arch == 75)),
+      true,
+      phi::errors::InvalidArgument(
+          "Currently, arch only support 70, 75, 80, 86."));
+
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
       x_dims.size(),

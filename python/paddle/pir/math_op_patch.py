@@ -15,6 +15,7 @@
 
 import warnings
 
+from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 
 from . import OpResult
@@ -46,7 +47,7 @@ def create_tensor_with_batchsize(ref_var, value, dtype):
         else:
             out_shape.append(d)
     assert batch_dim != -1
-    from paddle import _C_ops
+
     from paddle.framework import core
 
     out = _C_ops.full_batch_size_like(
@@ -64,6 +65,65 @@ def monkey_patch_opresult():
         except:
             raise ValueError("Cannot get data type from var")
         return dtype
+
+    def cpu(self):
+        """
+        In dy2static, OpResult also needs cpu() and cuda() interface.
+        But, the underneath operator has only forward op but not backward one.
+
+        Returns:
+            The tensor which has copied to cpu place.
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> y = x.cpu()
+        """
+
+        # 0 means cpu place, see paddle/phi/kernels/memcpy_kernel.cc
+        return _C_ops.memcpy(self, 0)
+
+    def cuda(self, device_id=None, blocking=True):
+        """
+        In dy2static, OpResult also needs cpu() and cuda() interface.
+        But, the underneath operator has only forward op but not backward one.
+
+        Args:
+            self(OpResult): The variable itself.
+            device_id(int, optional): The destination GPU device id. Default: None, means current device.
+                We add this argument for dy2static translation, please do not use it.
+            blocking(bool, optional): Whether blocking or not, Default: True.
+                We add this argument for dy2static translation, please do not use it.
+
+        Returns:
+            The tensor which has copied to cuda place.
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> y = x.cpu()
+                >>> z = y.cuda()
+        """
+
+        if device_id is not None:
+            warnings.warn("device_id is not supported, and it will be ignored.")
+        if blocking is not True:
+            warnings.warn("blocking is not supported, and it will be ignored.")
+
+        # 1 means cuda place, see paddle/phi/kernels/memcpy_kernel.cc
+        return _C_ops.memcpy(self, 1)
 
     def place(self):
         """
@@ -180,12 +240,11 @@ def monkey_patch_opresult():
                 >>> with paddle.static.program_guard(startup_prog, main_prog):
                 ...     original_value = paddle.static.data(name = "new_value", shape=[2,2], dtype='float32')
                 ...     new_value = original_value.astype('int64')
-                ...     print("new value's dtype is: {}".format(new_value.dtype))
+                ...     print(f"new value's dtype is: {new_value.dtype}")
                 ...
                 new OpResult's dtype is: paddle.int64
 
         """
-        from paddle import _C_ops
 
         if not isinstance(dtype, DataType):
             dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
@@ -261,14 +320,16 @@ def monkey_patch_opresult():
                             break
                     else:
                         # when break is not triggered, enter the else branch
-                        other_var_opresult = paddle.fill_constant(
-                            self.shape,
-                            lhs_dtype,
-                            other_var,
+                        other_var_opresult = (
+                            paddle.tensor.creation.fill_constant(
+                                self.shape,
+                                lhs_dtype,
+                                other_var,
+                            )
                         )
                 else:
                     # add fill_op to current_block
-                    other_var_opresult = paddle.fill_constant(
+                    other_var_opresult = paddle.tensor.creation.fill_constant(
                         [],
                         lhs_dtype,
                         other_var,
@@ -287,7 +348,9 @@ def monkey_patch_opresult():
                 python_api == paddle.divide
             ) and self.dtype in _supported_int_dtype_:
                 self = paddle.cast(self, DataType.FLOAT32)
-                other_var = paddle.cast(other_var_opresult, DataType.FLOAT32)
+                other_var_opresult = paddle.cast(
+                    other_var_opresult, DataType.FLOAT32
+                )
 
             out = python_api(self, other_var_opresult)
             return out
@@ -303,15 +366,85 @@ def monkey_patch_opresult():
         __impl__.__name__ = method_name
         return __impl__
 
+    @property
+    def _size_(self):
+        """
+        Returns the number of elements for current OpResult, which is a int64 OpResult with shape [] .
+
+        Returns:
+            OpResult, the number of elements for current OpResult
+
+        Examples:
+            .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> startup_prog = paddle.static.Program()
+            >>> main_prog = paddle.static.Program()
+            >>> with paddle.static.program_guard(startup_prog, main_prog):
+            ...     x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
+            ...     (output_x,) = exe.run(main_program, fetch_list=[x.size])
+            ...     print(f"value's size is: {output_x}")
+            ...
+            value's size is: 24
+        """
+        return paddle.numel(self)
+
+    def clone(self):
+        """
+        Returns a new static OpResult, which is the clone of the original static
+        OpResult. It remains in the current graph, that is, the cloned OpResult
+        provides gradient propagation. Calling ``out = tensor.clone()`` is same
+        as ``out = assign(tensor)`` .
+
+        Returns:
+            OpResult, The cloned OpResult.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> paddle.enable_static()
+
+                >>> # create a static OpResult
+                >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
+                >>> # create a cloned OpResult
+                >>> y = x.clone()
+
+        """
+        return paddle.assign(self)
+
+    def append(self, var):
+        """
+        **Notes**:
+           **The type OpResult must be LoD Tensor Array.
+
+        """
+        if not self.is_dense_tensor_array_type():
+            raise TypeError(
+                "Only OpResult with pd_op.tensor_array support `append` method, but received type: {}".format(
+                    self.type()
+                )
+            )
+        from paddle.tensor.array import array_length, array_write
+
+        array_write(x=var, i=array_length(self), array=self)
+
     import paddle
 
     opresult_methods = [
+        ('cpu', cpu),
+        ('cuda', cuda),
         ('place', place),
         ('item', _item),
         ('dim', dim),
         ('ndimension', ndimension),
         ('ndim', _ndim),
         ('astype', astype),
+        ('size', _size_),
+        ('clone', clone),
+        ('append', append),
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
@@ -368,6 +501,56 @@ def monkey_patch_opresult():
             '__rtruediv__',
             _binary_creator_('__rtruediv__', paddle.tensor.divide, True, None),
         ),
+        (
+            '__pow__',
+            _binary_creator_('__pow__', paddle.tensor.pow, False, None),
+        ),
+        (
+            '__rpow__',
+            _binary_creator_('__rpow__', paddle.tensor.pow, True, None),
+        ),
+        (
+            '__floordiv__',
+            _binary_creator_(
+                '__floordiv__', paddle.tensor.floor_divide, False, None
+            ),
+        ),
+        (
+            '__mod__',
+            _binary_creator_('__mod__', paddle.tensor.remainder, False, None),
+        ),
+        (
+            '__matmul__',
+            _binary_creator_('__matmul__', paddle.tensor.matmul, False, None),
+        ),
+        #  for logical compare
+        # TODO(gouzil): Open after deleting c++ logic
+        # (
+        #     '__eq__',
+        #     _binary_creator_('__eq__', paddle.tensor.equal, False, None),
+        # ),
+        (
+            '__ne__',
+            _binary_creator_('__ne__', paddle.tensor.not_equal, False, None),
+        ),
+        (
+            '__lt__',
+            _binary_creator_('__lt__', paddle.tensor.less_than, False, None),
+        ),
+        (
+            '__le__',
+            _binary_creator_('__le__', paddle.tensor.less_equal, False, None),
+        ),
+        (
+            '__gt__',
+            _binary_creator_('__gt__', paddle.tensor.greater_than, False, None),
+        ),
+        (
+            '__ge__',
+            _binary_creator_(
+                '__ge__', paddle.tensor.greater_equal, False, None
+            ),
+        ),
     ]
 
     global _already_patch_opresult
@@ -386,6 +569,12 @@ def monkey_patch_opresult():
             method_impl = getattr(paddle.tensor, method_name, None)
             if method_impl:
                 setattr(OpResult, method_name, method_impl)
+
+        # Bit operation symbol
+        for magic_method, origin_method in paddle.tensor.magic_method_func:
+            impl = getattr(paddle.tensor, origin_method, None)
+            if impl:
+                setattr(OpResult, magic_method, impl)
 
         # Handling __getitem__
         from ..base.variable_index import _getitem_static

@@ -14,9 +14,10 @@
 
 import unittest
 
-from test_case_base import TestCaseBase, strict_mode_guard
+from test_case_base import TestCaseBase
 
 import paddle
+from paddle.jit.sot.utils import strict_mode_guard
 
 
 def test_enumerate_1(x: int, y: int):
@@ -100,13 +101,13 @@ class TestExecutor(TestCaseBase):
         self.assert_results(test_enumerate_4, ty)
         # TODO(zmh): support range for tensor
 
-        with strict_mode_guard(0):
+        with strict_mode_guard(False):
             self.assert_results(test_enumerate_5, paddle.to_tensor([1, 2, 3]))
         self.assert_results(test_enumerate_6, paddle.to_tensor([1, 2, 3]))
         self.assert_results(test_enumerate_7, ty)
         # TODO(zmh): support -1
 
-        with strict_mode_guard(0):
+        with strict_mode_guard(False):
             self.assert_results(test_enumerate_8, ty)
 
         self.assert_results(test_enumerate_10, layer_list, paddle.randn((10,)))

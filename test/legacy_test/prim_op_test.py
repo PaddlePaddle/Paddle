@@ -235,7 +235,9 @@ class OpTestUtils:
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=build_strategy)
+    return paddle.jit.to_static(
+        net, build_strategy=build_strategy, full_graph=True
+    )
 
 
 class PrimNet(paddle.nn.Layer):
@@ -608,10 +610,22 @@ class PrimForwardChecker:
                     args, len(inputs_sig)
                 )
                 ret = flatten(_as_list(self.public_python_api(*args)))
+
                 if not in_pir_mode():
                     primapi.to_prim(main_program.blocks)
                 else:
+                    before_ops = [
+                        op.name() for op in main_program.global_block().ops
+                    ]
                     ret = decompose(main_program, ret)
+                    after_ops = [
+                        op.name() for op in main_program.global_block().ops
+                    ]
+
+                    assert (
+                        before_ops != after_ops
+                    ), f"For {after_ops} , since op which has been decomposed should not exist, the op list should differ from origin ones."
+
                 # ensure the operator not in program if check_prim is True
                 if not in_pir_mode():
                     forward_ops = [op.type for op in main_program.blocks[0].ops]
@@ -1110,6 +1124,14 @@ class PrimGradChecker(PrimForwardChecker):
                     assert backward_op_type not in ops, (
                         "%s shouldn't appear in program when check_prim is True"
                     ) % (backward_op_type)
+                elif self.prim_op_type == "prim":
+                    grad_ops = []
+                    for op in main_program.global_block().ops:
+                        if op.name().endswith("_grad"):
+                            grad_ops.append(op.name())
+                    assert (
+                        not grad_ops
+                    ), f"For {grad_ops} , grad op shouldn't appear in program when check_prim is True"
                 exe = paddle.static.Executor(self.place)
                 exe.run(startup_program)
                 actual_ret = exe.run(main_program, feed=feed, fetch_list=ret)

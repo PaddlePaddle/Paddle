@@ -327,13 +327,13 @@ class TestEigvalsAPI(unittest.TestCase):
     def test_error(self):
         paddle.disable_static()
         x = paddle.to_tensor([1])
-        with self.assertRaises(BaseException):
+        with self.assertRaises(ValueError):
             paddle.linalg.eigvals(x)
 
         self.input_dims = [1, 2, 3, 4]
         self.set_input_data()
         x = paddle.to_tensor(self.input_data)
-        with self.assertRaises(BaseException):
+        with self.assertRaises(ValueError):
             paddle.linalg.eigvals(x)
 
 

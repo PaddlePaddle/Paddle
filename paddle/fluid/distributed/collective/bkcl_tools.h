@@ -14,14 +14,15 @@
 
 #pragma once
 
-#include "paddle/fluid/distributed/collective/types.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/core/distributed/types.h"
 
 namespace paddle {
 namespace distributed {
 using XPUContext = phi::XPUContext;
+using phi::distributed::ReduceOp;
 
 #define BKCLCHECK(cmd)                                                  \
   do {                                                                  \
@@ -101,6 +102,8 @@ class XPUEventManager {
 
 BKCLOp ToBKCLRedType(ReduceOp reduction);
 std::string SerializeBKCLUniqueId(const BKCLUniqueId& bkclId);
+std::string BKCLDTypeToString(BKCLDataType dtype);
+std::string BKCLRedTypeToString(BKCLOp op);
 
 }  // namespace distributed
 }  // namespace paddle

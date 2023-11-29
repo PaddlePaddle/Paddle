@@ -25,13 +25,13 @@ void FrobeniusNormGradKernel(const Context& ctx,
                              const DenseTensor& x,
                              const DenseTensor& out,
                              const DenseTensor& dout,
-                             const std::vector<int64_t>& axis,
+                             const IntArray& axis,
                              bool keep_dim,
                              bool reduce_all,
                              DenseTensor* dx) {
-  reduce_all = recompute_reduce_all(x, axis, reduce_all);
+  reduce_all = recompute_reduce_all(x, axis.GetData(), reduce_all);
   ReduceGradKernel<Context, T, funcs::FrobeniusNormGradFunctor>(
-      ctx, x, out, dout, axis, keep_dim, reduce_all, dx);
+      ctx, x, out, dout, axis.GetData(), keep_dim, reduce_all, dx);
 }
 
 }  // namespace phi

@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 
@@ -40,7 +41,7 @@ def tensor_copy_to_cuda_with_warning(x, device_id=None, blocking=True):
     return y
 
 
-class TestTensorCopyToCpuOnDefaultCPU(unittest.TestCase):
+class TestTensorCopyToCpuOnDefaultCPU(Dy2StTestBase):
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
         x1 = paddle.ones([1, 2, 3])
@@ -60,7 +61,7 @@ class TestTensorCopyToCpuOnDefaultCPU(unittest.TestCase):
         self.assertTrue(static_place.is_cpu_place())
 
 
-class TestTensorCopyToCUDAOnDefaultCPU(unittest.TestCase):
+class TestTensorCopyToCUDAOnDefaultCPU(Dy2StTestBase):
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
         x1 = paddle.ones([1, 2, 3])

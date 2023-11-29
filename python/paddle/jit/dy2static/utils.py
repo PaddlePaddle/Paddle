@@ -31,7 +31,7 @@ import astor
 import numpy as np
 
 import paddle
-from paddle import base  # noqa: F401
+from paddle import base, get_flags, set_flags  # noqa: F401
 from paddle.base import backward, core, framework, unique_name
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.layer_helper import LayerHelper
@@ -176,21 +176,6 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
         is_data=True,
         need_check_feed=False,
     )
-
-
-def create_undefined_variable_local():
-    helper = LayerHelper('create_undefined_variable', **locals())
-    var = helper.create_variable(
-        name=unique_name.generate("undefined_var"),
-        shape=[1],
-        dtype="float64",
-        type=core.VarDesc.VarType.LOD_TENSOR,
-        stop_gradient=False,
-        is_data=True,
-        need_check_feed=False,
-    )
-    paddle.assign(RETURN_NO_VALUE_MAGIC_NUM, var)
-    return var
 
 
 def create_undefined_variable():
@@ -1462,28 +1447,24 @@ def create_name_str(name_ids):
 
 
 def prim_or_cinn_is_enabled(build_strategy, backend):
+    return cinn_is_enabled(build_strategy, backend) or prim_is_enabled()
+
+
+def cinn_is_enabled(build_strategy, backend):
     if backend == 'CINN':
         return True
-
     if build_strategy is not None and build_strategy.build_cinn_pass:
         return True
 
-    if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
+    value = os.getenv('FLAGS_use_cinn')
+    if value is not None and value.lower() in ['true', '1']:
         return True
-
-    env_flags = [
-        'FLAGS_prim_forward',
-        'FLAGS_prim_backward',
-        'FLAGS_prim_all',
-        'FLAGS_use_cinn',
-    ]
-    for flag in env_flags:
-        value = os.getenv(flag)
-        if value is None:
-            continue
-        elif value.lower() in ['true', '1']:
-            return True
     return False
+
+
+def prim_is_enabled():
+    core.check_and_set_prim_all_enabled()
+    return core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled()
 
 
 def is_builtin(func, name=None):

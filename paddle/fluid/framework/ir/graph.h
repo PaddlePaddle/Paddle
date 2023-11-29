@@ -413,6 +413,20 @@ class Graph {
   }
   int block_id_{0};
 
+  std::vector<std::string> AttrNames() const {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->AttrNames();
+      }
+    }
+    std::vector<std::string> res;
+    res.reserve(attrs_.size());
+    for (auto &attr : attrs_) {
+      res.push_back(attr.first);
+    }
+    return res;
+  }
+
  private:
   // TODO(levi): delete this interface after when we can convert all
   // blocks into sub_graphs.

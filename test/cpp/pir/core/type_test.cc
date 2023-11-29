@@ -66,12 +66,11 @@ TEST(type_test, type_base) {
   // Test 1: Test the function of IrContext to register Dialect.
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Dialect *fake_dialect = ctx->GetOrRegisterDialect<FakeDialect>();
-  std::vector<pir::InterfaceValue> interface_map;
 
   // Test 2: Test the get method of AbstractType.
   pir::TypeId a_id = pir::TypeId::get<TypeA>();
   pir::AbstractType abstract_type_a =
-      pir::AbstractType::get(a_id, *fake_dialect, std::move(interface_map));
+      pir::AbstractType::get(a_id, *fake_dialect, {});
   EXPECT_EQ(abstract_type_a.type_id(), a_id);
 
   // Test 3: Test the constructor of TypeStorage.
@@ -95,6 +94,7 @@ TEST(type_test, built_in_type) {
 
   pir::Type index_1 = pir::IndexType::get(ctx);
   pir::Type index_2 = pir::IndexType::get(ctx);
+  EXPECT_TRUE(index_1.IsIndex());
   EXPECT_EQ(index_1, index_2);
   EXPECT_EQ(index_1.type_id(), index_2.type_id());
   EXPECT_EQ(&index_1.abstract_type(),
@@ -231,7 +231,7 @@ TEST(type_test, custom_type_dialect) {
   EXPECT_EQ(int8.dialect().id(), pir::TypeId::get<IntegerDialect>());
 
   std::vector<pir::Dialect *> dialect_list = ctx->GetRegisteredDialects();
-  EXPECT_EQ(dialect_list.size() == 4, 1);  // integer, builtin, fake
+  EXPECT_EQ(dialect_list.size() == 5, 1);  // integer, builtin, fake
 
   pir::Dialect *dialect_builtin1 = ctx->GetRegisteredDialect("builtin");
   pir::Dialect *dialect_builtin2 =

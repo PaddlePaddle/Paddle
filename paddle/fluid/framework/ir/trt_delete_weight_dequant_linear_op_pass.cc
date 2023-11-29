@@ -29,8 +29,7 @@ namespace ir {
   GET_IR_NODE(weight_dequantize_linear_op_x);     \
   GET_IR_NODE(weight_dequantize_linear_op_scale); \
   GET_IR_NODE(weight_dequantize_linear_op);       \
-  GET_IR_NODE(weight_dequantize_linear_op_out);   \
-  GET_IR_NODE(any_op2);
+  GET_IR_NODE(weight_dequantize_linear_op_out);
 
 TrtDeleteWeightQuantDequantLinearOpPass::
     TrtDeleteWeightQuantDequantLinearOpPass() {
@@ -237,8 +236,6 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
         int, weight_dequantize_linear_op->Op()->GetAttr("bit_length"));
     int range = ((1 << (bit_length - 1)) - 1);
 
-    auto* any_op2_desc = any_op2->Op();
-
     // get weight tensor
     auto* weight_tensor = scope->GetVar(weight_dequantize_linear_op_x->Name())
                               ->GetMutable<phi::DenseTensor>();
@@ -306,13 +303,16 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
               "weight_scale'numbers should be equal channels."));
 
       if (w_dims.size() == 4) {  // conv2d_transpose
-        std::string quantized_op_type = any_op2->Op()->Type();
-        PADDLE_ENFORCE_EQ(
-            quantized_op_type,
-            "conv2d_transpose",
-            platform::errors::InvalidArgument(
-                "When quant_axis == 1 means use per_channel quant_dequant, "
-                "only conv2d_transpose weight dims equal 4."));
+        for (auto* node : weight_dequantize_linear_op_out->outputs) {
+          if (!node->IsOp()) continue;
+          std::string quantized_op_type = node->Op()->Type();
+          PADDLE_ENFORCE_EQ(
+              quantized_op_type,
+              "conv2d_transpose",
+              platform::errors::InvalidArgument(
+                  "When quant_axis == 1 means use per_channel quant_dequant, "
+                  "only conv2d_transpose weight dims equal 4."));
+        }
         for (int i = 0; i < weight_tensor->numel(); i++) {
           int inner_size = static_cast<int>(w_dims[2] * w_dims[3]);
           weight_data_tmp[i] = static_cast<float>(quantized_weight_data[i]) *
@@ -345,11 +345,15 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     nodes2rm.insert(weight_dequantize_linear_op);
     nodes2rm.insert(weight_dequantize_linear_op_out);
 
-    // relink weight to any_op2
-    any_op2_desc->RenameInput(weight_dequantize_linear_op_out->Var()->Name(),
+    for (auto* node : weight_dequantize_linear_op_out->outputs) {
+      if (!node->IsOp()) continue;
+      // relink weight to any_op2
+      node->Op()->RenameInput(weight_dequantize_linear_op_out->Var()->Name(),
                               weight_dequantize_linear_op_x->Var()->Name());
-    any_op2_desc->Flush();
-    IR_NODE_LINK_TO(weight_dequantize_linear_op_x, any_op2);
+      node->Op()->Flush();
+      IR_NODE_LINK_TO(weight_dequantize_linear_op_x, node);
+    }
+
     GraphSafeRemoveNodes(graph, nodes2rm);
     found_count++;
   };

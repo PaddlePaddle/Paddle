@@ -358,7 +358,9 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   // so we must find all the var_name+id.
   // https://github.com/PaddlePaddle/Paddle/pull/53184
   for (auto *n : graph->Nodes()) {
-    if (n->IsVar() && input_names.count(n->Name())) {
+    if (n->IsVar() &&
+        find(graph_params.begin(), graph_params.end(), n->Name()) !=
+            graph_params.end()) {
       input_names_with_id.insert(
           RenameVarBeUnique(n->Name(), std::to_string(n->id())));
     }

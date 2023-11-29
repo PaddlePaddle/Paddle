@@ -24,7 +24,6 @@ limitations under the License. */
 
 #include <cub/cub.cuh>
 
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fused/attention_layer_norm.h"

@@ -47,6 +47,7 @@ TEST(builder_test, attribute_api) {
   EXPECT_EQ(pir::DoubleAttribute::get(&ctx, 2.0), builder.double_attr(2.0));
   EXPECT_EQ(pir::Int32Attribute::get(&ctx, 2), builder.int32_attr(2));
   EXPECT_EQ(pir::Int64Attribute::get(&ctx, 2), builder.int64_attr(2));
+  EXPECT_EQ(pir::IndexAttribute::get(&ctx, 2), builder.index_attr(2));
   EXPECT_EQ(pir::ArrayAttribute::get(&ctx, std::vector<pir::Attribute>()),
             builder.array_attr({}));
   EXPECT_EQ(pir::PointerAttribute::get(&ctx, nullptr),

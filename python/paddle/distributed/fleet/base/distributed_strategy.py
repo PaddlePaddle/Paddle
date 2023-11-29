@@ -41,6 +41,23 @@ def __non_auto_func_called__(func):
 is_strict_auto = wrap_decorator(__non_auto_func_called__)
 
 
+def get_repeated_msg_dict(msg):
+    res_list = []
+    for item in msg:
+        fields = item.DESCRIPTOR.fields
+        res_dict = {}
+        for f in fields:
+            v = getattr(item, f.name)
+            if (
+                f.label
+                == google.protobuf.descriptor.FieldDescriptor.LABEL_REPEATED
+            ):
+                v = list(v)
+            res_dict[f.name] = v
+        res_list.append(res_dict)
+    return res_list
+
+
 def get_msg_dict(msg):
     res_dict = {}
     fields = msg.DESCRIPTOR.fields
@@ -52,9 +69,38 @@ def get_msg_dict(msg):
         # I guess the type or value of protobuf item is NULL when
         # dealloc.
         if f.label == google.protobuf.descriptor.FieldDescriptor.LABEL_REPEATED:
-            v = list(v)
+            if (
+                f.type
+                != google.protobuf.descriptor.FieldDescriptor.TYPE_MESSAGE
+            ):
+                v = list(v)
+            else:
+                v = get_repeated_msg_dict(v)
         res_dict[f.name] = v
     return res_dict
+
+
+def assign_repeated_msg(msg, config):
+    for key in config:
+        new_item = msg.add()
+        fields = new_item.DESCRIPTOR.fields
+        for f in fields:
+            if key == f.name:
+                # LABEL_OPTIONAL = 1
+                # LABEL_REPEATED = 3
+                # LABEL_REQUIRED = 2
+                if f.label == 3:
+                    if config[f.name] is not None:
+                        new_item = getattr(msg, f.name)
+                        if (
+                            f.type
+                            != google.protobuf.descriptor.FieldDescriptor.TYPE_MESSAGE
+                        ):
+                            new_item.extend(config[f.name])
+                        else:
+                            assign_configs_value(new_item, config[f.name])
+                elif f.label == 1 or f.label == 2:
+                    setattr(msg, f.name, config[f.name])
 
 
 def assign_configs_value(msg, config):
@@ -67,7 +113,15 @@ def assign_configs_value(msg, config):
                 # LABEL_REQUIRED = 2
                 if f.label == 3:
                     if config[f.name] is not None:
-                        getattr(msg, f.name).extend(config[f.name])
+                        new_item = getattr(msg, f.name)
+                        # deal with repeated message
+                        if (
+                            f.type
+                            != google.protobuf.descriptor.FieldDescriptor.TYPE_MESSAGE
+                        ):
+                            new_item.extend(config[f.name])
+                        else:
+                            assign_repeated_msg(new_item, config[f.name])
                 elif f.label == 1 or f.label == 2:
                     setattr(msg, f.name, config[f.name])
 
@@ -929,6 +983,8 @@ class DistributedStrategy:
             custom_black_varnames(list[str]): Users' custom black varibles' names.
 
             use_pure_fp16(bool): Whether to use the pure fp16 training. Default False.
+
+            use_pure_bf16(bool): Whether to use the pure bf16 training. Default False.
 
             use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
                    Default True. Only takes effect when `use_pure_fp16` is turned on.

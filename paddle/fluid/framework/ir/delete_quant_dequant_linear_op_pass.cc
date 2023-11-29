@@ -19,6 +19,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/ir/quantize_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -95,6 +96,8 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph,
       scope,
       platform::errors::InvalidArgument(
           "Scope in DeleteQuantDequantLinearOpPass should not be null."));
+  std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
+
   // Create pattern
   patterns::DeleteQuantDequantLinearOpPattern pattern(gpd.mutable_pattern(),
                                                       pattern_name);
@@ -142,7 +145,11 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph,
       auto* any_op_desc = dequantize_linear_op_out->outputs[i]->Op();
       any_op_desc->SetAttr("Input_scale_" + quantize_linear_op_x->Var()->Name(),
                            input_scale);
-
+      if (!var_quant_scales.count(quantize_linear_op_x->Var()->Name())) {
+        var_quant_scales.insert(
+            std::make_pair(quantize_linear_op_x->Var()->Name(),
+                           std::vector<float>({input_scale})));
+      }
       // link x to any_op2
       any_op_desc->RenameInput(dequantize_linear_op_out->Var()->Name(),
                                quantize_linear_op_x->Var()->Name());
@@ -162,6 +169,9 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph,
   };
   gpd(graph, handler);
   AddStatis(found_count);
+
+  SaveQuantInfoInTheGraph(
+      graph, "has_quant_info", "var_quant_scales", var_quant_scales);
 }
 
 }  // namespace ir

@@ -123,7 +123,12 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
 
   // 0. Verify
   if (op_info) {
-    op_info.VerifySig(op);
+    try {
+      op_info.VerifySig(op);
+    } catch (const pir::IrNotMetException &e) {
+      op->Destroy();
+      throw e;
+    }
   }
   return op;
 }
@@ -197,7 +202,8 @@ Operation::Operation(const AttributeMap &attributes,
       num_results_(num_results),
       num_operands_(num_operands),
       num_regions_(num_regions),
-      num_successors_(num_successors) {}
+      num_successors_(num_successors),
+      id_(GenerateId()) {}
 
 ///
 /// \brief op ouput related public interfaces implementation
@@ -292,6 +298,21 @@ std::string Operation::name() const {
   auto p_name = info_.name();
   return p_name ? p_name : "";
 }
+
+void Operation::Erase() {
+  if (auto *parent = GetParent())
+    parent->erase(*this);
+  else
+    Destroy();
+}
+
+bool Operation::use_empty() {
+  auto res = results();
+  return std::all_of(res.begin(), res.end(), [](OpResult result) {
+    return result.use_empty();
+  });
+}
+
 void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
   IR_ENFORCE(num_results_ == values.size(),
              "the num of result should be the same.");
@@ -334,17 +355,12 @@ int32_t Operation::ComputeOpOperandOffset(uint32_t index) const {
                               sizeof(Operation));
 }
 
-#define COMPONENT_IMPL(component_lower, componnent_upper)                     \
-  componnent_upper##Impl *Operation::component_lower##_impl(uint32_t index) { \
-    int32_t offset = Compute##componnent_upper##Offset(index);                \
-    return reinterpret_cast<componnent_upper##Impl *>(                        \
-        reinterpret_cast<char *>(this) + offset);                             \
-  }                                                                           \
-  const componnent_upper##Impl *Operation::component_lower##_impl(            \
-      uint32_t index) const {                                                 \
-    int32_t offset = Compute##componnent_upper##Offset(index);                \
-    return reinterpret_cast<const componnent_upper##Impl *>(                  \
-        reinterpret_cast<const char *>(this) + offset);                       \
+#define COMPONENT_IMPL(component_lower, componnent_upper)                   \
+  componnent_upper##Impl *Operation::component_lower##_impl(uint32_t index) \
+      const {                                                               \
+    int32_t offset = Compute##componnent_upper##Offset(index);              \
+    return reinterpret_cast<componnent_upper##Impl *>(                      \
+        reinterpret_cast<char *>(const_cast<Operation *>(this)) + offset);  \
   }
 
 COMPONENT_IMPL(op_result, OpResult)

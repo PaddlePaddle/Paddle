@@ -1287,9 +1287,7 @@ class ParameterServerLauncher:
                         assert (
                             len(heter_worker_endpoints)
                             == self.stage_heter_trainer_num[i]
-                        ), "The heter trainer num in stage {} is not equal in args.heter_worker_num and args.heter_workers".format(
-                            i
-                        )
+                        ), f"The heter trainer num in stage {i} is not equal in args.heter_worker_num and args.heter_workers"
 
                         heter_worker_endpoints_ips = [
                             x.strip().split(":")[0]

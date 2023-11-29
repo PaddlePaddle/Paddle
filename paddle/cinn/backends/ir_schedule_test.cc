@@ -690,6 +690,7 @@ void test_unroll(void* _args, int32_t num_args)
   ASSERT_EQ(utils::Trim(target_code), utils::Trim(source_code));
 }
 
+#ifdef CINN_WITH_CUDA
 TEST(IrSchedule, bind) {
   Context::Global().ResetNameId();
   Expr M(32);
@@ -733,6 +734,7 @@ function test_bind (_A, _B)
 }
 )ROC"));
 }
+#endif
 
 TEST(IrSchedule, simple_compute_at) {
   Context::Global().ResetNameId();

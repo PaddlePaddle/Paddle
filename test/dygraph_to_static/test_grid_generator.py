@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_and_compare_with_new_ir,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -133,7 +133,6 @@ class TestGridGenerator(Dy2StTestBase):
     def setUp(self):
         self.x = paddle.uniform(shape=[1, 20, 2], dtype='float32')
 
-    @test_and_compare_with_new_ir(True)
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
 
@@ -148,6 +147,7 @@ class TestGridGenerator(Dy2StTestBase):
         ret = net(self.x, [32, 100])
         return ret.numpy()
 
+    @test_legacy_and_pt_and_pir
     def test_to_static(self):
         st_out = self._run(to_static=True)
         dy_out = self._run(to_static=False)

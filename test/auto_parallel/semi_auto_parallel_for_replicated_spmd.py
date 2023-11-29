@@ -35,13 +35,10 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
         np2 = b.numpy()
         np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
 
-    def create_local_and_dist_tensor_pair(self, np_array, sharding_specs):
+    def create_local_and_dist_tensor_pair(self, np_array, placements):
         local_t = paddle.to_tensor(np_array, dtype=np_array.dtype)
 
-        dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=sharding_specs
-        )
-        dist_t = dist.shard_tensor(np_array, dist_attr=dist_attr)
+        dist_t = dist.shard_tensor(np_array, self._mesh, placements)
 
         local_t.stop_gradient = False
         dist_t.stop_gradient = False
@@ -53,7 +50,7 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
     def test_unbind(self):
         x = np.random.random(size=[2, 8]).astype("float32")
         local_in, dist_in = self.create_local_and_dist_tensor_pair(
-            x, ['x', None]
+            x, [dist.Shard(0)]
         )
         local_out1, local_out2 = paddle.unbind(local_in, axis=0)
         dist_out1, dist_out2 = paddle.unbind(dist_in, axis=0)
@@ -67,20 +64,129 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
         dist_out.backward()
         self.check_tensor_eq(local_in.grad, dist_in.grad)
 
+    # input: paddle::optional<phi::Tensor>
+    # output: phi::Tensor
+    def test_expand_as(self):
+        x1 = np.random.random(size=[2, 8]).astype("float32")
+        x2 = np.random.random(size=[2, 2, 8]).astype("float32")
+        local_in1, dist_in1 = self.create_local_and_dist_tensor_pair(
+            x1, [dist.Shard(0)]
+        )
+        local_in2, dist_in2 = self.create_local_and_dist_tensor_pair(
+            x2, [dist.Replicate()]
+        )
+        local_out = paddle.expand_as(local_in1, local_in2)
+        dist_out = paddle.expand_as(dist_in1, dist_in2)
+        self.check_tensor_eq(local_out, dist_out)
+
+        local_out.backward()
+        dist_out.backward()
+        self.check_tensor_eq(local_in1.grad, dist_in1.grad)
+
+    # input: phi::Tensor
+    # output: inplace paddle::optional<phi::Tensor>
+    def test_adamax(self):
+        dtype = np.float32
+        mp_dtype = np.float32
+        shape = [120, 320]
+
+        beta1 = 0.78
+        beta2 = 0.899
+        epsilon = 1e-5
+        param = np.random.random(shape).astype(dtype)
+        grad = np.random.random(shape).astype(dtype)
+        moment = np.random.random(shape).astype(dtype)
+        inf_norm = np.random.random(shape).astype(dtype)
+        master_param = param.astype(mp_dtype)
+
+        lr = np.array([0.002]).astype("float32")
+        beta1_pow = np.array([beta1**10]).astype("float32")
+
+        local_param, dist_param = self.create_local_and_dist_tensor_pair(
+            param, [dist.Shard(0)]
+        )
+        local_grad, dist_grad = self.create_local_and_dist_tensor_pair(
+            grad, [dist.Shard(0)]
+        )
+        local_lr, dist_lr = self.create_local_and_dist_tensor_pair(
+            lr, [dist.Replicate()]
+        )
+        (
+            local_beta1_pow,
+            dist_beta1_pow,
+        ) = self.create_local_and_dist_tensor_pair(
+            beta1_pow, [dist.Replicate()]
+        )
+        local_moment, dist_moment = self.create_local_and_dist_tensor_pair(
+            moment, [dist.Shard(0)]
+        )
+        local_inf_norm, dist_inf_norm = self.create_local_and_dist_tensor_pair(
+            inf_norm, [dist.Shard(0)]
+        )
+        (
+            local_master_param,
+            dist_master_param,
+        ) = self.create_local_and_dist_tensor_pair(
+            master_param, [dist.Replicate()]
+        )
+
+        (
+            local_param_out,
+            local_moment_out,
+            local_inf_norm_out,
+            local_master_param_out,
+        ) = paddle._C_ops.adamax_(
+            local_param,
+            local_grad,
+            local_lr,
+            local_moment,
+            local_inf_norm,
+            local_beta1_pow,
+            local_master_param,
+            beta1,
+            beta2,
+            epsilon,
+            True,
+        )
+
+        (
+            dist_param_out,
+            dist_moment_out,
+            dist_inf_norm_out,
+            dist_master_param_out,
+        ) = paddle._C_ops.adamax_(
+            dist_param,
+            dist_grad,
+            dist_lr,
+            dist_moment,
+            dist_inf_norm,
+            dist_beta1_pow,
+            dist_master_param,
+            beta1,
+            beta2,
+            epsilon,
+            True,
+        )
+
+        self.check_tensor_eq(local_param_out, dist_param_out)
+        self.check_tensor_eq(local_moment_out, dist_moment_out)
+        self.check_tensor_eq(local_inf_norm_out, dist_inf_norm_out)
+        self.check_tensor_eq(local_master_param_out, dist_master_param_out)
+
     # mutiple operators
     def test_mse_loss(self):
         x = np.random.random(size=[4, 4]).astype(self._dtype)
         y = np.random.random(size=[4]).astype(self._dtype)
         local_in, dist_in = self.create_local_and_dist_tensor_pair(
-            x, ['x', None]
+            x, [dist.Shard(0)]
         )
         local_label, dist_label = self.create_local_and_dist_tensor_pair(
-            y, [None]
+            y, [dist.Replicate()]
         )
 
-        mes_loss = paddle.nn.loss.MSELoss()
-        local_out = mes_loss(local_in, local_label)
-        dist_out = mes_loss(dist_in, dist_label)
+        mse_loss = paddle.nn.loss.MSELoss()
+        local_out = mse_loss(local_in, local_label)
+        dist_out = mse_loss(dist_in, dist_label)
         self.check_tensor_eq(local_out, dist_out)
 
         # test backward
@@ -100,8 +206,10 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
-        self.test_mse_loss()
         self.test_unbind()
+        self.test_expand_as()
+        self.test_adamax()
+        self.test_mse_loss()
 
 
 if __name__ == '__main__':

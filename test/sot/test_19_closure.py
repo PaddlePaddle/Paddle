@@ -15,9 +15,10 @@
 import inspect
 import unittest
 
-from test_case_base import TestCaseBase, strict_mode_guard
+from test_case_base import TestCaseBase
 
 import paddle
+from paddle.jit.sot.utils import strict_mode_guard
 
 
 def foo(x: int, y: paddle.Tensor):
@@ -180,7 +181,7 @@ class TestExecutor(TestCaseBase):
         self.assert_results(foo5, paddle.to_tensor(2))
         self.assert_results(foo6, paddle.to_tensor(2))
         self.assert_results(numpy_sum, paddle.to_tensor(1))
-        with strict_mode_guard(0):
+        with strict_mode_guard(False):
             self.assert_results(
                 lambda_closure, paddle.to_tensor(2), paddle.to_tensor(1)
             )

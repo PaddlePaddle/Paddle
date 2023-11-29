@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import unittest
 
-from test_case_base import TestCaseBase, strict_mode_guard
+from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit import sot
@@ -27,6 +27,7 @@ from paddle.jit.sot import symbolic_translate
 from paddle.jit.sot.opcode_translator.executor.executor_cache import (
     OpcodeExecutorCache,
 )
+from paddle.jit.sot.utils import strict_mode_guard
 
 
 def gener():
@@ -185,6 +186,7 @@ class TestForLoop(TestCaseBase):
         paddle_output = for_iter(a, gener())
         self.assert_nest_match(sym_output, paddle_output)
 
+    @strict_mode_guard(False)
     def test_for_break(self):
         a = paddle.to_tensor(1)
         sym_output = symbolic_translate(for_break)(a, gener())
@@ -294,5 +296,4 @@ class TestUndefinedVarInRiskyCodes(TestCaseBase):
 
 
 if __name__ == "__main__":
-    with strict_mode_guard(0):
-        unittest.main()
+    unittest.main()

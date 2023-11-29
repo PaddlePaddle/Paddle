@@ -34,7 +34,9 @@
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor);
+PHI_DECLARE_bool(enable_pir_with_pt_in_dy2st);
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -190,7 +192,7 @@ class InterpreterCoreInfoCache {
   static InterpreterCoreInfoCache& Instance();
 
   bool Has(int64_t program_id, const framework::Scope* scope, bool is_grad) {
-    if (FLAGS_enable_new_ir_in_executor) {
+    if (FLAGS_enable_pir_in_executor || FLAGS_enable_pir_with_pt_in_dy2st) {
       int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
       program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
     }
@@ -201,7 +203,7 @@ class InterpreterCoreInfoCache {
   InterpreterCoreInfo::CacheValue& GetMutable(int64_t program_id,
                                               const framework::Scope* scope,
                                               bool is_grad) {
-    if (FLAGS_enable_new_ir_in_executor) {
+    if (FLAGS_enable_pir_in_executor || FLAGS_enable_pir_with_pt_in_dy2st) {
       int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
       program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
     }
@@ -243,7 +245,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     int64_t program_id,
     framework::Scope* scope);
 
-std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
+std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     std::unique_ptr<::pir::Program> ir_prog,
     const platform::Place& place,
     bool is_grad,

@@ -19,20 +19,8 @@
 namespace pir {
 
 void *AbstractType::GetInterfaceImpl(TypeId interface_id) const {
-  if (interface_map_.empty()) {
-    VLOG(6) << "Interface map is empty!";
-    return nullptr;
-  } else {
-    for (size_t i = 0; i < interface_map_.size(); ++i) {
-      if (interface_map_[i].type_id() == interface_id)
-        return interface_map_[i].model();
-    }
-    VLOG(6) << "Find no interface!";
-    return nullptr;
-  }
-  // TODO(zhangbo63): Add LookUp method like:
-  // return ir::detail::LookUp<AbstractType>(
-  //     interface_id, num_interfaces_, num_traits_, this);
+  auto iter = interface_set_.find(interface_id);
+  return iter == interface_set_.end() ? nullptr : iter->model();
 }
 
 }  // namespace pir

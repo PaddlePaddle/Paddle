@@ -1212,8 +1212,8 @@ void scatter_grad(const Tensor& index,
 
 template <typename T>
 void batch_norm_grad(const Tensor& x,
-                     const Tensor& scale,
-                     const Tensor& bias,
+                     const paddle::optional<Tensor>& scale,
+                     const paddle::optional<Tensor>& bias,
                      const paddle::optional<Tensor>& mean_out,
                      const paddle::optional<Tensor>& variance_out,
                      const Tensor& saved_mean,
@@ -1306,14 +1306,20 @@ void batch_norm_grad(const Tensor& x,
 
       if (x_grad) {
         if (use_global_stats) {
-          auto nhwc_x_grad = scale * rsqrt_var * nhwc_out_grad;
+          auto nhwc_x_grad = rsqrt_var * nhwc_out_grad;
+          if (scale) {
+            nhwc_x_grad = scale.get() * nhwc_x_grad;
+          }
           auto nchw_x_grad = transpose<T>(nhwc_x_grad, nhwc_to_nchw_dim);
           if (need_cast) {
             nchw_x_grad = cast<T>(nchw_x_grad, x.dtype());
           }
           set_output<T>(nchw_x_grad, x_grad);
         } else {
-          auto part1 = scale * rsqrt_var;
+          auto part1 = rsqrt_var;
+          if (scale) {
+            part1 = scale.get() * part1;
+          }
           auto mean_temp1 = nhwc_out_grad_sum / nhw;
           auto mean_temp2 = sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
           auto part2 =
@@ -1343,14 +1349,19 @@ void batch_norm_grad(const Tensor& x,
         auto nhwc_sum_dout_mul_diff = sum<T>(
             out_grad_data * (x_data - mean_data), reduce_axis, dtype, false);
         if (use_global_stats) {
-          auto x_grad_data = scale * rsqrt_var * out_grad_data;
+          auto x_grad_data = rsqrt_var * out_grad_data;
+          if (scale) {
+            x_grad_data = scale.get() * x_grad_data;
+          }
           if (need_cast) {
             x_grad_data = cast<T>(x_grad_data, x.dtype());
           }
           set_output<T>(x_grad_data, x_grad);
         } else {
-          auto part1 = scale * rsqrt_var;
-
+          auto part1 = rsqrt_var;
+          if (scale) {
+            part1 = scale.get() * part1;
+          }
           auto mean_temp1 = out_grad_data_sum / nhw;
           auto mean_temp2 =
               nhwc_sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;

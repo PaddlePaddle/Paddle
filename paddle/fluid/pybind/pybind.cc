@@ -244,6 +244,14 @@ bool IsCompiledWithCUDA() {
 #endif
 }
 
+bool IsCompiledWithDISTRIBUTE() {
+#if !defined(PADDLE_WITH_DISTRIBUTE)
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithNCCL() {
 #ifdef PADDLE_WITH_NCCL
   return true;
@@ -526,18 +534,6 @@ static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
   }
 }
 
-template <typename T>
-static T PyObjectCast(PyObject *obj) {
-  try {
-    return py::cast<T>(py::handle(obj));
-  } catch (py::cast_error &) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Python object is not type of %s, the real type is %s",
-        typeid(T).name(),
-        obj->ob_type->tp_name));
-  }
-}
-
 using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
 
 static std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseList(
@@ -695,6 +691,8 @@ void BindVjp(pybind11::module *m) {
   m->def(
       "call_vjp",
       [](pir::Operation &fwd_op,
+         const std::vector<std::vector<pir::Value>> &inputs,
+         const std::vector<std::vector<pir::OpResult>> &outputs,
          const std::vector<std::vector<pir::OpResult>> &out_grads,
          const std::vector<std::vector<bool>> &stop_gradients) {
         py::list res;
@@ -704,8 +702,8 @@ void BindVjp(pybind11::module *m) {
             vjp_interface,
             phi::errors::InvalidArgument(
                 "The vjp function is not registered in %s op ", fwd_op.name()));
-        std::vector<std::vector<pir::OpResult>> vjp_res =
-            vjp_interface.Vjp(&fwd_op, out_grads, stop_gradients);
+        std::vector<std::vector<pir::OpResult>> vjp_res = vjp_interface.Vjp(
+            &fwd_op, inputs, outputs, out_grads, stop_gradients);
         PADDLE_ENFORCE_EQ(
             stop_gradients.size(),
             vjp_res.size(),
@@ -812,6 +810,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindJit(&m);
   BindEvalFrame(&m);
   BindCustomDevicePy(&m);
+  BindEagerUtils(m.ptr());
 
   // Not used, just make sure cpu_info.cc is linked.
   phi::backends::cpu::CpuTotalPhysicalMemory();
@@ -2010,11 +2009,13 @@ All parameter, weight, gradient are variables in Paddle.
                     const interpreter::Plan &,
                     Scope *>())
       .def("run",
-           [](StandaloneExecutor &self, std::vector<std::string> feed_names) {
+           [](StandaloneExecutor &self,
+              std::vector<std::string> feed_names,
+              bool enable_job_schedule_profiler = false) {
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
-               ret = self.Run(feed_names);
+               ret = self.Run(feed_names, enable_job_schedule_profiler);
              }
              return py::cast(std::move(ret));
            });
@@ -2024,8 +2025,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<const std::string &>(), py::arg("type"))
       .def("micro_batch_id", &framework::interpreter::Job::MicroBatchId)
       .def("type", &framework::interpreter::Job::Type)
-      .def("set_col_attr_for_fetch_op",
-           &framework::interpreter::Job::SetColAttrForFetchOp)
       .def("set_micro_batch_id", &framework::interpreter::Job::SetMicroBatchId)
       .def("set_skip_gc_vars", &framework::interpreter::Job::SetSkipGcVars);
 
@@ -2033,7 +2032,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def(
           py::init<
               const std::vector<std::shared_ptr<framework::interpreter::Job>> &,
-              const std::unordered_map<std::string, framework::ProgramDesc *>
+              const std::unordered_map<std::string,
+                                       std::shared_ptr<framework::ProgramDesc>>
                   &>(),
           py::arg("job_list"),
           py::arg("type_to_program"))
@@ -2045,7 +2045,10 @@ All parameter, weight, gradient are variables in Paddle.
           py::arg("job_list"),
           py::arg("type_to_ir_program"))
       .def("job_list", &framework::interpreter::Plan::JobList)
+      .def("job_types", &framework::interpreter::Plan::JobTypes)
       .def("micro_batch_num", &framework::interpreter::Plan::MicroBatchNum)
+      .def("set_ir_program", &framework::interpreter::Plan::SetIrProgram)
+      .def("ir_program", &framework::interpreter::Plan::IrProgram)
       .def("program", &framework::interpreter::Plan::Program);
 
   m.def("init_gflags", framework::InitGflags);
@@ -2085,6 +2088,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mpi", IsCompiledWithMPI);
   m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
+  m.def("is_compiled_with_distribute", IsCompiledWithDISTRIBUTE);
   m.def("is_run_with_cinn", IsRunWithCINN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
@@ -2411,6 +2415,10 @@ All parameter, weight, gradient are variables in Paddle.
 
 #ifdef PADDLE_WITH_IPU
   m.def("get_ipu_device_count", platform::GetIPUDeviceCount);
+#endif
+
+#ifdef PADDLE_WITH_XPU
+  m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
 #endif
 
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
@@ -2975,7 +2983,7 @@ All parameter, weight, gradient are variables in Paddle.
   GetAllWorkerInfos(&m);
 #endif
 
-  BindPIR(&m);
+  BindPir(&m);
   BindVjp(&m);
   BindDecomp(&m);
 }

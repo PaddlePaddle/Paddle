@@ -33,11 +33,12 @@ from .batch import batch
 # the illogical implement in the monkey-patch methods later.
 from .framework import monkey_patch_variable
 from .framework import monkey_patch_math_tensor
-from .pir import monkey_patch_opresult
+from .pir import monkey_patch_opresult, monkey_patch_program
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
 monkey_patch_opresult()
+monkey_patch_program()
 
 from .framework import (
     disable_signal_handler,
@@ -71,7 +72,6 @@ Tensor = framework.core.eager.Tensor
 Tensor.__qualname__ = 'Tensor'
 
 import paddle.distributed.fleet  # noqa: F401
-
 from paddle import (  # noqa: F401
     distributed,
     sysconfig,
@@ -113,6 +113,7 @@ from .tensor.creation import (
     create_parameter,
     to_tensor,
     diag,
+    diag_embed,
     diagflat,
     eye,
     linspace,
@@ -198,6 +199,9 @@ from .tensor.logic import (  # noqa: F401
 
 
 from .tensor.manipulation import (  # noqa: F401
+    atleast_1d,
+    atleast_2d,
+    atleast_3d,
     cast,
     cast_,
     concat,
@@ -252,6 +256,11 @@ from .tensor.manipulation import (  # noqa: F401
     view,
     view_as,
     unfold,
+    masked_fill,
+    masked_fill_,
+    index_fill,
+    index_fill_,
+    diagonal_scatter,
 )
 
 from .tensor.math import (  # noqa: F401
@@ -310,6 +319,8 @@ from .tensor.math import (  # noqa: F401
     square_,
     stanh,
     sum,
+    multigammaln,
+    multigammaln_,
     nan_to_num,
     nan_to_num_,
     nansum,
@@ -446,6 +457,8 @@ from .tensor.to_string import set_printoptions
 
 from .tensor.einsum import einsum
 
+from .framework import async_save, clear_async_save_task_queue  # noqa: F401
+
 from .framework.random import (
     seed,
     get_cuda_rng_state,
@@ -499,6 +512,7 @@ from .device import (  # noqa: F401
     is_compiled_with_xpu,
     is_compiled_with_ipu,
     is_compiled_with_cinn,
+    is_compiled_with_distribute,
     is_compiled_with_cuda,
     is_compiled_with_rocm,
     is_compiled_with_custom_device,
@@ -568,6 +582,7 @@ __all__ = [
     'subtract',
     'diag',
     'diagflat',
+    'diag_embed',
     'isnan',
     'scatter_nd_add',
     'unstack',
@@ -827,6 +842,9 @@ __all__ = [
     'logspace',
     'reshape',
     'reshape_',
+    'atleast_1d',
+    'atleast_2d',
+    'atleast_3d',
     'reverse',
     'nonzero',
     'CUDAPinnedPlace',
@@ -875,6 +893,8 @@ __all__ = [
     'renorm_',
     'take_along_axis',
     'put_along_axis',
+    'multigammaln',
+    'multigammaln_',
     'nan_to_num',
     'nan_to_num_',
     'heaviside',
@@ -906,6 +926,11 @@ __all__ = [
     'i1e',
     'polygamma',
     'polygamma_',
+    'masked_fill',
+    'masked_fill_',
     'hypot',
     'hypot_',
+    'index_fill',
+    "index_fill_",
+    'diagonal_scatter',
 ]

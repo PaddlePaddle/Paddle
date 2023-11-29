@@ -24,13 +24,8 @@
 
 
 vjp_interface_black_list = [
-    'frobenius_norm',
-    'write_to_array',
-    'fused_attention',
-    'fused_feedforward',
-    'set_value',
-    'set_value_with_tensor',
     'silu_grad',
     'fused_dropout_add',
     'fused_rotary_position_embedding',
+    'fused_bias_dropout_residual_layer_norm',
 ]

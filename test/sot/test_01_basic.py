@@ -14,9 +14,10 @@
 
 import unittest
 
-from test_case_base import TestCaseBase, strict_mode_guard
+from test_case_base import TestCaseBase
 
 import paddle
+from paddle.jit.sot.utils import strict_mode_guard
 
 
 def foo(x: int, y: paddle.Tensor):
@@ -34,7 +35,7 @@ def numpy_add(x, y):
 
 
 class TestNumpyAdd(TestCaseBase):
-    @strict_mode_guard(0)
+    @strict_mode_guard(False)
     def test_numpy_add(self):
         x = paddle.to_tensor([2])
         y = paddle.to_tensor([3])

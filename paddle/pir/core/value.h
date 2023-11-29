@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/pir/core/iterator.h"
 #include "paddle/pir/core/op_operand.h"
 #include "paddle/pir/core/type.h"
-#include "paddle/pir/core/use_iterator.h"
 
 namespace pir {
 class Operation;
@@ -59,6 +59,16 @@ class IR_API Value {
 
   Type type() const;
 
+  /// If this value is the result of an operation, return the operation that
+  /// defines it, else return nullptr;
+  Operation *defining_op() const;
+
+  template <typename OpTy>
+  OpTy defining_op() const {
+    /// It is safety even if defining_op() return nullptr.
+    return OpTy::dyn_cast(defining_op());
+  }
+
   void set_type(Type type);
 
   std::string PrintUdChain();
@@ -93,7 +103,6 @@ class IR_API Value {
  protected:
   detail::ValueImpl *impl_{nullptr};
 };
-
 }  // namespace pir
 
 namespace std {

@@ -102,6 +102,7 @@ Fused subgraph:
   */
   void LinkAddActMax(ir::Graph* graph) const;
 
+  bool IsQuant(Node* weight_node) const;
   const std::string name_scope_{"link_xpu_op_max_pass"};
 };
 

@@ -24,6 +24,7 @@
 namespace pir {
 class Builder;
 class IrPrinter;
+class Block;
 
 class IR_API OpBase {
  public:
@@ -46,6 +47,8 @@ class IR_API OpBase {
 
   uint32_t num_operands() const { return operation()->num_operands(); }
 
+  Block *parent() const { return operation()->GetParent(); }
+
   const AttributeMap &attributes() const { return operation()->attributes(); }
 
   Value operand_source(uint32_t index) const {
@@ -54,12 +57,12 @@ class IR_API OpBase {
 
   OpResult result(uint32_t index) const { return operation()->result(index); }
 
-  pir::Attribute attribute(const std::string &name) {
+  pir::Attribute attribute(const std::string &name) const {
     return operation()->attribute(name);
   }
 
   template <typename T>
-  T attribute(const std::string &name) {
+  T attribute(const std::string &name) const {
     return operation()->attribute<T>(name);
   }
 
@@ -67,7 +70,7 @@ class IR_API OpBase {
 
   void VerifyRegion() {}
 
- private:
+ protected:
   Operation *operation_;  // Not owned
 };
 
@@ -141,6 +144,7 @@ class Op : public OpBase {
   using InterfaceList =
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
+  // TODO(zhangbopd): Use classof
   static ConcreteOp dyn_cast(Operation *op) {
     if (op && op->info().id() == TypeId::get<ConcreteOp>()) {
       return ConcreteOp(op);
@@ -152,8 +156,8 @@ class Op : public OpBase {
     return op && op->info().id() == TypeId::get<ConcreteOp>();
   }
 
-  static std::vector<InterfaceValue> GetInterfaceMap() {
-    return pir::detail::GetInterfaceMap<ConcreteOp, InterfaceList>();
+  static std::set<InterfaceValue> interface_set() {
+    return pir::detail::GetInterfaceSet<ConcreteOp, InterfaceList>();
   }
 
   static std::vector<TypeId> GetTraitSet() {

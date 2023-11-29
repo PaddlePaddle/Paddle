@@ -20,7 +20,7 @@
 namespace pir {
 
 // Helper class to query and manipulate shape constraint IR on buffer level.
-class ShapeAnalysis {
+class IR_API ShapeAnalysis {
  public:
   virtual ~ShapeAnalysis() = default;
 
@@ -50,16 +50,18 @@ class ShapeAnalysis {
 
 // A subclass to impement `ShapeAnalysis` on buffer level.
 // The implementation is based on shape constraint ir.
-class ShapeConstraintIRAnalysis : public ShapeAnalysis {
+class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
  public:
   explicit ShapeConstraintIRAnalysis(ModuleOp m);
-
-  // auto-save updated shape constriant ir when destroying.
+  // Auto-save updated shape constriant ir when destroying.
   ~ShapeConstraintIRAnalysis();
 
   // Returns the `SymbolicDimMgr` this object holds.
   SymbolicDimMgr& symbolicDimMgr() { return mgr_; }
   const SymbolicDimMgr& symbolicDimMgr() const { return mgr_; }
+
+  const std::vector<shape::SymbolicDimOp>&
+  GetOrCreateSymbolicDimsForRankedValue(const Value& value);
 
   // Returns true if the two value have the same symbolic shape.
   bool IsShapeEqual(Value lhs, Value rhs) override;
@@ -69,15 +71,43 @@ class ShapeConstraintIRAnalysis : public ShapeAnalysis {
                       Value rhs,
                       std::vector<int> rhs_dim_idxs) override;
 
- private:
+ protected:
   // The operation this analysis runs on.
   ModuleOp m_;
   // The `SymbolicDimMgr` this analysis holds.
   SymbolicDimMgr mgr_;
   // Map a ranked memref value to an array of symbolicDims, each represents one
   // dimension size of the memref value.
-  std::unordered_map<Value, std::vector<dialect::SymbolicDim>>
+  std::unordered_map<Value, std::vector<shape::SymbolicDimOp>>
       value_to_sym_dims_;
+};
+
+class MockShapeConstraintIRAnalysis : public ShapeConstraintIRAnalysis {
+ public:
+  explicit MockShapeConstraintIRAnalysis(
+      std::unique_ptr<pir::Program>&& program)
+      : ShapeConstraintIRAnalysis(program->module_op()),
+        program_(std::move(program)) {}
+
+  explicit MockShapeConstraintIRAnalysis(pir::IrContext* ctx)
+      : MockShapeConstraintIRAnalysis(std::make_unique<pir::Program>(ctx)) {}
+
+  MockShapeConstraintIRAnalysis(MockShapeConstraintIRAnalysis&& other) = delete;
+  MockShapeConstraintIRAnalysis(const MockShapeConstraintIRAnalysis& other) =
+      delete;
+
+ private:
+  std::unique_ptr<pir::Program> program_;
+};
+
+class IR_API ShapeAnalysisManager {
+ public:
+  static ShapeAnalysisManager& Instance();
+  ShapeConstraintIRAnalysis& Get(pir::Program* program);
+
+ private:
+  ShapeAnalysisManager() {}
+  std::unordered_map<uint64_t, ShapeConstraintIRAnalysis> tables_;
 };
 
 }  // namespace pir

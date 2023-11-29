@@ -189,7 +189,8 @@ def runtime_main(test_class, col_type):
     args["reduce_type"] = os.getenv("REDUCE_TYPE")
     args["use_comm_context"] = bool(int(os.getenv("USE_COMM_CONTEXT", "0")))
     args["dynamic_static_unified_comm"] = bool(
-        int(os.getenv("FLAGS_dynamic_static_unified_comm", "0"))
+        os.getenv("FLAGS_dynamic_static_unified_comm", "false").lower()
+        == "true"
     )
     model.run_trainer(args)
 

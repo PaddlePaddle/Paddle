@@ -23,6 +23,8 @@ from paddle.distributed.auto_parallel.interface import (
 )
 from paddle.framework import core
 
+from .placement_type import get_shard_spec
+
 # There are the auto parallel API of the unified version of dynamic and static mode.
 # Some APIs have the same name with the previous APIs implementation, which are
 # a temporary state, and the APIs here will eventually be used.
@@ -92,7 +94,7 @@ class DistAttr(core.TensorDistAttr):
 
 
 def shard_tensor(
-    data, dtype=None, place=None, stop_gradient=True, dist_attr=None
+    data, mesh, placements, dtype=None, place=None, stop_gradient=True
 ):
     """
     Constructs a ``paddle.Tensor`` with distributed attributes from ``data``,
@@ -103,6 +105,9 @@ def shard_tensor(
     Args:
         data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.
             Can be a scalar, list, tuple, numpy.ndarray, paddle.Tensor.
+        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+        placements(list[paddle.distributed.Placement]): the placements describe how to place the tensor on ProcessMesh, it can
+            be Shard, Replicate and Partial.
         dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
             'complex64' , 'complex128'. Default: None, infers dtype from ``data``
@@ -111,7 +116,6 @@ def shard_tensor(
             CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
             string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs.
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
-        dist_attr(paddle.distributed.DistAttr): Specify how tensors are distributed or sliced on ProcessMesh.
 
     Returns:
         Tensor: A Tensor constructed from ``data`` with distributed attributes.
@@ -123,7 +127,6 @@ def shard_tensor(
             >>> import paddle.distributed as dist
 
             >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
-            >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
 
             >>> # dense tensor
             >>> a = paddle.to_tensor([[1,2,3],
@@ -131,44 +134,49 @@ def shard_tensor(
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> # distributed tensor
-            >>> d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+            >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Shard(0), dist.Shard(1)])
 
             >>> print(d_tensor)
 
     """
+    if place is None:
+        place = paddle.framework._current_expected_place()
+    place = paddle.framework._get_paddle_place(place)
+
     # 1. create dense tensor
     # `paddle.to_tensor` supports both dynamic and static mode
     tensor = paddle.to_tensor(
         data, dtype=dtype, place=place, stop_gradient=stop_gradient
     )
 
-    # 2. create dist tensor
-    assert len(dist_attr.dims_mapping) == len(
-        list(tensor.shape)
-    ), "The length of sharding_specs must be same as the shape of the input tensor."
-
     if paddle.in_dynamic_mode():
         # here the dist tensor is deep copy constructed
         if isinstance(data, EagerParamBase):
             return EagerParamBase.from_tensor(
-                tensor, dist_attr=dist_attr, **tensor.__dict__
+                tensor,
+                process_mesh=mesh,
+                placements=placements,
+                **tensor.__dict__
             )
         else:
-            return paddle.Tensor(tensor, dist_attr=dist_attr)
+            return paddle.Tensor(
+                tensor, process_mesh=mesh, placements=placements, place=place
+            )
     else:
         # TODO(zhiqiu): we need to refine the static shard_tensor
-        return shard_tensor_static(
-            tensor, dist_attr.process_mesh, dist_attr.sharding_specs
-        )
+        sharding_specs = get_shard_spec(mesh, placements, tensor.ndim)
+        return shard_tensor_static(tensor, mesh, sharding_specs)
 
 
-def dtensor_from_fn(fn, dist_attr, *args, **kwargs):
+def dtensor_from_fn(fn, mesh, placements, *args, **kwargs):
     """
     Construct a Distributed Tensor from a function of arguments.
 
     Args:
         fn (callable): A callable function that takes arguments of Distributed Tensor and returns tensor.
-        dist_attr (paddle.distributed.DistAttr): Specify how tensors are distributed or sliced on ProcessMesh.
+        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+        placements(list[paddle.distributed.Placement]): the placements describe how to place the tensor on ProcessMesh, it can
+            be Shard, Replicate and Partial.
         *args (tuple): A tuple of arguments to be passed to the ``fn`` function.
         **kwargs (dict): A dict of arguments to be passed to the ``fn`` function.
 
@@ -182,26 +190,27 @@ def dtensor_from_fn(fn, dist_attr, *args, **kwargs):
             >>> import paddle.distributed as dist
             >>> # Create a distributed attribute
             >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-            >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None])
             >>> # Call the function dtensor_from_fn with dist_attr parameter
-            >>> d_tensor = dist.dtensor_from_fn(paddle.ones, dist_attr=dist_attr, shape=[1])
+            >>> d_tensor = dist.dtensor_from_fn(paddle.ones, mesh, [dist.Replicate()], shape=[1])
             >>> print(d_tensor)
 
     """
     tensor = fn(*args, **kwargs)
-    return shard_tensor(tensor, dist_attr=dist_attr)
+    return shard_tensor(tensor, mesh, placements)
 
 
 # Part3: Data conversion related APIs
 
 
-def reshard(dist_tensor, dist_attr):
+def reshard(dist_tensor, mesh, placements):
     """
     Reshard a distributed ``paddle.Tensor`` with given distributed attributes.
 
     Args:
         dist_tensor(Tensor): the distributed tensor to be resharded.
-        dist_attr(paddle.distributed.DistAttr): Specify how tensors are distributed or sliced on ProcessMesh.
+        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+        placements(list[paddle.distributed.Placement]): the placements describe how to place the tensor on ProcessMesh, it can
+            be Shard, Replicate and Partial.
 
     Returns:
         Tensor: A Distributed Tensor reshared with distributed attributes.
@@ -212,28 +221,33 @@ def reshard(dist_tensor, dist_attr):
             >>> import paddle
             >>> import paddle.distributed as dist
 
-            >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
-            >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
-
-            >>> out_mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
-            >>> out_dist_attr = dist.DistAttr(mesh=out_mesh, sharding_specs=[None, None])
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
             >>> # dense tensor
-            >>> a = paddle.to_tensor([[1,2,3],
-            ...                       [5,6,7]])
+            >>> a = paddle.ones([10, 20])
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> # distributed tensor
-            >>> d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+            >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Partial()])
 
-            >>> out_d_tensor = dist.reshard(d_tensor, out_dist_attr)
+            >>> out_d_tensor = dist.reshard(d_tensor, mesh, [dist.Replicate()])
 
-            >>> print(d_tensor)
             >>> print(out_d_tensor)
 
     """
 
     if paddle.framework.in_dynamic_mode():
+        # TODO(LiYuRio): static logic here, reshard should be changed for dygraph logic
+        # when reshard has been changed align dygraph logic, delete it.
+        sharding_specs = get_shard_spec(mesh, placements, dist_tensor.ndim)
+        dist_attr = DistAttr(mesh, sharding_specs)
+        partial_dims = []
+        for i, p in enumerate(placements):
+            if isinstance(p, dist.Partial):
+                partial_dims.append(i)
+        if len(partial_dims) > 0:
+            dist_attr._set_partial_dims(partial_dims)
+
         return paddle.base.core.reshard(dist_tensor, dist_attr)
     else:
         # TODO(GhostScreaming): Support static DistTensor later.
@@ -308,9 +322,8 @@ def shard_layer(
             ...         return self.fc2(self.fc1(input))
 
             >>> def shard_fn(layer_name, layer, process_mesh):
-            ...     dist_attr = dist.DistAttr(mesh=process_mesh, sharding_specs=['x', None])
             ...     if layer_name == 'fc1':
-            ...         layer.weight = dist.shard_tensor(layer.weight, dist_attr=dist_attr)
+            ...         layer.weight = dist.shard_tensor(layer.weight, process_mesh, [dist.Shard(0)])
 
             >>> layer = MLP()
             >>> layer = dist.shard_layer(layer, mesh, shard_fn)
@@ -335,26 +348,26 @@ def shard_layer(
     ) -> None:
         for key, param in layer._parameters.items():
             if param is not None and not param.is_dist():
-                replicated_dist_attr = dist.DistAttr(
-                    mesh=mesh,
-                    sharding_specs=[None for _ in range(len(param.shape))],
-                )
+                placements = [
+                    paddle.distributed.Replicate()
+                    for _ in range(len(param.shape))
+                ]
                 layer.add_parameter(
                     key,
-                    shard_tensor(param, dist_attr=replicated_dist_attr),
+                    shard_tensor(param, mesh, placements),
                 )
             else:
                 # do nothing, the dist parameters has already been shard by shard_fn
                 pass
         for key, buffer in layer._buffers.items():
             if buffer is not None and not buffer.is_dist():
-                replicated_dist_attr = dist.DistAttr(
-                    mesh=mesh,
-                    sharding_specs=[None for _ in range(len(buffer.shape))],
-                )
+                placements = [
+                    paddle.distributed.Replicate()
+                    for _ in range(len(buffer.shape))
+                ]
                 layer.register_buffer(
                     key,
-                    shard_tensor(buffer, dist_attr=replicated_dist_attr),
+                    shard_tensor(buffer, mesh, placements),
                 )
             else:
                 # do nothing, the dist buffers has already been shard by shard_fn

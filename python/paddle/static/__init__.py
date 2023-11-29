@@ -13,71 +13,61 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-from . import amp  # noqa: F401
-from . import nn  # noqa: F401
-
-from .nn.common import py_func  # noqa: F401
-from .nn.common import ExponentialMovingAverage  # noqa: F401
-
-from .io import save_inference_model  # noqa: F401
-from .io import load_inference_model  # noqa: F401
-from .io import deserialize_persistables  # noqa: F401
-from .io import serialize_persistables  # noqa: F401
-from .io import deserialize_program  # noqa: F401
-from .io import serialize_program  # noqa: F401
-from .io import load_from_file  # noqa: F401
-from .io import save_to_file  # noqa: F401
-from .io import normalize_program  # noqa: F401
-from .io import is_persistable  # noqa: F401
-from .io import save_vars  # noqa: F401
-from .io import load_vars  # noqa: F401
-from .io import save  # noqa: F401
-from .io import load  # noqa: F401
-from .io import load_program_state  # noqa: F401
-from .io import set_program_state  # noqa: F401
 from ..base import Scope  # noqa: F401
-from .input import data  # noqa: F401
-from .input import InputSpec  # noqa: F401
-from .input import setitem  # noqa: F401
-
-from ..tensor.creation import create_parameter  # noqa: F401
-from ..tensor.creation import create_global_var  # noqa: F401
-
-from ..base.executor import Executor  # noqa: F401
-from ..base.executor import global_scope  # noqa: F401
-from ..base.executor import scope_guard  # noqa: F401
-from ..base.backward import append_backward  # noqa: F401
-from ..base.backward import gradients  # noqa: F401
-from ..base.compiler import BuildStrategy  # noqa: F401
-from ..base.compiler import CompiledProgram  # noqa: F401
-from ..base.compiler import IpuCompiledProgram  # noqa: F401
-from ..base.compiler import IpuStrategy  # noqa: F401
-from ..base.compiler import ExecutionStrategy  # noqa: F401
-from ..base.framework import default_main_program  # noqa: F401
-from ..base.framework import default_startup_program  # noqa: F401
-from ..base.framework import device_guard  # noqa: F401
-
-from ..base.framework import name_scope  # noqa: F401
-from ..base.framework import cpu_places  # noqa: F401
-from ..base.framework import cuda_places  # noqa: F401
-from ..base.framework import xpu_places  # noqa: F401
-from ..base.framework import Variable  # noqa: F401
-from ..base.framework import Operator  # noqa: F401
-from ..base.framework import Parameter  # noqa: F401
-from ..base.framework import ipu_shard_guard  # noqa: F401
-from ..base.framework import set_ipu_shard  # noqa: F401
-from .nn.control_flow import Print  # noqa: F401
-from ..base.param_attr import WeightNormParamAttr  # noqa: F401
-
-
-from .nn.metric import auc  # noqa: F401
-from .nn.metric import accuracy  # noqa: F401
-from .nn.metric import ctr_metric_bundle  # noqa: F401
-
-from ..base.framework import program_guard  # noqa: F401
-from ..base.framework import Program  # noqa: F401
+from ..base.backward import append_backward, gradients
+from ..base.compiler import (
+    BuildStrategy,
+    CompiledProgram,
+    ExecutionStrategy,
+    IpuCompiledProgram,
+    IpuStrategy,
+)
+from ..base.executor import Executor, global_scope, scope_guard
+from ..base.framework import (
+    Operator,  # noqa: F401
+    Parameter,  # noqa: F401
+    Program,
+    Variable,
+    cpu_places,
+    cuda_places,
+    default_main_program,
+    default_startup_program,
+    device_guard,
+    ipu_shard_guard,
+    name_scope,
+    program_guard,
+    set_ipu_shard,
+    xpu_places,
+)
+from ..base.param_attr import WeightNormParamAttr
+from ..tensor.creation import create_global_var, create_parameter
+from . import amp, nn  # noqa: F401
+from .input import (
+    InputSpec,
+    data,
+    setitem,  # noqa: F401
+)
+from .io import (
+    deserialize_persistables,
+    deserialize_program,
+    is_persistable,  # noqa: F401
+    load,
+    load_from_file,
+    load_inference_model,
+    load_program_state,
+    load_vars,  # noqa: F401
+    normalize_program,
+    save,
+    save_inference_model,
+    save_to_file,
+    save_vars,  # noqa: F401
+    serialize_persistables,
+    serialize_program,
+    set_program_state,
+)
+from .nn.common import ExponentialMovingAverage, py_func
+from .nn.control_flow import Print
+from .nn.metric import accuracy, auc, ctr_metric_bundle
 
 __all__ = [
     'append_backward',

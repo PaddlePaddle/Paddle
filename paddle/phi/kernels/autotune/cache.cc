@@ -52,6 +52,9 @@ std::string AlgorithmTypeString(int64_t algo_type) {
     return "scale_bias_relu_conv_bnstats";
   } else if (algo_type == static_cast<int64_t>(AlgorithmType::kBNFinalize)) {
     return "bn_finalize";
+  } else if (algo_type ==
+             static_cast<int64_t>(AlgorithmType::kScaleBiasAddRelu)) {
+    return "scale_bias_add_relu";
   }
 #endif
   return std::to_string(algo_type);

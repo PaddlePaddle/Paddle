@@ -20,9 +20,10 @@
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/op_lowering_impl.h"
 #include "paddle/cinn/hlir/framework/op_lowering_impl_base.h"
+#include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/lang/packed_func.h"
 #ifndef CINN_WITH_ONLY
-#include "paddle/cinn/hlir/framework/new_ir/op_lowering_impl.h"
+#include "paddle/cinn/hlir/framework/pir/op_lowering_impl.h"
 #endif
 
 namespace cinn {
@@ -46,6 +47,15 @@ class OpLowerer {
         group, apply_op_schedule, apply_group_schedule, apply_pass);
   }
 
+  std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>> BucketLower(
+      const T& group,
+      bool apply_op_schedule = false,
+      bool apply_group_schedule = true,
+      bool apply_pass = true) {
+    return impl_->BucketLower(
+        group, apply_op_schedule, apply_group_schedule, apply_pass);
+  }
+
  private:
   std::shared_ptr<OpLowererImplBase<T>> impl_;
 };
@@ -65,13 +75,13 @@ inline OpLowerer<GroupPtr> CreateOpLowerer(
 }
 
 #ifndef CINN_WITH_ONLY
-template <typename T = newir::GroupPtr>
+template <typename T = pir::GroupPtr>
 OpLowerer<T> CreateOpLowerer(const Target&);
 
 template <>
-inline OpLowerer<newir::GroupPtr> CreateOpLowerer(const Target& target) {
-  auto* impl_base = new newir::OpLowererImpl(target);
-  return OpLowerer<newir::GroupPtr>(impl_base);
+inline OpLowerer<pir::GroupPtr> CreateOpLowerer(const Target& target) {
+  auto* impl_base = new pir::OpLowererImpl(target);
+  return OpLowerer<pir::GroupPtr>(impl_base);
 }
 #endif
 

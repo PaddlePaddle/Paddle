@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn.functional as F
 from paddle import base
 
 
@@ -202,9 +201,9 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 loss.backward()
 
                 expected_pred = v - 2
-                expected_pred = F.diag_embed(expected_pred) + 2
+                expected_pred = paddle.diag_embed(expected_pred) + 2
                 expected_grad = paddle.ones(v.shape, dtype=dtype) - 2
-                expected_grad = F.diag_embed(expected_grad) + 1
+                expected_grad = paddle.diag_embed(expected_grad) + 1
 
                 self.assertEqual((ny == expected_pred).all(), True)
                 self.assertEqual((y.grad == expected_grad).all(), True)

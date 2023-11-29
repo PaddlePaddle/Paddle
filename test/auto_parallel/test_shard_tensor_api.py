@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle.base.dygraph.base import switch_to_static_graph
+from paddle.distributed import Replicate, Shard
 from paddle.distributed.auto_parallel.static.dist_context import (
     get_default_distributed_context,
 )
@@ -64,13 +65,10 @@ class TestShardTensorDynamic(unittest.TestCase):
         )
 
     def test_dynamic_mode_basic(self):
-        dist_attr = dist.DistAttr(
-            mesh=self.mesh, sharding_specs=[None, None, None]
-        )
-
         input = paddle.rand([4, 1024, 512])
-        d_tensor = dist.shard_tensor(input, dist_attr=dist_attr)
-        print(dist_attr.dims_mapping)
+        d_tensor = dist.shard_tensor(
+            input, self.mesh, [Replicate(), Replicate()]
+        )
 
         self.assertEqual(d_tensor.dist_attr.process_mesh, self.mesh)
         self.assertEqual(d_tensor.dist_attr.dims_mapping, [-1, -1, -1])
@@ -78,10 +76,6 @@ class TestShardTensorDynamic(unittest.TestCase):
         self.assertTrue(d_tensor.dist_attr.is_annotated("dims_mapping"))
 
     def test_dynamic_mode_property_change(self):
-        dist_attr = dist.DistAttr(
-            mesh=self.mesh, sharding_specs=[None, None, None]
-        )
-
         x = np.random.random([4, 1024, 512]).astype("float32")
         input = paddle.to_tensor(
             x, dtype="float32", place='cpu', stop_gradient=False
@@ -91,7 +85,8 @@ class TestShardTensorDynamic(unittest.TestCase):
             dtype="float64",
             place='gpu:0',
             stop_gradient=True,
-            dist_attr=dist_attr,
+            mesh=self.mesh,
+            placements=[Replicate(), Replicate()],
         )
 
         self.assertEqual(d_tensor.dtype, paddle.float64)
@@ -112,16 +107,12 @@ class TestShardTensorStatic(unittest.TestCase):
 
     @switch_to_static_graph
     def test_static_mode(self):
-        dist_attr = dist.DistAttr(
-            mesh=self.mesh, sharding_specs=['x', None, None]
-        )
-
         input = paddle.static.data(
             name="input",
             shape=[4, 1024, 512],
             dtype='float32',
         )
-        d_tensor = dist.shard_tensor(input, dist_attr=dist_attr)
+        d_tensor = dist.shard_tensor(input, self.mesh, [Shard(0), Replicate()])
 
         default_dist_context = get_default_distributed_context()
         dist_input = default_dist_context.get_dist_tensor_for_program(input)
@@ -133,17 +124,15 @@ class TestShardTensorStatic(unittest.TestCase):
 
 class TestShardTensorStaticDy2Static(unittest.TestCase):
     def test_dy2static(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def func():
             mesh = dist.ProcessMesh(
                 [[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["x", "y"]
             )
-            dist_attr = dist.DistAttr(
-                mesh=mesh, sharding_specs=[None, None, None]
-            )
-
             input = paddle.rand([4, 1024, 512])
-            d_tensor = dist.shard_tensor(input, dist_attr=dist_attr)
+            d_tensor = dist.shard_tensor(
+                input, mesh, [Replicate(), Replicate()]
+            )
             return input, mesh
 
         dy_tensor, mesh = func()
@@ -163,7 +152,7 @@ class DemoNet(paddle.nn.Layer):
     def __init__(self, dist_attr):
         super().__init__()
         self.w0 = dist.shard_tensor(
-            self.create_parameter(shape=[784, 784]), dist_attr=dist_attr
+            self.create_parameter(shape=[784, 784]), *dist_attr
         )
 
     def forward(self, x):
@@ -173,18 +162,19 @@ class DemoNet(paddle.nn.Layer):
 class TestShardTensorParameter(unittest.TestCase):
     def setUp(self):
         self.mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-        self.dist_attr = dist.DistAttr(
-            mesh=self.mesh, sharding_specs=[None, None]
-        )
+        self.dist_attr = (self.mesh, [Replicate()])
 
     def test_shard_parameter(self):
         x = np.random.random(size=[16, 784]).astype("float32")
-        dist_x = dist.shard_tensor(x, dist_attr=self.dist_attr)
+        dist_x = dist.shard_tensor(x, *self.dist_attr)
         net = DemoNet(self.dist_attr)
         out = net(dist_x)
         self.assertEqual(out.shape, [16, 784])
         self.assertEqual(out.is_dist(), True)
-        self.assertEqual(out.dist_attr, self.dist_attr)
+        self.assertEqual(
+            out.dist_attr,
+            dist.DistAttr(mesh=self.mesh, sharding_specs=[None, None]),
+        )
 
 
 if __name__ == "__main__":

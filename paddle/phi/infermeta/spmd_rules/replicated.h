@@ -41,6 +41,19 @@ SpmdInfo ReplicatedInferSpmdReverse(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs);
 
+SpmdInfo ReplicatedInferDynamic(
+    const std::vector<paddle::variant<const DistMetaTensor*,
+                                      const std::vector<DistMetaTensor>*>>&
+        inputs);
+
+// For phi api
+template <typename... Args>
+SpmdInfo VariadicReplicatedInferSpmdDynamic(const Args&... args) {
+  return detail::ReplicateInferSpmdDynamicHelper<ReplicatedInferDynamic>()
+      .apply(args...)
+      .Infer();
+}
+
 // For phi api
 template <typename... Args>
 SpmdInfo VariadicReplicatedInferSpmd(const Args&... args) {
