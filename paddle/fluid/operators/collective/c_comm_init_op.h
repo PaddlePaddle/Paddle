@@ -1,0 +1,146 @@
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#pragma once
+
+#if defined(PADDLE_WITH_NCCL)
+#include <nccl.h>
+#endif
+#if defined(PADDLE_WITH_RCCL)
+#include <rccl.h>
+#endif
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "xpu/bkcl.h"
+#endif
+#include <string>
+
+#include "paddle/fluid/framework/op_registry.h"
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/fluid/platform/collective_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
+#endif
+
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/store/store_utils.h"
+#include "paddle/phi/core/distributed/store/tcp_store.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace operators {
+
+template <typename T, typename DeviceContext>
+class CCommInitKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto place = ctx.GetPlace();
+    const framework::Scope& scope = ctx.scope();
+    if (platform::is_custom_place(place)) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+      auto var = scope.FindVar("X");
+      PADDLE_ENFORCE_NOT_NULL(
+          var, platform::errors::InvalidArgument("Input con not be empty."));
+
+      int nranks = ctx.Attr<int>("nranks");
+      int rid = ctx.Attr<int>("ring_id");
+
+      int device_id = place.device;
+      if (ctx.Attr<int>("device_id") >= 0) {
+        device_id = ctx.Attr<int>("device_id");
+      }
+      int rank_id = ctx.Attr<int>("rank");
+      auto store = phi::distributed::CreateOrGetGlobalTCPStore();
+      if (!phi::distributed::CommContextManager::GetInstance().Has(
+              std::to_string(rid))) {
+        phi::distributed::CommContextManager::CreateXCCLCommContext(
+            store,
+            std::to_string(rid),
+            phi::CustomPlace(place.GetDeviceType(), device_id),
+            rank_id,
+            nranks,
+            "c_comm_init_op");
+      }
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with custom device."));
+#endif
+    } else {
+// TODO(wangxi): Put this in the unified header file
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+      using UniqueId = ncclUniqueId;
+      using CommContext = platform::NCCLCommContext;
+#elif defined(PADDLE_WITH_XPU_BKCL)
+      using UniqueId = BKCLUniqueId;
+      using CommContext = platform::BKCLCommContext;
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should be compiled with GPU or XPU."));
+#endif
+
+      PADDLE_ENFORCE_EQ(
+          platform::is_gpu_place(place) || platform::is_xpu_place(place),
+          true,
+          platform::errors::PreconditionNotMet(
+              "CCommInitOp can run on gpu or xpu place only."));
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
+      auto var = scope.FindVar("X");
+      PADDLE_ENFORCE_NOT_NULL(
+          var, platform::errors::InvalidArgument("Input con not be empty."));
+
+      int nranks = ctx.Attr<int>("nranks");
+      int rid = ctx.Attr<int>("ring_id");
+
+      int device_id = place.device;
+      if (ctx.Attr<int>("device_id") >= 0) {
+        device_id = ctx.Attr<int>("device_id");
+      }
+      int rank_id = ctx.Attr<int>("rank");
+#endif
+#if defined(PADDLE_WITH_NCCL)
+      if (FLAGS_dynamic_static_unified_comm) {
+        VLOG(3) << "#### use new comm lab ####";
+        auto store = phi::distributed::CreateOrGetGlobalTCPStore();
+        phi::distributed::CommContextManager::SetDeviceId(device_id);
+        std::string endpoints = ctx.Attr<std::string>("endpoints");
+        phi::distributed::CommContextManager::CreateNCCLCommContext(
+            store, std::to_string(rid), rank_id, nranks, endpoints);
+        return;
+      }
+#endif
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
+      VLOG(3) << "#### use old comm lab ####";
+      UniqueId* comm_id = var->GetMutable<UniqueId>();
+      CommContext::Instance().CreateComm(
+          comm_id, nranks, rank_id, device_id, rid);
+#endif
+    }
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
