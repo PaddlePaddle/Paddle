@@ -57,7 +57,6 @@ constexpr const char* kTaskCompletion = "TaskCompletion";
 
 namespace paddle {
 namespace framework {
-using HookFunc = std::function<void(OperatorBase*, Scope*)>;
 
 /// @brief InterpreterBaseImpl is a abstract Base Class and define necessary
 /// interface with virtual keywords for Derived class.
