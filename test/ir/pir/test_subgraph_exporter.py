@@ -104,7 +104,6 @@ class TestSaveFwdBwdProg(unittest.TestCase):
             content = f.read()
 
         program = paddle.pir.parse_program(content)
-        print(program)
         data = np.random.random([4, 4]).astype(np.float32)
         feed = {
             "pt_input_6": data,
