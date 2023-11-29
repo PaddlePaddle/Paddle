@@ -329,11 +329,14 @@ __global__ void int8_weight_only_gemv(const T* input,
 
 #pragma unroll
   for (int i = lane_id * kVecSize; i < k * 2; i += kVecSize * kWarpSize) {
-    *reinterpret_cast<int4*>(vec_weight) = *reinterpret_cast<const int4*>(weight + i);            // NOLINT
-    *reinterpret_cast<float4*>(vec_input) =                                                       // NOLINT
-        *reinterpret_cast<const float4*>(input + i / 128 * 64 + (i % 64));                              // NOLINT
-    *reinterpret_cast<float4*>(vec_input + 8) =                                                   // NOLINT
-        *reinterpret_cast<const float4*>(input + i / 128 * 64 + (i % 64) + 8);                          // NOLINT
+    *reinterpret_cast<int4*>(vec_weight) =
+        *reinterpret_cast<const int4*>(weight + i);  // NOLINT
+    *reinterpret_cast<float4*>(vec_input) =          // NOLINT
+        *reinterpret_cast<const float4*>(input + i / 128 * 64 +
+                                         (i % 64));  // NOLINT
+    *reinterpret_cast<float4*>(vec_input + 8) =      // NOLINT
+        *reinterpret_cast<const float4*>(input + i / 128 * 64 + (i % 64) +
+                                         8);  // NOLINT
 
 #pragma unroll
     for (int p = 0; p < kVecSize; p += 4) {
@@ -668,9 +671,10 @@ __global__ void weight_only_batched_gemv_multi_warp(const int8_t* qweight,
     for (int idx = 0; idx < NPerBlock; ++idx) {
       // Load quantized weight and scales/zeros
       int8_t weights_quantized[Details::kBytePerThread];
-      *reinterpret_cast<int4*>(weights_quantized) = *reinterpret_cast<const int4*>(
-          qweight + idx * Interleave * k / Details::kElemsPerByte +
-          local_k / Details::kElemsPerByte);
+      *reinterpret_cast<int4*>(weights_quantized) =
+          *reinterpret_cast<const int4*>(
+              qweight + idx * Interleave * k / Details::kElemsPerByte +
+              local_k / Details::kElemsPerByte);
       scale_loader.load(scale[idx], zero[idx], idx);
       T weights_vec[Details::kElemsPerThread];
 #pragma unroll
