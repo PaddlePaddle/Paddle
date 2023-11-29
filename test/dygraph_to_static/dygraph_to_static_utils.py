@@ -398,6 +398,12 @@ def test_default_mode_only(fn):
     return fn
 
 
+def test_sot_with_pir_only(fn):
+    fn = set_to_static_mode(ToStaticMode.SOT)(fn)
+    fn = set_ir_mode(IrMode.PIR)(fn)
+    return fn
+
+
 def test_default_and_pir(fn):
     # Some unittests has high time complexity, we only test them with default mode
     fn = set_to_static_mode(ToStaticMode.SOT)(fn)
