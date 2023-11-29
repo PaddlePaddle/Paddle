@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -194,13 +195,14 @@ class TestModulatedDeformableConvOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
             {'Input', 'Offset', 'Mask', 'Filter'},
             'Output',
             max_relative_error=0.05,
+            check_pir=True,
         )
 
     def init_test_case(self):
@@ -390,6 +392,7 @@ class TestWithDouble(TestModulatedDeformableConvOp):
 
 
 class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         def test_invalid_input():
             paddle.enable_static()
@@ -459,6 +462,7 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
 
 
 class TestDeformConv2DAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
         def test_deform_conv2d_v1():
             paddle.enable_static()

@@ -144,7 +144,7 @@ class TestDeformConv2D(TestCase):
                 dtype=self.dtype,
             )
 
-            y_v1 = paddle.static.nn.common.deformable_conv(
+            y_v1 = paddle.vision.ops.deform_conv2d(
                 input=x,
                 offset=offset,
                 mask=None,
@@ -161,7 +161,7 @@ class TestDeformConv2D(TestCase):
                 modulated=False,
             )
 
-            y_v2 = paddle.static.nn.common.deformable_conv(
+            y_v2 = paddle.vision.ops.deform_conv2d(
                 input=x,
                 offset=offset,
                 mask=mask,
@@ -357,7 +357,7 @@ class TestDeformConv2DFunctional(TestCase):
                 dtype=self.dtype,
             )
 
-            y_v1 = paddle.static.nn.common.deformable_conv(
+            y_v1 = paddle.vision.ops.deform_conv2d(
                 input=x,
                 offset=offset,
                 mask=None,
@@ -374,7 +374,7 @@ class TestDeformConv2DFunctional(TestCase):
                 modulated=False,
             )
 
-            y_v2 = paddle.static.nn.common.deformable_conv(
+            y_v2 = paddle.vision.ops.deform_conv2d(
                 input=x,
                 offset=offset,
                 mask=mask,
@@ -441,6 +441,7 @@ class TestDeformConv2DFunctional(TestCase):
 
         return out_v1, out_v2
 
+    @test_with_pir_api
     def new_api_static_graph_case_dcn(self):
         main = paddle.static.Program()
         start = paddle.static.Program()
@@ -731,6 +732,7 @@ class TestDeformConv2DFunctionalWithGroups(TestDeformConv2DFunctional):
 
 class TestDeformConv2DError(unittest.TestCase):
     def test_input_error(self):
+        @test_with_pir_api
         def test_input_rank_error():
             paddle.enable_static()
             x = paddle.static.data(name='error_x_1', shape=[0], dtype='float32')

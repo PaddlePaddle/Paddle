@@ -22,6 +22,7 @@ from paddle import base
 from paddle.base import core
 from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -62,6 +63,7 @@ class LayerTest(unittest.TestCase):
             base.default_main_program().random_seed = self.seed
             yield
 
+    @test_with_pir_api
     def get_static_graph_result(
         self, feed, fetch_list, with_lod=False, force_to_use_cpu=False
     ):
@@ -85,15 +87,10 @@ class LayerTest(unittest.TestCase):
 
 
 class TestGenerateProposals(LayerTest):
-    def test_generate_proposals(self):
-        scores_np = np.random.rand(2, 3, 4, 4).astype('float32')
-        bbox_deltas_np = np.random.rand(2, 12, 4, 4).astype('float32')
-        im_info_np = np.array([[8, 8, 0.5], [6, 6, 0.5]]).astype('float32')
-        anchors_np = np.reshape(np.arange(4 * 4 * 3 * 4), [4, 4, 3, 4]).astype(
-            'float32'
-        )
-        variances_np = np.ones((4, 4, 3, 4)).astype('float32')
-
+    @test_with_pir_api
+    def static_generate_proposals(
+        self, scores_np, bbox_deltas_np, im_info_np, anchors_np, variances_np
+    ):
         with self.static_graph():
             scores = paddle.static.data(
                 name='scores', shape=[2, 3, 4, 4], dtype='float32'
@@ -135,7 +132,11 @@ class TestGenerateProposals(LayerTest):
                 fetch_list=[rois, roi_probs, rois_num],
                 with_lod=False,
             )
+        return rois_stat, roi_probs_stat, rois_num_stat
 
+    def dynamic_generate_proposals(
+        self, scores_np, bbox_deltas_np, im_info_np, anchors_np, variances_np
+    ):
         with self.dynamic_graph():
             scores_dy = imperative_base.to_variable(scores_np)
             bbox_deltas_dy = imperative_base.to_variable(bbox_deltas_np)
@@ -155,13 +156,34 @@ class TestGenerateProposals(LayerTest):
             rois_dy = rois.numpy()
             roi_probs_dy = roi_probs.numpy()
             rois_num_dy = rois_num.numpy()
+        return rois_dy, roi_probs_dy, rois_num_dy
 
+    def test_generate_proposals(self):
+        scores_np = np.random.rand(2, 3, 4, 4).astype('float32')
+        bbox_deltas_np = np.random.rand(2, 12, 4, 4).astype('float32')
+        im_info_np = np.array([[8, 8, 0.5], [6, 6, 0.5]]).astype('float32')
+        anchors_np = np.reshape(np.arange(4 * 4 * 3 * 4), [4, 4, 3, 4]).astype(
+            'float32'
+        )
+        variances_np = np.ones((4, 4, 3, 4)).astype('float32')
+
+        (
+            rois_stat,
+            roi_probs_stat,
+            rois_num_stat,
+        ) = self.static_generate_proposals(
+            scores_np, bbox_deltas_np, im_info_np, anchors_np, variances_np
+        )
+        rois_dy, roi_probs_dy, rois_num_dy = self.dynamic_generate_proposals(
+            scores_np, bbox_deltas_np, im_info_np, anchors_np, variances_np
+        )
         np.testing.assert_array_equal(np.array(rois_stat), rois_dy)
         np.testing.assert_array_equal(np.array(roi_probs_stat), roi_probs_dy)
         np.testing.assert_array_equal(np.array(rois_num_stat), rois_num_dy)
 
 
 class TestMulticlassNMS2(unittest.TestCase):
+    @test_with_pir_api
     def test_multiclass_nms2(self):
         program = Program()
         with program_guard(program):
@@ -183,9 +205,8 @@ class TestMulticlassNMS2(unittest.TestCase):
 
 
 class TestDistributeFpnProposals(LayerTest):
-    def test_distribute_fpn_proposals(self):
-        rois_np = np.random.rand(10, 4).astype('float32')
-        rois_num_np = np.array([4, 6]).astype('int32')
+    @test_with_pir_api
+    def static_distribute_fpn_proposals(self, rois_np, rois_num_np):
         with self.static_graph():
             rois = paddle.static.data(
                 name='rois', shape=[10, 4], dtype='float32'
@@ -216,7 +237,9 @@ class TestDistributeFpnProposals(LayerTest):
                 output_np = np.array(output)
                 if len(output_np) > 0:
                     output_stat_np.append(output_np)
+        return output_stat_np
 
+    def dynamic_distribute_fpn_proposals(self, rois_np, rois_num_np):
         with self.dynamic_graph():
             rois_dy = imperative_base.to_variable(rois_np)
             rois_num_dy = imperative_base.to_variable(rois_num_np)
@@ -239,10 +262,23 @@ class TestDistributeFpnProposals(LayerTest):
                 output_np = output.numpy()
                 if len(output_np) > 0:
                     output_dy_np.append(output_np)
+        return output_dy_np
+
+    def test_distribute_fpn_proposals(self):
+        rois_np = np.random.rand(10, 4).astype('float32')
+        rois_num_np = np.array([4, 6]).astype('int32')
+
+        output_stat_np = self.static_distribute_fpn_proposals(
+            rois_np, rois_num_np
+        )
+        output_dy_np = self.dynamic_distribute_fpn_proposals(
+            rois_np, rois_num_np
+        )
 
         for res_stat, res_dy in zip(output_stat_np, output_dy_np):
             np.testing.assert_array_equal(res_stat, res_dy)
 
+    @test_with_pir_api
     def test_distribute_fpn_proposals_error(self):
         program = Program()
         with program_guard(program):
@@ -259,6 +295,7 @@ class TestDistributeFpnProposals(LayerTest):
                 refer_scale=224,
             )
 
+    @test_with_pir_api
     def test_distribute_fpn_proposals_error2(self):
         program = Program()
         with program_guard(program):
@@ -278,6 +315,7 @@ class TestDistributeFpnProposals(LayerTest):
                 refer_scale=224,
             )
 
+    @test_with_pir_api
     def test_distribute_fpn_proposals_error3(self):
         program = Program()
         with program_guard(program):
@@ -297,6 +335,7 @@ class TestDistributeFpnProposals(LayerTest):
                 refer_scale=224,
             )
 
+    @test_with_pir_api
     def test_distribute_fpn_proposals_error4(self):
         program = Program()
         with program_guard(program):
