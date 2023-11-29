@@ -183,8 +183,8 @@ class XPUOpTest(OpTest):
             if not core.is_float16_supported(place):
                 return
 
-        if self.dtype == np.float16:
-            max_relative_error = 1.0
+        if self.dtype == np.float16 or self.dtype == np.uint16:
+            max_relative_error = 0.1
             return super().check_grad_with_place(
                 place,
                 inputs_to_check,
