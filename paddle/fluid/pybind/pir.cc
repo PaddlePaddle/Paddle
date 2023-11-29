@@ -131,8 +131,12 @@ inline void SetProgramInt64Attr(std::shared_ptr<Program> program,
 
 std::string GetValueInfo(Value v) {
   std::stringstream ss;
-  ss << "define_op_name=" << v.dyn_cast<OpResult>().owner()->name();
-  ss << ", index=" << v.dyn_cast<OpResult>().index();
+  if (auto op_result = v.dyn_cast<OpResult>()) {
+    ss << "define_op_name=" << op_result.owner()->name();
+    ss << ", index=" << op_result.index();
+  } else if (auto arg = v.dyn_cast<BlockArgument>()) {
+    ss << "block_args, index = " << arg.index();
+  }
   ss << ", dtype=" << v.type();
   if (v.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     ss << ", place="
@@ -588,7 +592,7 @@ void BindValue(py::module *m) {
           [](Value self) {
             if (self.impl() == nullptr) {
               PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get id of OpResult whose impl "
+                  "Currently, we can only get id of Value whose impl "
                   "is not nullptr"));
             } else {
               std::stringstream ss;
@@ -603,7 +607,7 @@ void BindValue(py::module *m) {
               return param_op.param_name();
             } else {
               PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get name of OpResult that "
+                  "Currently, we can only get name of Value that "
                   "is "
                   "persistable"));
             }
@@ -632,7 +636,7 @@ void BindValue(py::module *m) {
           },
           return_value_policy::reference)
       .def("numel", [](Value self) { return phi::product(GetValueDims(self)); })
-      .def("type", &OpResult::type)
+      .def("type", &Value::type)
       .def("is_dense_tensor_type",
            [](Value self) {
              if (self.type().isa<DenseTensorType>()) {
@@ -755,7 +759,6 @@ void BindOpResult(py::module *m) {
         The constructor of OpResult should not be invoked directly. OpResult can be automatically constructed
         when build network.
   )DOC");
-  // py::implicitly_convertible<OpResult, Value>();
   g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
   op_result
       .def(
