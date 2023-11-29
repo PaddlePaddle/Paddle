@@ -30,11 +30,19 @@ class DecompProgram {
                 const std::vector<pir::OpResult>& src_vars);
 
   std::vector<pir::OpResult> decomp_program();
+  std::vector<pir::OpResult> format_decomp_res(
+      const std::string& op_name,
+      const std::vector<pir::OpResult>& orig_outs,
+      const std::vector<std::vector<pir::OpResult>>& decomp_outs);
+  std::vector<pir::OpResult> construct_dst_vars(
+      const std::string& op_name,
+      const std::vector<pir::OpResult>& orig_outs,
+      const std::vector<pir::OpResult>& decomp_outs,
+      std::unordered_map<pir::OpResult, int> orig_vars_dict);
 
  private:
   const pir::Program* program_;
   std::vector<pir::OpResult> src_vars_;
-  std::vector<pir::OpResult> tar_vars_;
 };
 
 bool has_decomp_rule(const pir::Operation& op);

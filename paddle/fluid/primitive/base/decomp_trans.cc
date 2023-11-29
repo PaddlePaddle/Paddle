@@ -34,6 +34,57 @@ bool has_decomp_rule(const pir::Operation& op) {
   return true;
 }
 
+std::vector<pir::OpResult> DecompProgram::format_decomp_res(
+    const std::string& op_name,
+    const std::vector<pir::OpResult>& orig_outs,
+    const std::vector<std::vector<pir::OpResult>>& decomp_outs) {
+  PADDLE_ENFORCE_EQ(orig_outs.size(),
+                    decomp_outs.size(),
+                    paddle::platform::errors::PreconditionNotMet(
+                        "For op %s, its origin output num %d is not equal to "
+                        "decomp output num %d ",
+                        op_name,
+                        orig_outs.size(),
+                        decomp_outs.size()));
+  std::vector<pir::OpResult> new_decomp_outs(orig_outs.size());
+  for (size_t i = 0; i < orig_outs.size(); i++) {
+    if (orig_outs[i]) {
+      PADDLE_ENFORCE_EQ(decomp_outs[i].size(),
+                        1,
+                        paddle::platform::errors::PreconditionNotMet(
+                            "For op %s, each element of decomp output num must "
+                            "be 1, but num of index %d is %d ",
+                            op_name,
+                            i,
+                            decomp_outs[i].size()));
+      new_decomp_outs[i] = decomp_outs[i][0];
+    }
+  }
+  return new_decomp_outs;
+}
+
+std::vector<pir::OpResult> DecompProgram::construct_dst_vars(
+    const std::string& op_name,
+    const std::vector<pir::OpResult>& orig_outs,
+    const std::vector<pir::OpResult>& decomp_outs,
+    std::unordered_map<pir::OpResult, int> orig_vars_dict) {
+  std::vector<pir::OpResult> tar_vars(src_vars_.size());
+  PADDLE_ENFORCE_EQ(orig_outs.size(),
+                    decomp_outs.size(),
+                    paddle::platform::errors::PreconditionNotMet(
+                        "For op %s, its origin output num %d is not equal to "
+                        "decomp output num %d ",
+                        op_name,
+                        orig_outs.size(),
+                        decomp_outs.size()));
+  for (size_t i = 0; i < orig_outs.size(); i++) {
+    if (orig_vars_dict.find(orig_outs[i]) != orig_vars_dict.end()) {
+      tar_vars[orig_vars_dict[orig_outs[i]]] = decomp_outs[i];
+    }
+  }
+  return tar_vars;
+}
+
 std::vector<std::vector<pir::OpResult>> call_decomp_rule(pir::Operation* op) {
   paddle::dialect::DecompInterface decomp_interface =
       op->dyn_cast<paddle::dialect::DecompInterface>();
@@ -51,14 +102,17 @@ DecompProgram::DecompProgram(const pir::Program* program,
     : program_(program), src_vars_(src_vars) {}
 
 std::vector<pir::OpResult> DecompProgram::decomp_program() {
-  // std::ostringstream print_stream;
-  // program_->Print(print_stream);
-  // VLOG(0) << "program in sink decomp ------" << print_stream.str();
+  std::ostringstream print_stream;
+  std::unordered_map<pir::OpResult, int> orig_vars_dict;
+  for (size_t i = 0; i < src_vars_.size(); i++) {
+    orig_vars_dict[src_vars_[i]] = static_cast<int>(i);
+  }
+  program_->Print(print_stream);
+  VLOG(4) << "program in sink decomp ------" << print_stream.str();
   if (!paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
     return src_vars_;
   }
   std::vector<pir::OpResult> tar_vars;
-  VLOG(0) << "sink decomp in ===========================";
   pir::Block* block = const_cast<pir::Block*>(program_->block());
   std::vector<pir::Operation*> ops_list;
   for (auto& op : *block) {
@@ -69,17 +123,20 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
     bool flag = has_decomp_rule(*op);
     if (flag) {
       std::vector<std::vector<pir::OpResult>> decomp_res = call_decomp_rule(op);
+      std::vector<pir::OpResult> orig_outs = op->results();
+      std::vector<pir::OpResult> standard_decomp_res =
+          format_decomp_res(op->name(), orig_outs, decomp_res);
+      tar_vars = construct_dst_vars(
+          op->name(), orig_outs, standard_decomp_res, orig_vars_dict);
+
       VLOG(4) << "decomp out size ======= " << decomp_res.size();
-      op->ReplaceAllUsesWith(decomp_res[0]);
+      op->ReplaceAllUsesWith(standard_decomp_res);
       auto op_iter = std::find(block->begin(), block->end(), *op);
       block->erase(op_iter);
-      tar_vars = decomp_res[0];
     }
-    VLOG(4) << "op name ======= " << op->name();
-    // std::ostringstream print_stream2;
-    // program_->Print(print_stream2);
-    // VLOG(4) << "program out sink decomp ------" << print_stream2.str();
-    VLOG(4) << "decomp flag ======= " << flag;
+    std::ostringstream print_stream2;
+    program_->Print(print_stream2);
+    VLOG(4) << "program out sink decomp ------" << print_stream2.str();
   }
   return tar_vars;
 }
