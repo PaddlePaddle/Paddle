@@ -60,7 +60,7 @@ void BindCommContextManager(py::module *m) {
               py::arg("p2p_opt") = nullptr,
               py::call_guard<py::gil_scoped_release>())
 #endif
-#if defined(PADDLE_WITH_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
           .def_static(
               "create_bkcl_comm_context",
               &phi::distributed::CommContextManager::CreateBKCLCommContext,
