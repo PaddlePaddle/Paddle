@@ -194,6 +194,8 @@ from .manipulation import (  # noqa: F401
     view,
     view_as,
     vsplit,
+    igamma,
+    igammac,
 )
 from .math import (  # noqa: F401
     abs,
@@ -364,7 +366,6 @@ from .math import (  # noqa: F401
     trunc,
     trunc_,
     vander,
-    signbit,
 )
 from .random import (  # noqa: F401
     exponential_,
@@ -760,7 +761,8 @@ tensor_method_func = [
     'atleast_2d',
     'atleast_3d',
     'diagonal_scatter',
-    'signbit',
+    'igamma',
+    'igammac',
 ]
 
 # this list used in math_op_patch.py for magic_method bind
