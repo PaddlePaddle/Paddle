@@ -28,6 +28,7 @@ from paddle.base.unique_name import switch
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
+from .export_subgraph import SubGraphRole, pir_exporter
 from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
     backend_guard,
@@ -226,6 +227,7 @@ class PartialProgramLayer:
         self._out_var_descs = [
             self._outputs[var_id].desc for var_id in self._outputs.var_ids
         ]
+        self._debug_name = None
 
     def __call__(self, inputs):
         """
@@ -544,14 +546,19 @@ class PartialProgramLayer:
     @property
     def infer_program(self):
         if _in_amp_guard():
-            return self._infer_amp_program
+            infer_program = self._infer_amp_program
         elif _in_pure_fp16_guard():
-            return self._infer_pure_fp16_program
+            infer_program = self._infer_pure_fp16_program
         else:
-            return self._infer_program
+            infer_program = self._infer_program
+        # NOTE(Aurelius84): Export forward_program for SubGraphChecker,
+        # see export_subgraph for detail.
+        pir_exporter(self, infer_program, SubGraphRole.Infer)
+        return infer_program
 
     @property
     def forward_program(self):
+        forward_program, role = None, None
         if self.training:
             if _in_amp_guard():
                 progs = self._train_amp_forward_backward_program
@@ -561,7 +568,8 @@ class PartialProgramLayer:
                 progs = self._train_forward_backward_program
             return progs[0]
         else:
-            return self.infer_program
+            forward_program = self.infer_program
+        return forward_program
 
     @property
     def backward_program(self):
@@ -867,6 +875,23 @@ class PartialProgramLayer:
 
         self._apply_inplace_pass(
             forward_builded_program, backward_builded_program
+        )
+
+        # NOTE(Aurelius84): Export forward/backward program for SubGraphChecker,
+        # see export_subgraph for detail.
+        pir_exporter(
+            self,
+            forward_builded_program,
+            SubGraphRole.Forward,
+            set(),
+            set(forward_skip_vars),
+        )
+        pir_exporter(
+            self,
+            backward_builded_program,
+            SubGraphRole.Backward,
+            set(forward_skip_vars),
+            set(backward_skip_vars),
         )
         return [forward_builded_program, backward_builded_program]
 
