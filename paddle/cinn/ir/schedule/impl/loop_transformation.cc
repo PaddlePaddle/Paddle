@@ -186,9 +186,6 @@ Expr DyScheduleImpl::Reorder(const std::vector<Expr>& loops) {
   if (loops.size() <= 1) {
     return Expr{nullptr};
   }
-  auto loop0 = loops[0];
-  loop0.As<For>()->extent = Expr(Var(1024, "D1"));
-  std::cout << "Before Reorder, ir is:\n" << module_expr_.GetExprs()[0];
   VLOG(4) << "Before Reorder, ir is:\n" << loops[0];
 
   std::set<Expr, CompExpr> loop_set = CollectLoopsToSet(loops);
