@@ -146,9 +146,18 @@ SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
   // and output with the inferred dims mapping.
   TensorDistAttr x_dist_attr_dst(x_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
+  if (x_dist_attr_dst.dynamic_dims().size() !=
+      x_dist_attr_dst.dims_mapping().size()) {
+    VLOG(4) << "SqueezeInferSPMD change x dist attr dynamic dims";
+    x_dist_attr_dst.set_default_dynamic_dims(x_dist_attr_dst.dims_mapping());
+  }
   TensorDistAttr out_dist_attr(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
-
+  if (out_dist_attr.dynamic_dims().size() !=
+      out_dist_attr.dims_mapping().size()) {
+    VLOG(4) << "SqueezeInferSPMD change output dist attr dynamic dims";
+    out_dist_attr.set_default_dynamic_dims(out_dist_attr.dims_mapping());
+  }
   VLOG(4) << "SqueezeInferSpmd: X shape: [" << str_join(x_shape)
           << "] Out shape: [" << str_join(out_shape) << "]";
   VLOG(4) << "Transformation from input to output:";
@@ -212,8 +221,18 @@ SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
   // and output with the inferred dims mapping
   TensorDistAttr out_dist_attr_dst(out_dist_attr_src);
   out_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
+  if (out_dist_attr_dst.dynamic_dims().size() !=
+      out_dist_attr_dst.dims_mapping().size()) {
+    VLOG(4) << "SqueezeInferSPMD change output dist attr dynamic dims";
+    out_dist_attr_dst.set_default_dynamic_dims(
+        out_dist_attr_dst.dims_mapping());
+  }
   TensorDistAttr x_dist_attr(x.dist_attr());
   x_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
+  if (x_dist_attr.dynamic_dims().size() != x_dist_attr.dims_mapping().size()) {
+    VLOG(4) << "SqueezeInferSPMD change x dist attr dynamic dims";
+    x_dist_attr.set_default_dynamic_dims(x_dist_attr.dims_mapping());
+  }
 
   VLOG(4) << "SqueezeInferSpmdReverse: Out shape: [" << str_join(out_shape)
           << "] X shape: [" << str_join(x_shape) << "]";
