@@ -50,6 +50,9 @@ function(pass_library TARGET DEST)
 
   cmake_parse_arguments(pass_library "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
+  if(WITH_GCU)
+    set(pass_library_DEPS ${pass_library_DEPS} gcu_backend)
+  endif()
   if(pass_library_DIR)
     cc_library(
       ${TARGET}
@@ -471,6 +474,33 @@ if(WITH_XPU)
          phi
          op_compat_infos
          type_info)
+elseif(WITH_GCU)
+  cc_library(
+    operator
+    SRCS operator.cc
+    DEPS op_info
+         proto_desc
+         device_context
+         tensor
+         scope
+         glog
+         trainer_desc_proto
+         data_feed_proto
+         shape_inference
+         data_transform
+         lod_tensor
+         profiler
+         transfer_scope_cache
+         op_kernel_type
+         op_call_stack
+         unused_var_check
+         nan_inf_utils
+         phi_utils
+         infershape_utils
+         phi
+         op_compat_infos
+         type_info
+         gcu_info)
 else()
   cc_library(
     operator

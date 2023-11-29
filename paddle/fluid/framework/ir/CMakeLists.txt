@@ -218,6 +218,11 @@ if(WITH_IPU)
   pass_library(inference_dtype_transfer_pass base DIR ipu)
 endif()
 
+if(WITH_GCU)
+  pass_library(gcu_runtime_replacer_pass base DIR gcu)
+  pass_library(infer_shape_pass base DIR gcu)
+endif()
+
 if(WITH_XPU)
   cc_library(
     xpu_quant_utils

@@ -436,6 +436,18 @@ class ExecutionContext : public phi::KernelContext {
     return op_.Outputs(name);
   }
 
+#ifdef PADDLE_WITH_GCU
+  virtual const VariableNameMap& AllInputNames() const { return op_.Inputs(); }
+
+  virtual const VariableNameMap& AllOutputNames() const {
+    return op_.Outputs();
+  }
+
+  virtual const VariableValueMap& AllInputVars() const { return ctx_.inputs; }
+
+  virtual const VariableValueMap& AllOutputVars() const { return ctx_.outputs; }
+#endif
+
   virtual bool HasAttr(const std::string& name) const {
     return op_.HasAttr(name);
   }
