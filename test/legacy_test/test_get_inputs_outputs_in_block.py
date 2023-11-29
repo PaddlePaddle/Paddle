@@ -74,7 +74,7 @@ class TestGetInputsOutputsInBlock(unittest.TestCase):
         # 'fill_constant_1.tmp_0', 'tmp_3' are names of a, c
         self.assertTrue(inner_inputs == {'fill_constant_1.tmp_0', 'tmp_3'})
         # '_generated_var_1', is name of a + c
-        self.assertTrue(inner_outputs == {'_generated_var_1'})
+        self.assertTrue(inner_outputs == {'_generated_var_0'})
 
 
 if __name__ == "__main__":

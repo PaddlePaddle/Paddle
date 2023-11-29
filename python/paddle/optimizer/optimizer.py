@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.autograd as imperative_base
 from paddle import _C_ops
-from paddle._pir_ops import get_parameter, set_parameter
+from paddle._pir_ops import parameter, set_parameter
 from paddle.base import core
 from paddle.base.framework import (
     Variable,
@@ -478,7 +478,7 @@ class Optimizer:
                     if not isinstance(lr_var, paddle.pir.OpResult):
                         self._learning_rate._var_name = lr_name
                         with paddle.static.program_guard(main_program):
-                            param = get_parameter(lr_name, _lr_dtype, [])
+                            param = parameter(lr_name, _lr_dtype, [])
                         param.stop_gradient = True
                         param.persistable = True
                         main_program.lr_scheduler = self._learning_rate
@@ -527,11 +527,14 @@ class Optimizer:
                             )
                         self._learning_rate_map[
                             paddle.static.default_main_program()
-                        ] = paddle._pir_ops.full(
-                            [],
-                            self._learning_rate,
-                            _lr_dtype,
-                            place,
+                        ] = paddle.pir.core.create_parameter(
+                            dtype=_lr_dtype,
+                            shape=[],
+                            name=unique_name.generate("learning_rate"),
+                            trainable=False,
+                            initializer=paddle.nn.initializer.ConstantInitializer(
+                                value=float(self._learning_rate)
+                            ),
                         )
                 else:
                     if isinstance(lr, framework.Variable):

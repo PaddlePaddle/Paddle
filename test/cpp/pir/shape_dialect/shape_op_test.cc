@@ -164,7 +164,7 @@ TEST(shape_op, func_op) {
   builder.SetInsertionPointToStart(func_block);
   builder.Build<pir::ConstantOp>(pir::Int32Attribute::get(ctx, 2),
                                  pir::Int32Type::get(ctx));
-  EXPECT_EQ(func_block, func_op->region(0).front());
+  EXPECT_EQ(func_block, &func_op->region(0).front());
   EXPECT_EQ(func_op->region(0).size(), static_cast<size_t>(1));
   EXPECT_EQ(func_block->size(), static_cast<size_t>(1));
 }
