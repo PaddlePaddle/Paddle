@@ -38,7 +38,7 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
   virtual ~ResidualConnectionMKLDNNFusePass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const;
 
   static bool HasFusedActivation(Node* conv_node) {
     return !(conv_node->Op()

@@ -231,7 +231,8 @@ void TransferLayoutElimPass::ElimTwoTranferlayout(Node *op_node,
   GraphSafeRemoveNodes(graph, remove_nodes);
 }
 
-void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
+void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph,
+                                       ir::Graph *main_graph) const {
   const std::string pattern_name = "transfer_layout_elim_pass";
   FusePassBase::Init(pattern_name, graph);
 

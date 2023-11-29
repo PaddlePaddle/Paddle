@@ -33,7 +33,7 @@ class FCMKLDNNPass : public FusePassBase {
   virtual ~FCMKLDNNPass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const;
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const;
 };
 
 }  // namespace ir

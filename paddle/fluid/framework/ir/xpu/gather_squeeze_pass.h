@@ -33,7 +33,7 @@ namespace ir {
 
 class GatherSqueezePass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override;
 
  private:
   /*
@@ -59,7 +59,7 @@ class GatherSqueezePass : public FusePassBase {
                         |
                       output
   */
-  void AddTranspose(ir::Graph* graph) const;
+  void AddTranspose(ir::Graph *graph) const;
 
   const std::string name_scope_{"gather_squeeze_pass"};
 };

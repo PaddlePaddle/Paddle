@@ -25,7 +25,7 @@ using OpVariant = operators::OpVariant;
 
 class WhileOpEagerDeletionPass : public ir::Pass {
  protected:
-  void ApplyImpl(ir::Graph *graph) const override {
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override {
     if (!graph->IsMainGraph()) {
       // TODO(zhhsplendid): the WhileOpEagerDeletionPass is based on old Graph,
       // which only applies to the main block graph. The new Eager Deletion

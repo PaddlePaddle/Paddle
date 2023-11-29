@@ -23,7 +23,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void FusedFeedForwardPass::ApplyImpl(ir::Graph *graph) const {
+void FusedFeedForwardPass::ApplyImpl(ir::Graph *graph,
+                                     ir::Graph *main_graph) const {
   FusePassBase::Init(scope_name, graph);
   for (auto use_mp : std::vector<bool>({true, false})) {
     for (auto pre_layer_norm : std::vector<bool>({true, false})) {

@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void SiluFusePass::ApplyImpl(ir::Graph* graph) const {
+void SiluFusePass::ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const {
   // This pass is used for cutlass, because cutlass can fuse conv + bias + silu
   bool cutlass_enable = Get<bool>("use_cutlass");
   if (!cutlass_enable) {

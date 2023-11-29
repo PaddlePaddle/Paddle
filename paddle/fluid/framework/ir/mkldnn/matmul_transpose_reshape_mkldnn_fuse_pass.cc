@@ -24,7 +24,8 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(Graph *graph) const {
+void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(Graph *graph,
+                                                 Graph *main_graph) const {
   auto matmul_types = {"fused_matmul", "matmul", "matmul_v2"};
 
   for (const auto &matmul_type : matmul_types) {

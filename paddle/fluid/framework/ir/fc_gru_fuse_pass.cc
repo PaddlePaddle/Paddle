@@ -334,7 +334,7 @@ int FCGRUFusePass::BuildFusion(Graph* graph,
   return fusion_count;
 }
 
-void MulGRUFusePass::ApplyImpl(ir::Graph* graph) const {
+void MulGRUFusePass::ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count = MulGRUFusePass::BuildFusion(
@@ -343,7 +343,7 @@ void MulGRUFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(fusion_count);
 }
 
-void FCGRUFusePass::ApplyImpl(ir::Graph* graph) const {
+void FCGRUFusePass::ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count = FCGRUFusePass::BuildFusion(

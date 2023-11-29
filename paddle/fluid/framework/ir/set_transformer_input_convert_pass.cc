@@ -51,7 +51,8 @@ void MultiheadMatmulOP::operator()() {
 }
 }  // namespace patterns
 
-void SetTransformerInputConvertPass::ApplyImpl(ir::Graph *graph) const {
+void SetTransformerInputConvertPass::ApplyImpl(ir::Graph *graph,
+                                               ir::Graph *main_graph) const {
   bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
   std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
 

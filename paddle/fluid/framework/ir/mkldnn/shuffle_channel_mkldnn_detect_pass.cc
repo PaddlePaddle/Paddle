@@ -69,7 +69,8 @@ ShuffleChannelMKLDNNDetectPass::ShuffleChannelMKLDNNDetectPass() {  // NOLINT
       .End();
 }
 
-void ShuffleChannelMKLDNNDetectPass::ApplyImpl(ir::Graph* graph) const {
+void ShuffleChannelMKLDNNDetectPass::ApplyImpl(ir::Graph* graph,
+                                               ir::Graph* main_graph) const {
   const std::string pattern_name = "shufflechannel_pattern";
   FusePassBase::Init(pattern_name, graph);
 

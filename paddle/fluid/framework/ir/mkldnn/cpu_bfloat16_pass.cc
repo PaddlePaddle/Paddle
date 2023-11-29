@@ -241,7 +241,7 @@ class DeQuantizer final : public Quanter {
 }  // namespace
 using string::PrettyLogDetail;
 
-void CPUBFloat16Pass::ApplyImpl(ir::Graph* graph) const {
+void CPUBFloat16Pass::ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const {
   int quantize_counter = 0;
   int dequantize_counter = 0;
 

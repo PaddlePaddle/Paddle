@@ -32,7 +32,7 @@ class SubGraph;
 
 class FusionGroupPass : public FusePassBase {
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
 
  private:
   int DetectFusionGroup(Graph* graph, int type = 0) const;

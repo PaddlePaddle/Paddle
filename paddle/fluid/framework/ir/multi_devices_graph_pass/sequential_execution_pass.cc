@@ -32,7 +32,7 @@ static bool IsSameOpDesc(OpDesc *op1, OpDesc *op2) {
 
 class SequentialExecutionPass : public ir::Pass {
  protected:
-  void ApplyImpl(ir::Graph *graph) const override {
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override {
     // FIXME(zjl): Insert dependencies between some distributed ops may cause
     // the multi_devices_graph_pass fails. So we skip these ops here.
     // Indeed, maybe we should not insert dependencies between these ops

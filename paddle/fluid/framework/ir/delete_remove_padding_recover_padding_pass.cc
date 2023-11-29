@@ -40,7 +40,8 @@ void RecoverPadding::operator()() {
 }
 }  // namespace patterns
 
-void DeleteRemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph *graph) const {
+void DeleteRemovePaddingRecoverPaddingPass::ApplyImpl(
+    ir::Graph *graph, ir::Graph *main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init(name_scope_, graph);

@@ -25,7 +25,8 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
+void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph,
+                                               Graph* main_graph) const {
   auto act_types = GetSupportedActivations();
   auto matmul_types = {"fused_matmul", "matmul", "matmul_v2"};
 

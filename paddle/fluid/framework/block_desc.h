@@ -73,12 +73,15 @@ class TEST_API BlockDesc {
   }
 
   std::vector<VarDesc *> AllVars() const;
+  std::vector<std::string> AllVarsName() const;
 
   BlockDesc *ParentBlock() const;
 
   BlockDesc *ForwardBlock() const;
 
   void SetForwardBlockID(int32_t forward_block_id);
+
+  void AppendAllocatedVar(VarDesc *var_desc);
 
   OpDesc *AppendOp();
 

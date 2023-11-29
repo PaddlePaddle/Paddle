@@ -486,7 +486,8 @@ void ComputePropagateScalesMkldnnPass::PropagateScales(
   }
 }
 
-void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
+void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph,
+                                                 ir::Graph* main_graph) const {
   VLOG(3) << "Convert paddle model to mkldnn quantized model.";
   const std::string pattern_name = "compute_propagate_scales_mkldnn_pass";
   FusePassBase::Init(pattern_name, graph);

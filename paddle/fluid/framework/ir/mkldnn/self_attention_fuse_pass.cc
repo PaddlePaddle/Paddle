@@ -47,7 +47,8 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void SelfAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
+void SelfAttentionFusePass::ApplyImpl(ir::Graph* graph,
+                                      ir::Graph* main_graph) const {
 #if !defined(__AVX512F__) || !defined(PADDLE_WITH_MKLML) || \
     !defined(PADDLE_WITH_DNNL)
   LOG(WARNING) << "No-avx512 or MKL supported!";

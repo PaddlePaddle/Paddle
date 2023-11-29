@@ -79,7 +79,7 @@ class TrtSkipLayerNormFusePass : public FusePassBase {
   virtual ~TrtSkipLayerNormFusePass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 };
 
 }  // namespace ir

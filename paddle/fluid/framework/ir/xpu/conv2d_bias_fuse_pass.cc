@@ -311,7 +311,8 @@ void Conv2dBiasFusePass::FuseScaleOps(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-void Conv2dBiasFusePass::ApplyImpl(ir::Graph* graph) const {
+void Conv2dBiasFusePass::ApplyImpl(ir::Graph* graph,
+                                   ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);

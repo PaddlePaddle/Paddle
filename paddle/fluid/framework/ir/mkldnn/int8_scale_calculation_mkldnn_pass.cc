@@ -100,7 +100,8 @@ Int8ScaleCalculationMkldnnPass::Int8ScaleCalculationMkldnnPass() {  // NOLINT
       .End();
 }
 
-void Int8ScaleCalculationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
+void Int8ScaleCalculationMkldnnPass::ApplyImpl(ir::Graph* graph,
+                                               ir::Graph* main_graph) const {
   Int8ScaleImpl(graph, "fused_conv2d");
   Int8ScaleImpl(graph, "conv2d");
 }

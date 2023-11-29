@@ -24,7 +24,8 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void FuseOperatorUnsqueeze2OneDNNPass::ApplyImpl(Graph *graph) const {
+void FuseOperatorUnsqueeze2OneDNNPass::ApplyImpl(Graph *graph,
+                                                 Graph *main_graph) const {
   std::vector<std::pair<std::string, int>> ops_and_outputs = {
       {"fused_transpose", 2},
       {"transpose2", 2},

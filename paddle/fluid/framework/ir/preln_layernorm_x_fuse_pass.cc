@@ -246,7 +246,8 @@ int PrelnLayerNormXFusePass::ApplyMergeLayerNormPattern(
   return found_subgraph_count;
 }
 
-void PrelnLayerNormXFusePass::ApplyImpl(ir::Graph *graph) const {
+void PrelnLayerNormXFusePass::ApplyImpl(ir::Graph *graph,
+                                        ir::Graph *main_graph) const {
   FusePassBase::Init("preln_layernorm_x_fuse", graph);
   int found_subgraph_count = ApplyLayerNormShiftPattern(graph);
   found_subgraph_count += ApplyMergeLayerNormPattern(graph);

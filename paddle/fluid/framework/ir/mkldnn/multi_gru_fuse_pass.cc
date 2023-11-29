@@ -42,7 +42,8 @@ std::vector<std::string> JoinInputs(Node* op1,
 
 }  // namespace
 
-void MultiGRUFusePass::ApplyImpl(ir::Graph* graph) const {
+void MultiGRUFusePass::ApplyImpl(ir::Graph* graph,
+                                 ir::Graph* main_graph) const {
   VLOG(3) << "Fusing two concatenated multi_gru ops.";
   PADDLE_ENFORCE_NOT_NULL(graph,
                           phi::errors::InvalidArgument(

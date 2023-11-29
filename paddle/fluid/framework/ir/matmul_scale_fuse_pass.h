@@ -34,7 +34,7 @@ class MatmulScaleFusePass : public FusePassBase {
   virtual ~MatmulScaleFusePass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
 };
 
 /*
@@ -46,7 +46,7 @@ class MatmulV2ScaleFusePass : public FusePassBase {
   virtual ~MatmulV2ScaleFusePass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
 };
 
 }  // namespace ir

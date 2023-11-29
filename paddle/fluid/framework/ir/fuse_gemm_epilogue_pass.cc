@@ -31,7 +31,8 @@ static void GetTransposeAttrsFromOp(const OpDesc &op,
   *trans_y = PADDLE_GET_CONST(bool, op.GetAttr("trans_y"));
 }
 
-void FuseGemmEpiloguePass::ApplyImpl(ir::Graph *graph) const {
+void FuseGemmEpiloguePass::ApplyImpl(ir::Graph *graph,
+                                     ir::Graph *main_graph) const {
   EpiloguePassActivationCache cache;
 
   graph = FuseLinearActFwd(graph, {"relu", "gelu"}, false, false, &cache);

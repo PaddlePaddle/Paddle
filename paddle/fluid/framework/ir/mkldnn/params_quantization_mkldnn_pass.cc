@@ -166,7 +166,8 @@ void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
   paddle::string::PrettyLogDetail(msg_ss.str().c_str());
 }
 
-void ParamsQuantizationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
+void ParamsQuantizationMkldnnPass::ApplyImpl(ir::Graph* graph,
+                                             ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));

@@ -65,7 +65,8 @@ AdaptivePool2dConvertGlobalPass::AdaptivePool2dConvertGlobalPass() {  // NOLINT
       .End();
 }
 
-void AdaptivePool2dConvertGlobalPass::ApplyImpl(ir::Graph* graph) const {
+void AdaptivePool2dConvertGlobalPass::ApplyImpl(ir::Graph* graph,
+                                                ir::Graph* main_graph) const {
   std::string name_scope = "adaptive_pool2d_convert_global_pass";
 
   FusePassBase::Init(name_scope, graph);

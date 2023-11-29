@@ -23,7 +23,8 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void FuseSqueeze2Transpose2OneDNNPass::ApplyImpl(Graph *graph) const {
+void FuseSqueeze2Transpose2OneDNNPass::ApplyImpl(Graph *graph,
+                                                 Graph *main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
       platform::errors::InvalidArgument(

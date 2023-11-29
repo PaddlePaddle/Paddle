@@ -74,7 +74,7 @@ class SplitLayerNormPass : public FusePassBase {
   virtual ~SplitLayerNormPass() {}
 
  protected:
-  void ApplyImpl(ir::Graph *graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   const std::string scope_name_{"split_layer_norm"};

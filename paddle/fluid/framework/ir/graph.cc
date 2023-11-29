@@ -80,11 +80,11 @@ Graph::Graph(const ProgramDesc &program,
   }
 }
 
-Graph::Graph(const BlockDesc &block, const Graph *main_graph)
+Graph::Graph(BlockDesc &block, const Graph *main_graph)
     : Graph(block, main_graph, 0, static_cast<int64_t>(block.AllOps().size())) {
 }
 
-Graph::Graph(const BlockDesc &block,
+Graph::Graph(BlockDesc &block,
              const Graph *main_graph,
              const int64_t start_op_index,
              const int64_t end_op_index)
@@ -103,7 +103,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
 }
 
 std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
-    const BlockDesc &block,
+    BlockDesc &block,
     const int64_t start_op_index,
     const int64_t end_op_index) {
   std::unordered_map<std::string, std::pair<VarDesc *, int>>
@@ -159,6 +159,9 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
         auto desc_and_block_id = name_to_desc_block_id.at(each_var_name);
         var = CreateVarNode(desc_and_block_id.first, desc_and_block_id.second);
         var_nodes[each_var_name].push_back(var);
+
+        // append all var
+        block.AppendAllocatedVar(desc_and_block_id.first);
       } else {
         // Operation input var can be optional (dispensable). Which means
         // the operation doesn't really need the var at runtime. In this

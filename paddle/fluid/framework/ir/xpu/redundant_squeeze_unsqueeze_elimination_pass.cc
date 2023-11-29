@@ -271,7 +271,7 @@ CustomSqueezeUnsqueezeEliminationPattern::
 
 class SqueezeActivationUnsqueezeEliminationPass : public FusePassBase {
  public:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   int ApplyImpl(ir::Graph* graph, const std::string& act_type) const;
@@ -358,7 +358,7 @@ int SqueezeActivationUnsqueezeEliminationPass::ApplyImpl(
 
 class CustomSqueezeUnsqueezeEliminationPass : public FusePassBase {
  public:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   int ApplyImpl(ir::Graph* graph,
@@ -370,7 +370,8 @@ class CustomSqueezeUnsqueezeEliminationPass : public FusePassBase {
   const std::string name_scope_{"custom_squeeze_unsqueeze_elimination_pass"};
 };
 
-void CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(ir::Graph* graph) const {
+void CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(
+    ir::Graph* graph, ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
@@ -515,7 +516,7 @@ int CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(
 
 class RedundantSqueezeUnsqueezeEliminationPass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   const std::string name_scope_{"redundant_squeeze_unsqueeze_elimination_pass"};

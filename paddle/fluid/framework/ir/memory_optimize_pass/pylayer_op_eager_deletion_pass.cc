@@ -23,7 +23,7 @@ namespace ir {
 using OpVariant = operators::OpVariant;
 class PyLayerOpEagerDeletionPass : public Pass {
  protected:
-  void ApplyImpl(Graph *graph) const override {
+  void ApplyImpl(Graph *graph, Graph *main_graph) const override {
     auto all_ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*graph);
 
     // Find all pylayer_op and pylayer_grad_op

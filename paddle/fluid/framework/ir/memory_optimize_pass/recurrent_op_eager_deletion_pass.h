@@ -29,7 +29,7 @@ namespace ir {
 // Pass class set skip eager deletion vars for recurrent ops
 class RecurrentOpEagerDeletionPass : public Pass {
  protected:
-  void ApplyImpl(Graph *graph) const override;
+  void ApplyImpl(Graph *graph, Graph *main_graph) const override;
 
  private:
   // Returns a std::unordered_map mapping from the device id to recurrent op and

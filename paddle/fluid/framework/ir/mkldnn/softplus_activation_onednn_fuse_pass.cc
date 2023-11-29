@@ -27,7 +27,8 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
+void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph,
+                                             Graph *main_graph) const {
   auto act_types = GetSupportedActivations();
 
   for (const auto &act_type : act_types) {

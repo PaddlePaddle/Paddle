@@ -126,7 +126,7 @@ bool AllNodesLowerToTrtPostProcess(framework::ir::Graph *graph) {
 using framework::ir::Node;
 
 void analysis::TensorRtSubgraphPass::ApplyImpl(
-    framework::ir::Graph *graph) const {
+    framework::ir::Graph *graph, framework::ir::Graph *main_graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph);
 
   auto model_precision =

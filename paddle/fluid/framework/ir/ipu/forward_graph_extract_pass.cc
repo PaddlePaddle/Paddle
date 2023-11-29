@@ -20,7 +20,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
+void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph,
+                                        ir::Graph* main_graph) const {
   VLOG(10) << "enter ForwardGraphExtractPass::ApplyImpl";
 
   std::unordered_map<OpRole, std::unordered_set<ir::Node*>> all_ops{

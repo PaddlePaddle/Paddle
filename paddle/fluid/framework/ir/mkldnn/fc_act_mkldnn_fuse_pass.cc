@@ -24,7 +24,7 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
+void FuseFCActOneDNNPass::ApplyImpl(Graph *graph, Graph *main_graph) const {
   auto act_types = GetSupportedActivations();
 
   for (auto const &act_type : act_types) FuseFCAct(graph, act_type);

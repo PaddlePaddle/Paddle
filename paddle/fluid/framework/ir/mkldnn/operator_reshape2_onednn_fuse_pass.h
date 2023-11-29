@@ -26,7 +26,7 @@ class FuseOperatorReshape2OneDNNPass : public FusePassBase {
   virtual ~FuseOperatorReshape2OneDNNPass() {}
 
  protected:
-  void ApplyImpl(Graph *graph) const override;
+  void ApplyImpl(Graph *graph, Graph *main_graph) const override;
   void FuseReshape2(Graph *graph,
                     const std::string &op_type,
                     int num_of_outputs) const;

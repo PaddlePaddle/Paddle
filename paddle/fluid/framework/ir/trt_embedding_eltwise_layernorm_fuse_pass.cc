@@ -453,7 +453,8 @@ TrtEmbeddingEltwiseLayerNormFusePass::TrtEmbeddingEltwiseLayerNormFusePass() {
       .End();
 }
 
-void TrtEmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
+void TrtEmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph,
+                                                     Graph* main_graph) const {
   bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
   if (!with_dynamic_shape) {
     VLOG(3) << "trt_embedding_eltwise_layernorm_fuse_pass need: use_varseqlen, "

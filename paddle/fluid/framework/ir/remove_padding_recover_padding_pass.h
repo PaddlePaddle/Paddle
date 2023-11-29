@@ -137,7 +137,7 @@ class RemovePaddingRecoverPaddingPass : public FusePassBase {
   virtual ~RemovePaddingRecoverPaddingPass() {}
 
  protected:
-  void ApplyImpl(Graph *graph) const;
+  void ApplyImpl(Graph *graph, Graph *main_graph) const;
   const std::string name_scope_{"remove_padding_recover_padding_pass"};
 };
 

@@ -251,7 +251,8 @@ GpuCpuSqueeze2MatmulFusePass::GpuCpuSqueeze2MatmulFusePass() {
       .End();
 }
 
-void GpuCpuMapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
+void GpuCpuMapMatmul2MulPass::ApplyImpl(ir::Graph* graph,
+                                        ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   std::string name_scope = "gpu_cpu_map_matmul_to_mul_pass";
@@ -320,7 +321,8 @@ void GpuCpuMapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_count);
 }
 
-void GpuCpuMapMatmulV2ToMulPass::ApplyImpl(ir::Graph* graph) const {
+void GpuCpuMapMatmulV2ToMulPass::ApplyImpl(ir::Graph* graph,
+                                           ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   std::string name_scope = "gpu_cpu_map_matmul_v2_to_mul_pass";
@@ -394,7 +396,8 @@ void GpuCpuMapMatmulV2ToMulPass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_count);
 }
 
-void GpuCpuMapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
+void GpuCpuMapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph,
+                                              ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   std::string name_scope = "gpu_cpu_map_matmul_v2_to_matmul_pass";
@@ -470,7 +473,8 @@ void GpuCpuMapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_count);
 }
 
-void GpuCpuSqueeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
+void GpuCpuSqueeze2MatmulFusePass::ApplyImpl(ir::Graph* graph,
+                                             ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   std::string name_scope = "gpu_cpu_squeeze2_matmul_fuse_pass";
@@ -612,7 +616,8 @@ GpuCpuReshape2MatmulFusePass::GpuCpuReshape2MatmulFusePass() {
       .End();
 }
 
-void GpuCpuReshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
+void GpuCpuReshape2MatmulFusePass::ApplyImpl(ir::Graph* graph,
+                                             ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   std::string name_scope = "gpu_cpu_reshape2_matmul_fuse_pass";
@@ -694,7 +699,8 @@ void GpuCpuReshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_count);
 }
 
-void GpuCpuFlatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
+void GpuCpuFlatten2MatmulFusePass::ApplyImpl(ir::Graph* graph,
+                                             ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   std::string name_scope = "gpu_cpu_flatten2_matmul_fuse_pass";

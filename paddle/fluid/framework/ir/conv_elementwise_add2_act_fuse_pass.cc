@@ -123,7 +123,8 @@ ConvElementwiseAdd2ActFusePass::ConvElementwiseAdd2ActFusePass() {
       .End();
 }
 
-void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
+void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph,
+                                               ir::Graph* main_graph) const {
   const std::string pattern_name = "conv_elementwise_add2_act_fuse";
   FusePassBase::Init(pattern_name, graph);
 

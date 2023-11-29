@@ -483,7 +483,8 @@ bool SquaredMatSubFusePass::IsAcceptable(
   return IsCompat(subgraph, g);
 }
 
-void SquaredMatSubFusePass::ApplyImpl(ir::Graph* graph) const {
+void SquaredMatSubFusePass::ApplyImpl(ir::Graph* graph,
+                                      ir::Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
   int fusion_count = BuildFusion(graph, name_scope_, this);
   AddStatis(fusion_count);

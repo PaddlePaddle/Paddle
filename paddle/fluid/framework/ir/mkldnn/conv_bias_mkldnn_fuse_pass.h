@@ -35,7 +35,7 @@ class ConvBiasFusePass : public FusePassBase {
   virtual std::string fused_type() const { return "fused_conv2d"; }
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
   void FuseConvBias(ir::Graph* graph,
                     const std::string& conv_type,
                     const std::string& fused_conv) const;

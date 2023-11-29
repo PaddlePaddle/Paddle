@@ -430,7 +430,8 @@ PrelnEmbeddingEltwiseLayerNormFusePass::
       .End();
 }
 
-void PrelnEmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
+void PrelnEmbeddingEltwiseLayerNormFusePass::ApplyImpl(
+    Graph* graph, Graph* main_graph) const {
   bool enable_int8 = Get<bool>("enable_int8");
   bool use_varseqlen = Get<bool>("use_varseqlen");
   bool with_interleaved = Get<bool>("with_interleaved");

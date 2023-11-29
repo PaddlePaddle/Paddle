@@ -27,7 +27,7 @@ class TrtSupportNHWCPass : public FusePassBase {
   ~TrtSupportNHWCPass() = default;
 
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
 };
 
 }  // namespace ir

@@ -34,7 +34,7 @@ class BackWardOpDepsPass : public ir::Pass {
     VLOG(10) << "add deps:" << l->DebugString() << " and " << r->DebugString();
   }
 
-  void ApplyImpl(ir::Graph* graph) const override {
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override {
     // NOTE: The operator nodes should be in topology order.
     std::vector<details::OpHandleBase*> backward_op_handles;
     std::vector<details::OpHandleBase*> all_opt_handles;

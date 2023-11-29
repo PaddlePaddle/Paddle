@@ -549,7 +549,8 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
   return fusion_count;
 }
 
-void TrtQkMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
+void TrtQkMultiHeadMatmulFusePass::ApplyImpl(Graph* graph,
+                                             Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
 #ifdef PADDLE_WITH_TENSORRT
   auto trt_version = paddle::inference::tensorrt::GetTrtRuntimeVersion();

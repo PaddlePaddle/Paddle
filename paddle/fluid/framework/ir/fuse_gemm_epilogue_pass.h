@@ -73,7 +73,7 @@ class FuseGemmEpiloguePass : public FusePassBase {
   virtual ~FuseGemmEpiloguePass() {}
 
  protected:
-  void ApplyImpl(ir::Graph *graph) const override;
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override;
 
   ir::Graph *FuseLinearFwd(ir::Graph *graph, bool is_training) const;
   ir::Graph *FuseLinearActFwd(ir::Graph *graph,

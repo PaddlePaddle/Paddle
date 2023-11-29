@@ -547,7 +547,7 @@ TrtPromptTuningEmbeddingEltwiseLayerNormFusePass::
 }
 
 void TrtPromptTuningEmbeddingEltwiseLayerNormFusePass::ApplyImpl(
-    Graph* graph) const {
+    Graph* graph, Graph* main_graph) const {
   bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
   if (!with_dynamic_shape) {
     VLOG(3) << "Stop this pass, because "

@@ -43,7 +43,7 @@ void BuildCircleGraph(Graph* g) {
 
 class TestPass : public Pass {
  protected:
-  void ApplyImpl(ir::Graph* graph) const {
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const {
     graph->Set<int>("copy_test_pass_attr", new int);
     graph->Set<int>("copy_test_graph_attr", new int);
 
@@ -226,7 +226,7 @@ TEST(PassTest, TestPassAttrCheckConvertAllBlocks) {
 
 class TestPassWithDefault : public Pass {
  protected:
-  void ApplyImpl(ir::Graph* graph) const {
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const {
     graph->Set<int>("copy_default_attr", new int);
 
     int test_pass_attr = this->Get<int>("default_attr");

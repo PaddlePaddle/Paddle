@@ -72,7 +72,8 @@ bool HasScale(OpDesc* const op_ptr,
   return false;
 }
 
-void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
+void VitAttentionFusePass::ApplyImpl(ir::Graph* graph,
+                                     ir::Graph* main_graph) const {
   GraphPatternDetector gpd;
   const std::string pattern_name = "vit_attention_fuse";
   FusePassBase::Init(pattern_name, graph);

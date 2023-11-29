@@ -472,7 +472,7 @@ CascadeFastWhereXPUPattern::CascadeFastWhereXPUPattern(
 
 class OneFastWhereXPUFusePass : public FusePassBase {
  public:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   int ApplySubgraph(ir::Graph* graph, int mode) const;
@@ -535,7 +535,8 @@ int OneFastWhereXPUFusePass::ApplySubgraph(ir::Graph* graph, int mode) const {
   return found_subgraph_count;
 }
 
-void OneFastWhereXPUFusePass::ApplyImpl(ir::Graph* graph) const {
+void OneFastWhereXPUFusePass::ApplyImpl(ir::Graph* graph,
+                                        ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
@@ -548,7 +549,7 @@ void OneFastWhereXPUFusePass::ApplyImpl(ir::Graph* graph) const {
 
 class CascadeFastWhereXPUFusePass : public FusePassBase {
  public:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   int ApplySubgraph(ir::Graph* graph, int mode) const;
@@ -613,7 +614,8 @@ int CascadeFastWhereXPUFusePass::ApplySubgraph(ir::Graph* graph,
   return found_subgraph_count;
 }
 
-void CascadeFastWhereXPUFusePass::ApplyImpl(ir::Graph* graph) const {
+void CascadeFastWhereXPUFusePass::ApplyImpl(ir::Graph* graph,
+                                            ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
@@ -631,13 +633,14 @@ void CascadeFastWhereXPUFusePass::ApplyImpl(ir::Graph* graph) const {
 
 class FastWhereXPUFusePass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   const std::string name_scope_{"fast_where_xpu_fuse_pass"};
 };
 
-void FastWhereXPUFusePass::ApplyImpl(ir::Graph* graph) const {
+void FastWhereXPUFusePass::ApplyImpl(ir::Graph* graph,
+                                     ir::Graph* main_graph) const {
   VLOG(4) << "handle fast_where_xpu op fusion.";
   OneFastWhereXPUFusePass one_fast_where_xpu_fuse_pass;
   one_fast_where_xpu_fuse_pass.ApplyImpl(graph);

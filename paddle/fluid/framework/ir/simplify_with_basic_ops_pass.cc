@@ -55,7 +55,8 @@ SimplifyWithBasicOpsPass::SimplifyWithBasicOpsPass() {
       .End();
 }
 
-void SimplifyWithBasicOpsPass::ApplyImpl(Graph* graph) const {
+void SimplifyWithBasicOpsPass::ApplyImpl(Graph* graph,
+                                         Graph* main_graph) const {
   VLOG(3) << "Simplify the Graph with basic ops.";
   std::unordered_set<const Node*> del_node_set;
   for (Node* n : graph->Nodes()) {

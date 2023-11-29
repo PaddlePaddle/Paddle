@@ -128,7 +128,7 @@ bool ModelLayoutIsNHWC(const std::vector<ir::Node *> &op_nodes) {
 
 }  // namespace
 
-void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
+void TrtSupportNHWCPass::ApplyImpl(Graph *graph, Graph *main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::PreconditionNotMet(
                               "During the trt_support_nhwc_pass, the graph "

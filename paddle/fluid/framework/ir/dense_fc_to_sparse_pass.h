@@ -50,7 +50,7 @@ class DenseFCToSparsePass : public FusePassBase {
   DenseFCToSparsePass();
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
   const std::string name_scope_{"dense_fc_to_sparse_pass"};
 };

@@ -26,7 +26,7 @@ class FuseOperatorScaleOneDNNPass : public FusePassBase {
   virtual ~FuseOperatorScaleOneDNNPass() {}
 
  protected:
-  void ApplyImpl(Graph *graph) const override;
+  void ApplyImpl(Graph *graph, Graph *main_graph) const override;
 
   void FuseScale(Graph *graph, const std::string &op_type) const;
 };

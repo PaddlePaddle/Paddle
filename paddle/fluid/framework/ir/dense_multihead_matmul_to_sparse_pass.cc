@@ -81,7 +81,8 @@ DenseMultiheadMatmulToSparsePass::DenseMultiheadMatmulToSparsePass() {
       .End();
 }
 
-void DenseMultiheadMatmulToSparsePass::ApplyImpl(Graph *graph) const {
+void DenseMultiheadMatmulToSparsePass::ApplyImpl(Graph *graph,
+                                                 Graph *main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
 

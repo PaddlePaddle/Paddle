@@ -287,7 +287,8 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
   return found_subgraph_count;
 }
 
-void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
+void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph,
+                                          ir::Graph *main_graph) const {
   VLOG(1) << "Fuse PrelnResidualBias into "
              "fused_bias_dropout_residual_layer_norm op with dropout rate = 0";
   PADDLE_ENFORCE_NOT_NULL(

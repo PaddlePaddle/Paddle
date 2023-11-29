@@ -31,7 +31,8 @@ namespace ir {
   GET_IR_NODE(quant_dequant_op_outscale); \
   GET_IR_NODE(quant_dequant_op_out);
 
-void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
+void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph,
+                                         ir::Graph* main_graph) const {
   const std::string pattern_name = "delete_quantdequant_op_pattern";
   FusePassBase::Init(pattern_name, graph);
   GraphPatternDetector gpd;

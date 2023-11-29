@@ -43,7 +43,7 @@ class GpuCpuMapMatmul2MulPass : public FusePassBase {
   virtual ~GpuCpuMapMatmul2MulPass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
 };
 
 /*
@@ -55,7 +55,7 @@ class GpuCpuMapMatmulV2ToMulPass : public FusePassBase {
   virtual ~GpuCpuMapMatmulV2ToMulPass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
 };
 
 /*
@@ -67,7 +67,7 @@ class GpuCpuMapMatmulV2ToMatmulPass : public FusePassBase {
   virtual ~GpuCpuMapMatmulV2ToMatmulPass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
 };
 
 /*
@@ -95,7 +95,7 @@ class GpuCpuSqueeze2MatmulFusePass : public FusePassBase {
   virtual ~GpuCpuSqueeze2MatmulFusePass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
 };
 
 /*
@@ -125,7 +125,7 @@ class GpuCpuReshape2MatmulFusePass : public FusePassBase {
   virtual ~GpuCpuReshape2MatmulFusePass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
 };
 
 class GpuCpuFlatten2MatmulFusePass : public FusePassBase {
@@ -134,7 +134,7 @@ class GpuCpuFlatten2MatmulFusePass : public FusePassBase {
   virtual ~GpuCpuFlatten2MatmulFusePass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
 };
 
 }  // namespace ir

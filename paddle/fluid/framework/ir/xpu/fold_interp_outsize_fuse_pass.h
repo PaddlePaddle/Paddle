@@ -33,7 +33,7 @@ namespace ir {
 
 class FoldInterpOutsizeFusePass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override;
 
  private:
   /*
@@ -64,7 +64,7 @@ class FoldInterpOutsizeFusePass : public FusePassBase {
               |       /
       bilinear_interp_v2
   */
-  void FoldInterpOutsize(ir::Graph* graph) const;
+  void FoldInterpOutsize(ir::Graph *graph) const;
 
   const std::string name_scope_{"fold_interp_outsize_fuse_pass"};
 };

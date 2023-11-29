@@ -49,10 +49,10 @@ Fused subgraph:
 */
 class DuplicatedTransposeFusePass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override;
 
  private:
-  void DuplicatedTranspose(ir::Graph* graph) const;
+  void DuplicatedTranspose(ir::Graph *graph) const;
 
   const std::string name_scope_{"duplicated_transpose_fuse_pass"};
 

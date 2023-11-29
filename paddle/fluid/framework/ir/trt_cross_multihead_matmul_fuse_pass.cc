@@ -488,7 +488,8 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
   return fusion_count;
 }
 
-void TrtCrossMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
+void TrtCrossMultiHeadMatmulFusePass::ApplyImpl(Graph* graph,
+                                                Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
 #ifdef PADDLE_WITH_TENSORRT
   auto trt_version = paddle::inference::tensorrt::GetTrtRuntimeVersion();

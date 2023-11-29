@@ -25,7 +25,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void InferShapePass::ApplyImpl(ir::Graph* graph) const {
+void InferShapePass::ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const {
   VLOG(10) << "enter InferShapePass::ApplyImpl";
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
@@ -70,7 +70,7 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
         continue;
       }
       auto var_desc = node->Var();
-      auto* ptr = scope->Var(var_desc->Name());
+      auto *ptr = scope->Var(var_desc->Name());
       paddle::framework::InitializeVariable(ptr, var_desc->GetType());
 
       auto tensor = ptr->GetMutable<phi::DenseTensor>();

@@ -28,7 +28,8 @@ namespace ir {
 
 // this pass is used to optimize scale operator whose scale = 1 and bias = 0.
 // scale will not be optimized if it is the only one operator in the graph.
-void DeleteScaleOpPass::ApplyImpl(ir::Graph* graph) const {
+void DeleteScaleOpPass::ApplyImpl(ir::Graph* graph,
+                                  ir::Graph* main_graph) const {
   VLOG(10) << "enter DeleteScaleOpPass::ApplyImpl";
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);

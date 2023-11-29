@@ -42,7 +42,7 @@ std::string FormatName(const Node* node) {
 }
 }  // namespace
 
-void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
+void GraphVizPass::ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const {
   std::string optim_cache_dir;
   if (Has("optim_cache_dir")) {
     optim_cache_dir = Get<std::string>("optim_cache_dir");

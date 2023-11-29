@@ -77,7 +77,7 @@ class TrtCrossMultiHeadMatmulFusePass : public FusePassBase {
   TrtCrossMultiHeadMatmulFusePass();
 
  protected:
-  void ApplyImpl(Graph* graph) const;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const;
 
   const std::string name_scope_{"trt_cross_multihead_matmul_fuse"};
 

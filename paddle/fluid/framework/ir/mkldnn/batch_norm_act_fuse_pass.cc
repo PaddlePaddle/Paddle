@@ -25,7 +25,8 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void FuseBatchNormActOneDNNPass::ApplyImpl(Graph *graph) const {
+void FuseBatchNormActOneDNNPass::ApplyImpl(Graph *graph,
+                                           Graph *main_graph) const {
   std::string act_type("relu");
   FuseBatchNormAct(graph, act_type);
 }

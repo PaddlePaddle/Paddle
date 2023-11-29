@@ -243,7 +243,7 @@ bool InitAndCheckAttrs(const size_t &found_adamw_count,
   return true;
 }
 
-void FuseAdamWPass::ApplyImpl(ir::Graph *graph) const {
+void FuseAdamWPass::ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const {
   graph = FuseAdamWFun(graph, true, true);
   graph = FuseAdamWFun(graph, true, false);
   graph = FuseAdamWFun(graph, false, true);

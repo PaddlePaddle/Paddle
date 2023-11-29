@@ -37,7 +37,7 @@ namespace ir {
 
 class DeleteIsolatedNodePass : public Pass {
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
 
  private:
   void CollectReservedPersistableNodeNames(
@@ -60,7 +60,7 @@ class DeleteIsolatedNodePass : public Pass {
   };
 };
 
-void DeleteIsolatedNodePass::ApplyImpl(Graph* graph) const {
+void DeleteIsolatedNodePass::ApplyImpl(Graph* graph, Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   if (!graph->IsMainGraph()) {

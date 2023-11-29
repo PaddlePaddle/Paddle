@@ -630,7 +630,8 @@ PDNode* TrtMultiHeadMatmulV3Pattern::operator()() {
 
 }  // namespace patterns
 
-void TrtMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
+void TrtMultiHeadMatmulFusePass::ApplyImpl(Graph* graph,
+                                           Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count = patterns::BuildFusion(graph, name_scope_);
@@ -1080,7 +1081,8 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
   return fusion_count;
 }
 
-void TrtMultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
+void TrtMultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph,
+                                             Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
@@ -1495,7 +1497,8 @@ int TrtMultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
   return fusion_count;
 }
 
-void TrtMultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
+void TrtMultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph,
+                                             Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(

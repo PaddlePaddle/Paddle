@@ -702,7 +702,8 @@ void QuantDequantMkldnnPass::RemoveCtrlVars(ir::Graph* graph) const {
   GraphSafeRemoveNodes(graph, nodes2rm);
 }
 
-void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
+void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph,
+                                       ir::Graph* main_graph) const {
   VLOG(3) << "Convert paddle slim quantized model to mkldnn quantized model.";
   const std::string pattern_name = "quant_dequant_mkldnn_pass";
   FusePassBase::Init(pattern_name, graph);

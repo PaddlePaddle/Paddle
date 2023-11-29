@@ -596,7 +596,8 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
   gpd(graph, handler);
 }
 
-void QuantDequantFusePass::ApplyImpl(ir::Graph* graph) const {
+void QuantDequantFusePass::ApplyImpl(ir::Graph* graph,
+                                     ir::Graph* main_graph) const {
   const std::string pattern_name = "quant_dequant_fuse";
   FusePassBase::Init(pattern_name, graph);
 

@@ -21,7 +21,8 @@ namespace ir {
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES GET_IR_NODE(quant_op);
 
-void AddSupportInt8Pass::ApplyImpl(ir::Graph* graph) const {
+void AddSupportInt8Pass::ApplyImpl(ir::Graph* graph,
+                                   ir::Graph* main_graph) const {
   const std::string pattern_name = "add_support_int8";
   FusePassBase::Init(pattern_name, graph);
 

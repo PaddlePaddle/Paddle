@@ -30,7 +30,7 @@ class Int8ScaleCalculationMkldnnPass : public FusePassBase {
   virtual ~Int8ScaleCalculationMkldnnPass() = default;
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
   void Int8ScaleImpl(ir::Graph* graph, const std::string& conv_type) const;
 };
 

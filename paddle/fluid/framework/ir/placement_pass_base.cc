@@ -22,7 +22,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void PlacementPassBase::ApplyImpl(ir::Graph* graph) const {
+void PlacementPassBase::ApplyImpl(ir::Graph* graph,
+                                  ir::Graph* main_graph) const {
   VLOG(3) << "Applies " << GetPlacementName() << " placement strategy.";
   std::string attr_name = GetAttrName();
   const auto& op_types_list = GetOpTypesList();

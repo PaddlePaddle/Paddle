@@ -75,13 +75,14 @@ Delete "elementwise" if one of inputs is "1".
 */
 class DeleteElementwiseMulOpPass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   const std::string name_scope_{"delete_elementwise_mul_op_pass"};
 };
 
-void DeleteElementwiseMulOpPass::ApplyImpl(ir::Graph* graph) const {
+void DeleteElementwiseMulOpPass::ApplyImpl(ir::Graph* graph,
+                                           ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);

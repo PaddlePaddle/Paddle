@@ -71,13 +71,14 @@ Delete "concat" if only has one input.
 */
 class DeleteConcatOpPass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   const std::string name_scope_{"delete_concat_op_pass"};
 };
 
-void DeleteConcatOpPass::ApplyImpl(ir::Graph* graph) const {
+void DeleteConcatOpPass::ApplyImpl(ir::Graph* graph,
+                                   ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);

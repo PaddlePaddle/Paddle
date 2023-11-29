@@ -26,7 +26,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void FuseReluDepthwiseConvPass::ApplyImpl(ir::Graph *graph) const {
+void FuseReluDepthwiseConvPass::ApplyImpl(ir::Graph *graph,
+                                          ir::Graph *main_graph) const {
   graph = FuseReluDepthwiseConv(graph, true);
   graph = FuseReluDepthwiseConv(graph, false);  // NOLINT
 }

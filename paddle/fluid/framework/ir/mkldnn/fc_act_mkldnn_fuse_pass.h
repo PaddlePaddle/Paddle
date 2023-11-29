@@ -28,7 +28,7 @@ class FuseFCActOneDNNPass : public FusePassBase {
   virtual ~FuseFCActOneDNNPass() {}
 
  protected:
-  void ApplyImpl(Graph *graph) const override;
+  void ApplyImpl(Graph *graph, Graph *main_graph) const override;
 
   void FuseFCAct(Graph *graph, const std::string &act_types) const;
 };

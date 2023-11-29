@@ -187,7 +187,8 @@ int ElementwiseAddTransposeFusePass::ApplyEleTransPattern(
   gpd(graph, handler);
   return found_subgraph_count;
 }
-void ElementwiseAddTransposeFusePass::ApplyImpl(ir::Graph *graph) const {
+void ElementwiseAddTransposeFusePass::ApplyImpl(ir::Graph *graph,
+                                                ir::Graph *main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));

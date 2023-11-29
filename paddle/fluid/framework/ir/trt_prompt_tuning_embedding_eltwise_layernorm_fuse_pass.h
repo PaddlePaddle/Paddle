@@ -106,7 +106,7 @@ class TrtPromptTuningEmbeddingEltwiseLayerNormFusePass : public FusePassBase {
   virtual ~TrtPromptTuningEmbeddingEltwiseLayerNormFusePass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const;
   int BuildFusion(Graph* graph, const std::string& name_scope
                   /*const Scope* scope*/) const;
   const std::string name_scope_{

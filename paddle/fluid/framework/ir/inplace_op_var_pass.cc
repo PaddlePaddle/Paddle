@@ -99,7 +99,8 @@ std::vector<std::string> InplaceOpVarPass::GetControlFlowVarNames(
   return control_flow_var_names;
 }
 
-void InplaceOpVarPass::ApplyImpl(ir::Graph* graph) const {
+void InplaceOpVarPass::ApplyImpl(ir::Graph* graph,
+                                 ir::Graph* main_graph) const {
   FusePassBase::Init("inplace_op_var", graph);
   if (!graph->IsMainGraph()) {
     VLOG(3) << "Pass(apply in main graph) will work on all subgraphs.";

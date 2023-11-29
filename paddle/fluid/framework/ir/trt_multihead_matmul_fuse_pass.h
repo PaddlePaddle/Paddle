@@ -141,7 +141,7 @@ class TrtMultiHeadMatmulFusePass : public FusePassBase {
   virtual ~TrtMultiHeadMatmulFusePass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const;
 
   const std::string name_scope_{"trt_multihead_matmul_fuse"};
 };
@@ -151,7 +151,7 @@ class TrtMultiHeadMatmulV2FusePass : public FusePassBase {
   TrtMultiHeadMatmulV2FusePass();
 
  protected:
-  void ApplyImpl(Graph* graph) const;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const;
 
   const std::string name_scope_{"trt_multihead_matmul_fuse_v2"};
 
@@ -166,7 +166,7 @@ class TrtMultiHeadMatmulV3FusePass : public FusePassBase {
   TrtMultiHeadMatmulV3FusePass();
 
  protected:
-  void ApplyImpl(Graph* graph) const;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const;
 
   const std::string name_scope_{"trt_multihead_matmul_fuse_v3"};
 

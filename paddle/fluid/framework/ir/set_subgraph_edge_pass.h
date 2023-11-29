@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,8 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
-#include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
@@ -22,10 +21,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class MapOp2AnotherPass : public FusePassBase {
+class SetSubgraphEdge : public FusePassBase {
  public:
-  MapOp2AnotherPass() = default;
-  virtual ~MapOp2AnotherPass() = default;
+  SetSubgraphEdge() {}
+  virtual ~SetSubgraphEdge() {}
 
  protected:
   void ApplyImpl(Graph* graph, Graph* main_graph) const override;

@@ -33,7 +33,7 @@ namespace framework {
 namespace ir {
 namespace patterns {
 struct RecoverPadding : public PatternBase {
-  RecoverPadding(PDPattern *pattern, const std::string &name_scope)
+  RecoverPadding(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "recover_padding") {}
 
   void operator()();
@@ -50,7 +50,7 @@ class DeleteRemovePaddingRecoverPaddingPass : public FusePassBase {
   virtual ~DeleteRemovePaddingRecoverPaddingPass() {}
 
  protected:
-  void ApplyImpl(Graph *graph) const;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const;
   const std::string name_scope_{"delete_remove_padding_recover_padding_pass"};
 };
 

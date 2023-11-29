@@ -23,15 +23,15 @@ class Graph;
 
 class SyncBatchNormPass : public Pass {
  protected:
-  void ApplyImpl(ir::Graph *graph) const override {
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override {
 #if defined(_WIN32)
     VLOG(3) << "Not use synchronize batch norm on windows";
     return;
 #endif
     VLOG(3) << "Use synchronize batch norm";
-    for (const Node *n : graph->Nodes()) {
+    for (const Node* n : graph->Nodes()) {
       if (n->IsOp() && n->Op()) {
-        auto *op = n->Op();
+        auto* op = n->Op();
         // process synchronize in batch_norm
         if (op->Type() == "batch_norm") {
           op->SetType("sync_batch_norm");

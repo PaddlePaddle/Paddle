@@ -31,7 +31,7 @@ class SimplifyWithBasicOpsPass : public OpCompatSensiblePass {
   SimplifyWithBasicOpsPass();
 
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
 
  private:
   bool SimplifyDropout(Graph* graph,

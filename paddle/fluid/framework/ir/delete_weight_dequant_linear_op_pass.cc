@@ -23,7 +23,8 @@ namespace ir {
 
 class Graph;
 
-void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
+void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph,
+                                                ir::Graph* main_graph) const {
   std::unordered_set<std::string> op_list = {"matrix_multiply",
                                              "matmul_v2",
                                              "matmul",

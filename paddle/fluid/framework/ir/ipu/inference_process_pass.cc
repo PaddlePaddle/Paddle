@@ -24,7 +24,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
+void InferenceProcessPass::ApplyImpl(ir::Graph* graph,
+                                     ir::Graph* main_graph) const {
   VLOG(10) << "enter InferenceProcessPass::ApplyImpl";
 
   // Get a new instance of ipu_backend

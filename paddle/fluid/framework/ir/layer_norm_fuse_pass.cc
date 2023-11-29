@@ -214,7 +214,7 @@ LayerNormFusePass::LayerNormFusePass() {
       .End();
 }
 
-void LayerNormFusePass::ApplyImpl(Graph* graph) const {
+void LayerNormFusePass::ApplyImpl(Graph* graph, Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "The input graph of "

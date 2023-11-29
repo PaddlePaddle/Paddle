@@ -31,7 +31,7 @@ class GeneratePass : public Pass {
                         const std::string& pass_type = "");
 
  protected:
-  void ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const override;
 
  private:
   GeneratePass() = delete;

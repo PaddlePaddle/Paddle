@@ -22,7 +22,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void AvgShardPass::ApplyImpl(ir::Graph* graph) const {
+void AvgShardPass::ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const {
   VLOG(10) << "enter AvgShardPass::ApplyImpl";
 
   auto ipu_backend = platform::ipu::IpuBackend::GetInstance();

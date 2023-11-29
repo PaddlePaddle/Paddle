@@ -47,10 +47,10 @@ Fused subgraph:
 */
 class FoldTwoSqueeze2FusePass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override;
 
  private:
-  void FoldTwoSqueeze2(ir::Graph* graph) const;
+  void FoldTwoSqueeze2(ir::Graph *graph) const;
 
   const std::string name_scope_{"fold_two_squeeze2_fuse_pass"};
 };

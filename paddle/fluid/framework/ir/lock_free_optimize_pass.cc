@@ -30,7 +30,8 @@ const char kSumGradOpName[] = "sum";  // NOLINT
 // other optimizers later.
 const char kOptimizerType[] = "sgd";  // NOLINT
 
-void LockFreeOptimizePass::ApplyImpl(ir::Graph* graph) const {
+void LockFreeOptimizePass::ApplyImpl(ir::Graph* graph,
+                                     ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
 

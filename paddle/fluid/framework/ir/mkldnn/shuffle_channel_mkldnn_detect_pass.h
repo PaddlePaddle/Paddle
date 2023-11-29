@@ -30,7 +30,7 @@ class ShuffleChannelMKLDNNDetectPass : public FusePassBase {
   virtual ~ShuffleChannelMKLDNNDetectPass() = default;
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override;
 };
 
 }  // namespace ir

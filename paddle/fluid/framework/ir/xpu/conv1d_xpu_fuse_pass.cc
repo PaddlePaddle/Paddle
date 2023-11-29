@@ -359,7 +359,7 @@ After the pass is applied:
 */
 class Conv1dXPUFusePass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   int ApplyImpl(ir::Graph* graph,
@@ -373,7 +373,8 @@ class Conv1dXPUFusePass : public FusePassBase {
   const std::string name_scope_{"conv1d_xpu_fuse_pass"};
 };
 
-void Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph) const {
+void Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
+                                  ir::Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);

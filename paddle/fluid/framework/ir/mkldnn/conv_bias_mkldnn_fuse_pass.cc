@@ -270,7 +270,8 @@ phi::DenseTensor tensor_apply_eltwise(const phi::DenseTensor& vec_a,
   return vec_y;
 }
 
-void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
+void ConvBiasFusePass::ApplyImpl(ir::Graph* graph,
+                                 ir::Graph* main_graph) const {
   FuseConvBias(graph, type(), fused_type());
   if (type() != fused_type()) {
     // Is the second pass useful?

@@ -268,7 +268,7 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
   }
 }
 
-void AutoMixedPrecisionPass::ApplyImpl(Graph* graph) const {
+void AutoMixedPrecisionPass::ApplyImpl(Graph* graph, Graph* main_graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::PreconditionNotMet(
                               "During the auto_mixed_precision_pass, the graph "

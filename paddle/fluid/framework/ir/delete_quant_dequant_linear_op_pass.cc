@@ -84,7 +84,8 @@ DeleteQuantDequantLinearOpPass::DeleteQuantDequantLinearOpPass() {
       .End();
 }
 // Delete quantize_linear_op dequantize_linear_op, then add input_scales
-void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
+void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph,
+                                               ir::Graph* main_graph) const {
   const std::string pattern_name = "delete_quantdequant_linear_op_pattern";
   FusePassBase::Init(pattern_name, graph);
 

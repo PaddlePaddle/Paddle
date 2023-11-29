@@ -23,7 +23,8 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
+void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph,
+                                             Graph* main_graph) const {
   auto act_types = GetSupportedActivations();
   act_types.erase(std::remove(act_types.begin(), act_types.end(), "sqrt"),
                   act_types.end());

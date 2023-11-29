@@ -183,7 +183,8 @@ int ReverseRollFusePass::ApplyPattern(ir::Graph* graph, bool with_roll) const {
   gpd(graph, handler);
   return fuse_count;
 }
-void ReverseRollFusePass::ApplyImpl(ir::Graph* graph) const {
+void ReverseRollFusePass::ApplyImpl(ir::Graph* graph,
+                                    ir::Graph* main_graph) const {
   int fuse_count = 0;
   fuse_count += ApplyPattern(graph, true);
   fuse_count += ApplyPattern(graph, false);

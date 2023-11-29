@@ -108,7 +108,7 @@ static void AddSequentialDepsForSortedOps(
 
 class FixOpRunOrderPass : public Pass {
  protected:
-  void ApplyImpl(Graph *graph) const override {
+  void ApplyImpl(Graph *graph, Graph *main_graph) const override {
     const auto &program = graph->OriginProgram();
     std::unordered_map<std::string, size_t> op_to_idx;
     size_t i = 0;

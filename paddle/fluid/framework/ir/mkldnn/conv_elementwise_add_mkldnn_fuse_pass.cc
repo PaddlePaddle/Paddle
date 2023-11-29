@@ -288,7 +288,8 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
                         found_projection_conv_count + graph_with_stats.second);
 }
 
-void ResidualConnectionMKLDNNFusePass::ApplyImpl(ir::Graph* graph) const {
+void ResidualConnectionMKLDNNFusePass::ApplyImpl(ir::Graph* graph,
+                                                 ir::Graph* main_graph) const {
   FusePassBase::Init(name_scope_, graph);
 
   auto graph_with_stats =

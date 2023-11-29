@@ -45,7 +45,7 @@ class FuseMultiTransformerLayerPass : public FusePassBase {
   virtual ~FuseMultiTransformerLayerPass() {}
 
  protected:
-  void ApplyImpl(Graph* graph) const;
+  void ApplyImpl(Graph* graph, Graph* main_graph) const;
 
   const std::string name_scope_{"fuse_multi_transformer_layer"};
 

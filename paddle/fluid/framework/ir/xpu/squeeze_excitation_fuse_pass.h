@@ -65,7 +65,7 @@ After the pass is applied:
 */
 class SqueezeExcitationFusePass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph, ir::Graph* main_graph) const override;
 
  private:
   int ApplyImpl(ir::Graph* graph,

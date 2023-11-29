@@ -31,7 +31,7 @@ class Graph;
 
 class ReferenceCountPass : public ir::Pass {
  protected:
-  void ApplyImpl(ir::Graph *graph) const override;
+  void ApplyImpl(ir::Graph *graph, ir::Graph *main_graph) const override;
 };
 
 // A functor to shrink/remove operators who depend on other operators in a set
@@ -259,7 +259,8 @@ ExtractComputationOpFromLastLivedVar(details::VarHandle *var,
   return shrink_func(computation_ops);
 }
 
-void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
+void ReferenceCountPass::ApplyImpl(ir::Graph *graph,
+                                   ir::Graph *main_graph) const {
   auto &var_infos = Get<MemOptVarInfoMapList>(kMemOptVarInfoMapList);
   auto &last_live_ops_of_vars =
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);

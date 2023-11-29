@@ -29,13 +29,13 @@ class ConvActivationMkldnnFusePass : public FusePassBase {
   virtual ~ConvActivationMkldnnFusePass() {}
 
  protected:
-  void ApplyImpl(Graph *graph) const override;
+  void ApplyImpl(Graph *graph, Graph *main_graph) const override;
 
   void FuseConvAct(Graph *graph,
                    const std::string &conv_type,
-                   std::string &act_type) const;
+                   std::string &act_type) const;  // NOLINT
 
-  void FuseConvConcatAct(Graph *graph, std::string &act_type) const;
+  void FuseConvConcatAct(Graph *graph, std::string &act_type) const;  // NOLINT
 };
 
 }  // namespace ir
