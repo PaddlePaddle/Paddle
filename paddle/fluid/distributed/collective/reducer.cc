@@ -429,6 +429,9 @@ void EagerGroup::ConcatTensors(const platform::Place &place) {
 
 void EagerGroup::SplitTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
+  if (dense_tensors_.size() == 1) {
+    return;
+  }
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto &gpu_context = static_cast<const phi::GPUContext &>(context);
@@ -448,9 +451,6 @@ void EagerGroup::SplitTensors(const platform::DeviceContext &context) {
 #endif
   } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    if (dense_tensors_.size() == 1) {
-      return;
-    }
     SplitTensorsWithType(
         static_cast<const platform::CustomDeviceContext &>(context),
         &dense_contents_,
