@@ -115,6 +115,9 @@ class DygraphShardingOptimizer:
             self._set_inner_opt_attr('_parameter_list', local_params)
             self._set_inner_opt_attr('_param_groups', local_params)
         else:
+            self.origin_decay_param_fun = getattr(
+                self._inner_opt, '_apply_decay_param_fun', None
+            )
             self._tensor_fusion()
 
             decay_params = [
@@ -138,10 +141,7 @@ class DygraphShardingOptimizer:
                 # Without comm overlap, all grads will be communicated after check_finite,
                 # which means each sharding rank should do check_finite to all grads.
                 self._local_parameter_list = local_fused_params
-            origin_decay_param_fun = getattr(
-                self._inner_opt, '_apply_decay_param_fun', None
-            )
-            if origin_decay_param_fun is not None:
+            if self.origin_decay_param_fun is not None:
                 self._set_inner_opt_attr(
                     '_apply_decay_param_fun', apply_decay_param_fun
                 )
@@ -191,6 +191,7 @@ class DygraphShardingOptimizer:
                 dst=dst,
                 acc_step=self.accumulate_steps,
                 scale_after_comm=False,
+                decay_param_fn=self.origin_decay_param_fun,
             )
             if self.comm_overlap:
                 self._comm_buffers += all_buffer

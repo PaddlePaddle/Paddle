@@ -550,6 +550,7 @@ def _fused_parameters_impl(
     dst=-1,
     acc_step=1,
     scale_after_comm=False,
+    decay_param_fn=None,
 ):
     param_groups = []
     attrs = []
@@ -579,7 +580,7 @@ def _fused_parameters_impl(
         other_params = []
 
         for param in params:
-            if not any(nd in param.name for nd in ["bias", "norm", "b_0"]):
+            if decay_param_fn is not None and decay_param_fn(param.name):
                 decay_params.append(param)
             else:
                 other_params.append(param)
@@ -632,6 +633,7 @@ def fused_parameters(
     acc_step=1,
     scale_after_comm=False,
     group_params=False,
+    decay_param_fn=None,
 ):
     """
     Fuse gradients. Fuse parameters if be enabled. Prepare for comm overlap if be enabled.
@@ -645,6 +647,7 @@ def fused_parameters(
     :param fuse_param: fuse param or not
     :param scale_after_comm: if enable comm overlap, specify the location of grad scale
     :param group_params: the format of the input parameters is param group
+    :param decay_param_fn: the funtion to filter decay param
     :return: param storage if fused, comm buffers if comm overlap, param groups if use group params
     """
     if act is None:
@@ -690,6 +693,7 @@ def fused_parameters(
                 dst=dst,
                 acc_step=acc_step,
                 scale_after_comm=scale_after_comm,
+                decay_param_fn=decay_param_fn,
             )
             if comm_overlap:
                 comm_buffers.extend(group_all_buffers)
@@ -709,6 +713,7 @@ def fused_parameters(
             dst=dst,
             acc_step=acc_step,
             scale_after_comm=scale_after_comm,
+            decay_param_fn=decay_param_fn,
         )
 
         return decay_fused, all_fused, all_buffers
