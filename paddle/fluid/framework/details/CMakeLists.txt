@@ -309,16 +309,18 @@ cc_test(
        device_context
        broadcast_op_handle)
 
-cc_test(
+cc_test_old(
   gather_op_test
-  SRCS gather_op_handle_test.cc
-  DEPS var_handle
-       op_handle_base
-       scope
-       memory
-       phi
-       device_context
-       gather_op_handle)
+  SRCS
+  gather_op_handle_test.cc
+  DEPS
+  var_handle
+  op_handle_base
+  scope
+  memory
+  phi
+  device_context
+  gather_op_handle)
 
 cc_library(
   scope_buffered_monitor
