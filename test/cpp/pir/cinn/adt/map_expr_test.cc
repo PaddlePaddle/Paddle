@@ -81,20 +81,19 @@ TEST(MapExpr, ElementWise_Fusion_0) {
   cinn::adt::TryGenerateMapExprFromGroup(group);
   std::string map_expr_str =
       cinn::adt::ToTxtString(group->map_expr_ctx().map_expr(), "MapExprTest");
-  std::string target_str = R"(
-MapExprTest(t_var_2, t_var_1) {
-  AnchoredMapStmt(t_var_0) {
-    MapStmt([i_59, i_60]) {
-      exp(
-          &t_var[IndexDot([BI(i_59, sym_17), 0], [sym_17, 1])],
-          t_var_1[IndexDot([BI(i_59, sym_17), 0], [sym_17, 1])]);
-      subtract(
-          &t_var_0[IndexDot([i_59, i_60], [sym_17, 1])],
-          t_var_2[IndexDot([BI(i_59, sym_17), 0], [sym_17, 1])],
-          t_var[IndexDot([BI(i_59, sym_17), 0], [sym_17, 1])]);
-    }
-  }
-}
-)";
+  std::string target_str =
+      "\nMapExprTest(t_var_2, t_var_1) {\n"
+      "  AnchoredMapStmt(t_var_0) {\n"
+      "    MapStmt([i_59, i_60]) {\n"
+      "      exp(\n"
+      "          &t_var[IndexDot([BI(i_59, sym_17), 0], [sym_17, 1])], \n"
+      "          t_var_1[IndexDot([BI(i_59, sym_17), 0], [sym_17, 1])]);\n"
+      "      subtract(\n"
+      "          &t_var_0[IndexDot([i_59, i_60], [sym_17, 1])], \n"
+      "          t_var_2[IndexDot([BI(i_59, sym_17), 0], [sym_17, 1])], \n"
+      "          t_var[IndexDot([BI(i_59, sym_17), 0], [sym_17, 1])]);\n"
+      "    }\n"
+      "  }\n"
+      "}\n";
   ASSERT_EQ(map_expr_str, target_str);
 }
