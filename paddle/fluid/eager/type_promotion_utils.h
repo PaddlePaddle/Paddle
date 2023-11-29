@@ -120,10 +120,10 @@ inline phi::DataType GetPromoteDtype(
 inline bool NeedTypePromotion(
     const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& promote_tensors_vector) {
-  // T+T only support type promotion between float, int32, int64
-  if ((promote_tensors_vector[0][0].dtype() !=
-       promote_tensors_vector[1][0].dtype()) &&
-      (is_support_float(a) || is_support_int(a)) &&
+  // only support type promotion between float, int32, int64
+  phi::DataType a = promote_tensors_vector[0][0].dtype();
+  phi::DataType b = promote_tensors_vector[1][0].dtype();
+  if ((a != b) && (is_support_float(a) || is_support_int(a)) &&
       (is_support_float(b) || is_support_int(b))) {
     return true;
   } else {
