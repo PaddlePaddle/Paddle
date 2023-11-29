@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/has_elements_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 
 namespace paddle {
 namespace framework {
@@ -24,7 +25,7 @@ HasElementsInstruction::HasElementsInstruction(
     ::pir::Operation* op,
     ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
-  auto has_elements_op = op->dyn_cast<pir::HasElementsOp>();
+  auto has_elements_op = op->dyn_cast<paddle::dialect::HasElementsOp>();
   VLOG(6) << "construct has_elements instruction for: "
           << has_elements_op->name();
 
@@ -43,7 +44,8 @@ HasElementsInstruction::HasElementsInstruction(
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   dev_ctx_ = pool.Get(platform::CPUPlace());
 
-  auto stack_value = op_->dyn_cast<pir::HasElementsOp>().operand_source(0);
+  auto stack_value =
+      op_->dyn_cast<paddle::dialect::HasElementsOp>().operand_source(0);
   auto var_array = value_exe_info_->GetVarByValue(stack_value);
   stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
 }

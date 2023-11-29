@@ -638,7 +638,7 @@ void PirInterpreter::BuildInstruction() {
         vec_instruction_base_.emplace_back(
             std::make_unique<TuplePopInstruction>(
                 op_idx++, place_, &op, value_exe_info_.get()));
-      } else if (op.isa<pir::HasElementsOp>()) {
+      } else if (op.isa<paddle::dialect::HasElementsOp>()) {
         vec_instruction_base_.emplace_back(
             std::make_unique<HasElementsInstruction>(
                 op_idx++, place_, &op, value_exe_info_.get()));
