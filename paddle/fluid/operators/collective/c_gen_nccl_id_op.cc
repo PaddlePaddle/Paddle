@@ -35,10 +35,10 @@ static void GenNCCLID(std::vector<ncclUniqueId>* nccl_ids) {
 }
 
 static void CopyNCCLIDToVar(const std::vector<ncclUniqueId>& nccl_ids,
-                            std::function<std::string(size_t)> func,
+                            std::vector<std::string> names,
                             const framework::Scope& scope) {
   for (size_t i = 0; i < nccl_ids.size(); ++i) {
-    std::string var_name = func(i);
+    std::string var_name = names[i];
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
@@ -48,25 +48,17 @@ static void CopyNCCLIDToVar(const std::vector<ncclUniqueId>& nccl_ids,
     memcpy(nccl_id, &nccl_ids[i], sizeof(ncclUniqueId));
   }
 }
+#endif
 
-class CGenNCCLIdOp : public framework::OperatorBase {
+template <typename T, typename DeviceContext>
+class CGenNCCLIdKernel : public framework::OpKernel<T> {
  public:
-  CGenNCCLIdOp(const std::string& type,
-               const framework::VariableNameMap& inputs,
-               const framework::VariableNameMap& outputs,
-               const framework::AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+  void Compute(const framework::ExecutionContext& ctx) const override {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    int rank = ctx.Attr<int>("rank");
+    int ring_id = ctx.Attr<int>("ring_id");
 
-  void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
-    int rank = Attr<int>("rank");
-    int ring_id = Attr<int>("ring_id");
-
-    std::function<std::string(size_t)> func = [&](size_t i) -> std::string {
-      return Output("Out");
-    };
-
-    std::string endpoint = Attr<std::string>("endpoint");
+    std::string endpoint = ctx.Attr<std::string>("endpoint");
 
     std::vector<ncclUniqueId> nccl_ids;
     nccl_ids.resize(1);
@@ -76,31 +68,32 @@ class CGenNCCLIdOp : public framework::OperatorBase {
       if (rank == 0) {
         GenNCCLID(&nccl_ids);
         std::vector<std::string> endpoint_list =
-            Attr<std::vector<std::string>>("other_endpoints");
+            ctx.Attr<std::vector<std::string>>("other_endpoints");
         platform::SendBroadCastCommID(endpoint_list, &nccl_ids, ring_id);
       } else {
         platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids, ring_id);
       }
     }
 
-    CopyNCCLIDToVar(nccl_ids, func, scope);
+    std::vector<std::string> names = ctx.OutputNames("Out");
+    const framework::Scope& scope = ctx.scope();
+    CopyNCCLIDToVar(nccl_ids, names, scope);
+#endif
   }
 };
 
-#else
-class CGenNCCLIdOp : public framework::OperatorBase {
+class CGenNCCLIdOp : public framework::OperatorWithKernel {
  public:
-  CGenNCCLIdOp(const std::string& type,
-               const framework::VariableNameMap& inputs,
-               const framework::VariableNameMap& outputs,
-               const framework::AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {}
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+  }
 };
-
-#endif
 
 class CGenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -135,3 +128,6 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(c_gen_nccl_id, ops::CGenNCCLIdOp, ops::CGenNCCLIdOpMaker);
+
+PD_REGISTER_STRUCT_KERNEL(
+    c_gen_nccl_id, CPU, ALL_LAYOUT, ops::CGenNCCLIdKernel, float) {}
