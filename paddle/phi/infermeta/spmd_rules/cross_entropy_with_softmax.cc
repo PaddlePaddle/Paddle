@@ -157,11 +157,7 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmd(const DistMetaTensor& x,
           << (use_softmax ? "true" : "false") << "], soft_label: ["
           << (soft_label ? "true" : "false") << "].";
   VLOG(4) << "Einsum notation: [" << x_axes << "," << label_axes << " --> "
-<<<<<<< HEAD
           << softmax_out_axes << "," << loss_axes << "].\n"
-=======
-          << softmax_out_axes << "," << loss_axes << "]. " << std::endl
->>>>>>> adapt cross_entropy_with_softmax rule to phi
           << "X shape: [" << str_join(x_shape) << "], x_dims_mapping_src: ["
           << str_join(x_dims_mapping_src) << "], x_dims_mapping_dst: ["
           << str_join(x_dist_attr_dst.dims_mapping()) << "]\n Label shape: ["
@@ -301,11 +297,7 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
           << (use_softmax ? "true" : "false") << "], soft_label: ["
           << (soft_label ? "true" : "false") << "].";
   VLOG(4) << "Einsum notation: [" << x_axes << "," << label_axes << " --> "
-<<<<<<< HEAD
           << softmax_out_axes << "," << loss_axes << "].\n"
-=======
-          << softmax_out_axes << "," << loss_axes << "]. " << std::endl
->>>>>>> adapt cross_entropy_with_softmax rule to phi
           << "Loss shape: [" << str_join(loss_shape)
           << "], loss_dims_mapping_src: [" << str_join(loss_dims_mapping_src)
           << "], loss_dims_mapping_dst: [" << str_join(loss_dims_mapping_dst)
