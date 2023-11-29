@@ -129,14 +129,8 @@ cc_test_old(
   gtest
   pir)
 
-cc_test_old(
-  block_argument_test
-  SRCS
-  block_argument_test.cc
-  DEPS
-  test_dialect
-  gtest
-  pir)
+paddle_test(block_argument_test SRCS block_argument_test.cc DEPS test_dialect
+            pir)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
