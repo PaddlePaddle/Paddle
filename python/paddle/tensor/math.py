@@ -4621,7 +4621,7 @@ def sign(x, name=None):
                 'bfloat16',
                 'float32',
                 'float64',
-                'uint8',
+                'uint16',
             ],
             'sign',
         )
