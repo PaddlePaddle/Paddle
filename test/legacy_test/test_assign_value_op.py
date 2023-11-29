@@ -37,11 +37,9 @@ def wrap_assign_value_wrapper(dtype=base.core.VarDesc.VarType.FP32):
 
     return assign_value_wrapper
 
-
 class TestAssignValueOp(op_test.OpTest):
     def setUp(self):
         self.op_type = "assign_value"
-
         self.inputs = {}
         self.attrs = {}
         self.init_data()
@@ -55,12 +53,6 @@ class TestAssignValueOp(op_test.OpTest):
     def init_data(self):
         self.value = np.random.random(size=(2, 5)).astype(np.float32)
         self.attrs["values"] = [float(v) for v in self.value.flat]
-        # self.value = (
-        #     np.random.random(size=(2, 5)) + 1j * np.random.random(size=(2, 5))
-        # ).astype('complex64')
-        # print("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz=",type(self.value),type(list(self.value.flat)))
-        # self.attrs["values"] = list(self.value.flat)
-        # self.attrs["values"] = self.value
 
     def test_forward(self):
         self.check_output(check_cinn=True, check_pir=True)
@@ -85,7 +77,6 @@ class TestAssignValueOp4(TestAssignValueOp):
         )
         self.attrs["values"] = [int(v) for v in self.value.flat]
 
-
 class TestAssignValueOp5(TestAssignValueOp):
     def init_data(self):
         self.value = np.random.random(size=(2, 5)).astype(np.float64)
@@ -100,13 +91,13 @@ class TestAssignValueOp6(TestAssignValueOp):
         self.attrs["values"] = list(self.value.flat)
 
 
-class TestAssignValueOp7(TestAssignValueOp):
-    def init_data(self):
-        self.value = (
-            np.random.random(size=(2, 5)) + 1j * np.random.random(size=(2, 5))
-        ).astype(np.complex128)
-        self.attrs["values"] = list(self.value.flat)
-
+# class TestAssignValueOp7(TestAssignValueOp):
+#     def init_data(self):
+#         self.value = (
+#             np.random.random(size=(2, 5)) + 1j * np.random.random(size=(2, 5))
+#         ).astype(np.complex128)
+#         self.attrs["values"] = list(self.value.flat)
+        
 
 class TestAssignApi(unittest.TestCase):
     def setUp(self):
@@ -125,12 +116,11 @@ class TestAssignApi(unittest.TestCase):
         self.dtype = "float32"
 
     def test_assign(self):
+        paddle.enable_static()
         with op_test.paddle_static_guard():
             main_program = base.Program()
             with base.program_guard(main_program):
-                x = paddle.tensor.create_tensor(dtype=self.dtype)
-                paddle.assign(self.value, output=x)
-
+                x = paddle.assign(self.value)
             exe = base.Executor(self.place)
             [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
             np.testing.assert_array_equal(fetched_x, self.value)
@@ -175,6 +165,46 @@ class TestAssignApi4(TestAssignApi):
     def init_dtype(self):
         self.dtype = "bool"
 
+
+class TestAssignApi5(TestAssignApi):
+    def init_dtype(self):
+        self.dtype = "float64"
+
+
+class TestAssignApi6(TestAssignApi):
+    def setUp(self):
+        with op_test.paddle_static_guard():
+            self.init_dtype()
+            self.value = (
+                np.random.random(size=(2, 5))
+                + 1j * (np.random.random(size=(2, 5)))
+            ).astype(np.complex64)
+            self.place = (
+                base.CUDAPlace(0)
+                if base.is_compiled_with_cuda()
+                else base.CPUPlace()
+            )
+
+    def init_dtype(self):
+        self.dtype = "complex64"
+
+
+class TestAssignApi7(TestAssignApi):
+    def setUp(self):
+        with op_test.paddle_static_guard():
+            self.init_dtype()
+            self.value = (
+                np.random.random(size=(2, 5))
+                + 1j * (np.random.random(size=(2, 5)))
+            ).astype(np.complex128)
+            self.place = (
+                base.CUDAPlace(0)
+                if base.is_compiled_with_cuda()
+                else base.CPUPlace()
+            )
+
+    def init_dtype(self):
+        self.dtype = "complex128"
 
 if __name__ == '__main__':
     unittest.main()
