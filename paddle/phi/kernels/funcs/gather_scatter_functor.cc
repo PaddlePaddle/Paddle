@@ -193,26 +193,26 @@ template <typename tensor_t, typename index_t>
 void cpu_scatter_input_grad_kernel(phi::DenseTensor self UNUSED,
                                    int dim,
                                    const phi::DenseTensor& index,
-                                   phi::DenseTensor output,
+                                   phi::DenseTensor grad,
                                    const phi::DeviceContext& ctx UNUSED) {
   auto* index_data = index.data<index_t>();
-  auto* output_data = output.data<tensor_t>();
+  auto* grad_data = grad.data<tensor_t>();
 
   auto index_dims = index.dims();
-  auto output_dims = output.dims();
+  auto grad_dims = grad.dims();
 
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
   int64_t outer_dim_size_data = 1;
   int64_t select_dim_size = index_dims[dim];
-  int64_t output_select_dim_size = output_dims[dim];
+  int64_t grad_select_dim_size = grad_dims[dim];
   for (int i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
 
   for (int i = dim + 1; i < index_dims.size(); i++) {
     outer_dim_size *= index_dims[i];
-    outer_dim_size_data *= output_dims[i];
+    outer_dim_size_data *= grad_dims[i];
   }
 
   int64_t index_idx = 0;
@@ -220,10 +220,9 @@ void cpu_scatter_input_grad_kernel(phi::DenseTensor self UNUSED,
     for (int64_t j = 0; j < select_dim_size; j++) {
       for (int64_t k = 0; k < outer_dim_size; k++) {
         int64_t index = index_data[index_idx];
-        int64_t replace_index =
-            k + index * outer_dim_size_data +
-            i * outer_dim_size_data * output_select_dim_size;
-        output_data[replace_index] = 0;
+        int64_t replace_index = k + index * outer_dim_size_data +
+                                i * outer_dim_size_data * grad_select_dim_size;
+        grad_data[replace_index] = 0;
         index_idx++;
       }
     }
@@ -234,15 +233,15 @@ template <typename tensor_t, typename index_t>
 void cpu_scatter_value_grad_kernel(phi::DenseTensor self,
                                    int dim,
                                    const phi::DenseTensor& index,
-                                   phi::DenseTensor output,
+                                   phi::DenseTensor grad,
                                    const phi::DeviceContext& ctx UNUSED) {
   auto* self_data = self.data<tensor_t>();
   auto* index_data = index.data<index_t>();
-  auto* output_data = output.data<tensor_t>();
+  auto* grad_data = grad.data<tensor_t>();
 
   auto index_dims = index.dims();
   auto self_dims = self.dims();
-  auto output_dims = output.dims();
+  auto grad_dims = grad.dims();
 
   int64_t self_size = self.numel();
   bool* is_self_grad_used = new bool[self_size];
@@ -254,10 +253,10 @@ void cpu_scatter_value_grad_kernel(phi::DenseTensor self,
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
   int64_t outer_dim_size_self = 1;
-  int64_t outer_dim_size_output = 1;
+  int64_t outer_dim_size_grad = 1;
   int64_t select_dim_size = index_dims[dim];
   int64_t self_select_dim_size = self_dims[dim];
-  int64_t output_select_dim_size = output_dims[dim];
+  int64_t grad_select_dim_size = grad_dims[dim];
   for (int i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
@@ -265,7 +264,7 @@ void cpu_scatter_value_grad_kernel(phi::DenseTensor self,
   for (int i = dim + 1; i < index_dims.size(); i++) {
     outer_dim_size *= index_dims[i];
     outer_dim_size_self *= self_dims[i];
-    outer_dim_size_output *= output_dims[i];
+    outer_dim_size_grad *= grad_dims[i];
   }
 
   int64_t index_idx = index.numel() - 1;
@@ -276,14 +275,14 @@ void cpu_scatter_value_grad_kernel(phi::DenseTensor self,
         int64_t replace_index_self =
             k + index * outer_dim_size_self +
             i * outer_dim_size_self * self_select_dim_size;
-        int64_t replace_index_output =
-            k + j * outer_dim_size_output +
-            i * outer_dim_size_output * output_select_dim_size;
+        int64_t replace_index_grad =
+            k + j * outer_dim_size_grad +
+            i * outer_dim_size_grad * grad_select_dim_size;
         if (!is_self_grad_used[replace_index_self]) {
-          output_data[replace_index_output] = self_data[replace_index_self];
+          grad_data[replace_index_grad] = self_data[replace_index_self];
           is_self_grad_used[replace_index_self] = true;
         } else {
-          output_data[replace_index_output] = 0;
+          grad_data[replace_index_grad] = 0;
         }
         index_idx--;
       }
