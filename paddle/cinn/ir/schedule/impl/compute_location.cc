@@ -49,7 +49,24 @@ void DyScheduleImpl::ComputeInline(const Expr& schedule_block) {
 }
 
 void DyScheduleImpl::ReverseComputeInline(const Expr& schedule_block) {
-  CINN_NOT_IMPLEMENTED;
+  Expr root = this->GetRootBlock(schedule_block);
+  auto exprs =
+      CheckReverseComputeInlineValidationAndGetExprs(schedule_block, root);
+  Expr inlined_load = std::get<0>(exprs);
+  Expr inlined_store = std::get<1>(exprs);
+  Expr target_store = std::get<2>(exprs);
+  ReverseComputeInliner inliner(
+      inlined_store.As<ir::Store>()->tensor.as_tensor_ref(),
+      inlined_store,
+      inlined_load,
+      target_store);
+  CHECK(inliner.BodyPatternAllowInline());
+  // Create a plan that removes the block to be inlined
+  LeafBlockRemovalPlan remove_plan(
+      schedule_block, &inliner.src_stmt, &inliner.tgt_stmt);
+  remove_plan(&root);
+  inliner(&root);
+  inliner(&root);
 }
 
 }  // namespace ir
