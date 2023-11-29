@@ -20,6 +20,7 @@
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/replace_mod_to_max.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -147,13 +148,15 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
     std::vector<ir::Expr> vars = ir::ir_utils::CollectIRNodesInOrder(
         copy, [](const ir::Expr* expr) { return expr->As<ir::_Var_>(); });
 
-    // We only use the maximal of var, which may not be the maximal of index
+    // We only use the maximal of var, maximal of Mod operation,
+    // which may not be the maximal of index
     // mathmetically, but it works for current CINN.
     //
     // We may add better computation of MaxIndexRange if we need
     for (int i = 0; i < vars.size(); ++i) {
       Expr max_var_value = ir::Sub::Make(
           var_name_to_extent_.at(vars[i].as_var_ref()->name), ir::Expr(1));
+      ReplaceModToMax(&copy);
       ReplaceVarWithExpr(&copy, vars[i], max_var_value);
     }
     ir::Expr tmp = ir::Add::Make(copy, ir::Expr(1));
@@ -223,6 +226,7 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
       VLOG(6) << "Replacing shape of tensor " << (*tensor_ptr)->name
               << ", buffer " << buffer->name << ", with shape "
               << analyzed_shape;
+
       (*tensor_ptr)->shape = analyzed_shape;
       buffer->shape = analyzed_shape;
     }
