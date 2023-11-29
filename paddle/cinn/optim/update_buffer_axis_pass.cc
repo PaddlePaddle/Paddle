@@ -21,6 +21,7 @@
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/ir/utils/ir_replace.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -86,6 +87,9 @@ class AnalyzeBufferAxis : public ir::IRMutator<> {
         }
       }
     }
+    if (index_expr.empty()) {
+      buffer_name_access_same_index_expr.erase(buffer_name);
+    }
   }
 
   ir::Expr GetIndexBindExpr(ir::Expr index) {
@@ -125,7 +129,7 @@ class ReplaceSameAxisToZero : public ir::IRMutator<> {
     ir::Tensor tensor = store->tensor.as_tensor_ref();
     std::set<int> replace_zero_indice = GetReplaceIndice(tensor);
     for (int r : replace_zero_indice) {
-      optim::ReplaceVarWithExpr(
+      ir::ir_utils::IrReplace(
           &(store->indices[r]), store->indices[r], ir::Expr(0));
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -137,7 +141,7 @@ class ReplaceSameAxisToZero : public ir::IRMutator<> {
     ir::Tensor tensor = load->tensor.as_tensor_ref();
     std::set<int> replace_zero_indice = GetReplaceIndice(tensor);
     for (int r : replace_zero_indice) {
-      optim::ReplaceVarWithExpr(
+      ir::ir_utils::IrReplace(
           &(load->indices[r]), load->indices[r], ir::Expr(0));
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -167,6 +171,12 @@ void UpdateBufferAxisPass(ir::Expr* expr) {
   VLOG(6) << "Before UpdateBufferAxisPass, Expr = \n" << *expr;
   AnalyzeBufferAxis analyzer;
   analyzer(expr);
+  for (auto p : analyzer.buffer_name_access_same_index_expr) {
+    VLOG(6) << "Buffer name: " << p.first;
+    for (auto q : p.second) {
+      VLOG(6) << "  Index: " << q.first << " Expr: " << q.second;
+    }
+  }
   ReplaceSameAxisToZero replacer(analyzer.buffer_name_access_same_index_expr);
   replacer(expr);
   VLOG(6) << "After UpdateBufferAxisPass, Expr = \n" << *expr;
