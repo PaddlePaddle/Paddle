@@ -636,13 +636,6 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         per_part_size = Weight_var.shape[0]
         relative_idx = relative_idx * per_part_size
 
-        check_variable_and_dtype(
-            Out_grad,
-            'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
-            '_c_identity',
-        )
-
         c_embedding_grad_op_desc = main_block.append_op(type='nop').desc
         c_embedding_grad_op_desc.set_type("c_embedding_grad")
         c_embedding_grad_op_desc.set_input('Ids', [Ids_var.name])
