@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-#
+# 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#
+# 
 #     http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,7 +18,7 @@
 function make_ubuntu_trt7_dockerfile(){
   dockerfile_name="Dockerfile.cuda102_cudnn8_gcc82_ubuntu16"
   sed "s/<baseimg>/10.2-cudnn8-devel-ubuntu16.04/g" ./Dockerfile.ubuntu >${dockerfile_name}
-  sed -i "s#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g" ${dockerfile_name}
+  sed -i "s#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g" ${dockerfile_name} 
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN apt remove -y libcudnn* --allow-change-held-packages \&\& \
       apt-get install -y --allow-unauthenticated libsndfile1 libcudnn8=8.1.0.77-1+cuda10.2 libcudnn8-dev=8.1.0.77-1+cuda10.2 --allow-change-held-packages" ${dockerfile_name}
@@ -89,7 +89,7 @@ function make_ce_framework_dockcerfile(){
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "7i RUN chmod 777 /tmp" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
-     tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
+     tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name} 
   sed -i "${dockerfile_line}i RUN apt install -y zstd pigz libcurl4-openssl-dev gettext ninja-build" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip install wheel distro" ${dockerfile_name}
   sed -i "s#<install_gcc>#WORKDIR /usr/bin \\
@@ -97,7 +97,6 @@ function make_ce_framework_dockcerfile(){
   sed -i "s#gcc121#gcc82#g" ${dockerfile_name}
   sed -i "s#gcc-12.1#gcc-8.2#g" ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8531#g' ${dockerfile_name}
-  sed -i 's#RUN bash /build_scripts/install_cudnn.sh cudnn841#RUN bash /build_scripts/install_cudnn.sh cudnn860#g' ${dockerfile_name}
 }
 
 
