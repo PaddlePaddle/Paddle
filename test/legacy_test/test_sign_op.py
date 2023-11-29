@@ -115,7 +115,7 @@ class TestSignAPI(unittest.TestCase):
                 )
                 input2 = paddle.static.data(
                     name='input2', shape=[12, 10], dtype="uint8"
-                )     
+                )
                 input3 = paddle.static.data(
                     name='input3', shape=[12, 10], dtype="int16"
                 )
