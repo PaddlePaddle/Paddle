@@ -126,6 +126,7 @@ class BuddyAllocator {
   std::mutex mutex_;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   std::function<size_t()> init_allocate_size_func_, re_allocate_size_func_;
+  bool use_custom_device_ = false;
 #endif
 };
 
