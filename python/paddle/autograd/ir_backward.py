@@ -135,25 +135,30 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                 visited_output.add(opresult)
                 continue
             else:
-                grad_value = paddle.full_like(
-                    opresult,
-                    0.0,
-                    opresult.dtype,
-                )
-                full_likeop = grad_value.get_defining_op()
-                fullop = full_likeop.operand_source(1).get_defining_op()
+                if paddle.pir.is_fake_op_result(opresult):
+                    state.value_to_valuegrad[opresult] = [
+                        [paddle.pir.fake_op_result()]
+                    ]
+                else:
+                    grad_value = paddle.full_like(
+                        opresult,
+                        0.0,
+                        opresult.dtype,
+                    )
+                    full_likeop = grad_value.get_defining_op()
+                    fullop = full_likeop.operand_source(1).get_defining_op()
 
-                update_bwdop_structure(
-                    backward_ops,
-                    state.op_to_opgrad[opresult.get_defining_op()],
-                    [full_likeop, fullop],
-                )
-                state.value_to_valuegrad[opresult] = [[grad_value]]
+                    update_bwdop_structure(
+                        backward_ops,
+                        state.op_to_opgrad[opresult.get_defining_op()],
+                        [full_likeop, fullop],
+                    )
+                    state.value_to_valuegrad[opresult] = [[grad_value]]
 
-                visited_output.add(opresult)
+                    visited_output.add(opresult)
 
-                complete_outputs.append(opresult)
-                complete_gradoutputs.append(grad_value)
+                    complete_outputs.append(opresult)
+                    complete_gradoutputs.append(grad_value)
 
     return complete_outputs, complete_gradoutputs, backward_ops
 
@@ -362,7 +367,7 @@ def append_backward_ops(
     if op don't has grad_op:
         if it don't has input and it's output has more than
         one output_grad, add sumop for grad aggregation.
-        (eg: full op and get_parameter op etc.)
+        (eg: full op and parameter op etc.)
 
         else continue to next op.
     '''

@@ -241,6 +241,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     std::vector<Expr> buffers;
     std::vector<Expr> functions;
     std::vector<Expr> submodules;
+    std::vector<Expr> predicates;
 
     for (auto& expr : op->buffers) {
       buffers.push_back(Visit(&expr));
@@ -254,10 +255,15 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
       submodules.push_back(Visit(&expr));
     }
 
+    for (auto& expr : op->predicates) {
+      predicates.push_back(Visit(&expr));
+    }
+
     auto res = ir::_Module_::Make(op->name, op->target);
     res->buffers = buffers;
     res->functions = functions;
     res->submodules = submodules;
+    res->predicates = predicates;
 
     return Expr(res);
   }
