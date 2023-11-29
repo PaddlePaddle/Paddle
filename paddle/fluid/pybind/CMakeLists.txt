@@ -44,7 +44,6 @@ set(PYBIND_DEPS
     program_translator
     pir_transforms
     pir
-    common
     new_profiler
     jit_layer
     jit_property
