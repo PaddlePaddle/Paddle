@@ -998,7 +998,9 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
             low, high, shape, dtype, _current_expected_place()
         )
     elif in_pir_mode():
-        check_shape(shape, 'randint')
+        check_type(
+            shape, 'shape', (list, tuple, paddle.pir.OpResult), 'randint'
+        )
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(
@@ -1209,7 +1211,12 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
                 core.VarDesc.VarType.INT64,
             )
         else:
-            check_shape(shape, 'randint_like')
+            check_type(
+                shape,
+                'shape',
+                (list, tuple, paddle.pir.OpResult),
+                'randint_like',
+            )
             check_dtype(
                 dtype,
                 'dtype',
