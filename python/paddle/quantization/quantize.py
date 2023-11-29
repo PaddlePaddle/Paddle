@@ -40,12 +40,13 @@ class Quantization(metaclass=abc.ABCMeta):
         r"""Create a model for quantization-aware training or post-training quantization."""
         pass
 
-    def convert(self, model: Layer, inplace=False):
+    def convert(self, model: Layer, inplace=False, remain_weight=False):
         r"""Convert the quantization model to ONNX style. And the converted
         model can be saved as inference model by calling paddle.jit.save.
         Args:
             model(Layer) - The quantized model to be converted.
             inplace(bool) - Whether to modify the model in-place.
+            remain_weight(bool) - Whether to remain weights in floats.
 
         Return: The converted model
 
@@ -73,11 +74,11 @@ class Quantization(metaclass=abc.ABCMeta):
             if isinstance(child, ConvertibleQuantedLayer):
                 if child.weight_quanter.scales() is None:
                     continue
-                child._convert()
+                child._convert(remain_weight=remain_weight)
             elif isinstance(child, BaseQuanter):
                 quant_dequant = LinearQuanterDequanter.from_quanter(child)
             else:
-                self.convert(child, inplace=True)
+                self.convert(child, inplace=True, remain_weight=remain_weight)
             if quant_dequant is not None:
                 replaced[name] = quant_dequant
         for key, value in replaced.items():

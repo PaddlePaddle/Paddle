@@ -242,12 +242,12 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
         qweight = quanter(weight)
         weight.set_value(qweight)
 
-    def _convert(self):
+    def _convert(self, remain_weight=False):
         r"""Convert current layer to onnx style for inference."""
         assert not self.converted, "The model should be converted only once."
         for weight_name, quanter_name in self.weights_to_quanters():
             qdq = self._convert_quanter_to_qdq(quanter_name)
-            if qdq is not None:
+            if qdq is not None and remain_weight is False:
                 self._quant_weights(weight_name, qdq._quanter)
                 qdq._quanter = None
                 qdq._sub_layers['_quanter'] = None
