@@ -2417,6 +2417,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_ipu_device_count", platform::GetIPUDeviceCount);
 #endif
 
+#ifdef PADDLE_WITH_XPU
+  m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
+#endif
+
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
       .value("kDefault", platform::TracerOption::kDefault)
       .value("kOpDetail", platform::TracerOption::kOpDetail)

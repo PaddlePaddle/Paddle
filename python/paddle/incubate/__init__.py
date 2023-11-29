@@ -33,11 +33,14 @@ from .operators import (
     softmax_mask_fuse,
     softmax_mask_fuse_upper_triangle,
 )
-from .optimizer import DistributedFusedLamb  # noqa: F401
-from .optimizer import LookAhead, ModelAverage
+from .optimizer import (
+    DistributedFusedLamb,  # noqa: F401
+    LookAhead,
+    ModelAverage,
+)
 from .passes import fuse_resnet_unit_pass  # noqa: F401
-from .tensor import (  # noqa: F401
-    _npu_identity,
+from .tensor import (
+    _npu_identity,  # noqa: F401
     segment_max,
     segment_mean,
     segment_min,
