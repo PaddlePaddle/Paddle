@@ -31,35 +31,38 @@ class TrtConvertArgsort(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         # 生成输入数据
-        def generate_input1():
-            self.input_shape = [1, 3, 32, 32]
-            return np.random.random([1, 3, 32, 32]).astype(np.float32)
+        def generate_input1(batch):
+            return np.random.random([batch, 3, 32, 32]).astype(np.float32)
 
-        for axis in [-1, 0, 1]:
-            for descending in [False, True]:
-                ops_config = [
-                    {
-                        "op_type": "argsort",
-                        "op_inputs": {"X": ["input_data"]},
-                        "op_outputs": {
-                            "Out": ["output_data"],
-                            "Indices": ["indices_data"],
+        for batch in [1, 2, 4]:
+            for axis in [-1, 0, 1]:
+                for descending in [False, True]:
+                    ops_config = [
+                        {
+                            "op_type": "argsort",
+                            "op_inputs": {"X": ["input_data"]},
+                            "op_outputs": {
+                                "Out": ["output_data"],
+                                "Indices": ["indices_data"],
+                            },
+                            "op_attrs": {
+                                "axis": axis,
+                                "descending": descending,
+                            },
+                        }
+                    ]
+                    ops = self.generate_op_config(ops_config)
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={},
+                        inputs={
+                            "input_data": TensorConfig(
+                                data_gen=partial(generate_input1, batch)
+                            )
                         },
-                        "op_attrs": {"axis": axis, "descending": descending},
-                    }
-                ]
-                ops = self.generate_op_config(ops_config)
-                program_config = ProgramConfig(
-                    ops=ops,
-                    weights={},
-                    inputs={
-                        "input_data": TensorConfig(
-                            data_gen=partial(generate_input1)
-                        )
-                    },
-                    outputs=["output_data", "indices_data"],
-                )
-                yield program_config
+                        outputs=["output_data", "indices_data"],
+                    )
+                    yield program_config
 
     def sample_predictor_configs(
         self, program_config
