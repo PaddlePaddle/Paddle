@@ -80,6 +80,8 @@ void TuplePopInstruction::Run() {
   } else {
     std::stack<const Variable*> var_elements =
         PopElements(stack_element_var_array_, tuple_pop_op_.tuple_size());
+    // TODO(zhangbo): Performance optimization: static acquisition of TuplePoop
+    // output variables.
     for (size_t i = 0; i < tuple_pop_op_.tuple_size(); ++i) {
       auto front_var = var_elements.top();
       var_elements.pop();
@@ -89,7 +91,6 @@ void TuplePopInstruction::Run() {
       grad_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
           front_var->Get<phi::DenseTensor>());
 
-      stack_element_var_array_->pop_back();
       Variable* gc_front_var = const_cast<Variable*>(front_var);
       AddEagerGCVar(gc_front_var);
     }

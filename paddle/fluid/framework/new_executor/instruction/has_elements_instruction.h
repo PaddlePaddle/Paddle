@@ -44,8 +44,6 @@ class HasElementsInstruction : public InstructionBase {
 
   std::string name_{"has_elelments_instruction"};
 
-  // const platform::DeviceContext* dev_ctx_;  // not owned
-
   ValueExecutionInfo* value_exe_info_;  // not owned
 
   VariableRefArray* stack_element_var_array_;  // not owned

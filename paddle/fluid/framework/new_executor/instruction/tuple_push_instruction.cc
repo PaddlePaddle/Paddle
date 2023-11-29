@@ -72,7 +72,9 @@ void TuplePushInstruction::Run() {
     stack_element_var_array_->emplace_back(nullptr);
   } else {
     auto& value_2_var_name = value_exe_info_->GetValue2VarName();
-    for (int i = tuple_push_op_.tuple_size() - 1; i >= 0; --i) {
+    // TODO(zhangbo): Performance optimization: static acquisition of TuplePush
+    // input variables and name.
+    for (size_t i = 0; i < tuple_push_op_.tuple_size(); i++) {
       auto inlet_element_value = tuple_push_op_.inlet_element(i);
       Variable* var = value_exe_info_->GetVarByValue(inlet_element_value);
       int stack_size = tuple_push_op_.tuple_size();
