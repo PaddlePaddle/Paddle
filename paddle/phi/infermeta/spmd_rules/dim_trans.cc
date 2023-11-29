@@ -291,7 +291,8 @@ std::vector<std::vector<int64_t>> InferFromDimTrans(
     const std::vector<std::shared_ptr<DimTrans>>& dim_trans) {
   auto input_shape = phi::vectorize(input_spec.dims());
   // deal with reshape xshape in dynamic
-  if (input_shape[0] == 0) {
+  if (input_shape[0] == 0 &&
+      input_shape.size() != input_spec.dist_attr().dims_mapping().size()) {
     input_shape.erase(input_shape.begin());
   }
   PADDLE_ENFORCE_EQ(input_shape.size(),

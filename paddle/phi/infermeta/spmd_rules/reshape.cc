@@ -196,7 +196,6 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
   // and output with the inferred dims mapping.
   TensorDistAttr x_dist_attr_dst(x_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
-  x_dist_attr_dst.set_dims_mapping(dims_mapping_vec[1]);
   if (x_dist_attr_dst.dynamic_dims().size() !=
       x_dist_attr_dst.dims_mapping().size()) {
     VLOG(3) << "Reshape InferSPMD change input dist attr dynamic dims";
