@@ -21,6 +21,7 @@ from auto_parallel.semi_auto_parallel_simple_net import (
 
 import paddle
 import paddle.distributed as dist
+from paddle.distributed import Replicate, Shard
 
 
 class TestSimpleNetHybridStrategyForSemiAutoParallel(
@@ -37,9 +38,7 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
         self._pp_mesh1 = dist.ProcessMesh(
             [[4, 5], [6, 7]], dim_names=["x", "y"]
         )
-        self.pp_reshard_dist_attr = dist.DistAttr(
-            mesh=self._pp_mesh1, sharding_specs=["x", "y"]
-        )
+        self.pp_reshard_dist_attr = (self._pp_mesh1, [Shard(0), Shard(1)])
 
         paddle.set_device(self._backend)
 
@@ -51,27 +50,19 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
             # shard_layer doens't support cross-mesh now.
             # input process_mesh of pp_shard_fn is useless,
             # it's defined just for unified format.
-            weight_dist_attr = dist.DistAttr(
-                mesh=self._pp_mesh0, sharding_specs=[None, 'y']
-            )
-            bias_dist_attr = dist.DistAttr(
-                mesh=self._pp_mesh0, sharding_specs=[None]
-            )
             layer.weight = dist.shard_tensor(
-                layer.weight, dist_attr=weight_dist_attr
+                layer.weight, self._pp_mesh0, [Replicate(), Shard(1)]
             )
-            layer.bias = dist.shard_tensor(layer.bias, dist_attr=bias_dist_attr)
+            layer.bias = dist.shard_tensor(
+                layer.bias, self._pp_mesh0, [Replicate(), Replicate()]
+            )
         elif layer_name == 'linear_1':
-            weight_dist_attr = dist.DistAttr(
-                mesh=self._pp_mesh1, sharding_specs=['y', None]
-            )
-            bias_dist_attr = dist.DistAttr(
-                mesh=self._pp_mesh1, sharding_specs=[None]
-            )
             layer.weight = dist.shard_tensor(
-                layer.weight, dist_attr=weight_dist_attr
+                layer.weight, self._pp_mesh1, [Replicate(), Shard(0)]
             )
-            layer.bias = dist.shard_tensor(layer.bias, dist_attr=bias_dist_attr)
+            layer.bias = dist.shard_tensor(
+                layer.bias, self._pp_mesh1, [Replicate(), Replicate()]
+            )
 
     def test_dp_mp_pp_demo_net(self):
         self.set_random_seed(self._seed)

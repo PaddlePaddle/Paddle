@@ -61,6 +61,13 @@ void ArgsortInferMeta(const MetaTensor& input,
 
 void ArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void ArrayToTensorInferMeta(const MetaTensor& x,
+                            int axis,
+                            bool use_stack,
+                            MetaTensor* out,
+                            MetaTensor* out_index,
+                            MetaConfig config = MetaConfig());
+
 void AsRealInferMeta(const MetaTensor& input, MetaTensor* output);
 
 void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output);
@@ -171,7 +178,9 @@ void DistConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
 void DistReduceInferMeta(const MetaTensor& x, MetaTensor* out);
 
-void EmbeddingGradSparseInferMeta(const MetaTensor& x, MetaTensor* out);
+void EmbeddingGradSparseInferMeta(const MetaTensor& x,
+                                  const MetaTensor& weight,
+                                  MetaTensor* out);
 
 void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v);
 
@@ -467,6 +476,7 @@ void QuantizeXPUInferMeta(const MetaTensor& x,
 
 void WeightQuantizeInferMeta(const MetaTensor& x,
                              const std::string& algo,
+                             const int32_t arch,
                              MetaTensor* out,
                              MetaTensor* scale);
 

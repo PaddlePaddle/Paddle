@@ -59,12 +59,7 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
         for _ in range(5):
             image, label = self.init_input_data()
             if shard_input:
-                image = dist.shard_tensor(
-                    image,
-                    dist_attr=dist.DistAttr(
-                        mesh=self._mesh, sharding_specs=['x', None]
-                    ),
-                )
+                image = dist.shard_tensor(image, self._mesh, [dist.Shard(0)])
 
             with paddle.amp.auto_cast(level=level):
                 out = layer(image)

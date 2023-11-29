@@ -15,6 +15,7 @@
 #pragma once
 #include <iterator>
 #include <list>
+#include "paddle/pir/core/macros.h"
 namespace pir {
 
 class Operation;
@@ -187,4 +188,113 @@ class PointerListConstIterator {
   operator ElementType*() const { return *iterator_; }
 };
 
+///
+/// \brief The DoubleLevelContainer used to flatten two-level containers into
+/// one level.
+///
+template <typename ContainerT>
+class DoubleLevelContainer {
+ public:
+  class Iterator;
+  Iterator begin();
+  Iterator end();
+
+ protected:
+  // only support constructed by derived class : ConstainerT;
+  DoubleLevelContainer() = default;
+  DISABLE_COPY_AND_ASSIGN(DoubleLevelContainer);
+  const ContainerT& container() const {
+    return *static_cast<const ContainerT*>(this);
+  }
+  ContainerT& container() { return *static_cast<ContainerT*>(this); }
+};
+template <typename ContainerT>
+class DoubleLevelContainer<ContainerT>::Iterator {
+ public:
+  using OuterIterator = typename ContainerT::Iterator;
+  using InnerIterator = typename ContainerT::Element::Iterator;
+  using Element = typename ContainerT::Element::Element;
+
+  Iterator() = default;
+
+  Element& operator*() const noexcept { return *inner_iter_; }
+
+  Element* operator->() const noexcept { return &this->operator*(); }
+
+  Iterator& operator++() noexcept {
+    ++inner_iter_;
+    while (inner_iter_ == outer_iter_->end()) {
+      ++outer_iter_;
+      if (outer_iter_ == outer_end_) break;
+      inner_iter_ = outer_iter_->begin();
+    }
+    return *this;
+  }
+  Iterator operator++(int) noexcept {
+    Iterator __tmp = *this;
+    ++*this;
+    return __tmp;
+  }
+
+  Iterator& operator--() noexcept {
+    if (outer_iter_ == outer_end_) {
+      outer_iter_--;
+      inner_iter_ = outer_iter_->end();
+    }
+    while (inner_iter_ == outer_iter_->begin()) {
+      --outer_iter_;
+      inner_iter_ = outer_iter_->end();
+    }
+    --inner_iter_;
+    return *this;
+  }
+
+  Iterator operator--(int) noexcept {
+    Iterator __tmp = *this;
+    --*this;
+    return __tmp;
+  }
+
+  bool operator==(const Iterator& __x) const noexcept {
+    return outer_iter_ == __x.outer_iter_ &&
+           (outer_iter_ == outer_end_ || inner_iter_ == __x.inner_iter_);
+  }
+
+  bool operator!=(const Iterator& __x) const noexcept {
+    return !this->operator==(__x);
+  }
+
+ private:
+  friend class DoubleLevelContainer<ContainerT>;
+
+  // only used by DoubleLevelContainer<ContainerT>::begin() && end();
+  Iterator(const OuterIterator& outer_iter,
+           const OuterIterator& outer_end,
+           const InnerIterator& inner_iter = InnerIterator())
+      : outer_iter_(outer_iter),
+        outer_end_(outer_end),
+        inner_iter_(inner_iter) {}
+
+  OuterIterator outer_iter_, outer_end_;
+  InnerIterator inner_iter_;
+};
+template <typename ContainerT>
+typename DoubleLevelContainer<ContainerT>::Iterator
+DoubleLevelContainer<ContainerT>::begin() {
+  auto outer_iter = container().begin();
+  while (outer_iter != container().end()) {
+    if (outer_iter->empty()) {
+      ++outer_iter;
+    } else {
+      return Iterator(outer_iter, container().end(), outer_iter->begin());
+    }
+  }
+  return Iterator(outer_iter, container().end());
+}
+
+template <typename ContainerT>
+typename DoubleLevelContainer<ContainerT>::Iterator
+DoubleLevelContainer<ContainerT>::end() {
+  return Iterator(container().end(), container().end());
+}
 }  // namespace pir

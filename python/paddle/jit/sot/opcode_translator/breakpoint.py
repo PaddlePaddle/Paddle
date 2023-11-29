@@ -145,8 +145,10 @@ class BreakpointManager:
 
         print(f"\n{cur_exe._code}")
         lasti = cur_exe._lasti
-        lines = instrs_info(cur_exe._instructions, lasti - 1, range)
-        print("\n".join(lines))
+        instr_str = instrs_info(
+            cur_exe._instructions, lasti - 1, range, want_str=True
+        )
+        print(instr_str)
 
     @property
     def cur_exe(self):

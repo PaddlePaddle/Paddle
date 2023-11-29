@@ -14,25 +14,41 @@
 
 # TODO: define the initializers to create a Parameter in neural network
 from ...base.initializer import set_global_initializer
-from .assign import NumpyArrayInitializer  # noqa: F401
-from .assign import Assign
+from .assign import (
+    Assign,
+    NumpyArrayInitializer,  # noqa: F401
+)
 from .Bilinear import Bilinear
-from .constant import ConstantInitializer  # noqa: F401
-from .constant import Constant
+from .constant import (
+    Constant,
+    ConstantInitializer,  # noqa: F401
+)
 from .dirac import Dirac
-from .initializer import Initializer, calculate_gain  # noqa: F401
-from .kaiming import MSRAInitializer  # noqa: F401
-from .kaiming import KaimingNormal, KaimingUniform
-from .normal import (  # noqa: F401
+from .initializer import (
+    Initializer,  # noqa: F401
+    calculate_gain,
+)
+from .kaiming import (
+    KaimingNormal,
+    KaimingUniform,
+    MSRAInitializer,  # noqa: F401
+)
+from .normal import (
     Normal,
-    NormalInitializer,
+    NormalInitializer,  # noqa: F401
     TruncatedNormal,
-    TruncatedNormalInitializer,
+    TruncatedNormalInitializer,  # noqa: F401
 )
 from .orthogonal import Orthogonal
-from .uniform import Uniform, UniformInitializer  # noqa: F401
-from .xavier import XavierInitializer  # noqa: F401
-from .xavier import XavierNormal, XavierUniform
+from .uniform import (
+    Uniform,
+    UniformInitializer,  # noqa: F401
+)
+from .xavier import (
+    XavierInitializer,  # noqa: F401
+    XavierNormal,
+    XavierUniform,
+)
 
 __all__ = [
     'Bilinear',
