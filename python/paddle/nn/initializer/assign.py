@@ -76,13 +76,13 @@ class NumpyArrayInitializer(Initializer):
             np_value = self._value
 
         if out_dtype == core.VarDesc.VarType.FP32:
-            value_name = "fp32_values"
+            value_name = "values"
             values = [float(v) for v in np_value.flat]
         elif out_dtype == core.VarDesc.VarType.FP64:
-            value_name = "fp64_values"
+            value_name = "values"
             values = [float(v) for v in np_value.flat]
         elif out_dtype == core.VarDesc.VarType.INT32:
-            value_name = "int32_values"
+            value_name = "values"
             values = [int(v) for v in np_value.flat]
         elif (
             out_dtype == core.VarDesc.VarType.INT8

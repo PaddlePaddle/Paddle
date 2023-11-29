@@ -220,7 +220,7 @@ class Dirac(Initializer):
                 attrs={
                     'dtype': VarDesc.VarType.INT64,
                     'shape': [len(idx_list)],
-                    'int64_values': idx_list,
+                    'values': idx_list,
                 },
                 stop_gradient=True,
             )
@@ -250,7 +250,7 @@ class Dirac(Initializer):
                 attrs={
                     'dtype': VarDesc.VarType.FP32,
                     'shape': [len(value_list)],
-                    'fp32_values': value_list,
+                    'values': value_list,
                 },
                 stop_gradient=True,
             )

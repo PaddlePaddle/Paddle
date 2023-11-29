@@ -302,13 +302,23 @@ class TestIfElseEarlyReturn(Dy2StTestBase):
         answer = np.zeros([2, 2]) + 1
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return1)
         out = static_func()
-        np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
+        if isinstance(out, paddle.Tensor):
+            np.testing.assert_allclose(
+                paddle.to_tensor(answer), out, rtol=1e-05
+            )
+        elif isinstance(out, tuple):
+            np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
 
     def test_ifelse_early_return2(self):
         answer = np.zeros([2, 2]) + 3
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return2)
         out = static_func()
-        np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
+        if isinstance(out, paddle.Tensor):
+            np.testing.assert_allclose(
+                paddle.to_tensor(answer), out, rtol=1e-05
+            )
+        elif isinstance(out, tuple):
+            np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
 
 
 class TestRemoveCommentInDy2St(Dy2StTestBase):

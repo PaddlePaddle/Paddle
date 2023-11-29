@@ -301,3 +301,7 @@ class TestSetValue(unittest.TestCase):
             legacy_program_bytes = mp._get_desc().serialize_to_string(
                 legacy_format=True
             )
+
+
+if __name__ == '__main__':
+    unittest.main()

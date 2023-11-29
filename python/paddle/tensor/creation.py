@@ -16,7 +16,6 @@
 
 import math
 import re
-import warnings
 
 import numpy as np
 
@@ -2360,6 +2359,8 @@ def assign(x, output=None):
                     'uint8',
                     'int8',
                     'bool',
+                    'complex64',
+                    'complex128',
                 ],
                 'assign',
                 '(When the type of input in assign is Variable.)',
@@ -2407,44 +2408,23 @@ def assign(x, output=None):
             )
 
         dtype = convert_np_dtype_to_dtype_(input.dtype)
-        if dtype == core.VarDesc.VarType.FP64:
-            # Setting FP64 numpy data is not supported in Paddle, so we
-            # use FP32 here
-            warnings.warn(
-                "paddle.assign doesn't support float64 input now due "
-                "to current platform protobuf data limitation, we convert "
-                "it to float32"
-            )
-            dtype = core.VarDesc.VarType.FP32
-
-        if dtype == core.DataType.FLOAT64:
-            # Setting FP64 numpy data is not supported in Paddle, so we
-            # use FP32 here
-            warnings.warn(
-                "paddle.assign doesn't support float64 input now due "
-                "to current platform protobuf data limitation, we convert "
-                "it to float32"
-            )
-            dtype = core.DataType.FLOAT32
-
-        if dtype in [core.VarDesc.VarType.BOOL, core.DataType.BOOL]:
-            value_name = "bool_values"
-            values = [int(v) for v in input.flat]
-        elif dtype in [core.VarDesc.VarType.FP32, core.DataType.FLOAT32]:
-            value_name = "fp32_values"
-            values = [float(v) for v in input.flat]
-        elif dtype in [core.VarDesc.VarType.INT32, core.DataType.INT32]:
-            value_name = "int32_values"
-            values = [int(v) for v in input.flat]
-        elif dtype in [core.VarDesc.VarType.INT64, core.DataType.INT64]:
-            value_name = "int64_values"
-            values = [int(v) for v in input.flat]
-        else:
-            raise TypeError(
-                "When the type of 'input' in assign is numpy.ndarray, "
-                "the data type of 'input' must be bool, float32, int32 or int64, but "
-                "received %s." % convert_dtype(dtype)
-            )
+        check_dtype(
+            dtype,
+            'input',
+            [
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            'assign',
+            '(When the type of input in assign is numpy array.)',
+        )
+        value_name = "values"
+        values = input.ravel().tolist()
         if input.size > 1024 * 1024:
             raise ValueError(
                 "The size of input is too big. Please consider "

@@ -77,7 +77,7 @@ bool PyObject_CheckLongOrToLong(PyObject** obj) {
   }
 
   if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
-          .find("numpy") != std::string::npos) {
+          .find("numpy.int") != std::string::npos) {
     auto to = PyNumber_Long(*obj);
     if (to) {
       *obj = to;
@@ -95,8 +95,10 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
        (((TensorObject*)(*obj))->tensor.numel() == 1))) {  // NOLINT
     return true;
   }
-  if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
-          .find("numpy") != std::string::npos) {
+  auto type_name =
+      std::string(reinterpret_cast<PyTypeObject*>((*obj)->ob_type)->tp_name);
+  if (type_name.find("numpy.float") != std::string::npos ||
+      type_name.find("numpy.int") != std::string::npos) {
     auto to = PyNumber_Float(*obj);
     if (to) {
       *obj = to;
@@ -107,9 +109,13 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
 }
 
 bool PyObject_CheckComplexOrToComplex(PyObject** obj) {
-  if (PyComplex_Check(*obj) || PyLong_Check(*obj) || PyFloat_Check(*obj) ||
+  if (PyComplex_Check(*obj) ||
       PyObject_TypeCheck(*obj, g_vartype_pytype) ||  // NOLINT
       PyObject_TypeCheck(*obj, p_tensor_type)) {     // NOLINT
+    return true;
+  }
+  if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
+          .find("numpy.complex") != std::string::npos) {
     return true;
   }
   // consider numpy cfloat & numpy cdouble?
@@ -242,10 +248,15 @@ double CastPyArg2Double(PyObject* obj,
 phi::dtype::complex<float> CastPyArg2Complex(PyObject* obj,
                                              const std::string& op_type,
                                              ssize_t arg_pos) {
+  PyTypeObject* type = obj->ob_type;
+  auto type_name = std::string(type->tp_name);
   if (PyComplex_Check(obj)) {
     double real = PyComplex_RealAsDouble(obj);
     double imag = PyComplex_ImagAsDouble(obj);
     return phi::dtype::complex<float>(real, imag);  // NOLINT
+  } else if (type_name == "numpy.complex64") {
+    Py_complex v = PyComplex_AsCComplex(obj);
+    return phi::dtype::complex<float>(v.real, v.imag);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "

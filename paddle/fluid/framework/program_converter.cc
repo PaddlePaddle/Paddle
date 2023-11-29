@@ -117,6 +117,41 @@ void ConvertSetValueOp(OpDesc* op) {
   }
 }
 
+void ConvertAssignValueOp(OpDesc* op) {
+  std::vector<paddle::experimental::Scalar> values = PADDLE_GET_CONST(
+      std::vector<paddle::experimental::Scalar>, op->GetAttr("values", false));
+  op->RemoveAttr("values");
+  op->SetAttr("bool_values", std::vector<int>());
+  op->SetAttr("fp32_values", std::vector<float>());
+  op->SetAttr("int32_values", std::vector<int>());
+  op->SetAttr("int64_values", std::vector<int64_t>());
+
+  phi::DataType dtype = phi::DataType::FLOAT32;
+  if (values.size()) {
+    dtype = values.at(0).dtype();
+  }
+
+  switch (dtype) {
+    case phi::DataType::BOOL:
+      op->SetAttr("bool_values", ExtractPlainVector<int>(values));
+      break;
+    case phi::DataType::FLOAT32:
+      op->SetAttr("fp32_values", ExtractPlainVector<float>(values));
+      break;
+    case phi::DataType::FLOAT64:
+      op->SetAttr("fp32_values", ExtractPlainVector<float>(values));
+      break;
+    case phi::DataType::INT32:
+      op->SetAttr("int32_values", ExtractPlainVector<int>(values));
+      break;
+    case phi::DataType::INT64:
+      op->SetAttr("int64_values", ExtractPlainVector<int64_t>(values));
+      break;
+    default:
+      PD_THROW("Invalid data type `", dtype, "`.");
+  }
+}
+
 void ConvertProgram(ProgramDesc* program) {
   PADDLE_ENFORCE_NOT_NULL(
       program,
@@ -143,6 +178,9 @@ void ConvertProgram(ProgramDesc* program) {
       const std::string op_type = op->Type();
       if (op_type == "set_value" || op_type == "set_value_grad") {
         ConvertSetValueOp(op);
+      }
+      if (op_type == "assign_value") {
+        ConvertAssignValueOp(op);
       }
     }
   }
@@ -204,6 +242,45 @@ void ConvertSetValueOp(OpDesc* op) {
   op->SetAttr("values", values);
 }
 
+void ConvertAssignValueOp(OpDesc* op) {
+  VLOG(3) << "convert old assign value op to new";
+  std::vector<paddle::experimental::Scalar> values;
+
+  if (op->HasAttr("bool_values")) {
+    std::vector<int> bool_values =
+        PADDLE_GET_CONST(std::vector<int>, op->GetAttr("bool_values", false));
+    if (bool_values.size()) {
+      values = WrapAsScalars(bool_values);
+    }
+    op->RemoveAttr("bool_values");
+  }
+  if (op->HasAttr("fp32_values")) {
+    std::vector<float> fp32_values =
+        PADDLE_GET_CONST(std::vector<float>, op->GetAttr("fp32_values", false));
+    if (fp32_values.size()) {
+      values = WrapAsScalars(fp32_values);
+    }
+    op->RemoveAttr("fp32_values");
+  }
+  if (op->HasAttr("int32_values")) {
+    std::vector<int> int32_values =
+        PADDLE_GET_CONST(std::vector<int>, op->GetAttr("int32_values", false));
+    if (int32_values.size()) {
+      values = WrapAsScalars(int32_values);
+    }
+    op->RemoveAttr("int32_values");
+  }
+  if (op->HasAttr("int64_values")) {
+    std::vector<int64_t> int64_values = PADDLE_GET_CONST(
+        std::vector<int64_t>, op->GetAttr("int64_values", false));
+    if (int64_values.size()) {
+      values = WrapAsScalars(int64_values);
+    }
+    op->RemoveAttr("int64_values");
+  }
+  op->SetAttr("values", values);
+}
+
 void ConvertProgram(ProgramDesc* program) {
   PADDLE_ENFORCE_NOT_NULL(
       program,
@@ -238,6 +315,9 @@ void ConvertProgram(ProgramDesc* program) {
 
       if (op_type == "set_value" || op_type == "set_value_grad") {
         ConvertSetValueOp(op);
+      }
+      if (op_type == "assign_value") {
+        ConvertAssignValueOp(op);
       }
     }
   }

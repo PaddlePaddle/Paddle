@@ -32,6 +32,14 @@ void* PointerAttribute::data() const { return storage()->data(); }
 
 Type TypeAttribute::data() const { return storage()->data(); }
 
+phi::dtype::complex<float> Complex64Attribute::data() const {
+  return storage()->data();
+}
+
+phi::dtype::complex<double> Complex128Attribute::data() const {
+  return storage()->data();
+}
+
 bool StrAttribute::operator<(const StrAttribute& right) const {
   return storage() < right.storage();
 }
@@ -106,3 +114,5 @@ IR_DEFINE_EXPLICIT_TYPE_ID(pir::ArrayAttribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::PointerAttribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::TypeAttribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::TensorNameAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::Complex64Attribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::Complex128Attribute)
