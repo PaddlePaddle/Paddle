@@ -93,11 +93,11 @@ void Block::ResetOpListOrder(const OpListType &new_op_list) {
 
 void Block::ClearArguments() {
   for (auto &argument : arguments_) {
-    argument.Destroy();
+    argument.dyn_cast<BlockArgument>().Destroy();
   }
   arguments_.clear();
 }
-BlockArgument Block::AddArgument(Type type) {
+Value Block::AddArgument(Type type) {
   auto argument = BlockArgument::Create(type, this, arguments_.size());
   arguments_.emplace_back(argument);
   return argument;

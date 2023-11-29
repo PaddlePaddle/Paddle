@@ -1957,8 +1957,8 @@ PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args) {
 paddle::Tensor CreateTensorFromOpResult(const pir::OpResult& op_result) {
   auto tensor = paddle::Tensor();
 
-  auto dims = common::vectorize(GetOpResultDims(op_result));
-  auto ddims = common::make_ddim(dims);
+  auto dims = phi::vectorize(GetValueDims(op_result));
+  auto ddims = phi::make_ddim(dims);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);
   autograd_meta->SetStopGradient(

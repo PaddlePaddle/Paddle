@@ -23,8 +23,7 @@ namespace paddle {
 namespace pybind {
 using pir::OpResult;
 void BindPir(pybind11::module *m);
-phi::DataType GetOpResultDtype(const OpResult &result);
-const phi::DDim &GetOpResultDims(const OpResult &result);
+const phi::DDim &GetValueDims(pir::Value value);
 bool GetOpResultBoolAttr(const OpResult &self, const std::string &attr_name);
 }  // namespace pybind
 }  // namespace paddle
