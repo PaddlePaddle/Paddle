@@ -567,17 +567,53 @@ void FCKernel(const Context& dev_ctx,
               const paddle::optional<DenseTensor>& bias,
               const int in_num_col_dims,
               const std::string& activation_type,
-              const bool use_mkldnn,
               const bool padding_weights,
-              const bool use_quantizer,
-              const std::string& mkldnn_data_type,
-              const float scale_in,
-              const std::vector<float>& scale_weights,
-              const float scale_out,
-              const bool force_fp32_output,
               DenseTensor* out) {
+  std::cout << "step1__________________________________" << std::endl;
+  const bool use_mkldnn =
+      PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("use_mkldnn"));
+  std::cout << "step2__________________________________" << std::endl;
+  const bool use_quantizer =
+      PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("use_quantizer"));
+  std::cout << "step3__________________________________" << std::endl;
+  const std::string mkldnn_data_type =
+      PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("mkldnn_data_type"));
+  std::cout << "step4__________________________________" << std::endl;
+  const float scale_in =
+      PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_in"));
+  std::cout << "step5__________________________________" << std::endl;
+  const std::vector<float> scale_weights =
+      PADDLE_GET_CONST(std::vector<float>, dev_ctx.GetDnnAttr("scale_weights"));
+  std::cout << "step6__________________________________" << std::endl;
+  const float scale_out =
+      PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_out"));
+  std::cout << "step7__________________________________" << std::endl;
+  const bool force_fp32_output =
+      PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"));
+  std::cout << "step8__________________________________" << std::endl;
+  std::string mkldnn_data_type_list[] = {"float32", "int8", "bfloat16"};
+  PADDLE_ENFORCE_EQ(
+      std::find(std::begin(mkldnn_data_type_list),
+                std::end(mkldnn_data_type_list),
+                mkldnn_data_type) != std::end(mkldnn_data_type_list),
+      true,
+      phi::errors::InvalidArgument("The mkldnn_data_type shoule be [float32, "
+                                   "int8, bfloat16], but found %s.",
+                                   mkldnn_data_type.c_str()));
+  auto in_dims = input.dims();
+  if (use_mkldnn) {
+    PADDLE_ENFORCE_EQ(
+        in_dims.size() >= 2 && in_dims.size() <= 4,
+        true,
+        phi::errors::Unimplemented(
+            "The Input of fc is expected to be a 2-D, 3-D or 4-D tensor when "
+            "use_mkldnn is set. But received the number of Input's "
+            "dimensions is %d, Input's shape is %s.",
+            in_dims.size(),
+            in_dims));
+  }
+  std::cout << "step9__________________________________" << std::endl;
   bool fuse_relu = activation_type == "relu";
-
   IF_CHANGE_FC_TW_TYPENAME((std::is_same<T, uint8_t>::value), ([&] {
                              if (force_fp32_output) {  // NOLINT
                                RunKernel<T, float, T_w>(dev_ctx,
@@ -647,6 +683,7 @@ void FCKernel(const Context& dev_ctx,
                                                     out);
                              }
                            }));
+  std::cout << "step10__________________________________" << std::endl;
 }
 
 }  // namespace fusion
