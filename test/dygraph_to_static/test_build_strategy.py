@@ -89,8 +89,8 @@ class TestResnetWithPass(Dy2StTestBase):
 
 
 class TestError(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     @test_default_mode_only
+    @test_legacy_and_pt_and_pir
     def test_type_error(self):
         def foo(x):
             out = x + 1
