@@ -108,6 +108,8 @@ void StScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   std::vector<Var> replaced_var;
   std::vector<Expr> substitute_expr;
   for (int i = 0; i < loops.size(); ++i) {
+    VLOG(3) << i << "-th loop is:\n " << loops[i];
+    VLOG(3) << i << "-th block_loop:\n" << block_loops[i];
     CHECK_EQ(GetLoopExtent(loops[i]), GetLoopExtent(block_loops[i]));
     if (block_loops[i].As<ir::For>()->bind_info().valid() &&
         !loops[i].As<ir::For>()->bind_info().valid()) {
