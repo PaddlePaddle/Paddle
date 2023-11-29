@@ -120,63 +120,6 @@ class Conv2dBnFusePattern
   }
 };
 
-class Conv2dAddFusePattern
-    : public pir::drr::DrrPatternBase<Conv2dAddFusePattern> {
- public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &conv2d =
-        pat.Op(paddle::dialect::Conv2dOp::name(),
-               {{"strides", pat.Attr("strides")},
-                {"paddings", pat.Attr("paddings")},
-                {"padding_algorithm", pat.Attr("padding_algorithm")},
-                {"dilations", pat.Attr("dilations")},
-                {"groups", pat.Attr("groups")},
-                {"data_format", pat.Attr("data_format")}});
-    const auto &add = pat.Op(paddle::dialect::AddOp::name());
-    conv2d({&pat.Tensor("input"), &pat.Tensor("filter")},
-           {&pat.Tensor("conv2d_out")});
-    pat.Tensor("add_out") = add(pat.Tensor("conv2d_out"), pat.Tensor("bias"));
-
-    pir::drr::ResultPattern res = pat.ResultPattern();
-
-    const auto &conv2d_fusion = res.Op(
-        paddle::dialect::Conv2dFusionOp::name(),
-        {{
-            {"strides", pat.Attr("strides")},
-            {"paddings", pat.Attr("paddings")},
-            {"padding_algorithm", pat.Attr("padding_algorithm")},
-            {"dilations", pat.Attr("dilations")},
-            {"groups", pat.Attr("groups")},
-            {"data_format", pat.Attr("data_format")},
-            {"activation",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
-                          -> std::string { return "identity"; })},
-            {"split_channels",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
-                          -> std::vector<int> { return {}; })},
-            {"exhaustive_search",
-             res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-               return true;
-             })},
-            {"workspace_size_MB",
-             res.Attr([](const pir::drr::MatchContext &match_ctx) -> int {
-               return 32;
-             })},
-            {"fuse_alpha",
-             res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
-               return 0.0f;
-             })},
-        }});
-
-    conv2d_fusion({&res.Tensor("input"),
-                   &res.Tensor("filter"),
-                   &res.Tensor("bias"),
-                   &res.NoneTensor()},
-                  {&res.Tensor("add_out")});
-  }
-};
-
 class Conv2dAddActFusePattern
     : public pir::OpRewritePattern<paddle::dialect::AddOp> {
  public:
