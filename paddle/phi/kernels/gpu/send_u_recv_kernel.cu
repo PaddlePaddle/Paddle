@@ -21,7 +21,6 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -39,7 +38,6 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
                                            int64_t out_size,
                                            DenseTensor* out,
                                            DenseTensor* dst_count = nullptr) {
-  phi::DeviceGuard guard(ctx.GetPlace());
   const int& index_size = src_index.dims()[0];
   const auto& src_dims = x.dims();
   int64_t memset_size = 1;
