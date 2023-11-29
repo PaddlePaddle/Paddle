@@ -550,7 +550,7 @@ def _fused_parameters_impl(
     dst=-1,
     acc_step=1,
     scale_after_comm=False,
-    decay_param_fn=None,
+    apply_decay_param_fun=None,
 ):
     param_groups = []
     attrs = []
@@ -580,7 +580,9 @@ def _fused_parameters_impl(
         other_params = []
 
         for param in params:
-            if decay_param_fn is not None and decay_param_fn(param.name):
+            if apply_decay_param_fun is not None and apply_decay_param_fun(
+                param.name
+            ):
                 decay_params.append(param)
             else:
                 other_params.append(param)
@@ -633,7 +635,7 @@ def fused_parameters(
     acc_step=1,
     scale_after_comm=False,
     group_params=False,
-    decay_param_fn=None,
+    apply_decay_param_fun=None,
 ):
     """
     Fuse gradients. Fuse parameters if be enabled. Prepare for comm overlap if be enabled.
@@ -647,7 +649,7 @@ def fused_parameters(
     :param fuse_param: fuse param or not
     :param scale_after_comm: if enable comm overlap, specify the location of grad scale
     :param group_params: the format of the input parameters is param group
-    :param decay_param_fn: the funtion to filter decay param
+    :param apply_decay_param_fun: the funtion to filter decay param
     :return: param storage if fused, comm buffers if comm overlap, param groups if use group params
     """
     if act is None:
@@ -693,7 +695,7 @@ def fused_parameters(
                 dst=dst,
                 acc_step=acc_step,
                 scale_after_comm=scale_after_comm,
-                decay_param_fn=decay_param_fn,
+                apply_decay_param_fun=apply_decay_param_fun,
             )
             if comm_overlap:
                 comm_buffers.extend(group_all_buffers)
@@ -713,7 +715,7 @@ def fused_parameters(
             dst=dst,
             acc_step=acc_step,
             scale_after_comm=scale_after_comm,
-            decay_param_fn=decay_param_fn,
+            apply_decay_param_fun=apply_decay_param_fun,
         )
 
         return decay_fused, all_fused, all_buffers

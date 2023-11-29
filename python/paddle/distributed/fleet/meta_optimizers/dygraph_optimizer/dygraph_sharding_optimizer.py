@@ -191,7 +191,7 @@ class DygraphShardingOptimizer:
                 dst=dst,
                 acc_step=self.accumulate_steps,
                 scale_after_comm=False,
-                decay_param_fn=self.origin_decay_param_fun,
+                apply_decay_param_fun=self.origin_decay_param_fun,
             )
             if self.comm_overlap:
                 self._comm_buffers += all_buffer
