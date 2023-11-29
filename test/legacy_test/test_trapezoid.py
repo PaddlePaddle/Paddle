@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestTrapezoidAPI(unittest.TestCase):
@@ -63,6 +64,7 @@ class TestTrapezoidAPI(unittest.TestCase):
         self.setUp()
         self.func_dygraph()
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         places = [paddle.CPUPlace()]
@@ -226,6 +228,7 @@ class Testfp16Trapezoid(TestTrapezoidAPI):
         self.paddle_api = paddle.trapezoid
         self.ref_api = np.trapz
 
+    @test_with_pir_api
     def test_fp16_with_gpu(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
