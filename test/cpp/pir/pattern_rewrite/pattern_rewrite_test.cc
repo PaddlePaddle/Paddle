@@ -51,6 +51,19 @@
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sqrt, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(divide, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(multiply, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(subtract, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(reshape, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(fetch, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(conv2d, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(transpose, CPU, ALL_LAYOUT);
 
 // Define op1.
 class Operation1 : public pir::Op<Operation1> {
