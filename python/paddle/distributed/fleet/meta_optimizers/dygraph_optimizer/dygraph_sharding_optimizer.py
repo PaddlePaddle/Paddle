@@ -14,10 +14,12 @@
 
 ######
 import os
+from distutils.util import strtobool
 from functools import reduce
 
 import paddle
 from paddle import framework
+from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import EagerParamBase
 from paddle.distributed import fleet
 
@@ -212,7 +214,17 @@ class DygraphShardingOptimizer:
         for rank_ in range(self._sharding_world_size):
             mapping[rank_] = []
         sizes = [0] * self._sharding_world_size
-        for param in self._parameter_list:
+
+        parameters = list(self._parameter_list)
+        need_sort_parameters = strtobool(
+            os.getenv('FLAGS_sharding_sort_parameters', '1')
+        )
+        if need_sort_parameters:
+            parameters.sort(
+                key=lambda p: reduce(lambda x, y: x * y, p.shape), reverse=True
+            )
+
+        for param in parameters:
             rank = sizes.index(min(sizes))
             mapping[rank].append(param)
             numel = reduce(lambda x, y: x * y, param.shape, 1)
@@ -289,7 +301,6 @@ class DygraphShardingOptimizer:
         """
         # TODO speed up this functional
 
-        logger.debug("sharding start sync parameters")
         with framework.no_grad():
             # TODO detach not need (?)
             valid_rank_to_params = (
@@ -336,6 +347,8 @@ class DygraphShardingOptimizer:
 
         return result
 
+    @imperative_base.no_grad
+    @framework.dygraph_only
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
 
@@ -364,7 +377,6 @@ class DygraphShardingOptimizer:
                 if hasattr(param, "main_grad") and param.main_grad is not None:
                     grad_var = param.main_grad
                 params_grads.append((param, grad_var))
-
             if g_shard_norm_align_dp:
                 params_grads = self._inner_opt._grad_clip(params_grads)
                 # set inner_opt._grad_clip None to avoid repeatedly grad_clip gradients inside inner_opt._apply_optimize

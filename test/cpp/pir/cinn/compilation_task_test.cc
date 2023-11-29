@@ -108,7 +108,13 @@ TEST(CompilationTask, CompileGroup) {
   auto runtime_program = ir_compiler.Build(groups);
 
   // Step 3: Execute Runtime Instruction and check Scope.
-  ASSERT_NO_THROW(runtime_program->Execute());
+  std::string arg_name = "var_0";
+  cinn_buffer_t* buffer = scope->GetTensor(arg_name)->buffer();
+  std::map<std::string, cinn_pod_value_t> name2podargs = {
+      {arg_name, cinn_pod_value_t(buffer)},
+      {"fake_symbol1", cinn_pod_value_t(int32_t(4096))},
+      {"fake_symbol2", cinn_pod_value_t(int32_t(128))}};
+  ASSERT_NO_THROW(runtime_program->Execute(&name2podargs));
   for (auto& var_name : scope->var_names()) {
     std::string name = {var_name.begin(), var_name.end()};
     int64_t numel = scope->GetTensor(name)->shape().numel();
