@@ -2036,6 +2036,9 @@ def append_backward(
     # pass the cuda_graph_attr to the fill_constant which generates the loss_grad
     op_desc = _create_loss_op_desc_(loss)
     grad_op_id_to_fwd_op[op_desc.original_id()] = loss.op
+    distop_context.grad_op_id_to_op_id[
+        op_desc.original_id()
+    ] = loss.op.desc.original_id()  # only for auto_parallel
     target_grad_block.desc.append_op().copy_from(op_desc)
 
     for block_idx in son_parent_block_idx_dict:
