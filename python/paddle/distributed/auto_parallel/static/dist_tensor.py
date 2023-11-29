@@ -402,6 +402,7 @@ class DistributedTensor:
         )
 
         str += f", is_parameter: {self.serial_tensor.is_parameter}"
+        str += f", chunk_id: {self.dist_attr.chunk_id}"
 
         if self.dist_attr.is_annotated("dims_mapping"):
             annotated_str = "annotated"
