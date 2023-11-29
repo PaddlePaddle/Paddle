@@ -523,13 +523,14 @@ def monkey_patch_variable():
             rhs_dtype = safe_get_dtype(other_var)
 
             if lhs_dtype != rhs_dtype:
-                from ..type_promotion import get_result_dtype
+                from ..type_promotion import get_result_dtype, is_support_float
 
-                common_dtype = get_result_dtype(lhs_dtype, rhs_dtype)
-                if rhs_dtype != common_dtype:
-                    other_var = astype(other_var, common_dtype)
-                if lhs_dtype != common_dtype:
-                    self = astype(self, common_dtype)
+                if is_support_float(lhs_dtype) and is_support_float(rhs_dtype):
+                    common_dtype = get_result_dtype(lhs_dtype, rhs_dtype)
+                    if rhs_dtype != common_dtype:
+                        other_var = astype(other_var, common_dtype)
+                    if lhs_dtype != common_dtype:
+                        self = astype(self, common_dtype)
 
             if reverse:
                 tmp = self
