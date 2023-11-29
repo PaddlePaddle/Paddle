@@ -14,6 +14,7 @@
 
 ######
 import os
+import warnings
 from distutils.util import strtobool
 from functools import reduce
 
@@ -96,6 +97,8 @@ class DygraphShardingOptimizer:
         self.fuse_optimizer = strategy.hybrid_configs[
             'sharding_configs'
         ].fuse_optimizer
+        if self.comm_overlap or self.fuse_optimizer:
+            self.tensor_fusion = True
         pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
         if self.tensor_fusion or self.comm_overlap:
             assert (
@@ -115,6 +118,20 @@ class DygraphShardingOptimizer:
             self._set_inner_opt_attr('_parameter_list', local_params)
             self._set_inner_opt_attr('_param_groups', local_params)
         else:
+            if self.fuse_optimizer:
+                lr = None
+                for param in self._origin_parameter_list:
+                    if hasattr(param, "optimize_attr"):
+                        param_lr = param.optimize_attr['learning_rate']
+                        if lr is None:
+                            lr = param_lr
+                        elif lr != param_lr:
+                            warnings.warn(
+                                "Parameters have different learning rate, "
+                                "won't do fusion on the optimizer."
+                            )
+                            self.fuse_optimizer = False
+                            break
             self.origin_decay_param_fun = getattr(
                 self._inner_opt, '_apply_decay_param_fun', None
             )
