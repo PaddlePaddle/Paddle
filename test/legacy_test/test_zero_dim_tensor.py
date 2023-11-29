@@ -5811,23 +5811,36 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
 
     @test_with_pir_api
     def test_randint(self):
-        out1 = paddle.randint(-10, 10, [])
-        out2 = paddle.randint(-10, 10, self.shape)
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            out1 = paddle.randint(-10, 10, [])
 
-        res = self.exe.run(
-            paddle.static.default_main_program(), fetch_list=[out1, out2]
-        )
+            shape = [
+                paddle.full([], 2, 'int32'),
+                paddle.full([], 3, 'int32'),
+                paddle.full([], 4, 'int32'),
+            ]
+            out2 = paddle.randint(-10, 10, shape)
+
+            res = self.exe.run(
+                paddle.static.default_main_program(), fetch_list=[out1, out2]
+            )
+
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
 
     @test_with_pir_api
     def test_randint_like(self):
-        out1 = paddle.rand([])
-        out2 = paddle.randint_like(out1, -10, 10)
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            out1 = paddle.rand([])
+            out2 = paddle.randint_like(out1, -10, 10)
 
-        res = self.exe.run(
-            paddle.static.default_main_program(), fetch_list=[out1, out2]
-        )
+            res = self.exe.run(
+                paddle.static.default_main_program(), fetch_list=[out1, out2]
+            )
 
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
