@@ -17,16 +17,6 @@ from .primitives import *  # noqa: F403
 from .register import register_decomp
 
 
-@register_decomp('pd_op.full_like')
-def full_like(x, fill_value, dtype, place=None):
-    """define composite rule of op full_like."""
-    """op name: full_like  op type name: fill_any_like."""
-    """arg place is not used, add it here to keep same as python api."""
-    fill_value = fill_value.get_defining_op().attrs()["value"]
-    val = full(x.shape, fill_value, dtype)
-    return val
-
-
 @register_decomp('pd_op.stack')
 def stack(x, axis):
     """
