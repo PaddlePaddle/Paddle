@@ -111,7 +111,7 @@ struct VisitDataArgMinMaxFunctor {
 
     switch (x_dims.size()) {
       case 0:
-        phi::funcs::set_constant(dev_ctx, out, 0);
+        phi::funcs::set_constant(dev_ctx, out, static_cast<Tout>(0));
         return;
       case 1:
         CALL_ARG_MINMAX_FUNCTOR(1);
