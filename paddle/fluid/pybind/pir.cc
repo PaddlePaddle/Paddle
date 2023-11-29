@@ -80,6 +80,7 @@ using paddle::dialect::SelectedRowsType;
 
 using pir::Attribute;
 using pir::Block;
+using pir::BlockArgument;
 using pir::IrParser;
 using pir::Operation;
 using pir::OpOperand;

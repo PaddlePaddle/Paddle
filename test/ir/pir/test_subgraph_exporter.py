@@ -94,7 +94,7 @@ class TestSaveFwdBwdProg(unittest.TestCase):
         outs = self.run_program(program, feed, fetch_list)
 
         self.assertEqual(len(outs), 5)
-        out_shapes = [[], [4, 4], [4, 4], [4, 4], [4, 4]]
+        out_shapes = [[4, 4], [], [4, 4], [4, 4], [4, 4]]
         for i, out in enumerate(outs):
             self.assertListEqual(list(out.shape), out_shapes[i])
 
@@ -109,8 +109,8 @@ class TestSaveFwdBwdProg(unittest.TestCase):
             "pt_input_6": data,
             "pt_input_5": data,
             "pt_input_4": data,
-            "pt_input_3": data,
-            "pt_input_2": np.array(0.1).astype(np.float32),
+            "pt_input_3": np.array(0.1).astype(np.float32),
+            "pt_input_2": data,
             "pt_input_1": data,
             "pt_input_0": data,
         }
