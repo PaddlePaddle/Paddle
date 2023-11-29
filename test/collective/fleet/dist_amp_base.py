@@ -65,7 +65,7 @@ def create_optimizer(model, use_pure_bf16, use_main_grad):
         parameters=model.parameters(),
         learning_rate=0.00001,
         weight_decay=0.00001,
-        grad_clip=None,  # paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
+        grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
         multi_precision=use_pure_bf16,
     )
     if use_main_grad:
