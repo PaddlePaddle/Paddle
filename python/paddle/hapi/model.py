@@ -29,9 +29,11 @@ from paddle.autograd import no_grad
 from paddle.base import core
 from paddle.base.dygraph.base import to_variable
 from paddle.base.executor import global_scope
-from paddle.base.framework import Variable
-from paddle.base.framework import _current_expected_place as _get_device
-from paddle.base.framework import _get_paddle_place
+from paddle.base.framework import (
+    Variable,
+    _current_expected_place as _get_device,
+    _get_paddle_place,
+)
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.framework import in_dynamic_mode

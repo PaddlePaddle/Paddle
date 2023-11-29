@@ -13,7 +13,7 @@ set(STANDALONE_EXECUTOR_DEPS
     interpretercore_garbage_collector
     workqueue
     op_dialect_vjp
-    transform
+    pir_transforms
     pir_adaptor
     program_translator
     instruction_base

@@ -36,7 +36,7 @@ set(paddle_inference_api_deps
     scope)
 
 if(WITH_CRYPTO)
-  list(APPEND paddle_inference_api_deps paddle_crypto)
+  list(APPEND paddle_inference_api_deps framework_io)
 endif()
 if(WITH_CUSTOM_DEVICE)
   set(paddle_inference_api_deps ${paddle_inference_api_deps} phi)
@@ -71,7 +71,7 @@ set(inference_deps
     analysis_config
     naive_executor
     ${GLOB_PASS_LIB}
-    transform)
+    pir_transforms)
 
 if(WITH_GPU AND TENSORRT_FOUND)
   set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)

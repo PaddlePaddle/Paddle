@@ -27,7 +27,7 @@ namespace pir {
 /**
  * @brief Get the name of pararmeter from a value.
  *
- * @note The value must be a output of a GetParameterOp.
+ * @note The value must be a output of a ParameterOp or a ConstantTensorOp.
  *
  * @param pir::Value
  *
@@ -65,14 +65,13 @@ pir::Type GetDataTypeFromValue(pir::Value value);
 Operation* GetDefiningOpForInput(Operation* op, uint32_t index);
 
 /**
- * @brief Get an operation that is the first to use the specific output of the
- * operation.
+ * @brief Get operations that use the specific output of the operation.
  *
  * @param Operation* pointer to an operation
  * @param uint32_t index of result of the operation
 
- * @return Operation*
+ * @return std::vector<Operation*>
  */
-Operation* GetFirstUseOperationForOutput(Operation* op, uint32_t index);
+std::vector<Operation*> GetUseOpsForOutput(Operation* op, uint32_t index);
 
 }  // namespace pir

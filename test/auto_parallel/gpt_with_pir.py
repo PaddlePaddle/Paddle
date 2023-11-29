@@ -170,21 +170,10 @@ class TestPir(unittest.TestCase):
         out_dp_ir = engine_dp_ir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
-        # TODO(zhiqiu): fix accuracy problem and use array_equal to check it
-        np.testing.assert_allclose(
-            out_dp_prog.history["loss"][0],
-            out_dp_ir.history["loss"][0],
-            rtol=1e-5,
-            err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                __class__,
-                out_dp_prog.history["loss"][0],
-                out_dp_ir.history["loss"][0],
-                out_dp_prog.history["loss"][0] - out_dp_ir.history["loss"][0],
-            ),
+
+        self.check_results(
+            out_dp_prog.history["loss"][0], out_dp_ir.history["loss"][0]
         )
-        # self.check_results(
-        #     out_dp_prog.history["loss"][0], out_dp_ir.history["loss"][0]
-        # )
 
     def test_mp(self):
         self.enable_pir(False)

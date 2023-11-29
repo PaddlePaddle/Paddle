@@ -15,7 +15,9 @@
 
 import warnings
 
+from paddle import _C_ops
 from paddle.base.libpaddle import DataType
+from paddle.base.wrapped_decorator import wrap_decorator
 
 from . import OpResult
 
@@ -29,6 +31,21 @@ _supported_int_dtype_ = [
     DataType.INT32,
     DataType.INT64,
 ]
+
+
+def _fake_interface_only_(func):
+    def __impl__(*args, **kwargs):
+        raise AssertionError(
+            f"'{func.__name__}' only can be called by `paddle.Tensor` in dynamic graph mode. Suggestions:\n"
+            "  1. If you are in static graph mode, you can switch to dynamic graph mode by turning off `paddle.enable_static()` or calling `paddle.disable_static()`.\n"
+            "  2. If you are using `@paddle.jit.to_static`, you can call `paddle.jit.enable_to_static(False)`. "
+            f"If you have to translate dynamic graph to static graph, please use other API to replace '{func.__name__}'."
+        )
+
+    return __impl__
+
+
+fake_interface_only = wrap_decorator(_fake_interface_only_)
 
 
 def create_tensor_with_batchsize(ref_var, value, dtype):
@@ -46,7 +63,7 @@ def create_tensor_with_batchsize(ref_var, value, dtype):
         else:
             out_shape.append(d)
     assert batch_dim != -1
-    from paddle import _C_ops
+
     from paddle.framework import core
 
     out = _C_ops.full_batch_size_like(
@@ -64,6 +81,65 @@ def monkey_patch_opresult():
         except:
             raise ValueError("Cannot get data type from var")
         return dtype
+
+    def cpu(self):
+        """
+        In dy2static, OpResult also needs cpu() and cuda() interface.
+        But, the underneath operator has only forward op but not backward one.
+
+        Returns:
+            The tensor which has copied to cpu place.
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> y = x.cpu()
+        """
+
+        # 0 means cpu place, see paddle/phi/kernels/memcpy_kernel.cc
+        return _C_ops.memcpy(self, 0)
+
+    def cuda(self, device_id=None, blocking=True):
+        """
+        In dy2static, OpResult also needs cpu() and cuda() interface.
+        But, the underneath operator has only forward op but not backward one.
+
+        Args:
+            self(OpResult): The variable itself.
+            device_id(int, optional): The destination GPU device id. Default: None, means current device.
+                We add this argument for dy2static translation, please do not use it.
+            blocking(bool, optional): Whether blocking or not, Default: True.
+                We add this argument for dy2static translation, please do not use it.
+
+        Returns:
+            The tensor which has copied to cuda place.
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> y = x.cpu()
+                >>> z = y.cuda()
+        """
+
+        if device_id is not None:
+            warnings.warn("device_id is not supported, and it will be ignored.")
+        if blocking is not True:
+            warnings.warn("blocking is not supported, and it will be ignored.")
+
+        # 1 means cuda place, see paddle/phi/kernels/memcpy_kernel.cc
+        return _C_ops.memcpy(self, 1)
 
     def place(self):
         """
@@ -180,12 +256,11 @@ def monkey_patch_opresult():
                 >>> with paddle.static.program_guard(startup_prog, main_prog):
                 ...     original_value = paddle.static.data(name = "new_value", shape=[2,2], dtype='float32')
                 ...     new_value = original_value.astype('int64')
-                ...     print("new value's dtype is: {}".format(new_value.dtype))
+                ...     print(f"new value's dtype is: {new_value.dtype}")
                 ...
                 new OpResult's dtype is: paddle.int64
 
         """
-        from paddle import _C_ops
 
         if not isinstance(dtype, DataType):
             dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
@@ -307,15 +382,123 @@ def monkey_patch_opresult():
         __impl__.__name__ = method_name
         return __impl__
 
+    @property
+    def _size_(self):
+        """
+        Returns the number of elements for current OpResult, which is a int64 OpResult with shape [] .
+
+        Returns:
+            OpResult, the number of elements for current OpResult
+
+        Examples:
+            .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> startup_prog = paddle.static.Program()
+            >>> main_prog = paddle.static.Program()
+            >>> with paddle.static.program_guard(startup_prog, main_prog):
+            ...     x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
+            ...     (output_x,) = exe.run(main_program, fetch_list=[x.size])
+            ...     print(f"value's size is: {output_x}")
+            ...
+            value's size is: 24
+        """
+        return paddle.numel(self)
+
+    def clone(self):
+        """
+        Returns a new static OpResult, which is the clone of the original static
+        OpResult. It remains in the current graph, that is, the cloned OpResult
+        provides gradient propagation. Calling ``out = tensor.clone()`` is same
+        as ``out = assign(tensor)`` .
+
+        Returns:
+            OpResult, The cloned OpResult.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> paddle.enable_static()
+
+                >>> # create a static OpResult
+                >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
+                >>> # create a cloned OpResult
+                >>> y = x.clone()
+
+        """
+        return paddle.assign(self)
+
+    @fake_interface_only
+    def clear_gradient(self):
+        """
+        **Notes**:
+            **1. This API is ONLY available in Dygraph mode**
+
+            **2. Use it only OpResult has gradient, normally we use this for Parameters since other temporal OpResult will be deleted by Python's GC**
+
+        Clear  (set to ``0`` ) the Gradient of Current OpResult
+
+        Returns:  None
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> import paddle.base as base
+                >>> import numpy as np
+
+                >>> x = np.ones([2, 2], np.float32)
+                >>> inputs2 = []
+                >>> for _ in range(10):
+                >>>     tmp = base.dygraph.base.to_variable(x)
+                >>>     tmp.stop_gradient=False
+                >>>     inputs2.append(tmp)
+                >>> ret2 = paddle.add_n(inputs2)
+                >>> loss2 = paddle.sum(ret2)
+                >>> loss2.retain_grads()
+                >>> loss2.backward()
+                >>> print(loss2.gradient())
+                >>> loss2.clear_gradient()
+                >>> print("After clear {}".format(loss2.gradient()))
+                1.0
+                After clear 0.0
+        """
+        pass
+
+    def append(self, var):
+        """
+        **Notes**:
+           **The type OpResult must be LoD Tensor Array.
+
+        """
+        if not self.is_dense_tensor_array_type():
+            raise TypeError(
+                "Only OpResult with pd_op.tensor_array support `append` method, but received type: {}".format(
+                    self.type()
+                )
+            )
+        from paddle.tensor.array import array_length, array_write
+
+        array_write(x=var, i=array_length(self), array=self)
+
     import paddle
 
     opresult_methods = [
+        ('cpu', cpu),
+        ('cuda', cuda),
         ('place', place),
         ('item', _item),
         ('dim', dim),
         ('ndimension', ndimension),
         ('ndim', _ndim),
         ('astype', astype),
+        ('size', _size_),
+        ('clone', clone),
+        ('clear_gradient', clear_gradient),
+        ('append', append),
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
