@@ -14,6 +14,7 @@
 
 import copy
 import os
+import time
 
 import paddle
 from paddle.base import compiler
@@ -98,9 +99,8 @@ is_non_distributed_check = wrap_decorator(_is_non_distributed_check_)
 
 class Fleet:
     """
-    Unified API for distributed training of PaddlePaddle
+    Unified API for distributed training of PaddlePaddle.
     Please reference the https://github.com/PaddlePaddle/PaddleFleetX for details
-
 
     Returns:
         Fleet: A Fleet instance
@@ -122,8 +122,6 @@ class Fleet:
             >>> optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
 
             >>> # do distributed training
-
-
 
         .. code-block:: python
             :name: code-example2
@@ -154,7 +152,6 @@ class Fleet:
             >>> if fleet.is_server():
             ...     print("this is server")
             >>> fleet.stop_worker()
-
 
     """
 
@@ -194,43 +191,39 @@ class Fleet:
             log_level (Integer, String, optional): A ``Integer`` or ``String`` Variable determining how hight
                 the logging level is. Default is "INFO".
 
-
         Returns:
             None
 
         Examples:
-
             .. code-block:: python
-                :name: code-example1
+                :name: code-init-example1
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
 
-
-
             .. code-block:: python
-                :name: code-example2
+                :name: code-init-example2
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init(is_collective=True)
 
-
             .. code-block:: python
-                :name: code-example3
+                :name: code-init-example3
+
                 >>> import paddle.distributed.fleet as fleet
                 >>> role = fleet.PaddleCloudRoleMaker()
                 >>> fleet.init(role)
 
-
             .. code-block:: python
-                :name: code-example4
+                :name: code-init-example4
+
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
                 >>> fleet.init(strategy=strategy)
 
-
             .. code-block:: python
-                :name: code-example5
+                :name: code-init-example5
+
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
                 >>> fleet.init(log_level = "DEBUG")
@@ -370,6 +363,244 @@ class Fleet:
                 )
         return self
 
+    # test allreduce perf
+    def allreduce_perf(
+        self,
+        iteration,
+        x,
+        group,
+        perf_size,
+        perf_threshold_time,
+        warmup=False,
+    ):
+        if group is None or group.nranks <= 1:
+            logger.warning("allreduce_perf is invalid, group invalid!")
+            return
+        paddle.distributed.barrier()
+        paddle.device.cuda.synchronize()
+        start_t = time.time()
+        for _ in range(iteration):
+            paddle.distributed.all_reduce(x, group=group)
+        paddle.device.cuda.synchronize()
+        end_t = time.time()
+        ret = (end_t - start_t) / iteration
+        if warmup:
+            return
+        logger.info(
+            f"[AllReduceTest] nbytes {perf_size}B test result: {ret} s/iter"
+        )
+        if perf_threshold_time > -1 and ret > perf_threshold_time:
+            logger.warning(
+                f"[Perf Warnning] AllReduce Test Timeout! {ret} > {perf_threshold_time}"
+            )
+
+    # test reduce perf
+    def reduce_perf(self, iteration, x, group, perf_size, perf_threshold_time):
+        if group is None or group.nranks <= 1:
+            logger.warning("reduce_perf is invalid, group invalid!")
+            return
+        paddle.distributed.barrier()
+        paddle.device.cuda.synchronize()
+        start_t = time.time()
+        for _ in range(iteration):
+            paddle.distributed.reduce(x, dst=min(group.ranks), group=group)
+        paddle.device.cuda.synchronize()
+        end_t = time.time()
+        ret = (end_t - start_t) / iteration
+        logger.info(
+            f"[ReduceTest] nbytes {perf_size}B test result: {ret} s/iter"
+        )
+        if perf_threshold_time > -1 and ret > perf_threshold_time:
+            logger.warning(
+                f"[Perf Warnning] Reduce Test Timeout! {ret} > {perf_threshold_time}"
+            )
+
+    # test broadcast perf
+    def broadcast_perf(
+        self, iteration, x, group, perf_size, perf_threshold_time
+    ):
+        if group is None or group.nranks <= 1:
+            logger.warning("broadcast_perf is invalid, group invalid!")
+            return
+        paddle.distributed.barrier()
+        paddle.device.cuda.synchronize()
+        start_t = time.time()
+        for _ in range(iteration):
+            paddle.distributed.broadcast(x, src=min(group.ranks), group=group)
+        paddle.device.cuda.synchronize()
+        end_t = time.time()
+        ret = (end_t - start_t) / iteration
+        logger.info(
+            f"[BroadcastTest] nbytes {perf_size}B test result: {ret} s/iter"
+        )
+        if perf_threshold_time > -1 and ret > perf_threshold_time:
+            logger.warning(
+                f"[Perf Warnning] Broadcast Test Timeout! {ret} > {perf_threshold_time}"
+            )
+
+    # test allgather perf
+    def allgather_perf(
+        self, iteration, x, group, perf_size, perf_threshold_time
+    ):
+        if group is None or group.nranks <= 1:
+            logger.warning("allgather_perf is invalid, group invalid!")
+            return
+        paddle.distributed.barrier()
+        paddle.device.cuda.synchronize()
+        start_t = time.time()
+        for _ in range(iteration):
+            tmp = []
+            paddle.distributed.all_gather(tmp, x, group=group)
+        paddle.device.cuda.synchronize()
+        end_t = time.time()
+        ret = (end_t - start_t) / iteration
+        logger.info(
+            f"[AllgatherTest] nbytes {perf_size}B test result: {ret} s/iter"
+        )
+        if perf_threshold_time > -1 and ret > perf_threshold_time:
+            logger.warning(
+                f"[Perf Warnning] Allgather Test Timeout! {ret} > {perf_threshold_time}"
+            )
+
+    # test reduce_scatter perf
+    def reduce_scatter_perf(
+        self,
+        iteration,
+        x,
+        group,
+        perf_size,
+        perf_threshold_time,
+    ):
+        if group is None or group.nranks <= 1:
+            logger.warning("reduce_scatter_perf is invalid, group invalid!")
+            return
+        paddle.distributed.barrier()
+        paddle.device.cuda.synchronize()
+        parallelism = group.nranks
+        output_shape = x.shape
+        if x.shape[0] % parallelism != 0:
+            logger.warning(
+                f"the shape of input[{x.shape[0]}] can't be divided exactly by reduce_scatter parallelism[{parallelism}], test stopped!"
+            )
+            return
+        output_shape[0] = output_shape[0] // parallelism
+        output = paddle.empty(shape=output_shape, dtype=x.dtype)
+        start_t = time.time()
+        for _ in range(iteration):
+            paddle.distributed.stream.reduce_scatter(
+                output,
+                x,
+                op=paddle.distributed.ReduceOp.SUM,
+                group=group,
+                sync_op=True,
+            )
+        paddle.device.cuda.synchronize()
+        end_t = time.time()
+        ret = (end_t - start_t) / iteration
+        logger.info(
+            f"[ReduceScatterTest] nbytes {perf_size}B test result: {ret} s/iter"
+        )
+        if perf_threshold_time > -1 and ret > perf_threshold_time:
+            logger.warning(
+                f"[Perf Warnning] ReduceScatter Test Timeout! {ret} > {perf_threshold_time}"
+            )
+
+    def _collective_perf_impl(self, round=50, context={}, hcg=None):
+        if hcg is None:
+            hcg = self.get_hybrid_communicate_group()
+
+        collective_perf_func_map = {
+            "allreduce": self.allreduce_perf,
+            "reduce": self.reduce_perf,
+            "broadcast": self.broadcast_perf,
+            "allgather": self.allgather_perf,
+            "reduce_scatter": self.reduce_scatter_perf,
+        }
+        dp_group = hcg.get_data_parallel_group()
+        sharding_group = hcg.get_sharding_parallel_group()
+        mp_group = hcg.get_model_parallel_group()
+        data_group = None
+        if dp_group.nranks > 1:
+            data_group = dp_group
+        elif sharding_group.nranks > 1:
+            data_group = sharding_group
+
+        collective_perf_group_map = {
+            "allreduce": data_group,
+            "reduce": data_group,
+            "broadcast": data_group,
+            "allgather": mp_group,
+            "reduce_scatter": mp_group,
+        }
+
+        for comm_type, size_and_time in context.items():
+            # test 1M ~ 1G as default
+            nbytes = 1 << 20  # 1048576(1MB)
+            final_nbytes = 1 << 30  # 1073741824(1GB)
+            dtype = paddle.float32
+            time_threshold = 0
+
+            if size_and_time is not None:
+                nbytes = size_and_time[0]
+                # Run only once when test specific message size.
+                final_nbytes = nbytes
+                time_threshold = size_and_time[1]
+            if nbytes <= 0:
+                logger.warning(
+                    f"Size for collective performance check should be positive, but got {nbytes}"
+                )
+                return
+
+            while nbytes <= final_nbytes:
+                x = paddle.zeros([nbytes // 4], dtype=dtype)
+                # warmup
+                self.allreduce_perf(10, x, None, nbytes, 1, warmup=True)
+
+                collective_perf_func_map[comm_type](
+                    iteration=round,
+                    x=x,
+                    group=collective_perf_group_map[comm_type],
+                    perf_size=nbytes,
+                    perf_threshold_time=time_threshold,
+                )
+                nbytes = nbytes << 1
+
+    def collective_perf(self, comm_type, round=50, size_and_time={}):
+        """
+        Run performance test for given communication type
+        and compare the time cost with the threshold.
+
+        Args:
+            comm_type (str): Communication type for performance test. Currently support
+                            "allreduce", "broadcast", "reduce", "allgather" and "reduce_scatter".
+            round (int, optional): Loop times for performance test. More loops will cost more time
+                            and provide more accurate result. Defaults to 50.
+            size_and_time (dict, optional): Message sizes and time thresholds for performance test.
+                            each pair will invoke a performance check. Defaults to {}, which indicates
+                            acting performance check from 1MB to 1GB without threshold set.
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+                :name: code-init-example1
+
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init(is_collective=True)
+                >>> # run two tests, one with 1MB (threshold 0.5s) and another with 1GB (threshold 1s)
+                >>> size_and_time = {1<<20: 0.5, 1<<30: 1}
+                >>> fleet.collective_perf("allreduce", round=50, size_and_time = size_and_time)
+        """
+        if not self._is_collective:
+            logger.warning(
+                "fleet.collective_perf is only for collective mode, will return with no test acted."
+            )
+            return
+        for size, time_threshold in size_and_time.items():
+            context = {comm_type: [size, time_threshold]}
+            self._collective_perf_impl(round=round, context=context)
+
     def _init_hybrid_parallel_env(self):
         """initialize the hybrid environment."""
         self.hybrid_configs = self._user_defined_strategy.hybrid_configs
@@ -448,11 +679,9 @@ class Fleet:
         Check whether the node is the first instance of worker.
 
         Returns:
-            bool: True if this is the first node of worker,
-                  False if not.
+            bool: True if this is the first node of worker, False if not.
 
         Examples:
-
             .. code-block:: python
 
                 >>> import paddle.distributed.fleet as fleet
@@ -957,7 +1186,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
                 >>> import paddle
                 >>> paddle.enable_static()

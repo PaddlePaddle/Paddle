@@ -66,7 +66,7 @@ bool InsertTieShapeOnBlock(pir::Block* block) {
   // TODO(zhangbopd): mapping block arguments
 
   std::vector<pir::Operation*> op_list;
-  for (pir::Operation* op : *block) op_list.push_back(op);
+  for (auto& op : *block) op_list.push_back(&op);
   for (pir::Operation* op : op_list) {
     if (!InsertTieShapeOnOperation(op, builder)) return false;
   }
@@ -74,8 +74,8 @@ bool InsertTieShapeOnBlock(pir::Block* block) {
 }
 
 bool InsertTieShapeOnRegion(pir::Region* region) {
-  for (Block* block : *region) {
-    if (!InsertTieShapeOnBlock(block)) return false;
+  for (auto& block : *region) {
+    if (!InsertTieShapeOnBlock(&block)) return false;
   }
   return true;
 }
@@ -94,7 +94,7 @@ struct ExpandShapeOfOpPattern : public OpRewritePattern<shape::ShapeOfOp> {
 
     // std::vector<Value> dim_sizes;
     // for (int dim = 0, rank =
-    // type.dyn_cast<ShapedTypeInterface>().GetShape()[0];
+    // type.dyn_cast<ShapedTypeInterface>().GetDyShape()[0];
     //      dim < rank;
     //      ++dim) {
     //   dim_sizes.push_back(
@@ -183,7 +183,7 @@ bool IsCandidateShapeTensorType(Type type) {
   return (tensor_type && tensor_type && shaped_type.GetRank() == 1 &&
           shaped_type.HasStaticShape() &&
           shaped_type.GetElementType().IsIntOrIndex() &&
-          shaped_type.GetShape()[0] < 32);
+          shaped_type.GetDyShape()[0] < 32);
 }
 
 class ShapeComputationIRAnalysis {
@@ -241,8 +241,8 @@ bool ShapeComputationIRAnalysis::Run() {
 }
 
 bool ShapeComputationIRAnalysis::RunOnRegion(Region* region, func fn) {
-  for (Block* block : *region) {
-    if (!RunOnBlock(block, fn)) return false;
+  for (auto& block : *region) {
+    if (!RunOnBlock(&block, fn)) return false;
   }
   return true;
 }
@@ -251,7 +251,7 @@ bool ShapeComputationIRAnalysis::RunOnBlock(Block* block, func fn) {
   // TODO(zhangbopd): mapping block arguments
 
   std::vector<Operation*> op_list;
-  for (Operation* op : *block) op_list.push_back(op);
+  for (auto& op : *block) op_list.push_back(&op);
   for (Operation* op : op_list) {
     if (!RunOnOperation(op, fn)) return false;
   }
@@ -309,7 +309,7 @@ bool ShapeComputationIRAnalysis::BuildShapeOnValue(Value value) {
   } else if (IsCandidateShapeTensorType(type)) {
     auto shaped_type = type.dyn_cast<ShapedTypeInterface>();
     std::vector<SymbolicDimOp> symbols;
-    for (size_t i = 0, d = shaped_type.GetShape()[0]; i < d; ++i)
+    for (size_t i = 0, d = shaped_type.GetDyShape()[0]; i < d; ++i)
       symbols.push_back(mgr_.NewSymbolicDim());
     shape_tensor_to_sym_dims_[value] = std::move(symbols);
   }

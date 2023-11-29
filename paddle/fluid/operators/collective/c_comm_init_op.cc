@@ -34,7 +34,7 @@ limitations under the License. */
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"

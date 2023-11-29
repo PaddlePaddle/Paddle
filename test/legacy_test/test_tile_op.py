@@ -424,6 +424,7 @@ class TestTileDoubleGradCheck(unittest.TestCase):
     def tile_wrapper(self, x):
         return paddle.tile(x[0], [2, 1])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -455,6 +456,7 @@ class TestTileTripleGradCheck(unittest.TestCase):
     def tile_wrapper(self, x):
         return paddle.tile(x[0], [2, 1])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.

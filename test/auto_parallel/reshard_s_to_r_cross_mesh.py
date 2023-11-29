@@ -42,23 +42,10 @@ class TestReshardSToRCrossMesh:
         dev_ctx = core.DeviceContext.create(place)
         a = paddle.randn(self._shape)
 
-        in_shard_specs = [None for i in range(len(self._shape))]
-        in_shard_specs[self._shard] = "x"
-
-        out_shard_specs = [None for i in range(len(self._shape))]
-        dist_attr = dist.DistAttr(
-            mesh=self._in_mesh, sharding_specs=in_shard_specs
+        input_tensor = dist.shard_tensor(
+            a, self._in_mesh, [dist.Shard(self._shard)]
         )
-        out_dist_attr = dist.DistAttr(
-            mesh=self._out_mesh, sharding_specs=out_shard_specs
-        )
-
-        input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
-
-        reshard_func = core.SToRReshardFunctionCrossMesh()
-        assert reshard_func.is_suitable(input_tensor, out_dist_attr)
-
-        out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
+        out = dist.reshard(input_tensor, self._out_mesh, [dist.Replicate()])
 
         out_shape = list(self._shape)
         if out_shape[self._shard] % 2 == 0:

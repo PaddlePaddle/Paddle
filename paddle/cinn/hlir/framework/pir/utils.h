@@ -36,7 +36,7 @@ struct CUDAJITInfo {
 };
 
 struct CompatibleInfo {
-  static constexpr char* kNamePrefix = "var_";
+  static constexpr char* kNamePrefix = "var";
   // TODO(Aurelius): Need add name mapping logic in REGISTER_CINN_OP
   // macros or attempt to unify Op name with Paddle and CINN.
   static const std::unordered_map<std::string, std::string> OP_NAMES;
