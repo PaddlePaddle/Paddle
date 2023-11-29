@@ -313,7 +313,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
             >>> print(y4.numpy())
             2.0
     """
-    if not isinstance(x, Variable):
+    if not isinstance(x, (Variable, paddle.pir.OpResult)):
         raise TypeError("In median, the input x should be a Tensor.")
 
     if isinstance(axis, (list, tuple)) and len(axis) == 0:
