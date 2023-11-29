@@ -56,28 +56,28 @@ class TestPrimMode(unittest.TestCase):
             )
 
         whole_ops = [op.name() for op in main_program.global_block().ops]
-        # if flag == "forward":
-        #     core._set_prim_forward_enabled(False)
-        #     assert (
-        #         'pd_op.mean' not in whole_ops
-        #         and 'pd_op.divide_grad' in whole_ops
-        #     )
-        # elif flag == "backward":
-        #     core._set_prim_backward_enabled(False)
-        #     assert (
-        #         'pd_op.mean' in whole_ops
-        #         and 'pd_op.divide_grad' not in whole_ops
-        #     )
-        # elif flag == "all":
-        #     core._set_prim_all_enabled(False)
-        #     assert (
-        #         'pd_op.mean' not in whole_ops
-        #         and 'pd_op.divide_grad' not in whole_ops
-        #     )
-        # else:
-        #     assert (
-        #         'pd_op.mean' in whole_ops and 'pd_op.divide_grad' in whole_ops
-        #     )
+        if flag == "forward":
+            core._set_prim_forward_enabled(False)
+            assert (
+                'pd_op.mean' not in whole_ops
+                and 'pd_op.divide_grad' in whole_ops
+            )
+        elif flag == "backward":
+            core._set_prim_backward_enabled(False)
+            assert (
+                'pd_op.mean' in whole_ops
+                and 'pd_op.divide_grad' not in whole_ops
+            )
+        elif flag == "all":
+            core._set_prim_all_enabled(False)
+            assert (
+                'pd_op.mean' not in whole_ops
+                and 'pd_op.divide_grad' not in whole_ops
+            )
+        else:
+            assert (
+                'pd_op.mean' in whole_ops and 'pd_op.divide_grad' in whole_ops
+            )
         return fwd, dx, dy
 
     def test_prim_forward(self):

@@ -17,6 +17,7 @@
 
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/program.h"
 
@@ -53,6 +54,9 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
   // std::ostringstream print_stream;
   // program_->Print(print_stream);
   // VLOG(0) << "program in sink decomp ------" << print_stream.str();
+  if (!paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
+    return src_vars_;
+  }
   std::vector<pir::OpResult> tar_vars;
   VLOG(0) << "sink decomp in ===========================";
   pir::Block* block = const_cast<pir::Block*>(program_->block());
