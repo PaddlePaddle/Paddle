@@ -20,7 +20,7 @@ def get_coordinator(mesh:np.array, rank:int):
     assert rand_coordinator.shape[0] in (0, 1), f"rand_coordinator.shape: {rand_coordinator.shape}"
     return rand_coordinator[0].tolist() if rand_coordinator.shape[0] > 0 else None
 
-# TODO(pangengzheng): support DeviceMesh and Placement later, device_mesh:Optional[core.ProcessMesh, core.DeviceMesh], placements:Optional[List[int], core.Placement]
+
 def compute_local_shape_and_global_offset(global_shape:List[int], process_mesh:core.ProcessMesh, dims_mapping:List[int]) -> Tuple[Tuple[int], Tuple[int]]:
     """
     tensor dist_attr look like: {process_mesh: {shape: [2], process_ids: [0,1], dim_names: [x]}, dims_mapping: [-1,0], batch_dim: 0, dynamic_dims: [], annotated: [dims_mapping: 1,process_mesh: 1], partial: [].}

@@ -18,8 +18,8 @@ import numpy as np
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
-from metadata import Metadata, ChunkMetadata, MetadataIndex
-from utils import compute_local_shape_and_global_offset
+from .metadata import Metadata, ChunkMetadata, MetadataIndex
+from .utils import compute_local_shape_and_global_offset
 
 def check_state_dict(state_dict, process_group):
     local_keys = list(state_dict.keys())
@@ -80,6 +80,9 @@ def save_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
         for val in state_dict.values():
             assert isinstance(val, (paddle.Tensor, paddle.base.framework.EagerParamBase)), "Only support dygraph Tensor now, support static DistributedTensor later"
 
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
+
     if process_group is None:
         # Init the default global process group
         not is_initialized() and paddle.distributed.init_parallel_env()
@@ -134,13 +137,10 @@ def test_save_state_dict():
     import paddle.distributed as dist
     w1 = paddle.arange(8).reshape([4, 2])
     w2 = paddle.arange(8, 12).reshape([2, 2])
-    mesh = dist.ProcessMesh([0,1], dim_names=["x"])
-    mesh2 = dist.ProcessMesh([2,3], dim_names=["x"])
-    w1_dist_attr = dist.DistAttr(mesh, sharding_specs=["x", None])
-    sharded_w1 = dist.shard_tensor(w1, dist_attr=w1_dist_attr)
-    # w2_dist_attr = dist.DistAttr(mesh, sharding_specs=[None, None])
-    w2_dist_attr = dist.DistAttr(mesh2, sharding_specs=["x", None])
-    sharded_w2 = dist.shard_tensor(w2, dist_attr=w2_dist_attr)
+    mesh = dist.ProcessMesh([0,1])
+    mesh2 = dist.ProcessMesh([2,3])
+    sharded_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(0), dist.Replicate()])
+    sharded_w2 = dist.shard_tensor(w2, mesh2, [dist.Shard(0), dist.Replicate()])
     state_dict = {"w1": sharded_w1, "w2": sharded_w2}
     save_state_dict(state_dict, "./output")
 

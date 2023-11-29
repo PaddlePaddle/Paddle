@@ -19,8 +19,8 @@ from typing import List, Tuple
 import paddle
 from paddle.distributed.communication.group import is_initialized
 
-from metadata import Metadata, ChunkMetadata, MetadataIndex
-from utils import compute_local_shape_and_global_offset
+from .metadata import Metadata, ChunkMetadata, MetadataIndex
+from .utils import compute_local_shape_and_global_offset
 
 @dataclass(frozen=True)
 class ReadItem:
@@ -195,7 +195,7 @@ def get_read_items(path, state_dict, process_group):
                 param_to_chunkmetadata[param_name] = []
             param_to_chunkmetadata[param_name] += chunk_metadata
     read_items = []
-    print(f"param_to_chunkmetadata:{param_to_chunkmetadata}\n state_dict:{state_dict}")
+    print(f"param_to_chunkmetadata:{param_to_chunkmetadata}")
     for param_name, val in state_dict.items():
         if isinstance(val, paddle.Tensor):
             if val.is_dist():
@@ -296,20 +296,14 @@ def load_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
 
 
 def test_get_local_load_files():
-    # if paddle.distributed.get_rank() == 0:
-    #     path = "./output"
-    # else:
-    #     path = "./output2"
     path = "./output"
     # build state_dict
     import paddle.distributed as dist
     w1 = paddle.zeros([4,2], dtype=paddle.int64)
     w2 = paddle.zeros([2,2], dtype=paddle.int64)
-    mesh = dist.ProcessMesh([0,1,2,3], dim_names=["x"])
-    w1_dist_attr = dist.DistAttr(mesh, sharding_specs=["x", None])
-    sharded_w1 = dist.shard_tensor(w1, dist_attr=w1_dist_attr)
-    w2_dist_attr = dist.DistAttr(mesh, sharding_specs=[None, None])
-    sharded_w2 = dist.shard_tensor(w2, dist_attr=w2_dist_attr)
+    mesh = dist.ProcessMesh([0,1,2,3])
+    sharded_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(0), dist.Replicate()])
+    sharded_w2 = dist.shard_tensor(w2, mesh, [dist.Replicate(), dist.Replicate()])
     state_dict = {"w1": sharded_w1, "w2": sharded_w2}
     load_state_dict(state_dict, path)
     
