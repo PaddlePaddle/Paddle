@@ -58,7 +58,6 @@ struct EmbeddingGradCPUFunctor {
       auto* d_table_data = weight_grad_->data<T>();
 
       memset(d_table_data, 0, weight_grad_->numel() * sizeof(T));
-
       for (int64_t i = 0; i < ids_num; ++i) {
         if (padding_idx_ != kNoPadding && ids_data[i] == padding_idx_) {
           // the gradient of padding_idx should be 0, already done by memset, so
