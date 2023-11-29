@@ -254,12 +254,8 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
         arch  // Ensure top level arch is used for dispatch
         >;
 
-    // std::cout<<"GemmKernel = cutlass::gemm::kernel::GemmFpAIntBSplitK
-    // "<<std::endl;
     if (occupancy != nullptr) {
       *occupancy = compute_occupancy_for_kernel2<GemmKernel>();
-      // std::cout<<"compute_occupancy_for_kernel2 occupancy: "<<
-      // occupancy<<std::endl;
       return;
     }
 
@@ -297,12 +293,12 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
 
     Gemm gemm;
     if (gemm.get_workspace_size(args) > workspace_bytes) {
-      std::cout << "Requested split-k but workspace size insufficient. Falling "
+      VLOG(1) << "Requested split-k but workspace size insufficient. Falling "
                    "back to non-split-k implementation."
                 << std::endl;
-      std::cout << "Requested workspace_size: " << gemm.get_workspace_size(args)
+      VLOG(1) << "Requested workspace_size: " << gemm.get_workspace_size(args)
                 << std::endl;
-      std::cout << "get workspace_size: " << workspace_bytes << std::endl;
+      VLOG(1) << "get workspace_size: " << workspace_bytes << std::endl;
       // If requested split-k factor will require more workspace bytes, revert
       // to standard gemm.
       args.batch_count = 1;
