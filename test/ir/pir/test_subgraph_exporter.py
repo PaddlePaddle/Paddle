@@ -16,11 +16,8 @@ import os
 import shutil
 import unittest
 
-<<<<<<< HEAD
-=======
 import numpy as np
 
->>>>>>> b6ec01ad08... [PIR+CINN]Support SubGraph Exporter for Unittest Platform
 import paddle
 from paddle.jit.dy2static.export_subgraph import get_saving_dir
 
@@ -55,13 +52,6 @@ class TestSaveFwdBwdProg(unittest.TestCase):
         out = self.net(x)
         self.check_export()
 
-<<<<<<< HEAD
-    def check_export(self):
-        for prog_file in os.listdir(self.root_dir):
-            if "forward" in prog_file:
-                self.check_fwd(prog_file)
-                return
-=======
     def run_program(self, program, feed, fetch_list):
         paddle.enable_static()
         exe = paddle.static.Executor(paddle.CPUPlace())
@@ -80,53 +70,13 @@ class TestSaveFwdBwdProg(unittest.TestCase):
     def check_export(self):
         for prog_file in os.listdir(self.root_dir):
             if "forward" in prog_file:
-                continue
                 self.check_fwd(prog_file)
->>>>>>> b6ec01ad08... [PIR+CINN]Support SubGraph Exporter for Unittest Platform
             elif "backward" in prog_file:
                 self.check_bwd(prog_file)
             else:
                 raise RuntimeError("Not Support.")
 
     def check_fwd(self, prog_file):
-<<<<<<< HEAD
-        prog_info = [
-            "pt_input_0",
-            "pt_output_0",
-            "pt_output_1",
-            "pt_intermediate_0",
-            "pt_intermediate_1",
-            "pt_intermediate_2",
-        ]
-        path = os.path.join(self.root_dir, prog_file)
-        with open(path, 'r') as f:
-            content = f.readlines()
-        index = 0
-        for op_str in content:
-            if "pd_op.data" in op_str or "pd_op.fetch" in op_str:
-                self.assertIn(prog_info[index], op_str)
-                index += 1
-
-    def check_bwd(self, prog_file):
-        prog_info = [
-            "pt_input_6",
-            "pt_input_5",
-            "pt_input_4",
-            "pt_input_3",
-            "pt_input_2",
-            "pt_input_1",
-            "pt_input_0",
-        ]
-        path = os.path.join(self.root_dir, prog_file)
-        with open(path, 'r') as f:
-            content = f.readlines()
-        index = 0
-        for op_str in content:
-            if "pd_op.data" in op_str or "pd_op.fetch" in op_str:
-                self.assertIn(prog_info[index], op_str)
-                index += 1
-
-=======
         path = os.path.join(self.root_dir, prog_file)
         with open(path, 'r') as f:
             content = f.read()
@@ -202,7 +152,6 @@ class TestSaveFwdBwdProg(unittest.TestCase):
 #         out_shapes = [[], [4,4]]
 #         for i, out in enumerate(outs):
 #             self.assertListEqual(list(out.shape), out_shapes[i])
->>>>>>> b6ec01ad08... [PIR+CINN]Support SubGraph Exporter for Unittest Platform
 
 if __name__ == "__main__":
     unittest.main()
