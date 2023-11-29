@@ -14,7 +14,6 @@
 
 import argparse
 import hashlib
-import os
 import pathlib
 import sys
 
@@ -353,6 +352,7 @@ def gen(
         compats,
         ir_fwds,
         ir_revs,
+        ir_update_fwds,
     ) = (
         load(prim_path),
         load(fwd_path),
@@ -360,13 +360,11 @@ def gen(
         load(compat_path),
         load(fwd_pd_op_path),
         load(rev_pd_op_path),
+        load(update_fwd_pd_op_path),
     )
     filter_compat_info(compats)
 
-    fwd_apis = fwds + ir_fwds
-    # replace old ir ops with pir ops
-    if os.path.exists(update_fwd_pd_op_path):
-        update_apis(fwd_apis, update_fwd_pd_op_path)
+    fwd_apis = fwds + ir_fwds + ir_update_fwds
 
     apis = [{**api, **{'is_fwd': True}} for api in fwd_apis]
     apis = apis + [{**api, **{'is_fwd': False}} for api in revs + ir_revs]
