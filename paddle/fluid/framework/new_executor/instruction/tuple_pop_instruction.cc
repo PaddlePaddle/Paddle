@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <stack>
+
 #include "paddle/fluid/framework/new_executor/instruction/tuple_pop_instruction.h"
+
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 
@@ -40,13 +43,33 @@ TuplePopInstruction::TuplePopInstruction(size_t id,
   type_ = OpFuncType::kCpuSync;
 }
 
+// NOTE(zhangbo): TuplePop is an instruction used in conjunction with TuplePush.
+// Each TuplePush pushes 0-n variables into a
+// VariableRefArray(vector<Variable*>), which may be executed any number of
+// times; TuplePop needs to retrieve variables from
+// VariableRefArray(vector<Variable*>) before and after, corresponding to 0-n
+// variables at a time. Therefore, a Stack data structure is designed here to
+// implement the function of extracting variables from vector<Variable*>
+// mentioned above.
+static std::stack<const Variable*> PopElements(VariableRefArray* var_array,
+                                               uint64_t num) {
+  std::stack<const Variable*> rtn;
+  for (uint64_t i = 0; i < num; i++) {
+    rtn.push(var_array->at(var_array->size() - 1));
+    var_array->pop_back();
+  }
+  return rtn;
+}
+
 void TuplePopInstruction::Run() {
   if (tuple_pop_op_.tuple_size() == 0) {
     stack_element_var_array_->pop_back();
   } else {
+    std::stack<const Variable*> var_elements =
+        PopElements(stack_element_var_array_, tuple_pop_op_.tuple_size());
     for (size_t i = 0; i < tuple_pop_op_.tuple_size(); ++i) {
-      auto front_var =
-          stack_element_var_array_->at(tuple_pop_op_.tuple_size() - i - 1);
+      auto front_var = var_elements.top();
+      var_elements.pop();
       auto outlet_element_value = tuple_pop_op_.outlet_element(i);
 
       auto grad_var = value_exe_info_->GetVarByValue(outlet_element_value);
