@@ -35,7 +35,13 @@ void validate(const std::string& op_type,
   std::unordered_set<std::string> supports_dtypes = {
       "float32", "float16", "int8", "int32"};
   std::unordered_set<std::string> supports_tensor_formats = {
-      "LINEAR", "CHW32", "CHW2", "HWC8", "HWC16", "DHWC8", "CHW4"};
+      "LINEAR", "CHW32", "CHW2", "HWC8", "CHW4"};
+#if IS_TRT_VERSION_GE(7200)
+  supports_tensor_formats.insert("DHWC8");
+#endif
+#if IS_TRT_VERSION_GE(8000)
+  supports_tensor_formats.insert("HWC16");
+#endif
   // refer to
   // https://docs.nvidia.com/deeplearning/tensorrt/developer-guide/index.html#ipluginv2
   PADDLE_ENFORCE_GE(supports_dtypes.count(datatype),
@@ -50,7 +56,8 @@ void validate(const std::string& op_type,
       0,
       paddle::platform::errors::InvalidArgument(
           "custorm op [%s] has unsupported tensor format: [%s], "
-          "now only support: [LINEAR, CHW32, CHW2, HWC8, HWC16, DHWC8, CHW4].",
+          "now only support: [LINEAR, CHW32, CHW2, HWC8, CHW4, DHWC8(TensorRT "
+          "7.2 and after), HWC16(TensorRT 8.0 and after)].",
           op_type,
           tensor_format));
 
@@ -67,12 +74,19 @@ void validate(const std::string& op_type,
   }
   if (datatype == "float16") {
     std::unordered_set<std::string> supports_formats_tmp = {
-        "LINEAR", "CHW2", "HWC8", "HWC16", "DHWC8", "CHW4"};
+        "LINEAR", "CHW2", "HWC8", "CHW4"};
+#if IS_TRT_VERSION_GE(7200)
+    supports_formats_tmp.insert("DHWC8");
+#endif
+#if IS_TRT_VERSION_GE(8000)
+    supports_formats_tmp.insert("HWC16");
+#endif
     PADDLE_ENFORCE_GE(supports_formats_tmp.count(tensor_format),
                       0,
                       paddle::platform::errors::InvalidArgument(
                           "custorm op [%s]: float16 only supports [LINEAR, "
-                          "CHW2, HWC8, HWC16, DHWC8, CHW4], "
+                          "CHW2, HWC8, CHW4, DHWC8(TensorRT 7.2 and after), "
+                          "HWC16(TensorRT 8.0 and after)], "
                           "but got tensor format: [%s], ",
                           op_type,
                           tensor_format));
@@ -163,12 +177,16 @@ nvinfer1::TensorFormat getTrtTensorFormat(std::string tensor_format) {
     return nvinfer1::TensorFormat::kCHW2;
   } else if (tensor_format == "HWC8") {
     return nvinfer1::TensorFormat::kHWC8;
-  } else if (tensor_format == "HWC16") {
-    return nvinfer1::TensorFormat::kHWC16;
-  } else if (tensor_format == "DHWC8") {
-    return nvinfer1::TensorFormat::kDHWC8;
   } else if (tensor_format == "CHW4") {
     return nvinfer1::TensorFormat::kCHW4;
+#if IS_TRT_VERSION_GE(7200)
+  } else if (tensor_format == "DHWC8") {
+    return nvinfer1::TensorFormat::kDHWC8;
+#endif
+#if IS_TRT_VERSION_GE(8000)
+  } else if (tensor_format == "HWC16") {
+    return nvinfer1::TensorFormat::kHWC16;
+#endif
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported tensor format [%s]", tensor_format));
