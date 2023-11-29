@@ -53,8 +53,14 @@ class TestTriangularSolveOp(OpTest):
 
         if self.dtype is np.complex64 or self.dtype is np.complex128:
             self.inputs = {
-                'X': (np.random.random(self.x_shape) + 1j * np.random.random(self.x_shape)).astype(self.dtype),
-                'Y': (np.random.random(self.y_shape) + 1j * np.random.random(self.y_shape)).astype(self.dtype),
+                'X': (
+                    np.random.random(self.x_shape)
+                    + 1j * np.random.random(self.x_shape)
+                ).astype(self.dtype),
+                'Y': (
+                    np.random.random(self.y_shape)
+                    + 1j * np.random.random(self.y_shape)
+                ).astype(self.dtype),
             }
         else:
             self.inputs = {
@@ -254,6 +260,7 @@ class TestTriangularSolveOp9(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.matmul(np.linalg.inv(x), y)
 
+
 # 3D(broadcast) + 3D complex64
 class TestTriangularSolveOpCp64(TestTriangularSolveOp):
     """
@@ -273,6 +280,7 @@ class TestTriangularSolveOpCp64(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
 
+
 # 3D(broadcast) + 3D complex128
 class TestTriangularSolveCp128(TestTriangularSolveOp):
     """
@@ -291,7 +299,8 @@ class TestTriangularSolveCp128(TestTriangularSolveOp):
         x = np.tril(self.inputs['X'])
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
-    
+
+
 class TestTriangularSolveAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2021)

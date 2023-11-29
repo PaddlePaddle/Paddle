@@ -3227,10 +3227,16 @@ def triangular_solve(
         inputs = {"X": [x], "Y": [y]}
         helper = LayerHelper("triangular_solve", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'triangular_solve'
+            x,
+            'x',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'triangular_solve',
         )
         check_variable_and_dtype(
-            y, 'y', ['float32', 'float64', 'complex64', 'complex128'], 'triangular_solve'
+            y,
+            'y',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'triangular_solve',
         )
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
