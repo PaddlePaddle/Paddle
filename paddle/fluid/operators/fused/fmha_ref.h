@@ -228,6 +228,7 @@ class FMHARef {
     - mask_broadcast_num_heads(optional): It is only need in Naive FMHA.
     */
     if (FLAGS_fmha_mode == "cutlass") {
+#ifdef PADDLE_WITH_CUTLASS
       // Here Use cutlass Fused Multihead Attention Kernel.
       ComputeForwardWithCutlassFMHA(cache_kv_tensor,
                                     src_mask_tensor,
@@ -244,6 +245,10 @@ class FMHARef {
                                     qktv_out_tensor,
                                     fmha_out_tensor,
                                     token_num);
+#else 
+      PADDLE_THROW(platform::errors::Unimplemented(
+        "CUTLASS need CUDA_VERSION >= 11.0"));   
+#endif
     } else {
       // Here Use Naive Attention Kernel.
       ComputeForwardWithoutTranspose(cache_kv_tensor,
@@ -281,6 +286,7 @@ class FMHARef {
       phi::DenseTensor* qktv_out_tensor,
       phi::DenseTensor* fmha_out_tensor,
       const int token_num) {
+#ifdef PADDLE_WITH_CUTLASS
     // input shape: [bs, seq_len, 3, num_head, head_dim]
     // transpose with perm [2, 0, 3, 1, 4],
     // output_shape: [3, bs, num_head, seq_len, head_dim]
@@ -374,6 +380,7 @@ class FMHARef {
                                       token_num,
                                       padding_offset_tensor->data<int>());
     }
+#endif
   }
 
   void ComputeForwardWithoutTranspose(
