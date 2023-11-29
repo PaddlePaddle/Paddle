@@ -22,11 +22,23 @@ import paddle
 paddle.enable_static()
 
 
-class TestConv2dFusePass(PassTest):
+class TestConv2dAddFusePass(PassTest):
+    r"""
+    x_var   f_var
+      \       /
+         conv2d
+           |
+          add
+    """
+
+    def is_program_valid(self, program=None):
+        return True
+
     def build_ir_progam(self):
+        pir_program = None
         with paddle.pir_utils.IrGuard():
-            self.pir_program = paddle.static.Program()
-            with paddle.pir.core.program_guard(self.pir_program):
+            pir_program = paddle.static.Program()
+            with paddle.pir.core.program_guard(pir_program):
                 x = paddle.static.data(
                     name='x', shape=[3, 1, 28, 28], dtype='float32'
                 )
@@ -54,19 +66,21 @@ class TestConv2dFusePass(PassTest):
             "pd_op.conv2d": 0,
             "pd_op.add": 0,
         }
+        return pir_program
+
+    def sample_program(self):
+        yield self.build_ir_progam(), False
 
     def setUp(self):
         self.place_runtime = "gpu"
-        self.build_ir_progam()
 
     def test_check_output(self):
         self.check_pass_correct()
 
 
-class TestConv2dFusePassWtihCpu(TestConv2dFusePass):
+class TestConv2dAddFusePassWtihCpu(TestConv2dAddFusePass):
     def setUp(self):
         self.place_runtime = "cpu"
-        self.build_ir_progam()
 
 
 if __name__ == "__main__":
