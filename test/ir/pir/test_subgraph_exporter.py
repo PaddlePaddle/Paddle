@@ -108,9 +108,9 @@ class TestSaveFwdBwdProg(unittest.TestCase):
         feed = {
             "pt_input_6": data,
             "pt_input_5": data,
-            "pt_input_4": np.array(0.1).astype(np.float32),
+            "pt_input_4": data,
             "pt_input_3": data,
-            "pt_input_2": data,
+            "pt_input_2": np.array(0.1).astype(np.float32),
             "pt_input_1": data,
             "pt_input_0": data,
         }
