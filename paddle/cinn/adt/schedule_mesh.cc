@@ -221,7 +221,7 @@ class NaiveReduceScheduleMeshPolicy final : public ScheduleMeshPolicy {
 
   std::tuple<ScheduleMesh, List<LoopType>> Optimize(
       const List<ScheduleDim>& loop_sizes) const override {
-    VLOG(1) << "Match NaiveReduceScheduleMeshPolicy";
+    VLOG(4) << "Match NaiveReduceScheduleMeshPolicy";
     ScheduleMesh sched_mesh{loop_sizes};
     List<LoopType> loop_types{};
     List<int> non_reduce_axes{};
