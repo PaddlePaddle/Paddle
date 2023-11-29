@@ -1616,6 +1616,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, [])
         np.testing.assert_array_equal(out.numpy(), np.array(15))
 
+    @test_with_pir_api
     def test_rank(self):
         # 1) x is 0D
         x = paddle.rand([])
