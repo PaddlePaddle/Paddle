@@ -389,14 +389,7 @@ Tensor full_like_decomp(const Tensor& x,
                         const paddle::Scalar& value,
                         const DataType& dtype,
                         const Place& place) {
-  Tensor ans;
-  if (valid_type(dtype) && valid_type(value.dtype())) {
-    ans = full<T>(phi::vectorize(x.dims()), value, dtype, place);
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("Unsupported data type: %s",
-                                              phi::DataTypeToString(dtype)));
-  }
-  return ans;
+  return full<T>(phi::vectorize(x.dims()), value, dtype, place);
 }
 
 template <typename T>
