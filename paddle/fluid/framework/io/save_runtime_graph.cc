@@ -41,15 +41,6 @@ std::string node_format(const ir::Node& node, int number) {
          (node.IsOp() ? "op" : "var") + "]";
 }
 
-// std::string edge_format(const ir::Node& node){
-//     std::stringstream nodes_edges;
-//     for (auto *out : node.outputs) {
-//       nodes_edges  << node_format(node) << " -> " << node_format(*out)
-//            << "\n";
-//     }
-//     return nodes_edges.str();
-// }
-
 void save_graph(const ir::Graph& graph,
                 std::string type,
                 std::string saved_path) {
@@ -93,9 +84,9 @@ void save_runtime_cinn_graph(const ir::Graph& graph,
                              std::string cluster_outputs,
                              std::string cluster_intervals,
                              std::string saved_path) {
-  save_string(clusters_ops, "clusters_ops", saved_path + "/clusters_ops.txt");
+  save_string(clusters_ops, "cluster_ops", saved_path + "/cluster_ops.txt");
   save_string(
-      clusters_inputs, "clusters_inputs", saved_path + "/clusters_inputs.txt");
+      clusters_inputs, "cluster_inputs", saved_path + "/cluster_inputs.txt");
   save_string(
       cluster_outputs, "cluster_outputs", saved_path + "/cluster_outputs.txt");
   save_string(cluster_intervals,
