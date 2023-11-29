@@ -133,7 +133,7 @@ class TestCollectiveRunnerBase:
         current_endpoint = args["currentendpoint"]
         nranks = 2
         if args["dynamic_static_unified_comm"]:
-            _init_parallel_env("nccl")
+            _init_parallel_env("bkcl")
         else:
             self.initCommunicator(
                 startup_prog, rank, nranks, True, current_endpoint, endpoints
