@@ -35,6 +35,28 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a + b
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
+    def test_type_promotion_add_F_F(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float16)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a + b
+            res_t = b + a
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np + b_np)
+    
+    def test_type_promotion_add_F_I(self):
+        a_np = np.random.random(self.shape).astype(np.int32)
+        b_np = np.random.random(self.shape).astype(np.float16)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a + b
+            res_t = b + a
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np + b_np)
+
     def test_sub(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
@@ -43,7 +65,25 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np)
             res = a - b
             np.testing.assert_array_equal(res.numpy(), a_np - b_np)
-
+    
+    def test_type_promotion_sub_F_F(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float16)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a - b
+            np.testing.assert_array_equal(res.numpy(), a_np - b_np)
+    
+    def test_type_promotion_sub_F_I(self):
+        a_np = np.random.random(self.shape).astype(np.int32)
+        b_np = np.random.random(self.shape).astype(np.float16)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a - b
+            np.testing.assert_array_equal(res.numpy(), a_np - b_np)
+    
     def test_mul(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
@@ -51,6 +91,28 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             a = base.dygraph.to_variable(a_np)
             b = base.dygraph.to_variable(b_np)
             res = a * b
+            np.testing.assert_array_equal(res.numpy(), a_np * b_np)
+
+    def test_type_promotion_mul_F_F(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float16)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a * b
+            res_t = b * a
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np * b_np)
+    
+    def test_type_promotion_mul_F_I(self):
+        a_np = np.random.random(self.shape).astype(np.int32)
+        b_np = np.random.random(self.shape).astype(np.float16)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a * b
+            res_t = b * a
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np * b_np)
 
     def test_div(self):
@@ -213,6 +275,24 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def test_greater_than(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a > b
+            np.testing.assert_array_equal(res.numpy(), a_np > b_np)
+
+    def test_type_promotion_greater_than_F_F(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float16)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a > b
+            np.testing.assert_array_equal(res.numpy(), a_np > b_np)
+    
+    def test_type_promotion_greater_than_F_I(self):
+        a_np = np.random.random(self.shape).astype(np.int32)
+        b_np = np.random.random(self.shape).astype(np.float16)
         with base.dygraph.guard():
             a = base.dygraph.to_variable(a_np)
             b = base.dygraph.to_variable(b_np)
