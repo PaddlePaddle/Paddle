@@ -35,6 +35,19 @@ if(WITH_TESTING AND WITH_CINN)
   set_tests_properties(dialect_convert_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
   paddle_test(
+    test_sub_graph_extract
+    SRCS
+    sub_graph_extract_test.cc
+    DEPS
+    drr
+    pd_to_cinn_pass
+    op_dialect_vjp
+    cinn_op_dialect
+    pir_transforms
+    pir)
+  set_tests_properties(test_sub_graph_extract PROPERTIES LABELS "RUN_TYPE=CINN")
+
+  paddle_test(
     ir_op_fusion_test
     SRCS
     ir_op_fusion_test.cc
