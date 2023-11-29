@@ -103,10 +103,8 @@ std::vector<ir::Tensor> CollectInputTensor(
   for (auto in_value : CompatibleInfo::RealOperandSources(*op)) {
     VLOG(4) << "input tensor name: " << CompatibleInfo::ValueName(in_value);
     ir::Tensor tensor = details::GetTensor(group, in_value);
-    VLOG(4) << "shape: " << tensor->shape[0];
-    VLOG(4) << "shape: " << tensor->shape[1];
-    VLOG(4) << "sym_shape: " << tensor->sym_shape[0];
-    VLOG(4) << "sym_shape: " << tensor->sym_shape[1];
+    VLOG(4) << "shape: " << tensor->shape;
+    VLOG(4) << "sym_shape: " << tensor->sym_shape;
 
     if (!tensor_map->count(in_value)) {
       // record tensor.
@@ -200,7 +198,7 @@ OpLowererImpl::BucketLower(const GroupPtr& group,
   // XX_0, XX_1, so we log them in tmp_tensor_info;
   std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
   std::vector<ir::Expr> func_bodies =
-      LowerOps(groups,
+      LowerOps(group,
                ops,
                apply_op_schedule,
                &OpLowererImpl::DyShapeScheduleDetermineFunction,
