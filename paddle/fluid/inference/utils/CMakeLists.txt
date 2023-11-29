@@ -12,7 +12,7 @@ cc_library(
   SRCS model_utils.cc
   DEPS proto_desc enforce)
 
-cc_test_old(
+paddle_test(
   infer_io_utils_tester
   SRCS
   io_utils_tester.cc
