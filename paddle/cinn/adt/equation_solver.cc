@@ -44,10 +44,75 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   return {{out_index.value(), ctx->GetValue(in_variable)}};
 }
 
-bool HasReplicatedValues(const List<Value>& values) {
+namespace {
+template <bool IsSameType>
+struct IsReplicatedSymbolicValuesStruct;
+
+template <>
+struct IsReplicatedSymbolicValuesStruct<false> {
+  template <typename T0, typename T1>
+  static bool Call(const T0& lhs, const T1& rhs) {
+    return false;
+  }
+};
+
+template <>
+struct IsReplicatedSymbolicValuesStruct<true> {
+  static bool Call(const DimExpr& lhs, const DimExpr& rhs) { return false; }
+
+  static bool Call(const Undefined& lhs, const Undefined& rhs) { return false; }
+  static bool Call(const Ok& lhs, const Ok& rhs) { return false; }
+
+  static bool Call(const Iterator& lhs, const Iterator& rhs) {
+    return lhs == rhs;
+  }
+
+  static bool Call(const List<Value>& lhs, const List<Value>& rhs) {
+    return lhs == rhs;
+  }
+
+  static bool Call(const IndexDotValue<Value, List<DimExpr>>& lhs,
+                   const IndexDotValue<Value, List<DimExpr>>& rhs) {
+    return lhs == rhs;
+  }
+
+  static bool Call(const IndexUnDotValue<Value, List<DimExpr>>& lhs,
+                   const IndexUnDotValue<Value, List<DimExpr>>& rhs) {
+    return lhs == rhs;
+  }
+
+  static bool Call(const ListGetItem<Value, DimExpr>& lhs,
+                   const ListGetItem<Value, DimExpr>& rhs) {
+    return lhs == rhs;
+  }
+
+  static bool Call(const BroadcastedIterator<Value, DimExpr>& lhs,
+                   const BroadcastedIterator<Value, DimExpr>& rhs) {
+    return lhs == rhs;
+  }
+
+  static bool Call(const PtrGetItem<Value>& lhs, const PtrGetItem<Value>& rhs) {
+    return lhs == rhs;
+  }
+};
+
+}  // namespace
+
+bool IsReplicatedSymbolicValues(const Value& lhs, const Value& rhs) {
+  return std::visit(
+      [&](const auto& lhs, const auto& rhs) {
+        return IsReplicatedSymbolicValuesStruct<
+            std::is_same_v<std::decay_t<decltype(lhs)>,
+                           std::decay_t<decltype(rhs)>>>::Call(lhs, rhs);
+      },
+      lhs.variant(),
+      rhs.variant());
+}
+
+bool HasReplicatedSimbolicValues(const List<Value>& values) {
   for (std::size_t i = 0; i < values->size(); ++i) {
     for (std::size_t j = i + 1; j < values->size(); ++j) {
-      if (values->at(i) == values->at(j)) {
+      if (IsReplicatedSymbolicValues(values->at(i), values->at(j))) {
         return true;
       }
     }
@@ -63,7 +128,7 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   for (const auto& iter : *in_iters.value()) {
     in_values->emplace_back(ctx->GetValue(iter));
   }
-  if (HasReplicatedValues(in_values)) {
+  if (HasReplicatedSimbolicValues(in_values)) {
     return {{out_index.value(), Undefined{}}};
   }
   List<DimExpr> dim_constants{};

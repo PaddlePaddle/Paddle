@@ -1,3 +1,5 @@
+add_subdirectory(adt)
+
 if(WITH_TESTING AND WITH_CINN)
   paddle_test(test_pir_compiler SRCS pir_compiler_test.cc DEPS pir_compiler
               cinn_runtime_dialect)

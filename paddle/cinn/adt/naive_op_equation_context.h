@@ -102,14 +102,12 @@ class NaiveOpEquationContext final : public OpEquationContext {
     return input_tensor_iterator;
   }
 
-  Iterator MakeConstantIterator(std::size_t constant,
-                                Equations* equations) const {
+  Iterator GetConstantIterator(const Index& in_index, int constant) override {
+    Iterator output_tensor_iterator{UniqueId::New()};
     using ConstF = ConstantFunction<tOut<Iterator>, tIn<Index>>;
-    Iterator const_iter{UniqueId::New()};
-    VisitEachTensorIndex([&](const auto& in_msg_index) {
-      (*equations)->emplace_back(ConstF{const_iter, in_msg_index, constant});
-    });
-    return const_iter;
+    equations_->emplace_back(
+        ConstF{output_tensor_iterator, in_index, DimExpr{constant}});
+    return output_tensor_iterator;
   }
 
   const IteratorTuple& GetInIteratorTuple(
@@ -281,6 +279,15 @@ class NaiveOpEquationContext final : public OpEquationContext {
     equations_->emplace_back(
         adt::IndexUnDot<List<DimExpr>, tOut<List<Iterator>>, tIn<Index>>{
             dim_tuple, iterator_tuple, index});
+    for (std::size_t i = 0; i < dim_tuple->size(); ++i) {
+      const auto& dim = dim_tuple->at(i);
+      if (dim.Has<std::int64_t>() && dim.Get<std::int64_t>() == 1) {
+        const auto& const_iter = GetConstantIterator(index, 0);
+        Equal(iterator_tuple->at(i), const_iter);
+      } else {
+        // Do nothing
+      }
+    }
     return index;
   }
 

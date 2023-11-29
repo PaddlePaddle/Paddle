@@ -429,28 +429,34 @@ void GenerateEquationsForReduction(cinn::adt::config::OpEquationContext *ctx) {
       << "The inputs is empty! Please check again.";
   const bool keep_dim = ctx->Attr<bool>("keep_dim");
   const auto &dim = ctx->Attr<std::vector<int>>("dim");
+  std::vector<int> aligned_dim{};
+  for (int d : dim) {
+    aligned_dim.push_back((d + ctx->GetInTensorsRanks().at(0)) %
+                          ctx->GetInTensorsRanks().at(0));
+  }
 
   const auto &IsReduceAxis = [&](const int in_axis) {
-    return std::find(dim.begin(), dim.end(), in_axis) != dim.end();
+    return std::find(aligned_dim.begin(), aligned_dim.end(), in_axis) !=
+           aligned_dim.end();
   };
 
-  const auto &VisitEachAxisPair = [&](const auto &DoEach) {
-    std::size_t out_axis = 0;
-    for (std::size_t in_axis = 0; in_axis < ctx->GetInTensorsRanks().at(0);
-         ++in_axis) {
-      if (IsReduceAxis(in_axis)) {
-        out_axis += keep_dim;
-      } else {
-        DoEach(in_axis, out_axis);
+  std::size_t out_axis = 0;
+  for (std::size_t in_axis = 0; in_axis < ctx->GetInTensorsRanks().at(0);
+       ++in_axis) {
+    if (IsReduceAxis(in_axis)) {
+      if (keep_dim) {
+        ctx->Equal(ctx->GetOutIteratorTuple(0)->at(in_axis),
+                   ctx->GetConstantIterator(ctx->GetInIndex(0), 0));
         out_axis += 1;
+      } else {
+        // Do nothing
       }
+    } else {
+      ctx->Equal(ctx->GetInIteratorTuple(0)->at(in_axis),
+                 ctx->GetOutIteratorTuple(0)->at(out_axis));
+      out_axis += 1;
     }
-  };
-
-  VisitEachAxisPair([&](const int input_axis, const int output_axis) {
-    ctx->Equal(ctx->GetInIteratorTuple(0)->at(input_axis),
-               ctx->GetOutIteratorTuple(0)->at(output_axis));
-  });
+  }
 }
 
 std::vector<Type> InferDtypeForReduction(const std::vector<Type> &inputs_type,

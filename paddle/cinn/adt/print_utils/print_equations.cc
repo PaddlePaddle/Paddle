@@ -223,7 +223,9 @@ struct ToTxtStringStruct {
   std::string operator()(
       const ConstantFunction<tOut<Iterator>, tIn<Index>>& constant) const {
     std::string ret{};
-
+    const auto& [out_iterator, in_index, c] = constant.tuple();
+    ret += ToTxtString(out_iterator.value()) + " = ConstantFunction(" +
+           ToTxtString(in_index.value()) + ", " + ToTxtString(c) + ")";
     return ret;
   }
 };

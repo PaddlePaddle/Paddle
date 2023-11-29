@@ -282,6 +282,8 @@ class MapExprToIrTranslator {
     for (int i = 0; i < op_expr_children->size(); ++i) {
       const auto& opt_operant = TranslateOpExpr(
           op_expr_children->at(i), std::nullopt, IterExprs4Tensor);
+      // Note: Only handles read_args here, consider handles other variables in
+      // ir::Call
       if (opt_operant.has_value()) {
         store_rvalue.As<ir::Call>()->read_args.at(i) = opt_operant.value();
       } else {
@@ -311,29 +313,80 @@ class MapExprToIrTranslator {
     return store_rvalue;
   }
 
+  std::optional<ir::Expr> MakeScaleRvalueExpr(
+      const ir::Expr& input_expr,
+      const List<OpExpr>& op_expr_children,
+      const IterExprs4TensorT& IterExprs4Tensor) const {
+    // Scale Expr example: ((float32(0.00130208337f) * var_4[i0_4, i1_4, i2_2])
+    // + float32(0.00000000f))
+    ir::Expr store_rvalue = ir::ir_utils::IRCopy(input_expr);
+    CHECK_EQ(op_expr_children->size(), 1);
+    CHECK_EQ(store_rvalue->operands.size(), 2);
+    const auto& opt_operant = TranslateOpExpr(
+        op_expr_children->at(0), std::nullopt, IterExprs4Tensor);
+
+    ir::Mul* mul_operant = store_rvalue->operands.at(0).As<ir::Mul>();
+    if (opt_operant.has_value()) {
+      mul_operant->operands().at(1) = opt_operant.value();
+    } else {
+      mul_operant->operands().at(1).As<ir::Load>()->indices =
+          TranslateTensorIndex(op_expr_children->at(0), IterExprs4Tensor);
+    }
+    return store_rvalue;
+  }
+
+  typedef std::optional<ir::Expr> (
+      MapExprToIrTranslator::*MakeStoreRvalueExprT)(
+      const ir::Expr&, const List<OpExpr>&, const IterExprs4TensorT&) const;
+
+  static std::unordered_map<std::string, MakeStoreRvalueExprT>
+  MakeGetterMakeStoreRvalueExpr4Op() {
+    std::unordered_map<std::string, MakeStoreRvalueExprT> ret{
+        {"elementwise_mul", &MapExprToIrTranslator::MakeGeneralExpr},
+        {"subtract", &MapExprToIrTranslator::MakeGeneralExpr},
+        {"broadcast_to", &MapExprToIrTranslator::MakeGeneralExpr},
+
+        {"exp", &MapExprToIrTranslator::MakeCallExpr},
+        {"rsqrt", &MapExprToIrTranslator::MakeCallExpr},
+
+        {"scale", &MapExprToIrTranslator::MakeScaleRvalueExpr},
+    };
+    return ret;
+  }
+
+  MakeStoreRvalueExprT GetMakeStoreRvalueExpr4Op(
+      const std::string& op_name, const ir::Expr& store_expr) const {
+    static std::unordered_map<std::string, MakeStoreRvalueExprT>
+        MakeStoreRvalueExpr4Op(MakeGetterMakeStoreRvalueExpr4Op());
+    const auto& iter = MakeStoreRvalueExpr4Op.find(op_name);
+    CHECK(iter != MakeStoreRvalueExpr4Op.end())
+        << "Operation " << op_name
+        << " not supported yet! store_expr: " << store_expr;
+    return iter->second;
+  }
+
   std::optional<ir::Expr> TranslateOpCallImpl(
-      const ::pir::Operation*,
+      const ::pir::Operation* op,
       const OpCall<OpExpr>& op_expr,
       const std::optional<Tensor>& opt_output_tensor,
       const IterExprs4TensorT& IterExprs4Tensor) const {
     const auto& [_, op_expr_children] = op_expr.tuple();
+    if (op_expr_children->empty()) {
+      return GetStoreExpr(op_expr).value().As<ir::Store>()->value;
+    }
     std::optional<ir::Expr> store_expr = GetStoreExpr(op_expr);
     CHECK(store_expr.has_value());
     ir::Expr store_rvalue = store_expr.value().As<ir::Store>()->value;
-
     if (store_rvalue.As<ir::Load>()) {
       return MakeLoadExpr(store_rvalue, op_expr_children, IterExprs4Tensor);
-    } else if (store_rvalue.As<ir::Call>()) {
-      return MakeCallExpr(store_rvalue, op_expr_children, IterExprs4Tensor);
     } else {
-      if (!op_expr_children->empty()) {
-        return MakeGeneralExpr(
-            store_rvalue, op_expr_children, IterExprs4Tensor);
-      } else {
-        // Do nothing
-      }
+      const auto& op_name = hlir::framework::pir::CompatibleInfo::OpName(*op);
+      const auto& make_store_rvalue_expr =
+          GetMakeStoreRvalueExpr4Op(op_name, store_expr.value());
+      return (this->*make_store_rvalue_expr)(
+          store_rvalue, op_expr_children, IterExprs4Tensor);
     }
-    return store_rvalue;
+    LOG(FATAL) << "Dead code";
   }
 
   std::optional<ir::Expr> TranslateOpCallImpl(

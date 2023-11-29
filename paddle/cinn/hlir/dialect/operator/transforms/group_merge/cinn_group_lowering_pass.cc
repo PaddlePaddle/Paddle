@@ -28,10 +28,8 @@
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
@@ -117,57 +115,6 @@ std::vector<pir::Operation*> GetOpListNotIncludeYield(
   return vec_res;
 }
 
-std::shared_ptr<pir::ShapeConstraintIRAnalysis> CreateShapeAnalysis(
-    const pir::Program* program) {
-  pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  // std::unique_ptr<pir::Program> shape_analysis_program =
-  // std::make_unique<pir::Program>(ctx); pir::Builder builder =
-  // pir::Builder(ctx, shape_analysis_program->block()); pir::shape::FuncOp
-  // func_op = builder.Build<pir::shape::FuncOp>();
-
-  auto shape_analysis =
-      std::make_shared<pir::MockShapeConstraintIRAnalysis>(ctx);
-  pir::SymbolicDimMgr& sym_dim_mgr = shape_analysis->symbolicDimMgr();
-
-  std::vector<std::vector<pir::shape::SymbolicDimOp>> datas_sym_vec{};
-
-  for (auto it = program->block()->begin(); it != program->block()->end();
-       ++it) {
-    if (it->isa<cinn::dialect::GroupOp>()) {
-      auto group_op = it->dyn_cast<cinn::dialect::GroupOp>();
-      for (auto* op : group_op.ops()) {
-        if (op->isa<paddle::dialect::ExpOp>()) {
-          datas_sym_vec.emplace_back(
-              shape_analysis->GetOrCreateSymbolicDimsForRankedValue(
-                  op->result(0)));
-        }
-
-        if (op->isa<paddle::dialect::SubtractOp>()) {
-          datas_sym_vec.emplace_back(
-              shape_analysis->GetOrCreateSymbolicDimsForRankedValue(
-                  op->result(0)));
-        }
-      }
-    }
-    if (it->isa<paddle::dialect::DataOp>()) {
-      auto op = it->dyn_cast<paddle::dialect::DataOp>();
-      datas_sym_vec.emplace_back(
-          shape_analysis->GetOrCreateSymbolicDimsForRankedValue(op->result(0)));
-    }
-  }
-
-  for (std::size_t i = 1; i < datas_sym_vec.size(); ++i) {
-    sym_dim_mgr.MapSymbolicDimEqual(datas_sym_vec.at(0)[0],
-                                    datas_sym_vec.at(i)[0]);
-    sym_dim_mgr.MapSymbolicDimEqual(datas_sym_vec.at(0)[1],
-                                    datas_sym_vec.at(i)[1]);
-  }
-
-  CHECK_NOTNULL(shape_analysis.get());
-  return shape_analysis;
-}
-
 std::vector<pir::Operation*> GetOutputOpList(
     const std::vector<pir::Operation*>& op_list) {
   std::vector<pir::Operation*> vec_res;
@@ -217,7 +164,6 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
       auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
           *program, target, scope);
       if (FLAGS_cinn_enable_map_expr) {
-        group->shape_analysis = CreateShapeAnalysis(program);
         cinn::adt::TryGenerateMapExprFromGroup(group);
       }
 

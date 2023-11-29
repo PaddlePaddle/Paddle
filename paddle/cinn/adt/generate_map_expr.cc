@@ -89,7 +89,6 @@ namespace {
 
 using LoopDescriptor4IterVarT = std::function<LoopDescriptor(const Iterator&)>;
 
-using AnchorTensor = Variable;
 using FakeOpPlaceHolders = List<FakeOpPlaceHolder>;
 
 Op MakeOp(const ::pir::Operation* op) { return {op}; }
@@ -479,7 +478,8 @@ void TryGenerateMapExprFromGroup(
   fusion_group->set_graph_symbolic_dim_infer_ctx(
       std::make_unique<config::GraphSymbolicDimInferCtx>(fusion_group.get()));
   const auto& map_expr = GenerateMapExpr(fusion_group);
-  VLOG(1) << ToTxtString(map_expr, fusion_group->group_id);
+  VLOG(4) << "Generate MapExpr: \n"
+          << ToTxtString(map_expr, fusion_group->group_id);
   fusion_group->set_map_expr_ctx(
       std::make_shared<MapExprCtx>(map_expr,
                                    fusion_group->graph_symbolic_dim_infer_ctx()

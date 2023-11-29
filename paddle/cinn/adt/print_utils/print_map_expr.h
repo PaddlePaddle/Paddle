@@ -27,4 +27,6 @@ std::string ToTxtString(const MapExpr& map_expr, const std::string& group_id);
 
 std::string ToTxtString(const Stmt& stmt);
 
+std::string ToTxtString(const Tensor& tensor);
+
 }  // namespace cinn::adt
