@@ -34,7 +34,6 @@ from .common import (
     DistributedOperatorImplContainer,
     ParallelMode,
     copy_op_without_infer_shape,
-    get_data_parallel_group,
     infer_shape,
     naive_copy_op_dist_attr_for_program,
     register_distributed_operator_impl,
@@ -131,11 +130,6 @@ class DistributedCrossEntropy(DistributedOperatorImplContainer):
             assert (
                 axis == logits_ndim - 1
             ), "parallel_cross_entropy can only support shard on the last dim now."
-            for i in range(1, logits_ndim):
-                if i != axis:
-                    assert (
-                        logits_dims_mapping[i] > -1
-                    ), "in parallel_cross_entropy, only the batch dim can be sharded together with softmax dim."
             op_dist_attr.impl_idx = 1
         else:
             op_dist_attr.impl_idx = 0
@@ -211,7 +205,7 @@ class DistributedCrossEntropyImpl0(DistributedOperatorImpl):
         check_variable_and_dtype(
             logits_var,
             'input',
-            ['float32', 'float64'],
+            ['bfloat16', 'float16', 'float32', 'float64'],
             'cross_entropy_with_softmax',
         )
         check_variable_and_dtype(
@@ -223,13 +217,13 @@ class DistributedCrossEntropyImpl0(DistributedOperatorImpl):
         check_variable_and_dtype(
             loss_var,
             'output',
-            ['float32', 'float64'],
+            ['bfloat16', 'float16', 'float32', 'float64'],
             'cross_entropy_with_softmax',
         )
         check_variable_and_dtype(
             softmax_var,
             'output',
-            ['float32', 'float64'],
+            ['bfloat16', 'float16', 'float32', 'float64'],
             'cross_entropy_with_softmax',
         )
 
@@ -364,7 +358,7 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
         check_variable_and_dtype(
             logits_var,
             'input',
-            ['float16', 'float32', 'float64'],
+            ['bfloat16', 'float16', 'float32', 'float64'],
             'c_softmax_with_cross_entropy',
         )
         check_variable_and_dtype(
@@ -376,13 +370,13 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
         check_variable_and_dtype(
             loss_var,
             'output',
-            ['float16', 'float32', 'float64'],
+            ['bfloat16', 'float16', 'float32', 'float64'],
             'c_softmax_with_cross_entropy',
         )
         check_variable_and_dtype(
             softmax_var,
             'output',
-            ['float16', 'float32', 'float64'],
+            ['bfloat16', 'float16', 'float32', 'float64'],
             'c_softmax_with_cross_entropy',
         )
 
@@ -417,9 +411,7 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
         group_ranks = _get_comm_group(
             process_mesh_group, process_mesh_shape, parallel_axis, rank_id
         )
-        # print("group_ranks:", group_ranks)
         group = new_process_group(group_ranks)
-        # print("rank:", rank_id, "group:", group)
 
         c_cross_entropy_op = main_block.append_op(
             type='c_softmax_with_cross_entropy',
@@ -508,9 +500,10 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
                 ctx, op_dist_attr.process_mesh, rank_id
             )
 
-        # reduce_mean = False
         for op in main_block.ops:
-            # print("op_type:", op.type, "input_names:", op.input_names, "input_arg_names:", op.input_arg_names)
+            # the output value of reduce_mean_grad is 1/numel, so when the
+            # tensor is sharded, we should insert a scale op to make the
+            # grad correct.
             if (
                 op.type == "reduce_mean_grad"
                 and kwargs['Loss@GRAD'][0] in op.output_arg_names
@@ -518,17 +511,20 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
                 loss_grad_var = main_block._var_recursive(
                     kwargs['Loss@GRAD'][0]
                 )
-                dp_group = get_data_parallel_group(
-                    ctx, backward_op, kwargs['Loss@GRAD'], rank_id
+                loss_grad_dims_mapping = op_dist_attr.get_input_dims_mapping(
+                    loss_grad_var.name
                 )
-                if dp_group is not None:
-                    dp_degree = len(dp_group.ranks)
+                degree = 1.0
+                for i in range(len(loss_grad_dims_mapping) - 1):
+                    if loss_grad_dims_mapping[i] != -1:
+                        degree *= process_mesh_shape[loss_grad_dims_mapping[i]]
+                if degree > 1:
                     scale_op = main_block.append_op(
                         type='scale',
                         inputs={'X': loss_grad_var},
                         outputs={'Out': loss_grad_var},
                         attrs={
-                            'scale': 1.0 / dp_degree,
+                            'scale': 1.0 / degree,
                             OP_ROLE_KEY: OpRole.Backward,
                         },
                     )

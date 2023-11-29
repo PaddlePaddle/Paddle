@@ -43,4 +43,7 @@ from . import dist_scale
 from . import dist_dropout
 from . import dist_flash_attn
 from . import dist_layer_norm
-from . import dist_cross_entropy
+
+parallel_ce = os.getenv("PARALLEL_CROSS_ENTROPY")
+if parallel_ce == "true":
+    from . import dist_cross_entropy
