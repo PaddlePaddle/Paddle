@@ -3979,6 +3979,7 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
                                const MetaTensor& bias,
                                const MetaTensor& weight_scale,
                                const std::string& weight_dtype,
+                               const int32_t arch,
                                MetaTensor* out) {
   auto x_dims = x.dims();
   auto w_dims = weight.dims();

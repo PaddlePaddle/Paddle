@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Temporary disable isort to avoid circular import
-# This can be removed after the circular import is resolved
 from __future__ import annotations
 
 import inspect

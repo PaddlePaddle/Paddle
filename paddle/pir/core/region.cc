@@ -22,10 +22,10 @@ Region::~Region() { clear(); }
 
 void Region::push_back(Block *block) { insert(blocks_.end(), block); }
 
-Block *Region::emplace_back() {
+Block &Region::emplace_back() {
   auto block = new Block;
   insert(blocks_.end(), block);
-  return block;
+  return *block;
 }
 
 void Region::push_front(Block *block) { insert(blocks_.begin(), block); }
@@ -69,9 +69,11 @@ void Region::clear() {
     blocks_.pop_back();
   }
 }
-
+Program *Region::parent_program() const {
+  return parent_ ? parent_->GetParentProgram() : nullptr;
+}
 IrContext *Region::ir_context() const {
-  IR_ENFORCE(parent_, "Region is not attached to a container.");
+  IR_ENFORCE(parent_, "Region is not attached to a operation.");
   return parent_->ir_context();
 }
 }  // namespace pir
