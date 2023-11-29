@@ -78,7 +78,7 @@ class TestCustomReluForSemiAutoParallel:
         np2 = b.numpy()
         np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
 
-    def test_body(self, x_shape, x_specs):
+    def test_body(self, x_shape, x_placements):
         paddle.seed(self._seed)
         np.random.seed(self._seed)
 
@@ -86,9 +86,7 @@ class TestCustomReluForSemiAutoParallel:
         x = paddle.to_tensor(x_np)
         x.stop_gradient = False
 
-        x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=x_specs)
-
-        dist_x = dist.shard_tensor(x_np, dist_attr=x_dist_attr)
+        dist_x = dist.shard_tensor(x_np, self._mesh, x_placements)
         dist_x.stop_gradient = False
 
         y = paddle.add(x, x)
@@ -107,7 +105,7 @@ class TestCustomReluForSemiAutoParallel:
     def test_custom_relu(self):
         self.test_body(
             x_shape=[64, 32],
-            x_specs=['x', None],
+            x_placements=[dist.Shard(0)],
         )
 
     def run_test_case(self):

@@ -11,14 +11,8 @@ set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
 set(op_forward_yaml_file1
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
 )
-set(op_forward_yaml_file2
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/legacy_ops.parsed.yaml
-)
 set(op_backward_yaml_file1
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml
-)
-set(op_backward_yaml_file2
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/legacy_backward_ops.parsed.yaml
 )
 set(fused_op_forward_yaml_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
@@ -44,7 +38,7 @@ set(op_yaml_file4 ${parsed_op_dir}/ops_backward.parsed.yaml)
 set(op_yaml_file5 ${parsed_op_dir}/update_ops.parsed.yaml)
 
 set(op_yaml_files
-    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
+    ${op_forward_yaml_file1},${op_backward_yaml_file1},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
 )
 set(op_namespace paddle,dialect)
 set(dialect_name pd_op)
@@ -78,7 +72,7 @@ set(generated_files_pd_op "${op_header_file}" "${op_source_file}"
                           "${op_vjp_source_file}")
 
 set(api_gen_yaml_files
-    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
+    ${op_forward_yaml_file1},${op_backward_yaml_file1},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
 )
 set(api_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/api_gen.py)
@@ -141,15 +135,6 @@ foreach(generated_file ${generated_files_pir})
     message("copy ${generated_file}.tmp ${generated_file}")
   endif()
 endforeach()
-
-add_custom_target(
-  op_header_and_source_gen ALL DEPENDS ${op_header_file} ${op_source_file}
-                                       ${op_vjp_source_file})
-add_custom_target(api_header_and_source_gen ALL DEPENDS ${api_header_file}
-                                                        ${api_source_file})
-
-add_custom_target(static_op_function_gen ALL DEPENDS ${python_c_header_file}
-                                                     ${python_c_source_file})
 
 add_custom_target(ops_api_gen ALL DEPENDS ${ops_api_source_file})
 
