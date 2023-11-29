@@ -309,7 +309,7 @@ cc_test(
        device_context
        broadcast_op_handle)
 
-cc_test_old(
+paddle_test(
   gather_op_test
   SRCS
   gather_op_handle_test.cc
