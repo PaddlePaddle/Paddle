@@ -56,7 +56,6 @@ paddle::Tensor reshard_ad_function(
   }
 
   // Forward API Call
-  // reshard_func(input, api_result, dist_attr);
   auto dist_out_ptr = paddle::reshard(input, dist_attr);
   paddle::Tensor api_result;
   if (is_inplace) {
@@ -70,7 +69,6 @@ paddle::Tensor reshard_ad_function(
   } else {
     api_result = paddle::Tensor(dist_out_ptr);
   }
-  // auto api_result = paddle::Tensor(dist_out_ptr);
 
   // Get Outputs
   auto& out = is_inplace ? input : api_result;
