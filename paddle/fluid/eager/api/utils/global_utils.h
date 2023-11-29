@@ -58,6 +58,10 @@ class Controller {
     return tracer_->GetAmpLevel();
   }
 
+  bool GetInDynamicMode() const { return tracer_->GetInDynamicMode(); }
+
+  void SetInDynamicMode(bool value) { return tracer_->SetInDynamicMode(value); }
+
   TEST_API void SetUsePromote(bool use_promote);
   TEST_API bool GetUsePromote() const;
 
@@ -124,6 +128,7 @@ class Controller {
     while (!force_sequential_nodes_.empty()) {
       force_sequential_nodes_.pop();
     }
+    z
   }
   void PushBackForceSequentialNodes(GradNodeBase* node) {
     force_sequential_nodes_.push(node);

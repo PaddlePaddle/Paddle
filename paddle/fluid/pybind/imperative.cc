@@ -648,6 +648,8 @@ void BindImperative(py::module *m_ptr) {
           } else {
             egr::Controller::Instance().SetCurrentTracer(tracer);
             imperative::SetCurrentTracer(tracer);
+            egr::Controller::Instance().SetInDynamicMode(true);
+            imperative::SetInDynamicMode(true);
           }
         });
   py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")

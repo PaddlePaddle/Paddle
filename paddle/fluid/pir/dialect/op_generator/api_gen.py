@@ -51,6 +51,7 @@ CPP_FILE_TEMPLATE = """
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 
 {body}
 

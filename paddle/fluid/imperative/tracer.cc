@@ -94,6 +94,8 @@ TEST_API void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer) {
   VLOG(6) << "Set current tracer: " << g_current_tracer;
 }
 
+void SetInDynamicMode(bool value) { g_current_tracer->SetInDynamicMode(value); }
+
 void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
   for (const auto& pair : outs) {
     for (const auto& var : pair.second) {
@@ -620,7 +622,7 @@ std::string Tracer::GetAmpDtype() const {
 
 phi::DataType Tracer::GetAmpPhiDtype() const { return amp_dtype_; }
 
-void Tracer::SetInDynamicMode(bool value) const { in_dynamic_mode_ = value; }
+void Tracer::SetInDynamicMode(bool value) { in_dynamic_mode_ = value; }
 
 bool Tracer::GetInDynamicMode() const { return in_dynamic_mode_; }
 

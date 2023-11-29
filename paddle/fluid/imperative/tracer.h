@@ -169,7 +169,7 @@ class Tracer {
 
   phi::DataType GetAmpPhiDtype() const;
 
-  void SetInDynamicMode(bool value) const;
+  void SetInDynamicMode(bool value);
 
   bool GetInDynamicMode() const;
 
@@ -208,6 +208,7 @@ class Tracer {
 // To access static variable current_tracer
 const std::shared_ptr<Tracer>& GetCurrentTracer();
 TEST_API void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_);
+void SetInDynamicMode(bool value);
 void IncreaseVarbaseReferenceCountUntilCopyComplete(
     const std::shared_ptr<imperative::VarBase>& var,
     const platform::Place& place);
