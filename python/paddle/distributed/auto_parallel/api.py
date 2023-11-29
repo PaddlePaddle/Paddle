@@ -18,6 +18,7 @@ import paddle
 import paddle.distributed as dist
 from paddle import nn
 from paddle.base.framework import EagerParamBase
+from paddle.distributed.auto_parallel import Engine
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
@@ -90,7 +91,78 @@ class DistAttr(core.TensorDistAttr):
         return self._sharding_specs
 
 
+class DistModel:
+    """
+    DistModel is a wrapper of the network model for the use of static mode
+    auto parallel. DistModel contains the distributed Graph of the model and
+    offers the APIs for training, evaluation and prediction.
+    """
+
+    def __init__(self, layer, loss, optimizer, strategy, metrics):
+        self._feed_name_list = []
+        self._engine = Engine(
+            layer, loss, optimizer, metrics, strategy=strategy
+        )
+
+    def _make_feeds(self, data_list):
+        if self._feed_name_list == []:
+            feed_list = self._engine.get_feed_list()
+            self._feed_name_list = [var.name for var in feed_list]
+        return dict(zip(self._feed_name_list, data_list))
+
+    def __call__(self, data, label):
+        self._engine.to_mode("train")
+        feeds = self._make_feeds([data, label])
+        print(feeds)
+        return self._engine.run(feeds)
+
+
 # Part2: DistTensor construction related APIs
+
+
+def static_decorate(
+    layer: paddle.nn.Layer,
+    loader: paddle.io.DataLoader,
+    loss=None,
+    optimizer=None,
+    strategy=None,
+    metrics=None,
+):
+    """
+    Converts the model and data loader used in dygraph auto-parallelism to
+    that in static mode auto-parallelism. static_decorate returns a DistModel
+    instance that provides APIs and a DistributedDataLoader to generate data
+    for static mode auto-parallel training, evaluation and prediction.
+    """
+    dist_model = DistModel(layer, loss, optimizer, strategy, metrics)
+
+    # convert dygraph model to static model
+    batch_size = loader.batch_sampler.batch_size
+    inputs_spec, labels_spec = dist_model._engine._prepare_data_spec(
+        loader.dataset, None, batch_size
+    )
+
+    if optimizer is not None and loss is not None:
+        dist_model._engine.prepare(
+            inputs_spec, labels_spec, mode="train", init_parameters=False
+        )
+    elif loss is not None:
+        dist_model._engine.prepare(
+            inputs_spec, labels_spec, mode="eval", init_parameters=False
+        )
+    else:
+        dist_model._engine.prepare(
+            inputs_spec, labels_spec, mode="predict", init_parameters=False
+        )
+
+    # get DistributedDataLoader for static mode auto-parallelism
+    batch_size = dist_model._engine._validate_batch_size(batch_size)
+    dist_loader = dist_model._engine._prepare_dataloader(
+        loader.dataset, return_list=True, batch_size=batch_size
+    )
+    # dist_loader = dist_model._engine.dataloader(loader.dataset, batch_size=batch_size)
+
+    return dist_model, dist_loader
 
 
 def shard_tensor(
