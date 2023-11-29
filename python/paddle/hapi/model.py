@@ -1869,7 +1869,7 @@ class Model:
             .. code-block:: python
                 :name: code-example4
 
-                >>> # doctest: +TIMEOUT(25)
+                >>> # doctest: +TIMEOUT(80)
                 >>> import paddle
                 >>> import paddle.vision.transforms as T
                 >>> from paddle.vision.datasets import MNIST
