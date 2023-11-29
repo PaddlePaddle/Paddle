@@ -86,13 +86,17 @@ class FakeMicroDataset:
     def _load_micro_batch(self, micro_step):
         inputs = self._data
 
-        if self._is_first_stage or self._is_last_stage:
+        data = None
+        label = None
+        if self._is_first_stage:
             assert len(inputs) == 2, "length of input should be 2"
             data = self._load_micro_batch_impl(inputs[0], micro_step)
+
+        if self._is_last_stage:
+            assert len(inputs) == 2, "length of input should be 2"
             label = self._load_micro_batch_impl(inputs[1], micro_step)
-            return (data, label)
-        else:
-            return (None, None)
+
+        return (data, label)
 
     def _load_micro_batch_impl(self, inputs, micro_step):
         begin = micro_step * self._micro_batch_size
@@ -372,6 +376,7 @@ class PipelineParallel(MetaParallelBase):
                 else:
                     dst = -1
                 var_groups = assign_group_by_size(parameter_list, group_size)
+
                 for group_idx, parameters in var_groups.items():
                     buffer = FusedCommBuffer(
                         group_idx, parameters, comm_group, acc_steps, act, dst
@@ -909,7 +914,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
     def _check_sanity(self):
         assert (
-            framework.in_dygraph_mode()
+            framework.in_dynamic_mode()
         ), "virtual pipeline stage with interleave only support eager dygraph mode"
 
         assert (
@@ -1462,7 +1467,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
 
     def _check_sanity(self):
         assert (
-            framework.in_dygraph_mode()
+            framework.in_dynamic_mode()
         ), "virtual pipeline stage with interleave only support eager dygraph mode"
 
         assert (

@@ -19,7 +19,7 @@ from paddle.base.core import VarDesc
 from paddle.base.libpaddle import DataType
 from paddle.base.libpaddle.pir import Program, set_global_program
 
-from .._pir_ops import get_parameter, set_parameter
+from .._pir_ops import parameter, set_parameter
 from ..base import unique_name
 from ..base.wrapped_decorator import signature_safe_contextmanager
 
@@ -282,15 +282,15 @@ def create_parameter(
         init_result = initializer(
             parameter_meta, startup_program.global_block()
         )
-        init_result.is_persistable = True
+        init_result.persistable = True
         set_parameter(init_result, op_result_name)
 
     main_program.move_parameters_from(startup_program)
     with program_guard(default_main_program()):
-        param = get_parameter(op_result_name, dtype, shape)
+        param = parameter(op_result_name, dtype, shape)
         trainable = kwargs.get('trainable', True)
         param.stop_gradient = not trainable
-        param.is_persistable = True
+        param.persistable = True
 
     return param
 

@@ -39,6 +39,11 @@
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
 #endif
 
+#ifdef PADDLE_WITH_XPU_BKCL
+#include "paddle/phi/backends/xpu/xpu_info.h"
+#include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#endif
+
 namespace phi {
 namespace distributed {
 
@@ -169,6 +174,40 @@ void CommContextManager::CreateXCCLCommContext(
 }
 #endif
 
+#if defined(PADDLE_WITH_XPU_BKCL)
+void CommContextManager::CreateBKCLCommContext(
+    const std::shared_ptr<Store>& store,
+    const std::string& unique_comm_key,
+    int rank,
+    int size,
+    const std::string& hash_key) {
+  auto& comm_context_manager = CommContextManager::GetInstance();
+  if (comm_context_manager.Has(unique_comm_key)) {
+    return;
+  }
+  BKCLUniqueId bkcl_id;
+  if (rank == 0) {
+    PADDLE_ENFORCE_XPU_SUCCESS(bkcl_get_unique_id(&bkcl_id));
+  }
+
+  std::string unique_key = "BKCLCommContext/" + unique_comm_key + hash_key;
+  if (rank == 0) {
+    std::vector<uint8_t> bkcl_id_wrapper(
+        reinterpret_cast<uint8_t*>(&bkcl_id),
+        reinterpret_cast<uint8_t*>(&bkcl_id) + BKCL_UNIQUE_ID_BYTES);
+    store->set(unique_key, bkcl_id_wrapper);
+  } else {
+    const auto& bkcl_id_wrapper = store->get(unique_key);
+    std::memcpy(&bkcl_id, bkcl_id_wrapper.data(), bkcl_id_wrapper.size());
+  }
+
+  auto bkcl_comm_context =
+      std::make_unique<BKCLCommContext>(rank, size, bkcl_id);
+
+  comm_context_manager.SetStore(store);
+  comm_context_manager.Emplace(unique_comm_key, std::move(bkcl_comm_context));
+}
+#endif
 CommContext* CommContextManager::Emplace(
     const std::string& unique_comm_key,
     std::unique_ptr<CommContext> comm_context) {
@@ -206,6 +245,26 @@ int CommContextManager::GetRingId(const ncclComm_t& comm) const {
 
 bool CommContextManager::Has(const std::string& unique_comm_key) const {
   return id_to_comm_context_.find(unique_comm_key) != id_to_comm_context_.end();
+}
+
+void CommContextManager::SetGroupSize(const std::string& pg_key, int size) {
+  pg_key_size_[pg_key] = size;
+}
+
+void CommContextManager::AddGroupRanks(const std::string& pg_key,
+                                       std::vector<int> global_ranks) {
+  if (pg_key_ranks_.find(pg_key) == pg_key_ranks_.end()) {
+    pg_key_ranks_[pg_key] = global_ranks;
+  }
+}
+
+std::vector<int> CommContextManager::GetGroupRanks(
+    const std::string& pg_key) const {
+  PADDLE_ENFORCE_NE(
+      pg_key_ranks_.find(pg_key),
+      pg_key_ranks_.end(),
+      errors::NotFound("Can not find pg_key %d in GroupRanks.", pg_key));
+  return pg_key_ranks_.at(pg_key);
 }
 
 }  // namespace distributed

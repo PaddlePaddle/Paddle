@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import cached_property
+
 import paddle
 from paddle.amp.auto_cast import amp_state
 from paddle.base import framework
 from paddle.base.data_feeder import convert_dtype
-from paddle.base.unique_name import UniqueNameGenerator
-from paddle.base.unique_name import guard as UniqueNameGuard
-from paddle.static import Program
+from paddle.base.unique_name import (
+    UniqueNameGenerator,
+    guard as UniqueNameGuard,
+)
 from paddle.utils import flatten, is_sequence
 
 from .utils import Cache, Singleton, map_if_extend, meta_str
@@ -41,7 +44,7 @@ class MetaInfo:
         # We always use float32 in simulation if AMP is enabled.
         if isinstance(tensor, paddle.pir.OpResult):
             name = "OpResult@NoName"
-            persistable = tensor.is_persistable
+            persistable = tensor.persistable
             dtype = framework.paddle_type_to_proto_type[tensor.dtype]
         else:
             name = tensor.name
@@ -102,9 +105,10 @@ class VariableCreator:
     """
 
     def __init__(self):
-        self.var_cache = {}
-        self.main_program = Program()
-        self.startup_program = Program()
+        # TODO(cleanup-legacy-ir): Remove the program and var_cache shims after PIR become default state.
+        # self.var_cache = {}
+        # self.main_program = paddle.static.Program()
+        # self.startup_program = paddle.static.Program()
         self.var_name_generator = UniqueNameGenerator("infer_meta_variable_")
 
     def gen_name(self, meta):
@@ -113,8 +117,47 @@ class VariableCreator:
             name += f"_{l}"
         return name
 
-    def create_var(self, meta):
+    @property
+    def var_cache(self):
+        if paddle.framework.use_pir_api():
+            return self.pir_var_cache
+        else:
+            return self.legacy_var_cache
+
+    @cached_property
+    def legacy_var_cache(self):
+        return {}
+
+    @cached_property
+    def pir_var_cache(self):
+        return {}
+
+    @cached_property
+    def legacy_programs(self):
+        # Just for PIR and legacy IR compatibility.
+        # This can be removed after PIR become default state.
+        return (paddle.static.Program(), paddle.static.Program())
+
+    @cached_property
+    def pir_programs(self):
+        return (paddle.static.Program(), paddle.static.Program())
+
+    @property
+    def main_program(self):
         if paddle.base.framework.use_pir_api():
+            return self.pir_programs[0]
+        else:
+            return self.legacy_programs[0]
+
+    @property
+    def startup_program(self):
+        if paddle.framework.use_pir_api():
+            return self.pir_programs[1]
+        else:
+            return self.legacy_programs[1]
+
+    def create_var(self, meta):
+        if paddle.framework.use_pir_api():
             with paddle.static.program_guard(
                 self.main_program, self.startup_program
             ):

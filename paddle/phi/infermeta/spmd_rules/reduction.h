@@ -40,12 +40,27 @@ SpmdInfo ReductionSumInferSpmdDynamic(const DistMetaTensor& x,
                                       DataType dtype,
                                       bool keep_dim);
 
+SpmdInfo ReductionMaxInferSpmdDynamic(const DistMetaTensor& x,
+                                      const IntArray& axis,
+                                      bool keep_dim);
+
+SpmdInfo ReductionAllInferSpmdDynamic(const DistMetaTensor& x,
+                                      const IntArray& axis,
+                                      bool keep_dim);
+
 SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& out,
                                    const std::vector<int64_t>& axis,
                                    bool keep_dim);
 
 SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
+                                const DistMetaTensor& out_grad,
+                                const IntArray& axis,
+                                bool keep_dim,
+                                bool reduce_all);
+
+SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
+                                const DistMetaTensor& out,
                                 const DistMetaTensor& out_grad,
                                 const IntArray& axis,
                                 bool keep_dim,
