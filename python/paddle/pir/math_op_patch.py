@@ -15,6 +15,7 @@
 
 import warnings
 
+from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 
 from . import OpResult
@@ -46,7 +47,7 @@ def create_tensor_with_batchsize(ref_var, value, dtype):
         else:
             out_shape.append(d)
     assert batch_dim != -1
-    from paddle import _C_ops
+
     from paddle.framework import core
 
     out = _C_ops.full_batch_size_like(
@@ -64,6 +65,65 @@ def monkey_patch_opresult():
         except:
             raise ValueError("Cannot get data type from var")
         return dtype
+
+    def cpu(self):
+        """
+        In dy2static, OpResult also needs cpu() and cuda() interface.
+        But, the underneath operator has only forward op but not backward one.
+
+        Returns:
+            The tensor which has copied to cpu place.
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> y = x.cpu()
+        """
+
+        # 0 means cpu place, see paddle/phi/kernels/memcpy_kernel.cc
+        return _C_ops.memcpy(self, 0)
+
+    def cuda(self, device_id=None, blocking=True):
+        """
+        In dy2static, OpResult also needs cpu() and cuda() interface.
+        But, the underneath operator has only forward op but not backward one.
+
+        Args:
+            self(OpResult): The variable itself.
+            device_id(int, optional): The destination GPU device id. Default: None, means current device.
+                We add this argument for dy2static translation, please do not use it.
+            blocking(bool, optional): Whether blocking or not, Default: True.
+                We add this argument for dy2static translation, please do not use it.
+
+        Returns:
+            The tensor which has copied to cuda place.
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> y = x.cpu()
+                >>> z = y.cuda()
+        """
+
+        if device_id is not None:
+            warnings.warn("device_id is not supported, and it will be ignored.")
+        if blocking is not True:
+            warnings.warn("blocking is not supported, and it will be ignored.")
+
+        # 1 means cuda place, see paddle/phi/kernels/memcpy_kernel.cc
+        return _C_ops.memcpy(self, 1)
 
     def place(self):
         """
@@ -185,7 +245,6 @@ def monkey_patch_opresult():
                 new OpResult's dtype is: paddle.int64
 
         """
-        from paddle import _C_ops
 
         if not isinstance(dtype, DataType):
             dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
@@ -375,6 +434,8 @@ def monkey_patch_opresult():
     import paddle
 
     opresult_methods = [
+        ('cpu', cpu),
+        ('cuda', cuda),
         ('place', place),
         ('item', _item),
         ('dim', dim),
