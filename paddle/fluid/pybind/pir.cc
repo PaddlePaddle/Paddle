@@ -403,6 +403,13 @@ void BindOperation(py::module *m) {
            })
       .def("get_input_names",
            [](Operation &self) -> py::list {
+             if (self.HasInterface<paddle::dialect::OpYamlInfoInterface>() ==
+                 false) {
+               PADDLE_THROW(phi::errors::InvalidArgument(
+                   "Currently, we can only get input names of Operation that "
+                   "has OpYamlInfoInterface"));
+             }
+
              py::list op_list;
              paddle::dialect::OpYamlInfoInterface yaml_interface =
                  self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
