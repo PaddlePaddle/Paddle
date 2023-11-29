@@ -896,6 +896,8 @@ class Layer:
 
         Parameters:
             include_sublayers(bool, optional): Whether to return the parameters of the sublayer.
+                If True, the returned list contains the parameters of the sublayer.
+                Default: True.
 
         Returns:
             list of Tensor, a list of Parameters.
