@@ -25,7 +25,6 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
-
 namespace phi {
 
 // check whether the tensor with dimension of second can assign to the
@@ -126,13 +125,13 @@ void SetValueImpl(const Context& dev_ctx,
     it = value_shape.erase(it);
   }
   if (value_shape.empty()) value_shape.push_back(1);
-
   value_tensor.Resize(phi::make_ddim(value_shape));
 
   auto expand_shape = phi::vectorize<int64_t>(slice_dims_for_assign);
   for (size_t i = 0; i <= expand_shape.size(); i++) {
     if (expand_shape[i] == 0) expand_shape[i] = 1;
   }
+  if (expand_shape.empty()) expand_shape.push_back(1);
   DenseTensor expand_tensor = Empty<T>(dev_ctx, IntArray{expand_shape});
 
   auto place = dev_ctx.GetPlace();
