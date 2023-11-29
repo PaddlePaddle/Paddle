@@ -53,6 +53,7 @@ void IndexSelectStridedKernel(const Context& ctx,
   meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));
   output->set_meta(meta);
   output->ResetHolder(x.Holder());
+  output->ShareInplaceVersionCounterWith(x);
 }
 
 }  // namespace phi

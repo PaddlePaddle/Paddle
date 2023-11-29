@@ -122,6 +122,22 @@ TEST(Broadcast, add) {
                                    dim_out,
                                    times,
                                    AddTernary_1<phi::dtype::bfloat16>());
+    TestCase<phi::dtype::complex<float>>(
+        *dev_ctx,
+        dim1,
+        dim2,
+        dim3,
+        dim_out,
+        times,
+        AddTernary_1<phi::dtype::complex<float>>());
+    TestCase<phi::dtype::complex<double>>(
+        *dev_ctx,
+        dim1,
+        dim2,
+        dim3,
+        dim_out,
+        times,
+        AddTernary_1<phi::dtype::complex<double>>());
   } while (0);
 
   do {
@@ -145,6 +161,22 @@ TEST(Broadcast, add) {
                                    dim_out,
                                    times,
                                    AddTernary_2<phi::dtype::bfloat16>());
+    TestCase<phi::dtype::complex<float>>(
+        *dev_ctx,
+        dim1,
+        dim2,
+        dim3,
+        dim_out,
+        times,
+        AddTernary_2<phi::dtype::complex<float>>());
+    TestCase<phi::dtype::complex<double>>(
+        *dev_ctx,
+        dim1,
+        dim2,
+        dim3,
+        dim_out,
+        times,
+        AddTernary_2<phi::dtype::complex<double>>());
   } while (0);
 
   do {
@@ -168,6 +200,22 @@ TEST(Broadcast, add) {
                                    dim_out,
                                    times,
                                    AddTernary_3<phi::dtype::bfloat16>());
+    TestCase<phi::dtype::complex<float>>(
+        *dev_ctx,
+        dim1,
+        dim2,
+        dim3,
+        dim_out,
+        times,
+        AddTernary_3<phi::dtype::complex<float>>());
+    TestCase<phi::dtype::complex<double>>(
+        *dev_ctx,
+        dim1,
+        dim2,
+        dim3,
+        dim_out,
+        times,
+        AddTernary_3<phi::dtype::complex<double>>());
   } while (0);
 #endif
 }

@@ -111,6 +111,7 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
   meta.offset = input.offset();
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
+  out->ShareInplaceVersionCounterWith(input);
 }
 
 template <typename Context>

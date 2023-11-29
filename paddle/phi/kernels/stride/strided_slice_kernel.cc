@@ -122,6 +122,7 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
       DDim(output_stride.data(), static_cast<int>(output_stride.size()));
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
+  out->ShareInplaceVersionCounterWith(input);
 }
 
 template <typename Context>
