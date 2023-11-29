@@ -126,6 +126,22 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
   if (input_tensor_impl) {
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(input_tensor_impl.get());
+
+    if (!IsCurRankInMesh(dist_attr.process_mesh()) &&
+        !IsCurRankInMesh(dist_tensor->dist_attr().process_mesh())) {
+      PADDLE_ENFORCE_EQ(
+          dist_tensor->initialized(),
+          false,
+          phi::errors::InvalidArgument("Only "
+                                       "``phi::distributed::DistTensor``. "
+                                       "However it's %s",
+                                       typeid(input.impl().get()).name()));
+      VLOG(3) << "reshard tensor which is not in current mesh, just set its "
+                 "dist_attr"
+              << "from " << dist_tensor->dist_attr() << " to " << dist_attr;
+      dist_tensor->unsafe_set_dist_attr(dist_attr);
+    }
+
     if (dist_tensor->dist_attr() != dist_attr) {
       VLOG(6) << "reshard func, reshard tensor from "
               << dist_tensor->dist_attr() << " to " << dist_attr;

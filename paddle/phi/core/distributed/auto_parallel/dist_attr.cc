@@ -353,6 +353,49 @@ bool TensorDistAttr::empty() const {
   return process_mesh_.empty();
 }
 
+void TensorDistAttr::set_from_placement(
+    const phi::distributed::Placements& placements) {
+  PADDLE_ENFORCE_NE(
+      process_mesh_.empty(),
+      true,
+      errors::InvalidArgument(
+          "process_mesh can not be empty when call set_from_placement"));
+
+  PADDLE_ENFORCE_EQ(
+      placements.size(),
+      process_mesh_.ndim(),
+      errors::InvalidArgument(
+          "Input placements size %ld should be equal to process_mesh size %ld",
+          placements.size(),
+          process_mesh_.ndim()));
+  int64_t ndim = dims_mapping_.size();
+  std::vector<int64_t> dim_map(ndim, -1);
+  std::vector<int64_t> partial_dims;
+  for (size_t i = 0; i < placements.size(); i++) {
+    auto& placement = placements[i];
+    if (placement->is_shard()) {
+      auto shard_dim = dynamic_cast<const Shard&>(*placement).get_dim();
+      PADDLE_ENFORCE_EQ(
+          dim_map[shard_dim],
+          -1,
+          phi::errors::InvalidArgument(
+              "Tensor dim %lld is already sharded on mesh dim %lld,"
+              " DistTensor operator implementation does not support things "
+              "like hybrid"
+              " sharding strategies yet (i.e. [Shard(0), Shard(0)])",
+              shard_dim,
+              dim_map[shard_dim]));
+      dim_map[shard_dim] = i;
+    } else if (placement->is_partial()) {
+      partial_dims.push_back(i);
+    }
+  }
+  set_dims_mapping(dim_map);
+  set_partial_status(partial_dims);
+  mark_annotated("process_mesh");
+  mark_annotated("dims_mapping");
+}
+
 std::vector<std::shared_ptr<PlacementStatus>> TensorDistAttr::to_placement()
     const {
   auto ndim = process_mesh_.ndim();

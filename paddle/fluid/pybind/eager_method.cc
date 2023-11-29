@@ -3082,10 +3082,21 @@ static PyObject* tensor_method_reshard_(TensorObject* self,
           "We can only support reshard with DistTensor, and Tensor %s is not "
           "DistTensor.",
           src_tensor.name()));
-  const phi::distributed::TensorDistAttr& dist_attr =
-      CastPyArg2DistAttr(PyTuple_GET_ITEM(args, 0), 0);
+  const phi::distributed::ProcessMesh& mesh =
+      CastPyArg2ProcessMesh(PyTuple_GET_ITEM(args, 0), 0);
+  const phi::distributed::Placements& placements =
+      CastPyArg2VectorOfPlacement(PyTuple_GET_ITEM(args, 1), 1);
 
-  VLOG(6) << "Start reshard DistTensor " << src_tensor.name() << " inplace.";
+  phi::distributed::TensorDistAttr dist_attr(
+      phi::vectorize<int64_t>(src_tensor.dims()));
+  dist_attr.set_process_mesh(mesh);
+  dist_attr.set_from_placement(placements);
+
+  VLOG(6) << "Start reshard DistTensor " << src_tensor.name()
+          << " inplace, from src dist_attr"
+          << static_cast<phi::distributed::DistTensor*>(src_tensor.impl().get())
+                 ->dist_attr()
+          << "to dst dist_attr: " << dist_attr;
   reshard_ad_function(src_tensor, dist_attr, true);
   VLOG(6) << "Finished reshard DistTensor " << src_tensor.name() << " inplace.";
 

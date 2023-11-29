@@ -23,6 +23,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
+#include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/enforce.h"
@@ -171,6 +172,8 @@ class TEST_API TensorDistAttr {
   void parse_from_string(const std::string& data);
 
   bool empty() const;
+
+  void set_from_placement(const phi::distributed::Placements& placements);
 
   std::vector<std::shared_ptr<PlacementStatus>> to_placement() const;
 
