@@ -16,6 +16,7 @@ import importlib
 import inspect
 import logging
 import os
+import sys
 import unittest
 from enum import Flag, auto
 from functools import wraps
@@ -24,13 +25,17 @@ from pathlib import Path
 import numpy as np
 
 import paddle
-from paddle import set_flags, static
+from paddle import get_flags, set_flags, static
 from paddle.base import core
 from paddle.jit.api import sot_mode_guard
 from paddle.jit.sot.opcode_translator.executor.executor_cache import (
     OpcodeExecutorCache,
 )
 from paddle.jit.sot.utils.envs import min_graph_size_guard
+from paddle.utils.environments import (
+    BooleanEnvironmentVariable,
+    EnvironmentVariableGuard,
+)
 
 """
 # Usage:
@@ -38,7 +43,7 @@ class MyTest(Dy2StTestBase):
     @set_to_static_mode(
         ToStaticMode.AST | ToStaticMode.SOT
     )
-    @set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_EXE | IrMode.PIR_API)
+    @set_ir_mode(IrMode.LEGACY_IR | IrMode.PT | IrMode.PIR)
     def test_case1(self):
         raise ValueError("MyTest 1")
 
@@ -54,6 +59,10 @@ class MyTest2(MyTest):
 logger = logging.getLogger("Dygraph to static utils")
 logger.setLevel(logging.WARNING)
 
+ENV_ENABLE_PIR_WITH_PT_IN_DY2ST = BooleanEnvironmentVariable(
+    "FLAGS_enable_pir_with_pt_in_dy2st", True
+)
+
 
 class ToStaticMode(Flag):
     AST = auto()
@@ -68,9 +77,9 @@ class ToStaticMode(Flag):
 class IrMode(Flag):
     LEGACY_IR = auto()
     # pir translator mode, Reference link: https://github.com/PaddlePaddle/community/blob/master/pfcc/paddle-code-reading/IR_Dialect/program_translator.md
-    PIR_EXE = auto()
+    PT = auto()
     # using native pir api mode
-    PIR_API = auto()
+    PIR = auto()
 
     def lower_case_name(self):
         return self.name.lower()
@@ -79,10 +88,37 @@ class IrMode(Flag):
 DEFAULT_TO_STATIC_MODE = (
     ToStaticMode.AST | ToStaticMode.SOT | ToStaticMode.SOT_MGS10
 )
-DEFAULT_IR_MODE = IrMode.LEGACY_IR
+DEFAULT_IR_MODE = IrMode.LEGACY_IR | IrMode.PT
+
+DISABLED_TO_STATIC_TEST_FILES = {
+    ToStaticMode.AST: [],
+    ToStaticMode.SOT: [],
+    ToStaticMode.SOT_MGS10: [],
+}
+
+DISABLED_IR_TEST_FILES = {
+    IrMode.LEGACY_IR: [],
+    IrMode.PT: [
+        "test_gradname_parse",
+        "test_seq2seq",
+        "test_save_inference_model",
+        "test_tensor_hook",
+        "test_len",
+        "test_list",
+        "test_slice",
+        "test_lstm",
+        "test_for_enumerate",
+        "test_jit_setitem",
+        "test_reinforcement_learning",
+        # TODO: only disable on Windows
+        "test_program_translator",
+        "test_cache_program",
+    ],
+    IrMode.PIR: [],
+}
 
 
-def to_legacy_ast_test(fn):
+def to_ast_test(fn):
     """
     convert run AST
     """
@@ -103,7 +139,7 @@ def to_sot_test(fn):
 
     @wraps(fn)
     def impl(*args, **kwargs):
-        logger.info("[SOT] running SOT")
+        logger.info("[SOT] running SOT (MIN_GRAPH_SIZE=0)")
 
         OpcodeExecutorCache().clear()
         with sot_mode_guard(True):
@@ -120,7 +156,7 @@ def to_sot_mgs10_test(fn):
 
     @wraps(fn)
     def impl(*args, **kwargs):
-        logger.info("[SOT_MGS10] running SOT")
+        logger.info("[SOT_MGS10] running SOT (MIN_GRAPH_SIZE=10)")
 
         OpcodeExecutorCache().clear()
         with sot_mode_guard(True):
@@ -131,39 +167,49 @@ def to_sot_mgs10_test(fn):
 
 
 def to_legacy_ir_test(fn):
+    @wraps(fn)
     def impl(*args, **kwargs):
         logger.info("[LEGACY_IR] running legacy ir")
-        return fn(*args, **kwargs)
+        pt_in_dy2st_flag = ENV_ENABLE_PIR_WITH_PT_IN_DY2ST.name
+        original_flag_value = get_flags(pt_in_dy2st_flag)[pt_in_dy2st_flag]
+        with EnvironmentVariableGuard(ENV_ENABLE_PIR_WITH_PT_IN_DY2ST, False):
+            try:
+                set_flags({pt_in_dy2st_flag: False})
+                ir_outs = fn(*args, **kwargs)
+            finally:
+                set_flags({pt_in_dy2st_flag: original_flag_value})
+            return ir_outs
 
     return impl
 
 
-def to_pir_exe_test(fn):
+def to_pt_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
-        logger.info("[PIR_EXE] running pir exe")
-        ir_outs = None
+        logger.info("[PT] running PT")
+        pt_in_dy2st_flag = ENV_ENABLE_PIR_WITH_PT_IN_DY2ST.name
+        original_flag_value = get_flags(pt_in_dy2st_flag)[pt_in_dy2st_flag]
         if os.environ.get('FLAGS_use_stride_kernel', False):
             return
         with static.scope_guard(static.Scope()):
             with static.program_guard(static.Program()):
-                pir_flag = 'FLAGS_enable_pir_in_executor'
-                try:
-                    os.environ[pir_flag] = 'True'
-                    set_flags({pir_flag: True})
-                    ir_outs = fn(*args, **kwargs)
-                finally:
-                    del os.environ[pir_flag]
-                    set_flags({pir_flag: False})
+                with EnvironmentVariableGuard(
+                    ENV_ENABLE_PIR_WITH_PT_IN_DY2ST, True
+                ):
+                    try:
+                        set_flags({pt_in_dy2st_flag: True})
+                        ir_outs = fn(*args, **kwargs)
+                    finally:
+                        set_flags({pt_in_dy2st_flag: original_flag_value})
         return ir_outs
 
     return impl
 
 
-def to_pir_api_test(fn):
+def to_pir_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
-        logger.info("[PIR_API] running pir api")
+        logger.info("[PIR] running pir")
         ir_outs = None
         with paddle.pir_utils.IrGuard():
             paddle.disable_static()
@@ -176,18 +222,22 @@ def to_pir_api_test(fn):
 # Metaclass and BaseClass
 class Dy2StTestMeta(type):
     TO_STATIC_HANDLER_MAP = {
-        ToStaticMode.AST: to_legacy_ast_test,
+        ToStaticMode.AST: to_ast_test,
         ToStaticMode.SOT: to_sot_test,
         ToStaticMode.SOT_MGS10: to_sot_mgs10_test,
     }
 
     IR_HANDLER_MAP = {
         IrMode.LEGACY_IR: to_legacy_ir_test,
-        IrMode.PIR_EXE: to_pir_exe_test,
-        IrMode.PIR_API: to_pir_api_test,
+        IrMode.PT: to_pt_test,
+        IrMode.PIR: to_pir_test,
     }
 
     def __new__(cls, name, bases, attrs):
+        module_name = attrs["__module__"]
+        filepath = sys.modules[module_name].__file__
+        assert filepath
+        filename = Path(filepath).stem
         new_attrs = {}
         original_test_cases = {
             key: value
@@ -224,10 +274,20 @@ class Dy2StTestMeta(type):
                 for ir_mode in IrMode
                 if to_static_mode & fn_to_static_modes and ir_mode & fn_ir_modes
             ]
-            # Filter out disabled test cases and test cases already in compare groups
+            # Filter out disabled test cases by decorator
             to_static_with_ir_modes = list(
                 filter(
                     lambda flags: (flags not in fn_disabled_test_cases),
+                    to_static_with_ir_modes,
+                )
+            )
+            # Filter out disabled test cases by file
+            to_static_with_ir_modes = list(
+                filter(
+                    lambda flags: (
+                        filename not in DISABLED_TO_STATIC_TEST_FILES[flags[0]]
+                        and filename not in DISABLED_IR_TEST_FILES[flags[1]]
+                    ),
                     to_static_with_ir_modes,
                 )
             )
@@ -306,38 +366,52 @@ def test_legacy_only(fn):
     return fn
 
 
-def test_pir_only(fn):
-    fn = set_ir_mode(IrMode.PIR_EXE)(fn)
+def test_pt_only(fn):
+    fn = set_ir_mode(IrMode.PT)(fn)
     return fn
 
 
-def test_pir_api_only(fn):
-    fn = set_ir_mode(IrMode.PIR_API)(fn)
+def test_pir_only(fn):
+    fn = set_ir_mode(IrMode.PIR)(fn)
+    return fn
+
+
+def test_legacy_and_pt(fn):
+    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PT)(fn)
     return fn
 
 
 def test_legacy_and_pir(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_EXE)(fn)
+    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR)(fn)
     return fn
 
 
-def test_legacy_and_pir_api(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API)(fn)
+def test_legacy_and_pt_and_pir(fn):
+    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PT | IrMode.PIR)(fn)
     return fn
 
 
-def test_legacy_and_pir_exe_and_pir_api(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API | IrMode.PIR_EXE)(fn)
+def test_default_mode_only(fn):
+    # Some unittests has high time complexity, we only test them with default mode
+    fn = set_to_static_mode(ToStaticMode.SOT)(fn)
+    fn = set_ir_mode(IrMode.PT)(fn)
     return fn
 
 
-def compare_legacy_with_pir(fn):
+def test_sot_with_pir_only(fn):
+    fn = set_to_static_mode(ToStaticMode.SOT)(fn)
+    fn = set_ir_mode(IrMode.PIR)(fn)
+    return fn
+
+
+# NOTE: This is a special decorator for comparing legacy and pt
+def compare_legacy_with_pt(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
-        outs = fn(*args, **kwargs)
+        outs = to_legacy_ir_test(fn)(*args, **kwargs)
         if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
             return outs
-        ir_outs = to_pir_exe_test(fn)(*args, **kwargs)
+        ir_outs = to_pt_test(fn)(*args, **kwargs)
         np.testing.assert_equal(
             outs,
             ir_outs,
