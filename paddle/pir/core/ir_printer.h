@@ -56,7 +56,7 @@ class IR_API IrPrinter : public BasicIrPrinter {
   void PrintFullOperation(Operation* op);
 
   void PrintRegion(const Region& Region);
-  void PrintBlock(const Block* block);
+  void PrintBlock(const Block& block);
 
   void PrintValue(Value v);
 
@@ -69,6 +69,8 @@ class IR_API IrPrinter : public BasicIrPrinter {
   void PrintOperandsType(Operation* op);
 
   void PrintOpReturnType(Operation* op);
+
+  void AddValueAlias(Value value, const std::string& alias);
 
  private:
   size_t cur_result_number_{0};

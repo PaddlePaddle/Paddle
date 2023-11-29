@@ -16,7 +16,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 from paddle import base

@@ -22,6 +22,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/auto_schedule/auto_tuner.h"
 #include "paddle/cinn/auto_schedule/tuning.h"
 #include "paddle/cinn/common/target.h"

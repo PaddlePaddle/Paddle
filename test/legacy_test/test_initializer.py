@@ -221,6 +221,156 @@ class TestUniformInitializer(unittest.TestCase):
         block = self.test_uniform_initializer_two_op("uint16")
 
 
+class TestUniformInitializerPir(unittest.TestCase):
+    def setUp(self):
+        self.init_op_name = 'pd_op.uniform'
+        self.set_parameter_op_name = 'builtin.set_parameter'
+
+    def get_operand_definition_op_attrs(self, cur_op, operand_name, attr_name):
+        input_names = cur_op.get_input_names()
+        self.assertIn(operand_name, input_names)
+        attr = (
+            cur_op.operand(input_names.index(operand_name))
+            .source()
+            .get_defining_op()
+            .attrs()[attr_name]
+        )
+        return attr
+
+    def test_uniform_initializer_default_value(self, dtype="float32"):
+        """Test the uniform initializer with default value"""
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                param = paddle.pir.core.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    name="param",
+                    initializer=paddle.nn.initializer.Uniform(),
+                )
+                block = startup.global_block()
+                for op in block.ops:
+                    # get init op
+                    if self.init_op_name == op.name():
+                        min = self.get_operand_definition_op_attrs(
+                            op, "min", "value"
+                        )
+                        max = self.get_operand_definition_op_attrs(
+                            op, "max", "value"
+                        )
+                        self.assertAlmostEqual(min, -1.0, delta=DELTA)
+                        self.assertAlmostEqual(max, 1.0, delta=DELTA)
+                        self.assertEqual(op.attrs()['seed'], 0)
+
+    def test_uniform_initializer_random_seed(self):
+        """Test the uniform initializer with manually setting seed"""
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            startup.random_seed = 123
+            with paddle.static.program_guard(main, startup):
+                param1 = paddle.pir.core.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    name="param1",
+                    initializer=paddle.nn.initializer.Uniform(),
+                )
+
+                param2 = paddle.pir.core.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    name="param2",
+                    initializer=paddle.nn.initializer.UniformInitializer(
+                        seed=456
+                    ),
+                )
+
+                block = startup.global_block()
+
+                checked_paramter_names = []
+                for op in block.ops:
+                    if self.set_parameter_op_name != op.name():
+                        continue
+
+                    parameter_name = op.attrs()["parameter_name"]
+                    if parameter_name == "param1":
+                        # get "param1"
+                        checked_paramter_names.append(parameter_name)
+                        seed = (
+                            op.operand(0)
+                            .source()
+                            .get_defining_op()
+                            .attrs()['seed']
+                        )
+                        self.assertEqual(seed, 123)
+                    elif parameter_name == "param2":
+                        # get "param2"
+                        checked_paramter_names.append(parameter_name)
+                        seed = (
+                            op.operand(0)
+                            .source()
+                            .get_defining_op()
+                            .attrs()['seed']
+                        )
+                        self.assertEqual(seed, 456)
+
+                self.assertIn("param1", checked_paramter_names)
+                self.assertIn("param2", checked_paramter_names)
+
+    def test_uniform_initializer(self, dtype="float32"):
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                initializer = paddle.nn.initializer.UniformInitializer(
+                    low=-0.5,
+                    high=0.5,
+                    seed=10,
+                    diag_num=16,
+                    diag_step=16,
+                    diag_val=1.0,
+                )
+                param = paddle.pir.core.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    name="param",
+                    initializer=initializer,
+                )
+                block = startup.global_block()
+                for op in block.ops:
+                    # get init op
+                    if self.init_op_name == op.name():
+                        self.assertEqual(op.attrs()["seed"], 10)
+
+                        input_names = op.get_input_names()
+                        self.assertIn('shape', input_names)
+                        self.assertIn('min', input_names)
+                        self.assertIn('max', input_names)
+                        shape = self.get_operand_definition_op_attrs(
+                            op, "shape", "value"
+                        )
+                        min = self.get_operand_definition_op_attrs(
+                            op, "min", "value"
+                        )
+                        max = self.get_operand_definition_op_attrs(
+                            op, "max", "value"
+                        )
+                        self.assertEqual(shape, [5, 10])
+                        self.assertAlmostEqual(min, -0.5, DELTA)
+                        self.assertAlmostEqual(max, 0.5, DELTA)
+
+    def test_uniform_initializer_fp16(self):
+        """Test uniform initializer with float16"""
+        self.test_uniform_initializer_default_value(dtype="float16")
+        self.test_uniform_initializer(dtype="float16")
+
+    def test_uniform_initializer_bf16(self):
+        """Test uniform initializer with float16"""
+        self.test_uniform_initializer_default_value(dtype="uint16")
+        self.test_uniform_initializer(dtype="uint16")
+
+
 class TestNormalInitializer(unittest.TestCase):
     def test_normal_initializer_default_value(self):
         """Test the normal initializer with default value"""
