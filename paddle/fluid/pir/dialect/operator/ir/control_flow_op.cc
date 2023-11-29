@@ -51,7 +51,7 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
   if (true_block && !true_block->empty() &&
       true_block->back().isa<pir::YieldOp>()) {
     auto &op = true_block->back();
-    
+
     for (size_t i = 0; i < op.num_operands(); ++i) {
       argument.AddOutput(op.operand(i).type());
     }
@@ -85,7 +85,6 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddRegion()->push_back(true_block.release());
   argument.AddRegion()->push_back(false_block.release());
   argument.AddInput(cond);
-
 }
 
 pir::Block *IfOp::true_block() {
@@ -194,13 +193,14 @@ std::vector<std::vector<pir::OpResult>> IfOp::Vjp(
     const std::vector<std::vector<pir::OpResult>> &outputs,
     const std::vector<std::vector<pir::Value>> &out_grads,
     const std::vector<std::vector<bool>> &stop_gradients) {
-  PADDLE_ENFORCE_EQ(inputs_.size() >= 1u,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "if op's inputs' size should greater_equal to 1, and all the inputs[i] "
-                        "should be 1 size. "
-                        "Now the inputs's size is %d .",
-                        inputs_.size()));
+  PADDLE_ENFORCE_EQ(
+      inputs_.size() >= 1u,
+      true,
+      phi::errors::InvalidArgument("if op's inputs' size should greater_equal "
+                                   "to 1, and all the inputs[i] "
+                                   "should be 1 size. "
+                                   "Now the inputs's size is %d .",
+                                   inputs_.size()));
 
   VLOG(6) << "Prepare inputs for if_grad";
   auto cond_val = inputs_[0][0];
@@ -278,22 +278,23 @@ std::vector<std::vector<pir::OpResult>> TuplePushOpVjpInterfaceModel::Vjp(
     const std::vector<std::vector<pir::OpResult>> &outputs,
     const std::vector<std::vector<pir::Value>> &out_grads,
     const std::vector<std::vector<bool>> &stop_gradients) {
-  PADDLE_ENFORCE_EQ(inputs.size() >= 1u ,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "tupe_push op's inputs' size should be greater_equal than 1, and the "
-                        "inputs[i] should be non-empty. "
-                        "Now the inputs's size is %d.",
-                        inputs.size()));
+  PADDLE_ENFORCE_EQ(
+      inputs.size() >= 1u,
+      true,
+      phi::errors::InvalidArgument(
+          "tupe_push op's inputs' size should be greater_equal than 1, and the "
+          "inputs[i] should be non-empty. "
+          "Now the inputs's size is %d.",
+          inputs.size()));
   auto pop_op = ApiBuilder::Instance().GetBuilder()->Build<TuplePopOp>(
       TuplePushOp::dyn_cast(op).outlet());
   std::vector<std::vector<pir::OpResult>> res{inputs.size()};
   res[0].resize(1);
   for (size_t i = 1u; i < inputs.size(); ++i) {
     res[i].resize(1);
-    if (!stop_gradients[i][0]){
-      res[i][0] = pop_op.result(i-1);
-    }  
+    if (!stop_gradients[i][0]) {
+      res[i][0] = pop_op.result(i - 1);
+    }
   }
   return res;
 }

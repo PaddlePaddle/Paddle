@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import collections
-import copy
+
 
 class State:
     """
@@ -52,11 +52,12 @@ class State:
         for k, v in self.op_to_opgrad.items():
             if v != []:
                 self.opgrad_to_op[v[0]] = [k]
-    
+
     def copy(self, new_block):
         state = State(new_block)
         state.value_to_valuegrad = self.value_to_valuegrad.copy()
         state.value_to_sumvaluegrad = self.value_to_sumvaluegrad.copy()
+
         # operation -> list(operation)
         state.op_to_opgrad = self.op_to_opgrad.copy()
 

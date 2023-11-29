@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
-from paddle.base.core import call_vjp, has_vjp
 from paddle.autograd.ir_backward import grad
+from paddle.base.core import call_vjp, has_vjp
 from paddle.base.libpaddle.pir import (
     build_pipe_for_block,
     get_used_external_value,
@@ -48,7 +48,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             y.stop_gradient = False
             paddle.static.nn.cond(x < y, lambda: x + y, lambda: x - y)
         return main_program
-    
+
     def test_if_with_single_output(self):
         main_program = self.construct_program_with_if()
         if_op = main_program.global_block().ops[-1]
@@ -115,18 +115,19 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
                 push_op = if_op.as_if_op().true_block().ops[-2]
                 self.assertEqual(push_op.name(), "cf.tuple_push")
                 self.assertEqual(has_vjp(push_op), True)
+                print([[value] for value in push_op.operands_source()])
                 pop_outs = call_vjp(
                     push_op,
                     [[value] for value in push_op.operands_source()],
-                    [[opresult] for opresult in push_op.results()],
+                    [[]],
                     [[]],
                     [[True], [False]],
                 )
-                self.assertEqual(len(pop_outs[0]), 2)
+                self.assertEqual(len(pop_outs), 2)
                 self.assertEqual(
-                    pop_outs[0][1].get_defining_op().name(), "cf.tuple_pop"
+                    pop_outs[1][0].get_defining_op().name(), "cf.tuple_pop"
                 )
-    
+
     def test_if_op_backward(self):
         main_program = self.construct_program_with_if()
         dataop0 = main_program.global_block().ops[0]
@@ -138,13 +139,14 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             # check vjp interface for if_op
             print("main_program ", main_program)
             grad_outs = grad(
-               if_op.results(),
-               [dataop0.result(0), dataop1.result(0)],
+                if_op.results(),
+                [dataop0.result(0), dataop1.result(0)],
             )
 
             print("main_program ", main_program)
             self.assertEqual(grad_outs[0].get_defining_op().name(), "pd_op.if")
             self.assertEqual(grad_outs[1].get_defining_op().name(), "pd_op.if")
+
 
 if __name__ == "__main__":
     unittest.main()
