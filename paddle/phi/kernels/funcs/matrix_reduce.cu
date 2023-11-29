@@ -52,6 +52,8 @@ class MatrixReduceSumFunctor<T, GPUContext> {
 
 template class MatrixReduceSumFunctor<float, GPUContext>;
 template class MatrixReduceSumFunctor<double, GPUContext>;
+template class MatrixReduceSumFunctor<phi::dtype::complex<float>, GPUContext>;
+template class MatrixReduceSumFunctor<phi::dtype::complex<double>, GPUContext>;
 
 }  // namespace funcs
 }  // namespace phi

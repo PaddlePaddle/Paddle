@@ -51,10 +51,17 @@ class TestTriangularSolveOp(OpTest):
         self.python_api = paddle.tensor.linalg.triangular_solve
         self.config()
 
-        self.inputs = {
-            'X': np.random.random(self.x_shape).astype(self.dtype),
-            'Y': np.random.random(self.y_shape).astype(self.dtype),
-        }
+        if self.dtype is np.complex64 or self.dtype is np.complex128:
+            self.inputs = {
+                'X': (np.random.random(self.x_shape) + 1j * np.random.random(self.x_shape)).astype(self.dtype),
+                'Y': (np.random.random(self.y_shape) + 1j * np.random.random(self.y_shape)).astype(self.dtype),
+            }
+        else:
+            self.inputs = {
+                'X': np.random.random(self.x_shape).astype(self.dtype),
+                'Y': np.random.random(self.y_shape).astype(self.dtype),
+            }
+
         self.attrs = {
             'upper': self.upper,
             'transpose': self.transpose,
@@ -247,7 +254,44 @@ class TestTriangularSolveOp9(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.matmul(np.linalg.inv(x), y)
 
+# 3D(broadcast) + 3D complex64
+class TestTriangularSolveOpCp64(TestTriangularSolveOp):
+    """
+    case complex64
+    """
 
+    def config(self):
+        self.x_shape = [1, 10, 10]
+        self.y_shape = [6, 10, 12]
+        self.upper = False
+        self.transpose = False
+        self.unitriangular = False
+        self.dtype = "complex64"
+
+    def set_output(self):
+        x = np.tril(self.inputs['X'])
+        y = self.inputs['Y']
+        self.output = np.linalg.solve(x, y)
+
+# 3D(broadcast) + 3D complex128
+class TestTriangularSolveCp128(TestTriangularSolveOp):
+    """
+    case complex128
+    """
+
+    def config(self):
+        self.x_shape = [1, 10, 10]
+        self.y_shape = [6, 10, 12]
+        self.upper = False
+        self.transpose = False
+        self.unitriangular = False
+        self.dtype = "complex128"
+
+    def set_output(self):
+        x = np.tril(self.inputs['X'])
+        y = self.inputs['Y']
+        self.output = np.linalg.solve(x, y)
+    
 class TestTriangularSolveAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2021)
