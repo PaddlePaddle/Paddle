@@ -417,7 +417,6 @@ bool GenericPlugin::supportsFormatCombination(
       return (in_out[pos].type == in_out[0].type &&
               in_out[pos].format == in_out[0].format);
     }
-    // 确保输出数据类型和输入一致
     // output indices
     if (pos == 2) {
       return (in_out[pos].type == nvinfer1::DataType::kINT32 &&
