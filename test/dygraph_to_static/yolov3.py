@@ -18,8 +18,7 @@ import sys
 from darknet import ConvBNLayer, DarkNet53_conv_body
 
 import paddle
-from paddle import _legacy_C_ops, base
-from paddle.base.param_attr import ParamAttr
+from paddle import ParamAttr, _legacy_C_ops
 from paddle.regularizer import L2Decay
 
 
@@ -106,11 +105,11 @@ cfg.batch_size = 1 if sys.platform == 'darwin' or os.name == 'nt' else 4
 # derived learning rate the to get the final learning rate.
 cfg.learning_rate = 0.001
 # maximum number of iterations
-cfg.max_iter = 20 if base.is_compiled_with_cuda() else 1
+cfg.max_iter = 20 if paddle.is_compiled_with_cuda() else 1
 # Disable mixup in last N iter
-cfg.no_mixup_iter = 10 if base.is_compiled_with_cuda() else 1
+cfg.no_mixup_iter = 10 if paddle.is_compiled_with_cuda() else 1
 # warm up to learning rate
-cfg.warm_up_iter = 10 if base.is_compiled_with_cuda() else 1
+cfg.warm_up_iter = 10 if paddle.is_compiled_with_cuda() else 1
 cfg.warm_up_factor = 0.0
 # lr steps_with_decay
 cfg.lr_steps = [400000, 450000]
@@ -123,7 +122,7 @@ cfg.momentum = 0.9
 # ENV options
 #
 # support both CPU and GPU
-cfg.use_gpu = base.is_compiled_with_cuda()
+cfg.use_gpu = paddle.is_compiled_with_cuda()
 # Class number
 cfg.class_num = 80
 
@@ -289,15 +288,20 @@ class YOLOv3(paddle.nn.Layer):
         self.downsample = 32
         blocks = self.block(inputs)
         for i, block in enumerate(blocks):
+            print("block pre:", i, block.shape)
             if i > 0:
                 block = paddle.concat([route, block], axis=1)  # noqa: F821
+            print("block:", i, block.shape)
             route, tip = self.yolo_blocks[i](block)
+            print("route 0:", i, route.shape)
             block_out = self.block_outputs[i](tip)
             self.outputs.append(block_out)
 
             if i < 2:
                 route = self.route_blocks_2[i](route)
+                print("route 1:", i, route.shape)
                 route = self.upsample(route)
+                print("route 2:", i, route.shape)
         self.gtbox = gtbox
         self.gtlabel = gtlabel
         self.gtscore = gtscore
