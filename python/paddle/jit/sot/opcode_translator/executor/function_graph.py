@@ -129,7 +129,6 @@ class FunctionGraph:
         self._global_guarded_variables: OrderedSet[VariableBase] = OrderedSet()
         self._print_variables = []
         self._inplace_tensors = OrderedSet()
-        self.build_strategy = kwargs.get('build_strategy', None)
         self._kwargs = kwargs
 
     @cached_property
