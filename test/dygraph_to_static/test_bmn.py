@@ -18,10 +18,10 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
     static_guard,
-    test_pir_only,
+    test_pt_only,
 )
 from predictor_utils import PredictorTools
 
@@ -751,7 +751,7 @@ class TestTrain(Dy2StTestBase):
                         break
             return np.array(loss_data)
 
-    @test_pir_only
+    @test_pt_only
     def test_train_pir(self):
         static_res = self.train_bmn(self.args, to_static=True)
         dygraph_res = self.train_bmn(self.args, to_static=False)

@@ -72,9 +72,18 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
       placements,
       DenseTensorMeta(global_value->dtype(), global_value->dims()));
 
+  std::vector<int64_t> partial_dims;
+  size_t idx = 0;
+  for (auto p : placements) {
+    if (p->is_partial()) {
+      partial_dims.push_back(idx);
+    }
+    idx++;
+  }
   TensorDistAttr dist_attr(vectorize(dist_tensor_meta_.dims()));
   dist_attr.set_process_mesh(dist_tensor_meta_.process_mesh());
   dist_attr.set_dims_mapping(dist_tensor_meta_.dim_mapping());
+  dist_attr.set_partial_status(partial_dims);
   dist_attr.mark_annotated("process_mesh");
   dist_attr.mark_annotated("dims_mapping");
   dist_attr_ = dist_attr;

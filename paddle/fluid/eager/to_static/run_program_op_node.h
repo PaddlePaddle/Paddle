@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <iostream>
-
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
@@ -208,6 +206,11 @@ static auto GetNameFromValue(const ::pir::Block *block,
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
       value2name[op.result(0).Value::impl()] = name;
+    } else if (is_input && op.name() == "builtin.constant") {
+      if (op.isa<pir::ConstantTensorOp>()) {
+        name = op.dyn_cast<pir::ConstantTensorOp>().tensor_name();
+        value2name[op.result(0).Value::impl()] = name;
+      }
     }
   }
   std::vector<std::string> names;
