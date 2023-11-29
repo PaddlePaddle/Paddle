@@ -524,7 +524,7 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
   }}
 """
 
-PROMOTION_LOGIC_TEMPLATE = """   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> promote_tensors_vector = {};
+TYPE_PROMOTION_LOGIC_TEMPLATE = """   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> promote_tensors_vector = {};
   if (egr::NeedTypePromotion(promote_tensors_vector)) {{
     VLOG(5) << "got different data type, run type protmotion automatically.";
     {}
@@ -1863,7 +1863,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 + "    "
                 + "    ".join(type_promote_optional_list)
             )
-            type_promotion_logic_str = PROMOTION_LOGIC_TEMPLATE.format(
+            type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
                 amp_tensors_vector_list_str,
                 kernel_trans2_op_name_str,
                 type_promote_vector_optional_list_str,
