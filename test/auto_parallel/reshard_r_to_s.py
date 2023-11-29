@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.base import core
 
 
 class TestReshardRToS:
@@ -33,30 +32,16 @@ class TestReshardRToS:
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
-            place = paddle.CPUPlace()
-        elif self._backend == "gpu":
-            place = paddle.CUDAPlace(dist.get_rank())
 
-        dev_ctx = core.DeviceContext.create(place)
         a = paddle.ones(self._shape)
 
-        in_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs[self._shard] = "x"
+        in_placements = [dist.Replicate()]
+        input_tensor = dist.shard_tensor(a, self._mesh, in_placements)
 
-        dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=in_shard_specs
-        )
-        out_dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=out_shard_specs
-        )
+        out_placements = [dist.Shard(self._shard)]
 
-        input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+        out = dist.reshard(input_tensor, self._mesh, out_placements)
 
-        reshard_func = core.RToSReshardFunction()
-        assert reshard_func.is_suitable(input_tensor, out_dist_attr)
-
-        out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
         out_shape = list(self._shape)
 
         if out_shape[self._shard] % 2 == 0:

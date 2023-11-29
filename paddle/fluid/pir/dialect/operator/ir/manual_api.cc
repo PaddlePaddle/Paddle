@@ -46,12 +46,12 @@ pir::OpResult zeros_like(const pir::Value& x,
   return paddle::dialect::full_like(x, 0, dtype, place);
 }
 
-pir::OpResult get_parameter(const std::string& name) {
+pir::OpResult parameter(const std::string& name) {
   pir::Parameter* param = ApiBuilder::Instance().GetParameter(name);
-  pir::GetParameterOp get_parameter_op =
-      ApiBuilder::Instance().GetBuilder()->Build<pir::GetParameterOp>(
+  pir::ParameterOp parameter_op =
+      ApiBuilder::Instance().GetBuilder()->Build<pir::ParameterOp>(
           name, param->type());
-  return get_parameter_op.result(0);
+  return parameter_op.result(0);
 }
 
 void set_parameter(const pir::Value& parameter, const std::string& name) {
@@ -69,11 +69,18 @@ pir::OpResult embedding_grad(const pir::Value& x,
                              bool sparse) {
   if (weight.type().isa<paddle::dialect::DenseTensorType>()) {
     if (sparse) {
-      return paddle::dialect::embedding_grad_sparse(
-          x, weight, out_grad, padding_idx, sparse);
+      auto embedding_grad_op =
+          ApiBuilder::Instance()
+              .GetBuilder()
+              ->Build<paddle::dialect::EmbeddingSparseGradOp>(
+                  x, weight, out_grad, padding_idx);
+      return embedding_grad_op.weight_grad();
     } else {
-      return paddle::dialect::embedding_grad_dense(
-          x, weight, out_grad, padding_idx, sparse);
+      auto embedding_grad_op = ApiBuilder::Instance()
+                                   .GetBuilder()
+                                   ->Build<paddle::dialect::EmbeddingGradOp>(
+                                       x, weight, out_grad, padding_idx);
+      return embedding_grad_op.weight_grad();
     }
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
@@ -146,6 +153,16 @@ pir::OpResult array_write_(pir::Value array, pir::Value x, pir::Value i) {
           .GetBuilder()
           ->Build<paddle::dialect::ArrayWrite_Op>(array, x, i);
   return array_write_op.out();
+}
+
+std::tuple<pir::OpResult, pir::OpResult> array_to_tensor(pir::Value x,
+                                                         int axis,
+                                                         bool use_stack) {
+  auto array_to_tensor =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::ArrayToTensorOp>(x, axis, use_stack);
+  return std::make_tuple(array_to_tensor.result(0), array_to_tensor.result(1));
 }
 
 }  // namespace dialect

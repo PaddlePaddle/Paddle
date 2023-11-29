@@ -208,6 +208,9 @@ void BuildPhiContext(pir::Operation* op,
         }
       }
       ctx->EmplaceBackInputs(inputs);
+    } else if (var->IsType<phi::SelectedRows>()) {
+      const phi::TensorBase* tensor_in = &(var->Get<phi::SelectedRows>());
+      ctx->EmplaceBackInput(InType(tensor_in));
     } else {
       PADDLE_THROW(phi::errors::Unimplemented("Not support var type [%d] ",
                                               var->Type()));
