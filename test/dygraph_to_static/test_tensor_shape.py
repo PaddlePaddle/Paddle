@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    compare_legacy_with_pt,
     test_ast_only,
 )
 
@@ -266,7 +265,6 @@ class TestTensorShapeBasic(Dy2StTestBase):
     def get_dygraph_output(self):
         return self._run(to_static=False)
 
-    @compare_legacy_with_pt
     def get_static_output(self):
         return self._run(to_static=True)
 

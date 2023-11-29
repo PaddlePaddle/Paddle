@@ -926,15 +926,15 @@ void HandleForWhileOp(
   pir::Builder builder(ctx, block);
   auto base_while_op = op_item->dyn_cast<WhileOp>();
   auto new_while_op = builder.Build<WhileOp>(cond_val, vec_in);
-  pir::Block& body_block = new_while_op.body_block();
+  pir::Block& body_block = new_while_op.body();
   for (size_t i = 0; i < vec_in.size(); ++i) {
-    auto block_arg = body_block.AddArgument(vec_in[i].type());
-    (*map_value_pair)[base_while_op.body_block().argument(i)] = block_arg;
+    auto block_arg = body_block.arg(i);
+    (*map_value_pair)[base_while_op.body().arg(i)] = block_arg;
   }
 
   // process body block
   ProcessBlock(place,
-               &base_while_op.body_block(),
+               &base_while_op.body(),
                &body_block,
                ctx,
                map_op_pair,

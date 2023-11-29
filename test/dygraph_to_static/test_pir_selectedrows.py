@@ -15,7 +15,7 @@
 import random
 import unittest
 
-from dygraph_to_static_utils import Dy2StTestBase, compare_legacy_with_pt
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 from paddle.jit.api import to_static
@@ -77,7 +77,6 @@ def train_dygraph():
     return train(net, adam, x)
 
 
-@compare_legacy_with_pt
 def train_static():
     paddle.seed(100)
     net = IRSelectedRowsTestNet()

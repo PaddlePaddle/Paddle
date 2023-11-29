@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/macros.h"
-#include "paddle/cinn/ir/dy_schedule/ir_schedule.h"
+#pragma once
 
-namespace cinn {
-namespace ir {
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
-Expr DyScheduleImpl::Rfactor(const Expr& rf_loop, int rf_axis) {
-  CINN_NOT_IMPLEMENTED;
-}
+namespace pir {
 
-Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
-  CINN_NOT_IMPLEMENTED;
-}
+class Pass;
 
-}  // namespace ir
-}  // namespace cinn
+IR_API std::unique_ptr<Pass> CreateInferSymbolicShapePass(
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis);
+
+}  // namespace pir
