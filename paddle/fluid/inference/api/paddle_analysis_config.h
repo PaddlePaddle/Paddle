@@ -33,7 +33,6 @@
 #include <vector>
 
 #include "paddle_infer_declare.h"  // NOLINT
-
 /*! \file */
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
@@ -611,14 +610,14 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param x Whether to use the feed and fetch operators.
   ///
-  void SwitchUseFeedFetchOps(int x = true) { use_feed_fetch_ops_ = x; }
+  void SwitchUseFeedFetchOps(int x = true) {}
   ///
   /// \brief A boolean state telling whether to use the feed and fetch
   /// operators.
   ///
   /// \return bool Whether to use the feed and fetch operators.
   ///
-  bool use_feed_fetch_ops_enabled() const { return use_feed_fetch_ops_; }
+  bool use_feed_fetch_ops_enabled() const { return false; }
 
   ///
   /// \brief Turn on the feed and fetch data with low precision.
@@ -929,6 +928,13 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void EnableMKLDNN();
+
+  ///
+  /// \brief Turn down MKLDNN.
+  ///
+  ///
+  void DisableMKLDNN();
+
   ///
   /// \brief Set the cache capacity of different input shapes for MKLDNN.
   /// Default value 0 means not caching any shape.
@@ -1294,13 +1300,16 @@ struct PD_INFER_DECL AnalysisConfig {
 
   std::unordered_set<std::string> trt_ops_run_float_;
 
+#ifdef PADDLE_WITH_DNNL
+  bool use_mkldnn_{true};
+#else
   bool use_mkldnn_{false};
+#endif
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
   bool model_from_memory_{false};
 
   bool enable_ir_optim_{true};
-  bool use_feed_fetch_ops_{true};
   bool ir_debug_{false};
 
   bool use_new_executor_{false};

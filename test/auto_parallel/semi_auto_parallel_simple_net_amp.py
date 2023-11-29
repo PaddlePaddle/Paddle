@@ -59,12 +59,7 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
         for _ in range(5):
             image, label = self.init_input_data()
             if shard_input:
-                image = dist.shard_tensor(
-                    image,
-                    dist_attr=dist.DistAttr(
-                        mesh=self._mesh, sharding_specs=['x', None]
-                    ),
-                )
+                image = dist.shard_tensor(image, self._mesh, [dist.Shard(0)])
 
             with paddle.amp.auto_cast(level=level):
                 out = layer(image)
@@ -150,6 +145,8 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
             self.check_tensor_eq(param.grad, param_base.grad)
 
     def run_test_case(self):
+        if self._dtype == "bfloat16" and not paddle.amp.is_bfloat16_supported():
+            return
         self.test_dp_demo_net()
         self.test_mp_demo_net()
 
