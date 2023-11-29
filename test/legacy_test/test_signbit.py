@@ -27,8 +27,10 @@ class TestSignbitAPI(unittest.TestCase):
     def setUp(self) -> None:
         self.support_dtypes = [
             'float16',
+            'bfloat16',
             'float32',
             'float64',
+            'uint8',
             'int8',
             'int16',
             'int32',
@@ -38,6 +40,7 @@ class TestSignbitAPI(unittest.TestCase):
             self.support_dtypes = [
                 'float32',
                 'float64',
+                'uint8',
                 'int8',
                 'int16',
                 'int32',
@@ -59,6 +62,11 @@ class TestSignbitAPI(unittest.TestCase):
             np_out = out.numpy()
             out_expected = np_signbit(np_x)
             np.testing.assert_allclose(np_out, out_expected, rtol=1e-05)
+
+    def test_input_type(self):
+        with self.assertRaises(TypeError):
+            x = np.random.randint(-10, 10, size=[12, 20, 2]).astype('float32')
+            x = paddle.signbit(x)
 
 
 if __name__ == "__main__":

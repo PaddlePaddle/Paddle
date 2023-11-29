@@ -93,12 +93,16 @@ class TestSignAPI(unittest.TestCase):
             self.assertEqual((np_z == z_expected).all(), True)
 
     def test_static(self):
-        np_input2 = np.random.uniform(-10, 10, (12, 10)).astype("int16")
-        np_input3 = np.random.uniform(-10, 10, (12, 10)).astype("int32")
-        np_input4 = np.random.uniform(-10, 10, (12, 10)).astype("int64")
+        np_input1 = np.random.uniform(-10, 10, (12, 10)).astype("int8")
+        np_input2 = np.random.uniform(-10, 10, (12, 10)).astype("uint8")
+        np_input3 = np.random.uniform(-10, 10, (12, 10)).astype("int16")
+        np_input4 = np.random.uniform(-10, 10, (12, 10)).astype("int32")
+        np_input5 = np.random.uniform(-10, 10, (12, 10)).astype("int64")
+        np_out1 = np.sign(np_input1)
         np_out2 = np.sign(np_input2)
         np_out3 = np.sign(np_input3)
         np_out4 = np.sign(np_input4)
+        np_out5 = np.sign(np_input5)
 
         def run(place):
             with program_guard(Program(), Program()):
@@ -106,35 +110,47 @@ class TestSignAPI(unittest.TestCase):
                 input1 = 12
                 self.assertRaises(TypeError, paddle.tensor.math.sign, input1)
                 # The result of sign_op must correct.
-                input2 = paddle.static.data(
-                    name='input2', shape=[12, 10], dtype="int16"
+                input1 = paddle.static.data(
+                    name='input1', shape=[12, 10], dtype="int8"
                 )
+                input2 = paddle.static.data(
+                    name='input2', shape=[12, 10], dtype="uint8"
+                )     
                 input3 = paddle.static.data(
-                    name='input3', shape=[12, 10], dtype="int32"
+                    name='input3', shape=[12, 10], dtype="int16"
                 )
                 input4 = paddle.static.data(
-                    name='input4', shape=[12, 10], dtype="int64"
+                    name='input4', shape=[12, 10], dtype="int32"
                 )
+                input5 = paddle.static.data(
+                    name='input5', shape=[12, 10], dtype="int64"
+                )
+                out1 = paddle.sign(input1)
                 out2 = paddle.sign(input2)
                 out3 = paddle.sign(input3)
                 out4 = paddle.sign(input4)
+                out5 = paddle.sign(input5)
                 exe = paddle.static.Executor(place)
-                res2, res3, res4 = exe.run(
+                res1, res2, res3, res4, res5 = exe.run(
                     paddle.static.default_main_program(),
                     feed={
+                        "input1": np_input1,
                         "input2": np_input2,
                         "input3": np_input3,
                         "input4": np_input4,
+                        "input5": np_input5,
                     },
-                    fetch_list=[out2, out3, out4],
+                    fetch_list=[out1, out2, out3, out4, out5],
                 )
+                self.assertEqual((res1 == np_out1).all(), True)
                 self.assertEqual((res2 == np_out2).all(), True)
                 self.assertEqual((res3 == np_out3).all(), True)
                 self.assertEqual((res4 == np_out4).all(), True)
-                input5 = paddle.static.data(
-                    name='input5', shape=[-1, 4], dtype="float16"
+                self.assertEqual((res5 == np_out5).all(), True)
+                input6 = paddle.static.data(
+                    name='input6', shape=[-1, 4], dtype="float16"
                 )
-                paddle.sign(input5)
+                paddle.sign(input6)
 
         for place in self.place:
             run(place)
