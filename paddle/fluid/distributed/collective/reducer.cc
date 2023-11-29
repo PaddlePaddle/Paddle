@@ -368,6 +368,17 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
 #endif
 
 void EagerGroup::ConcatTensors(const platform::Place &place) {
+  if (dense_tensors_.size() == 1) {
+    if (dense_contents_.impl() == nullptr) {
+      dense_contents_.set_impl(std::make_shared<phi::DenseTensor>());
+    }
+    auto dense_contents_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(dense_contents_.impl());
+    dense_contents_tensor->ShareDataWith(dense_tensors_[0]);
+    dense_contents_tensor->ShareInplaceVersionCounterWith(dense_tensors_[0]);
+    return;
+  }
+
   dense_contents_ =
       paddle::experimental::empty(IntArray({all_length_}), dtype_, place);
 
@@ -437,6 +448,9 @@ void EagerGroup::SplitTensors(const platform::DeviceContext &context) {
 #endif
   } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (dense_tensors_.size() == 1) {
+      return;
+    }
     SplitTensorsWithType(
         static_cast<const platform::CustomDeviceContext &>(context),
         &dense_contents_,
