@@ -524,20 +524,6 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
   }}
 """
 
-# PROMOTION_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().UseTypePromotion()) {{
-#     VLOG(5) << "got different data type, run type protmotion automatically.";
-#     {}
-#     paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> promote_tensors_vector = {};
-#     {}
-#     {}
-#     {}
-#     {{
-#       paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentTracer(), false);
-#       {}
-#     }}
-#   }}
-# """
-
 PROMOTION_LOGIC_TEMPLATE = """   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> promote_tensors_vector = {};
   if (egr::NeedTypePromotion(promote_tensors_vector)) {{
     VLOG(5) << "got different data type, run type protmotion automatically.";
