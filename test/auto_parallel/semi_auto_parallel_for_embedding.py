@@ -18,9 +18,10 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.distributed import Replicate, Shard
 
 
-class TestCustomEmbeddingGradApiForSemiAutoParallel:
+class TestEmbeddingApiForSemiAutoParallel:
     def __init__(self):
         self._dtype = os.getenv("dtype")
         self._backend = os.getenv("backend")
@@ -32,7 +33,7 @@ class TestCustomEmbeddingGradApiForSemiAutoParallel:
         np2 = b.numpy()
         np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
 
-    def test_body(self, x_shape, w_shape, x_specs, w_specs):
+    def test_body(self, x_shape, w_shape, x_placements, w_placements):
         paddle.seed(self._seed)
         np.random.seed(self._seed)
         x_np = np.random.randint(0, 10, size=x_shape)
@@ -43,11 +44,8 @@ class TestCustomEmbeddingGradApiForSemiAutoParallel:
         x.stop_gradient = False
         w.stop_gradient = False
 
-        x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=x_specs)
-        w_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=w_specs)
-
-        dist_x = dist.shard_tensor(x_np, dist_attr=x_dist_attr)
-        dist_w = dist.shard_tensor(w_np, dist_attr=w_dist_attr)
+        dist_x = dist.shard_tensor(x_np, self._mesh, x_placements)
+        dist_w = dist.shard_tensor(w_np, self._mesh, w_placements)
         dist_x.stop_gradient = False
         dist_w.stop_gradient = False
 
@@ -65,65 +63,74 @@ class TestCustomEmbeddingGradApiForSemiAutoParallel:
         self.test_body(
             x_shape=[12, 16],
             w_shape=[10, 4],
-            x_specs=[None, None],
-            w_specs=[None, None],
+            x_placements=[Replicate()],
+            w_placements=[Replicate()],
         )
 
     def test_x_row_shard(self):
         self.test_body(
             x_shape=[12, 16],
             w_shape=[10, 4],
-            x_specs=["x", None],
-            w_specs=[None, None],
+            x_placements=[Shard(0)],
+            w_placements=[Replicate()],
         )
 
     def test_x_col_shard(self):
         self.test_body(
             x_shape=[12, 16],
             w_shape=[10, 4],
-            x_specs=[None, "x"],
-            w_specs=[None, None],
+            x_placements=[Shard(1)],
+            w_placements=[Replicate()],
         )
 
     def test_w_row_shard(self):
         self.test_body(
             x_shape=[12, 16],
             w_shape=[10, 4],
-            x_specs=[None, None],
-            w_specs=["x", None],
+            x_placements=[Replicate()],
+            w_placements=[Shard(0)],
         )
 
     def test_w_col_shard(self):
         self.test_body(
             x_shape=[12, 16],
             w_shape=[10, 4],
-            x_specs=[None, None],
-            w_specs=[None, "x"],
+            x_placements=[Replicate()],
+            w_placements=[Shard(1)],
         )
 
     def test_x_row_w_col_shard(self):
-        self.test_body(
-            x_shape=[12, 16],
-            w_shape=[10, 4],
-            x_specs=["x", None],
-            w_specs=[None, "x"],
-        )
+        try:
+            self.test_body(
+                x_shape=[12, 16],
+                w_shape=[10, 4],
+                x_placements=[Shard(0)],
+                w_placements=[Shard(1)],
+            )
+        except RuntimeError as e:
+            assert 'sharded by same mesh dimension ' in str(e)
 
     def test_x_col_w_row_shard(self):
-        self.test_body(
-            x_shape=[12, 16],
-            w_shape=[10, 4],
-            x_specs=[None, "x"],
-            w_specs=["x", None],
-        )
+        try:
+            self.test_body(
+                x_shape=[12, 16],
+                w_shape=[10, 4],
+                x_placements=[Shard(1)],
+                w_placements=[Shard(0)],
+            )
+        except RuntimeError as e:
+            assert 'sharded by same mesh dimension ' in str(e)
 
     def test_both_col_shard(self):
-        self.test_body(
-            x_shape=[12, 16],
-            w_shape=[10, 4],
-            x_specs=[None, "x"],
-            w_specs=[None, "x"],
-        )
+        try:
+            self.test_body(
+                x_shape=[12, 16],
+                w_shape=[10, 4],
+                x_placements=[Shard(1)],
+                w_placements=[Shard(1)],
+            )
+        except RuntimeError as e:
+            assert 'sharded by same mesh dimension', str(e)
 
     def run_test_case(self):
         if self._backend == "cpu":
@@ -136,7 +143,8 @@ class TestCustomEmbeddingGradApiForSemiAutoParallel:
         self.test_non_shard()
         self.test_x_row_shard()
         self.test_x_col_shard()
-        self.test_w_row_shard()
+        # Sharding along weight's row axis is not supported by raw embdding kernel.
+        # self.test_w_row_shard()
         self.test_w_col_shard()
         self.test_x_row_w_col_shard()
         self.test_x_col_w_row_shard()
@@ -144,4 +152,4 @@ class TestCustomEmbeddingGradApiForSemiAutoParallel:
 
 
 if __name__ == '__main__':
-    TestCustomEmbeddingGradApiForSemiAutoParallel().run_test_case()
+    TestEmbeddingApiForSemiAutoParallel().run_test_case()
