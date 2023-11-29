@@ -47,6 +47,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
@@ -90,7 +91,6 @@ using phi::distributed::auto_parallel::Machine;
 
 PyTypeObject *g_tensor_dist_attr_pytype = nullptr;
 PyTypeObject *g_dist_tensor_spec_pytype = nullptr;
-PyTypeObject *g_placement_base_pytype = nullptr;
 PyTypeObject *g_process_mesh_pytype = nullptr;
 PyTypeObject *g_placement_shard_pytype = nullptr;
 PyTypeObject *g_placement_replicated_pytype = nullptr;
@@ -214,6 +214,10 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<phi::distributed::SToSReshardFunction>(
       *m, "SToSReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::SToPReshardFunction>(
+      *m, "SToPReshardFunction", ReshardFunction)
       .def(py::init<>());
 
   py::class_<phi::distributed::PToSReshardFunction>(
@@ -413,7 +417,6 @@ void BindAutoParallel(py::module *m) {
                      .def(py::self == py::self)
                      .def(py::self != py::self);
 
-  g_placement_base_pytype = reinterpret_cast<PyTypeObject *>(Placement.ptr());
   g_placement_shard_pytype = reinterpret_cast<PyTypeObject *>(Shard.ptr());
   g_placement_replicated_pytype =
       reinterpret_cast<PyTypeObject *>(Replicate.ptr());

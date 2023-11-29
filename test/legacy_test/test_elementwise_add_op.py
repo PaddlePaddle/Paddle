@@ -21,6 +21,7 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
+import paddle.distributed as dist
 from paddle import base
 from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
@@ -917,6 +918,122 @@ class TestTensorFloa32Float16Add(TestTensorFloa32Bfloat16OrFloat16Add):
         place = core.CUDAPlace(0)
         with base.dygraph.base.guard(place=place):
             self._floa32_bfloat16_or_float16_add(y_dtype=paddle.float16)
+
+
+class TestElementwiseAddOpAutoParallel(OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = False
+
+    def setUp(self):
+        self.op_type = "elementwise_add"
+        self.python_api = paddle.add
+        self.public_python_api = paddle.add
+        self.prim_op_type = "prim"
+        self.init_dtype()
+        self.init_input_output()
+        self.init_kernel_type()
+        self.init_axis()
+        self.if_check_prim()
+        self.if_enable_cinn()
+        self.init_placements()
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.outputs = {'Out': self.out}
+
+    def check_dygraph(self):
+        return not self.use_mkldnn and self.axis == -1
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_auto_parallel=True,
+        )
+
+    def init_placements(self):
+        self.placements = {
+            "X": [dist.Shard(0)],
+            "Y": [dist.Replicate()],
+        }
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [16, 32]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [16, 32]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_axis(self):
+        self.axis = -1
+
+    def if_check_prim(self):
+        self.check_prim = self.axis == -1
+
+    def if_enable_cinn(self):
+        pass
+
+
+class TestElementwiseAddOpAutoParallelXShardBoardcast(
+    TestElementwiseAddOpAutoParallel
+):
+    def init_placements(self):
+        self.placements = {
+            "X": [dist.Shard(0)],
+            "Y": [dist.Replicate()],
+        }
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [8, 16]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [2, 8, 16]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestElementwiseAddOpAutoParallelXYShard(TestElementwiseAddOpAutoParallel):
+    def init_placements(self):
+        self.placements = {
+            "X": [dist.Shard(0)],
+            "Y": [dist.Shard(1)],
+        }
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X', 'Y'], 'Out', check_auto_parallel=True
+        )
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [16, 32]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [16, 32]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestElementwiseAddOpAutoParallelXYShardBroardcast(
+    TestElementwiseAddOpAutoParallelXYShard
+):
+    def init_placements(self):
+        self.placements = {
+            "X": [dist.Shard(0)],
+            "Y": [dist.Replicate()],
+        }
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X', 'Y'], 'Out', check_auto_parallel=True
+        )
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [8, 16]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [2, 8, 16]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
 
 
 if __name__ == '__main__':

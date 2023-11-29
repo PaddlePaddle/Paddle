@@ -331,6 +331,47 @@ def monkey_patch_opresult():
         """
         return paddle.numel(self)
 
+    def clone(self):
+        """
+        Returns a new static OpResult, which is the clone of the original static
+        OpResult. It remains in the current graph, that is, the cloned OpResult
+        provides gradient propagation. Calling ``out = tensor.clone()`` is same
+        as ``out = assign(tensor)`` .
+
+        Returns:
+            OpResult, The cloned OpResult.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> paddle.enable_static()
+
+                >>> # create a static OpResult
+                >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
+                >>> # create a cloned OpResult
+                >>> y = x.clone()
+
+        """
+        return paddle.assign(self)
+
+    def append(self, var):
+        """
+        **Notes**:
+           **The type OpResult must be LoD Tensor Array.
+
+        """
+        if not self.is_dense_tensor_array_type():
+            raise TypeError(
+                "Only OpResult with pd_op.tensor_array support `append` method, but received type: {}".format(
+                    self.type()
+                )
+            )
+        from paddle.tensor.array import array_length, array_write
+
+        array_write(x=var, i=array_length(self), array=self)
+
     import paddle
 
     opresult_methods = [
@@ -341,6 +382,8 @@ def monkey_patch_opresult():
         ('ndim', _ndim),
         ('astype', astype),
         ('size', _size_),
+        ('clone', clone),
+        ('append', append),
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
