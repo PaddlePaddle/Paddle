@@ -2754,14 +2754,12 @@ void SequenceMaskInferMeta(const MetaTensor& x,
 }
 
 void SequenceMaskPIRInferMeta(const MetaTensor& x,
-                              const MetaTensor& max_len,
+                              const Scalar& max_len,
                               int out_dtype,
                               MetaTensor* y) {
   auto dim = phi::vectorize<int>(x.dims());
-
-  if (max_len) {
-    dim.push_back(-1);
-  }
+  int maxlen = max_len.to<int>();
+  dim.push_back(maxlen > 0 ? maxlen : -1);
   y->set_dims(phi::make_ddim(dim));
   auto out_phi_dtype = phi::TransToPhiDataType(out_dtype);
   y->set_dtype(out_phi_dtype);

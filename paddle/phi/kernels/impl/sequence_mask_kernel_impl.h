@@ -89,20 +89,10 @@ void SequenceMaskKernel(const Context& ctx,
 template <typename T, typename Context>
 void SequenceMaskPIRKernel(const Context& ctx,
                            const DenseTensor& x,
-                           const DenseTensor& max_len,
+                           const Scalar& max_len,
                            int out_dtype,
                            DenseTensor* y) {
-  int maxlen;
-  DenseTensor max_len_tensor =
-      Cast<T, Context>(ctx, max_len, phi::DataType::INT32);
-  bool is_gpu_place = ctx.GetPlace().GetType() == phi::AllocationType::GPU;
-  if (is_gpu_place) {
-    phi::DenseTensor temp;
-    phi::Copy(ctx, max_len_tensor, phi::CPUPlace(), false, &temp);
-    maxlen = *(temp.data<int>());
-  } else {
-    maxlen = *(max_len_tensor.data<int>());
-  }
+  int maxlen = max_len.to<int>();
 
   auto y_dim = phi::vectorize<int>(x.dims());
   y_dim.push_back(maxlen);

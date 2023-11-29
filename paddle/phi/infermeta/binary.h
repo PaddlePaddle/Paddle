@@ -431,7 +431,7 @@ void SequenceMaskInferMeta(const MetaTensor& x,
                            MetaTensor* y);
 
 void SequenceMaskPIRInferMeta(const MetaTensor& x,
-                              const MetaTensor& max_len,
+                              const Scalar& max_len,
                               int out_dtype,
                               MetaTensor* y);
 
