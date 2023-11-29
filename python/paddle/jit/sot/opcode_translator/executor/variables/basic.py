@@ -785,8 +785,13 @@ class NullVariable(VariableBase):
         # TODO: graph should be not None
         super().__init__(None, DanglingTracker())
 
+    def __call__(self, *args, **kwargs):
+        func = args[0]
+        assert callable(func)
+        return func(*args[1:], **kwargs)
+
     def reconstruct(self, codegen: PyCodeGen):
-        codegen.gen_push_null()
+        codegen.gen_load_null_variable()
 
 
 class CellVariable(VariableBase):

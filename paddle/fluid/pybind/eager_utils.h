@@ -54,6 +54,18 @@ namespace pybind {
 
 namespace py = ::pybind11;
 
+template <typename T>
+static T PyObjectCast(PyObject* obj) {
+  try {
+    return py::cast<T>(py::handle(obj));
+  } catch (py::cast_error&) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Python object is not type of %s, the real type is %s",
+        typeid(T).name(),
+        obj->ob_type->tp_name));
+  }
+}
+
 int TensorDtype2NumpyDtype(phi::DataType dtype);
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
@@ -381,6 +393,10 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
                                                       bool allow_none = false);
 paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj);
 
+PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args);
+
+PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args);
+
 // end of Slice related methods
 
 std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
@@ -468,5 +484,7 @@ void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
 }
 
 void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh);
+void BindEagerUtils(PyObject* module);
+
 }  // namespace pybind
 }  // namespace paddle

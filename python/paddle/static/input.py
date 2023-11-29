@@ -25,7 +25,7 @@ from paddle.base.framework import (
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.libpaddle import DataType
 
-from ..base.variable_index import _setitem_impl_, _setitem_static
+from ..base.variable_index import _setitem_static
 
 __all__ = []
 
@@ -422,8 +422,4 @@ def setitem(x, index, value):
        (1) a[Tensor([10,10])]=v -> setitem(a, (Tensor([10,10]),), v)
        (2) a[1] = v -> setitem(a, (1,), v)
     """
-    if core.is_compiled_with_xpu():
-        # (NOTE): Currently, there is no index_put_xpu kernel.
-        return _setitem_impl_(x, index, value)
-    else:
-        return _setitem_static(x, index, value)
+    return _setitem_static(x, index, value)

@@ -124,6 +124,22 @@ class IR_API ArrayAttribute : public Attribute {
                             const std::vector<Attribute>& value);
 };
 
+class IR_API TensorNameAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(TensorNameAttribute, StrAttributeStorage);
+
+  bool operator<(const TensorNameAttribute& right) const;
+
+  std::string data() const;
+
+  size_t size() const;
+
+  static TensorNameAttribute get(IrContext* ctx,
+                                 const std::string& tensor_name);
+};
+
 }  // namespace pir
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::StrAttribute)
@@ -136,3 +152,4 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::IndexAttribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ArrayAttribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::PointerAttribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::TypeAttribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::TensorNameAttribute)
