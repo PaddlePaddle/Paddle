@@ -30,8 +30,6 @@ class TestSqueezeApiForSemiAutoParallel:
     def check_tensor_eq(self, a, b):
         np1 = a.numpy()
         np2 = b.numpy()
-        print(np1)
-        print(np2)
         np.testing.assert_allclose(np1, np2, rtol=1e-06, verbose=True)
 
     def test_body(self, x_shape, out_shape, x_placements, axis, op_func):
@@ -86,7 +84,7 @@ class TestSqueezeApiForSemiAutoParallel:
             out_shape=[1, 4, 6, 1],
             x_placements=[dist.Shard(1)],
             axis=(0, 3),
-            op_func=paddle.squeeze,
+            op_func=paddle.unsqueeze,
         )
 
     def run_test_case(self):
