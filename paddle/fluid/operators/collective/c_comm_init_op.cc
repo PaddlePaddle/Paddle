@@ -48,30 +48,26 @@ class Scope;
 namespace paddle {
 namespace operators {
 
-class CCommInitOp : public framework::OperatorBase {
+template <typename T, typename DeviceContext>
+class CCommInitKernel : public framework::OpKernel<T> {
  public:
-  CCommInitOp(const std::string& type,
-              const framework::VariableNameMap& inputs,
-              const framework::VariableNameMap& outputs,
-              const framework::AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
-
-  void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto place = ctx.GetPlace();
+    const framework::Scope& scope = ctx.scope();
     if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-      auto var = scope.FindVar(Input("X"));
+      auto var = scope.FindVar("X");
       PADDLE_ENFORCE_NOT_NULL(
           var, platform::errors::InvalidArgument("Input con not be empty."));
 
-      int nranks = Attr<int>("nranks");
-      int rid = Attr<int>("ring_id");
+      int nranks = ctx.Attr<int>("nranks");
+      int rid = ctx.Attr<int>("ring_id");
 
       int device_id = place.device;
-      if (Attr<int>("device_id") >= 0) {
-        device_id = Attr<int>("device_id");
+      if (ctx.Attr<int>("device_id") >= 0) {
+        device_id = ctx.Attr<int>("device_id");
       }
-      int rank_id = Attr<int>("rank");
+      int rank_id = ctx.Attr<int>("rank");
       auto store = phi::distributed::CreateOrGetGlobalTCPStore();
       if (!phi::distributed::CommContextManager::GetInstance().Has(
               std::to_string(rid))) {
@@ -108,25 +104,25 @@ class CCommInitOp : public framework::OperatorBase {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
-      auto var = scope.FindVar(Input("X"));
+      auto var = scope.FindVar("X");
       PADDLE_ENFORCE_NOT_NULL(
           var, platform::errors::InvalidArgument("Input con not be empty."));
 
-      int nranks = Attr<int>("nranks");
-      int rid = Attr<int>("ring_id");
+      int nranks = ctx.Attr<int>("nranks");
+      int rid = ctx.Attr<int>("ring_id");
 
       int device_id = place.device;
-      if (Attr<int>("device_id") >= 0) {
-        device_id = Attr<int>("device_id");
+      if (ctx.Attr<int>("device_id") >= 0) {
+        device_id = ctx.Attr<int>("device_id");
       }
-      int rank_id = Attr<int>("rank");
+      int rank_id = ctx.Attr<int>("rank");
 #endif
 #if defined(PADDLE_WITH_NCCL)
       if (FLAGS_dynamic_static_unified_comm) {
         VLOG(3) << "#### use new comm lab ####";
         auto store = phi::distributed::CreateOrGetGlobalTCPStore();
         phi::distributed::CommContextManager::SetDeviceId(device_id);
-        std::string endpoints = Attr<std::string>("endpoints");
+        std::string endpoints = ctx.Attr<std::string>("endpoints");
         phi::distributed::CommContextManager::CreateNCCLCommContext(
             store, std::to_string(rid), rank_id, nranks, endpoints);
         return;
@@ -140,6 +136,19 @@ class CCommInitOp : public framework::OperatorBase {
           comm_id, nranks, rank_id, device_id, rid);
 #endif
     }
+  }
+};
+
+class CCommInitOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {}
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
@@ -175,3 +184,6 @@ Initialize collective communication context within this trainer
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(c_comm_init, ops::CCommInitOp, ops::CCommInitOpMaker);
+
+PD_REGISTER_STRUCT_KERNEL(
+    c_comm_init, CPU, ALL_LAYOUT, ops::CCommInitKernel, float) {}
