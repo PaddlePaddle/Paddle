@@ -659,6 +659,7 @@ void BindValue(py::module *m) {
            })
       .def("replace_all_uses_with",
            [](Value self, Value value) { self.ReplaceAllUsesWith(value); })
+      .def("set_type", [](Value self, Type type) { self.set_type(type); })
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &Value::use_empty)
@@ -1305,6 +1306,21 @@ SplitedResult SplitForwardBackward(
   return std::make_pair(programs, attr);
 }
 
+pir::Type CreateSelectedRowsTypeByDenseTensor(pir::Type dense_tensor_type) {
+  if (dense_tensor_type.isa<DenseTensorType>()) {
+    DenseTensorType type = dense_tensor_type.dyn_cast<DenseTensorType>();
+    return SelectedRowsType::get(pir::IrContext::Instance(),
+                                 type.dtype(),
+                                 type.dims(),
+                                 type.data_layout(),
+                                 type.lod(),
+                                 type.offset());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, input is not a dense tensor type."));
+  }
+}
+
 void BindUtils(pybind11::module *m) {
   m->def("clone_program", CloneProgram);
   m->def("split_program", SplitForwardBackward);
@@ -1331,6 +1347,8 @@ void BindUtils(pybind11::module *m) {
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
     pir::IrContext::Instance()->GetOrRegisterDialect<pir::ControlFlowDialect>();
   });
+  m->def("create_selected_rows_type_by_dense_tensor",
+         CreateSelectedRowsTypeByDenseTensor);
   m->def(
       "translate_to_pir",
       [](const ::paddle::framework::ProgramDesc &legacy_program) {
