@@ -278,7 +278,7 @@ using DDim = phi::DDim;
 
 namespace std {
 template <>
-struct hash<phi::DDim> {
-  TEST_API std::size_t operator()(phi::DDim const& ddim) const;
+TEST_API struct hash<phi::DDim> {
+  std::size_t operator()(phi::DDim const& ddim) const;
 };
 }  // namespace std
