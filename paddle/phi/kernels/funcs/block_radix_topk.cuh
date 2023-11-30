@@ -16,6 +16,7 @@
 #pragma once
 
 #ifdef PADDLE_WITH_CUDA
+#include <float.h>
 #include <cub/block/block_load.cuh>
 #include <cub/block/block_scan.cuh>
 #include <cub/block/block_store.cuh>

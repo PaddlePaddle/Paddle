@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <float.h>
 #include <random>
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "paddle/common/macros.h"  // NOLINT
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
