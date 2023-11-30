@@ -3,6 +3,15 @@
 # 2) The definitions of static graphs and dynamic graphs are inconsistent, but the final definition plan has not yet been clarified.
 # After the definition is clearly defined, migrate to paddle /fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
 
+# - op: sequence_mask
+  # args: (Tensor x, Tensor max_len_tensor, int maxlen, int out_dtype)
+  # output: Tensor(y)
+  # infer_meta:
+  #   func: SequenceMaskInferMeta
+  # kernel:
+  #   func: sequence_mask
+  # optional: max_len_tensor
+
 - op : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor learning_rate, Tensor master_param, float rho, float epsilon, bool multi_precision)
   output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
@@ -1400,15 +1409,6 @@
     func: FusedFeedForwardInferMeta
   optional: dropout1_seed, dropout2_seed, linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias, ln2_mean, ln2_variance, ln1_mean, ln1_variance, ln1_out
   backward: fused_feedforward_grad
-
-- op: sequence_mask
-  args: (Tensor x, Tensor max_len_tensor, int maxlen, int out_dtype)
-  output: Tensor(y)
-  infer_meta:
-    func: SequenceMaskInferMeta
-  kernel:
-    func: sequence_mask
-  optional: max_len_tensor
 
 - op: sparse_momentum
   args: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor learning_rate, Tensor master_param,float mu, Scalar axis=0, bool use_nesterov=false,str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f)
