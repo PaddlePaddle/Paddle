@@ -303,10 +303,10 @@ TEST(StandaloneExecutor, while_op) {
       builder.Build<WhileOp>(cond_value, std::vector<pir::Value>{i, ten});
 
   // { i = i + 1}
-  pir::Block* body_block = while_op.body_block();
-  auto body_i_argument = body_block->AddArgument(i.type());
-  auto body_ten_argument = body_block->AddArgument(ten.type());
-  builder.SetInsertionPointToStart(body_block);
+  pir::Block& body_block = while_op.body();
+  auto body_i_argument = body_block.arg(0);
+  auto body_ten_argument = body_block.arg(1);
+  builder.SetInsertionPointToStart(&body_block);
   auto one =
       builder.Build<FullOp>(std::vector<int64_t>{1}, 1, phi::DataType::INT32)
           .out();

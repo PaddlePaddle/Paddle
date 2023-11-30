@@ -201,7 +201,7 @@ def logical_or(x, y, out=None, name=None):
             [[True , True ],
              [True , False]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logical_or(x, y)
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True
@@ -262,7 +262,7 @@ def logical_xor(x, y, out=None, name=None):
             [[False, True ],
              [True , False]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logical_xor(x, y)
 
     return _logical_op(
@@ -322,7 +322,7 @@ def logical_not(x, out=None, name=None):
             Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True , False, True ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logical_not(x)
     return _logical_op(
         op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False
@@ -363,7 +363,7 @@ def is_empty(x, name=None):
             False)
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.is_empty(x)
     else:
         check_variable_and_dtype(
@@ -512,8 +512,8 @@ def equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x (Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64.
-        y (Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64.
+        x (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64.
+        y (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -551,6 +551,9 @@ def equal(x, y, name=None):
                 "float16",
                 "float32",
                 "float64",
+                "uint8",
+                "int8",
+                "int16",
                 "int32",
                 "int64",
                 "uint16",
@@ -565,6 +568,9 @@ def equal(x, y, name=None):
                 "float16",
                 "float32",
                 "float64",
+                "uint8",
+                "int8",
+                "int16",
                 "int32",
                 "int64",
                 "uint16",
@@ -609,8 +615,8 @@ def greater_equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
         name (str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -639,6 +645,9 @@ def greater_equal(x, y, name=None):
                 "float16",
                 "float32",
                 "float64",
+                "uint8",
+                "int8",
+                "int16",
                 "int32",
                 "int64",
                 "uint16",
@@ -653,6 +662,9 @@ def greater_equal(x, y, name=None):
                 "float16",
                 "float32",
                 "float64",
+                "uint8",
+                "int8",
+                "int16",
                 "int32",
                 "int64",
                 "uint16",
@@ -697,8 +709,8 @@ def greater_than(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
         name (str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -727,6 +739,9 @@ def greater_than(x, y, name=None):
                 "float16",
                 "float32",
                 "float64",
+                "uint8",
+                "int8",
+                "int16",
                 "int32",
                 "int64",
                 "uint16",
@@ -741,6 +756,9 @@ def greater_than(x, y, name=None):
                 "float16",
                 "float32",
                 "float64",
+                "uint8",
+                "int8",
+                "int16",
                 "int32",
                 "int64",
                 "uint16",
@@ -785,8 +803,8 @@ def less_equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
         name (str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -816,6 +834,9 @@ def less_equal(x, y, name=None):
                 "float16",
                 "float32",
                 "float64",
+                "uint8",
+                "int8",
+                "int16",
                 "int32",
                 "int64",
                 "uint16",
@@ -830,6 +851,9 @@ def less_equal(x, y, name=None):
                 "float16",
                 "float32",
                 "float64",
+                "uint8",
+                "int8",
+                "int16",
                 "int32",
                 "int64",
                 "uint16",
@@ -874,8 +898,8 @@ def less_than(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
         name (str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -905,6 +929,9 @@ def less_than(x, y, name=None):
                 "float16",
                 "float32",
                 "float64",
+                "uint8",
+                "int8",
+                "int16",
                 "int32",
                 "int64",
                 "uint16",
@@ -919,6 +946,9 @@ def less_than(x, y, name=None):
                 "float16",
                 "float32",
                 "float64",
+                "uint8",
+                "int8",
+                "int16",
                 "int32",
                 "int64",
                 "uint16",
@@ -963,8 +993,8 @@ def not_equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
-        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, uint8, int8, int16, int32, int64.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, uint8, int8, int16, int32, int64.
         name (str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -994,6 +1024,9 @@ def not_equal(x, y, name=None):
                 "float16",
                 "float32",
                 "float64",
+                "uint8",
+                "int8",
+                "int16",
                 "int32",
                 "int64",
                 "uint16",
@@ -1008,6 +1041,9 @@ def not_equal(x, y, name=None):
                 "float16",
                 "float32",
                 "float64",
+                "uint8",
+                "int8",
+                "int16",
                 "int32",
                 "int64",
                 "uint16",

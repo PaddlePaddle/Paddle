@@ -317,8 +317,8 @@ cc_test_old(
   var_handle
   op_handle_base
   scope
-  phi
   memory
+  phi
   device_context
   gather_op_handle)
 
@@ -381,8 +381,7 @@ set(IR_PASS_DEPS
     delete_dropout_op_pass)
 
 if(WITH_CINN)
-  set(IR_PASS_DEPS ${IR_PASS_DEPS} build_cinn_pass)
-  set(IR_PASS_DEPS ${IR_PASS_DEPS} cinn_zero_tensor_trick_pass)
+  set(IR_PASS_DEPS ${IR_PASS_DEPS} paddle2cinn)
 endif()
 
 if(NOT APPLE

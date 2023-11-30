@@ -26,8 +26,7 @@ bool OpResult::classof(Value value) {
 }
 
 Operation *OpResult::owner() const {
-  CHECK_OPRESULT_NULL_IMPL(owner);
-  return IMPL_->owner();
+  return impl_ ? static_cast<detail::OpResultImpl *>(impl_)->owner() : nullptr;
 }
 
 uint32_t OpResult::index() const {

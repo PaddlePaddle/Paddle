@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
 import unittest
 
 import numpy as np
@@ -22,6 +23,7 @@ from paddle.io import (
     RandomSampler,
     Sampler,
     SequenceSampler,
+    SubsetRandomSampler,
     WeightedRandomSampler,
 )
 
@@ -108,6 +110,28 @@ class TestRandomSampler(unittest.TestCase):
         for i in iter(sampler):
             rets.append(i)
         assert tuple(sorted(rets)) == tuple(range(0, 50))
+
+
+class TestSubsetRandomSampler(unittest.TestCase):
+    def test_main(self):
+        indices = list(range(100))
+        random.shuffle(indices)
+        indices = indices[:30]
+        sampler = SubsetRandomSampler(indices)
+        assert len(sampler) == len(indices)
+
+        hints = {i: 0 for i in indices}
+        for index in iter(sampler):
+            hints[index] += 1
+        for h in hints.values():
+            assert h == 1
+
+    def test_raise(self):
+        try:
+            sampler = SubsetRandomSampler([])
+            self.assertTrue(False)
+        except ValueError:
+            self.assertTrue(True)
 
 
 class TestBatchSampler(unittest.TestCase):
