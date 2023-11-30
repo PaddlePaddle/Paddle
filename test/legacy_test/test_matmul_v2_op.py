@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
 from testsuite import create_op
 
 import paddle
+import paddle.distributed as dist
 from paddle import base
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
@@ -147,6 +148,33 @@ class TestMatMulOp3(TestMatMulV2Op):
         self.y_shape = (1, 1, 100, 2)
         self.trans_x = False
         self.trans_y = False
+        self.placements = {
+            'X': [dist.Shard(0)],
+            'Y': [dist.Replicate()],
+        }
+
+    def test_check_grad(self):
+        if core.is_compiled_with_rocm():
+            self.check_grad(
+                ['X', 'Y'],
+                'Out',
+                max_relative_error=1e-2,
+                check_cinn=self.check_cinn
+                if hasattr(self, 'check_cinn')
+                else True,
+                check_pir=True,
+                check_auto_parallel=True,
+            )
+        else:
+            self.check_grad(
+                ['X', 'Y'],
+                'Out',
+                check_cinn=self.check_cinn
+                if hasattr(self, 'check_cinn')
+                else True,
+                check_pir=True,
+                check_auto_parallel=True,
+            )
 
 
 class TestMatMulOp4(TestMatMulV2Op):

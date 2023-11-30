@@ -502,16 +502,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     }
   }
 
-  // add fake symbolic args for test
-  if (FLAGS_cinn_bucket_compile) {
-    group_func_args.emplace_back(ir::_Var_::Make("fake_symbol1", Int(32)),
-                                 ir::Argument::IO::kOutput);
-    group_func_args.emplace_back(ir::_Var_::Make("fake_symbol2", Int(32)),
-                                 ir::Argument::IO::kOutput);
-    group->output_names.push_back("fake_symbol1");
-    group->output_names.push_back("fake_symbol2");
-  }
-
 #ifdef CINN_WITH_CUDA
   optim::OptimizeExprGPU(&(func_body));
 #endif

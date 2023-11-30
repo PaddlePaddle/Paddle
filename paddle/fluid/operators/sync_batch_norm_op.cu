@@ -94,7 +94,7 @@ void SyncBatchNormKernel(const Context& ctx,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
 
     auto* stats = reinterpret_cast<BatchNormParamType<T>*>(alloc_ptr->ptr());
-    const int threads = 256;
+    const int threads = 512;
     int grid = std::min(C, (max_threads + threads - 1) / threads);
     if (layout == phi::DataLayout::kNCHW) {
       KeLocalStats<T, threads, phi::DataLayout::kNCHW>
