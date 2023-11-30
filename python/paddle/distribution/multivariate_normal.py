@@ -13,9 +13,7 @@
 # limitations under the License.
 
 import math
-from collections.abc import Iterable
-
-import numpy as np
+from collections.abc import Sequence
 
 import paddle
 from paddle.distribution import distribution
@@ -40,44 +38,44 @@ class MultivariateNormal(distribution.Distribution):
     * :math:`covariance_matrix = \Sigma`: is the k-by-k covariance matrix.
 
     Args:
-        loc(int|float|np.ndarray|Tensor): The mean of Multivariate Normal distribution. The data type of `loc` will be convert to float32.
-        covariance_matrix(Tensor): The covariance matrix of Multivariate Normal distribution. The data type of `covariance_matrix` will be convert to float32.
-        precision_matrix(Tensor): The inverse of the covariance matrix. The data type of `precision_matrix` will be convert to float32.
-        scale_tril(Tensor): The cholesky decomposition (lower triangular matrix) of the covariance matrix. The data type of `scale_tril` will be convert to float32.
+        loc(int|float|Tensor): The mean of Multivariate Normal distribution. The data type of `loc` will be convert to the global default dtype.
+        covariance_matrix(Tensor): The covariance matrix of Multivariate Normal distribution. The data type of `covariance_matrix` will be convert to the global default dtype.
+        precision_matrix(Tensor): The inverse of the covariance matrix. The data type of `precision_matrix` will be convert to the global default dtype.
+        scale_tril(Tensor): The cholesky decomposition (lower triangular matrix) of the covariance matrix. The data type of `scale_tril` will be convert to the global default dtype.
 
     Examples:
         .. code-block:: python
 
-            >>> import paddle
-            >>> from paddle.distribution import MultivariateNormal
-            >>> rv = MultivariateNormal(loc=paddle.to_tensor([2.,5.]), covariance_matrix=paddle.to_tensor([[2.,1.],[1.,2.]]))
+            import paddle
+            from paddle.distribution import MultivariateNormal
 
-            >>> # doctest: +SKIP
-            >>> print(rv.sample([3, 2]))
-            Tensor(shape=[3, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[0.68554986, 3.85142398],
-            [1.88336682, 5.43841648]],
+            # init `loc` and `covariance_matrix` with `paddle.Tensor`
+            rv = MultivariateNormal(loc=paddle.to_tensor([2.,5.]), covariance_matrix=paddle.to_tensor([[2.,1.],[1.,2.]]))
 
-            [[5.32492065, 7.23725986],
-            [3.42192221, 4.83934879]],
+            print(rv.sample([3, 2]))
+            # Tensor(shape=[3, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[[0.68554986, 3.85142398],
+            #        [1.88336682, 5.43841648]],
+            #
+            #        [[5.32492065, 7.23725986],
+            #        [3.42192221, 4.83934879]],
+            #
+            #        [[3.36775684, 4.46108866],
+            #        [4.58927441, 4.32255936]]])
 
-            [[3.36775684, 4.46108866],
-            [4.58927441, 4.32255936]]])
+            print(rv.mean)
+            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [2., 5.])
 
-            >>> # doctest: -SKIP
-            >>> print(rv.mean)
-            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [2., 5.])
+            print(rv.entropy())
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        3.38718319)
 
-            >>> print(rv.entropy())
-            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            3.38718319)
-
-            >>> rv1 = MultivariateNormal(loc=paddle.to_tensor([2.,5.]), covariance_matrix=paddle.to_tensor([[2.,1.],[1.,2.]]))
-            >>> rv2 = MultivariateNormal(loc=paddle.to_tensor([-1.,3.]), covariance_matrix=paddle.to_tensor([[3.,2.],[2.,3.]]))
-            >>> print(rv1.kl_divergence(rv2))
-            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            1.55541301)
+            rv1 = MultivariateNormal(loc=paddle.to_tensor([2.,5.]), covariance_matrix=paddle.to_tensor([[2.,1.],[1.,2.]]))
+            rv2 = MultivariateNormal(loc=paddle.to_tensor([-1.,3.]), covariance_matrix=paddle.to_tensor([[3.,2.],[2.,3.]]))
+            print(rv1.kl_divergence(rv2))
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        1.55541301)
     """
 
     def __init__(
@@ -87,14 +85,12 @@ class MultivariateNormal(distribution.Distribution):
         precision_matrix=None,
         scale_tril=None,
     ):
-        self.dtype = 'float32'
+        self.dtype = paddle.get_default_dtype()
         if isinstance(loc, (float, int)):
-            loc = paddle.to_tensor([loc], dtype=self.dtype)
-        elif isinstance(loc, np.ndarray):
-            loc = paddle.to_tensor(loc, dtype=self.dtype)
+            loc = [loc]
+        loc = paddle.to_tensor(loc, dtype=self.dtype)
         if loc.dim() < 1:
             loc = loc.reshape((1,))
-        loc = paddle.cast(loc, dtype=self.dtype)
         self.covariance_matrix = None
         self.precision_matrix = None
         self.scale_tril = None
@@ -220,7 +216,7 @@ class MultivariateNormal(distribution.Distribution):
                 "covariance_matrix or precision_matrix must be a symmetric matrix"
             )
         is_postive_definite = (
-            paddle.cast(paddle.linalg.eigvalsh(value), dtype="float32") > 0
+            paddle.cast(paddle.linalg.eigvalsh(value), dtype=self.dtype) > 0
         ).all()
         return is_postive_definite
 
@@ -282,7 +278,7 @@ class MultivariateNormal(distribution.Distribution):
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor, Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`. The data type is float32.
+            Tensor, Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`. The data type is the global default dtype.
         """
         with paddle.no_grad():
             return self.rsample(shape)
@@ -294,10 +290,10 @@ class MultivariateNormal(distribution.Distribution):
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor, Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`. The data type is float32.
+            Tensor, Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`. The data type is the global default dtype.
         """
-        if not isinstance(shape, Iterable):
-            raise TypeError('sample shape must be Iterable object.')
+        if not isinstance(shape, Sequence):
+            raise TypeError('sample shape must be Sequence object.')
         output_shape = self._extend_shape(shape)
         eps = paddle.normal(shape=output_shape)
         return self.loc + paddle.matmul(
@@ -352,7 +348,7 @@ class MultivariateNormal(distribution.Distribution):
         * :math:\Omega: is the support of the distribution.
 
         Returns:
-            Tensor, Shannon entropy of Multivariate Normal distribution. The data type is float32.
+            Tensor, Shannon entropy of Multivariate Normal distribution. The data type is the global default dtype.
         """
         half_log_det = (
             self._unbroadcasted_scale_tril.diagonal(axis1=-2, axis2=-1)
@@ -381,7 +377,7 @@ class MultivariateNormal(distribution.Distribution):
             other (MultivariateNormal): instance of Multivariate Normal.
 
         Returns:
-            Tensor, kl-divergence between two Multivariate Normal distributions. The data type is float32.
+            Tensor, kl-divergence between two Multivariate Normal distributions. The data type is the global default dtype.
 
         """
         if (

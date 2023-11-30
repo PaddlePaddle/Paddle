@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections.abc import Iterable
-
-import numpy as np
+from collections.abc import Sequence
 
 import paddle
 from paddle.distribution import distribution
@@ -51,8 +49,8 @@ class ContinuousBernoulli(distribution.Distribution):
         \right.
 
     Args:
-        probability(int|float|np.ndarray|Tensor): The probability of Continuous Bernoulli distribution between [0, 1],
-                    which characterize the shape of the pdf. The data type of `probability` will be convert to float32.
+        probability(int|float|Tensor): The probability of Continuous Bernoulli distribution between [0, 1],
+                    which characterize the shape of the pdf. The data type of `probability` will be convert to the global default dtype.
         eps(float): Specify the bandwith of the unstable calculation region near 0.5. The unstable calculation region
                     would be [0.5 - eps, 0.5 + eps], where the calculation is approximated by talyor expansion. The
                     default value is 1e-4.
@@ -60,36 +58,38 @@ class ContinuousBernoulli(distribution.Distribution):
     Examples:
         .. code-block:: python
 
-            >>> import paddle
-            >>> from paddle.distribution import ContinuousBernoulli
-            >>> rv = ContinuousBernoulli(paddle.to_tensor([0.2, 0.5]))
+            import paddle
+            from paddle.distribution import ContinuousBernoulli
 
-            >>> # doctest: +SKIP
-            >>> print(rv.sample([2]))
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.09428147, 0.81438422],
-            [0.24624705, 0.93354583]])
+            # init `probability` with `paddle.Tensor`
+            rv = ContinuousBernoulli(paddle.to_tensor([0.2, 0.5]))
 
-            >>> # doctest: -SKIP
-            >>> print(rv.mean)
-            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.38801414, 0.50000000])
+            print(rv.sample([2]))
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[0.09428147, 0.81438422],
+            #        [0.24624705, 0.93354583]])
 
-            >>> print(rv.entropy())
-            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.07641461,  0.        ])
+            print(rv.mean)
+            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0.38801414, 0.50000000])
 
-            >>> rv1 = ContinuousBernoulli(paddle.to_tensor([0.2, 0.8]))
-            >>> rv2 = ContinuousBernoulli(paddle.to_tensor([0.7, 0.5]))
-            >>> print(rv1.kl_divergence(rv2))
-            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.20103613, 0.07641447])
+            print(rv.entropy())
+            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [-0.07641461,  0.        ])
+
+            rv1 = ContinuousBernoulli(paddle.to_tensor([0.2, 0.8]))
+            rv2 = ContinuousBernoulli(paddle.to_tensor([0.7, 0.5]))
+            print(rv1.kl_divergence(rv2))
+            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0.20103613, 0.07641447])
     """
 
     def __init__(self, probability, eps=1e-4):
         self.eps = paddle.to_tensor(eps)
-        self.dtype = 'float32'
+        self.dtype = paddle.get_default_dtype()
         self.probability = self._to_tensor(probability)
+
+        # eps_prob is used to clip the input `probability` in the range of [eps_prob, 1-eps_prob]
         eps_prob = paddle.finfo(self.probability.dtype).eps
         self.probability = paddle.clip(
             self.probability, min=eps_prob, max=1 - eps_prob
@@ -106,17 +106,15 @@ class ContinuousBernoulli(distribution.Distribution):
         super().__init__(batch_shape)
 
     def _to_tensor(self, probability):
-        """Convert the input parameters into tensors with dtype = float32
+        """Convert the input parameters into tensors with the global default dtype
 
         Returns:
             Tensor: converted probability.
         """
         # convert type
         if isinstance(probability, (float, int)):
-            probability = paddle.to_tensor([probability], dtype=self.dtype)
-        if isinstance(probability, np.ndarray):
-            probability = paddle.to_tensor(probability)
-        probability = paddle.cast(probability, dtype=self.dtype)
+            probability = [probability]
+        probability = paddle.to_tensor(probability, dtype=self.dtype)
         return probability
 
     def _check_constraint(self, value):
@@ -247,7 +245,7 @@ class ContinuousBernoulli(distribution.Distribution):
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor, Sampled data with shape `sample_shape` + `batch_shape`. The data type is float32.
+            Tensor, Sampled data with shape `sample_shape` + `batch_shape`. The data type is the global default dtype.
         """
         with paddle.no_grad():
             return self.rsample(shape)
@@ -259,10 +257,10 @@ class ContinuousBernoulli(distribution.Distribution):
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor, Sampled data with shape `sample_shape` + `batch_shape`. The data type is float32.
+            Tensor, Sampled data with shape `sample_shape` + `batch_shape`. The data type is the global default dtype.
         """
-        if not isinstance(shape, Iterable):
-            raise TypeError('sample shape must be Iterable object.')
+        if not isinstance(shape, Sequence):
+            raise TypeError('sample shape must be Sequence object.')
         shape = tuple(shape)
         batch_shape = tuple(self.batch_shape)
         output_shape = tuple(shape + batch_shape)
@@ -316,7 +314,7 @@ class ContinuousBernoulli(distribution.Distribution):
         * :math:\Omega: is the support of the distribution.
 
         Returns:
-            Tensor, Shannon entropy of Continuous Bernoulli distribution. The data type is float32.
+            Tensor, Shannon entropy of Continuous Bernoulli distribution. The data type is the global default dtype.
         """
         log_p = paddle.log(self.probability)
         log_1_minus_p = paddle.log1p(-self.probability)
@@ -418,7 +416,7 @@ class ContinuousBernoulli(distribution.Distribution):
             other (ContinuousBernoulli): instance of Continuous Bernoulli.
 
         Returns:
-            Tensor, kl-divergence between two Continuous Bernoulli distributions. The data type is float32.
+            Tensor, kl-divergence between two Continuous Bernoulli distributions. The data type is the global default dtype.
 
         """
 
