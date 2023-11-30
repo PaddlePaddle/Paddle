@@ -378,7 +378,10 @@ class TEST_API OperatorBase {
 
   using HookFunc = std::function<void(OperatorBase*, Scope*)>;
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
-    hookfuncs_ = hookfuncs;
+    output_hookfuncs_ = hookfuncs;
+  }
+  void SetInputHooks(const std::vector<HookFunc>& hookfuncs) {
+    input_hookfuncs_ = hookfuncs;
   }
 
  protected:
@@ -409,7 +412,8 @@ class TEST_API OperatorBase {
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
 
-  std::vector<HookFunc> hookfuncs_;
+  std::vector<HookFunc> output_hookfuncs_;
+  std::vector<HookFunc> input_hookfuncs_;
 
  private:
   void GenerateTemporaryNames();
