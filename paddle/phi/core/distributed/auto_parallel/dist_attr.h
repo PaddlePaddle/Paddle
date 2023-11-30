@@ -177,8 +177,6 @@ class TEST_API TensorDistAttr {
 
   bool empty() const;
 
-  void set_from_placement(const phi::distributed::Placements& placements);
-
   std::vector<std::shared_ptr<PlacementStatus>> to_placement() const;
 
   // if mesh_axis is -1, check if tensor is replicated on whole process_mesh

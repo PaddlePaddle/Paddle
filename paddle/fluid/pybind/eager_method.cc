@@ -64,6 +64,9 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
+#endif
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -122,6 +125,50 @@ phi::DenseTensor ReshardXToReplicated(
   } else {
     return dist_tensor->value();
   }
+}
+
+void set_from_placement(phi::distributed::TensorDistAttr& dist_attr,  // NOLINT
+                        const phi::distributed::Placements& placements) {
+  PADDLE_ENFORCE_NE(
+      dist_attr.process_mesh().empty(),
+      true,
+      phi::errors::InvalidArgument(
+          "process_mesh can not be empty when call set_from_placement"));
+
+  PADDLE_ENFORCE_EQ(
+      placements.size(),
+      dist_attr.process_mesh().ndim(),
+      phi::errors::InvalidArgument(
+          "Input placements size %ld should be equal to process_mesh size %ld",
+          placements.size(),
+          dist_attr.process_mesh().ndim()));
+  int64_t ndim = dist_attr.dims_mapping().size();
+  std::vector<int64_t> dim_map(ndim, -1);
+  std::vector<int64_t> partial_dims;
+  for (size_t i = 0; i < placements.size(); i++) {
+    auto& placement = placements[i];
+    if (placement->is_shard()) {
+      auto shard_dim =
+          dynamic_cast<const phi::distributed::Shard&>(*placement).get_dim();
+      PADDLE_ENFORCE_EQ(
+          dim_map[shard_dim],
+          -1,
+          phi::errors::InvalidArgument(
+              "Tensor dim %lld is already sharded on mesh dim %lld,"
+              " DistTensor operator implementation does not support things "
+              "like hybrid"
+              " sharding strategies yet (i.e. [Shard(0), Shard(0)])",
+              shard_dim,
+              dim_map[shard_dim]));
+      dim_map[shard_dim] = i;
+    } else if (placement->is_partial()) {
+      partial_dims.push_back(i);
+    }
+  }
+  dist_attr.set_dims_mapping(dim_map);
+  dist_attr.set_partial_status(partial_dims);
+  dist_attr.mark_annotated("process_mesh");
+  dist_attr.mark_annotated("dims_mapping");
 }
 #endif
 }  // namespace
@@ -3090,7 +3137,7 @@ static PyObject* tensor_method_reshard_(TensorObject* self,
   phi::distributed::TensorDistAttr dist_attr(
       phi::vectorize<int64_t>(src_tensor.dims()));
   dist_attr.set_process_mesh(mesh);
-  dist_attr.set_from_placement(placements);
+  set_from_placement(dist_attr, placements);
 
   VLOG(6) << "Start reshard DistTensor " << src_tensor.name()
           << " inplace, from src dist_attr"
