@@ -70,7 +70,6 @@ def train_mlp(
             "matmul_v2",
             "elementwise_add",
             "relu",
-            "reduce_mean",
         ]
 
     if sharding_stage == 1:
@@ -108,7 +107,7 @@ def train_mlp(
         for batch_id, data in enumerate(train_loader()):
             data.stop_gradient = True
 
-            enable_stats = False  # eop == 0 and batch_id == 0
+            enable_stats = False  # eop == 0
             if enable_stats:
                 logging.info("<<<<<<<<<<<< forward & backward >>>>>>>>>>>")
                 paddle.amp.debugging.enable_operator_stats_collection()
@@ -119,13 +118,15 @@ def train_mlp(
                 custom_white_list=custom_white_list,
             ):
                 out = model(data)
-                loss = paddle.mean(out)
 
-                # normal implementation for gradient accumulation.
-                if acc_steps != 1:
-                    loss = loss / acc_steps
+            # compute loss in float32
+            loss = paddle.mean(out.astype("float32"))
 
-            losses.append(loss.astype("float32").item())
+            # normal implementation for gradient accumulation.
+            if acc_steps != 1:
+                loss = loss / acc_steps
+
+            losses.append(loss.item())
             logging.info(
                 f"-- [rank={local_rank}] epoch {eop}, batch {batch_id}, loss: {loss.astype(paddle.float32).numpy()}"
             )
@@ -133,7 +134,8 @@ def train_mlp(
             if test_scaler:
                 assert scaler is not None
                 scaler.scale(loss).backward()
-                paddle.amp.debugging.disable_operator_stats_collection()
+                if enable_stats:
+                    paddle.amp.debugging.disable_operator_stats_collection()
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.clear_grad()
