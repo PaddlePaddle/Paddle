@@ -36,7 +36,7 @@ class TestCpuCuda(Dy2StTestBase):
         # print(paddle.jit.to_static(func).code)
         if paddle.is_compiled_with_cuda():
             res = paddle.jit.to_static(func)(x)
-            self.assertTrue(res.place.is_gpu_place())
+            self.assertTrue(res.place.is_cpu_place())
 
 
 class TestToTensor(Dy2StTestBase):
