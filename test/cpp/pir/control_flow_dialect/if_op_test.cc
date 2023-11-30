@@ -51,17 +51,17 @@ TEST(if_op_test, base) {
   auto if_op = builder.Build<paddle::dialect::IfOp>(
       full_op.out(), std::vector<pir::Type>{builder.bool_type()});
 
-  pir::Block* true_block = if_op.true_block();
+  auto& true_block = if_op.true_block();
 
-  builder.SetInsertionPointToStart(true_block);
+  builder.SetInsertionPointToStart(&true_block);
 
   auto full_op_1 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2}, true, phi::DataType::BOOL);
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_1.out()});
 
-  pir::Block* false_block = if_op.false_block();
+  auto& false_block = if_op.false_block();
 
-  builder.SetInsertionPointToStart(false_block);
+  builder.SetInsertionPointToStart(&false_block);
 
   auto full_op_2 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{3}, true, phi::DataType::BOOL);
@@ -110,8 +110,8 @@ TEST(if_op_test, build_by_block) {
     vec.push_back(&block);
   }
   EXPECT_EQ(vec.size(), 2u);
-  EXPECT_EQ(vec[0], if_op.true_block());
-  EXPECT_EQ(vec[1], if_op.false_block());
+  EXPECT_EQ(vec[0], &if_op.true_block());
+  EXPECT_EQ(vec[1], &if_op.false_block());
 }
 
 TEST(if_op_test, network_with_backward) {
@@ -133,7 +133,7 @@ TEST(if_op_test, network_with_backward) {
 
   auto if_op = builder.Build<IfOp>(cond, std::vector<pir::Type>{x.type()});
 
-  builder.SetInsertionPointToStart(if_op.true_block());
+  builder.SetInsertionPointToStart(&if_op.true_block());
 
   auto local1_z = builder.Build<AddOp>(x, y).out();
   auto local1_w = builder.Build<AddOp>(local1_z, y).out();
@@ -142,7 +142,7 @@ TEST(if_op_test, network_with_backward) {
 
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{local1_w});
 
-  builder.SetInsertionPointToStart(if_op.false_block());
+  builder.SetInsertionPointToStart(&if_op.false_block());
   auto local2_z = builder.Build<MatmulOp>(x, y).out();
   auto local2_w = builder.Build<MatmulOp>(local2_z, y).out();
   builder.Build<pir::TuplePushOp>(inlet_1,
@@ -158,7 +158,7 @@ TEST(if_op_test, network_with_backward) {
       builder.Build<IfOp>(cond, std::vector<pir::Type>{x.type(), y.type()});
 
   // construct the true block of if_grad
-  builder.SetInsertionPointToStart(if_grad.true_block());
+  builder.SetInsertionPointToStart(&if_grad.true_block());
 
   auto pop_local1_z =
       builder.Build<pir::TuplePopOp>(outlet_0).outlet_element(0);
@@ -174,7 +174,7 @@ TEST(if_op_test, network_with_backward) {
       std::vector<pir::Value>{local1_x_grad, local1_y_grad});
 
   // construct the false block of if_grad
-  builder.SetInsertionPointToStart(if_grad.false_block());
+  builder.SetInsertionPointToStart(&if_grad.false_block());
   auto pop_local2_z =
       builder.Build<pir::TuplePopOp>(outlet_1).outlet_element(0);
   auto local2_matmul_grad_op =
