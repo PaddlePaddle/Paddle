@@ -59,12 +59,9 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   }
 
   // Type promotion Logic
-  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
-      promote_tensors_vector = {{x}, {y}};
   if (phi::NeedTypePromotion(x.dtype(), y.dtype())) {
     VLOG(5) << "got different data type, run type protmotion automatically.";
-    auto op_name = phi::TransToFluidOpName("add");
-
+    auto op_name = phi::TransToFluidOpName("multiply");
     auto promotion_type = phi::GetPromoteDtype(op_name, x.dtype(), y.dtype());
 
     auto new_x = egr::PromoteCast("x", x, promotion_type);
@@ -406,12 +403,9 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   }
 
   // Type promotion Logic
-  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
-      promote_tensors_vector = {{x}, {y}};
   if (phi::NeedTypePromotion(x.dtype(), y.dtype())) {
     VLOG(5) << "got different data type, run type protmotion automatically.";
-    auto op_name = phi::TransToFluidOpName("add");
-
+    auto op_name = phi::TransToFluidOpName("multiply");
     auto promotion_type = phi::GetPromoteDtype(op_name, x.dtype(), y.dtype());
 
     auto new_x = egr::PromoteCast("x", x, promotion_type);

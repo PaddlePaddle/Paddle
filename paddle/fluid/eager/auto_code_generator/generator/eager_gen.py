@@ -76,11 +76,10 @@ prim_white_list = [
 ]
 
 # white ops list whose kernel can automaically do type promotion.
-type_promote_white_list = [
-    "add",
-    "subtract",
-    "greater_than",
-]
+type_promote_white_list = {
+    "add": ["x", "y"],
+    "subtract": ["x", "y"],
+}
 
 # dict of special api that forward api's output will affect bacward api's output
 # bacward api's output usually affected by backward api's input
@@ -525,10 +524,8 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
   }}
 """
 
-TYPE_PROMOTION_LOGIC_TEMPLATE = """   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> promote_tensors_vector = {};
-  if (phi::NeedTypePromotion(x.dtype(), y.dtype())) {{
+TYPE_PROMOTION_LOGIC_TEMPLATE = """   {} {{
     VLOG(5) << "got different data type, run type protmotion automatically.";
-    {}
     {}
     {}
     {}
@@ -1488,10 +1485,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         amp_tensors_vector_optional_list = []
         amp_autocast_list = []
         amp_autocast_optional_list = []
-        type_promote_vector_list = []
-        type_promote_vector_optional_list = []
-        type_promote_list = []
-        type_promote_optional_list = []
         layout_autotune_list = []
         layout_autotune_optional_list = []
         layout_tensors_vector_optional_list = []
@@ -1518,12 +1511,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     amp_autocast_optional_list.append(
                         f"auto new_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
-                    type_promote_vector_optional_list.append(
-                        f"if ({name}) promote_tensors_vector.push_back({{ *{name} }});\n"
-                    )
-                    type_promote_optional_list.append(
-                        f"auto new_{name} = egr::PromoteCast(\"{name}\", {name}, promotion_type);\n"
-                    )
                     layout_tensors_vector_optional_list.append(
                         f"if ({name}) tensors_vector.push_back({{ *{name} }});\n"
                     )
@@ -1547,10 +1534,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         amp_autocast_list.append(
                             f"auto new_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                         )
-                    type_promote_vector_list.append(f"{name}")
-                    type_promote_list.append(
-                        f"auto new_{name} = egr::PromoteCast(\"{name}\", {name}, promotion_type);\n"
-                    )
                     layout_autotune_list.append(
                         f"auto new_{name} = transformer->TransInTensor(\"{name}\", {name});\n"
                     )
@@ -1572,12 +1555,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     amp_autocast_optional_list.append(
                         f"auto new_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
-                    type_promote_vector_optional_list.append(
-                        f"if ({name}) promote_tensors_vector.push_back( *{name} );\n"
-                    )
-                    type_promote_optional_list.append(
-                        f"auto new_{name} = egr::PromoteCast(\"{name}\", {name}, promotion_type);\n"
-                    )
                     layout_autotune_optional_list.append(
                         f"auto new_{name} = transformer->TransInTensors(\"{name}\", {name});\n"
                     )
@@ -1593,10 +1570,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     amp_tensors_vector_list.append(f"{name}")
                     amp_autocast_list.append(
                         f"auto new_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
-                    )
-                    type_promote_vector_list.append(f"{name}")
-                    type_promote_list.append(
-                        f"auto new_{name} = egr::PromoteCast(\"{name}\", {name}, promotion_type);\n"
                     )
                     layout_autotune_list.append(
                         f"auto new_{name} = transformer->TransInTensors(\"{name}\", {name});\n"
@@ -1855,26 +1828,26 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             )
         # Forward type promotion logic
         if forward_api_name in type_promote_white_list:
-            type_promote_get_dst_dtype_str = "auto promotion_type = phi::GetPromoteDtype(op_name, x.dtype(),y.dtype());\n"
-            type_promote_vector_optional_list_str = "    ".join(
-                type_promote_vector_optional_list
+            # only support two inputs
+            x = type_promote_white_list[forward_api_name][0]
+            y = type_promote_white_list[forward_api_name][1]
+            need_type_promote_str = (
+                f"if (phi::NeedTypePromotion({x}.dtype(), {y}.dtype()))"
             )
-            type_promote_list_str = (
-                "    ".join(type_promote_list)
-                + "    "
-                + "    ".join(type_promote_optional_list)
-            )
+            type_promote_get_dst_dtype_str = f"auto promotion_type = phi::GetPromoteDtype(op_name, {x}.dtype(),{y}.dtype());\n"
+            type_promote_list_str = f"auto new_{x} = egr::PromoteCast(\"{x}\", {x}, promotion_type);\n"
+            type_promote_list_str += f"    auto new_{y} = egr::PromoteCast(\"{y}\", {y}, promotion_type);\n"
+
             type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
-                amp_tensors_vector_list_str,
+                need_type_promote_str,
                 kernel_trans2_op_name_str,
-                type_promote_vector_optional_list_str,
                 type_promote_get_dst_dtype_str,
                 type_promote_list_str,
                 amp_call_str,
             )
         else:
             type_promotion_logic_str = (
-                "\n VLOG(5) << \" No Promotion for {} api. \"; ".format(
+                "\n VLOG(5) << \" No Type Promotion for {} api. \"; ".format(
                     forward_ad_function_name
                 )
             )
@@ -1913,11 +1886,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             if len(amp_tensors_vector_list) == 0:
                 amp_logic_str = "\n VLOG(7) << \" No AMP for {} because it has no input. \"; ".format(
                     forward_ad_function_name
-                )
-                type_promotion_logic_str = (
-                    "\n VLOG(7) << \" No Promotion for {} api. \"; ".format(
-                        forward_ad_function_name
-                    )
                 )
             self.forward_definition_str += (
                 FORWARD_ONLY_FUNCTION_TEMPLATE.format(
