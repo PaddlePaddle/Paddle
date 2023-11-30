@@ -18,9 +18,12 @@
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
-#include "paddle/cinn/runtime/cuda/cuda_util.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/cinn/runtime/cuda/cuda_util.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -39,6 +42,7 @@ class CinnJitInstruction::FnPtrImpl {
       func_args_.push_back(ptr_storage_.data() + i);
     }
 
+#if defined(PADDLE_WITH_CUDA)
     CUDA_DRIVER_CALL(
         cuLaunchKernel(static_cast<CUfunction>(cuda_jit_info_.fn_ptr),
                        cuda_jit_info_.grid_dims[0],
@@ -51,6 +55,7 @@ class CinnJitInstruction::FnPtrImpl {
                        static_cast<CUstream>(stream),
                        func_args_.data(),
                        nullptr))
+#endif
   }
 
  private:
@@ -108,6 +113,7 @@ CinnJitInstruction::CinnJitInstruction(
 }
 
 void CinnJitInstruction::Run() {
+#if defined(PADDLE_WITH_CUDA)
   auto gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx_);
 
   auto stream = gpu_ctx->stream();
@@ -116,6 +122,12 @@ void CinnJitInstruction::Run() {
   }
 
   fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
+#endif
+
+#ifndef PADDLE_WITH_CUDA
+  VLOG(phi::FATAL) << "Not Supported: cinn jit instruction currently does not "
+                      "support non-CUDakernel";
+#endif
 }
 
 const std::string& CinnJitInstruction::Name() const {

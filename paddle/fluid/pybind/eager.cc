@@ -40,6 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
@@ -390,12 +391,22 @@ void InitDistTensorWithTensor(TensorObject* self,
   if (place == src.place()) {
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(src.impl());
+    // auto parallel in dygraph doesn't support strided kernel.
+    if (!tensor->meta().is_contiguous()) {
+      VLOG(4) << "Same place and not contiguous, trans it to contiguous";
+      *tensor = paddle::experimental::Trans2Contiguous(*tensor);
+    }
     self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
     VLOG(4) << "Same place, do ShareDataWith for DistTensor.";
   } else {
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(
             src.copy_to(place, true).impl());
+    // auto parallel in dygraph doesn't support strided kernel.
+    if (!tensor->meta().is_contiguous()) {
+      VLOG(4) << "Different place and not contiguous, trans it to contiguous";
+      *tensor = paddle::experimental::Trans2Contiguous(*tensor);
+    }
     self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
     VLOG(4) << "Different place, do TensorCopy for DistTensor.";
   }

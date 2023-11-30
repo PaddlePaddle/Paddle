@@ -27,13 +27,13 @@
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/pir/core/block_argument.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -223,18 +223,18 @@ void GetInputIds(pir::Operation* op,
   }
 }
 
-std::unordered_set<pir::Value> GetBlockInnerOutputs(pir::Block* block) {
+std::unordered_set<pir::Value> GetInternalOutputs(pir::Block* block) {
   std::unordered_set<pir::Value> inner_outputs;
   for (size_t arg_id = 0; arg_id < block->args_size(); ++arg_id) {
     inner_outputs.insert(block->arg(arg_id));
   }
   for (auto& op : (*block)) {
-    VLOG(8) << "GetBlockInnerOutputs of " << op.name();
+    VLOG(8) << "GetInternalOutputs of " << op.name();
     if (op.num_regions()) {
       for (size_t i = 0; i < op.num_regions(); ++i) {
         for (auto& sub_block : op.region(i)) {
           std::unordered_set<pir::Value> sub_set =
-              GetBlockInnerOutputs(&sub_block);
+              GetInternalOutputs(&sub_block);
           inner_outputs.insert(sub_set.begin(), sub_set.end());
         }
       }
@@ -246,49 +246,89 @@ std::unordered_set<pir::Value> GetBlockInnerOutputs(pir::Block* block) {
   return inner_outputs;
 }
 
-std::unordered_set<pir::Value> GetBlockInnerInputs(pir::Block* block) {
+std::unordered_set<pir::Value> GetInternalInputs(pir::Block* block) {
   std::unordered_set<pir::Value> inner_inputs;
   for (auto& op : (*block)) {
-    VLOG(8) << "GetBlockInnerInputs of " << op.name();
+    VLOG(8) << "GetInternalInputs of " << op.name();
     if (op.num_regions()) {
       for (size_t i = 0; i < op.num_regions(); ++i) {
         for (auto& sub_block : op.region(i)) {
           std::unordered_set<pir::Value> sub_set =
-              GetBlockInnerInputs(&sub_block);
+              GetInternalInputs(&sub_block);
           inner_inputs.insert(sub_set.begin(), sub_set.end());
         }
       }
     }
+    if (op.isa<pir::TuplePopOp>()) {
+      auto tuple_pop_op = op.dyn_cast<pir::TuplePopOp>();
+      inner_inputs.insert(tuple_pop_op.container());
+    }
     for (size_t i = 0; i < op.num_operands(); ++i) {
       inner_inputs.insert(op.operand_source(i));
+      VLOG(10) << op.name()
+               << "'s inner_input: " << op.operand_source(i).impl();
     }
   }
   return inner_inputs;
 }
 
-std::vector<pir::Value> GetOutsideOpInputs(
+std::vector<pir::Value> GetExternalInputs(
     pir::Block* block,
     const ValueExecutionInfo& value_exec_info,
     std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
   std::unordered_set<pir::Value> inner_outputs;
-  inner_outputs = GetBlockInnerOutputs(block);
+  inner_outputs = GetInternalOutputs(block);
 
   std::unordered_set<pir::Value> inner_inputs;
-  inner_inputs = GetBlockInnerInputs(block);
+  inner_inputs = GetInternalInputs(block);
 
   std::vector<pir::Value> outside_op_inputs;
   for (pir::Value value : inner_inputs) {
     if (value && (!inner_outputs.count(value))) {
-      PADDLE_ENFORCE_EQ(
-          value_exec_info.HasValue(value),
-          true,
-          phi::errors::PreconditionNotMet("input should be in name map"));
+      PADDLE_ENFORCE_EQ(value_exec_info.HasValue(value),
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "input %s should be in name map", value.impl()));
       input_ids->emplace(value, GetValueIds(value, value_exec_info));
       outside_op_inputs.push_back(value);
-      VLOG(6) << "GetOutsideOpInputs of " << value.impl();
+      VLOG(6) << "GetExternalInputs of " << value.impl();
     }
   }
   return outside_op_inputs;
+}
+
+std::unordered_set<pir::Value> GetTuplePushContainer(pir::Block* block) {
+  std::unordered_set<pir::Value> inner_outputs;
+  for (auto& op : (*block)) {
+    VLOG(8) << "GetTuplePushContainer of " << op.name();
+    if (op.num_regions()) {
+      for (size_t i = 0; i < op.num_regions(); ++i) {
+        for (auto& sub_block : op.region(i)) {
+          std::unordered_set<pir::Value> sub_set =
+              GetTuplePushContainer(&sub_block);
+          inner_outputs.insert(sub_set.begin(), sub_set.end());
+        }
+      }
+    }
+    if (op.isa<pir::TuplePushOp>()) {
+      auto tuple_push_op = op.dyn_cast<pir::TuplePushOp>();
+      inner_outputs.insert(tuple_push_op.container());
+    }
+  }
+  return inner_outputs;
+}
+
+void InsertTuplePushContinerToOuts(
+    pir::Block* block,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* outputs) {
+  std::unordered_set<pir::Value> inner_stack_outputs;
+  inner_stack_outputs = GetTuplePushContainer(block);
+
+  for (pir::Value value : inner_stack_outputs) {
+    outputs->emplace(value, GetValueIds(value, value_exec_info));
+    VLOG(6) << "InsertTuplePushContinerToOuts of " << value.impl();
+  }
 }
 
 bool GetCondData(const phi::DenseTensor& cond) {

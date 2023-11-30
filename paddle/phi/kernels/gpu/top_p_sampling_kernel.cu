@@ -620,18 +620,13 @@ void TopPSamplingKernel(const Context& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   dev_curand_states =
       reinterpret_cast<curandState_t*>(curand_states_buf->ptr());
-  unsigned int seed = 0;
+  uint64_t seed;
   if (random_seed == -1) {
-#ifndef _WIN32
-    rand_r(&seed);
-    setup_kernel<<<1, 256, 0, cu_stream>>>(dev_curand_states, seed, bs);
-#else
-    srand(seed);
-    setup_kernel<<<1, 256, 0, cu_stream>>>(dev_curand_states, rand(), bs);
-#endif
+    seed = static_cast<uint64_t>(time(NULL) % 1000000);
   } else {
     seed = random_seed;
   }
+  setup_kernel<<<1, 256, 0, cu_stream>>>(dev_curand_states, seed, bs);
 
   DenseTensor count_iter;
   count_iter.Resize(common::make_ddim({bs + 1}));

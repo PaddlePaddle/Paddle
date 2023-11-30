@@ -273,6 +273,19 @@ std::vector<int> CompatibleInfo::ValueShape(const ::pir::Value& value) {
   return ::common::vectorize<int>(dim);
 }
 
+std::vector<int64_t> GetBroadcastAxis(const phi::DDim& in_shape,
+                                      const std::vector<int64_t>& out_shape) {
+  std::vector<int64_t> broadcast_axes(in_shape.size(), 0);
+  auto in_shape_size = in_shape.size();
+  if (in_shape_size >= 1) {
+    for (int i = 1; i <= in_shape_size; ++i) {
+      broadcast_axes[in_shape_size - i] = out_shape.size() - i;
+    }
+  }
+
+  return broadcast_axes;
+}
+
 }  // namespace pir
 }  // namespace framework
 }  // namespace hlir

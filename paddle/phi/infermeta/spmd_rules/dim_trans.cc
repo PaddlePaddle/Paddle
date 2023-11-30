@@ -287,9 +287,28 @@ void GetUsedInputDim(const std::shared_ptr<DimTrans> dim_trans,
 }
 
 std::vector<std::vector<int64_t>> InferFromDimTrans(
-    const DistMetaTensor& input,
+    const DistMetaTensor& input_spec,
     const std::vector<std::shared_ptr<DimTrans>>& dim_trans) {
-  std::vector<int64_t> input_shape = common::vectorize(input.dims());
+  auto input_shape = phi::vectorize(input_spec.dims());
+  // deal with reshape xshape in dynamic
+  if (input_shape[0] == 0 &&
+      input_shape.size() != input_spec.dist_attr().dims_mapping().size()) {
+    input_shape.erase(input_shape.begin());
+  }
+  PADDLE_ENFORCE_EQ(input_shape.size(),
+                    input_spec.dist_attr().dims_mapping().size(),
+                    phi::errors::InvalidArgument(
+                        "The Tensor X's rank [%d] and X's "
+                        "dims_mapping size [%d] are not matched.",
+                        input_shape.size(),
+                        input_spec.dist_attr().dims_mapping().size()));
+  return InferFromDimTrans(input_spec, input_shape, dim_trans);
+}
+
+std::vector<std::vector<int64_t>> InferFromDimTrans(
+    const DistMetaTensor& input,
+    const std::vector<int64_t>& input_shape,
+    const std::vector<std::shared_ptr<DimTrans>>& dim_trans) {
   const std::vector<int64_t>& input_dims_mapping =
       input.dist_attr().dims_mapping();
   const ProcessMesh& mesh = input.dist_attr().process_mesh();

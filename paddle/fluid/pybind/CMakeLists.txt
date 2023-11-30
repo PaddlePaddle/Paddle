@@ -19,6 +19,7 @@ set(PYBIND_DEPS
     layer
     tracer
     engine
+    common
     scope_pool
     analysis_predictor
     imperative_profiler

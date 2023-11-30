@@ -210,6 +210,8 @@ void ProgramInterpreter::Build(
         op_func_nodes,
         &var_scope_,
         execution_config_,
+        input_hookfuncs_,
+        output_hookfuncs_,
         HasLocalScope(),
         static_build_);
   }
@@ -893,8 +895,15 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
                                        : var_scope_.GetMutableScope();
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
-  if (op->Type() == "while") {
-    op->SetOutputHooks(hookfuncs_);
+  if (execution_config_.used_for_inference) {
+    for (auto& hook : input_hookfuncs_) {
+      hook(op, local_scope);
+    }
+
+    if (op->Type() == "while") {
+      op->SetInputHooks(input_hookfuncs_);
+      op->SetOutputHooks(output_hookfuncs_);
+    }
   }
 
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
@@ -1002,8 +1011,10 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
 #endif
   }
 
-  for (auto& hook : hookfuncs_) {
-    hook(op, local_scope);
+  if (execution_config_.used_for_inference) {
+    for (auto& hook : output_hookfuncs_) {
+      hook(op, local_scope);
+    }
   }
 
   // for debug nan/inf
@@ -1440,6 +1451,8 @@ void ProgramInterpreter::Prepare(
         &op_func_nodes,
         &var_scope_,
         execution_config_,
+        input_hookfuncs_,
+        output_hookfuncs_,
         HasLocalScope(),
         static_build_);
     SetFeedVarsInplaceSkip(feed_names);

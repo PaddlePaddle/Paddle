@@ -182,7 +182,8 @@ class WhileOp : public framework::OperatorBase {
           dev_place, *block, &placeholder, execution_config));
     }
 
-    core_->SetOutputHooks(hookfuncs_);
+    core_->SetOutputHooks(output_hookfuncs_);
+    core_->SetInputHooks(input_hookfuncs_);
 
     if (!is_test) {
       while (cond_data) {
