@@ -2247,18 +2247,25 @@ void FusedDconvDreluDbnInferMeta(const MetaTensor& grad_output,
                                      !!bn2_beta,
                                      !!bn2_input));
   }
-  grad_weight->set_dims(weight.dims());
-  grad_bn1_input->set_dims(bn1_input.dims());
-  grad_bn1_gamma->set_dims(bn1_gamma.dims());
-  grad_bn1_beta->set_dims(bn1_beta.dims());
+
+  auto set_unchanged_meta = [](MetaTensor* out, const MetaTensor& input) {
+    out->set_dims(input.dims());
+    out->set_dtype(input.dtype());
+    out->set_layout(input.layout());
+  };
+
+  set_unchanged_meta(grad_weight, weight);
+  set_unchanged_meta(grad_bn1_input, bn1_input);
+  set_unchanged_meta(grad_bn1_gamma, bn1_gamma);
+  set_unchanged_meta(grad_bn1_beta, bn1_beta);
   if (grad_bn2_input) {
-    grad_bn2_input->set_dims(bn1_input.dims());
+    set_unchanged_meta(grad_bn2_input, bn1_input);
   }
   if (grad_bn2_gamma) {
-    grad_bn2_gamma->set_dims(bn1_gamma.dims());
+    set_unchanged_meta(grad_bn2_gamma, bn1_gamma);
   }
   if (grad_bn2_beta) {
-    grad_bn2_beta->set_dims(bn1_beta.dims());
+    set_unchanged_meta(grad_bn2_beta, bn1_beta);
   }
 }
 
