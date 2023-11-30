@@ -42,6 +42,8 @@ namespace framework {
 
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 
+using HookFunc = std::function<void(OperatorBase*, Scope*)>;
+
 using SchedulingPriority = int64_t;
 
 constexpr const char* kCoalesceTensor = "coalesce_tensor";
