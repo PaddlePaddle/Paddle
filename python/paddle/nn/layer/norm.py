@@ -969,7 +969,6 @@ class BatchNorm(Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
-        self._use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
 
         if dtype == "float16":
             self._dtype = "float32"
@@ -1074,7 +1073,7 @@ class BatchNorm(Layer):
                 return batch_norm_out
             if in_dynamic_mode():
                 return dygraph_utils._append_activation_in_dygraph(
-                    batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
+                    batch_norm_out, act=self._act
                 )
             else:
                 act_op = getattr(_C_ops, self._act)
@@ -1094,7 +1093,6 @@ class BatchNorm(Layer):
                 "epsilon": self._epsilon,
                 "is_test": self._is_test,
                 "data_layout": self._data_layout,
-                "use_mkldnn": False,
                 "fuse_with_relu": self._fuse_with_relu,
                 "use_global_stats": self._use_global_stats,
                 "trainable_statistics": self._trainable_statistics,
@@ -1651,7 +1649,6 @@ class SyncBatchNorm(_BatchNormBase):
             "epsilon": self._epsilon,
             "is_test": not self.training,
             "data_layout": self._data_format,
-            "use_mkldnn": False,
             "fuse_with_relu": False,
             "use_global_stats": False,
             "trainable_statistics": False,

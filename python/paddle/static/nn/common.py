@@ -2880,7 +2880,7 @@ def batch_norm(
             )
 
         return paddle.base.dygraph_utils._append_activation_in_dygraph(
-            batch_norm_out, act=act, use_mkldnn=False
+            batch_norm_out, act=act
         )
 
     saved_mean = helper.create_variable_for_type_inference(

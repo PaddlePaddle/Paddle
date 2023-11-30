@@ -1796,7 +1796,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                 outputs={'Out': gradient_merge_var},
                 attrs={
                     'axis': -1,
-                    'use_mkldnn': False,
                     OP_ROLE_KEY: OpRole.Backward,
                 },
             )
@@ -1865,7 +1864,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                 attrs={
                     'axis': -1,
                     OP_ROLE_KEY: OpRole.Optimize,
-                    'use_mkldnn': False,
                 },
             )
 
