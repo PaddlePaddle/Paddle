@@ -25,7 +25,7 @@ from dygraph_to_static_utils import (
 from test_basic_api_transformation import dyfunc_to_variable
 
 import paddle
-from paddle.base.dygraph import to_variable
+from paddle.framework import use_pir_api
 from paddle.jit.dy2static.program_translator import (
     ConcreteProgram,
     StaticFunction,
@@ -129,9 +129,10 @@ class TestInputSpec(Dy2StTestBase):
         self.temp_dir.cleanup()
 
     @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_with_input_spec(self):
-        x = to_variable(np.ones([4, 10]).astype('float32'))
-        y = to_variable(np.ones([4, 10]).astype('float32') * 2)
+        x = paddle.to_tensor(np.ones([4, 10]).astype('float32'))
+        y = paddle.to_tensor(np.ones([4, 10]).astype('float32') * 2)
         int_val = 4.0
         SimpleNet = create_simple_net()
 
@@ -143,33 +144,34 @@ class TestInputSpec(Dy2StTestBase):
 
         # 2. test save load
         net.inner_function(x)
-        paddle.jit.save(net, self.model_path)
-        infer_net = paddle.jit.load(self.model_path)
-        pred = infer_net(x)
-        np.testing.assert_allclose(out.numpy(), pred.numpy(), rtol=1e-05)
+        # TODO(pir-save-load): Fix this after we support save/load in PIR
+        if not use_pir_api():
+            paddle.jit.save(net, self.model_path)
+            infer_net = paddle.jit.load(self.model_path)
+            pred = infer_net(x)
+            np.testing.assert_allclose(out.numpy(), pred.numpy(), rtol=1e-05)
 
-        # 3. we can decorate any method
-        x_2 = to_variable(np.ones([4, 20]).astype('float32'))
-        # uses `to_static(func)` instead of `@to_static`
-        net.add_func = paddle.jit.to_static(net.add_func)
-        out = net.add_func(x_2, np.ones([20]).astype('float32'))
-        self.assertTrue(len(net.add_func.program_cache) == 1)
+            # 3. we can decorate any method
+            x_2 = paddle.to_tensor(np.ones([4, 20]).astype('float32'))
+            # uses `to_static(func)` instead of `@to_static`
+            net.add_func = paddle.jit.to_static(net.add_func)
+            out = net.add_func(x_2, np.ones([20]).astype('float32'))
+            self.assertTrue(len(net.add_func.program_cache) == 1)
 
-        # 5. test input with list
-        out = net.func_with_list([x, y], int_val)
+            # 5. test input with list
+            out = net.func_with_list([x, y], int_val)
 
-        # 6. test input with dict
-        out = net.func_with_dict({'x': x, 'y': y})
+            # 6. test input with dict
+            out = net.func_with_dict({'x': x, 'y': y})
 
-        # 7. test input with lits contains dict
-        int_np = np.ones([1]).astype('float32')
-        out = net.func_with_list_dict([int_np, {'x': x, 'y': y}])
+            # 7. test input with lits contains dict
+            int_np = np.ones([1]).astype('float32')
+            out = net.func_with_list_dict([int_np, {'x': x, 'y': y}])
 
     @test_legacy_and_pt_and_pir
     def test_with_error(self):
-        x = to_variable(np.ones([4, 10]).astype('float32'))
-        y = to_variable(np.ones([4, 10]).astype('float32') * 2)
-        int_val = 4.0
+        x = paddle.to_tensor(np.ones([4, 10]).astype('float32'))
+        y = paddle.to_tensor(np.ones([4, 10]).astype('float32') * 2)
         SimpleNet = create_simple_net()
 
         net = SimpleNet()
@@ -191,10 +193,8 @@ class TestInputSpec(Dy2StTestBase):
             net.add_func(x, y)
 
     @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_concrete_program(self):
-        x = to_variable(np.ones([4, 10]).astype('float32'))
-        y = to_variable(np.ones([4, 10]).astype('float32') * 2)
-        int_val = 4.0
         SimpleNet = create_simple_net()
 
         net = SimpleNet()
@@ -204,7 +204,10 @@ class TestInputSpec(Dy2StTestBase):
             input_spec=[InputSpec([-1, 10]), InputSpec([-1, 10], name='y')],
         )
         cp1 = net.add_func.concrete_program
-        self.assertTrue(cp1.inputs[-1].shape == (-1, 10))
+        if use_pir_api():
+            self.assertTrue(cp1.inputs[-1].shape == [-1, 10])
+        else:
+            self.assertTrue(cp1.inputs[-1].shape == (-1, 10))
         self.assertTrue(cp1.inputs[-1].name == 'y')
 
         # generate another program
@@ -213,7 +216,10 @@ class TestInputSpec(Dy2StTestBase):
             input_spec=[InputSpec([10]), InputSpec([10], name='label')],
         )
         cp2 = net.add_func.concrete_program
-        self.assertTrue(cp2.inputs[-1].shape == (10,))
+        if use_pir_api():
+            self.assertTrue(cp2.inputs[-1].shape == [10])
+        else:
+            self.assertTrue(cp2.inputs[-1].shape == (10,))
         self.assertTrue(cp2.inputs[-1].name == 'label')
         # Note(Aurelius84): New instance will be returned if we use `to_static(foo)` every time.
         # So number of cache program is 1.
@@ -230,8 +236,8 @@ class TestDifferentInputSpecCacheProgram(Dy2StTestBase):
     def setUp(self):
         paddle.jit.enable_to_static(True)
 
-    @test_legacy_and_pt_and_pir
     @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_with_different_input(self):
         x_data = np.ones([16, 10]).astype('float32')
         y_data = np.ones([10]).astype('float32') * 2
