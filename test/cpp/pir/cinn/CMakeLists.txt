@@ -14,7 +14,6 @@ if(WITH_TESTING AND WITH_CINN)
     DEPS
     drr
     pd_to_cinn_pass
-    op_dialect_vjp
     cinn_op_dialect
     pir)
   set_tests_properties(dialect_convert_test PROPERTIES LABELS "RUN_TYPE=CINN")
@@ -26,7 +25,6 @@ if(WITH_TESTING AND WITH_CINN)
     DEPS
     drr
     pd_to_cinn_pass
-    op_dialect_vjp
     cinn_op_dialect
     add_broadcast_to_elementwise_pass
     pir)
@@ -39,7 +37,6 @@ if(WITH_TESTING AND WITH_CINN)
     DEPS
     drr
     pd_to_cinn_pass
-    op_dialect_vjp
     cinn_op_dialect
     pir_transforms
     pir)
@@ -51,7 +48,6 @@ if(WITH_TESTING AND WITH_CINN)
     ir_op_fusion_test.cc
     DEPS
     op_with_group_merge_pass
-    op_dialect_vjp
     cinn_op_dialect
     pir)
   set_tests_properties(ir_op_fusion_test PROPERTIES LABELS "RUN_TYPE=CINN")
