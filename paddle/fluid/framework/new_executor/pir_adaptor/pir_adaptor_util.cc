@@ -322,7 +322,7 @@ void DeepCopyVariable(const Variable* src_var,
     auto* dst_ref_array = dst_var->GetMutable<VariableRefArray>();
     dst_ref_array->clear();
     for (auto src_ref_var : src_ref_array) {
-      std::string new_name = "copied_" + stack_size + '_' +
+      std::string new_name = "copied_" + std::to_string(stack_size) + '_' +
                              value_exe_info->GetVarName(src_ref_var);
       auto tmp_dst_var = value_exe_info->GetScope()->Var(new_name);
       DeepCopyVariable(src_ref_var, tmp_dst_var, value_exe_info, stack_size);
