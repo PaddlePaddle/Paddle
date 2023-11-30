@@ -110,11 +110,6 @@ class LayerWithSetValue(paddle.nn.Layer):
 class TestSliceBase(Dy2StTestBase):
     def setUp(self):
         self.init_input()
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
         self.dygraph_func = None
         paddle.disable_static()
 
