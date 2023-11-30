@@ -107,7 +107,9 @@ class TrtConvertNumelTest(TrtLayerAutoScanTest):
         ]
         self.trt_param.max_batch_size = 9
         self.trt_param.workspace_size = 1073741824
-
+   
+        # for static_shape
+        clear_dynamic_shape()
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
