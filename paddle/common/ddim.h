@@ -69,25 +69,20 @@ class TEST_API DDim {
  public:
   constexpr static int kMaxRank = 9;
 
-  DDim() : rank_(-1) { dim_[0] = 0; }
+  DDim();
 
-  DDim(const DDim& ddim) : dim_() { CopyFrom(ddim); }
+  DDim(const DDim& ddim);
 
-  DDim(const int* d, int n) : rank_(n) {
-    dynamic_dim_assign(d, dim_.GetMutable(), n);
-  }
+  DDim(const int* d, int n);
 
-  DDim(const int64_t* d, int n) : rank_(n) {
-    dynamic_dim_assign(d, dim_.GetMutable(), n);
-  }
+  DDim(const int64_t* d, int n);
+
+  /*implicit*/ DDim(std::initializer_list<int64_t> init_list);
 
   template <int D>
   /*implicit*/ DDim(const Dim<D>& in) : rank_(D) {  // NOLINT
     UnsafeCast<D>() = in;
   }
-
-  /*implicit*/ DDim(std::initializer_list<int64_t> init_list)
-      : DDim(init_list.begin(), init_list.size()) {}
 
   inline DDim& operator=(const DDim& ddim) { return CopyFrom(ddim); }
 
@@ -102,41 +97,9 @@ class TEST_API DDim {
 
   inline int64_t operator[](int idx) const { return dim_[idx]; }
 
-  int64_t& at(int idx) {
-    COMMON_ENFORCE_GE(idx,
-                      0,
-                      common::errors::InvalidArgument(
-                          "Invalid DDim index to be accessed. The valid index "
-                          "is between 0 and %d, but received index is %d.",
-                          rank_,
-                          idx));
-    COMMON_ENFORCE_LT(idx,
-                      rank_,
-                      common::errors::InvalidArgument(
-                          "Invalid DDim index to be accessed. The valid index "
-                          "is between 0 and %d, but received index is %d.",
-                          rank_,
-                          idx));
-    return dim_[idx];
-  }
+  int64_t& at(int idx);
 
-  int64_t at(int idx) const {
-    COMMON_ENFORCE_GE(idx,
-                      0,
-                      common::errors::InvalidArgument(
-                          "Invalid DDim index to be accessed. The valid index "
-                          "is between 0 and %d, but received index is %d.",
-                          rank_,
-                          idx));
-    COMMON_ENFORCE_LT(idx,
-                      rank_,
-                      common::errors::InvalidArgument(
-                          "Invalid DDim index to be accessed. The valid index "
-                          "is between 0 and %d, but received index is %d.",
-                          rank_,
-                          idx));
-    return dim_[idx];
-  }
+  int64_t at(int idx) const;
 
   template <typename Visitor>
   typename std::result_of<Visitor(Dim<0>&)>::type apply_visitor(
