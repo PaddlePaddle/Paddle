@@ -57,7 +57,7 @@ class TestConv2dBnPassPattern(PassTest):
                 bn = paddle.nn.BatchNorm2D(num_features=32, data_format='NCHW')
                 out = bn(conv2d(x))
 
-        self.pass_list = ['conv2d_fuse_pass']
+        self.pass_list = ['conv2d_bn_fuse_pass']
         self.feeds = {"x": np.random.random((3, 1, 28, 28)).astype("float32")}
         self.fetch_list = [out]
         self.valid_op_map = {
@@ -105,7 +105,7 @@ class TestBnReplacePattern(PassTest):
                 bn = paddle.nn.BatchNorm2D(num_features=32, data_format='NCHW')
                 out = bn(x)
 
-        self.pass_list = ['conv2d_fuse_pass']
+        self.pass_list = ['conv2d_bn_fuse_pass']
         self.feeds = {"x": np.random.random((3, 32, 28, 28)).astype("float32")}
         self.fetch_list = [out]
         self.valid_op_map = {

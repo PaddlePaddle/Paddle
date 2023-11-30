@@ -15,7 +15,7 @@
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/transforms/fusion/conv_bn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -140,9 +140,9 @@ class BatchNormReplacePattern
   }
 };
 
-class ConvBnFusePass : public pir::PatternRewritePass {
+class Conv2dBnFusePass : public pir::PatternRewritePass {
  public:
-  ConvBnFusePass() : pir::PatternRewritePass("conv_bn_fuse_pass", 2) {}
+  Conv2dBnFusePass() : pir::PatternRewritePass("conv2d_bn_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -174,10 +174,10 @@ class ConvBnFusePass : public pir::PatternRewritePass {
 
 namespace pir {
 
-std::unique_ptr<Pass> CreateConvBnFusePass() {
-  return std::make_unique<ConvBnFusePass>();
+std::unique_ptr<Pass> CreateConv2dBnFusePass() {
+  return std::make_unique<Conv2dBnFusePass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(conv_bn_fuse_pass, ConvBnFusePass);
+REGISTER_IR_PASS(conv2d_bn_fuse_pass, Conv2dBnFusePass);

@@ -68,7 +68,7 @@ class TestConv2dAddActFusePattern(PassTest):
                 act_op = paddle.nn.ReLU()
                 out = act_op(paddle.add(conv2d(x), y))
 
-        self.pass_list = ['conv2d_fuse_pass']
+        self.pass_list = ['conv2d_add_act_fuse_pass']
         self.feeds = {
             "x": np.random.random((3, 32, 28, 28)).astype("float32"),
             "y": np.random.random((3, 32, 28, 28)).astype("float32"),
@@ -101,7 +101,7 @@ class TestConv2dAddActFusePatternWithCpu(TestConv2dAddActFusePattern):
     not paddle.base.core.is_compiled_with_cuda(),
     "core is not complied with CUDA",
 )
-class TestConv2dDoubleAddActFusePattern(PassTest):
+class TestConv2dAdd2ActFusePattern(PassTest):
     r"""
      x_var   f_var(persistable)
          \       /
@@ -149,7 +149,7 @@ class TestConv2dDoubleAddActFusePattern(PassTest):
                 out = act_op(
                     paddle.add(residual_data, paddle.add(conv2d(x), y))
                 )
-        self.pass_list = ['conv2d_fuse_pass']
+        self.pass_list = ['conv2d_add_act_fuse_pass']
         self.feeds = {
             "x": np.random.random((3, 32, 28, 28)).astype("float32"),
             "y": np.random.random((3, 32, 28, 28)).astype("float32"),
@@ -173,9 +173,7 @@ class TestConv2dDoubleAddActFusePattern(PassTest):
         self.check_pass_correct()
 
 
-class TestConv2dDoubleAddActFusePatternWithCpu(
-    TestConv2dDoubleAddActFusePattern
-):
+class TestConv2dAdd2ActFusePatternWithCpu(TestConv2dAdd2ActFusePattern):
     def setUp(self):
         self.place_runtime = "cpu"
 

@@ -15,7 +15,7 @@
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -89,7 +89,7 @@ class Conv2dAddActFusePattern
   }
 };
 
-class Conv2dDoubleAddActFusePattern
+class Conv2dAdd2ActFusePattern
     : public pir::OpRewritePattern<paddle::dialect::AddOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::AddOp>::OpRewritePattern;
@@ -153,9 +153,10 @@ class Conv2dDoubleAddActFusePattern
   }
 };
 
-class Conv2dAddActPass : public pir::PatternRewritePass {
+class Conv2dAddActFusePass : public pir::PatternRewritePass {
  public:
-  Conv2dAddActPass() : pir::PatternRewritePass("conv2d_add_act_pass", 2) {}
+  Conv2dAddActFusePass()
+      : pir::PatternRewritePass("conv2d_add_act_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -166,7 +167,7 @@ class Conv2dAddActPass : public pir::PatternRewritePass {
             1,
             std::vector<std::string>{paddle::dialect::Conv2dFusionOp::name()});
     auto conv2d_doublue_add_act_fuse_pattern =
-        std::make_unique<Conv2dDoubleAddActFusePattern>(
+        std::make_unique<Conv2dAdd2ActFusePattern>(
             context,
             1,
             std::vector<std::string>{paddle::dialect::Conv2dFusionOp::name()});
@@ -183,10 +184,10 @@ class Conv2dAddActPass : public pir::PatternRewritePass {
 
 namespace pir {
 
-std::unique_ptr<Pass> CreateConv2dAddActPass() {
-  return std::make_unique<Conv2dAddActPass>();
+std::unique_ptr<Pass> CreateConv2dAddActFusePass() {
+  return std::make_unique<Conv2dAddActFusePass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(conv2d_add_act_pass, Conv2dAddActPass);
+REGISTER_IR_PASS(conv2d_add_act_fuse_pass, Conv2dAddActFusePass);

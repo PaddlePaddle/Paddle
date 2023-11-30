@@ -21,6 +21,6 @@ namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateConv2dAddActPass();
+IR_API std::unique_ptr<Pass> CreateConv2dBnFusePass();
 
 }  // namespace pir

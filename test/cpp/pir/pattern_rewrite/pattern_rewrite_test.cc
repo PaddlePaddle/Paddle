@@ -27,9 +27,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/conv_bn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
 #include "paddle/pir/core/builder.h"
@@ -334,8 +334,8 @@ TEST(pattern_rewrite, Patterns) {
 
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-  pm.AddPass(pir::CreateConvBnFusePass());
-  pm.AddPass(pir::CreateConv2dAddActPass());
+  pm.AddPass(pir::CreateConv2dBnFusePass());
+  pm.AddPass(pir::CreateConv2dAddActFusePass());
   pm.AddPass(pir::CreateConv2dAddFusePass());
   paddle::framework::Scope scope;
   pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
