@@ -358,6 +358,7 @@ class AssignArray_Op
 class ExpandOp : public pir::Op<ExpandOp,
                                 paddle::dialect::OpYamlInfoInterface,
                                 paddle::dialect::InferMetaInterface,
+                                paddle::dialect::VjpInterface,
                                 paddle::dialect::GetKernelTypeForVarInterface> {
  public:
   using Op::Op;

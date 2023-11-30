@@ -215,7 +215,6 @@ inline pir::Operation* InsertCreateArrayOp(pir::IrContext* ctx,
   pir::Builder builder(ctx, block);
 
   auto var_desc_dtype = var->GetDataType();
-  VLOG(6) << "[InsertCreateArrayOp][to be deleted]: " << var_desc_dtype;
   phi::DataType phi_dtype = phi::TransToPhiDataType(var_desc_dtype);
 
   auto create_array_op = builder.Build<dialect::CreateArrayOp>(phi_dtype);
@@ -428,7 +427,6 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
     if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
       pir::Value ret = special_handler(
           ctx, param_map, op_desc, normalized_op_name, info, block);
-      VLOG(10) << "[debug][to_be_deleted]" << ret.type();
       op_inputs.push_back(ret);
       continue;
     }
