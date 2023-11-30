@@ -39,6 +39,7 @@ PD_DECLARE_bool(cinn_enable_map_expr_dynamic_shape);
 PD_DECLARE_bool(cinn_enable_map_expr_index_detail);
 
 TEST(MapExpr, ElementWise_Fusion_0) {
+  cinn::adt::UniqueId::ResetSeqNumber(0);
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ::pir::Program program(ctx);
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
