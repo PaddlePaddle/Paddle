@@ -6433,6 +6433,7 @@ def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
         paddle.float16,
         paddle.float32,
         paddle.float64,
+        paddle.base.core.DataType.FLOAT16,
         paddle.base.core.DataType.FLOAT32,
         paddle.base.core.DataType.FLOAT64,
     ]:
@@ -6455,6 +6456,7 @@ def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
             paddle.float16,
             paddle.float32,
             paddle.float64,
+            paddle.base.core.DataType.FLOAT16,
             paddle.base.core.DataType.FLOAT32,
             paddle.base.core.DataType.FLOAT64,
         ]:
