@@ -703,8 +703,12 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     )
 
     state.turn_map()
+
     for bwd_op in inverse_sort_op(remove_ops):
-        remove_op(block, bwd_op, state)
+        if bwd_op.result(0) in grad_outputs:
+            continue
+        if bwd_op.result(0).use_empty():
+            remove_op(block, bwd_op, state)
     state.turn_map()
 
     input_grad_map = state.value_to_valuegrad

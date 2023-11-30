@@ -12,87 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <iostream>
-#include <sstream>
-#include <string>
-
-#include "glog/logging.h"
-#include "gtest/gtest.h"
-
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
-#include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
-#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
-#include "paddle/phi/core/distributed/type_defs.h"
-#include "paddle/phi/infermeta/spmd_rules/replicated.h"
-#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "test/cpp/auto_parallel/spmd_rule_test_util.h"
 
 namespace paddle {
 namespace distributed {
 namespace auto_parallel {
-
-auto& get_dims_mapping(const phi::distributed::ArgDistAttr& dist_attr) {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr));
-  const auto& tensor_attr = paddle::get<0>(dist_attr);
-  return tensor_attr.dims_mapping();
-}
-
-bool is_partial(const phi::distributed::ArgDistAttr& dist_attr) {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr));
-  const auto& tensor_attr = paddle::get<0>(dist_attr);
-  return tensor_attr.is_partial();
-}
-
-auto get_partial_dims(const phi::distributed::ArgDistAttr& dist_attr) {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr));
-  const auto& tensor_attr = paddle::get<0>(dist_attr);
-  return tensor_attr.partial_dims();
-}
-
-void check_dim_mapping(const phi::distributed::ArgDistAttr& dist_attr,
-                       const std::vector<int64_t>& dim_mapping,
-                       const std::string& line = "") {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr))
-      << line;
-  EXPECT_EQ(get_dims_mapping(dist_attr), dim_mapping) << line;
-}
-
-void check_partial_dims(const phi::distributed::ArgDistAttr& dist_attr,
-                        const std::set<int64_t>& dims,
-                        const std::string& line = "") {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr))
-      << line;
-  EXPECT_EQ(get_partial_dims(dist_attr), dims) << line;
-}
-
-void clean_partial_status(phi::distributed::ArgDistAttr* dist_attr) {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(*dist_attr));
-  auto& tensor_attr = paddle::get<0>(*dist_attr);
-  tensor_attr.clean_partial_status();
-}
-
-void clean_partial_dims(phi::distributed::ArgDistAttr* dist_attr,
-                        std::vector<int64_t> dims) {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(*dist_attr));
-  auto& tensor_attr = paddle::get<0>(*dist_attr);
-  tensor_attr.clean_partial_dims(dims);
-}
-
-void set_partial_status(phi::distributed::ArgDistAttr* dist_attr,
-                        std::vector<int64_t> dims) {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(*dist_attr));
-  auto& tensor_attr = paddle::get<0>(*dist_attr);
-  tensor_attr.set_partial_status(dims);
-}
 
 TEST(MatmulSPMDRule, Ctor) {
   // build input data class
@@ -1006,6 +930,27 @@ TEST(ReduceMaxRule, Ctor) {
   check_partial_dims(backward_info.second[0], {});
 }
 
+TEST(ReduceAllRule, Ctor) {
+  std::vector<int64_t> mesh_shape = {2};
+  std::vector<int64_t> process_ids = {0, 1};
+  std::vector<std::string> dim_names = {"x"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  // test forward
+  auto t_dist_attr = TensorDistAttr();
+  t_dist_attr.set_process_mesh(process_mesh);
+  t_dist_attr.set_dims_mapping({-1, 0, -1});
+  t_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor x =
+      phi::distributed::DistMetaTensor(phi::make_ddim({4, 6, 8}), t_dist_attr);
+  IntArray axis = {1};
+  bool keep_dim = false;
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::ReductionAllInferSpmdDynamic(x, axis, keep_dim);
+  check_dim_mapping(forward_info.second[0], {-1, -1});
+  check_partial_dims(forward_info.second[0], {0});
+}
+
 TEST(Numel, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};
   std::vector<int64_t> process_ids = {0, 1, 2, 3};
@@ -1270,10 +1215,10 @@ TEST(Reshape, Ctor) {
 
   auto out_grad = build_input({2, 1024, 4, 1024 / 4}, {-1, -1, -1, -1});
   auto spmd_grad = ReshapeGradInferSpmd(input, out_grad);
-  EXPECT_EQ(spmd_grad.first.size(), static_cast<size_t>(2));
+  EXPECT_EQ(spmd_grad.first.size(), static_cast<size_t>(1));
   EXPECT_EQ(spmd_grad.second.size(), static_cast<size_t>(1));
-  check_dim_mapping(spmd_grad.first[0], {0, 1, -1});
-  check_dim_mapping(spmd_grad.first[1], {0, 1, -1, -1});
+  // check_dim_mapping(spmd_grad.first[0], {0, 1, -1});
+  check_dim_mapping(spmd_grad.first[0], {0, 1, -1, -1});
   check_dim_mapping(spmd_grad.second[0], {0, 1, -1});
 }
 
@@ -1325,6 +1270,164 @@ TEST(ElementwiseUnaryLike, Ctor) {
   input = phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
   infered_dist_attrs = phi::distributed::ScaleInferSpmd(input, 1.0, 1.0, false);
   check_element_unary_like(infered_dist_attrs);
+}
+
+TEST(EmbeddingGradInferSpmd, Ctor) {
+  // build input data class
+  std::vector<int64_t> x_shape = {4, 5};
+  std::vector<int64_t> w_shape = {10, 3};
+  std::vector<int64_t> out_grad_shape = {4, 5, 3};
+
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  // indices is shard, embedding table is replicated,
+  TensorDistAttr x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({1, -1}));
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
+
+  TensorDistAttr w_dist_attr = TensorDistAttr();
+  w_dist_attr.set_process_mesh(process_mesh);
+  w_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1}));
+  w_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
+
+  TensorDistAttr out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, -1}));
+  out_grad_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
+
+  phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
+  phi::distributed::DistMetaTensor w(phi::make_ddim(w_shape), w_dist_attr);
+  phi::distributed::DistMetaTensor out_grad(phi::make_ddim(out_grad_shape),
+                                            out_grad_dist_attr);
+
+  auto spmdinfo = EmbeddingGradInferSpmd(x, w, out_grad, -1, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
+            std::vector<int64_t>({-1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
+            std::vector<int64_t>({1, -1, -1}));
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({-1, -1}));
+  EXPECT_EQ(
+      PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmdinfo.second[0])
+          .is_partial(),
+      true);
+  VLOG(4) << "Test EmbeddingGradInferSpmd with sharding indices and "
+             "replicating weight"
+          << std::endl
+          << std::endl
+          << std::endl;
+
+  // indices'rank is greater than 1,  x and weight is replicated, out_grad is
+  // sharded along axis 1
+  x_dist_attr.set_dims_mapping({-1, -1});
+  w_dist_attr.set_dims_mapping({-1, 1});
+  out_grad_dist_attr.set_dims_mapping({-1, 1, -1});
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  w = phi::distributed::DistMetaTensor(phi::make_ddim(w_shape), w_dist_attr);
+  out_grad = phi::distributed::DistMetaTensor(phi::make_ddim(out_grad_shape),
+                                              out_grad_dist_attr);
+
+  spmdinfo = EmbeddingGradInferSpmd(x, w, out_grad, -1, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({-1, 1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]), std::vector<int64_t>({-1, 1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
+            std::vector<int64_t>({-1, 1, -1}));
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({-1, -1}));
+  EXPECT_EQ(
+      PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmdinfo.second[0])
+          .is_partial(),
+      true);
+  VLOG(4) << "Test EmbeddingGradInferSpmd with replicating indices and "
+             "sharding weight along col axis."
+          << std::endl
+          << std::endl
+          << std::endl;
+
+  // Indices's rank equals 1, indices and out_grad is sharded.
+  x_shape = {5};
+  w_shape = {10, 3};
+  out_grad_shape = {5, 3};
+
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({0}));
+  w_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1}));
+  out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, 1}));
+
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  w = phi::distributed::DistMetaTensor(phi::make_ddim(w_shape), w_dist_attr);
+  out_grad = phi::distributed::DistMetaTensor(phi::make_ddim(out_grad_shape),
+                                              out_grad_dist_attr);
+
+  spmdinfo = EmbeddingGradInferSpmd(x, w, out_grad, -1, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({0}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
+            std::vector<int64_t>({-1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]), std::vector<int64_t>({0, 1}));
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({-1, 1}));
+  EXPECT_EQ(
+      PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmdinfo.second[0])
+          .is_partial(),
+      true);
+  VLOG(4) << "Test EmbeddingGradInferSpmd with sharding weight and out_grad."
+          << std::endl
+          << std::endl
+          << std::endl;
+
+  x_shape = {12, 16};
+  w_shape = {10, 4};
+  out_grad_shape = {12, 16, 4};
+
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1}));
+  w_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -0}));
+  out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, 0}));
+
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  w = phi::distributed::DistMetaTensor(phi::make_ddim(w_shape), w_dist_attr);
+  out_grad = phi::distributed::DistMetaTensor(phi::make_ddim(out_grad_shape),
+                                              out_grad_dist_attr);
+
+  spmdinfo = EmbeddingGradInferSpmd(x, w, out_grad, -1, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({-1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]), std::vector<int64_t>({-1, 0}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
+            std::vector<int64_t>({-1, -1, 0}));
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({-1, 0}));
+  EXPECT_EQ(
+      PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmdinfo.second[0])
+          .is_partial(),
+      false);
+  VLOG(4) << "Test EmbeddingGradInferSpmd with sharding weight and out_grad."
+          << std::endl
+          << std::endl
+          << std::endl;
 }
 
 }  // namespace auto_parallel

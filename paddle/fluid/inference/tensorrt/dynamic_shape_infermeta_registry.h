@@ -36,6 +36,7 @@ USE_TRT_DYNAMIC_INFER_META_FN(p_norm);
 USE_TRT_DYNAMIC_INFER_META_FN(pad);
 USE_TRT_DYNAMIC_INFER_META_FN(argsort);
 USE_TRT_DYNAMIC_INFER_META_FN(scatter);
+USE_TRT_DYNAMIC_INFER_META_FN(solve);
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
