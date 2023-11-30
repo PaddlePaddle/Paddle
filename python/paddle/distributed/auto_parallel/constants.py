@@ -148,8 +148,8 @@ set_field_default_config(DATASET, "num_shards", 1)
 # #########################################
 # # offload configuration
 # #########################################
-FUSEDPROMOTION = "fused_promotion"
-set_field_default_config(FUSEDPROMOTION, "enable", False)
+FUSEDLINEARPROMOTION = "fused_linear_promotion"
+set_field_default_config(FUSEDLINEARPROMOTION, "enable", False)
 
 #########################################
 # fused passes configuration

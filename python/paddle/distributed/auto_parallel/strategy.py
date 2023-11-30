@@ -231,7 +231,7 @@ class Strategy(BaseConfig):
         self.fused_passes = FusedPassesConfig(config_dict)
 
         config_dict = self._config_dict.get(constants.FUSEDPROMOTION, None)
-        self.fused_promotion = FusedPromotionConfig(config_dict)
+        self.fused_linear_promotion = FusedPromotionConfig(config_dict)
 
         config_dict = self._config_dict.get(constants.DP_OPTIMIZATION, None)
         self.dp_optimization = DPOptimizationConfig(config_dict)
