@@ -459,6 +459,7 @@ FORWARD_CC_FILE_TEMPLATE = """
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/fluid/eager/type_promotion_utils.h"
+#include "paddle/phi/common/type_promotion_table.h"
 PHI_DECLARE_bool(check_nan_inf);
 PHI_DECLARE_string(tensor_operants_mode);
 {}
@@ -525,7 +526,7 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
 """
 
 TYPE_PROMOTION_LOGIC_TEMPLATE = """   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> promote_tensors_vector = {};
-  if (egr::NeedTypePromotion(promote_tensors_vector)) {{
+  if (phi::NeedTypePromotion(x.dtype(), y.dtype())) {{
     VLOG(5) << "got different data type, run type protmotion automatically.";
     {}
     {}
@@ -1854,7 +1855,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             )
         # Forward type promotion logic
         if forward_api_name in type_promote_white_list:
-            type_promote_get_dst_dtype_str = "auto promotion_type = egr::GetPromoteDtype(op_name, promote_tensors_vector);\n"
+            type_promote_get_dst_dtype_str = "auto promotion_type = phi::GetPromoteDtype(op_name, x.dtype(),y.dtype());\n"
             type_promote_vector_optional_list_str = "    ".join(
                 type_promote_vector_optional_list
             )
