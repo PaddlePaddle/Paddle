@@ -28,6 +28,7 @@ from paddle.base.unique_name import switch
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
+from .export_subgraph import SubGraphRole, pir_exporter
 from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
     backend_guard,
@@ -226,6 +227,7 @@ class PartialProgramLayer:
         self._out_var_descs = [
             self._outputs[var_id].desc for var_id in self._outputs.var_ids
         ]
+        self._debug_name = None
 
     def __call__(self, inputs):
         """
@@ -303,9 +305,14 @@ class PartialProgramLayer:
         self._hooker = hooker
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
-        if get_flags('FLAGS_enable_pir_in_executor')[
-            'FLAGS_enable_pir_in_executor'
-        ]:
+        if (
+            get_flags('FLAGS_enable_pir_in_executor')[
+                'FLAGS_enable_pir_in_executor'
+            ]
+            or get_flags('FLAGS_enable_pir_with_pt_in_dy2st')[
+                'FLAGS_enable_pir_with_pt_in_dy2st'
+            ]
+        ):
             _scope_cache = self._pir_scope_cache
         else:
             _scope_cache = self._legacy_scope_cache
@@ -539,14 +546,19 @@ class PartialProgramLayer:
     @property
     def infer_program(self):
         if _in_amp_guard():
-            return self._infer_amp_program
+            infer_program = self._infer_amp_program
         elif _in_pure_fp16_guard():
-            return self._infer_pure_fp16_program
+            infer_program = self._infer_pure_fp16_program
         else:
-            return self._infer_program
+            infer_program = self._infer_program
+        # NOTE(Aurelius84): Export forward_program for SubGraphChecker,
+        # see export_subgraph for detail.
+        pir_exporter(self, infer_program, SubGraphRole.Infer)
+        return infer_program
 
     @property
     def forward_program(self):
+        forward_program, role = None, None
         if self.training:
             if _in_amp_guard():
                 progs = self._train_amp_forward_backward_program
@@ -556,7 +568,8 @@ class PartialProgramLayer:
                 progs = self._train_forward_backward_program
             return progs[0]
         else:
-            return self.infer_program
+            forward_program = self.infer_program
+        return forward_program
 
     @property
     def backward_program(self):
@@ -799,6 +812,18 @@ class PartialProgramLayer:
                     self._cuda_graph_pool_id,
                 )
             )
+
+        pir_dy2st_flag = 'FLAGS_enable_pir_with_pt_in_dy2st'
+        in_pir_pt_mode = get_flags(pir_dy2st_flag)[pir_dy2st_flag]
+        is_prim_enabled = (
+            core._is_fwd_prim_enabled() or core._is_bwd_prim_enabled()
+        )
+        in_cinn_backend = self._backend == "CINN"
+        is_cinn_enabled = self._build_strategy.build_cinn_pass
+        if is_prim_enabled or in_cinn_backend or is_cinn_enabled:
+            in_pir_pt_mode = False
+        attrs.extend(['in_pir_pt_mode', in_pir_pt_mode])
+
         return attrs
 
     @switch_to_static_graph
@@ -851,6 +876,23 @@ class PartialProgramLayer:
         self._apply_inplace_pass(
             forward_builded_program, backward_builded_program
         )
+
+        # NOTE(Aurelius84): Export forward/backward program for SubGraphChecker,
+        # see export_subgraph for detail.
+        pir_exporter(
+            self,
+            forward_builded_program,
+            SubGraphRole.Forward,
+            set(),
+            set(forward_skip_vars),
+        )
+        pir_exporter(
+            self,
+            backward_builded_program,
+            SubGraphRole.Backward,
+            set(forward_skip_vars),
+            set(backward_skip_vars),
+        )
         return [forward_builded_program, backward_builded_program]
 
     def _apply_inplace_pass(self, forward_program, backward_program):
@@ -866,15 +908,21 @@ class PartialProgramLayer:
             forward_program, backward_program
         )
         backward_mem_opt_skip_vars = self._parse_skip_gc_vars(forward_program)
+        in_pir_pt_mode = (
+            get_flags('FLAGS_enable_pir_in_executor')[
+                'FLAGS_enable_pir_in_executor'
+            ]
+            or get_flags('FLAGS_enable_pir_with_pt_in_dy2st')[
+                'FLAGS_enable_pir_with_pt_in_dy2st'
+            ]
+        )
         if forward_program:
             attrs = {
                 "use_cuda": use_cuda,
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not get_flags('FLAGS_enable_pir_in_executor')[
-                'FLAGS_enable_pir_in_executor'
-            ]:
+            if not in_pir_pt_mode:
                 _apply_pass(
                     forward_program,
                     empty_startup_program,
@@ -888,9 +936,7 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not get_flags('FLAGS_enable_pir_in_executor')[
-                'FLAGS_enable_pir_in_executor'
-            ]:
+            if not in_pir_pt_mode:
                 _apply_pass(
                     backward_program,
                     empty_startup_program,

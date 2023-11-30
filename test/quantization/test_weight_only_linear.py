@@ -74,6 +74,31 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
         self.weight_dtype = "int8"
         self.static = False
 
+    def weightQuantizeCPUGPUConsistenceCheck(self, weight_float):
+        for arch in [70, 75, 80, 86]:
+            weight_gpu, weight_scale_gpu = Q.weight_quantize(
+                weight_float.cuda()
+                if self.weight_dtype == "int8"
+                else self.weight.cpu(),
+                algo="weight_only_int8"
+                if self.weight_dtype == "int8"
+                else "weight_only_int4",
+                arch=arch,
+            )
+            weight_cpu, weight_scale_cpu = Q.weight_quantize(
+                weight_float.cpu(),
+                algo="weight_only_int8"
+                if self.weight_dtype == "int8"
+                else "weight_only_int4",
+                arch=arch,
+            )
+            np.testing.assert_allclose(weight_gpu.numpy(), weight_cpu.numpy())
+            np.testing.assert_allclose(
+                weight_scale_gpu.numpy(), weight_scale_cpu.numpy()
+            )
+            pass
+        pass
+
     def setUp(self):
         self.config()
         if self.dtype == "bfloat16" or self.weight_dtype == "int4":
@@ -95,9 +120,15 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
 
         self.bias = self.linear.bias
         self.weight = self.linear.weight
+        self.float_weight = self.linear.weight
         self.weight_scale = None
+        # check weight quantize
+        self.weightQuantizeCPUGPUConsistenceCheck(self.float_weight)
+
         self.weight, self.weight_scale = Q.weight_quantize(
-            self.weight,
+            self.float_weight.cuda()
+            if self.weight_dtype == "int8"
+            else self.weight.cpu(),
             algo="weight_only_int8"
             if self.weight_dtype == "int8"
             else "weight_only_int4",
@@ -349,9 +380,9 @@ class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
         weight = paddle.rand(shape=(4096, 12288), dtype='float16')
 
         quant_weight, quant_scale = Q.weight_quantize(
-            x=weight, algo='weight_only_int8'
+            x=weight.cuda(), algo='weight_only_int8'
         )
-        dequant_weight = Q.weight_dequantize(quant_weight, quant_scale)
+        dequant_weight = Q.weight_dequantize(quant_weight.cuda(), quant_scale)
         np.testing.assert_allclose(weight, dequant_weight, rtol=1e-2, atol=1e-2)
 
         quant_out = Q.weight_only_linear(

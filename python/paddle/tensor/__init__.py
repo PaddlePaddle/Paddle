@@ -385,16 +385,6 @@ from .stat import nanquantile  # noqa: F401
 
 from .to_string import set_printoptions  # noqa: F401
 
-from .array import array_length  # noqa: F401
-from .array import array_read  # noqa: F401
-from .array import array_write  # noqa: F401
-from .array import create_array  # noqa: F401
-
-from .einsum import einsum  # noqa: F401
-
-from ..signal import istft  # noqa: F401
-from ..signal import stft  # noqa: F401
-
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
     'create_parameter',

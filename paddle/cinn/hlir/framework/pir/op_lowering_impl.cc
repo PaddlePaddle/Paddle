@@ -34,6 +34,7 @@
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 PD_DECLARE_bool(cinn_enable_map_expr);
 PD_DECLARE_bool(cinn_enable_map_expr_schedule);
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
 namespace hlir {
@@ -143,10 +144,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                                                   bool apply_pass) {
   VLOG(3) << "Lowering Group : " << group->group_id
           << " , Op Pattern : " << group->op_pattern_kind;
-  // TODO(Aurelius84): The logic shoule be moved into op_fusion module.
-  if (group->ops.size() >= 1U & group->output_ops.size() == 0) {
-    group->output_ops.insert(group->ops[group->ops.size() - 1]);
-  }
   group->input_names.clear();
   group->output_names.clear();
   switch (group->op_pattern_kind) {
@@ -503,6 +500,16 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       group_func_args.emplace_back(tensor_pair.second->buffer,
                                    ir::Argument::IO::kOutput);
     }
+  }
+
+  // add fake symbolic args for test
+  if (FLAGS_cinn_bucket_compile) {
+    group_func_args.emplace_back(ir::_Var_::Make("fake_symbol1", Int(32)),
+                                 ir::Argument::IO::kOutput);
+    group_func_args.emplace_back(ir::_Var_::Make("fake_symbol2", Int(32)),
+                                 ir::Argument::IO::kOutput);
+    group->output_names.push_back("fake_symbol1");
+    group->output_names.push_back("fake_symbol2");
   }
 
 #ifdef CINN_WITH_CUDA

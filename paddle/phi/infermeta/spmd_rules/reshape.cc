@@ -283,5 +283,23 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }
 
+SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
+                              const DistMetaTensor& out_grad) {
+  std::vector<int64_t> out_grad_shape = phi::vectorize(out_grad.dims());
+  const auto& x_shape_dist_src = x_shape.dist_attr();
+  auto tmp = ReshapeInferSpmd(x_shape, out_grad_shape);
+  // check no shard is needed
+  const auto& x_shape_dist_dst = PADDLE_GET_CONST(TensorDistAttr, tmp.first[0]);
+  const auto& out_grad_dist_dst =
+      PADDLE_GET_CONST(TensorDistAttr, tmp.second[0]);
+  PADDLE_ENFORCE_EQ(x_shape_dist_src,
+                    x_shape_dist_dst,
+                    phi::errors::InvalidArgument(
+                        "x_shape should not be re shared: [%s] => [%s]",
+                        x_shape_dist_src.to_string(),
+                        x_shape_dist_dst.to_string()));
+  return {{x_shape_dist_dst, out_grad_dist_dst}, {x_shape_dist_dst}};
+}
+
 }  // namespace distributed
 }  // namespace phi

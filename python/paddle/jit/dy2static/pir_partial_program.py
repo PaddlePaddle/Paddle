@@ -128,7 +128,7 @@ class RunableProgram:
                 ret[op.result(0)] = op.attrs()["name"]
             if op.name() == "builtin.set_parameter":
                 ret[op.operand(0).source()] = op.attrs()["parameter_name"]
-            if op.name() == "builtin.get_parameter":
+            if op.name() == "builtin.parameter":
                 ret[op.result(0)] = op.attrs()["parameter_name"]
         return ret
 
@@ -328,7 +328,7 @@ class PirPassContext:
     """
 
     INPUT_OP_NAME = "pd_op.data"
-    PARM_OP_NAME = "builtin.get_parameter"
+    PARM_OP_NAME = "builtin.parameter"
     OUTPUT_OP_NAME = "builtin.set_parameter"
 
     @classmethod
@@ -371,10 +371,12 @@ class PirPassContext:
 
 
 class PartialProgramLayerHook:
-    def before_append_backward(self, forward_program):
+    def before_append_backward(self, forward_program, src_vars):
         ...
 
-    def after_append_backward(self, whole_program, backward_start_idx):
+    def after_append_backward(
+        self, whole_program, src_vars, backward_start_idx
+    ):
         ...
 
     def after_infer(self, infer_program):
@@ -443,6 +445,7 @@ class PartialProgramLayer:
         self._hooker = None
         self._backend = kwargs.get('backend', None)
         self._grad_var_names = {}
+        self._debug_name = None
 
     def __call__(self, inputs):
         """
@@ -534,11 +537,11 @@ class PartialProgramLayer:
         if is_infer_mode:
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runable_program.clone()
+            if self._hooker:
+                self._hooker.after_infer(infer_program)
             infer_program = PirPassContext.apply(
                 infer_program, self._build_strategy
             )
-            if self._hooker:
-                self._hooker.after_infer(infer_program)
             return infer_program
         else:
             train_program: RunableProgram = self.origin_runable_program.clone()

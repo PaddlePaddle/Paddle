@@ -317,8 +317,8 @@ cc_test_old(
   var_handle
   op_handle_base
   scope
-  phi
   memory
+  phi
   device_context
   gather_op_handle)
 

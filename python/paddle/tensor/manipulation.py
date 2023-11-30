@@ -133,6 +133,27 @@ def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
         res = op(input, axis=axis)
         sizes = paddle.to_tensor(np.array([int(x.shape[axis]) for x in input]))
         return res, sizes
+    elif in_pir_mode():
+        check_type(
+            input,
+            'input',
+            (list, paddle.pir.OpResult),
+            'tensor_array_to_tensor',
+        )
+        if isinstance(input, list):
+            for i, input_x in enumerate(input):
+                check_type(
+                    input_x,
+                    'input[' + str(i) + ']',
+                    paddle.pir.OpResult,
+                    'tensor_array_to_tensor',
+                )
+                if not input_x.is_dense_tensor_array_type():
+                    raise TypeError("input should be tensor array vairable")
+        else:
+            if not input.is_dense_tensor_array_type():
+                raise TypeError("input should be tensor array vairable")
+        return paddle._pir_ops.array_to_tensor(input, axis, use_stack)
     else:
         check_type(input, 'input', (list, Variable), 'tensor_array_to_tensor')
         if isinstance(input, list):
@@ -313,27 +334,25 @@ def slice(input, axes, starts, ends):
             >>> sliced_2 = paddle.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
             >>> # sliced_2 is input[1:3, 0:2, 2:4].
     """
+    if isinstance(axes, (list, tuple)):
+        axes = list(axes)
+        if len(axes) == 0:
+            raise ValueError("Input axes should not be an empty list/tuple.")
+        for i in range(len(axes)):
+            if axes[i] < 0:
+                axes[i] = max(0, axes[i] + len(input.shape))
+            else:
+                axes[i] = min(len(input.shape) - 1, axes[i])
+
+    else:
+        raise ValueError(
+            f"Input axes must be a python list or tuple, but reveived {type(axes)}"
+        )
+
     if in_dynamic_mode():
         attrs = ()
         starts_tensor = None
         ends_tensor = None
-
-        if isinstance(axes, (list, tuple)):
-            axes = list(axes)
-            if len(axes) == 0:
-                raise ValueError(
-                    "Input axes should not be an empty list/tuple."
-                )
-            for i in range(len(axes)):
-                if axes[i] < 0:
-                    axes[i] = max(0, axes[i] + len(input.shape))
-                else:
-                    axes[i] = min(len(input.shape) - 1, axes[i])
-
-        else:
-            raise ValueError(
-                f"Input axes must be a python list or tuple, but reveived {type(axes)}"
-            )
 
         infer_flags = [1 for i in range(len(axes))]
 
@@ -1330,7 +1349,7 @@ def broadcast_tensors(input, name=None):
 
     Args:
         input (list|tuple): ``input`` is a Tensor list or Tensor tuple which is with data type bool,
-            float16, float32, float64, int32, int64. All the Tensors in ``input`` must have same data type.
+            float16, float32, float64, int32, int64, complex64, complex128. All the Tensors in ``input`` must have same data type.
             Currently we only support tensors with rank no greater than 5.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1371,6 +1390,8 @@ def broadcast_tensors(input, name=None):
                     'int32',
                     'int64',
                     'uint16',
+                    'complex64',
+                    'complex128',
                 ],
                 'broadcast_tensors',
             )
@@ -3018,7 +3039,7 @@ def unbind(input, axis=0):
     Removes a tensor dimension, then split the input tensor into multiple sub-Tensors.
 
     Args:
-        input (Tensor): The input variable which is an N-D Tensor, data type being bool, float16, float32, float64, int32 or int64.
+        input (Tensor): The input variable which is an N-D Tensor, data type being bool, float16, float32, float64, int32, int64, complex64 or complex128.
         axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind.
             If :math:`axis < 0`, the dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
     Returns:
@@ -3075,6 +3096,8 @@ def unbind(input, axis=0):
                 'float64',
                 'int32',
                 'int64',
+                'complex64',
+                'complex128',
             ],
             'unbind',
         )
@@ -5931,8 +5954,6 @@ def select_scatter(src, values, axis, index):
                      [0., 0., 0., 0.]]])
 
     """
-    if src.dtype != values.dtype:
-        raise TypeError("the dtype of src and value must be equal.")
     src_shape = src.shape
     value_shape = values.shape
     if not isinstance(src_shape, list):
@@ -5957,44 +5978,80 @@ def select_scatter(src, values, axis, index):
                 + " slice size = "
                 + str(src_shape)
             )
+    from ..base.framework import default_main_program
+
+    starts = [index]
+    ends = [index + 1]
+    steps = [1]
+    axes = [axis]
+    none_axes = []
+    decrease_axes = [axis]
+    inputs = {'Input': src}
+    attrs = {
+        'axes': axes,
+        'starts': starts,
+        'ends': ends,
+        'steps': steps,
+        'decrease_axes': decrease_axes,
+        'none_axes': none_axes,
+    }
+
+    StartsTensorList = None
+    EndsTensorList = None
+    StepsTensorList = None
+
+    if paddle.utils._contain_var(starts):
+        StartsTensorList = paddle.utils._convert_to_tensor_list(starts)
+        inputs['StartsTensorList'] = StartsTensorList
+        del attrs['starts']
+
+    if paddle.utils._contain_var(ends):
+        EndsTensorList = paddle.utils._convert_to_tensor_list(ends)
+        inputs['EndsTensorList'] = EndsTensorList
+        del attrs['ends']
+    if paddle.utils._contain_var(steps):
+        StepsTensorList = paddle.utils._convert_to_tensor_list(steps)
+        inputs['StepsTensorList'] = StepsTensorList
+        del attrs['steps']
+
+    # step2. Parse values
+    dtype = src.dtype
+    attrs['dtype'] = dtype
+
+    values = values.astype(dtype)
+    inputs["ValueTensor"] = values
+
     if in_dynamic_or_pir_mode():
-        return _C_ops.select_scatter(src, values, axis, index)
-    else:
-        check_variable_and_dtype(
+        return _C_ops.set_value_with_tensor(
             src,
-            'src',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'uint8',
-                'uint16',
-            ],
-            'select_scatter',
-        )
-        check_variable_and_dtype(
             values,
-            'values',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'uint8',
-                'uint16',
-            ],
-            'select_scatter',
+            starts,
+            ends,
+            steps,
+            axes,
+            decrease_axes,
+            none_axes,
         )
+    else:
         helper = LayerHelper('select_scatter', **locals())
-        dtype = helper.input_dtype()
-        result = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type="select_scatter",
-            inputs={"Src": src, "Values": values},
-            attrs={"Axis": axis, "Index": index},
-            outputs={"Result": result},
+        if helper.main_program.current_block_idx != 0:
+            # not in global block, we should create a global variable.
+            output = helper._create_global_variable_for_type_inference(
+                dtype=src.dtype
+            )
+        else:
+            output = helper.create_variable_for_type_inference(dtype=src.dtype)
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
+            type="set_value",
+            inputs=inputs,
+            outputs={'Out': output},
+            attrs=attrs,
+            inplace_map={"Input": "Out"},
         )
-        return result
+
+        # map var to the new output
+        paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
+            cur_block.program, src.desc.id(), output
+        )
+        return output

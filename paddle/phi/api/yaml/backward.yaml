@@ -830,6 +830,7 @@
   infer_meta :
     func : FlashAttnGradInferMeta
     param : [q, k, v]
+    spmd_rule : FlashAttGradInferSpmd
   kernel :
     func : flash_attn_grad
     data_type: q
@@ -1571,6 +1572,8 @@
     func : multiplex_grad
     param : [index, out_grad]
     data_type : out_grad
+  data_transform :
+    skip_transform : index
 
 - backward_op : mv_grad
   forward : mv (Tensor x, Tensor vec) -> Tensor(out)
@@ -1716,6 +1719,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule: PowGradInferSpmd
   kernel :
     func : pow_grad
     data_type : out_grad
@@ -1964,16 +1968,6 @@
     func : segment_pool_grad
     data_type : out_grad
   optional : summed_ids
-
-- backward_op : select_scatter_grad
-  forward : select_scatter  (Tensor src, Tensor values, int axis, int index) -> Tensor(out)
-  args : (Tensor src, Tensor values, Tensor out_grad, int axis, int index)
-  output : Tensor(src_grad), Tensor(values_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [src, values]
-  kernel :
-    func : select_scatter_grad
 
 - backward_op : selu_grad
   forward : selu (Tensor x, float scale=1.0507009873554804934193349852946, float alpha=1.6732632423543772848170429916717) -> Tensor(out)

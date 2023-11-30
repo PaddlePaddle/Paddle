@@ -131,7 +131,6 @@ using experimental::round;
 using experimental::rsqrt;
 using experimental::scatter;
 using experimental::scatter_nd_add;
-using experimental::select_scatter;
 using experimental::selu;
 using experimental::send_u_recv;
 using experimental::send_ue_recv;

@@ -49,7 +49,7 @@ bool ShapeAnalysis::IsProductEqual(
 ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m)
     : m_(m), mgr_(m) {
   mgr_.Load();
-  for (auto& op : *(m_.block())) {
+  for (auto& op : m.block()) {
     auto tie_shape_op = op.dyn_cast<shape::TieShapeOp>();
     if (!tie_shape_op) continue;
     Value result = tie_shape_op.input();
@@ -67,7 +67,9 @@ ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m)
   }
 }
 
-ShapeConstraintIRAnalysis::~ShapeConstraintIRAnalysis() { mgr_.Save(); }
+ShapeConstraintIRAnalysis::~ShapeConstraintIRAnalysis() {
+  // mgr_.Save();
+}
 
 bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
@@ -132,6 +134,35 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
   }
 
   return mgr_.IsSymbolicDimProductEqual(lhs_prod, rhs_prod);
+}
+
+const std::vector<shape::SymbolicDimOp>&
+ShapeConstraintIRAnalysis::GetOrCreateSymbolicDimsForRankedValue(
+    const Value& value) {
+  if (value_to_sym_dims_.find(value) == value_to_sym_dims_.end()) {
+    CHECK(value_to_sym_dims_
+              .emplace(value, mgr_.CreateSymbolicDimsForRankedValue(value))
+              .second);
+  }
+  return value_to_sym_dims_.at(value);
+}
+
+ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
+  static ShapeAnalysisManager instance;
+  return instance;
+}
+
+ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
+  auto it = tables_.find(program->module_op().operation()->id());
+
+  if (it == tables_.end()) {
+    it = tables_
+             .emplace(program->module_op().operation()->id(),
+                      ShapeConstraintIRAnalysis(program->module_op()))
+             .first;
+  }
+
+  return it->second;
 }
 
 }  // namespace pir

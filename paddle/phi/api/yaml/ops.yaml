@@ -930,6 +930,7 @@
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
+    spmd_rule : FlashAttInferSpmd
   kernel :
     func : flash_attn
     data_type : q
@@ -1050,8 +1051,6 @@
     func : gather_nd
     data_type : x
   backward : gather_nd_grad
-  data_transform :
-    skip_transform : index
 
 - op : gather_tree
   args : (Tensor ids, Tensor parents)
@@ -1830,6 +1829,8 @@
     func : multiplex
     data_type : inputs
   backward : multiplex_grad
+  data_transform :
+    skip_transform : index
 
 - op : mv
   args : (Tensor x, Tensor vec)
@@ -1996,6 +1997,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule: PowInferSpmd
   kernel :
     func : pow
     data_type : x
@@ -2206,6 +2208,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ScaleInferSpmd
   kernel :
     func : scale {dense -> dense},
            scale_sr {selected_rows -> selected_rows}
@@ -2253,17 +2256,6 @@
     data_type : x
   intermediate : summed_ids
   backward : segment_pool_grad
-
-- op : select_scatter
-  args : (Tensor src, Tensor values, int axis, int index)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [src]
-  kernel :
-    func : select_scatter
-    data_type : src
-  backward : select_scatter_grad
 
 - op : selu
   args : (Tensor x, float scale=1.0507009873554804934193349852946, float alpha=1.6732632423543772848170429916717)
@@ -2329,7 +2321,7 @@
     func : ShapeInferMeta
   kernel :
     func : shape {dense -> dense},
-           shape_sr {selected_rows -> selected_rows}
+           shape_sr {selected_rows -> dense}
   data_transform:
     skip_transform : input
 
