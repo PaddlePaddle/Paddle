@@ -40,8 +40,7 @@ class Net(nn.Layer):
 
 def train():
     paddle.distributed.init_parallel_env()
-    net = Net()
-    net = paddle.jit.to_static(net)
+    net = paddle.jit.to_static(Net())
 
     sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=net.parameters())
     dp_net = paddle.DataParallel(net)

@@ -19,11 +19,10 @@ from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 import paddle.nn.functional as F
-from paddle import base
 
 
 def call_lambda_as_func(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
 
     add_func = lambda x, y: x + y
     mean_func = lambda x: paddle.mean(x)
@@ -36,7 +35,7 @@ def call_lambda_as_func(x):
 
 
 def call_lambda_directly(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
 
     y = (lambda x, y: x + y)(x, x)
     out = (lambda x: paddle.mean(x))(y)
@@ -45,7 +44,7 @@ def call_lambda_directly(x):
 
 
 def call_lambda_in_func(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
 
     add_func = lambda x: x + 1
 
@@ -56,7 +55,7 @@ def call_lambda_in_func(x):
 
 
 def call_lambda_with_ifExpr(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
 
     add_func = lambda x: x + 1
 
@@ -67,7 +66,7 @@ def call_lambda_with_ifExpr(x):
 
 
 def call_lambda_with_ifExpr2(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
 
     add_func = lambda x: x + 1
 
@@ -84,11 +83,6 @@ class TestLambda(Dy2StTestBase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.x = np.array([1, 3]).astype('float32')
-        self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
         self.init_func()
 
     def init_func(self):
@@ -104,13 +98,12 @@ class TestLambda(Dy2StTestBase):
         return self.run_dygraph(func, to_static=True)
 
     def run_dygraph(self, func, to_static=False):
-        with base.dygraph.guard(self.place):
-            x_v = base.dygraph.to_variable(self.x)
-            if to_static:
-                ret = paddle.jit.to_static(func)(x_v)
-            else:
-                ret = func(x_v)
-            return ret.numpy()
+        x_v = paddle.to_tensor(self.x)
+        if to_static:
+            ret = paddle.jit.to_static(func)(x_v)
+        else:
+            ret = func(x_v)
+        return ret.numpy()
 
     def test_ast_to_func(self):
         for func in self.dyfuncs:
