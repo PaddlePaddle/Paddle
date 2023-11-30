@@ -1394,8 +1394,8 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
   } else {
     // get value for int tensor
     ParseBoolAndBroadcastIndices(&transed_index);
-    paddle::Tensor transed_advanced_index_tensor;    
-      transed_advanced_index_tensor = stack_ad_func(transed_index, -1);    
+    paddle::Tensor transed_advanced_index_tensor;
+    transed_advanced_index_tensor = stack_ad_func(transed_index, -1);
 
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(
