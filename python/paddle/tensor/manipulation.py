@@ -5923,18 +5923,19 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
     return fill_diagonal_tensor(x, y, offset, axis1, axis2, name)
 
 
-def select_scatter(src, values, axis, index):
+def select_scatter(x, values, axis, index, name=None):
     """
-    Embeds the values of the values tensor into src at the given index of axis.
+    Embeds the values of the values tensor into x at the given index of axis.
 
     Args:
-        src (Tensor) : The Destination Tensor.
-        values (Tensor) : The tensor to embed into src.
+        x (Tensor) : The Destination Tensor.
+        values (Tensor) : The tensor to embed into x.
         axis (int) : the dimension to insert the slice into.
         index (int) : the index to select with.
+        name (str, optional): Name for the operation (optional, default is None).
 
     Returns:
-        Tensor, same dtype and shape with src
+        Tensor, same dtype and shape with x
 
     Examples:
         .. code-block:: python
@@ -5954,29 +5955,29 @@ def select_scatter(src, values, axis, index):
                      [0., 0., 0., 0.]]])
 
     """
-    src_shape = src.shape
+    x_shape = x.shape
     value_shape = values.shape
-    if not isinstance(src_shape, list):
-        src_shape = list(src_shape)
+    if not isinstance(x_shape, list):
+        x_shape = list(x_shape)
     if index < 0:
-        index += src_shape[axis]
+        index += x_shape[axis]
     if axis < 0:
-        axis += len(src_shape)
-    del src_shape[axis]
-    if len(src_shape) != len(value_shape):
+        axis += len(x_shape)
+    del x_shape[axis]
+    if len(x_shape) != len(value_shape):
         raise RuntimeError(
-            "expected values to have a size equal to the slice of src. value size = "
+            "expected values to have a size equal to the slice of x. value size = "
             + str(value_shape)
             + " slice size = "
-            + str(src_shape)
+            + str(x_shape)
         )
-    for i in range(len(src_shape)):
-        if src_shape[i] != value_shape[i]:
+    for i in range(len(x_shape)):
+        if x_shape[i] != value_shape[i]:
             raise RuntimeError(
-                "expected values to have a size equal to the slice of src. value size = "
+                "expected values to have a size equal to the slice of x. value size = "
                 + str(value_shape)
                 + " slice size = "
-                + str(src_shape)
+                + str(x_shape)
             )
     from ..base.framework import default_main_program
 
@@ -5986,7 +5987,7 @@ def select_scatter(src, values, axis, index):
     axes = [axis]
     none_axes = []
     decrease_axes = [axis]
-    inputs = {'Input': src}
+    inputs = {'Input': x}
     attrs = {
         'axes': axes,
         'starts': starts,
@@ -6015,7 +6016,7 @@ def select_scatter(src, values, axis, index):
         del attrs['steps']
 
     # step2. Parse values
-    dtype = src.dtype
+    dtype = x.dtype
     attrs['dtype'] = dtype
 
     values = values.astype(dtype)
@@ -6023,7 +6024,7 @@ def select_scatter(src, values, axis, index):
 
     if in_dynamic_or_pir_mode():
         return _C_ops.set_value_with_tensor(
-            src,
+            x,
             values,
             starts,
             ends,
@@ -6037,10 +6038,10 @@ def select_scatter(src, values, axis, index):
         if helper.main_program.current_block_idx != 0:
             # not in global block, we should create a global variable.
             output = helper._create_global_variable_for_type_inference(
-                dtype=src.dtype
+                dtype=x.dtype
             )
         else:
-            output = helper.create_variable_for_type_inference(dtype=src.dtype)
+            output = helper.create_variable_for_type_inference(dtype=x.dtype)
         cur_block = default_main_program().current_block()
         cur_block.append_op(
             type="set_value",
@@ -6052,6 +6053,6 @@ def select_scatter(src, values, axis, index):
 
         # map var to the new output
         paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
-            cur_block.program, src.desc.id(), output
+            cur_block.program, x.desc.id(), output
         )
         return output
