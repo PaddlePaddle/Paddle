@@ -145,6 +145,12 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(
             matmul_op.result(0).type() == add_op.result(0).type(), True
         )
+        add_op.result(0).set_type(
+            paddle.base.libpaddle.pir.create_selected_rows_type_by_dense_tensor(
+                add_op.result(0).type()
+            )
+        )
+        self.assertEqual(add_op.result(0).is_selected_row_type(), True)
 
     def test_attr(self):
         main_program, start_program = (

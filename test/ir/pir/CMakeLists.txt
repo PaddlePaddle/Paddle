@@ -16,7 +16,12 @@ set(TEST_IR_SYSTEM_CASES
 list(REMOVE_ITEM TEST_INTERP_CASES ${TEST_IR_SYSTEM_CASES})
 list(REMOVE_ITEM TEST_INTERP_CASES test_subgraph_exporter)
 py_test_modules(
-  test_subgraph_exporter MODULES test_subgraph_exporter ENVS MIN_GRAPH_SIZE=0
+  test_subgraph_exporter
+  MODULES
+  test_subgraph_exporter
+  ENVS
+  MIN_GRAPH_SIZE=0
+  FLAGS_enable_pir_in_executor=1
   FLAGS_pir_subgraph_saving_dir=${CMAKE_CURRENT_SOURCE_DIR})
 
 foreach(target ${TEST_INTERP_CASES})
