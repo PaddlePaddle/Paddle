@@ -61,8 +61,7 @@ bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
       sch_block->body, [&](const Expr* x) { return x->As<ir::Call>(); });
   for (ir::Expr call : find_call) {
     ir::Call* call_node = call.As<ir::Call>();
-    if (call.As<ir::Call>() && kProhibitScheduleExternalFuncNames.count(
-                                   call.As<ir::Call>()->name) != 0) {
+    if (kProhibitScheduleExternalFuncNames.count(call_node->name) != 0) {
       return true;
     }
   }
@@ -78,8 +77,7 @@ std::vector<std::tuple<ir::Expr, ir::Expr>> FindSameOuterLoops(
   int min_stmt_size = std::min(src_ctrl_stmts.size(), tgt_ctrl_stmts.size());
   for (int i = 0; i < min_stmt_size; ++i) {
     if (src_ctrl_stmts[i].As<ir::For>() && tgt_ctrl_stmts[i].As<ir::For>() &&
-        ir::GetLoopExtent(src_ctrl_stmts[i]) ==
-            GetLoopExtent(tgt_ctrl_stmts[i])) {
+        GetLoopExtent(src_ctrl_stmts[i]) == GetLoopExtent(tgt_ctrl_stmts[i])) {
       same_loops.push_back(
           std::make_tuple(src_ctrl_stmts[i], tgt_ctrl_stmts[i]));
     } else {
@@ -93,8 +91,10 @@ std::vector<std::tuple<ir::Expr, ir::Expr>> FindSameOuterLoops(
 std::unordered_set<std::string> GetReduceLoopVarNames(ir::Expr block) {
   ir::ScheduleBlockRealize* schedule_block_realize =
       block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(schedule_block_realize);
   ir::ScheduleBlock* schedule_block =
       schedule_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(schedule_block);
   std::vector<ir::Expr> iter_values = schedule_block_realize->iter_values;
   std::vector<ir::Var> iter_vars = schedule_block->iter_vars;
   std::unordered_set<std::string> reduce_loop_var_names;
@@ -115,9 +115,11 @@ std::unordered_set<std::string> GetReduceLoopVarNames(ir::Expr block) {
 std::unordered_set<std::string> GetReduceVarNames(ir::Expr block) {
   ir::ScheduleBlockRealize* schedule_block_realize =
       block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(schedule_block_realize);
   ir::ScheduleBlock* schedule_block =
       schedule_block_realize->schedule_block.As<ir::ScheduleBlock>();
-  std::vector<ir::Var> iter_vars = schedule_block->iter_vars;
+  CHECK_NOTNULL(schedule_block);
+  std::vector<ir::Var>& iter_vars = schedule_block->iter_vars;
   std::unordered_set<std::string> reduce_var_names;
   for (int i = 0; i < iter_vars.size(); ++i) {
     if (iter_vars[i]->is_reduce_axis) {
@@ -162,21 +164,21 @@ NodePriority StaticShapeGroupScheduler::CalculateNodePriority(
       GetReduceLoopVarNames(node->Block());
 
   int64_t reduce_score = 1;
-  double score = 1;
+  int64_t score = 1;
   for (Expr expr : node->ControlStmts()) {
     ir::For* for_node = expr.As<ir::For>();
-    if (for_node != nullptr) {
-      score *= ir::GetLoopExtent(expr);
-    }
+    CHECK_NOTNULL(for_node);
+    int loop_extent = ir::GetLoopExtent(expr);
+    score *= loop_extent;
     if (reduce_loop_var_names.count(for_node->loop_var->name) != 0) {
-      reduce_score *= ir::GetLoopExtent(expr);
+      reduce_score *= loop_extent;
     }
     if (for_node->is_binded()) {
       has_loop_binded = true;
     }
   }
   if (reduce_score > 1) {
-    score *= (reduce_score * std::log2(reduce_score));
+    score = std::numeric_limits<int64_t>::max();
   }
 
   VLOG(6) << "The priority score of node " << node->id() << " is " << score;
@@ -239,13 +241,12 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
         [&](const ir::Expr* x) {
           bool find_reduce_var = false;
           if (x->As<ir::Load>()) {
-            int i = 0;
             for (ir::Expr index : x->As<ir::Load>()->indices) {
               if (index.as_var() &&
                   reduce_var_names.count(index.as_var_ref()->name) > 0) {
                 find_reduce_var = true;
+                break;
               }
-              ++i;
             }
           }
           return find_reduce_var;
