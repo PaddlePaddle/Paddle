@@ -370,6 +370,13 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
            "is enabled in Paddle-TRT, we set the id of these predictors to "
            "negative sharing_identifier you specified : "
         << predictor_id_;
+    PADDLE_ENFORCE_EQ(
+        config_.new_executor_enabled(),
+        true,
+        platform::errors::InvalidArgument(
+            "Please call the config.enable_new_executor() in python or "
+            "config.EnableNewExecutor() in c++ when you want share the engine "
+            "context memory of multiple predictors."));
   } else {
     predictor_id_ = inference::GetUniqueId();
   }
@@ -740,6 +747,9 @@ static void DisablePrepareDataOpt(
 }
 
 bool AnalysisPredictor::PrepareExecutor() {
+  PADDLE_ENFORCE_NOT_NULL(sub_scope_,
+                          platform::errors::PreconditionNotMet(
+                              "The sub_scope should not be nullptr."));
   if (config_.dist_config().use_dist_model()) {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
     VLOG(3) << "use_dist_model is enabled, will init FleetExecutor.";
@@ -770,14 +780,26 @@ bool AnalysisPredictor::PrepareExecutor() {
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
 
       ::pir::PassManager pm_for_op_program(::pir::IrContext::Instance(), 2);
+      //----------------------------------------------------------------------------------------------//
+      // Operator fusion pass
       pm_for_op_program.AddPass(::pir::CreateConv2dFusePass());
+      //----------------------------------------------------------------------------------------------//
 
-      pm_for_op_program.AddPass(::pir::CreateConstantFoldingPass(sub_scope_));
+      //----------------------------------------------------------------------------------------------//
+      // Functional pass
+      //----------------------------------------------------------------------------------------------//
+
+      //----------------------------------------------------------------------------------------------//
+      // Basic pass required by the framework
+      pm_for_op_program.AddPass(
+          ::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
+      pm_for_op_program.AddPass(
+          ::pir::CreateConstantFoldingPass(place_, sub_scope_));
       pm_for_op_program.AddPass(::pir::CreateDeadCodeEliminationPass());
       pm_for_op_program.AddPass(
           ::pir::CreateReplaceFetchWithShadowOutputPass());
-      pm_for_op_program.AddPass(
-          ::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
+      //----------------------------------------------------------------------------------------------//
+
       // pm_for_op_program.EnableIRPrinting();
       pm_for_op_program.Run(pir_program_.get());
 
@@ -806,10 +828,6 @@ bool AnalysisPredictor::PrepareExecutor() {
             root_predictor_id_, "memory_optimize_pass");
     executor_->MakeReusePlan(reuse_table);
   }
-
-  PADDLE_ENFORCE_NOT_NULL(sub_scope_,
-                          platform::errors::PreconditionNotMet(
-                              "The sub_scope should not be nullptr."));
 
   return true;
 }
@@ -1657,6 +1675,8 @@ void AnalysisPredictor::PrepareArgument() {
       config_.xpu_config_.fc_autotune_file_writeback);
   argument_->SetXpuGemmComputePrecision(
       config_.xpu_config_.gemm_compute_precision);
+  argument_->SetXpuQuantPostDynamicWeightMethods(
+      config_.xpu_config_.quant_post_dynamic_weight_methods);
   argument_->SetXpuTransformerSoftmaxOptimizeLevel(
       config_.xpu_config_.transformer_softmax_optimize_level);
   argument_->SetXpuTransformerEncoderAdaptiveSeqlen(

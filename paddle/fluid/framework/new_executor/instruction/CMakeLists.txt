@@ -1,7 +1,13 @@
 cc_library(
   instruction_base
-  SRCS instruction_base.cc phi_kernel_instruction.cc
-       legacy_kernel_instruction.cc cond_instruction.cc while_instruction.cc
+  SRCS instruction_base.cc
+       phi_kernel_instruction.cc
+       legacy_kernel_instruction.cc
+       cond_instruction.cc
+       while_instruction.cc
+       has_elements_instruction.cc
+       tuple_push_instruction.cc
+       tuple_pop_instruction.cc
        instruction_util.cc
   DEPS pir_adaptor phi framework_proto)
 
