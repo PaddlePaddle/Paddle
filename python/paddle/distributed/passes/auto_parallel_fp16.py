@@ -285,7 +285,10 @@ class FP16State:
                         if out_var.dtype == __target_dtype__:
                             out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
             elif is_backward_op(op):
-                if self._is_fp16_op(op.desc.original_id()) is True:
+                if (
+                    self._is_fp16_op(op.desc.original_id()) is True
+                    or op.type == "cast"
+                ):
                     for out_name in op.output_names:
                         if _keep_fp32_output(op, out_name):
                             continue

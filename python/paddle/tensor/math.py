@@ -4596,7 +4596,7 @@ def sign(x, name=None):
     Returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
 
     Args:
-        x (Tensor): The input tensor. The data type can be int8, int16, int32, int64, float16, float32 or float64.
+        x (Tensor): The input tensor. The data type can be uint8, int8, int16, int32, int64, float16, float32 or float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4620,6 +4620,7 @@ def sign(x, name=None):
             x,
             'x',
             [
+                'uint8',
                 'int8',
                 'int16',
                 'int32',
@@ -4627,7 +4628,6 @@ def sign(x, name=None):
                 'float16',
                 'float32',
                 'float64',
-                'uint16',
             ],
             'sign',
         )
