@@ -45,8 +45,8 @@ class Quantization(metaclass=abc.ABCMeta):
         model can be saved as inference model by calling paddle.jit.save.
         Args:
             model(Layer) - The quantized model to be converted.
-            inplace(bool) - Whether to modify the model in-place.
-            remain_weight(bool) - Whether to remain weights in floats.
+            inplace(bool, optional) - Whether to modify the model in-place, default is False.
+            remain_weight(bool, optional) - Whether to remain weights in floats, default is False.
 
         Return: The converted model
 
