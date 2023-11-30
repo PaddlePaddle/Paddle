@@ -91,14 +91,6 @@ static inline bool is_support_float(DataType dtype) {
   }
 }
 
-static inline bool is_support_int(phi::DataType dtype) {
-  if (dtype == DataType::INT32 || dtype == DataType::INT64) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
 inline phi::DataType GetPromoteDtype(const std::string& op_name,
                                      const DataType x,
                                      const DataType y) {
