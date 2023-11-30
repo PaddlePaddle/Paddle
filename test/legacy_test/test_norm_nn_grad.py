@@ -227,6 +227,34 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
                 place=place,
             )
 
+    @test_with_pir_api
+    @prog_scope()
+    def func_pir(self, place):
+        prog = base.Program()
+        with base.program_guard(prog):
+            np.random.seed()
+            dtype = "float32"
+            eps = 0.005
+            atol = 1e-4
+            x = paddle.static.data(dtype=dtype, shape=self.shape, name='x')
+            bn = paddle.nn.BatchNorm2D(
+                self.shape[1],
+                data_format=self.data_layout,
+            )
+            z = bn(x)
+            x_arr = np.random.uniform(-1, 1, self.shape).astype(dtype)
+            gradient_checker.double_grad_check(
+                [x], z, x_init=x_arr, atol=atol, place=place, eps=eps
+            )
+            gradient_checker.double_grad_check_for_dygraph(
+                self.batch_norm_wrapper,
+                [x],
+                z,
+                x_init=x_arr,
+                atol=atol,
+                place=place,
+            )
+
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
@@ -234,6 +262,7 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
             places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
+            self.func_pir(p)
 
 
 class TestBatchNormDoubleGradCheckCase1(TestBatchNormDoubleGradCheck):
