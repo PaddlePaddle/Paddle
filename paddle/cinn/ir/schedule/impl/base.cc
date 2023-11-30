@@ -19,7 +19,55 @@
 namespace cinn {
 namespace ir {
 
-void DyScheduleImpl::MergeExprs() { CINN_NOT_IMPLEMENTED; }
+void DyScheduleImpl::MergeExprs() {
+  auto exprs = this->GetModule().GetExprs();
+  if (exprs.size() == 1U) return;
+  CHECK(exprs[0].As<ir::Block>());
+  CHECK_EQ(exprs[0].As<ir::Block>()->stmts.size(), 1U);
+  CHECK(exprs[0].As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>());
+  CHECK(exprs[0]
+            .As<ir::Block>()
+            ->stmts[0]
+            .As<ir::ScheduleBlockRealize>()
+            ->schedule_block.As<ir::ScheduleBlock>());
+  std::vector<Expr> merged_block;
+  merged_block.push_back(exprs[0]
+                             .As<ir::Block>()
+                             ->stmts[0]
+                             .As<ir::ScheduleBlockRealize>()
+                             ->schedule_block.As<ir::ScheduleBlock>()
+                             ->body);
+  VLOG(3) << "Before merging, exprs[0] is : " << exprs[0];
+  for (int i = 1; i < exprs.size(); ++i) {
+    auto root_block = ir::ir_utils::CollectIRNodesWithoutTensor(
+        exprs[i],
+        [&](const Expr* x) {
+          return x->As<ir::ScheduleBlockRealize>() &&
+                 x->As<ir::ScheduleBlockRealize>()->iter_values.empty();
+        },
+        true);
+    CHECK_EQ(root_block.size(), 1U);
+    for (auto& it_block : root_block) {
+      auto& block_body = it_block.As<ir::ScheduleBlockRealize>()
+                             ->schedule_block.As<ir::ScheduleBlock>()
+                             ->body;
+      merged_block.push_back(block_body);
+    }
+  }
+  for (auto& block : merged_block) {
+    VLOG(3) << "in merged_block, it has " << block;
+  }
+  auto merged_expr = ir::Block::Make(merged_block);
+  exprs[0]
+      .As<ir::Block>()
+      ->stmts[0]
+      .As<ir::ScheduleBlockRealize>()
+      ->schedule_block.As<ir::ScheduleBlock>()
+      ->body = merged_expr;
+  VLOG(3) << "After merging, exprs[0] is : " << exprs[0];
+  exprs.erase(exprs.begin() + 1, exprs.end());
+  this->SetExprs(exprs);
+}
 
 bool DyScheduleImpl::HasBlock(const std::string& block_name) const {
   auto exprs = module_expr_.GetExprs();
@@ -64,12 +112,29 @@ DeviceAPI DyScheduleImpl::GetDeviceAPI() const {
 void DyScheduleImpl::Annotate(const Expr& block,
                               const std::string& key,
                               const attr_t& value) {
-  CINN_NOT_IMPLEMENTED;
+  CHECK(block.As<ir::ScheduleBlockRealize>());
+  CHECK(block.As<ir::ScheduleBlockRealize>()
+            ->schedule_block.As<ir::ScheduleBlock>());
+  auto copied_block = ir::ir_utils::IRCopy(block);
+  auto* schedule_block = copied_block.As<ir::ScheduleBlockRealize>()
+                             ->schedule_block.As<ir::ScheduleBlock>();
+  schedule_block->attrs.emplace(key, value);
+  this->Replace(block, copied_block);
 }
 
 void DyScheduleImpl::Unannotate(Expr& block,
-                                const std::string& key) {  // NOLINT
-  CINN_NOT_IMPLEMENTED;
+                                const std::string& ann_key) {  // NOLINT
+  CHECK(block.As<ir::ScheduleBlockRealize>());
+  CHECK(block.As<ir::ScheduleBlockRealize>()
+            ->schedule_block.As<ir::ScheduleBlock>());
+  auto* schedule_block = block.As<ir::ScheduleBlockRealize>()
+                             ->schedule_block.As<ir::ScheduleBlock>();
+  if (schedule_block->attrs.count(ann_key)) {
+    schedule_block->attrs.erase(ann_key);
+  } else {
+    LOG(WARNING) << "Can't find annotation with key: " << ann_key;
+    return;
+  }
 }
 
 void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
@@ -98,7 +163,8 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
 }
 
 Expr DyScheduleImpl::AddUnitLoop(const Expr& block) const {
-  CINN_NOT_IMPLEMENTED;
+  auto exprs = module_expr_.GetExprs();
+  return analyzer::AddUnitLoop(exprs, block);
 }
 
 }  // namespace ir
