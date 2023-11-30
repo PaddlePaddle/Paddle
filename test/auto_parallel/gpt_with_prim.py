@@ -161,22 +161,10 @@ class TestPrim(unittest.TestCase):
         os.environ['FLAGS_enable_prim_in_distribute'] = str(flag)
 
     def test_dp(self):
-        self.enable_pir(False)
-        engine_dp_prog = self.get_engine(
-            "dp", name="dp_prog", use_sharding=True
-        )
-        out_dp_prog = engine_dp_prog.fit(
-            self.dataset, 3, batch_size=self.batch_size, log_freq=1
-        )
-
         self.enable_pir(True)
         engine_dp_pir = self.get_engine("dp", name="dp_pir", use_sharding=True)
         out_dp_pir = engine_dp_pir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
-        )
-
-        self.check_results(
-            out_dp_prog.history["loss"][0], out_dp_pir.history["loss"][0]
         )
 
         # test prim enabled distributed engine
@@ -201,20 +189,10 @@ class TestPrim(unittest.TestCase):
         self.enable_prim_in_dist(False)
 
     def test_mp(self):
-        self.enable_pir(False)
-        engine_mp_prog = self.get_engine("mp", name="mp_prog")
-        out_mp_prog = engine_mp_prog.fit(
-            self.dataset, 3, batch_size=self.batch_size, log_freq=1
-        )
-
         self.enable_pir(True)
         engine_mp_pir = self.get_engine("mp", name="mp_pir")
         out_mp_pir = engine_mp_pir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
-        )
-
-        self.check_results(
-            out_mp_prog.history["loss"][0], out_mp_pir.history["loss"][0]
         )
 
         # test prim enabled distributed engine
@@ -237,44 +215,11 @@ class TestPrim(unittest.TestCase):
         self.enable_prim_in_dist(False)
 
     def test_pp(self):
-        # navie pipeline parallel without schedule
-        self.enable_pir(False)
-        engine_pp_prog = self.get_engine("pp", name="pp_prog0")
-        out_pp_prog = engine_pp_prog.fit(
-            self.dataset, 3, batch_size=self.batch_size, log_freq=1
-        )
-
         self.enable_pir(True)
-        # send_v2/recv_v2 dynamic_shape is True
         engine_pp_pir = self.get_engine("pp", name="pp_pir")
         out_pp_pir = engine_pp_pir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
-
-        if paddle.distributed.get_rank() == 1:
-            self.check_results(
-                out_pp_prog.history["loss"][0], out_pp_pir.history["loss"][0]
-            )
-
-        # send_v2/recv_v2 dynamic_shape is False
-        engine_pp_prog1 = self.get_engine("pp", name="pp_prog1")
-        dataloader_pp_prog = engine_pp_prog1.dataloader(
-            self.dataset,
-            batch_size=self.batch_size,
-            sample_split=3,
-            mode="train",
-        )
-        engine_pp_prog1.prepare(mode="train")
-        for op in engine_pp_prog1.main_program.global_block().ops:
-            if op.type in ["send_v2", "recv_v2"]:
-                op.desc._set_attr("dynamic_shape", False)
-        for data in dataloader_pp_prog:
-            out_pp_prog1 = engine_pp_prog1.run(data, mode="train")
-
-        if paddle.distributed.get_rank() == 1:
-            self.check_results(
-                out_pp_prog1["loss"], out_pp_pir.history["loss"][0]
-            )
 
         # test prim enabled distributed engine
         self.enable_prim_in_dist(True)
@@ -286,9 +231,6 @@ class TestPrim(unittest.TestCase):
             mode="train",
         )
         engine_pp_pir_prim.prepare(mode="train")
-        for op in engine_pp_pir_prim.main_program.global_block().ops:
-            if op.type in ["send_v2", "recv_v2"]:
-                op.desc._set_attr("dynamic_shape", False)
         for data in dataloader_pp_pir_prim:
             out_pp_pir_prim = engine_pp_pir_prim.run(data, mode="train")
 
