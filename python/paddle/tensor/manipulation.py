@@ -5997,25 +5997,6 @@ def select_scatter(x, values, axis, index, name=None):
         'none_axes': none_axes,
     }
 
-    StartsTensorList = None
-    EndsTensorList = None
-    StepsTensorList = None
-
-    if paddle.utils._contain_var(starts):
-        StartsTensorList = paddle.utils._convert_to_tensor_list(starts)
-        inputs['StartsTensorList'] = StartsTensorList
-        del attrs['starts']
-
-    if paddle.utils._contain_var(ends):
-        EndsTensorList = paddle.utils._convert_to_tensor_list(ends)
-        inputs['EndsTensorList'] = EndsTensorList
-        del attrs['ends']
-    if paddle.utils._contain_var(steps):
-        StepsTensorList = paddle.utils._convert_to_tensor_list(steps)
-        inputs['StepsTensorList'] = StepsTensorList
-        del attrs['steps']
-
-    # step2. Parse values
     dtype = x.dtype
     attrs['dtype'] = dtype
 
