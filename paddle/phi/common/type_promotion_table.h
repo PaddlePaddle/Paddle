@@ -112,9 +112,8 @@ inline phi::DataType GetPromoteDtype(const std::string& op_name,
 }
 
 inline bool NeedTypePromotion(const DataType x, const DataType y) {
-  // Tensor + Tensor only support type promotion in float, int32, int64
-  if ((x != y) && (is_support_float(x) || is_support_int(x)) &&
-      (is_support_float(y) || is_support_int(y))) {
+  // Tensor + Tensor only support type promotion for float type
+  if ((x != y) && is_support_float(x) && is_support_float(y)) {
     return true;
   } else {
     return false;
