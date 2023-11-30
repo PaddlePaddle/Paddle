@@ -56,6 +56,7 @@ class IR_API TuplePushOp : public Op<TuplePushOp, SideEffectTrait> {
   Value container() { return container_interface().container(); }
   Value inlet() { return operand_source(0); }
   Value outlet() { return container_interface().outlet(); }
+
   size_t tuple_size();
   Value inlet_element(size_t index) { return operand_source(index + 1u); }
   Value outlet_element(size_t index) {
@@ -105,6 +106,7 @@ class IR_API HasElementsOp : public Op<HasElementsOp> {
                     OperationArgument &argument,  // NOLINT
                     Value stack);
   void VerifySig();
+  Value input() { return operand_source(0); }
   Value out() { return result(0); }
 };
 class IR_API StackCreateOp : public Op<StackCreateOp, ContainerOpInterface> {

@@ -50,6 +50,7 @@
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/parser/ir_parser.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
@@ -80,6 +81,7 @@ using paddle::dialect::SelectedRowsType;
 using pir::Attribute;
 using pir::Block;
 using pir::BlockArgument;
+using pir::IrParser;
 using pir::Operation;
 using pir::OpOperand;
 using pir::OpResult;
@@ -131,8 +133,12 @@ inline void SetProgramInt64Attr(std::shared_ptr<Program> program,
 
 std::string GetValueInfo(Value v) {
   std::stringstream ss;
-  ss << "define_op_name=" << v.dyn_cast<OpResult>().owner()->name();
-  ss << ", index=" << v.dyn_cast<OpResult>().index();
+  if (auto op_result = v.dyn_cast<OpResult>()) {
+    ss << "define_op_name=" << op_result.owner()->name();
+    ss << ", index=" << op_result.index();
+  } else if (auto arg = v.dyn_cast<BlockArgument>()) {
+    ss << "block_args, index = " << arg.index();
+  }
   ss << ", dtype=" << v.type();
   if (v.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     ss << ", place="
@@ -249,6 +255,15 @@ void BindProgram(py::module *m) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
           });
 }
+
+std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
+  std::stringstream ss(program_str);
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  auto program = IrParser(ctx, ss).ParseProgram();
+  return program;
+}
+
+void BindIrParser(py::module *m) { m->def("parse_program", &ParseProgram); }
 
 void RefreshOpStopgradients(Operation *op) {
   if (op->num_operands() == 0 || op->isa<pir::ParameterOp>() ||
@@ -403,6 +418,13 @@ void BindOperation(py::module *m) {
            })
       .def("get_input_names",
            [](Operation &self) -> py::list {
+             if (self.HasInterface<paddle::dialect::OpYamlInfoInterface>() ==
+                 false) {
+               PADDLE_THROW(phi::errors::InvalidArgument(
+                   "Currently, we can only get input names of Operation that "
+                   "has OpYamlInfoInterface"));
+             }
+
              py::list op_list;
              paddle::dialect::OpYamlInfoInterface yaml_interface =
                  self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
@@ -581,7 +603,7 @@ void BindValue(py::module *m) {
           [](Value self) {
             if (self.impl() == nullptr) {
               PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get id of OpResult whose impl "
+                  "Currently, we can only get id of Value whose impl "
                   "is not nullptr"));
             } else {
               std::stringstream ss;
@@ -596,7 +618,7 @@ void BindValue(py::module *m) {
               return param_op.param_name();
             } else {
               PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get name of OpResult that "
+                  "Currently, we can only get name of Value that "
                   "is "
                   "persistable"));
             }
@@ -625,7 +647,7 @@ void BindValue(py::module *m) {
           },
           return_value_policy::reference)
       .def("numel", [](Value self) { return phi::product(GetValueDims(self)); })
-      .def("type", &OpResult::type)
+      .def("type", &Value::type)
       .def("is_dense_tensor_type",
            [](Value self) {
              if (self.type().isa<DenseTensorType>()) {
@@ -652,6 +674,7 @@ void BindValue(py::module *m) {
            })
       .def("replace_all_uses_with",
            [](Value self, Value value) { self.ReplaceAllUsesWith(value); })
+      .def("set_type", [](Value self, Type type) { self.set_type(type); })
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &Value::use_empty)
@@ -747,7 +770,6 @@ void BindOpResult(py::module *m) {
         The constructor of OpResult should not be invoked directly. OpResult can be automatically constructed
         when build network.
   )DOC");
-  // py::implicitly_convertible<OpResult, Value>();
   g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
   op_result
       .def(
@@ -1298,6 +1320,21 @@ SplitedResult SplitForwardBackward(
   return std::make_pair(programs, attr);
 }
 
+pir::Type CreateSelectedRowsTypeByDenseTensor(pir::Type dense_tensor_type) {
+  if (dense_tensor_type.isa<DenseTensorType>()) {
+    DenseTensorType type = dense_tensor_type.dyn_cast<DenseTensorType>();
+    return SelectedRowsType::get(pir::IrContext::Instance(),
+                                 type.dtype(),
+                                 type.dims(),
+                                 type.data_layout(),
+                                 type.lod(),
+                                 type.offset());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, input is not a dense tensor type."));
+  }
+}
+
 void BindUtils(pybind11::module *m) {
   m->def("clone_program", CloneProgram);
   m->def("split_program", SplitForwardBackward);
@@ -1324,6 +1361,8 @@ void BindUtils(pybind11::module *m) {
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
     pir::IrContext::Instance()->GetOrRegisterDialect<pir::ControlFlowDialect>();
   });
+  m->def("create_selected_rows_type_by_dense_tensor",
+         CreateSelectedRowsTypeByDenseTensor);
   m->def(
       "translate_to_pir",
       [](const ::paddle::framework::ProgramDesc &legacy_program) {
@@ -1584,6 +1623,7 @@ void BindPir(pybind11::module *module) {
   BindControlFlowApi(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
   BindOpsAPI(&ops_modules);
+  BindIrParser(&ir_module);
 }
 
 }  // namespace pybind

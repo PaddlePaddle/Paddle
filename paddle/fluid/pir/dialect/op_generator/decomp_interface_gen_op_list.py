@@ -21,6 +21,7 @@
 decomp_interface_declare_gen_op_list = [
     "add_n",
     "batch_norm",
+    "dropout",
     "gelu",
     "layer_norm",
     "mean",
@@ -37,6 +38,7 @@ decomp_interface_declare_gen_op_list = [
 # manual decomp interface implementation are located in manual_op_decomp.cc
 decomp_interface_implementation_gen_op_list = [
     "add_n",
+    "dropout",
     "gelu",
     "layer_norm",
     "mean",

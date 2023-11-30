@@ -835,14 +835,30 @@ class TensorRTEngineOp : public framework::OperatorBase {
       params.calibrator = calibrator_.get();
       params.device_id = dev_place.device;
       params.with_dynamic_shape = with_dynamic_shape_;
-      params.context_memory_sharing = Attr<bool>("context_memory_sharing");
-      params.use_dla = Attr<bool>("use_dla");
-      params.dla_core = Attr<int>("dla_core");
-      params.disable_trt_plugin_fp16 = Attr<bool>("disable_trt_plugin_fp16");
-      params.enable_low_precision_io = Attr<bool>("enable_low_precision_io");
-      params.use_inspector = Attr<bool>("use_inspector");
-      params.engine_info_path = Attr<std::string>("engine_info_path");
-
+      if (HasAttr("context_memory_sharing")) {
+        params.context_memory_sharing = Attr<bool>("context_memory_sharing");
+      }
+      if (HasAttr("use_dla")) {
+        params.use_dla = Attr<bool>("use_dla");
+      }
+      if (HasAttr("dla_core")) {
+        params.dla_core = Attr<int>("dla_core");
+      }
+      if (HasAttr("disable_trt_plugin_fp16")) {
+        params.disable_trt_plugin_fp16 = Attr<bool>("disable_trt_plugin_fp16");
+      }
+      if (HasAttr("enable_low_precision_io")) {
+        params.enable_low_precision_io = Attr<bool>("enable_low_precision_io");
+      }
+      if (HasAttr("use_inspector")) {
+        params.use_inspector = Attr<bool>("use_inspector");
+      }
+      if (HasAttr("engine_info_path")) {
+        params.engine_info_path = Attr<std::string>("engine_info_path");
+      }
+      if (HasAttr("optimization_level")) {
+        params.optimization_level = Attr<int>("optimization_level");
+      }
       if (!shape_range_info_path_.empty()) {
         inference::DeserializeShapeRangeInfo(shape_range_info_path_,
                                              &params.min_input_shape,
