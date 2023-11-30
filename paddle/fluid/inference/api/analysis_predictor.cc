@@ -1595,7 +1595,7 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
 #ifdef PADDLE_WITH_IPU
-  argument_->SetUseIpu(config_.use_ipu_);
+  argument_->SetUseIpu(config_.use_ipu());
   argument_->SetIpuDeviceNum(config_.ipu_device_num());
   argument_->SetIpuMicroBatchSize(config_.ipu_micro_batch_size_);
   argument_->SetIpuEnablePipelining(config_.ipu_enable_pipelining_);
@@ -1611,7 +1611,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetIpuCustomPatterns(config_.ipu_custom_patterns_);
 #endif
 
-  if (config_.use_mkldnn_) {
+  if (config_.mkldnn_enabled() && !config_.use_gpu()) {
     LOG(INFO) << "MKLDNN is enabled";
     argument_->SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
   }
@@ -1628,12 +1628,12 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetQuantizeExcludedOpIds(
         config_.mkldnn_quantizer_config()->excluded_op_ids());
   }
-  if (config_.use_mkldnn_bfloat16_) {
+  if (config_.mkldnn_bfloat16_enabled()) {
     LOG(INFO) << "Bfloat16 is enabled";
     argument_->SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
   }
 
-  if (config_.use_mkldnn_int8_) {
+  if (config_.mkldnn_int8_enabled()) {
     LOG(INFO) << "Int8 is enabled";
     argument_->SetQuantizeEnabledOpTypes(config_.quantize_enabled_op_types_);
     argument_->SetQuantizeExcludedOpIds(config_.quantize_excluded_op_ids_);
