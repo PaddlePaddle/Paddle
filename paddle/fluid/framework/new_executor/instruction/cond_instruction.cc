@@ -153,8 +153,19 @@ void CondInstruction::CopyBranchOutput(
   for (size_t i = 0; i < var_names.size(); ++i) {
     auto* inner_var = inter->InnerScope()->GetVar(var_names[i]);
 
-    output_vars_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-        inner_var->Get<phi::DenseTensor>());
+    if (inner_var->IsType<phi::DenseTensor>()) {
+      output_vars_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          inner_var->Get<phi::DenseTensor>());
+
+    } else if (inner_var->IsType<phi::TensorArray>()) {
+      const auto& inner_array = inner_var->Get<phi::TensorArray>();
+      auto* output_array = output_vars_[i]->GetMutable<phi::TensorArray>();
+      // output_array->clear();
+      *output_array = inner_array;
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
+    }
   }
 }
 

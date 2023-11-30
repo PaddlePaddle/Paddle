@@ -185,14 +185,19 @@ def _run_paddle_while(
     helper = GetterSetterHelper(getter, setter, return_name_ids, push_pop_names)
     _convert_tensor_arrray_if_necessary(helper, push_pop_names)
 
+    union_name = (set(return_name_ids) if return_name_ids else set()) | (
+        set(push_pop_names) if push_pop_names else set()
+    )
+    union_name = list(union_name)
+
     def new_body_fn(*args):
         """wrap the body() and add return value for `while_loop`
         the args may be differ from getter().
         """
         mutable_loop_vars = args
-        helper.set(return_name_ids, mutable_loop_vars)
+        helper.set(union_name, mutable_loop_vars)
         body()
-        return helper.get(return_name_ids)
+        return helper.get(union_name)
 
     def new_cond_fn(*args):
         """cond is a zero-args function, which is not
@@ -203,16 +208,15 @@ def _run_paddle_while(
     # UndefinedVar will become data layer not check variable with value=NO_VALUE_MAGIC.
     loop_vars = [
         to_static_variable(var) if not isinstance(var, UndefinedVar) else var
-        for var in helper.get(return_name_ids)
+        for var in helper.get(union_name)
     ]
-    helper.set(
-        return_name_ids, loop_vars
-    )  # change the non-local var to variable
+    helper.set(union_name, loop_vars)  # change the non-local var to variable
     # variable maybe modified to inner var. change it into
     from paddle.static.nn import while_loop
 
     loop_vars = while_loop(new_cond_fn, new_body_fn, loop_vars)
-    helper.set(return_name_ids, loop_vars)
+    # breakpoint()
+    helper.set(union_name, loop_vars)
     return loop_vars
 
 
@@ -414,6 +418,10 @@ def _run_paddle_cond(
     from paddle.jit.dy2static.program_translator import ProgramTranslator
 
     inplace_map = ProgramTranslator.get_instance()._inplace_map
+    union_name = (set(return_name_ids) if return_name_ids else set()) | (
+        set(push_pop_names) if push_pop_names else set()
+    )
+    union_name = list(union_name)
 
     def new_true_fn():
         # init args may contain mutable python container like [var, 2], we copy then like in while_loop
@@ -426,7 +434,7 @@ def _run_paddle_cond(
         # IfExpr will return a non-None return value, so we just return ret.
         # We assume normal return has no return value.
         if ret is None:
-            ret = helper.get(return_name_ids)
+            ret = helper.get(union_name)
         inplace_map.restore_checkpoint(inplace_map_checkpoint)
         return ret
 
@@ -439,7 +447,7 @@ def _run_paddle_cond(
         )
         ret = false_fn()
         if ret is None:
-            ret = helper.get(return_name_ids)
+            ret = helper.get(union_name)
         inplace_map.restore_checkpoint(inplace_map_checkpoint)
         return ret
 
@@ -459,9 +467,9 @@ def _run_paddle_cond(
                 f"Your if/else have different number of return value. TODO: add link to modifty. {str(e)}"
             )
         raise e
-    get_args = lambda: helper.get(return_name_ids)
-    set_args = lambda vs: helper.set(return_name_ids, vs)
-    return _recover_args_state(cond_outs, get_args, set_args, return_name_ids)
+    get_args = lambda: helper.get(union_name)
+    set_args = lambda vs: helper.set(union_name, vs)
+    return _recover_args_state(cond_outs, get_args, set_args, union_name)
 
 
 def _run_py_ifelse(
