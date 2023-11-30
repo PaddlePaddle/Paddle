@@ -294,11 +294,9 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
     Gemm gemm;
     if (gemm.get_workspace_size(args) > workspace_bytes) {
       VLOG(1) << "Requested split-k but workspace size insufficient. Falling "
-                   "back to non-split-k implementation."
-                << std::endl;
-      VLOG(1) << "Requested workspace_size: " << gemm.get_workspace_size(args)
-                << std::endl;
-      VLOG(1) << "get workspace_size: " << workspace_bytes << std::endl;
+                   "back to non-split-k implementation.";
+      VLOG(1) << "Requested workspace_size: " << gemm.get_workspace_size(args);
+      VLOG(1) << "get workspace_size: " << workspace_bytes;
       // If requested split-k factor will require more workspace bytes, revert
       // to standard gemm.
       args.batch_count = 1;
