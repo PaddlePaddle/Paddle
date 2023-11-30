@@ -25,18 +25,18 @@
 namespace paddle {
 
 namespace pybind {
-static PyObject *static_api_get_parameter(PyObject *self,
-                                          PyObject *args,
-                                          PyObject *kwargs) {
+static PyObject *static_api_parameter(PyObject *self,
+                                      PyObject *args,
+                                      PyObject *kwargs) {
   try {
-    VLOG(6) << "Add get_parameter op into program";
+    VLOG(6) << "Add parameter op into program";
     VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
 
     // Parse Attributes
     PyObject *name_obj = PyTuple_GET_ITEM(args, 0);
     std::string name = CastPyArg2String(name_obj, "name", 0);
     // Call ir static api
-    auto static_api_out = paddle::dialect::get_parameter(name);
+    auto static_api_out = paddle::dialect::parameter(name);
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -125,15 +125,141 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
   }
 }
 
+static PyObject *static_api_create_array(PyObject *self,
+                                         PyObject *args,
+                                         PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add create_array op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get dtype from args
+    PyObject *dtype_obj = PyTuple_GET_ITEM(args, 0);
+    phi::DataType dtype =
+        CastPyArg2DataTypeDirectly(dtype_obj, "create_array", 0);
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::create_array(dtype);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
+static PyObject *static_api_array_length(PyObject *self,
+                                         PyObject *args,
+                                         PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add array_length op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2Value(x_obj, "array_length", 0);
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::array_length(x);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
+static PyObject *static_api_array_read(PyObject *self,
+                                       PyObject *args,
+                                       PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add array_read op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *array_obj = PyTuple_GET_ITEM(args, 0);
+    auto array = CastPyArg2Value(array_obj, "array_read", 0);
+
+    PyObject *i_obj = PyTuple_GET_ITEM(args, 1);
+    pir::Value i;
+    if (PyObject_CheckIROpResult(i_obj)) {
+      i = CastPyArg2Value(i_obj, "array_read", 1);
+    } else {
+      int64_t i_tmp = CastPyArg2Int(i_obj, "array_read", 1);
+      i = paddle::dialect::full(std::vector<int64_t>{1},
+                                i_tmp,
+                                phi::DataType::INT64,
+                                phi::CPUPlace());
+    }
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::array_read(array, i);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
+static PyObject *static_api_array_write_(PyObject *self,
+                                         PyObject *args,
+                                         PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add array_write_ op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *array_obj = PyTuple_GET_ITEM(args, 0);
+    auto array = CastPyArg2Value(array_obj, "array_write_", 0);
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 1);
+    auto x = CastPyArg2Value(x_obj, "array_write_", 1);
+    PyObject *i_obj = PyTuple_GET_ITEM(args, 2);
+    pir::Value i;
+    if (PyObject_CheckIROpResult(i_obj)) {
+      i = CastPyArg2Value(i_obj, "array_write_", 2);
+    } else {
+      int64_t i_tmp = CastPyArg2Int(i_obj, "array_write_", 2);
+      i = paddle::dialect::full(std::vector<int64_t>{1},
+                                i_tmp,
+                                phi::DataType::INT64,
+                                phi::CPUPlace());
+    }
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::array_write_(array, x, i);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyMethodDef ManualOpsAPI[] = {
     {"set_parameter",
      (PyCFunction)(void (*)(void))static_api_set_parameter,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for set_parameter."},
-    {"get_parameter",
-     (PyCFunction)(void (*)(void))static_api_get_parameter,
+    {"parameter",
+     (PyCFunction)(void (*)(void))static_api_parameter,
      METH_VARARGS | METH_KEYWORDS,
-     "C++ interface function for get_parameter."},
+     "C++ interface function for parameter."},
+    {"create_array",
+     (PyCFunction)(void (*)(void))static_api_create_array,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for create_array."},
+    {"array_length",
+     (PyCFunction)(void (*)(void))static_api_array_length,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for array_length."},
+    {"array_read",
+     (PyCFunction)(void (*)(void))static_api_array_read,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for array_read."},
+    {"array_write_",
+     (PyCFunction)(void (*)(void))static_api_array_write_,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for array_write_."},
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind

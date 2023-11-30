@@ -75,6 +75,9 @@ struct OperationArgument {
   template <class InputIt>
   void AddOutputs(InputIt first, InputIt last);
 
+  void AddOutputs(std::initializer_list<Type> type_list) {
+    AddOutputs(std::begin(type_list), std::end(type_list));
+  }
   template <class TypeContainer>
   void AddOutputs(const TypeContainer& type_container) {
     AddOutputs(std::begin(type_container), std::end(type_container));

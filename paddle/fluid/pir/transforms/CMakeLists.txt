@@ -1,33 +1,16 @@
-file(GLOB FUSION_PASS_SRCS "fusion/*.cc")
+file(GLOB_RECURSE transforms_srcs "*.cc")
+if(NOT WITH_CINN)
+  list(REMOVE_ITEM transforms_srcs
+       ${CMAKE_CURRENT_SOURCE_DIR}/build_cinn_pass.cc)
+endif()
 
-cc_library(
-  fusion_passes
-  SRCS ${FUSION_PASS_SRCS}
-  DEPS drr)
-
-cc_library(
-  transform_general_functions
-  SRCS transform_general_functions.cc
-  DEPS pd_op_dialect_core)
-
-cc_library(
-  pd_op_to_kernel_pass
-  SRCS pd_op_to_kernel_pass.cc
-  DEPS pd_kernel_dialect pd_op_dialect pd_op_dialect_utils)
-
-cc_library(
-  pd_constant_folding_pass
-  SRCS constant_folding_pass.cc
-  DEPS standalone_executor pd_op_to_kernel_pass transform_general_functions)
-
-cc_library(
-  pd_inplace_pass
-  SRCS inplace_pass.cc
-  DEPS pd_op_dialect_core op_yaml_info_parser)
+set(transforms_deps drr op_dialect op_dialect_vjp standalone_executor pir)
 
 if(WITH_CINN)
-  cc_library(
-    pd_build_cinn_pass
-    SRCS build_cinn_pass.cc
-    DEPS pd_op_dialect cinn_op_dialect pir cinnapi)
+  set(transforms_deps ${transforms_deps} cinn_op_dialect cinnapi)
 endif()
+
+cc_library(
+  pir_transforms
+  SRCS ${transforms_srcs}
+  DEPS ${transforms_deps})

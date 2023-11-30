@@ -29,5 +29,8 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& out,
                                    const std::vector<int>& perm);
 
+SpmdInfo TransposeGradInferSpmd(const DistMetaTensor& out_grad,
+                                const std::vector<int>& perm);
+
 }  // namespace distributed
 }  // namespace phi

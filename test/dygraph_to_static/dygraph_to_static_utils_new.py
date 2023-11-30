@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import inspect
 import logging
 import os
 import unittest
 from enum import Flag, auto
 from functools import wraps
+from pathlib import Path
 
 import numpy as np
 
@@ -25,6 +27,10 @@ import paddle
 from paddle import set_flags, static
 from paddle.base import core
 from paddle.jit.api import sot_mode_guard
+from paddle.jit.sot.opcode_translator.executor.executor_cache import (
+    OpcodeExecutorCache,
+)
+from paddle.jit.sot.utils.envs import min_graph_size_guard
 
 """
 # Usage:
@@ -52,6 +58,8 @@ logger.setLevel(logging.WARNING)
 class ToStaticMode(Flag):
     AST = auto()
     SOT = auto()
+    # SOT with MIN_GRAPH_SIZE=10, we only test SOT_MGS10 + LEGACY_IR to avoid regression
+    SOT_MGS10 = auto()
 
     def lower_case_name(self):
         return self.name.lower()
@@ -68,13 +76,15 @@ class IrMode(Flag):
         return self.name.lower()
 
 
-DEFAULT_TO_STATIC_MODE = ToStaticMode.AST | ToStaticMode.SOT
+DEFAULT_TO_STATIC_MODE = (
+    ToStaticMode.AST | ToStaticMode.SOT | ToStaticMode.SOT_MGS10
+)
 DEFAULT_IR_MODE = IrMode.LEGACY_IR
 
 
 def to_legacy_ast_test(fn):
     """
-    convert run fall_back to ast
+    convert run AST
     """
 
     @wraps(fn)
@@ -88,59 +98,76 @@ def to_legacy_ast_test(fn):
 
 def to_sot_test(fn):
     """
-    convert run fall_back to ast
+    convert run SOT
     """
 
     @wraps(fn)
     def impl(*args, **kwargs):
         logger.info("[SOT] running SOT")
+
+        OpcodeExecutorCache().clear()
         with sot_mode_guard(True):
-            fn(*args, **kwargs)
+            with min_graph_size_guard(0):
+                fn(*args, **kwargs)
 
     return impl
 
 
-def to_pir_ast_test(fn):
+def to_sot_mgs10_test(fn):
+    """
+    convert run SOT and MIN_GRAPH_SIZE=10
+    """
+
     @wraps(fn)
     def impl(*args, **kwargs):
-        logger.info("[PIR][AST] running pir api")
-        ir_outs = None
-        try:
-            with paddle.pir_utils.IrGuard():
-                paddle.disable_static()
-                ir_outs = fn(*args, **kwargs)
-        finally:
-            paddle.enable_static()
-        return ir_outs
+        logger.info("[SOT_MGS10] running SOT")
+
+        OpcodeExecutorCache().clear()
+        with sot_mode_guard(True):
+            with min_graph_size_guard(10):
+                fn(*args, **kwargs)
 
     return impl
 
 
 def to_legacy_ir_test(fn):
     def impl(*args, **kwargs):
-        logger.info("[Program] running legacy ir")
+        logger.info("[LEGACY_IR] running legacy ir")
         return fn(*args, **kwargs)
 
     return impl
 
 
-def to_pir_test(fn):
+def to_pir_exe_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
-        logger.info("[PIR] running pir")
+        logger.info("[PIR_EXE] running pir exe")
         ir_outs = None
         if os.environ.get('FLAGS_use_stride_kernel', False):
             return
         with static.scope_guard(static.Scope()):
             with static.program_guard(static.Program()):
+                pir_flag = 'FLAGS_enable_pir_in_executor'
                 try:
-                    new_ir_flag = 'FLAGS_enable_new_ir_in_executor'
-                    os.environ[new_ir_flag] = 'True'
-                    set_flags({new_ir_flag: True})
+                    os.environ[pir_flag] = 'True'
+                    set_flags({pir_flag: True})
                     ir_outs = fn(*args, **kwargs)
                 finally:
-                    del os.environ[new_ir_flag]
-                    set_flags({new_ir_flag: False})
+                    del os.environ[pir_flag]
+                    set_flags({pir_flag: False})
+        return ir_outs
+
+    return impl
+
+
+def to_pir_api_test(fn):
+    @wraps(fn)
+    def impl(*args, **kwargs):
+        logger.info("[PIR_API] running pir api")
+        ir_outs = None
+        with paddle.pir_utils.IrGuard():
+            paddle.disable_static()
+            ir_outs = fn(*args, **kwargs)
         return ir_outs
 
     return impl
@@ -149,14 +176,15 @@ def to_pir_test(fn):
 # Metaclass and BaseClass
 class Dy2StTestMeta(type):
     TO_STATIC_HANDLER_MAP = {
-        ToStaticMode.SOT: to_sot_test,
         ToStaticMode.AST: to_legacy_ast_test,
+        ToStaticMode.SOT: to_sot_test,
+        ToStaticMode.SOT_MGS10: to_sot_mgs10_test,
     }
 
     IR_HANDLER_MAP = {
         IrMode.LEGACY_IR: to_legacy_ir_test,
-        IrMode.PIR_EXE: to_pir_test,
-        IrMode.PIR_API: to_pir_ast_test,
+        IrMode.PIR_EXE: to_pir_exe_test,
+        IrMode.PIR_API: to_pir_api_test,
     }
 
     def __new__(cls, name, bases, attrs):
@@ -205,11 +233,11 @@ class Dy2StTestMeta(type):
             )
             # Generate all test cases
             for to_static_mode, ir_mode in to_static_with_ir_modes:
-                # NOTE(gouzil): Temporarily not supported SOT + PIR, link: https://github.com/PaddlePaddle/Paddle/pull/58630
                 if (
-                    to_static_mode == ToStaticMode.SOT
-                    and ir_mode == IrMode.PIR_API
+                    to_static_mode == ToStaticMode.SOT_MGS10
+                    and ir_mode != IrMode.LEGACY_IR
                 ):
+                    # SOT_MGS10 only test with LEGACY_IR
                     continue
                 new_attrs[
                     Dy2StTestMeta.test_case_name(
@@ -269,12 +297,22 @@ def test_ast_only(fn):
 
 
 def test_sot_only(fn):
-    fn = set_to_static_mode(ToStaticMode.SOT)(fn)
+    fn = set_to_static_mode(ToStaticMode.SOT | ToStaticMode.SOT_MGS10)(fn)
+    return fn
+
+
+def test_legacy_only(fn):
+    fn = set_ir_mode(IrMode.LEGACY_IR)(fn)
     return fn
 
 
 def test_pir_only(fn):
     fn = set_ir_mode(IrMode.PIR_EXE)(fn)
+    return fn
+
+
+def test_pir_api_only(fn):
+    fn = set_ir_mode(IrMode.PIR_API)(fn)
     return fn
 
 
@@ -284,12 +322,12 @@ def test_legacy_and_pir(fn):
 
 
 def test_legacy_and_pir_api(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API)
+    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API)(fn)
     return fn
 
 
-def test_legacy_and_pir_api_and_pir_exe(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API | IrMode.PIR_EXE)
+def test_legacy_and_pir_exe_and_pir_api(fn):
+    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API | IrMode.PIR_EXE)(fn)
     return fn
 
 
@@ -299,7 +337,7 @@ def compare_legacy_with_pir(fn):
         outs = fn(*args, **kwargs)
         if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
             return outs
-        ir_outs = to_pir_test(fn)(*args, **kwargs)
+        ir_outs = to_pir_exe_test(fn)(*args, **kwargs)
         np.testing.assert_equal(
             outs,
             ir_outs,
@@ -319,3 +357,26 @@ def show_all_test_cases(test_class):
         if attr.startswith("test"):
             fn = getattr(test_class, attr)
             logger.info(f"{attr}: {fn}")
+
+
+# Other utilities
+def import_module_from_path(module_name, module_path):
+    """A better way to import module from other directory than using sys.path.append"""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def import_legacy_test_utils():
+    test_root = Path(__file__).parent.parent
+    legacy_test_utils_path = test_root / "legacy_test/utils.py"
+    legacy_test_utils = import_module_from_path(
+        "legacy_test_utils", legacy_test_utils_path
+    )
+    return legacy_test_utils
+
+
+legacy_test_utils = import_legacy_test_utils()
+dygraph_guard = legacy_test_utils.dygraph_guard
+static_guard = legacy_test_utils.static_guard
