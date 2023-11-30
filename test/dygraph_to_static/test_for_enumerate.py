@@ -424,6 +424,7 @@ class TestForIterVarNumpy(TestTransform):
     def set_test_func(self):
         self.dygraph_func = for_iter_var_numpy
 
+    @test_legacy_and_pt_and_pir
     def test_transformed_result_compare(self):
         self.set_test_func()
         self.transformed_result_compare()
@@ -477,6 +478,11 @@ class TestForEnumerateVar(TestForIterVarNumpy):
 class TestForEnumerateVarWithNestedRange(TestForIterVarNumpy):
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_with_nested_range
+
+    # Remove this if we support control flow
+    def test_transformed_result_compare(self):
+        self.set_test_func()
+        self.transformed_result_compare()
 
 
 class TestForIterVarList(TestForInRange):
