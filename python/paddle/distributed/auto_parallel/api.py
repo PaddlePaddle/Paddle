@@ -510,7 +510,7 @@ def shard_optimizer(optimizer, shard_fn=None):
 
     Args:
         optimizer (paddle.optimizer.Optimizer): The optimizer to be sharded.
-        shard_fn (optional, Callable): The function to shard accumulators. If not specified,
+        shard_fn (Callable, optional): The function to shard accumulators. If not specified,
            we simply pass down the dist attr of the params.
 
     Returns:
