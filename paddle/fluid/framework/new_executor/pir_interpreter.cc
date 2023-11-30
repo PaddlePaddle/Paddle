@@ -74,6 +74,10 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(enable_pir_in_executor_trace_run);
 
+#define CREATE_INSTR(instr_name)                                   \
+  vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
+      op_idx++, place_, &op, value_exe_info_.get()));
+
 namespace paddle {
 namespace framework {
 
@@ -633,21 +637,16 @@ void PirInterpreter::BuildInstruction() {
       }
     } else if (op.dialect()->name() == "cf") {
       if (op.isa<pir::TuplePushOp>()) {
-        vec_instruction_base_.emplace_back(
-            std::make_unique<TuplePushInstruction>(
-                op_idx++, place_, &op, value_exe_info_.get()));
+        CREATE_INSTR(TuplePushInstruction);
       } else if (op.isa<pir::TuplePopOp>()) {
-        vec_instruction_base_.emplace_back(
-            std::make_unique<TuplePopInstruction>(
-                op_idx++, place_, &op, value_exe_info_.get()));
+        CREATE_INSTR(TuplePopInstruction);
       } else {
         VLOG(6) << "skip process cf dialect op: " << op.name();
         continue;
       }
     } else if (op.dialect()->name() == "pd_op") {
       if (op.isa<paddle::dialect::IfOp>()) {
-        vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
-            op_idx++, place_, &op, value_exe_info_.get()));
+        CREATE_INSTR(CondInstruction);
         sub_blocks_.insert(
             {op.dyn_cast<paddle::dialect::IfOp>().true_block(),
              dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
@@ -669,9 +668,7 @@ void PirInterpreter::BuildInstruction() {
              dynamic_cast<WhileInstruction*>(vec_instruction_base_.back().get())
                  ->BodyInterpreter()});
       } else if (op.isa<paddle::dialect::HasElementsOp>()) {
-        vec_instruction_base_.emplace_back(
-            std::make_unique<HasElementsInstruction>(
-                op_idx++, place_, &op, value_exe_info_.get()));
+        CREATE_INSTR(HasElementsInstruction);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Now only support pd_kernel and cinn dialect."));
@@ -688,18 +685,13 @@ void PirInterpreter::BuildInstruction() {
       VLOG(6) << "process " << op_name;
 
       if (op.isa<paddle::dialect::LegacyKernelOp>()) {
-        vec_instruction_base_.emplace_back(
-            std::make_unique<LegacyKernelInstruction>(
-                op_idx++, place_, &op, *(value_exe_info_.get())));
+        CREATE_INSTR(LegacyKernelInstruction);
       } else {
-        vec_instruction_base_.emplace_back(
-            std::make_unique<PhiKernelInstruction>(
-                op_idx++, place_, &op, *(value_exe_info_.get())));
+        CREATE_INSTR(PhiKernelInstruction);
       }
 #ifdef PADDLE_WITH_CINN
     } else if (op.dialect()->name() == "cinn_runtime") {
-      vec_instruction_base_.emplace_back(std::make_unique<CinnJitInstruction>(
-          op_idx++, place_, &op, *(value_exe_info_.get())));
+      CREATE_INSTR(CinnJitInstruction);
 #endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
