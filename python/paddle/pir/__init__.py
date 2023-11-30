@@ -21,6 +21,7 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
     Program,
     Type,
     Value,
+    parse_program,
     check_unregistered_ops,
     fake_op_result,
     is_fake_op_result,
