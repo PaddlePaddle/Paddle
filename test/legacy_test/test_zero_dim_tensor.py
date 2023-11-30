@@ -25,6 +25,7 @@ from decorator_helper import prog_scope
 
 import paddle
 import paddle.nn.functional as F
+from paddle.pir_utils import test_with_pir_api
 
 unary_api_list = [
     paddle.nn.functional.elu,
@@ -5914,6 +5915,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[emb])
         self.assertEqual(res[0].shape, (3,))
 
+    @test_with_pir_api
     def test_one_hot_label(self):
         label = paddle.full(shape=[], fill_value=2, dtype='int64')
         one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
