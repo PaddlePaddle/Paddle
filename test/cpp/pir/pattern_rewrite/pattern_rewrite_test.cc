@@ -27,10 +27,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
-<<<<<<< HEAD
 #include "paddle/fluid/pir/transforms/fusion/conv2d_fuse_pass.h"
-=======
->>>>>>> refactor: refactor pass and test
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
 #include "paddle/pir/core/builder.h"
