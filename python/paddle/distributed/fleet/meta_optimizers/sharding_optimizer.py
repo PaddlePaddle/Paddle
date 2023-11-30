@@ -1520,7 +1520,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # sharding
         if self.sharding_degree > 1:
-            self.sharding_ring_id = self.mp_ring_id + 1
+            self.sharding_ring_id = 1
             self.sharding_rank = (
                 self.global_rank // self.mp_degree
             ) % self.sharding_degree

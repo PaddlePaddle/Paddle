@@ -369,7 +369,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
 template <typename T>
 bool InMemoryDataFeed<T>::Start() {
 #ifdef _LINUX
-  VLOG(4) << "entering InMemoryDataFeed<T>::Start()";
+  VLOG(3) << "entering InMemoryDataFeed<T>::Start()";
   this->CheckSetFileList();
   if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
     std::vector<T> data;
@@ -391,6 +391,11 @@ int InMemoryDataFeed<T>::Next() {
 #ifdef _LINUX
   this->CheckStart();
   if (!enable_heterps_) {
+    VLOG(3) << " InMemoryDataFeed<T>::Next() enable_heterps_:"
+            << enable_heterps_
+            << ", output_channel_ size=" << output_channel_->Size()
+            << ", consume_channel_ size=" << consume_channel_->Size()
+            << ", thread_id=" << thread_id_;
     CHECK(output_channel_ != nullptr);
     CHECK(consume_channel_ != nullptr);
     VLOG(3) << "output_channel_ size=" << output_channel_->Size()

@@ -83,6 +83,7 @@ class TestDistMnistAsyncDataset2x2(TestFleetBase):
         if check_error_log:
             required_envs["GLOG_v"] = "3"
             required_envs["GLOG_logtostderr"] = "1"
+            required_envs["FLAGS_call_stack_level"] = "2"
 
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 

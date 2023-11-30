@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defination of TrainerFactory."""
+"""Definition of TrainerFactory."""
 
 import logging
 import threading
@@ -93,10 +93,6 @@ class TrainerFactory:
                 ):
                     trainer._set_dump_fields_path(opt_info["dump_fields_path"])
                 if opt_info.get("dump_fields_mode") is not None:
-                    print(
-                        "======get dump_fields_mode:",
-                        opt_info["dump_fields_mode"],
-                    )
                     trainer._set_dump_fields_mode(opt_info["dump_fields_mode"])
                 if (
                     opt_info.get("user_define_dump_filename") is not None
@@ -171,7 +167,7 @@ class TrainerFactory:
 
 class FetchHandlerMonitor:
     """
-    Defination of FetchHandlerMonitor class,
+    Definition of FetchHandlerMonitor class,
     it's for fetch handler.
     """
 

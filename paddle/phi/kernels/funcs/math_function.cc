@@ -151,9 +151,7 @@ struct TensorSetConstantCPU {
     auto* begin = tensor_->mutable_data<T>(cpu);
     const T* num_ptr = reinterpret_cast<const T*>(value_);
     T num = *num_ptr;
-    VLOG(0) << "TensorSetConstantCPU fill num:" << num;
     std::fill(begin, begin + tensor_->numel(), num);
-    VLOG(0) << "TensorSetConstantCPU fill done, begin:" << begin[0];
   }
   phi::DenseTensor* tensor_;
   const void* value_;
@@ -177,10 +175,6 @@ struct TensorSetConstantXPU {
          (std::is_same<T, phi::dtype::float16>::value)) &&
         (place_ == phi::XPUPlace())) {
       using XPUType = typename XPUTypeTrait<T>::Type;
-      VLOG(0) << "TensorSetConstantXPU use xpu kernel, T type is float:"
-              << std::is_same<T, float>::value
-              << " | float16:" << std::is_same<T, phi::dtype::float16>::value
-              << "  num:" << num_value;
       auto* dev_ctx = static_cast<phi::XPUContext*>(ctx);
       int r = xpu::constant(dev_ctx->x_context(),
                             reinterpret_cast<XPUType*>(data),
@@ -189,8 +183,6 @@ struct TensorSetConstantXPU {
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
       dev_ctx->Wait();
     } else {
-      VLOG(0) << "TensorSetConstantXPU use xpu normal kernel, value:"
-              << num_value;
       std::unique_ptr<T[]> data_cpu(new T[numel]);
       std::fill(
           data_cpu.get(), data_cpu.get() + numel, static_cast<T>(num_value));
@@ -234,7 +226,6 @@ void set_constant_with_place<phi::CustomPlace>(
     phi::DenseTensor* tensor,
     const void* value) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  VLOG(0) << "TensorSetConstantCustomPlace use custom kernel";
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "full",
       {paddle::experimental::ParseBackend(tensor->place()),
@@ -248,8 +239,6 @@ void set_constant_with_place<phi::CustomPlace>(
                                     phi::DenseTensor*);
   const float* num_ptr = reinterpret_cast<const float*>(value);
   float num = static_cast<float>(*num_ptr);
-  VLOG(0) << "TensorSetConstantCustomPlace num:" << num
-          << " | tensor->dtype():" << tensor->dtype();
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(context,
                phi::IntArray(phi::vectorize(tensor->dims())),
@@ -265,7 +254,6 @@ template <>
 void set_constant_with_place<phi::CPUPlace>(const phi::DeviceContext& context,
                                             phi::DenseTensor* tensor,
                                             const void* value) {
-  VLOG(0) << "set_constant_with_place use CPU kernel";
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
 
@@ -274,7 +262,6 @@ void set_constant_with_place<phi::GPUPinnedPlace>(
     const phi::DeviceContext& context,
     phi::DenseTensor* tensor,
     const void* value) {
-  VLOG(0) << "set_constant_with_place use GPUPinnedPlace CPU kernel";
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
 
@@ -299,7 +286,6 @@ struct TensorSetConstantWithPlace {
 void set_constant(const phi::DeviceContext& context,
                   phi::DenseTensor* tensor,
                   const void* value) {
-  VLOG(0) << "set_constant with const void value";
   TensorSetConstantWithPlace func(context, tensor, value);
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (context.GetPlace().GetType() == phi::AllocationType::CUSTOM) {
@@ -309,13 +295,10 @@ void set_constant(const phi::DeviceContext& context,
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // tensor->place().apply_visitor(func);
-  VLOG(0) << "set_constant use cuda func";
   phi::VisitPlace(tensor->place(), func);
 #elif defined(PADDLE_WITH_XPU)
-  VLOG(0) << "set_constant use xpu func";
   func(phi::XPUPlace());
 #else
-  VLOG(0) << "set_constant use cpu func";
   func(phi::CPUPlace());
 #endif
 }
