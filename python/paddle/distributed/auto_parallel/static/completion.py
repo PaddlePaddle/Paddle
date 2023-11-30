@@ -164,8 +164,7 @@ def _update_op_dims_mapping_and_distoperatorimpl(
             dist_op.serial_op.type, dist_op_container.type
         )
     )
-    op_dist_attr = dist_op.dist_attr  #
-    original_op_dist_attr = copy.deepcopy(op_dist_attr)  #
+
     updated = dist_op_container.update_dims_mapping(dist_op)
     changed = updated or changed
     # TODO(ljz) remove the below code once we introduce general reshard to replace specifc distopimpls
@@ -473,7 +472,7 @@ class Completer:
     def _update_dims_mapping(self):
         # Complete dims_mapping for each node
         reach_fix_point = False
-        count = 0
+
         while not reach_fix_point:
             changed = False
             for is_fwd in [True, False]:
@@ -498,7 +497,7 @@ class Completer:
                 graph_changed = self._update_dims_mapping_between_graphs()
                 if graph_changed:
                     changed = True
-            count += 1
+
             if changed:
                 reach_fix_point = False
             else:

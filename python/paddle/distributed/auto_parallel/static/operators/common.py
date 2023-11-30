@@ -473,7 +473,7 @@ def get_data_parallel_group(dist_ctx, op, act_grad_names, rank):
             )
             dp_group = new_process_group(group_ranks)
             break
-    if dp_group is None:
+    if dp_group is not None:
         return [dp_group]
     else:
         return []
