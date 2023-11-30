@@ -283,6 +283,7 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }
 
+<<<<<<< HEAD
 SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
                               const DistMetaTensor& out_grad) {
   std::vector<int64_t> out_grad_shape = phi::vectorize(out_grad.dims());
@@ -301,5 +302,7 @@ SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
   return {{x_shape_dist_dst, out_grad_dist_dst}, {x_shape_dist_dst}};
 }
 
+=======
+>>>>>>> add squeeze/unsqueeze backward spmd rules
 }  // namespace distributed
 }  // namespace phi

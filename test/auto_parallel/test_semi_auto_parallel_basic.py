@@ -158,6 +158,7 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
+<<<<<<< HEAD
     def test_transpose_api(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
@@ -167,6 +168,18 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 "semi_auto_parallel_for_transpose.py",
                 user_defined_envs=envs,
             )
+=======
+    # TODO(cxxly): Enable this test when auto parallel is supported view
+    # def test_squeeze_api(self):
+    #     envs_list = test_base.gen_product_envs_list(
+    #         self._default_envs, self._changeable_envs
+    #     )
+    #     for envs in envs_list:
+    #         self.run_test_case(
+    #             "semi_auto_parallel_for_squeeze.py",
+    #             user_defined_envs=envs,
+    #         )
+>>>>>>> add squeeze/unsqueeze backward spmd rules
 
     def test_unary_elementwise_like_api(self):
         envs_list = test_base.gen_product_envs_list(
