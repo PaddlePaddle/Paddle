@@ -778,6 +778,58 @@ void BilinearInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
+                                      const MetaTensor& key_cache,
+                                      const MetaTensor& value_cache,
+                                      const MetaTensor& seq_lens_encoder,
+                                      const MetaTensor& seq_lens_decoder,
+                                      const MetaTensor& seq_lens_this_time,
+                                      const MetaTensor& padding_offsets,
+                                      const MetaTensor& cum_offsets,
+                                      const MetaTensor& cu_seqlens_q,
+                                      const MetaTensor& cu_seqlens_k,
+                                      const MetaTensor& block_tables,
+                                      const MetaTensor& pre_key_cache,
+                                      const MetaTensor& pre_value_cache,
+                                      const MetaTensor& rope_emb,
+                                      const MetaTensor& mask,
+                                      const MetaTensor& tgt_mask,
+                                      int max_seq_len,
+                                      int block_size,
+                                      bool use_neox_style,
+                                      MetaTensor* fmha_out,
+                                      MetaTensor* qkv_out,
+                                      MetaTensor* key_cache_out,
+                                      MetaTensor* value_cache_out) {
+  auto input_dims = qkv.dims();
+  auto key_cache_dims = key_cache.dims();
+  const int num_head = key_cache_dims[1];
+  const int dim_head = key_cache_dims[3];
+
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      2UL,
+      errors::InvalidArgument("The input(qkv) must be a 2D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      key_cache_dims.size(),
+      4UL,
+      errors::InvalidArgument("The input(key_cache) must be a 4D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      3 * num_head * dim_head,
+      input_dims[1],
+      errors::InvalidArgument(
+          "The input_dims[1] must be equal to 3 * num_head * dim_head"));
+
+  fmha_out->set_dims({input_dims[0], num_head * dim_head});
+  fmha_out->set_dtype(qkv.dtype());
+  qkv_out->set_dims(qkv.dims());
+  qkv_out->set_dtype(qkv.dtype());
+  key_cache_out->set_dims(key_cache_dims);
+  key_cache_out->set_dtype(key_cache.dtype());
+  value_cache_out->set_dims(key_cache_dims);
+  value_cache_out->set_dtype(value_cache.dtype());
+}
+
 void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
                                std::vector<MetaTensor*> out) {
   int target_rank = 0;
@@ -2888,6 +2940,7 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
     const MetaTensor& mask,
     float scale,
     bool causal,
+    int pre_cache_length,
     MetaTensor* out) {
   PADDLE_ENFORCE_EQ(
       query.dims().size(),

@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 
 #ifdef PADDLE_WITH_FLASHATTN
 #include "paddle/phi/backends/dynload/flashattn.h"
