@@ -37,7 +37,7 @@ TEST(block_argument_test, base) {
 
   uint32_t index = 0;
   for (auto iter = block->args_begin(); iter != block->args_end(); ++iter) {
-    EXPECT_EQ(iter->index(), index++);
+    EXPECT_EQ(iter->dyn_cast<pir::BlockArgument>().index(), index++);
   }
 
   pir::Value value = block->arg(0);
