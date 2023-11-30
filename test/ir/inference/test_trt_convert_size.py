@@ -30,11 +30,11 @@ class TrtConvertNumelTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         def generate_input(batch):
             if self.dims == 4:
-                return np.random.random([batch, 3, 3, 24]).astype(np.int32)
+                return np.random.random([batch, 3, 3, 24]).astype(np.float32)
             elif self.dims == 3:
                 return np.random.random([batch, 3, 24]).astype(np.int32)
             elif self.dims == 2:
-                return np.random.random([batch, 24]).astype(np.int32)
+                return np.random.random([batch, 24]).astype(np.int64)
 
         for dims in [2, 3, 4]:
             for batch in [1, 6, 9]:
@@ -111,12 +111,12 @@ class TrtConvertNumelTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
+        # program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
+        # program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3
