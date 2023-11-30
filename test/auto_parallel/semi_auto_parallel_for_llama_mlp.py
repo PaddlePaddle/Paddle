@@ -21,7 +21,7 @@ import paddle
 import paddle.distributed as dist
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.distributed import Shard
+from paddle.distributed import Replicate, Shard
 
 BATCH_NUM = 4
 BATCH_SIZE = 16
@@ -70,9 +70,9 @@ class LlamaMlp(nn.Layer):
 
 class TestLlamaMlpForSemiAutoParallel:
     def __init__(self):
-        self._dtype = os.getenv("dtype")
-        self._backend = os.getenv("backend")
-        self._seed = eval(os.getenv("seed"))
+        self._dtype = os.getenv("dtype", "float32")
+        self._backend = os.getenv("backend", "gpu")
+        self._seed = eval(os.getenv("seed", "2023"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         paddle.set_device(self._backend)
         self.init_single_card_net_result()
@@ -88,6 +88,21 @@ class TestLlamaMlpForSemiAutoParallel:
         elif layer_name == 'down_proj':
             layer.weight = dist.shard_tensor(
                 layer.weight, process_mesh, [Shard(0)]
+            )
+
+    def dp_mp_shard_fn(self, layer_name, layer, process_mesh):
+        print(f"layer name {layer_name}")
+        if layer_name == 'up_proj' or layer_name == 'gate_proj':
+            layer.weight = dist.shard_tensor(
+                layer.weight, process_mesh, [Replicate(), Shard(1)]
+            )
+            layer.bias = dist.shard_tensor(
+                layer.bias, process_mesh, [Replicate(), Shard(0)]
+            )
+
+        elif layer_name == 'down_proj':
+            layer.weight = dist.shard_tensor(
+                layer.weight, process_mesh, [Replicate(), Shard(0)]
             )
 
     def set_random_seed(self, seed):
@@ -108,17 +123,16 @@ class TestLlamaMlpForSemiAutoParallel:
             LlamaMlp("demo_weight")
         )
 
-    def train_loop(self, layer, shard_input=False):
+    def train_loop(self, layer, process_mesh=None, shard_input=False):
         # run forward and backward
         input_dist_attr = [Shard(0)]
-
         opt = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=layer.parameters()
         )
         for _ in range(5):
             input = self.init_input_data()
             if shard_input:
-                input = dist.shard_tensor(input, self._mesh, input_dist_attr)
+                input = dist.shard_tensor(input, process_mesh, shard_input)
             out = layer(input)
             loss = paddle.sum(out)
             loss.backward()
@@ -174,7 +188,8 @@ class TestLlamaMlpForSemiAutoParallel:
 
         dp_out, dp_parameters = self.train_loop(
             dp_layer,
-            shard_input=True,
+            self._mesh,
+            shard_input=[Shard(0)],
         )
         self.check_tensor_eq(dp_out, self.base_out)
         for param, param_base in zip(dp_parameters, self.base_parameters):
@@ -198,15 +213,42 @@ class TestLlamaMlpForSemiAutoParallel:
         mp_layer.down_proj.register_forward_pre_hook(down_pre_hook)
         mp_layer.down_proj.register_forward_post_hook(down_post_hook)
 
-        mp_out, mp_parameters = self.train_loop(mp_layer)
+        mp_out, mp_parameters = self.train_loop(mp_layer, self._mesh)
         self.check_tensor_eq(mp_out, self.base_out)
         for param, param_base in zip(mp_parameters, self.base_parameters):
+            self.check_tensor_eq(param, param_base)
+            self.check_tensor_eq(param.grad, param_base.grad)
+
+    # python -m paddle.distributed.launch --devices=0,1,2,3 semi_auto_parallel_for_llama_mlp.py
+    def test_dp_mp(self):
+        self.set_random_seed(self._seed)
+        dp_mp_mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+        dp_mp_layer = dist.shard_layer(
+            LlamaMlp("mp_demo_weight"), dp_mp_mesh, self.dp_mp_shard_fn
+        )
+
+        up_gate_post_hook = self.get_shard_check_hook([0, -1, 1])
+        down_pre_hook = self.get_shard_check_hook([0, -1, 1], True)
+        down_post_hook = self.get_shard_check_hook([0, -1, -1])
+
+        dp_mp_layer.up_proj.register_forward_post_hook(up_gate_post_hook)
+        dp_mp_layer.gate_proj.register_forward_post_hook(up_gate_post_hook)
+
+        dp_mp_layer.down_proj.register_forward_pre_hook(down_pre_hook)
+        dp_mp_layer.down_proj.register_forward_post_hook(down_post_hook)
+
+        dp_mp_out, dp_mp_parameters = self.train_loop(
+            dp_mp_layer, dp_mp_mesh, shard_input=[Shard(0), Replicate()]
+        )
+        self.check_tensor_eq(dp_mp_out, self.base_out)
+        for param, param_base in zip(dp_mp_parameters, self.base_parameters):
             self.check_tensor_eq(param, param_base)
             self.check_tensor_eq(param.grad, param_base.grad)
 
     def run_test_case(self):
         self.test_dp()
         self.test_mp()
+        # self.test_dp_mp()
 
 
 if __name__ == '__main__':

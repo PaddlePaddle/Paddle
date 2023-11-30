@@ -68,6 +68,9 @@ void TensorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
 void TensorDistAttr::set_dims_mapping(
     const std::vector<int64_t>& dims_mapping) {
   dims_mapping_ = dims_mapping;
+  if (dynamic_dims_.empty()) {
+    set_default_dynamic_dims(dims_mapping);
+  }
 }
 
 void TensorDistAttr::set_batch_dim(int64_t batch_dim) {

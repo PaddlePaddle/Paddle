@@ -23,6 +23,8 @@
 namespace phi {
 namespace distributed {
 
+using phi::distributed::auto_parallel::str_join;
+
 std::shared_ptr<DistTensor> ReshardFunction::Eval(
     DeviceContext* dev_ctx,
     const DistTensor& in,
@@ -44,7 +46,9 @@ void ReshardFunction::SetDistProps(DistTensor* tensor,
   PADDLE_ENFORCE_EQ(dist_attr.verify(vectorize(dims)),
                     true,
                     phi::errors::InvalidArgument(
-                        "The input dist_attr and dims are improper."));
+                        "The input dist_attr [%s] and dims [%s] are improper.",
+                        dist_attr.to_string(),
+                        str_join(vectorize(dims))));
 
   tensor->dims_ = dims;
   tensor->dist_attr_ = dist_attr;
