@@ -47,7 +47,7 @@ inline int DataTypeToNum(const DataType& dtype) {
   }
 }
 
-inline static DataType promoteTypes(DataType a, DataType b) {
+inline static DataType promoteTypes(DataType x, DataType y) {
   constexpr auto u1 = DataType::UINT8;
   constexpr auto i1 = DataType::INT8;
   constexpr auto i2 = DataType::INT16;
@@ -79,7 +79,7 @@ inline static DataType promoteTypes(DataType a, DataType b) {
           /* b1 */ {u1, i1, i2, i4, i8, f2, f4, f8, c4, c8, b1, bf},
           /* bf */ {bf, bf, bf, bf, bf, f4, f4, f8, c4, c8, bf, bf},
       };
-  return _promoteTypesLookup[DataTypeToNum(a)][DataTypeToNum(b)];
+  return _promoteTypesLookup[DataTypeToNum(x)][DataTypeToNum(y)];
 }
 
 static inline bool is_support_float(DataType dtype) {
