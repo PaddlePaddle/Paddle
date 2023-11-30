@@ -84,11 +84,13 @@ Program *ModuleOp::program() {
       iter->second.dyn_cast<PointerAttribute>().data());
 }
 
-Block *ModuleOp::block() {
-  assert(operation() != nullptr);
-  assert(operation()->num_regions() == 1);
-  assert(operation()->region(0).size() == 1);
-  return &operation()->region(0).front();
+Block &ModuleOp::block() {
+  IR_ENFORCE(operation()->num_regions(),
+             "The region size of ModuleOp must be equal to 1.");
+  auto &region = (*this)->region(0);
+  IR_ENFORCE(region.size() == 1,
+             "The region size of ModuleOp must be equal to 1.");
+  return region.front();
 }
 
 ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
@@ -144,6 +146,9 @@ void ParameterOp::PassStopGradients(OperationArgument &argument) {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
+std::string ParameterOp::param_name() const {
+  return attribute<StrAttribute>("parameter_name").AsString();
+}
 void ParameterOp::VerifySig() const {
   VLOG(4) << "Verifying inputs, outputs and attributes for: ParameterOp.";
   // Verify inputs:

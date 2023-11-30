@@ -20,6 +20,7 @@
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/utils/type_defs.h"
+#include "paddle/phi/core/ddim.h"
 #include "paddle/pir/core/operation.h"
 
 namespace cinn {
@@ -76,6 +77,9 @@ struct CompatibleInfo {
 
   static OpPatternKind OpKind(const ::pir::Operation& op);
 };
+
+std::vector<int64_t> GetBroadcastAxis(const phi::DDim& in_shape,
+                                      const std::vector<int64_t>& out_shape);
 
 }  // namespace pir
 }  // namespace framework

@@ -293,10 +293,9 @@ TEST(OperatorDialectTest, WhileOpProgram) {
       EXPECT_TRUE(op.isa<paddle::dialect::WhileOp>());
       EXPECT_EQ(op.num_regions(), 1u);
       // body block
-      pir::Block *body_block =
-          op.dyn_cast<paddle::dialect::WhileOp>().body_block();
+      pir::Block &body_block = op.dyn_cast<paddle::dialect::WhileOp>().body();
       size_t body_id = 0;
-      for (auto &op1 : *body_block) {
+      for (auto &op1 : body_block) {
         if (body_id == 0) {
           EXPECT_TRUE(op1.isa<paddle::dialect::FullOp>());
         }
@@ -307,10 +306,10 @@ TEST(OperatorDialectTest, WhileOpProgram) {
           EXPECT_TRUE(op1.isa<paddle::dialect::LessThanOp>());
         }
         if (body_id == 3) {
-          pir::Block *body_body_block =
-              op1.dyn_cast<paddle::dialect::WhileOp>().body_block();
+          pir::Block &body_body_block =
+              op1.dyn_cast<paddle::dialect::WhileOp>().body();
           size_t body_body_id = 0;
-          for (auto &op2 : *body_body_block) {
+          for (auto &op2 : body_body_block) {
             if (body_body_id == 0) {
               EXPECT_TRUE(op2.isa<paddle::dialect::FullOp>());
             }
