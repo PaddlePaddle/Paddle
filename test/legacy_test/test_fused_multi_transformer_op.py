@@ -805,6 +805,7 @@ class TestFusedMultiTransformerOp(OpTest):
 
         return final_out
 
+    @test_with_pir_api
     def GetFusedMultiTransformerOutStatic(self):
         paddle.enable_static()
         x = paddle.static.data('x', self.query.shape, self.query.dtype)
