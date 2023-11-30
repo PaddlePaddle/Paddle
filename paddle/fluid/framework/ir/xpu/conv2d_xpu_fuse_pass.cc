@@ -489,8 +489,9 @@ void Conv2dXPUFusePass::CreateTheReplicatedWeights(
       true,
       platform::errors::InvalidArgument("conv node ptr can not be null"));
   auto conv_filter_name = conv->Op()->Input("Filter")[0];
-  std::string replicated_filter_name =
-      conv_filter_name + "_copy_" + std::to_string(conv->id());
+  std::string replicated_filter_name = conv_filter_name + "_copy_" +
+                                       std::to_string(block->ID()) + "_" +
+                                       std::to_string(conv->id());
   auto* replicated_filter_var = scope->FindVar(replicated_filter_name);
   if (replicated_filter_var == nullptr) {
     auto* filter_tensor =
@@ -536,8 +537,9 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
   auto conv_filter_name = conv->Op()->Input("Filter")[0];
   Node* conv_filter = FindNodeWithName(graph, conv_filter_name);
   CreateTheReplicatedWeights(graph, scope, block, nodes_map);
-  std::string replicated_filter_name =
-      conv_filter_name + "_copy_" + std::to_string(conv->id());
+  std::string replicated_filter_name = conv_filter_name + "_copy_" +
+                                       std::to_string(block->ID()) + "_" +
+                                       std::to_string(conv->id());
   auto* conv_filter_replicated_node =
       FindNodeWithName(graph, replicated_filter_name);
   auto* filter_t =
