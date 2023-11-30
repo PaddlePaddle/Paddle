@@ -1527,6 +1527,75 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
+    def _get_grad_var_to_var(self):
+        # get grad_var_to_var in distributed context
+        dist_context = self._dist_contexts[self._mode]
+        grad_var_to_var_map = dist_context._dist_op_context.grad_var_to_var
+        assert (
+            len(grad_var_to_var_map.keys()) == 1
+        ), "invalid grad_var_to_var in distributed engine"
+        grad_var_to_var = grad_var_to_var_map[1]
+        return grad_var_to_var
+
+    def _update_grad_var_to_var(self, grad_var_to_var):
+        # update grad_var_to_var according to different distributed pass
+        for op in self.main_program.global_block().ops:
+            # process @RESHARD variable in distributed training
+            if (
+                op.has_attr("op_namescope")
+                and op.attr("op_namescope") == "/auto_parallel/reshard"
+            ):
+                if op.desc.type() == "split" or op.desc.type() == "assign":
+                    input_names = op.desc.input("X")
+                    output_names = op.desc.output("Out")
+                    if input_names[0] in grad_var_to_var.keys():
+                        for output_name in output_names:
+                            grad_var_to_var[output_name] = grad_var_to_var[
+                                input_names[0]
+                            ]
+                elif op.desc.type() == "recv_v2":
+                    output_names = op.desc.output("Out")
+                    original_var_name = (
+                        output_names[0][: output_names[0].rfind("@recv")]
+                        if output_names[0].rfind("@recv") != -1
+                        else ""
+                    )
+                    if original_var_name in grad_var_to_var.keys():
+                        grad_var_to_var[output_names[0]] = grad_var_to_var[
+                            original_var_name
+                        ]
+
+            # process amp pass in distributed training
+            if self._strategy.amp.enable:
+                from paddle.distributed.fleet.meta_optimizers.common import (
+                    OP_ROLE_KEY,
+                    OpRole,
+                )
+
+                first_backward_op_idx = -1
+                for idx, op in enumerate(self.main_program.global_block().ops):
+                    if (
+                        op.has_attr(OP_ROLE_KEY)
+                        and (op.attr(OP_ROLE_KEY) & int(OpRole.Backward))
+                        and (op.attr(OP_ROLE_KEY) & int(OpRole.Loss))
+                    ):
+                        first_backward_op_idx = idx
+                if first_backward_op_idx != -1:
+                    scale_loss_op = self.main_program.global_block().ops[
+                        first_backward_op_idx - 1
+                    ]
+                    scale_loss_var_name = scale_loss_op.desc.output("Out")[0]
+                    first_backward_op = self.main_program.global_block().ops[
+                        first_backward_op_idx
+                    ]
+                    scale_loss_grad_var_name = first_backward_op.desc.output(
+                        "Out"
+                    )[0]
+                    if scale_loss_grad_var_name not in grad_var_to_var.keys():
+                        grad_var_to_var[
+                            scale_loss_grad_var_name
+                        ] = scale_loss_var_name
+
     def _translate_to_pir_program(self, feed_dict=None, fetch_names=None):
         def _get_invalid_feeds(program, feed):
             current_feed_vars = []
@@ -1583,38 +1652,7 @@ class Engine:
                     )
             return tmp_program
 
-        def _update_grad_var_to_var(old_ir_program, old_ir_grad_var_to_var):
-            # process @RESHARD variable in distributed training
-            for op in old_ir_program.global_block().ops:
-                if (
-                    op.has_attr("op_namescope")
-                    and op.attr("op_namescope") == "/auto_parallel/reshard"
-                ):
-                    if op.desc.type() == "split" or op.desc.type() == "assign":
-                        input_names = op.desc.input("X")
-                        output_names = op.desc.output("Out")
-                        if input_names[0] in old_ir_grad_var_to_var.keys():
-                            for output_name in output_names:
-                                old_ir_grad_var_to_var[
-                                    output_name
-                                ] = old_ir_grad_var_to_var[input_names[0]]
-                    elif op.desc.type() == "recv_v2":
-                        output_names = op.desc.output("Out")
-                        original_var_name = (
-                            output_names[0][: output_names[0].rfind("@recv")]
-                            if output_names[0].rfind("@recv") != -1
-                            else ""
-                        )
-                        if original_var_name in old_ir_grad_var_to_var.keys():
-                            old_ir_grad_var_to_var[
-                                output_names[0]
-                            ] = old_ir_grad_var_to_var[original_var_name]
-
-        def _get_pir_grad_var_to_var(
-            old_ir_program, old_ir_grad_var_to_var, param_mapping
-        ):
-            _update_grad_var_to_var(old_ir_program, old_ir_grad_var_to_var)
-
+        def _get_pir_grad_var_to_var(old_ir_grad_var_to_var, param_mapping):
             pir_grad_var_to_var = {}
             for grad_var, var in old_ir_grad_var_to_var.items():
                 if (
@@ -1706,16 +1744,12 @@ class Engine:
                 ), "fetch list of program and pir program is not match"
                 fetch_list.append(result[0])
 
+            # get grad_var_to_var in distributed context
+            grad_var_to_var = self._get_grad_var_to_var()
+            self._update_grad_var_to_var(grad_var_to_var)
             # translate variables in grad_var_to_var to pir OpResults, thus get pir_grad_var_to_var for further use
-            grad_var_to_var_map = self._dist_contexts[
-                self._mode
-            ]._dist_op_context.grad_var_to_var
-            assert (
-                len(grad_var_to_var_map.keys()) == 1
-            ), "invalid grad_var_to_var in distributed engine"
-            grad_var_to_var = grad_var_to_var_map[1]
             pir_grad_var_to_var = _get_pir_grad_var_to_var(
-                tmp_program, grad_var_to_var, param_mapping
+                grad_var_to_var, param_mapping
             )
 
             # set lr_scheduler in pir program
@@ -1754,7 +1788,9 @@ class Engine:
             bwd_ops = []
             global_block = pir_program.global_block()
             for op in global_block.ops:
-                if op.name().endswith("_grad") and op.name() not in bwd_ops:
+                if (
+                    op.name().endswith("_grad") or op.name().endswith("_grad_")
+                ) and op.name() not in bwd_ops:
                     bwd_ops.append(op.name())
             return bwd_ops
 

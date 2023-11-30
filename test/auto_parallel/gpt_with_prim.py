@@ -26,13 +26,36 @@ from paddle.distributed.fleet import auto
 paddle.enable_static()
 
 
-def apply_pass(use_sharding=False, pipeline_mode=None, fuse_passes_list=None):
+def apply_pass(
+    use_recompute=False,
+    use_amp=False,
+    use_sharding=False,
+    pipeline_mode=None,
+    fuse_passes_list=None,
+):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
     strategy.reinit = True
 
-    strategy.amp.enable = False
-    strategy.recompute.enable = False
+    recompute = strategy.recompute
+    if use_recompute:
+        recompute.enable = True
+    else:
+        recompute.enable = False
+
+    amp = strategy.amp
+    if use_amp:
+        amp.enable = True
+        amp.dtype = "float16"
+        amp.level = "o2"
+        amp.custom_white_list = ['softmax', 'layer_norm', 'gelu']
+        amp.custom_black_list = [
+            'c_softmax_with_cross_entropy',
+            'elementwise_div',
+            'reduce_sum',
+        ]
+    else:
+        amp.enable = False
 
     if use_sharding:
         sharding = strategy.sharding
@@ -85,6 +108,8 @@ class TestPrim(unittest.TestCase):
         self,
         mode,
         name,
+        use_recompute=False,
+        use_amp=False,
         use_sharding=False,
         pipeline_mode=None,
         fuse_passes_list=None,
@@ -93,7 +118,13 @@ class TestPrim(unittest.TestCase):
 
         paddle.set_default_dtype('float32')
 
-        strategy = apply_pass(use_sharding, pipeline_mode, fuse_passes_list)
+        strategy = apply_pass(
+            use_recompute,
+            use_amp,
+            use_sharding,
+            pipeline_mode,
+            fuse_passes_list,
+        )
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
         model, loss = generate_model(mode, dropout_prob=0.1)
@@ -139,13 +170,13 @@ class TestPrim(unittest.TestCase):
         )
 
         self.enable_pir(True)
-        engine_dp_ir = self.get_engine("dp", name="dp_pir", use_sharding=True)
-        out_dp_ir = engine_dp_ir.fit(
+        engine_dp_pir = self.get_engine("dp", name="dp_pir", use_sharding=True)
+        out_dp_pir = engine_dp_pir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
         self.check_results(
-            out_dp_prog.history["loss"][0], out_dp_ir.history["loss"][0]
+            out_dp_prog.history["loss"][0], out_dp_pir.history["loss"][0]
         )
 
         # test prim enabled distributed engine
@@ -165,7 +196,7 @@ class TestPrim(unittest.TestCase):
 
         if paddle.distributed.get_rank() == 1:
             self.check_results_prim(
-                out_dp_pir_prim["loss"], out_dp_ir.history["loss"][0]
+                out_dp_pir_prim["loss"], out_dp_pir.history["loss"][0]
             )
         self.enable_prim_in_dist(False)
 
@@ -177,13 +208,13 @@ class TestPrim(unittest.TestCase):
         )
 
         self.enable_pir(True)
-        engine_mp_ir = self.get_engine("mp", name="mp_pir")
-        out_mp_ir = engine_mp_ir.fit(
+        engine_mp_pir = self.get_engine("mp", name="mp_pir")
+        out_mp_pir = engine_mp_pir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
         self.check_results(
-            out_mp_prog.history["loss"][0], out_mp_ir.history["loss"][0]
+            out_mp_prog.history["loss"][0], out_mp_pir.history["loss"][0]
         )
 
         # test prim enabled distributed engine
@@ -201,7 +232,7 @@ class TestPrim(unittest.TestCase):
 
         if paddle.distributed.get_rank() == 1:
             self.check_results_prim(
-                out_mp_pir_prim["loss"], out_mp_ir.history["loss"][0]
+                out_mp_pir_prim["loss"], out_mp_pir.history["loss"][0]
             )
         self.enable_prim_in_dist(False)
 
@@ -215,14 +246,14 @@ class TestPrim(unittest.TestCase):
 
         self.enable_pir(True)
         # send_v2/recv_v2 dynamic_shape is True
-        engine_pp_ir = self.get_engine("pp", name="pp_pir")
-        out_pp_ir = engine_pp_ir.fit(
+        engine_pp_pir = self.get_engine("pp", name="pp_pir")
+        out_pp_pir = engine_pp_pir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
         if paddle.distributed.get_rank() == 1:
             self.check_results(
-                out_pp_prog.history["loss"][0], out_pp_ir.history["loss"][0]
+                out_pp_prog.history["loss"][0], out_pp_pir.history["loss"][0]
             )
 
         # send_v2/recv_v2 dynamic_shape is False
@@ -242,7 +273,7 @@ class TestPrim(unittest.TestCase):
 
         if paddle.distributed.get_rank() == 1:
             self.check_results(
-                out_pp_prog1["loss"], out_pp_ir.history["loss"][0]
+                out_pp_prog1["loss"], out_pp_pir.history["loss"][0]
             )
 
         # test prim enabled distributed engine
@@ -263,7 +294,37 @@ class TestPrim(unittest.TestCase):
 
         if paddle.distributed.get_rank() == 1:
             self.check_results_prim(
-                out_pp_pir_prim["loss"], out_pp_ir.history["loss"][0]
+                out_pp_pir_prim["loss"], out_pp_pir.history["loss"][0]
+            )
+        self.enable_prim_in_dist(False)
+
+    def test_amp(self):
+        self.enable_pir(True)
+        engine_amp_pir = self.get_engine(
+            "dp", name="amp_pir", use_amp=True, use_sharding=True
+        )
+        out_amp_pir = engine_amp_pir.fit(
+            self.dataset, 3, batch_size=self.batch_size, log_freq=1
+        )
+
+        # test prim enabled distributed engine
+        self.enable_prim_in_dist(True)
+        engine_amp_pir_prim = self.get_engine(
+            "dp", name="amp_pir_prim", use_amp=True, use_sharding=True
+        )
+        dataloader_amp_pir_prim = engine_amp_pir_prim.dataloader(
+            self.dataset,
+            batch_size=self.batch_size,
+            sample_split=3,
+            mode="train",
+        )
+        engine_amp_pir_prim.prepare(mode="train")
+        for data in dataloader_amp_pir_prim:
+            out_amp_pir_prim = engine_amp_pir_prim.run(data, mode="train")
+
+        if paddle.distributed.get_rank() == 1:
+            self.check_results_prim(
+                out_amp_pir_prim["loss"], out_amp_pir.history["loss"][0]
             )
         self.enable_prim_in_dist(False)
 
