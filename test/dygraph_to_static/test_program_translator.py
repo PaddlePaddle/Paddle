@@ -18,7 +18,11 @@ import unittest
 
 import astor
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_ast_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pt_and_pir,
+)
 from ifelse_simple_func import (
     dyfunc_with_if_else_early_return1,
     dyfunc_with_if_else_early_return2,
@@ -46,7 +50,6 @@ def simple_func(x, weight_numpy):
     return z
 
 
-@to_static
 def decorated_simple_func(x, weight_numpy):
     x = base.dygraph.to_variable(x)
     w = base.dygraph.to_variable(weight_numpy)
@@ -205,7 +208,8 @@ class StaticCode2:
 
 
 class NetWithError(paddle.nn.Layer):
-    @to_static(full_graph=True)
+    __name__ = 'NetWithError'
+
     def forward(self, x):
         linear = paddle.nn.Linear(32, 64)
         y = linear(x)
@@ -218,21 +222,27 @@ class TestEnableDeclarative(Dy2StTestBase):
         self.weight = np.random.randn(32, 64).astype('float32')
 
     @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_raise_error(self):
         with base.dygraph.guard():
             paddle.jit.enable_to_static(True)
-            net = NetWithError()
+            net = to_static(full_graph=True)(NetWithError())
             with self.assertRaises(ValueError):
                 net(base.dygraph.to_variable(self.x))
 
+    @test_legacy_and_pt_and_pir
     def test_enable_disable_declarative(self):
         paddle.jit.enable_to_static(True)
         with base.dygraph.guard():
-            static_output = decorated_simple_func(self.x, self.weight)
+            static_output = to_static(decorated_simple_func)(
+                self.x, self.weight
+            )
 
         paddle.jit.enable_to_static(False)
         with base.dygraph.guard():
-            dygraph_output = decorated_simple_func(self.x, self.weight)
+            dygraph_output = to_static(decorated_simple_func)(
+                self.x, self.weight
+            )
             np.testing.assert_allclose(
                 static_output.numpy(),
                 dygraph_output.numpy(),
@@ -253,22 +263,25 @@ class SwitchModeNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
-    @paddle.jit.to_static
     def forward(self, x):
         return x + 1
 
-    @paddle.jit.to_static
     def foo(self):
         return True
 
 
-@paddle.jit.to_static(full_graph=True)
 def switch_mode_function():
     return True
 
 
+switch_mode_function = paddle.jit.to_static(full_graph=True)(
+    switch_mode_function
+)
+
+
 class TestFunctionTrainEvalMode(Dy2StTestBase):
     @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_switch_mode(self):
         paddle.disable_static()
         switch_mode_function.eval()
@@ -283,9 +296,10 @@ class TestFunctionTrainEvalMode(Dy2StTestBase):
         _, partial_layer = switch_mode_function.program_cache.last()[-1]
         self.assertEqual(partial_layer.training, True)
 
+    @test_legacy_and_pt_and_pir
     def test_raise_error(self):
         paddle.disable_static()
-        net = SwitchModeNet()
+        net = paddle.jit.to_static(SwitchModeNet())
 
         self.assertEqual(net.training, True)
         with self.assertRaises(RuntimeError):
@@ -294,7 +308,7 @@ class TestFunctionTrainEvalMode(Dy2StTestBase):
         net.eval()
         self.assertEqual(net.training, False)
         with self.assertRaises(RuntimeError):
-            net.foo.train()
+            paddle.jit.to_static(net.foo).train()
 
 
 class TestIfElseEarlyReturn(Dy2StTestBase):
@@ -319,6 +333,7 @@ class TestRemoveCommentInDy2St(Dy2StTestBase):
         # Comment3
         y = paddle.to_tensor([4, 5, 6])
 
+    @test_legacy_and_pt_and_pir
     def test_remove_comment(self):
         code_string = func_to_source_code(self.func_with_comment)
         self.assertEqual('#' not in code_string, True)
@@ -341,18 +356,18 @@ class Net2:
         self.layer1 = paddle.nn.Linear(10, 10)
 
     def forward(self, data):
-        @paddle.jit.to_static
         def func(ins, x, loss_fn):
             x = ins.layer1(x)
             return loss_fn(x)
 
         def func1(x):
-            return func(self, x, obj.func)
+            return paddle.jit.to_static(func)(self, x, obj.func)
 
         return func1(data)
 
 
 class TestParameterRecorder(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_recorder(self):
         """function calls nn.Layer case."""
         net = Net()
