@@ -18,7 +18,7 @@ import unittest
 
 from dygraph_to_static_utils import Dy2StTestBase
 
-from paddle.jit.api import to_static
+import paddle
 from paddle.jit.dy2static import DygraphToStaticAst
 from paddle.jit.dy2static.origin_info import (
     ORIGI_INFO,
@@ -45,13 +45,13 @@ def nested_func(x):
     return result
 
 
-@to_static
+@paddle.jit.to_static
 def decorated_func(x):
     return x
 
 
-@to_static
-@to_static
+@paddle.jit.to_static
+@paddle.jit.to_static
 def decorated_func2(x):
     return x
 
@@ -68,7 +68,6 @@ class TestOriginInfo(Dy2StTestBase):
             line for line in lines if line != ""
         ]  # Delete empty lines
 
-        self.set_static_lineno()
         self.set_dygraph_info()
 
     def set_test_func(self):
