@@ -19,10 +19,12 @@ use interface in symbolic_context.py first.
 """
 from __future__ import annotations
 
+import functools
 import weakref
 from typing import Any, Callable
 
-from paddle.utils import is_sequence, map_structure
+import paddle
+from paddle.utils import flatten, is_sequence, map_structure
 
 from ..utils import NameGenerator, OrderedSet, Singleton, flatten_extend
 
@@ -85,7 +87,7 @@ class Statement:
         outputs: list[Symbol],
         stacks: list[str],
     ):
-        assert type in ["call", "api", "method", "layer"]
+        assert type in ["call", "api", "method", "layer", "AST"]
         self.name = name
         self.inputs = inputs  # (list of Symbols, dict of Symbols)
         self.outputs = outputs  # list of Symbol | PythonObj
@@ -98,7 +100,7 @@ class Statement:
         def to_string(inps):
             if isinstance(inps, str) or not is_sequence(inps):
                 return inps.__str__()
-            inps = (x.__str__() for x in inps)
+            inps = (x.__str__() for x in flatten(inps) if isinstance(x, Symbol))
             return ", ".join(inps)
 
         return "{} || {} = {} ({}) ".format(
@@ -162,6 +164,26 @@ class LayerStatement(Statement):
             "layer", layer.__class__.__name__, inputs, outputs, stacks
         )
         self.layer = layer
+
+
+class ASTStatement(Statement):
+    def __init__(
+        self,
+        static_function,
+        inputs: list[Symbol],
+        outputs: list[Symbol],
+        stacks: list[str],
+    ):
+        # this dygraph_function always has attr __code__, which is checked before
+        dygraph_func = static_function.dygraph_function
+        super().__init__(
+            "AST", dygraph_func.__code__.co_name, inputs, outputs, stacks
+        )
+        converted_func = paddle.jit.dy2static.convert_to_static(dygraph_func)
+        func_self = getattr(dygraph_func, '__self__', None)
+        if func_self is not None:
+            converted_func = functools.partial(converted_func, func_self)
+        self.converted_func = converted_func
 
 
 class StatementIR:

@@ -32,6 +32,7 @@ from ....utils import (
     magic_method_builtin_dispatch,
 )
 from ....utils.exceptions import BreakGraphError, FallbackError, SotErrorBase
+from ..ast_utils import ASTTranslateManager
 from ..dispatcher import Dispatcher
 from ..guard import (
     StringifyExpression,
@@ -176,6 +177,17 @@ class UserDefinedFunctionVariable(FunctionVariable):
             return result
 
         checkpoint = self.graph.save_memo()
+
+        static_function = ASTTranslateManager().ast_transform_with_callable(
+            self.value
+        )
+        if static_function is not None:
+            output = self.graph.call_ast(
+                static_function, *self._args, **self._kwargs
+            )
+            if output is not None:
+                return output
+
         try:
             inline_executor = OpcodeInlineExecutor(self, *args, **kwargs)
             with EventGuard(

@@ -349,3 +349,20 @@ class LayerInferMetaCache(Cache):
 
     def value_fn(self, layer, *args, **kwargs):
         return infer_meta_for_layer(layer, *args, **kwargs)
+
+
+def ast_infer_meta(static_function, *args, **kwargs):
+    args_, kwargs_ = convert_meta_to_input_spec((args, kwargs))
+
+    (
+        concrete_program,
+        partial_program_layer,
+    ) = static_function.get_concrete_program(*args_, **kwargs_)
+
+    out = partial_program_layer._restore_out(
+        paddle.utils.flatten(
+            convert_variable_to_meta_info(concrete_program.outputs)
+        )
+    )
+
+    return out

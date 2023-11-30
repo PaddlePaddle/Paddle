@@ -292,7 +292,7 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
             instr (Instruction): The jump instruction.
         """
         raise BreakGraphError(
-            "OpcodeInlineExecutor want break graph when simulating `if`."
+            "OpcodeInlineExecutor want break graph when simulate `if`."
         )
 
     def _create_resume_fn(self, index: int, stack_size: int = 0):

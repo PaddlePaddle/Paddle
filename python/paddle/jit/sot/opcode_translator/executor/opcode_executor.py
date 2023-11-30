@@ -49,7 +49,7 @@ from ..instruction_utils import (
     get_instructions,
 )
 from ..instruction_utils.opcode_info import JumpDirection, PopJumpCond
-from .ast_translate_manager import ASTTranslateManager
+from .ast_utils import ASTTranslateManager
 from .dispatch_functions import (
     operator_BAD,
     operator_exception_match,
@@ -1704,8 +1704,24 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self.guard_fn = self._graph.guard_fn
 
     def transform(self):
-        ASTTranslateManager().transform_with_ast(self._frame, self._graph)
-
+        static_function = ASTTranslateManager().ast_transform_with_frame(
+            self._frame
+        )
+        if static_function is not None:
+            code = self._frame.f_code
+            inputs = []
+            for i in range(code.co_argcount):
+                arg_name = code.co_varnames[i]
+                value = self._locals[arg_name]
+                inputs.append(value)
+            output = self._graph.call_ast(static_function, *inputs)
+            if output is not None:
+                self.stack.push(output)
+                self.RETURN_VALUE(None)
+                return (
+                    CustomCode(self.new_code, self.new_code is None),
+                    self.guard_fn,
+                )
         self.run()
         if self.new_code is self.empty_code:
             raise InnerError("OpExecutor return a empty new_code.")

@@ -24,7 +24,12 @@ from copy import deepcopy
 from functools import cached_property
 from typing import Any, Callable
 
-from ...infer_meta import InferMetaCache, LayerInferMetaCache, MetaInfo
+from ...infer_meta import (
+    InferMetaCache,
+    LayerInferMetaCache,
+    MetaInfo,
+    ast_infer_meta,
+)
 from ...profiler import EventGuard, event_register
 from ...symbolic.statement_ir import Reference, Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
@@ -56,6 +61,7 @@ from .side_effects import (
 )
 from .tracker import BuiltinTracker, DummyTracker
 from .variables import (
+    ConstantVariable,
     DictVariable,
     GlobalVariable,
     ListVariable,
@@ -435,36 +441,6 @@ class FunctionGraph:
             **kwargs,
         )
 
-    @staticmethod
-    def get_opcode_executor_stack():
-        # NOTE: only for debug.
-        # dependent on OpcodeExecutor.
-        from .opcode_executor import OpcodeExecutorBase
-
-        if len(OpcodeExecutorBase.call_stack) == 0:
-            # In test case, we can meet this senario.
-            return []
-        current_executor = OpcodeExecutorBase.call_stack[-1]
-        current_line = current_executor._current_line
-        filename = current_executor._code.co_filename
-        source_lines, start_line = inspect.getsourcelines(
-            current_executor._code
-        )
-        # TODO(SigureMo): In 3.11, lineno maybe changed after multiple breakgraph,
-        # We need to find a way to fix this.
-        line_idx = min(current_line - start_line, len(source_lines) - 1)
-        code_line = source_lines[line_idx]
-        stack = []
-        stack.append(
-            '  File "{}", line {}, in {}'.format(
-                filename,
-                current_line,
-                current_executor._code.co_name,
-            )
-        )
-        stack.append(f'    {code_line}')
-        return stack
-
     def call_layer(
         self,
         layer: PaddleLayerVariable,
@@ -498,14 +474,46 @@ class FunctionGraph:
             infer_meta_fn, compute_fn, layer, *args, **kwargs
         )
 
+    def call_ast(
+        self,
+        static_function: tuple,
+        *args: VariableBase,
+        **kwargs: VariableBase,
+    ):
+        """
+        call paddle layer, start symbolic trace.
+
+        Args:
+            layer: paddle layer
+        """
+
+        def compute_fn(static_function, inputs, outputs, stacks):
+            self.sir_ctx.call_AST(
+                static_function,
+                inputs=inputs,
+                outputs=outputs,
+                stacks=stacks,
+            )
+
+        def message_handler(*args, **kwargs):
+            return "Call ast faild"
+
+        try:
+            return inner_error_default_handler(
+                self.symbolic_call, message_handler
+            )(ast_infer_meta, compute_fn, static_function, *args, **kwargs)
+        except Exception as e:
+            log(3, f"[AST] {e}")
+            return None
+
     def symbolic_call(self, infer_meta_fn, compute_fn, func, *args, **kwargs):
         """
         Using infer_meta_fn and compute_fn convert func to symbolic function.
 
         Args:
             infer_meta_fn: function for infer meta, (func, metas, kwmetas) -> output_metas
-            compute_fn   : function for sir compile, (func, input_symbols, outputs_symbols) -> None
-            func         : symbolic function
+            compute_fn   : function which setup sir compile, (func, input_symbols, outputs_symbols) -> None
+            func         : the logical function
         """
         self.collect_input_variables(list(args))
         self.collect_input_variables(list(kwargs.values()))
@@ -559,7 +567,37 @@ class FunctionGraph:
                 outputs, self, DummyTracker(list(args) + list(kwargs.values()))
             )
         else:
-            return None
+            return ConstantVariable.wrap_literal(None, self)
+
+    @staticmethod
+    def get_opcode_executor_stack():
+        # NOTE: only for debug.
+        # dependent on OpcodeExecutor.
+        from .opcode_executor import OpcodeExecutorBase
+
+        if len(OpcodeExecutorBase.call_stack) == 0:
+            # In test case, we can meet this senario.
+            return []
+        current_executor = OpcodeExecutorBase.call_stack[-1]
+        current_line = current_executor._current_line
+        filename = current_executor._code.co_filename
+        source_lines, start_line = inspect.getsourcelines(
+            current_executor._code
+        )
+        # TODO(SigureMo): In 3.11, lineno maybe changed after multiple breakgraph,
+        # We need to find a way to fix this.
+        line_idx = max(min(current_line - start_line, len(source_lines) - 1), 0)
+        code_line = source_lines[line_idx]
+        stack = []
+        stack.append(
+            '  File "{}", line {}, in {}'.format(
+                filename,
+                current_line,
+                current_executor._code.co_name,
+            )
+        )
+        stack.append(f'    {code_line}')
+        return stack
 
     def _put_inner(self, vars: VariableBase):
         """
