@@ -1821,24 +1821,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
         return false;
       }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
-      const auto x_shape = x_var_desc->GetShape();
-      auto dtype = x_var_desc->GetDataType();
-      if (!(dtype == framework::proto::VarType::FP32 ||
-            dtype == framework::proto::VarType::FP16 ||
-            dtype == framework::proto::VarType::FP64 ||
-            dtype == framework::proto::VarType::INT32 ||
-            dtype == framework::proto::VarType::INT64)) {
-        return false;
-      }
     }
     if (op_type == "pad3d") {
 #if !IS_TRT_VERSION_GE(8200)
