@@ -124,6 +124,7 @@ def pdist(x, p=2.0, name=None):
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.seed(2023)
             >>> a = paddle.randn([4, 5])
             >>> a
             Tensor(shape=[4, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
