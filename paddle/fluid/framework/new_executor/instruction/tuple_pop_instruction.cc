@@ -67,7 +67,8 @@ static std::stack<const Variable*> PopElements(VariableRefArray* var_array,
                                                uint64_t num) {
   std::stack<const Variable*> rtn;
   for (uint64_t i = 0; i < num; i++) {
-    rtn.push(var_array->at(var_array->size() - 1));
+    // rtn.push(var_array->at(var_array->size() - 1));
+    rtn.push(var_array->back());
     var_array->pop_back();
   }
   return rtn;

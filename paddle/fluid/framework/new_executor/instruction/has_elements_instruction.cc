@@ -56,7 +56,7 @@ HasElementsInstruction::HasElementsInstruction(
 
 void HasElementsInstruction::Run() {
   VLOG(6) << "run has_elements instruction";
-  bool is_empty = stack_element_var_array_->size();
+  bool is_empty = stack_element_var_array_->empty();
   *has_elements_ = is_empty;
 }
 }  // namespace framework
