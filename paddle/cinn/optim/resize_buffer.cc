@@ -118,6 +118,8 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
       std::vector<ir::Expr>& stored_indice_extent =
           buffer_name_to_indice_extent[buffer_name];
       if (indice_extent.size() > stored_indice_extent.size()) {
+        // multi-dimension access vs single index access, we treat
+        // multi-dimension access as better buffer size computation.
         buffer_name_to_indice_extent[buffer_name] = indice_extent;
       } else if (indice_extent.size() == stored_indice_extent.size()) {
         for (int i = 0; i < indice_extent.size(); ++i) {
