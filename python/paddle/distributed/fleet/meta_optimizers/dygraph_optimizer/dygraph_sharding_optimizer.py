@@ -26,6 +26,7 @@ from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import EagerParamBase
 from paddle.nn import ClipGradByGlobalNorm
 
+from ...utils import timer_helper as timer
 from ...utils.log_util import logger
 from ...utils.tensor_fusion_helper import (
     HOOK_ACTION,
@@ -580,6 +581,13 @@ class DygraphShardingOptimizerV2:
 
         sharding_configs = strategy.hybrid_configs["sharding_configs"]
         acc_steps = sharding_configs.accumulate_steps
+        self._enable_timer = strategy.hybrid_configs["enable_optimizer_timer"]
+
+        if self._enable_timer:
+            if not timer.is_timer_initialized():
+                timer.set_timers()
+            self.timers = timer.get_timers()
+
         comm_group = self._hcg.get_sharding_parallel_group()
 
         self.comm_overlap = sharding_configs.comm_overlap
@@ -698,10 +706,15 @@ class DygraphShardingOptimizerV2:
         """
         sync parameter across sharding group
         """
+        if self._enable_timer:
+            self.timers("sync-parameters").start()
 
         with framework.no_grad():
             for comm_buffer in self._comm_buffer_list:
                 comm_buffer.sync_params()
+
+        if self._enable_timer:
+            self.timers("sync-parameters").stop()
 
     def _update_trainable(self):
         """
@@ -765,6 +778,9 @@ class DygraphShardingOptimizerV2:
         self._collect_comm_buffers()
         self._assign_slice_grad()
 
+        if self._enable_timer:
+            self.timers("apply-optimize").start()
+
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
             for param in self._parameter_list:
@@ -791,6 +807,9 @@ class DygraphShardingOptimizerV2:
                 startup_program=None,
                 params_grads=params_grads,
             )
+
+        if self._enable_timer:
+            self.timers("apply-optimize").stop()
 
         # sync parameters across sharding ranks
         self._sharding_sync_parameters()
