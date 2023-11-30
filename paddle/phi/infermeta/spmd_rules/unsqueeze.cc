@@ -22,12 +22,21 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/dim_trans.h"
+#include "paddle/phi/infermeta/spmd_rules/reshape.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi {
 namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
+
+TensorDistAttr CreateUnsqueezeXshape(const TensorDistAttr& x) {
+  TensorDistAttr out(x);
+  auto dims_mapping = x.dims_mapping();
+  dims_mapping.insert(dims_mapping.begin(), -1);
+  out.set_dims_mapping(dims_mapping);
+  return out;
+}
 
 std::vector<std::shared_ptr<DimTrans>> MakeUnsqueezeDimTrans(
     const std::vector<int64_t>& x_shape,
@@ -119,8 +128,18 @@ SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
   // and output with the inferred dims mapping.
   TensorDistAttr x_dist_attr_dst(x_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
+  if (x_dist_attr_dst.dynamic_dims().size() !=
+      x_dist_attr_dst.dims_mapping().size()) {
+    VLOG(4) << "UnSqueezeInferSPMD change output dist attr dynamic dims";
+    x_dist_attr_dst.set_default_dynamic_dims(x_dist_attr_dst.dims_mapping());
+  }
   TensorDistAttr out_dist_attr(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
+  if (out_dist_attr.dynamic_dims().size() !=
+      out_dist_attr.dims_mapping().size()) {
+    VLOG(4) << "UnSqueezeInferSPMD change output dist attr dynamic dims";
+    out_dist_attr.set_default_dynamic_dims(out_dist_attr.dims_mapping());
+  }
 
   VLOG(4) << "UnsqueezeInferSpmd: X shape: [" << str_join(x_shape)
           << "] Out shape: [" << str_join(out_shape) << "]";
@@ -134,7 +153,8 @@ SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
           << "]\n Out dims_mapping: [" << str_join(dims_mapping_vec[1])
           << "]\n\n";
 
-  return {{x_dist_attr_dst}, {out_dist_attr}};
+  return {{x_dist_attr_dst},
+          {out_dist_attr, CreateUnsqueezeXshape(x_dist_attr_dst)}};
 }
 
 SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
@@ -181,9 +201,18 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
   // and output with the inferred dims mapping
   TensorDistAttr out_dist_attr_dst(out_dist_attr_src);
   out_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
+  if (out_dist_attr_dst.dynamic_dims().size() !=
+      out_dist_attr_dst.dims_mapping().size()) {
+    VLOG(4) << "UnSqueezeInferSPMDReverse change output dist attr dynamic dims";
+    out_dist_attr_dst.set_default_dynamic_dims(
+        out_dist_attr_dst.dims_mapping());
+  }
   TensorDistAttr x_dist_attr(x.dist_attr());
   x_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
-
+  if (x_dist_attr.dynamic_dims().size() != x_dist_attr.dims_mapping().size()) {
+    VLOG(4) << "UnSqueezeInferSPMDReverse change x dist attr dynamic dims";
+    x_dist_attr.set_default_dynamic_dims(x_dist_attr.dims_mapping());
+  }
   VLOG(4) << "UnsqueezeInferSpmdReverse: Out shape: [" << str_join(out_shape)
           << "] X shape: [" << str_join(x_shape) << "]";
   VLOG(4) << "Transformation from output to input:";
@@ -196,6 +225,15 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
   VLOG(4) << "X dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
 
   return {{x_dist_attr}, {out_dist_attr_dst}};
+}
+
+SpmdInfo UnsqueezeGradInferSpmd(const DistMetaTensor& xshape,
+                                const DistMetaTensor& out_grad,
+                                const IntArray& axis) {
+  auto shape = phi::vectorize(xshape.dims());
+  shape = std::vector<int64_t>(shape.begin() + 1, shape.end());
+  const auto& spmd = ReshapeInferSpmd(out_grad, shape);
+  return {{xshape.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
 }
 
 }  // namespace distributed
