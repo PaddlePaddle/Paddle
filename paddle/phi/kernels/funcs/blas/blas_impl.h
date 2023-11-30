@@ -877,7 +877,7 @@ struct CBlas<phi::dtype::complex<float>> {
                    const phi::dtype::complex<float> alpha,
                    const phi::dtype::complex<float> *A,
                    const int lda,
-                   phi::dtype::complex<double> *B,
+                   phi::dtype::complex<float> *B,
                    const int ldb) {
     cblas_ctrsm(layout, side, uplo, transA, diag, M, N, &alpha, A, lda, B, ldb);
   }
