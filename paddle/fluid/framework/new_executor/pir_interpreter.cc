@@ -32,9 +32,11 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -42,9 +44,13 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
+
 #include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/has_elements_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/tuple_pop_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/tuple_push_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/while_instruction.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
@@ -55,6 +61,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -542,6 +550,8 @@ void PirInterpreter::UpdateNcclOpNum() {
   for (auto& ins : vec_instruction_base_) {
     if (nccl_op_set.count(ins->Name())) {
       nccl_op_num = nccl_op_num + 1;
+    } else if (ins->Operation()->HasAttribute("ring_id")) {
+      nccl_op_num = nccl_op_num + 1;
     }
   }
   nccl_op_num_ = nccl_op_num;
@@ -622,8 +632,22 @@ void PirInterpreter::BuildInstruction() {
         continue;
       }
     } else if (op.dialect()->name() == "cf") {
-      VLOG(6) << "skip process cf dialect op: " << op.name();
-      continue;
+      if (op.isa<pir::TuplePushOp>()) {
+        vec_instruction_base_.emplace_back(
+            std::make_unique<TuplePushInstruction>(
+                op_idx++, place_, &op, value_exe_info_.get()));
+      } else if (op.isa<pir::TuplePopOp>()) {
+        vec_instruction_base_.emplace_back(
+            std::make_unique<TuplePopInstruction>(
+                op_idx++, place_, &op, value_exe_info_.get()));
+      } else if (op.isa<pir::HasElementsOp>()) {
+        vec_instruction_base_.emplace_back(
+            std::make_unique<HasElementsInstruction>(
+                op_idx++, place_, &op, value_exe_info_.get()));
+      } else {
+        VLOG(6) << "skip process cf dialect op: " << op.name();
+        continue;
+      }
     } else if (op.dialect()->name() == "pd_op") {
       if (op.isa<paddle::dialect::IfOp>()) {
         vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
@@ -672,6 +696,39 @@ void PirInterpreter::BuildInstruction() {
   }
 }
 
+std::string PirInterpreter::DebugInstructions() {
+  std::stringstream ss;
+  ss << "\n"
+     << std::left << std::setw(7) << "id" << std::setw(40) << "instruction"
+     << std::setw(40) << "inputs_id" << std::setw(40) << "outputs_id"
+     << std::endl;
+  uint64_t idx = 0;
+  for (auto& instr : vec_instruction_base_) {
+    ss << std::setw(7) << idx++ << std::setw(40) << instr->Name();
+
+    std::stringstream ss_inputs;
+    for (auto& input : instr->Inputs()) {
+      ss_inputs << "{";
+      for (auto id : input.second) {
+        ss_inputs << id << " ";
+      }
+      ss_inputs << "} ";
+    }
+    ss << std::setw(40) << ss_inputs.str();
+
+    std::stringstream ss_outputs;
+    for (auto& output : instr->Outputs()) {
+      ss_outputs << "{";
+      for (auto id : output.second) {
+        ss_outputs << id << " ";
+      }
+      ss_outputs << "} ";
+    }
+    ss << std::setw(40) << ss_outputs.str() << std::endl;
+  }
+  return ss.str();
+}
+
 std::string PirInterpreter::DebugValueInfo() {
   std::stringstream os;
   os << "value info of interpretercore " << this << "\n"
@@ -701,6 +758,9 @@ std::string PirInterpreter::DebugValueInfo() {
 }
 
 void PirInterpreter::BuildInstructionDependences() {
+  if (VLOG_IS_ON(6)) {
+    VLOG(6) << DebugInstructions();
+  }
   // analysis the dependences between instructions, add next_instr_list to each
   // instr, and set the dependecy_count_
   size_t instr_num = vec_instruction_base_.size();
@@ -708,7 +768,6 @@ void PirInterpreter::BuildInstructionDependences() {
   if (!is_shared_results_build_) {
     dependecy_count_->assign(instr_num, 0);
   }
-
   std::vector<paddle::framework::InstructionBase*> instructions_ptr;
   for (auto& instr : vec_instruction_base_) {
     instructions_ptr.push_back(instr.get());
@@ -935,6 +994,11 @@ void PirInterpreter::CheckGC(InstructionBase* instr) {
       gc_->Add(refs_[var_id]->Var(), instr);
     }
   }
+
+  for (auto var : instr->EagerGCVars()) {
+    gc_->Add(var, instr);
+  }
+  instr->ClearEagerGCVars();
 }
 
 void PirInterpreter::CalculateLastLiveOps() {

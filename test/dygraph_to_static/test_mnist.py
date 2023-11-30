@@ -20,7 +20,7 @@ from time import time
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_sot_with_pir_only,
+    test_default_and_pir,
 )
 from predictor_utils import PredictorTools
 
@@ -161,7 +161,7 @@ class TestMNISTWithToStatic(TestMNIST):
     def train_dygraph(self):
         return self.train(to_static=False)
 
-    @test_sot_with_pir_only
+    @test_default_and_pir
     def test_mnist_to_static(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
@@ -172,7 +172,7 @@ class TestMNISTWithToStatic(TestMNIST):
             err_msg=f'dygraph is {dygraph_loss}\n static_res is \n{static_loss}',
         )
 
-    @test_sot_with_pir_only
+    @test_default_and_pir
     def test_mnist_declarative_cpu_vs_mkldnn(self):
         dygraph_loss_cpu = self.train_dygraph()
         paddle.set_flags({'FLAGS_use_mkldnn': True})
@@ -238,7 +238,7 @@ class TestMNISTWithToStatic(TestMNIST):
                     loss_data.append(float(avg_loss))
                     # new save load check
                     # TODO(@xiongkun): enable this after new save load is supported in pir.
-                    if not paddle.base.framework.use_pir_api():
+                    if not paddle.framework.use_pir_api():
                         self.check_jit_save_load(
                             mnist,
                             [dy_x_data],
