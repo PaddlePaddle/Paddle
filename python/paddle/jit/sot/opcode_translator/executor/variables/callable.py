@@ -32,7 +32,7 @@ from ....utils import (
     magic_method_builtin_dispatch,
 )
 from ....utils.exceptions import BreakGraphError, FallbackError, SotErrorBase
-from ..ast_utils import ASTTranslateManager
+from ..ast_utils import get_static_function
 from ..dispatcher import Dispatcher
 from ..guard import (
     StringifyExpression,
@@ -178,9 +178,7 @@ class UserDefinedFunctionVariable(FunctionVariable):
 
         checkpoint = self.graph.save_memo()
 
-        static_function = ASTTranslateManager().ast_transform_with_callable(
-            self.value
-        )
+        static_function = get_static_function(self.value, "inline_call")
         if static_function is not None:
             output = self.graph.call_ast(
                 static_function, *self._args, **self._kwargs

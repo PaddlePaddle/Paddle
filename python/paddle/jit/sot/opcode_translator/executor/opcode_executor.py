@@ -49,7 +49,7 @@ from ..instruction_utils import (
     get_instructions,
 )
 from ..instruction_utils.opcode_info import JumpDirection, PopJumpCond
-from .ast_utils import ASTTranslateManager
+from .ast_utils import get_static_function
 from .dispatch_functions import (
     operator_BAD,
     operator_exception_match,
@@ -1704,9 +1704,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self.guard_fn = self._graph.guard_fn
 
     def transform(self):
-        static_function = ASTTranslateManager().ast_transform_with_frame(
-            self._frame
-        )
+        static_function = get_static_function(self._frame, "eval_frame")
         if static_function is not None:
             code = self._frame.f_code
             inputs = []

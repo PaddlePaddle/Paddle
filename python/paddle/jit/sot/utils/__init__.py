@@ -19,6 +19,7 @@ from .envs import (  # noqa: F401
     ENV_SHOW_TRACKERS,
     ENV_SOT_LOG_LEVEL,
     ENV_STRICT_MODE,
+    ENV_SOT_WITH_CONTROL_FLOW,
     cost_model_guard,
     min_graph_size_guard,
     strict_mode_guard,
