@@ -23,6 +23,7 @@ namespace paddle {
 namespace dialect {
 
 using DenseTensorType = pir::DenseTensorType;
+
 class SelectedRowsType : public pir::Type::TypeBase<SelectedRowsType,
                                                     pir::Type,
                                                     SelectedRowsTypeStorage,
@@ -41,7 +42,20 @@ class SelectedRowsType : public pir::Type::TypeBase<SelectedRowsType,
   const size_t &offset() const;
 };
 
+class DenseTensorArrayType
+    : public pir::Type::TypeBase<DenseTensorArrayType,
+                                 pir::Type,
+                                 DenseTensorArrayTypeStorage> {
+ public:
+  using Base::Base;
+
+  const pir::Type &dtype() const;
+
+  const phi::DataLayout &data_layout() const;
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectedRowsType)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::DenseTensorArrayType)

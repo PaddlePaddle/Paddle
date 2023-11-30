@@ -16,11 +16,18 @@ import warnings
 from collections import defaultdict
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, pir
+from paddle.base.libpaddle import DataType
+from paddle.pir import OpResult
 
 from ..base import core, framework
 from ..base.dygraph import base as imperative_base
-from ..base.framework import Variable, in_dygraph_mode
+from ..base.framework import (
+    Variable,
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from .optimizer import Optimizer
 
 __all__ = []
@@ -178,17 +185,17 @@ class Adam(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        if not isinstance(beta1, Variable):
+        if not isinstance(beta1, (Variable, OpResult)):
             if not 0 <= beta1 < 1:
                 raise ValueError(
                     "Invaild value of beta1, expect beta1 in [0,1)."
                 )
-        if not isinstance(beta2, Variable):
+        if not isinstance(beta2, (Variable, OpResult)):
             if not 0 <= beta2 < 1:
                 raise ValueError(
                     "Invaild value of beta2, expect beta2 in [0,1)."
                 )
-        if not isinstance(epsilon, Variable):
+        if not isinstance(epsilon, (Variable, OpResult)):
             if not 0 <= epsilon:
                 raise ValueError(
                     "Invaild value of epsilon, expect epsilon >= 0."
@@ -227,7 +234,10 @@ class Adam(Optimizer):
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
         if self._is_dtype_fp16_or_bf16(acc_dtype):
-            acc_dtype = core.VarDesc.VarType.FP32
+            if in_pir_mode():
+                acc_dtype = DataType.FLOAT32
+            else:
+                acc_dtype = core.VarDesc.VarType.FP32
         self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
         self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
         self._add_accumulator(
@@ -235,7 +245,7 @@ class Adam(Optimizer):
             param=p,
             dtype=acc_dtype,
             fill_value=0.9
-            if isinstance(self._beta1, Variable)
+            if isinstance(self._beta1, (Variable, OpResult))
             else self._beta1,
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
@@ -246,7 +256,7 @@ class Adam(Optimizer):
             param=p,
             dtype=acc_dtype,
             fill_value=0.999
-            if isinstance(self._beta2, Variable)
+            if isinstance(self._beta2, (Variable, OpResult))
             else self._beta2,
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
@@ -254,7 +264,7 @@ class Adam(Optimizer):
         )
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 
@@ -279,7 +289,7 @@ class Adam(Optimizer):
             self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
@@ -306,7 +316,7 @@ class Adam(Optimizer):
         lr = self._create_param_lr(param_and_grad)
         # create the adam optimize op
 
-        if framework.in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
@@ -547,7 +557,7 @@ class Adam(Optimizer):
         """
         For Multi Tensor, append optimize merged_operator to block.
         """
-        assert isinstance(target_block, framework.Block)
+        assert isinstance(target_block, (framework.Block, pir.Block))
 
         grad_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
         lr_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
@@ -569,6 +579,29 @@ class Adam(Optimizer):
                         )
                         lr = self._create_param_lr(parameters_and_grads[index])
                         lr_dict['FP16_LODTensor'].append(lr)
+            elif in_pir_mode():
+                for param_and_grad in parameters_and_grads:
+                    if param_and_grad[1] is None:
+                        continue
+                    if param_and_grad[0].stop_gradient is False:
+                        if (
+                            param_and_grad[0].dtype == DataType.FLOAT32
+                            and param_and_grad[1].is_dense_tensor_type()
+                        ):
+                            grad_dict['FP32_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP32_LODTensor'].append(lr)
+                        elif (
+                            self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
+                            and param_and_grad[1].is_dense_tensor_type()
+                        ):
+                            grad_dict['FP16_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP16_LODTensor'].append(lr)
             else:
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:
@@ -609,22 +642,46 @@ class Adam(Optimizer):
                         }
                     )
                     param_and_grad = self._update_param_group(param_grad_dict)
-                    if (
-                        param_and_grad[0].dtype == paddle.float32
-                        and param_and_grad[1].type
-                        == core.VarDesc.VarType.LOD_TENSOR
-                    ):
-                        grad_dict['FP32_LODTensor'].append(param_and_grad[1])
-                        lr = self._create_param_lr(param_and_grad)
-                        lr_dict['FP32_LODTensor'].append(lr)
-                    elif (
-                        self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
-                        and param_and_grad[1].type
-                        == core.VarDesc.VarType.LOD_TENSOR
-                    ):
-                        grad_dict['FP16_LODTensor'].append(param_and_grad[1])
-                        lr = self._create_param_lr(param_and_grad)
-                        lr_dict['FP16_LODTensor'].append(lr)
+                    if in_pir_mode():
+                        if (
+                            param_and_grad[0].dtype == DataType.FLOAT32
+                            and param_and_grad[1].is_dense_tensor_type()
+                        ):
+                            grad_dict['FP32_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP32_LODTensor'].append(lr)
+                        elif (
+                            self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
+                            and param_and_grad[1].is_dense_tensor_type()
+                        ):
+                            grad_dict['FP16_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP16_LODTensor'].append(lr)
+                    else:
+                        if (
+                            param_and_grad[0].dtype == paddle.float32
+                            and param_and_grad[1].type
+                            == core.VarDesc.VarType.LOD_TENSOR
+                        ):
+                            grad_dict['FP32_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP32_LODTensor'].append(lr)
+                        elif (
+                            self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
+                            and param_and_grad[1].type
+                            == core.VarDesc.VarType.LOD_TENSOR
+                        ):
+                            grad_dict['FP16_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP16_LODTensor'].append(lr)
 
         multi_tensor_list = ['FP32_LODTensor', 'FP16_LODTensor']
         for key in multi_tensor_list:
@@ -642,7 +699,7 @@ class Adam(Optimizer):
                     else self._beta2.item(0)
                 )
 
-                if framework.in_dygraph_mode():
+                if in_dynamic_or_pir_mode():
                     master_weight = self._master_weight_dict[key]
                     master_weight = (
                         master_weight[param_group_idx]
@@ -651,10 +708,14 @@ class Adam(Optimizer):
                     )
                     found_inf = self._get_auxiliary_var('found_inf')
                     if found_inf:
-                        if isinstance(found_inf, core.eager.Tensor):
+                        if isinstance(
+                            found_inf, (core.eager.Tensor, pir.OpResult)
+                        ):
                             self._set_auxiliary_var('found_inf', True)
                     else:
-                        if isinstance(found_inf, core.eager.Tensor):
+                        if isinstance(
+                            found_inf, (core.eager.Tensor, pir.OpResult)
+                        ):
                             self._set_auxiliary_var('found_inf', False)
                         _, _, _, _, _, _ = _C_ops.merged_adam_(
                             self._param_dict[key][param_group_idx],

@@ -675,6 +675,7 @@ void BatchNormInferMeta(const MetaTensor& x,
   }
   if (reserve_space) {
     reserve_space->set_dims({-1});
+    reserve_space->set_dtype(DataType::UINT8);
   }
   y->share_lod(x);
   y->set_dtype(x.dtype());
@@ -2930,11 +2931,19 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
       phi::errors::InvalidArgument(
           "The batch size of Query, Key, Value should be equal."));
 
+  PADDLE_ENFORCE_EQ((key_num_head == value_num_head),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The head number of Key, Value should be equal."));
+
   PADDLE_ENFORCE_EQ(
-      ((query_num_head == key_num_head) && (key_num_head == value_num_head)),
-      true,
-      phi::errors::InvalidArgument(
-          "The head number of Query, Key, Value should be equal."));
+      query_num_head % key_num_head,
+      0,
+      errors::InvalidArgument(
+          "The num_head of query must be divisible by the num_head of key, but "
+          "recived num_head of query is %d, and the num_head of key is %d",
+          query_num_head,
+          key_num_head));
 
   PADDLE_ENFORCE_EQ(query_head_size == key_head_size,
                     true,
@@ -3850,6 +3859,7 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
                                const MetaTensor& bias,
                                const MetaTensor& weight_scale,
                                const std::string& weight_dtype,
+                               const int32_t arch,
                                MetaTensor* out) {
   auto x_dims = x.dims();
   auto w_dims = weight.dims();

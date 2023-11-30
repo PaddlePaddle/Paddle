@@ -26,6 +26,7 @@ ExternalProject_Add(
   INSTALL_COMMAND ""
   TEST_COMMAND "")
 
-add_library(cccl INTERFACE)
-
-add_dependencies(cccl extern_cccl)
+# update include dir and set cccl first for using
+include_directories(BEFORE "${CCCL_SOURCE_DIR}/cub")
+include_directories(BEFORE "${CCCL_SOURCE_DIR}/libcudacxx/include")
+include_directories(BEFORE "${CCCL_SOURCE_DIR}/thrust")

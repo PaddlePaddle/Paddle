@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -32,10 +33,11 @@ class TestRad2degAPI(unittest.TestCase):
         self.x_shape = [6]
         self.out_np = np.rad2deg(self.x_np)
 
+    @test_with_pir_api
     def test_static_graph(self):
-        startup_program = base.Program()
-        train_program = base.Program()
-        with base.program_guard(startup_program, train_program):
+        startup_program = paddle.static.Program()
+        train_program = paddle.static.Program()
+        with paddle.static.program_guard(startup_program, train_program):
             x = paddle.static.data(
                 name='input', dtype=self.x_dtype, shape=self.x_shape
             )
@@ -48,11 +50,10 @@ class TestRad2degAPI(unittest.TestCase):
             )
             exe = base.Executor(place)
             res = exe.run(
-                base.default_main_program(),
                 feed={'input': self.x_np},
                 fetch_list=[out],
             )
-            self.assertTrue((np.array(out[0]) == self.out_np).all())
+            np.testing.assert_allclose(self.out_np, res[0], rtol=1e-05)
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -96,3 +97,7 @@ class TestRad2degAPI3(TestRad2degAPI):
         np.testing.assert_allclose(180 / np.pi, result2.numpy(), rtol=1e-05)
 
         paddle.enable_static()
+
+
+if __name__ == "__main__":
+    unittest.main()

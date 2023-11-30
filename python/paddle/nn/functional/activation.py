@@ -21,9 +21,8 @@ from ...base.data_feeder import check_dtype, check_variable_and_dtype
 from ...base.framework import convert_np_dtype_to_dtype_
 from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import chunk
-from ...tensor.math import tanh  # noqa: F401
-from ...tensor.math import tanh_  # noqa: F401
-from ...tensor.ops import sigmoid  # noqa: F401
+from ...tensor.math import tanh, tanh_  # noqa: F401
+from ...tensor.ops import sigmoid
 
 __all__ = []
 
@@ -114,7 +113,7 @@ def elu(x, alpha=1.0, name=None):
              [ 1.        , 15.60000038]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.elu(x, alpha)
 
     else:
@@ -713,7 +712,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
     is_test = not training
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.rrelu(x, lower, upper, is_test)
     else:
         check_variable_and_dtype(
@@ -887,7 +886,7 @@ def maxout(x, groups, axis=1, name=None):
                [0.42400089, 0.40641287, 0.97020894, 0.74437362],
                [0.51785129, 0.73292869, 0.97786582, 0.92382854]]]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.maxout(x, groups, axis)
     else:
         check_variable_and_dtype(
@@ -1008,7 +1007,7 @@ def selu(
             f"The alpha must be no less than zero. Received: {alpha}."
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.selu(x, scale, alpha)
     else:
         check_variable_and_dtype(
@@ -1534,7 +1533,7 @@ def tanhshrink(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.02005100, -0.00262472,  0.00033201,  0.00868741])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.tanh_shrink(x)
     else:
         check_variable_and_dtype(
@@ -1584,7 +1583,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
             [2., 0., 0.])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.thresholded_relu(x, threshold)
     else:
         check_variable_and_dtype(
