@@ -1811,6 +1811,42 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
+    if (op_type == "size") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("Input")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      auto dtype = x_var_desc->GetDataType();
+      if (!with_dynamic_shape) {
+        // At present, only support float32 or float16 or float64 into trt.
+        if (!(dtype == framework::proto::VarType::FP32 ||
+              dtype == framework::proto::VarType::FP64 ||
+              dtype == framework::proto::VarType::FP16 ||
+              dtype == framework::proto::VarType::INT32)) {
+          return false;
+        } else {
+          // At present, only support float32 or float16 or float64 or int32 or
+          // int64 into trt.
+          if (!(dtype == framework::proto::VarType::FP32 ||
+                dtype == framework::proto::VarType::FP16 ||
+                dtype == framework::proto::VarType::FP64 ||
+                dtype == framework::proto::VarType::INT32 ||
+                dtype == framework::proto::VarType::INT64)) {
+            return false;
+          }
+        }
+      }
+    }
 
     if (op_type == "pad3d") {
 #if !IS_TRT_VERSION_GE(8200)
@@ -1967,8 +2003,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 #elif !IS_TRT_VERSION_GE(8600)
         const auto x_shape = x_var_desc->GetShape();
         if (x_shape.empty()) {
-          VLOG(3)
-              << "BOOL type does not support 0 dim input when TensorRT < 8.6.";
+          VLOG(3) << "BOOL type does not support 0 dim input when TensorRT < "
+                     "8.6.";
           return false;
         }
 #endif
@@ -1986,8 +2022,8 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       if (desc.HasAttr("allow_out_of_range")) {
-        VLOG(3)
-            << "allow_out_of_range one_hot/one_hot_v2 op is not supported now.";
+        VLOG(3) << "allow_out_of_range one_hot/one_hot_v2 op is not "
+                   "supported now.";
         if (PADDLE_GET_CONST(bool, desc.GetAttr("allow_out_of_range")))
           return false;
       }
@@ -2149,7 +2185,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (with_dynamic_shape) {
         return true;
       }
-      // Static shape does not support the input tensors: Shape and ShapeTensor
+      // Static shape does not support the input tensors: Shape and
+      // ShapeTensor
       auto reshape_inputs = desc.Inputs();
       if (reshape_inputs.find("Shape") != reshape_inputs.end()) {
         if (!desc.Input("Shape").empty()) {
@@ -2974,7 +3011,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "dequantize_linear",
       "share_data",
       "bitwise_and",
-      "bitwise_or"};
+      "bitwise_or",
+      "size"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3145,7 +3183,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "dequantize_linear",
       "share_data",
       "bitwise_and",
-      "bitwise_or"};
+      "bitwise_or",
+      "size"};
 };
 
 struct GenericPluginTeller : public Teller {
@@ -3163,25 +3202,6 @@ struct GenericPluginTeller : public Teller {
     if (op_type == "yolo_box") {
       if (!desc.HasAttr("iou_aware") && !desc.HasAttr("iou_aware_factor"))
         return false;
-    } else if (op_type == "solve") {
-      auto x_var_name = desc.Input("X")[0];
-      auto y_var_name = desc.Input("Y")[0];
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      auto* x_var_desc = block->FindVar(x_var_name);
-      auto* y_var_desc = block->FindVar(y_var_name);
-      auto x_dtype = x_var_desc->GetDataType();
-      auto y_dtype = y_var_desc->GetDataType();
-      if (x_dtype == framework::proto::VarType::FP64 ||
-          y_dtype == framework::proto::VarType::FP64) {
-        VLOG(3) << op_type << " not support input of FP64.";
-        return false;
-      }
     }
     if (use_no_calib_int8) {
       return false;

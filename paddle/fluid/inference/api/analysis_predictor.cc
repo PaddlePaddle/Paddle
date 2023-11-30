@@ -370,13 +370,6 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
            "is enabled in Paddle-TRT, we set the id of these predictors to "
            "negative sharing_identifier you specified : "
         << predictor_id_;
-    PADDLE_ENFORCE_EQ(
-        config_.new_executor_enabled(),
-        true,
-        platform::errors::InvalidArgument(
-            "Please call the config.enable_new_executor() in python or "
-            "config.EnableNewExecutor() in c++ when you want share the engine "
-            "context memory of multiple predictors."));
   } else {
     predictor_id_ = inference::GetUniqueId();
   }
@@ -2950,6 +2943,7 @@ USE_TRT_CONVERTER(dropout);
 USE_TRT_CONVERTER(pad);
 USE_TRT_CONVERTER(bitwise_and);
 USE_TRT_CONVERTER(bitwise_or);
+USE_TRT_CONVERTER(size);
 #if IS_TRT_VERSION_GE(8200)
 USE_TRT_CONVERTER(pad3d);
 USE_TRT_CONVERTER(einsum)
