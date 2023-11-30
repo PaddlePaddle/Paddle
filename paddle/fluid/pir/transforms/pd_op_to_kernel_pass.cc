@@ -1236,11 +1236,6 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
 
   auto phi_kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
       kernel_fn_str, kernel_key);
-  PADDLE_ENFORCE_EQ(
-      phi_kernel.IsValid(),
-      true,
-      phi::errors::PreconditionNotMet("op [%s] selected kernel is not valid",
-                                      op_item->name()));
 
   auto args_def = phi_kernel.args_def();
   auto output_defs = args_def.output_defs();
