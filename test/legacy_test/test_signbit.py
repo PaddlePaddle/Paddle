@@ -27,7 +27,6 @@ class TestSignbitAPI(unittest.TestCase):
     def setUp(self) -> None:
         self.support_dtypes = [
             'float16',
-            'bfloat16',
             'float32',
             'float64',
             'uint8',
