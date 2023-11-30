@@ -74,7 +74,7 @@ class TestPutAlongAxisFP16Op(TestPutAlongAxisOp):
         self.x_shape = (10, 10, 10)
         self.value_type = "float16"
         self.value = np.array([99]).astype(self.value_type)
-        self.index_type = "int32"
+        self.index_type = "int64"
         self.index = np.array([[[0]]]).astype(self.index_type)
         self.axis = 1
         self.axis_type = "int64"
