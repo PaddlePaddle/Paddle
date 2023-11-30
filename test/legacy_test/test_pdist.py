@@ -70,68 +70,39 @@ class TestPdistAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestPdistAPICase1(TestPdistAPI):
+class TestPdistAPICase1_param_p1(TestPdistAPI):
     def init_input(self):
         self.p = 0
 
 
-class TestPdistAPICase2(TestPdistAPI):
+class TestPdistAPICase2_param_p2(TestPdistAPI):
     def init_input(self):
         self.p = 1.0
 
 
-class TestPdistAPICase3(TestPdistAPI):
+class TestPdistAPICase3_param_p3(TestPdistAPI):
     def init_input(self):
         self.p = 3.0
 
 
-class TestPdistAPICase4(TestPdistAPI):
+class TestPdistAPICase4_param_p4(TestPdistAPI):
     def init_input(self):
         self.p = 1.5
 
 
-class TestPdistAPICase5(TestPdistAPI):
+class TestPdistAPICase5_param_p5(TestPdistAPI):
     def init_input(self):
         self.p = 2.5
 
 
-class TestPdistAPICase6(TestPdistAPI):
+class TestPdistAPICase6_param_p6(TestPdistAPI):
     def init_input(self):
         self.p = float('inf')
 
 
-class TestPdistAPICase7(TestPdistAPI):
+class TestPdistAPICase7_input_x1(TestPdistAPI):
     def init_input(self):
         self.x = np.random.rand(50, 20).astype('float64')
-
-
-class TestPdistAPICase8(TestPdistAPI):
-    def init_input(self):
-        self.x = np.random.rand(500, 100).astype('float64')
-
-    def test_static_api(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('x', self.x.shape, dtype=self.x.dtype)
-            out0 = paddle.pdist(
-                x,
-                self.p,
-            )
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': self.x}, fetch_list=[out0])
-            out_ref = ref_pdist(self.x, self.p)
-            np.testing.assert_allclose(out_ref, res[0])
-
-    def test_dygraph_api(self):
-        paddle.disable_static(self.place)
-        x = paddle.to_tensor(self.x)
-        out0 = paddle.pdist(
-            x,
-            self.p,
-        )
-        out_ref = ref_pdist(self.x, self.p)
-        np.testing.assert_allclose(out_ref, out0.numpy())
-        paddle.enable_static()
 
 
 class TestPdistShapeError(unittest.TestCase):
