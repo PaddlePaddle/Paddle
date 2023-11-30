@@ -72,8 +72,6 @@ std::vector<pir::CINNKernelInfo> PirCompiler::BuildCUDAJITInfo(
     auto build_module = m_builder_.Build();
     compiler_->Build(build_module, "");
 
-    auto instructions = BuildInstructions(groups);
-
     auto fn_ptrs = compiler_->GetFnPtr();
 
     for (int idx = 0; idx < groups.size(); ++idx) {

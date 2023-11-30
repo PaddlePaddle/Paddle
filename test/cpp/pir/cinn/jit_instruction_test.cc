@@ -170,6 +170,7 @@ TEST(CinnJitInstruction, Run) {
   bool res1 = simple_cmp(out_tensor.data<float>()[1], 1.35701);
   bool res2 = simple_cmp(out_tensor.data<float>()[2], 1.35701);
   bool res3 = simple_cmp(out_tensor.data<float>()[3], 1.35701);
+
   EXPECT_EQ(res0, true);
   EXPECT_EQ(res1, true);
   EXPECT_EQ(res2, true);

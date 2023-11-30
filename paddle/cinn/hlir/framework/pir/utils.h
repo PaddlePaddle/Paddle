@@ -31,15 +31,22 @@ namespace pir {
 struct CINNKernelInfo {
   void* fn_ptr;
 
-  // ArgDImId indicates the dim_idx dimension of the shape of the arg_idx
-  // argument in the kernel func parameter
   struct ArgDimIdx {
     int arg_idx;
     int dim_idx;
   };
   // int_args_map records the int_args_map.key argument (dtype is Int) in the
   // kernel parameter taken from the dim_idx dimension of the shape of the
-  // ArgDimIdx.arg_idx argument
+  // ArgDimIdx.arg_idx argument.
+  // Examples:
+  //   a func like: foo(tensor A, tensor B, int S1, int S2)
+  //   S1 = A.shape[3]
+  //   S2 = B.shape[2]
+  //   int_args_map will be like
+  //   {
+  //     2: {0, 3},
+  //     3: {1, 2}
+  //   }
   std::map<int, ArgDimIdx> int_args_map;
 };
 

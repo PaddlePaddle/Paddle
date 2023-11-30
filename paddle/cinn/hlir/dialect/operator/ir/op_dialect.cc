@@ -58,13 +58,13 @@ void OperatorDialect::PrintAttribute(pir::Attribute attr,
     }
     { os << "<#AttrNotImplemented>"; }
   } else if (attr.isa<CINNKernelInfoAttribute>()) {
-    auto cuda_jit_info = attr.dyn_cast<CINNKernelInfoAttribute>();
+    auto cinn_kernel_info = attr.dyn_cast<CINNKernelInfoAttribute>();
 
-    os << "(" << cuda_jit_info.data().fn_ptr;
+    os << "(" << cinn_kernel_info.data().fn_ptr;
     os << ')';
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-        "cinn dialect only support GrupInfo and CUDAJITInfo"));
+        "cinn dialect only support GroupInfo and CINNKernelInfo"));
   }
 }
 

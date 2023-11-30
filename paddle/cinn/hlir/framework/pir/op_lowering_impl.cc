@@ -500,9 +500,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
           continue;
         }
         group->output_values.push_back(opresult);
-        // output arg tensors
         group_func_arg_tensors->push_back(tensor);
-        // output args
         group->output_names.push_back(tensor->name);
         group_func_args.emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
       }

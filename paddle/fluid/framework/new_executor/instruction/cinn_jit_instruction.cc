@@ -34,8 +34,8 @@ class CinnJitInstruction::FnPtrImpl {
   using CINNKernelInfo = cinn::hlir::framework::pir::CINNKernelInfo;
 
  public:
-  explicit FnPtrImpl(const CINNKernelInfo& cuda_kernel_info)
-      : cuda_kernel_info_(cuda_kernel_info) {}
+  explicit FnPtrImpl(const CINNKernelInfo& cinn_kernel_info)
+      : cinn_kernel_info_(cinn_kernel_info) {}
 
   void Run(const std::vector<phi::DenseTensor*>& kernel_args, void* stream) {
     func_args_.clear();
@@ -47,18 +47,18 @@ class CinnJitInstruction::FnPtrImpl {
       func_args_.emplace_back(buffer);
     }
     // 2. Convert arg's data about shape of Tensor to cinn_pod_value_t
-    for (const auto& int_arg_mp : cuda_kernel_info_.int_args_map) {
+    for (const auto& int_arg_mp : cinn_kernel_info_.int_args_map) {
       func_args_.emplace_back(kernel_args[int_arg_mp.second.arg_idx]->dims().at(
           int_arg_mp.second.dim_idx));
     }
 
-        // 3. Launch host kernel
-        ((lower_func_ptr_g)cuda_kernel_info_.fn_ptr)(
-            static_cast <void*>(func_args_.data()), func_args_.size(), stream);
+    // 3. Launch host kernel
+    ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
+        static_cast<void*>(func_args_.data()), func_args_.size(), stream);
   }
 
  private:
-  CINNKernelInfo cuda_kernel_info_;
+  CINNKernelInfo cinn_kernel_info_;
 
   std::vector<cinn_pod_value_t> func_args_;
 };
@@ -122,9 +122,8 @@ void CinnJitInstruction::Run() {
   fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
 #else
   VLOG(phi::FATAL) << "Not Supported: cinn jit instruction currently does not "
-                      "support non-CUDakernel";
+                      "support non-CUDA kernel";
 #endif
-
 }
 
 const std::string& CinnJitInstruction::Name() const {
