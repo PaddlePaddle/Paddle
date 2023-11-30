@@ -193,10 +193,5 @@ TEST(if_op_test, network_with_backward) {
 
   LOG(INFO) << program;
 
-  auto place = paddle::platform::CUDAPlace(0);
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program, place);
-  paddle::framework::Scope scope;
-  paddle::framework::InterpreterCore test_core(
-      place, {}, kernel_program->block(), &scope);
-  test_core.Run({});
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 }

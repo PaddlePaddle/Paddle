@@ -96,5 +96,6 @@ void TuplePopInstruction::Run() {
     }
   }
 }
+
 }  // namespace framework
 }  // namespace paddle

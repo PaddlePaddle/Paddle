@@ -550,6 +550,8 @@ void PirInterpreter::UpdateNcclOpNum() {
   for (auto& ins : vec_instruction_base_) {
     if (nccl_op_set.count(ins->Name())) {
       nccl_op_num = nccl_op_num + 1;
+    } else if (ins->Operation()->HasAttribute("ring_id")) {
+      nccl_op_num = nccl_op_num + 1;
     }
   }
   nccl_op_num_ = nccl_op_num;

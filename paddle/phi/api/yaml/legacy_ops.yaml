@@ -933,6 +933,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : ReshapeWithXShapeInferMeta
+    spmd_rule : ReshapeInferSpmdDynamic
   kernel :
     func : reshape
   inplace : (x -> out)
@@ -1003,6 +1004,7 @@
   output : Tensor(out)
   infer_meta :
     func : SoftmaxInferMeta
+    spmd_rule : SoftmaxInferSpmd
   kernel :
     func : softmax
   inplace : (x -> out)

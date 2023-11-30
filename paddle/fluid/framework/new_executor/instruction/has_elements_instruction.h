@@ -42,7 +42,7 @@ class HasElementsInstruction : public InstructionBase {
 
   OpFuncType type_;
 
-  std::string name_{"has_elelments_instruction"};
+  std::string name_{"has_elements_instruction"};
 
   ValueExecutionInfo* value_exe_info_;  // not owned
 
