@@ -166,9 +166,31 @@ class FusedMatmulOneDNNHandler
     }
 
     if (residual_data) {
-      auto residual_data_md = memory::desc(out_ddims,
-                                           funcs::OneDNNGetDataType<OT>(),
-                                           dnnl::memory::format_tag::any);
+      // fill 1 in the front of adesc, to make residual ndims to be same as dst
+      // dims
+      int dst_size = out_ddims.size();
+      int origin_size = residual_data->mem_desc().get_ndims();
+      dnnl::memory::dims expanded_dims = residual_data->mem_desc().get_dims();
+      if (origin_size < dst_size) {
+        expanded_dims.insert(expanded_dims.begin(), dst_size - origin_size, 1);
+        residual_data->mem_desc().reshape(expanded_dims);
+      }
+
+      auto residual_data_tz = vectorize(residual_data->dims());
+      auto chosen_memory_format = funcs::OneDNNMemoryFormat::any;
+      dnnl::memory::desc residual_data_md;
+      if (residual_data_tz.size() == 4 && residual_data_tz[0] == 1 &&
+          residual_data_tz[1] > 1 && residual_data_tz[2] > 1 &&
+          residual_data_tz[3] > 1) {
+        chosen_memory_format = funcs::OneDNNMemoryFormat::nchw;
+        residual_data_md = memory::desc(
+            out_ddims, funcs::OneDNNGetDataType<OT>(), chosen_memory_format);
+      } else {
+        residual_data_md = memory::desc(expanded_dims,
+                                        funcs::OneDNNGetDataType<OT>(),
+                                        chosen_memory_format);
+      }
+
       post_operations.append_binary(dnnl::algorithm::binary_add,
                                     residual_data_md);
       if (scale_in_eltwise != 0.0f) {
@@ -189,17 +211,42 @@ class FusedMatmulOneDNNHandler
     return matmul_attrs;
   }
 
-  std::shared_ptr<dnnl::memory> AcquireSrcMemoryResidual(
-      const DenseTensor *input) {
-    const XT *input_data = input->data<XT>();
-    return this->AcquireMemoryFromPrimitive(
-        this->fwd_pd_->dst_desc(), phi::funcs::to_void_cast<XT>(input_data));
-  }
-
   std::shared_ptr<memory> AcquireWeightsMemory(const DenseTensor *input) {
     const YT *input_data = input->data<YT>();
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->weights_desc(), funcs::to_void_cast<YT>(input_data));
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireSrcMemoryResidual(
+      const DenseTensor *input) {
+    const XT *input_data = input->data<XT>();
+    auto residual_memory_p = this->AcquireMemoryFromPrimitive(
+        input->mem_desc(), phi::funcs::to_void_cast<XT>(input_data));
+    return residual_memory_p;
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireSrcMemoryStride(
+      const DenseTensor *input) {
+    const XT *input_data = input->data<XT>();
+    std::shared_ptr<dnnl::memory> src_mem =
+        this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc());
+    auto residual_vec = vectorize(input->dims());
+    int IC = residual_vec[1];
+    int IH = residual_vec[2];
+    int IW = residual_vec[3];
+    size_t size = this->fwd_pd_->dst_desc().get_size() / sizeof(XT);
+    XT *dst = static_cast<XT *>(src_mem->get_data_handle());
+
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
+    for (size_t i = 0; i < size; ++i) {
+      auto mod_i =
+          static_cast<int>(i - floor(i / (IC * IH * IW)) * (IC * IH * IW));
+      // Make 1*C*H*W to N*C*H*W to avoid broadcast overhead
+      dst[i] = input_data[mod_i];
+    }
+    return src_mem;
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(const OneDNNContext &dev_ctx,
@@ -272,8 +319,15 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
       {DNNL_ARG_DST, *dst_memory_p}};
 
   if (residual_data) {
-    const auto residual_data_memory_p =
-        handler.AcquireSrcMemoryResidual(residual_data);
+    auto residual_data_vec = vectorize(residual_data->dims());
+    std::shared_ptr<dnnl::memory> residual_data_memory_p;
+    if (residual_data_vec.size() == 4 && residual_data_vec[0] == 1 &&
+        residual_data_vec[1] > 1 && residual_data_vec[2] > 1 &&
+        residual_data_vec[3] > 1) {
+      residual_data_memory_p = handler.AcquireSrcMemoryStride(residual_data);
+    } else {
+      residual_data_memory_p = handler.AcquireSrcMemoryResidual(residual_data);
+    }
     matmul_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
                         *residual_data_memory_p});
   }
