@@ -149,7 +149,7 @@ class DDim {
     PADDLE_VISIT_DDIM(rank_, visitor(UnsafeCast<kRank>()));
   }
 
-  TEST_API bool operator==(const DDim& d) const;
+  bool operator==(const DDim& d) const;
 
   bool operator!=(const DDim& d) const;
 
@@ -279,6 +279,6 @@ using DDim = phi::DDim;
 namespace std {
 template <>
 struct hash<phi::DDim> {
-  std::size_t operator()(phi::DDim const& ddim) const;
+  TEST_APT std::size_t operator()(phi::DDim const& ddim) const;
 };
 }  // namespace std
