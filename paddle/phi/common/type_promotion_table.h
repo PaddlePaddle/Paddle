@@ -82,4 +82,43 @@ inline static DataType promoteTypes(DataType a, DataType b) {
   return _promoteTypesLookup[DataTypeToNum(a)][DataTypeToNum(b)];
 }
 
+static inline bool is_support_float(DataType dtype) {
+  if (dtype == DataType::FLOAT16 || dtype == DataType::FLOAT32 ||
+      dtype == DataType::FLOAT64 || dtype == DataType::BFLOAT16) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+static inline bool is_support_int(phi::DataType dtype) {
+  if (dtype == DataType::INT32 || dtype == DataType::INT64) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+inline phi::DataType GetPromoteDtype(const std::string& op_name,
+                                     const DataType x,
+                                     const DataType y) {
+  // future will deal this by different rule
+  if (op_name == "greater_than") {
+    // bool logic
+    return DataType::BOOL;
+  } else {
+    return phi::promoteTypes(x, y);
+  }
+}
+
+inline bool NeedTypePromotion(const DataType x, const DataType y) {
+  // Tensor + Tensor only support type promotion in float, int32, int64
+  if ((x != y) && (is_support_float(x) || is_support_int(x)) &&
+      (is_support_float(y) || is_support_int(y))) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 }  // namespace phi
