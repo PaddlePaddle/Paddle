@@ -59,6 +59,28 @@ Singleton::Singleton() : DimTrans(DimTrans::Type::SINGLETON) {
   all_dim_trans.emplace_back(this);
 }
 
+Broadcast::Broadcast() : DimTrans(DimTrans::Type::Broadcast) {
+  dim_ = nullptr;
+  all_dim_trans.emplace_back(this);
+}
+
+Broadcast::Broadcast(DimTrans* dim, int64_t dim_size)
+    : DimTrans(DimTrans::Type::Broadcast) {
+  dim_ = dim;
+  dim_size_ = dim_size;
+  all_dim_trans.emplace_back(this);
+}
+
+Broadcast::~Broadcast() { dim_ = nullptr; }
+
+DimTrans* Broadcast::dim() const { return dim_; }
+
+void Broadcast::set_dim(DimTrans* dim) { dim_ = dim; }
+
+int64_t Broadcast::dim_size() const { return dim_size_; }
+
+std::string Broadcast::to_string() { return "Broadcast()"; }
+
 std::string Singleton::to_string() { return "Singleton()"; }
 
 Flatten::Flatten() : DimTrans(DimTrans::Type::FLATTEN) {
