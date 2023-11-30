@@ -259,16 +259,21 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
       CHECK_NOTNULL(index.as_var());
       int idx = 0;
       bool is_reduce_var = false;
-      for (const ir::Var& iter_var : master_iter_vars) {
+      for (int iter_idx = 0; iter_idx < master_iter_vars.size(); ++iter_idx) {
+        auto& iter_var = master_iter_vars[iter_idx];
         if (iter_var->name == index.as_var_ref()->name) {
           is_reduce_var = iter_var->is_reduce_axis;
           break;
         }
-        ++idx;
+        auto& iter_value = master_iter_values[iter_idx];
+        if (!iter_value.is_constant() || iter_value.get_constant() != 0) {
+          ++idx;
+        }
       }
       std::vector<ir::Var> loop_vars_in_order;
       ir::ir_utils::CollectIRNodesInOrder(
           master_iter_values[idx], [&](const ir::Expr* x) {
+            VLOG(1) << *x << " x->is_constant(): " << x->is_constant();
             if (x->as_var()) {
               loop_vars_in_order.push_back(x->as_var_ref());
             }
@@ -276,6 +281,9 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
           });
       for (const ir::Var& loop_var : loop_vars_in_order) {
         for (int i = 0; i < master_loops.size(); ++i) {
+          VLOG(1) << "master_loops[i]:" << master_loops[i];
+          VLOG(1) << "loop_var->name: " << loop_var->name << " , "
+                  << master_loops[i].As<ir::For>()->loop_var->name;
           if (master_loops[i].As<ir::For>()->loop_var->name == loop_var->name) {
             original_master_loop_order.push_back(i);
             int extent = ir::GetLoopExtent(master_loops[i]);
@@ -290,6 +298,8 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
 
     for (int i = 0; i < original_master_loop_order.size(); ++i) {
       for (int j = 0; j < original_master_loop_order.size(); ++j) {
+        VLOG(1) << "original_master_loop_order[i]: "
+                << original_master_loop_order[j];
         if (original_master_loop_order[j] == i) {
           recover_loop_order.push_back(j);
           break;
