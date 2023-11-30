@@ -60,12 +60,6 @@ class ConvBNLayer(paddle.nn.Layer):
         self.act = act
 
     def forward(self, inputs):
-        # print(inputs)
-        # if inputs.shape[1] == 512 and self.conv._in_channels == 768:
-        #     # self.conv
-        #     # self.conv._in_channels
-        #     breakpoint()
-        print(f"{inputs.shape[1]}", f"{str(self.conv)}")
         out = self.conv(inputs)
         out = self.batch_norm(out)
         if self.act == 'leaky':
@@ -187,11 +181,7 @@ class DarkNet53_conv_body(paddle.nn.Layer):
         out = self.downsample0(out)
         blocks = []
         for i, conv_block_i in enumerate(self.darknet53_conv_block_list):
-            # if paddle.base.dygraph.base.in_to_static_mode():
-            #     breakpoint()
-            print("DarkNet53_conv_body before", i, out.shape)
             out = conv_block_i(out)
-            print("DarkNet53_conv_body after (append this)", i, out.shape)
             blocks.append(out)
             if i < len(self.stages) - 1:
                 out = self.downsample_list[i](out)

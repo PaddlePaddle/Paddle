@@ -288,20 +288,15 @@ class YOLOv3(paddle.nn.Layer):
         self.downsample = 32
         blocks = self.block(inputs)
         for i, block in enumerate(blocks):
-            print("block pre:", i, block.shape)
             if i > 0:
                 block = paddle.concat([route, block], axis=1)  # noqa: F821
-            print("block:", i, block.shape)
             route, tip = self.yolo_blocks[i](block)
-            print("route 0:", i, route.shape)
             block_out = self.block_outputs[i](tip)
             self.outputs.append(block_out)
 
             if i < 2:
                 route = self.route_blocks_2[i](route)
-                print("route 1:", i, route.shape)
                 route = self.upsample(route)
-                print("route 2:", i, route.shape)
         self.gtbox = gtbox
         self.gtlabel = gtlabel
         self.gtscore = gtscore
