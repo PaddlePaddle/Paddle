@@ -45,17 +45,6 @@ def get_cuda_version():
     "weight_only_linear requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestMatmulToWeightOnlyPass_Fp32(PassTest):
-    @classmethod
-    def setUpClass(self):
-        self.main_program = paddle.static.Program()
-        self.feeds = None
-        self.fetch_list = None
-        self.valid_op_map = {}
-        self.pass_list = []
-        self.pir_program = None
-        self.place_runtime = "cpu"
-        self.dtype = 'float32'
-
     def build_ir_progam(self):
         with paddle.pir_utils.IrGuard():
             self.pir_program = paddle.static.Program()
@@ -89,6 +78,7 @@ class TestMatmulToWeightOnlyPass_Fp32(PassTest):
 
     def setUp(self):
         self.place_runtime = "gpu"
+        self.dtype = 'float32'
         self.build_ir_progam()
 
     def test_check_output(self):
@@ -96,16 +86,10 @@ class TestMatmulToWeightOnlyPass_Fp32(PassTest):
 
 
 class TestMatmulToWeightOnlyPass_Fp16(TestMatmulToWeightOnlyPass_Fp32):
-    @classmethod
-    def setUpClass(self):
-        self.main_program = paddle.static.Program()
-        self.feeds = None
-        self.fetch_list = None
-        self.valid_op_map = {}
-        self.pass_list = []
-        self.pir_program = None
-        self.place_runtime = "cpu"
+    def setUp(self):
+        self.place_runtime = "gpu"
         self.dtype = 'float16'
+        self.build_ir_progam()
 
 
 if __name__ == "__main__":
