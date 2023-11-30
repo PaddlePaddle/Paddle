@@ -16,6 +16,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -613,9 +614,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
         elif p == 0:
             raise ValueError(
-                "just support axis type int or list (length of list <=1) if p = 0, found {}".format(
-                    axis
-                )
+                f"just support axis type int or list (length of list <=1) if p = 0, found {axis}"
             )
         else:
             return p_matrix_norm(
@@ -719,7 +718,7 @@ def dist(x, y, p=2, name=None):
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             0.)
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.dist(x, y, p)
 
     check_variable_and_dtype(
@@ -859,7 +858,7 @@ def cond(x, p=None, name=None):
             Calculate the matrix norm of a square matrix or batches of square matrices,
             when porder is in (1, -1, inf, -inf)
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             abs_out = _C_ops.abs(input)
             sum_out = _C_ops.sum(abs_out, axis, None, False)
 
@@ -922,7 +921,7 @@ def cond(x, p=None, name=None):
         NOTE:
             Calculate the frobenius norm of a square matrix or batches of square matrices.
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             pow_out = _C_ops.pow(input, porder)
             sum_out_1 = _C_ops.sum(pow_out, axis, None, False)
             sum_out_2 = _C_ops.sum(sum_out_1, axis, None, False)
@@ -985,7 +984,7 @@ def cond(x, p=None, name=None):
         """
         u, s, vh = svd(input, full_matrices=False)
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if porder == "nuc":
                 return _C_ops.sum(s, axis, None, False)
             max_out = _C_ops.max(s, axis, False)
@@ -1056,7 +1055,7 @@ def cond(x, p=None, name=None):
                 return out
 
     def empty_tensor(input, shape):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return input.reshape(shape)
         raise ValueError(
             "only support x is nonempty tensor in static graph mode"
@@ -1375,7 +1374,7 @@ def t(input, name=None):
             "length of Input(input) is %s. Perhaps you can use paddle."
             "tensor.transpose() instead." % len(input.shape)
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if len(input.shape) <= 1:
             return input
         # 2-D tensor
@@ -1468,7 +1467,7 @@ def cross(x, y, axis=9, name=None):
              [0., 0., 0.],
              [0., 0., 0.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         axis = K_DEFAULT_DIM if axis is None else axis
         return _C_ops.cross(x, y, axis)
     else:
@@ -1539,7 +1538,7 @@ def cholesky(x, upper=False, name=None):
              [1.06467664, 0.17859250, 0.        ],
              [1.30602181, 0.08326444, 0.22790681]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cholesky(x, upper)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
@@ -1596,8 +1595,8 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
              [1, 1, 1, 1]])
 
     """
-    if in_dynamic_mode():
-        if isinstance(tol, Variable):
+    if in_dynamic_or_pir_mode():
+        if isinstance(tol, (Variable, paddle.pir.OpResult)):
             if tol.dtype != x.dtype:
                 tol_tensor = cast(tol, x.dtype)
             else:
@@ -1681,7 +1680,7 @@ def bmm(x, y, name=None):
               [60., 60.]]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bmm(x, y)
     else:
         x_shape = x.shape
@@ -1739,7 +1738,7 @@ def histogram(input, bins=100, min=0, max=0, name=None):
             Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [0, 2, 1, 0])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.histogram(input, bins, min, max)
     else:
         helper = LayerHelper('histogram', **locals())
@@ -1787,10 +1786,15 @@ def bincount(x, weights=None, minlength=0, name=None):
             Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 2.19999981, 0.40000001, 0.        , 0.50000000, 0.50000000])
     """
-    if x.dtype not in [paddle.int32, paddle.int64]:
+    if x.dtype not in [
+        paddle.int32,
+        paddle.int64,
+        DataType.INT32,
+        DataType.INT64,
+    ]:
         raise TypeError("Elements in Input(x) should all be integers")
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bincount(x, weights, minlength)
     else:
         helper = LayerHelper('bincount', **locals())
@@ -1846,7 +1850,7 @@ def mv(x, vec, name=None):
             Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [14., 10.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.mv(x, vec)
     else:
 
@@ -1907,7 +1911,7 @@ def det(x, name=None):
 
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.det(x)
     else:
         check_dtype(x.dtype, 'Input', ['float16', 'float32', 'float64'], 'det')
@@ -1958,17 +1962,15 @@ def slogdet(x, name=None):
 
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> x =  paddle.randn([3,3,3])
+            >>> x = paddle.randn([3, 3, 3])
             >>> A = paddle.linalg.slogdet(x)
             >>> print(A)
-            >>> # doctest: +SKIP
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-1.        ,  1.        ,  1.        ],
              [ 0.25681755, -0.25061053, -0.10809582]])
-            >>> # doctest: -SKIP
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.slogdet(x)
     else:
         check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
@@ -2054,7 +2056,7 @@ def svd(x, full_matrices=False, name=None):
             >>> #                  V * VH == I
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.svd(x, full_matrices)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
@@ -2286,7 +2288,7 @@ def matrix_power(x, n, name=None):
              [-7.66666667 ,  8.         , -1.83333333 ],
              [ 1.80555556 , -1.91666667 ,  0.44444444 ]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.matrix_power(x, n)
     else:
         check_variable_and_dtype(
@@ -2346,7 +2348,7 @@ def qr(x, mode="reduced", name=None):
 
             >>> # one can verify : X = Q * R ;
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         q, r = _C_ops.qr(x, mode)
         if mode == "r":
             return r
@@ -2449,7 +2451,7 @@ def lu(x, pivot=True, get_infos=False, name=None):
             >>> # one can verify : X = P @ L @ U ;
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         lu, p, info = _C_ops.lu(x, pivot)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu')
@@ -2552,7 +2554,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
         raise ValueError(
             f"The shape of Pivots should be (*, K), but received ndim is [{y.ndim} < 1]"
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         P, L, U = _C_ops.lu_unpack(x, y, unpack_ludata, unpack_pivots)
         return P, L, U
     else:
@@ -2687,9 +2689,7 @@ def eigvals(x, name=None):
 
     if x_shape[-1] != x_shape[-2]:
         raise ValueError(
-            "The last two dimensions of Input(x) should be equal, but received x's shape = {}".format(
-                x_shape
-            )
+            f"The last two dimensions of Input(x) should be equal, but received x's shape = {x_shape}"
         )
 
     if in_dynamic_or_pir_mode():
@@ -2762,7 +2762,7 @@ def multi_dot(x, name=None):
             [10, 7]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multi_dot(x)
     else:
         check_type(x, 'x', (list, tuple), 'multi_dot')
@@ -2801,10 +2801,12 @@ def eigh(x, UPLO='L', name=None):
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        - out_value(Tensor):  A Tensor with shape [*, N] and data type of float32 and float64.
-            The eigenvalues of eigh op.
-        - out_vector(Tensor): A Tensor with shape [*, N, N] and data type of float32,float64,
-            complex64 and complex128. The eigenvectors of eigh op.
+        2-element tuple containing
+
+        - out_value(Tensor): A Tensor with shape :math:`[*, N]` and data type of float32 and float64.
+          The eigenvalues of eigh op.
+        - out_vector(Tensor): A Tensor with shape :math:`[*, N, N]` and data type of float32, float64,
+          complex64 and complex128. The eigenvectors of eigh op.
 
     Examples:
         .. code-block:: python
@@ -2822,7 +2824,7 @@ def eigh(x, UPLO='L', name=None):
              [ 0.3826833963394165j    , -0.9238795042037964j    ]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.eigh(x, UPLO)
     else:
 
@@ -2835,9 +2837,7 @@ def eigh(x, UPLO='L', name=None):
                 )
             if x_shape[-1] != x_shape[-2]:
                 raise ValueError(
-                    "The input matrix must be batches of square matrices. But received x's dimention: {}".format(
-                        x_shape
-                    )
+                    f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
                 )
             if UPLO != 'L' and UPLO != 'U':
                 raise ValueError(
@@ -2925,7 +2925,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             # one can verify : x * out * x = x ;
             # or              out * x * out = x ;
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if not hermitian:
             # combine svd and matmul op
             u, s, vt = _C_ops.svd(x, False)
@@ -3149,7 +3149,7 @@ def solve(x, y, name=None):
             Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [2., 3.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.solve(x, y)
     else:
         inputs = {"X": [x], "Y": [y]}
@@ -3221,7 +3221,7 @@ def triangular_solve(
              [-2.],
              [-5.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.triangular_solve(x, y, upper, transpose, unitriangular)
     else:
         inputs = {"X": [x], "Y": [y]}
@@ -3283,7 +3283,7 @@ def cholesky_solve(x, y, upper=False, name=None):
              [-7.        ],
              [ 9.50000000]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cholesky_solve(x, y, upper)
     else:
         helper = LayerHelper("cholesky_solve", **locals())
@@ -3330,7 +3330,7 @@ def eigvalsh(x, UPLO='L', name=None):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.17157286, 5.82842731])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)
         return values
     else:
@@ -3344,9 +3344,7 @@ def eigvalsh(x, UPLO='L', name=None):
                 )
             if x_shape[-1] != x_shape[-2]:
                 raise ValueError(
-                    "The input matrix must be batches of square matrices. But received x's dimention: {}".format(
-                        x_shape
-                    )
+                    f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
                 )
             if UPLO != 'L' and UPLO != 'U':
                 raise ValueError(
@@ -3444,23 +3442,28 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
     if device == "cpu":
         if driver not in (None, "gels", "gelss", "gelsd", "gelsy"):
             raise ValueError(
-                "Only support valid driver is 'gels', 'gelss', 'gelsd', 'gelsy' or None for CPU inputs. But got {}".format(
-                    driver
-                )
+                f"Only support valid driver is 'gels', 'gelss', 'gelsd', 'gelsy' or None for CPU inputs. But got {driver}"
             )
         driver = "gelsy" if driver is None else driver
     elif "gpu" in device:
         if driver not in (None, "gels"):
             raise ValueError(
-                "Only support valid driver is 'gels' or None for CUDA inputs. But got {}".format(
-                    driver
-                )
+                f"Only support valid driver is 'gels' or None for CUDA inputs. But got {driver}"
             )
         driver = "gels" if driver is None else driver
     else:
         raise RuntimeError("Only support lstsq api for CPU or CUDA device.")
 
-    if not (x.dtype == y.dtype and x.dtype in (paddle.float32, paddle.float64)):
+    if not (
+        x.dtype == y.dtype
+        and x.dtype
+        in (
+            paddle.float32,
+            paddle.float64,
+            paddle.base.core.DataType.FLOAT32,
+            paddle.base.core.DataType.FLOAT64,
+        )
+    ):
         raise ValueError(
             "Only support x and y have the same dtype such as 'float32' and 'float64'."
         )
@@ -3481,17 +3484,23 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         )
 
     if rcond is None:
-        if x.dtype == paddle.float32:
+        if (
+            x.dtype == paddle.float32
+            or x.dtype == paddle.base.core.DataType.FLOAT32
+        ):
             rcond = 1e-7 * max(x.shape[-2], x.shape[-1])
-        elif x.dtype == paddle.float64:
+        elif (
+            x.dtype == paddle.float64
+            or x.dtype == paddle.base.core.DataType.FLOAT64
+        ):
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         solution, residuals, rank, singular_values = _C_ops.lstsq(
             x, y, rcond, driver
         )
         if driver == "gels":
-            rank = paddle.empty(shape=[0], dtype=paddle.int32)
+            rank = paddle.empty(shape=[0], dtype="int32")
             singular_values = paddle.empty(shape=[0], dtype=x.dtype)
         elif driver == "gelsy":
             singular_values = paddle.empty(shape=[0], dtype=x.dtype)
@@ -3730,3 +3739,133 @@ def cdist(
     return paddle.linalg.norm(
         x[..., None, :] - y[..., None, :, :], p=p, axis=-1
     )
+
+
+def householder_product(x, tau, name=None):
+    r"""
+
+    Computes the first n columns of a product of Householder matrices.
+
+    This function can get the vector :math:`\omega_{i}` from matrix `x` (m x n), the :math:`i-1` elements are zeros, and the i-th is `1`, the rest of the elements are from i-th column of `x`.
+    And with the vector `tau` can calculate the first n columns of a product of Householder matrices.
+
+    :math:`H_i = I_m - \tau_i \omega_i \omega_i^H`
+
+    Args:
+        x (Tensor): A tensor with shape (*, m, n) where * is zero or more batch dimensions.
+        tau (Tensor): A tensor with shape (*, k) where * is zero or more batch dimensions.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, the dtype is same as input tensor, the Q in QR decomposition.
+
+        :math:`out = Q = H_1H_2H_3...H_k`
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[-1.1280,  0.9012, -0.0190],
+            ...         [ 0.3699,  2.2133, -1.4792],
+            ...         [ 0.0308,  0.3361, -3.1761],
+            ...         [-0.0726,  0.8245, -0.3812]])
+            >>> tau = paddle.to_tensor([1.7497, 1.1156, 1.7462])
+            >>> Q = paddle.linalg.householder_product(x, tau)
+            >>> print(Q)
+            Tensor(shape=[4, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[-0.74969995, -0.02181768,  0.31115776],
+                    [-0.64721400, -0.12367040, -0.21738708],
+                    [-0.05389076, -0.37562513, -0.84836429],
+                    [ 0.12702821, -0.91822827,  0.36892807]])
+    """
+
+    check_dtype(
+        x.dtype,
+        'x',
+        [
+            'float32',
+            'float64',
+            'complex64',
+            'complex128',
+        ],
+        'householder_product',
+    )
+    check_dtype(
+        tau.dtype,
+        'tau',
+        [
+            'float32',
+            'float64',
+            'complex64',
+            'complex128',
+        ],
+        'householder_product',
+    )
+    assert (
+        x.dtype == tau.dtype
+    ), "The input x must have the same dtype with input tau.\n"
+    assert (
+        len(x.shape) >= 2
+        and len(tau.shape) >= 1
+        and len(x.shape) == len(tau.shape) + 1
+    ), (
+        "The input x must have more than 2 dimensions, and input tau must have more than 1 dimension,"
+        "and the dimension of x is 1 larger than the dimension of tau\n"
+    )
+    assert (
+        x.shape[-2] >= x.shape[-1]
+    ), "The rows of input x must be greater than or equal to the columns of input x.\n"
+    assert (
+        x.shape[-1] >= tau.shape[-1]
+    ), "The last dim of x must be greater than tau.\n"
+    for idx, _ in enumerate(x.shape[:-2]):
+        assert (
+            x.shape[idx] == tau.shape[idx]
+        ), "The input x must have the same batch dimensions with input tau.\n"
+
+    def _householder_product(x, tau):
+        m, n = x.shape[-2:]
+        k = tau.shape[-1]
+        Q = paddle.eye(m).astype(x.dtype)
+        for i in range(min(k, n)):
+            w = x[i:, i]
+            if in_dynamic_mode():
+                w[0] = 1
+            else:
+                w = paddle.static.setitem(w, 0, 1)
+            w = w.reshape([-1, 1])
+            if in_dynamic_mode():
+                if x.dtype in [paddle.complex128, paddle.complex64]:
+                    Q[:, i:] = Q[:, i:] - (
+                        Q[:, i:] @ w @ paddle.conj(w).T * tau[i]
+                    )
+                else:
+                    Q[:, i:] = Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+            else:
+                Q = paddle.static.setitem(
+                    Q,
+                    (slice(None), slice(i, None)),
+                    Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+                    if x.dtype in [paddle.complex128, paddle.complex64]
+                    else Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i]),
+                )
+        return Q[:, :n]
+
+    if len(x.shape) == 2:
+        return _householder_product(x, tau)
+    m, n = x.shape[-2:]
+    org_x_shape = x.shape
+    org_tau_shape = tau.shape
+    x = x.reshape((-1, org_x_shape[-2], org_x_shape[-1]))
+    tau = tau.reshape((-1, org_tau_shape[-1]))
+    n_batch = x.shape[0]
+    out = paddle.zeros([n_batch, m, n], dtype=x.dtype)
+    for i in range(n_batch):
+        if in_dynamic_mode():
+            out[i] = _householder_product(x[i], tau[i])
+        else:
+            out = paddle.static.setitem(
+                out, i, _householder_product(x[i], tau[i])
+            )
+    out = out.reshape(org_x_shape)
+    return out

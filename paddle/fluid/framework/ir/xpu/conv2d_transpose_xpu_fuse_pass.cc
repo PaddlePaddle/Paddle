@@ -377,8 +377,16 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
     // filter max
     Node* filter_int16 = nullptr;
     Node* filter_max = nullptr;
-    PrepareWeight<int16_t>(
-        graph, scope, block, conv_filter, &filter_int16, &filter_max, false);
+    Node* scale_max = nullptr;
+    PrepareWeight<float, int16_t>(graph,
+                                  scope,
+                                  block,
+                                  conv_filter,
+                                  &filter_int16,
+                                  &filter_max,
+                                  &scale_max,
+                                  false,
+                                  std::vector<float>({}));
     // output && output max
     std::string conv2d_xpu_out_name;
     if (!act_type.empty()) {

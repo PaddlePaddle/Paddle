@@ -104,14 +104,14 @@ class TestRepeatInterleaveOp2(OpTest):
 
 class TestIndexSelectAPI(unittest.TestCase):
     def input_data(self):
-        self.data_zero_dim_x = np.array(0.5)
+        self.data_zero_dim_x = np.array(0.5).astype('float32')
         self.data_x = np.array(
             [
                 [1.0, 2.0, 3.0, 4.0],
                 [5.0, 6.0, 7.0, 8.0],
                 [9.0, 10.0, 11.0, 12.0],
             ]
-        )
+        ).astype('float32')
         self.data_zero_dim_index = np.array(2)
         self.data_index = np.array([0, 1, 2, 1]).astype('int32')
 

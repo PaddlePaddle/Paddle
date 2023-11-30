@@ -126,6 +126,7 @@ from .trainer_desc import (
     HeterXpuTrainer,
 )
 from .backward import append_backward
+from . import type_promotion
 
 Tensor = LoDTensor
 enable_imperative = enable_dygraph
@@ -209,6 +210,7 @@ monkey_patch_tensor()
 
 # NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
 atexit.register(core.clear_executor_cache)
+atexit.register(core.pir.clear_pir_compiler_manager)
 
 # NOTE(Aganlengzi): clean up KernelFactory in advance manually.
 # NOTE(wangran16): clean up DeviceManager in advance manually.

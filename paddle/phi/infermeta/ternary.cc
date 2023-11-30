@@ -295,10 +295,10 @@ void FlashAttnInferMeta(const MetaTensor& q,
   out->set_layout(q.layout());
 }
 
-void ArangeInferMeta(const MetaTensor& start,
-                     const MetaTensor& end,
-                     const MetaTensor& step,
-                     MetaTensor* out) {
+void ArangeTensorInferMeta(const MetaTensor& start,
+                           const MetaTensor& end,
+                           const MetaTensor& step,
+                           MetaTensor* out) {
   PADDLE_ENFORCE_EQ(phi::product(start.dims()),
                     1,
                     phi::errors::InvalidArgument(
@@ -579,7 +579,10 @@ void LayerNormInferMeta(const MetaTensor& x,
           x_dim.size()));
 
   auto matrix_dim = phi::flatten_to_2d(x_dim, begin_norm_axis);
-  int left = static_cast<int>(matrix_dim[0]);
+
+  // keep the axis size before normalization for shape of variance and mean
+  auto before_norm_dims = slice_ddim(x_dim, 0, begin_norm_axis);
+  // int left = static_cast<int>(matrix_dim[0]);
   int right = static_cast<int>(matrix_dim[1]);
   if (scale) {
     PADDLE_ENFORCE_EQ(scale.dims().size(),
@@ -644,11 +647,11 @@ void LayerNormInferMeta(const MetaTensor& x,
           ? phi::DataType::FLOAT32
           : x_dtype;
   if (mean) {
-    mean->set_dims({left});
+    mean->set_dims({before_norm_dims});
     mean->set_dtype(param_type);
   }
   if (variance) {
-    variance->set_dims({left});
+    variance->set_dims({before_norm_dims});
     variance->set_dtype(param_type);
   }
 }
@@ -1258,6 +1261,35 @@ void SendURecvInferMeta(const MetaTensor& x,
   }
 }
 
+void SparseMomentumInferMeta(const MetaTensor& param,
+                             const MetaTensor& learning_rate,
+                             const MetaTensor& velocity,
+                             MetaTensor* param_out,
+                             MetaTensor* velocity_out,
+                             MetaTensor* master_param_out) {
+  auto lr_dims = phi::product(learning_rate.dims());
+  PADDLE_ENFORCE_EQ(lr_dims != 0 && lr_dims == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Learning_rate should be a scalar. But Received "
+                        "LearningRate's dim [%s]",
+                        lr_dims));
+  auto param_dim = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dim,
+      velocity.dims(),
+      phi::errors::InvalidArgument(
+          "Param and Velocity of SparseMomentumOp should have the same "
+          "dimension. But received Param's dim [%s] and Velocity [%s].",
+          param_dim,
+          velocity.dims()));
+  param_out->set_dims(param_dim);
+  velocity_out->set_dims(param_dim);
+  if (master_param_out != nullptr) {
+    master_param_out->set_dims(param_dim);
+  }
+}
+
 void SpectralNormInferMeta(const MetaTensor& weight,
                            const MetaTensor& u,
                            const MetaTensor& v,
@@ -1380,6 +1412,118 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
   }
   scores->set_dims(length_dims);
   scores->set_dtype(length.dtype());
+}
+
+void QuantLinearInferMeta(const MetaTensor& x,
+                          const MetaTensor& w,
+                          const MetaTensor& bias,
+                          int in_num_col_dims,
+                          const std::string& activation_type,
+                          bool padding_weights,
+                          float scale_in,
+                          const std::vector<float>& scale_weights,
+                          int quant_round_type,
+                          float quant_max_bound,
+                          float quant_min_bound,
+                          MetaTensor* y) {
+  auto w_dims = w.dims();
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The input Weight of quant_linear is expected to be a 2-D tensor. "
+          "But received the number of Weight's dimensions is %d, "
+          "Weight's shape is %s.",
+          w_dims.size(),
+          w_dims));
+  if (bias) {
+    auto bias_dims = bias.dims();
+    auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
+
+    PADDLE_ENFORCE_LE(bias_dims.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The input Bias of quant_linear is expected to be a "
+                          "1-D or 2-D tensor. But "
+                          "received the number of Bias's dimensions is %d, "
+                          "Bias's shape is %s.",
+                          bias_dims.size(),
+                          bias_dims));
+
+    PADDLE_ENFORCE_EQ(
+        bias_dims[bias_dims.size() - 1],
+        w_dims1,
+        phi::errors::InvalidArgument(
+            "The last dimension of input Bias is expected be equal "
+            "to the actual width of input Weight. But received the last "
+            "dimension of Bias is %d, Bias's shape is %s; "
+            "the actual width of Weight is %d, Weight's shape is %s.",
+            bias_dims[bias_dims.size() - 1],
+            bias_dims,
+            w_dims1,
+            w_dims));
+
+    if (bias_dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          bias_dims[0],
+          1,
+          phi::errors::InvalidArgument(
+              "The first dimension of input Bias is expected to be 1, "
+              "but received %d, Bias's shape is %s.",
+              bias_dims[0],
+              bias_dims));
+    }
+  }
+
+  auto in_dims = x.dims();
+  PADDLE_ENFORCE_LT(
+      in_num_col_dims,
+      in_dims.size(),
+      phi::errors::InvalidArgument(
+          "The attribute in_num_col_dims used to flatten Input to "
+          "a 2-D tensor, is expected to be less than the number of "
+          "Input's dimensions. But received in_num_col_dims is %d, "
+          "the number of Input's dimensions is %d, Input's shape is %s.",
+          in_num_col_dims,
+          in_dims.size(),
+          in_dims));
+
+  if (!activation_type.empty()) {
+    PADDLE_ENFORCE_EQ(
+        activation_type,
+        "relu",
+        phi::errors::InvalidArgument(
+            "The attribute activation_type of quant_linear is expected "
+            "to be \"relu\", but received %s.",
+            activation_type.c_str()));
+  }
+
+  std::vector<int64_t> output_dims;
+
+  auto in_mat_dims = phi::flatten_to_2d(in_dims, in_num_col_dims);
+  auto w_dims0 = padding_weights ? w_dims[0] - 4 : w_dims[0];
+  auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
+  PADDLE_ENFORCE_EQ(
+      in_mat_dims[1],
+      w_dims0,
+      phi::errors::InvalidArgument(
+          "The input's second dimension and weight's first dimension is "
+          "expected to be the same. But received input's second dimension is "
+          "%d, input's shape is %s; weight's first dimension is %d, weight's "
+          "shape is %s.",
+          in_mat_dims[1],
+          in_mat_dims,
+          w_dims0,
+          phi::make_ddim({w_dims0, w_dims1})));
+  output_dims.reserve(static_cast<size_t>(in_num_col_dims + 1));
+  for (int i = 0; i < in_num_col_dims; ++i) {
+    output_dims.push_back(in_dims[i]);
+  }
+  output_dims.push_back(w_dims1);
+
+  y->set_dims(make_ddim(output_dims));
+  y->share_lod(x);
+  y->set_dtype(x.dtype());
 }
 
 }  // namespace phi

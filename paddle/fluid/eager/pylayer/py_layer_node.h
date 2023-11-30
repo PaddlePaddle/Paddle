@@ -24,6 +24,7 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
 
 namespace egr {
@@ -63,15 +64,35 @@ class GradNodePyLayer : public GradNodeBase {
       const std::vector<std::vector<paddle::Tensor*>>& outputs_tensor) {
     forward_outputs_meta_.resize(outputs_tensor.size());
     forward_outputs_place_.resize(outputs_tensor.size());
+    forward_outputs_dist_attr_.resize(outputs_tensor.size());
+    forward_outputs_global_dims_.resize(outputs_tensor.size());
+    forward_outputs_is_dist_meta_.resize(outputs_tensor.size());
     for (size_t i = 0; i < outputs_tensor.size(); i++) {
       forward_outputs_meta_[i].reserve(outputs_tensor[i].size());
       forward_outputs_place_[i].reserve(outputs_tensor[i].size());
+      forward_outputs_dist_attr_[i].reserve(outputs_tensor[i].size());
+      forward_outputs_global_dims_[i].reserve(outputs_tensor[i].size());
+      forward_outputs_is_dist_meta_[i].reserve(outputs_tensor[i].size());
       for (auto tensor : outputs_tensor[i]) {
         if (tensor->is_dense_tensor()) {
           forward_outputs_meta_[i].push_back(
               static_cast<phi::DenseTensor*>(tensor->impl().get())->meta());
+          forward_outputs_is_dist_meta_[i].push_back(false);
+        } else if (tensor->is_dist_tensor()) {
+          forward_outputs_meta_[i].push_back(
+              static_cast<phi::distributed::DistTensor*>(tensor->impl().get())
+                  ->value()
+                  .meta());
+          forward_outputs_dist_attr_[i].push_back(
+              static_cast<phi::distributed::DistTensor*>(tensor->impl().get())
+                  ->dist_attr());
+          forward_outputs_global_dims_[i].push_back(
+              static_cast<phi::distributed::DistTensor*>(tensor->impl().get())
+                  ->dims());
+          forward_outputs_is_dist_meta_[i].push_back(true);
         } else {
           forward_outputs_meta_[i].emplace_back();
+          forward_outputs_is_dist_meta_[i].push_back(false);
         }
         forward_outputs_place_[i].emplace_back(tensor->place());
       }
@@ -89,6 +110,10 @@ class GradNodePyLayer : public GradNodeBase {
   std::string name_{""};
   std::vector<std::vector<phi::DenseTensorMeta>> forward_outputs_meta_;
   std::vector<std::vector<paddle::platform::Place>> forward_outputs_place_;
+  std::vector<std::vector<phi::distributed::TensorDistAttr>>
+      forward_outputs_dist_attr_;
+  std::vector<std::vector<phi::DDim>> forward_outputs_global_dims_;
+  std::vector<std::vector<bool>> forward_outputs_is_dist_meta_;
 };
 
 }  // namespace egr

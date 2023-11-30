@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
 
@@ -63,10 +64,12 @@ class TestLogSoftmaxOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'], user_defined_grads=[self.x_grad])
+        self.check_grad(
+            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_pir=True
+        )
 
 
 class TestLogSoftmaxOp_ZeroDim(TestLogSoftmaxOp):
@@ -83,10 +86,10 @@ class TestLogSoftmaxOp_ZeroDim(TestLogSoftmaxOp):
         self.attrs = {'axis': -1}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'])
+        self.check_grad(['X'], ['Out'], check_pir=True)
 
 
 class TestLogSoftmaxShape(TestLogSoftmaxOp):
@@ -104,10 +107,10 @@ class TestLogSoftmaxFP16OP(TestLogSoftmaxOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output(atol=1e-3, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'], max_relative_error=1e-2)
+        self.check_grad(['X'], ['Out'], max_relative_error=1e-2, check_pir=True)
 
 
 class TestLogSoftmaxShapeFP16OP(TestLogSoftmaxFP16OP):
@@ -143,7 +146,7 @@ class TestLogSoftmaxBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -152,6 +155,7 @@ class TestLogSoftmaxBF16Op(OpTest):
             ['X'],
             ['Out'],
             user_defined_grads=[self.x_grad],
+            check_pir=True,
         )
 
 
@@ -171,6 +175,7 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def check_api(self, axis=-1):
         ref_out = np.apply_along_axis(ref_log_softmax, axis, self.x)
 
@@ -190,6 +195,7 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
         np.testing.assert_allclose(y.numpy(), ref_out, rtol=1e-05)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_check_api(self):
         for axis in [-1, 1]:
             self.check_api(axis)
@@ -205,6 +211,7 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def check_api(self, axis=-1, dtype=None):
         x = self.x.copy()
         if dtype is not None:
@@ -223,6 +230,7 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
         np.testing.assert_allclose(y.numpy(), ref_out, rtol=1e-05)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_check_api(self):
         for axis in [-1, 1]:
             self.check_api(axis)

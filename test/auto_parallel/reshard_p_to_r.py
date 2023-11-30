@@ -39,23 +39,9 @@ class TestReshardSToR:
         dev_ctx = core.DeviceContext.create(place)
         a = paddle.ones(self._shape)
 
-        in_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs = [None for i in range(len(self._shape))]
+        input_tensor = dist.shard_tensor(a, self._mesh, [dist.Partial()])
+        out = dist.reshard(input_tensor, self._mesh, [dist.Replicate()])
 
-        dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=in_shard_specs
-        )
-        dist_attr._set_partial_dims([0])
-        out_dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=out_shard_specs
-        )
-
-        input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
-
-        reshard_func = core.PToRReshardFunction()
-        assert reshard_func.is_suitable(input_tensor, out_dist_attr)
-
-        out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
         assert np.equal(out.shape, input_tensor.shape).all()
         np.testing.assert_equal(out._local_value().numpy(), a.numpy())
 

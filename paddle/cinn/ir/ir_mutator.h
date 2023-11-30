@@ -348,5 +348,12 @@ void IRMutator<T>::Visit(const ScheduleBlockRealize *expr, T op) {
                                          &node->schedule_block);
 }
 
+template <typename T>
+void IRMutator<T>::Visit(const _Dim_ *expr, T op) {
+  auto *node = op->template As<_Dim_>();
+  CHECK(node);
+  // IRVisitorRequireReImpl<void, T>::Visit(&node->sym_dim, &node->sym_dim);
+}
+
 }  // namespace ir
 }  // namespace cinn

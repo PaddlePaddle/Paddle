@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_utils import Dy2StTestBase, test_ast_only
 
 import paddle
 import paddle.nn.functional as F
@@ -53,8 +53,7 @@ class PrimeNet(paddle.nn.Layer):
         return out
 
 
-@dy2static_unittest
-class TestPrimForwardAndBackward(unittest.TestCase):
+class TestPrimForwardAndBackward(Dy2StTestBase):
     """
     Test PrimeNet with @to_static + prim forward + prim backward + cinn v.s Dygraph
     """
@@ -106,7 +105,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         # Ensure that gelu is splitted into small ops
         self.assertTrue('gelu' not in fwd_ops)
 
-    @ast_only_test
+    @test_ast_only
     def test_cinn_prim(self):
         for shape in self.shapes:
             for dtype in self.dtypes:

@@ -67,24 +67,27 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
   // x[0:begin_norm_axis], only the first axis of x can
   // be sharded
   std::string x_axes(x_ndim, '1');
-  x_axes[0] = alphabet[0];
+  std::string mean_axes(begin_norm_axis, '1');
+  std::string variance_axes(begin_norm_axis, '1');
+  // allow axis before begin_norm_axis be sharded
+  for (int i = 0; i < begin_norm_axis; ++i) {
+    x_axes[i] = alphabet[i];
+    mean_axes[i] = alphabet[i];
+    variance_axes[i] = alphabet[i];
+  }
+  // x_axes[0] = alphabet[0];
   std::string scale_axes(1, x_axes[x_ndim - 1]);
   std::string bias_axes(1, x_axes[x_ndim - 1]);
 
   // get output notation
   std::string out_axes = x_axes;
-  std::string mean_axes(1, '1'), variance_axes(1, '1');
-  if (begin_norm_axis > 0) {
-    mean_axes[0] = out_axes[0];
-    variance_axes[0] = out_axes[0];
-  }
 
   // Step2: Sharding Propogation
   // Step2.1: merge input sharding
   // As the mean and variance in outputs are `flattened` from
   // x[0:begin_norm_axis], only the first axis can be sharded,
   // the axes 1 to begin_norm_axis-1 are set to be replicated.
-  std::fill(x_dims_mapping.begin() + 1, x_dims_mapping.end(), -1);
+  std::fill(x_dims_mapping.begin() + begin_norm_axis, x_dims_mapping.end(), -1);
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{x_axes, x_dims_mapping}});
 
@@ -199,16 +202,18 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
   // the axes after norm_axis should be replicated,
   // so set their notation to '1'.
   std::string x_axes(x_ndim, '1');
-  x_axes[0] = alphabet[0];
+  std::string mean_axes(begin_norm_axis, '1');
+  std::string variance_axes(begin_norm_axis, '1');
+  // allow axis before begin_norm_axis be sharded
+  for (int i = 0; i < begin_norm_axis; ++i) {
+    x_axes[i] = alphabet[i];
+    mean_axes[i] = alphabet[i];
+    variance_axes[i] = alphabet[i];
+  }
+
   std::string scale_axes(1, x_axes[x_ndim - 1]);
   std::string bias_axes(1, x_axes[x_ndim - 1]);
-
   std::string out_axes = x_axes;
-  std::string mean_axes(1, '1'), variance_axes(1, '1');
-  if (begin_norm_axis > 0) {
-    mean_axes[0] = out_axes[0];
-    variance_axes[0] = out_axes[0];
-  }
 
   // Step2: Sharding Propogation
   // For the axes after norm_axis in both input and output tensors,
@@ -275,7 +280,123 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
   }
   VLOG(4) << std::endl;
 
-  return {input_dist_attrs, output_dist_attrs};
+  return {ToArgDistAttr(input_dist_attrs), ToArgDistAttr(output_dist_attrs)};
+}
+
+std::tuple<std::vector<std::string>, std::string> BuildLayerNormGradEinsum(
+    int64_t input_rank, int64_t begin_norm_axis) {
+  std::string alphabet = "ijklmnopqrstuvwxyz";
+  std::string x_notation = alphabet.substr(0, input_rank);
+  std::string mean_variance_notation = x_notation.substr(0, begin_norm_axis);
+  std::string align_notation = x_notation.substr(0, begin_norm_axis);
+  return {
+      {x_notation, mean_variance_notation, mean_variance_notation, x_notation},
+      align_notation};
+}
+
+SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
+                                const DistMetaTensor& scale,
+                                const DistMetaTensor& bias,
+                                const DistMetaTensor& mean,
+                                const DistMetaTensor& variance,
+                                const DistMetaTensor out_grad,
+                                float epsilon,
+                                int begin_norm_axis) {
+  auto get_shape = [](const auto& meta) {
+    return phi::vectorize<int64_t>(meta.dims());
+  };
+  // 1、check tensors shapes
+  auto x_shape = get_shape(x);
+  auto scale_shape = get_shape(scale);
+  auto bias_shape = get_shape(bias);
+  auto mean_shape = get_shape(mean);
+  auto variance_shape = get_shape(variance);
+  auto out_grad_shape = get_shape(out_grad);
+  PADDLE_ENFORCE_GE(
+      x_shape.size(),
+      begin_norm_axis,
+      phi::errors::InvalidArgument(
+          "The Tensor x's rank [%d] and begin_norm_axis [%d] are not matched.",
+          x_shape.size(),
+          begin_norm_axis));
+  PADDLE_ENFORCE_EQ(
+      x_shape.size(),
+      out_grad_shape.size(),
+      phi::errors::InvalidArgument("The Tensor x's rank [%d] and Tensor "
+                                   "out_grad's rank [%d] are not matched.",
+                                   x_shape.size(),
+                                   out_grad_shape.size()));
+
+  PADDLE_ENFORCE_EQ(
+      scale_shape.size(),
+      bias_shape.size(),
+      phi::errors::InvalidArgument("The Tensor scale's rank [%d] and Tensor "
+                                   "bias's rank [%d] are not matched.",
+                                   scale_shape.size(),
+                                   bias_shape.size()));
+
+  PADDLE_ENFORCE_EQ(
+      mean_shape.size(),
+      variance_shape.size(),
+      phi::errors::InvalidArgument("The Tensor mean's rank [%d] and Tensor "
+                                   "variance's rank [%d] are not matched.",
+                                   mean_shape.size(),
+                                   variance_shape.size()));
+
+  // 2、align sharding
+  TensorDistAttr x_dist_attr;
+  TensorDistAttr mean_dist_attr;
+  TensorDistAttr variance_dist_attr;
+  TensorDistAttr grad_dist_attr;
+  std::vector<TensorDistAttr> dist_attrs;
+  dist_attrs.push_back(x.dist_attr());
+  dist_attrs.push_back(mean.dist_attr());
+  dist_attrs.push_back(variance.dist_attr());
+  dist_attrs.push_back(out_grad.dist_attr());
+  if (begin_norm_axis > 0) {
+    std::vector<std::vector<int64_t>> shapes = {
+        x_shape, mean_shape, variance_shape, x_shape};
+    std::vector<std::string> anotations;
+    std::string align_anotation;
+    std::tie(anotations, align_anotation) =
+        BuildLayerNormGradEinsum(x_shape.size(), begin_norm_axis);
+    AlignDimsSharding(
+        &dist_attrs, shapes, anotations, {}, align_anotation, false);
+    x_dist_attr = std::move(dist_attrs[0]);
+    mean_dist_attr = std::move(dist_attrs[1]);
+    variance_dist_attr = std::move(dist_attrs[2]);
+    grad_dist_attr = std::move(dist_attrs[3]);
+  } else {
+    x_dist_attr = GetReplicatedDistAttr(dist_attrs[0]);
+    mean_dist_attr = GetReplicatedDistAttr(dist_attrs[1]);
+    variance_dist_attr = GetReplicatedDistAttr(dist_attrs[2]);
+    grad_dist_attr = GetReplicatedDistAttr(dist_attrs[3]);
+  }
+  // TODO(liuzhenhai): support sharded scale and bias
+  TensorDistAttr scale_dist_attr = GetReplicatedDistAttr(scale.dist_attr());
+  TensorDistAttr bias_dist_attr = GetReplicatedDistAttr(bias.dist_attr());
+  TensorDistAttr scale_grad_dist_attr =
+      GetReplicatedDistAttr(scale.dist_attr());
+  TensorDistAttr bias_grad_dist_attr = GetReplicatedDistAttr(bias.dist_attr());
+  // partial grad dim
+  std::vector<int64_t> partial_on_dims;
+  const auto& dim_mapping = x_dist_attr.dims_mapping();
+  for (int i = 0; i < begin_norm_axis; ++i) {
+    auto mapping = dim_mapping[i];
+    if (mapping != -1) {
+      partial_on_dims.push_back(i);
+    }
+  }
+  scale_grad_dist_attr.set_partial_status(partial_on_dims);
+  bias_grad_dist_attr.set_partial_status(partial_on_dims);
+
+  return SpmdInfo({x_dist_attr,
+                   scale_dist_attr,
+                   bias_dist_attr,
+                   mean_dist_attr,
+                   variance_dist_attr,
+                   grad_dist_attr},
+                  {grad_dist_attr, scale_grad_dist_attr, bias_grad_dist_attr});
 }
 
 }  // namespace distributed

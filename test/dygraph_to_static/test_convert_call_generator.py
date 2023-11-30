@@ -14,10 +14,9 @@
 
 import unittest
 
-from dygraph_to_static_util import (
-    ast_only_test,
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
 )
 
 import paddle
@@ -36,11 +35,9 @@ def main_func():
         print(i)
 
 
-@dy2static_unittest
-class TestConvertGenerator(unittest.TestCase):
+class TestConvertGenerator(Dy2StTestBase):
     # fallback will ok.
-    @ast_only_test
-    @test_and_compare_with_new_ir(False)
+    @test_ast_only
     def test_raise_error(self):
         translator_logger.verbosity_level = 1
         with self.assertLogs(

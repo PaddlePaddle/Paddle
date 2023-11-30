@@ -15,7 +15,11 @@
 import argparse
 
 import yaml
-from op_gen import OpCompatParser, OpInfoParser, to_pascal_case
+from op_gen import (
+    OpCompatParser,
+    OpInfoParser,
+    to_pascal_case,
+)
 
 CPP_FILE_TEMPLATE = """
 #include "paddle/fluid/pir/drr/ir_operation_factory.h"
@@ -83,6 +87,7 @@ class OpCreatorCodeGen:
             with open(yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
                 op_yaml_items = op_yaml_items + ops
+
         op_info_items = []
         for op in op_yaml_items:
             op_compat_item = op_compat_parser.get_compat(op['name'])
@@ -110,7 +115,10 @@ class OpCreatorCodeGen:
                 if len(op_info_item.attribute_name_list) > 0:
                     params_no_mutable_attr.append("attrs")
 
-                if len(op_info_item.mutable_attribute_name_list) == 0:
+                if (
+                    self.dialect_name != "pd_op"
+                    or len(op_info_item.mutable_attribute_name_list) == 0
+                ):
                     body_code += NORMAL_FUNCTION_TEMPLATE.format(
                         op_name=ir_op_name,
                         namespace=Dialect2NameSpaceMap[self.dialect_name],

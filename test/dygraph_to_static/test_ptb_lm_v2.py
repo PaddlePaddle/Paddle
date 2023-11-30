@@ -17,7 +17,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 
@@ -180,7 +180,6 @@ class PtbModel(paddle.nn.Layer):
     def build_once(self, input, label, init_hidden, init_cell):
         pass
 
-    @paddle.jit.to_static
     def forward(self, input, label, init_hidden, init_cell):
         init_h = paddle.reshape(
             init_hidden, shape=[self.num_layers, -1, self.hidden_size]
@@ -235,13 +234,15 @@ def train(place):
     paddle.disable_static(place)
     paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
-    ptb_model = PtbModel(
-        hidden_size=hidden_size,
-        vocab_size=vocab_size,
-        num_layers=num_layers,
-        num_steps=num_steps,
-        init_scale=init_scale,
-        dropout=dropout,
+    ptb_model = paddle.jit.to_static(
+        PtbModel(
+            hidden_size=hidden_size,
+            vocab_size=vocab_size,
+            num_layers=num_layers,
+            num_steps=num_steps,
+            init_scale=init_scale,
+            dropout=dropout,
+        )
     )
 
     sgd = paddle.optimizer.SGD(
@@ -323,8 +324,7 @@ def train_static(place):
     return train(place)
 
 
-@dy2static_unittest
-class TestPtb(unittest.TestCase):
+class TestPtb(Dy2StTestBase):
     def setUp(self):
         self.place = (
             paddle.CUDAPlace(0)
