@@ -345,3 +345,15 @@ def _init_parallel_env(backend):
         core.CommContextManager.create_xccl_comm_context(
             store, "0", rank, world_size, dev_type
         )
+    elif backend == "bkcl":
+        endpoints_str = ""
+        for endpoint in global_env.trainer_endpoints:
+            endpoints_str += endpoint
+        endpoints_str += "ring_id:{}".format("0")
+        endpoints_str_hash = hashlib.md5(
+            endpoints_str.encode(encoding='UTF-8')
+        ).hexdigest()
+        core.CommContextManager.set_device_id(dev_id)
+        core.CommContextManager.create_bkcl_comm_context(
+            store, "0", rank, world_size, endpoints_str_hash
+        )

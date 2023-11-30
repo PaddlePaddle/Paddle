@@ -36,9 +36,10 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
                  pir::Value cond,
                  std::vector<pir::Type> &&output_types) {
   VLOG(4) << "Start build IfOp";
-  argument.AddRegions(2u);
   argument.AddInput(cond);
   argument.output_types.swap(output_types);
+  argument.AddRegion().emplace_back();
+  argument.AddRegion().emplace_back();
 }
 
 void IfOp::Build(pir::Builder &builder,             // NOLINT
@@ -50,6 +51,7 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
   if (true_block && !true_block->empty() &&
       true_block->back().isa<pir::YieldOp>()) {
     auto &op = true_block->back();
+
     for (size_t i = 0; i < op.num_operands(); ++i) {
       argument.AddOutput(op.operand(i).type());
     }
@@ -80,8 +82,8 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
                        "equal. but they are %u and 0, respectively",
                        argument.output_types.size()));
   }
-  argument.AddRegion()->push_back(true_block.release());
-  argument.AddRegion()->push_back(false_block.release());
+  argument.AddRegion().push_back(true_block.release());
+  argument.AddRegion().push_back(false_block.release());
   argument.AddInput(cond);
 }
 
@@ -191,13 +193,14 @@ std::vector<std::vector<pir::OpResult>> IfOp::Vjp(
     const std::vector<std::vector<pir::OpResult>> &outputs,
     const std::vector<std::vector<pir::Value>> &out_grads,
     const std::vector<std::vector<bool>> &stop_gradients) {
-  PADDLE_ENFORCE_EQ(inputs_.size() == 1u && inputs_[0].size() >= 1u,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "if op's inputs' size should be 1, and the inputs[0] "
-                        "should be non-empty. "
-                        "Now the inputs's size is %d or inputs[0] is empty.",
-                        inputs_.size()));
+  PADDLE_ENFORCE_EQ(
+      inputs_.size() >= 1u,
+      true,
+      phi::errors::InvalidArgument("if op's inputs' size should greater_equal "
+                                   "to 1, and all the inputs[i] "
+                                   "should be 1 size. "
+                                   "Now the inputs's size is %d .",
+                                   inputs_.size()));
 
   VLOG(6) << "Prepare inputs for if_grad";
   auto cond_val = inputs_[0][0];
@@ -206,21 +209,20 @@ std::vector<std::vector<pir::OpResult>> IfOp::Vjp(
   VLOG(6) << "Prepare outputs for if_grad";
 
   std::vector<pir::Type> output_types;
-  for (size_t i = 0; i < inputs_[0].size(); ++i) {
-    if (!stop_gradients[0][i]) {
-      output_types.push_back(inputs_[0][i].type());
+  for (size_t i = 0; i < inputs_.size(); ++i) {
+    if (!stop_gradients[i][0]) {
+      output_types.push_back(inputs_[i][0].type());
     }
   }
 
   auto if_grad = ApiBuilder::Instance().GetBuilder()->Build<IfOp>(
       cond_val, std::move(output_types));
 
-  std::vector<std::vector<pir::OpResult>> res{
-      std::vector<pir::OpResult>(inputs_[0].size())};
-
-  for (size_t i = 0, j = 0; i < inputs_[0].size(); ++i) {
-    if (!stop_gradients[0][i]) {
-      res[0][i] = if_grad->result(j++);
+  std::vector<std::vector<pir::OpResult>> res{inputs_.size()};
+  for (size_t i = 0, j = 0; i < inputs_.size(); ++i) {
+    res[i].resize(1);
+    if (!stop_gradients[i][0]) {
+      res[i][0] = if_grad->result(j++);
     }
   }
   return res;
@@ -232,15 +234,16 @@ void WhileOp::Build(pir::Builder &builder,             // NOLINT
                     const std::vector<pir::Value> &inputs) {
   argument.AddInput(cond);
   argument.AddInputs(inputs);
+  auto &body = argument.AddRegion().emplace_back();
   for (auto val : inputs) {
     argument.AddOutput(val.type());
+    body.AddArgument(val.type());
   }
-  argument.AddRegion(nullptr);
 }
-pir::Block *WhileOp::body_block() {
+pir::Block &WhileOp::body() {
   pir::Region &body_region = (*this)->region(0);
   if (body_region.empty()) body_region.emplace_back();
-  return &body_region.front();
+  return body_region.front();
 }
 pir::Value WhileOp::cond() { return (*this)->operand_source(0); }
 
@@ -259,11 +262,11 @@ void WhileOp::Print(pir::IrPrinter &printer) {
       [&]() { os << ", "; });
   os << "] { \n ^";
   pir::PrintInterleave(
-      body_block()->args_begin(),
-      body_block()->args_end(),
+      body().args_begin(),
+      body().args_end(),
       [&](pir::Value v) { printer.PrintValue(v); },
       [&]() { os << ", "; });
-  for (auto &item : *body_block()) {
+  for (auto &item : body()) {
     os << "\n  ";
     printer.PrintOperation(&item);
   }
@@ -276,19 +279,23 @@ std::vector<std::vector<pir::OpResult>> TuplePushOpVjpInterfaceModel::Vjp(
     const std::vector<std::vector<pir::OpResult>> &outputs,
     const std::vector<std::vector<pir::Value>> &out_grads,
     const std::vector<std::vector<bool>> &stop_gradients) {
-  PADDLE_ENFORCE_EQ(inputs.size() == 1u && inputs[0].size() >= 1u,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "tupe_push op's inputs' size should be 1, and the "
-                        "inputs[0] should be non-empty. "
-                        "Now the inputs's size is %d or inputs[0] is empty.",
-                        inputs.size()));
+  PADDLE_ENFORCE_EQ(
+      inputs.size() >= 1u,
+      true,
+      phi::errors::InvalidArgument(
+          "tupe_push op's inputs' size should be greater_equal than 1, and the "
+          "inputs[i] should be non-empty. "
+          "Now the inputs's size is %d.",
+          inputs.size()));
   auto pop_op = ApiBuilder::Instance().GetBuilder()->Build<TuplePopOp>(
       TuplePushOp::dyn_cast(op).outlet());
-  std::vector<std::vector<pir::OpResult>> res{
-      std::vector<pir::OpResult>{nullptr}};
-  for (size_t i = 0u; i < pop_op.num_results(); ++i) {
-    res[0].push_back(pop_op.result(i));
+  std::vector<std::vector<pir::OpResult>> res{inputs.size()};
+  res[0].resize(1);
+  for (size_t i = 1u; i < inputs.size(); ++i) {
+    res[i].resize(1);
+    if (!stop_gradients[i][0]) {
+      res[i][0] = pop_op.result(i - 1);
+    }
   }
   return res;
 }

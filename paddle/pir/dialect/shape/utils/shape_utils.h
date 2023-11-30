@@ -60,6 +60,9 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   SymbolicDimMgr& symbolicDimMgr() { return mgr_; }
   const SymbolicDimMgr& symbolicDimMgr() const { return mgr_; }
 
+  const std::vector<shape::SymbolicDimOp>&
+  GetOrCreateSymbolicDimsForRankedValue(const Value& value);
+
   // Returns true if the two value have the same symbolic shape.
   bool IsShapeEqual(Value lhs, Value rhs) override;
 
@@ -68,7 +71,7 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
                       Value rhs,
                       std::vector<int> rhs_dim_idxs) override;
 
- private:
+ protected:
   // The operation this analysis runs on.
   ModuleOp m_;
   // The `SymbolicDimMgr` this analysis holds.
@@ -77,6 +80,24 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   // dimension size of the memref value.
   std::unordered_map<Value, std::vector<shape::SymbolicDimOp>>
       value_to_sym_dims_;
+};
+
+class MockShapeConstraintIRAnalysis : public ShapeConstraintIRAnalysis {
+ public:
+  explicit MockShapeConstraintIRAnalysis(
+      std::unique_ptr<pir::Program>&& program)
+      : ShapeConstraintIRAnalysis(program->module_op()),
+        program_(std::move(program)) {}
+
+  explicit MockShapeConstraintIRAnalysis(pir::IrContext* ctx)
+      : MockShapeConstraintIRAnalysis(std::make_unique<pir::Program>(ctx)) {}
+
+  MockShapeConstraintIRAnalysis(MockShapeConstraintIRAnalysis&& other) = delete;
+  MockShapeConstraintIRAnalysis(const MockShapeConstraintIRAnalysis& other) =
+      delete;
+
+ private:
+  std::unique_ptr<pir::Program> program_;
 };
 
 class IR_API ShapeAnalysisManager {
