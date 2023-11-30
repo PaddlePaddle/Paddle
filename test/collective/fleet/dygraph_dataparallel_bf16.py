@@ -20,6 +20,7 @@ from dist_amp_base import (
     RandomDataset,
     compare_state_dict,
     create_optimizer,
+    save_model_parameters,
 )
 
 import paddle
@@ -119,11 +120,9 @@ def train_mlp(
                 if enable_stats:
                     paddle.amp.debugging.disable_operator_stats_collection()
 
-    if use_pure_bf16:
-        state_dict = optimizer.state_dict()
-    else:
-        state_dict = model.state_dict()
-    return losses, state_dict
+    model_param_dict = save_model_parameters(model)
+    optimizer_state_dict = optimizer.state_dict()
+    return losses, model_param_dict, optimizer_state_dict
 
 
 def test_dp_bf16():
@@ -154,10 +153,10 @@ def test_dp_bf16():
         mlp2 = MLP()
         mlp1.set_state_dict(state_dict)
         mlp2.set_state_dict(state_dict)
-        losses_o1, state_dict_o1 = train_mlp(
+        losses_o1, model_param_dict_o1, optimizer_state_dict_o1 = train_mlp(
             mlp1, train_loader, use_pure_bf16=False, acc_steps=acc_steps
         )
-        losses_o2, state_dict_o2 = train_mlp(
+        losses_o2, model_param_dict_o2, optimizer_state_dict_o2 = train_mlp(
             mlp2,
             train_loader,
             use_pure_bf16=True,
@@ -165,7 +164,9 @@ def test_dp_bf16():
             acc_steps=acc_steps,
         )
         np.testing.assert_array_equal(losses_o2, losses_o1)
-        compare_state_dict(state_dict_o1, state_dict_o2)
+        compare_state_dict(
+            model_param_dict_o1, model_param_dict_o2, optimizer_state_dict_o2
+        )
 
     # no gradient accumulation
     _compare_bf16_o1_vs_o2(acc_steps=1)

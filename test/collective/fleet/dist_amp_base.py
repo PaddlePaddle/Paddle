@@ -14,6 +14,7 @@
 
 import logging
 import re
+from collections import OrderedDict
 
 import numpy as np
 
@@ -74,6 +75,13 @@ def create_optimizer(model, use_pure_bf16, use_main_grad):
     return optimizer
 
 
+def save_model_parameters(model):
+    param_dict = OrderedDict()
+    for param in model.parameters():
+        param_dict[param.name] = param
+    return param_dict
+
+
 def _extract_linear_order(param_names):
     # for param_names from model.state_dict, they are as like: ["_linear1.weight", "_linear1.bias"]
     # for master weight names from optimizer.state_dict, they are as like: ["linear_6.w_0", "linear_6.b_0"]
@@ -81,35 +89,51 @@ def _extract_linear_order(param_names):
     for name in param_names:
         param_id = re.findall(r"\d+", name)
         assert len(param_id) >= 1
-        param_order.append(param_id[0])
+        param_order.append(int(param_id[0]))
     return list(set(param_order))
 
 
-def compare_state_dict(state_dict_o1, state_dict_o2):
-    master_weights = None
-    if state_dict_o2.get("master_weights", None) is not None:
-        master_weights = state_dict_o2["master_weights"]
-    assert master_weights is not None
-    master_weights_names = list(master_weights.keys())
-    master_weight_order = _extract_linear_order(master_weights_names)
-    master_weight_order.sort()
+def _extract_param_order_dict(model_param_dict_o1, model_param_dict_o2):
+    param_names_o1 = list(model_param_dict_o1.keys())
+    param_order_o1 = _extract_linear_order(param_names_o1)
+    param_order_o1.sort()
 
-    param_names = list(state_dict_o1.keys())
-    param_order = _extract_linear_order(param_names)
-    param_order.sort()
-    assert len(master_weight_order) <= len(param_order)
+    param_names_o2 = list(model_param_dict_o2.keys())
+    param_order_o2 = _extract_linear_order(param_names_o2)
+    param_order_o2.sort()
+
+    assert len(param_order_o1) == len(param_order_o2)
 
     param_order_dict = {}
-    for i in range(len(master_weight_order)):
-        param_order_dict[master_weight_order[i]] = param_order[i]
+    for i in range(len(param_order_o1)):
+        param_order_dict[param_order_o2[i]] = param_order_o1[i]
 
+    logging.info(f"-- param_names_o1: {param_names_o1}")
+    logging.info(f"-- param_names_o2: {param_names_o2}")
+    logging.info(f"param_order_dict: {param_order_dict}")
+    return param_order_dict
+
+
+def compare_state_dict(
+    model_param_dict_o1, model_param_dict_o2, optimizer_state_dict_o2
+):
+    master_weights = None
+    if optimizer_state_dict_o2.get("master_weights", None) is not None:
+        master_weights = optimizer_state_dict_o2["master_weights"]
+    assert master_weights is not None
+    master_weights_names = list(master_weights.keys())
+
+    param_names = list(model_param_dict_o1.keys())
+    param_order_dict = _extract_param_order_dict(
+        model_param_dict_o1, model_param_dict_o2
+    )
     param_master_pair = []
 
     # We assume the order of params in param_names and master_weights_names is the same.
     param_id = 0
     for master_weight_name in master_weights_names:
         master_weight_id = re.findall(r"\d+", master_weight_name)[0]
-        param_id = param_order_dict[master_weight_id]
+        param_id = param_order_dict[int(master_weight_id)]
         for param_name in param_names:
             if (
                 master_weight_name.endswith("w_0")
@@ -122,12 +146,11 @@ def compare_state_dict(state_dict_o1, state_dict_o2):
                 if name_prefix in param_name:
                     param_master_pair.append([param_name, master_weight_name])
 
-    logging.info(f"-- param_names: {param_names}")
     logging.info(f"-- master_weights_names: {master_weights_names}")
     for pair in param_master_pair:
         param_name = pair[0]
         master_weight_name = pair[1]
         logging.info(f"-- compare {param_name} with {master_weight_name}")
-        param_o1 = state_dict_o1[param_name]
+        param_o1 = model_param_dict_o1[param_name]
         master_param_o2 = master_weights[master_weight_name]
         np.testing.assert_array_equal(param_o1.numpy(), master_param_o2.numpy())
