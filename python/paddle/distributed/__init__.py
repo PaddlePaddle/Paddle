@@ -81,6 +81,7 @@ from .auto_parallel import shard_op  # noqa: F401
 from .auto_parallel.api import (
     DistAttr,
     shard_tensor,
+    shard_tensor_test,
     dtensor_from_fn,
     reshard,
     shard_layer,
@@ -149,6 +150,7 @@ __all__ = [
     "ProcessMesh",
     "DistAttr",
     "shard_tensor",
+    "shard_tensor_test",
     "dtensor_from_fn",
     "reshard",
     "shard_layer",

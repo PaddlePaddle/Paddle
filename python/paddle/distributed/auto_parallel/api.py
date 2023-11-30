@@ -168,6 +168,82 @@ def shard_tensor(
         return shard_tensor_static(tensor, mesh, sharding_specs)
 
 
+def shard_tensor_test(
+    data, mesh, placements, dtype=None, place=None, stop_gradient=True
+):
+    """
+    Constructs a ``paddle.Tensor`` with distributed attributes from ``data``,
+    which can scalar, tuple, list, numpy.ndarray, paddle.Tensor.
+
+    If the ``data`` is already a Tensor, transform it to a Distributed Tensor.
+
+    Args:
+        data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.
+            Can be a scalar, list, tuple, numpy.ndarray, paddle.Tensor.
+        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+        placements(list[paddle.distributed.Placement]): the placements describe how to place the tensor on ProcessMesh, it can
+            be Shard, Replicate and Partial.
+        dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
+            'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
+            'complex64' , 'complex128'. Default: None, infers dtype from ``data``
+            except for python float number which gets dtype from ``get_default_type`` .
+        place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be
+            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
+            string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs.
+        stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
+
+    Returns:
+        Tensor: A Tensor constructed from ``data`` with distributed attributes.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+
+            >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
+
+            >>> # dense tensor
+            >>> a = paddle.to_tensor([[1,2,3],
+            ...                       [5,6,7]])
+
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # distributed tensor
+            >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Shard(0), dist.Shard(1)])
+
+            >>> print(d_tensor)
+
+    """
+    if place is None:
+        place = paddle.framework._current_expected_place()
+    place = paddle.framework._get_paddle_place(place)
+
+    # 1. create dense tensor
+    # `paddle.to_tensor` supports both dynamic and static mode
+    tensor = paddle.to_tensor(
+        data, dtype=dtype, place=place, stop_gradient=stop_gradient
+    )
+
+    if paddle.in_dynamic_mode():
+        print("shard_tensor_test=========================")
+        # here the dist tensor is deep copy constructed
+        if isinstance(data, EagerParamBase):
+            return EagerParamBase.from_tensor(
+                tensor,
+                process_mesh=mesh,
+                placements=placements,
+                **tensor.__dict__
+            )
+        else:
+            return paddle.Tensor(
+                tensor, process_mesh=mesh, placements=placements, place=place
+            )
+    else:
+        # TODO(zhiqiu): we need to refine the static shard_tensor
+        sharding_specs = get_shard_spec(mesh, placements, tensor.ndim)
+        return shard_tensor_static(tensor, mesh, sharding_specs)
+
+
 def dtensor_from_fn(fn, mesh, placements, *args, **kwargs):
     """
     Construct a Distributed Tensor from a function of arguments.
