@@ -318,7 +318,7 @@
     {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
 
 - op : batch_norm
-  backward : batch_norm_grad
+  backward : batch_norm_grad, batch_norm_double_grad(batch_norm_grad_grad)
   inputs:
     x : X
     mean : Mean

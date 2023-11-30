@@ -1,5 +1,7 @@
-# The apis in this file are unstandardized that may caused by a variety of reasons,
-# we are trying to fix these apis and will move standardized apis into ops.yaml.
+# The operators included in this file are:
+# 1) Operators defined only in PIR, dynamic graphs do not exist;
+# 2) The definitions of static graphs and dynamic graphs are inconsistent, but the final definition plan has not yet been clarified.
+# After the definition is clearly defined, migrate to paddle /fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
 
 - op : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor learning_rate, Tensor master_param, float rho, float epsilon, bool multi_precision)
@@ -82,19 +84,6 @@
     func : ReduceInferMeta
   kernel :
     func : any
-
-- op : arange
-  args : (Scalar start, Scalar end, Scalar step, DataType dtype=DataType::FLOAT64, Place place=CPUPlace())
-  output : Tensor(out)
-  infer_meta :
-    func : ArangeInferMeta
-    param : [start, end, step, dtype]
-  kernel :
-    func : arange
-    param : [start, end, step]
-    data_type : dtype
-    backend : place
-  support_tensor : [start, end, step]
 
 - op : assert
   args : (Tensor cond, Tensor[] data, int64_t summarize = -1)
