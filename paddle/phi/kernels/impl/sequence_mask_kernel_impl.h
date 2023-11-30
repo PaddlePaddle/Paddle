@@ -93,18 +93,6 @@ void SequenceMaskPIRKernel(const Context& ctx,
                            int out_dtype,
                            DenseTensor* y) {
   int maxlen = max_len.to<int>();
-
-  auto y_dim = phi::vectorize<int>(x.dims());
-  y_dim.push_back(maxlen);
-  y->Resize(phi::make_ddim(y_dim));
-
-  PADDLE_ENFORCE_GT(maxlen,
-                    0,
-                    phi::errors::InvalidArgument(
-                        "Input(max_len) value should be greater than 0. But "
-                        "received Input(max_len) value = %d.",
-                        maxlen));
-
   auto* x_data = x.data<T>();
   auto x_numel = x.numel();
 
@@ -124,10 +112,11 @@ void SequenceMaskPIRKernel(const Context& ctx,
       maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
 #endif
     }
-    auto y_dim = phi::vectorize<int>(x.dims());
-    y_dim.push_back(maxlen);
-    y->Resize(phi::make_ddim(y_dim));
   }
+
+  auto y_dim = phi::vectorize<int>(x.dims());
+  y_dim.push_back(maxlen);
+  y->Resize(phi::make_ddim(y_dim));
 
   phi::VisitDataType(phi::TransToPhiDataType(out_dtype),
                      phi::funcs::SequenceMaskFunctor<Context, T>(
