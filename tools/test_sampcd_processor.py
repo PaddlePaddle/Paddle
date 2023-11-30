@@ -20,8 +20,8 @@ import unittest
 
 import xdoctest
 from sampcd_processor import Xdoctester
-from sampcd_processor_utils import TestResult as _TestResult  # for pytest
 from sampcd_processor_utils import (
+    TestResult as _TestResult,  # for pytest
     get_api_md5,
     get_incrementapi,
     get_test_results,
@@ -2053,7 +2053,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> import paddle.fluid
+                    >>> import paddle.base
             """,
             'bad_fluid_from': """
             this is docstring...
@@ -2153,7 +2153,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # import paddle.fluid
+                    >>> # import paddle.base
                     >>> import os
             """,
             'oneline_skip': """

@@ -33,6 +33,7 @@ void AsRealStridedKernel(const Context& dev_ctx,
   }
   out->set_offset(x.offset());
   out->ResetHolder(x.Holder());
+  out->ShareInplaceVersionCounterWith(x);
 }
 
 }  // namespace phi

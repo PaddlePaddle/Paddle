@@ -41,12 +41,12 @@ set(IR_LIB
 
 if(WITH_SHARED_IR)
   add_library(pir SHARED ${PIR_CPP_SOURCES})
-  target_link_libraries(pir ddim)
+  target_link_libraries(pir common)
 else()
   cc_library(
     pir
     SRCS ${PIR_CPP_SOURCES}
-    DEPS ddim)
+    DEPS common)
   get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
   set(ir_targets pir)
   set_property(GLOBAL PROPERTY IR_TARGETS "${ir_targets}")

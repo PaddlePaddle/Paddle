@@ -44,9 +44,9 @@ namespace framework {
 
 pir::Operation* GetOpFromProgram(const std::string& op_name,
                                  const pir::Program& program) {
-  for (auto op : *(program.block())) {
-    if (op->name() == op_name) {
-      return op;
+  for (auto& op : *(program.block())) {
+    if (op.name() == op_name) {
+      return &op;
     }
   }
   return nullptr;
@@ -56,10 +56,10 @@ TEST(VJP, TanhBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
-  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+  paddle::dialect::ApiBuilder::Instance().SetProgram(&program);
 
   std::shared_ptr<pir::Builder> builder =
-      paddle::dialect::APIBuilder::Instance().GetBuilder();
+      paddle::dialect::ApiBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
   paddle::dialect::TanhOp op2 =
@@ -111,10 +111,10 @@ TEST(VJP, Tanh_BackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
-  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+  paddle::dialect::ApiBuilder::Instance().SetProgram(&program);
 
   std::shared_ptr<pir::Builder> builder =
-      paddle::dialect::APIBuilder::Instance().GetBuilder();
+      paddle::dialect::ApiBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
   paddle::dialect::Tanh_Op op2 =
@@ -167,10 +167,10 @@ TEST(VJP, MeanBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
-  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+  paddle::dialect::ApiBuilder::Instance().SetProgram(&program);
 
   std::shared_ptr<pir::Builder> builder =
-      paddle::dialect::APIBuilder::Instance().GetBuilder();
+      paddle::dialect::ApiBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
   paddle::dialect::MeanOp op2 =
@@ -225,10 +225,10 @@ TEST(VJP, ConcatBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
-  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+  paddle::dialect::ApiBuilder::Instance().SetProgram(&program);
 
   std::shared_ptr<pir::Builder> builder =
-      paddle::dialect::APIBuilder::Instance().GetBuilder();
+      paddle::dialect::ApiBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1, 2}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
   std::vector<pir::Value> combine_input{{op1.out(), op1.out()}};
@@ -292,10 +292,10 @@ TEST(VJP, AddBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
-  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+  paddle::dialect::ApiBuilder::Instance().SetProgram(&program);
 
   std::shared_ptr<pir::Builder> builder =
-      paddle::dialect::APIBuilder::Instance().GetBuilder();
+      paddle::dialect::ApiBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
   paddle::dialect::FullOp op2 = builder->Build<paddle::dialect::FullOp>(
@@ -357,10 +357,10 @@ TEST(VJP, Add_BackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
-  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+  paddle::dialect::ApiBuilder::Instance().SetProgram(&program);
 
   std::shared_ptr<pir::Builder> builder =
-      paddle::dialect::APIBuilder::Instance().GetBuilder();
+      paddle::dialect::ApiBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
   paddle::dialect::FullOp op2 = builder->Build<paddle::dialect::FullOp>(
@@ -423,10 +423,10 @@ TEST(VJP, SplitBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
-  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+  paddle::dialect::ApiBuilder::Instance().SetProgram(&program);
 
   std::shared_ptr<pir::Builder> builder =
-      paddle::dialect::APIBuilder::Instance().GetBuilder();
+      paddle::dialect::ApiBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
 

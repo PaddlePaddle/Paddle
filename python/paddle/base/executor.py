@@ -21,9 +21,14 @@ from functools import lru_cache
 
 import numpy as np
 
-from ..pir import OpResult
-from ..pir import Program as PirProgram
-from ..pir import Value, translate_to_pir
+from paddle import pir
+
+from ..pir import (
+    OpResult,
+    Program as PirProgram,
+    Value,
+    translate_to_pir,
+)
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
@@ -423,20 +428,23 @@ def has_fetch_operations(
         that match the info contained in fetch_targets.
     """
 
-    fetch_count = 0
+    fetch_info = [[], []]
     for op in block.ops:
         if op.name() == fetch_op:
-            fetch_count += 1
-            if op.operand_source(0) not in fetch_targets:
-                raise Exception(
-                    "There is a fetch op in Program which will fetch variable that is not belong to fetch_targets."
-                )
+            fetch_info[0].append(op.operand_source(0))
+            fetch_info[1].append(op.attrs()["name"])
 
-    if fetch_count > 0 and fetch_count != len(fetch_targets):
-        raise Exception(
-            "Fetch operations in program do not match 'fetch_targets'"
-        )
-    return fetch_count > 0
+    need_fetch_info = []
+    for i, fetch_var in enumerate(fetch_targets):
+        if isinstance(fetch_var, str):
+            if fetch_var not in fetch_info[1]:
+                raise Exception(
+                    f"Found fetch_target[{i}] is type(str) and doesn't have fetch op."
+                )
+        elif fetch_var not in fetch_info[0]:
+            need_fetch_info.append(fetch_var)
+
+    return need_fetch_info
 
 
 def _add_feed_fetch_ops(
@@ -509,11 +517,12 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
 
     global_block = program.global_block()
     fetch_op = "pd_op.fetch"
-    if not has_fetch_operations(
+    need_fetch_info = has_fetch_operations(
         global_block, fetch_list, fetch_var_name, fetch_op
-    ):
+    )
+    if need_fetch_info:
         with paddle.static.program_guard(program):
-            for i, fetch_input in enumerate(fetch_list):
+            for i, fetch_input in enumerate(need_fetch_info):
                 assert isinstance(
                     fetch_input, (OpResult, Value)
                 ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
@@ -798,7 +807,9 @@ class _StandaloneExecutor:
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, feed_names, return_numpy=True):
+    def run(
+        self, feed_names, return_numpy=True, enable_job_schedule_profiler=False
+    ):
         """
         Args:
             feed_names(list): This parameter represents the input names of the model.
@@ -808,7 +819,9 @@ class _StandaloneExecutor:
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
         """
-        tensors = self._new_exe.run(feed_names)._move_to_list()
+        tensors = self._new_exe.run(
+            feed_names, enable_job_schedule_profiler
+        )._move_to_list()
         if return_numpy:
             tensors = as_numpy(tensors, copy=True)
             if not get_flags("FLAGS_enable_pir_in_executor")[
@@ -1036,6 +1049,18 @@ class _ExecutorCache:
                 type_to_program = {"default": new_program.desc}
             plan = core.Plan([default_job], type_to_program)
 
+        if (
+            new_program._pass_opt
+            and "pass_list" in new_program._pass_opt
+            and len(new_program._pass_opt['pass_list']) > 0
+        ):
+            pm = pir.PassManager()
+            for p in new_program._pass_opt['pass_list']:
+                pm.add_pass(p)
+            for job_type in plan.job_types():
+                ir_program = plan.ir_program(job_type)
+                pm.run(ir_program)
+
         new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
 
@@ -1179,6 +1204,8 @@ class Executor:
 
         self.op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
+        self.enable_job_schedule_profiler = False
+
     def _is_optimizer_op(self, op):
         return self.op_role_key in op.attr_names and int(
             op.all_attrs()[self.op_role_key]
@@ -1295,10 +1322,12 @@ class Executor:
 
     def _pir_feed_data(self, program, feed, scope):
         # feed var to framework
+        feed_target_names = set()
         global_block = program.global_block()
         for op in global_block.ops:
             if op.name() == 'pd_op.data':
                 feed_target_name = op.attrs()["name"]
+                feed_target_names.add(feed_target_name)
                 var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
                 var_shape = op.attrs()["shape"]
                 cur_feed = feed[feed_target_name]
@@ -1311,6 +1340,15 @@ class Executor:
                 core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
             else:
                 break
+
+        # pop variable which is not found in program
+        for feed_name in list(feed.keys()):
+            if feed_name not in feed_target_names:
+                feed.pop(feed_name)
+                warnings.warn(
+                    "The value %s is not found in program. It is not declared or is pruned."
+                    % feed_name
+                )
 
     def _fetch_data(self, fetch_list, fetch_var_name, scope):
         outs = [
@@ -1888,7 +1926,11 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            ret = new_exe.run(list(feed.keys()), return_numpy)
+            ret = new_exe.run(
+                list(feed.keys()),
+                return_numpy,
+                self.enable_job_schedule_profiler,
+            )
             set_flags(stored_flag)
             return ret
 
@@ -1985,6 +2027,34 @@ class Executor:
         )
 
         self._pir_feed_data(program, feed, scope)
+
+        if hasattr(program, 'lr_scheduler'):
+            from paddle.optimizer.lr import LRScheduler
+
+            assert isinstance(
+                program.lr_scheduler, LRScheduler
+            ), "must be LRScheduler"
+
+            lr_scheduler = program.lr_scheduler
+            lr_value = lr_scheduler()
+            lr_var = program.lr_var
+
+            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+            tensor = core.get_variable_tensor(
+                global_scope(), lr_scheduler._var_name
+            )
+            # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
+            cpu_tensor = _as_lodtensor(data, core.CPUPlace())
+            if core.is_cuda_graph_capturing():
+                warnings.warn(
+                    "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
+                    "take any effect! Please set the learning rate manually before each batch!"
+                )
+            elif core.is_compiled_with_ipu():
+                # for ipu, tensor is allocated on cpu
+                tensor._copy_from(cpu_tensor, tensor._place())
+            else:
+                tensor._copy_from(cpu_tensor, self.place)
 
         ret = new_exe.run(list(feed.keys()), return_numpy)
         return ret

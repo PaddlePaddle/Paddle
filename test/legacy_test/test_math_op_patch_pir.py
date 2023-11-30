@@ -29,7 +29,7 @@ def new_program():
     # TODO(gouzil): Optimize program code
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
-    place = base.CPUPlace()
+    place = paddle.CPUPlace()
     exe = base.Executor(place)
     return (
         main_program,
@@ -412,12 +412,77 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 self.assertTrue(len(w) == 1)
                 self.assertTrue("place" in str(w[-1].message))
 
+    def test_cpu(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data(name='x', shape=[3, 2, 1])
+            x.cpu()
+
+    def test_cuda(self):
+        if base.is_compiled_with_cuda():
+            paddle.device.set_device("gpu")
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                with paddle.pir_utils.IrGuard():
+                    x = paddle.static.data(name='x', shape=[3, 2, 1])
+                    x.cpu()
+                    x.cuda(1, False)
+                    self.assertTrue(len(w) == 2)
+                    self.assertTrue(
+                        "device_id is not supported" in str(w[-2].message)
+                    )
+                    self.assertTrue(
+                        "blocking is not supported" in str(w[-1].message)
+                    )
+            paddle.device.set_device("cpu")
+
     def test_some_dim(self):
         with paddle.pir_utils.IrGuard():
             x = paddle.static.data(name='x', shape=[3, 2, 1])
             self.assertEqual(x.dim(), 3)
             self.assertEqual(x.ndimension(), 3)
             self.assertEqual(x.ndim, 3)
+
+    def test_size(self):
+        with paddle.pir_utils.IrGuard():
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
+                (output_x,) = exe.run(main_program, fetch_list=[x.size])
+                self.assertEqual(output_x, 24)
+
+    def test_clone(self):
+        x_np = np.random.random(size=[100, 10]).astype('float64')
+        with paddle.pir_utils.IrGuard():
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x = paddle.static.data(
+                    name='x', shape=[100, 10], dtype="float64"
+                )
+                a = x.clone()
+                (a_np,) = exe.run(
+                    main_program,
+                    feed={"x": x_np},
+                    fetch_list=[a],
+                )
+                np.testing.assert_array_equal(x_np, a_np)
+                self.assertNotEqual(id(x), id(a))
+
+    def test_append(self):
+        with paddle.pir_utils.IrGuard():
+            _, _, program_guard = new_program()
+            with program_guard:
+                x = paddle.static.data(name='x', shape=[-1, 1], dtype="float32")
+                init_data = [
+                    np.random.random(shape).astype('float32')
+                    for shape in [[10, 4], [8, 12], [1]]
+                ]
+
+                array = paddle.tensor.create_array(
+                    'int64', [paddle.to_tensor(x) for x in init_data]
+                )
+                array.append(x)
+                with self.assertRaises(TypeError):
+                    x.append(array)
 
     def test_math_exists(self):
         with paddle.pir_utils.IrGuard():

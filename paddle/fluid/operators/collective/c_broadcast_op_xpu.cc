@@ -13,11 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_broadcast_op.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #ifdef PADDLE_WITH_XPU_BKCL
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
+#include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
+#include "paddle/fluid/distributed/collective/process_group.h"
 
 namespace paddle {
 namespace operators {
@@ -35,69 +40,82 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
         platform::ToBKCLDataType(framework::TransToProtoVarType(x->dtype()));
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm =
-        paddle::platform::BKCLCommContext::Instance().Get(ring_id, place);
+    int root = ctx.Attr<int>("root");
 
+    platform::BKCLComm* comm = nullptr;
+    phi::distributed::BKCLCommContext* comm_ctx = nullptr;
     XPUStream stream = nullptr;
-    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    if (FLAGS_dynamic_static_unified_comm) {
+      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "You choose to use new communication library by "
+                            "setting environment "
+                            "variable FLAGS_dynamic_static_unified_comm True. "
+                            "But ring_id(%d) is "
+                            "not found in comm_context_manager.",
+                            std::to_string(ring_id)));
+      comm_ctx = static_cast<phi::distributed::BKCLCommContext*>(
+          comm_context_manager.Get(std::to_string(ring_id)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        platform::errors::Unavailable(
+                            "BKCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+      stream = comm_ctx->GetStream();
+      VLOG(3) << "new comm_context_manager has rid " << ring_id;
+    } else {  // old comm_context
+      comm = paddle::platform::BKCLCommContext::Instance().Get(ring_id, place);
+      stream = comm->stream();
+      VLOG(3) << "old BKCLCommContext has rid " << ring_id;
+    }
     if (ctx.Attr<bool>("use_calc_stream")) {
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
                    ->x_context()
                    ->xpu_stream;
-    } else {
-      stream = comm->stream();
     }
-
-    int root = ctx.Attr<int>("root");
-    VLOG(3) << "begin bkcl broadcast, parameter is: "
-            << "root " << root << ", comm: " << comm->comm()
-            << ", stream: " << stream;
-    void* send_recv_buffer = nullptr;
-    if (root == comm->rank()) {
-      // API: BKCLResult_t bkcl_broadcast(const BKCLContext_t ctx,
-      //                                  const void* sendbuf,
-      //                                  void* recvbuf,
-      //                                  size_t count, BKCLDataType datatype,
-      //                                  int root,
-      //                                  XPUStream stream);
-      send_recv_buffer = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
-      auto ret = bkcl_broadcast(comm->comm(),
-                                send_recv_buffer,
-                                send_recv_buffer,
-                                numel,
-                                dtype,
-                                root,
-                                stream);
-      PADDLE_ENFORCE_EQ(ret,
-                        BKCL_SUCCESS,
-                        platform::errors::PreconditionNotMet(
-                            "XPU BKCL c_broadcast execute failed"));
-      if (out != x) {
-        framework::TensorCopy(
-            *static_cast<const phi::DenseTensor*>(x),
-            place,
-            *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<phi::DenseTensor*>(out));
+    if (comm_ctx) {
+      comm_ctx->Broadcast(out, *x, root, stream);
+    } else {
+      void* send_recv_buffer = nullptr;
+      if (root == comm->rank()) {
+        send_recv_buffer =
+            reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
+        PADDLE_ENFORCE_XPU_SUCCESS(bkcl_broadcast(comm->comm(),
+                                                  send_recv_buffer,
+                                                  send_recv_buffer,
+                                                  numel,
+                                                  dtype,
+                                                  root,
+                                                  stream));
+        VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
+                << x->numel();
+        if (out != x) {
+          framework::TensorCopy(
+              *static_cast<const phi::DenseTensor*>(x),
+              place,
+              *platform::DeviceContextPool::Instance().Get(place),
+              static_cast<phi::DenseTensor*>(out));
+        }
+      } else {
+        auto& dev_ctx =
+            ctx.template device_context<platform::XPUDeviceContext>();
+        dev_ctx.template Alloc<T>(out);
+        send_recv_buffer = out->data<T>();
+        PADDLE_ENFORCE_XPU_SUCCESS(bkcl_broadcast(comm->comm(),
+                                                  send_recv_buffer,
+                                                  send_recv_buffer,
+                                                  numel,
+                                                  dtype,
+                                                  root,
+                                                  stream));
+        VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
+                << phi::product(out->dims());
       }
-    } else {
-      auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
-      dev_ctx.template Alloc<T>(out);
-      send_recv_buffer = out->data<T>();
-      auto ret = bkcl_broadcast(comm->comm(),
-                                send_recv_buffer,
-                                send_recv_buffer,
-                                numel,
-                                dtype,
-                                root,
-                                stream);
-      PADDLE_ENFORCE_EQ(ret,
-                        BKCL_SUCCESS,
-                        platform::errors::PreconditionNotMet(
-                            "XPU BKCL c_broadcast execute failed"));
     }
-
-    VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
-            << phi::product(out->dims());
     out->Resize(x->dims());
     out->set_lod(x->lod());
 #else
@@ -118,4 +136,7 @@ PD_REGISTER_STRUCT_KERNEL(c_broadcast,
                           ALL_LAYOUT,
                           ops::CBroadcastOpXPUKernel,
                           float,
-                          plat::float16) {}
+                          double,
+                          plat::float16,
+                          int,
+                          int64_t) {}
