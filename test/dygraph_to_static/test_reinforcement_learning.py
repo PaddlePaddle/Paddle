@@ -18,9 +18,9 @@ import unittest
 
 import gym
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pir_exe_and_pir_api,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -213,7 +213,7 @@ class TestDeclarative(Dy2StTestBase):
         )
         self.args = Args()
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_train(self):
         st_out = train(self.args, self.place, to_static=True)
         dy_out = train(self.args, self.place, to_static=False)

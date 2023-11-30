@@ -20,6 +20,7 @@ from decorator_helper import prog_scope
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
+import paddle.distributed as dist
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.pir_utils import test_with_pir_api
@@ -897,11 +898,11 @@ class TestConcatOpAutoParallel(OpTest):
 
     def init_inputs(self):
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
-        self.input_specs = {
+        self.placements = {
             'X': [
-                ('x0', [None, None, 'x']),
-                ('x1', [None, None, 'x']),
-                ('x2', [None, None, 'x']),
+                ('x0', [dist.Shard(2)]),
+                ('x1', [dist.Shard(2)]),
+                ('x2', [dist.Shard(2)]),
             ]
         }
 

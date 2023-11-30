@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
+#include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 
 namespace paddle {
@@ -82,7 +83,9 @@ void IrMetaTensor::share_meta(const MetaTensor& meta_tensor) {
 
 bool IrMetaTensor::initialized() const { return tensor_ != nullptr; }
 
-bool IrMetaTensor::is_selected_rows() const { return false; }
+bool IrMetaTensor::is_selected_rows() const {
+  return IrSelectedRows::classof(tensor_);
+}
 
 bool IrMetaTensor::is_tensor_array() const { return false; }
 

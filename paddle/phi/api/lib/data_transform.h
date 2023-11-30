@@ -157,6 +157,13 @@ void TransDataBackend(const phi::SelectedRows* tensor,
 phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor);
 
 void CheckAndTrans2Contiguous(phi::DenseTensor* tensor);
+
+phi::DenseTensor CheckAndTrans2NewContiguousTensor(
+    const phi::DenseTensor& tensor);
+
+std::vector<phi::DenseTensor> CheckAndTrans2NewContiguousTensor(
+    const std::vector<phi::DenseTensor>& tensor);
+
 inline bool NeedTransformPlace(const phi::Place& src_place,
                                const Backend& target,
                                const TransformFlag& transform_flag) {
@@ -228,6 +235,12 @@ void ReshardKernelOutputToApiOutput(
     phi::DeviceContext* dev_ctx,
     const std::shared_ptr<phi::distributed::DistTensor>& src_tensor,
     Tensor* dst_tensor);
+
+void ReshardKernelOutputToApiOutput(
+    phi::DeviceContext* dev_ctx,
+    const std::vector<std::shared_ptr<phi::distributed::DistTensor>>&
+        src_tensors,
+    const std::vector<Tensor*>& dst_tensors);
 
 std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
     std::shared_ptr<phi::distributed::DistTensor> input,

@@ -675,6 +675,7 @@ void BatchNormInferMeta(const MetaTensor& x,
   }
   if (reserve_space) {
     reserve_space->set_dims({-1});
+    reserve_space->set_dtype(DataType::UINT8);
   }
   y->share_lod(x);
   y->set_dtype(x.dtype());
