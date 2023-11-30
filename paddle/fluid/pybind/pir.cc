@@ -50,6 +50,7 @@
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/parser/ir_parser.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
@@ -80,6 +81,7 @@ using paddle::dialect::SelectedRowsType;
 using pir::Attribute;
 using pir::Block;
 using pir::BlockArgument;
+using pir::IrParser;
 using pir::Operation;
 using pir::OpOperand;
 using pir::OpResult;
@@ -253,6 +255,15 @@ void BindProgram(py::module *m) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
           });
 }
+
+std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
+  std::stringstream ss(program_str);
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  auto program = IrParser(ctx, ss).ParseProgram();
+  return program;
+}
+
+void BindIrParser(py::module *m) { m->def("parse_program", &ParseProgram); }
 
 void RefreshOpStopgradients(Operation *op) {
   if (op->num_operands() == 0 || op->isa<pir::ParameterOp>() ||
@@ -1614,6 +1625,7 @@ void BindPir(pybind11::module *module) {
   BindControlFlowApi(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
   BindOpsAPI(&ops_modules);
+  BindIrParser(&ir_module);
 }
 
 }  // namespace pybind

@@ -60,6 +60,7 @@ from .creation import (  # noqa: F401
     zeros,
     zeros_like,
 )
+
 from .einsum import einsum  # noqa: F401
 from .linalg import (  # noqa: F401
     bincount,
@@ -78,6 +79,7 @@ from .linalg import (  # noqa: F401
     eigvals,
     eigvalsh,
     histogram,
+    householder_product,
     lstsq,
     lu,
     lu_unpack,
@@ -435,6 +437,7 @@ tensor_method_func = [
     'mv',
     'matrix_power',
     'qr',
+    'householder_product',
     'pca_lowrank',
     'eigvals',
     'eigvalsh',
