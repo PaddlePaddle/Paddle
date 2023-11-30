@@ -359,6 +359,13 @@ void IRPassManager::CreatePasses(Argument *argument,
       if (quant_post_dynamic_weight_precision == 0) {
         pass->Set("quant_post_dynamic_weight_precision ", new int(0));
       }
+    } else if (pass_name == "fc_xpu_fuse_pass") {
+      int quant_post_dynamic_weight_precision =
+          argument->xpu_quant_post_dynamic_weight_precision();
+      pass->Set("quant_post_dynamic_weight_precision",
+                new int(quant_post_dynamic_weight_precision));
+      VLOG(5) << "quant post dynamic weight precision type:"
+              << quant_post_dynamic_weight_precision;
     }
     pre_pass = pass_name;
 
