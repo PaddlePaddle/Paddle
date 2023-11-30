@@ -209,6 +209,7 @@ class TestPool1D_API(unittest.TestCase):
 
     @test_with_pir_api
     def check_max_static_results(self, place):
+        paddle.enable_static()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):

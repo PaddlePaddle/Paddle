@@ -69,7 +69,7 @@ class TestRandintOpError(unittest.TestCase):
 
     def test_pir_error(self):
         with paddle.pir_utils.IrGuard():
-            self.assertRaises(ValueError, paddle.randint, 5, dtype='float32')
+            self.assertRaises(TypeError, paddle.randint, 5, dtype='float32')
 
 
 class TestRandintOp_attr_tensorlist(OpTest):
