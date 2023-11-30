@@ -14,6 +14,7 @@ if(WITH_TESTING AND WITH_CINN)
     DEPS
     drr
     pd_to_cinn_pass
+    op_dialect_vjp
     cinn_op_dialect
     pir)
   set_tests_properties(dialect_convert_test PROPERTIES LABELS "RUN_TYPE=CINN")
@@ -25,6 +26,7 @@ if(WITH_TESTING AND WITH_CINN)
     DEPS
     drr
     pd_to_cinn_pass
+    op_dialect_vjp
     cinn_op_dialect
     add_broadcast_to_elementwise_pass
     pir)
@@ -38,6 +40,7 @@ if(WITH_TESTING AND WITH_CINN)
     drr
     pd_to_cinn_pass
     cinn_op_dialect
+    op_dialect_vjp
     pir_transforms
     pir)
   set_tests_properties(test_sub_graph_extract PROPERTIES LABELS "RUN_TYPE=CINN")
