@@ -26,7 +26,7 @@ from paddle.base.framework import (
     in_pir_mode,
     static_only,
 )
-from paddle.base.libpaddle.pir import build_if_op, cf_yield
+from paddle.base.libpaddle.pir import build_if_op, build_while_op, cf_yield
 from paddle.common_ops_import import (
     LayerHelper,
     check_type,
@@ -655,8 +655,6 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             ...     print(res)
             [array([10], dtype=int64)]
     """
-    helper = LayerHelper('while_loop', **locals())
-
     if not callable(cond):
         raise TypeError("cond in while_loop should be callable")
     if not callable(body):
@@ -666,6 +664,16 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         raise ValueError("loop_vars in while_loop should not be empty")
 
     pre_cond = cond(*loop_vars)
+
+    if in_pir_mode():
+        while_op = build_while_op(pre_cond, flatten(loop_vars))
+        with while_op.body() as cur_block:
+            args = cur_block.args()
+            next_var = body(*args)
+            next_cond = cond(*next_var)
+            cf_yield([next_cond, *next_var])
+        return while_op.as_operation().results()
+
     check_variable_and_dtype(
         pre_cond, 'var of cond returned', ['bool'], 'static.nn.while_loop'
     )
