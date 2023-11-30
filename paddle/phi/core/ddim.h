@@ -149,7 +149,7 @@ class DDim {
     PADDLE_VISIT_DDIM(rank_, visitor(UnsafeCast<kRank>()));
   }
 
-  bool operator==(const DDim& d) const;
+  TEST_API bool operator==(const DDim& d) const;
 
   bool operator!=(const DDim& d) const;
 
