@@ -233,7 +233,7 @@ Tensor softmax_decomp(const Tensor& x, const int& axis) {
   }
 
   auto max_tmp = max<T>(x_tmp, axis_tmp, true);
-  auto molecular = exp<T>(subtract<T>(x_tmp, max_tmp));
+  auto molecular = exp<T>(x_tmp - max_tmp);
   auto res = molecular / sum<T>(molecular, axis_tmp, molecular.dtype(), true);
 
   if (need_cast) {
