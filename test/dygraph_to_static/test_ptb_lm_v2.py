@@ -180,7 +180,6 @@ class PtbModel(paddle.nn.Layer):
     def build_once(self, input, label, init_hidden, init_cell):
         pass
 
-    @paddle.jit.to_static
     def forward(self, input, label, init_hidden, init_cell):
         init_h = paddle.reshape(
             init_hidden, shape=[self.num_layers, -1, self.hidden_size]
@@ -235,13 +234,15 @@ def train(place):
     paddle.disable_static(place)
     paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
-    ptb_model = PtbModel(
-        hidden_size=hidden_size,
-        vocab_size=vocab_size,
-        num_layers=num_layers,
-        num_steps=num_steps,
-        init_scale=init_scale,
-        dropout=dropout,
+    ptb_model = paddle.jit.to_static(
+        PtbModel(
+            hidden_size=hidden_size,
+            vocab_size=vocab_size,
+            num_layers=num_layers,
+            num_steps=num_steps,
+            init_scale=init_scale,
+            dropout=dropout,
+        )
     )
 
     sgd = paddle.optimizer.SGD(

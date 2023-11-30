@@ -1349,7 +1349,7 @@ def broadcast_tensors(input, name=None):
 
     Args:
         input (list|tuple): ``input`` is a Tensor list or Tensor tuple which is with data type bool,
-            float16, float32, float64, int32, int64. All the Tensors in ``input`` must have same data type.
+            float16, float32, float64, int32, int64, complex64, complex128. All the Tensors in ``input`` must have same data type.
             Currently we only support tensors with rank no greater than 5.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1390,6 +1390,8 @@ def broadcast_tensors(input, name=None):
                     'int32',
                     'int64',
                     'uint16',
+                    'complex64',
+                    'complex128',
                 ],
                 'broadcast_tensors',
             )
@@ -3037,7 +3039,7 @@ def unbind(input, axis=0):
     Removes a tensor dimension, then split the input tensor into multiple sub-Tensors.
 
     Args:
-        input (Tensor): The input variable which is an N-D Tensor, data type being bool, float16, float32, float64, int32 or int64.
+        input (Tensor): The input variable which is an N-D Tensor, data type being bool, float16, float32, float64, int32, int64, complex64 or complex128.
         axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind.
             If :math:`axis < 0`, the dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
     Returns:
@@ -3094,6 +3096,8 @@ def unbind(input, axis=0):
                 'float64',
                 'int32',
                 'int64',
+                'complex64',
+                'complex128',
             ],
             'unbind',
         )

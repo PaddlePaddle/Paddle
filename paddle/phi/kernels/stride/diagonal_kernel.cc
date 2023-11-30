@@ -78,6 +78,7 @@ void DiagonalStridedKernel(const Context& dev_ctx,
   meta.offset = x_offset;
   out->set_meta(meta);
   out->ResetHolder(x.Holder());
+  out->ShareInplaceVersionCounterWith(x);
 }
 
 }  // namespace phi

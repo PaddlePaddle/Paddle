@@ -741,6 +741,9 @@ static void DisablePrepareDataOpt(
 }
 
 bool AnalysisPredictor::PrepareExecutor() {
+  PADDLE_ENFORCE_NOT_NULL(sub_scope_,
+                          platform::errors::PreconditionNotMet(
+                              "The sub_scope should not be nullptr."));
   if (config_.dist_config().use_dist_model()) {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
     VLOG(3) << "use_dist_model is enabled, will init FleetExecutor.";
@@ -771,14 +774,27 @@ bool AnalysisPredictor::PrepareExecutor() {
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
 
       ::pir::PassManager pm_for_op_program(::pir::IrContext::Instance(), 2);
+      //----------------------------------------------------------------------------------------------//
+      // Operator fusion pass
       pm_for_op_program.AddPass(::pir::CreateConv2dFusePass());
       pm_for_op_program.AddPass(::pir::CreateConv2dAddFusePass());
-      pm_for_op_program.AddPass(::pir::CreateConstantFoldingPass(sub_scope_));
+      //----------------------------------------------------------------------------------------------//
+
+      //----------------------------------------------------------------------------------------------//
+      // Functional pass
+      //----------------------------------------------------------------------------------------------//
+
+      //----------------------------------------------------------------------------------------------//
+      // Basic pass required by the framework
+      pm_for_op_program.AddPass(
+          ::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
+      pm_for_op_program.AddPass(
+          ::pir::CreateConstantFoldingPass(place_, sub_scope_));
       pm_for_op_program.AddPass(::pir::CreateDeadCodeEliminationPass());
       pm_for_op_program.AddPass(
           ::pir::CreateReplaceFetchWithShadowOutputPass());
-      pm_for_op_program.AddPass(
-          ::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
+      //----------------------------------------------------------------------------------------------//
+
       // pm_for_op_program.EnableIRPrinting();
       pm_for_op_program.Run(pir_program_.get());
 
@@ -807,10 +823,6 @@ bool AnalysisPredictor::PrepareExecutor() {
             root_predictor_id_, "memory_optimize_pass");
     executor_->MakeReusePlan(reuse_table);
   }
-
-  PADDLE_ENFORCE_NOT_NULL(sub_scope_,
-                          platform::errors::PreconditionNotMet(
-                              "The sub_scope should not be nullptr."));
 
   return true;
 }
