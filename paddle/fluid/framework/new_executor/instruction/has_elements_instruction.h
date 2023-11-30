@@ -42,7 +42,7 @@ class HasElementsInstruction : public InstructionBase {
 
   OpFuncType type_;
 
-  std::string name_{"has_elelments_instruction"};
+  std::string name_{"has_elements_instruction"};
 
   const platform::DeviceContext* dev_ctx_;  // not owned
 
