@@ -32,6 +32,15 @@ _supported_int_dtype_ = [
 
 compare_ops = ['__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__']
 
+SUPPORT_PROMOTION_OPS = [
+    "__add__",
+    "__radd__",
+    "__sub__",
+    "__rsub__",
+    "__mul__",
+    "__rmul__",
+]
+
 EXPRESSION_MAP = {
     "__add__": "A + B",
     "__radd__": "A += B",
@@ -523,14 +532,22 @@ def monkey_patch_variable():
             rhs_dtype = safe_get_dtype(other_var)
 
             if lhs_dtype != rhs_dtype:
-                from ..type_promotion import get_result_dtype, is_support_float
+                if method_name in SUPPORT_PROMOTION_OPS:
+                    from ..type_promotion import (
+                        get_result_dtype,
+                        is_support_float_and_complex,
+                    )
 
-                if is_support_float(lhs_dtype) and is_support_float(rhs_dtype):
-                    common_dtype = get_result_dtype(lhs_dtype, rhs_dtype)
-                    if rhs_dtype != common_dtype:
-                        other_var = astype(other_var, common_dtype)
-                    if lhs_dtype != common_dtype:
-                        self = astype(self, common_dtype)
+                    if is_support_float_and_complex(
+                        lhs_dtype
+                    ) and is_support_float_and_complex(rhs_dtype):
+                        common_dtype = get_result_dtype(lhs_dtype, rhs_dtype)
+                        if rhs_dtype != common_dtype:
+                            other_var = astype(other_var, common_dtype)
+                        if lhs_dtype != common_dtype:
+                            self = astype(self, common_dtype)
+                else:
+                    other_var = astype(other_var, lhs_dtype)
 
             if reverse:
                 tmp = self

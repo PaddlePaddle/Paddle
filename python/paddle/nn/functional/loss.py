@@ -3047,20 +3047,26 @@ def cross_entropy(
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
                     count = paddle.sum(mask, name=name)
-                    ret = out_sum / (count + paddle.equal(count, 0.0))
+                    ret = out_sum / (
+                        count + paddle.equal(count, 0.0).astype(count.dtype)
+                    )
                 else:
                     mask = paddle.cast(mask, weight_gather_reshape.dtype)
                     weight_ignored = paddle.multiply(
                         mask, weight_gather_reshape
                     )
                     weight_sum = paddle.sum(weight_ignored, name=name)
-                    ret = out_sum / (weight_sum + paddle.equal(weight_sum, 0.0))
+                    ret = out_sum / (
+                        weight_sum
+                        + paddle.equal(weight_sum, 0.0).astype(weight_sum.dtype)
+                    )
                 return ret
             elif weight is not None:
                 out_sum = paddle.sum(out, name=name)
                 total_weight = paddle.sum(weight_gather_reshape)
                 return out_sum / (
-                    total_weight + paddle.equal(total_weight, 0.0)
+                    total_weight
+                    + paddle.equal(total_weight, 0.0).astype(total_weight.dtype)
                 )
             else:
                 return paddle.mean(out, name=name)

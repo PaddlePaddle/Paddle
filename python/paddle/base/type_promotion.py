@@ -60,6 +60,8 @@ promoteTypesLookup = [
 
 SUPPORT_FLOAT = [dtype.float16, dtype.float32, dtype.float64, dtype.bfloat16]
 SUPPORT_INT = [dtype.int32, dtype.int64]
+SUPPORT_COMPLEX = [dtype.complex64, dtype.complex128]
+SUPPORT_FLOAT_AND_COMPLEX = SUPPORT_FLOAT + SUPPORT_COMPLEX
 
 
 def get_result_dtype(x_dtype, y_dtype):
@@ -76,6 +78,10 @@ def get_result_dtype(x_dtype, y_dtype):
 
 def is_support_float(dtype):
     return dtype in SUPPORT_FLOAT
+
+
+def is_support_float_and_complex(dtype):
+    return dtype in SUPPORT_FLOAT_AND_COMPLEX
 
 
 def is_support_int(dtype):

@@ -297,25 +297,8 @@ class TestOperatorOverloadGTInStatic(TestOperatorOverloadAddInStatic):
 
 create_test_case(TestOperatorOverloadGTInStatic, 'float16', 'float32', 'bool')
 create_test_case(TestOperatorOverloadGTInStatic, 'float16', 'float64', 'bool')
-create_test_case(TestOperatorOverloadGTInStatic, 'float16', 'complex64', 'bool')
-create_test_case(
-    TestOperatorOverloadGTInStatic, 'float16', 'complex128', 'bool'
-)
 
 create_test_case(TestOperatorOverloadGTInStatic, 'float32', 'float64', 'bool')
-create_test_case(TestOperatorOverloadGTInStatic, 'float32', 'complex64', 'bool')
-create_test_case(
-    TestOperatorOverloadGTInStatic, 'float32', 'complex128', 'bool'
-)
-
-create_test_case(TestOperatorOverloadGTInStatic, 'float64', 'complex64', 'bool')
-create_test_case(
-    TestOperatorOverloadGTInStatic, 'float64', 'complex128', 'bool'
-)
-
-create_test_case(
-    TestOperatorOverloadGTInStatic, 'complex64', 'complex128', 'bool'
-)
 
 if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     create_test_case(
@@ -326,12 +309,6 @@ if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     )
     create_test_case(
         TestOperatorOverloadGTInStatic, 'bfloat16', 'float64', 'bool'
-    )
-    create_test_case(
-        TestOperatorOverloadGTInStatic, 'bfloat16', 'complex64', 'bool'
-    )
-    create_test_case(
-        TestOperatorOverloadGTInStatic, 'bfloat16', 'complex128', 'bool'
     )
 
 
