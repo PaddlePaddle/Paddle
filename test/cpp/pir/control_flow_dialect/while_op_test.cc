@@ -184,7 +184,7 @@ TEST(while_op_test, network_with_backward) {
 
   LOG(INFO) << program;
 
-  auto place = paddle::platform::CUDAPlace(0);
+  auto place = paddle::platform::CPUPlace();
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program, place);
   paddle::framework::Scope scope;
   paddle::framework::InterpreterCore test_core(
