@@ -518,6 +518,7 @@ def shard_optimizer(optimizer, shard_fn=None):
 
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
