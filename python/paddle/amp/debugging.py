@@ -466,6 +466,7 @@ def enable_operator_stats_collection():
     Examples:
 
         ..  code-block:: python
+
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')
