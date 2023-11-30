@@ -111,6 +111,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   std::tuple<double, double> InterpreterRunTime() override;
 
+  // Only for debug
+  Variable* DebugVar(const std::string& name) const override;
+
  private:
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
