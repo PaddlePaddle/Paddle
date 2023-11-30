@@ -97,8 +97,10 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
   }
   auto type_name =
       std::string(reinterpret_cast<PyTypeObject*>((*obj)->ob_type)->tp_name);
-  if (type_name.find("numpy.float") != std::string::npos ||
-      type_name.find("numpy.int") != std::string::npos) {
+  VLOG(4) << "type_name: " << type_name;
+
+  if (type_name.find("numpy") != std::string::npos &&
+      type_name.find("numpy.complex") == std::string::npos) {
     auto to = PyNumber_Float(*obj);
     if (to) {
       *obj = to;

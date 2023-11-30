@@ -194,5 +194,7 @@ PD_REGISTER_KERNEL(assign_value,
                    int,
                    float,
                    double,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #endif
