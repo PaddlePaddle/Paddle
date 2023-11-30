@@ -242,3 +242,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
+
+if(WITH_COVERAGE)
+  list(REMOVE_ITEM TEST_OPS test_reshard_r_to_s)
+endif()

@@ -479,3 +479,7 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
 endif()
 add_subdirectory(fleet)
 add_subdirectory(multinode)
+
+if(WITH_COVERAGE)
+  list(REMOVE_ITEM TEST_OPS test_collective_reduce_scatter_api)
+endif()
