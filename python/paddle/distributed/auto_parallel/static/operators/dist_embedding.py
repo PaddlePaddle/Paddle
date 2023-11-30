@@ -188,6 +188,7 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
         [-1] + list(Ids_var_dist_attr.dims_mapping),
         Ids_var_dist_attr.process_mesh,
     )
+    src_op._rename_input(Ids_var.name, intermediate_var_0.name)
     op_dist_attr.del_input_dist_attr(Ids_var.name)
     op_dist_attr.set_input_dist_attr(
         intermediate_var_0.name, intermediate_var_0_dist_attr
