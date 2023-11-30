@@ -56,13 +56,13 @@ class Conv2dAddActFusePattern
 
     auto next_op = next_op_list[0];
     std::string act_name = "";
-    if (next_op->dyn_cast<paddle::dialect::ReluOp>()) {
+    if (next_op->isa<paddle::dialect::ReluOp>()) {
       act_name = "relu";
     }
 #if CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8700
-    if (next_op->dyn_cast<paddle::dialect::TanhOp>()) {
+    if (next_op->isa<paddle::dialect::TanhOp>()) {
       act_name = "tanh";
-    } else if (next_op->dyn_cast<paddle::dialect::SigmoidOp>()) {
+    } else if (next_op->isa<paddle::dialect::SigmoidOp>()) {
       act_name = "sigmoid";
     }
 #endif
@@ -116,13 +116,13 @@ class Conv2dDoubleAddActFusePattern
     if (next_op_list.size() == 0) return false;
     auto next_op = next_op_list[0];
     std::string act_name = "";
-    if (next_op->dyn_cast<paddle::dialect::ReluOp>()) {
+    if (next_op->isa<paddle::dialect::ReluOp>()) {
       act_name = "relu";
     }
 #if CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8700
-    if (next_op->dyn_cast<paddle::dialect::TanhOp>()) {
+    if (next_op->isa<paddle::dialect::TanhOp>()) {
       act_name = "tanh";
-    } else if (next_op->dyn_cast<paddle::dialect::SigmoidOp>()) {
+    } else if (next_op->isa<paddle::dialect::SigmoidOp>()) {
       act_name = "sigmoid";
     }
 #endif
