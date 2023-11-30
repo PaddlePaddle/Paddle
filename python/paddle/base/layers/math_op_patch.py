@@ -546,6 +546,11 @@ def monkey_patch_variable():
                             other_var = astype(other_var, common_dtype)
                         if lhs_dtype != common_dtype:
                             self = astype(self, common_dtype)
+                    else:
+                        # NOTE(zoooo0820): Currently, we still keep the old illogical \
+                        # logic for compatibility reasons
+                        other_var = astype(other_var, lhs_dtype)
+
                 else:
                     other_var = astype(other_var, lhs_dtype)
 
