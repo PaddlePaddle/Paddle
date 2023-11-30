@@ -319,7 +319,6 @@ TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
   auto grad_out = CopyTensorDistAttrForOutput(input);
   grad_out.set_dims_mapping(dims_mapping);
   std::vector<int64_t> partial_status(partial_dims.begin(), partial_dims.end());
-  VLOG(4) << "partial_status" << str_join(partial_status);
   grad_out.set_partial_status(partial_status);
   return grad_out;
 }
