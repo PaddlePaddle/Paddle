@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
