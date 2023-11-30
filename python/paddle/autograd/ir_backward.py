@@ -592,7 +592,10 @@ def append_backward_ops(
     control_flow_copyvalue_to_value_map = {}
     # sub_block op output to parent_block op output
     inside_value_to_outside_value_map = {}
-    if effective_forward_ops[-1].name() == "cf.yield":
+    if (
+        len(effective_forward_ops) > 1
+        and effective_forward_ops[-1].name() == "cf.yield"
+    ):
         yield_op = effective_forward_ops[-1]
         for outside_output, inside_output in zip(
             base_op.results(), yield_op.operands_source()
