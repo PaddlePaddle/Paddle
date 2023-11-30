@@ -349,7 +349,7 @@ if(WITH_PYTHON)
       add_custom_command(
         OUTPUT ${op_impl_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}
-        DEPENDS phi common)
+        DEPENDS phi)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/phi.dll)
     endif()
 
