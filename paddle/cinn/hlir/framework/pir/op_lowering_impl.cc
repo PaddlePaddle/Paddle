@@ -84,14 +84,19 @@ ir::Tensor GetTensor(const GroupPtr& group, const ::pir::Value& value) {
   auto in_shape = phi::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   std::string input_id = CompatibleInfo::ValueName(value);
-  auto sym_vec =
-      group->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(value);
-  std::vector<ir::Dim> sym_shape;
-  for (auto& sym : sym_vec) {
-    sym_shape.emplace_back(ir::Dim(input_id + "_" + sym.GetSymName(), sym));
+  if (group->shape_analysis != nullptr) {
+    auto sym_vec =
+        group->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(value);
+    std::vector<ir::Dim> sym_shape;
+    for (auto& sym : sym_vec) {
+      sym_shape.emplace_back(ir::Dim(input_id + "_" + sym.GetSymName(), sym));
+    }
+    return lang::CreatePlaceHolder(
+        sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  } else {
+    return lang::CreatePlaceHolder(
+        in_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
   }
-  return lang::CreatePlaceHolder(
-      sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
 }
 
 std::vector<ir::Tensor> CollectInputTensor(
