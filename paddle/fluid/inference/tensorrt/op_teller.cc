@@ -703,13 +703,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!has_attrs) return false;
     }
 
-    if (op_type == "argsort") {
-      if (!with_dynamic_shape) {
-        LOG(INFO) << "argsort does not support static shape yet";
-        return false;
-      }
-    }
-
     if (op_type == "arg_max" || op_type == "arg_min") {
       if (!desc.HasAttr("axis", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('axis') is "
@@ -1815,6 +1808,14 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (x_dtype != framework::proto::VarType::BOOL ||
           y_dtype != framework::proto::VarType::BOOL) {
         VLOG(3) << "the bitwise_or only support input of BOOL.";
+        return false;
+      }
+    }
+    if (op_type == "size") {
+      std::cout << "size 代码进去了" << std::endl;
+      if (!with_dynamic_shape) {
+        std::cout << "size不支持静态shape" << std::endl;
+        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
         return false;
       }
     }
@@ -2981,7 +2982,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "dequantize_linear",
       "share_data",
       "bitwise_and",
-      "bitwise_or"};
+      "bitwise_or"
+      "size"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3152,7 +3154,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "dequantize_linear",
       "share_data",
       "bitwise_and",
-      "bitwise_or"};
+      "bitwise_or"
+      "size"};
 };
 
 struct GenericPluginTeller : public Teller {
