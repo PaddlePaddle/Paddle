@@ -996,11 +996,8 @@ TEST(pattern_rewrite, Patterns) {
   paddle::framework::Scope scope;
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-<<<<<<< Updated upstream
   pm.AddPass(pir::CreateConv2dFusePass());
-=======
   pm.AddPass(pir::CreateFcFusePass());
->>>>>>> Stashed changes
   pm.AddPass(pir::CreateConstantFoldingPass(&scope));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnablePassTiming();

@@ -40,7 +40,7 @@ class FcFusePattern : public pir::drr::DrrPatternBase<FcFusePattern> {
       if (match_ctx.Tensor("y").Shape().size() == 1) {
         match = match_ctx.Tensor("y").Shape().at(0) ==
                 match_ctx.Tensor("w").Shape().at(1);
-      } else if (match_ctx.Tensor("y").Shape().size() == 1) {
+      } else if (match_ctx.Tensor("y").Shape().size() == 2) {
         match = match_ctx.Tensor("y").Shape().at(0) == 1 &&
                 match_ctx.Tensor("y").Shape().at(1) ==
                     match_ctx.Tensor("w").Shape().at(1);
