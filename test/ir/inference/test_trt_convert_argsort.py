@@ -101,9 +101,7 @@ class TrtConvertArgsort(TrtLayerAutoScanTest):
                 self.dynamic_shape.max_input_shape = {
                     "input_data": [9, 24],
                 }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [6, 24],
-                }
+                self.dynamic_shape.opt_input_shape = {"input_data": [6, 24]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -122,7 +120,7 @@ class TrtConvertArgsort(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        yield self.create_inference_cogitnfig(), (1, 3), 1e-5
+        yield self.create_inference_config(), (1, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
         yield self.create_inference_config(), (1, 3), 1e-3
