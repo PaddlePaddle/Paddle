@@ -76,6 +76,34 @@ class TestTakeAlongAxisFP16Op(TestTakeAlongAxisOp):
         self.axis_type = "int64"
 
 
+class TestTakeAlongAxisOp(OpTest):
+    def setUp(self):
+        self.init_data()
+        self.op_type = "take_along_axis"
+        self.python_api = paddle.tensor.take_along_axis
+        self.check_cinn = True
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        self.target = np.zeros((2, 3, 4)).astype(self.x_type)
+        for i in range(2):
+            for j in range(3):
+                for k in range(4):
+                    self.target[i, j, k] = self.xnp[i, j, self.index[i, j, k]]
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index,
+        }
+        self.attrs = {'Axis': self.axis, 'broadcast': False}
+        self.outputs = {'Result': self.target}
+
+    def init_data(self):
+        self.x_type = "float64"
+        self.x_shape = (10, 10, 10)
+        self.index_type = "int64"
+        self.index = np.random.randint(0, 10, (2, 3, 4)).astype(self.index_type)
+        self.axis = 2
+        self.axis_type = "int64"
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),

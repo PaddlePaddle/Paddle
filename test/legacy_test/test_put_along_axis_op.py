@@ -80,6 +80,46 @@ class TestPutAlongAxisFP16Op(TestPutAlongAxisOp):
         self.axis_type = "int64"
 
 
+class TestPutAlongAxisOpCase2(TestPutAlongAxisOp):
+    def setUp(self):
+        self.init_data()
+        self.reduce_op = "assign"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    self.target[i, self.index[i, j, k], k] = self.value[i, j, k]
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index,
+            'Value': self.value,
+        }
+        self.attrs = {
+            'Axis': self.axis,
+            'Reduce': self.reduce_op,
+            'include_self': True,
+            'broadcast': False,
+        }
+        self.outputs = {'Result': self.target}
+
+    def init_data(self):
+        self.dtype = 'float32'
+        self.x_type = "float32"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float32"
+        self.value = (
+            np.arange(1, 126).reshape((5, 5, 5)).astype(self.value_type)
+        )
+        self.index_type = "int64"
+        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),

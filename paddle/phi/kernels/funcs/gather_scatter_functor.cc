@@ -244,6 +244,7 @@ void cpu_scatter_value_grad_kernel(phi::DenseTensor self,
   auto grad_dims = grad.dims();
 
   int64_t self_size = self.numel();
+  int64_t grad_size = grad.numel();
   bool* is_self_grad_used = new bool[self_size];
 
   for (int i = 0; i < self_size; i++) {
@@ -266,8 +267,10 @@ void cpu_scatter_value_grad_kernel(phi::DenseTensor self,
     outer_dim_size_self *= self_dims[i];
     outer_dim_size_grad *= grad_dims[i];
   }
-
   int64_t index_idx = index.numel() - 1;
+  for (int i = 0; i < grad_size; i++) {
+    grad_data[i] = static_cast<tensor_t>(0);
+  }
   for (int64_t i = inner_dim_size - 1; i >= 0; i--) {
     for (int64_t j = select_dim_size - 1; j >= 0; j--) {
       for (int64_t k = outer_dim_size - 1; k >= 0; k--) {
@@ -281,8 +284,6 @@ void cpu_scatter_value_grad_kernel(phi::DenseTensor self,
         if (!is_self_grad_used[replace_index_self]) {
           grad_data[replace_index_grad] = self_data[replace_index_self];
           is_self_grad_used[replace_index_self] = true;
-        } else {
-          grad_data[replace_index_grad] = 0;
         }
         index_idx--;
       }

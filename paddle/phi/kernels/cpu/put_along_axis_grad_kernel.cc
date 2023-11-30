@@ -62,7 +62,7 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
     if (index_type == DataType::INT32) {
       phi::funcs::cpu_scatter_value_grad_kernel<T, int32_t>(
           out_grad, axis, index, *value_grad, dev_ctx);
-    } else if (index_type == DataType::INT64) {
+    } else {
       phi::funcs::cpu_scatter_value_grad_kernel<T, int64_t>(
           out_grad, axis, index, *value_grad, dev_ctx);
     }
