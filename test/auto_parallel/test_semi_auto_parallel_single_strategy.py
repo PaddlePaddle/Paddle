@@ -45,6 +45,7 @@ class TestSemiAutoParallelInSingleStrategy(test_base.CommunicationTestDistBase):
             "use_master_grad": ["0", "1"],
             "dtype": ["bfloat16", "float16"],
             "seed": ["2023"],
+            "use_adam": ["0", "1"],
         }
         envs_list = test_base.gen_product_envs_list({}, changeable_envs)
         for envs in envs_list:
