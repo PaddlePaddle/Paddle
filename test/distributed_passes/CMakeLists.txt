@@ -20,11 +20,11 @@ if((NOT WITH_GPU) AND (NOT WITH_XPU))
   list(REMOVE_ITEM TEST_OPS "test_auto_parallel_gradient_merge_pass")
   list(REMOVE_ITEM TEST_OPS
        "test_auto_parallel_data_parallel_optimization_pass")
-  list(REMOVE_ITEM TEST_OPS "test_auto_parallel_fused_linear_promotion_pass")
 endif()
 
 if(NOT ((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6)))
   list(REMOVE_ITEM TEST_OPS test_dist_fuse_gemm_epilogue_pass)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_fused_linear_promotion_pass)
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
