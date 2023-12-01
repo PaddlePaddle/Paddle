@@ -59,22 +59,24 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
     for (size_t i = 0; i < op.num_operands(); ++i) {
       argument.AddOutput(op.operand(i).type());
       bool input_stop_gradient = true;
-      auto input = op.operand_source(i).dyn_cast<pir::OpResult>();
-      auto *defining_op = input.owner();
-      if (defining_op->HasAttribute(kStopGradientAttrName)) {
+      auto *defining_op = op.operand_source(i).defining_op();
+      if (defining_op && defining_op->HasAttribute(kStopGradientAttrName)) {
         auto attrs = defining_op->attribute(kStopGradientAttrName)
                          .dyn_cast<pir::ArrayAttribute>()
                          .AsVector();
         input_stop_gradient =
-            attrs[input.index()].dyn_cast<pir::BoolAttribute>().data();
+            attrs[op.operand_source(i).dyn_cast<pir::OpResult>().index()]
+                .dyn_cast<pir::BoolAttribute>()
+                .data();
+      } else {
+        input_stop_gradient = false;
       }
-      outs_stop_gradient.push_back(pir::BoolAttribute::get(
-          pir::IrContext::Instance(), input_stop_gradient));
+      outs_stop_gradient.push_back(builder.bool_attr(input_stop_gradient));
     }
 
-    argument.AddAttribute(kStopGradientAttrName,
-                          pir::ArrayAttribute::get(pir::IrContext::Instance(),
-                                                   outs_stop_gradient));
+    argument.AddAttribute(
+        kStopGradientAttrName,
+        pir::ArrayAttribute::get(builder.ir_context(), outs_stop_gradient));
   }
   if (false_block && !false_block->empty() &&
       false_block->back().isa<pir::YieldOp>()) {
@@ -106,13 +108,12 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddRegion().push_back(false_block.release());
   argument.AddInput(cond);
 
-  auto cond_ = cond.dyn_cast<pir::OpResult>();
-  auto cond_op = cond_.owner();
-  if (cond_op->HasAttribute(kStopGradientAttrName)) {
+  auto cond_op = cond.defining_op();
+  if (cond_op && cond_op->HasAttribute(kStopGradientAttrName)) {
     auto attrs = cond_op->attribute(kStopGradientAttrName)
                      .dyn_cast<pir::ArrayAttribute>()
                      .AsVector();
-    attrs[cond_.index()] =
+    attrs[cond.dyn_cast<pir::OpResult>().index()] =
         pir::BoolAttribute::get(pir::IrContext::Instance(), true);
 
     cond_op->set_attribute(
