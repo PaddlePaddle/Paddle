@@ -14,6 +14,7 @@
 
 ######
 import os
+import warnings
 from distutils.util import strtobool
 from functools import reduce
 
@@ -115,6 +116,23 @@ class DygraphShardingOptimizer:
             self._set_inner_opt_attr('_parameter_list', local_params)
             self._set_inner_opt_attr('_param_groups', local_params)
         else:
+            if self.fuse_optimizer:
+                lr = None
+                for param in self._origin_parameter_list:
+                    if hasattr(param, "optimize_attr"):
+                        param_lr = param.optimize_attr['learning_rate']
+                        if lr is None:
+                            lr = param_lr
+                        elif lr != param_lr:
+                            warnings.warn(
+                                "Parameters have different learning rate, "
+                                "won't do fusion on the optimizer."
+                            )
+                            self.fuse_optimizer = False
+                            break
+            self.origin_decay_param_fun = getattr(
+                self._inner_opt, '_apply_decay_param_fun', None
+            )
             self._tensor_fusion()
 
             decay_params = [
@@ -138,10 +156,7 @@ class DygraphShardingOptimizer:
                 # Without comm overlap, all grads will be communicated after check_finite,
                 # which means each sharding rank should do check_finite to all grads.
                 self._local_parameter_list = local_fused_params
-            origin_decay_param_fun = getattr(
-                self._inner_opt, '_apply_decay_param_fun', None
-            )
-            if origin_decay_param_fun is not None:
+            if self.origin_decay_param_fun is not None:
                 self._set_inner_opt_attr(
                     '_apply_decay_param_fun', apply_decay_param_fun
                 )
@@ -191,6 +206,7 @@ class DygraphShardingOptimizer:
                 dst=dst,
                 acc_step=self.accumulate_steps,
                 scale_after_comm=False,
+                apply_decay_param_fun=self.origin_decay_param_fun,
             )
             if self.comm_overlap:
                 self._comm_buffers += all_buffer
