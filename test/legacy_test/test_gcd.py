@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -30,10 +31,11 @@ class TestGcdAPI(unittest.TestCase):
         self.x_shape = [1]
         self.y_shape = [1]
 
+    @test_with_pir_api
     def test_static_graph(self):
-        startup_program = base.Program()
-        train_program = base.Program()
-        with base.program_guard(startup_program, train_program):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = paddle.static.data(
                 name='input1', dtype='int32', shape=self.x_shape
             )
@@ -47,9 +49,9 @@ class TestGcdAPI(unittest.TestCase):
                 if core.is_compiled_with_cuda()
                 else base.CPUPlace()
             )
-            exe = base.Executor(place)
+            exe = paddle.static.Executor(place)
             res = exe.run(
-                base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={'input1': self.x_np, 'input2': self.y_np},
                 fetch_list=[out],
             )
