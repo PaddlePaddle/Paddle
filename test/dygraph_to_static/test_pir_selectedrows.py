@@ -15,7 +15,9 @@
 import random
 import unittest
 
-from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt_and_pir
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+)
 
 import paddle
 from paddle.jit.api import to_static
@@ -90,18 +92,13 @@ def train_static():
 
 
 class TestSimnet(Dy2StTestBase):
-    def test(self):
+    def test_dygraph_static_same_loss(self):
+        dygraph_loss = train_dygraph()
         static_loss = train_static()
 
-        @test_legacy_and_pt_and_pir
-        def test_dygraph_static_same_loss(self):
-            dygraph_loss = train_dygraph()
-
-            self.assertEqual(len(dygraph_loss), len(static_loss))
-            for i in range(len(dygraph_loss)):
-                self.assertAlmostEqual(dygraph_loss[i], static_loss[i].numpy())
-
-        test_dygraph_static_same_loss(self)
+        self.assertEqual(len(dygraph_loss), len(static_loss))
+        for i in range(len(dygraph_loss)):
+            self.assertAlmostEqual(dygraph_loss[i], static_loss[i].numpy())
 
 
 if __name__ == '__main__':
