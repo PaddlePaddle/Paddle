@@ -361,6 +361,7 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
     auto dims_mapping = x_dist_attr.dims_mapping();
     dims_mapping.erase(dims_mapping.begin(), dims_mapping.begin() + diff);
     x_dist_attr.set_dims_mapping(dims_mapping);
+    x_dist_attr.set_default_dynamic_dims(dims_mapping);
     x_grad_dist_attr.set_dims_mapping(dims_mapping);
     x_grad_dist_attr.set_default_dynamic_dims(dims_mapping);
     for (int64_t i = 0; i < diff; ++i) {
@@ -376,6 +377,7 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
     auto dims_mapping = y_dist_attr.dims_mapping();
     dims_mapping.erase(dims_mapping.begin(), dims_mapping.begin() + diff);
     y_dist_attr.set_dims_mapping(dims_mapping);
+    y_dist_attr.set_default_dynamic_dims(dims_mapping);
     y_grad_dist_attr.set_dims_mapping(dims_mapping);
     y_grad_dist_attr.set_default_dynamic_dims(dims_mapping);
     for (int64_t i = 0; i < diff; ++i) {
