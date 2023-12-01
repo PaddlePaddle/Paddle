@@ -788,11 +788,7 @@ class Optimizer:
                 if param_lr == 1.0:
                     return self._global_learning_rate()
                 else:
-                    with paddle.static.default_main_program()._lr_schedule_guard(
-                        is_with_opt=True
-                    ), framework.name_scope(
-                        'scale_with_param_lr'
-                    ):
+                    with framework.name_scope('scale_with_param_lr'):
                         return self._global_learning_rate() * param_lr
         else:
             return self._global_learning_rate()
