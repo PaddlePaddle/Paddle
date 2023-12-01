@@ -236,13 +236,9 @@ class TestLlamaAttentionForSemiAutoParallel:
             self.check_tensor_eq(param.grad, param_base.grad)
 
     def run_test_case(self):
-        if self._backend == "gpu":
-            cuda_version_main = int(paddle.version.cuda().split(".")[0])
-            device_prop_main = paddle.device.cuda.get_device_capability()[0]
-            if cuda_version_main >= 11 and device_prop_main >= 8:
-                self.test_dp()
-                self.test_mp()
-                # self.test_dp_mp()
+        self.test_dp()
+        self.test_mp()
+        # self.test_dp_mp()
 
 
 if __name__ == '__main__':
