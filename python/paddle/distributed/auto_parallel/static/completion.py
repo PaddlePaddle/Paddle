@@ -1572,7 +1572,7 @@ class Completer:
                     loss_grad_var.name, ref_dims_mapping
                 )
                 self._dist_context.set_op_dist_attr_for_program(
-                    grad_op, loss_op_dist_attr
+                    grad_op, grad_op_dist_attr
                 )
                 continue
 
