@@ -158,7 +158,12 @@ class TestPrim(unittest.TestCase):
         os.environ['FLAGS_enable_pir_in_executor'] = str(flag)  # for python
 
     def enable_prim_in_dist(self, flag):
-        os.environ['FLAGS_enable_prim_in_distribute'] = str(flag)
+        paddle.set_flags(
+            {'FLAGS_enable_prim_after_distribute': flag}
+        )  # for c++
+        os.environ['FLAGS_enable_prim_after_distribute'] = str(
+            flag
+        )  # for python
 
     def test_dp(self):
         self.enable_pir(True)
@@ -211,6 +216,32 @@ class TestPrim(unittest.TestCase):
         if paddle.distributed.get_rank() == 1:
             self.check_results_prim(
                 out_mp_pir_prim["loss"], out_mp_pir.history["loss"][0]
+            )
+        self.enable_prim_in_dist(False)
+
+    def test_pp(self):
+        self.enable_pir(True)
+        engine_pp_pir = self.get_engine("pp", name="pp_pir")
+        out_pp_pir = engine_pp_pir.fit(
+            self.dataset, 3, batch_size=self.batch_size, log_freq=1
+        )
+
+        # test prim enabled distributed engine
+        self.enable_prim_in_dist(True)
+        engine_pp_pir_prim = self.get_engine("pp", name="pp_pir_prim")
+        dataloader_pp_pir_prim = engine_pp_pir_prim.dataloader(
+            self.dataset,
+            batch_size=self.batch_size,
+            sample_split=3,
+            mode="train",
+        )
+        engine_pp_pir_prim.prepare(mode="train")
+        for data in dataloader_pp_pir_prim:
+            out_pp_pir_prim = engine_pp_pir_prim.run(data, mode="train")
+
+        if paddle.distributed.get_rank() == 1:
+            self.check_results_prim(
+                out_pp_pir_prim["loss"], out_pp_pir.history["loss"][0]
             )
         self.enable_prim_in_dist(False)
 
