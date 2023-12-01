@@ -81,14 +81,14 @@ def get_local_load_files(path, state_dict, process_group):
     # step 3, update the rank_to_read_files
     def get_least_read_files_ranks(rank_to_read_files):
         nums = [(rank, len(files)) for rank, files in rank_to_read_files.items()]
-        sorted(nums, key=lambda x: x[1])
-        ranks = [rank for rank, num in nums if num == nums[0][0]]
+        nums = sorted(nums, key=lambda x: x[1])
+        ranks = [rank for rank, num in nums if num == nums[0][1]]
         return ranks
     def get_read_rank_file(rank_to_files, ranks):
         if len(rank_to_files) == 0:
             return (None, None)
         nums = [(rank, len(files)) for rank, files in rank_to_files.items() if rank in ranks]
-        sorted(nums, key=lambda x: x[1])
+        nums = sorted(nums, key=lambda x: x[1])
         rank = nums[0][0]
         return (rank, rank_to_files[rank][0])
     def update(rank_to_read_files, rank_to_files, rank_file):
