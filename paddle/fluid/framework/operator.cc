@@ -1532,7 +1532,9 @@ bool OperatorWithKernel::SupportsKernelType(
 #ifdef PADDLE_WITH_DNNL
   if ((!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
        this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) ||
-      this->ContainsBF16TensorInputs(exe_ctx)) {
+      (platform::is_cpu_place(exe_ctx.GetPlace()) &&
+       this->SupportsMKLDNN(kernel_type_->data_type_) &&
+       this->ContainsBF16TensorInputs(exe_ctx))) {
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
     tmp_kernel_type.data_layout_ = framework::DataLayout::ONEDNN;
@@ -1824,7 +1826,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if ((!this->DnnFallback() &&
            !paddle::platform::in_mkldnn_white_list(type_) &&
            this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) ||
-          this->ContainsBF16TensorInputs(exe_ctx)) {
+          (platform::is_cpu_place(exe_ctx.GetPlace()) &&
+           this->SupportsMKLDNN(kernel_type_->data_type_) &&
+           this->ContainsBF16TensorInputs(exe_ctx))) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
       }
@@ -2151,7 +2155,9 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 #ifdef PADDLE_WITH_DNNL
   if ((!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
        this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) ||
-      this->ContainsBF16TensorInputs(ctx)) {
+      (platform::is_cpu_place(ctx.GetPlace()) &&
+       this->SupportsMKLDNN(kernel_type_->data_type_) &&
+       this->ContainsBF16TensorInputs(ctx))) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
   }
