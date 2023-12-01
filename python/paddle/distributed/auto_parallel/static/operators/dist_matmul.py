@@ -14,14 +14,11 @@
 
 import copy
 
-from paddle.common_ops_import import check_variable_and_dtype
 from paddle.distributed.auto_parallel.static.cost.comm_op_cost import (
     AllreduceSumOpCost,
     IdentityOpCost,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.framework import core
-from paddle.utils import unique_name
 
 from ..completion import get_phi_spmd_rule
 from ..cost import (
@@ -37,7 +34,6 @@ from ..cost import (
     build_comp_desc_from_dist_op,
     build_dp_costs,
 )
-from ..dist_attribute import OperatorDistAttr
 from ..process_group import new_process_group
 from ..utils import (
     _get_comm_group,
@@ -390,21 +386,10 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     col_parallel = False
     if is_parameter_related(Y_var.name, main_block) and Y_var_partitioned:
         if Y_var_dim_mapping[0] >= 0:
-            # row parallel: c_identity + matmul
+            # row parallel: matmul_grad
             assert Y_var_dim_mapping[1] < 0
-            parallel_axis = Y_var_dim_mapping[0]
-
-            check_variable_and_dtype(
-                Out_grad,
-                'tensor',
-                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
-                '_c_identity',
-            )
-
-            new_kwargs = copy.deepcopy(kwargs)
-            new_kwargs['Out@GRAD'] = [Out_grad.name]
             matmul_op_desc = copy_op_with_new_input_output(
-                ctx, main_block, backward_op, **new_kwargs
+                ctx, main_block, backward_op, **kwargs
             )
         else:
             # col parallel: matmul + allreduce
@@ -418,24 +403,8 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             if has_x_grad:
                 assert len(kwargs['X@GRAD']) == 1
                 X_grad = main_block._var_recursive(kwargs['X@GRAD'][0])
-                intermediate_var_0 = main_block.create_var(
-                    name=unique_name.generate_with_ignorable_key(
-                        ".".join(["c_identity", 'tmp'])
-                    )
-                    + "@GRAD",
-                    dtype=X_grad.dtype,
-                    shape=X_grad.shape,
-                    type=core.VarDesc.VarType.LOD_TENSOR,
-                    persistable=False,
-                    stop_gradient=X_grad.stop_gradient,
-                )
-
                 X_grad_dist_attr = dist_attr.get_output_dist_attr(X_grad.name)
                 assert X_grad_dist_attr is not None
-                ctx.set_tensor_dist_attr_for_program(
-                    intermediate_var_0, X_grad_dist_attr
-                )
-                new_kwargs['X@GRAD'] = [intermediate_var_0.name]
 
             matmul_op_desc = copy_op_with_new_input_output(
                 ctx, main_block, backward_op, **new_kwargs
@@ -471,7 +440,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
         group = new_process_group(group_ranks)
         c_allreduce_sum_op = main_block.append_op(
             type='c_allreduce_sum',
-            inputs={'X': [intermediate_var_0.name]},
+            inputs={'X': kwargs['X@GRAD']},
             outputs={'Out': kwargs['X@GRAD']},
             attrs={
                 'ring_id': group.id,
@@ -876,41 +845,6 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         matmul_op = copy_op_without_infer_shape(src_op, main_block, ctx, kwargs)
         matmul_op._set_attr('alpha', 1)
 
-        # matmul
-        matmul_op_dist_attr = OperatorDistAttr()
-        matmul_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        matmul_op_dist_attr.impl_type = op_dist_attr.impl_type
-        matmul_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        # input
-        for input_varname in matmul_op.desc.input_arg_names():
-            if input_varname in src_op.desc.input_arg_names():
-                input_dist_attr = op_dist_attr.get_input_dist_attr(
-                    input_varname
-                )
-                assert (
-                    input_dist_attr is not None
-                ), f"dist_attr is {op_dist_attr}"
-                matmul_op_dist_attr.set_input_dist_attr(
-                    input_varname, input_dist_attr
-                )
-            else:
-                input_var = main_block._var_recursive(input_varname)
-                tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(
-                    input_var
-                )
-                matmul_op_dist_attr.set_input_dist_attr(
-                    input_varname, tensor_dist_attr
-                )
-        # output
-        output_varname = matmul_op.desc.output_arg_names()[0]
-        output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-        assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-        matmul_op_dist_attr.set_output_dist_attr(
-            output_varname, output_dist_attr
-        )
-        # set op dist attr
-        ctx.set_op_dist_attr_for_program(matmul_op, matmul_op_dist_attr)
-
         # init param sync
         if Weight_var.is_parameter and not op_dist_attr.is_recompute:
             _init_param_sync(
@@ -1176,47 +1110,11 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         c_allreduce_sum_op._set_attr(
             'op_namescope', '/' + ParallelMode.TensorParallel
         )
-
-        # set dist op's dist_attr with serial op's dist_attr
-        # matmul
-        matmul_op_dist_attr = OperatorDistAttr()
-        matmul_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        matmul_op_dist_attr.impl_type = op_dist_attr.impl_type
-        matmul_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in matmul_op.desc.input_arg_names():
-            input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            assert input_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            matmul_op_dist_attr.set_input_dist_attr(
-                input_varname, input_dist_attr
-            )
-        output_varname = matmul_op.desc.output_arg_names()[0]
-        output_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
-        assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-        matmul_op_dist_attr.set_output_dist_attr(
-            output_varname, output_dist_attr
-        )
-        ctx.set_op_dist_attr_for_program(matmul_op, matmul_op_dist_attr)
-
-        # allreduce
-        allreduce_op_dist_attr = OperatorDistAttr()
-        allreduce_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
-        allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in c_allreduce_sum_op.desc.input_arg_names():
-            input_var = main_block._var_recursive(input_varname)
-            tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
-            assert tensor_dist_attr is not None
-            allreduce_op_dist_attr.set_input_dist_attr(
-                input_varname, tensor_dist_attr
-            )
-        for output_varname in c_allreduce_sum_op.desc.output_arg_names():
-            output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            allreduce_op_dist_attr.set_output_dist_attr(
-                output_varname, output_dist_attr
-            )
-        ctx.set_op_dist_attr_for_program(
-            c_allreduce_sum_op, allreduce_op_dist_attr
+        set_comm_op_dist_attr_for_program(
+            c_allreduce_sum_op,
+            op_dist_attr.process_mesh,
+            out_var_dist_attr,
+            ctx,
         )
 
         # init param sync
@@ -1636,38 +1534,6 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             src_op, main_block, ctx, kwargs
         )
 
-        # set distattr
-        matmulv2_op_dist_attr = OperatorDistAttr()
-        matmulv2_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        matmulv2_op_dist_attr.impl_type = op_dist_attr.impl_type
-        matmulv2_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in matmul_v2_op.desc.input_arg_names():
-            if input_varname in src_op.desc.input_arg_names():
-                input_dist_attr = op_dist_attr.get_input_dist_attr(
-                    input_varname
-                )
-                assert (
-                    input_dist_attr is not None
-                ), f"dist_attr is {op_dist_attr}"
-                matmulv2_op_dist_attr.set_input_dist_attr(
-                    input_varname, input_dist_attr
-                )
-            else:
-                input_var = main_block._var_recursive(input_varname)
-                tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(
-                    input_var
-                )
-                matmulv2_op_dist_attr.set_input_dist_attr(
-                    input_varname, tensor_dist_attr
-                )
-        for output_varname in matmul_v2_op.desc.output_arg_names():
-            output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            matmulv2_op_dist_attr.set_output_dist_attr(
-                output_varname, output_dist_attr
-            )
-        ctx.set_op_dist_attr_for_program(matmul_v2_op, matmulv2_op_dist_attr)
-
         # init param sync
         if Weight_var.is_parameter and not op_dist_attr.is_recompute:
             _init_param_sync(
@@ -1935,46 +1801,11 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         c_allreduce_sum_op._set_attr(
             'op_namescope', '/' + ParallelMode.TensorParallel
         )
-
-        # set dist op's dist_attr with serial op's dist_attr
-        matmulv2_op_dist_attr = OperatorDistAttr()
-        matmulv2_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        matmulv2_op_dist_attr.impl_type = op_dist_attr.impl_type
-        matmulv2_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in matmul_v2_op.desc.input_arg_names():
-            input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            assert input_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            matmulv2_op_dist_attr.set_input_dist_attr(
-                input_varname, input_dist_attr
-            )
-        output_varname = matmul_v2_op.desc.output_arg_names()[0]
-        output_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
-        assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-        matmulv2_op_dist_attr.set_output_dist_attr(
-            output_varname, output_dist_attr
-        )
-        ctx.set_op_dist_attr_for_program(matmul_v2_op, matmulv2_op_dist_attr)
-
-        # allreduce
-        allreduce_op_dist_attr = OperatorDistAttr()
-        allreduce_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
-        allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in c_allreduce_sum_op.desc.input_arg_names():
-            input_var = main_block._var_recursive(input_varname)
-            tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
-            assert tensor_dist_attr is not None
-            allreduce_op_dist_attr.set_input_dist_attr(
-                input_varname, tensor_dist_attr
-            )
-        for output_varname in c_allreduce_sum_op.desc.output_arg_names():
-            output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            allreduce_op_dist_attr.set_output_dist_attr(
-                output_varname, output_dist_attr
-            )
-        ctx.set_op_dist_attr_for_program(
-            c_allreduce_sum_op, allreduce_op_dist_attr
+        set_comm_op_dist_attr_for_program(
+            c_allreduce_sum_op,
+            op_dist_attr.process_mesh,
+            out_var_dist_attr,
+            ctx,
         )
 
         # init param sync
@@ -2386,38 +2217,6 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         # copy op
         mul_op = copy_op_without_infer_shape(src_op, main_block, ctx, kwargs)
 
-        # set distattr
-        matmulv2_op_dist_attr = OperatorDistAttr()
-        matmulv2_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        matmulv2_op_dist_attr.impl_type = op_dist_attr.impl_type
-        matmulv2_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in mul_op.desc.input_arg_names():
-            if input_varname in src_op.desc.input_arg_names():
-                input_dist_attr = op_dist_attr.get_input_dist_attr(
-                    input_varname
-                )
-                assert (
-                    input_dist_attr is not None
-                ), f"dist_attr is {op_dist_attr}"
-                matmulv2_op_dist_attr.set_input_dist_attr(
-                    input_varname, input_dist_attr
-                )
-            else:
-                input_var = main_block._var_recursive(input_varname)
-                tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(
-                    input_var
-                )
-                matmulv2_op_dist_attr.set_input_dist_attr(
-                    input_varname, tensor_dist_attr
-                )
-        for output_varname in mul_op.desc.output_arg_names():
-            output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            matmulv2_op_dist_attr.set_output_dist_attr(
-                output_varname, output_dist_attr
-            )
-        ctx.set_op_dist_attr_for_program(mul_op, matmulv2_op_dist_attr)
-
         # init param sync
         if Weight_var.is_parameter and not op_dist_attr.is_recompute:
             _init_param_sync(
@@ -2671,47 +2470,11 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         c_allreduce_sum_op._set_attr(
             'op_namescope', '/' + ParallelMode.TensorParallel
         )
-
-        # set dist op's dist_attr with serial op's dist_attr
-        # matmulv2
-        matmulv2_op_dist_attr = OperatorDistAttr()
-        matmulv2_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        matmulv2_op_dist_attr.impl_type = op_dist_attr.impl_type
-        matmulv2_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in mul_op.desc.input_arg_names():
-            input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            assert input_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            matmulv2_op_dist_attr.set_input_dist_attr(
-                input_varname, input_dist_attr
-            )
-        output_varname = mul_op.desc.output_arg_names()[0]
-        output_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
-        assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-        matmulv2_op_dist_attr.set_output_dist_attr(
-            output_varname, output_dist_attr
-        )
-        ctx.set_op_dist_attr_for_program(mul_op, matmulv2_op_dist_attr)
-
-        # allreduce
-        allreduce_op_dist_attr = OperatorDistAttr()
-        allreduce_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
-        allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in c_allreduce_sum_op.desc.input_arg_names():
-            input_var = main_block._var_recursive(input_varname)
-            tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
-            assert tensor_dist_attr is not None
-            allreduce_op_dist_attr.set_input_dist_attr(
-                input_varname, tensor_dist_attr
-            )
-        for output_varname in c_allreduce_sum_op.desc.output_arg_names():
-            output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            allreduce_op_dist_attr.set_output_dist_attr(
-                output_varname, output_dist_attr
-            )
-        ctx.set_op_dist_attr_for_program(
-            c_allreduce_sum_op, allreduce_op_dist_attr
+        set_comm_op_dist_attr_for_program(
+            c_allreduce_sum_op,
+            op_dist_attr.process_mesh,
+            out_var_dist_attr,
+            ctx,
         )
 
         # init param sync

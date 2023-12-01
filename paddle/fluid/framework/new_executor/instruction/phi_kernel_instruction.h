@@ -30,7 +30,7 @@ class PhiKernelInstruction : public InstructionBase {
   PhiKernelInstruction(size_t id,
                        const platform::Place& place,
                        ::pir::Operation* op,
-                       const ValueExecutionInfo& value_exec_info);
+                       const ValueExecutionInfo* value_exec_info);
 
   ~PhiKernelInstruction();
 
@@ -66,7 +66,7 @@ class PhiKernelInstruction : public InstructionBase {
 
   ::pir::Operation* op_{nullptr};  // not owned
 
-  const ValueExecutionInfo& value_exec_info_;  // not owned
+  const ValueExecutionInfo* value_exec_info_;  // not owned
 };
 
 }  // namespace framework

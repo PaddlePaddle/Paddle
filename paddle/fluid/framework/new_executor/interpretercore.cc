@@ -119,6 +119,10 @@ const platform::Place& InterpreterCore::GetPlace() const {
   return impl_->GetPlace();
 }
 
+void InterpreterCore::SetInputHooks(const std::vector<HookFunc>& hookfuncs) {
+  impl_->SetInputHooks(hookfuncs);
+}
+
 void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }

@@ -420,6 +420,7 @@ from .tensor.math import (  # noqa: F401
     polygamma_,
     hypot,
     hypot_,
+    combinations,
 )
 
 from .tensor.random import (
@@ -933,4 +934,5 @@ __all__ = [
     'index_fill',
     "index_fill_",
     'diagonal_scatter',
+    'combinations',
 ]
