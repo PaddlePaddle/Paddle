@@ -577,7 +577,13 @@ struct WeightOnlyScaleLoader {
                                                    int stride)
       : _scales(scales), _zeros(zeros), _stride(stride) {
     _scales += initial_offset;
+#ifndef WIN32
+    //linux
     if constexpr (Zero) {
+#else
+    //windows
+    if (Zero) {
+#endif
       _zeros += initial_offset;
     }
     // Calculate the k dimension index of the element processed by the current
@@ -592,11 +598,19 @@ struct WeightOnlyScaleLoader {
                                        ElemType& zero,   // NOLINT
                                        int nid) {
     int offset = nid * Details::kInterleave;
+#ifndef WIN32
     if constexpr (kIsFineGrained) {
+#else
+    if (kIsFineGrained) {
+#endif
       offset += _offset / kGroupSize * _stride;
     }
     scale = _scales[offset];
+#ifndef WIN32
     if constexpr (Zero) {
+#else
+    if (Zero) {
+#endif
       zero = _zeros[offset];
     } else {
       zero = static_cast<ElemType>(0.f);
@@ -702,7 +716,11 @@ __global__ void weight_only_batched_gemv_multi_warp(const int8_t* qweight,
       *(float4*)(in_v + 8) =                                   // NOLINT
           *(float4*)(in + b * k + scale_loader.offset() + 8);  // NOLINT
       // Perform vector inner product and accumulate
+#ifndef WIN32
       if constexpr (NPerBlock == 1) {
+#else
+      if (NPerBlock == 1) {
+#endif
         HALF_2_TYPE v = ConvertDstFunc<HALF_2_TYPE>::apply(0.f);
 #pragma unroll
         for (int y = 0; y < Details::kElemsPerThread; y += 2) {
@@ -750,7 +768,11 @@ __global__ void weight_only_batched_gemv_multi_warp(const int8_t* qweight,
       v += sm[j][i];
     }
     float bias_v = 0.f;
+#ifndef WIN32
     if constexpr (Bias) {
+#else
+    if (Bias) {
+#endif
       bias_v = static_cast<float>(bias[n_start_id + nid]);
     }
     int b = i / NPerBlock / Interleave;
