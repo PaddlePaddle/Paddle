@@ -15,7 +15,7 @@
 import random
 import unittest
 
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt_and_pir
 
 import paddle
 from paddle.jit.api import to_static
@@ -55,7 +55,7 @@ class IRSelectedRowsTestNet(paddle.nn.Layer):
 
 def train(net, adam, x):
     loss_data = []
-    for i in range(10):
+    for _ in range(10):
         out = net(x)
         loss = paddle.mean(out)
         loss.backward()
@@ -90,13 +90,18 @@ def train_static():
 
 
 class TestSimnet(Dy2StTestBase):
-    def test_dygraph_static_same_loss(self):
-        dygraph_loss = train_dygraph()
+    def test(self):
         static_loss = train_static()
 
-        self.assertEqual(len(dygraph_loss), len(static_loss))
-        for i in range(len(dygraph_loss)):
-            self.assertAlmostEqual(dygraph_loss[i], static_loss[i].numpy())
+        @test_legacy_and_pt_and_pir
+        def test_dygraph_static_same_loss(self):
+            dygraph_loss = train_dygraph()
+
+            self.assertEqual(len(dygraph_loss), len(static_loss))
+            for i in range(len(dygraph_loss)):
+                self.assertAlmostEqual(dygraph_loss[i], static_loss[i].numpy())
+
+        test_dygraph_static_same_loss(self)
 
 
 if __name__ == '__main__':
