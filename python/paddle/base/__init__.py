@@ -35,13 +35,12 @@ if os.path.exists(legacy_core):
 
 from paddle.base.layers.math_op_patch import monkey_patch_variable
 
-# import all class inside framework into base module
-# import all class inside executor into base module
 from . import (  # noqa: F401
     backward,
     compiler,
     core,
     data_feed_desc,
+    dataset,
     dygraph,
     executor,
     framework,
@@ -64,7 +63,7 @@ from .compiler import (  # noqa: F401
     IpuCompiledProgram,
     IpuStrategy,
 )
-from .core import (  # noqa: F401
+from .core import (  # noqa: F401  # noqa: F401
     CPUPlace,
     CUDAPinnedPlace,
     CUDAPlace,
@@ -79,13 +78,21 @@ from .core import (  # noqa: F401
 )
 from .data_feed_desc import DataFeedDesc  # noqa: F401
 from .data_feeder import DataFeeder  # noqa: F401
+from .dataset import (  # noqa: F401
+    DatasetFactory,
+    InMemoryDataset,
+)
 from .dygraph.base import disable_dygraph, enable_dygraph
 from .dygraph.tensor_patch_methods import monkey_patch_tensor
+
+# import all class inside executor into base module
 from .executor import (  # noqa: F401
     Executor,
     global_scope,
     scope_guard,
 )
+
+# import all class inside framework into base module
 from .framework import (  # noqa: F401
     Program,
     Variable,
