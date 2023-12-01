@@ -18,7 +18,6 @@ import logging
 import numbers
 import os
 import random
-import warnings
 
 import numpy as np
 
@@ -258,16 +257,12 @@ class Engine:
             self.enable_prim_in_distribute = True
         else:
             self.enable_prim_in_distribute = False
-
         # pir program infos
         self.pir_prune_startup_program = None
-
         self.pir_program = None
-        self.param_mapping = None
+        self.pir_fetch_list = None
         self.pir_grad_var_to_var = None
         self.is_pir_program_initialized = False
-
-        self.pir_program_after_decomposed = None
         self.is_pir_program_decomposed = False
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
@@ -1527,325 +1522,6 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
-    def _get_grad_var_to_var(self):
-        # get grad_var_to_var in distributed context
-        dist_context = self._dist_contexts[self._mode]
-        grad_var_to_var_map = dist_context._dist_op_context.grad_var_to_var
-        assert (
-            len(grad_var_to_var_map.keys()) == 1
-        ), "invalid grad_var_to_var in distributed engine"
-        grad_var_to_var = grad_var_to_var_map[1]
-        return grad_var_to_var
-
-    def _update_grad_var_to_var(self, grad_var_to_var):
-        # update grad_var_to_var according to different distributed pass
-        for op in self.main_program.global_block().ops:
-            # process @RESHARD variable in distributed training
-            if (
-                op.has_attr("op_namescope")
-                and op.attr("op_namescope") == "/auto_parallel/reshard"
-            ):
-                if op.desc.type() == "split" or op.desc.type() == "assign":
-                    input_names = op.desc.input("X")
-                    output_names = op.desc.output("Out")
-                    if input_names[0] in grad_var_to_var.keys():
-                        for output_name in output_names:
-                            grad_var_to_var[output_name] = grad_var_to_var[
-                                input_names[0]
-                            ]
-                elif op.desc.type() == "recv_v2":
-                    output_names = op.desc.output("Out")
-                    original_var_name = (
-                        output_names[0][: output_names[0].rfind("@recv")]
-                        if output_names[0].rfind("@recv") != -1
-                        else ""
-                    )
-                    if original_var_name in grad_var_to_var.keys():
-                        grad_var_to_var[output_names[0]] = grad_var_to_var[
-                            original_var_name
-                        ]
-
-            # process amp pass in distributed training
-            if self._strategy.amp.enable:
-                from paddle.distributed.fleet.meta_optimizers.common import (
-                    OP_ROLE_KEY,
-                    OpRole,
-                )
-
-                first_backward_op_idx = -1
-                for idx, op in enumerate(self.main_program.global_block().ops):
-                    if (
-                        op.has_attr(OP_ROLE_KEY)
-                        and (op.attr(OP_ROLE_KEY) & int(OpRole.Backward))
-                        and (op.attr(OP_ROLE_KEY) & int(OpRole.Loss))
-                    ):
-                        first_backward_op_idx = idx
-                if first_backward_op_idx != -1:
-                    scale_loss_op = self.main_program.global_block().ops[
-                        first_backward_op_idx - 1
-                    ]
-                    scale_loss_var_name = scale_loss_op.desc.output("Out")[0]
-                    first_backward_op = self.main_program.global_block().ops[
-                        first_backward_op_idx
-                    ]
-                    scale_loss_grad_var_name = first_backward_op.desc.output(
-                        "Out"
-                    )[0]
-                    if scale_loss_grad_var_name not in grad_var_to_var.keys():
-                        grad_var_to_var[
-                            scale_loss_grad_var_name
-                        ] = scale_loss_var_name
-
-    def _translate_to_pir_program(self, feed_dict=None, fetch_names=None):
-        def _get_invalid_feeds(program, feed):
-            current_feed_vars = []
-            for op in program.global_block().ops:
-                if op.desc.type() == "data":
-                    output_name = op.desc.output("out")[0]
-                    if self.main_program.global_block().has_var(output_name):
-                        output_shape = (
-                            self.main_program.global_block()
-                            .var(output_name)
-                            .desc.shape()
-                        )
-                        op_shape = op.desc.attr("shape")
-                        if output_shape != op_shape:
-                            op.desc._set_attr("shape", output_shape)
-                    current_feed_vars.append(output_name)
-            return [
-                var_name
-                for var_name in feed.keys()
-                if var_name not in current_feed_vars
-            ]
-
-        def _add_data_ops(
-            program,
-            feed,
-        ):
-            if feed is None:
-                raise RuntimeError(
-                    "To add data ops for input variable, please specify feed list."
-                )
-
-            tmp_program = program.clone()
-            global_block = tmp_program.global_block()
-
-            # prepend data operators
-            for i, name in enumerate(feed):
-                if global_block.has_var(name):
-                    out = global_block.var(name)
-                    global_block._prepend_op(
-                        type='data',
-                        inputs={},
-                        outputs={'out': out},
-                        attrs={
-                            'shape': out.shape,
-                            'dtype': out.dtype,
-                            'place': 0,
-                            'name': out.name,
-                        },
-                    )
-                else:
-                    warnings.warn(
-                        "The variable %s is not found in program. It is not declared or is pruned."
-                        % name
-                    )
-            return tmp_program
-
-        def _get_pir_grad_var_to_var(old_ir_grad_var_to_var, param_mapping):
-            pir_grad_var_to_var = {}
-            for grad_var, var in old_ir_grad_var_to_var.items():
-                if (
-                    grad_var in param_mapping.keys()
-                    and var in param_mapping.keys()
-                ):
-                    if (
-                        len(param_mapping[grad_var]) == 1
-                        and len(param_mapping[var]) == 1
-                    ):
-                        new_grad_var = param_mapping[grad_var][0]
-                        new_var = param_mapping[var][0]
-                        pir_grad_var_to_var[new_grad_var] = new_var
-                    else:
-                        new_grad_vars = []
-                        new_vars = []
-                        if len(param_mapping[grad_var]) == 1:
-                            new_grad_vars.append(param_mapping[grad_var][0])
-                        elif (
-                            len(param_mapping[grad_var]) == 2
-                            and param_mapping[grad_var][1]
-                            .get_defining_op()
-                            .name()
-                            == "builtin.slice"
-                        ):
-                            new_grad_vars.append(param_mapping[grad_var][1])
-                        else:
-                            last_op = param_mapping[grad_var][
-                                -1
-                            ].get_defining_op()
-                            if last_op.name().endswith("_"):
-                                new_grad_vars.append(param_mapping[grad_var][0])
-
-                        if len(param_mapping[var]) == 1:
-                            new_vars.append(param_mapping[var][0])
-                        elif (
-                            len(param_mapping[var]) == 2
-                            and param_mapping[var][1].get_defining_op().name()
-                            == "builtin.slice"
-                        ):
-                            new_vars.append(param_mapping[var][1])
-                        else:
-                            last_op = param_mapping[var][-1].get_defining_op()
-                            if last_op.name().endswith("_"):
-                                new_vars.append(param_mapping[var][0])
-
-                        assert (
-                            len(new_grad_vars) == 1 and len(new_vars) == 1
-                        ), "translate pir_grad_var_to_var error"
-                        pir_grad_var_to_var[new_grad_vars[0]] = new_vars[0]
-
-            return pir_grad_var_to_var
-
-        if not self.is_pir_program_initialized:
-            # process feed
-            if feed_dict is not None:
-                invalid_feed_var_names = _get_invalid_feeds(
-                    self.main_program, feed_dict
-                )
-            tmp_program = self.main_program.clone()
-            if invalid_feed_var_names:
-                new_feed_dict = {}
-                for invalid_feed_var_name in invalid_feed_var_names:
-                    new_feed_dict[invalid_feed_var_name] = feed_dict[
-                        invalid_feed_var_name
-                    ]
-                tmp_program = _add_data_ops(tmp_program, new_feed_dict)
-
-            # translate to pir program and ensure the data ops are at the begining of pir program
-            (
-                pir_program,
-                param_mapping,
-            ) = paddle.pir.translate_to_pir_with_param_map(tmp_program.desc)
-            data_ops = []
-            global_block = pir_program.global_block()
-            for op in global_block.ops:
-                if op.name() == "pd_op.data":
-                    data_ops.append(op)
-            insert_point = 0
-            for data_op in data_ops:
-                global_block.move_op(data_op, insert_point)
-
-            # translate fetch list to pir OpResult
-            fetch_list = []
-            for fetch_name in fetch_names:
-                result = param_mapping[fetch_name]
-                assert (
-                    len(result) == 1
-                ), "fetch list of program and pir program is not match"
-                fetch_list.append(result[0])
-
-            # get grad_var_to_var in distributed context
-            grad_var_to_var = self._get_grad_var_to_var()
-            self._update_grad_var_to_var(grad_var_to_var)
-            # translate variables in grad_var_to_var to pir OpResults, thus get pir_grad_var_to_var for further use
-            pir_grad_var_to_var = _get_pir_grad_var_to_var(
-                grad_var_to_var, param_mapping
-            )
-
-            # set lr_scheduler in pir program
-            lr_scheduler = (
-                self.main_program.lr_scheduler
-                if hasattr(self.main_program, 'lr_scheduler')
-                else None
-            )
-            if lr_scheduler is not None:
-                pir_program.lr_scheduler = lr_scheduler
-                lr_var = (
-                    self.main_program.global_block().vars[
-                        lr_scheduler._var_name
-                    ]
-                    if lr_scheduler._var_name
-                    in self.main_program.global_block().vars
-                    else None
-                )
-                if lr_var is not None:
-                    pir_program.lr_var = lr_var
-            # set pir program infos
-            self.pir_program = pir_program
-            self.param_mapping = param_mapping
-            self.pir_grad_var_to_var = pir_grad_var_to_var
-            self.is_pir_program_initialized = True
-
-            return fetch_list
-
-    def _decompose_pir_program(self, fetch_list):
-        if not self.is_pir_program_initialized:
-            raise RuntimeError(
-                "To decompose pir program, please translate the main program to pir program first."
-            )
-
-        def _get_bwd_ops_name(pir_program):
-            bwd_ops = []
-            global_block = pir_program.global_block()
-            for op in global_block.ops:
-                if (
-                    op.name().endswith("_grad") or op.name().endswith("_grad_")
-                ) and op.name() not in bwd_ops:
-                    bwd_ops.append(op.name())
-            return bwd_ops
-
-        if not self.is_pir_program_decomposed:
-            prev_fwd_prim_state = core._is_fwd_prim_enabled()
-            prev_bwd_prim_state = core._is_bwd_prim_enabled()
-            core._set_prim_forward_enabled(True)
-            core._set_prim_backward_enabled(True)
-
-            # todo: using pir::program_clone for deepcopy
-            program = self.pir_program
-            with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-                program
-            ):
-                ops = program.global_block().ops
-                bwd_ops = _get_bwd_ops_name(program)
-                num_bwd_ops_decomposed = 0
-                num_bwd_ops_undecomposed = 0
-                bwd_ops_decomposed = []
-                bwd_ops_undecomposed = []
-
-                for op in ops:
-                    if op.name() in bwd_ops:
-                        new_grads, has_decomposed = decomp.decomp_bwd_op(
-                            program.global_block(),
-                            op,
-                            self.pir_grad_var_to_var,
-                            fetch_list,
-                        )
-                        if has_decomposed:
-                            num_bwd_ops_decomposed += 1
-                            if op.name() not in bwd_ops_decomposed:
-                                bwd_ops_decomposed.append(op.name())
-                        if not has_decomposed:
-                            num_bwd_ops_undecomposed += 1
-                            if op.name() not in bwd_ops_undecomposed:
-                                bwd_ops_undecomposed.append(op.name())
-
-                self._logger.info(
-                    "%d backward ops are successfully decomposed, op names are: %s"
-                    % (num_bwd_ops_decomposed, ', '.join(bwd_ops_decomposed))
-                )
-                self._logger.info(
-                    "%d backward ops can not be successfully decomposed, op names are: %s"
-                    % (
-                        num_bwd_ops_undecomposed,
-                        ', '.join(bwd_ops_undecomposed),
-                    )
-                )
-
-                self.pir_program_after_decomposed = program
-                self.is_pir_program_decomposed = True
-                core._set_prim_forward_enabled(prev_fwd_prim_state)
-                core._set_prim_backward_enabled(prev_bwd_prim_state)
-
     def run(self, data=None, feed=None, fetch_list=None, mode=None):
         if mode is not None:
             self.to_mode(mode)
@@ -1862,24 +1538,39 @@ class Engine:
         )
 
         if self.enable_prim_in_distribute:
-            new_fetch_list = []
-            if not (
-                self.is_pir_program_initialized
-                and self.is_pir_program_decomposed
-            ):
-                new_fetch_list = self._translate_to_pir_program(
-                    feed_dict, fetch_names
+            if not self.is_pir_program_initialized:
+                (
+                    pir_program,
+                    pir_fetch_list,
+                    pir_grad_var_to_var,
+                ) = auto_utils.translate_dist_program_to_pir(
+                    self.main_program,
+                    feed_dict,
+                    fetch_names,
+                    self._dist_contexts[self._mode],
+                    self._strategy,
                 )
-                self._decompose_pir_program(new_fetch_list)
+                self.pir_program = pir_program
+                self.pir_fetch_list = pir_fetch_list
+                self.pir_grad_var_to_var = pir_grad_var_to_var
+                self.is_pir_program_initialized = True
+
+            if not self.is_pir_program_decomposed:
+                decomp.decompose_pir_program(
+                    self.pir_program,
+                    self.pir_grad_var_to_var,
+                    self.pir_fetch_list,
+                )
+                self.is_pir_program_decomposed = True
 
             with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-                self.pir_program_after_decomposed,
+                self.pir_program,
                 self.pir_prune_startup_program,
             ):
                 outs = self._executor.run(
-                    self.pir_program_after_decomposed,
+                    self.pir_program,
                     feed=feed_dict,
-                    fetch_list=new_fetch_list,
+                    fetch_list=self.pir_fetch_list,
                     use_program_cache=self._strategy.use_cache,
                     return_numpy=self._strategy.return_numpy,
                 )

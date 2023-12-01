@@ -2386,3 +2386,229 @@ def get_dist_tensor_spec(dist_op, name, is_input=True):
     else:
         tensor_dist_attr = dist_op.dist_attr.get_output_dist_attr(name)
     return DistTensorSpec(tensor_shape, tensor_dist_attr)
+
+
+def _get_grad_var_to_var(dist_context):
+    # get grad_var_to_var in distributed context
+    grad_var_to_var_map = dist_context._dist_op_context.grad_var_to_var
+    assert len(grad_var_to_var_map.keys()) == 1, "invalid grad_var_to_var"
+    grad_var_to_var = grad_var_to_var_map[1]
+    return grad_var_to_var
+
+
+def _update_grad_var_to_var(program, strategy, grad_var_to_var):
+    from paddle.distributed.fleet.meta_optimizers.common import (
+        OP_ROLE_KEY,
+        OpRole,
+    )
+
+    # update grad_var_to_var according to different distributed pass
+    first_backward_op_idx = -1
+    for idx, op in enumerate(program.global_block().ops):
+        # process @RESHARD variable in distributed training
+        if (
+            op.has_attr("op_namescope")
+            and op.attr("op_namescope") == "/auto_parallel/reshard"
+        ):
+            if op.desc.type() == "split" or op.desc.type() == "assign":
+                input_names = op.desc.input("X")
+                output_names = op.desc.output("Out")
+                if input_names[0] in grad_var_to_var.keys():
+                    for output_name in output_names:
+                        grad_var_to_var[output_name] = grad_var_to_var[
+                            input_names[0]
+                        ]
+            elif op.desc.type() == "recv_v2":
+                output_names = op.desc.output("Out")
+                original_var_name = (
+                    output_names[0][: output_names[0].rfind("@recv")]
+                    if output_names[0].rfind("@recv") != -1
+                    else ""
+                )
+                if original_var_name in grad_var_to_var.keys():
+                    grad_var_to_var[output_names[0]] = grad_var_to_var[
+                        original_var_name
+                    ]
+
+        # process amp pass in distributed training
+        if (
+            strategy.amp.enable
+            and op.has_attr(OP_ROLE_KEY)
+            and (op.attr(OP_ROLE_KEY) & int(OpRole.Backward))
+            and (op.attr(OP_ROLE_KEY) & int(OpRole.Loss))
+        ):
+            first_backward_op_idx = idx
+
+    # process amp pass in distributed training
+    if first_backward_op_idx != -1:
+        scale_loss_op = program.global_block().ops[first_backward_op_idx - 1]
+        scale_loss_var_name = scale_loss_op.desc.output("Out")[0]
+        first_backward_op = program.global_block().ops[first_backward_op_idx]
+        scale_loss_grad_var_name = first_backward_op.desc.output("Out")[0]
+        if scale_loss_grad_var_name not in grad_var_to_var.keys():
+            grad_var_to_var[scale_loss_grad_var_name] = scale_loss_var_name
+
+
+def _translate_grad_var_to_var(grad_var_to_var, param_mapping):
+    pir_grad_var_to_var = {}
+    for grad_var, var in grad_var_to_var.items():
+        if grad_var in param_mapping.keys() and var in param_mapping.keys():
+            if (
+                len(param_mapping[grad_var]) == 1
+                and len(param_mapping[var]) == 1
+            ):
+                new_grad_var = param_mapping[grad_var][0]
+                new_var = param_mapping[var][0]
+                pir_grad_var_to_var[new_grad_var] = new_var
+            else:
+                new_grad_vars = []
+                new_vars = []
+                if len(param_mapping[grad_var]) == 1:
+                    new_grad_vars.append(param_mapping[grad_var][0])
+                elif (
+                    len(param_mapping[grad_var]) == 2
+                    and param_mapping[grad_var][1].get_defining_op().name()
+                    == "builtin.slice"
+                ):
+                    new_grad_vars.append(param_mapping[grad_var][1])
+                else:
+                    last_op = param_mapping[grad_var][-1].get_defining_op()
+                    if last_op.name().endswith("_"):
+                        new_grad_vars.append(param_mapping[grad_var][0])
+
+                if len(param_mapping[var]) == 1:
+                    new_vars.append(param_mapping[var][0])
+                elif (
+                    len(param_mapping[var]) == 2
+                    and param_mapping[var][1].get_defining_op().name()
+                    == "builtin.slice"
+                ):
+                    new_vars.append(param_mapping[var][1])
+                else:
+                    last_op = param_mapping[var][-1].get_defining_op()
+                    if last_op.name().endswith("_"):
+                        new_vars.append(param_mapping[var][0])
+
+                assert (
+                    len(new_grad_vars) == 1 and len(new_vars) == 1
+                ), "translate pir_grad_var_to_var error"
+                pir_grad_var_to_var[new_grad_vars[0]] = new_vars[0]
+
+    return pir_grad_var_to_var
+
+
+def translate_dist_program_to_pir(
+    program, feed_dict, fetch_names, dist_context, strategy
+):
+    def _get_invalid_feeds(program, feed):
+        current_feed_vars = []
+        for op in program.global_block().ops:
+            if op.desc.type() == "data":
+                output_name = op.desc.output("out")[0]
+                if program.global_block().has_var(output_name):
+                    output_shape = (
+                        program.global_block().var(output_name).desc.shape()
+                    )
+                    op_shape = op.desc.attr("shape")
+                    if output_shape != op_shape:
+                        op.desc._set_attr("shape", output_shape)
+                current_feed_vars.append(output_name)
+        return [
+            var_name
+            for var_name in feed.keys()
+            if var_name not in current_feed_vars
+        ]
+
+    def _add_data_ops(
+        program,
+        feed,
+    ):
+        if feed is None:
+            raise RuntimeError(
+                "To add data ops for input variable, please specify feed list."
+            )
+
+        tmp_program = program.clone()
+        global_block = tmp_program.global_block()
+
+        # prepend data operators
+        for i, name in enumerate(feed):
+            if global_block.has_var(name):
+                out = global_block.var(name)
+                global_block._prepend_op(
+                    type='data',
+                    inputs={},
+                    outputs={'out': out},
+                    attrs={
+                        'shape': out.shape,
+                        'dtype': out.dtype,
+                        'place': 0,
+                        'name': out.name,
+                    },
+                )
+            else:
+                warnings.warn(
+                    "The variable %s is not found in program. It is not declared or is pruned."
+                    % name
+                )
+        return tmp_program
+
+    # translate distributed main program into pir program
+    # process feed
+    if feed_dict is not None:
+        invalid_feed_var_names = _get_invalid_feeds(program, feed_dict)
+    tmp_program = program.clone()
+    if invalid_feed_var_names:
+        new_feed_dict = {}
+        for invalid_feed_var_name in invalid_feed_var_names:
+            new_feed_dict[invalid_feed_var_name] = feed_dict[
+                invalid_feed_var_name
+            ]
+        tmp_program = _add_data_ops(tmp_program, new_feed_dict)
+
+    # translate to pir program and ensure the data ops are at the begining of pir program
+    (
+        pir_program,
+        param_mapping,
+    ) = paddle.pir.translate_to_pir_with_param_map(tmp_program.desc)
+    data_ops = []
+    global_block = pir_program.global_block()
+    for op in global_block.ops:
+        if op.name() == "pd_op.data":
+            data_ops.append(op)
+    insert_point = 0
+    for data_op in data_ops:
+        global_block.move_op(data_op, insert_point)
+
+    # translate fetch list to pir OpResult
+    pir_fetch_list = []
+    for fetch_name in fetch_names:
+        result = param_mapping[fetch_name]
+        assert (
+            len(result) == 1
+        ), "fetch list of program and pir program is not match"
+        pir_fetch_list.append(result[0])
+
+    # set lr_scheduler in pir program
+    lr_scheduler = (
+        program.lr_scheduler if hasattr(program, 'lr_scheduler') else None
+    )
+    if lr_scheduler is not None:
+        pir_program.lr_scheduler = lr_scheduler
+        lr_var = (
+            program.global_block().vars[lr_scheduler._var_name]
+            if lr_scheduler._var_name in program.global_block().vars
+            else None
+        )
+        if lr_var is not None:
+            pir_program.lr_var = lr_var
+
+    # translate distributed grad_var_to_var to pir
+    grad_var_to_var = _get_grad_var_to_var(dist_context)
+    _update_grad_var_to_var(program, strategy, grad_var_to_var)
+    # translate variables in grad_var_to_var to pir OpResults, thus get pir_grad_var_to_var for further use
+    pir_grad_var_to_var = _translate_grad_var_to_var(
+        grad_var_to_var, param_mapping
+    )
+
+    return pir_program, pir_fetch_list, pir_grad_var_to_var

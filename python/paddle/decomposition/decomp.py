@@ -15,6 +15,7 @@
 import logging
 import typing
 
+import paddle
 from paddle import pir
 from paddle.autograd import ir_backward
 from paddle.base.core import (
@@ -773,3 +774,70 @@ def decomp_bwd_op(
             )
 
     return new_grads, bwd_has_decomposed
+
+
+def decompose_pir_program(pir_program, pir_grad_var_to_var, fetch_list):
+    '''
+    Decompose all backward ops in a pir program.
+
+    Args:
+        pir_program (Program): the program to be decomposed
+        pir_grad_var_to_var (dict): a dict obtained from distributed processing,
+            which maps the backward grad value to its corresponding forward value.
+        fetch_list (list): a list which contains the outputs to be fetched of the program.
+    '''
+
+    def _get_bwd_ops_name(pir_program):
+        bwd_ops = []
+        global_block = pir_program.global_block()
+        for op in global_block.ops:
+            if (
+                op.name().endswith("_grad") or op.name().endswith("_grad_")
+            ) and op.name() not in bwd_ops:
+                bwd_ops.append(op.name())
+        return bwd_ops
+
+    prev_fwd_prim_state = core._is_fwd_prim_enabled()
+    prev_bwd_prim_state = core._is_bwd_prim_enabled()
+    core._set_prim_forward_enabled(True)
+    core._set_prim_backward_enabled(True)
+
+    with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(pir_program):
+        ops = pir_program.global_block().ops
+        bwd_ops = _get_bwd_ops_name(pir_program)
+        num_bwd_ops_decomposed = 0
+        num_bwd_ops_undecomposed = 0
+        bwd_ops_decomposed = []
+        bwd_ops_undecomposed = []
+
+        for op in ops:
+            if op.name() in bwd_ops:
+                new_grads, has_decomposed = decomp_bwd_op(
+                    pir_program.global_block(),
+                    op,
+                    pir_grad_var_to_var,
+                    fetch_list,
+                )
+                if has_decomposed:
+                    num_bwd_ops_decomposed += 1
+                    if op.name() not in bwd_ops_decomposed:
+                        bwd_ops_decomposed.append(op.name())
+                if not has_decomposed:
+                    num_bwd_ops_undecomposed += 1
+                    if op.name() not in bwd_ops_undecomposed:
+                        bwd_ops_undecomposed.append(op.name())
+
+        logging.info(
+            "%d backward ops are successfully decomposed, op names are: %s"
+            % (num_bwd_ops_decomposed, ', '.join(bwd_ops_decomposed))
+        )
+        logging.info(
+            "%d backward ops can not be successfully decomposed, op names are: %s"
+            % (
+                num_bwd_ops_undecomposed,
+                ', '.join(bwd_ops_undecomposed),
+            )
+        )
+
+        core._set_prim_forward_enabled(prev_fwd_prim_state)
+        core._set_prim_backward_enabled(prev_bwd_prim_state)
