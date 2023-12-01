@@ -4167,6 +4167,7 @@ function main() {
         ;;
       gpu_cicheck_coverage)
         export FLAGS_PIR_OPTEST=True
+        export COVERAGE_FILE=${PADDLE_ROOT}/build/python-coverage.data 
         is_run_distribute_in_op_test
         parallel_test
         check_coverage

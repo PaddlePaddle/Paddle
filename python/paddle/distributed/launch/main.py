@@ -334,12 +334,12 @@ def launch():
             if os.environ.get("WITH_COVERAGE") == "ON":
                 entrypoint = [
                     sys.executable,
+                    "-u",
                     "-m",
                     "coverage",
                     "run",
                     "--branch",
                     "-p",
-                    "-u",
                     ctx.args.training_script,
                 ]
             else:
