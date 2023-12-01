@@ -109,6 +109,9 @@ class InterpreterBaseImpl {
   virtual bool IsStaticBuild() const = 0;
 
   virtual std::tuple<double, double> InterpreterRunTime() = 0;
+
+  // Only for debug
+  virtual Variable* DebugVar(const std::string& name) const = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {
