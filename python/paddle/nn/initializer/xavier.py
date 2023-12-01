@@ -119,6 +119,12 @@ class XavierInitializer(Initializer):
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
             )
+        elif (
+            var.dtype in (core.DataType.FLOAT16, core.DataType.BFLOAT16)
+            and not self._uniform
+        ):
+            out_dtype = core.DataType.FLOAT32
+            out_var = var
         else:
             out_dtype = var.dtype
             out_var = var
@@ -172,8 +178,9 @@ class XavierInitializer(Initializer):
                     _current_expected_place(),
                 )
 
-            if var.dtype == core.DataType.FLOAT16 or (
-                var.dtype == core.DataType.BFLOAT16 and not self._uniform
+            if (
+                var.dtype in (core.DataType.FLOAT16, core.DataType.BFLOAT16)
+                and not self._uniform
             ):
                 return _C_ops.cast(out_var, var.dtype)
 
