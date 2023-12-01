@@ -375,10 +375,6 @@ class TestWhereAPI(unittest.TestCase):
         self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
 
 
-# class TestWhereAPITypePromotion(unittest.TestCase):
-#     paddle.disable_static()
-
-
 class TestWhereDygraphAPI(unittest.TestCase):
     def test_api(self):
         with base.dygraph.guard():
