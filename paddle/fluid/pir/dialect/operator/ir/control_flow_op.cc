@@ -90,15 +90,15 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddInput(cond);
 }
 
-pir::Block *IfOp::true_block() {
+pir::Block &IfOp::true_block() {
   pir::Region &region = true_region();
   if (region.empty()) region.emplace_back();
-  return &region.front();
+  return region.front();
 }
-pir::Block *IfOp::false_block() {
+pir::Block &IfOp::false_block() {
   pir::Region &region = false_region();
   if (region.empty()) region.emplace_back();
-  return &region.front();
+  return region.front();
 }
 
 void IfOp::Print(pir::IrPrinter &printer) {
@@ -110,12 +110,12 @@ void IfOp::Print(pir::IrPrinter &printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << "{";
-  for (auto &item : *true_block()) {
+  for (auto &item : true_block()) {
     os << "\n  ";
     printer.PrintOperation(&item);
   }
   os << "\n } else {";
-  for (auto &item : *false_block()) {
+  for (auto &item : false_block()) {
     os << "\n  ";
     printer.PrintOperation(&item);
   }

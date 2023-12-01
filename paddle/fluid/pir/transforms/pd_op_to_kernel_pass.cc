@@ -875,19 +875,19 @@ void HandleForIfOp(
   auto new_ifop = builder.Build<IfOp>(new_cond, std::move(new_ifop_outputs));
 
   // process true block
-  pir::Block* true_block = new_ifop.true_block();
+  auto& true_block = new_ifop.true_block();
   ProcessBlock(place,
-               old_ifop.true_block(),
-               true_block,
+               &old_ifop.true_block(),
+               &true_block,
                ctx,
                map_op_pair,
                map_value_pair);
 
   // process false block
-  pir::Block* false_block = new_ifop.false_block();
+  auto& false_block = new_ifop.false_block();
   ProcessBlock(place,
-               old_ifop.false_block(),
-               false_block,
+               &old_ifop.false_block(),
+               &false_block,
                ctx,
                map_op_pair,
                map_value_pair);
