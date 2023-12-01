@@ -43,9 +43,8 @@ namespace framework {
 WhileInstruction::WhileInstruction(size_t id,
                                    const platform::Place& place,
                                    pir::Operation* op,
-                                   Scope* scope,
-                                   Scope* local_scope,
-                                   ValueExecutionInfo* parent_exe_info)
+                                   ValueExecutionInfo* parent_exe_info,
+                                   const std::set<std::string>& skip_gc_vars)
     : InstructionBase(id, place) {
   op_ = op;
   VLOG(6) << "finish process dist attributes";
@@ -122,6 +121,10 @@ WhileInstruction::WhileInstruction(size_t id,
   for (auto value : body_outside_inputs) {
     body_skip_gc_names_.push_back(body_inter_->GetNameByValue(value));
     body_skip_gc_names_set.insert(body_inter_->GetNameByValue(value));
+  }
+  for (auto var_name : skip_gc_vars) {
+    body_skip_gc_names_.push_back(var_name);
+    body_skip_gc_names_set.insert(var_name);
   }
   body_inter_->SetSkipGcVars(body_skip_gc_names_set);
 
