@@ -1051,8 +1051,6 @@
     func : gather_nd
     data_type : x
   backward : gather_nd_grad
-  data_transform :
-    skip_transform : index
 
 - op : gather_tree
   args : (Tensor ids, Tensor parents)
@@ -2491,6 +2489,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : SqueezeWithXShapeInferMeta
+    spmd_rule : SqueezeInferSpmd
   kernel :
     func : squeeze
     data_type : x
@@ -2716,6 +2715,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : UnsqueezeWithXShapeInferMeta
+    spmd_rule : UnsqueezeInferSpmd
   kernel :
     func : unsqueeze
     data_type : x
