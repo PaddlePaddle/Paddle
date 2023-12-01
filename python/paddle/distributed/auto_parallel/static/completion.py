@@ -38,6 +38,7 @@ from .utils import (
     _g_gradient_clip_ops,
     is_gradient_clip_op,
     is_loss_grad_op,
+    is_loss_op,
     is_naive_data_parallel,
 )
 
@@ -1504,15 +1505,18 @@ class Completer:
                 grad_op, grad_op_dist_attr
             )
 
+        loss_op = None
         first_backward_op_idx = -1
         for idx, op in enumerate(serial_main_program.global_block().ops):
+            if is_loss_op(op):
+                loss_op = op
             if is_loss_grad_op(op):
                 assert op.type == "fill_constant"
                 first_backward_op_idx = idx
                 break
 
         assert (
-            first_backward_op_idx >= 0
+            first_backward_op_idx >= 0 and loss_op is not None
         ), "No backward procedure found in this program."
 
         ops = list(serial_main_program.global_block().ops)
@@ -1538,37 +1542,37 @@ class Completer:
                     len(grad_op.output_arg_names)
                 )
 
-                grad_var = vars[grad_op.output_arg_names[0]]
-                forward_var_name = _get_forward_varname_from_grad_varname(
-                    grad_var.name
+                loss_grad_var = vars[grad_op.output_arg_names[0]]
+                loss_var = vars[loss_op.output_arg_names[0]]
+                assert loss_var.name + "@GRAD" == loss_grad_var.name
+                loss_var_distr_attr = (
+                    self._dist_context.get_tensor_dist_attr_for_program(
+                        loss_var
+                    )
                 )
-                forward_var = vars[forward_var_name]
 
                 # TODO complete other attribute for grad var
                 tensor_dist_attr = TensorDistAttr()
-                process_mesh = (
-                    self._dist_context.get_tensor_dist_attr_for_program(
-                        forward_var
-                    ).process_mesh
-                )
-                dims_mapping = (
-                    self._dist_context.get_tensor_dist_attr_for_program(
-                        forward_var
-                    ).dims_mapping
-                )
-                tensor_dist_attr.dims_mapping = dims_mapping
-                tensor_dist_attr.process_mesh = process_mesh
+                tensor_dist_attr.dims_mapping = loss_var_distr_attr.dims_mapping
+                tensor_dist_attr.process_mesh = loss_var_distr_attr.process_mesh
                 self._dist_context.set_tensor_dist_attr_for_program(
-                    grad_var, tensor_dist_attr
+                    loss_grad_var, tensor_dist_attr
                 )
 
-                op_dist_attr = OperatorDistAttr()
-                op_dist_attr.process_mesh = process_mesh
-                op_dist_attr.set_output_dims_mapping(
-                    grad_var.name, dims_mapping
+                loss_op_dist_attr = (
+                    self._dist_context.get_op_dist_attr_for_program(loss_op)
+                )
+                grad_op_dist_attr = OperatorDistAttr()
+                grad_op_dist_attr.process_mesh = loss_op_dist_attr.process_mesh
+                grad_op_dist_attr.chunk_id = loss_op_dist_attr.chunk_id
+                ref_dims_mapping = loss_op_dist_attr.get_output_dims_mapping(
+                    loss_var.name
+                )
+                grad_op_dist_attr.set_output_dims_mapping(
+                    loss_grad_var.name, ref_dims_mapping
                 )
                 self._dist_context.set_op_dist_attr_for_program(
-                    grad_op, op_dist_attr
+                    grad_op, loss_op_dist_attr
                 )
                 continue
 
