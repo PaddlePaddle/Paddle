@@ -12,22 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Tuple
 import copy
-from typing import List, Union
+from typing import List, Tuple, Union
 
 import numpy as np
+
 import paddle
 from paddle.framework import core
 
-def get_coordinator(mesh:Union[np.array, List[List[int]]], rank:int):
+
+def get_coordinator(mesh: Union[np.array, List[List[int]]], rank: int):
     mesh = paddle.to_tensor(mesh)
     rand_coordinator = (mesh == rank).nonzero()
-    assert rand_coordinator.shape[0] in (0, 1), f"rand_coordinator.shape: {rand_coordinator.shape}"
-    return rand_coordinator[0].tolist() if rand_coordinator.shape[0] > 0 else None
+    assert rand_coordinator.shape[0] in (
+        0,
+        1,
+    ), f"rand_coordinator.shape: {rand_coordinator.shape}"
+    return (
+        rand_coordinator[0].tolist() if rand_coordinator.shape[0] > 0 else None
+    )
 
 
-def compute_local_shape_and_global_offset(global_shape:List[int], process_mesh:core.ProcessMesh, dims_mapping:List[int]) -> Tuple[Tuple[int], Tuple[int]]:
+def compute_local_shape_and_global_offset(
+    global_shape: List[int],
+    process_mesh: core.ProcessMesh,
+    dims_mapping: List[int],
+) -> Tuple[Tuple[int], Tuple[int]]:
     mesh = np.array(process_mesh.process_ids).reshape(process_mesh.shape)
     # deal with cross mesh case
     if paddle.distributed.get_rank() not in mesh:
@@ -39,12 +49,15 @@ def compute_local_shape_and_global_offset(global_shape:List[int], process_mesh:c
         if dim == -1:
             continue
         else:
-            assert global_shape[i] % process_mesh.shape[dim] == 0, f"i:{i}, global_shape[i]:{global_shape[i]}, process_mesh.shape[dim]:{process_mesh.shape[dim]}"
+            assert (
+                global_shape[i] % process_mesh.shape[dim] == 0
+            ), f"i:{i}, global_shape[i]:{global_shape[i]}, process_mesh.shape[dim]:{process_mesh.shape[dim]}"
             local_shape[i] = global_shape[i] // process_mesh.shape[dim]
             chunk_idx = rank_coordinator[dim]
             global_offset[i] = chunk_idx * local_shape[i]
-    
+
     return tuple(local_shape), tuple(global_offset)
+
 
 def flatten_state_dict(state_dict):
     # TODO, {"model": {"w0": xxx}} -> {model.w0: xxx}

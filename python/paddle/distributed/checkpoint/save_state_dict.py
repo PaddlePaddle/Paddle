@@ -13,31 +13,42 @@
 # limitations under the License.
 
 import os
-from typing import List, Dict
-import numpy as np
+from typing import List
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
 from paddle.distributed.fleet.utils.log_util import logger
-from .metadata import Metadata, LocalTensorMetadata, LocalTensorIndex
+
+from .metadata import LocalTensorIndex, LocalTensorMetadata, Metadata
 from .utils import compute_local_shape_and_global_offset, flatten_state_dict
+
 
 def check_state_dict(state_dict, process_group):
     local_keys = list(state_dict.keys())
     gloabl_keys = []
     paddle.distributed.all_gather_object(gloabl_keys, local_keys, process_group)
     for keys in gloabl_keys[1:]:
-        assert keys == gloabl_keys[0], f"keys:{keys} != first_keys: {gloabl_keys[0]}"
+        assert (
+            keys == gloabl_keys[0]
+        ), f"keys:{keys} != first_keys: {gloabl_keys[0]}"
+
 
 def check_file_name(file_name, process_group):
     all_unique_id = []
     unique_id = int(file_name.split(".")[0].split("_")[1])
-    paddle.distributed.all_gather_object(all_unique_id, unique_id, process_group)
+    paddle.distributed.all_gather_object(
+        all_unique_id, unique_id, process_group
+    )
     for id in all_unique_id[1:]:
-        assert id == all_unique_id[0], f"id:{id} !=  all_unique_id[0]:{file_name}"
+        assert (
+            id == all_unique_id[0]
+        ), f"id:{id} !=  all_unique_id[0]:{file_name}"
+
 
 def merge_state_dict(global_state_dict):
-    assert isinstance(global_state_dict, List), "The global_state_dict should be a list."
+    assert isinstance(
+        global_state_dict, List
+    ), "The global_state_dict should be a list."
     out = {}
     for state_dict in global_state_dict:
         for key, val in state_dict.items():
@@ -49,6 +60,7 @@ def merge_state_dict(global_state_dict):
                 out[key] = [val]
     return out
 
+
 def dedup_state_dict(global_state_dict):
     out = {}
     for state_dict in global_state_dict:
@@ -58,7 +70,10 @@ def dedup_state_dict(global_state_dict):
             out[key] = val
     return out
 
-def save_state_dict(state_dict, path, process_group=None, coordinator_rank=0, use_dist=True) -> None:
+
+def save_state_dict(
+    state_dict, path, process_group=None, coordinator_rank=0, use_dist=True
+) -> None:
     """
     Save the state_dict of model to path.
 
@@ -68,19 +83,23 @@ def save_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
         process_group: ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
         coordinator_rank: The rank used to coordinate the checkpoint. Rank0 is used by default.
         use_dist: Whether to save the state_dict in distributed mode. Set True by default.
-    
+
     Examples:
         .. code-block:: python
-        
+
             import paddle
             ...
 
     """
-    assert isinstance(state_dict, dict), "The state_dict should be a dictionary."
+    assert isinstance(
+        state_dict, dict
+    ), "The state_dict should be a dictionary."
     state_dict = flatten_state_dict(state_dict)
     if len(state_dict) > 0:
         for val in state_dict.values():
-            assert isinstance(val, (paddle.Tensor, paddle.base.framework.EagerParamBase)), "Only support dygraph Tensor now, support static DistributedTensor later"
+            assert isinstance(
+                val, (paddle.Tensor, paddle.base.framework.EagerParamBase)
+            ), "Only support dygraph Tensor now, support static DistributedTensor later"
 
     if not os.path.exists(path):
         os.makedirs(path, exist_ok=True)
@@ -89,10 +108,9 @@ def save_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
         # Init the default global process group
         not is_initialized() and paddle.distributed.init_parallel_env()
 
-
     unique_id = 0
     file_name = ""
-    while(True):
+    while True:
         file_name = f"{paddle.distributed.get_rank()}_{unique_id}.distcp"
         if not os.path.exists(os.path.join(path, file_name)):
             break
@@ -111,19 +129,34 @@ def save_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
             if not val._is_initialized():
                 continue
             if val.is_dist():
-                local_shape, global_offset = compute_local_shape_and_global_offset(val.shape, val.dist_attr.process_mesh, val.dist_attr.dims_mapping)
+                (
+                    local_shape,
+                    global_offset,
+                ) = compute_local_shape_and_global_offset(
+                    val.shape,
+                    val.dist_attr.process_mesh,
+                    val.dist_attr.dims_mapping,
+                )
                 if not local_shape or not global_offset:
                     continue
-                local_tensor_metadata[key] = LocalTensorMetadata(global_offset, local_shape)
-                local_storage_metadata[LocalTensorIndex(key, tuple(global_offset))] = file_name
+                local_tensor_metadata[key] = LocalTensorMetadata(
+                    global_offset, local_shape
+                )
+                local_storage_metadata[
+                    LocalTensorIndex(key, tuple(global_offset))
+                ] = file_name
                 local_tensor = val._local_value()
             else:
                 local_tensor = val
             local_state_dict[key] = local_tensor
     global_tensor_metadata = []
     global_storage_metadata = []
-    paddle.distributed.all_gather_object(global_tensor_metadata, local_tensor_metadata, process_group)
-    paddle.distributed.all_gather_object(global_storage_metadata, local_storage_metadata, process_group)
+    paddle.distributed.all_gather_object(
+        global_tensor_metadata, local_tensor_metadata, process_group
+    )
+    paddle.distributed.all_gather_object(
+        global_storage_metadata, local_storage_metadata, process_group
+    )
     metadata.state_dict_metadata = merge_state_dict(global_tensor_metadata)
     metadata.storage_metadata = dedup_state_dict(global_storage_metadata)
     if coordinator_rank == paddle.distributed.get_rank():

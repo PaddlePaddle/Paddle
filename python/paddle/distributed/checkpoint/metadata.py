@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Tuple, Dict
 from dataclasses import dataclass
-
+from typing import Dict, List, Tuple
 
 
 @dataclass
@@ -22,16 +21,20 @@ class LocalTensorMetadata:
     """
     The location of a local tensor in the global tensor.
     """
+
     global_offset: Tuple[int]
     local_shape: Tuple[int]
+
 
 @dataclass(frozen=True)
 class LocalTensorIndex:
     """
     The identifier of a local tensor.
     """
+
     tensor_id: str
     global_offset: Tuple[int]
+
 
 @dataclass
 class Metadata:
