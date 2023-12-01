@@ -86,6 +86,7 @@ class Statement:
         inputs: list[Symbol],
         outputs: list[Symbol],
         stacks: list[str],
+        graph_size: int,
     ):
         assert type in ["call", "api", "method", "layer", "AST"]
         self.name = name
@@ -95,6 +96,7 @@ class Statement:
             stacks  # a list of string to record the source code callstack.
         )
         self.type = type
+        self.graph_size = graph_size
 
     def __str__(self):
         def to_string(inps):
@@ -121,8 +123,9 @@ class CallStatement(Statement):
         inputs: list[Symbol],
         outputs: list[Symbol],
         stacks: list[str],
+        graph_size: int,
     ):
-        super().__init__("call", name, inputs, outputs, stacks)
+        super().__init__("call", name, inputs, outputs, stacks, graph_size)
         self.sir_name = name
 
 
@@ -133,9 +136,10 @@ class ApiStatement(Statement):
         inputs: list[Symbol],
         outputs: list[Symbol],
         stacks: list[str],
+        graph_size: int,
     ):
         super().__init__(
-            "api", "paddle." + api.__name__, inputs, outputs, stacks
+            "api", "paddle." + api.__name__, inputs, outputs, stacks, graph_size
         )
         self.api = api
 
@@ -147,8 +151,9 @@ class MethodStatement(Statement):
         inputs: list[Symbol],
         outputs: list[Symbol],
         stacks: list[str],
+        graph_size: int,
     ):
-        super().__init__("method", name, inputs, outputs, stacks)
+        super().__init__("method", name, inputs, outputs, stacks, graph_size)
         self.method = name
 
 
@@ -159,9 +164,15 @@ class LayerStatement(Statement):
         inputs: list[Symbol],
         outputs: list[Symbol],
         stacks: list[str],
+        graph_size: int,
     ):
         super().__init__(
-            "layer", layer.__class__.__name__, inputs, outputs, stacks
+            "layer",
+            layer.__class__.__name__,
+            inputs,
+            outputs,
+            stacks,
+            graph_size,
         )
         self.layer = layer
 
@@ -173,11 +184,17 @@ class ASTStatement(Statement):
         inputs: list[Symbol],
         outputs: list[Symbol],
         stacks: list[str],
+        graph_size: int,
     ):
         # this dygraph_function always has attr __code__, which is checked before
         dygraph_func = static_function.dygraph_function
         super().__init__(
-            "AST", dygraph_func.__code__.co_name, inputs, outputs, stacks
+            "AST",
+            dygraph_func.__code__.co_name,
+            inputs,
+            outputs,
+            stacks,
+            graph_size,
         )
         converted_func = paddle.jit.dy2static.convert_to_static(dygraph_func)
         func_self = getattr(dygraph_func, '__self__', None)
@@ -240,6 +257,7 @@ class StatementIR:
     def __str__(self):
         strs = []
         strs.append("StatmentIR: %s" % self.name)
+        strs.append(f"  length: {self.graph_size()}")
         strs.append(f"  inputs: {map_structure(lambda x: x.name, self.inputs)}")
         strs.append(
             f"  outputs: {map_structure(lambda x: x.name, self.outputs)}"
@@ -253,8 +271,7 @@ class StatementIR:
         return self.__str__()
 
     def graph_size(self):
-        call_layers = [x for x in self.statements if x.type == "layer"]
-        return len(self.statements) + len(call_layers)
+        return sum([x.graph_size for x in self.statements])
 
 
 @Singleton

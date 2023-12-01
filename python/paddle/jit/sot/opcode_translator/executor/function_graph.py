@@ -456,15 +456,18 @@ class FunctionGraph:
         """
 
         def infer_meta_fn(layer, *metas, **kwmetas):
-            metas = LayerInferMetaCache()(layer.value, *metas, **kwmetas)
-            return metas
+            metas, graph_size = LayerInferMetaCache()(
+                layer.value, *metas, **kwmetas
+            )
+            return metas, graph_size
 
-        def compute_fn(layer, inputs, outputs, stacks):
+        def compute_fn(layer, inputs, outputs, stacks, graph_size):
             self.sir_ctx.call_LAYER(
                 Reference(layer.value, weak_ref),
                 inputs=inputs,
                 outputs=outputs,
                 stacks=stacks,
+                graph_size=graph_size,
             )
 
         def message_handler(*args, **kwargs):
@@ -487,12 +490,13 @@ class FunctionGraph:
             layer: paddle layer
         """
 
-        def compute_fn(static_function, inputs, outputs, stacks):
+        def compute_fn(static_function, inputs, outputs, stacks, graph_size):
             self.sir_ctx.call_AST(
                 static_function,
                 inputs=inputs,
                 outputs=outputs,
                 stacks=stacks,
+                graph_size=graph_size,
             )
 
         def message_handler(*args, **kwargs):
@@ -520,7 +524,7 @@ class FunctionGraph:
         metas = convert_to_meta(args)
         kwmetas = convert_to_meta(kwargs)
 
-        out_metas = infer_meta_fn(func, *metas, **kwmetas)
+        out_metas, graph_size = infer_meta_fn(func, *metas, **kwmetas)
         inputs_symbols = (
             convert_to_symbol(args),
             convert_to_symbol(kwargs),
@@ -554,6 +558,7 @@ class FunctionGraph:
                     inputs_symbols,
                     convert_to_symbol(args[0]),
                     stmt_stacks,
+                    graph_size,
                 )
             else:
                 compute_fn(
@@ -561,6 +566,7 @@ class FunctionGraph:
                     inputs_symbols,
                     convert_to_symbol(outputs),
                     stmt_stacks,
+                    graph_size,
                 )  # symbolic only contain symbols.
                 self._put_inner(outputs)
             return VariableFactory.from_value(

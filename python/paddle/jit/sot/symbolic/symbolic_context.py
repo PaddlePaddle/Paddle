@@ -66,15 +66,15 @@ class SymbolicTraceContext:
         stmt = CallStatement(sirname, inputs, outputs, stacks)
         self.TOS.add_statement(stmt)
 
-    def call_API(self, api, inputs, outputs, stacks):
+    def call_API(self, api, inputs, outputs, stacks, graph_size):
         """
         Call a paddle api.
         """
         assert callable(api), "call_API must receive a paddle api."
-        stmt = ApiStatement(api, inputs, outputs, stacks)
+        stmt = ApiStatement(api, inputs, outputs, stacks, graph_size)
         self.TOS.add_statement(stmt)
 
-    def call_METHOD(self, method_name, inputs, outputs, stacks):
+    def call_METHOD(self, method_name, inputs, outputs, stacks, graph_size):
         """
         Call a method of a api. The API here can be python or Paddle
         """
@@ -84,18 +84,20 @@ class SymbolicTraceContext:
         assert isinstance(
             inputs[0][0], Symbol
         ), "call_METHOD must first augument must be Symbol Variable."
-        stmt = MethodStatement(method_name, inputs, outputs, stacks)
+        stmt = MethodStatement(method_name, inputs, outputs, stacks, graph_size)
         self.TOS.add_statement(stmt)
 
-    def call_LAYER(self, layer, inputs, outputs, stacks):
+    def call_LAYER(self, layer, inputs, outputs, stacks, graph_size):
         """
         Call a layer of a api.
         """
-        stmt = LayerStatement(layer, inputs, outputs, stacks)
+        stmt = LayerStatement(layer, inputs, outputs, stacks, graph_size)
         self.TOS.add_statement(stmt)
 
-    def call_AST(self, static_function, inputs, outputs, stacks):
-        stmt = ASTStatement(static_function, inputs, outputs, stacks)
+    def call_AST(self, static_function, inputs, outputs, stacks, graph_size):
+        stmt = ASTStatement(
+            static_function, inputs, outputs, stacks, graph_size
+        )
         self.TOS.add_statement(stmt)
 
     def get_sir(self, name: str):
