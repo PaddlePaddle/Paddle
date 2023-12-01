@@ -2210,6 +2210,14 @@ struct AddSupportInt8 : public PatternBase {
   PATTERN_DECL_NODE(quant_out);
 };
 
+// subgraph_edge_pattern
+struct SubgraphEdgePattern : public PatternBase {
+  SubgraphEdgePattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "subgraph_edge_pattern") {}
+  PDNode* operator()(const std::unordered_set<std::string>& ops_type);
+  PATTERN_DECL_NODE(ops);
+};
+
 // The following patterns are used to fuse feedforward in forward
 // 1. layer_norm -> linear1 -> activation -> dropout1 -> linear2 -> dropout2
 // -> residual_add (pre_layer_norm)

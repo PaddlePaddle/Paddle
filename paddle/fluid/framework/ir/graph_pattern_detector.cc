@@ -4623,6 +4623,12 @@ void patterns::MulMatmulMatmulV2::operator()(
   ops->LinksTo({ops_out});
 }
 
+// subgraph_edge_pattern
+PDNode *patterns::SubgraphEdgePattern::operator()(
+    const std::unordered_set<std::string> &ops_type) {
+  auto ops = pattern->NewNode(ops_repr())->assert_is_ops(ops_type);
+  return ops;
+}
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

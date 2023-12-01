@@ -396,10 +396,14 @@ void RemoveIntermediateOutputInSubgraph(const std::vector<Node *> &subgraph,
   std::unordered_set<Node *> valid_output;
 
   for (auto *output : *outputs) {
-    int num_used = 0;
-    for (auto *node : output->outputs) {
-      if (!subgraph_set.count(node)) ++num_used;
-      if (num_used > 0) valid_output.insert(output);
+    if (output->IsSubgraphOutput()) {
+      valid_output.insert(output);
+    } else {
+      int num_used = 0;
+      for (auto *node : output->outputs) {
+        if (!subgraph_set.count(node)) ++num_used;
+        if (num_used > 0) valid_output.insert(output);
+      }
     }
   }
 
