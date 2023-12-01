@@ -32,13 +32,21 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
   stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
-
   for (size_t i = 0; i < tuple_push_op_.tuple_size(); ++i) {
     auto inlet_element_value = tuple_push_op_.inlet_element(i);
     inputs.emplace(inlet_element_value,
                    GetValueIds(inlet_element_value, *value_exe_info_));
   }
   SetInputs(inputs);
+
+  // NOTE(zhangbo): TuplePush will change the variables corresponding to the
+  // inlet, so it needs to be marked as output.
+  std::unordered_map<pir::Value, std::vector<int>> outputs;
+  outputs.emplace(tuple_push_op_.inlet(),
+                  std::initializer_list<int>{
+                      value_exe_info_->GetVarId(tuple_push_op_.inlet())});
+  SetOutputs(outputs);
+
   type_ = OpFuncType::kCpuSync;
   for (size_t i = 0; i < tuple_push_op_.tuple_size(); ++i) {
     auto inlet_element_value = tuple_push_op_.inlet_element(i);
@@ -64,18 +72,21 @@ void TuplePushInstruction::Run() {
     stack_element_var_array_->emplace_back(nullptr);
   } else {
     auto& value_2_var_name = value_exe_info_->GetValue2VarName();
-    for (int i = tuple_push_op_.tuple_size() - 1; i >= 0; --i) {
+    // TODO(zhangbo): Performance optimization: static acquisition of TuplePush
+    // input variables and name.
+    for (size_t i = 0; i < tuple_push_op_.tuple_size(); i++) {
       auto inlet_element_value = tuple_push_op_.inlet_element(i);
       Variable* var = value_exe_info_->GetVarByValue(inlet_element_value);
       int stack_size = tuple_push_op_.tuple_size();
 
       auto var_name = value_2_var_name.at(inlet_element_value);
-      std::string new_name =
-          "copied_" + std::to_string(stack_size) + "_" + var_name;
+      std::string new_name = var_name + "copied_" +
+                             std::to_string(stack_element_var_array_->size());
       auto* copy_var = value_exe_info_->GetScope()->Var(new_name);
       DeepCopyVariable(var, copy_var, value_exe_info_, stack_size);
       VLOG(10) << "done DeepCopyVariable " << new_name;
       stack_element_var_array_->emplace_back(copy_var);
+      VLOG(6) << "push back var: " << new_name << "[" << copy_var << "]";
     }
   }
 }

@@ -640,8 +640,6 @@ void PirInterpreter::BuildInstruction() {
         CREATE_INSTR(TuplePushInstruction);
       } else if (op.isa<pir::TuplePopOp>()) {
         CREATE_INSTR(TuplePopInstruction);
-      } else if (op.isa<pir::HasElementsOp>()) {
-        CREATE_INSTR(HasElementsInstruction);
       } else {
         VLOG(6) << "skip process cf dialect op: " << op.name();
         continue;
@@ -657,6 +655,8 @@ void PirInterpreter::BuildInstruction() {
                                                scope_,
                                                local_scope_,
                                                value_exe_info_.get()));
+      } else if (op.isa<paddle::dialect::HasElementsOp>()) {
+        CREATE_INSTR(HasElementsInstruction);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Now only support pd_kernel and cinn dialect."));
