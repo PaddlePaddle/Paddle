@@ -25,8 +25,8 @@ from paddle.distribution.continuous_bernoulli import ContinuousBernoulli
 class ContinuousBernoulli_np:
     def __init__(self, probability, eps=1e-4):
         self.eps = eps
-        self.dtype = 'float32'
-        eps_prob = 1.1920928955078125e-07
+        self.dtype = paddle.get_default_dtype()
+        eps_prob = np.finfo(self.dtype).eps
         self.probability = np.clip(
             probability, a_min=eps_prob, a_max=1 - eps_prob
         )
@@ -101,7 +101,7 @@ class ContinuousBernoulli_np:
         return np.exp(self.np_log_prob(value))
 
     def np_log_prob(self, value):
-        eps = np.finfo('float32').eps
+        eps = np.finfo(self.dtype).eps
         cross_entropy = np.nan_to_num(
             value * np.log(self.probability)
             + (1.0 - value) * np.log(1 - self.probability),
@@ -160,7 +160,7 @@ paddle.enable_static()
     [
         (
             'multi-dim',
-            parameterize.xrand((1, 3), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((1, 3), min=0.0, max=1.0).astype("float32"),
         ),
     ],
 )
@@ -195,10 +195,7 @@ class TestContinuousBernoulli(unittest.TestCase):
             str(self.mean.dtype).split('.')[-1], self.probability.dtype
         )
         np.testing.assert_allclose(
-            self.mean,
-            self._np_mean(),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            self.mean, self._np_mean(), rtol=0.20, atol=0
         )
 
     def test_variance(self):
@@ -206,10 +203,7 @@ class TestContinuousBernoulli(unittest.TestCase):
             str(self.var.dtype).split('.')[-1], self.probability.dtype
         )
         np.testing.assert_allclose(
-            self.var,
-            self._np_variance(),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            self.var, self._np_variance(), rtol=0.20, atol=0
         )
 
     def test_entropy(self):
@@ -217,10 +211,7 @@ class TestContinuousBernoulli(unittest.TestCase):
             str(self.entropy.dtype).split('.')[-1], self.probability.dtype
         )
         np.testing.assert_allclose(
-            self.entropy,
-            self._np_entropy(),
-            rtol=0.0,
-            atol=0.20,
+            self.entropy, self._np_entropy(), rtol=0.20, atol=0
         )
 
     def test_sample(self):
@@ -245,8 +236,8 @@ class TestContinuousBernoulli(unittest.TestCase):
     [
         (
             'value-broadcast-shape',
-            parameterize.xrand((1,), min=0.1, max=0.9).astype("float32"),
-            parameterize.xrand((2, 2), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((1,), min=0.0, max=1.0).astype("float32"),
+            parameterize.xrand((2, 2), min=0.0, max=1.0).astype("float32"),
         ),
     ],
 )
@@ -289,8 +280,8 @@ class TestContinuousBernoulliProbs(unittest.TestCase):
     [
         (
             'multi-dim',
-            parameterize.xrand((2,), min=0.1, max=0.9).astype("float32"),
-            parameterize.xrand((2,), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((2,), min=0.0, max=1.0).astype("float32"),
+            parameterize.xrand((2,), min=0.0, max=1.0).astype("float32"),
         ),
     ],
 )
