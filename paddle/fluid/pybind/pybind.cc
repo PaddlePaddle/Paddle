@@ -204,7 +204,7 @@ limitations under the License. */
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
-#include "paddle/phi/common/type_promotion_table.h"
+#include "paddle/phi/common/data_type_promotion.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"

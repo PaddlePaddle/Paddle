@@ -14,7 +14,7 @@
 #pragma once
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/phi/common/type_promotion_table.h"
+#include "paddle/phi/common/data_type_promotion.h"
 
 namespace egr {
 
