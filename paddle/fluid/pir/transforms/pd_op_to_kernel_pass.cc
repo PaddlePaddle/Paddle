@@ -104,6 +104,7 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     pir::StackCreateOp::name(),
     pir::TuplePushOp::name(),
     pir::TuplePopOp::name(),
+    HasElementsOp::name(),
     "cinn_runtime.jit_kernel"};
 
 static bool NeedFallBackCpu(const pir::Operation* op,
@@ -1181,6 +1182,23 @@ void HandleForSpecialOp(
     }
   }
 
+  if (op_item->isa<HasElementsOp>()) {
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      vec_inputs.push_back(new_in);
+    }
+    PADDLE_ENFORCE_EQ(op_item->result(0).type().isa<DenseTensorType>(),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "HasElementsOp's output should be bool type"));
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      op_output_types.push_back(
+          BuildOutputType(op_item->result(i).type(), phi::CPUPlace(), ctx));
+    }
+  }
+
   if (op_item->isa<::pir::TuplePopOp>()) {
     for (size_t i = 0; i < op_item->num_operands(); ++i) {
       auto cur_in = op_item->operand_source(i);
@@ -1247,6 +1265,7 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
     return {};
   }
   std::vector<pir::Type> op_output_types;
+
   auto phi_kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
       kernel_fn_str, kernel_key);
   VLOG(6) << "[" << kernel_fn_str
