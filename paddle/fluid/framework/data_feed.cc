@@ -368,7 +368,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
 
 template <typename T>
 bool InMemoryDataFeed<T>::Start() {
-  // #ifdef _LINUX
+#ifdef _LINUX
   VLOG(3) << "entering InMemoryDataFeed<T>::Start()";
   this->CheckSetFileList();
   if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
@@ -376,7 +376,7 @@ bool InMemoryDataFeed<T>::Start() {
     input_channel_->Read(data);
     output_channel_->Write(std::move(data));
   }
-  // #endif
+#endif
   if (!batch_offsets_.empty()) {
     VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
     enable_heterps_ = true;
@@ -388,7 +388,7 @@ bool InMemoryDataFeed<T>::Start() {
 
 template <typename T>
 int InMemoryDataFeed<T>::Next() {
-  // #ifdef _LINUX
+#ifdef _LINUX
   this->CheckStart();
   if (!enable_heterps_) {
     VLOG(3) << " InMemoryDataFeed<T>::Next() enable_heterps_:"
@@ -448,9 +448,9 @@ int InMemoryDataFeed<T>::Next() {
             << " baych_size: " << this->batch_size_;
   }
   return this->batch_size_;
-  // #else
-  //   return 0;
-  // #endif
+#else
+  return 0;
+#endif
 }
 
 template <typename T>
