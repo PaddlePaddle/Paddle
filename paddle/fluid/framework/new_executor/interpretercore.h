@@ -85,6 +85,9 @@ class InterpreterCore {
 
   std::tuple<double, double> InterpreterRunTime();
 
+  // Only for debug
+  Variable* DebugVar(const std::string& name) const;
+
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);
 
