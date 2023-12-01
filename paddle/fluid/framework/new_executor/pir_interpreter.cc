@@ -649,7 +649,6 @@ void PirInterpreter::BuildInstruction() {
         auto skip_gc_vars = execution_config_.skip_gc_vars;
         vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
             op_idx++, place_, &op, value_exe_info_.get(), skip_gc_vars));
-
         sub_blocks_.insert(
             {op.dyn_cast<paddle::dialect::IfOp>().true_block(),
              dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())

@@ -33,11 +33,11 @@ from .batch import batch
 # the illogical implement in the monkey-patch methods later.
 from .framework import monkey_patch_variable
 from .framework import monkey_patch_math_tensor
-from .pir import monkey_patch_opresult, monkey_patch_program
+from .pir import monkey_patch_value, monkey_patch_program
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
-monkey_patch_opresult()
+monkey_patch_value()
 monkey_patch_program()
 
 from .framework import (

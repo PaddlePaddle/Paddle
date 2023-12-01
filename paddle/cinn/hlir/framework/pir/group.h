@@ -81,6 +81,7 @@ struct Group {
   std::vector<std::string> output_names;
   std::vector<::pir::Value> output_values;
   std::string fn_name{""};
+  std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map;
 
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
