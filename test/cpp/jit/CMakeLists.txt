@@ -22,13 +22,4 @@ if(WITH_TESTING AND NOT WIN32)
     layer_test
     SRCS layer_test.cc
     DEPS ${JIT_DEPS})
-  # add_dependencies(layer_test jit_download_program)
-
-  cc_test(
-    layer_test_new
-    SRCS layer_test.cc
-    DEPS ${JIT_DEPS} common)
-  # add_dependencies(layer_test_new jit_download_program)
-  # set_tests_properties(layer_test_new PROPERTIES ENVIRONMENT
-  #                                                "FLAGS_jit_engine_type=New")
 endif()

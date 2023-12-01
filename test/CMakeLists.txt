@@ -240,9 +240,6 @@ endif()
 
 if(TARGET layer_test)
   add_dependencies(layer_test jit_download_program)
-  add_dependencies(layer_test_new jit_download_program)
-  set_tests_properties(layer_test_new PROPERTIES ENVIRONMENT
-                                                 "FLAGS_jit_engine_type=New")
 endif()
 
 if(TEST buddy_allocator_test)
