@@ -228,6 +228,16 @@ SpmdInfo SgdInferSpmd(const DistMetaTensor& param,
   TensorDistAttr grad_dist_attr_spmd =
       PADDLE_GET(TensorDistAttr, param_grad_spmd.first[1]);
 
+  VLOG(3) << "The source dims mapping for param is: "
+          << auto_parallel::str_join(param.dist_attr().dims_mapping());
+  VLOG(3) << "The source dims mapping for grad is: "
+          << auto_parallel::str_join(grad.dist_attr().dims_mapping());
+  VLOG(3) << "The inter dims mapping for param (master param if available) "
+          << "after elementwise spmd is: "
+          << auto_parallel::str_join(param.dist_attr().dims_mapping());
+  VLOG(3) << "The inter dims mapping for grad after elementwise spmd is: "
+          << auto_parallel::str_join(grad.dist_attr().dims_mapping());
+
   TensorDistAttr param_dist_attr =
       CopyTensorDistAttrForOutput(param_dist_attr_spmd);
   TensorDistAttr grad_dist_attr =
@@ -247,7 +257,7 @@ SpmdInfo SgdInferSpmd(const DistMetaTensor& param,
   lr_dist_attr.set_dims_mapping(learning_rate.dist_attr().dims_mapping());
 
   return {
-      {param_dist_attr, grad_dist_attr, lr_dist_attr, master_param_dist_attr},
+      {param_dist_attr, lr_dist_attr, grad_dist_attr, master_param_dist_attr},
       {param_dist_attr, master_param_dist_attr}};
 }
 
