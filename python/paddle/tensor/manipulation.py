@@ -6016,13 +6016,7 @@ def select_scatter(x, values, axis, index, name=None):
         )
     else:
         helper = LayerHelper('select_scatter', **locals())
-        if helper.main_program.current_block_idx != 0:
-            # not in global block, we should create a global variable.
-            output = helper._create_global_variable_for_type_inference(
-                dtype=x.dtype
-            )
-        else:
-            output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        output = helper.create_variable_for_type_inference(dtype=x.dtype)
         cur_block = default_main_program().current_block()
         cur_block.append_op(
             type="set_value",
@@ -6032,8 +6026,4 @@ def select_scatter(x, values, axis, index, name=None):
             inplace_map={"Input": "Out"},
         )
 
-        # map var to the new output
-        paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
-            cur_block.program, x.desc.id(), output
-        )
         return output

@@ -149,20 +149,17 @@ class TestSelectScatterAPIError(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
-    def test_error(self):
-        try:
+    def test_len_of_shape_not_equal_error(self):
+        with self.assertRaises(RuntimeError):
             x_tensor = paddle.to_tensor(self.x_np)
             value_tensor = paddle.to_tensor(self.value_np).reshape((2, 2, 2))
             res = paddle.select_scatter(x_tensor, value_tensor, 1, 1)
-        except Exception as error:
-            self.assertIsInstance(error, RuntimeError)
 
-        try:
+    def test_one_of_size_not_equal_error(self):
+        with self.assertRaises(RuntimeError):
             x_tensor = paddle.to_tensor(self.x_np)
             value_tensor = paddle.to_tensor([[2, 2], [2, 2]]).astype(np.float32)
             res = paddle.select_scatter(x_tensor, value_tensor, 1, 1)
-        except Exception as error:
-            self.assertIsInstance(error, RuntimeError)
 
 
 if __name__ == "__main__":
