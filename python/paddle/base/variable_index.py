@@ -415,6 +415,7 @@ def _setitem_static(x, indices, values):
         indices(int|slice|None|Tensor|List|Tuple...): Indices, used to indicate the position of the element to be fetched.
         values(Tensor|Number|Ndarray): values to be assigned to the x.
     """
+    from . import in_dynamic_or_pir_mode
     from .framework import Variable, default_main_program
 
     if x.type == paddle.base.core.VarDesc.VarType.LOD_TENSOR_ARRAY:
@@ -479,7 +480,7 @@ def _setitem_static(x, indices, values):
             attrs["values"] = values
             attrs["shape"] = shape
 
-        elif isinstance(values, Variable):
+        elif isinstance(values, (Variable, paddle.pir.OpResult)):
             values = values.astype(dtype)
             inputs["ValueTensor"] = values
             value_tensor = values
@@ -491,7 +492,7 @@ def _setitem_static(x, indices, values):
             )
 
         # step3.1: Only basic indexing, use OP set_value to set value.
-        if paddle.in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if value_tensor is None:
                 return paddle._C_ops.set_value_(
                     x,
@@ -566,13 +567,13 @@ def _setitem_static(x, indices, values):
             _,
             _,
         ) = deal_advanced_index(sub_tensor, advanced_index, True)
-        if not isinstance(values, Variable):
+        if not isinstance(values, (Variable, paddle.pir.OpResult)):
             values = paddle.assign(values).astype(transed_sub_tensor.dtype)
 
         if values.dtype != transed_sub_tensor.dtype:
             values = values.astype(transed_sub_tensor.dtype)
 
-        if paddle.in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             # NOTE(zoooo0820): directly return result instead of another set_value, after backward bug fixed.
             transed_sub_tensor = transed_sub_tensor.index_put_(
                 adjusted_advanced_index, values
@@ -585,7 +586,7 @@ def _setitem_static(x, indices, values):
         transback_sub_tensor = transed_sub_tensor.transpose(transback_dim)
         inputs["ValueTensor"] = transback_sub_tensor
 
-        if paddle.in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             x._bump_inplace_version()
             output = x
         else:
@@ -610,7 +611,7 @@ def _setitem_static(x, indices, values):
             inplace_map={"Input": "Out"},
         )
 
-        if not paddle.in_dynamic_mode():
+        if not in_dynamic_or_pir_mode():
             # map var to the new output
             paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
                 cur_block.program, x.desc.id(), output
