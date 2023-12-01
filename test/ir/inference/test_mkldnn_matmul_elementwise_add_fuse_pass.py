@@ -160,9 +160,7 @@ class TestMatmulElementwiseAddExpendResidualPass(PassAutoScanTest):
             ).astype(np.float32)
 
         def generate_input_redisual():
-            return np.random.random(
-                [input_dim]
-            ).astype(np.float32)
+            return np.random.random([input_dim]).astype(np.float32)
 
         matmul_op = OpConfig(
             type='matmul',
