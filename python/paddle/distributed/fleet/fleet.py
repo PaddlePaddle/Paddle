@@ -1324,7 +1324,6 @@ class Fleet:
         context["user_defined_strategy"] = copy.deepcopy(
             self._user_defined_strategy
         )
-        print("_user_defined_strategy=", self._user_defined_strategy)
         if in_dynamic_mode():
             # imitate target optimizer retrieval
             target_opt = self.user_defined_optimizer
@@ -1443,14 +1442,6 @@ class Fleet:
                     valid_graph_optimizer_list.append(opt)
                 else:
                     can_not_apply_optimizer_list.append(opt)
-                print(
-                    "distributed_optimizer_list opt:",
-                    opt,
-                    "   apply:",
-                    opt._can_apply(),
-                    " graph:",
-                    opt._is_graph_out(),
-                )
             # fix set collective and fleet ps gpu error
             if (
                 self._is_collective

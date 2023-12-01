@@ -29,7 +29,7 @@ class TestUnzipOp(unittest.TestCase):
         paddle.enable_static()
         if core.is_compiled_with_cuda():
             place = base.CUDAPlace(0)
-            x = paddle.static.data(name='X', shape=[1], dtype='float64')
+            x = paddle.static.data(name='X', shape=[6], dtype='float64')
             lod = paddle.static.data(name='lod', shape=[6], dtype='int64')
             len = 4
             output = paddle.incubate.operators.unzip(x, lod, len)
@@ -69,7 +69,7 @@ class TestUnzipOp_Complex(unittest.TestCase):
             if core.is_compiled_with_cuda():
                 place = base.CUDAPlace(0)
                 x = paddle.static.data(
-                    name='Complex64_X', shape=[1], dtype=self.dtype
+                    name='Complex64_X', shape=[6], dtype=self.dtype
                 )
                 lod = paddle.static.data(name='lodx', shape=[6], dtype='int64')
                 len = 4

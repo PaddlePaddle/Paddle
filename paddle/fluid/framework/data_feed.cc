@@ -368,7 +368,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
 
 template <typename T>
 bool InMemoryDataFeed<T>::Start() {
-#ifdef _LINUX
+  // #ifdef _LINUX
   VLOG(3) << "entering InMemoryDataFeed<T>::Start()";
   this->CheckSetFileList();
   if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
@@ -376,7 +376,7 @@ bool InMemoryDataFeed<T>::Start() {
     input_channel_->Read(data);
     output_channel_->Write(std::move(data));
   }
-#endif
+  // #endif
   if (!batch_offsets_.empty()) {
     VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
     enable_heterps_ = true;
@@ -388,7 +388,7 @@ bool InMemoryDataFeed<T>::Start() {
 
 template <typename T>
 int InMemoryDataFeed<T>::Next() {
-#ifdef _LINUX
+  // #ifdef _LINUX
   this->CheckStart();
   if (!enable_heterps_) {
     VLOG(3) << " InMemoryDataFeed<T>::Next() enable_heterps_:"
@@ -448,9 +448,9 @@ int InMemoryDataFeed<T>::Next() {
             << " baych_size: " << this->batch_size_;
   }
   return this->batch_size_;
-#else
-  return 0;
-#endif
+  // #else
+  //   return 0;
+  // #endif
 }
 
 template <typename T>
@@ -1448,6 +1448,8 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
   ins_id_vec_.clear();
   ins_id_vec_.reserve(ins_vec.size());
   for (const auto& r : ins_vec) {
+    VLOG(0) << "PutToFeedVec ins_id: " << r.ins_id_
+            << " size:" << ins_vec.size();
     ins_id_vec_.push_back(r.ins_id_);
     ins_content_vec_.push_back(r.content_);
     for (auto& item : r.float_feasigns_) {
@@ -1476,6 +1478,8 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
         offset_[j].push_back(batch_float_feasigns_[j].size());
       } else if (type[0] == 'u') {  // uint64
         offset_[j].push_back(batch_uint64_feasigns_[j].size());
+        VLOG(0) << "PutToFeedVec slot offset_[" << j
+                << "] : " << batch_uint64_feasigns_[j].size();
       }
     }
   }
@@ -1496,7 +1500,9 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
       uint64_t* feasign = batch_uint64_feasigns_[i].data();
       int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
           {total_instance, 1}, this->place_);
+      VLOG(0) << "PutToFeedVec slot[" << i << "] before CopyToFeedTensor";
       CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(int64_t));
+      VLOG(0) << "PutToFeedVec slot[" << i << "] finish CopyToFeedTensor";
     }
     auto& slot_offset = offset_[i];
     if (this->input_type_ == 0) {
@@ -1523,6 +1529,8 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
         feed_vec_[i]->set_lod(data_lod);
       }
     }
+    VLOG(0) << "PutToFeedVec slot[" << i
+            << "] this->input_type_:" << this->input_type_;
     if (use_slots_is_dense_[i]) {
       if (inductive_shape_index_[i] != -1) {
         use_slots_shape_[i][inductive_shape_index_[i]] =
@@ -1530,6 +1538,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
       }
       feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
     }
+    VLOG(0) << "PutToFeedVec slot[" << i << "] finish =====";
   }
 #endif
 }

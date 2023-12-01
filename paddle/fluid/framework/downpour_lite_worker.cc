@@ -228,7 +228,9 @@ void DownpourLiteWorker::CopyDenseVars() {
 void DownpourLiteWorker::TrainFilesWithProfiler() {
   VLOG(3) << "Begin to train files with profiler";
   platform::SetNumThreads(1);
+  VLOG(3) << "Begin to train files with profiler begin to start reader";
   device_reader_->Start();
+  VLOG(3) << "Begin to train files with profiler end to start reader";
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
   for (auto& op : ops_) {
