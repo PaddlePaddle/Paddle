@@ -15,7 +15,7 @@
 #include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
 
 #include "paddle/fluid/pir/drr/pattern_graph.h"
-#include "paddle/pir/core/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace pir {
 namespace drr {
@@ -123,6 +123,17 @@ Tensor& Op::operator()(const Tensor& arg1, const Tensor& arg2) const {
   return out;
 }
 
+Tensor& Op::operator()(const Tensor& arg0,
+                       const Tensor& arg1,
+                       const Tensor& arg2) const {
+  std::vector<const Tensor*> inputs{&arg0, &arg1, &arg2};
+  auto& out = pattern_graph_->AddTmpTensor(std::shared_ptr<Tensor>(new Tensor(
+      prefix + op_type_name_ + "_" + std::to_string(count++), pattern_graph_)));
+  std::vector<const Tensor*> outputs{&out};
+  pattern_graph_->AddOpCall(std::make_shared<OpCall>(this, inputs, outputs));
+  return out;
+}
+
 Tensor& Op::operator()() const {
   std::vector<const Tensor*> inputs{};
   auto& out = pattern_graph_->AddTmpTensor(std::shared_ptr<Tensor>(new Tensor(
@@ -143,7 +154,12 @@ void Tensor::Assign(const Tensor& other) {
 
 void Tensor::operator=(const Tensor& other) const {  // NOLINT
   // The two tensor must be in the same pattern graph.
-  IR_ENFORCE(this->pattern_graph_ == other.pattern_graph_);
+  PADDLE_ENFORCE_EQ(
+      this->pattern_graph_,
+      other.pattern_graph_,
+      phi::errors::InvalidArgument("Matching failed."
+                                   "Two Tensors must be in the same pattern "
+                                   "graph to make the '=' judgment."));
   if (other.name_.find(Op::prefix) == 0 &&
       name_.find(Op::prefix) == std::string::npos) {
     other.pattern_graph_->UpdateTmpTensor(other.name_, this->name_);

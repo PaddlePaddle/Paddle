@@ -117,6 +117,10 @@ SqueezeExcitationFusePattern::SqueezeExcitationFusePattern(
   auto mul_w_teller = [](const Node* x) {
     auto* var_desc = x->Var();
     auto filter_dims = var_desc->GetShape();
+    auto filter_dtype = var_desc->GetDataType();
+    if (filter_dtype == proto::VarType::Type::VarType_Type_INT8) {
+      return false;
+    }
     auto in_c = filter_dims[0];
     auto out_c = filter_dims[1];
     auto bigger = std::max(in_c, out_c);

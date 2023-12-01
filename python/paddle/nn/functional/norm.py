@@ -91,9 +91,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
         )
         if len(x.shape) == 1 and axis != 0 and axis != -1:
             raise ValueError(
-                "Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {}".format(
-                    axis
-                )
+                f"Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {axis}"
             )
 
         attrs = {
@@ -443,7 +441,7 @@ def instance_norm(
                [ 0.74275863, -0.11246002,  1.73788261]]]])
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.instance_norm(x, weight, bias, eps)
         return out
     else:

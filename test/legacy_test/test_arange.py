@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 
@@ -138,9 +139,12 @@ class TestArangeOpError(unittest.TestCase):
 
 
 class TestArangeAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_out(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x1 = paddle.arange(0, 5, 1, 'float32')
 
             place = (
@@ -151,9 +155,9 @@ class TestArangeAPI(unittest.TestCase):
             exe = paddle.static.Executor(place)
             out = exe.run(fetch_list=[x1])
 
-        expected_data = np.arange(0, 5, 1).astype(np.float32)
-        self.assertEqual((out == expected_data).all(), True)
-        self.assertListEqual(list(x1.shape), [5])
+            expected_data = np.arange(0, 5, 1).astype(np.float32)
+            self.assertEqual((out == expected_data).all(), True)
+            self.assertListEqual(list(x1.shape), [5])
         paddle.disable_static(place)
 
 

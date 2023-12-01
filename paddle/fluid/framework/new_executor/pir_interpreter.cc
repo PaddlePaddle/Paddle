@@ -32,9 +32,11 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -42,9 +44,13 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
+
 #include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/has_elements_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/tuple_pop_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/tuple_push_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/while_instruction.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
@@ -55,6 +61,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -63,8 +71,12 @@
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
-PHI_DECLARE_bool(enable_new_ir_in_executor_trace_run);
+PHI_DECLARE_bool(enable_pir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor_trace_run);
+
+#define CREATE_INSTR(instr_name)                                   \
+  vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
+      op_idx++, place_, &op, value_exe_info_.get()));
 
 namespace paddle {
 namespace framework {
@@ -83,12 +95,6 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
       fetch_var_names_(fetch_var_names) {
   VLOG(4) << "PirInterpreter(): " << this << " on " << place_;
 
-  static_build_ = FLAGS_new_executor_static_build &&
-                  !FLAGS_new_executor_use_cuda_graph &&
-                  !execution_config.used_for_control_flow_op;
-  //    &&interpreter::BlockCanBeStaticBuilt(block);
-  static_build_ = true;
-
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
@@ -100,9 +106,10 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
   if (execution_config_.create_local_scope) {
     auto local_scope = &scope_->NewScope();
     local_scope_ = local_scope;
-    VLOG(6) << "new ir interpretercore scope: " << scope_ << "\t"
+    VLOG(6) << "pir interpretercore scope: " << scope_ << "\t"
             << "; local scope: " << local_scope_;
   }
+
   // TODO(zhangbo): delete var_scope
   var_scope_.SetLocalScope(local_scope_);
 
@@ -126,7 +133,7 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
 
   std::stringstream ss;
   ss << this
-     << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+     << std::chrono::high_resolution_clock::now().time_since_epoch().count();
   BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
@@ -142,15 +149,10 @@ PirInterpreter::PirInterpreter(
       var_scope_(scope),
       scope_(scope),
       ir_block_(ir_block),
+      value_exe_info_(value_exe_info),
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
   VLOG(4) << "PirInterpreter(): " << this << " on " << place_;
-
-  static_build_ = FLAGS_new_executor_static_build &&
-                  !FLAGS_new_executor_use_cuda_graph &&
-                  !execution_config.used_for_control_flow_op;
-  //    &&interpreter::BlockCanBeStaticBuilt(block);
-  static_build_ = true;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
@@ -163,7 +165,7 @@ PirInterpreter::PirInterpreter(
   if (execution_config_.create_local_scope) {
     auto local_scope = &scope_->NewScope();
     local_scope_ = local_scope;
-    VLOG(6) << "new ir interpretercore scope: " << scope_ << "\t"
+    VLOG(6) << "pir interpretercore scope: " << scope_ << "\t"
             << "; local scope: " << local_scope_;
   }
   // TODO(zhangbo): delete var_scope
@@ -185,10 +187,9 @@ PirInterpreter::PirInterpreter(
 
   PrepareForCUDAGraphCapture();
 
-  value_exe_info_ = value_exe_info;
-
   std::stringstream ss;
-  ss << this;
+  ss << this
+     << std::chrono::high_resolution_clock::now().time_since_epoch().count();
   BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
@@ -203,11 +204,6 @@ PirInterpreter::~PirInterpreter() {
   // this is needed to have mkl-dnn unit tests working
   platform::ClearMKLDNNCache(place_, this);
 #endif
-}
-
-void PirInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "SetCopyProgram is not implemented in PirInterpreter."));
 }
 
 void PirInterpreter::SetSkipGcVars(const std::set<std::string>& skip_gc_vars) {
@@ -274,17 +270,17 @@ void PirInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
     return;
   }
   // share op dependency
-  ir_dependency_builder_.ShareDependencyFrom(impl.GetNewIrDependencyBuilder());
+  ir_dependency_builder_.ShareDependencyFrom(impl.GetPirDependencyBuilder());
   dependecy_count_ = impl.GetDependencyCount();
   // share event analysis
-  ir_stream_analyzer_.ShareEventInfoFrom(impl.GetNewIrStreamAnalyzer());
+  ir_stream_analyzer_.ShareEventInfoFrom(impl.GetPirStreamAnalyzer());
   is_shared_results_build_ = true;
   VLOG(8) << "Share Build Results from InterpreterCore(" << &impl
           << ") to InterpreterCore(" << this << ")";
 }
 
-const interpreter::NewIrDependencyBuilder&
-PirInterpreter::GetNewIrDependencyBuilder() const {
+const interpreter::PirDependencyBuilder&
+PirInterpreter::GetPirDependencyBuilder() const {
   return ir_dependency_builder_;
 }
 
@@ -293,7 +289,7 @@ std::shared_ptr<std::vector<size_t>> PirInterpreter::GetDependencyCount()
   return dependecy_count_;
 }
 
-const interpreter::NewIrStreamAnalyzer& PirInterpreter::GetNewIrStreamAnalyzer()
+const interpreter::PirStreamAnalyzer& PirInterpreter::GetPirStreamAnalyzer()
     const {
   return ir_stream_analyzer_;
 }
@@ -425,7 +421,6 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.c_reduce_prod",
       "pd_op.c_reducescatter",
       "pd_op.c_broadcast",
-      "pd_op.c_broadcast_",
       "pd_op.c_scatter",
       "pd_op.partial_send",
       "pd_op.partial_recv",
@@ -439,7 +434,6 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.distributed_fused_lamb",
       "pd_op.margin_cross_entropy",
       "pd_op.sync_batch_norm",
-      "pd_op.sync_batch_norm_",
       "pd_op.data_norm",
       "pd_op.class_center_sample",
       "pd_op.all_to_all",
@@ -474,7 +468,6 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.global_gather_grad",
       "pd_op.distributed_fused_lamb_grad",
       "pd_op.margin_cross_entropy_grad",
-      "pd_op.margin_cross_entropy_grad_",
       "pd_op.sync_batch_norm_grad",
       "pd_op.data_norm_grad",
       "pd_op.class_center_sample_grad",
@@ -486,10 +479,82 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.p_send_grad",
       "pd_op.reduce_scatter_grad",
       "pd_op.all_reduce_grad",
-      "pd_op.reduce_grad"};
+      "pd_op.reduce_grad",
+      "pd_op.c_softmax_with_cross_entropy_",
+      "pd_op.c_allgather_",
+      "pd_op.c_allreduce_max_",
+      "pd_op.c_allreduce_min_",
+      "pd_op.c_allreduce_sum_",
+      "pd_op.c_allreduce_prod_",
+      "pd_op.c_reduce_max_",
+      "pd_op.c_reduce_min_",
+      "pd_op.c_reduce_prod_",
+      "pd_op.c_reducescatter_",
+      "pd_op.c_broadcast_",
+      "pd_op.c_scatter_",
+      "pd_op.partial_send_",
+      "pd_op.partial_recv_",
+      "pd_op.partial_allgather_",
+      "pd_op.recv_v2_",
+      "pd_op.send_v2_",
+      "pd_op.mp_allreduce_sum_",
+      "pd_op.barrier_",
+      "pd_op.alltoall_",
+      "pd_op.global_gather_",
+      "pd_op.distributed_fused_lamb_",
+      "pd_op.margin_cross_entropy_",
+      "pd_op.sync_batch_norm_",
+      "pd_op.data_norm_",
+      "pd_op.class_center_sample_",
+      "pd_op.all_to_all_",
+      "pd_op.dist_concat_",
+      "pd_op.all_gather_",
+      "pd_op.broadcast_",
+      "pd_op.p_recv_",
+      "pd_op.p_send_",
+      "pd_op.reduce_scatter_",
+      "pd_op.all_reduce_",
+      "pd_op.reduce_",
+      "pd_op.c_softmax_with_cross_entropy_grad_",
+      "pd_op.c_allgather_grad_",
+      "pd_op.c_allreduce_max_grad_",
+      "pd_op.c_allreduce_min_grad_",
+      "pd_op.c_allreduce_sum_grad_",
+      "pd_op.c_allreduce_prod_grad_",
+      "pd_op.c_reduce_max_grad_",
+      "pd_op.c_reduce_min_grad_",
+      "pd_op.c_reduce_prod_grad_",
+      "pd_op.c_reducescatter_grad_",
+      "pd_op.c_broadcast_grad_",
+      "pd_op.c_scatter_grad_",
+      "pd_op.partial_send_grad_",
+      "pd_op.partial_recv_grad_",
+      "pd_op.partial_allgather_grad_",
+      "pd_op.recv_v2_grad_",
+      "pd_op.send_v2_grad_",
+      "pd_op.mp_allreduce_sum_grad_",
+      "pd_op.barrier_grad_",
+      "pd_op.alltoall_grad_",
+      "pd_op.global_gather_grad_",
+      "pd_op.distributed_fused_lamb_grad_",
+      "pd_op.margin_cross_entropy_grad_",
+      "pd_op.sync_batch_norm_grad_",
+      "pd_op.data_norm_grad_",
+      "pd_op.class_center_sample_grad_",
+      "pd_op.all_to_all_grad_",
+      "pd_op.dist_concat_grad_",
+      "pd_op.all_gather_grad_",
+      "pd_op.broadcast_grad_",
+      "pd_op.p_recv_grad_",
+      "pd_op.p_send_grad_",
+      "pd_op.reduce_scatter_grad_",
+      "pd_op.all_reduce_grad_",
+      "pd_op.reduce_grad_"};
   int64_t nccl_op_num = 0;
   for (auto& ins : vec_instruction_base_) {
     if (nccl_op_set.count(ins->Name())) {
+      nccl_op_num = nccl_op_num + 1;
+    } else if (ins->Operation()->HasAttribute("ring_id")) {
       nccl_op_num = nccl_op_num + 1;
     }
   }
@@ -559,37 +624,57 @@ void PirInterpreter::AnalyseExecuteOrderForTrace(
   }
 }
 
-/// ======================== ///
-///        For new ir        ///
-/// ======================== ///
-
 void PirInterpreter::BuildInstruction() {
-  VLOG(6) << "Build Instructions for new ir ... ";
+  VLOG(6) << "Build Instructions for pir ... ";
   vec_instruction_base_.clear();
   size_t op_idx = 0;
   for (auto& op : *ir_block_) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
-    if (op->dialect()->name() == "builtin") {
-      if (interpreter::GetSpecialOpNames().count(op->name())) {
-        VLOG(6) << "skip process builtin dialect op: " << op->name();
+    if (op.dialect()->name() == "builtin") {
+      if (interpreter::GetSpecialOpNames().count(op.name())) {
+        VLOG(6) << "skip process builtin dialect op: " << op.name();
         continue;
       }
-    } else if (op->dialect()->name() == "cf") {
-      VLOG(6) << "skip process cf dialect op: " << op->name();
-      continue;
-    } else if (op->dialect()->name() == "pd_op") {
-      if (op->isa<paddle::dialect::IfOp>()) {
-        vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
-            op_idx++, place_, op, value_exe_info_.get()));
-      } else if (op->isa<paddle::dialect::WhileOp>()) {
-        vec_instruction_base_.emplace_back(std::make_unique<WhileInstruction>(
-            op_idx++, place_, op, scope_, local_scope_, value_exe_info_.get()));
+    } else if (op.dialect()->name() == "cf") {
+      if (op.isa<pir::TuplePushOp>()) {
+        CREATE_INSTR(TuplePushInstruction);
+      } else if (op.isa<pir::TuplePopOp>()) {
+        CREATE_INSTR(TuplePopInstruction);
+      } else {
+        VLOG(6) << "skip process cf dialect op: " << op.name();
+        continue;
+      }
+    } else if (op.dialect()->name() == "pd_op") {
+      if (op.isa<paddle::dialect::IfOp>()) {
+        CREATE_INSTR(CondInstruction);
+        sub_blocks_.insert(
+            {op.dyn_cast<paddle::dialect::IfOp>().true_block(),
+             dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
+                 ->TrueBranchInterpreter()});
+        sub_blocks_.insert(
+            {op.dyn_cast<paddle::dialect::IfOp>().false_block(),
+             dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
+                 ->FalseBranchInterpreter()});
+      } else if (op.isa<paddle::dialect::WhileOp>()) {
+        vec_instruction_base_.emplace_back(
+            std::make_unique<WhileInstruction>(op_idx++,
+                                               place_,
+                                               &op,
+                                               scope_,
+                                               local_scope_,
+                                               value_exe_info_.get()));
+        sub_blocks_.insert(
+            {&op.dyn_cast<paddle::dialect::WhileOp>().body(),
+             dynamic_cast<WhileInstruction*>(vec_instruction_base_.back().get())
+                 ->BodyInterpreter()});
+      } else if (op.isa<paddle::dialect::HasElementsOp>()) {
+        CREATE_INSTR(HasElementsInstruction);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Now only support pd_kernel and cinn dialect."));
       }
-    } else if (op->dialect()->name() == "pd_kernel") {
-      auto op_name = op->attributes()
+    } else if (op.dialect()->name() == "pd_kernel") {
+      auto op_name = op.attributes()
                          .at("op_name")
                          .dyn_cast<::pir::StrAttribute>()
                          .AsString();
@@ -599,25 +684,53 @@ void PirInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (op->isa<paddle::dialect::LegacyKernelOp>()) {
-        vec_instruction_base_.emplace_back(
-            std::make_unique<LegacyKernelInstruction>(
-                op_idx++, place_, op, *(value_exe_info_.get())));
+      if (op.isa<paddle::dialect::LegacyKernelOp>()) {
+        CREATE_INSTR(LegacyKernelInstruction);
       } else {
-        vec_instruction_base_.emplace_back(
-            std::make_unique<PhiKernelInstruction>(
-                op_idx++, place_, op, *(value_exe_info_.get())));
+        CREATE_INSTR(PhiKernelInstruction);
       }
 #ifdef PADDLE_WITH_CINN
-    } else if (op->dialect()->name() == "cinn_runtime") {
-      vec_instruction_base_.emplace_back(std::make_unique<CinnJitInstruction>(
-          op_idx++, place_, op, *(value_exe_info_.get())));
+    } else if (op.dialect()->name() == "cinn_runtime") {
+      CREATE_INSTR(CinnJitInstruction);
 #endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Now only support pd_kernel and cinn dialect."));
     }
   }
+}
+
+std::string PirInterpreter::DebugInstructions() {
+  std::stringstream ss;
+  ss << "\n"
+     << std::left << std::setw(7) << "id" << std::setw(40) << "instruction"
+     << std::setw(40) << "inputs_id" << std::setw(40) << "outputs_id"
+     << std::endl;
+  uint64_t idx = 0;
+  for (auto& instr : vec_instruction_base_) {
+    ss << std::setw(7) << idx++ << std::setw(40) << instr->Name();
+
+    std::stringstream ss_inputs;
+    for (auto& input : instr->Inputs()) {
+      ss_inputs << "{";
+      for (auto id : input.second) {
+        ss_inputs << id << " ";
+      }
+      ss_inputs << "} ";
+    }
+    ss << std::setw(40) << ss_inputs.str();
+
+    std::stringstream ss_outputs;
+    for (auto& output : instr->Outputs()) {
+      ss_outputs << "{";
+      for (auto id : output.second) {
+        ss_outputs << id << " ";
+      }
+      ss_outputs << "} ";
+    }
+    ss << std::setw(40) << ss_outputs.str() << std::endl;
+  }
+  return ss.str();
 }
 
 std::string PirInterpreter::DebugValueInfo() {
@@ -649,6 +762,9 @@ std::string PirInterpreter::DebugValueInfo() {
 }
 
 void PirInterpreter::BuildInstructionDependences() {
+  if (VLOG_IS_ON(6)) {
+    VLOG(6) << DebugInstructions();
+  }
   // analysis the dependences between instructions, add next_instr_list to each
   // instr, and set the dependecy_count_
   size_t instr_num = vec_instruction_base_.size();
@@ -656,7 +772,6 @@ void PirInterpreter::BuildInstructionDependences() {
   if (!is_shared_results_build_) {
     dependecy_count_->assign(instr_num, 0);
   }
-
   std::vector<paddle::framework::InstructionBase*> instructions_ptr;
   for (auto& instr : vec_instruction_base_) {
     instructions_ptr.push_back(instr.get());
@@ -883,6 +998,11 @@ void PirInterpreter::CheckGC(InstructionBase* instr) {
       gc_->Add(refs_[var_id]->Var(), instr);
     }
   }
+
+  for (auto var : instr->EagerGCVars()) {
+    gc_->Add(var, instr);
+  }
+  instr->ClearEagerGCVars();
 }
 
 void PirInterpreter::CalculateLastLiveOps() {
@@ -1023,7 +1143,8 @@ void PirInterpreter::ConstructEventForJitInput() {
 
 paddle::framework::FetchList PirInterpreter::Run(
     const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors) {
+    const std::vector<phi::DenseTensor>& feed_tensors,
+    bool need_fetch) {
   auto FeedInput = [&] {
     VLOG(4) << "Feed inputs";
     for (size_t i = 0; i < feed_names.size(); ++i) {
@@ -1049,16 +1170,17 @@ paddle::framework::FetchList PirInterpreter::Run(
   FeedInput();
 
   if (!is_build_) {
-    LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
-    // Build
-    VLOG(4) << "Done BuildScope";
+    LOG_FIRST_N(INFO, 1) << "New Executor is Running ...";
     VLOG(4) << DebugValueInfo();
 
     SolvePersisableVarNames();
 
-    VLOG(4) << "Parameter value include: ";
-    for (auto parameter : parameter_var_names_) {
-      VLOG(4) << "Parameter value: " << parameter;
+    if (VLOG_IS_ON(6)) {
+      std::stringstream ss;
+      for (auto parameter : parameter_var_names_) {
+        ss << parameter << ", ";
+      }
+      VLOG(6) << "Parameter value include: " << ss.str();
     }
 
     BuildInstruction();
@@ -1068,22 +1190,23 @@ paddle::framework::FetchList PirInterpreter::Run(
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
-      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
-                              "with trace version.";
+      LOG_FIRST_N(INFO, 1) << "pir interpreter is running by trace mode ...";
       TraceRunImpl();
     } else {
-      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
-                              "with multi thread version.";
+      LOG_FIRST_N(INFO, 1)
+          << "pir interpreter is running by multi-thread mode ...";
       MultiThreadRunImpl();
     }
 
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       TraceRunImpl();
@@ -1095,41 +1218,25 @@ paddle::framework::FetchList PirInterpreter::Run(
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
+
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
-  if (FLAGS_enable_new_ir_in_executor) {
-    framework::FetchList fetch_res;
-
+  framework::FetchList fetch_res;
+  if (need_fetch) {
     for (auto& var_name : fetch_var_names_) {
       auto* var = inner_scope->FindVar(var_name);
-      VLOG(0) << "fetch " << var_name << "[" << var << "]";
+      VLOG(4) << "fetch " << var_name << "[" << var << "]";
       fetch_res.push_back(var->Get<phi::DenseTensor>());
     }
-
-    VLOG(4) << "get fetch list size: " << fetch_res.size();
-    return fetch_res;
-  } else {
-    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-    if (fetch_var) {
-      auto fetch_list =
-          std::move(*fetch_var->GetMutable<framework::FetchList>());
-#ifdef PADDLE_WITH_CUDA
-      if (platform::IsCUDAGraphCapturing()) {
-        PADDLE_ENFORCE_EQ(fetch_list.empty(),
-                          true,
-                          platform::errors::InvalidArgument(
-                              "Cannot fetch data when using CUDA Graph."));
-      }
-#endif
-      return fetch_list;
-    } else {
-      return {};
-    }
   }
+
+  VLOG(4) << "get fetch list size: " << fetch_res.size();
+  return fetch_res;
 }
 
 FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
-                              bool need_fetch) {
+                              bool need_fetch,
+                              bool enable_job_schedule_profiler) {
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -1138,16 +1245,17 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
 #endif
 
   if (!is_build_) {
-    LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
-    // Build
-    VLOG(4) << "Done BuildScope";
+    LOG_FIRST_N(INFO, 1) << "New Executor is Running ...";
     VLOG(4) << DebugValueInfo();
 
     SolvePersisableVarNames();
 
-    VLOG(4) << "Parameter value include: ";
-    for (auto parameter : parameter_var_names_) {
-      VLOG(4) << "Parameter value: " << parameter;
+    if (VLOG_IS_ON(6)) {
+      std::stringstream ss;
+      for (auto parameter : parameter_var_names_) {
+        ss << parameter << ", ";
+      }
+      VLOG(6) << "Parameter value include: " << ss.str();
     }
 
     BuildInstruction();
@@ -1157,22 +1265,23 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
-      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
-                              "with trace version.";
+      LOG_FIRST_N(INFO, 1) << "pir interpreter is running by trace mode ...";
       TraceRunImpl();
     } else {
-      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
-                              "with multi thread version.";
+      LOG_FIRST_N(INFO, 1)
+          << "pir interpreter is running by multi-thread mode ...";
       MultiThreadRunImpl();
     }
 
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       TraceRunImpl();
@@ -1184,38 +1293,21 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
-  // return Fetch Tensors
-  Scope* inner_scope = InnerScope();
-  if (FLAGS_enable_new_ir_in_executor) {
-    framework::FetchList fetch_res;
 
-    if (need_fetch) {
-      for (auto& var_name : fetch_var_names_) {
-        auto* var = inner_scope->FindVar(var_name);
-        VLOG(0) << "fetch " << var_name << "[" << var << "]";
-        fetch_res.push_back(var->Get<phi::DenseTensor>());
-      }
+  framework::FetchList fetch_res;
+  if (need_fetch) {
+    // return Fetch Tensors
+    Scope* inner_scope = InnerScope();
+
+    for (auto& var_name : fetch_var_names_) {
+      auto* var = inner_scope->FindVar(var_name);
+      VLOG(4) << "fetch " << var_name << "[" << var << "]";
+      fetch_res.push_back(var->Get<phi::DenseTensor>());
     }
+
     VLOG(4) << "get fetch list size: " << fetch_res.size();
-    return fetch_res;
-  } else {
-    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-    if (fetch_var && need_fetch) {
-      auto fetch_list =
-          std::move(*fetch_var->GetMutable<framework::FetchList>());
-#ifdef PADDLE_WITH_CUDA
-      if (platform::IsCUDAGraphCapturing()) {
-        PADDLE_ENFORCE_EQ(fetch_list.empty(),
-                          true,
-                          platform::errors::InvalidArgument(
-                              "Cannot fetch data when using CUDA Graph."));
-      }
-#endif
-      return fetch_list;
-    } else {
-      return {};
-    }
   }
+  return fetch_res;
 }
 
 void PirInterpreter::TraceRunImpl() {
@@ -1434,10 +1526,11 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
   platform::RecordEvent instruction_event(
       instr_node->Name(), platform::TracerEventType::Operator, 1);
 
-  SetDeviceId(instr_node->DeviceContext().GetPlace());
+  auto cur_place = instr_node->DeviceContext().GetPlace();
+  SetDeviceId(cur_place);
 
   try {
-    instr_node->WaitEvent(place_);
+    instr_node->WaitEvent(cur_place);
     VLOG(4) << "begin to run op " << instr_node->Name();
     VLOG(4) << "begin: " << __func__ << " OP id:" << instr_node->Id()
             << " name:" << instr_node->Name() << " type:"
@@ -1447,7 +1540,8 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                            ? "kGpuSync"
                            : "kGpuAsync"))
             << " runs on " << platform::GetCurrentThreadName();
-    VLOG(4) << place_ << " "
+
+    VLOG(4) << cur_place << " Before:"
             << instr_node->DebugStringEx(scope_, value_exe_info_.get());
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
@@ -1469,20 +1563,22 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                              ? "kGpuSync"
                              : "kGpuAsync"))
               << " runs on " << platform::GetCurrentThreadName();
-      VLOG(4) << place_ << " "
+
+      VLOG(4) << cur_place << " After:"
               << instr_node->DebugStringEx(scope_, value_exe_info_.get());
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
-      memory::LogDeviceMemoryStats(place_, instr_node->Name());
+      memory::LogDeviceMemoryStats(cur_place, instr_node->Name());
     }
     VLOG(5) << "after run kernel";
-    instr_node->RecordEvent(place_);
+    instr_node->RecordEvent(cur_place);
   } catch (platform::EnforceNotMet& ex) {
     auto* op = instr_node->Operation();
     const std::vector<std::string> op_callstack_attr =
         interpreter::GetInstructionCallStack(op->name(), op->attributes());
     framework::InsertCallStackInfo(op->name(), op_callstack_attr, &ex);
-    LOG(WARNING) << instr_node->Name() << " raises an EnforceNotMet exception "
+    LOG(WARNING) << " OP id:" << instr_node->Id() << " " << instr_node->Name()
+                 << " raises an EnforceNotMet exception "
                  << platform::demangle(typeid(ex).name()) << ", " << ex.what();
     exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
   } catch (platform::EOFException&) {
@@ -1523,13 +1619,6 @@ void PirInterpreter::PreAnalysis() {
   VLOG(4) << "Done UpdateNcclOpNum";
 }
 
-void PirInterpreter::Build(
-    const std::vector<std::string>& feed_names,
-    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "Build is not implemented in PirInterpreter."));
-}
-
 ::pir::Value PirInterpreter::GetValueByName(const std::string& var_name) {
   for (auto kv : value_exe_info_->GetValue2VarName()) {
     if (kv.second == var_name) {
@@ -1561,6 +1650,38 @@ void PirInterpreter::SolvePersisableVarNames() {
       }
     }
   }
+}
+
+Variable* PirInterpreter::DebugVar(const std::string& name) const {
+  Scope* scope = HasLocalScope() ? local_scope_ : scope_;
+  auto* var = scope->FindVar(name);
+  if (var != nullptr) {
+    return var;
+  }
+  for (auto kv : sub_blocks_) {
+    var = kv.second->DebugVar(name);
+    if (var != nullptr) {
+      return var;
+    }
+  }
+  return var;
+}
+
+void PirInterpreter::Build(
+    const std::vector<std::string>& feed_names,
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Build is not implemented in PirInterpreter."));
+}
+
+std::tuple<double, double> PirInterpreter::InterpreterRunTime() {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "PirInterpreter::InterpreterRunTime is not implemented."));
+}
+
+void PirInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "SetCopyProgram is not implemented in PirInterpreter."));
 }
 
 }  // namespace framework

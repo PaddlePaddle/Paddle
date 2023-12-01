@@ -54,6 +54,7 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 from ....utils.log_utils import get_logger
 from ..graph import Graph
+from ..utils import _g_gradient_clip_ops
 
 _PATTERNS = {}
 
@@ -1644,13 +1645,7 @@ class RuleBasedTuner:
             op = ops[idx]
             if int(op.attr('op_role')) == int(OpRole.Optimize):
                 if is_gradient_clip_op(op):
-                    if op.type in [
-                        "sum",
-                        "sqrt",
-                        "fill_constant",
-                        "elementwise_max",
-                        "elementwise_div",
-                    ]:
+                    if op.type in _g_gradient_clip_ops:
                         op_dist_attr = OperatorDistAttr()
                         op_dist_attr.process_mesh = world_ranks
                         for in_name in op.input_arg_names:

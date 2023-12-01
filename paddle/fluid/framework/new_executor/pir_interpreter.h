@@ -51,14 +51,19 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<phi::DenseTensor>& feed_tensors) override;
+      const std::vector<phi::DenseTensor>& feed_tensors,
+      bool need_fetch = true) override;
 
-  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
-                                   bool need_fetch = true) override;
+  paddle::framework::FetchList Run(
+      const std::vector<std::string>& feed_names,
+      bool need_fetch = true,
+      bool enable_job_schedule_profiler = false) override;
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
   void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
+
+  std::tuple<double, double> InterpreterRunTime() override;
 
   std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
 
@@ -83,10 +88,17 @@ class PirInterpreter : public InterpreterBaseImpl {
   const platform::Place& GetPlace() const override { return place_; }
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {
-    hookfuncs_ = hookfuncs;
+    output_hookfuncs_ = hookfuncs;
+  }
+
+  void SetInputHooks(const std::vector<HookFunc>& hookfuncs) override {
+    input_hookfuncs_ = hookfuncs;
   }
 
   std::string GetNameByValue(::pir::Value value) const;
+
+  // Only for debug
+  Variable* DebugVar(const std::string& name) const override;
 
  private:
   // build graph
@@ -163,12 +175,15 @@ class PirInterpreter : public InterpreterBaseImpl {
   int64_t nccl_op_num_{-1};
   std::vector<size_t> trace_execute_order_;
 
-  std::vector<HookFunc> hookfuncs_;
+  std::vector<HookFunc> output_hookfuncs_;
+  std::vector<HookFunc> input_hookfuncs_;
 
   /// ======================== ///
   ///        For new ir        ///
   /// ======================== ///
   std::string DebugValueInfo();
+
+  std::string DebugInstructions();
 
   void PreAnalysis();
 
@@ -203,13 +218,15 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   void SolvePersisableVarNames();
 
-  const interpreter::NewIrDependencyBuilder& GetNewIrDependencyBuilder() const;
+  const interpreter::PirDependencyBuilder& GetPirDependencyBuilder() const;
 
-  const interpreter::NewIrStreamAnalyzer& GetNewIrStreamAnalyzer() const;
+  const interpreter::PirStreamAnalyzer& GetPirStreamAnalyzer() const;
 
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
   const ::pir::Block* ir_block_{nullptr};
+
+  std::unordered_map<::pir::Block*, PirInterpreter*> sub_blocks_;  // Not owned
 
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 
@@ -218,13 +235,13 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   std::vector<int> var_ref_count_;
 
-  interpreter::NewIrDependencyBuilder ir_dependency_builder_;
+  interpreter::PirDependencyBuilder ir_dependency_builder_;
 
-  interpreter::NewIrStreamAnalyzer ir_stream_analyzer_;
+  interpreter::PirStreamAnalyzer ir_stream_analyzer_;
 
   std::vector<std::string> fetch_var_names_;
 
-  // Note(zhangbo): set_parameter_op's input and get_parameter_op's output
+  // Note(zhangbo): set_parameter_op's input and parameter_op's output
   // belongs to a parameter and cannot GC.
   std::unordered_set<std::string> parameter_var_names_;
 };
