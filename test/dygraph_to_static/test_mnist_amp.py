@@ -16,7 +16,7 @@ import unittest
 from time import time
 
 import numpy as np
-from dygraph_to_static.utils import test_default_mode_only
+from dygraph_to_static_utils import test_default_mode_only
 from test_mnist import MNIST, SEED, TestMNIST
 
 import paddle
