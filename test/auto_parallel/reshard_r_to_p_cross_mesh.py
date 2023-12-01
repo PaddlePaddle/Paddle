@@ -41,23 +41,12 @@ class TestReshardRToPCrossMesh:
         dev_ctx = core.DeviceContext.create(place)
         a = paddle.ones(self._shape)
 
-        in_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs = [None for i in range(len(self._shape))]
-
-        dist_attr = dist.DistAttr(
-            mesh=self._in_mesh, sharding_specs=in_shard_specs
+        input_tensor = dist.shard_tensor(a, self._in_mesh, [dist.Replicate()])
+        out = dist.reshard(
+            input_tensor,
+            self._out_mesh,
+            [dist.Partial(dist.ReduceType.kRedSum)],
         )
-        out_dist_attr = dist.DistAttr(
-            mesh=self._out_mesh, sharding_specs=out_shard_specs
-        )
-        out_dist_attr._set_partial_dims([0])
-
-        input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
-
-        reshard_func = core.RToPReshardFunctionCrossMesh()
-        assert reshard_func.is_suitable(input_tensor, out_dist_attr)
-
-        out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
 
         if dist.get_rank() == 1:
             np.testing.assert_equal(
