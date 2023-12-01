@@ -136,13 +136,13 @@ class TestOneHotOpApi(unittest.TestCase):
             label = paddle.static.data(
                 name="label", shape=[-1, 1], dtype="int64"
             )
-            # label.desc.set_need_check_feed(False)
             one_hot_label = functional.one_hot(x=label, num_classes=num_classes)
 
             place = base.CPUPlace()
             label_data = np.array(
                 [np.random.randint(0, 10 - 1) for i in range(6)]
             ).reshape([6, 1])
+            label_data = label_data.astype('int64')
 
             exe = base.Executor(place)
             exe.run(startup)
@@ -163,13 +163,13 @@ class TestOneHotOpApi(unittest.TestCase):
             label = paddle.static.data(
                 name="label", shape=[-1, 1], dtype="int64"
             )
-            # label.desc.set_need_check_feed(False)
             one_hot_label = functional.one_hot(x=label, num_classes=num_classes)
 
             place = base.CPUPlace()
             label_data = np.array(
                 [np.random.randint(0, 10 - 1) for i in range(6)]
             ).reshape([6, 1])
+            label_data = label_data.astype('int64')
 
             exe = base.Executor(place)
             exe.run(startup)
@@ -202,7 +202,7 @@ class BadInputTestOnehotV2(unittest.TestCase):
                     shape=[4],
                     dtype="float32",
                 )
-                # label.desc.set_need_check_feed(False)
+                label.desc.set_need_check_feed(False)
                 one_hot_label = functional.one_hot(x=label, num_classes=4)
 
             self.assertRaises(TypeError, test_bad_x)
