@@ -12,22 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict
 from dataclasses import dataclass
 
 
 
 @dataclass
-class ChunkMetadata:
-    local_shape: Tuple[int]
+class LocalTensorMetadata:
+    """
+    The location of a local tensor in the global tensor.
+    """
     global_offset: Tuple[int]
+    local_shape: Tuple[int]
 
 @dataclass(frozen=True)
-class MetadataIndex:
-    param: str
+class LocalTensorIndex:
+    """
+    The identifier of a local tensor.
+    """
+    tensor_id: str
     global_offset: Tuple[int]
 
 @dataclass
 class Metadata:
-    state_dict_metadata: Dict[str, List[ChunkMetadata]] = None
-    storage_metadata: Dict[MetadataIndex, str] = None
+    state_dict_metadata: Dict[str, List[LocalTensorMetadata]] = None
+    storage_metadata: Dict[LocalTensorIndex, str] = None

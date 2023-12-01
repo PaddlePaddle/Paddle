@@ -18,8 +18,9 @@ import numpy as np
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
-from .metadata import Metadata, ChunkMetadata, MetadataIndex
-from .utils import compute_local_shape_and_global_offset
+from paddle.distributed.fleet.utils.log_util import logger
+from .metadata import Metadata, LocalTensorMetadata, LocalTensorIndex
+from .utils import compute_local_shape_and_global_offset, flatten_state_dict
 
 def check_state_dict(state_dict, process_group):
     local_keys = list(state_dict.keys())
@@ -76,6 +77,7 @@ def save_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
 
     """
     assert isinstance(state_dict, dict), "The state_dict should be a dictionary."
+    state_dict = flatten_state_dict(state_dict)
     if len(state_dict) > 0:
         for val in state_dict.values():
             assert isinstance(val, (paddle.Tensor, paddle.base.framework.EagerParamBase)), "Only support dygraph Tensor now, support static DistributedTensor later"
@@ -87,6 +89,7 @@ def save_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
         # Init the default global process group
         not is_initialized() and paddle.distributed.init_parallel_env()
 
+
     unique_id = 0
     file_name = ""
     while(True):
@@ -94,13 +97,13 @@ def save_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
         if not os.path.exists(os.path.join(path, file_name)):
             break
         unique_id += 1
-    print(f"file_name:{file_name}")
+    logger.info(f"file_name:{file_name}")
     check_file_name(file_name, process_group)
     # the parameter_name and order in state_dict should be the same
     check_state_dict(state_dict, process_group)
     local_state_dict = {}
     metadata = Metadata()
-    local_chunk_metadata = {}
+    local_tensor_metadata = {}
     local_storage_metadata = {}
     for key, val in state_dict.items():
         if isinstance(val, paddle.Tensor):
@@ -111,38 +114,22 @@ def save_state_dict(state_dict, path, process_group=None, coordinator_rank=0, us
                 local_shape, global_offset = compute_local_shape_and_global_offset(val.shape, val.dist_attr.process_mesh, val.dist_attr.dims_mapping)
                 if not local_shape or not global_offset:
                     continue
-                local_chunk_metadata[key] = ChunkMetadata(local_shape, global_offset)
-                local_storage_metadata[MetadataIndex(key, tuple(global_offset))] = file_name
+                local_tensor_metadata[key] = LocalTensorMetadata(global_offset, local_shape)
+                local_storage_metadata[LocalTensorIndex(key, tuple(global_offset))] = file_name
                 local_tensor = val._local_value()
             else:
                 local_tensor = val
             local_state_dict[key] = local_tensor
-    global_chunk_metadata = []
+    global_tensor_metadata = []
     global_storage_metadata = []
-    paddle.distributed.all_gather_object(global_chunk_metadata, local_chunk_metadata, process_group)
+    paddle.distributed.all_gather_object(global_tensor_metadata, local_tensor_metadata, process_group)
     paddle.distributed.all_gather_object(global_storage_metadata, local_storage_metadata, process_group)
-    metadata.state_dict_metadata = merge_state_dict(global_chunk_metadata)
+    metadata.state_dict_metadata = merge_state_dict(global_tensor_metadata)
     metadata.storage_metadata = dedup_state_dict(global_storage_metadata)
     if coordinator_rank == paddle.distributed.get_rank():
-        print(f"global_chunk_metadata:{global_chunk_metadata}")
-        print(f"global_storage_metadata:{global_storage_metadata}")
-        print(f"metadata:{metadata}")
+        logger.info(f"global_tensor_metadata:{global_tensor_metadata}")
+        logger.info(f"global_storage_metadata:{global_storage_metadata}")
+        logger.info(f"metadata:{metadata}")
         paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))
-    print(f"local_state_dict:{local_state_dict}")
+    logger.info(f"local_state_dict:{local_state_dict}")
     paddle.save(local_state_dict, os.path.join(path, file_name))
-    
-
-
-def test_save_state_dict():
-    import paddle.distributed as dist
-    w1 = paddle.arange(8).reshape([4, 2])
-    w2 = paddle.arange(8, 12).reshape([2, 2])
-    mesh = dist.ProcessMesh([0,1])
-    mesh2 = dist.ProcessMesh([2,3])
-    sharded_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(0), dist.Replicate()])
-    sharded_w2 = dist.shard_tensor(w2, mesh2, [dist.Shard(0), dist.Replicate()])
-    state_dict = {"w1": sharded_w1, "w2": sharded_w2}
-    save_state_dict(state_dict, "./output")
-
-if __name__ == "__main__":
-    test_save_state_dict()
