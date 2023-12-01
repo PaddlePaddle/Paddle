@@ -23,7 +23,7 @@ import paddle
 from paddle import base
 from paddle.base import core, framework
 from paddle.base.framework import Program, program_guard
-from paddle.pir_utils import test_with_pir_api
+from paddle.pir_utils import IrGuard, test_with_pir_api
 
 
 class TestEyeOp(OpTest):
@@ -123,25 +123,42 @@ class API_TestTensorEye(unittest.TestCase):
         paddle.enable_static()
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
-    @test_with_pir_api
     def test_errors(self):
-        error_types = (ValueError, TypeError)
         with paddle.static.program_guard(paddle.static.Program()):
 
             def test_num_rows_type_check():
                 paddle.eye(-1, dtype="int64")
 
-            self.assertRaises(error_types, test_num_rows_type_check)
+            self.assertRaises(TypeError, test_num_rows_type_check)
 
             def test_num_columns_type_check():
                 paddle.eye(10, num_columns=5.2, dtype="int64")
 
-            self.assertRaises(error_types, test_num_columns_type_check)
+            self.assertRaises(TypeError, test_num_columns_type_check)
 
             def test_num_columns_type_check1():
                 paddle.eye(10, num_columns=10, dtype="int8")
 
-            self.assertRaises(error_types, test_num_columns_type_check1)
+            self.assertRaises(TypeError, test_num_columns_type_check1)
+
+    def test_pir_errors(self):
+        with IrGuard():
+            with paddle.static.program_guard(paddle.static.Program()):
+
+                def test_num_rows_type_check():
+                    paddle.eye(-1, dtype="int64")
+
+                self.assertRaises(TypeError, test_num_rows_type_check)
+
+                def test_num_columns_type_check():
+                    paddle.eye(10, num_columns=5.2, dtype="int64")
+
+                self.assertRaises(TypeError, test_num_columns_type_check)
+
+                def test_num_columns_type_check1():
+                    paddle.eye(10, num_columns=10, dtype="int8")
+
+                self.assertRaises(ValueError, test_num_columns_type_check1)
 
 
 class TestEyeRowsCol(UnittestBase):
