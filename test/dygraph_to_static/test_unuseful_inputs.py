@@ -65,11 +65,6 @@ class Layer1(nn.Layer):
 
 
 class TestDuplicateOutput(Dy2StTestBase):
-    """
-    TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `base.layers.cond`.
-    """
-
     @test_legacy_and_pt_and_pir
     def test_case(self):
         # create network

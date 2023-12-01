@@ -118,11 +118,6 @@ def update_cache(cache):
 
 
 class TestNetWithDict(Dy2StTestBase):
-    """
-    TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `base.layers.cond`.
-    """
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.batch_size = self.x.shape[0]
