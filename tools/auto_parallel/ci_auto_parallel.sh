@@ -83,7 +83,7 @@ if [ $1 -ne 0 ];then
     else
         mv ${log_path}/$2 ${log_path}/$2_FAIL.log
         echo -e "\033[31m ${log_path}/$2_FAIL \033"
-        tail -10 ${log_path}/$2_FAIL.log
+        tail -70 ${log_path}/$2_FAIL.log
     fi
     exit $EXCODE
 else
@@ -109,13 +109,13 @@ if [[ ${#case_list[*]} -ne 0 ]];then
         echo -e "\033[31m ---- running case $case_num/${#case_list[*]}: ${case} \033"
         if [[ ${case} == "gpt-3_auto" ]];then
             bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh case_list_auto $FLAGS_before_hook
-            export FLAGS_before_hook=1
             print_info $? `ls -lt ${log_path} | grep "gpt" | grep -v "pir" | head -n 1 | awk '{print $9}'` ${case}
+            export FLAGS_before_hook=1
             let case_num++
         elif [[ ${case} == "gpt-3_auto_pir" ]];then
             bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh case_list_auto_pir $FLAGS_before_hook
-            export FLAGS_before_hook=1
             print_info $? `ls -lt ${log_path} | grep "pir" | head -n 1 | awk '{print $9}'` ${case}
+            export FLAGS_before_hook=1
             let case_num++
         elif [[ ${case} == "unit_test" ]];then
             bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh

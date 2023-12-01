@@ -22,68 +22,66 @@
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 #if defined(PADDLE_WITH_CUDA)
-#include "paddle/cinn/runtime/cuda/cuda_util.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 #endif
 
 namespace paddle {
 namespace framework {
 
+typedef void (*lower_func_ptr_g)(void*, int32_t, void*);
+
 class CinnJitInstruction::FnPtrImpl {
-  using CUDAJITInfo = cinn::hlir::framework::pir::CUDAJITInfo;
+  using CINNKernelInfo = cinn::hlir::framework::pir::CINNKernelInfo;
 
  public:
-  explicit FnPtrImpl(const CUDAJITInfo& cuda_jit_info)
-      : cuda_jit_info_(cuda_jit_info) {}
+  explicit FnPtrImpl(const CINNKernelInfo& cinn_kernel_info)
+      : cinn_kernel_info_(cinn_kernel_info) {}
+
   void Run(const std::vector<phi::DenseTensor*>& kernel_args, void* stream) {
     func_args_.clear();
-    ptr_storage_.resize(kernel_args.size());
+
+    // 1. Convert the phi::DenseTensor type to cinn_pod_value_t
     for (size_t i = 0; i < kernel_args.size(); ++i) {
-      ptr_storage_[i] = kernel_args[i]->data();
-      func_args_.push_back(ptr_storage_.data() + i);
+      auto* buffer = new cinn_buffer_t();
+      buffer->memory = reinterpret_cast<uint8_t*>(kernel_args[i]->data());
+      func_args_.emplace_back(buffer);
+    }
+    // 2. Convert arg's data about shape of Tensor to cinn_pod_value_t
+    for (const auto& int_arg_mp : cinn_kernel_info_.int_args_map) {
+      func_args_.emplace_back(kernel_args[int_arg_mp.second.arg_idx]->dims().at(
+          int_arg_mp.second.dim_idx));
     }
 
-#if defined(PADDLE_WITH_CUDA)
-    CUDA_DRIVER_CALL(
-        cuLaunchKernel(static_cast<CUfunction>(cuda_jit_info_.fn_ptr),
-                       cuda_jit_info_.grid_dims[0],
-                       cuda_jit_info_.grid_dims[1],
-                       cuda_jit_info_.grid_dims[2],
-                       cuda_jit_info_.block_dims[0],
-                       cuda_jit_info_.block_dims[1],
-                       cuda_jit_info_.block_dims[2],
-                       0,  // share memory
-                       static_cast<CUstream>(stream),
-                       func_args_.data(),
-                       nullptr))
-#endif
+    // 3. Launch host kernel
+    ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
+        static_cast<void*>(func_args_.data()), func_args_.size(), stream);
   }
 
  private:
-  CUDAJITInfo cuda_jit_info_;
+  CINNKernelInfo cinn_kernel_info_;
 
-  std::vector<void*> ptr_storage_;
-  std::vector<void*> func_args_;
+  std::vector<cinn_pod_value_t> func_args_;
 };
 
 CinnJitInstruction::CinnJitInstruction(
     size_t id,
     const platform::Place& place,
     ::pir::Operation* op,
-    const ValueExecutionInfo& value_exec_info)
+    const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place) {
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();
-  fn_ptr_impl_ = std::make_shared<FnPtrImpl>(jit_kernel_op.cuda_jit_info());
+  fn_ptr_impl_ = std::make_shared<FnPtrImpl>(jit_kernel_op.cinn_kernel_info());
   op_ = op;
 
   place_ = place;
 
-  InitInputsOutputsIds(op, value_exec_info);
+  InitInputsOutputsIds(op, *value_exec_info);
 
   for (size_t i = 0; i < op->num_operands(); ++i) {
     auto in = op->operand_source(i);
 
-    auto var_name = value_exec_info.GetVarName(in);
-    auto tensor = value_exec_info.GetScope()
+    auto var_name = value_exec_info->GetVarName(in);
+    auto tensor = value_exec_info->GetScope()
                       ->FindVar(var_name)
                       ->GetMutable<phi::DenseTensor>();
 
@@ -94,9 +92,9 @@ CinnJitInstruction::CinnJitInstruction(
 
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value result = op->result(i);
-    auto var_name = value_exec_info.GetVarName(result);
+    auto var_name = value_exec_info->GetVarName(result);
 
-    auto tensor = value_exec_info.GetScope()
+    auto tensor = value_exec_info->GetScope()
                       ->Var(var_name)
                       ->GetMutable<phi::DenseTensor>();
 
@@ -122,11 +120,9 @@ void CinnJitInstruction::Run() {
   }
 
   fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
-#endif
-
-#ifndef PADDLE_WITH_CUDA
+#else
   VLOG(phi::FATAL) << "Not Supported: cinn jit instruction currently does not "
-                      "support non-CUDakernel";
+                      "support non-CUDA kernel";
 #endif
 }
 

@@ -29,11 +29,26 @@ namespace framework {
 
 namespace pir {
 
-struct CUDAJITInfo {
+struct CINNKernelInfo {
   void* fn_ptr;
-  std::vector<int> block_dims;
-  std::vector<int> grid_dims;
-  void* compiler;
+
+  struct ArgDimIdx {
+    int arg_idx;
+    int dim_idx;
+  };
+  // int_args_map records the int_args_map.key argument (dtype is Int) in the
+  // kernel parameter taken from the dim_idx dimension of the shape of the
+  // ArgDimIdx.arg_idx argument.
+  // Examples:
+  //   a func like: foo(tensor A, tensor B, int S1, int S2)
+  //   S1 = A.shape[3]
+  //   S2 = B.shape[2]
+  //   int_args_map will be like
+  //   {
+  //     2: {0, 3},
+  //     3: {1, 2}
+  //   }
+  std::map<int, ArgDimIdx> int_args_map;
 };
 
 struct CompatibleInfo {
