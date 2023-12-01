@@ -38,7 +38,7 @@ namespace distributed {
 // and dim2 referes to the second shape value in (6, 8).
 class DimTrans {
  public:
-  enum class Type { INPUTDIM, SINGLETON, FLATTEN, SPLIT, Broadcast };
+  enum class Type { INPUTDIM, SINGLETON, FLATTEN, SPLIT, BROADCAST };
 
   DimTrans() = default;
 
