@@ -34,11 +34,11 @@ from .batch import batch
 # We need remove the duplicated code here once we fix
 # the illogical implement in the monkey-patch methods later.
 from .framework import monkey_patch_math_tensor, monkey_patch_variable
-from .pir import monkey_patch_opresult, monkey_patch_program
+from .pir import monkey_patch_program, monkey_patch_value
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
-monkey_patch_opresult()
+monkey_patch_value()
 monkey_patch_program()
 
 from .base.dataset import *  # noqa: F403
@@ -342,6 +342,7 @@ from .tensor.math import (  # noqa: F401
     broadcast_shape,
     ceil,
     clip,
+    combinations,
     conj,
     cos,
     cos_,
@@ -910,4 +911,5 @@ __all__ = [
     'index_fill',
     "index_fill_",
     'diagonal_scatter',
+    'combinations',
 ]
