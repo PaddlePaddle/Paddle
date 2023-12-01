@@ -1533,7 +1533,7 @@ bool OperatorWithKernel::SupportsKernelType(
   if ((!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
        this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) ||
       (platform::is_cpu_place(exe_ctx.GetPlace()) &&
-       this->SupportsMKLDNN(phi::TransToPhiDataType(kernel_type_.data_type_)) &&
+       this->SupportsMKLDNN(phi::TransToPhiDataType(kernel_type.data_type_)) &&
        this->ContainsBF16TensorInputs(exe_ctx))) {
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
