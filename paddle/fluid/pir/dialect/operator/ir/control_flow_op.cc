@@ -54,11 +54,8 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
   if (true_block && !true_block->empty() &&
       true_block->back().isa<pir::YieldOp>()) {
     auto &op = true_block->back();
-<<<<<<< Updated upstream
-=======
-    std::vector<pir::Attribute> outs_stop_gradient;
->>>>>>> Stashed changes
 
+    std::vector<pir::Attribute> outs_stop_gradient;
     for (size_t i = 0; i < op.num_operands(); ++i) {
       argument.AddOutput(op.operand(i).type());
       bool input_stop_gradient = true;
@@ -117,6 +114,10 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
                      .AsVector();
     attrs[cond_.index()] =
         pir::BoolAttribute::get(pir::IrContext::Instance(), true);
+
+    cond_op->set_attribute(
+        kStopGradientAttrName,
+        pir::ArrayAttribute::get(pir::IrContext::Instance(), attrs));
   }
 }
 
