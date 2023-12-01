@@ -27,11 +27,12 @@ struct CopySignGradFunctor {
       : x_data_(x_data), y_data_(y_data), dout_(dout), dx_(dx), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_data_[idx] == T(0))
-      dx_[idx] = T(0);
+    if (x_data_[idx] == static_cast<T>(0))
+      dx_[idx] = static_cast<T>(0);
     else
-      dx_[idx] = T(dout_[idx]) *
-                 (T(copysign(x_data_[idx], y_data_[idx]) / x_data_[idx]));
+      dx_[idx] =
+          static_cast<T>(dout_[idx]) *
+          (static_cast<T>(copysign(x_data_[idx], y_data_[idx]) / x_data_[idx]));
   }
 
   const T* x_data_;
