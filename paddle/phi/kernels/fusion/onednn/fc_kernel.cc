@@ -569,28 +569,37 @@ void FCKernel(const Context& dev_ctx,
               const std::string& activation_type,
               const bool padding_weights,
               DenseTensor* out) {
-  std::cout << "step1__________________________________" << std::endl;
   const bool use_mkldnn =
-      PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("use_mkldnn"));
-  std::cout << "step2__________________________________" << std::endl;
+      dev_ctx.HasDnnAttr("use_mkldnn")
+          ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("use_mkldnn"))
+          : false;
   const bool use_quantizer =
-      PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("use_quantizer"));
-  std::cout << "step3__________________________________" << std::endl;
+      dev_ctx.HasDnnAttr("use_quantizer")
+          ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("use_quantizer"))
+          : false;
   const std::string mkldnn_data_type =
-      PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("mkldnn_data_type"));
-  std::cout << "step4__________________________________" << std::endl;
+      dev_ctx.HasDnnAttr("mkldnn_data_type")
+          ? PADDLE_GET_CONST(std::string,
+                             dev_ctx.GetDnnAttr("mkldnn_data_type"))
+          : "float32";
   const float scale_in =
-      PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_in"));
-  std::cout << "step5__________________________________" << std::endl;
+      dev_ctx.HasDnnAttr("scale_in")
+          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_in"))
+          : 1.0f;
+  std::vector<float> tmp_scale_weights = {1.0f};
   const std::vector<float> scale_weights =
-      PADDLE_GET_CONST(std::vector<float>, dev_ctx.GetDnnAttr("scale_weights"));
-  std::cout << "step6__________________________________" << std::endl;
+      dev_ctx.HasDnnAttr("scale_weights")
+          ? PADDLE_GET_CONST(std::vector<float>,
+                             dev_ctx.GetDnnAttr("scale_weights"))
+          : tmp_scale_weights;
   const float scale_out =
-      PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_out"));
-  std::cout << "step7__________________________________" << std::endl;
+      dev_ctx.HasDnnAttr("scale_out")
+          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_out"))
+          : 1.0f;
   const bool force_fp32_output =
-      PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"));
-  std::cout << "step8__________________________________" << std::endl;
+      dev_ctx.HasDnnAttr("force_fp32_output")
+          ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
+          : false;
   std::string mkldnn_data_type_list[] = {"float32", "int8", "bfloat16"};
   PADDLE_ENFORCE_EQ(
       std::find(std::begin(mkldnn_data_type_list),
@@ -612,7 +621,6 @@ void FCKernel(const Context& dev_ctx,
             in_dims.size(),
             in_dims));
   }
-  std::cout << "step9__________________________________" << std::endl;
   bool fuse_relu = activation_type == "relu";
   IF_CHANGE_FC_TW_TYPENAME((std::is_same<T, uint8_t>::value), ([&] {
                              if (force_fp32_output) {  // NOLINT
@@ -683,7 +691,6 @@ void FCKernel(const Context& dev_ctx,
                                                     out);
                              }
                            }));
-  std::cout << "step10__________________________________" << std::endl;
 }
 
 }  // namespace fusion
