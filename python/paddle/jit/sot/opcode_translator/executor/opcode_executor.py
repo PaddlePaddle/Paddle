@@ -1531,7 +1531,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
         instr_idx:
             the index for branch 1 to find the boundary and copy origin opcode
         """
-        if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
+        compile_fn = self._graph.get_compiled_fn()
+        if compile_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
             store_var_info = {}
             for name in restore_names:
                 _var = self.get_var(name)
@@ -2060,7 +2061,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
             len(self.stack) == 1
         ), f"Stack must have one element, but get {len(self.stack)} elements."
         ret_val = self.stack.pop()
-        if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
+        compile_fn = self._graph.get_compiled_fn()
+        if compile_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
             self.new_code = None
         else:
             self._graph.start_compile(ret_val)

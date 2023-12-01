@@ -245,7 +245,7 @@ def infer_meta(func, *args, **kwargs):
     if fn:
         return fn(*args, **kwargs)
     # graph size of api & method is 1
-    return VariableCreator().infer_meta(func, *args, **kwargs), 1
+    return VariableCreator().infer_meta(func, *args, **kwargs)
 
 
 def infer_meta_for_layer(layer, *args, **kwargs):
@@ -267,7 +267,7 @@ def infer_meta_for_layer(layer, *args, **kwargs):
         )
     )
     layer.forward.rollback()
-    return out, len(partial_program_layer.program.block(0).ops)
+    return out
 
 
 def ast_infer_meta(static_function, *args, **kwargs):
@@ -284,7 +284,7 @@ def ast_infer_meta(static_function, *args, **kwargs):
         )
     )
 
-    return out, len(partial_program_layer.program.block(0).ops)
+    return out
 
 
 @Singleton

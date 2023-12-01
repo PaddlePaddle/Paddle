@@ -50,6 +50,7 @@ from .utils import (  # noqa: F401
     current_tmp_name_records,
     execute_time,
     flatten_extend,
+    flatten,
     get_unbound_method,
     hashable,
     in_paddle_module,

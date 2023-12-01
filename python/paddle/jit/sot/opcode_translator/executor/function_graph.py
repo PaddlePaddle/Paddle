@@ -37,6 +37,7 @@ from ...utils import (
     ENV_SHOW_TRACKERS,
     NameGenerator,
     OrderedSet,
+    flatten,
     inner_error_default_handler,
     is_inplace_api,
     is_paddle_api,
@@ -103,6 +104,16 @@ def convert_to_symbol(inputs: Any):
         return x
 
     return map_variables(func, inputs)
+
+
+def get_symbol_meta_map(structure):
+    output = {}
+
+    for x in flatten(structure):
+        if isinstance(x, TensorVariable):
+            output[x.get_symbol()] = x.meta
+
+    return output
 
 
 class FunctionGraph:
@@ -327,6 +338,22 @@ class FunctionGraph:
 
         return VariableLoader(index_for_load, self.pycode_gen)
 
+    def get_compiled_fn(self, *ret_vars):
+        ret_items = [
+            ret_item
+            for ret_var in ret_vars
+            for ret_item in ret_var.flatten_items()
+        ]
+
+        tensor_items = self._find_tensor_outputs(ret_items)
+
+        compiled_fn, _ = self.sir_ctx.compile_fn(
+            [Symbol(tensor_var.var_name) for tensor_var in tensor_items],
+            **self._kwargs,
+        )
+
+        return compiled_fn
+
     @event_register("start_compile", event_level=2)
     def start_compile(self, *ret_vars: VariableBase):
         """
@@ -456,18 +483,15 @@ class FunctionGraph:
         """
 
         def infer_meta_fn(layer, *metas, **kwmetas):
-            metas, graph_size = LayerInferMetaCache()(
-                layer.value, *metas, **kwmetas
-            )
-            return metas, graph_size
+            metas = LayerInferMetaCache()(layer.value, *metas, **kwmetas)
+            return metas
 
-        def compute_fn(layer, inputs, outputs, stacks, graph_size):
+        def compute_fn(layer, inputs, outputs, stacks):
             self.sir_ctx.call_LAYER(
                 Reference(layer.value, weak_ref),
                 inputs=inputs,
                 outputs=outputs,
                 stacks=stacks,
-                graph_size=graph_size,
             )
 
         def message_handler(*args, **kwargs):
@@ -490,13 +514,12 @@ class FunctionGraph:
             layer: paddle layer
         """
 
-        def compute_fn(static_function, inputs, outputs, stacks, graph_size):
+        def compute_fn(static_function, inputs, outputs, stacks):
             self.sir_ctx.call_AST(
                 static_function,
                 inputs=inputs,
                 outputs=outputs,
                 stacks=stacks,
-                graph_size=graph_size,
             )
 
         def message_handler(*args, **kwargs):
@@ -524,11 +547,15 @@ class FunctionGraph:
         metas = convert_to_meta(args)
         kwmetas = convert_to_meta(kwargs)
 
-        out_metas, graph_size = infer_meta_fn(func, *metas, **kwmetas)
+        out_metas = infer_meta_fn(func, *metas, **kwmetas)
         inputs_symbols = (
             convert_to_symbol(args),
             convert_to_symbol(kwargs),
         )
+
+        self.sir_ctx.TOS.symbol_meta_map.update(get_symbol_meta_map(args))
+        self.sir_ctx.TOS.symbol_meta_map.update(get_symbol_meta_map(kwargs))
+
         log(3, f"         inputs : {inputs_symbols}", "\n")
 
         outputs = map_if(
@@ -558,7 +585,6 @@ class FunctionGraph:
                     inputs_symbols,
                     convert_to_symbol(args[0]),
                     stmt_stacks,
-                    graph_size,
                 )
             else:
                 compute_fn(
@@ -566,7 +592,6 @@ class FunctionGraph:
                     inputs_symbols,
                     convert_to_symbol(outputs),
                     stmt_stacks,
-                    graph_size,
                 )  # symbolic only contain symbols.
                 self._put_inner(outputs)
             return VariableFactory.from_value(
