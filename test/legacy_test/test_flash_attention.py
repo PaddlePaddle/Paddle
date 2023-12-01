@@ -93,19 +93,12 @@ def is_flashattn_supported():
         or get_cuda_version() < 11040
         or not is_sm_supported
     ):
-        logging.info(
-            "Flash-Attention is not supported when PaddlePaddle is not"
-            " compiled with CUDA and cuda version need larger than or equal"
-            " to 11.4 and device's compute capability must be 8.x or 90"
-        )
         return False
     return True
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11040
-    or not is_sm_supported,
+    not is_flashattn_supported(),
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
     "and device's compute capability must be 8.x or 90",
 )
@@ -327,9 +320,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11040
-    or not is_sm_supported,
+    not is_flashattn_supported(),
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
     "and device's compute capability must be 7.5 or 8.x",
 )
@@ -478,6 +469,11 @@ class TestFlashAttenionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
         self.causal = False
 
 
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 7.5 or 8.x",
+)
 class TestFlashAttentionNoKVGrad(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
@@ -500,9 +496,6 @@ class TestFlashAttentionNoKVGrad(unittest.TestCase):
         return t
 
     def test_all(self):
-        if not is_flashattn_supported():
-            return
-
         logging.info(
             f"Test case shape {self.shape} dtype {self.dtype} causal {self.causal}"
         )
