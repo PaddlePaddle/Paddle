@@ -276,6 +276,7 @@ class Optimizer:
         self._auxiliary_vars = {}
         self._already_create_accumulater = set()
 
+        self._master_weights = {}
         # create master gradients' states
         self._create_master_grad_states()
 
