@@ -55,7 +55,7 @@ class TEST_API CustomRegisteredDeviceMap {
 const char* AllocationTypeStr(AllocationType type);
 
 /// \brief The place is used to specify where the data is stored.
-class PADDLE_API Place {
+class Place {
  public:
   Place()
       : device(0), alloc_type_(AllocationType::UNDEFINED), device_type_id_(0) {}
@@ -73,9 +73,9 @@ class PADDLE_API Place {
   // See NOTE [ Why need to temporarily adapt to PlaceType? ]
   Place(paddle::PlaceType type);  // NOLINT
 
-  void Reset(AllocationType type,
-             int8_t device_id = 0,
-             const std::string& dev_type = "") noexcept {
+  TEST_API void Reset(AllocationType type,
+                      int8_t device_id = 0,
+                      const std::string& dev_type = "") noexcept {
     alloc_type_ = type;
     device = device_id;
     if (!dev_type.empty()) {
@@ -84,16 +84,16 @@ class PADDLE_API Place {
     }
   }
 
-  AllocationType GetType() const { return alloc_type_; }
+  TEST_API AllocationType GetType() const { return alloc_type_; }
 
-  int8_t GetDeviceId() const { return device; }
+  TEST_API int8_t GetDeviceId() const { return device; }
 
-  std::string GetDeviceType() const {
+  TEST_API std::string GetDeviceType() const {
     return phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
         device_type_id_);
   }
 
-  std::string DebugString() const;
+  TEST_API std::string DebugString() const;
 
   struct TEST_API Hash {
     // Note: Now the number of bits we need does not exceed 32 bits, so there is
@@ -102,7 +102,7 @@ class PADDLE_API Place {
     uint32_t operator()(const Place& place) const;
   };
 
-  uint32_t HashValue() const { return Hash()(*this); }
+  TEST_API uint32_t HashValue() const { return Hash()(*this); }
 
   inline bool operator==(const Place& rhs) const {
     return HashValue() == rhs.HashValue();
