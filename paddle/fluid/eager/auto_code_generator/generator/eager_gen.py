@@ -79,6 +79,7 @@ prim_white_list = [
 type_promote_white_list = {
     "add": ["x", "y"],
     "subtract": ["x", "y"],
+    "where": ["x", "y"],
 }
 
 # dict of special api that forward api's output will affect bacward api's output
@@ -1481,6 +1482,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         inputs_call_list = ["" for i in range(num_inputs)]
 
         amp_inputs_call_list = ["" for i in range(num_inputs)]
+        type_promote_inputs_call_list = ["" for i in range(num_inputs)]
         amp_tensors_vector_list = []
         amp_tensors_vector_optional_list = []
         amp_autocast_list = []
@@ -1492,6 +1494,11 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             inputs_call_list[pos] = f"{name}"
             amp_inputs_call_list[pos] = f"new_{name}"
             is_optional = name in optional_inputs
+            if forward_api_name in type_promote_white_list:
+                if name in type_promote_white_list[forward_api_name]:
+                    type_promote_inputs_call_list[pos] = f"new_{name}"
+                else:
+                    type_promote_inputs_call_list[pos] = f"{name}"
             if IsPlainTensorType(ttype):
                 if is_optional:
                     if (
@@ -1831,6 +1838,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             # only support two inputs
             x = type_promote_white_list[forward_api_name][0]
             y = type_promote_white_list[forward_api_name][1]
+            type_promote_inputs_call_args_str = ", ".join(
+                type_promote_inputs_call_list
+            )
+            type_promote_call_list = f"return {forward_ad_function_name}({type_promote_inputs_call_args_str});"
             need_type_promote_str = (
                 f"if (phi::NeedTypePromotion({x}.dtype(), {y}.dtype()))"
             )
@@ -1843,7 +1854,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 kernel_trans2_op_name_str,
                 type_promote_get_dst_dtype_str,
                 type_promote_list_str,
-                amp_call_str,
+                type_promote_call_list,
             )
         else:
             type_promotion_logic_str = (
