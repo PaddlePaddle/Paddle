@@ -243,7 +243,7 @@ from .math import (  # noqa: F401
     cumsum_,
     cumulative_trapezoid,
     copysign,
-    cospysign_,
+    copysign_,
     deg2rad,
     diagonal,
     diff,
