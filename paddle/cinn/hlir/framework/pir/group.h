@@ -20,6 +20,7 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
 namespace cinn {
 
@@ -73,11 +74,14 @@ struct Group {
   // if as sub-group, used for belong groups.
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
 
+  std::shared_ptr<::pir::ShapeConstraintIRAnalysis> shape_analysis = nullptr;
+
   // for op lowering.
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
   std::vector<::pir::Value> output_values;
   std::string fn_name{""};
+  std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map;
 
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {

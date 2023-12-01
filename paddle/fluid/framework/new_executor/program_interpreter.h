@@ -91,7 +91,11 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   const platform::Place& GetPlace() const override { return place_; }
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {
-    hookfuncs_ = hookfuncs;
+    output_hookfuncs_ = hookfuncs;
+  }
+
+  void SetInputHooks(const std::vector<HookFunc>& hookfuncs) override {
+    input_hookfuncs_ = hookfuncs;
   }
 
   std::unordered_map<std::string, std::shared_ptr<EventInter>>*
@@ -108,6 +112,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   bool IsStaticBuild() const override { return static_build_; }
 
   std::tuple<double, double> InterpreterRunTime() override;
+
+  // Only for debug
+  Variable* DebugVar(const std::string& name) const override;
 
  private:
   // build graph
@@ -223,7 +230,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   InstructionSchedulingPriorityLess instruction_scheduling_priority_less;
 
-  std::vector<HookFunc> hookfuncs_;
+  std::vector<HookFunc> output_hookfuncs_;
+  std::vector<HookFunc> input_hookfuncs_;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::unique_ptr<phi::CalculateStreamTimer> calculate_stream_timer_;

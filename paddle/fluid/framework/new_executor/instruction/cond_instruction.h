@@ -42,6 +42,10 @@ class CondInstruction : public InstructionBase {
 
   ::pir::Operation* Operation() const override { return op_; }
 
+  PirInterpreter* TrueBranchInterpreter() const { return true_branch_inter_; }
+
+  PirInterpreter* FalseBranchInterpreter() const { return false_branch_inter_; }
+
  private:
   void CopyBranchOutput(const std::vector<std::string>& var_names,
                         const PirInterpreter* inter);

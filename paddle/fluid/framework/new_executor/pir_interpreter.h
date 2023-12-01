@@ -90,10 +90,17 @@ class PirInterpreter : public InterpreterBaseImpl {
   const platform::Place& GetPlace() const override { return place_; }
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {
-    hookfuncs_ = hookfuncs;
+    output_hookfuncs_ = hookfuncs;
+  }
+
+  void SetInputHooks(const std::vector<HookFunc>& hookfuncs) override {
+    input_hookfuncs_ = hookfuncs;
   }
 
   std::string GetNameByValue(::pir::Value value) const;
+
+  // Only for debug
+  Variable* DebugVar(const std::string& name) const override;
 
  private:
   // build graph
@@ -170,12 +177,15 @@ class PirInterpreter : public InterpreterBaseImpl {
   int64_t nccl_op_num_{-1};
   std::vector<size_t> trace_execute_order_;
 
-  std::vector<HookFunc> hookfuncs_;
+  std::vector<HookFunc> output_hookfuncs_;
+  std::vector<HookFunc> input_hookfuncs_;
 
   /// ======================== ///
   ///        For new ir        ///
   /// ======================== ///
   std::string DebugValueInfo();
+
+  std::string DebugInstructions();
 
   void PreAnalysis();
 
@@ -217,6 +227,8 @@ class PirInterpreter : public InterpreterBaseImpl {
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
   const ::pir::Block* ir_block_{nullptr};
+
+  std::unordered_map<::pir::Block*, PirInterpreter*> sub_blocks_;  // Not owned
 
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 

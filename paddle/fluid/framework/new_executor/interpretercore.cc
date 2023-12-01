@@ -123,6 +123,10 @@ const platform::Place& InterpreterCore::GetPlace() const {
   return impl_->GetPlace();
 }
 
+void InterpreterCore::SetInputHooks(const std::vector<HookFunc>& hookfuncs) {
+  impl_->SetInputHooks(hookfuncs);
+}
+
 void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }
@@ -141,6 +145,10 @@ std::tuple<double, double> InterpreterCore::InterpreterRunTime() {
 
 std::shared_ptr<ProgramDesc> InterpreterCore::GetMutableCopyProgram() {
   return impl_->GetMutableCopyProgram();
+}
+
+Variable* InterpreterCore::DebugVar(const std::string& name) const {
+  return impl_->DebugVar(name);
 }
 
 }  // namespace framework

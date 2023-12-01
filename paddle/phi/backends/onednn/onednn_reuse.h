@@ -941,6 +941,7 @@ template <typename T>
 class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
   bool use_broadcasting_hack;
+  bool swin_case;
   BinaryOneDNNHandler(const dnnl::algorithm algo,
                       const int axis,
                       const dnnl::engine engine,
@@ -955,6 +956,7 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
                       const dnnl::post_ops& post_ops = dnnl::post_ops{})
       : OneDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
     use_broadcasting_hack = false;
+    swin_case = false;
     const auto src_x_tz = vectorize(x->dims());
     const auto src_y_tz = vectorize(y->dims());
     // if output tensor(z) is nullptr then we are computing into oneDNN
@@ -1033,6 +1035,34 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
       }
     }
 
+    // Special case for swin transformer, which includes elewise_add/sub with
+    // rare shapes. By extending the shape to utilize oneDNN optimized binary
+    // optimization
+    if (allow_hack && (dst_tz.size() == 3 || dst_tz.size() == 5)) {
+      if (dst_tz.size() == 3 && algo == dnnl::algorithm::binary_sub) {
+        if ((x->numel() == y->numel()) && (src0_dims[1] != src1_dims[1]) &&
+            (src0_dims[2] != src1_dims[2]) && (src0_dims[1] == 1) &&
+            (src1_dims[2] == 1)) {
+          if (x->numel() < out->numel()) {
+            src0_md = dnnl::memory::desc(
+                dst_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::abc);
+            swin_case = true;
+          }
+        }
+      } else if (dst_tz.size() == 5 && algo == dnnl::algorithm::binary_add) {
+        if (src0_dims[0] == 1 && src0_dims[0] == src1_dims[0] &&
+            src0_dims[1] == src1_dims[1] && src0_dims[3] == src1_dims[3] &&
+            src0_dims[4] == src1_dims[4]) {
+          if (src0_dims[1] != 1 && src0_dims[2] != src1_dims[2] &&
+              src1_dims[2] == 1) {
+            src1_md = dnnl::memory::desc(
+                dst_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
+            swin_case = true;
+          }
+        }
+      }
+    }
+
     auto dst_md =
         memory::desc(dst_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
 
@@ -1048,6 +1078,59 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
           attributes, algo, src0_md, src1_md, dst_md);
     }
   }
+
+  std::shared_ptr<dnnl::memory> AcquireExtendMemoryFromPrimitive(
+      dnnl::memory::desc md, void* ptr, int src_idx) {
+    auto mem_p = std::make_shared<dnnl::memory>(md, this->engine_);
+    size_t size = md.get_size() / sizeof(T);
+    T* dst = static_cast<T*>(mem_p->get_data_handle());
+    T* new_ptr = static_cast<T*>(ptr);
+    if (src_idx == 0) {
+      auto C = md.get_dims()[1];
+      auto H = md.get_dims()[2];
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
+      for (size_t i = 0; i < size; ++i) {
+        auto n = i / (C * H);
+        auto c = (i - n * (C * H)) / H;
+        auto h = i - n * (C * H) - c * H;
+        auto mod_i = n * H + h;
+        dst[i] = new_ptr[mod_i];
+      }
+    } else if (src_idx == 1) {
+      auto C = md.get_dims()[2];
+      auto H = md.get_dims()[3];
+      auto W = md.get_dims()[4];
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
+      for (size_t i = 0; i < size; ++i) {
+        auto n = i / (C * H * W);
+        auto c = (i - n * (C * H * W)) / (H * W);
+        auto h = (i - n * (C * H * W) - c * (H * W)) / W;
+        auto w = i - n * (C * H * W) - c * (H * W) - h * W;
+        auto mod_i = n * H * W + h * W + w;
+        dst[i] = new_ptr[mod_i];
+      }
+    }
+    return mem_p;
+  }
+
+  // Special case for swin_transformer
+  std::shared_ptr<dnnl::memory> AcquireExtendSrcMemory(const DenseTensor* input,
+                                                       int src_idx) {
+    const T* input_data = input->data<T>();
+    return src_idx == 0 ? this->AcquireExtendMemoryFromPrimitive(
+                              this->fwd_pd_->src0_desc(),
+                              to_void_cast<T>(input_data),
+                              src_idx)
+                        : this->AcquireExtendMemoryFromPrimitive(
+                              this->fwd_pd_->src1_desc(),
+                              to_void_cast<T>(input_data),
+                              src_idx);
+  }
+
   std::shared_ptr<dnnl::memory> AcquireSecondSrcMemory(
       const DenseTensor* input) {
     const T* input_data = input->data<T>();

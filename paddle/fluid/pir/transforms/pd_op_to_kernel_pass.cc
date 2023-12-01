@@ -63,6 +63,7 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     pir::CombineOp::name(),
     pir::SliceOp::name(),
     pir::SplitOp::name(),
+    pir::ConstantTensorOp::name(),
     pir::SetParameterOp::name(),
     pir::ParameterOp::name(),
     pir::ShadowOutputOp::name(),
@@ -73,6 +74,7 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
 };
 const std::unordered_set<std::string> SpecialLowerOps = {
     pir::CombineOp::name(),
+    pir::ConstantTensorOp::name(),
     pir::SetParameterOp::name(),
     pir::ParameterOp::name(),
     pir::ShadowOutputOp::name(),
@@ -84,6 +86,7 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     pir::StackCreateOp::name(),
     pir::TuplePushOp::name(),
     pir::TuplePopOp::name(),
+    HasElementsOp::name(),
     "cinn_runtime.jit_kernel"};
 
 static bool NeedFallBackCpu(const pir::Operation* op,
@@ -113,7 +116,8 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
                                        const phi::KernelKey kernel_key) {
   // NOTE(phlrain): keep the same kernel select strategy with
   // GetExepectKernelKey
-  if (op->isa<Pool2dOp>() || op->isa<Pool2dGradOp>()) {
+  if (op->isa<Pool2dOp>() || op->isa<Pool2dGradOp>() || op->isa<Pool3dOp>() ||
+      op->isa<Pool3dGradOp>()) {
     if (kernel_key.backend() == phi::Backend::GPUDNN &&
         (op->attributes()
              .at("adaptive")
@@ -871,19 +875,19 @@ void HandleForIfOp(
   auto new_ifop = builder.Build<IfOp>(new_cond, std::move(new_ifop_outputs));
 
   // process true block
-  pir::Block* true_block = new_ifop.true_block();
+  auto& true_block = new_ifop.true_block();
   ProcessBlock(place,
-               old_ifop.true_block(),
-               true_block,
+               &old_ifop.true_block(),
+               &true_block,
                ctx,
                map_op_pair,
                map_value_pair);
 
   // process false block
-  pir::Block* false_block = new_ifop.false_block();
+  auto& false_block = new_ifop.false_block();
   ProcessBlock(place,
-               old_ifop.false_block(),
-               false_block,
+               &old_ifop.false_block(),
+               &false_block,
                ctx,
                map_op_pair,
                map_value_pair);
@@ -923,16 +927,16 @@ void HandleForWhileOp(
   pir::Builder builder(ctx, block);
   auto base_while_op = op_item->dyn_cast<WhileOp>();
   auto new_while_op = builder.Build<WhileOp>(cond_val, vec_in);
-  pir::Block* body_block = new_while_op.body_block();
+  pir::Block& body_block = new_while_op.body();
   for (size_t i = 0; i < vec_in.size(); ++i) {
-    auto block_arg = body_block->AddArgument(vec_in[i].type());
-    (*map_value_pair)[base_while_op.body_block()->argument(i)] = block_arg;
+    auto block_arg = body_block.arg(i);
+    (*map_value_pair)[base_while_op.body().arg(i)] = block_arg;
   }
 
   // process body block
   ProcessBlock(place,
-               base_while_op.body_block(),
-               body_block,
+               &base_while_op.body(),
+               &body_block,
                ctx,
                map_op_pair,
                map_value_pair);
@@ -1006,6 +1010,11 @@ void HandleForSpecialOp(
   if (op_item->isa<::pir::ParameterOp>()) {
     op_output_types.push_back(
         BuildOutputType(op_item->result(0).type(), place, ctx));
+  }
+
+  if (op_item->isa<::pir::ConstantTensorOp>()) {
+    op_output_types.push_back(
+        BuildOutputType(op_item->result(0).type(), phi::CPUPlace(), ctx));
   }
 
   if (op_item->isa<::pir::SliceOp>()) {
@@ -1141,6 +1150,23 @@ void HandleForSpecialOp(
     }
   }
 
+  if (op_item->isa<HasElementsOp>()) {
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      vec_inputs.push_back(new_in);
+    }
+    PADDLE_ENFORCE_EQ(op_item->result(0).type().isa<DenseTensorType>(),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "HasElementsOp's output should be bool type"));
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      op_output_types.push_back(
+          BuildOutputType(op_item->result(i).type(), phi::CPUPlace(), ctx));
+    }
+  }
+
   if (op_item->isa<::pir::TuplePopOp>()) {
     for (size_t i = 0; i < op_item->num_operands(); ++i) {
       auto cur_in = op_item->operand_source(i);
@@ -1207,8 +1233,10 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
     return {};
   }
   std::vector<pir::Type> op_output_types;
+
   auto phi_kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
       kernel_fn_str, kernel_key);
+
   auto args_def = phi_kernel.args_def();
   auto output_defs = args_def.output_defs();
   if (!UnchangeOutputOps.count(op_item->name()) &&

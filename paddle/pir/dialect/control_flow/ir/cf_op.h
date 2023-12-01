@@ -56,6 +56,7 @@ class IR_API TuplePushOp : public Op<TuplePushOp, SideEffectTrait> {
   Value container() { return container_interface().container(); }
   Value inlet() { return operand_source(0); }
   Value outlet() { return container_interface().outlet(); }
+
   size_t tuple_size();
   Value inlet_element(size_t index) { return operand_source(index + 1u); }
   Value outlet_element(size_t index) {
@@ -94,19 +95,6 @@ class IR_API TuplePopOp : public Op<TuplePopOp, SideEffectTrait> {
   TuplePushOp tuple_push_op() { return container_interface().tuple_push_op(); }
 };
 
-class IR_API HasElementsOp : public Op<HasElementsOp> {
- public:
-  using Op::Op;
-  static const char *name() { return "cf.has_elements"; }
-  static constexpr uint32_t attributes_num = 0;
-  static constexpr const char **attributes_name = nullptr;
-
-  static void Build(Builder &builder,             // NOLINT
-                    OperationArgument &argument,  // NOLINT
-                    Value stack);
-  void VerifySig();
-  Value out() { return result(0); }
-};
 class IR_API StackCreateOp : public Op<StackCreateOp, ContainerOpInterface> {
  public:
   using Op::Op;
@@ -137,4 +125,3 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::YieldOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::StackCreateOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::TuplePushOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::TuplePopOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::HasElementsOp);

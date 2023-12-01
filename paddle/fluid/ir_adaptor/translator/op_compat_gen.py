@@ -136,6 +136,17 @@ def OpNameNormalizerInitialization(
         "grad_y_grad": "DDY",
         "grad_out_grad": "DDOut",
     }
+    op_arg_name_mappings["batch_norm_grad_grad"] = {
+        "scale_grad": "DScale",
+        "x_grad": "DX",
+        "grad_out_grad": "DDY",
+        "out_mean": "OutMean",
+        "out_variance": "OutVariance",
+        "grad_x_grad": "DDX",
+        "grad_scale_grad": "DDScale",
+        "grad_bias_grad": "DDBias",
+        "grad_out": "DY",
+    }
 
     op_name_normailzer_template = env.get_template("op_compat_info.cc.j2")
     with open(output_source_file, 'wt') as f:

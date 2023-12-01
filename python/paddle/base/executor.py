@@ -428,25 +428,23 @@ def has_fetch_operations(
         that match the info contained in fetch_targets.
     """
 
-    fetch_count = 0
-    mismatch_count = 0
+    fetch_info = [[], []]
     for op in block.ops:
         if op.name() == fetch_op:
-            if op.operand_source(0) not in fetch_targets:
-                mismatch_count += 1
-                continue
-            fetch_count += 1
-    if mismatch_count > 0:
-        warnings.warn(
-            "There are {} fetch ops in Program which are not responsible for the fetch targets that you have passed in fetch_list".format(
-                mismatch_count
-            )
-        )
-    if fetch_count > 0 and fetch_count != len(fetch_targets):
-        raise Exception(
-            "Fetch operations in program do not match 'fetch_targets'"
-        )
-    return fetch_count > 0
+            fetch_info[0].append(op.operand_source(0))
+            fetch_info[1].append(op.attrs()["name"])
+
+    need_fetch_info = []
+    for i, fetch_var in enumerate(fetch_targets):
+        if isinstance(fetch_var, str):
+            if fetch_var not in fetch_info[1]:
+                raise Exception(
+                    f"Found fetch_target[{i}] is type(str) and doesn't have fetch op."
+                )
+        elif fetch_var not in fetch_info[0]:
+            need_fetch_info.append(fetch_var)
+
+    return need_fetch_info
 
 
 def _add_feed_fetch_ops(
@@ -519,11 +517,12 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
 
     global_block = program.global_block()
     fetch_op = "pd_op.fetch"
-    if not has_fetch_operations(
+    need_fetch_info = has_fetch_operations(
         global_block, fetch_list, fetch_var_name, fetch_op
-    ):
+    )
+    if need_fetch_info:
         with paddle.static.program_guard(program):
-            for i, fetch_input in enumerate(fetch_list):
+            for i, fetch_input in enumerate(need_fetch_info):
                 assert isinstance(
                     fetch_input, (OpResult, Value)
                 ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"

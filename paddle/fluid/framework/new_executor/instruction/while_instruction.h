@@ -48,6 +48,8 @@ class WhileInstruction : public InstructionBase {
 
   ::pir::Operation* Operation() const override { return op_; }
 
+  PirInterpreter* BodyInterpreter() const { return body_inter_.get(); }
+
  private:
   // 'output' = 'input'
   void CopyInputsToOutputs();

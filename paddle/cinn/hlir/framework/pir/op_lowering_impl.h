@@ -162,6 +162,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * @return The lowered func bodies of Op set.
    */
   std::vector<ir::Expr> LowerOps(
+      const GroupPtr& group,
       const std::vector<::pir::Operation*>& ops,
       bool apply_op_schedule,
       ScheduleDetermineFunction schedule_determine_func,

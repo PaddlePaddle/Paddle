@@ -34,6 +34,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
+    spmd_rule : ReductionAllInferSpmdDynamic
   kernel :
     func : all
 
@@ -361,6 +362,7 @@
   infer_meta :
     func : EmbeddingInferMeta
     param : [x, weight, padding_idx]
+    spmd_rule: EmbeddingInferSpmd
   kernel :
     func : embedding {dense, dense -> dense}
            sparse_weight_embedding {dense, selected_rows -> dense}
@@ -507,6 +509,7 @@
   infer_meta :
     func : CreateLikeInferMeta
     param : [x, dtype]
+    spmd_rule : FullLikeInferSpmd
   kernel :
     func : full_like
     param : [x, value, dtype]
@@ -930,6 +933,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : ReshapeWithXShapeInferMeta
+    spmd_rule : ReshapeInferSpmdDynamic
   kernel :
     func : reshape
   inplace : (x -> out)
