@@ -85,5 +85,8 @@ foreach(ITEST ${LEGACY_ONLY_TEST_FILES})
   if(TEST ${ITEST})
     set_tests_properties(
       ${ITEST} PROPERTIES ENVIRONMENT "FLAGS_new_executor_sequential_run=1")
+  else()
+    message(
+      STATUS "PIR_SEQUENTIAL_RUN_LIST: not found ${ITEST} in dygraph_to_static")
   endif()
 endforeach()

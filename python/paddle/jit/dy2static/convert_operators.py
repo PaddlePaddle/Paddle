@@ -215,7 +215,6 @@ def _run_paddle_while(
     from paddle.static.nn import while_loop
 
     loop_vars = while_loop(new_cond_fn, new_body_fn, loop_vars)
-    # breakpoint()
     helper.set(union_name, loop_vars)
     return loop_vars
 
@@ -424,6 +423,7 @@ def _run_paddle_cond(
     union_name = list(union_name)
 
     def new_true_fn():
+        nonlocal union_name
         # init args may contain mutable python container like [var, 2], we copy then like in while_loop
         inplace_map_checkpoint = inplace_map.save_checkpoint()
         helper.set(
@@ -435,10 +435,13 @@ def _run_paddle_cond(
         # We assume normal return has no return value.
         if ret is None:
             ret = helper.get(union_name)
+        else:
+            union_name = None  # for lambda.
         inplace_map.restore_checkpoint(inplace_map_checkpoint)
         return ret
 
     def new_false_fn():
+        nonlocal union_name
         # init args may contain mutable python container like [var, 2], we copy then like in while_loop
         inplace_map_checkpoint = inplace_map.save_checkpoint()
         helper.set(
@@ -448,12 +451,14 @@ def _run_paddle_cond(
         ret = false_fn()
         if ret is None:
             ret = helper.get(union_name)
+        else:
+            union_name = None  # for lambda.
         inplace_map.restore_checkpoint(inplace_map_checkpoint)
         return ret
 
     try:
         cond_outs = paddle.static.nn.cond(
-            pred, new_true_fn, new_false_fn, None, return_name_ids
+            pred, new_true_fn, new_false_fn, None, union_name
         )
     except Exception as e:
         if re.search(
