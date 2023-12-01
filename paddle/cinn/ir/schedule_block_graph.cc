@@ -32,7 +32,7 @@ ScheduleBlockNode::ScheduleBlockNode(Expr block, const IRSchedule& ir_sch)
 
 Expr ScheduleBlockNode::Block() const { return ir_sch_.GetBlock(id_); }
 
-std::vector<Expr> ScheduleBlockNode::ControlStmts() const {
+std::vector<Expr> ScheduleBlockNode::GetLoops() const {
   return ir_sch_.GetLoops(id_);
 }
 

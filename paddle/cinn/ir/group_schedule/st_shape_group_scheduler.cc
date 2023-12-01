@@ -71,15 +71,14 @@ bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
 // Find loops with same extents of 2 ScheduleBlock
 std::vector<std::tuple<ir::Expr, ir::Expr>> FindSameOuterLoops(
     ir::ScheduleBlockNode* source_node, ir::ScheduleBlockNode* target_node) {
-  std::vector<ir::Expr> src_ctrl_stmts = source_node->ControlStmts();
-  std::vector<ir::Expr> tgt_ctrl_stmts = target_node->ControlStmts();
+  std::vector<ir::Expr> src_loops = source_node->GetLoops();
+  std::vector<ir::Expr> tgt_loops = target_node->GetLoops();
   std::vector<std::tuple<ir::Expr, ir::Expr>> same_loops;
-  int min_stmt_size = std::min(src_ctrl_stmts.size(), tgt_ctrl_stmts.size());
+  int min_stmt_size = std::min(src_loops.size(), tgt_loops.size());
   for (int i = 0; i < min_stmt_size; ++i) {
-    if (src_ctrl_stmts[i].As<ir::For>() && tgt_ctrl_stmts[i].As<ir::For>() &&
-        GetLoopExtent(src_ctrl_stmts[i]) == GetLoopExtent(tgt_ctrl_stmts[i])) {
-      same_loops.push_back(
-          std::make_tuple(src_ctrl_stmts[i], tgt_ctrl_stmts[i]));
+    if (src_loops[i].As<ir::For>() && tgt_loops[i].As<ir::For>() &&
+        GetLoopExtent(src_loops[i]) == GetLoopExtent(tgt_loops[i])) {
+      same_loops.push_back(std::make_tuple(src_loops[i], tgt_loops[i]));
     } else {
       break;
     }
@@ -165,7 +164,7 @@ NodePriority StaticShapeGroupScheduler::CalculateNodePriority(
 
   int64_t reduce_score = 1;
   int64_t score = 1;
-  for (Expr expr : node->ControlStmts()) {
+  for (Expr expr : node->GetLoops()) {
     ir::For* for_node = expr.As<ir::For>();
     CHECK_NOTNULL(for_node);
     int loop_extent = ir::GetLoopExtent(expr);
@@ -326,7 +325,7 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
       return false;
     }
 
-    for (ir::Expr expr : node->ControlStmts()) {
+    for (ir::Expr expr : node->GetLoops()) {
       if (expr.As<ir::For>() != nullptr &&
           (expr.As<ir::For>()->for_type() == ir::ForType::GPUBlock ||
            expr.As<ir::For>()->for_type() == ir::ForType::GPUThread)) {
@@ -342,7 +341,7 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
             << " with block: " << global_master->id();
 
     // 1. Fuse source loops
-    ir::Expr source_loop = ir_sch_->Fuse(node->ControlStmts());
+    ir::Expr source_loop = ir_sch_->Fuse(node->GetLoops());
     int total_source_extent = ir::GetLoopExtent(source_loop);
 
     // 2. Split source loop to align with the target loops
@@ -476,11 +475,11 @@ void StaticShapeGroupScheduler::DoVerticalLoopFusion() {
     ir::Expr target_loop;
     bool find_target_loop = false;
     // Collect infomation of original loops
-    std::vector<ir::Expr> original_ctrl_stmts = node->ControlStmts();
+    std::vector<ir::Expr> original_loops = node->GetLoops();
     int64_t original_total_loop_extent = 1;
     std::vector<std::pair<std::string, int>> original_loop_infos;
     std::unordered_set<ir::IrNode*> original_loop_node_ptrs;
-    for (ir::Expr stmt : original_ctrl_stmts) {
+    for (ir::Expr stmt : original_loops) {
       if (stmt.As<ir::For>()) {
         int extent = ir::GetLoopExtent(stmt);
         original_total_loop_extent *= extent;
@@ -551,15 +550,15 @@ void StaticShapeGroupScheduler::DoVerticalLoopFusion() {
     if (find_target_loop) {
       ir_sch_->SimpleComputeAt(node->Block(), target_loop);
       VLOG(6) << "after compute at: " << ir_sch_->GetModule().GetExprs()[0];
-      std::vector<ir::Expr> new_stmts = node->ControlStmts();
+      std::vector<ir::Expr> new_loops = node->GetLoops();
       for (int idx = 0; idx < original_loop_infos.size(); ++idx) {
         if (original_loop_infos[idx].first.empty()) {
           continue;
         }
-        if (idx < new_stmts.size()) {
-          CHECK(new_stmts[idx].As<ir::For>());
-          if (new_stmts[idx].As<ir::For>()->is_serial()) {
-            ir_sch_->Bind(new_stmts[idx], original_loop_infos[idx].first);
+        if (idx < new_loops.size()) {
+          CHECK(new_loops[idx].As<ir::For>());
+          if (new_loops[idx].As<ir::For>()->is_serial()) {
+            ir_sch_->Bind(new_loops[idx], original_loop_infos[idx].first);
           }
         } else {
           ir::Expr unit_loop = ir_sch_->AddUnitLoop(node->Block());
