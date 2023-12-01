@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
-from paddle.static import Program, program_guard
 
 
 def _run_ldexp_dynamic(x, y, device='cpu'):
@@ -43,7 +42,9 @@ def _run_ldexp_static(x, y, device='cpu'):
     paddle.enable_static()
     # y is scalar
     if isinstance(y, (int)):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x_ = paddle.static.data(name="x", shape=x.shape, dtype=x.dtype)
             y_ = y
             res = paddle.ldexp(x_, y_)
@@ -51,11 +52,17 @@ def _run_ldexp_static(x, y, device='cpu'):
                 paddle.CPUPlace() if device == 'cpu' else paddle.CUDAPlace(0)
             )
             exe = paddle.static.Executor(place)
-            outs = exe.run(feed={'x': x, 'y': y}, fetch_list=[res])
+            outs = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': x, 'y': y},
+                fetch_list=[res],
+            )
             return outs[0]
     # y is tensor
     else:
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x_ = paddle.static.data(name="x", shape=x.shape, dtype=x.dtype)
             y_ = paddle.static.data(name="y", shape=y.shape, dtype=y.dtype)
             res = paddle.ldexp(x_, y_)
@@ -63,7 +70,11 @@ def _run_ldexp_static(x, y, device='cpu'):
                 paddle.CPUPlace() if device == 'cpu' else paddle.CUDAPlace(0)
             )
             exe = paddle.static.Executor(place)
-            outs = exe.run(feed={'x': x, 'y': y}, fetch_list=[res])
+            outs = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': x, 'y': y},
+                fetch_list=[res],
+            )
             return outs[0]
 
 
