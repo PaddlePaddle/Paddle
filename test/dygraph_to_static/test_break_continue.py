@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_ast_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_default_mode_only,
+    test_pt_only,
+)
 
 import paddle
 from paddle import base
@@ -33,6 +38,7 @@ class TestDy2staticException(Dy2StTestBase):
         self.error = "Your if/else have different number of return value."
 
     @test_ast_only
+    @test_pt_only
     def test_error(self):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
@@ -227,6 +233,7 @@ class TestContinueInFor(Dy2StTestBase):
             res = to_static(self.dygraph_func)(self.input)
             return res.numpy()
 
+    @test_default_mode_only
     def test_transformed_static_result(self):
         static_res = self.run_static_mode()
         dygraph_res = self.run_dygraph_mode()

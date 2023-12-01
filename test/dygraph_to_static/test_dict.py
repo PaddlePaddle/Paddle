@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
+    test_default_and_pir,
 )
 
 import paddle
@@ -142,7 +142,7 @@ class TestNetWithDict(Dy2StTestBase):
             ret = net(self.x)
             return ret.numpy()
 
-    @test_legacy_and_pt_and_pir
+    @test_default_and_pir
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
@@ -196,7 +196,7 @@ class TestDictPop(Dy2StTestBase):
 
         return result.numpy()
 
-    @test_legacy_and_pt_and_pir
+    @test_default_and_pir
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()
@@ -239,7 +239,7 @@ class TestDictPop3(TestNetWithDict):
             ret = net(z=0, x=self.x, y=True)
             return ret.numpy()
 
-    @test_legacy_and_pt_and_pir
+    @test_default_and_pir
     def test_ast_to_func(self):
         dygraph_result = self._run_dygraph()
         static_result = self._run_static()
@@ -251,7 +251,7 @@ class TestDictPop3(TestNetWithDict):
 
 
 class TestDictCmpInFor(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
+    @test_default_and_pir
     def test_with_for(self):
         def func():
             pos = [1, 3]
@@ -268,7 +268,7 @@ class TestDictCmpInFor(Dy2StTestBase):
 
         self.assertEqual(paddle.jit.to_static(func)()['minus'], 8)
 
-    @test_legacy_and_pt_and_pir
+    @test_default_and_pir
     def test_with_for_enumerate(self):
         def func():
             pos = [1, 3]
