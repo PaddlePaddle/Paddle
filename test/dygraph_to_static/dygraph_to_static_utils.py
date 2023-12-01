@@ -106,7 +106,6 @@ DISABLED_IR_TEST_FILES = {
         "test_len",
         "test_list",
         "test_slice",
-        "test_lstm",
         "test_for_enumerate",
         "test_jit_setitem",
         "test_reinforcement_learning",
