@@ -29,7 +29,7 @@ from ..pir import (
     Value,
     translate_to_pir,
 )
-from . import compiler, core, framework, get_flags, set_flags, unique_name
+from . import compiler, core, framework, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
     Operator,
@@ -38,8 +38,10 @@ from .framework import (
     _apply_pass,
     convert_np_dtype_to_dtype_,
     default_main_program,
+    get_flags,
     in_pir_mode,
     paddle_type_to_proto_type,
+    set_flags,
 )
 from .incubate.checkpoint import auto_checkpoint as acp
 from .trainer_factory import FetchHandlerMonitor, TrainerFactory
