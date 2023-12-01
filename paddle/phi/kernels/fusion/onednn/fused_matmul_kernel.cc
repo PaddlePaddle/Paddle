@@ -170,10 +170,11 @@ class FusedMatmulOneDNNHandler
       // dims
       int dst_size = out_ddims.size();
       int origin_size = residual_data->mem_desc().get_ndims();
+      auto reshaped_md = residual_data->mem_desc();
       dnnl::memory::dims expanded_dims = residual_data->mem_desc().get_dims();
       if (origin_size < dst_size) {
         expanded_dims.insert(expanded_dims.begin(), dst_size - origin_size, 1);
-        residual_data->mem_desc().reshape(expanded_dims);
+        reshaped_md = residual_data->mem_desc().reshape(expanded_dims);
       }
 
       auto residual_data_tz = vectorize(residual_data->dims());
@@ -186,9 +187,7 @@ class FusedMatmulOneDNNHandler
         residual_data_md = memory::desc(
             out_ddims, funcs::OneDNNGetDataType<OT>(), chosen_memory_format);
       } else {
-        residual_data_md = memory::desc(expanded_dims,
-                                        funcs::OneDNNGetDataType<OT>(),
-                                        chosen_memory_format);
+        residual_data_md = reshaped_md;
       }
 
       post_operations.append_binary(dnnl::algorithm::binary_add,
