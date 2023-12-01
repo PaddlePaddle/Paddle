@@ -280,6 +280,21 @@ class TestTakeAlongAxisAPICase2(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
+    def test_error(self):
+        tensorx = paddle.to_tensor([[1, 2, 3], [4, 5, 6]]).astype("float32")
+        indices = paddle.to_tensor([1]).astype("int32")
+        # len(arr.shape) != len(indices.shape)
+        try:
+            res = paddle.take_along_axis(tensorx, indices, 0, False)
+        except Exception as error:
+            self.assertIsInstance(error, ValueError)
+        indices = paddle.to_tensor([[10]]).astype("int32")
+        # the element of indices out of range
+        try:
+            res = paddle.take_along_axis(tensorx, indices, 0, False)
+        except Exception as error:
+            self.assertIsInstance(error, RuntimeError)
+
 
 if __name__ == "__main__":
     paddle.enable_static()
