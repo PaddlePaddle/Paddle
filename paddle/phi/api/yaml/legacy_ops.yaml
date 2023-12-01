@@ -34,6 +34,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
+    spmd_rule : ReductionAllInferSpmdDynamic
   kernel :
     func : all
 
@@ -228,6 +229,7 @@
   output : Tensor(out)
   infer_meta :
     func : CastInferMeta
+    spmd_rule : CastInferSpmd
   kernel :
     func : cast
     param : [x, dtype]
@@ -360,6 +362,7 @@
   infer_meta :
     func : EmbeddingInferMeta
     param : [x, weight, padding_idx]
+    spmd_rule: EmbeddingInferSpmd
   kernel :
     func : embedding {dense, dense -> dense}
            sparse_weight_embedding {dense, selected_rows -> dense}
@@ -506,6 +509,7 @@
   infer_meta :
     func : CreateLikeInferMeta
     param : [x, dtype]
+    spmd_rule : FullLikeInferSpmd
   kernel :
     func : full_like
     param : [x, value, dtype]
@@ -711,6 +715,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceIntArrayAxisInferMeta
+    spmd_rule: ReductionMaxInferSpmdDynamic
   kernel :
     func : max
   backward : max_grad
@@ -928,6 +933,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : ReshapeWithXShapeInferMeta
+    spmd_rule : ReshapeInferSpmdDynamic
   kernel :
     func : reshape
   inplace : (x -> out)
@@ -1099,6 +1105,7 @@
   output : Tensor(out)
   infer_meta :
     func : TransposeInferMeta
+    spmd_rule: TransposeInferSpmd
   kernel :
     func : transpose
   inplace : (x -> out)
@@ -1131,6 +1138,7 @@
   output : Tensor(out)
   infer_meta :
     func : TriuInferMeta
+    spmd_rule : TriuInferSpmd
   kernel :
     func : triu
   inplace: (x -> out)

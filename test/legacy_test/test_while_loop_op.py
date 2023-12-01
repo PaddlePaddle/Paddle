@@ -25,13 +25,13 @@ from paddle.base.backward import append_backward
 from paddle.base.framework import Program, program_guard
 
 sys.path.append("../dygraph_to_static")
-from dygraph_to_static_utils_new import compare_legacy_with_pir
+from dygraph_to_static_utils import compare_legacy_with_pt
 
 paddle.enable_static()
 
 
 class TestApiWhileLoop(unittest.TestCase):
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def test_var_tuple(self):
         def cond(i):
             return paddle.less_than(i, ten)
@@ -60,7 +60,7 @@ class TestApiWhileLoop(unittest.TestCase):
             np.asarray(res[0]), np.full(1, 10, np.int64), rtol=1e-05
         )
 
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def test_var_list(self):
         def cond(i, mem):
             return paddle.less_than(i, ten)
@@ -97,7 +97,7 @@ class TestApiWhileLoop(unittest.TestCase):
             data = np.add(data, data_one)
         np.testing.assert_allclose(np.asarray(res[1]), data, rtol=1e-05)
 
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def test_var_dict(self):
         def cond(i, ten, test_dict, test_list, test_list_dict):
             return paddle.less_than(i, ten)
@@ -182,7 +182,7 @@ class TestApiWhileLoop(unittest.TestCase):
 
 
 class TestApiWhileLoop_Nested(unittest.TestCase):
-    # @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def test_nested_net(self):
         def external_cond(i, j, init, sums):
             return paddle.less_than(i, loop_len1)
@@ -436,7 +436,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
 
 
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def test_with_switch_case(self):
         def cond(i):
             return paddle.less_than(i, ten)
@@ -486,7 +486,7 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
 
 
 class TestApiWhileLoop_Error(unittest.TestCase):
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def test_error(self):
         def cond_returns_constant(i):
             return 1
@@ -655,7 +655,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
 
 class TestApiWhileLoopSliceInBody(unittest.TestCase):
-    # @compare_legacy_with_pir
+    # @compare_legacy_with_pt
     def test_var_slice(self):
         def cond(z, i):
             return i + 1 <= x_shape[0]

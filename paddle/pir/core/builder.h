@@ -43,6 +43,7 @@ class IndexAttribute;
 class Int64Attribute;
 class ArrayAttribute;
 class PointerAttribute;
+class TensorNameAttribute;
 
 using InsertionPoint = std::pair<Block *, Block::Iterator>;
 ///
@@ -147,6 +148,7 @@ class Builder {
   IR_API Int64Attribute int64_attr(int64_t value);
   IR_API ArrayAttribute array_attr(const std::vector<Attribute> &value);
   IR_API PointerAttribute pointer_attr(void *value);
+  IR_API TensorNameAttribute tensor_name_attr(const std::string &value);
 
  private:
   Operation *Insert(Operation *op);

@@ -428,25 +428,23 @@ def has_fetch_operations(
         that match the info contained in fetch_targets.
     """
 
-    fetch_count = 0
-    mismatch_count = 0
+    fetch_info = [[], []]
     for op in block.ops:
         if op.name() == fetch_op:
-            if op.operand_source(0) not in fetch_targets:
-                mismatch_count += 1
-                continue
-            fetch_count += 1
-    if mismatch_count > 0:
-        warnings.warn(
-            "There are {} fetch ops in Program which are not responsible for the fetch targets that you have passed in fetch_list".format(
-                mismatch_count
-            )
-        )
-    if fetch_count > 0 and fetch_count != len(fetch_targets):
-        raise Exception(
-            "Fetch operations in program do not match 'fetch_targets'"
-        )
-    return fetch_count > 0
+            fetch_info[0].append(op.operand_source(0))
+            fetch_info[1].append(op.attrs()["name"])
+
+    need_fetch_info = []
+    for i, fetch_var in enumerate(fetch_targets):
+        if isinstance(fetch_var, str):
+            if fetch_var not in fetch_info[1]:
+                raise Exception(
+                    f"Found fetch_target[{i}] is type(str) and doesn't have fetch op."
+                )
+        elif fetch_var not in fetch_info[0]:
+            need_fetch_info.append(fetch_var)
+
+    return need_fetch_info
 
 
 def _add_feed_fetch_ops(
@@ -519,11 +517,12 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
 
     global_block = program.global_block()
     fetch_op = "pd_op.fetch"
-    if not has_fetch_operations(
+    need_fetch_info = has_fetch_operations(
         global_block, fetch_list, fetch_var_name, fetch_op
-    ):
+    )
+    if need_fetch_info:
         with paddle.static.program_guard(program):
-            for i, fetch_input in enumerate(fetch_list):
+            for i, fetch_input in enumerate(need_fetch_info):
                 assert isinstance(
                     fetch_input, (OpResult, Value)
                 ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
@@ -808,7 +807,9 @@ class _StandaloneExecutor:
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, feed_names, return_numpy=True):
+    def run(
+        self, feed_names, return_numpy=True, enable_job_schedule_profiler=False
+    ):
         """
         Args:
             feed_names(list): This parameter represents the input names of the model.
@@ -818,7 +819,9 @@ class _StandaloneExecutor:
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
         """
-        tensors = self._new_exe.run(feed_names)._move_to_list()
+        tensors = self._new_exe.run(
+            feed_names, enable_job_schedule_profiler
+        )._move_to_list()
         if return_numpy:
             tensors = as_numpy(tensors, copy=True)
             if not get_flags("FLAGS_enable_pir_in_executor")[
@@ -1200,6 +1203,8 @@ class Executor:
         self._fleet_executor_with_standalone = False
 
         self.op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
+
+        self.enable_job_schedule_profiler = False
 
     def _is_optimizer_op(self, op):
         return self.op_role_key in op.attr_names and int(
@@ -1921,7 +1926,11 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            ret = new_exe.run(list(feed.keys()), return_numpy)
+            ret = new_exe.run(
+                list(feed.keys()),
+                return_numpy,
+                self.enable_job_schedule_profiler,
+            )
             set_flags(stored_flag)
             return ret
 
@@ -2018,6 +2027,34 @@ class Executor:
         )
 
         self._pir_feed_data(program, feed, scope)
+
+        if hasattr(program, 'lr_scheduler'):
+            from paddle.optimizer.lr import LRScheduler
+
+            assert isinstance(
+                program.lr_scheduler, LRScheduler
+            ), "must be LRScheduler"
+
+            lr_scheduler = program.lr_scheduler
+            lr_value = lr_scheduler()
+            lr_var = program.lr_var
+
+            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+            tensor = core.get_variable_tensor(
+                global_scope(), lr_scheduler._var_name
+            )
+            # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
+            cpu_tensor = _as_lodtensor(data, core.CPUPlace())
+            if core.is_cuda_graph_capturing():
+                warnings.warn(
+                    "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
+                    "take any effect! Please set the learning rate manually before each batch!"
+                )
+            elif core.is_compiled_with_ipu():
+                # for ipu, tensor is allocated on cpu
+                tensor._copy_from(cpu_tensor, tensor._place())
+            else:
+                tensor._copy_from(cpu_tensor, self.place)
 
         ret = new_exe.run(list(feed.keys()), return_numpy)
         return ret

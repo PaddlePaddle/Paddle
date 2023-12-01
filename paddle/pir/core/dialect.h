@@ -96,7 +96,7 @@ class IR_API Dialect {
     ir_context()->RegisterOpInfo(this,
                                  TypeId::get<ConcreteOp>(),
                                  ConcreteOp::name(),
-                                 ConcreteOp::GetInterfaceMap(),
+                                 ConcreteOp::interface_set(),
                                  ConcreteOp::GetTraitSet(),
                                  ConcreteOp::attributes_num,
                                  ConcreteOp::attributes_name,

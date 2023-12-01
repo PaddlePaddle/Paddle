@@ -16,19 +16,26 @@
 
 #include <string>
 
+#include "paddle/cinn/adt/map_expr_ctx.h"
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
-#include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
-#include "paddle/cinn/hlir/op/external_api_registry.h"
-#include "paddle/cinn/ir/schedule/ir_schedule.h"
-#include "paddle/cinn/optim/transform_gpu_forloop.h"
-
 #include "paddle/cinn/hlir/framework/compile_error.h"
+#include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/hlir/op/external_api_registry.h"
+#include "paddle/cinn/hlir/pe/map_expr_to_ir.h"
+#include "paddle/cinn/ir/dim.h"
+#include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
+#include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/phi/core/ddim.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
+PD_DECLARE_bool(cinn_enable_map_expr);
+PD_DECLARE_bool(cinn_enable_map_expr_schedule);
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
 namespace hlir {
@@ -72,23 +79,38 @@ common::Type GetTensorDtype(
   return common::F32();
 }
 
-ir::Tensor GetTensor(const ::pir::Value& value) {
+ir::Tensor GetTensor(const GroupPtr& group, const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
   auto in_shape = phi::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   std::string input_id = CompatibleInfo::ValueName(value);
-  return lang::CreatePlaceHolder(
-      in_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  if (group->shape_analysis != nullptr) {
+    auto sym_vec =
+        group->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(value);
+    std::vector<ir::Dim> sym_shape;
+    for (auto& sym : sym_vec) {
+      sym_shape.emplace_back(ir::Dim(input_id + "_" + sym.GetSymName(), sym));
+    }
+    return lang::CreatePlaceHolder(
+        sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  } else {
+    return lang::CreatePlaceHolder(
+        in_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  }
 }
 
 std::vector<ir::Tensor> CollectInputTensor(
+    const GroupPtr& group,
     const ::pir::Operation* op,
     std::vector<ir::Tensor>* func_args,
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   std::vector<ir::Tensor> tensors;
   for (auto in_value : CompatibleInfo::RealOperandSources(*op)) {
     VLOG(4) << "input tensor name: " << CompatibleInfo::ValueName(in_value);
-    ir::Tensor tensor = details::GetTensor(in_value);
+    ir::Tensor tensor = details::GetTensor(group, in_value);
+    VLOG(4) << "shape: " << tensor->shape;
+    VLOG(4) << "sym_shape: " << tensor->sym_shape;
+
     if (!tensor_map->count(in_value)) {
       // record tensor.
       (*tensor_map)[in_value] = tensor;
@@ -138,10 +160,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                                                   bool apply_pass) {
   VLOG(3) << "Lowering Group : " << group->group_id
           << " , Op Pattern : " << group->op_pattern_kind;
-  // TODO(Aurelius84): The logic shoule be moved into op_fusion module.
-  if (group->ops.size() >= 1U & group->output_ops.size() == 0) {
-    group->output_ops.insert(group->ops[group->ops.size() - 1]);
-  }
   group->input_names.clear();
   group->output_names.clear();
   switch (group->op_pattern_kind) {
@@ -169,6 +187,76 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
   }
 }
 
+std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>>
+OpLowererImpl::BucketLower(const GroupPtr& group,
+                           bool apply_op_schedule,
+                           bool apply_group_schedule,
+                           bool apply_pass) {
+  // 1.Do compute, lower and schedule for each op.
+  auto& ops = group->ops;
+  if (ops.size() == 1 && ops[0]->name() == "custom_call") {
+    return {{ir::Expr(1), LowerCustomCall(group)[0]}};
+  }
+  std::vector<ir::Tensor> group_func_arg_tensors;
+  std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
+  // for some op, it will output more tmp value and regard as
+  // XX_0, XX_1, so we log them in tmp_tensor_info;
+  std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
+  std::vector<ir::Expr> func_bodies =
+      LowerOps(group,
+               ops,
+               apply_op_schedule,
+               &OpLowererImpl::DyShapeScheduleDetermineFunction,
+               &group_func_arg_tensors,
+               &tensor_map,
+               &tmp_tensor_info);
+
+  // 2.Do group schedule.
+  ir::ModuleExpr mod_expr(func_bodies);
+  ir::IRSchedule ir_sch(mod_expr);
+  ir_sch.MergeExprs();
+  std::vector<std::pair<ir::SymbolicPredicate, ir::Expr>> cond2func_bodies;
+  VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
+  if (apply_group_schedule) {
+    std::unordered_set<std::string> output_tensor_names;
+    std::transform(
+        group->output_ops.begin(),
+        group->output_ops.end(),
+        std::inserter(output_tensor_names, output_tensor_names.begin()),
+        [](::pir::Operation* op) {
+          return CompatibleInfo::ValueName(op->result(0));
+        });
+    std::unique_ptr<ir::GroupScheduler> group_scheduler =
+        ir::GroupScheduler::Make(
+            &ir_sch, output_tensor_names, target_, /* is_dy_shape = */ true);
+    group_scheduler->Schedule();
+    cond2func_bodies = group_scheduler->GetIRs();
+  } else {
+    cond2func_bodies.emplace_back(ir::Expr(true),
+                                  ir_sch.GetModule().GetExprs()[0]);
+  }
+
+  // 3.Do post-processing,
+  // including preparing function args and temporary variables,
+  // applying low-level optimization passes, etc.
+  std::vector<std::pair<ir::Expr, ir::LoweredFunc>> cond2funcs;
+  for (std::pair<ir::SymbolicPredicate, ir::Expr>& cond2body :
+       cond2func_bodies) {
+    std::vector<ir::Tensor> group_func_arg_tensors_copy =
+        group_func_arg_tensors;
+    std::vector<ir::LoweredFunc> funcs =
+        PostProcess(group,
+                    tensor_map,
+                    apply_op_schedule,
+                    cond2body.second,
+                    &group_func_arg_tensors_copy);
+    for (ir::LoweredFunc& func : funcs) {
+      cond2funcs.emplace_back(cond2body.first, func);
+    }
+  }
+  return cond2funcs;
+}
+
 bool OpLowererImpl::ElementwiseScheduleDetermineFunction(::pir::Operation* op) {
   return true;
 }
@@ -180,6 +268,98 @@ bool OpLowererImpl::ReduceScheduleDetermineFunction(::pir::Operation* op) {
 
 bool OpLowererImpl::NonFusibleScheduleDetermineFunction(::pir::Operation* op) {
   return true;
+}
+
+bool OpLowererImpl::DyShapeScheduleDetermineFunction(::pir::Operation* op) {
+  return false;
+}
+
+void OpLowererImpl::LowerOpsForMapExpr(
+    const GroupPtr& group,
+    const std::vector<::pir::Operation*>& ops,
+    std::vector<ir::Tensor>* group_func_arg_tensors,
+    std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
+  auto& strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
+  // for some op, it will output more tmp value and regard as
+  // XX_0, XX_1, so we log them in tmp_tensor_info;
+  std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
+  for (auto* op : ops) {
+    // 1.Select Op impl
+    std::vector<Type> out_types;
+    std::vector<std::vector<int>> out_shapes;
+
+    details::CollectOutputInfo(op, &out_types, &out_shapes);
+    VLOG(4) << "out_types.size(): " << out_types.size();
+    NodeAttr node_attrs = details::CollectAttrs(*op);
+
+    std::vector<ir::Tensor> op_func_arg_tensors = details::CollectInputTensor(
+        group, op, group_func_arg_tensors, tensor_map);
+    VLOG(4) << "input size:" << op_func_arg_tensors.size();
+
+    std::string cinn_op_name = CompatibleInfo::OpName(*op);
+    const hlir::framework::Operator* cinn_op = Operator::Get(cinn_op_name);
+    auto op_impl = OpStrategy::SelectImpl(strategy[cinn_op](
+        node_attrs, op_func_arg_tensors, out_types, out_shapes, this->target_));
+    // 2.Perform the lower process of Op
+    std::vector<ir::LoweredFunc> funcs = DoOpLower(
+        op_impl, op, tensor_map, &tmp_tensor_info, &op_func_arg_tensors);
+
+    group->mut_map_expr_ctx()->UpdateOpLoweredFuncKey(op, funcs);
+  }
+}
+
+/* Most of below codes copies from `PostProcess` function */
+std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
+    const GroupPtr& group,
+    const std::vector<::pir::Operation*>& ops,
+    bool apply_op_schedule,
+    bool apply_group_schedule,
+    std::vector<ir::Tensor>* group_func_arg_tensors,
+    std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
+  if (FLAGS_cinn_enable_map_expr && FLAGS_cinn_enable_map_expr_schedule) {
+    apply_op_schedule = false;
+    apply_group_schedule = false;
+  }
+  VLOG(4) << "FLAGS_cinn_enable_map_expr_schedule = "
+          << FLAGS_cinn_enable_map_expr_schedule;
+  VLOG(4) << "apply_op_schedule = " << apply_op_schedule;
+  VLOG(4) << "apply_group_schedule = " << apply_group_schedule;
+
+  LowerOpsForMapExpr(group, ops, group_func_arg_tensors, tensor_map);
+
+  VLOG(4) << "Begin MapExprToIr";
+  ir::Expr func_body = adt::MapExprToIr(group->map_expr_ctx(), target_);
+
+  // 2.Do group schedule.
+  ir::ModuleExpr mod_expr({func_body});
+  ir::IRSchedule ir_sch(mod_expr);
+  ir_sch.MergeExprs();
+  VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
+  if (apply_group_schedule) {
+    std::unordered_set<std::string> output_tensor_names;
+    std::transform(
+        group->output_ops.begin(),
+        group->output_ops.end(),
+        std::inserter(output_tensor_names, output_tensor_names.begin()),
+        [](::pir::Operation* node) {
+          ::pir::Value node_data = node->result(0);
+          return hlir::framework::pir::CompatibleInfo::ValueName(node_data);
+        });
+    ir::StaticShapeGroupScheduler group_scheduler(
+        &ir_sch, output_tensor_names, target_);
+    group_scheduler.MapExprSchedule();
+    VLOG(3) << "After group schedule, ir is: \n"
+            << ir_sch.GetModule().GetExprs().at(0);
+  }
+
+  // 3.Do post-processing,
+  // including preparing function args and temporary variables,
+  // applying low-level optimization passes, etc.
+  return PostProcess(group,
+                     *tensor_map,
+                     apply_op_schedule,
+                     ir_sch.GetModule().GetExprs()[0],
+                     group_func_arg_tensors);
 }
 
 std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
@@ -198,7 +378,16 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   // XX_0, XX_1, so we log them in tmp_tensor_info;
   std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
   bool do_op_schedule = apply_group_schedule || apply_op_schedule;
-  std::vector<ir::Expr> func_bodies = LowerOps(ops,
+  if (FLAGS_cinn_enable_map_expr) {
+    return LowerMapExpr(group,
+                        ops,
+                        /*do_op_schedule=*/do_op_schedule,
+                        /*apply_group_schedule=*/apply_group_schedule,
+                        &group_func_arg_tensors,
+                        &tensor_map);
+  }
+  std::vector<ir::Expr> func_bodies = LowerOps(group,
+                                               ops,
                                                do_op_schedule,
                                                schedule_determine_func,
                                                &group_func_arg_tensors,
@@ -219,8 +408,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   // 3.Do post-processing,
   // including preparing function args and temporary variables,
   // applying low-level optimization passes, etc.
-  return PostProcess(
-      group, tensor_map, do_op_schedule, &ir_sch, &group_func_arg_tensors);
+  return PostProcess(group,
+                     tensor_map,
+                     do_op_schedule,
+                     ir_sch.GetModule().GetExprs().at(0),
+                     &group_func_arg_tensors);
 }
 
 std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
@@ -230,7 +422,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
   ::pir::Operation* op = ops[0];
   std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
   std::vector<ir::Tensor> op_func_arg_tensors =
-      details::CollectInputTensor(op, nullptr, &tensor_map);
+      details::CollectInputTensor(group, op, nullptr, &tensor_map);
   VLOG(4) << "inputs.size(): " << op_func_arg_tensors.size();
 
   std::vector<Type> out_types;
@@ -272,7 +464,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     const GroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
     bool done_op_schedule,
-    ir::IRSchedule* ir_sch,
+    ir::Expr func_body,
     std::vector<ir::Tensor>* group_func_arg_tensors) {
   // 1.Prepare function args
   group->input_names.clear();
@@ -287,7 +479,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   }
 
   group->output_names.clear();
-  VLOG(3) << "group->output_ops.size(): " << group->output_ops.size();
   // TODO(phlrain): output values not stable here
   for (auto& op : group->output_ops) {
     // collect all output tensor.
@@ -309,26 +500,49 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       arg_name_set.insert(tensor->buffer->name);
     }
   }
+
   if (!done_op_schedule) {
     std::unordered_set<std::string> args_set;
     for (auto arg : group_func_args) {
       args_set.insert(arg.name());
     }
-
-    for (auto& tensor_pair : tensor_map) {
-      if (args_set.count("_" + tensor_pair.second->name)) {
-        continue;
+    for (auto& op : group->ops) {
+      // collect all output tensor.
+      for (auto opresult : op->results()) {
+        if (tensor_map.count(opresult) == 0) {
+          continue;
+        }
+        auto tensor = tensor_map.at(opresult);
+        if (args_set.count("_" + tensor->name) != 0) {
+          continue;
+        }
+        group->output_values.push_back(opresult);
+        group_func_arg_tensors->push_back(tensor);
+        group->output_names.push_back(tensor->name);
+        group_func_args.emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
       }
-      group_func_arg_tensors->push_back(tensor_pair.second);
-      // use the underlying tensor name to be consistent with the argument name
-      // in the lowered function
-      group->output_names.push_back(tensor_pair.second->name);
-      group_func_args.emplace_back(tensor_pair.second->buffer,
-                                   ir::Argument::IO::kOutput);
     }
   }
 
-  auto func_body = ir_sch->GetModule().GetExprs().at(0);
+  std::map<int, CINNKernelInfo::ArgDimIdx> mps;
+  // update args for dynamic dim
+  int num_tensor_args = static_cast<int>(group_func_args.size());
+  int non_tensor_arg_idx = group_func_args.size();
+  for (int tensor_arg_idx = 0; tensor_arg_idx < num_tensor_args;
+       tensor_arg_idx++) {
+    auto tensor_dim = (*group_func_arg_tensors)[tensor_arg_idx]->sym_shape;
+    int tensor_dim_size = tensor_dim.size();
+    for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
+         tensor_arg_dim_idx++) {
+      if (tensor_dim[tensor_arg_dim_idx]->IsDynamic()) {
+        group_func_args.emplace_back(ir::_Var_::Make(
+            tensor_dim[tensor_arg_dim_idx]->GetSymbolName(), common::Int(32)));
+        group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
+                                                     tensor_arg_dim_idx};
+      }
+    }
+  }
+
 #ifdef CINN_WITH_CUDA
   optim::OptimizeExprGPU(&(func_body));
 #endif
@@ -338,10 +552,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   auto temp_buffers =
       lang::GetTempBuffers(*group_func_arg_tensors, stages, func_body);
   // 3.Building LoweredFunc
-  auto func = ir::_LoweredFunc_::Make(group->FuncName(),
-                                      group_func_args,
-                                      ir_sch->GetModule().GetExprs().at(0),
-                                      temp_buffers);
+  auto func = ir::_LoweredFunc_::Make(
+      group->FuncName(), group_func_args, func_body, temp_buffers);
   if (!done_op_schedule) {
     func->PrepareBufferCastExprs();
   }
@@ -351,6 +563,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 }
 
 std::vector<ir::Expr> OpLowererImpl::LowerOps(
+    const GroupPtr& group,
     const std::vector<::pir::Operation*>& ops,
     bool apply_op_schedule,
     ScheduleDetermineFunction schedule_determine_func,
@@ -367,8 +580,8 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     VLOG(4) << "out_types.size(): " << out_types.size();
     NodeAttr node_attrs = details::CollectAttrs(*op);
 
-    std::vector<ir::Tensor> op_func_arg_tensors =
-        details::CollectInputTensor(op, group_func_arg_tensors, tensor_map);
+    std::vector<ir::Tensor> op_func_arg_tensors = details::CollectInputTensor(
+        group, op, group_func_arg_tensors, tensor_map);
     VLOG(4) << "input size:" << op_func_arg_tensors.size();
 
     std::string cinn_op_name = CompatibleInfo::OpName(*op);

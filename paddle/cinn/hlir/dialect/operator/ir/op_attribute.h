@@ -33,22 +33,22 @@ class GroupInfoAttribute : public pir::Attribute {
   const GroupInfo& data() const;
 };
 
-class CUDAJITInfoAttribute : public pir::Attribute {
+class CINNKernelInfoAttribute : public pir::Attribute {
  public:
   using Attribute::Attribute;
 
-  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(CUDAJITInfoAttribute,
-                                    JITInfoAttributeStorage);
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(CINNKernelInfoAttribute,
+                                    CINNKernelInfoAttributeStorage);
 
-  bool operator<(const CUDAJITInfoAttribute& right) const {
+  bool operator<(const CINNKernelInfoAttribute& right) const {
     return storage() < right.storage();
   }
 
-  const cinn::hlir::framework::pir::CUDAJITInfo& data() const;
+  const cinn::hlir::framework::pir::CINNKernelInfo& data() const;
 };
 
 }  // namespace dialect
 }  // namespace cinn
 
 IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupInfoAttribute)
-IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::CUDAJITInfoAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::CINNKernelInfoAttribute)

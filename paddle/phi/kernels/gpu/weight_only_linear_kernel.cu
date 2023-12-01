@@ -30,7 +30,18 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                             const paddle::optional<DenseTensor>& bias,
                             const DenseTensor& weight_scale,
                             const std::string& weight_dtype,
+                            const int32_t arch,
                             DenseTensor* out) {
+#if defined(PADDLE_WITH_CUTLASS)
+  PADDLE_ENFORCE_EQ(
+      ((arch == 80) || (arch == 70)),
+      true,
+      phi::errors::InvalidArgument("Currently, arch only support 70, 80."));
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Please compile with cutlass to make cutlass available"));
+#endif
+
   dev_ctx.template Alloc<T>(out);
   const T* x_data = x.data<T>();
   const int8_t* weight_data = weight.data<int8_t>();
@@ -43,8 +54,13 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
   int k = w_dims[1];
   int m = x.numel() / k;
 
-  // m > 1: run gemm
-  if (m > 1 || weight_dtype == "int4") {
+  // m > 1: run gemm.
+  if (m > 1 || weight_dtype == "int4" || (arch == 70)) {
+/*
+Note(Zhengzekang):
+If using arch = 70, we always dispatch to weightonly Gemm,
+we havenot support sm70 weightonly gemv, because sm70 weight layout is RowMajor.
+*/
 #if defined(PADDLE_WITH_CUTLASS)
     if (weight_dtype == "int8") {
       auto mixed_gemm_runner =

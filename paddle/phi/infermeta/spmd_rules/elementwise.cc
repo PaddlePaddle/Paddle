@@ -113,15 +113,15 @@ SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
   // input dist_attr.
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(out_dims_mapping);
+  TensorDistAttr x_dst_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  x_dst_dist_attr.set_dims_mapping(out_dims_mapping);
 
-  // Step3: Handle partial
-  // Handle input tensor partial (TODO)
   VLOG(4) << "ElementwiseSPMDRule InferForward:";
   VLOG(4) << "Input0 shape: [" << str_join(x_shape) << "] "
           << "src_dims_mapping: [" << str_join(x_dims_mapping) << "] ";
   VLOG(4) << "Output dims_mapping: [" + str_join(out_dims_mapping) + "]\n\n";
 
-  return {{x_dist_attr_src}, {out_dist_attr}};
+  return {{x_dst_dist_attr}, {out_dist_attr}};
 }
 
 SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
