@@ -228,6 +228,7 @@ from .math import (  # noqa: F401
     ceil_,
     clip,
     clip_,
+    combinations,
     conj,
     cos,
     cos_,
@@ -762,6 +763,7 @@ tensor_method_func = [
     'atleast_2d',
     'atleast_3d',
     'diagonal_scatter',
+    "combinations",
 ]
 
 # this list used in math_op_patch.py for magic_method bind
