@@ -196,6 +196,8 @@ from .manipulation import (  # noqa: F401
     view,
     view_as,
     vsplit,
+    masked_scatter,
+    masked_scatter_,
 )
 from .math import (  # noqa: F401
     abs,

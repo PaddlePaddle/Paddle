@@ -420,6 +420,24 @@ class TestDygraphInplaceScatter(TestDygraphInplace):
         return paddle.scatter_(var, index, updates, overwrite=False)
 
 
+class TestDygraphInplaceMaskedScatter(TestDygraphInplace):
+    def init_data(self):
+        self.input_var = paddle.randn([3,4])
+        self.dtype = "float32"
+
+    def non_inplace_api_processing(self, var):
+        mask = paddle.to_tensor([1.,0.5,1.,0.5]) > 0.5
+        value = paddle.ones([2,4], dtype="float32")
+
+        return paddle.masked_scatter(var, mask, value)
+
+    def inplace_api_processing(self, var):
+        mask = paddle.to_tensor([1.,0.5,1.,0.5]) > 0.5
+        value = paddle.ones([2,4], dtype="float32")
+
+        return paddle.masked_scatter_(var, mask, value)
+
+
 class TestDygraphInplaceElu(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
         return paddle.nn.functional.elu(var)

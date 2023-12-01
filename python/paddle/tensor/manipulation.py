@@ -5921,3 +5921,72 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
 
     """
     return fill_diagonal_tensor(x, y, offset, axis1, axis2, name)
+
+def masked_scatter(x, mask, value):
+    r"""
+    Based on the mask information, copy the values in ``value`` one by one to the corresponding positions of the original Tensor.
+
+    Args:
+        x (Tensor) : The input tensor supports dtypes such as float16, float32, float64, int32, int64, and bool, 
+            and requires assignment based on the mask. In static graph mode, the shape of x does not currently support 
+            derivation during runtime. Please pass in a fixed shape of x.
+        mask (Tensor, bool) : The Boolean mask tensor used to specify the fill position, which has the same shape as the input 
+            tensor or can be broadcasted into the shape of the input tensor.
+        value (Tensor) : The tensor to be filled supports dtypes such as float16, float32, float64, int32, int64, and bool.
+            The number of elements should not be less than the number of True in the mask, and the element data type should be 
+            consistent with the element dtype in x.
+
+    Returns:
+        Tensor, same dtype with x
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.randn([3,4])
+            >>> mask = paddle.to_tensor([1.,0.5,1.,0.5]) > 0.5
+            >>> value = paddle.ones([2,4], dtype="float32")
+            >>> result = masked_scatter(x, mask, value)
+            >>> print(result)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            [[ 1.        , -2.59757781,  1.        , -2.37750435],
+             [ 1.        , -0.11681330,  1.        ,  0.56991023],
+             [ 1.        ,  2.51356053,  1.        ,  0.67361248]])
+
+    """
+    # make sure the dtype of x and source is the same
+    assert x.dtype == value.dtype, f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+
+    if in_dynamic_mode():
+        if mask.shape != x.shape:
+            mask = paddle.broadcast_to(mask, shape=x.shape)
+        # make sure the true nums in mask is <= the nums of value
+        assert mask.sum() <= value.numel(), f'mask true nums must be <= value size, but got mask true nums is {mask.sum().item()}, value size is {value.numel().item()}'
+
+        indexs = tuple(item.squeeze() for item in paddle.where(mask))
+
+        return paddle.index_put_(x, indexs, value.flatten()[:mask.sum()])
+
+    zeros_like_x = paddle.zeros_like(x)
+    mask = paddle.add(paddle.cast(mask, x.dtype), zeros_like_x)
+    mask = paddle.cast(mask, "bool")
+    indexs = tuple(item.squeeze() for item in paddle.where(mask))
+    return paddle.index_put(x, indexs, value.flatten()[:mask.sum()])
+
+@inplace_apis_in_dygraph_only
+def masked_scatter_(x, mask, value):
+    r"""
+    Inplace version of ``masked_scatter`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_masked_scatter`.
+    """
+    # make sure the dtype of x and source is the same
+    assert x.dtype == value.dtype, f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+
+    if mask.shape != x.shape:
+        mask = paddle.broadcast_to(mask, shape=x.shape)
+    # make sure the true nums in mask is <= the nums of value
+    assert mask.sum() <= value.numel(), f'mask true nums must be <= value size, but got mask true nums is {mask.sum().item()}, value size is {value.numel().item()}'
+
+    indexs = tuple(item.squeeze() for item in paddle.where(mask))
+
+    return paddle.index_put_(x, indexs, value.flatten()[:mask.sum()])
