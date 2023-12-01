@@ -14,14 +14,15 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
@@ -133,10 +134,12 @@ TEST(if_op_test, network_with_backward) {
   auto if_op = builder.Build<IfOp>(cond, std::vector<pir::Type>{x.type()});
 
   builder.SetInsertionPointToStart(if_op.true_block());
+
   auto local1_z = builder.Build<AddOp>(x, y).out();
   auto local1_w = builder.Build<AddOp>(local1_z, y).out();
   builder.Build<pir::TuplePushOp>(inlet_0,
                                   std::initializer_list<pir::Value>{local1_z});
+
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{local1_w});
 
   builder.SetInsertionPointToStart(if_op.false_block());
@@ -156,6 +159,7 @@ TEST(if_op_test, network_with_backward) {
 
   // construct the true block of if_grad
   builder.SetInsertionPointToStart(if_grad.true_block());
+
   auto pop_local1_z =
       builder.Build<pir::TuplePopOp>(outlet_0).outlet_element(0);
   auto local1_add_grad_op = builder.Build<AddGradOp>(pop_local1_z, y, out_grad);
@@ -189,7 +193,37 @@ TEST(if_op_test, network_with_backward) {
 
   builder.SetInsertionPointToEnd(block);
 
+  std::string x_grad = "x_grad";
+  builder.Build<pir::ShadowOutputOp>(if_grad.result(0), x_grad);
+
+  std::string y_grad = "y_grad";
+  builder.Build<pir::ShadowOutputOp>(if_grad.result(1), y_grad);
+
   LOG(INFO) << program;
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+
+  auto place = paddle::platform::CPUPlace();
+#if defined(PADDLE_WITH_CUDA)
+  place = paddle::platform::CUDAPlace();
+#endif
+  paddle::framework::Scope scope;
+
+  paddle::framework::InterpreterCore test_core(
+      place, {}, kernel_program->block(), &scope);
+
+  test_core.SetSkipGcVars({x_grad, y_grad});
+
+  test_core.Run({});
+
+  auto x_grad_tensor =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(x_grad)->Get<phi::DenseTensor>()
+          : test_core.local_scope()->FindVar(x_grad)->Get<phi::DenseTensor>();
+  auto y_grad_tensor =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(y_grad)->Get<phi::DenseTensor>()
+          : test_core.local_scope()->FindVar(y_grad)->Get<phi::DenseTensor>();
+  EXPECT_EQ(x_grad_tensor.data<float>()[0], 1.0);
+  EXPECT_EQ(y_grad_tensor.data<float>()[0], 2.0);
 }

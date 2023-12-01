@@ -39,7 +39,11 @@ __all__ = []
 
 
 def convert_attr(x, attr):
-    if isinstance(x, (Variable, OpResult)) and attr == "size":
+    # TODO(cleanup-legacy-ir): In PIR mode, the size attr in
+    # OpResult and Tensor are unified. So we don't need to transform
+    # the size attr into a method call. The AttributeJstTransformer and
+    # convert_attr can be safely removed.
+    if isinstance(x, Variable) and attr == "size":
         return x.size()
     else:
         return getattr(x, attr)
