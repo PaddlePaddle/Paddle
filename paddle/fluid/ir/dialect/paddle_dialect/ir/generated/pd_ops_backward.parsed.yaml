@@ -1,0 +1,39 @@
+- name: set_value_grad
+  inputs:
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: values
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int64_t[]', name: starts}
+  - {typename: 'int64_t[]', name: ends}
+  - {typename: 'int64_t[]', name: steps}
+  - {typename: 'int64_t[]', name: axes}
+  - {typename: 'int64_t[]', name: decrease_axes}
+  - {typename: 'int64_t[]', name: none_axes}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: values_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  kernel:
+    func: [set_value_grad]
+    param: [out_grad, starts, ends, steps, axes, decrease_axes, none_axes]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {set_value_grad: null}
+    force_backend: null
+  infer_meta:
+    func: SetValueGradInferMeta
+    param: [out_grad, values]
+  inplace: null
+  view: null
+  backward: null
+  forward: null

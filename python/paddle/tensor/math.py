@@ -7140,7 +7140,7 @@ def combinations(x, r=2, with_replacement=False, name=None):
     return paddle.stack(grids, 1)
 
 
-  def signbit(x, name=None):
+def signbit(x, name=None):
     r"""
     Tests if each element of input has its sign bit set or not.
 
