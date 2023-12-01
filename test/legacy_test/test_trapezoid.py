@@ -164,6 +164,7 @@ class TestTrapezoidError(unittest.TestCase):
     def set_api(self):
         self.paddle_api = paddle.trapezoid
 
+    @test_with_pir_api
     def test_errors(self):
         self.set_api()
         with paddle.static.program_guard(

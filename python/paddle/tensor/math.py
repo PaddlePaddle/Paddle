@@ -6438,7 +6438,7 @@ def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
         paddle.base.core.DataType.FLOAT64,
     ]:
         raise TypeError(
-            f"The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64'], but got {y.dtype}"
+            f"The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64', 'paddle.base.core.DataType.FLOAT16', 'paddle.base.core.DataType.FLOAT32', 'paddle.base.core.DataType.FLOAT64'], but got {y.dtype}"
         )
 
     y_shape = y.shape
@@ -6461,7 +6461,7 @@ def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
             paddle.base.core.DataType.FLOAT64,
         ]:
             raise TypeError(
-                f"The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64'], but got {x.dtype}"
+                f"The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64', 'paddle.base.core.DataType.FLOAT16', 'paddle.base.core.DataType.FLOAT32', 'paddle.base.core.DataType.FLOAT64'], but got {x.dtype}"
             )
         # Reshape to correct shape
         if x.dim() == 1:
