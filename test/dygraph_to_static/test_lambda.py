@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -54,7 +57,7 @@ def call_lambda_in_func(x):
     return out
 
 
-def call_lambda_with_ifExpr(x):
+def call_lambda_with_if_expr(x):
     x = paddle.to_tensor(x)
 
     add_func = lambda x: x + 1
@@ -65,7 +68,7 @@ def call_lambda_with_ifExpr(x):
     return out
 
 
-def call_lambda_with_ifExpr2(x):
+def call_lambda_with_if_expr2(x):
     x = paddle.to_tensor(x)
 
     add_func = lambda x: x + 1
@@ -83,16 +86,6 @@ class TestLambda(Dy2StTestBase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.x = np.array([1, 3]).astype('float32')
-        self.init_func()
-
-    def init_func(self):
-        self.dyfuncs = [
-            call_lambda_as_func,
-            call_lambda_directly,
-            call_lambda_in_func,
-            call_lambda_with_ifExpr,
-            call_lambda_with_ifExpr2,
-        ]
 
     def run_static(self, func):
         return self.run_dygraph(func, to_static=True)
@@ -105,11 +98,28 @@ class TestLambda(Dy2StTestBase):
             ret = func(x_v)
         return ret.numpy()
 
-    def test_ast_to_func(self):
-        for func in self.dyfuncs:
-            self.assertTrue(
-                (self.run_dygraph(func) == self.run_static(func)).all()
-            )
+    @test_legacy_and_pt_and_pir
+    def test_call_lambda_as_func(self):
+        fn = call_lambda_as_func
+        self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
+
+    @test_legacy_and_pt_and_pir
+    def test_call_lambda_directly(self):
+        fn = call_lambda_directly
+        self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
+
+    def test_call_lambda_in_func(self):
+        fn = call_lambda_in_func
+        self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
+
+    def test_call_lambda_with_if_expr(self):
+        fn = call_lambda_with_if_expr
+        self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
+
+    @test_legacy_and_pt_and_pir
+    def test_call_lambda_with_if_expr2(self):
+        fn = call_lambda_with_if_expr2
+        self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
 
 
 if __name__ == '__main__':
