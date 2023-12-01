@@ -19,12 +19,13 @@ import multiprocessing
 import os
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 import sys
 import time
+import warnings
 from contextlib import contextmanager
-from distutils.spawn import find_executable
 from subprocess import CalledProcessError
 
 from setuptools import Command, Extension, setup
@@ -34,31 +35,39 @@ from setuptools.command.install import install as InstallCommandBase
 from setuptools.command.install_lib import install_lib
 from setuptools.dist import Distribution
 
-if sys.version_info < (3, 7):
+# check python
+python_version = platform.python_version()
+version_detail = sys.version_info
+version = str(version_detail[0]) + '.' + str(version_detail[1]) 
+env_version = str(os.getenv("PY_VERSION"))
+
+if version_detail < (3, 7):
     raise RuntimeError(
-        "Paddle only supports Python version>=3.7 now, you are using Python %s"
-        % platform.python_version()
+        f"Paddle only supports Python version >= 3.7 now,"
+        f"you are using Python {python_version}"
     )
-else:
-    if os.getenv("PY_VERSION") is None:
-        print("export PY_VERSION = %s" % platform.python_version())
-        python_version = platform.python_version()
-        os.environ["PY_VERSION"] = python_version
+elif env_version is None:
+    print(f"Export PY_VERSION = { python_version }")
+    os.environ["PY_VERSION"] = python_version
+
+elif env_version != version:
+    warnings.warn(
+        f"You set PY_VERSION={env_version}, but "
+        f"your current python environment is {version} "
+        f"we will attempt to use the python version you set to execute."
+    )
+    cmd = 'which python' + env_version
+    res = subprocess.run(cmd, shell = True, stdout=subprocess.PIPE)
+    if res.returncode == 0:
+        os.environ["PYTHON_EXECUTABLE"] = res
     else:
-        if os.getenv("PY_VERSION") != str(sys.version_info.major) + '.' + str(
-            sys.version_info.minor
-        ):
-            raise RuntimeError(
-                "You set PY_VERSION={}, but your current python environment is {}, you should keep them consistent!".format(
-                    os.getenv("PY_VERSION"),
-                    str(sys.version_info.major)
-                    + '.'
-                    + str(sys.version_info.minor),
-                )
-            )
+        raise RuntimeError(
+            "We can't find the version you set in your machine"
+        )
+        
 
 # check cmake
-CMAKE = find_executable('cmake3') or find_executable('cmake')
+CMAKE = shutil.which('cmake3') or shutil.which('cmake')
 assert (
     CMAKE
 ), 'The "cmake" executable is not found. Please check if Cmake is installed.'
@@ -108,8 +117,8 @@ def parse_input_command(input_parameters):
         dist.parse_command_line()
     except:
         print(
-            "An error occurred while parsing the parameters, '%s'"
-            % dist.script_args
+            f"An error occurred while parsing"
+            f"the parameters, {dist.script_args}"
         )
         sys.exit(1)
 
@@ -137,10 +146,8 @@ def get_header_install_dir(header):
         install_dir = re.sub(
             env_dict.get("PADDLE_SOURCE_DIR") + '/', '', header
         )
-        print('install_dir: ', install_dir)
         if 'fluid/jit' in install_dir:
             install_dir = re.sub('fluid/jit', 'jit', install_dir)
-            print('fluid/jit install_dir: ', install_dir)
     else:
         # third_party
         install_dir = re.sub(
@@ -206,12 +213,10 @@ class InstallCommand(InstallCommandBase):
     def finalize_options(self):
         ret = InstallCommandBase.finalize_options(self)
         self.install_lib = self.install_platlib
-        print("install_lib:", self.install_platlib)
 
         self.install_headers = os.path.join(
             self.install_platlib, 'paddle', 'include'
         )
-        print("install_headers:", self.install_headers)
         return ret
 
 
@@ -249,9 +254,7 @@ class DevelopCommand(DevelopCommandBase):
             )
         # write version.py and cuda_env_config_py to python_source_dir
         write_version_py(
-            filename='{}/python/paddle/version/__init__.py'.format(
-                paddle_source_dir
-            )
+            filename=f'{paddle_source_dir}/python/paddle/version/__init__.py'
         )
         write_cuda_env_config_py(
             filename=f'{paddle_source_dir}/python/paddle/cuda_env.py'
@@ -481,29 +484,33 @@ def show():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            # Case 1: paddle is tagged with 2.2.0
-            paddle.version.show()
-            # full_version: 2.2.0
-            # major: 2
-            # minor: 2
-            # patch: 0
-            # rc: 0
-            # cuda: '10.2'
-            # cudnn: '7.6.5'
-            # xpu: '20230114'
-            # xpu_xccl: '1.0.7'
-            # cinn: False
+            >>> # Case 1: paddle is tagged with 2.2.0
+            >>> paddle.version.show()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            full_version: 2.2.0
+            major: 2
+            minor: 2
+            patch: 0
+            rc: 0
+            cuda: '10.2'
+            cudnn: '7.6.5'
+            xpu: '20230114'
+            xpu_xccl: '1.0.7'
+            cinn: False
+            >>> # doctest: -SKIP
 
-            # Case 2: paddle is not tagged
-            paddle.version.show()
-            # commit: cfa357e984bfd2ffa16820e354020529df434f7d
-            # cuda: '10.2'
-            # cudnn: '7.6.5'
-            # xpu: '20230114'
-            # xpu_xccl: '1.0.7'
-            # cinn: False
+            >>> # Case 2: paddle is not tagged
+            >>> paddle.version.show()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            commit: cfa357e984bfd2ffa16820e354020529df434f7d
+            cuda: '10.2'
+            cudnn: '7.6.5'
+            xpu: '20230114'
+            xpu_xccl: '1.0.7'
+            cinn: False
+            >>> # doctest: -SKIP
     """
     if istaged:
         print('full_version:', full_version)
@@ -531,10 +538,11 @@ def cuda():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.version.cuda()
-            # '10.2'
+            >>> paddle.version.cuda()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '10.2'
 
     """
     return cuda_version
@@ -548,10 +556,11 @@ def cudnn():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.version.cudnn()
-            # '7.6.5'
+            >>> paddle.version.cudnn()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '7.6.5'
 
     """
     return cudnn_version
@@ -565,10 +574,11 @@ def xpu():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.version.xpu()
-            # '20230114'
+            >>> paddle.version.xpu()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '20230114'
 
     """
     return xpu_version
@@ -582,10 +592,11 @@ def xpu_xccl():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.version.xpu_xccl()
-            # '1.0.7'
+            >>> paddle.version.xpu_xccl()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '1.0.7'
 
     """
     return xpu_xccl_version
@@ -599,10 +610,11 @@ def cinn():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.version.cinn()
-            # False
+            >>> paddle.version.cinn()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            False
 
     """
     return cinn_version
@@ -769,10 +781,8 @@ def cmake_run(build_path):
                 or option_key == 'PYTHON_LIBRARIES'
             ):
                 key = option_key + ":FILEPATH"
-                print(key)
             elif option_key == 'PYTHON_INCLUDE_DIR':
                 key = option_key + ':PATH'
-                print(key)
             elif option_key == 'GENERATOR':
                 key = 'CMAKE_' + option_key
             else:
@@ -781,14 +791,12 @@ def cmake_run(build_path):
                 paddle_build_options[key] = option_value
 
     options_process(args, paddle_build_options)
-    print("args:", args)
     with cd(build_path):
         cmake_args = []
         cmake_args.append(CMAKE)
         cmake_args += args
         cmake_args.append('-DWITH_SETUP_INSTALL=ON')
         cmake_args.append(TOP_DIR)
-        print("cmake_args:", cmake_args)
         subprocess.check_call(cmake_args)
 
 
@@ -797,7 +805,6 @@ def build_run(args, build_path, envrion_var):
         build_args = []
         build_args.append(CMAKE)
         build_args += args
-        print(" ".join(build_args))
         try:
             subprocess.check_call(build_args, cwd=build_path, env=envrion_var)
         except (CalledProcessError, KeyboardInterrupt) as e:
@@ -918,7 +925,6 @@ def get_package_data_and_package_dir():
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
     package_data['paddle.libs'] = []
-
     if env_dict.get("WITH_SHARED_PHI") == "ON":
         package_data['paddle.libs'] += [
             ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
@@ -927,7 +933,7 @@ def get_package_data_and_package_dir():
 
     if env_dict.get("WITH_SHARED_IR") == "ON":
         package_data['paddle.libs'] += [
-            ('libir' if os.name != 'nt' else 'ir') + ext_suffix
+            ('libpir' if os.name != 'nt' else 'pir') + ext_suffix
         ]
         shutil.copy(env_dict.get("IR_LIB"), libs_path)
 
@@ -935,6 +941,10 @@ def get_package_data_and_package_dir():
         ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix,
         ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_suffix,
     ]
+    package_data['paddle.libs'] += [
+        ('libcommon' if os.name != 'nt' else 'common') + ext_suffix,
+    ]
+    shutil.copy(env_dict.get("COMMON_LIB"), libs_path)
     shutil.copy(env_dict.get("WARPCTC_LIBRARIES"), libs_path)
     shutil.copy(env_dict.get("WARPRNNT_LIBRARIES"), libs_path)
     package_data['paddle.libs'] += [
@@ -1170,6 +1180,12 @@ def get_package_data_and_package_dir():
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 )
+                commands.append(
+                    "install_name_tool -add_rpath '@loader_path' "
+                    + env_dict.get("PADDLE_BINARY_DIR")
+                    + '/python/paddle/libs/'
+                    + env_dict.get("COMMON_NAME")
+                )
                 if env_dict.get("WITH_SHARED_PHI") == "ON":
                     commands.append(
                         "install_name_tool -add_rpath '@loader_path' "
@@ -1192,6 +1208,12 @@ def get_package_data_and_package_dir():
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 ]
+                commands.append(
+                    "patchelf --set-rpath '$ORIGIN' "
+                    + env_dict.get("PADDLE_BINARY_DIR")
+                    + '/python/paddle/libs/'
+                    + env_dict.get("COMMON_NAME")
+                )
                 if env_dict.get("WITH_SHARED_PHI") == "ON":
                     commands.append(
                         "patchelf --set-rpath '$ORIGIN' "
@@ -1417,6 +1439,14 @@ def get_setup_parameters():
         'paddle.framework',
         'paddle.jit',
         'paddle.jit.dy2static',
+        'paddle.jit.pir_dy2static',
+        'paddle.jit.sot',
+        'paddle.jit.sot.opcode_translator',
+        'paddle.jit.sot.opcode_translator.executor',
+        'paddle.jit.sot.opcode_translator.executor.variables',
+        'paddle.jit.sot.opcode_translator.instruction_utils',
+        'paddle.jit.sot.symbolic',
+        'paddle.jit.sot.utils',
         'paddle.inference',
         'paddle.inference.contrib',
         'paddle.inference.contrib.utils',
@@ -1497,7 +1527,7 @@ def get_setup_parameters():
         'paddle.geometric',
         'paddle.geometric.message_passing',
         'paddle.geometric.sampling',
-        'paddle.ir',
+        'paddle.pir',
         'paddle.decomposition',
     ]
 
@@ -1622,11 +1652,7 @@ def check_submodules():
                 cwd=TOP_DIR,
             )
             end = time.time()
-            print(
-                ' --- Submodule initialization took {:.2f} sec'.format(
-                    end - start
-                )
-            )
+            print(f' --- Submodule initialization took {end - start:.2f} sec')
         except Exception:
             print(' --- Submodule initalization failed')
             print('Please run:\n\tgit submodule update --init --recursive')
@@ -1656,7 +1682,7 @@ def main():
     sys.path.insert(1, env_dict_path)
     from env_dict import env_dict
 
-    global env_dict
+    global env_dict  # noqa: F811
     global paddle_binary_dir, paddle_source_dir
 
     paddle_binary_dir = env_dict.get("PADDLE_BINARY_DIR")
@@ -1667,9 +1693,7 @@ def main():
     package_name = env_dict.get("PACKAGE_NAME")
 
     write_version_py(
-        filename='{}/python/paddle/version/__init__.py'.format(
-            paddle_binary_dir
-        )
+        filename=f'{paddle_binary_dir}/python/paddle/version/__init__.py'
     )
     write_cuda_env_config_py(
         filename=f'{paddle_binary_dir}/python/paddle/cuda_env.py'
@@ -1699,7 +1723,7 @@ def main():
     if env_dict.get("WITH_STRIP") == 'ON':
         command = (
             'find '
-            + paddle_binary_dir
+            + shlex.quote(paddle_binary_dir)
             + '/python/paddle -name "*.so" | xargs -i strip {}'
         )
         if os.system(command) != 0:

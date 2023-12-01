@@ -35,7 +35,9 @@ void AllReduce(const Context& dev_ctx,
   MetaTensor* out_meta_ptr = &out_meta;
 
   AllReduceInferMeta(phi::MetaTensor(x), out_meta_ptr);
-  AllReduceKernel<T, Context>(dev_ctx, x, reduce_type, out);
+  if (x.initialized()) {
+    AllReduceKernel<T, Context>(dev_ctx, x, reduce_type, out);
+  }
 }
 
 }  // namespace phi

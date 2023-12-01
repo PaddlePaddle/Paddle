@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle import base
@@ -84,7 +84,7 @@ class TestFCOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestFCOpNoBias1(TestFCOp):

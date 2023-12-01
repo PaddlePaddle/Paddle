@@ -125,7 +125,7 @@ static void FindAllWhileAndWhileGradOp(const framework::ProgramDesc &program,
   for (size_t i = 1; i < program.Size(); ++i) {
     auto &block = program.Block(i);
     for (size_t j = 0; j < block.OpSize(); ++j) {
-      auto *op = block.Op(j);
+      auto *op = block.Op(static_cast<int>(j));
       if (op->Type() == "while") {
         while_ops->emplace_back(op);
       } else if (op->Type() == "while_grad") {
@@ -248,6 +248,40 @@ bool StrInVaraiableNameMap(const std::string &name,
     }
   }
   return false;
+}
+
+void TransferVariablePlace(const framework::Scope *scope,
+                           const std::string &var_name,
+                           const phi::Place &dst_place,
+                           const platform::DeviceContext &dev_ctx) {
+  framework::Variable *var = scope->FindVar(var_name);
+  if (var == nullptr) {
+    VLOG(4) << "[TransferVariablePlace]"
+            << "lost in_var: " << var_name;
+    return;
+  }
+  if (var->Type() != framework::proto::VarType::LOD_TENSOR) {
+    VLOG(10) << "[TransferVariablePlace]" << var_name << " type changed:"
+             << framework::TransToPhiDataType(
+                    framework::ToVarType(var->Type()));
+    return;
+  }
+  phi::DenseTensor *t = var->GetMutable<phi::DenseTensor>();
+  if (t->place() == dst_place) {
+    VLOG(10) << "[TransferVariablePlace]"
+             << "no need transfer: " << var_name;
+    return;
+  }
+
+  phi::DenseTensor *new_t = new phi::DenseTensor;
+  framework::TensorCopy(*t, dst_place, new_t);
+  dev_ctx.Wait();
+
+  t->set_meta(new_t->meta());
+  t->ResetHolder(new_t->Holder());
+
+  VLOG(4) << "[TransferVariablePlace]" << var_name
+          << " place: " << new_t->place();
 }
 
 }  // namespace operators

@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import defaultdict
 
-import numpy as np
-
-from paddle.base import core
-from paddle.base import framework
 from paddle import _C_ops, _legacy_C_ops
+from paddle.base import core, framework
 
 name_mapping = {
     "graph_send_recv": {

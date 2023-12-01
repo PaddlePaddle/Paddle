@@ -114,7 +114,7 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
 #ifdef _WIN32
   _aligned_free(p);
 #else
-  free(p);
+  free(p);  // NOLINT
 #endif
 }
 

@@ -16,7 +16,8 @@ import unittest
 
 import numpy as np
 import parameterized as param
-from eager_op_test import OpTest
+from op_test import OpTest
+from utils import static_guard
 
 import paddle
 from paddle import base, nn
@@ -129,10 +130,12 @@ class TestInstanceNormOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Scale', 'Bias'], 'Y', check_prim=True)
+        self.check_grad(
+            ['X', 'Scale', 'Bias'], 'Y', check_prim=True, check_pir=True
+        )
 
     def init_test_case(self):
         x_shape = [2, 100, 4, 5]
@@ -428,7 +431,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
         if len(self.places) < 1:
             return
 
-        with paddle.base.framework._static_guard():
+        with static_guard():
             for place in self.places:
                 fwd_actual.append([])
                 rev_actual.append([])

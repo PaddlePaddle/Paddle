@@ -16,7 +16,7 @@ import platform
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard, skip_check_grad_ci
+from op_test import OpTest, paddle_static_guard, skip_check_grad_ci
 
 import paddle
 import paddle.version as ver

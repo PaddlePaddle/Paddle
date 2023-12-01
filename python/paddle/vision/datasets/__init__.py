@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .folder import DatasetFolder  # noqa: F401
-from .folder import ImageFolder  # noqa: F401
-from .mnist import MNIST  # noqa: F401
-from .mnist import FashionMNIST  # noqa: F401
-from .flowers import Flowers  # noqa: F401
-from .cifar import Cifar10  # noqa: F401
-from .cifar import Cifar100  # noqa: F401
-from .voc2012 import VOC2012  # noqa: F401
+from .cifar import Cifar10, Cifar100
+from .flowers import Flowers
+from .folder import DatasetFolder, ImageFolder
+from .mnist import MNIST, FashionMNIST
+from .voc2012 import VOC2012
 
-__all__ = [  # noqa
+__all__ = [
     'DatasetFolder',
     'ImageFolder',
     'MNIST',

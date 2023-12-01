@@ -12,15 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Definition of device workers."""
+import sys
 
-__all__ = [
-    'DeviceWorker',
-    'Hogwild',
-    'DownpourSGD',
-    'Section',
-    'DownpourSGDOPT',
-    'HeterSection',
-]
+__all__ = []
 
 
 class DeviceWorker:
@@ -111,7 +105,7 @@ class Hogwild(DeviceWorker):
         print("device worker program id:", program_id)
         if self._program is None:
             print("program of current device worker is not configured")
-            exit(-1)
+            sys.exit(-1)
         opt_info = self._program._fleet_opt
         # when opt_info is None or empty dict, it should return
         if not opt_info:
@@ -261,7 +255,7 @@ class DownpourLite(DeviceWorker):
         print("device worker program id:", program_id)
         if self._program is None:
             print("program of current device worker is not configured")
-            exit(-1)
+            sys.exit(-1)
         opt_info = self._program._fleet_opt
         # when opt_info is None or empty dict, it should return
         if not opt_info:
@@ -394,7 +388,7 @@ class DownpourSGD(DeviceWorker):
         program_id = str(id(self._program))
         if self._program is None:
             print("program of current device worker is not configured")
-            exit(-1)
+            sys.exit(-1)
         opt_info = self._program._fleet_opt
         program_configs = opt_info["program_configs"]
         downpour = trainer_desc.downpour_param
@@ -456,7 +450,7 @@ class DownpourSGD(DeviceWorker):
             if (
                 opt_info["use_cvm"]
                 or "no_cvm" in opt_info
-                and opt_info["no_cvm"] == True
+                and opt_info["no_cvm"] is True
             ):
                 sparse_table.emb_dim = self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                     i
@@ -513,7 +507,7 @@ class DownpourSGDOPT(DeviceWorker):
         program_id = str(id(self._program))
         if self._program is None:
             print("program of current device worker is not configured")
-            exit(-1)
+            sys.exit(-1)
         opt_info = self._program._fleet_opt
         program_configs = opt_info["program_configs"]
         downpour = trainer_desc.downpour_param
@@ -566,7 +560,7 @@ class DownpourSGDOPT(DeviceWorker):
             if (
                 opt_info["use_cvm"]
                 or "no_cvm" in opt_info
-                and opt_info["no_cvm"] == True
+                and opt_info["no_cvm"] is True
             ):
                 sparse_table.emb_dim = self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                     i
@@ -623,7 +617,6 @@ class Section(DeviceWorker):
         Args:
             trainer_desc(TrainerDesc): a TrainerDesc object
         """
-        from google.protobuf import text_format
         from . import core
 
         trainer_desc.device_worker_name = "SectionWorker"
@@ -671,8 +664,6 @@ class HeterSection(DeviceWorker):
         Args:
             trainer_desc(TrainerDesc): a TrainerDesc object
         """
-        from google.protobuf import text_format
-        from . import core
 
         trainer_desc.device_worker_name = "HeterSectionWorker"
         heter_pipeline_opt = self._program._heter_pipeline_opt

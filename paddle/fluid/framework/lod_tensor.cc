@@ -235,7 +235,7 @@ void SerializeToStream(std::ostream &os,
 
 void SerializeToStream(std::ostream &os, const phi::DenseTensor &tensor) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  const platform::DeviceContext *dev_ctx;
+  const platform::DeviceContext *dev_ctx = nullptr;
   auto place = tensor.place();
   dev_ctx = pool.Get(place);
   SerializeToStream(os, tensor, *dev_ctx);
@@ -243,7 +243,7 @@ void SerializeToStream(std::ostream &os, const phi::DenseTensor &tensor) {
 
 void DeserializeFromStream(std::istream &os, phi::DenseTensor *tensor) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  const platform::DeviceContext *dev_ctx;
+  const platform::DeviceContext *dev_ctx = nullptr;
   dev_ctx = pool.Get(platform::CPUPlace());
   DeserializeFromStream(os, tensor, *dev_ctx);
 }
@@ -255,7 +255,7 @@ void DeserializeFromStream(std::istream &is,
                            const std::vector<int64_t> &shape) {
   {
     // the 1st field, unit32_t version for DenseTensor
-    uint32_t version;
+    uint32_t version = 0;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
     PADDLE_ENFORCE_EQ(paddle::framework::IsTensorVersionSupported(version),
                       true,
@@ -271,7 +271,7 @@ void DeserializeFromStream(std::istream &is,
   }
   {
     // the 2st field, LoD information
-    uint64_t lod_level;
+    uint64_t lod_level = 0;
     is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
     auto &lod = *tensor->mutable_lod();
     lod.resize(lod_level);
@@ -286,7 +286,7 @@ void DeserializeFromStream(std::istream &is,
                            const platform::DeviceContext &dev_ctx) {
   {
     // the 1st field, unit32_t version for DenseTensor
-    uint32_t version;
+    uint32_t version = 0;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
     PADDLE_ENFORCE_EQ(paddle::framework::IsTensorVersionSupported(version),
                       true,
@@ -302,12 +302,12 @@ void DeserializeFromStream(std::istream &is,
   }
   {
     // the 2st field, LoD information
-    uint64_t lod_level;
+    uint64_t lod_level = 0;
     is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
     auto &lod = *tensor->mutable_lod();
     lod.resize(lod_level);
     for (uint64_t i = 0; i < lod_level; ++i) {
-      uint64_t size;
+      uint64_t size = 0;
       is.read(reinterpret_cast<char *>(&size), sizeof(size));
       std::vector<size_t> tmp(size / sizeof(size_t));
       is.read(reinterpret_cast<char *>(tmp.data()),

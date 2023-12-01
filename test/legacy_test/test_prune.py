@@ -22,7 +22,93 @@ from paddle import base
 from paddle.base import framework
 
 
-class TestPrune(unittest.TestCase):
+class TestPruneBase(unittest.TestCase):
+    def run_net(self, net):
+        program = framework.Program()
+        startup_program = framework.Program()
+        with base.program_guard(program, startup_program):
+            ret = net()
+
+        return ret, program
+
+    def check_prune_with_input(
+        self,
+        program,
+        feeded_var_names,
+        targets,
+        ops_before_pruned,
+        ops_after_pruned,
+    ):
+        block = program.global_block()
+        self.assertEqual(len(block.ops), len(ops_before_pruned))
+        self.assertEqual(
+            [op.type for op in block.ops],
+            ops_before_pruned,
+        )
+        pruned_program = program._prune_with_input(
+            feeded_var_names=feeded_var_names, targets=targets
+        )
+        self.assertEqual(
+            len(pruned_program.global_block().ops), len(ops_after_pruned)
+        )
+        self.assertEqual(
+            [op.type for op in pruned_program.global_block().ops],
+            ops_after_pruned,
+        )
+
+    def check_prune(
+        self, program, targets, ops_before_pruned, ops_after_pruned
+    ):
+        block = program.global_block()
+        self.assertEqual(len(block.ops), len(ops_before_pruned))
+        self.assertEqual(
+            [op.type for op in block.ops],
+            ops_before_pruned,
+        )
+        pruned_program = program._prune(targets=targets)
+        self.assertEqual(
+            len(pruned_program.global_block().ops), len(ops_after_pruned)
+        )
+        self.assertEqual(
+            [op.type for op in pruned_program.global_block().ops],
+            ops_after_pruned,
+        )
+
+    def check_prune_target_not_list(
+        self, program, targets, ops_before_pruned, ops_after_pruned
+    ):
+        block = program.global_block()
+        self.assertEqual(len(block.ops), len(ops_before_pruned))
+        self.assertEqual(
+            [op.type for op in block.ops],
+            ops_before_pruned,
+        )
+        pruned_program = program._prune(targets=targets)
+        self.assertEqual(
+            len(pruned_program.global_block().ops), len(ops_after_pruned)
+        )
+        self.assertEqual(
+            [op.type for op in pruned_program.global_block().ops],
+            ops_after_pruned,
+        )
+
+    def check_prune_target_none(self, program, ops_before_pruned):
+        block = program.global_block()
+        self.assertEqual(len(block.ops), len(ops_before_pruned))
+        self.assertEqual(
+            [op.type for op in block.ops],
+            ops_before_pruned,
+        )
+        try:
+            pruned_program = program._prune(targets=None)
+        except ValueError as e:
+            self.assertIn(
+                "All targets of Program._prune_with_input() can only be Variable or Operator",
+                str(e),
+            )
+
+
+class TestPrune(TestPruneBase):
     def net(self):
         x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
         x.desc.set_need_check_feed(False)
@@ -36,115 +122,80 @@ class TestPrune(unittest.TestCase):
         return x, y, label, loss
 
     def test_prune_with_input(self):
-        program = framework.Program()
-        startup_program = framework.Program()
-        block = program.global_block()
-        with base.program_guard(program, startup_program):
-            (x, y, label, loss) = self.net()
-        self.assertEqual(len(block.ops), 5)
-        self.assertEqual(
-            [op.type for op in block.ops],
-            [
-                "mul",
-                "elementwise_add",
-                "softmax",
-                "softmax_with_cross_entropy",
-                "reduce_mean",
-            ],
-        )
-        pruned_program = program._prune_with_input(
-            feeded_var_names=[y.name, label.name], targets=[loss]
-        )
-        self.assertEqual(len(pruned_program.global_block().ops), 2)
-        self.assertEqual(
-            [op.type for op in pruned_program.global_block().ops],
-            ["softmax_with_cross_entropy", "reduce_mean"],
+        ops_before_pruned = [
+            "mul",
+            "elementwise_add",
+            "softmax",
+            "softmax_with_cross_entropy",
+            "reduce_mean",
+        ]
+
+        ops_after_pruned = ["softmax_with_cross_entropy", "reduce_mean"]
+        (x, y, label, loss), program = self.run_net(self.net)
+
+        self.check_prune_with_input(
+            program,
+            [y.name, label.name],
+            [loss],
+            ops_before_pruned,
+            ops_after_pruned,
         )
 
     def test_prune(self):
-        program = framework.Program()
-        startup_program = framework.Program()
-        block = program.global_block()
-        with base.program_guard(program, startup_program):
-            (x, y, label, loss) = self.net()
-        self.assertEqual(len(block.ops), 5)
-        self.assertEqual(
-            [op.type for op in block.ops],
-            [
-                "mul",
-                "elementwise_add",
-                "softmax",
-                "softmax_with_cross_entropy",
-                "reduce_mean",
-            ],
-        )
-        pruned_program = program._prune(targets=[loss])
-        self.assertEqual(len(pruned_program.global_block().ops), 5)
-        self.assertEqual(
-            [op.type for op in pruned_program.global_block().ops],
-            [
-                "mul",
-                "elementwise_add",
-                "softmax",
-                "softmax_with_cross_entropy",
-                "reduce_mean",
-            ],
-        )
+        ops_before_pruned = [
+            "mul",
+            "elementwise_add",
+            "softmax",
+            "softmax_with_cross_entropy",
+            "reduce_mean",
+        ]
+
+        ops_after_pruned = [
+            "mul",
+            "elementwise_add",
+            "softmax",
+            "softmax_with_cross_entropy",
+            "reduce_mean",
+        ]
+
+        (x, y, label, loss), program = self.run_net(self.net)
+
+        self.check_prune(program, [loss], ops_before_pruned, ops_after_pruned)
 
     def test_prune_target_not_list(self):
-        program = framework.Program()
-        startup_program = framework.Program()
-        block = program.global_block()
-        with base.program_guard(program, startup_program):
-            (x, y, label, loss) = self.net()
-        self.assertEqual(len(block.ops), 5)
-        self.assertEqual(
-            [op.type for op in block.ops],
-            [
-                "mul",
-                "elementwise_add",
-                "softmax",
-                "softmax_with_cross_entropy",
-                "reduce_mean",
-            ],
-        )
-        pruned_program = program._prune(targets=loss)
-        self.assertEqual(len(pruned_program.global_block().ops), 5)
-        self.assertEqual(
-            [op.type for op in pruned_program.global_block().ops],
-            [
-                "mul",
-                "elementwise_add",
-                "softmax",
-                "softmax_with_cross_entropy",
-                "reduce_mean",
-            ],
+        ops_before_pruned = [
+            "mul",
+            "elementwise_add",
+            "softmax",
+            "softmax_with_cross_entropy",
+            "reduce_mean",
+        ]
+
+        ops_after_pruned = [
+            "mul",
+            "elementwise_add",
+            "softmax",
+            "softmax_with_cross_entropy",
+            "reduce_mean",
+        ]
+
+        (x, y, label, loss), program = self.run_net(self.net)
+
+        self.check_prune_target_not_list(
+            program, loss, ops_before_pruned, ops_after_pruned
         )
 
     def test_prune_target_none(self):
-        program = framework.Program()
-        startup_program = framework.Program()
-        block = program.global_block()
-        with base.program_guard(program, startup_program):
-            (x, y, label, loss) = self.net()
-        self.assertEqual(len(block.ops), 5)
-        self.assertEqual(
-            [op.type for op in block.ops],
-            [
-                "mul",
-                "elementwise_add",
-                "softmax",
-                "softmax_with_cross_entropy",
-                "reduce_mean",
-            ],
-        )
-        try:
-            pruned_program = program._prune(targets=None)
-        except ValueError as e:
-            self.assertIn(
-                "All targets of Program._prune_with_input() can only be Variable or Operator",
-                str(e),
-            )
+        ops_before_pruned = [
+            "mul",
+            "elementwise_add",
+            "softmax",
+            "softmax_with_cross_entropy",
+            "reduce_mean",
+        ]
+
+        (x, y, label, loss), program = self.run_net(self.net)
+        self.check_prune_target_none(program, ops_before_pruned)
 
 
 def mock(self, program, feed, fetch, optimize_ops):
@@ -160,77 +211,83 @@ def _mock_guard(mock):
     base.Executor._prune_program = original
 
 
-class TestExecutorRunAutoPrune(unittest.TestCase):
-    def net1(self):
-        x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
-        x.desc.set_need_check_feed(False)
-        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
-        label.desc.set_need_check_feed(False)
-        w_param_attrs = base.ParamAttr(
-            name="fc_weight",
-            learning_rate=0.5,
-            initializer=paddle.nn.initializer.Constant(1.0),
-            trainable=True,
-        )
-        y = paddle.static.nn.fc(
-            x=[x], size=2, activation="softmax", weight_attr=w_param_attrs
-        )
-        loss1 = paddle.nn.functional.cross_entropy(
-            input=y, label=label, reduction='none', use_softmax=False
-        )
-        loss1 = paddle.mean(x=loss1)
-        loss2 = paddle.nn.functional.cross_entropy(
-            input=y, label=label, reduction='none', use_softmax=False
-        )
-        loss2 = paddle.mean(x=loss2)
-        loss1.persistable = True
-        loss2.persistable = True
-        return x, y, label, loss1, loss2, w_param_attrs
+def create_net1():
+    x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+    x.desc.set_need_check_feed(False)
+    label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+    label.desc.set_need_check_feed(False)
+    w_param_attrs = base.ParamAttr(
+        name="fc_weight",
+        learning_rate=0.5,
+        initializer=paddle.nn.initializer.Constant(1.0),
+        trainable=True,
+    )
+    y = paddle.static.nn.fc(
+        x=[x], size=2, activation="softmax", weight_attr=w_param_attrs
+    )
+    loss1 = paddle.nn.functional.cross_entropy(
+        input=y, label=label, reduction='none', use_softmax=False
+    )
+    loss1 = paddle.mean(x=loss1)
+    loss2 = paddle.nn.functional.cross_entropy(
+        input=y, label=label, reduction='none', use_softmax=False
+    )
+    loss2 = paddle.mean(x=loss2)
+    loss1.persistable = True
+    loss2.persistable = True
+    return x, y, label, loss1, loss2, w_param_attrs
 
-    def net2(self):
-        x1 = paddle.static.data(name='x1', shape=[-1, 2], dtype='float32')
-        x1.desc.set_need_check_feed(False)
-        x2 = paddle.static.data(name='x2', shape=[-1, 2], dtype='float32')
-        x2.desc.set_need_check_feed(False)
-        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
-        label.desc.set_need_check_feed(False)
-        w1_param_attrs = base.ParamAttr(
-            name="fc_weight1",
-            learning_rate=0.5,
-            initializer=paddle.nn.initializer.Constant(1.0),
-            trainable=True,
-        )
-        w2_param_attrs = base.ParamAttr(
-            name="fc_weight2",
-            learning_rate=0.5,
-            initializer=paddle.nn.initializer.Constant(1.0),
-            trainable=True,
-        )
-        y1 = paddle.static.nn.fc(
-            x=[x1], size=2, activation="softmax", weight_attr=w1_param_attrs
-        )
-        y2 = paddle.static.nn.fc(
-            x=[x2], size=2, activation="softmax", weight_attr=w2_param_attrs
-        )
-        loss1 = paddle.nn.functional.cross_entropy(
-            input=y1, label=label, reduction='none', use_softmax=False
-        )
-        loss1 = paddle.mean(x=loss1)
-        loss2 = paddle.nn.functional.cross_entropy(
-            input=y2, label=label, reduction='none', use_softmax=False
-        )
-        loss2 = paddle.mean(x=loss2)
-        return (
-            x1,
-            x2,
-            y1,
-            y2,
-            label,
-            loss1,
-            loss2,
-            w1_param_attrs,
-            w2_param_attrs,
-        )
+
+def create_net2():
+    x1 = paddle.static.data(name='x1', shape=[-1, 2], dtype='float32')
+    x1.desc.set_need_check_feed(False)
+    x2 = paddle.static.data(name='x2', shape=[-1, 2], dtype='float32')
+    x2.desc.set_need_check_feed(False)
+    label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+    label.desc.set_need_check_feed(False)
+    w1_param_attrs = base.ParamAttr(
+        name="fc_weight1",
+        learning_rate=0.5,
+        initializer=paddle.nn.initializer.Constant(1.0),
+        trainable=True,
+    )
+    w2_param_attrs = base.ParamAttr(
+        name="fc_weight2",
+        learning_rate=0.5,
+        initializer=paddle.nn.initializer.Constant(1.0),
+        trainable=True,
+    )
+    y1 = paddle.static.nn.fc(
+        x=[x1], size=2, activation="softmax", weight_attr=w1_param_attrs
+    )
+    y2 = paddle.static.nn.fc(
+        x=[x2], size=2, activation="softmax", weight_attr=w2_param_attrs
+    )
+    loss1 = paddle.nn.functional.cross_entropy(
+        input=y1, label=label, reduction='none', use_softmax=False
+    )
+    loss1 = paddle.mean(x=loss1)
+    loss2 = paddle.nn.functional.cross_entropy(
+        input=y2, label=label, reduction='none', use_softmax=False
+    )
+    loss2 = paddle.mean(x=loss2)
+    return (
+        x1,
+        x2,
+        y1,
+        y2,
+        label,
+        loss1,
+        loss2,
+        w1_param_attrs,
+        w2_param_attrs,
+    )
+
+
+class TestExecutorRunAutoPrune(unittest.TestCase):
+    def setUp(self):
+        self.net1 = create_net1
+        self.net2 = create_net2
 
     def test_not_prune(self):
         """

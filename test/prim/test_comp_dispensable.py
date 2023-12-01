@@ -25,11 +25,10 @@ class TestDispensable(unittest.TestCase):
         paddle.base.core._set_prim_all_enabled(False)
 
     def test_dispensable(self):
-        @paddle.jit.to_static
         def f(x):
             return paddle.split(x, num_or_sections=2)
 
-        f = paddle.jit.to_static(f)
+        f = paddle.jit.to_static(full_graph=True)(f)
         x = paddle.rand((8,))
         x.stop_gradient = False
 

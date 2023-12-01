@@ -18,6 +18,10 @@
 #include <sstream>
 
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
+#ifdef CINN_WITH_CUDA
+#include "paddle/cinn/runtime/cuda/cuda_util.h"
+#endif
+#include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -315,9 +319,14 @@ void Graph::VisualizeGroupedGraph(
   const auto& group_dots = VisualizeGroups(groups, fetch_var_ids);
   for (int idx = 0; idx < groups.size(); ++idx) {
     // Create fusion_group_x folder
+    int device_id = 0;
+#ifdef CINN_WITH_CUDA
+    cudaGetDevice(&device_id);
+#endif
     auto group_path =
-        utils::StringFormat("%s/fusion_group_%d",
+        utils::StringFormat("%s/device_%d/fusion_group_%d",
                             FLAGS_cinn_fusion_groups_graphviz_dir.c_str(),
+                            device_id,
                             idx);
     if (!MakeDirectory(group_path,
                        S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
@@ -468,7 +477,7 @@ std::vector<std::string> Graph::VisualizeGroups(
   return dot_vec;
 }
 
-std::unordered_set<NodeData*> Graph::Group::GetInputNodeDatas() {
+std::unordered_set<NodeData*> Graph::Group::GetInputNodeDatas() const {
   std::unordered_set<NodeData*> group_inputs;
 
   // count all node's input data
@@ -498,7 +507,7 @@ std::unordered_set<NodeData*> Graph::Group::GetInputNodeDatas() {
   return group_inputs;
 }
 
-std::unordered_set<NodeData*> Graph::Group::GetOutputNodeDatas() {
+std::unordered_set<NodeData*> Graph::Group::GetOutputNodeDatas() const {
   std::unordered_set<NodeData*> group_outputs;
 
   for (auto node : this->output_nodes) {

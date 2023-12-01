@@ -125,6 +125,7 @@ class Collective:
         wait_port,
         has_multitrainer=False,
     ):
+        endpoints_str = ",".join(endpoints)
         nranks = len(endpoints)
         other_endpoints = endpoints[:]
         other_endpoints.remove(current_endpoint)
@@ -161,6 +162,7 @@ class Collective:
                     'nranks': nranks,
                     'rank': rank,
                     'ring_id': ring_id,
+                    'endpoints': endpoints_str,
                     self.op_role_key: OpRole.Forward,
                 },
             )
@@ -190,6 +192,7 @@ class Collective:
                         'nranks': nranks,
                         'rank': rank,
                         'ring_id': ring_id,
+                        'endpoints': endpoints_str,
                         self.op_role_key: OpRole.Forward,
                     },
                 )
@@ -234,6 +237,7 @@ class Collective:
                     'nranks': nranks,
                     'rank': rank,
                     'ring_id': ring_id,
+                    'endpoints': endpoints_str,
                     self.op_role_key: OpRole.Forward,
                 },
             )

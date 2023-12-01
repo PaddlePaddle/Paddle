@@ -110,10 +110,7 @@ if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
     python -m pip install --upgrade pip
-    python -m pip install setuptools==57.4.0
-    python -m pip install wheel
-    python -m pip install pyyaml
-    python -m pip install wget
+    python -m pip install -r %work_dir%\paddle\scripts\windows_build\requirements.txt
     python -m pip install -r %work_dir%\python\requirements.txt
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
@@ -745,15 +742,15 @@ dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
 dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
 dir %THIRD_PARTY_PATH:/=\%\install\mklml\lib
-dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
+dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\lib
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
 dir %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
-%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
+%THIRD_PARTY_PATH:/=\%\install\mkldnn\lib;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
 %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib;%THIRD_PARTY_PATH:/=\%\install\paddle2onnx\lib;^
-%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;%work_dir%\%BUILD_DIR%\paddle\ir;^
+%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\pybind;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;%work_dir%\%BUILD_DIR%\paddle\ir;^
 %PATH%
 
 REM TODO: make ut find .dll in install\onnxruntime\lib

@@ -25,6 +25,10 @@
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #endif
+#include "paddle/cinn/utils/error.h"
+
+PD_DECLARE_int32(cinn_error_message_level);
+
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -32,8 +36,14 @@ namespace framework {
 class ParallelCompiler {
  public:
   struct Task {
-    Task(int group_id, ParallelCompiler* compiler, CompilationContext* context)
-        : group_id(group_id), pcompiler(compiler), context(context) {}
+    Task(int device_id,
+         int group_id,
+         ParallelCompiler* compiler,
+         CompilationContext* context)
+        : device_id(device_id),
+          group_id(group_id),
+          pcompiler(compiler),
+          context(context) {}
     void Lowering();
     void CodegenAndJit();
     void BuildInstruction();
@@ -44,6 +54,7 @@ class ParallelCompiler {
     CompilationStatus status = CompilationStatus::SUCCESS;
     std::string message;
 
+    const int device_id;
     int group_id;
 
     std::unique_ptr<backends::ExecutionEngine> engine;
@@ -68,6 +79,8 @@ class ParallelCompiler {
   std::vector<Task> tasks_;
   CompilationContext* context_;
   CompilationResult result_;
+  utils::ErrorMessageLevel err_msg_level_ =
+      static_cast<utils::ErrorMessageLevel>(FLAGS_cinn_error_message_level);
 };
 
 }  // namespace framework

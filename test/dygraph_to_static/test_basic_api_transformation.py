@@ -16,7 +16,7 @@ import inspect
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils import Dy2StTestBase, test_default_mode_only
 
 import paddle
 from paddle import base, to_tensor
@@ -69,7 +69,7 @@ def dyfunc_bool_to_tensor(x):
     return paddle.to_tensor(True)
 
 
-class TestDygraphBasicApi_ToVariable(unittest.TestCase):
+class TestDygraphBasicApi_ToVariable(Dy2StTestBase):
     def setUp(self):
         self.input = np.ones(5).astype("int32")
         self.test_funcs = [
@@ -92,7 +92,6 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
             res = self.dygraph_func(self.input).numpy()
             return res
 
-    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         main_program = base.Program()
         main_program.random_seed = SEED
@@ -104,6 +103,7 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
 
         return static_res[0]
 
+    @test_default_mode_only
     def test_transformed_static_result(self):
         for func in self.test_funcs:
             self.dygraph_func = func
@@ -230,7 +230,7 @@ def dyfunc_Prelu(input):
     return res
 
 
-class TestDygraphBasicApi(unittest.TestCase):
+class TestDygraphBasicApi(Dy2StTestBase):
     # Compare results of dynamic graph and transformed static graph function which only
     # includes basic Api.
 
@@ -247,7 +247,6 @@ class TestDygraphBasicApi(unittest.TestCase):
 
             return res
 
-    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = base.Program()
         startup_program.random_seed = SEED
@@ -262,6 +261,7 @@ class TestDygraphBasicApi(unittest.TestCase):
         static_res = exe.run(main_program, fetch_list=static_out)
         return static_res[0]
 
+    @test_default_mode_only
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
@@ -281,7 +281,6 @@ class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
             res = self.dygraph_func(self.input1, self.input2).numpy()
             return res
 
-    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = base.Program()
         startup_program.random_seed = SEED
@@ -396,7 +395,7 @@ def dyfunc_PolynomialDecay():
     return paddle.to_tensor(lr)
 
 
-class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
+class TestDygraphBasicApi_CosineDecay(Dy2StTestBase):
     def setUp(self):
         self.dygraph_func = dyfunc_CosineDecay
 
@@ -407,7 +406,6 @@ class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
             res = self.dygraph_func().numpy()
             return res
 
-    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = base.Program()
         startup_program.random_seed = SEED
@@ -421,6 +419,7 @@ class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
         static_res = exe.run(main_program, fetch_list=static_out)
         return static_res[0]
 
+    @test_default_mode_only
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
@@ -438,7 +437,6 @@ class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
             res = self.dygraph_func()
             return res
 
-    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = base.Program()
         startup_program.random_seed = SEED
@@ -465,7 +463,6 @@ class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
             res = self.dygraph_func()
             return res
 
-    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = base.Program()
         startup_program.random_seed = SEED
@@ -492,7 +489,6 @@ class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
             res = self.dygraph_func()
             return res
 
-    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = base.Program()
         startup_program.random_seed = SEED
@@ -539,7 +535,7 @@ def _dygraph_fn():
         np.random.random(1)
 
 
-class TestDygraphApiRecognition(unittest.TestCase):
+class TestDygraphApiRecognition(Dy2StTestBase):
     def setUp(self):
         self.src = inspect.getsource(_dygraph_fn)
         self.root = gast.parse(self.src)
@@ -550,6 +546,7 @@ class TestDygraphApiRecognition(unittest.TestCase):
     def _get_static_ast_node(self):
         return self.root.body[0].body[2].body[1].value
 
+    @test_default_mode_only
     def test_dygraph_api(self):
         self.assertTrue(is_dygraph_api(self._get_dygraph_ast_node()) is True)
         self.assertTrue(is_dygraph_api(self._get_static_ast_node()) is False)

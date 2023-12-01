@@ -25,8 +25,6 @@ from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
     is_parameter_related,
-    register_distributed_operator_impl,
-    register_distributed_operator_impl_container,
 )
 from .dist_default import DistributedDefaultImpl0
 
@@ -36,10 +34,11 @@ class DistributedScale(DistributedOperatorImplContainer):
         super().__init__(op_type)
 
 
-register_distributed_operator_impl_container(DistributedScale("scale"))
-register_distributed_operator_impl_container(DistributedScale("fill_any_like"))
-register_distributed_operator_impl_container(DistributedScale("where"))
-register_distributed_operator_impl_container(DistributedScale("tanh"))
+# TODO reomve assign dist op
+# register_distributed_operator_impl_container(DistributedScale("scale"))
+# register_distributed_operator_impl_container(DistributedScale("fill_any_like"))
+# register_distributed_operator_impl_container(DistributedScale("where"))
+# register_distributed_operator_impl_container(DistributedScale("tanh"))
 
 
 class DistributedScaleImpl(DistributedOperatorImpl):
@@ -185,9 +184,9 @@ class DistributedScaleImpl(DistributedOperatorImpl):
         DistributedDefaultImpl0.backward(ctx, *args, **kwargs)
 
 
-register_distributed_operator_impl("scale", DistributedScaleImpl("scale"))
-register_distributed_operator_impl(
-    "fill_any_like", DistributedScaleImpl("fill_any_like")
-)
-register_distributed_operator_impl("where", DistributedScaleImpl("where"))
-register_distributed_operator_impl("tanh", DistributedScaleImpl("tanh"))
+# register_distributed_operator_impl("scale", DistributedScaleImpl("scale"))
+# register_distributed_operator_impl(
+#     "fill_any_like", DistributedScaleImpl("fill_any_like")
+# )
+# register_distributed_operator_impl("where", DistributedScaleImpl("where"))
+# register_distributed_operator_impl("tanh", DistributedScaleImpl("tanh"))

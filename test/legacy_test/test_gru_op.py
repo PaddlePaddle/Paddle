@@ -16,7 +16,7 @@ import functools
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_lstm_op import ACTIVATION
 
 

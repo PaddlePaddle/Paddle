@@ -12,20 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .. import core
-from ..framework import (
-    Variable,
-    convert_np_dtype_to_dtype_,
-    in_dygraph_mode,
-)
-from ..framework import _create_tensor as framework_create_tensor
-from ..layers.layer_function_generator import OpProtoHolder
-from . import no_grad
-from .. import framework
-
 import numpy as np
-import warnings
+
 from paddle import _C_ops, _legacy_C_ops
+
+from .. import core, framework
+from ..framework import convert_np_dtype_to_dtype_
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -85,14 +77,15 @@ def monkey_patch_math_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle
-                import numpy as np
+                >>> import paddle
+                >>> import numpy as np
 
-                original_tensor = paddle.ones([2, 2])
-                print("original tensor's dtype is: {}".format(original_tensor.dtype))
-                new_tensor = original_tensor.astype('float32')
-                print("new tensor's dtype is: {}".format(new_tensor.dtype))
-
+                >>> original_tensor = paddle.ones([2, 2])
+                >>> print("original tensor's dtype is: {}".format(original_tensor.dtype))
+                original tensor's dtype is: paddle.float32
+                >>> new_tensor = original_tensor.astype('float32')
+                >>> print("new tensor's dtype is: {}".format(new_tensor.dtype))
+                new tensor's dtype is: paddle.float32
         """
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
@@ -157,7 +150,7 @@ def monkey_patch_math_tensor():
         return int(np.array(var))
 
     @property
-    def _ndim_(var):
+    def _ndim(var):
         return len(var.shape)
 
     def ndimension(var):
@@ -190,7 +183,7 @@ def monkey_patch_math_tensor():
         ('astype', astype),
         ('dim', dim),
         ('ndimension', ndimension),
-        ('ndim', _ndim_),
+        ('ndim', _ndim),
         ('size', _size_),
         ('T', _T_),
         # for logical compare

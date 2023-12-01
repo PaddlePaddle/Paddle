@@ -16,7 +16,7 @@
 from abc import ABC, abstractmethod
 
 from .prune import _PRUNE_FUNC
-from .utils import gbs_search_all, search_all
+from .utils import gbs_search_all, search_all, search_by_dp_estimation
 
 
 class SearchAlgo(ABC):
@@ -40,6 +40,34 @@ class GridSearch(SearchAlgo):
         super().__init__(tuner_cfg)
         self.idx = 0
         self.all_tasks = search_all(tuner_cfg)
+
+    def search_once(self, history_cfgs):
+        new_cfg = None
+        stop = False
+        while not stop:
+            if self.idx < len(self.all_tasks):
+                new_cfg = self.all_tasks[self.idx]
+                self.idx += 1
+                stop = not self.prune(self.tuner_cfg, new_cfg, history_cfgs)
+            else:
+                return None
+        return new_cfg
+
+
+class DpEstimationSearch(SearchAlgo):
+    def __init__(self, tuner_cfg):
+        super().__init__(tuner_cfg)
+        self.idx = 0
+        self.all_tasks = search_by_dp_estimation(tuner_cfg)
+        assert len(self.all_tasks) > 0, "Unable to perform this search."
+        # change global_batch_size and dp_degree
+        tuner_cfg["model_cfg"]["global_batch_size"] = (
+            tuner_cfg["model_cfg"]["global_batch_size"]
+            // self.all_tasks[0]["dp_degree"]
+        )
+        for task in self.all_tasks:
+            task["estimated_dp_degree"] = task["dp_degree"]
+            task["dp_degree"] = 1
 
     def search_once(self, history_cfgs):
         new_cfg = None

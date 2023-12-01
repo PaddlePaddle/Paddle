@@ -63,10 +63,8 @@ void DiagonalGradKernel(const Context& dev_ctx,
     idx_dim.erase(idx_dim.begin() + std::min(axis1_, axis2_));
 
     bool flag = false;
-    if (offset_ == 0 && axis1_dim == axis2_dim) {
-      idx_dim.push_back(axis1_dim);
-      flag = true;
-    } else if (offset_ > 0 && (axis1_dim + offset_) == axis2_dim) {
+    if ((offset_ == 0 && axis1_dim == axis2_dim) ||
+        (offset_ > 0 && (axis1_dim + offset_) == axis2_dim)) {
       idx_dim.push_back(axis1_dim);
       flag = true;
     } else if (offset_ < 0 && (axis1_dim + offset_) == axis2_dim) {

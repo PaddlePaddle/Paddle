@@ -14,7 +14,7 @@
 
 import unittest
 
-from eager_op_test import OpTestTool
+from op_test import OpTestTool
 
 import paddle
 from paddle import base

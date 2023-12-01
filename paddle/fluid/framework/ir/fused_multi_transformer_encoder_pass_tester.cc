@@ -192,11 +192,11 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
       PassRegistry::Instance().Get("fused_multi_transformer_encoder_pass");
   if (pass.get() == nullptr)
     LOG(INFO) << "get fused_multi_transformer_encoder_pass failed";
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
   int num_fused_nodes_after = GetNumOpNodes(graph, "fused_multi_transformer");
 
@@ -368,11 +368,11 @@ TEST(MultiDevicesFusedMultiTransformerEncoderPass, basic) {
   if (pass.get() == nullptr)
     LOG(INFO)
         << "get multi_devices_fused_multi_transformer_encoder_pass failed";
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
   int num_fused_nodes_after = GetNumOpNodes(graph, "fused_multi_transformer");
 
@@ -518,11 +518,11 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
       "fused_multi_transformer_encoder_fuse_qkv_pass");
   if (pass.get() == nullptr)
     LOG(INFO) << "get fused_multi_transformer_encoder_fuse_qkv_pass failed";
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
   int num_fused_nodes_after = GetNumOpNodes(graph, "fused_multi_transformer");
 
@@ -678,11 +678,11 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
     LOG(INFO)
         << "get multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass "
            "failed";
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
   int num_fused_nodes_after = GetNumOpNodes(graph, "fused_multi_transformer");
 

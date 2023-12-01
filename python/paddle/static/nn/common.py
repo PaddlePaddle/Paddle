@@ -284,17 +284,17 @@ def instance_norm(
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None|bool, optional): The parameter attribute for Parameter `scale`
-             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
-         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-         If the Initializer of the param_attr is not set, the parameter is initialized
-         with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
-             Default: None.
+            of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+            If the Initializer of the param_attr is not set, the parameter is initialized
+            with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
+            Default: None.
         bias_attr(ParamAttr|None|bool, optional): The parameter attribute for the bias of instance_norm.
-             If it is set to None or one attribute of ParamAttr, instance_norm
-         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-         If the Initializer of the bias_attr is not set, the bias is initialized zero.
-             If the bias_attr is set to False, instance_norm will not create bias_attr.
-         Default: None.
+            If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+            If the Initializer of the bias_attr is not set, the bias is initialized zero.
+            If the bias_attr is set to False, instance_norm will not create bias_attr.
+            Default: None.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
@@ -901,8 +901,7 @@ def conv2d(
     )
     if len(input.shape) != 4:
         raise ValueError(
-            "Input size should be 4, "
-            "but received {}".format(len(input.shape))
+            "Input size should be 4, " f"but received {len(input.shape)}"
         )
     num_channels = input.shape[1]
     if not isinstance(use_cudnn, bool):
@@ -931,7 +930,7 @@ def conv2d(
     elif groups <= 0:
         raise ValueError(
             "the groups of input must be greater than 0, "
-            "but received the groups of input is {}".format(groups)
+            f"but received the groups of input is {groups}"
         )
     else:
         if num_channels % groups != 0:
@@ -1020,8 +1019,8 @@ def conv2d(
         if filter_elem_num <= 0:
             raise ValueError(
                 "Invalid filter number, excepted number is larger than 0, but"
-                " received {}, please check the input shape and "
-                "filter size.".format(filter_elem_num)
+                f" received {filter_elem_num}, please check the input shape and "
+                "filter size."
             )
         std = (2.0 / filter_elem_num) ** 0.5
         return Normal(0.0, std)
@@ -1246,9 +1245,7 @@ def conv3d(
         num_filter_channels = num_channels
     elif groups <= 0:
         raise ValueError(
-            "the groups of conv3d should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"the groups of conv3d should be greater than 0. Received groups: {groups}"
         )
     else:
         if num_channels % groups != 0:
@@ -1325,8 +1322,8 @@ def conv3d(
         if filter_elem_num <= 0:
             raise ValueError(
                 "Invalid filter number, excepted number is larger than 0, but"
-                " received {}, please check the input shape and "
-                "filter size.".format(filter_elem_num)
+                f" received {filter_elem_num}, please check the input shape and "
+                "filter size."
             )
 
         std = (2.0 / filter_elem_num) ** 0.5
@@ -1503,7 +1500,7 @@ def conv2d_transpose(
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool, optional): Specifies the object for the bias parameter attribute.
             The default value is None, which means that the default bias parameter attribute is used.
-            For detailed information, please refer to :ref:`paramattr`.
+            For detailed information, please refer to :ref:`api_paddle_ParamAttr`.
             The default bias initialisation for the conv2d_transpose operator is 0.0.
         use_cudnn(bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True.
@@ -1554,8 +1551,7 @@ def conv2d_transpose(
     ), "param_attr should not be False in conv2d_transpose."
     if len(input.shape) != 4:
         raise ValueError(
-            "Input size should be 4, "
-            "but received {}".format(len(input.shape))
+            "Input size should be 4, " f"but received {len(input.shape)}"
         )
 
     if num_filters == 0:
@@ -1712,7 +1708,7 @@ def conv2d_transpose(
     elif groups <= 0:
         raise ValueError(
             "the groups of input must be greater than 0, "
-            "but received the groups of input is {}".format(groups)
+            f"but received the groups of input is {groups}"
         )
 
     filter_shape = [input_channel, num_filters // groups] + filter_size
@@ -2068,16 +2064,12 @@ def conv3d_transpose(
     groups = 1 if groups is None else groups
     if groups <= 0:
         raise ValueError(
-            "the groups of conv3d_transpose should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"the groups of conv3d_transpose should be greater than 0. Received groups: {groups}"
         )
     if num_filters % groups != 0:
         raise ValueError(
             "Attr(num_filters) must be divisible by groups,"
-            "Received: Attr(num_filters) is {}, the groups is {}".format(
-                num_filters, groups
-            )
+            f"Received: Attr(num_filters) is {num_filters}, the groups is {groups}"
         )
 
     filter_shape = [input_channel, num_filters // groups] + filter_size
@@ -2303,8 +2295,8 @@ def deformable_conv(
         if filter_elem_num <= 0:
             raise ValueError(
                 "Invalid filter number, excepted number is larger than 0, but"
-                " received {}, please check the input shape and "
-                "filter size.".format(filter_elem_num)
+                f" received {filter_elem_num}, please check the input shape and "
+                "filter size."
             )
         std = (2.0 / filter_elem_num) ** 0.5
         return paddle.nn.initializer.normal.Normal(0.0, std)
@@ -2566,10 +2558,10 @@ def bilinear_tensor_product(
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
         param_attr (ParamAttr|None): To specify the weight parameter attribute.
             Default: None, which means the default weight parameter property is
-            used. See usage for details in :ref:`api_base_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_ParamAttr` .
         bias_attr (ParamAttr|None): To specify the bias parameter attribute.
             Default: None, which means the default bias parameter property is
-            used. See usage for details in :ref:`api_base_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_ParamAttr` .
 
     Returns:
         Tensor, A 2-D Tensor of shape [batch_size, size]. Data type is the same as input **x**.
@@ -2646,19 +2638,19 @@ def batch_norm(
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
-    :math:input is the input features over a mini-batch.
+    :math:`input` is the input features over a mini-batch.
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i -
+        \mu_{\\beta})^2 \qquad &//\ mini-batch\ variance \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\\\
+        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\
         moving\_var = moving\_var * momentum + mini-batch\_var * (1. - momentum)
 
 
@@ -2672,9 +2664,9 @@ def batch_norm(
 
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{
+        \sigma_{\beta}^{2} + \epsilon}}  \\
+        y_i &\gets \gamma \hat{x_i} + \beta
 
     Note:
         if build_strategy.sync_batch_norm=True, the batch_norm in network will use
@@ -2697,14 +2689,14 @@ def batch_norm(
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-         If the Initializer of the param_attr is not set, the parameter is initialized
-         with Xavier. Default: None.
+             will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+             If the Initializer of the param_attr is not set, the parameter is initialized
+             with Xavier. Default: None.
         bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
              If it is set to None or one attribute of ParamAttr, batch_norm
-         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-         If the Initializer of the bias_attr is not set, the bias is initialized zero.
-         Default: None.
+             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+             If the Initializer of the bias_attr is not set, the bias is initialized zero.
+             Default: None.
         data_layout (str, optional): Specify the data format of the input, and the data format of the output
              will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
              The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
@@ -3010,7 +3002,7 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         if data_format not in true_data_format:
             raise ValueError(
                 "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
-                "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format)
+                f"'NLC', 'NHWC', 'NDHWC' but receive {data_format}"
             )
 
         data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
@@ -3324,9 +3316,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         for v in skip_vars_in_backward_input:
             if v.name not in fwd_in_out:
                 raise ValueError(
-                    'Tensor {} is not found in forward inputs and outputs'.format(
-                        v.name
-                    )
+                    f'Tensor {v.name} is not found in forward inputs and outputs'
                 )
             backward_skip_vars.add(v.name)
 

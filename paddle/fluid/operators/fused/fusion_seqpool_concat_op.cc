@@ -113,7 +113,7 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     T* y_data = out->mutable_data<T>(place);
 
-    int w = ins[0]->numel() / x0_dims[0];
+    int w = static_cast<int>(ins[0]->numel() / x0_dims[0]);
     PADDLE_ENFORCE_EQ(y_dims[1] % w,
                       0,
                       platform::errors::InvalidArgument(

@@ -17,9 +17,9 @@
 
 PD_DECLARE_bool(new_executor_use_local_scope);
 
-namespace ir {
-class Program;
-}  // namespace ir
+namespace pir {
+class Block;
+}  // namespace pir
 
 namespace paddle {
 namespace framework {
@@ -38,7 +38,7 @@ class InterpreterCore {
   // This constructor is for New IR.
   InterpreterCore(const platform::Place& place,
                   const std::vector<std::string>& fetch_var_names,
-                  std::unique_ptr<::ir::Program> ir_prog,
+                  const ::pir::Block* ir_prog,
                   Scope* scope,
                   const ExecutionConfig& execution_config = ExecutionConfig());
   ~InterpreterCore();
@@ -47,10 +47,12 @@ class InterpreterCore {
 
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<phi::DenseTensor>& feed_tensors);
+      const std::vector<phi::DenseTensor>& feed_tensors,
+      bool need_fetch = true);
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
-                                   bool need_fetch = true);
+                                   bool need_fetch = true,
+                                   bool enable_job_schedule_profiler = false);
 
   void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
 
@@ -73,6 +75,13 @@ class InterpreterCore {
   const platform::Place& GetPlace() const;
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
+
+  void Build(const std::vector<std::string>& feed_names,
+             std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
+
+  bool IsStaticBuild() const;
+
+  std::tuple<double, double> InterpreterRunTime();
 
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);

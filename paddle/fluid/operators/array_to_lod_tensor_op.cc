@@ -203,7 +203,9 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
         if (len == 0) {
           continue;
         }
-        functor.in.emplace_back(x[x_idx].Slice(start_offset, end_offset));
+        functor.in.emplace_back(
+            x[x_idx].Slice(static_cast<int64_t>(start_offset),
+                           static_cast<int64_t>(end_offset)));
       }
     }
     functor.out = out;

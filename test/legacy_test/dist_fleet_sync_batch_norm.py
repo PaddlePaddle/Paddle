@@ -94,9 +94,7 @@ def train(args):
     rank = paddle.distributed.get_rank()
     filepath = os.path.join(
         args.data_dir,
-        'input_{}_{}_{}_{}.npy'.format(
-            rank, args.only_forward, str(args.dtype), args.layout
-        ),
+        f'input_{rank}_{args.only_forward}_{str(args.dtype)}_{args.layout}.npy',
     )
     data = np.load(filepath)
 
@@ -110,9 +108,7 @@ def train(args):
     for i in range(0, len(sync_bn_fetches)):
         file_path = os.path.join(
             args.data_dir,
-            'output_{}_{}_{}_{}.npy'.format(
-                rank, args.only_forward, str(args.dtype), i
-            ),
+            f'output_{rank}_{args.only_forward}_{str(args.dtype)}_{i}.npy',
         )
         np.save(file_path, sync_bn_fetches[i])
 

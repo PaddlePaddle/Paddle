@@ -16,7 +16,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 def sequence_erase(in_seq, lod0, tokens):

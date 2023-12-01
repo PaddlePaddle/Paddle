@@ -29,9 +29,11 @@ from paddle.autograd import no_grad
 from paddle.base import core
 from paddle.base.dygraph.base import to_variable
 from paddle.base.executor import global_scope
-from paddle.base.framework import Variable
-from paddle.base.framework import _current_expected_place as _get_device
-from paddle.base.framework import _get_paddle_place
+from paddle.base.framework import (
+    Variable,
+    _current_expected_place as _get_device,
+    _get_paddle_place,
+)
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.framework import in_dynamic_mode
@@ -122,6 +124,7 @@ def init_communicator(
 ):
     if nranks < 2:
         return
+    endpoints_str = ",".join(endpoints)
     other_endpoints = endpoints[:]
     other_endpoints.remove(current_endpoint)
     block = program.global_block()
@@ -153,6 +156,7 @@ def init_communicator(
                 'nranks': nranks,
                 'rank': rank,
                 'ring_id': 0,
+                'endpoints': endpoints_str,
             },
         )
     elif core.is_compiled_with_xpu():
@@ -181,6 +185,7 @@ def init_communicator(
                 'nranks': nranks,
                 'rank': rank,
                 'ring_id': 0,
+                'endpoints': endpoints_str,
             },
         )
     elif (
@@ -212,6 +217,7 @@ def init_communicator(
                 'nranks': nranks,
                 'rank': rank,
                 'ring_id': 0,
+                'endpoints': endpoints_str,
             },
         )
 
@@ -2395,7 +2401,6 @@ class Model:
                 >>> optim = paddle.optimizer.Adam(learning_rate=0.001, parameters=model.parameters())
                 >>> model.prepare(optim, paddle.nn.CrossEntropyLoss())
                 >>> params_info = model.summary()
-                >>> # doctest: +SKIP
                 >>> print(params_info)
                 ---------------------------------------------------------------------------
                 Layer (type)       Input Shape          Output Shape         Param #
@@ -2420,7 +2425,6 @@ class Model:
                 Estimated Total Size (MB): 0.35
                 ---------------------------------------------------------------------------
                 {'total_params': 61610, 'trainable_params': 61610}
-                >>> # doctest: -SKIP
 
         """
         assert (
@@ -2470,9 +2474,7 @@ class Model:
                 assert isinstance(spec, Input)
                 if spec.name is None:
                     raise ValueError(
-                        "Requires Input[{}].name != None, but receive `None` with {}.".format(
-                            i, spec
-                        )
+                        f"Requires Input[{i}].name != None, but receive `None` with {spec}."
                     )
 
         return out_specs

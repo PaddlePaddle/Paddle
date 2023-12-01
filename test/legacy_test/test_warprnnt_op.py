@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 from paddle import _C_ops
@@ -227,43 +227,35 @@ class TestWarpRNNTOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.outputs["warprnntgrad"] = self.gradient
         if core.is_compiled_with_rocm():
             self.check_grad(
-                ["input"],
-                "loss",
-                numeric_grad_delta=0.009,
+                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
             )
         else:
             self.check_grad(
-                ["input"],
-                "loss",
-                numeric_grad_delta=0.009,
+                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
             )
 
 
 class TestWarpRNNTFP64Op(TestWarpRNNTOp):
     def test_check_output(self):
         self.acts.astype(np.float64)
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.acts.astype(np.float64)
         self.outputs["warprnntgrad"] = self.gradient
         if core.is_compiled_with_rocm():
             self.check_grad(
-                ["input"],
-                "loss",
-                numeric_grad_delta=0.009,
+                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
             )
         else:
             self.check_grad(
-                ["input"],
-                "loss",
-                numeric_grad_delta=0.009,
+                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
             )
 
 

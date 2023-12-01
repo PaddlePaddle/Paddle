@@ -67,7 +67,8 @@ ir::IRSchedule TestAutoGenRuleBase::MakeIRSchedule(
   lowered_funcs_ =
       op_lowerer.Lower(graph->fusion_groups.front(),
                        /*apply_op_schedule = */ apply_manual_schedule,
-                       /*apply_group_schedule = */ apply_manual_schedule);
+                       /*apply_group_schedule = */ apply_manual_schedule,
+                       /*apply_pass = */ apply_manual_schedule);
   CHECK(!lowered_funcs_.empty()) << "lowered_funcs_ is empty";
 
   std::vector<Expr> bodys;

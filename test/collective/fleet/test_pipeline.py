@@ -33,7 +33,7 @@ class TestPipeline(TestDistBase):
         self._nccl_comm_num = 1
 
     def need_envs(self):
-        return {}
+        return {"FLAGS_new_executor_micro_batching": "0"}
 
     def test_dist_train(self):
         if base.core.is_compiled_with_cuda():
@@ -65,7 +65,10 @@ class TestPipeline(TestDistBase):
                 "pipeline_mnist_one_device.py",
                 check_error_log=True,
                 log_name=flag_name,
-                need_envs={"PADDLE_MANUAL_PIPELINE_STAGE": "0"},
+                need_envs={
+                    "PADDLE_MANUAL_PIPELINE_STAGE": "0",
+                    "FLAGS_new_executor_micro_batching": "0",
+                },
             )
 
 

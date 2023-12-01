@@ -142,6 +142,7 @@ class InferencePassTest(unittest.TestCase):
                 self.path + ".pdmodel", self.path + ".pdiparams"
             )
         config.disable_gpu()
+        config.disable_mkldnn()
         config.switch_specify_input_names(True)
         config.switch_ir_optim(True)
         config.switch_use_feed_fetch_ops(False)
@@ -157,7 +158,9 @@ class InferencePassTest(unittest.TestCase):
                     self.trt_parameters.use_calib_mode,
                 )
                 if self.trt_parameters.use_inspector:
-                    config.enable_tensorrt_inspector()
+                    config.enable_tensorrt_inspector(
+                        self.trt_parameters.inspector_serialize
+                    )
                     self.assertTrue(
                         config.tensorrt_inspector_enabled(),
                         "The inspector option is not set correctly.",
@@ -223,9 +226,7 @@ class InferencePassTest(unittest.TestCase):
         # Check whether the results calculated on CPU and on GPU are the same.
         self.assertTrue(
             len(paddle_outs) == len(inference_outs),
-            "The number of outputs is different between inference and training forward at {}".format(
-                device
-            ),
+            f"The number of outputs is different between inference and training forward at {device}",
         )
 
         for out, inference_out in zip(paddle_outs, inference_outs):
@@ -239,9 +240,7 @@ class InferencePassTest(unittest.TestCase):
                 inference_out,
                 rtol=1e-05,
                 atol=atol,
-                err_msg='Output has diff between inference and training forward at {} '.format(
-                    device
-                ),
+                err_msg=f'Output has diff between inference and training forward at {device} ',
             )
 
         # Check whether the trt results and the GPU results are the same.
@@ -319,6 +318,7 @@ class InferencePassTest(unittest.TestCase):
             use_static,
             use_calib_mode,
             use_inspector=False,
+            inspector_serialize=False,
         ):
             self.workspace_size = workspace_size
             self.max_batch_size = max_batch_size
@@ -327,6 +327,7 @@ class InferencePassTest(unittest.TestCase):
             self.use_static = use_static
             self.use_calib_mode = use_calib_mode
             self.use_inspector = use_inspector
+            self.inspector_serialize = inspector_serialize
 
     class DynamicShapeParam:
         '''

@@ -30,7 +30,7 @@ def max_pool3d(
 ):
     """
     Implements sparse max pooling 3d operation.
-    See more details in :ref:`api_sparse_pooling_MaxPool3d` .
+    See more details in :ref:`api_paddle_sparse_nn_MaxPool3D` .
 
     Args:
         x (Tensor): The input SparseCooTensor of pooling operator, which is a 5-D tensor with
@@ -63,15 +63,16 @@ def max_pool3d(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.randn((1, 4, 4, 4, 3))
-            sparse_x = dense_x.to_sparse_coo(4)
-            kernel_sizes = [3, 3, 3]
-            paddings = [0, 0, 0]
-            strides = [1, 1, 1]
-            out = paddle.sparse.nn.functional.max_pool3d(sparse_x, kernel_sizes, stride=strides, padding=paddings)
-            #[1, 2, 2, 2, 3]
+            >>> dense_x = paddle.randn((1, 4, 4, 4, 3))
+            >>> sparse_x = dense_x.to_sparse_coo(4)
+            >>> kernel_sizes = [3, 3, 3]
+            >>> paddings = [0, 0, 0]
+            >>> strides = [1, 1, 1]
+            >>> out = paddle.sparse.nn.functional.max_pool3d(sparse_x, kernel_sizes, stride=strides, padding=paddings)
+            >>> print(out.shape)
+            [1, 2, 2, 2, 3]
     """
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"

@@ -15,13 +15,23 @@
 #pragma once
 
 #include "paddle/fluid/primitive/primitive/primitive.h"
-#include "paddle/ir/core/value.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
+#include "paddle/pir/core/value.h"
 
 namespace paddle {
 namespace primitive {
 
 using IntArray = paddle::experimental::IntArray;
+std::vector<std::vector<paddle::Tensor>> add_n_vjp(
+    const std::vector<paddle::Tensor>& x,
+    const Tensor& out_grad,
+    const std::vector<std::vector<bool>>& stop_gradients);
+
+std::vector<std::vector<paddle::Tensor>> reshape_vjp(
+    const Tensor& xshape,
+    const Tensor& out_grad,
+    const std::vector<std::vector<bool>>& stop_gradients);
+
 }  // namespace primitive
 }  // namespace paddle

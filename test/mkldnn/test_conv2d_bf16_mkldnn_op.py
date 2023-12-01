@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
+from op_test import OpTest, OpTestTool, convert_float_to_uint16
 from test_conv2d_op import TestConv2DOp, conv2d_forward_naive
 
 from paddle.base import core

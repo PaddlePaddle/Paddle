@@ -73,9 +73,7 @@ def normalize(S, norm=np.inf, axis=0, threshold=None, fill=None):
         threshold = tiny(S)
 
     elif threshold <= 0:
-        raise Exception(
-            "threshold={} must be strictly " "positive".format(threshold)
-        )
+        raise Exception(f"threshold={threshold} must be strictly " "positive")
 
     if fill not in [None, False, True]:
         raise Exception(f"fill={fill} must be None or boolean")
@@ -213,14 +211,13 @@ def dtype_r2c(d, default=np.complex64):
 def frame(x, frame_length, hop_length, axis=-1):
     if not isinstance(x, np.ndarray):
         raise Exception(
-            "Input must be of type numpy.ndarray, "
-            "given type(x)={}".format(type(x))
+            "Input must be of type numpy.ndarray, " f"given type(x)={type(x)}"
         )
 
     if x.shape[axis] < frame_length:
         raise Exception(
-            "Input is too short (n={:d})"
-            " for frame_length={:d}".format(x.shape[axis], frame_length)
+            f"Input is too short (n={x.shape[axis]:d})"
+            f" for frame_length={frame_length:d}"
         )
 
     if hop_length < 1:
@@ -228,18 +225,14 @@ def frame(x, frame_length, hop_length, axis=-1):
 
     if axis == -1 and not x.flags["F_CONTIGUOUS"]:
         print(
-            "librosa.util.frame called with axis={} "
-            "on a non-contiguous input. This will result in a copy.".format(
-                axis
-            )
+            f"librosa.util.frame called with axis={axis} "
+            "on a non-contiguous input. This will result in a copy."
         )
         x = np.asfortranarray(x)
     elif axis == 0 and not x.flags["C_CONTIGUOUS"]:
         print(
-            "librosa.util.frame called with axis={} "
-            "on a non-contiguous input. This will result in a copy.".format(
-                axis
-            )
+            f"librosa.util.frame called with axis={axis} "
+            "on a non-contiguous input. This will result in a copy."
         )
         x = np.ascontiguousarray(x)
 
@@ -274,9 +267,7 @@ def pad_center(data, size, axis=-1, **kwargs):
 
     if lpad < 0:
         raise Exception(
-            ("Target size ({:d}) must be " "at least input size ({:d})").format(
-                size, n
-            )
+            f"Target size ({size:d}) must be " f"at least input size ({n:d})"
         )
 
     return np.pad(data, lengths, **kwargs)
@@ -295,9 +286,7 @@ def get_window(window, Nx, fftbins=True):
         if len(window) == Nx:
             return np.asarray(window)
 
-        raise Exception(
-            "Window size mismatch: " "{:d} != {:d}".format(len(window), Nx)
-        )
+        raise Exception("Window size mismatch: " f"{len(window):d} != {Nx:d}")
     else:
         raise Exception(f"Invalid window specification: {window}")
 
@@ -350,18 +339,14 @@ def stft(
     if center:
         if n_fft > y.shape[-1]:
             print(
-                "n_fft={} is too small for input signal of length={}".format(
-                    n_fft, y.shape[-1]
-                )
+                f"n_fft={n_fft} is too small for input signal of length={y.shape[-1]}"
             )
 
         y = np.pad(y, int(n_fft // 2), mode=pad_mode)
 
     elif n_fft > y.shape[-1]:
         raise Exception(
-            "n_fft={} is too large for input signal of length={}".format(
-                n_fft, y.shape[-1]
-            )
+            f"n_fft={n_fft} is too large for input signal of length={y.shape[-1]}"
         )
 
     # Window the time series.
@@ -541,15 +526,15 @@ def overlap_add_for_api_test(x, hop_length, axis=-1):
         reshape_output = True
         if axis == 0:
             target_shape = [seq_length] + list(x.shape[2:])
-            x = x.reshape(n_frames, frame_length, np.product(x.shape[2:]))
+            x = x.reshape(n_frames, frame_length, np.prod(x.shape[2:]))
         else:
             target_shape = list(x.shape[:-2]) + [seq_length]
-            x = x.reshape(np.product(x.shape[:-2]), frame_length, n_frames)
+            x = x.reshape(np.prod(x.shape[:-2]), frame_length, n_frames)
 
     if axis == 0:
         x = x.transpose((2, 1, 0))
 
-    y = np.zeros(shape=[np.product(x.shape[:-2]), seq_length], dtype=x.dtype)
+    y = np.zeros(shape=[np.prod(x.shape[:-2]), seq_length], dtype=x.dtype)
     for i in range(x.shape[0]):
         for frame in range(x.shape[-1]):
             sample = frame * hop_length

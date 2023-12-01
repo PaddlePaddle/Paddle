@@ -35,7 +35,7 @@ void SplitCommandlineArg(const std::string& commandline,
     args.push_back(commandline.substr(start_pos, end_pos - start_pos));
   }
   args.push_back("");  // test empty argument
-  *argc = args.size();
+  *argc = static_cast<int>(args.size());
   *argv = new char*[*argc];
   for (size_t i = 0; i < args.size(); i++) {
     (*argv)[i] = const_cast<char*>(args[i].c_str());
@@ -52,8 +52,8 @@ TEST(flags_native_test, ParseCommandLineFlags) {
   std::string commandline =
       "test --paddle_test_int32=3 --paddle_test_uint32=\"4\" "
       "--paddle_test_string \"modified string\"";
-  int argc;
-  char** argv;
+  int argc = 0;
+  char** argv = nullptr;
   SplitCommandlineArg(commandline, &argc, &argv);
 
   // Parse commandline flags and check

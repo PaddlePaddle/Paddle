@@ -26,7 +26,6 @@ import argparse
 import collections
 import itertools
 import os
-import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, TypeVar
@@ -39,8 +38,8 @@ assert sorted(DEFAULT_ARCH) == DEFAULT_ARCH
 
 
 def find_arch_range(min_arch, max_arch):
-    assert min_arch >= DEFAULT_ARCH[0] and min_arch < MAX_ARCH
-    assert max_arch >= DEFAULT_ARCH[0] and max_arch < MAX_ARCH
+    assert min_arch >= DEFAULT_ARCH[0] and min_arch <= MAX_ARCH
+    assert max_arch >= DEFAULT_ARCH[0] and max_arch <= MAX_ARCH
     assert min_arch <= max_arch
     n = len(DEFAULT_ARCH)
 
@@ -93,6 +92,12 @@ def parse_args():
         type=convert_to_arch_list,
         default=convert_to_arch_list("All"),
         help="The CUDA architecture to be generated.",
+    )
+    parser.add_argument(
+        "--gen_dir",
+        type=str,
+        default="autogen_variable",
+        help="The directory to save the generated files.",
     )
     args = parser.parse_args()
     args.max_arch = find_max_arch(args.cuda_arch)
@@ -179,6 +184,7 @@ void  {NAME}({CPP_CLASS} default_fmha, Params &params, const phi::GPUContext& ct
       problem_count,
       threadblock_count,
       params.num_heads,
+      params.kv_num_heads,
       const_cast<scalar_t*>(reinterpret_cast<const scalar_t*>(params.query_ptr)),
       const_cast<scalar_t*>(reinterpret_cast<const scalar_t*>(params.key_ptr)),
       params.mask_ptr
@@ -398,7 +404,7 @@ void dispatch_{family_name}(const ::phi::GPUContext &ctx, T cb) {{
     declarations += "} // namespace phi\n"
     declarations += f"#endif // {enable_def}\n"
 
-    autogen_dir = Path(args.dst_path) / "autogen_variable"
+    autogen_dir = Path(args.dst_path) / args.gen_dir
     os.makedirs(autogen_dir, exist_ok=True)
     declaration_path = autogen_dir / f"{family_name}.h"
     declaration_path.write_text(declarations)
@@ -418,10 +424,10 @@ void dispatch_{family_name}(const ::phi::GPUContext &ctx, T cb) {{
 
 
 def write_main_header():
-    main_header_content = '''
+    main_header_content = f'''
 #pragma once
 
-#ifdef {}
+#ifdef {ENABLE_MACRO}
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -465,6 +471,7 @@ struct Params {{
   // Dimensions/strides
   int32_t num_batches;
   int32_t num_heads;
+  int32_t kv_num_heads;
   int32_t query_seq_len;
   int32_t key_value_seq_len;
   int32_t head_size;
@@ -542,18 +549,14 @@ struct ToPhiDTypeTrait {{
 #include "./cutlass_forward.h"
 
 #endif
-'''.format(
-        ENABLE_MACRO
-    )
+'''
 
-    path = Path(args.dst_path) / "autogen_variable"
+    path = Path(args.dst_path) / args.gen_dir
     os.makedirs(path, exist_ok=True)
     path = Path(path) / "memory_efficient_variable_attention.h"
     path.write_text(main_header_content)
 
 
-if os.path.exists(Path(args.dst_path) / "autogen_variable"):
-    shutil.rmtree(Path(args.dst_path) / "autogen_variable")
 forward_impl = "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen_variable/memory_efficient_variable_attention.h"
 
 write_main_header()

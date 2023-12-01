@@ -1796,9 +1796,7 @@ class OutScaleForInferencePass:
                     scale_var = self._scope.find_var(scale_name)
                     assert (
                         scale_var is not None
-                    ), "Can not find {} variable in the scope".format(
-                        scale_name
-                    )
+                    ), f"Can not find {scale_name} variable in the scope"
                     scale_value = np.array(scale_var.get_tensor())[0]
 
                     # For compatibility, we save output threshold by two methods.

@@ -169,12 +169,15 @@ paddle::Tensor CallScalarFuction(const paddle::Tensor& self_tensor,
                                  std::string op_type) {
   paddle::Tensor ret;
   if (op_type == "add" || op_type == "radd") {
-    ret = scale_ad_func(self_tensor, phi::Scalar(1.0), other, true);
+    ret = scale_ad_func(
+        self_tensor, phi::Scalar(1.0), static_cast<float>(other), true);
   } else if (op_type == "sub") {
-    ret = scale_ad_func(self_tensor, phi::Scalar(1.0), -other, true);
+    ret = scale_ad_func(
+        self_tensor, phi::Scalar(1.0), static_cast<float>(-other), true);
 
   } else if (op_type == "rsub") {
-    ret = scale_ad_func(self_tensor, phi::Scalar(-1.0), other, true);
+    ret = scale_ad_func(
+        self_tensor, phi::Scalar(-1.0), static_cast<float>(other), true);
   } else if (op_type == "mul") {
     ret = scale_ad_func(self_tensor, phi::Scalar(other), 0.0, true);
   } else if (op_type == "div") {
@@ -242,6 +245,11 @@ static PyObject* tensor__add__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -345,6 +353,11 @@ static PyObject* tensor__sub__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -440,6 +453,11 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -543,6 +561,11 @@ static PyObject* tensor__mul__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -649,6 +672,11 @@ static PyObject* tensor__div__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -771,6 +799,11 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -889,6 +922,11 @@ static PyObject* tensor__gt__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -979,6 +1017,11 @@ static PyObject* tensor__ge__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -1024,12 +1067,12 @@ static PyObject* tensor__mod__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar_mod function for __mod__ now
-  float other_double = 0.0;
+  float other_double = 0.0f;
   bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__mod__", 0);
+      other_double = CastPyArg2Double(other_obj, "__mod__", 0);  // NOLINT
       has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
@@ -1037,7 +1080,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__mod__", 0);
+      other_double = CastPyArg2Double(other_obj, "__mod__", 0);  // NOLINT
       has_other_double = true;
     }
   }
@@ -1068,6 +1111,11 @@ static PyObject* tensor__mod__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1114,12 +1162,12 @@ static PyObject* tensor__matmul__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar_matmul function for __matmul__ now
-  float other_double = 0.0;
+  float other_double = 0.0f;
   bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__matmul__", 0);
+      other_double = CastPyArg2Double(other_obj, "__matmul__", 0);  // NOLINT
       has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
@@ -1127,7 +1175,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__matmul__", 0);
+      other_double = CastPyArg2Double(other_obj, "__matmul__", 0);  // NOLINT
       has_other_double = true;
     }
   }
@@ -1158,6 +1206,11 @@ static PyObject* tensor__matmul__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1222,12 +1275,12 @@ static PyObject* tensor__lt__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar function for __lt__ now
-  float other_double = 0.0;
+  float other_double = 0.0f;
   bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__lt__", 0);
+      other_double = CastPyArg2Double(other_obj, "__lt__", 0);  // NOLINT
       has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
@@ -1235,7 +1288,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__lt__", 0);
+      other_double = CastPyArg2Double(other_obj, "__lt__", 0);  // NOLINT
       has_other_double = true;
     }
   }
@@ -1266,6 +1319,11 @@ static PyObject* tensor__lt__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1312,12 +1370,12 @@ static PyObject* tensor__le__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar function for __le__ now
-  float other_double = 0.0;
+  float other_double = 0.0f;
   bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__le__", 0);
+      other_double = CastPyArg2Double(other_obj, "__le__", 0);  // NOLINT
       has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
@@ -1325,7 +1383,7 @@ static PyObject* tensor__le__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__le__", 0);
+      other_double = CastPyArg2Double(other_obj, "__le__", 0);  // NOLINT
       has_other_double = true;
     }
   }
@@ -1356,6 +1414,11 @@ static PyObject* tensor__le__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1449,6 +1512,11 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -1536,6 +1604,11 @@ static PyObject* tensor__pow__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1630,6 +1703,11 @@ static PyObject* tensor__rpow__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -1720,6 +1798,11 @@ static PyObject* tensor__ne__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -1808,6 +1891,11 @@ static PyObject* tensor__eq__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var

@@ -27,7 +27,6 @@
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/core/tensor_array.h"
-#include "paddle/phi/core/type_defs.h"
 
 namespace phi {
 

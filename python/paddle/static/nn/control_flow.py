@@ -16,9 +16,17 @@ import warnings
 from functools import partial, reduce
 
 import paddle
+from paddle import _C_ops
 from paddle.base import core
 from paddle.base.backward import _infer_var_data_type_shape_
-from paddle.base.framework import Operator, Program, Variable, static_only
+from paddle.base.framework import (
+    Operator,
+    Program,
+    Variable,
+    in_pir_mode,
+    static_only,
+)
+from paddle.base.libpaddle.pir import build_if_op, cf_yield
 from paddle.common_ops_import import (
     LayerHelper,
     check_type,
@@ -415,8 +423,8 @@ class While:
     while loop control flow. Repeat while body until cond is False.
 
     Note:
-        A new OP :ref:`api_base_layers_while_loop` is highly recommended instead of ``While`` if the shape of parameter ``cond`` is [1].
-        OP :ref:`api_base_layers_while_loop` is easier to use and is called with less code but does the same thing as ``While`` .
+        A new OP :ref:`api_paddle_static_nn_while_loop` is highly recommended instead of ``While`` if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_paddle_static_nn_while_loop` is easier to use and is called with less code but does the same thing as ``While`` .
 
     Notice:
         Local variables created in ``While`` are similar to that created in while of C++, and cannot be referenced externally.
@@ -750,14 +758,8 @@ def _deal_with_undefined_var(output_vars, loop_vars):
 
 def _error_message(what, arg_name, op_name, right_value, error_value):
     error_message = (
-        "{what} of '{arg_name}' in {op_name} must be "
-        "{right_value}, but received: {error_value}.".format(
-            what=what,
-            arg_name=arg_name,
-            op_name=op_name,
-            right_value=right_value,
-            error_value=error_value,
-        )
+        f"{what} of '{arg_name}' in {op_name} must be "
+        f"{right_value}, but received: {error_value}."
     )
 
     return error_message
@@ -871,8 +873,8 @@ def case(pred_fn_pairs, default=None, name=None):
 
             if not callable(fn):
                 raise TypeError(
-                    "The fn for {} of pred_fn_pairs in Op(case) must"
-                    " be callable.".format(pred.name)
+                    f"The fn for {pred.name} of pred_fn_pairs in Op(case) must"
+                    " be callable."
                 )
 
         if default is None:
@@ -1043,9 +1045,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
 
             if key in keys_of_fns:
                 raise ValueError(
-                    "The key in 'branch_fns' must be unique, but '{}' appears more than once.".format(
-                        key
-                    )
+                    f"The key in 'branch_fns' must be unique, but '{key}' appears more than once."
                 )
             else:
                 keys_of_fns.append(key)
@@ -1213,6 +1213,39 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                 return false_fn()
         return None
 
+    if in_pir_mode():
+        if_op = build_if_op(pred)
+        true_output = None
+        false_output = None
+        if true_fn is not None:
+            if not callable(true_fn):
+                raise TypeError(
+                    "The true_fn in cond must be callable, but received {}".format(
+                        type(true_fn).__name__
+                    )
+                )
+        with if_op.true_block():
+            true_output = true_fn()
+            if true_output is not None:
+                cf_yield(flatten(true_output))
+        if false_fn is not None:
+            if not callable(false_fn):
+                raise TypeError(
+                    "The false_fn in cond must be callable, but received {}".format(
+                        type(false_fn).__name__
+                    )
+                )
+        with if_op.false_block():
+            false_output = false_fn()
+            if false_output is not None:
+                cf_yield(flatten(false_output))
+
+        if true_output is None and false_output is None:
+            return None
+
+        if_op.update_output()
+        return if_op.results()
+
     check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
     check_type(name, "name", (str, type(None)), "base.layers.cond")
     helper = LayerHelper('cond', **locals())
@@ -1350,7 +1383,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     def merge_every_var_list(false_vars, true_vars, name):
         return map_structure(partial(merge_func, name), false_vars, true_vars)
 
-    merged_output = list(
+    merged_output_fns = list(
         map(
             merge_every_var_list,
             _to_sequence_except_dict(false_output),
@@ -1358,6 +1391,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             _to_sequence_except_dict(return_names),
         )
     )
+    merged_output = map_structure(lambda fn: fn(), merged_output_fns)
     merged_output = pack_sequence_as(false_output, flatten(merged_output))
     return merged_output
 
@@ -1428,9 +1462,7 @@ def _select_input_infer_shape(first_shape, second_shape):
             f"the input shapes of select_input should have the same rank, but get {first_shape}, {second_shape}"
         )
         return second_shape
-    out_shape = list(
-        map(lambda a, b: a if a == b else -1, first_shape, second_shape)
-    )
+    out_shape = [a if a == b else -1 for a, b in zip(first_shape, second_shape)]
     return out_shape
 
 
@@ -1477,13 +1509,7 @@ def select_input_with_buildin_type(inputs, mask, name):
 
     false_var, true_var = inputs
 
-    if isinstance(false_var, UndefinedVar) and isinstance(
-        true_var, UndefinedVar
-    ):
-        """None -> UndefinedVar, so the real value is a [None, UndefinedVar] or [None, None], we just return None."""
-        return None
-
-    if isinstance(false_var, Variable) and isinstance(true_var, Variable):
+    def start_select_input():
         try:
             return select_input(inputs, mask)
         except Exception as e:
@@ -1491,11 +1517,20 @@ def select_input_with_buildin_type(inputs, mask, name):
                 f"Exceptions throwed while doing select_input on {name}:\n{e}"
             )
 
+    if isinstance(false_var, UndefinedVar) and isinstance(
+        true_var, UndefinedVar
+    ):
+        """None -> UndefinedVar, so the real value is a [None, UndefinedVar] or [None, None], we just return None."""
+        return lambda: None
+
+    if isinstance(false_var, Variable) and isinstance(true_var, Variable):
+        return start_select_input
+
     elif isinstance(false_var, support_ret_buildin_type) and isinstance(
         false_var, type(true_var)
     ):
         if false_var == true_var:
-            return false_var
+            return lambda: false_var
         else:
             inputs = [
                 to_static_variable(false_var),
@@ -1522,12 +1557,6 @@ def select_input_with_buildin_type(inputs, mask, name):
         isinstance(true_var, UndefinedVar)
         and isinstance(false_var, (Variable,) + support_ret_buildin_type)
     ):
-
-        def create_var_if_not_undefined_var(a):
-            if isinstance(a, UndefinedVar):
-                return a
-            return to_static_variable(a)
-
         true_var, false_var = to_static_variable(true_var), to_static_variable(
             false_var
         )
@@ -1539,12 +1568,7 @@ def select_input_with_buildin_type(inputs, mask, name):
                 type(false_var), type(true_var)
             )
         )
-    try:
-        return select_input(inputs, mask)
-    except Exception as e:
-        raise RuntimeError(
-            f"Exceptions throwed while doing select_input on {name}:\n{e}"
-        )
+    return start_select_input
 
 
 def _is_sequence_except_dict(x):
@@ -1719,11 +1743,27 @@ def Print(
     check_variable_and_dtype(
         input,
         'input',
-        ['float32', 'float64', 'int32', 'int64', 'bool'],
+        ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
         'paddle.static.Print',
     )
+    message = message or ""
+    helper = LayerHelper('print', **locals())
 
-    helper = LayerHelper('print' + "_" + input.name, **locals())
+    if in_pir_mode():
+        return _C_ops.print(
+            input,
+            first_n,
+            message,
+            summarize,
+            print_tensor_name,
+            print_tensor_type,
+            print_tensor_shape,
+            print_tensor_layout,
+            print_tensor_lod,
+            print_phase.upper(),
+            True,
+        )
+
     output = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
         type='print',

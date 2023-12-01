@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+)
 
 import paddle
 
@@ -40,9 +43,9 @@ net = ForwardNotExist()
 net.forward = "A string so that convert forward will fail"
 
 
-class TestConvertCall(unittest.TestCase):
+class TestConvertCall(Dy2StTestBase):
     # fallback mode will raise a InnerError, it's ok.
-    @ast_only_test
+    @test_ast_only
     def test_class_exception(self):
         @paddle.jit.to_static
         def call_not_exist():
@@ -68,7 +71,7 @@ class TestConvertCall(unittest.TestCase):
         self.assertEqual(callable_list(1, 2), 3)
 
 
-class TestConvertShapeCompare(unittest.TestCase):
+class TestConvertShapeCompare(Dy2StTestBase):
     def test_non_variable(self):
         self.assertEqual(
             paddle.jit.dy2static.convert_shape_compare(1, "<", 2), True
@@ -203,7 +206,7 @@ class ShapeLayer(paddle.nn.Layer):
         return out
 
 
-class TestChooseShapeAttrOrApiWithLayer(unittest.TestCase):
+class TestChooseShapeAttrOrApiWithLayer(Dy2StTestBase):
     def test_tensor_shape(self):
         x = paddle.zeros(shape=[4, 1], dtype='float32')
         net = ShapeLayer()
@@ -212,7 +215,7 @@ class TestChooseShapeAttrOrApiWithLayer(unittest.TestCase):
         np.testing.assert_array_equal(out.numpy(), x.numpy())
 
 
-class TestIfElseNoValue(unittest.TestCase):
+class TestIfElseNoValue(Dy2StTestBase):
     def test_else_ret_none(self):
         input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
 

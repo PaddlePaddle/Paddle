@@ -216,7 +216,7 @@ void EigvalsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
 
   // query workspace size
   T qwork;
-  int info;
+  int info = 0;
   funcs::lapackEig<T, dtype::Real<T>>('N',
                                       'N',
                                       static_cast<int>(n_dim),

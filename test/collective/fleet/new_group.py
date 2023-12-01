@@ -76,8 +76,6 @@ class TestNewGroupAPI:
         paddle.distributed.barrier(group=gp)
         print("test barrier api ok")
 
-        return
-
 
 if __name__ == "__main__":
     gpt = TestNewGroupAPI()

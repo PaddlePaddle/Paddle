@@ -55,7 +55,7 @@ class Flowers(Dataset):
         download (bool, optional): download dataset automatically if :attr:`data_file` is None. Default: True.
         backend (str, optional): Specifies which type of image to be returned:
             PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
-            If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,
+            If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_paddle_vision_get_image_backend>`,
             default backend is 'pil'. Default: None.
 
     Returns:
@@ -125,9 +125,7 @@ class Flowers(Dataset):
             backend = paddle.vision.get_image_backend()
         if backend not in ['pil', 'cv2']:
             raise ValueError(
-                "Expected backend are one of ['pil', 'cv2'], but got {}".format(
-                    backend
-                )
+                f"Expected backend are one of ['pil', 'cv2'], but got {backend}"
             )
         self.backend = backend
 

@@ -229,14 +229,12 @@ class FLCommunicator(Communicator):  # only for coordinator
             self.communicator_.start_coordinator(
                 self_endpoint, trainer_endpoints
             )
-        return
 
     def save_fl_strategy(self, mp):
         if self.communicator_ is not None:
             self.communicator_.save_fl_strategy(mp)
         else:
             raise ValueError("self.communicator_ is null")
-        return
 
     def query_fl_clients_info(self):
         info_mp = {}

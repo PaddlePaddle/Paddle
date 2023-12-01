@@ -439,8 +439,7 @@ function(op_library TARGET)
     "bitwise_op"
     "nccl_op"
     "tensor_array_read_write_op"
-    "tensorrt_engine_op"
-    "conv_fusion_op")
+    "tensorrt_engine_op")
 
     if("${TARGET}" STREQUAL "${manual_pybind_op}")
       set(pybind_flag 1)
@@ -683,6 +682,9 @@ function(prune_pybind_h)
 
   list(APPEND op_list "load_combine")
   list(APPEND op_list "tensorrt_engine")
+
+  # TODO(ming1753): conditional_block_infer is temporarily reserved here to avoid link errors in functions of standalone_executor
+  list(APPEND op_list "conditional_block_infer")
 
   # add fused_op in op_list
   list(APPEND op_list "fc")

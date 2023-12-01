@@ -42,9 +42,9 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/value.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/utils/string/string_helper.h"
 
 namespace paddle {

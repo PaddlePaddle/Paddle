@@ -73,7 +73,6 @@ def _reduce_in_static_mode(
             'root_id': dst_rank_in_group,
         },
     )
-    return None
 
 
 def reduce(

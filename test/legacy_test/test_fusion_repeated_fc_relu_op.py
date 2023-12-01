@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_fc_op import MatrixGenerate, fc_refer
 
 
@@ -78,7 +78,7 @@ class TestFusionRepeatedFCReluOp(OpTest):
         self.outputs = {'Out': outs[-1], 'ReluOut': relu_outs}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def set_conf(self):
         pass

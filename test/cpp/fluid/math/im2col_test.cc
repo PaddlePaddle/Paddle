@@ -89,7 +89,7 @@ void testIm2col() {
   std::array<float, 8> out_cfo_data = {0, 1, 1, 2, 3, 4, 4, 5};
   std::array<float, 8> out_ocf_data = {0, 1, 3, 4, 1, 2, 4, 5};
 
-  float* out_cfo_ptr;
+  float* out_cfo_ptr = nullptr;
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output_cfo.data<float>();
   } else {
@@ -101,7 +101,7 @@ void testIm2col() {
     EXPECT_EQ(out_cfo_ptr[i], out_cfo_data[i]);
   }
 
-  float* out_ocf_ptr;
+  float* out_ocf_ptr = nullptr;
   if (paddle::platform::is_cpu_place(*place)) {
     out_ocf_ptr = output_ocf.data<float>();
   } else {
@@ -130,7 +130,7 @@ void testIm2col() {
 
   col2im(*context, output_cfo, dilation, stride, padding, &input);
 
-  float* in_ptr;
+  float* in_ptr = nullptr;
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
@@ -364,7 +364,7 @@ void benchIm2col(int ic, int ih, int iw, int fh, int fw, int ph, int pw) {
   auto GetCurrentMs = []() -> double {
     struct timeval time;
     gettimeofday(&time, nullptr);
-    return 1e+3 * time.tv_sec + 1e-3 * time.tv_usec;
+    return 1e+3 * time.tv_sec + 1e-3 * time.tv_usec;  // NOLINT
   };
   auto t1 = GetCurrentMs();
   for (int i = 0; i < repeat; ++i) {

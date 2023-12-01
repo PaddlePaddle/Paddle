@@ -13,11 +13,19 @@
 # limitations under the License.
 
 from . import base
-from .base import *
+from .base import (
+    no_grad,
+    no_grad_,
+    grad,
+    guard,
+    enable_dygraph,
+    disable_dygraph,
+    enabled,
+    to_variable,
+)
 
 from . import tracer
-from .tracer import *
+from .tracer import Tracer
 
 
 __all__ = []
-__all__ += base.__all__

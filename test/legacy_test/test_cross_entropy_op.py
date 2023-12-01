@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard, randomize_probability
+from op_test import OpTest, paddle_static_guard, randomize_probability
 
 import paddle
 from paddle import base

@@ -34,13 +34,12 @@ __global__ void KernelBincount(const InputT* input,
                                const bool has_weights,
                                const T* weights,
                                OutT* output) {
-  if (!has_weights) {
-    for (int i = threadIdx.x; i < total_elements; i += blockDim.x) {
-      phi::CudaAtomicAdd(&output[input[i]], 1L);
-    }
-  } else {
-    for (int i = threadIdx.x; i < total_elements; i += blockDim.x) {
-      phi::CudaAtomicAdd(&output[input[i]], static_cast<OutT>(weights[i]));
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tid < total_elements) {
+    if (!has_weights) {
+      phi::CudaAtomicAdd(&output[input[tid]], 1L);
+    } else {
+      phi::CudaAtomicAdd(&output[input[tid]], static_cast<OutT>(weights[tid]));
     }
   }
 }

@@ -59,20 +59,11 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
             path = os.path.join(path, "static_save")
             protocol = 4
             paddle.static.save(prog, path, pickle_protocol=protocol)
-            # set var to zero
-            for var in prog.list_vars():
-                if isinstance(var, framework.Parameter) or var.persistable:
-                    ten = base.global_scope().find_var(var.name).get_tensor()
-                    ten.set(np.zeros_like(np.array(ten)), place)
 
-                    new_t = np.array(
-                        base.global_scope().find_var(var.name).get_tensor()
-                    )
-                    self.assertTrue(np.sum(np.abs(new_t)) == 0)
+            load_prog1 = paddle.static.Program()
+            paddle.static.load(load_prog1, path)
 
-            paddle.static.load(prog, path)
-
-            for var in prog.list_vars():
+            for var in load_prog1.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
@@ -80,20 +71,10 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
                     base_t = base_map[var.name]
                     np.testing.assert_array_equal(new_t, base_t)
 
-            # set var to zero
-            for var in prog.list_vars():
-                if isinstance(var, framework.Parameter) or var.persistable:
-                    ten = base.global_scope().find_var(var.name).get_tensor()
-                    ten.set(np.zeros_like(np.array(ten)), place)
-
-                    new_t = np.array(
-                        base.global_scope().find_var(var.name).get_tensor()
-                    )
-                    self.assertTrue(np.sum(np.abs(new_t)) == 0)
-
+            load_prog2 = paddle.static.Program()
             program_state = paddle.static.load_program_state(path)
-            paddle.static.set_program_state(prog, program_state)
-            for var in prog.list_vars():
+            paddle.static.set_program_state(load_prog2, program_state)
+            for var in load_prog2.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()

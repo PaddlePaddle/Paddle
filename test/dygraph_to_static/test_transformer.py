@@ -20,6 +20,7 @@ import unittest
 
 import numpy as np
 import transformer_util as util
+from dygraph_to_static_utils import Dy2StTestBase
 from transformer_dygraph_model import (
     CrossEntropyCriterion,
     Transformer,
@@ -524,7 +525,7 @@ def predict_static(args, batch_generator):
     return seq_ids, seq_scores
 
 
-class TestTransformer(unittest.TestCase):
+class TestTransformer(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 

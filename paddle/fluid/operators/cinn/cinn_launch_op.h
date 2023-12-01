@@ -29,9 +29,9 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/value.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 
 PHI_DECLARE_bool(enable_pe_launch_cinn);
 PHI_DECLARE_bool(enable_interpretercore_launch_cinn);

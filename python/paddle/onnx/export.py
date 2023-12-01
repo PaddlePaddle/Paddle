@@ -95,7 +95,7 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
         raise ValueError(
             "The input path MUST be format of dirname/file_prefix "
             "[dirname\\file_prefix in Windows system], but "
-            "the file_prefix is empty in received path: {}".format(path)
+            f"the file_prefix is empty in received path: {path}"
         )
     save_file = path + '.onnx'
 
@@ -104,5 +104,5 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
         save_file,
         input_spec=input_spec,
         opset_version=opset_version,
-        **configs
+        **configs,
     )

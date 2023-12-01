@@ -21,6 +21,7 @@
 #include <iostream>
 #include <vector>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
@@ -52,9 +53,9 @@ TEST(SkipRule, Basic) {
   ir::Tensor C = Compute(
       {M, N}, [&](Var i, Var j) { return A(i) + B(j); }, "C");
 
-  poly::StageMap stages = CreateStages({C});
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(
-      "TestSkipRule_Basic", stages, {C}, {}, {}, nullptr, target, true);
+  ast_gen_ius::TensorGroup tensor_group({C});
+  std::vector<ir::LoweredFunc> funcs =
+      lang::LowerToAstVec("TestSkipRule_Basic", {C}, &tensor_group, target);
 
   ir::Expr ast_expr = funcs[0]->body;
   VLOG(6) << "Expr before SkipRule: ";
@@ -101,9 +102,9 @@ TEST(SkipRule, ApplyOnSpecificBlock) {
   ir::Tensor C = Compute(
       {M, N}, [&](Var i, Var j) { return A(i) + B(j); }, "C");
 
-  poly::StageMap stages = CreateStages({C});
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(
-      "TestSkipRule_Basic", stages, {C}, {}, {}, nullptr, target, true);
+  ast_gen_ius::TensorGroup tensor_group({C});
+  std::vector<ir::LoweredFunc> funcs =
+      lang::LowerToAstVec("TestSkipRule_Basic", {C}, &tensor_group, target);
 
   ir::Expr ast_expr = funcs[0]->body;
   VLOG(6) << "Expr before SkipRule: ";

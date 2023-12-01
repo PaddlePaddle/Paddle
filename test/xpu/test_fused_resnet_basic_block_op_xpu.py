@@ -16,12 +16,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
 from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import OpTest
 
 import paddle
 from paddle import base, nn

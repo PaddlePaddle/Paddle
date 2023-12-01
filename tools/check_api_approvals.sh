@@ -43,22 +43,18 @@ api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/flu
 if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
     echo_line="You must have one RD (XiaoguangHu01, jeff41404, lanxianghit or qingqing01) approval for API change.\n"
     echo_line="${echo_line} and one TPM approval for API change: \n"
-    echo_line="${echo_line} jzhang533/ZhangJun, sunzhongkai588/SunZhongKai, dingjiaweiww/DingJiaWei, Ligoml/LiMengLiu for general APIs.\n"
-    echo_line="${echo_line} liuTINA0907/LiuShuangQiao for distributed related APIs.\n"
-    echo_line="${echo_line} leiqing1/LeiQing for inference related APIs.\n"
+    echo_line="${echo_line} jzhang533/ZhangJun, sunzhongkai588/SunZhongKai, Ligoml/LiMengLiu for general APIs.\n"
 
     check_approval 1 XiaoguangHu01 jeff41404 lanxianghit qingqing01
-    check_approval 1 jzhang533 sunzhongkai588 dingjiaweiww Ligoml liuTINA0907 leiqing1
+    check_approval 1 jzhang533 sunzhongkai588 Ligoml
 fi
 
 api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc`
 if [ "$api_doc_spec_diff" != "" ]; then
     echo_line="You must have  one TPM approval for API documents change: \n"
-    echo_line="${echo_line} jzhang533/ZhangJun, sunzhongkai588/SunZhongKai, dingjiaweiww/DingJiaWei, Ligoml/LiMengLiu for general API docs.\n"
-    echo_line="${echo_line} liuTINA0907/LiuShuangQiao for distributed related API docs.\n"
-    echo_line="${echo_line} leiqing1/LeiQing for inference related API docs.\n"
+    echo_line="${echo_line} jzhang533/ZhangJun, sunzhongkai588/SunZhongKai, Ligoml/LiMengLiu for general API docs.\n"
 
-    check_approval 1 jzhang533 sunzhongkai588 dingjiaweiww Ligoml liuTINA0907 leiqing1
+    check_approval 1 jzhang533 sunzhongkai588 Ligoml
 fi
 
 api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec ${BRANCH} ${PADDLE_ROOT}`
@@ -106,18 +102,6 @@ fi
 if [ "$inference_approve" != "" ]; then
     echo_line="You must have one RD (qingqing01(Recommend), heavengate) approval for the changes of `def` Inputs/Output/Attrs of OPs. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${inference_approve}\n"
     check_approval 1 qingqing01 heavengate
-fi
-
-filter_fluid=`git diff --name-only upstream/develop |  grep "py$" | grep "^test/"`
-filter_fluid+=" `git diff --name-only upstream/develop | grep "py$" | grep -v "^python/paddle/fluid"| grep "^python/paddle"`"
-has_fluid=`git diff -U0 upstream/$BRANCH -- $filter_fluid | grep '^\+' | grep -v '^++' | grep -E "(fluid\.)|(paddle\.fluid)"`
-if [ "${has_fluid}" != "" ]; then
-    for fluid in "${has_fluid}";
-    do
-        echo "${fluid}"
-    done
-    echo_line="You must have one RD (zoooo0820(Recommend), or jeff41404) approval for using fluid API, because fluid API is going to be removed.\n"
-    check_approval 1 zoooo0820 jeff41404
 fi
 
 

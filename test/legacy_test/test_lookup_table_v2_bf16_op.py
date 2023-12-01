@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import convert_uint16_to_float
+from op_test import convert_uint16_to_float
 from test_lookup_table_bf16_op import (
     TestLookupTableBF16Op,
     TestLookupTableBF16OpIds4D,
@@ -27,6 +27,7 @@ from test_lookup_table_bf16_op import (
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestLookupTableV2BF16Op(TestLookupTableBF16Op):
@@ -125,10 +126,12 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
             self.prog, feed={'x': self.ids}, fetch_list=['emb_weight', self.emb]
         )
 
+    @test_with_pir_api
     def test_embedding_weights(self):
         result = convert_uint16_to_float(self.result[0])
         np.testing.assert_array_equal(self.w_fp32, result)
 
+    @test_with_pir_api
     def test_lookup_results(self):
         lookup_result = convert_uint16_to_float(self.result[1])
         lookup_ref = _lookup(self.w_fp32, self.ids, self.flat_ids, self.op_type)

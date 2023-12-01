@@ -19,12 +19,14 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSortOnCPU(unittest.TestCase):
     def setUp(self):
         self.place = core.CPUPlace()
 
+    @test_with_pir_api
     def test_api_0(self):
         with base.program_guard(base.Program()):
             input = paddle.static.data(
@@ -43,6 +45,7 @@ class TestSortOnCPU(unittest.TestCase):
             np_result = np.sort(result)
             self.assertEqual((result == np_result).all(), True)
 
+    @test_with_pir_api
     def test_api_1(self):
         with base.program_guard(base.Program()):
             input = paddle.static.data(
@@ -93,3 +96,7 @@ class TestSortDygraph(unittest.TestCase):
             (np.sort(self.input_data, axis=-1) == out.numpy()).all(), True
         )
         paddle.enable_static()
+
+
+if __name__ == '__main__':
+    unittest.main()

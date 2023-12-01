@@ -133,7 +133,6 @@ class TestDistMatmul(unittest.TestCase):
     def check_col_program(self, main_program, dist_ctx):
         # [0, -1] * [-1, 1] --> [0, 1]
         ref_ops = [
-            "c_identity",
             "matmul_v2",
             "reduce_mean",
             "fill_constant",
@@ -252,7 +251,6 @@ class TestDistMatmulV2(unittest.TestCase):
     def check_col_program(self, main_program, dist_ctx):
         # [0, -1] * [-1, 1] --> [0, 1]
         ref_ops = [
-            "c_identity",
             "matmul_v2",
             "reduce_mean",
             "fill_constant",

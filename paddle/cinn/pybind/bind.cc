@@ -41,6 +41,8 @@ PYBIND11_MODULE(core_api, m) {
       "framework", "namespace cinn::hlir::framework, CINN framework");
   py::module utils =
       m.def_submodule("utils", "namespace cinn::utils, CINN framework");
+  py::module schedule = m.def_submodule(
+      "schedule", "namespace cinn::ir::schedule, CINN Schedule");
 
   BindRuntime(&runtime);
   BindCommon(&common);
@@ -53,6 +55,7 @@ PYBIND11_MODULE(core_api, m) {
   BindFrontend(&frontend);
   BindFramework(&framework);
   BindUtils(&utils);
+  BindSchedule(&schedule);
 }
 
 }  // namespace cinn::pybind

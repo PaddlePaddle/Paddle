@@ -24,7 +24,7 @@ from contextlib import closing
 sys.path.append("../legacy_test")
 
 import numpy as np
-from eager_op_test import convert_float_to_uint16, convert_uint16_to_float
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 import paddle.distributed as dist
@@ -125,7 +125,7 @@ class TestCollectiveAPIRunnerBase:
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        if args["use_comm_context"]:
+        if args["use_comm_context"] or args["dynamic_static_unified_comm"]:
             paddle.distributed.collective._init_parallel_env(args["backend"])
         else:
             paddle.distributed.init_parallel_env()
@@ -152,7 +152,13 @@ class TestCollectiveAPIRunnerBase:
                     reduce_type=args['reduce_type'],
                 )
                 if args["use_comm_context"]
-                else self.get_model(train_prog, startup_prog, rank)
+                else (
+                    self.get_model_new_comm(
+                        train_prog, startup_prog, rank, dtype=args['dtype']
+                    )
+                    if args["dynamic_static_unified_comm"]
+                    else self.get_model(train_prog, startup_prog, rank)
+                )
             )
             exe = base.Executor(place)
             exe.run(startup_prog)
@@ -182,6 +188,10 @@ def runtime_main(test_class, col_type):
     args["dtype"] = os.getenv("DTYPE")
     args["reduce_type"] = os.getenv("REDUCE_TYPE")
     args["use_comm_context"] = bool(int(os.getenv("USE_COMM_CONTEXT", "0")))
+    args["dynamic_static_unified_comm"] = bool(
+        os.getenv("FLAGS_dynamic_static_unified_comm", "false").lower()
+        == "true"
+    )
     model.run_trainer(args)
 
 
@@ -350,6 +360,7 @@ class TestDistBase(unittest.TestCase):
             "PATH_ID": path_id,
             "DTYPE": dtype,
             "REDUCE_TYPE": str(reduce_type),
+            "FLAGS_dynamic_static_unified_comm": "0",
         }
         required_envs.update(additional_envs)
         required_envs.update(need_envs)
@@ -599,16 +610,23 @@ class TestDistBase(unittest.TestCase):
                     send_ptr2 = send_ptr2 + global_expert_count2[idx]
             result1 = []
             result2 = []
+
+            def is_empyt_list(x):
+                if isinstance(x, list) and len(x) == 0:
+                    return True
+                return False
+
             for i in range(tot_expert):
                 for arr in output1[i]:
-                    if arr == []:
+                    if is_empyt_list(arr):
                         continue
                     result1.append(arr)
             for i in range(tot_expert):
                 for arr in output2[i]:
-                    if arr == []:
+                    if is_empyt_list(arr):
                         continue
                     result2.append(arr)
+
             if result1 == []:
                 output1 = np.array([])
             else:

@@ -191,7 +191,7 @@ void MultinomialKernel(const Context& dev_ctx,
 
     if (int_num_samples == 1) {
       ArgMaxKernel<T, Context>(
-          dev_ctx, rand, -1, true, false, 3 /*proto::VarType::INT64*/, out);
+          dev_ctx, rand, -1, true, false, DataType::INT64, out);
     } else {
       std::vector<int64_t> out_dim_vec = vectorize<int64_t>(out->dims());
       DenseTensor value = Empty<T, Context>(dev_ctx, IntArray(out_dim_vec));

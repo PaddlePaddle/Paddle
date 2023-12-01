@@ -78,8 +78,8 @@ class Group:
             return -1
 
     def __repr__(self):
-        debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
-            self.rank, self.nranks, self.id
+        debug_str = (
+            f"rank: {self.rank}, nranks: {self.nranks}, id: {self.id}, ranks: "
         )
         debug_str += ", ".join(map(str, self.ranks))
         debug_str += "; name: "
@@ -112,9 +112,7 @@ def _warn_cur_rank_not_in_group(group):
     global_rank = dist.get_rank()
     if group and not group.is_member():
         warnings.warn(
-            "Current global rank {} is not in group {}".format(
-                global_rank, group.name
-            )
+            f"Current global rank {global_rank} is not in group {group.name}"
         )
         return True
     return False
@@ -124,9 +122,7 @@ def _get_or_throw_group_rank(global_rank, group):
     group_rank = group.get_group_rank(global_rank)
     assert (
         group_rank >= 0
-    ), "The input rank {} can not be found inside the group {}".format(
-        global_rank, group.name
-    )
+    ), f"The input rank {global_rank} can not be found inside the group {group.name}"
     return group_rank
 
 

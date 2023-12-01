@@ -15,12 +15,13 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
 from testsuite import create_op
 
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -98,7 +99,8 @@ class TestMatMulV2Op(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            check_cinn=self.check_cinn if hasattr(self, 'check_cinn') else True
+            check_cinn=self.check_cinn if hasattr(self, 'check_cinn') else True,
+            check_pir=True,
         )
 
     def test_check_grad(self):
@@ -110,6 +112,7 @@ class TestMatMulV2Op(OpTest):
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
                 else True,
+                check_pir=True,
             )
         else:
             self.check_grad(
@@ -118,6 +121,7 @@ class TestMatMulV2Op(OpTest):
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
                 else True,
+                check_pir=True,
             )
 
 
@@ -359,6 +363,7 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                         check_cinn=self.check_cinn
                         if hasattr(self, 'check_cinn')
                         else True,
+                        check_pir=True,
                     )
 
         def test_check_grad(self):
@@ -372,6 +377,7 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                     check_cinn=self.check_cinn
                     if hasattr(self, 'check_cinn')
                     else True,
+                    check_pir=True,
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
@@ -431,6 +437,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
                 else True,
+                check_pir=True,
             )
 
         def test_check_grad_x(self):
@@ -447,6 +454,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
                 else True,
+                check_pir=True,
             )
 
         def test_check_grad_y(self):
@@ -463,6 +471,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
                 else True,
+                check_pir=True,
             )
 
         def test_check_grad(self):
@@ -499,7 +508,10 @@ class TestMatMulV2API(unittest.TestCase):
             self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input_x = paddle.static.data(
                 name="input_x", shape=[4, 3], dtype="float32"
             )
@@ -514,11 +526,13 @@ class TestMatMulV2API(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={"input_x": x_np, "input_y": y_np},
                 fetch_list=[result],
             )
+        paddle.disable_static()
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -735,7 +749,7 @@ class TestInt32MatmulOp(OpTest):
         self.out = np.matmul(self.x, self.y)
 
     def test_check_output(self):
-        self.check_output(check_cinn=False)
+        self.check_output(check_cinn=False, check_pir=True)
 
 
 class TestInt32MatMulOpBroadcast(OpTest):
@@ -787,7 +801,7 @@ class TestInt64MatmulOp(OpTest):
         self.out = np.matmul(self.x, self.y)
 
     def test_check_output(self):
-        self.check_output(check_cinn=False)
+        self.check_output(check_cinn=False, check_pir=True)
 
 
 class TestInt64MatMulOpBroadcast(OpTest):

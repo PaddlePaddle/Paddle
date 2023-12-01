@@ -24,11 +24,11 @@
 #include "paddle/cinn/common/arithmatic.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -304,6 +304,33 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
       }
       expr->As<ir::Block>()->stmts = stmts;
     }
+  }
+
+  void Visit(const ScheduleBlock* op, Expr* expr) override {
+    auto* node = expr->As<ScheduleBlock>();
+    CHECK(node);
+    for (auto& var : node->iter_vars) {
+      if (var->lower_bound.defined()) {
+        Visit(&var->lower_bound, &var->lower_bound);
+      }
+      if (var->upper_bound.defined()) {
+        Visit(&var->upper_bound, &var->upper_bound);
+      }
+    }
+    for (auto& buffer_region : node->read_buffers) {
+      Visit(&buffer_region, &buffer_region);
+    }
+    for (auto& buffer_region : node->write_buffers) {
+      Visit(&buffer_region, &buffer_region);
+    }
+
+    if (node->body.As<Block>()) {
+      if (node->body.As<Block>()->stmts.size() == 1) {
+        node->body = node->body.As<Block>()->stmts[0];
+      }
+    }
+
+    Visit(&(node->body), &(node->body));
   }
 };
 

@@ -33,9 +33,9 @@
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 
 namespace cinn {
@@ -82,6 +82,7 @@ VisitDoNothing(ScheduleBlockRealize);
 VisitDoNothing(Ramp);
 VisitDoNothing(_Buffer_);
 VisitDoNothing(_BufferRange_);
+VisitDoNothing(_Dim_);
 
 #define NotVisitExprFields(NodeType) \
   void FeatureExtractor::Visit(const NodeType *x) {}
@@ -218,7 +219,7 @@ void FeatureExtractor::Visit(const For *x) {
 }
 
 void FeatureExtractor::Visit(const PolyFor *x) {
-  Expr copy = optim::IRCopy(Expr(x));
+  Expr copy = ir::ir_utils::IRCopy(Expr(x));
   feature_.IntoLoopBlock();
   optim::TransformPolyForToFor(&copy);
   ir::For *loop = copy.As<For>();

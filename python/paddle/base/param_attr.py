@@ -13,13 +13,10 @@
 # limitations under the License.
 
 import paddle
-from paddle.regularizer import WeightDecayRegularizer
 from paddle.base.data_feeder import check_type
+from paddle.regularizer import WeightDecayRegularizer
 
-__all__ = [
-    'ParamAttr',
-    'WeightNormParamAttr',
-]
+__all__ = []
 
 
 class ParamAttr:
@@ -61,14 +58,15 @@ class ParamAttr:
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            weight_attr = paddle.ParamAttr(name="weight",
-                                           learning_rate=0.5,
-                                           regularizer=paddle.regularizer.L2Decay(1.0),
-                                           trainable=True)
-            print(weight_attr.name) # "weight"
-            paddle.nn.Linear(3, 4, weight_attr=weight_attr)
+            >>> weight_attr = paddle.ParamAttr(name="weight",
+            ...                                 learning_rate=0.5,
+            ...                                 regularizer=paddle.regularizer.L2Decay(1.0),
+            ...                                 trainable=True)
+            >>> print(weight_attr.name)
+            weight
+            >>> paddle.nn.Linear(3, 4, weight_attr=weight_attr)
     """
 
     def __init__(
@@ -173,7 +171,7 @@ class ParamAttr:
         """
         if arg is None:
             return ParamAttr()
-        elif isinstance(arg, list) or isinstance(arg, tuple):
+        elif isinstance(arg, (list, tuple)):
             return [ParamAttr._to_attr(a) for a in arg]
         elif isinstance(arg, ParamAttr):
             return arg
@@ -186,7 +184,7 @@ class ParamAttr:
         elif isinstance(arg, bool):
             return ParamAttr._to_attr(None) if arg else False
         else:
-            raise TypeError("{0} cast to ParamAttr".format(type(arg)))
+            raise TypeError(f"{type(arg)} cast to ParamAttr")
 
     def _to_kwargs(self, with_initializer=False):
         """
@@ -259,24 +257,24 @@ class WeightNormParamAttr(ParamAttr):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            data = paddle.static.data(name="data", shape=[3, 32, 32], dtype="float32")
+            >>> data = paddle.static.data(name="data", shape=[3, 32, 32], dtype="float32")
 
-            fc = paddle.static.nn.fc(x=data,
-                                     size=1000,
-                                     weight_attr=paddle.static.WeightNormParamAttr(
-                                         dim=None,
-                                         name='weight_norm_param',
-                                         initializer=paddle.nn.initializer.Constant(1.0),
-                                         learning_rate=1.0,
-                                         regularizer=paddle.regularizer.L2Decay(0.1),
-                                         trainable=True,
-                                         do_model_average=False,
-                                         need_clip=True))
-
+            >>> fc = paddle.static.nn.fc(x=data,
+            ...                             size=1000,
+            ...                             weight_attr=paddle.static.WeightNormParamAttr(
+            ...                                 dim=None,
+            ...                                 name='weight_norm_param',
+            ...                                 initializer=paddle.nn.initializer.Constant(1.0),
+            ...                                 learning_rate=1.0,
+            ...                                 regularizer=paddle.regularizer.L2Decay(0.1),
+            ...                                 trainable=True,
+            ...                                 do_model_average=False,
+            ...                                 need_clip=True))
+            ...
     """
     # List to record the parameters reparameterized by weight normalization.
     # If these parameters are treated as Variable rather than Parameter,

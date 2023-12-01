@@ -85,7 +85,7 @@ InterceptorMessage ComputeInterceptor::PrepareVarsMsg() {
   ready_msg.set_message_type(DATA_WITH_VARS);
   ready_msg.set_scope_idx(cur_scope_id_);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  for (auto iter : node_->vars_to_dtype()) {
+  for (auto const& iter : node_->vars_to_dtype()) {
     VarList* vars = ready_msg.add_vars_list();
     const auto& var_name = iter.first;
     vars->set_name(var_name);
@@ -346,6 +346,16 @@ void ComputeInterceptor::Run() {
     SendDataReadyToDownStream();
     // reply to upstream and decrease ready data
     ReplyCompletedToUpStream();
+    // clear TensorArray
+    auto vars_names = microbatch_scopes_[cur_scope_id_]->LocalVarNames();
+    for (auto var_name : vars_names) {
+      if (var_name == "feed" || var_name == "fetch") continue;
+      auto* var = microbatch_scopes_[cur_scope_id_]->Var(var_name);
+      if (var != nullptr && var->IsType<framework::LoDTensorArray>()) {
+        auto* lod_tensor_arr = var->GetMutable<framework::LoDTensorArray>();
+        lod_tensor_arr->clear();
+      }
+    }
   }
 }
 

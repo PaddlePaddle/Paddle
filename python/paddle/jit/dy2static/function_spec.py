@@ -18,7 +18,9 @@ import inspect
 import numpy as np
 
 import paddle
+import paddle.pir.core as ir_static
 from paddle.base import core
+from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.jit.translated_layer import TranslatedLayer
 from paddle.nn.layer import layers
@@ -169,6 +171,34 @@ class FunctionSpec:
         )
 
         return args_with_spec, kwargs_with_spec
+
+    @switch_to_static_graph
+    def pir_to_static_inputs_with_spec(self, input_with_spec, main_program):
+        """
+        Constructs feed layer by inputs with InputSpec information for main program.
+
+        Args:
+            input_with_spec(tuple): input arguments by replacing argument with InputSpec.
+            main_program(Program): main program for inserting feed layer.
+        """
+        flat_input_spec = paddle.utils.flatten(input_with_spec)
+
+        inputs = []
+        with ir_static.program_guard(main_program):
+            for i, var_spec in enumerate(flat_input_spec):
+                if isinstance(var_spec, paddle.static.InputSpec):
+                    stop_gradient = getattr(var_spec, 'stop_gradient', False)
+                    feed_value = paddle.static.input.data(
+                        name=var_spec.name or "feed_%s" % i,
+                        shape=var_spec.shape,
+                        dtype=convert_dtype(var_spec.dtype),
+                    )
+                    feed_value.stop_gradient = stop_gradient
+                else:
+                    feed_value = var_spec
+                inputs.append(feed_value)
+
+        return paddle.utils.pack_sequence_as(input_with_spec, inputs)
 
     @switch_to_static_graph
     def to_static_inputs_with_spec(self, input_with_spec, main_program):
@@ -365,9 +395,7 @@ def convert_to_input_spec(inputs, input_spec):
     def check_type_and_len(input, spec, check_length=False):
         if type(input) is not type(spec):
             raise TypeError(
-                'type(input) should be {}, but received {}.'.format(
-                    type(spec), type(input)
-                )
+                f'type(input) should be {type(spec)}, but received {type(input)}.'
             )
         if check_length and len(input) < len(spec):
             raise ValueError(
@@ -414,9 +442,7 @@ def convert_to_input_spec(inputs, input_spec):
         real_spec = _replace_value_with_input_spec([inputs])[0]
         if not isinstance(real_spec, paddle.static.InputSpec):
             raise RuntimeError(
-                "Give input spec into a non-tensorable arguments `{}`.".format(
-                    inputs
-                )
+                f"Give input spec into a non-tensorable arguments `{inputs}`."
             )
         real_spec.name = input_spec.name
         if spec_greater(input_spec, real_spec):
@@ -424,9 +450,7 @@ def convert_to_input_spec(inputs, input_spec):
             real_spec.shape = input_spec.shape
         else:
             logging_utils.warn(
-                "input spec is not compatitable with real inputs. input_spec: {input_spec} , real_spec: {real_spec} ".format(
-                    input_spec=input_spec, real_spec=real_spec
-                )
+                f"input spec is not compatitable with real inputs. input_spec: {input_spec} , real_spec: {real_spec} "
             )
         return real_spec
     else:

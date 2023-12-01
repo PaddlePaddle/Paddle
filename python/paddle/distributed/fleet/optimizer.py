@@ -72,12 +72,17 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
             if fleet_env._user_defined_strategy.hybrid_configs[
                 "pp_configs"
             ].dp_comm_overlap:
+                # grad all-reduce of dp and sep with be fused
                 hp_optim._dp_enable = False
+                hp_optim._sep_enable = False
 
             if fleet_env._user_defined_strategy.hybrid_configs[
                 "pp_configs"
             ].sharding_comm_overlap:
                 hp_optim._sharding_enable = False
+                assert (
+                    not hp_optim._sep_enable
+                ), "sep parallel can not coexist with sharding_comm_overlap"
 
             return hp_optim
         else:

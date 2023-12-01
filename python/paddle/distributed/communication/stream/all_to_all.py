@@ -123,8 +123,6 @@ def _all_to_all_in_static_mode(
                 paddle.split(out_tensor, nranks, 0)
             )
 
-    return None
-
 
 def alltoall(
     out_tensor_or_tensor_list,

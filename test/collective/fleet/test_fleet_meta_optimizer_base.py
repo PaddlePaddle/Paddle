@@ -59,7 +59,6 @@ class TestFleetMetaOptimizerBase(unittest.TestCase):
                     paddle.static.default_startup_program(),
                     params_grads,
                 )
-        return None
 
     net(base.default_startup_program(), base.default_main_program())
 

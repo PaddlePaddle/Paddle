@@ -392,10 +392,10 @@ static void TestGradientAccumulatorTestUnchangeInput(
   int64_t maximum_row_number = 100;
 
   std::uniform_int_distribution<int64_t> dist(1, maximum_row_number);
-  int seed;
+  int seed = 0;
   {
     std::random_device rd;
-    seed = rd();
+    seed = static_cast<int>(rd());
   }
 
   std::mt19937 engine(seed);

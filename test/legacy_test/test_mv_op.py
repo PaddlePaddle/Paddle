@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle.static import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestMVOp(OpTest):
@@ -30,10 +30,10 @@ class TestMVOp(OpTest):
         self.outputs = {'Out': np.dot(self.x, self.vec)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Vec'], 'Out')
+        self.check_grad(['X', 'Vec'], 'Out', check_pir=True)
 
     def init_config(self):
         self.x = np.random.random((2, 100)).astype("float64")
@@ -55,18 +55,18 @@ class TestMVAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static_graph(self):
         for x_stop_gradient in [False, True]:
             for vec_stop_gradient in [False, True]:
                 paddle.enable_static()
 
-                train_program = Program()
-                startup_program = Program()
-
                 self.input_x = np.random.rand(5, 100).astype("float64")
                 self.input_vec = np.random.rand(100).astype("float64")
 
-                with program_guard(train_program, startup_program):
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
                     data_x = paddle.static.data(
                         "x", shape=[5, 100], dtype="float64"
                     )
@@ -90,6 +90,7 @@ class TestMVAPI(unittest.TestCase):
 
 
 class TestMVError(unittest.TestCase):
+    @test_with_pir_api
     def test_input(self):
         def test_shape():
             paddle.enable_static()

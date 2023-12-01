@@ -168,9 +168,9 @@ class TestFillConstantOpValue(TestCaseHelper):
             {"dtype": None},
         ]
         self.attrs = [
-            {"value": bool(True)},
-            {"value": int(123)},
-            {"value": float(123.456)},
+            {"value": True},
+            {"value": 123},
+            {"value": 123.456},
         ]
 
 

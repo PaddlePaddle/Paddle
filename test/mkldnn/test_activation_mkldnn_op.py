@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
+from op_test import OpTest, convert_float_to_uint16
 from test_activation_op import (
     TestAbs,
     TestAbs_ZeroDim,
@@ -482,6 +482,14 @@ class TestMKLDNNRound(TestActivation):
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_pir=True)
+
 
 class TestMKLDNNRound_ZeroDim(TestActivation_ZeroDim):
     def setUp(self):
@@ -493,6 +501,14 @@ class TestMKLDNNRound_ZeroDim(TestActivation_ZeroDim):
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestMKLDNNSigmoidDim4(TestSigmoid):

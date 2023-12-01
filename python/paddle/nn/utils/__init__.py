@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .clip_grad_norm_ import clip_grad_norm_
+from .clip_grad_value_ import clip_grad_value_
 from .spectral_norm_hook import spectral_norm
-from .weight_norm_hook import weight_norm, remove_weight_norm  # noqa: F401
 from .transform_parameters import (
+    _stride_column,  # noqa: F401
     parameters_to_vector,
     vector_to_parameters,
-    _stride_column,
-)  # noqa: F401
-from .clip_grad_norm_ import clip_grad_norm_  # noqa: F401
-from .clip_grad_value_ import clip_grad_value_  # noqa: F401
+)
+from .weight_norm_hook import remove_weight_norm, weight_norm
 
-__all__ = [  # noqa
+__all__ = [
     'weight_norm',
     'remove_weight_norm',
     'spectral_norm',

@@ -23,7 +23,7 @@ def numpy_unflatten(x, axis, shape):
     if isinstance(shape, (list, tuple)):
         if len(shape) == 0:
             raise ValueError("The input for shape cannot be empty.")
-        if isinstance(shape, list) or isinstance(shape, tuple):
+        if isinstance(shape, (list, tuple)):
             if np.min(shape) < -1:
                 raise ValueError(f"invalid shape dimension {np.min(shape)}.")
             if shape.count(-1) > 1:

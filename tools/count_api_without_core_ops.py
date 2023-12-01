@@ -38,9 +38,7 @@ def md5(doc):
     except UnicodeDecodeError as e:
         md5sum = None
         print(
-            "Error({}) occurred when `md5({})`, discard it.".format(
-                str(e), doc
-            ),
+            f"Error({str(e)}) occurred when `md5({doc})`, discard it.",
             file=sys.stderr,
         )
     return md5sum
@@ -111,9 +109,7 @@ def visit_member(parent_name, member, func):
         return
     else:
         raise RuntimeError(
-            "Unsupported generate signature of member, type {}".format(
-                str(type(member))
-            )
+            f"Unsupported generate signature of member, type {str(type(member))}"
         )
 
 

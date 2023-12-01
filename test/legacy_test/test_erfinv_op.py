@@ -15,11 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 from scipy.special import erfinv
 
 import paddle
@@ -48,7 +44,7 @@ class TestErfinvOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -56,6 +52,7 @@ class TestErfinvOp(OpTest):
             'Out',
             user_defined_grads=[self.gradient],
             user_defined_grad_outputs=self.grad_out,
+            check_pir=True,
         )
 
 
@@ -147,15 +144,11 @@ class TestErfinvBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            ['X'],
-            'Out',
-        )
+        self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 
 if __name__ == "__main__":

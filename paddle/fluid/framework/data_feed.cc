@@ -108,10 +108,10 @@ class BufferedLineFileReader {
         uniform_distribution_(0.0f, 1.0f) {
     total_len_ = 0;
     sample_line_ = 0;
-    buff_ =
-        reinterpret_cast<char*>(calloc(MAX_FILE_BUFF_SIZE + 1, sizeof(char)));
+    buff_ = reinterpret_cast<char*>(
+        calloc(MAX_FILE_BUFF_SIZE + 1, sizeof(char)));  // NOLINT
   }
-  ~BufferedLineFileReader() { free(buff_); }
+  ~BufferedLineFileReader() { free(buff_); }  // NOLINT
 
   int read_file(FILE* fp, LineFunc func, int skip_lines) {
     FILEReader reader(fp);
@@ -1808,7 +1808,7 @@ int PaddleBoxDataFeed::Next() {
       output_pv_channel_->Get(pv_instance);
       pv_vec.push_back(pv_instance);
       ++index;
-      consume_pv_channel_->Put(std::move(pv_instance));
+      consume_pv_channel_->Put(pv_instance);
     }
     this->batch_size_ = index;
     VLOG(3) << "pv_batch_size_=" << this->batch_size_
@@ -2448,9 +2448,9 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
     }
     // parse_logkey
     std::string log_key = std::string(str + pos, len);
-    uint64_t search_id;
-    uint32_t cmatch;
-    uint32_t rank;
+    uint64_t search_id = 0;
+    uint32_t cmatch = 0;
+    uint32_t rank = 0;
     parser_log_key(log_key, &search_id, &cmatch, &rank);
 
     rec->ins_id_ = log_key;

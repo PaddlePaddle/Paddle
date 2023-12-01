@@ -42,7 +42,7 @@ void FuseGemmEpiloguePass::ApplyImpl(ir::Graph *graph) const {
   graph = FuseLinearActBwd(graph, {"relu_grad"}, true, &cache);
   graph = FuseLinearActBwd(graph, {"gelu_grad"}, false, &cache);
   graph = FuseLinearBwd(graph, false);
-  graph = FuseLinearBwd(graph, true);
+  graph = FuseLinearBwd(graph, true);  // NOLINT
 }
 
 ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
@@ -83,7 +83,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
     auto matmul_op_desc = matmul_op->Op();
     if (!IsGemmFromLinear_(matmul_x_shape, matmul_w_shape)) return;
 
-    bool trans_x, trans_y;
+    bool trans_x = false, trans_y = false;
     GetTransposeAttrsFromOp(*matmul_op_desc, &trans_x, &trans_y);
 
     OpDesc fused_gemm_epilogue_op_desc(matmul_op->Op()->Block());
@@ -168,7 +168,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
 
     auto activation = act_op->Op()->Type();
 
-    bool trans_x, trans_y;
+    bool trans_x = false, trans_y = false;
     GetTransposeAttrsFromOp(*matmul_op_desc, &trans_x, &trans_y);
 
     OpDesc fused_gemm_epilogue_op_desc(matmul_op->Op()->Block());
@@ -291,7 +291,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
     auto matmul_grad_op_desc = matmul_grad_op->Op();
     if (!IsGemmFromLinear_(matmul_grad_x_shape, matmul_grad_w_shape)) return;
 
-    bool trans_x, trans_y;
+    bool trans_x = false, trans_y = false;
     GetTransposeAttrsFromOp(*matmul_grad_op_desc, &trans_x, &trans_y);
 
     OpDesc fused_gemm_epilogue_grad_op_desc(ele_add_grad_op->Op()->Block());
@@ -319,10 +319,12 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
     auto ele_add_grad_op_role_val =
         details::GetOpRoleVarsOrEmpty(*(ele_add_grad_op->Op()));
     std::vector<std::string> fused_gemm_epilogue_grad_op_role_var;
-    for (auto i : matmul_grad_op_role_val) {
+    fused_gemm_epilogue_grad_op_role_var.reserve(
+        matmul_grad_op_role_val.size());
+    for (auto const &i : matmul_grad_op_role_val) {
       fused_gemm_epilogue_grad_op_role_var.push_back(i);
     }
-    for (auto i : ele_add_grad_op_role_val) {
+    for (auto const &i : ele_add_grad_op_role_val) {
       fused_gemm_epilogue_grad_op_role_var.push_back(i);
     }
     fused_gemm_epilogue_grad_op_desc.SetAttr(
@@ -430,7 +432,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
 
     auto activation_grad = act_grad_op->Op()->Type();
 
-    bool trans_x, trans_y;
+    bool trans_x = false, trans_y = false;
     GetTransposeAttrsFromOp(*matmul_grad_op_desc, &trans_x, &trans_y);
     OpDesc fused_gemm_epilogue_grad_op_desc(ele_add_grad_op->Op()->Block());
     fused_gemm_epilogue_grad_op_desc.SetType("fused_gemm_epilogue_grad");
@@ -455,10 +457,12 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
     auto ele_add_grad_op_role_val =
         details::GetOpRoleVarsOrEmpty(*(ele_add_grad_op->Op()));
     std::vector<std::string> fused_gemm_epilogue_grad_op_role_var;
-    for (auto i : matmul_grad_op_role_val) {
+    fused_gemm_epilogue_grad_op_role_var.reserve(
+        matmul_grad_op_role_val.size());
+    for (auto const &i : matmul_grad_op_role_val) {
       fused_gemm_epilogue_grad_op_role_var.push_back(i);
     }
-    for (auto i : ele_add_grad_op_role_val) {
+    for (auto const &i : ele_add_grad_op_role_val) {
       fused_gemm_epilogue_grad_op_role_var.push_back(i);
     }
     fused_gemm_epilogue_grad_op_desc.SetAttr(

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import _set_use_system_allocator
+from op_test import _set_use_system_allocator
 from test_batch_norm_op_prim_nchw import TestBatchNormOp
 
 import paddle
@@ -161,6 +161,8 @@ class TestBatchNormOpNHWCbf16(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NHWC"
         self.use_global_stats = None
+        # Todo(CZ): open this
+        self.check_prim_pir = False
 
 
 class TestBatchNormOpNHWCShape2(TestBatchNormOp):

@@ -37,19 +37,15 @@ class Attr:
 
     def set_dtype(self, dtype) -> None:
         self.dtype = dtype
-        return
 
     def set_keepdim(self, keepdim) -> None:
         self.keepdim = keepdim
-        return
 
     def set_axis(self, axis) -> None:
         self.axis = axis
-        return
 
     def set_shape(self, shape) -> None:
         self.shape = shape
-        return
 
     def get_rtol(self, flag):
         rtol = TOLERANCE[self.dtype][flag].get("rtol")

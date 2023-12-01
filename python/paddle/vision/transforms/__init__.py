@@ -12,46 +12,50 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .transforms import BaseTransform  # noqa: F401
-from .transforms import Compose  # noqa: F401
-from .transforms import Resize  # noqa: F401
-from .transforms import RandomResizedCrop  # noqa: F401
-from .transforms import CenterCrop  # noqa: F401
-from .transforms import RandomHorizontalFlip  # noqa: F401
-from .transforms import RandomVerticalFlip  # noqa: F401
-from .transforms import Transpose  # noqa: F401
-from .transforms import Normalize  # noqa: F401
-from .transforms import BrightnessTransform  # noqa: F401
-from .transforms import SaturationTransform  # noqa: F401
-from .transforms import ContrastTransform  # noqa: F401
-from .transforms import HueTransform  # noqa: F401
-from .transforms import ColorJitter  # noqa: F401
-from .transforms import RandomCrop  # noqa: F401
-from .transforms import Pad  # noqa: F401
-from .transforms import RandomAffine  # noqa: F401
-from .transforms import RandomRotation  # noqa: F401
-from .transforms import RandomPerspective  # noqa: F401
-from .transforms import Grayscale  # noqa: F401
-from .transforms import ToTensor  # noqa: F401
-from .transforms import RandomErasing  # noqa: F401
-from .functional import to_tensor  # noqa: F401
-from .functional import hflip  # noqa: F401
-from .functional import vflip  # noqa: F401
-from .functional import resize  # noqa: F401
-from .functional import pad  # noqa: F401
-from .functional import affine  # noqa: F401
-from .functional import rotate  # noqa: F401
-from .functional import perspective  # noqa: F401
-from .functional import to_grayscale  # noqa: F401
-from .functional import crop  # noqa: F401
-from .functional import center_crop  # noqa: F401
-from .functional import adjust_brightness  # noqa: F401
-from .functional import adjust_contrast  # noqa: F401
-from .functional import adjust_hue  # noqa: F401
-from .functional import normalize  # noqa: F401
-from .functional import erase  # noqa: F401
+from .functional import (
+    adjust_brightness,
+    adjust_contrast,
+    adjust_hue,
+    affine,
+    center_crop,
+    crop,
+    erase,
+    hflip,
+    normalize,
+    pad,
+    perspective,
+    resize,
+    rotate,
+    to_grayscale,
+    to_tensor,
+    vflip,
+)
+from .transforms import (
+    BaseTransform,
+    BrightnessTransform,
+    CenterCrop,
+    ColorJitter,
+    Compose,
+    ContrastTransform,
+    Grayscale,
+    HueTransform,
+    Normalize,
+    Pad,
+    RandomAffine,
+    RandomCrop,
+    RandomErasing,
+    RandomHorizontalFlip,
+    RandomPerspective,
+    RandomResizedCrop,
+    RandomRotation,
+    RandomVerticalFlip,
+    Resize,
+    SaturationTransform,
+    ToTensor,
+    Transpose,
+)
 
-__all__ = [  # noqa
+__all__ = [
     'BaseTransform',
     'Compose',
     'Resize',

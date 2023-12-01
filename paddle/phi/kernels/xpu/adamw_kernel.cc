@@ -20,10 +20,29 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
+
+template <typename Context>
+float GetAbsMax(const Context& dev_ctx,
+                const float* input,
+                float* buffer_xpu,
+                int64_t numel) {
+  int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+  std::vector<float> buffer_cpu(max_ptr_size);
+  // int findmax(Context* ctx, const T* x, float* maxptr, int64_t len);
+  int r = xpu::findmax<float>(dev_ctx.x_context(), input, buffer_xpu, numel);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "findmax");
+  memory_utils::Copy(CPUPlace(),
+                     static_cast<void*>(buffer_cpu.data()),
+                     dev_ctx.GetPlace(),
+                     static_cast<void*>(buffer_xpu),
+                     sizeof(float) * max_ptr_size);
+  return *std::max_element(buffer_cpu.begin(), buffer_cpu.end());
+}
 
 template <typename T, typename Context>
 void AdamwDenseKernel(const Context& dev_ctx,
@@ -52,6 +71,108 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       DenseTensor* beta1_pow_out,
                       DenseTensor* beta2_pow_out,
                       DenseTensor* master_param_outs) {
+  // check moment_dtype
+  auto moment1_dtype = moment1.dtype();
+  auto moment2_dtype = moment2.dtype();
+  PADDLE_ENFORCE_EQ(moment1_dtype,
+                    moment1_out->dtype(),
+                    errors::InvalidArgument(
+                        "moment1.dtype does not match moment1_out->dtype"));
+  PADDLE_ENFORCE_EQ(moment2_dtype,
+                    moment2_out->dtype(),
+                    errors::InvalidArgument(
+                        "moment2.dtype does not match moment2_out->dtype"));
+  PADDLE_ENFORCE_EQ(
+      moment1_dtype,
+      moment2_dtype,
+      errors::InvalidArgument("moment1.dtype does not match moment2.dtype"));
+
+  bool moment_in_fp16 = false;
+  if (moment1_dtype == phi::DataType::FLOAT16) {
+    moment_in_fp16 = true;
+  } else {
+    PADDLE_ENFORCE_EQ(
+        moment1_dtype,
+        phi::DataType::FLOAT32,
+        errors::InvalidArgument("moment1.dtype is neither fp32 nor fp16"));
+  }
+
+  float* moment1_input_for_xdnn = nullptr;
+  float* moment2_input_for_xdnn = nullptr;
+  float* moment1_output_for_xdnn = nullptr;
+  float* moment2_output_for_xdnn = nullptr;
+
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  if (moment_in_fp16) {
+    // allocate temp buffer on XPU
+    moment1_input_for_xdnn = RAII_GUARD.alloc_l3_or_gm<float>(moment1.numel());
+    PADDLE_ENFORCE_XDNN_NOT_NULL(moment1_input_for_xdnn);
+    moment2_input_for_xdnn = RAII_GUARD.alloc_l3_or_gm<float>(moment2.numel());
+    PADDLE_ENFORCE_XDNN_NOT_NULL(moment2_input_for_xdnn);
+    moment1_output_for_xdnn =
+        RAII_GUARD.alloc_l3_or_gm<float>(moment1_out->numel());
+    PADDLE_ENFORCE_XDNN_NOT_NULL(moment1_output_for_xdnn);
+    moment2_output_for_xdnn =
+        RAII_GUARD.alloc_l3_or_gm<float>(moment2_out->numel());
+    PADDLE_ENFORCE_XDNN_NOT_NULL(moment2_output_for_xdnn);
+
+    int r = 0;
+    using XPUType16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+
+    // cast moment1 and moment2, from fp16 to fp32
+    // int cast(Context* ctx, const TX* x, TY* y, int64_t len);
+    r = xpu::cast<XPUType16, float>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType16*>(
+            moment1.template data<phi::dtype::float16>()),
+        moment1_input_for_xdnn,
+        moment1.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast moment1 from fp16 to float");
+    r = xpu::cast<XPUType16, float>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType16*>(
+            moment2.template data<phi::dtype::float16>()),
+        moment2_input_for_xdnn,
+        moment2.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast moment2 from fp16 to float");
+
+    // acquire xpu_scale_value
+    float moment1_scale_value = XPUStorageProperties::default_xpu_scale_value;
+    if (moment1.storage_properties_initialized()) {
+      moment1_scale_value =
+          moment1.storage_properties<XPUStorageProperties>().xpu_scale_value;
+    }
+    float moment2_scale_value = XPUStorageProperties::default_xpu_scale_value;
+    if (moment2.storage_properties_initialized()) {
+      moment2_scale_value =
+          moment2.storage_properties<XPUStorageProperties>().xpu_scale_value;
+    }
+
+    // de-scale using scale_value
+    // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
+    // bias_after_scale, float _scale, float _bias);
+    if (moment1_scale_value > 0) {
+      r = xpu::scale<float>(dev_ctx.x_context(),
+                            moment1_input_for_xdnn,
+                            moment1_input_for_xdnn,
+                            moment1.numel(),
+                            false,
+                            1.0f / moment1_scale_value,
+                            0.0f);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "de-scale for moment1");
+    }
+    if (moment2_scale_value > 0) {
+      r = xpu::scale<float>(dev_ctx.x_context(),
+                            moment2_input_for_xdnn,
+                            moment2_input_for_xdnn,
+                            moment2.numel(),
+                            false,
+                            1.0f / moment2_scale_value,
+                            0.0f);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "de-scale for moment2");
+    }
+  }
+
   using XPUType = typename XPUTypeTrait<T>::Type;
   bool skip_update_ = false;
   if (skip_update.is_initialized()) {
@@ -94,7 +215,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
   if (!with_decay) {
     coeff = static_cast<float>(0.0);
   }
-  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+
   float* new_lr = RAII_GUARD.alloc_l3_or_gm<float>(learning_rate.numel());
   PADDLE_ENFORCE_XDNN_NOT_NULL(new_lr);
   int r = 0;
@@ -107,17 +228,23 @@ void AdamwDenseKernel(const Context& dev_ctx,
                  0.0f);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 
+  // int adamw(Context* ctx, const T* g, const float* mom1, const float* mom2,
+  // const T* param, const float* beta1_pow, const float* beta2_pow, const
+  // float* lr, float* moment1_out, float* moment2_out, T* param_out, float
+  // beta1, float beta2, float epsilon, float coeff, int64_t n);
   r = xpu::adamw(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(grad.template data<T>()),
-      moment1.template data<float>(),
-      moment2.template data<float>(),
+      moment_in_fp16 ? moment1_input_for_xdnn : moment1.template data<float>(),
+      moment_in_fp16 ? moment2_input_for_xdnn : moment2.template data<float>(),
       reinterpret_cast<const XPUType*>(param.template data<T>()),
       beta1_pow_ptr,
       beta2_pow_ptr,
       new_lr,
-      dev_ctx.template Alloc<float>(moment1_out),
-      dev_ctx.template Alloc<float>(moment2_out),
+      moment_in_fp16 ? moment1_output_for_xdnn
+                     : dev_ctx.template Alloc<float>(moment1_out),
+      moment_in_fp16 ? moment2_output_for_xdnn
+                     : dev_ctx.template Alloc<float>(moment2_out),
       reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
       beta1_,
       beta2_,
@@ -125,6 +252,76 @@ void AdamwDenseKernel(const Context& dev_ctx,
       coeff,
       param.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+
+  if (moment_in_fp16) {
+    int r = 0;
+    using XPUType16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+
+    // findmax and calculate scale_value for moment1 and moment2
+    int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+    float* buffer_for_findmax = RAII_GUARD.alloc_l3_or_gm<float>(max_ptr_size);
+
+    // for moment1
+    float moment1_max = GetAbsMax<Context>(dev_ctx,
+                                           moment1_output_for_xdnn,
+                                           buffer_for_findmax,
+                                           moment1_out->numel());
+    float moment1_scale_value = 65504.0f / moment1_max / 2.0f;
+    // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
+    // bias_after_scale, float _scale, float _bias);
+    r = xpu::scale<float>(dev_ctx.x_context(),
+                          moment1_output_for_xdnn,
+                          moment1_output_for_xdnn,
+                          moment1_out->numel(),
+                          false,
+                          moment1_scale_value,
+                          0.0f);
+    PADDLE_ENFORCE_XDNN_SUCCESS(
+        r, "scale before convert to fp16, for moment1_output_for_xdnn");
+    // write to moment1_out
+    std::unique_ptr<phi::StorageProperties> moment1_out_sp =
+        std::make_unique<phi::XPUStorageProperties>(moment1_scale_value);
+    moment1_out->set_storage_properties(std::move(moment1_out_sp));
+
+    // for moment2
+    float moment2_max = GetAbsMax<Context>(dev_ctx,
+                                           moment2_output_for_xdnn,
+                                           buffer_for_findmax,
+                                           moment2_out->numel());
+    float moment2_scale_value = 65504.0f / moment2_max / 2.0f;
+    // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
+    // bias_after_scale, float _scale, float _bias);
+    r = xpu::scale<float>(dev_ctx.x_context(),
+                          moment2_output_for_xdnn,
+                          moment2_output_for_xdnn,
+                          moment2_out->numel(),
+                          false,
+                          moment2_scale_value,
+                          0.0f);
+    PADDLE_ENFORCE_XDNN_SUCCESS(
+        r, "scale before convert to fp16, for moment2_output_for_xdnn");
+    // write to moment2_out
+    std::unique_ptr<phi::StorageProperties> moment2_out_sp =
+        std::make_unique<phi::XPUStorageProperties>(moment2_scale_value);
+    moment2_out->set_storage_properties(std::move(moment2_out_sp));
+
+    // cast moment1 and moment2 output, from fp32 to fp16
+    // int cast(Context* ctx, const TX* x, TY* y, int64_t len);
+    r = xpu::cast<float, XPUType16>(
+        dev_ctx.x_context(),
+        moment1_output_for_xdnn,
+        reinterpret_cast<XPUType16*>(
+            dev_ctx.template Alloc<phi::dtype::float16>(moment1_out)),
+        moment1.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast moment1_out from float to fp16");
+    r = xpu::cast<float, XPUType16>(
+        dev_ctx.x_context(),
+        moment2_output_for_xdnn,
+        reinterpret_cast<XPUType16*>(
+            dev_ctx.template Alloc<phi::dtype::float16>(moment2_out)),
+        moment2.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast moment2_out from float to fp16");
+  }
 
   if (!use_global_beta_pow) {
     // update in cpu
@@ -161,8 +358,13 @@ void AdamwDenseKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    adamw, XPU, ALL_LAYOUT, phi::AdamwDenseKernel, float, phi::dtype::float16) {
+PD_REGISTER_KERNEL(adamw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::AdamwDenseKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);

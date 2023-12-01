@@ -17,7 +17,7 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_anchor_generator_op import anchor_generator_in_python
 
 import paddle
@@ -208,9 +208,7 @@ def clip_tiled_boxes(boxes, im_shape, pixel_offset=True):
     has shape (N, 4 * num_tiled_boxes)."""
     assert (
         boxes.shape[1] % 4 == 0
-    ), 'boxes.shape[1] is {:d}, but must be divisible by 4.'.format(
-        boxes.shape[1]
-    )
+    ), f'boxes.shape[1] is {boxes.shape[1]:d}, but must be divisible by 4.'
     offset = 1 if pixel_offset else 0
     # x1 >= 0
     boxes[:, 0::4] = np.maximum(

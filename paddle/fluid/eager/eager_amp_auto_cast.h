@@ -90,7 +90,7 @@ inline paddle::Tensor EagerAmpAutoCast(const std::string& input_name,
           << " input(" << egr::EagerUtils::TensorStr(input) << " to dst_dtype("
           << phi::DataTypeToString(dst_dtype) << ").";
   if ((op_name == "batch_norm" || op_name == "layer_norm" ||
-       op_name == "sync_batch_norm") &&
+       op_name == "sync_batch_norm" || op_name == "weight_only_linear") &&
       input_name != "x") {
     return input;
   }

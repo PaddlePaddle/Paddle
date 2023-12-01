@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci
 
 import paddle
 from paddle import base
@@ -183,7 +183,7 @@ class TestEigOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place_customized(
-            checker=self.checker, place=core.CPUPlace()
+            checker=self.checker, place=core.CPUPlace(), check_pir=True
         )
 
     def test_check_grad(self):
@@ -193,6 +193,7 @@ class TestEigOp(OpTest):
             ['Eigenvalues', 'Eigenvectors'],
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_w, self.grad_v],
+            check_pir=True,
         )
 
 
@@ -319,6 +320,7 @@ class TestEigDyGraph(unittest.TestCase):
         test_type = 'float64'
         paddle.set_device("cpu")
 
+        np.random.seed(1024)
         input_np = np.random.random(test_shape).astype(test_type)
         real_w, real_v = np.linalg.eig(input_np)
 

@@ -13,20 +13,19 @@
 # limitations under the License.
 
 import copy
+
 import paddle
+
+from . import unique_name
+from .dygraph_utils import _append_activation_in_dygraph
 from .framework import (
     Parameter,
+    _global_flags,
     dtype_is_floating,
     in_dygraph_mode,
-    OpProtoHolder,
-    _global_flags,
 )
-from . import unique_name
-from .param_attr import ParamAttr
-from . import core
-
 from .layer_helper_base import LayerHelperBase
-from .dygraph_utils import _append_activation_in_dygraph
+from .param_attr import ParamAttr
 
 
 class LayerHelper(LayerHelperBase):
@@ -47,7 +46,7 @@ class LayerHelper(LayerHelperBase):
     def multiple_input(self, input_param_name='input'):
         inputs = self.kwargs.get(input_param_name, [])
         ret = []
-        if isinstance(inputs, list) or isinstance(inputs, tuple):
+        if isinstance(inputs, (list, tuple)):
             for inp in inputs:
                 ret.append(self.to_variable(inp))
         else:
@@ -57,7 +56,7 @@ class LayerHelper(LayerHelperBase):
     def input(self, input_param_name='input'):
         inputs = self.multiple_input(input_param_name)
         if len(inputs) != 1:
-            raise "{0} layer only takes one input".format(self.layer_type)
+            raise f"{self.layer_type} layer only takes one input"
         return inputs[0]
 
     @property
@@ -86,8 +85,7 @@ class LayerHelper(LayerHelperBase):
     def iter_inputs_and_params(self, input_param_name='input'):
         inputs = self.multiple_input(input_param_name)
         param_attrs = self.multiple_param_attr(len(inputs))
-        for ipt, param_attr in zip(inputs, param_attrs):
-            yield ipt, param_attr
+        yield from zip(inputs, param_attrs)
 
     def input_dtype(self, input_param_name='input'):
         inputs = self.multiple_input(input_param_name)

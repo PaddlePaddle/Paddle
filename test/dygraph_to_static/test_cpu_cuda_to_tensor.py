@@ -15,17 +15,15 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    ast_only_test,
-    dy2static_unittest,
-    sot_only_test,
-    test_and_compare_with_new_ir,
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
 )
 
 import paddle
 
 
-class TestCpuCuda(unittest.TestCase):
+class TestCpuCuda(Dy2StTestBase):
     def test_cpu_cuda(self):
         def func(x):
             x = paddle.to_tensor([1, 2, 3, 4])
@@ -38,8 +36,7 @@ class TestCpuCuda(unittest.TestCase):
         # print(paddle.jit.to_static(func)(x))
 
 
-class TestToTensor(unittest.TestCase):
-    @test_and_compare_with_new_ir(False)
+class TestToTensor(Dy2StTestBase):
     def test_to_tensor_with_variable_list(self):
         def func(x):
             ones = paddle.to_tensor(1)
@@ -56,10 +53,8 @@ class TestToTensor(unittest.TestCase):
         )
 
 
-@dy2static_unittest
-class TestToTensor1(unittest.TestCase):
-    @ast_only_test
-    @test_and_compare_with_new_ir(False)
+class TestToTensor1(Dy2StTestBase):
+    @test_ast_only
     def test_to_tensor_with_variable_list(self):
         def func(x):
             ones = paddle.to_tensor([1])
@@ -73,12 +68,11 @@ class TestToTensor1(unittest.TestCase):
         x = paddle.to_tensor([3])
         np.testing.assert_allclose(
             paddle.jit.to_static(func)(x).numpy(),
-            np.array([1, 2, 3, 4]),
+            np.array([[1], [2], [3], [4]]),
             rtol=1e-05,
         )
 
-    @sot_only_test
-    @test_and_compare_with_new_ir(False)
+    @test_ast_only
     def test_to_tensor_with_variable_list_sot(self):
         def func(x):
             ones = paddle.to_tensor([1])
@@ -97,10 +91,8 @@ class TestToTensor1(unittest.TestCase):
         )
 
 
-@dy2static_unittest
-class TestToTensor2(unittest.TestCase):
-    @ast_only_test
-    @test_and_compare_with_new_ir(False)
+class TestToTensor2(Dy2StTestBase):
+    @test_ast_only
     def test_to_tensor_with_variable_list(self):
         def func(x):
             x = paddle.to_tensor([[1], [2], [3], [4]])
@@ -113,8 +105,7 @@ class TestToTensor2(unittest.TestCase):
             rtol=1e-05,
         )
 
-    @sot_only_test
-    @test_and_compare_with_new_ir(False)
+    @test_ast_only
     def test_to_tensor_with_variable_list_sot(self):
         def func(x):
             x = paddle.to_tensor([[1], [2], [3], [4]])

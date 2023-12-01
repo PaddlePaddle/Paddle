@@ -13,28 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .asp import (
+    ASPHelper,  # noqa: F401
+    decorate,
+    prune_model,
+    reset_excluded_layers,
+    set_excluded_layers,
+)
+from .supported_layer_list import add_supported_layer
+from .utils import (  # noqa: F401
+    CheckMethod,
+    MaskAlgo,
+    calculate_density,
+    check_mask_1d,
+    check_mask_2d,
+    check_sparsity,
+    create_mask,
+    get_mask_1d,
+    get_mask_2d_best,
+    get_mask_2d_greedy,
+)
 
-from .utils import check_mask_1d  # noqa: F401
-from .utils import get_mask_1d  # noqa: F401
-from .utils import check_mask_2d  # noqa: F401
-from .utils import get_mask_2d_greedy  # noqa: F401
-from .utils import get_mask_2d_best  # noqa: F401
-from .utils import create_mask  # noqa: F401
-from .utils import check_sparsity  # noqa: F401
-from .utils import MaskAlgo  # noqa: F401
-from .utils import CheckMethod  # noqa: F401
-from .utils import calculate_density  # noqa: F401
-
-from .asp import decorate  # noqa: F401
-from .asp import prune_model  # noqa: F401
-from .asp import set_excluded_layers  # noqa: F401
-from .asp import reset_excluded_layers  # noqa: F401
-from .asp import ASPHelper  # noqa: F401
-
-from .supported_layer_list import add_supported_layer  # noqa: F401
-
-
-__all__ = [  # noqa
+__all__ = [
     'calculate_density',
     'decorate',
     'prune_model',

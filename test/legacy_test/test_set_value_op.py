@@ -18,7 +18,7 @@ import unittest
 from functools import reduce
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
@@ -1878,13 +1878,13 @@ class TestSetValueInplace(unittest.TestCase):
             paddle.seed(100)
             a = paddle.rand(shape=[1, 4])
             a.stop_gradient = False
-            b = a[:]
+            b = a[:] * 1
             c = b
             b[paddle.zeros([], dtype='int32')] = 1.0
 
             self.assertTrue(id(b) == id(c))
             np.testing.assert_array_equal(b.numpy(), c.numpy())
-            self.assertEqual(b.inplace_version, 0)
+            self.assertEqual(b.inplace_version, 1)
 
         paddle.enable_static()
 

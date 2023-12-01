@@ -1,2 +1,2 @@
-add_subdirectory(cinn_dialect)
-add_subdirectory(runtime_dialect)
+add_subdirectory(operator)
+add_subdirectory(runtime)

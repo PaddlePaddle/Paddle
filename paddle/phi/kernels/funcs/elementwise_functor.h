@@ -40,8 +40,13 @@ struct AddFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return a + b; }
 };
 template <typename T>
-struct InverseAddFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const { return b + a; }
+using InverseAddFunctor = AddFunctor<T>;
+
+template <typename T, typename Ty = T>
+struct MultiPrecisionAddFunctor {
+  inline HOSTDEVICE T operator()(const T x, const Ty y) const {
+    return x + static_cast<T>(y);
+  }
 };
 
 // Float32Bfloat16Add
@@ -82,15 +87,7 @@ struct MultiplyFunctor<bool> {
   }
 };
 template <typename T>
-struct InverseMultiplyFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const { return b * a; }
-};
-template <>
-struct InverseMultiplyFunctor<bool> {
-  inline HOSTDEVICE bool operator()(const bool a, const bool b) const {
-    return b && a;
-  }
-};
+using InverseMultiplyFunctor = MultiplyFunctor<T>;
 
 template <typename T>
 struct IsZeroFunctor {

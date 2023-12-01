@@ -213,10 +213,8 @@ void BufferedReader::ReadAsync(size_t i) {
           auto cpu_ptr = cpu[i].data();
           auto gpu_ptr = gpu_ptrs[i];
           auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
-          if (platform::is_cuda_pinned_place(cpu_place)) {
-            memory::Copy(
-                place_, gpu_ptr, cpu_place, cpu_ptr, size, stream_.get());
-          } else if ((platform::is_gpu_place(cpu_place))) {
+          if (platform::is_cuda_pinned_place(cpu_place) ||
+              platform::is_gpu_place(cpu_place)) {
             memory::Copy(
                 place_, gpu_ptr, cpu_place, cpu_ptr, size, stream_.get());
           } else {

@@ -78,6 +78,7 @@ PD_REGISTER_KERNEL(all_to_all,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::float16) {}
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -90,6 +91,7 @@ PD_REGISTER_KERNEL(all_to_all,
                    int,
                    bool,
                    int8_t,
+                   int16_t,
                    uint8_t,
                    int64_t,
                    phi::dtype::float16) {}

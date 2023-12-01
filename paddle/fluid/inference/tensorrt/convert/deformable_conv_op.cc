@@ -60,7 +60,9 @@ class DeformableConvOpConverter : public OpConverter {
 
     nvinfer1::Weights weights;
     weights.count = filter_tensor->numel();
-    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+    // TODO(bukejiyu): deformable_conv currently does not support fp16
+    // mode,will be supported in the future.
+    bool with_fp16 = false;
     if (with_fp16) {
       auto filter_weight = engine_->GetTrtWeight(filter_name, *filter_tensor);
       if (filter_weight.get().type == nvinfer1::DataType::kFLOAT) {

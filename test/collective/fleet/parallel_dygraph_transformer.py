@@ -215,9 +215,7 @@ def position_encoding_init(n_position, d_pos_vec):
     channels = d_pos_vec
     position = np.arange(n_position)
     num_timescales = channels // 2
-    log_timescale_increment = np.log(float(1e4) / float(1)) / (
-        num_timescales - 1
-    )
+    log_timescale_increment = np.log(1e4 / float(1)) / (num_timescales - 1)
     inv_timescales = (
         np.exp(np.arange(num_timescales)) * -log_timescale_increment
     )

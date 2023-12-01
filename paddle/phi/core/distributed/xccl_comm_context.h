@@ -24,14 +24,16 @@ namespace distributed {
 
 class XCCLCommContext final : public CommContext {
  public:
-  XCCLCommContext(const std::string& device_type,
+  XCCLCommContext(const phi::Place& place,
                   int rank,
                   int size,
                   const ccl::CCLRootId& xccl_id);
 
   ccl::CCLComm GetXcclComm() const { return xccl_comm_; }
 
-  const std::string& GetDeviceType() const { return device_type_; }
+  std::shared_ptr<phi::stream::Stream> GetStream() const { return stream_; }
+
+  std::string GetDeviceType() const { return place_.GetDeviceType(); }
 
   void Broadcast(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,
@@ -75,8 +77,9 @@ class XCCLCommContext final : public CommContext {
  private:
   DISABLE_COPY_AND_ASSIGN(XCCLCommContext);
 
-  std::string device_type_;
+  phi::Place place_;
   ccl::CCLComm xccl_comm_;
+  std::shared_ptr<phi::stream::Stream> stream_;
 };
 
 }  // namespace distributed

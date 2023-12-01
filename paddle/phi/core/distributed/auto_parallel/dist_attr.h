@@ -27,9 +27,12 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/flat_hash_map.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 namespace distributed {
+
+constexpr int kReplicateDim = -1;
 
 class PlacementStatus {
  public:
@@ -71,7 +74,7 @@ class ShardStatus final : public PlacementStatus {
   int64_t axis_{-1};
 };
 
-class TensorDistAttr {
+class TEST_API TensorDistAttr {
  public:
   TensorDistAttr() = default;
 

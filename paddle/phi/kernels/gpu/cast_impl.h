@@ -41,21 +41,15 @@ void CastCUDAKernelImpl(const GPUContext& dev_ctx,
       dev_ctx, inputs, &outputs, CastFunctor<InT, OutT>());
 }
 
-template <typename InT, typename OutT>
-void CastInplaceCUDAKernelImpl(const GPUContext& dev_ctx,
-                               const DenseTensor& x,
-                               DataType out_dtype,
-                               DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  std::vector<DenseTensor*> outputs;
-  // inplace case
-  auto x_origin = x;
-  inputs.emplace_back(&x_origin);
-  outputs.emplace_back(out);
-  dev_ctx.Alloc<OutT>(out);
-  out->set_type(out_dtype);
-  phi::funcs::ElementwiseKernel<OutT>(
-      dev_ctx, inputs, &outputs, CastFunctor<InT, OutT>());
+template <typename InT>
+void CastCUDAKernel(const GPUContext& dev_ctx,
+                    const DenseTensor& x,
+                    DataType out_dtype,
+                    DenseTensor* out) {
+  PD_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
+                       CastCUDAKernelImpl<InT, data_t>(
+                           dev_ctx, x, out_dtype, out);
+                     }));
 }
 
 }  // namespace phi

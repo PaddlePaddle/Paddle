@@ -43,6 +43,21 @@ class TestDistTRT(unittest.TestCase):
             if len(results) == 2 and results[0] == "c_allreduce_out":
                 self.assertEqual(float(results[1]), self.target_value)
 
+    def test_allreduce_nccl_with_new_comm(self):
+        env = dict(os.environ)
+        env["CUDA_VISIBLE_DEVICES"] = "0,1"
+        env["FLAGS_dynamic_static_unified_comm"] = "1"
+        cmd = f"python -u -m paddle.distributed.fleet.launch --gpus 0,1 {self.script} {self.op_type} {self.precision}"
+        cmd = cmd.split(" ")
+
+        local_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, env=env)
+
+        local_out, local_err = local_proc.communicate()
+        for line in local_out.decode("utf-8").split("\n"):
+            results = line.split("=")
+            if len(results) == 2 and results[0] == "c_allreduce_out":
+                self.assertEqual(float(results[1]), self.target_value)
+
 
 class TestMin(TestDistTRT):
     def init_case(self):

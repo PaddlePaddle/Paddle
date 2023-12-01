@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/tensor_meta.h"
-#include "paddle/ir/core/enforce.h"
+#include "paddle/pir/core/enforce.h"
 
 namespace phi {
 
@@ -197,7 +197,6 @@ DenseTensorMeta& DenseTensorMeta::operator=(  // NOLINT
   } else {
     strides = std::move(other.strides);
   }
-
   return *this;
 }
 

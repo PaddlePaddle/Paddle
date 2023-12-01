@@ -14,10 +14,6 @@
 
 #include "paddle/phi/core/kernel_factory.h"
 
-#include <regex>
-#include <string>
-#include <unordered_set>
-
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/flags.h"
@@ -36,10 +32,6 @@
 PHI_DEFINE_EXPORTED_bool(use_stride_kernel,
                          true,
                          "Whether to use strdie kernel if op support stride.");
-
-PHI_DEFINE_EXPORTED_string(stride_kernel_blacklist,
-                           "",
-                           "It controls the strided kernel subset do not use.");
 
 PD_DECLARE_int32(low_precision_op_list);
 PD_DECLARE_bool(enable_api_kernel_fallback);
@@ -71,9 +63,8 @@ KernelFactory& KernelFactory::Instance() {
 
 bool KernelFactory::HasCompatiblePhiKernel(const std::string& op_type) const {
   if (deprecated_op_names.find(op_type) == deprecated_op_names.end()) {
-    if (phi::OpUtilsMap::Instance().Contains(op_type)) {
-      return true;
-    } else if (kernels_.find(op_type) != kernels_.end()) {
+    if (phi::OpUtilsMap::Instance().Contains(op_type) ||
+        (kernels_.find(op_type) != kernels_.end())) {
       return true;
     }
   }
@@ -234,26 +225,14 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
   if (FLAGS_use_stride_kernel && use_strided_kernel) {
-    std::regex reg(",");
-    std::unordered_set<std::string> elems{
-        std::sregex_token_iterator(FLAGS_stride_kernel_blacklist.begin(),
-                                   FLAGS_stride_kernel_blacklist.end(),
-                                   reg,
-                                   -1),
-        std::sregex_token_iterator()};
-    elems.erase("");
-
-    if (!elems.count(kernel_name)) {
-      auto stride_kernel_iter = iter->second.find(
-          {const_kernel_key.backend() == paddle::experimental::Backend::GPUDNN
-               ? paddle::experimental::Backend::GPU
-               : const_kernel_key.backend(),
-           phi::DataLayout::STRIDED,
-           const_kernel_key.dtype()});
-      if (stride_kernel_iter != iter->second.end()) {
-        VLOG(1) << "use strided kernel, kernel_name = " << kernel_name;
-        return {stride_kernel_iter->second, false, true};
-      }
+    auto stride_kernel_iter = iter->second.find(
+        {const_kernel_key.backend() == paddle::experimental::Backend::GPUDNN
+             ? paddle::experimental::Backend::GPU
+             : const_kernel_key.backend(),
+         phi::DataLayout::STRIDED,
+         const_kernel_key.dtype()});
+    if (stride_kernel_iter != iter->second.end()) {
+      return {stride_kernel_iter->second, false, true};
     }
   }
 
@@ -547,7 +526,7 @@ std::string KernelSelectionErrorMessage(const std::string& kernel_name,
   std::unordered_set<std::string> dtype_set;
 
   // Record all kernel information of kernel_name
-  for (auto iter : KernelFactory::Instance().kernels()[kernel_name]) {
+  for (auto const& iter : KernelFactory::Instance().kernels()[kernel_name]) {
     KernelKey kernel_key = iter.first;
     if (kernel_key.backend() == target_key.backend()) {
       support_backend = true;

@@ -25,7 +25,7 @@ function(install_py_pyyaml)
   execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE} "-c"
-      "import re, pyyaml; print(re.compile('/__init__.py.*').sub('',pyyaml.__file__))"
+      "import re, yaml; print(re.compile('/__init__.py.*').sub('',yaml.__file__))"
     RESULT_VARIABLE _pyyaml_status
     ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
 

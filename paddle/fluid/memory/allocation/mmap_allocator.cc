@@ -321,7 +321,7 @@ void MemoryMapFdSet::Clear() {
   VLOG(3) << "PID: " << getpid() << ", MemoryMapFdSet: set size - "
           << fd_set_.size();
   std::lock_guard<std::mutex> guard(mtx_);
-  for (auto fd : fd_set_) {
+  for (auto const &fd : fd_set_) {
     int rlt = shm_unlink(fd.c_str());
     if (rlt == 0) {
       VLOG(3) << "PID: " << getpid() << ", MemoryMapFdSet: clear " << fd;
@@ -375,7 +375,7 @@ void MemoryMapAllocationPool::SetMaxPoolSize(const int &size) {
 
 void MemoryMapAllocationPool::Clear() {
   std::lock_guard<std::mutex> guard(mtx_);
-  for (auto mmap : memory_map_allocations_) {
+  for (auto const &mmap : memory_map_allocations_) {
     int rlt = shm_unlink(mmap.file_name_.c_str());
     if (rlt == 0) {
       VLOG(4) << "MemoryMapAllocationPool: clear " << mmap.file_name_;

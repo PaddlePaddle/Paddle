@@ -97,5 +97,12 @@ python/paddle/incubate/fleet/parameter_server/pslib/ps_pb2.py
 paddle/phi/kernels/fusion/cutlass/conv2d/generated/*
 python/paddle/base/incubate/fleet/parameter_server/pslib/ps_pb2.py
 paddle/fluid/ir_adaptor/translator/op_compat_info.cc
+paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/*
 paddle/fluid/pybind/static_op_function.*
 paddle/fluid/pybind/ops_api.cc
+paddle/fluid/pir/dialect/operator/ir/pd_api.*
+paddle/fluid/pir/dialect/operator/ir/op_decomp.cc
+paddle/fluid/pir/dialect/operator/ir/pd_op_vjp.cc
+paddle/fluid/pir/dialect/operator/ir/pd_op.*
+paddle/cinn/hlir/dialect/generated/ops.parsed.yaml
+paddle/cinn/hlir/dialect/operator/ir/cinn_op.*

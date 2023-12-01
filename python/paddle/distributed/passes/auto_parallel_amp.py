@@ -215,9 +215,7 @@ class AMPState:
                         fwd_op_id = self.grad_op_to_op_map[
                             op.desc.original_id()
                         ]
-                        assert fwd_op_id in self._op_fp16_dict, "{}".format(
-                            str(op)
-                        )
+                        assert fwd_op_id in self._op_fp16_dict, str(op)
                         self._op_fp16_dict[
                             op.desc.original_id()
                         ] = self._is_fp16_op(fwd_op_id)
@@ -390,17 +388,13 @@ class AMPState:
                     for in_var_name in op.input_arg_names:
                         assert (
                             in_var.dtype == block.var(in_var_name).dtype
-                        ), "{}, {}, {}".format(
-                            in_var, block.var(in_var_name), str(op)
-                        )
+                        ), f"{in_var}, {block.var(in_var_name)}, {str(op)}"
                     out_var.desc.set_dtype(in_var.dtype)
                 elif int(op.attr('op_role')) == 257:
                     pass
                 else:
                     raise ValueError(
-                        "'{}' op is not supported in the complete amp pass.".format(
-                            op.type
-                        )
+                        f"'{op.type}' op is not supported in the complete amp pass."
                     )
             idx += num_cast_ops + 1
         block._sync_with_cpp()

@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
-from eager_op_test import get_numeric_gradient
+from op_test import get_numeric_gradient
 from test_conv2d_op import (
     TestConv2DOp,
     TestConv2DOp_v2,

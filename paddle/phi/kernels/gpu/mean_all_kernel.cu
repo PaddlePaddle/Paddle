@@ -43,13 +43,12 @@ void MeanAllKernel(const Context& dev_ctx,
   for (decltype(rank) i = 0; i < rank; ++i) {
     reduce_dims.push_back(i);
   }
-  funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      dev_ctx,
-      x,
-      out,
-      kps::IdentityFunctor<T>(),
-      reduce_dims,
-      /*is_mean=*/true);
+  funcs::ReduceKernel<T,
+                      T,
+                      kps::AddFunctor,
+                      kps::IdentityFunctor<T>,
+                      /*is_mean*/ true>(
+      dev_ctx, x, out, kps::IdentityFunctor<T>(), reduce_dims);
 }
 
 }  // namespace phi
