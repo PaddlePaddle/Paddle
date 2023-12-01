@@ -23,6 +23,7 @@ from .envs import (  # noqa: F401
     cost_model_guard,
     min_graph_size_guard,
     strict_mode_guard,
+    with_control_flow_guard,
 )
 from .exceptions import (  # noqa: F401
     BreakGraphError,

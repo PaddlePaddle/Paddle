@@ -362,6 +362,9 @@ def to_static(
     return decorated
 
 
+_not_to_static_code = set()
+
+
 def not_to_static(func=None):
     """
     A Decorator to suppresses the convertion of a function.
@@ -397,6 +400,22 @@ def not_to_static(func=None):
             Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[2., 2.]])
     """
+
+    def _register_not_to_static_for_sot(func):
+        def _is_wrapped(f):
+            return hasattr(f, '__wrapped__')
+
+        unwrapped_f = func
+        if hasattr(unwrapped_f, "__code__"):
+            _not_to_static_code.add(func.__code__)
+
+        while _is_wrapped(unwrapped_f):
+            unwrapped_f = unwrapped_f.__wrapped__
+            if hasattr(unwrapped_f, "__code__"):
+                _not_to_static_code.add(func.__code__)
+
+    _register_not_to_static_for_sot(func)
+
     if func is None:
         return not_to_static
 

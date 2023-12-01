@@ -180,9 +180,7 @@ class UserDefinedFunctionVariable(FunctionVariable):
 
         static_function = get_static_function(self.value, "inline_call")
         if static_function is not None:
-            output = self.graph.call_ast(
-                static_function, *self._args, **self._kwargs
-            )
+            output = self.graph.call_ast(static_function, *args, **kwargs)
             if output is not None:
                 return output
 

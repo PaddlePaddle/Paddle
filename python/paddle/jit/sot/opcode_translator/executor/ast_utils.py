@@ -16,6 +16,7 @@ import inspect
 import types
 
 import paddle
+from paddle.jit.api import _not_to_static_code as not_to_staic_code
 from paddle.jit.sot.utils import (
     ENV_SOT_WITH_CONTROL_FLOW,
     InnerError,
@@ -30,6 +31,8 @@ class StaticFunctionManager:
 
     def ast_transform_with_frame(self, frame):
         code = frame.f_code
+        if code in not_to_staic_code:
+            return None
         if code not in self.code_map:
             if code.co_name.startswith("#") or code.co_name.startswith("$"):
                 self.code_map[code] = None
@@ -60,6 +63,8 @@ class StaticFunctionManager:
             return None
 
         code = fn.__code__
+        if code in not_to_staic_code:
+            return None
         if code not in self.code_map:
             if code.co_name.startswith("#") or code.co_name.startswith("$"):
                 self.code_map[code] = None
