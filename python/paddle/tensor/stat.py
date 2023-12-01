@@ -407,7 +407,8 @@ def median(x, axis=None, keepdim=False, name=None):
     if not isinstance(x, (Variable, paddle.pir.OpResult)):
         raise TypeError("In median, the input x should be a Tensor.")
 
-    if x.size == 0:
+    if in_dynamic_mode() and x.size == 0:
+        # TODO: Currently, `__eq__` don't support arguments (`pir.Value` & `int`)
         raise ValueError("In median, the size of input x should not be 0.")
 
     is_flatten = False
