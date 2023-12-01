@@ -422,7 +422,7 @@ class TestDygraphInplaceScatter(TestDygraphInplace):
 
 class TestDygraphInplaceMaskedScatter(TestDygraphInplace):
     def init_data(self):
-        self.input_var = paddle.randn([3,4])
+        self.input_var_numpy = np.random.randn(3,4)
         self.dtype = "float32"
 
     def non_inplace_api_processing(self, var):
