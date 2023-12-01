@@ -90,6 +90,17 @@ std::unique_ptr<Instruction> CompilationTask::BuildInstruction() {
   return instr;
 }
 
+pir::CINNKernelInfo CompilationTask::BuildPirCINNKernelInfo() {
+  std::string fn_name = context_->group_->FuncName();
+  VLOG(4) << "Lookup kernel name: " << fn_name;
+  auto* fn_ptr = context_->backend_compiler_->Lookup(fn_name);
+  CHECK(fn_ptr);
+  pir::CINNKernelInfo cinn_kernel_info;
+  cinn_kernel_info.fn_ptr = fn_ptr;
+  cinn_kernel_info.int_args_map = context_->group_->int_args_map;
+  return cinn_kernel_info;
+}
+
 }  // namespace framework
 }  // namespace hlir
 }  // namespace cinn

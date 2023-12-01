@@ -145,6 +145,10 @@ struct PD_INFER_DECL XpuConfig {
   // Note: PaddleInference only.
   int quant_post_dynamic_weight_precision{1};
   std::vector<std::string> quant_post_dynamic_op_types;
+  // fc, conv2d
+  // 0: int8 per tensor, 1: int8 per-channel, 2: int16 per-tensor(default), 3:
+  // int16 per-channel, 4: int31 per-tensor. Note: PaddleInference only.
+  std::map<std::string, int> quant_post_dynamic_weight_methods;
 };
 
 struct DistConfig {
