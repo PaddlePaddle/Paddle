@@ -1337,6 +1337,18 @@ PHI_DEFINE_EXPORTED_string(
     ir_inplace_kernel_blacklist,
     "",
     "It controls the ir inplace kernel subset do not use.");
+/**
+ * Specify the directory of saving PIR sugraph from @to_static
+ * Name: pir_subgraph_saving_dir
+ * Since Version: 2.6.0
+ * Value Range: str, default=""
+ * Example:
+ * Note: "/workspace/my_path", it will save into my_path dir;
+ */
+PHI_DEFINE_EXPORTED_string(
+    pir_subgraph_saving_dir,
+    "",
+    "Specify the directory of saving PIR sugraph from @to_static.");
 
 PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
 
@@ -1361,7 +1373,8 @@ PHI_DEFINE_EXPORTED_int32(
 
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
 /**
  * Communication library related FLAG
  * Name: FLAGS_dynamic_static_unified_comm

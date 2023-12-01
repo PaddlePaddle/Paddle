@@ -39,7 +39,11 @@ __all__ = []
 
 
 def convert_attr(x, attr):
-    if isinstance(x, (Variable, OpResult)) and attr == "size":
+    # TODO(cleanup-legacy-ir): In PIR mode, the size attr in
+    # OpResult and Tensor are unified. So we don't need to transform
+    # the size attr into a method call. The AttributeJstTransformer and
+    # convert_attr can be safely removed.
+    if isinstance(x, Variable) and attr == "size":
         return x.size()
     else:
         return getattr(x, attr)
@@ -47,7 +51,7 @@ def convert_attr(x, attr):
 
 def convert_load(x):
     if in_to_static_mode():
-        if isinstance(x, paddle.base.core.eager.Tensor):
+        if isinstance(x, paddle.Tensor):
             """
             TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
             """

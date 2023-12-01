@@ -1783,6 +1783,35 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "bitwise_or") {
+#if IS_TRT_VERSION_LT(8400)
+      VLOG(3) << "bitwise_or is not supported when TensorRT < 8.4";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto y_var_name = desc.Input("Y")[0];
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* y_var_desc = block->FindVar(y_var_name);
+      auto x_dtype = x_var_desc->GetDataType();
+      auto y_dtype = y_var_desc->GetDataType();
+      if (x_dtype != framework::proto::VarType::BOOL ||
+          y_dtype != framework::proto::VarType::BOOL) {
+        VLOG(3) << "the bitwise_or only support input of BOOL.";
+        return false;
+      }
+    }
+
     if (op_type == "pad3d") {
 #if !IS_TRT_VERSION_GE(8200)
       VLOG(3) << "pad3d is not supported when TensorRT < 8.2";
@@ -2944,7 +2973,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "quantize_linear",
       "dequantize_linear",
       "share_data",
-      "bitwise_and"};
+      "bitwise_and",
+      "bitwise_or"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3114,7 +3144,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "quantize_linear",
       "dequantize_linear",
       "share_data",
-      "bitwise_and"};
+      "bitwise_and",
+      "bitwise_or"};
 };
 
 struct GenericPluginTeller : public Teller {
@@ -3132,6 +3163,25 @@ struct GenericPluginTeller : public Teller {
     if (op_type == "yolo_box") {
       if (!desc.HasAttr("iou_aware") && !desc.HasAttr("iou_aware_factor"))
         return false;
+    } else if (op_type == "solve") {
+      auto x_var_name = desc.Input("X")[0];
+      auto y_var_name = desc.Input("Y")[0];
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* y_var_desc = block->FindVar(y_var_name);
+      auto x_dtype = x_var_desc->GetDataType();
+      auto y_dtype = y_var_desc->GetDataType();
+      if (x_dtype == framework::proto::VarType::FP64 ||
+          y_dtype == framework::proto::VarType::FP64) {
+        VLOG(3) << op_type << " not support input of FP64.";
+        return false;
+      }
     }
     if (use_no_calib_int8) {
       return false;

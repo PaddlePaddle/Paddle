@@ -15,11 +15,14 @@
 import unittest
 
 import numpy
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pir_exe_and_pir_api,
+    IrMode,
+    ToStaticMode,
+    disable_test_case,
+    test_legacy_and_pt_and_pir,
     test_legacy_only,
-    test_pir_api_only,
+    test_pir_only,
 )
 
 import paddle
@@ -157,7 +160,7 @@ class TestToTensorReturnVal(Dy2StTestBase):
         self.assertTrue(a.stop_gradient == b.stop_gradient)
         self.assertTrue(a.place._equals(b.place))
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_to_tensor_default_dtype(self):
         a = paddle.jit.to_static(case_to_tensor_default_dtype)()
         b = case_to_tensor_default_dtype()
@@ -165,7 +168,9 @@ class TestToTensorReturnVal(Dy2StTestBase):
         self.assertTrue(a.stop_gradient == b.stop_gradient)
         self.assertTrue(a.place._equals(b.place))
 
-    @test_legacy_and_pir_exe_and_pir_api
+    # MIN_GRAPH_SIZE=10 will cause fallback and raise error in dygraph
+    @test_legacy_and_pt_and_pir
+    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.LEGACY_IR))
     def test_to_tensor_err_log(self):
         paddle.disable_static()
         x = paddle.to_tensor([3])
@@ -219,7 +224,7 @@ class TestInt16(Dy2StTestBase):
         y = paddle.to_tensor([1, 2], dtype="int16")
         self.assertTrue(y.dtype == paddle.framework.core.VarDesc.VarType.INT16)
 
-    @test_pir_api_only
+    @test_pir_only
     def test_static_pir(self):
         import numpy as np
 

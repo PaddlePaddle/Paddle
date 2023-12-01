@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 paddle.seed(2022)
@@ -135,6 +136,7 @@ class TestUnpool1DOpAPI_dygraph3(unittest.TestCase):
 
 
 class TestUnpool1DOpAPI_static(unittest.TestCase):
+    @test_with_pir_api
     def test_case(self):
         paddle.enable_static()
         places = [paddle.CPUPlace()]
@@ -157,9 +159,8 @@ class TestUnpool1DOpAPI_static(unittest.TestCase):
                     output, indices, kernel_size=2, stride=None
                 )
 
-                exe = paddle.base.Executor(place)
+                exe = paddle.static.Executor(place)
                 fetches = exe.run(
-                    paddle.base.default_main_program(),
                     feed={"x": input_data},
                     fetch_list=[output_unpool],
                     return_numpy=True,

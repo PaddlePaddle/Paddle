@@ -1,9 +1,7 @@
 file(GLOB paddle2cinn_srcs "*.cc")
 set(paddle2cinn_deps
-    gtest
     absl
     isl
-    mkldnn
     xxhash
     pybind
     python
@@ -18,6 +16,13 @@ set(paddle2cinn_deps
     schedule_desc_proto
     auto_schedule_proto
     parallel_executor)
+if(WITH_MKLDNN)
+  set(paddle2cinn ${paddle2cinn} mkldnn)
+endif()
+
+if(WITH_TESTING)
+  set(paddle2cinn_deps ${paddle2cinn_deps} gtest)
+endif()
 
 cc_library(
   paddle2cinn

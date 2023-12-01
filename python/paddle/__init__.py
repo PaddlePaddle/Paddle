@@ -420,6 +420,7 @@ from .tensor.math import (  # noqa: F401
     polygamma_,
     hypot,
     hypot_,
+    combinations,
     signbit,
 )
 
@@ -457,6 +458,8 @@ from .tensor.search import (
 from .tensor.to_string import set_printoptions
 
 from .tensor.einsum import einsum
+
+from .framework import async_save, clear_async_save_task_queue  # noqa: F401
 
 from .framework.random import (
     seed,
@@ -932,5 +935,6 @@ __all__ = [
     'index_fill',
     "index_fill_",
     'diagonal_scatter',
+    'combinations',
     'signbit',
 ]

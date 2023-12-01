@@ -34,6 +34,7 @@
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 PD_DECLARE_bool(cinn_enable_map_expr);
 PD_DECLARE_bool(cinn_enable_map_expr_schedule);
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
 namespace hlir {

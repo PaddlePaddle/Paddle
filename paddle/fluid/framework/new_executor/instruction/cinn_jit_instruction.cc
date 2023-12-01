@@ -18,9 +18,12 @@
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
-#include "paddle/cinn/runtime/cuda/cuda_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
+#include "paddle/phi/core/errors.h"
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/cinn/runtime/cuda/cuda_util.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -39,6 +42,7 @@ class CinnJitInstruction::FnPtrImpl {
       func_args_.push_back(ptr_storage_.data() + i);
     }
 
+#if defined(PADDLE_WITH_CUDA)
     CUDA_DRIVER_CALL(
         cuLaunchKernel(static_cast<CUfunction>(cuda_jit_info_.fn_ptr),
                        cuda_jit_info_.grid_dims[0],
@@ -51,6 +55,7 @@ class CinnJitInstruction::FnPtrImpl {
                        static_cast<CUstream>(stream),
                        func_args_.data(),
                        nullptr))
+#endif
   }
 
  private:
@@ -64,7 +69,7 @@ CinnJitInstruction::CinnJitInstruction(
     size_t id,
     const platform::Place& place,
     ::pir::Operation* op,
-    const ValueExecutionInfo& value_exec_info)
+    const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place) {
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();
   fn_ptr_impl_ = std::make_shared<FnPtrImpl>(jit_kernel_op.cuda_jit_info());
@@ -72,15 +77,14 @@ CinnJitInstruction::CinnJitInstruction(
 
   place_ = place;
 
-  InitInputsOutputsIds(op, value_exec_info);
+  InitInputsOutputsIds(op, *value_exec_info);
 
   for (size_t i = 0; i < op->num_operands(); ++i) {
     auto in = op->operand_source(i);
 
-    auto var_name = value_exec_info.GetVarName(in);
-
-    auto tensor = value_exec_info.GetScope()
-                      ->Var(var_name)
+    auto var_name = value_exec_info->GetVarName(in);
+    auto tensor = value_exec_info->GetScope()
+                      ->FindVar(var_name)
                       ->GetMutable<phi::DenseTensor>();
 
     tensor_args_.push_back(tensor);
@@ -90,9 +94,9 @@ CinnJitInstruction::CinnJitInstruction(
 
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value result = op->result(i);
-    auto var_name = value_exec_info.GetVarName(result);
+    auto var_name = value_exec_info->GetVarName(result);
 
-    auto tensor = value_exec_info.GetScope()
+    auto tensor = value_exec_info->GetScope()
                       ->Var(var_name)
                       ->GetMutable<phi::DenseTensor>();
 
@@ -109,6 +113,7 @@ CinnJitInstruction::CinnJitInstruction(
 }
 
 void CinnJitInstruction::Run() {
+#if defined(PADDLE_WITH_CUDA)
   auto gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx_);
 
   auto stream = gpu_ctx->stream();
@@ -117,6 +122,12 @@ void CinnJitInstruction::Run() {
   }
 
   fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
+#endif
+
+#ifndef PADDLE_WITH_CUDA
+  VLOG(phi::FATAL) << "Not Supported: cinn jit instruction currently does not "
+                      "support non-CUDakernel";
+#endif
 }
 
 const std::string& CinnJitInstruction::Name() const {
