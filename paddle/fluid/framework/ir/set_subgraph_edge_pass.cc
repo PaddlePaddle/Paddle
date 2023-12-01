@@ -29,6 +29,18 @@ namespace ir {
 
 // Delete dequantize_linear_op, then dequantize weight
 void SetSubgraphEdge::ApplyImpl(Graph *graph) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+
+  VLOG(3) << "Running set_subgraph_edge_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3)
+        << "The ID of block running set_subgraph_edge_pass is: 0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running set_subgraph_edge_pass is: "
+            << graph->GetBlockId();
+  }
+
   const std::string pattern_name = "subgraph_edge_pattern";
   FusePassBase::Init(pattern_name, graph);
 

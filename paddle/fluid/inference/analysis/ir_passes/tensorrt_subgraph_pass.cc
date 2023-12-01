@@ -129,6 +129,15 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph);
 
+  VLOG(3) << "Running tensorrt_subgraph_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3)
+        << "The ID of block running tensorrt_subgraph_pass is: 0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running tensorrt_subgraph_pass is: "
+            << graph->GetBlockId();
+  }
+
   auto model_precision =
       static_cast<phi::DataType>(Get<int>("model_precision"));
   if (model_precision == phi::DataType::BFLOAT16) {

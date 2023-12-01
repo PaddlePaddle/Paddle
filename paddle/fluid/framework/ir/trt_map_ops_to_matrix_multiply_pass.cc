@@ -36,6 +36,16 @@ void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph) const {
   std::string name_scope = "trt_map_ops_to_matrix_multiply_pass";
   FusePassBase::Init(name_scope, graph);
 
+  VLOG(3) << "Running trt_map_ops_to_matrix_multiply_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running trt_map_ops_to_matrix_multiply_pass "
+               "is: 0(main_graph)";
+  } else {
+    VLOG(3)
+        << "The ID of block running trt_map_ops_to_matrix_multiply_pass is: "
+        << graph->GetBlockId();
+  }
+
   std::unordered_set<std::string> ops_type = {"mul", "matmul", "matmul_v2"};
   GraphPatternDetector gpd;
   patterns::MulMatmulMatmulV2 mul_matmul_matmul_v2(gpd.mutable_pattern(),
