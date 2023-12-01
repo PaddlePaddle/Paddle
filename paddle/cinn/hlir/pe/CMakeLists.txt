@@ -14,8 +14,11 @@ gather_srcs(
   schedule.cc
   ir_schedule_pe.cc
   transform.cc
-  vision.cc
-  map_expr_to_ir.cc)
+  vision.cc)
+
+if(NOT CINN_ONLY)
+  gather_srcs(cinnapi_src SRCS map_expr_to_ir.cc)
+endif()
 
 cinn_cc_test(test_cinn_pe_elementwise SRCS pe_elementwise_test.cc DEPS cinncore)
 cinn_cc_test(test_cinn_pe_broadcast SRCS pe_broadcast_test.cc DEPS cinncore)

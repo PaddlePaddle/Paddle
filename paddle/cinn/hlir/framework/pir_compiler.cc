@@ -15,86 +15,110 @@
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 
 #include <absl/types/variant.h>
+#include "paddle/cinn/hlir/framework/pir/compilation_task.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/utils/multi_threading.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/builtin_type.h"
+
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
 namespace hlir {
 namespace framework {
 
-// TODO(Aurelius84): Need abstract this logic to implement Proxy for
-// the co-existance with GraphCompiler.
+// TODO(Aurelius84): Clear usless Build Interface.
 std::unique_ptr<Program> PirCompiler::Build() {
   m_builder_.Clear();
   // NOTE(Aurelius84): Currently only support each op for one group
   std::vector<pir::GroupPtr> groups;
   for (auto& op : *program_.block()) {
     std::vector<::pir::Operation*> ops = {&op};
-    groups.push_back(std::make_shared<pir::Group>(ops));
+    auto group = std::make_shared<pir::Group>(ops);
+    group->output_ops.insert(&op);
+    groups.push_back(group);
   }
   VLOG(4) << "Groups size: " << groups.size();
   return std::move(Build(groups));
 }
 
-std::vector<pir::CUDAJITInfo> PirCompiler::BuildCUDAJITInfo(
+std::vector<pir::CINNKernelInfo> PirCompiler::BuildCUDAJITInfo(
     const std::vector<pir::GroupPtr>& groups) {
-  std::vector<pir::CUDAJITInfo> vec_res;
+  std::vector<pir::CINNKernelInfo> cinn_kernel_info_vecs(groups.size());
 
-  auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
+  if (FLAGS_cinn_bucket_compile) {
+    for (int i = 0; i < groups.size(); ++i) {
+      group_compilation_contexts_.emplace_back(target_, groups[i], scope_);
+    }
+    auto worker_fn = [&](int index) {
+      CompilationTask task(&group_compilation_contexts_[index]);
+      task();
+      cinn_kernel_info_vecs[index] = task.BuildPirCINNKernelInfo();
+    };
+    utils::parallel_run(
+        worker_fn, utils::SequenceDispatcher(0, groups.size()), -1);
+  } else {
+    auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
 
-  std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-  for (int i = 0; i < groups.size(); ++i) {
-    lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
+    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
+    for (int i = 0; i < groups.size(); ++i) {
+      lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
+    }
+
+    for (auto&& lowered_func : lowered_funcs) {
+      ProcessFunction(lowered_func);
+    }
+    compiler_ = backends::Compiler::Create(target_);
+    auto build_module = m_builder_.Build();
+    compiler_->Build(build_module, "");
+
+    auto fn_ptrs = compiler_->GetFnPtr();
+
+    for (int idx = 0; idx < groups.size(); ++idx) {
+      pir::CINNKernelInfo cinn_kernel_info;
+      auto fn_name = groups[idx]->FuncName();
+      auto fn_ptr = compiler_->Lookup(fn_name);
+      cinn_kernel_info.fn_ptr = fn_ptr;
+      cinn_kernel_info.int_args_map = groups[idx]->int_args_map;
+
+      cinn_kernel_info_vecs[idx] = cinn_kernel_info;
+    }
   }
-
-  for (auto&& lowered_func : lowered_funcs) {
-    ProcessFunction(lowered_func);
-  }
-
-  compiler_ = backends::Compiler::Create(target_);
-  auto build_module = m_builder_.Build();
-  compiler_->Build(build_module, "");
-
-  auto instructions = BuildInstructions(groups);
-
-  auto fn_ptrs = compiler_->GetFnPtr();
-
-  auto* compilter_ptr = compiler_.release();
-  for (int idx = 0; idx < groups.size(); ++idx) {
-    pir::CUDAJITInfo jit_info;
-    jit_info.fn_ptr = fn_ptrs[idx];
-    jit_info.compiler = reinterpret_cast<void*>(compilter_ptr);
-
-    lowered_funcs[idx][0]->cuda_axis_info.CopyBlockDimsTo(
-        &(jit_info.block_dims));
-
-    lowered_funcs[idx][0]->cuda_axis_info.CopyGridDimsTo(&(jit_info.grid_dims));
-
-    vec_res.push_back(jit_info);
-  }
-
-  return vec_res;
+  return cinn_kernel_info_vecs;
 }
 
 std::unique_ptr<Program> PirCompiler::Build(
     const std::vector<pir::GroupPtr>& groups) {
-  auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
+  std::vector<std::unique_ptr<Instruction>> instructions(groups.size());
+  if (FLAGS_cinn_bucket_compile) {
+    for (int i = 0; i < groups.size(); ++i) {
+      group_compilation_contexts_.emplace_back(target_, groups[i], scope_);
+    }
+    auto worker_fn = [&](int index) {
+      CompilationTask task(&group_compilation_contexts_[index]);
+      task();
+      instructions[index] = task.BuildInstruction();
+    };
+    utils::parallel_run(
+        worker_fn, utils::SequenceDispatcher(0, groups.size()), -1);
+  } else {
+    auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
 
-  std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-  for (int i = 0; i < groups.size(); ++i) {
-    lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
+    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
+    for (int i = 0; i < groups.size(); ++i) {
+      lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
+    }
+
+    for (auto&& lowered_func : lowered_funcs) {
+      ProcessFunction(lowered_func);
+    }
+
+    compiler_ = backends::Compiler::Create(target_);
+    auto build_module = m_builder_.Build();
+    compiler_->Build(build_module, "");
+
+    instructions = BuildInstructions(groups);
   }
-
-  for (auto&& lowered_func : lowered_funcs) {
-    ProcessFunction(lowered_func);
-  }
-
-  compiler_ = backends::Compiler::Create(target_);
-  auto build_module = m_builder_.Build();
-  compiler_->Build(build_module, "");
-
-  auto instructions = BuildInstructions(groups);
 
   // TODO(Aurelius84): Instantiate all tensors on compile-time, which is
   // controlled by 'options.with_instantiate_variables' in GraphCompiler.
@@ -165,7 +189,7 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
   auto scope = std::make_shared<Scope>();
 
   auto create_var = [&](::pir::Value value) {
-    if (!(value.type())) {
+    if (!(value) || !(value.type())) {
       return;
     }
     if (visited.count(value) > 0) return;

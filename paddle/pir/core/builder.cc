@@ -85,5 +85,8 @@ ArrayAttribute Builder::array_attr(const std::vector<Attribute> &value) {
 PointerAttribute Builder::pointer_attr(void *value) {
   return PointerAttribute::get(context_, value);
 }
+TensorNameAttribute Builder::tensor_name_attr(const std::string &value) {
+  return TensorNameAttribute::get(context_, value);
+}
 
 }  // namespace pir

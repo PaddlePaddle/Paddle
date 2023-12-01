@@ -354,6 +354,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : ReductionGradInferSpmd
   kernel :
     func : max_grad
   composite : max_grad(x, out, out_grad, axis, keepdim, reduce_all, x_grad)
@@ -577,7 +578,8 @@
   output : Tensor(x_grad)
   infer_meta :
     func : KernelWithXShapeInferMeta
-    param : [xshape]
+    param : [xshape, out_grad]
+    spmd_rule: ReshapeGradInferSpmd
   kernel :
     func : reshape_grad
     param : [out_grad]
@@ -802,6 +804,7 @@
   infer_meta :
     func : TransposeGradInferMeta
     param : [out_grad, perm]
+    spmd_rule: TransposeGradInferSpmd
   kernel :
     func : transpose_grad
   backward : transpose_double_grad
@@ -824,6 +827,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out_grad]
+    spmd_rule : TriuGradInferSpmd
   kernel :
     func : triu_grad
 

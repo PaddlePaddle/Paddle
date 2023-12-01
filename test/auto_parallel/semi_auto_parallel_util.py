@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.distributed.auto_parallel.placement_type import to_placements
 
 
 class SemiAutoParallelTestBase:
@@ -28,6 +29,9 @@ class SemiAutoParallelTestBase:
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
     def check_tensor_eq(self, a, b):
+        if a is None:
+            assert b is None
+            return
         np1 = a.numpy()
         np2 = b.numpy()
         np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
@@ -94,14 +98,18 @@ class SemiAutoParallelTestBase:
         for shape, spec in zip(flat_inputs_shape, flat_inputs_specs):
             input_np = np.random.random(size=shape).astype(self._dtype)
             input = paddle.to_tensor(input_np)
-            input.stop_gradient = False
+            input.stop_gradient = not with_backward
+            # retain dist_attr here.
             input_dist_attr = dist.DistAttr(
                 mesh=self._mesh, sharding_specs=spec
             )
-            dist_input = dist.shard_tensor(input, dist_attr=input_dist_attr)
-            dist_input.stop_gradient = False
+            # for dygraph auto_parallel, get placements by using to_placements
+            placements = to_placements(input_dist_attr.dims_mapping, self._mesh)
+            dist_input = dist.shard_tensor(input, self._mesh, placements)
+            dist_input.stop_gradient = not with_backward
             flat_inputs.append(input)
             flat_dist_inputs.append(dist_input)
+
         inputs, _ = self.unflatten(flat_inputs, inputs_structure)
         dist_inputs, _ = self.unflatten(flat_dist_inputs, inputs_structure)
 
@@ -123,9 +131,10 @@ class SemiAutoParallelTestBase:
             flat_dist_out, _ = self.flatten(dist_out, terminal_cond2)
             assert len(flat_out) == len(flat_dist_out)
             for output, dist_output in zip(flat_out, flat_dist_out):
-                self.check_tensor_eq(out, dist_out)
-                output.backward()
-                dist_output.backward()
+                self.check_tensor_eq(output, dist_output)
+                if output is not None:
+                    output.backward()
+                    dist_output.backward()
 
             for x, dist_x in zip(flat_inputs, flat_dist_inputs):
                 self.check_tensor_eq(x.grad, dist_x.grad)

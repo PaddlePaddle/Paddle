@@ -110,10 +110,7 @@ if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
     python -m pip install --upgrade pip
-    python -m pip install setuptools==57.4.0
-    python -m pip install wheel
-    python -m pip install pyyaml
-    python -m pip install wget
+    python -m pip install -r %work_dir%\paddle\scripts\compile_requirements.txt
     python -m pip install -r %work_dir%\python\requirements.txt
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!

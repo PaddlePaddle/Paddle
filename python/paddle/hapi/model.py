@@ -1829,6 +1829,7 @@ class Model:
             .. code-block:: python
                 :name: code-example3
 
+                >>> # doctest: +TIMEOUT(80)
                 >>> import paddle
                 >>> import paddle.vision.transforms as T
                 >>> from paddle.vision.datasets import MNIST
@@ -1861,12 +1862,14 @@ class Model:
                 ...             batch_size=64,
                 ...             save_dir='mnist_checkpoint')
                 ...
+
             2. An example use DataLoader, batch size and shuffle is set in
                DataLoader.
 
             .. code-block:: python
                 :name: code-example4
 
+                >>> # doctest: +TIMEOUT(80)
                 >>> import paddle
                 >>> import paddle.vision.transforms as T
                 >>> from paddle.vision.datasets import MNIST
