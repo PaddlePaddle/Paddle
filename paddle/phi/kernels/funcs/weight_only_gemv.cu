@@ -578,10 +578,10 @@ struct WeightOnlyScaleLoader {
       : _scales(scales), _zeros(zeros), _stride(stride) {
     _scales += initial_offset;
 #ifndef WIN32
-    //linux
+    // linux
     if constexpr (Zero) {
 #else
-    //windows
+    // windows
     if (Zero) {
 #endif
       _zeros += initial_offset;
@@ -622,7 +622,7 @@ struct WeightOnlyScaleLoader {
   }
 
   __device__ __forceinline__ int offset() { return _offset; }
-};
+};  // NOLINT
 
 template <typename T,
           WeightOnlyQuantType QType,
