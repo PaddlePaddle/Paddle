@@ -390,7 +390,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   // In case of FLAGS_cinn_new_group_scheduler, op and group schedule
   // is mutually exclusive.
   if (FLAGS_cinn_new_group_scheduler) {
-    do_op_schedule = !apply_group_schedule;
+    do_op_schedule = apply_op_schedule && !apply_group_schedule;
   }
   std::vector<ir::Expr> func_bodies = LowerOps(group,
                                                ops,
