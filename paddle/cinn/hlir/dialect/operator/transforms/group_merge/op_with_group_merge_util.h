@@ -274,7 +274,7 @@ inline bool horizontal_or_vertical_reduce_relation(
     break;
   }
 
-  // helper->target_ == common::DefaultNVGPUTarget()
+  // helper->target_ == cinn::common::DefaultNVGPUTarget()
   // succesive_reduce_dimension <= helper->target_.max_num_threads()
   // TODO(phlrain): support is_gpu_target and max_thread
   bool is_gpu_target = true;
@@ -331,7 +331,7 @@ inline bool reduce_fuse_broadcast(::pir::Operation* producer,
     return false;
   }
 
-  // if (helper->target_ != common::DefaultNVGPUTarget()) {
+  // if (helper->target_ != cinn::common::DefaultNVGPUTarget()) {
   //   return true;
   // }
 

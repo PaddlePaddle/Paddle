@@ -160,7 +160,7 @@ inline bool honrizontal_elementwise_fuse_reduce(
 
 inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
                                     const std::shared_ptr<ir::Group>& second) {
-  // if (helper->target_ == common::DefaultHostTarget()) {
+  // if (helper->target_ == cinn::common::DefaultHostTarget()) {
   //   return true;
   // }
   // if same shape with horizontal relation
@@ -456,7 +456,7 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
       reduce_size *= reducer_input_shape[idx - 1];
     }
     // Check if the reduce size exceeds the hardware limit
-    // if (helper->target_ == common::DefaultNVGPUTarget() &&
+    // if (helper->target_ == cinn::common::DefaultNVGPUTarget() &&
     //     reduce_size > helper->target_.max_num_threads()) {
     //   return false;
     // }

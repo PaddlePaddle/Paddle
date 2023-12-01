@@ -229,10 +229,10 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
 }
 
 #define CASE_TYPE(src, dst) \
-  else if (type.isa<::pir::src>()) return common::dst();
+  else if (type.isa<::pir::src>()) return cinn::common::dst();
 
-common::Type CompatibleInfo::ConvertIRType(::pir::Type type) {
-  if (type.isa<::pir::BFloat16Type>()) return common::BF16();
+cinn::common::Type CompatibleInfo::ConvertIRType(::pir::Type type) {
+  if (type.isa<::pir::BFloat16Type>()) return cinn::common::BF16();
   CASE_TYPE(Float16Type, F16)
   CASE_TYPE(Float32Type, F32)
   CASE_TYPE(Float64Type, F64)

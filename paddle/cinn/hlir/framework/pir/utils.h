@@ -84,7 +84,7 @@ struct CompatibleInfo {
 
   static utils::AttributeMap ConvertAttributes(const ::pir::Operation& op);
 
-  static common::Type ConvertIRType(::pir::Type type);
+  static cinn::common::Type ConvertIRType(::pir::Type type);
 
   static std::vector<int> ValueShape(const ::pir::Value& value);
 
