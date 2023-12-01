@@ -417,10 +417,15 @@ def _run_paddle_cond(
     from paddle.jit.dy2static.program_translator import ProgramTranslator
 
     inplace_map = ProgramTranslator.get_instance()._inplace_map
-    union_name = (set(return_name_ids) if return_name_ids else set()) | (
-        set(push_pop_names) if push_pop_names else set()
-    )
-    union_name = list(union_name)
+    union_name = None
+    # TODO(@xiongkun) lambda can have push_pop_names, which will cause error.
+    if return_name_ids is None and push_pop_names is None:
+        union_name = None
+    else:
+        union_name = (set(return_name_ids) if return_name_ids else set()) | (
+            set(push_pop_names) if push_pop_names else set()
+        )
+        union_name = list(union_name)
 
     def new_true_fn():
         nonlocal union_name
@@ -435,8 +440,6 @@ def _run_paddle_cond(
         # We assume normal return has no return value.
         if ret is None:
             ret = helper.get(union_name)
-        else:
-            union_name = None  # for lambda.
         inplace_map.restore_checkpoint(inplace_map_checkpoint)
         return ret
 
@@ -451,8 +454,6 @@ def _run_paddle_cond(
         ret = false_fn()
         if ret is None:
             ret = helper.get(union_name)
-        else:
-            union_name = None  # for lambda.
         inplace_map.restore_checkpoint(inplace_map_checkpoint)
         return ret
 
