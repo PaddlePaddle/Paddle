@@ -97,6 +97,9 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   std::string GetNameByValue(::pir::Value value) const;
 
+  // Only for debug
+  Variable* DebugVar(const std::string& name) const override;
+
  private:
   // build graph
   void UpdateSyncOpNum();
@@ -222,6 +225,8 @@ class PirInterpreter : public InterpreterBaseImpl {
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
   const ::pir::Block* ir_block_{nullptr};
+
+  std::unordered_map<::pir::Block*, PirInterpreter*> sub_blocks_;  // Not owned
 
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 
