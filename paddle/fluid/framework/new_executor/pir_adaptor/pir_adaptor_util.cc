@@ -295,18 +295,18 @@ void DeepCopyVariable(const Variable* src_var,
                       ValueExecutionInfo* value_exe_info,
                       uint32_t stack_size) {
   if (src_var->IsType<phi::DenseTensor>()) {
-    auto* tmp_grad_tensor = dst_var->GetMutable<phi::DenseTensor>();
+    auto* tmp_dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
     auto& src_tensor = src_var->Get<phi::DenseTensor>();
-    tmp_grad_tensor->set_lod(src_tensor.lod());
-    framework::TensorCopy(src_tensor, src_tensor.place(), tmp_grad_tensor);
+    tmp_dst_tensor->set_lod(src_tensor.lod());
+    framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
   } else if (src_var->IsType<phi::SelectedRows>()) {
-    auto* tmp_grad_slr = dst_var->GetMutable<phi::SelectedRows>();
+    auto* tmp_dst_slr = dst_var->GetMutable<phi::SelectedRows>();
     auto& src_slr = src_var->Get<phi::SelectedRows>();
-    tmp_grad_slr->set_rows(src_slr.rows());
-    tmp_grad_slr->set_height(src_slr.height());
+    tmp_dst_slr->set_rows(src_slr.rows());
+    tmp_dst_slr->set_height(src_slr.height());
 
     auto& src_t = src_slr.value();
-    auto* dst_t = tmp_grad_slr->mutable_value();
+    auto* dst_t = tmp_dst_slr->mutable_value();
     framework::TensorCopy(src_t, src_t.place(), dst_t);
   } else if (src_var->IsType<phi::TensorArray>()) {
     auto src_tensor_array = src_var->Get<phi::TensorArray>();
@@ -500,7 +500,7 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->result(0);
 
     value_exe_info->Add(value, param_name);
-  } else if (op->isa<pir::ConstantOp>()) {
+  } else if (op_name == pir::ConstantOp::name()) {
     VLOG(6) << "Handle for builtin.constant:";
     if (op->isa<pir::ConstantTensorOp>()) {
       auto param_name = op->dyn_cast<pir::ConstantTensorOp>().tensor_name();

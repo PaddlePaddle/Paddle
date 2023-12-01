@@ -228,7 +228,7 @@ std::unordered_set<pir::Value> GetInternalOutputs(pir::Block* block) {
   for (size_t arg_id = 0; arg_id < block->args_size(); ++arg_id) {
     inner_outputs.insert(block->arg(arg_id));
   }
-  for (auto& op : (*block)) {
+  for (auto& op : *block) {
     VLOG(8) << "GetInternalOutputs of " << op.name();
     if (op.num_regions()) {
       for (size_t i = 0; i < op.num_regions(); ++i) {
@@ -248,7 +248,7 @@ std::unordered_set<pir::Value> GetInternalOutputs(pir::Block* block) {
 
 std::unordered_set<pir::Value> GetInternalInputs(pir::Block* block) {
   std::unordered_set<pir::Value> inner_inputs;
-  for (auto& op : (*block)) {
+  for (auto& op : *block) {
     VLOG(8) << "GetInternalInputs of " << op.name();
     if (op.num_regions()) {
       for (size_t i = 0; i < op.num_regions(); ++i) {
@@ -299,7 +299,7 @@ std::vector<pir::Value> GetExternalInputs(
 
 std::unordered_set<pir::Value> GetTuplePushContainer(pir::Block* block) {
   std::unordered_set<pir::Value> inner_outputs;
-  for (auto& op : (*block)) {
+  for (auto& op : *block) {
     VLOG(8) << "GetTuplePushContainer of " << op.name();
     if (op.num_regions()) {
       for (size_t i = 0; i < op.num_regions(); ++i) {
