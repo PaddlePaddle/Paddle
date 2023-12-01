@@ -714,5 +714,4 @@ void FCInferMeta(const MetaTensor& input,
                  const float scale_out,
                  const bool force_fp32_output,
                  MetaTensor* out);
-
 }  // namespace phi

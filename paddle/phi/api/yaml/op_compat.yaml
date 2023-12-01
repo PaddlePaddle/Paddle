@@ -1338,18 +1338,6 @@
     dropout1_out: Dropout1Out
     dropout2_out: Dropout2Out
 
-- op : fused_gemm_epilogue
-  inputs:
-    {x : X, y : Y, bias : Bias}
-  outputs :
-    {out : Out, reserve_space: ReserveSpace}
-
-- op : fused_gemm_epilogue_grad
-  inputs:
-    {x : X, y : Y, reserve_space: ReserveSpace, out_grad : DOut}
-  outputs :
-    {x_grad : DX, y_grad : DY, bias_grad : DBias}
-
 - op : fused_transpose
   extra :
     attrs : [str data_format = "AnyLayout"]
@@ -3510,13 +3498,3 @@
     {x: X, i: I}
   outputs :
     out : Out
-
-- op: write_to_array
-  backward : fused_gemm_epilogue_grad
-  inputs :
-    x : X
-    y : Y
-    bias : Bias
-  outputs :
-    out : Out
-    reserve_space : ReserveSpace

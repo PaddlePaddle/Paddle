@@ -27,17 +27,6 @@
     data_type : out_grad
   support_dygraph_mode : true
 
-- backward_op : fused_gemm_epilogue_grad
-  forward: fused_gemm_epilogue (Tensor x, Tensor y, Tensor bias, bool trans_x, bool trans_y, str activation) -> Tensor(out), Tensor(reserve_space)
-  args : (Tensor x, Tensor y, Tensor reserve_space, Tensor out_grad, bool trans_x = false, bool trans_y = false, str activation_grad = "none")
-  output : Tensor(x_grad), Tensor(y_grad), Tensor(bias_grad)
-  optional :  reserve_space, x_grad, bias_grad
-  infer_meta :
-    func : FusedGemmEpilogueGradInferMeta
-  kernel :
-    func : fused_gemm_epilogue_grad
-    data_type : x
-
 - backward_op : fused_rotary_position_embedding_grad
   forward: fused_rotary_position_embedding (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style) -> Tensor(out_q), Tensor(out_k), Tensor(out_v)
   args : (Tensor sin, Tensor cos, Tensor position_ids, Tensor out_q_grad, Tensor out_k_grad,Tensor out_v_grad, bool use_neox_rotary_style)
