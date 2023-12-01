@@ -101,7 +101,7 @@ class ContinuousBernoulli_np:
         return np.exp(self.np_log_prob(value))
 
     def np_log_prob(self, value):
-        eps = 1e-8
+        eps = np.finfo('float32').eps
         cross_entropy = np.nan_to_num(
             value * np.log(self.probability)
             + (1.0 - value) * np.log(1 - self.probability),
