@@ -77,7 +77,6 @@ class TestLlamaAttentionForSemiAutoParallel:
         self.init_single_card_net_result()
 
     def mp_shard_fn(self, layer_name, layer, process_mesh):
-        print(f"layer name {layer_name}")
         if layer_name == 'qkv_proj':
             layer.weight = dist.shard_tensor(
                 layer.weight, process_mesh, [Shard(1)]
