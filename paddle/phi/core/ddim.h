@@ -281,4 +281,5 @@ template <>
 struct hash<phi::DDim> {
   std::size_t operator()(phi::DDim const& ddim) const;
 };
+
 }  // namespace std

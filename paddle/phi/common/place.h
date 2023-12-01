@@ -60,7 +60,7 @@ class Place {
   Place()
       : device(0), alloc_type_(AllocationType::UNDEFINED), device_type_id_(0) {}
 
-  explicit Place(AllocationType type,
+  TEST_API Place(AllocationType type,
                  int8_t id,
                  const std::string& dev_type = "")
       : device(id),
@@ -68,7 +68,8 @@ class Place {
         device_type_id_(phi::CustomRegisteredDeviceMap::Instance()
                             .GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
 
-  explicit Place(AllocationType type, const std::string& dev_type = "");
+  TEST_API explicit Place(AllocationType type,
+                          const std::string& dev_type = "");
 
   // See NOTE [ Why need to temporarily adapt to PlaceType? ]
   Place(paddle::PlaceType type);  // NOLINT
