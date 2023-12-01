@@ -12,7 +12,7 @@ if(WITH_DISTRIBUTE)
     dist_tensor_test
     SRCS dist_tensor_test.cc
     DEPS phi)
-  cc_test_old(spmd_rule_test SRCS spmd_rule_test.cc DEPS spmd_rules phi)
+  paddle_test(spmd_rule_test SRCS spmd_rule_test.cc DEPS spmd_rules phi)
 endif()
 
-cc_test_old(dist_mapper_test SRCS dist_mapper_test.cc DEPS phi)
+paddle_test(dist_mapper_test SRCS dist_mapper_test.cc DEPS phi)
