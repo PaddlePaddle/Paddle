@@ -191,15 +191,39 @@ TEST(if_op_test, network_with_backward) {
   builder.Build<pir::YieldOp>(
       std::vector<pir::Value>{local2_x_grad, local2_y_grad});
 
+  builder.SetInsertionPointToEnd(block);
+
+  std::string x_grad = "x_grad";
+  builder.Build<pir::ShadowOutputOp>(if_grad.result(0), x_grad);
+
+  std::string y_grad = "y_grad";
+  builder.Build<pir::ShadowOutputOp>(if_grad.result(1), y_grad);
+
   LOG(INFO) << program;
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
   auto place = paddle::platform::CPUPlace();
+#if defined(PADDLE_WITH_CUDA)
+  place = paddle::platform::CUDAPlace();
+#endif
   paddle::framework::Scope scope;
 
   paddle::framework::InterpreterCore test_core(
       place, {}, kernel_program->block(), &scope);
 
+  test_core.SetSkipGcVars({x_grad, y_grad});
+
   test_core.Run({});
+
+  auto x_grad_tensor =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(x_grad)->Get<phi::DenseTensor>()
+          : test_core.local_scope()->FindVar(x_grad)->Get<phi::DenseTensor>();
+  auto y_grad_tensor =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(y_grad)->Get<phi::DenseTensor>()
+          : test_core.local_scope()->FindVar(y_grad)->Get<phi::DenseTensor>();
+  EXPECT_EQ(x_grad_tensor.data<float>()[0], 1.0);
+  EXPECT_EQ(y_grad_tensor.data<float>()[0], 2.0);
 }
