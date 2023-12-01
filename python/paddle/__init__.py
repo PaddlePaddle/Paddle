@@ -937,4 +937,6 @@ __all__ = [
     "index_fill_",
     'diagonal_scatter',
     'combinations',
+    'masked_scatter',
+    'masked_scatter_',
 ]
