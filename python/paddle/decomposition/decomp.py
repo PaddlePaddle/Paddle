@@ -621,76 +621,10 @@ def _check_op(
     return True
 
 
-def _get_leaf_ops(block, global_outputs):
-    '''
-    This API checks which op contributes to the outputs of the entire computation graph,
-    as well as determining the corresponding output index.
-    Args:
-        block (Block): the block of program to be processed.
-        global_outputs (tuple(Value)): the outputs of the entire computation graph.
-    Returns:
-        related_ops (tuple(pir.Operation)): a tuple of op that contributes to the outputs of the entire graph.
-        related_ops_output_indexes (tuple(tuple())) : a tuple records the mapping of tuple(the output index of the op,  the output index of the entire graph)
-    '''
-    if not isinstance(block, Block):
-        raise TypeError(f"block should be Block, but got type {type(block)}")
-    if not isinstance(global_outputs, list):
-        raise TypeError("The type of global_outputs should be list")
-
-    related_ops = []
-    related_ops_output_indexes = []
-
-    op_to_op_valid_result = {}
-    for op in block.ops:
-        op_valid_result = []
-        for x in op.results():
-            if x.initialized():
-                op_valid_result.append(x)
-        op_to_op_valid_result[op] = op_valid_result
-
-    for global_output in global_outputs:
-        for op in op_to_op_valid_result.keys():
-            if global_output in op_to_op_valid_result[op]:
-                if op not in related_ops:
-                    related_ops.append(op)
-                    related_ops_output_indexes.append(
-                        [
-                            [
-                                op.results().index(global_output),
-                                global_outputs.index(global_output),
-                            ]
-                        ]
-                    )
-                else:
-                    related_ops_output_indexes[related_ops.index(op)].append(
-                        [
-                            op.results().index(global_output),
-                            global_outputs.index(global_output),
-                        ]
-                    )
-
-    return tuple(related_ops), tuple(related_ops_output_indexes)
-
-
-def _replace_graph_outputs(
-    global_outputs,
-    op_outputs,
-    op_index,
-    related_ops_output_indexes,
-):
-    '''
-    This API replace the outputs of the entire computation graph with the new outputs of the op,
-    when the op contributes to the outputs of the entire computation graph.
-    '''
-    for index in related_ops_output_indexes[op_index]:
-        global_outputs[index[1]] = op_outputs[index[0]]
-
-
 def decomp_bwd_op(
     block: Block,
     bwd_op: pir.Operation,
     grad_var_to_var_map: dict,
-    fetch_list: list = None,
 ):
     '''
     Decompose a backward op in pir program.
@@ -706,7 +640,6 @@ def decomp_bwd_op(
         bwd_op (pir.Operation): the backward op to be decomposed.
         grad_var_to_var_map (dict): a dict obtained from distributed processing,
             which maps the backward grad variable to its corresponding forward variable.
-        fetch_list (list): a list which contains the outputs to be fetched of the computation graph.
     Return:
         new_input_grads (tuple(Value)): new results of backward op after decomposing.
         has_decomposed: whether the backward op has been successfully decomposed.
@@ -732,16 +665,6 @@ def decomp_bwd_op(
     )
 
     if not bwd_has_decomposed:
-        # try to decompose the forward op firstly and then decompose the backward op
-        # check whether the forward op is related to the outputs to be fetched
-        if fetch_list is not None:
-            (
-                fwd_leaf_ops,
-                fwd_leaf_ops_output_indexes,
-            ) = _get_leaf_ops(block, fetch_list)
-            fwd_leaf_op_index = (
-                fwd_leaf_ops.index(fwd_op) if fwd_op in fwd_leaf_ops else None
-            )
         # try to decompose the forward op
         fwd_inputs = [x.source() for x in fwd_op.operands()]
         (
@@ -753,14 +676,6 @@ def decomp_bwd_op(
             grad_var_to_var_map,
         )
         if fwd_has_decomposed:
-            # if the decomposed forward op is related to the outputs to be fetched, replace the outputs
-            if fetch_list is not None and fwd_leaf_op_index is not None:
-                _replace_graph_outputs(
-                    fetch_list,
-                    new_fwd_outputs,
-                    fwd_leaf_op_index,
-                    fwd_leaf_ops_output_indexes,
-                )
             # try to decompose the backward op
             (
                 new_grads,
@@ -776,7 +691,7 @@ def decomp_bwd_op(
     return new_grads, bwd_has_decomposed
 
 
-def decompose_pir_program(pir_program, pir_grad_var_to_var, fetch_list):
+def decompose_pir_program(pir_program, pir_grad_var_to_var):
     '''
     Decompose all backward ops in a pir program.
 
@@ -784,7 +699,6 @@ def decompose_pir_program(pir_program, pir_grad_var_to_var, fetch_list):
         pir_program (Program): the program to be decomposed
         pir_grad_var_to_var (dict): a dict obtained from distributed processing,
             which maps the backward grad value to its corresponding forward value.
-        fetch_list (list): a list which contains the outputs to be fetched of the program.
     '''
 
     def _get_bwd_ops_name(pir_program):
@@ -818,7 +732,6 @@ def decompose_pir_program(pir_program, pir_grad_var_to_var, fetch_list):
                     pir_program.global_block(),
                     op,
                     pir_grad_var_to_var,
-                    fetch_list,
                 )
                 if has_decomposed:
                     num_bwd_ops_decomposed += 1

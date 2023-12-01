@@ -96,7 +96,7 @@ class TestDecomposeOp(unittest.TestCase):
         ) = get_pir_program_and_param_map()
 
         pir_ops = pir_program.global_block().ops
-        fetch_list = [pir_ops[11].result(0)]
+        fetch_list = [pir_ops[10].result(0)]
 
         if flag == "decompose":
             core._set_prim_forward_enabled(True)
@@ -121,9 +121,7 @@ class TestDecomposeOp(unittest.TestCase):
             pir_grad_var_to_var = get_pir_grad_var_to_var(
                 param_mappings, grad_var_to_var
             )
-            decomp.decompose_pir_program(
-                pir_program, pir_grad_var_to_var, fetch_list
-            )
+            decomp.decompose_pir_program(pir_program, pir_grad_var_to_var)
 
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
             pir_program

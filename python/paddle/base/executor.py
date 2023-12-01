@@ -1109,7 +1109,7 @@ class _ExecutorCache:
                     from paddle.decomposition import decomp
 
                     decomp.decompose_pir_program(
-                        pir_program, pir_grad_var_to_var, None
+                        pir_program, pir_grad_var_to_var
                     )
 
                     type_to_program = {"default": pir_program}
