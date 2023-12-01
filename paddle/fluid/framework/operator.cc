@@ -1530,8 +1530,9 @@ bool OperatorWithKernel::SupportsKernelType(
 // 2. Whether this op has specific implementation;
 // 3. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
-  if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
-      this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
+  if ((!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
+       this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) ||
+      this->ContainsBF16TensorInputs(exe_ctx)) {
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
     tmp_kernel_type.data_layout_ = framework::DataLayout::ONEDNN;
@@ -1560,6 +1561,26 @@ bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
   return this->CanMKLDNNBeUsed(ctx, phi::TransToPhiDataType(data_type));
+}
+
+bool OperatorWithKernel::ContainsBF16TensorInputs(
+    const framework::ExecutionContext& ctx) const {
+  for (auto* name : ctx.InNameList()) {
+    if (ctx.InputSize(*name) == 1UL) {
+      if (ctx.InputVar(*name)->Get<phi::DenseTensor>().dtype() ==
+          phi::DataType::BFLOAT16) {
+        return true;
+      }
+    } else {
+      auto vars = ctx.MultiInputVar(*name);
+      for (auto* var : vars) {
+        if (var->Get<phi::DenseTensor>().dtype() == phi::DataType::BFLOAT16) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
 }
 
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
@@ -1800,9 +1821,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // 2. Whether this op has specific implementation;
 // 3. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
-      if (!this->DnnFallback() &&
-          !paddle::platform::in_mkldnn_white_list(type_) &&
-          this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
+      if ((!this->DnnFallback() &&
+           !paddle::platform::in_mkldnn_white_list(type_) &&
+           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) ||
+          this->ContainsBF16TensorInputs(exe_ctx)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
       }
@@ -2127,8 +2149,9 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 // 2. Whether this op has specific implementation;
 // 3. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
-  if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
-      this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
+  if ((!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
+       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) ||
+      this->ContainsBF16TensorInputs(ctx)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
   }

@@ -780,6 +780,8 @@ class OperatorWithKernel : public OperatorBase {
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
 
+  bool ContainsBF16TensorInputs(const framework::ExecutionContext& ctx) const;
+
   bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                       phi::DataType data_type) const;
 
