@@ -79,8 +79,9 @@ struct IrPrinter : public IRVisitorRequireReImpl<void> {
 };
 
 std::ostream &operator<<(std::ostream &os, Expr a);
-std::ostream &operator<<(std::ostream &os, const std::vector<Expr> &a);
 std::ostream &operator<<(std::ostream &os, const Module &m);
+std::ostream &operator<<(std::ostream &os, const std::vector<Expr> &a);
+std::ostream &operator<<(std::ostream &os, const std::vector<Dim> &a);
 
 template <typename IRN>
 void IrPrinter::PrintBinaryOp(const std::string &op,

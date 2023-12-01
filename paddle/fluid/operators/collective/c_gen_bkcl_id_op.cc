@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
 
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 namespace paddle {
 namespace operators {
 
@@ -69,17 +70,21 @@ class CGenBKCLIdOp : public framework::OperatorBase {
       return Output("Out");
     };
 
+    std::string endpoint = Attr<std::string>("endpoint");
+
     std::vector<BKCLUniqueId> bkcl_ids;
     bkcl_ids.resize(1);
 
-    if (rank == 0) {
-      GenBKCLID(&bkcl_ids);
-      std::vector<std::string> endpoint_list =
-          Attr<std::vector<std::string>>("other_endpoints");
-      platform::SendBroadCastCommID(endpoint_list, &bkcl_ids, ring_id);
-    } else {
-      std::string endpoint = Attr<std::string>("endpoint");
-      platform::RecvBroadCastCommID(endpoint, &bkcl_ids, ring_id);
+    if (!FLAGS_dynamic_static_unified_comm) {
+      int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
+      if (rank == 0) {
+        GenBKCLID(&bkcl_ids);
+        std::vector<std::string> endpoint_list =
+            Attr<std::vector<std::string>>("other_endpoints");
+        platform::SendBroadCastCommID(endpoint_list, &bkcl_ids, ring_id);
+      } else {
+        platform::RecvBroadCastCommID(server_fd, endpoint, &bkcl_ids, ring_id);
+      }
     }
 
     CopyBKCLIDToVar(bkcl_ids, func, scope);
