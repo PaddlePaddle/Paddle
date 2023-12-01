@@ -1421,34 +1421,6 @@ class Completer:
                 grad_op_dist_attr.set_output_dims_mapping(
                     output_var.name, ref_dims_mapping
                 )
-            elif is_loss_grad_op(grad_op):
-                assert (
-                    len(grad_op.input_arg_names) == 0
-                ), "first backward op should has only ONE output, but got [{}]".format(
-                    len(grad_op.input_arg_names)
-                )
-                assert (
-                    len(grad_op.output_arg_names) == 1
-                ), "first backward op should has only ONE output, but got [{}]".format(
-                    len(grad_op.output_arg_names)
-                )
-                loss_grad_name = grad_op.desc.output('Out')[0]
-                loss_name = grad_var_to_var[loss_grad_name]
-                ref_dims_mapping = fwd_op_dist_attr.get_output_dims_mapping(
-                    loss_name
-                )
-                # var
-                loss_grad_var = vars[loss_grad_name]
-                loss_grad_dist_attr = TensorDistAttr()
-                loss_grad_dist_attr.dims_mapping = ref_dims_mapping
-                loss_grad_dist_attr.process_mesh = ref_process_mesh
-                self._dist_context.set_tensor_dist_attr_for_program(
-                    loss_grad_var, loss_grad_dist_attr
-                )
-                # op
-                grad_op_dist_attr.set_output_dims_mapping(
-                    loss_grad_var.name, ref_dims_mapping
-                )
             else:
                 # complete grad_op's input_dist_attrs, no need to complete input_var's tensor_dist_attr
                 for input_name in grad_op.input_arg_names:
@@ -1551,9 +1523,57 @@ class Completer:
         ]
 
         for idx in range(first_backward_op_idx, len(ops)):
+            grad_op = ops[idx]
+            # complete the initial grad loss op
+            if idx == first_backward_op_idx:
+                assert grad_op.type == "fill_constant"
+                assert (
+                    len(grad_op.input_arg_names) == 0
+                ), "first backward op should has only ONE output, but got [{}]".format(
+                    len(grad_op.input_arg_names)
+                )
+                assert (
+                    len(grad_op.output_arg_names) == 1
+                ), "first backward op should has only ONE output, but got [{}]".format(
+                    len(grad_op.output_arg_names)
+                )
+
+                grad_var = vars[grad_op.output_arg_names[0]]
+                forward_var_name = _get_forward_varname_from_grad_varname(
+                    grad_var.name
+                )
+                forward_var = vars[forward_var_name]
+
+                # TODO complete other attribute for grad var
+                tensor_dist_attr = TensorDistAttr()
+                process_mesh = (
+                    self._dist_context.get_tensor_dist_attr_for_program(
+                        forward_var
+                    ).process_mesh
+                )
+                dims_mapping = (
+                    self._dist_context.get_tensor_dist_attr_for_program(
+                        forward_var
+                    ).dims_mapping
+                )
+                tensor_dist_attr.dims_mapping = dims_mapping
+                tensor_dist_attr.process_mesh = process_mesh
+                self._dist_context.set_tensor_dist_attr_for_program(
+                    grad_var, tensor_dist_attr
+                )
+
+                op_dist_attr = OperatorDistAttr()
+                op_dist_attr.process_mesh = process_mesh
+                op_dist_attr.set_output_dims_mapping(
+                    grad_var.name, dims_mapping
+                )
+                self._dist_context.set_op_dist_attr_for_program(
+                    grad_op, op_dist_attr
+                )
+                continue
+
             # complete the annotation of grad op (xxx_grad op or sum op)
             # xxx_grad op will have a corresponding forward op in grad_op_id_to_op_id
-            grad_op = ops[idx]
             if (
                 grad_op.desc.original_id()
                 in dist_op_context.grad_op_id_to_op_id
