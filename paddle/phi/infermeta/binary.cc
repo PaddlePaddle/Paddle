@@ -193,35 +193,6 @@ void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   }
 }
 
-void BinomialInferMeta(const MetaTensor& total_count,
-                       const MetaTensor& prob,
-                       MetaTensor* out,
-                       MetaConfig config) {
-  auto total_count_dim = total_count.dims();
-  auto prob_dim = prob.dims();
-
-  bool check = true;
-  if ((!config.is_runtime) &&
-      (phi::product(total_count_dim) <= 0 || phi::product(prob_dim) <= 0)) {
-    check = false;
-  }
-
-  if (check) {
-    PADDLE_ENFORCE_EQ(
-        total_count_dim,
-        prob_dim,
-        phi::errors::InvalidArgument(
-            "Input(total_count) and Input(prob) shall have the same shape. "
-            "But received: the shape of Input(total_count) is [%s],"
-            " the shape of Input(prob) is [%s].",
-            total_count_dim,
-            prob_dim));
-  }
-
-  out->set_dims(total_count_dim);
-  out->set_dtype(DataType::INT64);
-}
-
 void BCELossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
                       MetaTensor* out,
@@ -304,6 +275,35 @@ void BincountInferMeta(const MetaTensor& x,
   }
 
   out->share_lod(x);
+}
+
+void BinomialInferMeta(const MetaTensor& total_count,
+                       const MetaTensor& prob,
+                       MetaTensor* out,
+                       MetaConfig config) {
+  auto total_count_dims = total_count.dims();
+  auto prob_dims = prob.dims();
+
+  bool check = true;
+  if ((!config.is_runtime) &&
+      (phi::product(total_count_dims) <= 0 || phi::product(prob_dims) <= 0)) {
+    check = false;
+  }
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(
+        total_count_dims,
+        prob_dims,
+        phi::errors::InvalidArgument(
+            "Input(total_count) and Input(prob) shall have the same "
+            "shape. But received: the shape of Input(total_count) is "
+            "[%s], the shape of Input(prob) is [%s].",
+            total_count_dims,
+            prob_dims));
+  }
+
+  out->set_dims(total_count_dims);
+  out->set_dtype(DataType::INT64);
 }
 
 void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {

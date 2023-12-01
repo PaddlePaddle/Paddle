@@ -66,6 +66,11 @@ void BincountInferMeta(const MetaTensor& x,
                        const Scalar& minlength,
                        MetaTensor* out);
 
+void BinomialInferMeta(const MetaTensor& total_count,
+                       const MetaTensor& prob,
+                       MetaTensor* out,
+                       MetaConfig config = MetaConfig());
+
 void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void CholeskySolveInferMeta(const MetaTensor& x,
@@ -164,11 +169,6 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                             const std::string& data_format,
                             MetaTensor* out,
                             MetaConfig config = MetaConfig());
-
-void BinomialInferMeta(const MetaTensor& total_count,
-                       const MetaTensor& prob,
-                       MetaTensor* out,
-                       MetaConfig config = MetaConfig());
 
 void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
