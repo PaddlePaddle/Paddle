@@ -158,9 +158,6 @@ class TestPrim(unittest.TestCase):
         os.environ['FLAGS_enable_pir_in_executor'] = str(flag)  # for python
 
     def enable_prim_in_dist(self, flag):
-        paddle.set_flags(
-            {'FLAGS_enable_prim_after_distribute': flag}
-        )  # for c++
         os.environ['FLAGS_enable_prim_after_distribute'] = str(
             flag
         )  # for python

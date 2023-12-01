@@ -1092,9 +1092,7 @@ class _ExecutorCache:
                 'FLAGS_enable_pir_in_executor'
             ]:
                 if (
-                    get_flags("FLAGS_enable_prim_after_distribute")[
-                        'FLAGS_enable_prim_after_distribute'
-                    ]
+                    os.getenv("FLAGS_enable_prim_after_distribute") == "True"
                     and new_program._need_decomp
                 ):
                     (

@@ -1404,15 +1404,3 @@ PHI_DEFINE_EXPORTED_bool(enable_async_trace,
                          "enable collective async trace");
 
 PHI_DEFINE_EXPORTED_int32(async_trace_count, 5, "collective async trace count");
-
-/**
- * Enable prim after distributed  FLAG
- * Name: enable_prim_after_distribute
- * Since Version: 2.6.0
- * Value Range: bool, default=false
- * Example:
- * Note: If Ture, distributed main program will be decomposed before execution
- */
-PHI_DEFINE_EXPORTED_bool(enable_prim_after_distribute,
-                         false,
-                         "Enable prim after distribute");

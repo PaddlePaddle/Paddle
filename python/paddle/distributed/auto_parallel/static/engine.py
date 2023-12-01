@@ -255,9 +255,6 @@ class Engine:
         if os.getenv("FLAGS_enable_prim_after_distribute") == "True":
             self.enable_prim_after_distribute = True
             self.is_main_program_masked_prim = False
-            paddle.framework.set_flags(
-                {'FLAGS_enable_prim_after_distribute': True}
-            )
         else:
             self.enable_prim_after_distribute = False
 
