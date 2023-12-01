@@ -768,36 +768,35 @@ void BindVjp(pybind11::module *m) {
 }
 
 void BindDecomp(pybind11::module *m) {
-  m->def(
-      "decomp_tmp",
-      [](pir::Program *program,
-         std::vector<pir::OpResult> &src_vars,
-         const std::set<std::string> &blacklist,
-         const std::set<std::string> &whitelist) {
-        for (auto &item : blacklist) {
-          VLOG(0) << "blacklist ===== " << item;
-        }
-        VLOG(0) << "value ===== " << value;
-        py::list res;
-        DecompProgram decomp_object(program, src_vars);
-        auto tar_vars = decomp_object.decomp_program();
-        auto cap = tar_vars.size();
-        VLOG(0) << "BindDecomp decomp_tmp in ++++++++++++++++++";
-        VLOG(0) << "BindDecomp tar_vars size ++++++++++++++++++ " << cap;
-        for (size_t i = 0; i < tar_vars.size(); ++i) {
-          if (!tar_vars[i]) {
-            res.append(nullptr);
-          } else {
-            res.append(tar_vars[i]);
-          }
-        }
-        VLOG(0) << "BindDecomp decomp_tmp out ++++++++++++++++++";
-        return res;
-      },
-      py::arg("program"),
-      py::arg("src_vars"),
-      py::arg("blacklist") = std::set<std::string>,
-      py::arg("whitelist") = std::set<std::string>);
+  m->def("decomp_tmp",
+         [](pir::Program *program,
+            std::vector<pir::OpResult> &src_vars,
+            std::set<std::string> &blacklist,
+            std::set<std::string> &whitelist) {
+           for (auto &item : blacklist) {
+             VLOG(0) << "blacklist ===== " << item;
+           }
+           for (auto &item : whitelist) {
+             VLOG(0) << "whitelist ===== " << item;
+           }
+           py::list res;
+           DecompProgram decomp_object(program, src_vars, blacklist, whitelist);
+           auto tar_vars = decomp_object.decomp_program();
+           auto cap = tar_vars.size();
+           VLOG(0) << "BindDecomp decomp_tmp in ++++++++++++++++++";
+           VLOG(0) << "BindDecomp src_vars size ++++++++++++++++++ "
+                   << src_vars.size();
+           VLOG(0) << "BindDecomp tar_vars size ++++++++++++++++++ " << cap;
+           for (size_t i = 0; i < tar_vars.size(); ++i) {
+             if (!tar_vars[i]) {
+               res.append(nullptr);
+             } else {
+               res.append(tar_vars[i]);
+             }
+           }
+           VLOG(0) << "BindDecomp decomp_tmp out ++++++++++++++++++";
+           return res;
+         });
 
   m->def("call_decomp", [](pir::Operation &fwd_op) {
     py::list res;

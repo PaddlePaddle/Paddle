@@ -27,7 +27,9 @@ namespace paddle {
 class DecompProgram {
  public:
   DecompProgram(const pir::Program* program,
-                const std::vector<pir::OpResult>& src_vars);
+                const std::vector<pir::OpResult>& src_vars,
+                const std::set<std::string>& blacklist,
+                const std::set<std::string>& whitelist);
 
   std::vector<pir::OpResult> decomp_program();
   std::vector<pir::OpResult> format_decomp_res(
@@ -39,10 +41,13 @@ class DecompProgram {
       const std::vector<pir::OpResult>& orig_outs,
       const std::vector<pir::OpResult>& decomp_outs,
       std::unordered_map<pir::OpResult, int> orig_vars_dict);
+  bool enable_decomp(const std::string& op_name);
 
  private:
   const pir::Program* program_;
   std::vector<pir::OpResult> src_vars_;
+  std::set<std::string> blacklist_;
+  std::set<std::string> whitelist_;
 };
 
 bool has_decomp_rule(const pir::Operation& op);

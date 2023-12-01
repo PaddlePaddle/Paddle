@@ -90,6 +90,22 @@ std::vector<pir::OpResult> DecompProgram::construct_dst_vars(
   return tar_vars;
 }
 
+bool DecompProgram::enable_decomp(const std::string& op_name) {
+  bool flag = true;
+
+  if (whitelist_.size() > 0) {
+    if (whitelist_.find(op_name) == whitelist_.end()) {
+      flag = false;
+    }
+  }
+  if (blacklist_.size() > 0) {
+    if (blacklist_.find(op_name) != blacklist_.end()) {
+      flag = false;
+    }
+  }
+  return flag;
+}
+
 std::vector<std::vector<pir::OpResult>> call_decomp_rule(pir::Operation* op) {
   paddle::dialect::DecompInterface decomp_interface =
       op->dyn_cast<paddle::dialect::DecompInterface>();
@@ -103,8 +119,13 @@ std::vector<std::vector<pir::OpResult>> call_decomp_rule(pir::Operation* op) {
 }
 
 DecompProgram::DecompProgram(const pir::Program* program,
-                             const std::vector<pir::OpResult>& src_vars)
-    : program_(program), src_vars_(src_vars) {}
+                             const std::vector<pir::OpResult>& src_vars,
+                             const std::set<std::string>& blacklist,
+                             const std::set<std::string>& whitelist)
+    : program_(program),
+      src_vars_(src_vars),
+      blacklist_(blacklist),
+      whitelist_(whitelist) {}
 
 std::vector<pir::OpResult> DecompProgram::decomp_program() {
   std::ostringstream print_stream;
@@ -117,7 +138,7 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
   if (!paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
     return src_vars_;
   }
-  std::vector<pir::OpResult> tar_vars;
+  std::vector<pir::OpResult> tar_vars(src_vars_.size());
   pir::Block* block = const_cast<pir::Block*>(program_->block());
   std::vector<pir::Operation*> ops_list;
   for (auto& op : *block) {
@@ -125,14 +146,17 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
   }
   for (size_t i = 0; i < ops_list.size(); i++) {
     auto op = ops_list[i];
-    bool flag = has_decomp_rule(*op);
-    if (flag) {
+    bool flag_has_decomp = has_decomp_rule(*op);
+    bool enable_prim = true;
+    if (flag_has_decomp) {
+      enable_prim = enable_decomp(op->name());
+    }
+    VLOG(4) << "enable_prim flag ======= " << enable_prim;
+    if (flag_has_decomp && enable_prim) {
       VLOG(4) << "decomp op name ======= " << op->name();
-      if (FLAGS_debug_prim) {
-        VLOG(4) << "add insert befor op ======= " << op->name();
-        auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
-        builder.set_insertion_point(op);
-      }
+
+      auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
+      builder.set_insertion_point(op);
       std::vector<std::vector<pir::OpResult>> decomp_res = call_decomp_rule(op);
       std::vector<pir::OpResult> orig_outs = op->results();
       std::vector<pir::OpResult> standard_decomp_res =
@@ -163,6 +187,7 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
   }
   for (size_t i = 0; i < tar_vars.size(); i++) {
     if (!tar_vars[i]) {
+      VLOG(4) << "assign tar_vars ===========  " << i;
       tar_vars[i] = src_vars_[i];
     }
   }
