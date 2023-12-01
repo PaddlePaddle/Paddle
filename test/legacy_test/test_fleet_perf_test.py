@@ -1,4 +1,4 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@
 
 import unittest
 
-from xpu.test_parallel_dygraph_dataparallel import TestMultipleXpus
+from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
-class TestProcessGroup(TestMultipleXpus):
-    def test_process_group_bkcl(self):
-        self.run_mnist_2xpu('process_group_bkcl.py')
+class TestFleetPerfTest(TestMultipleGpus):
+    def test_fleet_perf_test(self):
+        self.run_mnist_2gpu('hybrid_parallel_perf_test.py')
 
 
 if __name__ == "__main__":

@@ -30,9 +30,10 @@ void quant_compute(const DeviceContext& dev_ctx,
                    const std::string& algo,
                    const int32_t arch) {
   PADDLE_ENFORCE_EQ(
-      ((arch == 80) || (arch == 70)),
+      ((arch == 80) || (arch == 86) || (arch == 75) || (arch == 70)),
       true,
-      phi::errors::InvalidArgument("Currently, arch only support 70, 80."));
+      phi::errors::InvalidArgument(
+          "Currently, arch only support 70, 75, 80, 86."));
 
   const auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
@@ -49,7 +50,8 @@ void quant_compute(const DeviceContext& dev_ctx,
   float* scale_data = scale->data<float>();
 
   DenseTensor x_int(out->type());
-  if (arch == 80) {
+
+  if ((arch == 80) || (arch == 75) || (arch == 86)) {
     x_int.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
   } else {
     // phi::Copy may change tensor meta info, here we transpose the quanted
@@ -81,8 +83,12 @@ void quant_compute(const DeviceContext& dev_ctx,
       // Note(Zhengzekang): In sm70, we only need RowMajor layout, just add bias
       // to make it unsigned.
       add_bias_and_interleave_inplace<bits>(x_int_data, num);
-      phi::Copy(dev_ctx, x_int, dev_ctx.GetPlace(), false, out);
-    } else if (arch == 80) {
+      // phi::Copy break the shape of int4 output, use naive copy;
+      // only left half of x_int data is valid in int4 mode
+      for (int i = 0; i < out->numel(); ++i) {
+        out_data[i] = x_int_data[i];
+      }
+    } else if ((arch == 80) || (arch == 75) || (arch == 86)) {
       permute_B_rows_for_mixed_gemm<bits>(
           int_processed_data, x_int_data, std::vector<size_t>{m, n});
       subbyte_transpose_impl<bits>(
