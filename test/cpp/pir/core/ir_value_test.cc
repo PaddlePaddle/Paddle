@@ -14,10 +14,13 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/operation.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
 // This unittest is used to test the construction interfaces of value class and
 // operation. The constructed test scenario is: a = OP1(); b = OP2(); c = OP3(a,
