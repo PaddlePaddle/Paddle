@@ -17,7 +17,10 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 
@@ -66,7 +69,6 @@ class TestNestLayerHook(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @compare_legacy_with_pir
     def train_net(self, to_static=False):
         paddle.seed(2022)
         net = SimpleNet()
@@ -74,7 +76,8 @@ class TestNestLayerHook(Dy2StTestBase):
             net = paddle.jit.to_static(net)
         out = net(self.x)
 
-        if to_static:
+        # TODO(xiongkun) save / load unitest.
+        if to_static and not paddle.base.framework.use_pir_api():
             paddle.jit.save(net, self.path)
 
         return float(out)
@@ -84,23 +87,24 @@ class TestNestLayerHook(Dy2StTestBase):
         out = net(self.x)
         return float(out)
 
+    @test_legacy_and_pt_and_pir
     def test_hook(self):
         dy_out = self.train_net(to_static=False)
         st_out = self.train_net(to_static=True)
-        load_out = self.load_train()
-        print(st_out, dy_out, load_out)
         np.testing.assert_allclose(
             st_out,
             dy_out,
             rtol=1e-05,
             err_msg=f'dygraph_res is {dy_out}\nstatic_res is {st_out}',
         )
-        np.testing.assert_allclose(
-            st_out,
-            load_out,
-            rtol=1e-05,
-            err_msg=f'load_out is {load_out}\nstatic_res is {st_out}',
-        )
+        if not paddle.base.framework.use_pir_api():
+            load_out = self.load_train()
+            np.testing.assert_allclose(
+                st_out,
+                load_out,
+                rtol=1e-05,
+                err_msg=f'load_out is {load_out}\nstatic_res is {st_out}',
+            )
 
 
 if __name__ == "__main__":

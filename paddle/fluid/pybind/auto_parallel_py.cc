@@ -47,6 +47,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
@@ -149,6 +150,7 @@ static inline void reset_operator_dist_attr(OperatorDistAttr *dist_attr) {
   }
   dist_attr->set_impl_type(kDefault);
   dist_attr->set_impl_idx(0);
+  dist_attr->set_chunk_id(0);
   dist_attr->clear_annotated();
 }
 
@@ -217,6 +219,10 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<phi::distributed::SToSReshardFunction>(
       *m, "SToSReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::SToPReshardFunction>(
+      *m, "SToPReshardFunction", ReshardFunction)
       .def(py::init<>());
 
   py::class_<phi::distributed::PToSReshardFunction>(
@@ -439,6 +445,8 @@ void BindAutoParallel(py::module *m) {
       .def_property("batch_dim",
                     &TensorDistAttr::batch_dim,
                     &TensorDistAttr::set_batch_dim)
+      .def_property(
+          "chunk_id", &TensorDistAttr::chunk_id, &TensorDistAttr::set_chunk_id)
       .def_property("dynamic_dims",
                     &TensorDistAttr::dynamic_dims,
                     &TensorDistAttr::set_dynamic_dims)
@@ -535,6 +543,9 @@ void BindAutoParallel(py::module *m) {
       .def_property("impl_idx",
                     &OperatorDistAttr::impl_idx,
                     &OperatorDistAttr::set_impl_idx)
+      .def_property("chunk_id",
+                    &OperatorDistAttr::chunk_id,
+                    &OperatorDistAttr::set_chunk_id)
       .def_property("is_recompute",
                     &OperatorDistAttr::is_recompute,
                     &OperatorDistAttr::set_is_recompute)

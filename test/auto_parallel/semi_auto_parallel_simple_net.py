@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle import nn
+from paddle.distributed import Replicate, Shard
 from paddle.distributed.fleet.utils import recompute
 
 BATCH_SIZE = 16
@@ -57,7 +58,7 @@ class DemoNet(nn.Layer):
         out = self.linear_0(x)
         out = self.relu(out)
         if self.is_pp:
-            out = dist.reshard(out, self.pp_reshard_dist_attr)
+            out = dist.reshard(out, *self.pp_reshard_dist_attr)
         out = self.linear_1(out)
         return out
 
@@ -76,51 +77,36 @@ class TestSimpleNetForSemiAutoParallel:
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         self._pp_mesh0 = dist.ProcessMesh([0], dim_names=["x"])
         self._pp_mesh1 = dist.ProcessMesh([1], dim_names=["x"])
-        self.pp_reshard_dist_attr = dist.DistAttr(
-            mesh=self._pp_mesh1, sharding_specs=[None, None]
-        )
+        self.pp_reshard_dist_attr = (self._pp_mesh1, [Replicate()])
 
         paddle.set_device(self._backend)
         self.init_single_card_net_result()
 
     def shard_fn(self, layer_name, layer, process_mesh):
         if layer_name == 'linear_0':
-            dist_attr = dist.DistAttr(
-                mesh=process_mesh, sharding_specs=[None, 'x']
+            layer.weight = dist.shard_tensor(
+                layer.weight, process_mesh, [Shard(1)]
             )
-            layer.weight = dist.shard_tensor(layer.weight, dist_attr=dist_attr)
         elif layer_name == 'linear_1':
-            dist_attr = dist.DistAttr(
-                mesh=process_mesh, sharding_specs=['x', None]
+            layer.weight = dist.shard_tensor(
+                layer.weight, process_mesh, [Shard(0)]
             )
-            layer.weight = dist.shard_tensor(layer.weight, dist_attr=dist_attr)
 
     def pp_shard_fn(self, layer_name, layer, process_mesh):
         if layer_name == 'linear_0':
             # shard_layer doens't support cross-mesh now.
             # input process_mesh of pp_shard_fn is useless,
             # it's defined just for unified format.
-            weight_dist_attr = dist.DistAttr(
-                mesh=self._pp_mesh0, sharding_specs=[None, None]
-            )
-            bias_dist_attr = dist.DistAttr(
-                mesh=self._pp_mesh0, sharding_specs=[None]
-            )
-            layer.weight = dist.shard_tensor(
-                layer.weight, dist_attr=weight_dist_attr
-            )
-            layer.bias = dist.shard_tensor(layer.bias, dist_attr=bias_dist_attr)
+            weight_dist_attr = (self._pp_mesh0, [Replicate()])
+            bias_dist_attr = (self._pp_mesh0, [Replicate()])
+
+            layer.weight = dist.shard_tensor(layer.weight, *weight_dist_attr)
+            layer.bias = dist.shard_tensor(layer.bias, *bias_dist_attr)
         elif layer_name == 'linear_1':
-            weight_dist_attr = dist.DistAttr(
-                mesh=self._pp_mesh1, sharding_specs=[None, None]
-            )
-            bias_dist_attr = dist.DistAttr(
-                mesh=self._pp_mesh1, sharding_specs=[None]
-            )
-            layer.weight = dist.shard_tensor(
-                layer.weight, dist_attr=weight_dist_attr
-            )
-            layer.bias = dist.shard_tensor(layer.bias, dist_attr=bias_dist_attr)
+            weight_dist_attr = (self._pp_mesh1, [Replicate()])
+            bias_dist_attr = (self._pp_mesh1, [Replicate()])
+            layer.weight = dist.shard_tensor(layer.weight, *weight_dist_attr)
+            layer.bias = dist.shard_tensor(layer.bias, *bias_dist_attr)
 
     def set_random_seed(self, seed):
         random.seed(seed)
@@ -136,19 +122,19 @@ class TestSimpleNetForSemiAutoParallel:
         # create loss
         loss_fn = nn.MSELoss()
         # run forward and backward
-        input_mesh = self._pp_mesh0 if is_pp else self._mesh
+        if is_pp:
+            input_dist_attr = (self._pp_mesh0, [Shard(0)])
+        else:
+            input_dist_attr = (self._mesh, [Shard(0)])
+
         opt = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=layer.parameters()
         )
+        opt = dist.shard_optimizer(opt)
         for _ in range(5):
             image, label = self.init_input_data()
             if shard_input:
-                image = dist.shard_tensor(
-                    image,
-                    dist_attr=dist.DistAttr(
-                        mesh=input_mesh, sharding_specs=['x', None]
-                    ),
-                )
+                image = dist.shard_tensor(image, *input_dist_attr)
 
             out = layer(image)
             loss = loss_fn(out, label)

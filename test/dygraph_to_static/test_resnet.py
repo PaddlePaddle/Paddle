@@ -19,9 +19,9 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_pir_only,
+    test_pt_only,
 )
 from predictor_utils import PredictorTools
 
@@ -217,18 +217,21 @@ def reader_decorator(reader):
 
 
 class TransedFlowerDataSet(paddle.io.Dataset):
-    def __init__(self, flower_data, length):
+    def __init__(self, length):
         self.img = []
         self.label = []
-        self.flower_data = flower_data()
         self._generate(length)
 
     def _generate(self, length):
-        for i, data in enumerate(self.flower_data):
+        for i, data in enumerate(range(1000)):
+            image = paddle.randn((3, 224, 224)).astype("float32").cpu()
+            label = np.array(
+                [paddle.randint(0, 100, (1,)).astype("int64").item()]
+            )
             if i >= length:
                 break
-            self.img.append(data[0])
-            self.label.append(data[1])
+            self.img.append(image)
+            self.label.append(label)
 
     def __getitem__(self, idx):
         return self.img[idx], self.label[idx]
@@ -260,7 +263,6 @@ class ResNetHelper:
         paddle.framework.random._manual_program_seed(SEED)
 
         dataset = TransedFlowerDataSet(
-            reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
             batch_size * (10 + 1),
         )
         data_loader = paddle.io.DataLoader(
@@ -415,7 +417,7 @@ class TestResnet(Dy2StTestBase):
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_pir_only
+    @test_pt_only
     def test_resnet_pir(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)

@@ -78,6 +78,11 @@ class CublasHandle {
   cublasHandle_t cuhandle;
 };
 
+int32_t cinn_get_value_in_cuda_kernel_args(void *v_args, int idx) {
+  cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
+  return args[idx].operator int32_t();
+}
+
 void cinn_call_cuda_kernel(void *kernel_fn,
                            void *v_args,
                            int num_args,

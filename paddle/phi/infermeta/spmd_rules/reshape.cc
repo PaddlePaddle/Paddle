@@ -144,6 +144,11 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
                           const std::vector<int64_t>& shape) {
   // Step0: Verify input args based on reshape logic
   auto x_shape = phi::vectorize(x.dims());
+  // For dynamic mode, deal with extra xshape dim.
+  if (x_shape[0] == 0) {
+    x_shape.erase(x_shape.begin());
+  }
+
   int x_ndim = x_shape.size();
   int out_ndim = shape.size();
   auto x_dist_attr_src = x.dist_attr();
@@ -191,8 +196,18 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
   // and output with the inferred dims mapping.
   TensorDistAttr x_dist_attr_dst(x_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
+  if (x_dist_attr_dst.dynamic_dims().size() !=
+      x_dist_attr_dst.dims_mapping().size()) {
+    VLOG(3) << "Reshape InferSPMD change input dist attr dynamic dims";
+    x_dist_attr_dst.set_default_dynamic_dims(x_dist_attr_dst.dims_mapping());
+  }
   TensorDistAttr out_dist_attr(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
+  if (out_dist_attr.dynamic_dims().size() !=
+      out_dist_attr.dims_mapping().size()) {
+    VLOG(3) << "Reshape InferSPMD change output dist attr dynamic dims";
+    out_dist_attr.set_default_dynamic_dims(out_dist_attr.dims_mapping());
+  }
 
   VLOG(4) << "Transformation from input to output:";
   for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
@@ -268,8 +283,18 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   // and output with the inferred dims mapping
   TensorDistAttr out_dist_attr_dst(out_dist_attr_src);
   out_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
+  if (out_dist_attr_dst.dynamic_dims().size() !=
+      out_dist_attr_dst.dims_mapping().size()) {
+    VLOG(3) << "Reshape InferSPMD change output dist attr dynamic dims";
+    out_dist_attr_dst.set_default_dynamic_dims(
+        out_dist_attr_dst.dims_mapping());
+  }
   TensorDistAttr x_dist_attr(x.dist_attr());
   x_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
+  if (x_dist_attr.dynamic_dims().size() != x_dist_attr.dims_mapping().size()) {
+    VLOG(3) << "Reshape InferSPMD change input dist attr dynamic dims";
+    x_dist_attr.set_default_dynamic_dims(x_dist_attr.dims_mapping());
+  }
 
   VLOG(4) << "Transformation from output to input:";
   for (int64_t i = 0, n = trans.size(); i < n; i++) {
@@ -281,6 +306,31 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   VLOG(4) << "X dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
 
   return {{x_dist_attr}, {out_dist_attr_dst}};
+}
+
+SpmdInfo ReshapeInferSpmdDynamic(const DistMetaTensor& x,
+                                 const std::vector<int64_t>& shape) {
+  auto spmd_info = ReshapeInferSpmd(x, shape);
+  spmd_info.second.emplace_back(spmd_info.first[0]);
+  return spmd_info;
+}
+
+SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
+                              const DistMetaTensor& out_grad) {
+  std::vector<int64_t> out_grad_shape = phi::vectorize(out_grad.dims());
+  const auto& x_shape_dist_src = x_shape.dist_attr();
+  auto tmp = ReshapeInferSpmdDynamic(x_shape, out_grad_shape);
+  // check no shard is needed
+  const auto& x_shape_dist_dst = PADDLE_GET_CONST(TensorDistAttr, tmp.first[0]);
+  const auto& out_grad_dist_dst =
+      PADDLE_GET_CONST(TensorDistAttr, tmp.second[0]);
+  PADDLE_ENFORCE_EQ(x_shape_dist_src,
+                    x_shape_dist_dst,
+                    phi::errors::InvalidArgument(
+                        "x_shape should not be re shared: [%s] => [%s]",
+                        x_shape_dist_src.to_string(),
+                        x_shape_dist_dst.to_string()));
+  return {{out_grad_dist_dst}, {x_shape_dist_dst}};
 }
 
 }  // namespace distributed
