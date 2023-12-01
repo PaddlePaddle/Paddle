@@ -139,5 +139,9 @@ std::tuple<double, double> InterpreterCore::InterpreterRunTime() {
   return impl_->InterpreterRunTime();
 }
 
+Variable* InterpreterCore::DebugVar(const std::string& name) const {
+  return impl_->DebugVar(name);
+}
+
 }  // namespace framework
 }  // namespace paddle

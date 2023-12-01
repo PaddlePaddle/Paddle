@@ -1634,5 +1634,9 @@ void ProgramInterpreter::AnalyseExecuteOrderForTrace() {
   }
 }
 
+Variable* ProgramInterpreter::DebugVar(const std::string& name) const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "DebugVar is not implemented in ProgramInterpreter."));
+}
 }  // namespace framework
 }  // namespace paddle

@@ -647,6 +647,14 @@ void PirInterpreter::BuildInstruction() {
     } else if (op.dialect()->name() == "pd_op") {
       if (op.isa<paddle::dialect::IfOp>()) {
         CREATE_INSTR(CondInstruction);
+        sub_blocks_.insert(
+            {op.dyn_cast<paddle::dialect::IfOp>().true_block(),
+             dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
+                 ->TrueBranchInterpreter()});
+        sub_blocks_.insert(
+            {op.dyn_cast<paddle::dialect::IfOp>().false_block(),
+             dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
+                 ->FalseBranchInterpreter()});
       } else if (op.isa<paddle::dialect::WhileOp>()) {
         vec_instruction_base_.emplace_back(
             std::make_unique<WhileInstruction>(op_idx++,
@@ -655,6 +663,10 @@ void PirInterpreter::BuildInstruction() {
                                                scope_,
                                                local_scope_,
                                                value_exe_info_.get()));
+        sub_blocks_.insert(
+            {&op.dyn_cast<paddle::dialect::WhileOp>().body(),
+             dynamic_cast<WhileInstruction*>(vec_instruction_base_.back().get())
+                 ->BodyInterpreter()});
       } else if (op.isa<paddle::dialect::HasElementsOp>()) {
         CREATE_INSTR(HasElementsInstruction);
       } else {
@@ -1638,6 +1650,21 @@ void PirInterpreter::SolvePersisableVarNames() {
       }
     }
   }
+}
+
+Variable* PirInterpreter::DebugVar(const std::string& name) const {
+  Scope* scope = HasLocalScope() ? local_scope_ : scope_;
+  auto* var = scope->FindVar(name);
+  if (var != nullptr) {
+    return var;
+  }
+  for (auto kv : sub_blocks_) {
+    var = kv.second->DebugVar(name);
+    if (var != nullptr) {
+      return var;
+    }
+  }
+  return var;
 }
 
 void PirInterpreter::Build(

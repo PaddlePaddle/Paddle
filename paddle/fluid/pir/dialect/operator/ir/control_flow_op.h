@@ -100,12 +100,12 @@ struct TuplePushOpVjpInterfaceModel : public VjpInterface::Concept {
 /// in the While usage scenario. Example:
 /// (%stack_0, %inlet_0, %outlet_0) = "cf.create_stack" ()
 /// ...
-/// (%0) = "cf.has_elements" (%stack_0)
+/// (%0) = "pd_op.has_elements" (%stack_0)
 /// (...) = "pd_op.while"(%0) [...] {
 ///   ...
 /// }
 ///
-class IR_API HasElementsOp : public pir::Op<HasElementsOp> {
+class HasElementsOp : public pir::Op<HasElementsOp> {
  public:
   using Op::Op;
   static const char *name() { return "cf.has_elements"; }
