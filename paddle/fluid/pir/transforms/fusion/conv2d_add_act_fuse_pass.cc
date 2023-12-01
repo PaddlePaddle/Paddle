@@ -39,11 +39,6 @@ class Conv2dAddActFusePattern
 
     pir::OpResult conv2d_out = conv2d_op.out();
     if (!conv2d_out.HasOneUse()) return false;
-    pir::Value conv2d_filter = conv2d_op.filter();
-
-    pir::OpResult conv2d_filter_result =
-        conv2d_filter.dyn_cast<pir::OpResult>();
-    IR_ENFORCE(conv2d_filter_result);
 
     pir::Value add_input = op.x();
     IR_ENFORCE(add_input == conv2d_out);

@@ -65,7 +65,7 @@ class Conv2dAddFusePattern
                           -> std::vector<int> { return {}; })},
             {"exhaustive_search",
              res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-               return true;
+               return false;
              })},
             {"workspace_size_MB",
              res.Attr([](const pir::drr::MatchContext &match_ctx) -> int {
