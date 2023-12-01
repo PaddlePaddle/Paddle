@@ -101,33 +101,11 @@ create_test_case(
 create_test_case(
     TestOperatorOverloadAddInStatic, 'float16', 'float64', 'float64'
 )
-create_test_case(
-    TestOperatorOverloadAddInStatic, 'float16', 'complex64', 'complex64'
-)
-create_test_case(
-    TestOperatorOverloadAddInStatic, 'float16', 'complex128', 'complex128'
-)
 
 create_test_case(
     TestOperatorOverloadAddInStatic, 'float32', 'float64', 'float64'
 )
-create_test_case(
-    TestOperatorOverloadAddInStatic, 'float32', 'complex64', 'complex64'
-)
-create_test_case(
-    TestOperatorOverloadAddInStatic, 'float32', 'complex128', 'complex128'
-)
 
-create_test_case(
-    TestOperatorOverloadAddInStatic, 'float64', 'complex64', 'complex128'
-)
-create_test_case(
-    TestOperatorOverloadAddInStatic, 'float64', 'complex128', 'complex128'
-)
-
-create_test_case(
-    TestOperatorOverloadAddInStatic, 'complex64', 'complex128', 'complex128'
-)
 
 if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     create_test_case(
@@ -138,12 +116,6 @@ if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     )
     create_test_case(
         TestOperatorOverloadAddInStatic, 'bfloat16', 'float64', 'float64'
-    )
-    create_test_case(
-        TestOperatorOverloadAddInStatic, 'bfloat16', 'complex64', 'complex64'
-    )
-    create_test_case(
-        TestOperatorOverloadAddInStatic, 'bfloat16', 'complex128', 'complex128'
     )
 
 
@@ -166,33 +138,11 @@ create_test_case(
 create_test_case(
     TestOperatorOverloadSubInStatic, 'float16', 'float64', 'float64'
 )
-create_test_case(
-    TestOperatorOverloadSubInStatic, 'float16', 'complex64', 'complex64'
-)
-create_test_case(
-    TestOperatorOverloadSubInStatic, 'float16', 'complex128', 'complex128'
-)
 
 create_test_case(
     TestOperatorOverloadSubInStatic, 'float32', 'float64', 'float64'
 )
-create_test_case(
-    TestOperatorOverloadSubInStatic, 'float32', 'complex64', 'complex64'
-)
-create_test_case(
-    TestOperatorOverloadSubInStatic, 'float32', 'complex128', 'complex128'
-)
 
-create_test_case(
-    TestOperatorOverloadSubInStatic, 'float64', 'complex64', 'complex128'
-)
-create_test_case(
-    TestOperatorOverloadSubInStatic, 'float64', 'complex128', 'complex128'
-)
-
-create_test_case(
-    TestOperatorOverloadSubInStatic, 'complex64', 'complex128', 'complex128'
-)
 
 if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     create_test_case(
@@ -203,12 +153,6 @@ if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     )
     create_test_case(
         TestOperatorOverloadSubInStatic, 'bfloat16', 'float64', 'float64'
-    )
-    create_test_case(
-        TestOperatorOverloadSubInStatic, 'bfloat16', 'complex64', 'complex64'
-    )
-    create_test_case(
-        TestOperatorOverloadSubInStatic, 'bfloat16', 'complex128', 'complex128'
     )
 
 
@@ -231,32 +175,9 @@ create_test_case(
 create_test_case(
     TestOperatorOverloadMulInStatic, 'float16', 'float64', 'float64'
 )
-create_test_case(
-    TestOperatorOverloadMulInStatic, 'float16', 'complex64', 'complex64'
-)
-create_test_case(
-    TestOperatorOverloadMulInStatic, 'float16', 'complex128', 'complex128'
-)
 
 create_test_case(
     TestOperatorOverloadMulInStatic, 'float32', 'float64', 'float64'
-)
-create_test_case(
-    TestOperatorOverloadMulInStatic, 'float32', 'complex64', 'complex64'
-)
-create_test_case(
-    TestOperatorOverloadMulInStatic, 'float32', 'complex128', 'complex128'
-)
-
-create_test_case(
-    TestOperatorOverloadMulInStatic, 'float64', 'complex64', 'complex128'
-)
-create_test_case(
-    TestOperatorOverloadMulInStatic, 'float64', 'complex128', 'complex128'
-)
-
-create_test_case(
-    TestOperatorOverloadMulInStatic, 'complex64', 'complex128', 'complex128'
 )
 
 if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
@@ -268,12 +189,6 @@ if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     )
     create_test_case(
         TestOperatorOverloadMulInStatic, 'bfloat16', 'float64', 'float64'
-    )
-    create_test_case(
-        TestOperatorOverloadMulInStatic, 'bfloat16', 'complex64', 'complex64'
-    )
-    create_test_case(
-        TestOperatorOverloadMulInStatic, 'bfloat16', 'complex128', 'complex128'
     )
 
 

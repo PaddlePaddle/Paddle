@@ -533,15 +533,10 @@ def monkey_patch_variable():
 
             if lhs_dtype != rhs_dtype:
                 if method_name in SUPPORT_PROMOTION_OPS:
-                    from ..type_promotion import (
-                        get_result_dtype,
-                        is_support_float_and_complex,
-                    )
-
-                    if is_support_float_and_complex(
-                        lhs_dtype
-                    ) and is_support_float_and_complex(rhs_dtype):
-                        common_dtype = get_result_dtype(lhs_dtype, rhs_dtype)
+                    if core.need_type_promotion(lhs_dtype, rhs_dtype):
+                        common_dtype = core.get_promote_dtype(
+                            op_type, lhs_dtype, rhs_dtype
+                        )
                         if rhs_dtype != common_dtype:
                             other_var = astype(other_var, common_dtype)
                         if lhs_dtype != common_dtype:
