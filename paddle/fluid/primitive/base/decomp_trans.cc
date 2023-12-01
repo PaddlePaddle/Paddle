@@ -16,10 +16,13 @@
 // #include <string>
 
 #include "paddle/fluid/primitive/base/decomp_trans.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/program.h"
+
+PHI_DECLARE_bool(debug_prim);
 
 namespace paddle {
 
@@ -78,7 +81,9 @@ std::vector<pir::OpResult> DecompProgram::construct_dst_vars(
                         orig_outs.size(),
                         decomp_outs.size()));
   for (size_t i = 0; i < orig_outs.size(); i++) {
+    VLOG(4) << "decomp construct idx -------- " << i;
     if (orig_vars_dict.find(orig_outs[i]) != orig_vars_dict.end()) {
+      VLOG(4) << "decomp construct in idx -------- " << i;
       tar_vars[orig_vars_dict[orig_outs[i]]] = decomp_outs[i];
     }
   }
@@ -122,6 +127,12 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
     auto op = ops_list[i];
     bool flag = has_decomp_rule(*op);
     if (flag) {
+      VLOG(4) << "decomp op name ======= " << op->name();
+      if (FLAGS_debug_prim) {
+        VLOG(4) << "add insert befor op ======= " << op->name();
+        auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
+        builder.set_insertion_point(op);
+      }
       std::vector<std::vector<pir::OpResult>> decomp_res = call_decomp_rule(op);
       std::vector<pir::OpResult> orig_outs = op->results();
       std::vector<pir::OpResult> standard_decomp_res =
@@ -131,13 +142,35 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
 
       VLOG(4) << "decomp out size ======= " << decomp_res.size();
       op->ReplaceAllUsesWith(standard_decomp_res);
-      auto op_iter = std::find(block->begin(), block->end(), *op);
-      block->erase(op_iter);
+      std::ostringstream print_stream2;
+      program_->Print(print_stream2);
+      VLOG(4) << "program out sink decomp ------ index " << i << ". "
+              << print_stream2.str();
+      bool remove_op = true;
+      for (auto& item : op->results()) {
+        if (item.HasOneUse()) {
+          remove_op = false;
+          break;
+        }
+      }
+      VLOG(4) << "program remove op ----------- " << remove_op << ". "
+              << op->name();
+      if (remove_op) {
+        auto op_iter = std::find(block->begin(), block->end(), *op);
+        block->erase(op_iter);
+      }
     }
-    std::ostringstream print_stream2;
-    program_->Print(print_stream2);
-    VLOG(4) << "program out sink decomp ------" << print_stream2.str();
   }
+  for (size_t i = 0; i < tar_vars.size(); i++) {
+    if (!tar_vars[i]) {
+      tar_vars[i] = src_vars_[i];
+    }
+  }
+  auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
+  builder.SetInsertionPointToEnd(block);
+  std::ostringstream print_stream3;
+  program_->Print(print_stream3);
+  VLOG(4) << "program out final ************ " << print_stream3.str();
   return tar_vars;
 }
 
