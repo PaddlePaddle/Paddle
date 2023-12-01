@@ -1531,23 +1531,25 @@ class OpcodeExecutor(OpcodeExecutorBase):
         instr_idx:
             the index for branch 1 to find the boundary and copy origin opcode
         """
-        compile_fn = self._graph.get_compiled_fn()
+        # if we want get compiled fn, and do not do ast twice,
+        # we must give retval to get_compiled_fn which strictly same as start_compile
+        store_vars = list(self.stack)
+        store_var_info = {}
+
+        for name in restore_names:
+            _var = self.get_var(name)
+            if _var not in self.stack:
+                store_vars.append(_var)
+                store_var_info[_var.id] = name
+
+        compile_fn = self._graph.get_compiled_fn(*store_vars)
+
         if compile_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
-            store_var_info = {}
-            for name in restore_names:
-                _var = self.get_var(name)
-                if _var not in self.stack:
-                    store_var_info[_var.id] = name
             return self._graph._restore_origin_opcode(
                 list(self.stack), store_var_info, instr_idx
             )
         else:
-            store_vars = list(self.stack)
-            for name in restore_names:
-                _var = self.get_var(name)
-                if _var not in self.stack:
-                    store_vars.append(_var)
-            return self._graph._build_compile_fn_with_name_store([], store_vars)
+            return self._graph._build_compile_fn_with_name_store(store_vars)
 
     def _create_resume_fn(self, index, stack_size):
         """
@@ -2061,7 +2063,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             len(self.stack) == 1
         ), f"Stack must have one element, but get {len(self.stack)} elements."
         ret_val = self.stack.pop()
-        compile_fn = self._graph.get_compiled_fn()
+        compile_fn = self._graph.get_compiled_fn(ret_val)
         if compile_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
             self.new_code = None
         else:

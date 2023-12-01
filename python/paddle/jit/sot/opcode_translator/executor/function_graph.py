@@ -303,7 +303,7 @@ class FunctionGraph:
 
         return VariableLoader(store_var_info, self.pycode_gen)
 
-    def _build_compile_fn_with_name_store(self, ret_vars, to_store_vars):
+    def _build_compile_fn_with_name_store(self, to_store_vars):
         class VariableLoader:
             def __init__(self, index_for_load, pycode_gen):
                 self._index_for_load = index_for_load
@@ -320,7 +320,7 @@ class FunctionGraph:
         to_store_vars = list(
             filter(lambda x: not isinstance(x, NullVariable), to_store_vars)
         )
-        self.start_compile(*(ret_vars + to_store_vars))
+        self.start_compile(*to_store_vars)
         name_gen = NameGenerator("__start_compile_saved_")
 
         for var in to_store_vars[::-1]:
@@ -539,8 +539,8 @@ class FunctionGraph:
 
         Args:
             infer_meta_fn: function for infer meta, (func, metas, kwmetas) -> output_metas
-            compute_fn   : function which setup sir compile, (func, input_symbols, outputs_symbols) -> None
-            func         : the logical function
+            compute_fn   : function for add stmt to sir, (func, input_symbols, outputs_symbols, stacks) -> None
+            func         : the logical function which will be represent as a stmt
         """
         self.collect_input_variables(list(args))
         self.collect_input_variables(list(kwargs.values()))

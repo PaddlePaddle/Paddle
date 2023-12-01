@@ -244,7 +244,6 @@ def infer_meta(func, *args, **kwargs):
     fn = SpecialInferMeta().get_infermeta_fn(func)
     if fn:
         return fn(*args, **kwargs)
-    # graph size of api & method is 1
     return VariableCreator().infer_meta(func, *args, **kwargs)
 
 
