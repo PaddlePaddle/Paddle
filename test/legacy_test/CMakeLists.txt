@@ -1014,10 +1014,8 @@ set_tests_properties(test_distributed_fused_lamb_op_with_clip PROPERTIES TIMEOUT
                                                                          240)
 set_tests_properties(test_distributed_fused_lamb_op_without_clip
                      PROPERTIES TIMEOUT 120)
-if(NOT WITH_COVERAGE)
-  set_tests_properties(test_distributed_fused_lamb_op_with_gradient_merge
-                       PROPERTIES TIMEOUT 240)
-endif()
+set_tests_properties(test_distributed_fused_lamb_op_with_gradient_merge
+                     PROPERTIES TIMEOUT 240)
 set_tests_properties(test_elementwise_min_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 300)
