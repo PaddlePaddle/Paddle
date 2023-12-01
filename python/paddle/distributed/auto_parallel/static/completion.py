@@ -28,7 +28,7 @@ from paddle.framework import core
 from ..process_mesh import ProcessMesh, compute_compatible_process_mesh
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
 from .dist_context import _node_id
-from .operators import (
+from .operators.common import (
     find_compatible_distributed_operator_impls,
     find_distributed_operator_impl_container,
 )
