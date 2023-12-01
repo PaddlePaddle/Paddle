@@ -16,6 +16,7 @@
 
 import paddle
 from paddle import _C_ops
+from paddle.base.libpaddle import DataType
 from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
@@ -403,7 +404,7 @@ def median(x, axis=None, keepdim=False, name=None):
             [[4., 5., 6., 7.]])
 
     """
-    if not isinstance(x, Variable):
+    if not isinstance(x, (Variable, paddle.pir.OpResult)):
         raise TypeError("In median, the input x should be a Tensor.")
 
     if x.size == 0:
@@ -435,7 +436,11 @@ def median(x, axis=None, keepdim=False, name=None):
     sz = x.shape[axis]
     kth = sz >> 1
     tensor_topk, idx = paddle.topk(x, kth + 1, axis=axis, largest=False)
-    dtype = 'float64' if x.dtype == core.VarDesc.VarType.FP64 else 'float32'
+    dtype = (
+        'float64'
+        if x.dtype in [core.VarDesc.VarType.FP64, DataType.FLOAT64]
+        else 'float32'
+    )
     if sz & 1 == 0:
         out_tensor = paddle.slice(
             tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]
