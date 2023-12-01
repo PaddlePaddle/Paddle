@@ -63,7 +63,7 @@ from .compiler import (  # noqa: F401
     IpuCompiledProgram,
     IpuStrategy,
 )
-from .core import (  # noqa: F401  # noqa: F401
+from .core import (  # noqa: F401
     CPUPlace,
     CUDAPinnedPlace,
     CUDAPlace,
