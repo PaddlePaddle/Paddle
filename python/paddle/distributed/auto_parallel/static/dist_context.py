@@ -1199,9 +1199,7 @@ class BlockState:
         self.backward_to_forward_index_map = {}
 
     def parse_forward_blocks(self, program):
-        while program.current_block_idx != 0:
-            program._rollback()
-
+        program._roll_to_global_block()
         assert program.current_block_idx == 0
 
         for idx, block in enumerate(program.blocks):
