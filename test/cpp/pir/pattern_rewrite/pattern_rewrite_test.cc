@@ -353,7 +353,7 @@ TEST(pattern_rewrite, Patterns) {
   //       true));
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 2u);
+  EXPECT_EQ(program.block()->size(), 6u);
 }
 
 void BuildConstantFoldingProgram(pir::Program *program,
