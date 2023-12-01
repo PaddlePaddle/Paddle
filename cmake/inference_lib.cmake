@@ -316,6 +316,11 @@ copy(
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/string/)
 copy(
   inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/string/tinyformat/tinyformat.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/string/tinyformat/
+)
+copy(
+  inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/core/visit_type.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/core/)
 copy(
