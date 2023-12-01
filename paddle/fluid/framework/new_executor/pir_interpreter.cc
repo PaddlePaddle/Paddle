@@ -650,11 +650,11 @@ void PirInterpreter::BuildInstruction() {
         vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
             op_idx++, place_, &op, value_exe_info_.get(), skip_gc_vars));
         sub_blocks_.insert(
-            {op.dyn_cast<paddle::dialect::IfOp>().true_block(),
+            {&op.dyn_cast<paddle::dialect::IfOp>().true_block(),
              dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
                  ->TrueBranchInterpreter()});
         sub_blocks_.insert(
-            {op.dyn_cast<paddle::dialect::IfOp>().false_block(),
+            {&op.dyn_cast<paddle::dialect::IfOp>().false_block(),
              dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
                  ->FalseBranchInterpreter()});
       } else if (op.isa<paddle::dialect::WhileOp>()) {
