@@ -100,8 +100,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
     VLOG(4) << "constant_folding_pass applys on [" << op->name() << "] op";
-    pir::Program new_program(ir_context());
-    auto output_var_name = BuildProgramFromOperation(op, &new_program);
+    pir::Program new_program(rewriter.ir_context());
+    auto output_var_name =
+        BuildProgramFromOperation(op, &new_program, rewriter);
 
     // execute program
     exe_config_->skip_gc_vars.insert(output_var_name);
@@ -163,9 +164,12 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     return true;
   }
 
-  std::string BuildProgramFromOperation(pir::Operation* op,
-                                        pir::Program* new_program) const {
-    pir::Builder builder = pir::Builder(ir_context(), new_program->block());
+  std::string BuildProgramFromOperation(
+      pir::Operation* op,
+      pir::Program* new_program,
+      pir::PatternRewriter& rewriter) const {  // NOLINT
+    pir::Builder builder =
+        pir::Builder(rewriter.ir_context(), new_program->block());
 
     // prepare op inputs
     std::vector<pir::Value> op_inputs;
@@ -176,12 +180,15 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       PADDLE_ENFORCE_NOT_NULL(
           param_var,
           phi::errors::InvalidArgument("Parameter var not in scope."));
-      if (op->operand_source(i).use_count() == 1) {
-        deleted_vars_->push_back(param_name);
-      }
 
       auto parameter_op = builder.Build<pir::ParameterOp>(
           param_name, op->operand_source(i).type());
+      if (op->operand_source(i).use_count() <= 1) {
+        deleted_vars_->push_back(param_name);
+      } else {
+        parameter_op->set_attribute(
+            kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+      }
       op_inputs.push_back(parameter_op->result(0));
     }
 
