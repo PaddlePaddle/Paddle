@@ -232,7 +232,7 @@ OpLowererImpl::BucketLower(const GroupPtr& group,
     group_scheduler->Schedule();
     cond2func_bodies = group_scheduler->GetIRs();
   } else {
-    cond2func_bodies.emplace_back(ir::Expr(1),
+    cond2func_bodies.emplace_back(ir::Expr(true),
                                   ir_sch.GetModule().GetExprs()[0]);
   }
 
@@ -506,17 +506,40 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     for (auto arg : group_func_args) {
       args_set.insert(arg.name());
     }
-
-    for (auto& tensor_pair : tensor_map) {
-      if (args_set.count("_" + tensor_pair.second->name)) {
-        continue;
+    for (auto& op : group->ops) {
+      // collect all output tensor.
+      for (auto opresult : op->results()) {
+        if (tensor_map.count(opresult) == 0) {
+          continue;
+        }
+        auto tensor = tensor_map.at(opresult);
+        if (args_set.count("_" + tensor->name) != 0) {
+          continue;
+        }
+        group->output_values.push_back(opresult);
+        group_func_arg_tensors->push_back(tensor);
+        group->output_names.push_back(tensor->name);
+        group_func_args.emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
       }
-      group_func_arg_tensors->push_back(tensor_pair.second);
-      // use the underlying tensor name to be consistent with the argument name
-      // in the lowered function
-      group->output_names.push_back(tensor_pair.second->name);
-      group_func_args.emplace_back(tensor_pair.second->buffer,
-                                   ir::Argument::IO::kOutput);
+    }
+  }
+
+  std::map<int, CINNKernelInfo::ArgDimIdx> mps;
+  // update args for dynamic dim
+  int num_tensor_args = static_cast<int>(group_func_args.size());
+  int non_tensor_arg_idx = group_func_args.size();
+  for (int tensor_arg_idx = 0; tensor_arg_idx < num_tensor_args;
+       tensor_arg_idx++) {
+    auto tensor_dim = (*group_func_arg_tensors)[tensor_arg_idx]->sym_shape;
+    int tensor_dim_size = tensor_dim.size();
+    for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
+         tensor_arg_dim_idx++) {
+      if (tensor_dim[tensor_arg_dim_idx]->IsDynamic()) {
+        group_func_args.emplace_back(ir::_Var_::Make(
+            tensor_dim[tensor_arg_dim_idx]->GetSymbolName(), common::Int(32)));
+        group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
+                                                     tensor_arg_dim_idx};
+      }
     }
   }
 
