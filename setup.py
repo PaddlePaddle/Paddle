@@ -1179,7 +1179,7 @@ def get_package_data_and_package_dir():
                     + '.so'
                 )
                 commands.append(
-                    "install_name_tool -add_rpath '@loader_path' "
+                    "install_name_tool -add_rpath '@loader_path/../libs/' "
                     + env_dict.get("PADDLE_BINARY_DIR")
                     + '/python/paddle/libs/'
                     + env_dict.get("COMMON_NAME")
