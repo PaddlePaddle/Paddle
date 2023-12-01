@@ -28,17 +28,19 @@ paddle.enable_static()
 def check_param_mappings(param_mappings):
     for VarDesc, Values in param_mappings.items():
         if len(Values) < 0 or len(Values) > 1:
-            raise ValueError("currently only support one-to-one param_mappings")
+            raise ValueError(
+                "This test currently only support one-to-one param_mappings"
+            )
 
 
-def get_pir_grad_var_to_var_map(param_mappings, old_ir_grad_var_to_var_map):
-    pir_grad_var_to_var_map = {}
-    for grad_var, var in old_ir_grad_var_to_var_map.items():
+def get_pir_grad_var_to_var(param_mappings, grad_var_to_var):
+    pir_grad_var_to_var = {}
+    for grad_var, var in grad_var_to_var.items():
         if grad_var in param_mappings.keys():
             new_grad_var = param_mappings[grad_var][0]
             new_var = param_mappings[var][0]
-            pir_grad_var_to_var_map[new_grad_var] = new_var
-    return pir_grad_var_to_var_map
+            pir_grad_var_to_var[new_grad_var] = new_var
+    return pir_grad_var_to_var
 
 
 def get_pir_program_and_param_map():
@@ -94,62 +96,43 @@ class TestDecomposeOp(unittest.TestCase):
         ) = get_pir_program_and_param_map()
 
         pir_ops = pir_program.global_block().ops
-        global_outputs = [pir_ops[11].result(0)]
+        fetch_list = [pir_ops[11].result(0)]
+
+        if flag == "decompose":
+            core._set_prim_forward_enabled(True)
+            core._set_prim_backward_enabled(True)
+
+            # get the grad_var_to_var
+            grad_var_to_var = {
+                'dropout_1.tmp_0@GRAD': 'dropout_1.tmp_0',
+                'elementwise_add_2@GRAD': 'elementwise_add_2',
+                'elementwise_add_3@GRAD': 'elementwise_add_3',
+                'elementwise_mul_1@GRAD': 'elementwise_mul_1',
+                'layer_norm_1.tmp_2@GRAD': 'layer_norm_1.tmp_2',
+                'mean_2.tmp_0@GRAD': 'mean_2.tmp_0',
+                'mean_3.tmp_0@GRAD': 'mean_3.tmp_0',
+                'rsqrt_1.tmp_0@GRAD': 'rsqrt_1.tmp_0',
+                'x@GRAD': 'x',
+                'x@GRAD@RENAME@block0@0': 'x',
+                'x@GRAD@RENAME@block0@1': 'x',
+                'y@GRAD': 'y',
+                'z@GRAD': 'z',
+            }
+            pir_grad_var_to_var = get_pir_grad_var_to_var(
+                param_mappings, grad_var_to_var
+            )
+            decomp.decompose_pir_program(
+                pir_program, pir_grad_var_to_var, fetch_list
+            )
 
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
             pir_program
         ):
-            if flag == "decompose":
-                core._set_prim_forward_enabled(True)
-                core._set_prim_backward_enabled(True)
-
-                # get the old_ir_grad_var_to_var map
-                old_ir_grad_var_to_var_map = {
-                    'dropout_1.tmp_0@GRAD': 'dropout_1.tmp_0',
-                    'elementwise_add_2@GRAD': 'elementwise_add_2',
-                    'elementwise_add_3@GRAD': 'elementwise_add_3',
-                    'elementwise_mul_1@GRAD': 'elementwise_mul_1',
-                    'layer_norm_1.tmp_2@GRAD': 'layer_norm_1.tmp_2',
-                    'mean_2.tmp_0@GRAD': 'mean_2.tmp_0',
-                    'mean_3.tmp_0@GRAD': 'mean_3.tmp_0',
-                    'rsqrt_1.tmp_0@GRAD': 'rsqrt_1.tmp_0',
-                    'x@GRAD': 'x',
-                    'x@GRAD@RENAME@block0@0': 'x',
-                    'x@GRAD@RENAME@block0@1': 'x',
-                    'y@GRAD': 'y',
-                    'z@GRAD': 'z',
-                }
-                grad_var_to_var_map = get_pir_grad_var_to_var_map(
-                    param_mappings, old_ir_grad_var_to_var_map
-                )
-                bwd_ops_to_be_decomposed = [
-                    "pd_op.layer_norm_grad",
-                    "pd_op.dropout_grad",
-                    "pd_op.mean_grad",
-                    "pd_op.add_grad",
-                    "pd_op.multiply_grad",
-                    "pd_op.rsqrt_grad",
-                ]
-                for bwd_op in pir_ops:
-                    if (
-                        flag == "decompose"
-                        and bwd_op.name() in bwd_ops_to_be_decomposed
-                    ):
-                        new_grads, has_decomposed = decomp.decomp_bwd_op(
-                            pir_program.global_block(),
-                            bwd_op,
-                            grad_var_to_var_map,
-                            global_outputs,
-                        )
-
-            # execution
             exe = paddle.static.Executor()
             outs = exe.run(
                 pir_program,
                 feed={'x': self.x, 'y': self.y, 'z': self.z},
-                fetch_list=[
-                    global_outputs[0],
-                ],
+                fetch_list=fetch_list,
             )
             core._set_prim_backward_enabled(False)
             core._set_prim_forward_enabled(False)
