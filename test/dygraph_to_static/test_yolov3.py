@@ -19,8 +19,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_ast_only,
-    test_pir_only,
+    test_default_mode_only,
 )
 from yolov3 import YOLOv3, cfg
 
@@ -167,18 +166,13 @@ def train(to_static):
 
 
 class TestYolov3(Dy2StTestBase):
-    # @test_default_mode_only
-    @test_ast_only
-    # @test_sot_only
-    @test_pir_only
-    # @test_legacy_only
+    @test_default_mode_only
     def test_dygraph_static_same_loss(self):
-        # dygraph_loss = train(to_static=False)
-        # print("=== DIVIDE ===")
+        dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)
-        # np.testing.assert_allclose(
-        #     dygraph_loss, static_loss, rtol=0.001, atol=1e-05
-        # )
+        np.testing.assert_allclose(
+            dygraph_loss, static_loss, rtol=0.001, atol=1e-05
+        )
 
 
 if __name__ == '__main__':
