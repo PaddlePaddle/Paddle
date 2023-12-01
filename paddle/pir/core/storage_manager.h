@@ -71,7 +71,7 @@ class IR_API StorageManager {
         typename Storage::ParamKey(std::forward<Args>(args)...);
     std::size_t hash_value = Storage::HashValue(param);
     auto equal_func = [&param](const StorageBase *existing) {
-      return dynamic_cast<const Storage &>(*existing) == param;
+      return static_cast<const Storage &>(*existing) == param;
     };
     auto constructor = [&]() {
       auto *storage = Storage::Construct(param);
