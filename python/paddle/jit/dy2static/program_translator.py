@@ -36,6 +36,7 @@ from paddle.base.unique_name import (
 )
 from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
+from paddle.pir import OpResult
 from paddle.utils import flatten, gast
 
 from . import error, logging_utils
@@ -1032,7 +1033,7 @@ class ASTStaticFunction(StaticFunction):
         inputs = [
             var
             for var in flatten(concrete_program.inputs)
-            if isinstance(var, framework.Variable)
+            if isinstance(var, (framework.Variable, OpResult))
         ]
         return inputs
 
@@ -1046,7 +1047,7 @@ class ASTStaticFunction(StaticFunction):
         outputs = [
             var
             for var in flatten(concrete_program.outputs)
-            if isinstance(var, framework.Variable)
+            if isinstance(var, (framework.Variable, OpResult))
         ]
 
         return outputs

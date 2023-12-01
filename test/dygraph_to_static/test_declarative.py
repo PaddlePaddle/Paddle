@@ -404,6 +404,7 @@ class TestDecorateModelDirectly(Dy2StTestBase):
         self.assertTrue(len(net.forward.program_cache) == 1)
 
     @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_input_spec(self):
         SimpleNet = create_simple_net()
         net = SimpleNet()
@@ -502,11 +503,14 @@ class TestSetBuffers(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_legacy_and_pt_and_pir
     def test_set_buffers1(self):
         net = paddle.jit.to_static(SetBuffersNet1())
         out = net()
         self.assertEqual(out.numpy().tolist(), [2])
-        paddle.jit.save(net, self.model_path)
+        # TODO(pir-save-load): Fix this after we support save/load in PIR
+        if not use_pir_api():
+            paddle.jit.save(net, self.model_path)
 
     @test_ast_only
     def test_set_buffers2(self):
