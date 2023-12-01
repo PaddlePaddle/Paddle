@@ -801,8 +801,10 @@ def decompose_pir_program(pir_program, pir_grad_var_to_var, fetch_list):
     prev_bwd_prim_state = core._is_bwd_prim_enabled()
     core._set_prim_forward_enabled(True)
     core._set_prim_backward_enabled(True)
+    prev_pir_api_flag = paddle.base.framework.get_flags("FLAGS_enable_pir_api")
+    paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
 
-    with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(pir_program):
+    with paddle.pir.core.program_guard(pir_program):
         ops = pir_program.global_block().ops
         bwd_ops = _get_bwd_ops_name(pir_program)
         num_bwd_ops_decomposed = 0
@@ -827,6 +829,7 @@ def decompose_pir_program(pir_program, pir_grad_var_to_var, fetch_list):
                     if op.name() not in bwd_ops_undecomposed:
                         bwd_ops_undecomposed.append(op.name())
 
+        logging.getLogger().setLevel(logging.INFO)
         logging.info(
             "%d backward ops are successfully decomposed, op names are: %s"
             % (num_bwd_ops_decomposed, ', '.join(bwd_ops_decomposed))
@@ -841,3 +844,7 @@ def decompose_pir_program(pir_program, pir_grad_var_to_var, fetch_list):
 
         core._set_prim_forward_enabled(prev_fwd_prim_state)
         core._set_prim_backward_enabled(prev_bwd_prim_state)
+        paddle.base.framework.set_flags(prev_pir_api_flag)
+        paddle.base.framework.global_var._use_pir_api_ = prev_pir_api_flag[
+            "FLAGS_enable_pir_api"
+        ]
