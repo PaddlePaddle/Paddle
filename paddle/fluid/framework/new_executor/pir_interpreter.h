@@ -180,6 +180,8 @@ class PirInterpreter : public InterpreterBaseImpl {
   /// ======================== ///
   std::string DebugValueInfo();
 
+  std::string DebugInstructions();
+
   void PreAnalysis();
 
   void BuildInstruction();

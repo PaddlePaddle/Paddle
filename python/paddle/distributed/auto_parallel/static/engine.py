@@ -34,6 +34,7 @@ from paddle.framework import (
 )
 from paddle.metric import Metric
 from paddle.static import InputSpec, Operator, Variable, global_scope
+from paddle.static.amp.fp16_utils import _convert_float_to_bfloat16
 
 from ...utils.log_utils import get_logger
 from ..interface import CollectionNames, fetch, get_collection
@@ -833,13 +834,11 @@ class Engine:
             random.seed(self._strategy.seed + self._dp_ranks[0])
 
         dist_context = self._dist_contexts[mode]
+        dist_main_program = dist_context.dist_main_programs[self._cur_rank]
         if self._dygraph_mode:
             if not init_parameters:
                 self._share_parameters()
             else:
-                dist_main_program = dist_context.dist_main_programs[
-                    self._cur_rank
-                ]
                 self.program_helper.init(
                     dist_main_program, self._place, dist_context
                 )
@@ -847,11 +846,30 @@ class Engine:
             # have been initialized when initialize model in dynamic mode.
             if self._model and len(self._model.buffers()) > 0:
                 for buffer in self._model.buffers():
-                    scope_var = global_scope().find_var(buffer.name)
-                    buffer_tensor = global_scope().var(buffer.name).get_tensor()
-                    if scope_var and buffer_tensor._is_initialized():
-                        continue
-                    buffer_tensor.set(buffer.numpy(), self._place)
+                    if dist_main_program.global_block().has_var(buffer.name):
+                        dest_type = (
+                            dist_main_program.global_block()
+                            .var(buffer.name)
+                            .dtype
+                        )
+                        scope_var = global_scope().find_var(buffer.name)
+                        buffer_tensor = (
+                            global_scope().var(buffer.name).get_tensor()
+                        )
+                        if scope_var and buffer_tensor._is_initialized():
+                            continue
+                        # for amp
+                        if dest_type == core.VarDesc.VarType.BF16:
+                            buffer_tensor.set(
+                                _convert_float_to_bfloat16(buffer.numpy()),
+                                self._place,
+                            )
+                        elif dest_type == core.VarDesc.VarType.FP16:
+                            buffer_tensor.set(
+                                np.float16(buffer.numpy()), self._place
+                            )
+                        else:
+                            buffer_tensor.set(buffer.numpy(), self._place)
 
         if self._executor is None:
             self._executor = paddle.static.Executor(self._place)

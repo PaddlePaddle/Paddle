@@ -1,0 +1,6 @@
+setuptools==57.4.0 ; python_version <= '3.11' and sys_platform == 'win32'
+setuptools==69.0.2 ; python_version > '3.11' and sys_platform == 'win32'
+wheel ; sys_platform == 'win32'
+pyyaml ; sys_platform == 'win32'
+wget ; sys_platform == 'win32'
+jinja2 ; sys_platform == 'linux'
