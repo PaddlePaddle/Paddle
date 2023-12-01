@@ -379,10 +379,19 @@ struct XPUSiluGradFunctor : public funcs::BaseActivationFunctor<T> {
     XPUType* x_grad = reinterpret_cast<XPUType*>(dx->data<T>());
 
     if (std::getenv("XPU_PADDLE_ACT_LUT") != nullptr) {
-      int r = xpu::fast_swish_grad(
-          dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_swish_grad");
+      if (!std::is_same<T, ::phi::dtype::bfloat16>::value) {
+        // use fast_swish_grad if NOT bf16
+        int r = xpu::fast_swish_grad(
+            dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_swish_grad");
+      } else {
+        // use plain swish_grad
+        int r = xpu::swish_grad(
+            dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish_grad");
+      }
     } else {
+      // use plain swish_grad
       int r = xpu::swish_grad(
           dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish_grad");
@@ -697,7 +706,8 @@ PD_REGISTER_KERNEL(silu_grad,
                    ALL_LAYOUT,
                    phi::SiluGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 #define PD_REGISTER_ACTIVATION_GRAD_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}
