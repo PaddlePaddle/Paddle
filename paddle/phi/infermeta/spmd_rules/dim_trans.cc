@@ -51,23 +51,19 @@ std::string InputDim::to_string() {
 
 Singleton::Singleton() : DimTrans(DimTrans::Type::SINGLETON) {}
 
-Broadcast::Broadcast() : DimTrans(DimTrans::Type::BROADCAST) {
-  dim_ = nullptr;
-  all_dim_trans.emplace_back(this);
-}
+Broadcast::Broadcast() : DimTrans(DimTrans::Type::BROADCAST) { dim_ = nullptr; }
 
-Broadcast::Broadcast(DimTrans* dim, int64_t dim_size)
+Broadcast::Broadcast(const std::shared_ptr<DimTrans> dim, int64_t dim_size)
     : DimTrans(DimTrans::Type::BROADCAST) {
   dim_ = dim;
   dim_size_ = dim_size;
-  all_dim_trans.emplace_back(this);
 }
 
 Broadcast::~Broadcast() { dim_ = nullptr; }
 
-DimTrans* Broadcast::dim() const { return dim_; }
+const std::shared_ptr<DimTrans>& Broadcast::dim() const { return dim_; }
 
-void Broadcast::set_dim(DimTrans* dim) { dim_ = dim; }
+void Broadcast::set_dim(std::shared_ptr<DimTrans> dim) { dim_ = dim; }
 
 int64_t Broadcast::dim_size() const { return dim_size_; }
 
@@ -311,7 +307,8 @@ void GetUsedInputDim(const std::shared_ptr<DimTrans> dim_trans,
     std::shared_ptr<Split> split = std::dynamic_pointer_cast<Split>(dim_trans);
     GetUsedInputDim(split->input(), seen_dims);
   } else if (dim_trans->type() == DimTrans::Type::BROADCAST) {
-    Broadcast* broadcast = dynamic_cast<Broadcast*>(dim_trans);
+    std::shared_ptr<Broadcast> broadcast =
+        std::dynamic_pointer_cast<Broadcast>(dim_trans);
     GetUsedInputDim(broadcast->dim(), seen_dims);
   } else {
     return;

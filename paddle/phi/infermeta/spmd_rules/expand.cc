@@ -27,14 +27,15 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-std::vector<DimTrans*> PadLeftDim(int64_t ndim, int64_t min_ndims) {
+std::vector<std::shared_ptr<DimTrans>> PadLeftDim(int64_t ndim,
+                                                  int64_t min_ndims) {
   int64_t num_padding = std::max((int64_t)0, min_ndims - ndim);
-  std::vector<DimTrans*> padded_dim_trans(min_ndims, nullptr);
+  std::vector<std::shared_ptr<DimTrans>> padded_dim_trans(min_ndims, nullptr);
   for (int64_t i = 0; i < min_ndims; i++) {
     if (i < num_padding) {
-      padded_dim_trans[i] = new Singleton();
+      padded_dim_trans[i] = std::make_shared<Singleton>();
     } else {
-      padded_dim_trans[i] = new InputDim(i - num_padding);
+      padded_dim_trans[i] = std::make_shared<InputDim>(i - num_padding);
     }
   }
   return padded_dim_trans;
@@ -42,7 +43,7 @@ std::vector<DimTrans*> PadLeftDim(int64_t ndim, int64_t min_ndims) {
 
 // Compute how each dimension in target shape
 // is obtained from the input dimensions
-std::vector<DimTrans*> MakeExpandDimTrans(
+std::vector<std::shared_ptr<DimTrans>> MakeExpandDimTrans(
     const std::vector<int64_t>& src_shape,
     const std::vector<int64_t>& tgt_shape) {
   int64_t tgt_shape_ndim = tgt_shape.size();
@@ -57,13 +58,13 @@ std::vector<DimTrans*> MakeExpandDimTrans(
           tgt_shape_ndim,
           src_shape_ndim));
 
-  std::vector<DimTrans*> padded_input =
+  std::vector<std::shared_ptr<DimTrans>> padded_input =
       PadLeftDim(src_shape_ndim, tgt_shape_ndim);
 
-  std::vector<DimTrans*> ret;
+  std::vector<std::shared_ptr<DimTrans>> ret;
   for (int64_t i = 0, n = static_cast<int64_t>(padded_input.size()); i < n;
        i++) {
-    DimTrans* inp = padded_input[i];
+    std::shared_ptr<DimTrans> inp = padded_input[i];
     int64_t tgt_dim_val = tgt_shape[i];
     if (inp->type() == DimTrans::Type::SINGLETON) {
       PADDLE_ENFORCE_GT(
@@ -75,14 +76,15 @@ std::vector<DimTrans*> MakeExpandDimTrans(
       if (tgt_dim_val == 1) {
         ret.emplace_back(inp);
       } else {
-        ret.emplace_back(new Broadcast(inp, tgt_dim_val));
+        ret.emplace_back(std::make_shared<Broadcast>(inp, tgt_dim_val));
       }
 
     } else if (inp->type() == DimTrans::Type::INPUTDIM) {
-      InputDim* inputdim = dynamic_cast<InputDim*>(inp);
+      std::shared_ptr<InputDim> inputdim =
+          std::dynamic_pointer_cast<InputDim>(inp);
       int64_t inp_dim_val = src_shape[inputdim->input_dim()];
       if (inp_dim_val == 1 && tgt_dim_val != inp_dim_val) {
-        ret.emplace_back(new Broadcast(inp, tgt_dim_val));
+        ret.emplace_back(std::make_shared<Broadcast>(inp, tgt_dim_val));
       } else {
         ret.emplace_back(inp);
       }
@@ -96,7 +98,7 @@ std::vector<DimTrans*> MakeExpandDimTrans(
   return ret;
 }
 
-std::vector<DimTrans*> MakeExpandDimTransReverse(
+std::vector<std::shared_ptr<DimTrans>> MakeExpandDimTransReverse(
     const std::vector<int64_t>& x_shape,
     const std::vector<int64_t>& out_shape) {
   int64_t x_ndim = x_shape.size();
@@ -112,10 +114,10 @@ std::vector<DimTrans*> MakeExpandDimTransReverse(
           x_ndim));
 
   int64_t num_padding = out_ndim - x_ndim;
-  std::vector<DimTrans*> ret(x_ndim, nullptr);
+  std::vector<std::shared_ptr<DimTrans>> ret(x_ndim, nullptr);
 
   for (int64_t i = 0; i < x_ndim; i++) {
-    ret[i] = new InputDim(num_padding + i);
+    ret[i] = std::make_shared<InputDim>(num_padding + i);
   }
 
   return ret;
@@ -166,7 +168,8 @@ SpmdInfo ExpandInferSpmd(const DistMetaTensor& x,
     }
   }
 
-  std::vector<DimTrans*> trans = MakeExpandDimTrans(x_shape, tgt_shape);
+  std::vector<std::shared_ptr<DimTrans>> trans =
+      MakeExpandDimTrans(x_shape, tgt_shape);
 
   // Step2: Infer the dims mapping of input (if reshard is
   // needed) and output from the dimension transformation.
@@ -182,14 +185,12 @@ SpmdInfo ExpandInferSpmd(const DistMetaTensor& x,
 
   VLOG(4) << "Transformation from input to output:";
   for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
-    DimTrans* t = trans[i];
+    std::shared_ptr<DimTrans> t = trans[i];
     VLOG(4) << "\tOut axis[" << i << "]: " << t->to_string();
   }
   VLOG(4) << "X dims_mapping_src: [" << str_join(x_dims_mapping)
           << "] dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "Out dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
-
-  CleanUp();
 
   return {{x_dist_attr_dst}, {out_dist_attr}};
 }
@@ -244,7 +245,8 @@ SpmdInfo ExpandInferSpmdReverse(const DistMetaTensor& x,
     }
   }
 
-  std::vector<DimTrans*> trans = MakeExpandDimTransReverse(out_shape, x_shape);
+  std::vector<std::shared_ptr<DimTrans>> trans =
+      MakeExpandDimTransReverse(out_shape, x_shape);
   // Step2: Infer the dims mapping of input with
   // output's dims_mapping and the transformation.
   std::vector<std::vector<int64_t>> dims_mapping_vec =
@@ -259,14 +261,12 @@ SpmdInfo ExpandInferSpmdReverse(const DistMetaTensor& x,
 
   VLOG(4) << "Transformation from output to input:";
   for (int64_t i = 0, n = trans.size(); i < n; i++) {
-    DimTrans* t = trans[i];
+    std::shared_ptr<DimTrans> t = trans[i];
     VLOG(4) << "\tX axis[" << i << "]: " << t->to_string();
   }
   VLOG(4) << "Out dims_mapping_src: [" << str_join(out_dims_mapping) << "] "
           << "dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "X dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
-
-  CleanUp();
 
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }

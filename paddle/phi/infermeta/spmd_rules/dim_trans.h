@@ -91,20 +91,20 @@ class Broadcast : public DimTrans {
  public:
   Broadcast();
 
-  explicit Broadcast(DimTrans* dim, int64_t dim_size);
+  explicit Broadcast(const std::shared_ptr<DimTrans> dim, int64_t dim_size);
 
   virtual ~Broadcast();
 
-  DimTrans* dim() const;
+  const std::shared_ptr<DimTrans>& dim() const;
 
-  void set_dim(DimTrans* dim);
+  void set_dim(const std::shared_ptr<DimTrans> dim);
 
   int64_t dim_size() const;
 
   std::string to_string() override;
 
  private:
-  DimTrans* dim_;
+  std::shared_ptr<DimTrans> dim_;
   int64_t dim_size_;
 };
 
