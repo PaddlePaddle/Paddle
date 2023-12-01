@@ -19,7 +19,6 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 
 PD_DECLARE_bool(cudnn_deterministic);
@@ -52,14 +51,29 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  DenseTensor* dk,
                                  DenseTensor* dv) {
 #ifdef PADDLE_WITH_FLASHATTN
-  if (dq) {
-    ctx.template Alloc<T>(dq);
-  }
+  void* dq_ptr = nullptr;
+  void* dk_ptr = nullptr;
+  void* dv_ptr = nullptr;
+
+  ctx.template Alloc<T>(dq);
+  dq_ptr = dq->data();
+
+  DenseTensor dk_tmp;
   if (dk) {
     ctx.template Alloc<T>(dk);
+    dk_ptr = dk->data();
+  } else {
+    dk_tmp = EmptyLike<T, Context>(ctx, k);
+    dk_ptr = dk_tmp.data();
   }
+
+  DenseTensor dv_tmp;
   if (dv) {
     ctx.template Alloc<T>(dv);
+    dv_ptr = dv->data();
+  } else {
+    dv_tmp = EmptyLike<T, Context>(ctx, v);
+    dv_ptr = dv_tmp.data();
   }
 
   const cudaStream_t stream = ctx.stream();
@@ -111,9 +125,9 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
       cu_seqlens_q.data<int32_t>(),
       cu_seqlens_k.data<int32_t>(),
       params.rng_state.data(),
-      dq ? dq->data() : nullptr,
-      dk ? dk->data() : nullptr,
-      dv ? dv->data() : nullptr,
+      dq_ptr,
+      dk_ptr,
+      dv_ptr,
       params.dq_accum.data(),
       params.batch_size,
       params.max_seqlen_q,
@@ -157,6 +171,33 @@ void FlashAttnGradKernel(const Context& ctx,
                          DenseTensor* dk,
                          DenseTensor* dv) {
 #ifdef PADDLE_WITH_FLASHATTN
+  void* dq_ptr = nullptr;
+  void* dk_ptr = nullptr;
+  void* dv_ptr = nullptr;
+
+  ctx.template Alloc<T>(dq);
+  dq_ptr = dq->data();
+
+  DenseTensor dk_tmp;
+  if (dk) {
+    ctx.template Alloc<T>(dk);
+    dk_ptr = dk->data();
+  } else {
+    dk_tmp = EmptyLike<T, Context>(ctx, k);
+    dk_ptr = dk_tmp.data();
+  }
+
+  DenseTensor dv_tmp;
+  if (dv) {
+    ctx.template Alloc<T>(dv);
+    dv_ptr = dv->data();
+  } else {
+    dv_tmp = EmptyLike<T, Context>(ctx, v);
+    dv_ptr = dv_tmp.data();
+  }
+
+  const cudaStream_t stream = ctx.stream();
+
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
 
@@ -192,17 +233,6 @@ void FlashAttnGradKernel(const Context& ctx,
                            q.dtype(),
                            attn_mask,
                            seed_offset.data<int64_t>());
-  if (dq) {
-    ctx.template Alloc<T>(dq);
-  }
-  if (dk) {
-    ctx.template Alloc<T>(dk);
-  }
-  if (dv) {
-    ctx.template Alloc<T>(dv);
-  }
-
-  cudaStream_t stream = ctx.stream();
 
   VLOG(10) << "[FlashAttn Forward] q.shape=[" << q.dims() << "], k.shape=["
            << k.dims() << "], v.shape=[" << v.dims() << "]";
@@ -226,9 +256,9 @@ void FlashAttnGradKernel(const Context& ctx,
       params.softmax_d.data(),
       softmax_lse.data(),
       params.rng_state.data(),
-      dq ? dq->data() : nullptr,
-      dk ? dk->data() : nullptr,
-      dv ? dv->data() : nullptr,
+      dq_ptr,
+      dk_ptr,
+      dv_ptr,
       params.dq_accum.data(),
       params.batch_size,
       params.max_seqlen_q,
