@@ -35,7 +35,7 @@ from paddle.distribution.multivariate_normal import MultivariateNormal
         (
             'multi-batch',
             parameterize.xrand((2, 3), dtype='float32', min=-2, max=2),
-            np.array([[6.0, 2.5, 3.0], [2.5, 4.0, 5.0], [3.0, 5.0, 7.0]]),
+            np.array([[4.0, 2.5, 2.0], [2.5, 3.0, 1.2], [2.0, 1.2, 4.0]]),
         ),
     ],
 )
@@ -85,7 +85,7 @@ class TestMVN(unittest.TestCase):
             sample_shape + self._dist.batch_shape + self._dist.event_shape,
         )
 
-        sample_shape = (10000,)
+        sample_shape = (50000,)
         samples = self._dist.sample(sample_shape)
         sample_mean = samples.mean(axis=0)
         sample_variance = samples.var(axis=0)
