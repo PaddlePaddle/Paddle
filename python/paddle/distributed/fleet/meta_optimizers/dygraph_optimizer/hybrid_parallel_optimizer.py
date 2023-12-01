@@ -303,7 +303,7 @@ class HybridParallelClipGrad:
         if self._timers:
             self._timers("dygraph-clip").stop()
 
-        return params_grads
+        return result
 
     def _global_norm(self, global_norm_var_dist, global_norm_var_not_dist):
         sharding_flag = self._hcg.get_sharding_parallel_world_size() > 1
