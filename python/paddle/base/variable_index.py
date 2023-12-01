@@ -480,7 +480,7 @@ def _setitem_static(x, indices, values):
             attrs["values"] = values
             attrs["shape"] = shape
 
-        elif isinstance(values, (Variable, paddle.pir.OpResult)):
+        elif isinstance(values, (Variable, paddle.pir.Value)):
             values = values.astype(dtype)
             inputs["ValueTensor"] = values
             value_tensor = values
@@ -567,7 +567,7 @@ def _setitem_static(x, indices, values):
             _,
             _,
         ) = deal_advanced_index(sub_tensor, advanced_index, True)
-        if not isinstance(values, (Variable, paddle.pir.OpResult)):
+        if not isinstance(values, (Variable, paddle.pir.Value)):
             values = paddle.assign(values).astype(transed_sub_tensor.dtype)
 
         if values.dtype != transed_sub_tensor.dtype:
