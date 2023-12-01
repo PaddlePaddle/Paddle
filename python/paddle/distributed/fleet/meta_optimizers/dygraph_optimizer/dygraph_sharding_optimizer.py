@@ -96,10 +96,12 @@ class DygraphShardingOptimizer:
         self.fuse_optimizer = strategy.hybrid_configs[
             'sharding_configs'
         ].fuse_optimizer
-        pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
+        self.pp_overlap = strategy.hybrid_configs[
+            'pp_configs'
+        ].sharding_comm_overlap
         if self.tensor_fusion or self.comm_overlap:
             assert (
-                not pp_overlap
+                not self.pp_overlap
             ), "Can not enable pp's sharding_comm_overlap and sharding's tensor_fusion at the same time."
 
         self._use_main_grad = hasattr(self._parameter_list[0], "main_grad")
@@ -114,7 +116,7 @@ class DygraphShardingOptimizer:
             local_params = self._rank2params[self._sharding_rank]
             self._set_inner_opt_attr('_parameter_list', local_params)
             self._set_inner_opt_attr('_param_groups', local_params)
-        else:
+        elif self.tensor_fusion:
             self._tensor_fusion()
 
             decay_params = [
@@ -153,6 +155,8 @@ class DygraphShardingOptimizer:
             # won't change. To avoid failure on some other applications (such as some nvtx
             # operations), here we manulay let the allocator release the cached memory.
             paddle.device.cuda.empty_cache()
+        else:  # self.comm_overlap
+            self._build_comm_buffers()
 
     def clear_grad(self, set_to_zero=True):
         """
@@ -175,6 +179,21 @@ class DygraphShardingOptimizer:
                         p.grad = None
                 else:
                     p.clear_gradient(set_to_zero)
+
+    def _build_comm_buffers(self, group_size=256 * 1024 * 1024):
+        if self.pp_overlap:
+            return
+
+        comm_group = self._hcg.get_sharding_parallel_group()
+        var_groups = assign_group_by_size(self._parameter_list, group_size)
+        for group_idx, parameters in var_groups.items():
+            buffer = FusedCommBuffer(
+                group_idx,
+                parameters,
+                comm_group,
+                act=HOOK_ACTION.REDUCE_SCATTER,
+            )
+            self._comm_buffers.append(buffer)
 
     def _tensor_fusion(self):
         comm_group = self._hcg.get_sharding_parallel_group()
@@ -260,10 +279,15 @@ class DygraphShardingOptimizer:
     def reduce_gradients(self, parameter_list, hcg):
         # TODO merge grad / nrank with dp
         logger.debug("sharding start gradients sync")
-        if self.comm_overlap:
+        if self.comm_overlap and self.tensor_fusion:
             for buffer in self._comm_buffers:
                 buffer.scale_grads()
             return
+        elif self.comm_overlap:
+            with framework.no_grad():
+                for comm_buffer in self._comm_buffers:
+                    comm_buffer._comm_grads()
+                    comm_buffer.scale_grads()
         with framework.no_grad():
             sharding_nrank = hcg.get_sharding_parallel_group().nranks
             for param in parameter_list:
