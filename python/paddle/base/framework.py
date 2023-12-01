@@ -4061,7 +4061,7 @@ class Block:
         ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack)
         )
-        block_str = f"{{ // block_idx:{self.idx}  parallel_idx:{self.parent_idx}  forward_idx:{self.forward_block_idx}  backward_idx:{self.backward_block_idx}\n"
+        block_str = f"{{ // block_idx:{self.idx}  parent_idx:{self.parent_idx}  forward_idx:{self.forward_block_idx}  backward_idx:{self.backward_block_idx}\n"
         for var in list(self.vars.values()):
             block_str += f"    {var._to_readable_code()}\n"
         block_str += "\n"
