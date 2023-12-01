@@ -1812,16 +1812,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
-    if (op_type == "argsort") {
-#if IS_TRT_VERSION_LT(8500)
-      VLOG(3) << "argsort is not supported when TensorRT < 8.5";
-      return false;
-#endif
-      if (!with_dynamic_shape) {
-        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
-        return false;
-      }
-    }
     if (op_type == "pad3d") {
 #if !IS_TRT_VERSION_GE(8200)
       VLOG(3) << "pad3d is not supported when TensorRT < 8.2";
@@ -3191,6 +3181,16 @@ struct GenericPluginTeller : public Teller {
       if (x_dtype == framework::proto::VarType::FP64 ||
           y_dtype == framework::proto::VarType::FP64) {
         VLOG(3) << op_type << " not support input of FP64.";
+        return false;
+      }
+    }
+    if (op_type == "argsort") {
+#if IS_TRT_VERSION_LT(8500)
+      VLOG(3) << "argsort is not supported when TensorRT < 8.5";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
         return false;
       }
     }
