@@ -11,6 +11,54 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from ..signal import (  # noqa: F401
+    istft,
+    stft,
+)
+from .array import (  # noqa: F401
+    array_length,
+    array_read,
+    array_write,
+    create_array,
+)
+from .attribute import (  # noqa: F401
+    imag,
+    is_complex,
+    is_floating_point,
+    is_integer,
+    rank,
+    real,
+    shape,
+)
+from .creation import (  # noqa: F401
+    arange,
+    cauchy_,
+    complex,
+    create_parameter,
+    create_tensor,
+    diag,
+    diag_embed,
+    diagflat,
+    empty,
+    empty_like,
+    eye,
+    fill_constant,
+    full,
+    full_like,
+    geometric_,
+    linspace,
+    meshgrid,
+    ones,
+    ones_like,
+    polar,
+    to_tensor,
+    tril,
+    tril_,
+    triu,
+    triu_,
+    zeros,
+    zeros_like,
+)
 
 from .einsum import einsum  # noqa: F401
 from .linalg import (  # noqa: F401
