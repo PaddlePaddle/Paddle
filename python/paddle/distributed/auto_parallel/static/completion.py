@@ -1957,6 +1957,8 @@ class Completer:
             for op in block.ops:
                 for name in op.input_arg_names + op.output_arg_names:
                     var = block._find_var_recursive(name)
+                    if "lod_tensor_blocking_queue" in name:
+                        continue
                     if name not in var_to_chunk_id:
                         op_dist_attr = (
                             self._dist_context.get_op_dist_attr_for_program(op)
